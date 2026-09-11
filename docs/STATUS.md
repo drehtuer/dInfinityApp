@@ -11,8 +11,8 @@ changelog.
 
 - **Phase:** design. No application code yet.
 - **Latest release:** none.
-- **Branch state:** `main` has no commits; design docs are uncommitted in the
-  working tree.
+- **Branch state:** `main` has an empty root commit; the design docs are on
+  `docs/initial-design`, open as PR #1.
 
 ## Done
 

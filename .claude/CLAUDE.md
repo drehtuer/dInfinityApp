@@ -17,16 +17,18 @@ structure.
 
 ## Tracking files
 
-- `TODO.md` holds open tasks; `STATUS.md` holds the current state of the
-  project (phase, what is done, in progress, blocked, pending decisions).
+- `docs/TODO.md` holds open tasks; `docs/STATUS.md` holds the current state
+  of the project (phase, what is done, in progress, blocked, pending
+  decisions).
 - Update them as part of the work, not afterwards: starting a task moves it
-  to "In progress" in `STATUS.md`; finishing it removes it from `TODO.md` and
+  to "In progress" in `docs/STATUS.md`; finishing it removes it from
+  `docs/TODO.md` and
   moves the status line to "Done" (or drops it once it is old news).
 - **Compact and clean both files regularly** — at least whenever a milestone
   completes or a PR touches them. Remove finished items, merge duplicates,
   drop stale "Done" entries that git history already records, and keep each
   file to roughly one screen. They are snapshots, not changelogs.
-- Refresh the `Last updated` date in `STATUS.md` when you change it.
+- Refresh the `Last updated` date in `docs/STATUS.md` when you change it.
 
 ## Documentation
 
@@ -37,6 +39,9 @@ structure.
 - `docs/architecture.md` must always reflect the real module layout, data
   flow and threading. If the code diverges from it, fix one or the other in
   the same PR — do not leave them apart.
+- **Every document in `docs/` is linked from the table in `README.md`.**
+  Adding, renaming or removing a document updates that table in the same
+  PR; the README is the index and must never be incomplete.
 - Diagrams are **mermaid** (` ```mermaid ` fences). No ASCII art, no images
   for things mermaid can draw.
 

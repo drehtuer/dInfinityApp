@@ -57,6 +57,8 @@ hunting for the d12 that rolled under the couch.
 
 | Document | Contents |
 |---|---|
+| [docs/STATUS.md](docs/STATUS.md) | Where the project stands right now: phase, in progress, blocked, pending decisions |
+| [docs/TODO.md](docs/TODO.md) | Open tasks by milestone and open questions |
 | [docs/architecture.md](docs/architecture.md) | Module layout, tech stack, data flow, key decisions |
 | [docs/physics-and-rendering.md](docs/physics-and-rendering.md) | Simulation, shake input, settling and face detection, stacking avoidance, power-saving mode |
 | [docs/dice-notation.md](docs/dice-notation.md) | Roll formula grammar, evaluation rules, saved rolls |
@@ -69,7 +71,15 @@ hunting for the d12 that rolled under the couch.
 ## Status
 
 Design phase. The documents in `docs/` are the specification the
-implementation will be built against. Nothing here is shipped yet.
+implementation will be built against. Nothing here is shipped yet. See
+[docs/STATUS.md](docs/STATUS.md) for the current state and
+[docs/TODO.md](docs/TODO.md) for what is next.
+
+## Contributing
+
+The working agreements — branching, PRs, tests, releases, build naming, how
+the tracking files are kept tidy — are in
+[.claude/CLAUDE.md](.claude/CLAUDE.md). Read it before opening a PR.
 
 ## Platform
 
