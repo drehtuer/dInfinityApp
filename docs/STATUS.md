@@ -11,8 +11,8 @@ changelog.
 
 - **Phase:** design. No application code yet.
 - **Latest release:** none.
-- **Branch state:** `main` has no commits; design docs are uncommitted in the
-  working tree.
+- **Branch state:** design docs merged to `main` (PR #1). Tracking files
+  moving into `docs/` in PR #2.
 
 ## Done
 

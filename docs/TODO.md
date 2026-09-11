@@ -1,7 +1,7 @@
 # TODO
 
 Open tasks, roughly in the order they should happen. Done items are removed,
-not ticked — history lives in git and `STATUS.md`. Keep this file short: if a
+not ticked — history lives in git and `docs/STATUS.md`. Keep this file short: if a
 section grows past a screen, split it into milestones or prune.
 
 ## Milestone 0 — repository bootstrap
