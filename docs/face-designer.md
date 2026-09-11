@@ -1,0 +1,70 @@
+# Face designer
+
+The face designer lets a user draw the faces of a die with a finger and roll
+the result immediately. Its output is a normal dice set (see
+`docs/dice-sets.md`), so a designed die can be exported, shared on any git forge or web server and
+installed by other users like any other set.
+
+## Flow
+
+1. **Pick a base die.** Any catalogue shape or any installed die. The designer
+   copies its `faces` and `labels`, so face *values* are inherited; the user
+   is only drawing what the face looks like.
+2. **Draw.** The screen shows one face at a time as a large square canvas
+   with the face's outline (triangle, square, pentagon, kite for the d10…)
+   masked in. Swipe left/right or use the strip at the bottom to move between
+   faces. The current face value is shown faintly as a guide and can be
+   hidden.
+3. **Preview.** A 3D preview of the die with the drawn atlas applied, rotatable
+   by drag, updated live.
+4. **Roll it.** One tap rolls the die in the tray to see how it looks in
+   motion.
+5. **Save.** The die is added to the user's personal set ("My dice", id
+   `mine`), or to a new set the user names. The set folder is written with a
+   generated `diceset.toml` and one atlas PNG per die, and then run through
+   the standard validator like any import.
+
+## Drawing tools
+
+Deliberately small:
+
+- Pen with three widths, eraser, fill bucket
+- Colour palette (the set's default colours + 12 presets + a picker)
+- Undo/redo (per face, unlimited within the session)
+- Stamp: place a digit/letter/symbol from the built-in font, scalable and
+  rotatable, so people who cannot draw a legible "8" still get an "8"
+- Copy face → paste onto another face, with optional rotate/mirror (for
+  making all faces share a border, for example)
+- "Fill all faces with numbers" one-tap starting point
+
+Strokes are recorded as vector paths in a draft file so that the canvas can be
+re-rendered at export resolution and so drafts survive process death.
+
+## Export details
+
+- Atlas resolution: 256 px per face cell; a d20 atlas is therefore
+  1280×1024 (5×4 cells). Well within the set limits.
+- Background of each cell is transparent; the die colour and material come
+  from the set defaults, so the same drawing works on a black or a white die.
+- Strokes are rasterised with anti-aliasing at export time from the vector
+  draft.
+- The generated `diceset.toml` for a personal set marks
+  `author = "<device user name>"` and `license = "unspecified"`; the export
+  screen asks the user to pick a license before sharing.
+- "Share" produces a zip of the set folder, which can be uploaded to a git
+  repository as-is.
+
+## Quick mode
+
+From the roll screen, long-pressing a die offers "Doodle this die": the
+designer opens on that die with its existing texture (if any) as the starting
+layer. Saving creates a variant in "My dice" with the same id suffixed
+`-doodle` and switches the current roll to use it. This is the "draw a skull
+on the 1 in ten seconds" path.
+
+## Constraints
+
+- Drafts are limited to 50 per device and 200 strokes per face to keep
+  storage and export time bounded; the UI warns before the limit.
+- Everything is on-device; nothing leaves the phone unless the user shares
+  the zip.
