@@ -79,7 +79,7 @@ flowchart TD
     P -->|resolve dice from installed sets| C{Table capacity check<br/>docs/tables.md}
     C -->|does not fit| R["Roll refused<br/>'up to N dice fit'"]
     C -->|fits| T["ThrowSpec<br/>dice, dieScale, seed, table,<br/>initial impulse (shake or default)"]
-    T -->|DiceSimulator.run| S["SimulationOutcome<br/>per-die face index, steps, nudges"]
+    T -->|DiceSimulator.run| S["SimulationOutcome<br/>per-die face index, steps, rethrows"]
     S -.->|body transforms, optional| V[Renderer]
     S -->|face index → value<br/>keep/drop/explode, modifier| O["RollResult<br/>total, per-die breakdown,<br/>formula, timestamp"]
     O --> UI[UI]
