@@ -96,6 +96,10 @@ changelog.
   anywhere, so a renderer cannot act on the roll it is watching — and the
   renderer power-saving mode uses, which creates no graphics engine because it
   lives in a module that has none to create.
+- `input/shake` is done: the two-threshold shake detector, the gyroscope
+  integration that tilts gravity, and the quantised recording that lets a roll
+  replay to itself. Everything that decides anything is plain Kotlin; only the
+  `SensorManager` wiring is Android, and that is covered by Robolectric.
 
 ## Blocked / waiting on
 
