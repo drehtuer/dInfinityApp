@@ -26,7 +26,7 @@ changelog.
 - UI prototype for every v1 screen, imported from Claude Design into
   `design/`, cross-referenced with `docs/` in both directions and linked
   from `README.md`.
-- The design's decisions are in `docs/`: v1's shape catalogue closed at nine
+- The design's decisions are in `docs/`: v1's shape catalogue closed at eight
   solids (no d3, no d30, no author meshes), `d%` an alias for `d100`, seeds
   never exposed and no replay, tables global, import refuses duplicate
   groups, per-throw rounding override, manual-only power-saving.
@@ -73,8 +73,10 @@ changelog.
 
 ## In progress
 
-- Step 3 — foundations. Nothing started yet; the physics engine spike (Jolt
-  vs. Bullet) is the decide-first item.
+- Step 3 — foundations, bottom-up. `core/model` is done: the eight-solid shape
+  catalogue, dice, sets, table looks, roll plans, results and saved rolls, all
+  pure data. `core/notation` is next. The physics engine spike (Jolt vs.
+  Bullet) is still the decide-first item further down the step.
 
 ## Blocked / waiting on
 

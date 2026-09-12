@@ -42,12 +42,12 @@ that swapping is contained to one module.
 build-logic/         Gradle convention plugins — every module's build config lives here, once
 app/                 Application: single activity, theme, navigation graph
 core/
-  model/             Die, DiceSet, Face, RollPlan, RollResult — pure Kotlin, no Android deps
+  model/             Die, DiceSet, Face, the shape catalogue, RollPlan, RollResult, SavedRoll — pure Kotlin, no Android deps
   notation/          Formula parser + evaluator (docs/dice-notation.md)
   probability/       Exact PMF computation (docs/probability.md)
   stats/             Statistics aggregation logic
 dicesets/
-  format/            TOML schema, validator, shape catalogue, table definitions (docs/dice-sets.md, docs/tables.md)
+  format/            TOML schema, validator, atlas layouts, table definitions (docs/dice-sets.md, docs/tables.md)
   install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage
   builtin/           The bundled standard set and default tables as a normal package (eats its own dog food)
 simulation/
@@ -146,7 +146,7 @@ kept (they are keyed by set id and die id, not by file path).
 | 1 | Result comes from physics, always | Core value proposition; avoids "is the animation just theatre?" |
 | 2 | Fixed-timestep, seeded, deterministic sim | Power-saving mode must be provably the same roll; reproducible bugs |
 | 3 | TOML for dice sets | Human-editable, no code execution, comments allowed, simple to validate |
-| 4 | v1's shape catalogue is closed: nine convex solids, no author-supplied meshes | Convex-convex collision is fast and robust, and nine known-fair solids need no fairness UI; sets vary values and artwork, not geometry |
+| 4 | v1's shape catalogue is closed: eight convex solids, no author-supplied meshes | Convex-convex collision is fast and robust, and eight known-fair solids need no fairness UI; sets vary values and artwork, not geometry |
 | 5 | Dice sets installed into sandboxed per-set folders | Containment; a set cannot reference files outside its folder |
 | 6 | Exact PMF via convolution, not a normal approximation | It is cheap for realistic formulas and correct for small dice counts |
 | 7 | d100 is two d10s (tens + units) | Matches table convention; a 100-sided ball does not roll honestly in a tray |
