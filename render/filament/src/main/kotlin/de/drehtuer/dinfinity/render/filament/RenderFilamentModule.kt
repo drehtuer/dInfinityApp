@@ -13,5 +13,5 @@ object RenderFilamentModule {
   const val PATH: String = ":render:filament"
 
   /** The Gradle paths this module declares a dependency on. */
-  val DEPENDS_ON: List<String> = listOf(":simulation:api")
+  val DEPENDS_ON: List<String> = listOf(":simulation:api", ":render:headless")
 }

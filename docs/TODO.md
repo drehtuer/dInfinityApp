@@ -32,7 +32,7 @@ screen.
 - [ ] `simulation/jolt` — JNI bridge over Jolt 5.3.0 (decided; `docs/architecture.md`, decision 37): CMake and NDK wiring, Jolt vendored at a pinned tag, convex hulls from the shape catalogue, the fixed 120 Hz step, spawn and shake input, and the correction ladder. Seeded and deterministic
 - [ ] *Device:* the bridge's first end-to-end run. The spike proved Jolt configures, builds and links for `arm64-v8a` with the NDK's toolchain; that a scene actually settles, and settles the same way on two ABIs, can only be seen on the emulator and the phone
 - [ ] Golden determinism suite: (seed, formula, input) → outcome, asserted on every ABI CI can run, and re-asserted on the device in Step 5
-- [ ] `render/headless` and `render/filament` — the headless one first, so power-saving works before anything is drawn
+- [ ] `render/filament` — scene, materials, camera, die meshes from the shape catalogue, the tray, and interpolation between the last two simulation states. *Device:* nothing about a renderer can be judged from a unit test
 - [ ] `input/shake` — sensor fusion to tray motion, recorded and quantised so a roll stays reproducible
 - [ ] `data` — Room schema from `docs/statistics.md`, DAOs, migrations from day one
 - [ ] `dicesets/install` — fetch (forges, archive URLs, local files), safe extraction (path traversal, symlinks, size and entry caps), atomic install. Tests include a malicious archive per rejection rule

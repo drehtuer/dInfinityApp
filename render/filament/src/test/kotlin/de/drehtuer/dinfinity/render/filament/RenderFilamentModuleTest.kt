@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.render.filament
 
+import de.drehtuer.dinfinity.render.headless.RenderHeadlessModule
 import de.drehtuer.dinfinity.simulation.api.SimulationApiModule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -16,6 +17,7 @@ class RenderFilamentModuleTest {
   @Test
   fun `reaches every module it depends on`() {
     assertTrue(SimulationApiModule.PATH in RenderFilamentModule.DEPENDS_ON)
-    assertEquals(1, RenderFilamentModule.DEPENDS_ON.size)
+    assertTrue(RenderHeadlessModule.PATH in RenderFilamentModule.DEPENDS_ON)
+    assertEquals(2, RenderFilamentModule.DEPENDS_ON.size)
   }
 }

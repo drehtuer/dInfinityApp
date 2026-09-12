@@ -92,6 +92,10 @@ changelog.
   cross-platform determinism as a supported mode; Bullet 3.25 does not
   configure with the CMake the Android SDK ships. `simulation/jolt`'s JNI
   bridge is the next piece of work.
+- `render/headless` is done: the `Renderer` contract — which returns nothing
+  anywhere, so a renderer cannot act on the roll it is watching — and the
+  renderer power-saving mode uses, which creates no graphics engine because it
+  lives in a module that has none to create.
 
 ## Blocked / waiting on
 
