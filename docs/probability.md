@@ -33,7 +33,7 @@ outcome to probability, stored as a dense array with an offset.
 | Node | PMF |
 |---|---|
 | integer `n` | `{n: 1}` |
-| single die with faces `f₁…fₘ` | each distinct value with probability (count / m) — face values come from the set, so a d6 labelled `1,2,3,1,2,3` gives the d3 distribution automatically |
+| single die with faces `f₁…fₘ` | each distinct value with probability (count / m) — face values come from the set, so a d6 labelled `1,2,1,2,1,2` gives the d2 distribution automatically |
 | `NdX` | convolve the single-die PMF with itself N times (FFT above ~64 dice, plain O(N·m²) below) |
 | `+`, `-` | convolution (with negation for `-`) |
 | `*`, `/` by a constant | value remap |

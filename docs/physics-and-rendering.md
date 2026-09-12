@@ -32,8 +32,7 @@ Every die is a **convex** rigid body:
 
 - Built-in shapes come from the shape catalogue (see `docs/dice-sets.md`):
   tetrahedron, cube, octahedron, pentagonal trapezohedron (d10), dodecahedron,
-  icosahedron, enneagonal trapezohedron (d18), triangular prism (d3), coin
-  (d2), etc.
+  icosahedron, enneagonal trapezohedron (d18), coin (d2), etc.
 - Custom mesh dice are loaded as convex hulls of their vertices. If the hull
   differs from the source mesh by more than a tolerance, the set fails
   validation (it was not convex).

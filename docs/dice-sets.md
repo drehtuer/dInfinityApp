@@ -120,7 +120,7 @@ sound = "felt"
 | `defaults.*` | no | Material and physics defaults, all clamped. |
 | `die.id` | yes | Slug, unique within the set. Standard names (`d2`…`d100`) are what plain notation resolves to. |
 | `die.shape` | yes | Catalogue name or `mesh`. |
-| `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (d3-as-d6). |
+| `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (d2-as-d6). |
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
 | `die.read` | no | `face-up` (default) or `vertex-up`. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
@@ -137,11 +137,10 @@ by the app (documented in `dicesets/format/shapes/` with reference images):
 | Name | Faces | Typical use |
 |---|---|---|
 | `coin` | 2 | d2 |
-| `triangular-prism` | 3 (+2 capped ends that are never "up") | d3 |
 | `tetrahedron` | 4 | d4 |
-| `cube` | 6 | d6, d3-as-d6, d2-as-d6 |
+| `cube` | 6 | d6, d2-as-d6 |
 | `octahedron` | 8 | d8 |
-| `pentagonal-trapezohedron` | 10 | d10, d10-tens |
+| `pentagonal-trapezohedron` | 10 | d10, d10-tens (together: d100 / `d%`) |
 | `dodecahedron` | 12 | d12 |
 | `enneagonal-trapezohedron` | 18 | d18 |
 | `icosahedron` | 20 | d20 |

@@ -32,8 +32,8 @@ hunting for the d12 that rolled under the couch.
 - **Outcome graph** — see the exact probability distribution before you roll,
   for a typed formula or for a handful of dice picked by tapping, with mean
   and standard deviation.
-- **Standard dice** — d2, d3, d4, d6, d8, d10, d12, d18, d20, d100 (as two
-  d10s).
+- **Standard dice** — d2, d4, d6, d8, d10, d12, d18, d20, d100 (as two d10s;
+  `d%` is an alias for `d100`).
 - **Extensible dice sets** — dice are defined in plain text files with
   optional face textures; install sets from GitHub, GitLab, Codeberg or any
   `https` link to an archive.
@@ -74,6 +74,13 @@ Design phase. The documents in `docs/` are the specification the
 implementation will be built against. Nothing here is shipped yet. See
 [docs/STATUS.md](docs/STATUS.md) for the current state and
 [docs/TODO.md](docs/TODO.md) for what is next.
+
+## Design
+
+The UI design lives in [design/](design/) as a live browser prototype
+exported from a Claude Design project — every screen, with the notation
+parser, capacity rule and outcome graph working. See
+[design/README.md](design/README.md) for how to open it.
 
 ## Contributing
 

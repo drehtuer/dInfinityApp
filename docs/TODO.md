@@ -43,8 +43,23 @@ section grows past a screen, split it into milestones or prune.
 - [ ] Fairness preview for custom-mesh dice
 - [ ] Battery-based auto power-saving
 
+## Reconcile docs with the design prototype
+
+`design/github.md` lists decisions taken in the UI design that `docs/` does
+not yet reflect. Each is a small docs PR once confirmed:
+
+- [ ] Seeds are never exposed; no "tap to replay" from history (`docs/statistics.md`)
+- [ ] No d30 and no custom-mesh dice in v1; catalogue is d2, d4, d6, d8, d10, d12, d18, d20, d100 (`docs/dice-sets.md`)
+- [ ] Saved-roll collection import refuses on a duplicate group name instead of merging (`docs/dice-notation.md`)
+- [ ] Division rounding overridable per throw from the result sheet; Nearest rounds .5 up (`docs/dice-notation.md`)
+- [ ] Tables from any package are global; sets never override the table (`docs/tables.md`)
+- [ ] No auto power-saving on low battery; no session share sheet (`docs/physics-and-rendering.md`, `docs/statistics.md`)
+- [ ] Add an `examples/` dice set to the repo; built-in set has no export (`docs/dice-sets.md`)
+
 ## Open questions
 
 - Should `minSdk` stay at Android 17, or drop lower once v1 is out?
 - d18 shape: enneagonal trapezohedron is assumed; verify it reads well at phone size
+- `.thumbnail` from the design project is not imported (binary); decide whether a
+  preview image belongs in the repo at all
 - Division rounding default (floor) — confirm against the games players actually use
