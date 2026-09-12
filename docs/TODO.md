@@ -35,6 +35,7 @@ Step 5 and stay off CI.
 - [ ] **Build and test:** `assembleDebug`, JVM unit tests, Robolectric tests; test results and failures annotated on the PR
 - [ ] **Static analysis:** ktlint, detekt, Android Lint — warnings fail the build (`.claude/CLAUDE.md`)
 - [ ] **Coverage → SonarQube:** JaCoCo on JVM + Robolectric, reports merged into one XML, `sonar-scanner` publishes it. Quality gate blocks merge; coverage on new code ≥ 80 %
+- [ ] Coverage counters are **function and branch**, not lines alone, and a PR that lowers either against `main` fails — the comparison job needs `main`'s report cached or recomputed
 - [ ] Sonar exclusions: generated code, Compose previews, and the JNI/renderer bridges whose tests only run on a device — excluded from *coverage*, never from *analysis*, with the device results reported separately so the gap is visible rather than hidden
 - [ ] **Docs:** markdown lint, link check (internal links must resolve), mermaid fences must parse, and a check that `README.md` indexes every `docs/*.md` — the rule in `.claude/CLAUDE.md` should be enforced, not remembered
 - [ ] **Docs site:** publish `docs/` and `design/` to GitHub Pages so the prototype is clickable straight from the repo, not only from claude.ai
