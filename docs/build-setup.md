@@ -264,7 +264,7 @@ terminal means.
 | `ci.yml` — Device tests compile | PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
 | `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
 | `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
-| `codeql.yml` | PR, push to `main`, weekly | CodeQL over Kotlin/Java and over the workflow files themselves |
+| `codeql.yml` | PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
 
 The JDK, the SDK packages and Gradle come from one composite action,
 `.github/actions/setup-android-build`, so CI and CodeQL cannot drift apart. It
