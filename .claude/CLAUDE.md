@@ -17,17 +17,19 @@ structure.
 
 ## Tracking files
 
-- `docs/TODO.md` holds open tasks; `docs/STATUS.md` holds the current state
-  of the project (phase, what is done, in progress, blocked, pending
-  decisions).
+- `docs/TODO.md` is the implementation plan and the list of open tasks;
+  `docs/STATUS.md` holds the current state of the project (phase, what is
+  done, in progress, blocked, pending decisions).
 - Update them as part of the work, not afterwards: starting a task moves it
   to "In progress" in `docs/STATUS.md`; finishing it removes it from
   `docs/TODO.md` and
   moves the status line to "Done" (or drops it once it is old news).
-- **Compact and clean both files regularly** — at least whenever a milestone
+- **Compact and clean both files regularly** — at least whenever a step
   completes or a PR touches them. Remove finished items, merge duplicates,
-  drop stale "Done" entries that git history already records, and keep each
-  file to roughly one screen. They are snapshots, not changelogs.
+  drop stale "Done" entries that git history already records. `docs/TODO.md`
+  is as long as the remaining plan needs, and gets shorter as steps are
+  deleted; `docs/STATUS.md` stays at roughly one screen. Neither is a
+  changelog — git history is.
 - Refresh the `Last updated` date in `docs/STATUS.md` when you change it.
 
 ## Documentation
@@ -94,6 +96,11 @@ structure.
   `docs/dice-sets.md`. Do not add code paths that bypass it.
 - The physics result *is* the roll. Do not introduce any RNG shortcut that
   decides a die's value outside the simulation, in any mode.
+- **Nothing touches a die that has come to rest.** No impulse, no tray tilt,
+  no snapping to a face. Dice are kept from stacking by prevention and by
+  corrections applied while they are still moving; a die that ends up cocked
+  is re-thrown visibly. A settled die that twitches is a bug
+  (`docs/physics-and-rendering.md`).
 - Run the linters and static checks (ktlint/detekt, Android Lint) before
   opening a PR and keep them clean. New warnings are not acceptable in a PR.
 

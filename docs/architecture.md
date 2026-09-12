@@ -79,7 +79,7 @@ flowchart TD
     P -->|resolve dice from installed sets| C{Table capacity check<br/>docs/tables.md}
     C -->|does not fit| R["Roll refused<br/>'up to N dice fit'"]
     C -->|fits| T["ThrowSpec<br/>dice, dieScale, seed, table,<br/>initial impulse (shake or default)"]
-    T -->|DiceSimulator.run| S["SimulationOutcome<br/>per-die face index, steps, nudges"]
+    T -->|DiceSimulator.run| S["SimulationOutcome<br/>per-die face index, steps, rethrows"]
     S -.->|body transforms, optional| V[Renderer]
     S -->|face index → value<br/>keep/drop/explode, modifier| O["RollResult<br/>total, per-die breakdown,<br/>formula, timestamp"]
     O --> UI[UI]
@@ -142,3 +142,4 @@ kept (they are keyed by set id and die id, not by file path).
 | 14 | Tables are global; a dice set never overrides the selected table | One tray on the screen, whatever mix of sets is in the throw |
 | 15 | Saved-roll import refuses a duplicate group name instead of merging | No conflict UI to get wrong, and an import can never damage existing rolls |
 | 16 | Power-saving is manual only | A roll that silently stops rendering because the battery dipped is a surprise |
+| 17 | Nothing touches a die at rest: prevention, then corrections while a die is still moving, then a visible re-throw of that one die | A settled die that twitches shows the player the result being arranged rather than rolled — worse than the stacked die it fixes. Re-throwing a cocked die is fair, and it is what a player does at a real table |

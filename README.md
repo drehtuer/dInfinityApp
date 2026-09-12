@@ -63,9 +63,10 @@ a tumble; everything else is real.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
   natural 7. It still matters.
-- **No cocked dice** — the simulation detects dice resting on other dice or
-  leaning on walls and nudges them, because that basically never happens on a
-  real table either.
+- **No cocked dice, no invisible hand** — dice that would land on top of each
+  other are steered apart while they are still tumbling, never poked once
+  they have stopped. A die that does end up cocked is re-thrown where you can
+  see it, the way you would at a real table.
 - **No 500d6** — a roll is refused when the dice would not fit on the table
   with room to tumble. Dice shrink to make room up to a point; past that the
   simulation would only produce nonsense, so the app says no.

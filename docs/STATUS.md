@@ -11,8 +11,8 @@ changelog.
 
 - **Phase:** design. UI prototype exists (`design/`); no application code yet.
 - **Latest release:** none.
-- **Branch state:** PRs #1–#3 merged. The design's decisions are folded into
-  `docs/` in PR #4.
+- **Branch state:** PRs #1–#4 merged. The implementation plan is in PR #5.
+  No code yet — Step 1 of the plan is the next thing to do.
 
 ## Done
 
@@ -28,10 +28,14 @@ changelog.
   solids (no d3, no d30, no author meshes), `d%` an alias for `d100`, seeds
   never exposed and no replay, tables global, import refuses duplicate
   groups, per-throw rounding override, manual-only power-saving.
+- Implementation plan in `docs/TODO.md`: skeleton, CI with SonarQube,
+  foundations, ten screens, an on-device physics step, release.
+- Anti-stacking policy rewritten: nothing touches a resting die; a cocked die
+  is re-thrown rather than nudged.
 
 ## In progress
 
-- Nothing.
+- Nothing. `docs/TODO.md` Step 1 (skeleton) is the next step.
 
 ## Blocked / waiting on
 
@@ -45,6 +49,11 @@ changelog.
 - TOML parser choice.
 
 ## Known risks
+
+- The "no invisible hand" bar (zero post-rest corrections, zero stacked dice)
+  is the hardest thing in the plan and can only be judged on a device. If
+  prevention cannot get there, the fallback is a visible re-throw — which is
+  honest but must not become common.
 
 - Physics determinism across ABIs/devices is assumed, not yet proven; the
   golden test suite in Milestone 1 is the check.

@@ -114,7 +114,7 @@ Special cases:
   set file a d4 declares `read = "vertex-up"` and the values are mapped to
   vertices rather than faces; the cocked check then uses the vertex direction
   instead of a face normal.
-- **d2 (coin):** two faces, the edge is treated as cocked and re-nudged.
+- **d2 (coin):** two faces; landing on the edge counts as cocked.
 - **d100:** two d10s rolled together; one is flagged as the tens die in the
   `RollPlan`. 0 + 0 reads as 100.
 
@@ -122,31 +122,61 @@ Special cases:
 
 On a real table dice practically never stay stacked on top of each other or
 balanced on an edge. In a small simulated tray with many dice this *can*
-happen, and it looks wrong and makes the result unreadable. Handled in
-layers:
+happen, it looks wrong, and it makes the result unreadable.
 
-1. **Prevention.** Dice-on-dice friction is lower than dice-on-floor friction.
-   Dice are scaled down so the table always has free floor area (capacity
-   rule in `docs/tables.md`). Spawn positions are spread so dice do not fall
-   straight onto each other.
-2. **Detection.** Once a die is at rest, it is checked for:
-   - **Cocked:** top-face dot product below `cos(15°)`.
-   - **Stacked:** its lowest contact point is not with the floor, i.e. it is
-     supported by another die.
-   - **Leaning:** it has a persistent contact with a wall and is cocked.
-3. **Nudge.** An offending die gets a small seeded random impulse and a bit of
-   spin, its rest timer is reset, and the simulation continues. Any die it
-   knocks into is also re-evaluated when it stops. Each nudge is recorded in
-   the outcome (`nudges` counter) — the roll is still deterministic because
-   the nudge impulse is derived from the roll seed.
-4. **Give up gracefully.** After 5 nudges on the same die, the tray is briefly
-   tilted (simulated, seeded) to slide everything. After that, if a die is
-   still cocked, it is snapped to its nearest face and the anomaly is logged.
-   This should be extraordinarily rare and shows up in the debug stats.
+There are two ways to get this wrong, and the second is worse than the first:
 
-In normal mode the nudge is visible as a little twitch, which is fine — it
-reads as "the die was wobbling". The whole check-and-nudge loop runs inside
-the simulation, so power-saving mode gets identical behaviour.
+- A die left resting on top of another, or balanced on an edge. Nobody
+  believes it, and there is no face to read.
+- **A die shoved by an invisible hand after everything has stopped.** That
+  destroys the whole point of the app: if the player can see the app move a
+  die, the result was not rolled, it was arranged. A visible twitch on a
+  settled die is a bug, not a fix.
+
+So the rule is: **nothing touches a die that has come to rest.** Everything
+below happens either before the dice are thrown or while they are still
+moving, except the last resort, which is an honest re-throw the player can
+see.
+
+1. **Prevention — where the work goes.** Dice-on-dice friction is lower than
+   dice-on-floor friction. Dice are scaled down so the table always keeps
+   free floor area (capacity rule in `docs/tables.md`). Spawn positions are
+   spread and staggered in height so dice do not fall onto each other. The
+   throw carries enough energy that a die landing on another slides off it
+   while it still has speed. Tuning these until stacking is *rare* is the
+   real fix; the steps below only catch what slips through.
+
+2. **Early detection, while the die is still moving.** A die is watched from
+   the moment its speed drops below a threshold but before it is at rest. If
+   in that window it is supported by another die, leaning on a wall, or
+   heading for a cocked orientation, a small seeded bias is added to the
+   motion it already has — of the order of the energy still in the die, so it
+   reads as the die finishing its tumble rather than as a kick. The bias is
+   derived from the roll seed, so the roll stays deterministic and
+   reproducible.
+
+3. **Last resort: re-throw that die.** If a die does reach full rest cocked or
+   stacked, it is **not** poked, tilted, or snapped to a face. It is picked up
+   and thrown again — one die, from a low height, visibly, while the others
+   stay where they are. That is exactly what a player does with a cocked die,
+   it is fair (the re-throw is uniform over the faces), and it is honest:
+   the player sees a die being re-rolled instead of a die being moved. Each
+   re-throw is recorded in the outcome (`rethrows` counter).
+
+4. **Never.** No impulse on a resting die. No tray tilt to slide a settled
+   pile. No snapping a die to its nearest face — that fabricates a result
+   nobody rolled.
+
+The 12-second hard cap above is a safety valve for a simulation that has gone
+wrong, not part of this ladder; any die still cocked when it fires is
+re-thrown and the anomaly is logged.
+
+The whole loop runs inside the simulation, so power-saving mode behaves
+identically — including the re-throws, which simply do not get drawn.
+
+Targets, verified on a device (`docs/TODO.md`, Step 5): zero dice at rest
+supported by another die, fewer than 0.5 % of dice needing any correction at
+all, and **zero** corrections applied after rest.
 
 ## Rendering (normal mode)
 
@@ -171,8 +201,8 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
 
 - No Filament engine is created at all; the `headless` renderer is used.
 - The simulation runs on the simulation thread as fast as possible, still at
-  the same fixed timestep, still with the same seed, nudge logic and settle
-  rules. Typical roll finishes in well under 100 ms of wall time.
+  the same fixed timestep, still with the same seed, correction logic and
+  settle rules. Typical roll finishes in well under 100 ms of wall time.
 - The UI shows the formula, a short progress indicator, then the result and
   breakdown as plain text/graphics.
 - Shake input still works: the shake session is recorded, then fed to the
@@ -186,9 +216,10 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
 
 ## Debug tooling
 
-- Overlay toggle showing collision shapes, contact points, rest timers, nudge
-  count.
+- Overlay toggle showing collision shapes, contact points, rest timers,
+  correction and re-throw counts.
 - "Replay last roll" and "replay from seed" actions. These live behind the
   developer toggle only: the app's history has no replay and never shows a
   seed (`docs/statistics.md`).
-- Anomaly log (forced settles, snapped faces) exported with statistics.
+- Anomaly log (forced settles, post-rest corrections — which should never
+  occur) exported with statistics.

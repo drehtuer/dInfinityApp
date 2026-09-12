@@ -53,7 +53,7 @@ the session, and "Unfiled" when no group is active.
 
 ### Anomalies (debug)
 
-Counts of nudges, forced settles and snapped faces (see
+Counts of in-flight corrections, re-thrown dice and forced settles (see
 `docs/physics-and-rendering.md`). Hidden behind a developer toggle.
 
 ## Screens
