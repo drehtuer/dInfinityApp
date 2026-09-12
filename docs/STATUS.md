@@ -22,7 +22,8 @@ changelog.
 - Working agreements in `.claude/CLAUDE.md`.
 - License chosen: GPL-2.0-or-later.
 - UI prototype for every v1 screen, imported from Claude Design into
-  `design/`.
+  `design/`, cross-referenced with `docs/` in both directions and linked
+  from `README.md`.
 - d3 dropped from the dice catalogue; `d%` documented as the alias for
   `d100`.
 

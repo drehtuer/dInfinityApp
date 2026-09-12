@@ -1,5 +1,9 @@
 # Outcome graph
 
+> **Design:** the three graph treatments are options 1k–1m of the
+> [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)); 7a shows the graph opened
+> after a roll, with the rolled total marked.
+
 Before rolling, the app shows the probability distribution of the total.
 This works for a typed formula in the editor *and* for dice picked by
 tapping on the roll screen — both are the same `RollPlan` underneath. It

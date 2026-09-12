@@ -42,6 +42,12 @@ structure.
 - **Every document in `docs/` is linked from the table in `README.md`.**
   Adding, renaming or removing a document updates that table in the same
   PR; the README is the index and must never be incomplete.
+- The prototype in `design/` is the visual half of the specification. It is
+  linked from `README.md`, each document in `docs/` links to the screens that
+  realise it, and `design/README.md` carries the same map in reverse — a
+  change to any of the three keeps the other two true. A design decision that
+  changes behaviour, limits or defaults is only done when `docs/` says the
+  same thing.
 - Diagrams are **mermaid** (` ```mermaid ` fences). No ASCII art, no images
   for things mermaid can draw.
 

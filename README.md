@@ -16,6 +16,24 @@ and means the app can support *any* convex die shape someone cares to define.
 Passing one phone around the table beats passing a bag of dice around and
 hunting for the d12 that rolled under the couch.
 
+## The design is clickable
+
+**▶ [Open the dInfinity prototype](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html)** — every v1 screen, live in the
+browser.
+
+It is not a picture of the app: the notation parser, the table capacity rule
+and the exact outcome graph all run, following the specification in `docs/`.
+Tap dice to build a formula, tap the tray to roll, type `500d6` to see it
+refused, `2d20kh1 + 6` for advantage. Physics is faked with a random face and
+a tumble; everything else is real.
+
+| | |
+|---|---|
+| [Design canvas](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) | Every screen and every variant on one board — start here |
+| [Phone prototype](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinityPhone.dc.html) | The prototype on its own, without the board around it |
+| [design/](design/) | The same files in this repo, and how to run them offline — see [design/README.md](design/README.md) |
+| [design/github.md](design/github.md) | The design's own notes: what it read from `docs/`, and decisions still to feed back |
+
 ## Features
 
 - **Physics-based rolls** — dice are convex rigid bodies with correct mass
@@ -55,6 +73,9 @@ hunting for the d12 that rolled under the couch.
 
 ## Documentation
 
+`docs/` is the written specification; [the prototype](#the-design-is-clickable)
+is the visual one. Each document below links to the screens that realise it.
+
 | Document | Contents |
 |---|---|
 | [docs/STATUS.md](docs/STATUS.md) | Where the project stands right now: phase, in progress, blocked, pending decisions |
@@ -67,20 +88,15 @@ hunting for the d12 that rolled under the couch.
 | [docs/probability.md](docs/probability.md) | How the outcome graph is computed |
 | [docs/face-designer.md](docs/face-designer.md) | Finger-drawn face textures |
 | [docs/statistics.md](docs/statistics.md) | What is tracked, how it is stored, privacy |
+| [design/README.md](design/README.md) | The prototype: what each file is, how to open it offline, how to keep it in step with `docs/` |
 
 ## Status
 
-Design phase. The documents in `docs/` are the specification the
-implementation will be built against. Nothing here is shipped yet. See
+Design phase. The documents in `docs/` and the prototype in `design/` are the
+specification the implementation will be built against. Nothing here is
+shipped yet. See
 [docs/STATUS.md](docs/STATUS.md) for the current state and
 [docs/TODO.md](docs/TODO.md) for what is next.
-
-## Design
-
-The UI design lives in [design/](design/) as a live browser prototype
-exported from a Claude Design project — every screen, with the notation
-parser, capacity rule and outcome graph working. See
-[design/README.md](design/README.md) for how to open it.
 
 ## Contributing
 
