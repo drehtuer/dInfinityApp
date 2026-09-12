@@ -23,6 +23,8 @@ detekt = "1.23.8"
 ktlintPlugin = "14.2.0"
 ktlintCli = "1.8.0"
 tomlj = "1.1.1"
+room = "2.8.5"
+ksp = "2.3.9"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -49,6 +51,11 @@ turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
+androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
+androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
+androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
+androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }
@@ -71,3 +78,14 @@ detekt-gradle-plugin = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plu
 ktlint-gradle-plugin = { module = "org.jlleitschuh.gradle:ktlint-gradle", version.ref = "ktlintPlugin" }
 # The CLI, used directly by build-logic — see the note in its build script.
 ktlint-cli = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlintCli" }
+
+[plugins]
+# Room's annotation processor. KSP rather than kapt: kapt runs the whole Java
+# annotation-processing pipeline over generated Java stubs, and this project
+# has no Java to stub.
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+
+# Room's own Gradle plugin, for the schema directory. Setting it as a bare KSP
+# argument makes every variant write the same file, and the debug and release
+# processors then race each other for it.
+room = { id = "androidx.room", version.ref = "room" }

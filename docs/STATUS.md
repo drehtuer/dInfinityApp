@@ -100,6 +100,10 @@ changelog.
   integration that tilts gravity, and the quantised recording that lets a roll
   replay to itself. Everything that decides anything is plain Kotlin; only the
   `SensorManager` wiring is Android, and that is covered by Robolectric.
+- `core/stats` and `data` are done: the counters, streaks and histograms
+  `docs/statistics.md` describes, folded in one transaction into a Room
+  database at version 1, with its schema checked in and a test that refuses a
+  version bump without a migration.
 
 ## Blocked / waiting on
 
