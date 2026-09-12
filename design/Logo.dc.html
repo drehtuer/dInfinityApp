@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/modernist-f7022762-4cb9-409e-a6ce-7116795bae5b/styles.css">
+<script src="_ds/modernist-f7022762-4cb9-409e-a6ce-7116795bae5b/_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--color-bg)}a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}</style>
+</helmet>
+
+<section style="--color-accent:#1f92cc;--color-accent-100:color-mix(in srgb, #1f92cc 16%, var(--color-bg));--color-accent-700:color-mix(in srgb, #1f92cc 58%, var(--color-text));display:flex;flex-direction:column;font-family:var(--font-body);color:var(--color-text);background:var(--color-bg)">
+
+  <div style="padding:28px 28px 20px;border-bottom:2px solid var(--color-divider)">
+    <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--color-accent);font-weight:700">Identity</div>
+    <h1 style="font-family:var(--font-heading);font-weight:800;font-size:38px;line-height:1.05;letter-spacing:-.03em;margin:6px 0 8px">dInfinity — monogram</h1>
+    <p style="max-width:62ch;margin:0;font-size:15px;opacity:.75;text-wrap:pretty">The notation is the mark: <b>d∞</b>, Archivo 800, tracking −.05em, light blue on the sides. No drawn die — the app is about any die, so the name does the work.</p>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:center;padding:56px 24px;border-bottom:2px solid var(--color-divider);background:var(--color-neutral-100)">
+    <div id="logo-mark" style="font-family:var(--font-heading);font-weight:800;font-size:130px;line-height:1;letter-spacing:-.05em;display:flex;align-items:baseline"><span>d</span><span style="color:var(--color-accent)">∞</span></div>
+  </div>
+
+  <div style="padding:22px 28px 26px;border-bottom:2px solid var(--color-divider)">
+    <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.6;margin-bottom:14px">Lockups</div>
+    <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:stretch">
+      <div id="logo-lockup" style="display:flex;align-items:center;gap:16px;padding:18px 22px;border:2px solid var(--color-divider)">
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:46px;line-height:1;letter-spacing:-.05em">d<span style="color:var(--color-accent)">∞</span></span>
+        <span style="width:2px;align-self:stretch;background:var(--color-divider)"></span>
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:28px;letter-spacing:-.03em">dInfinity</span>
+      </div>
+      <div id="logo-lockup-rev" style="display:flex;align-items:center;gap:16px;padding:18px 22px;background:var(--color-text);color:var(--color-bg)">
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:46px;line-height:1;letter-spacing:-.05em">d<span style="color:var(--color-accent)">∞</span></span>
+        <span style="width:2px;align-self:stretch;background:var(--color-bg);opacity:.4"></span>
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:28px;letter-spacing:-.03em">dInfinity</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;padding:18px 22px;border:2px solid var(--color-divider)">
+        <span id="logo-mono" style="font-family:var(--font-heading);font-weight:800;font-size:40px;line-height:1;letter-spacing:-.05em">d∞</span>
+        <span style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">One colour</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:18px 22px;border:2px solid var(--color-divider)">
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:40px;line-height:1;letter-spacing:-.05em">d<span style="color:var(--color-accent)">∞</span></span>
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:15px;letter-spacing:.02em">dInfinity</span>
+        <span style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.6">Stacked</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:22px 28px 32px">
+    <div style="font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;opacity:.6;margin-bottom:14px">App icon and small sizes</div>
+    <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end">
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div id="icon-ink" style="width:112px;height:112px;background:var(--color-text);display:flex;align-items:center;justify-content:center"><span style="font-family:var(--font-heading);font-weight:800;font-size:54px;line-height:1;letter-spacing:-.05em;color:var(--color-bg)">d<span style="color:var(--color-accent)">∞</span></span></div>
+        <span style="font-size:11px;opacity:.6">Icon · ink</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div id="icon-accent" style="width:112px;height:112px;background:var(--color-accent);display:flex;align-items:center;justify-content:center"><span style="font-family:var(--font-heading);font-weight:800;font-size:54px;line-height:1;letter-spacing:-.05em;color:var(--color-bg)">d∞</span></div>
+        <span style="font-size:11px;opacity:.6">Icon · accent</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div style="height:112px;padding:0 20px;border:2px solid var(--color-divider);display:flex;align-items:baseline;gap:18px;justify-content:center">
+          <span style="font-family:var(--font-heading);font-weight:800;font-size:32px;line-height:1;letter-spacing:-.05em">d<span style="color:var(--color-accent)">∞</span></span>
+          <span style="font-family:var(--font-heading);font-weight:800;font-size:22px;line-height:1;letter-spacing:-.05em">d<span style="color:var(--color-accent)">∞</span></span>
+          <span style="font-family:var(--font-heading);font-weight:800;font-size:15px;line-height:1;letter-spacing:-.04em">d<span style="color:var(--color-accent)">∞</span></span>
+        </div>
+        <span style="font-size:11px;opacity:.6">32 / 22 / 15 px — tracking opens up at the smallest size</span>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+</x-dc>
+</body>
+</html>

@@ -10,11 +10,13 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
+import de.drehtuer.dinfinity.core.model.AccentColor
 
 /**
  * Reads the Modernist palette anywhere under [DInfinityTheme]. Material's own
@@ -81,9 +83,15 @@ private val ModernistShapes =
     extraLarge = RoundedCornerShape(ModernistTokens.radius),
   )
 
+/**
+ * @param accent the accent the player chose in Settings. The default is the
+ *   design system's own, which is what a preview or a test gets without
+ *   saying anything.
+ */
 @Composable
 fun DInfinityTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
+  accent: AccentColor = AccentColor.Default,
   content: @Composable () -> Unit,
 ) {
   val palette =
@@ -92,8 +100,8 @@ fun DInfinityTheme(
         background = ModernistTokens.Dark.background,
         surface = ModernistTokens.Dark.surface,
         text = ModernistTokens.Dark.text,
-        accent = ModernistTokens.accent,
-        accentPressed = ModernistTokens.accent600,
+        accent = Color(accent.argb),
+        accentPressed = Color(accent.pressedOnDarkArgb),
         divider = ModernistTokens.divider(ModernistTokens.Dark.text),
         isDark = true,
       )
@@ -102,8 +110,8 @@ fun DInfinityTheme(
         background = ModernistTokens.Light.background,
         surface = ModernistTokens.Light.surface,
         text = ModernistTokens.Light.text,
-        accent = ModernistTokens.accent,
-        accentPressed = ModernistTokens.accent700,
+        accent = Color(accent.argb),
+        accentPressed = Color(accent.pressedOnLightArgb),
         divider = ModernistTokens.divider(ModernistTokens.Light.text),
         isDark = false,
       )

@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import de.drehtuer.dinfinity.core.model.AccentColor
+import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.feature.settings.SettingsScreen
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.theme.LocalModernistColors
 import de.drehtuer.dinfinity.theme.ModernistTokens
@@ -25,7 +29,10 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  * navigation is never retro-fitted.
  */
 @Composable
-fun DInfinityApp() {
+fun DInfinityApp(
+  settings: AppSettings = AppSettings(),
+  onAccentSelected: (AccentColor) -> Unit = {},
+) {
   val navController = rememberNavController()
   NavHost(
     navController = navController,
@@ -33,7 +40,19 @@ fun DInfinityApp() {
   ) {
     Destination.entries.forEach { destination ->
       composable(destination.route) {
-        PlaceholderScreen(destination)
+        when (destination) {
+          Destination.Settings ->
+            SettingsScreen(
+              settings = settings,
+              onAccentSelected = onAccentSelected,
+            )
+
+          else ->
+            PlaceholderScreen(
+              destination = destination,
+              onOpenSettings = { navController.navigate(Destination.Settings.route) },
+            )
+        }
       }
     }
   }
@@ -41,7 +60,10 @@ fun DInfinityApp() {
 
 /** Stands in for a screen that has not been built yet. */
 @Composable
-internal fun PlaceholderScreen(destination: Destination) {
+internal fun PlaceholderScreen(
+  destination: Destination,
+  onOpenSettings: () -> Unit = {},
+) {
   val colors = LocalModernistColors.current
   Box(
     modifier =
@@ -65,6 +87,20 @@ internal fun PlaceholderScreen(destination: Destination) {
         text = "Not built yet — see docs/TODO.md",
         style = MaterialTheme.typography.labelSmall,
         color = colors.accent,
+      )
+      // Scaffolding. The real way in is the full-screen menu of plan step
+      // 4.10; until that exists, Settings would be unreachable on a device,
+      // and a setting nobody can open is not a setting. Delete this with the
+      // rest of PlaceholderScreen.
+      Text(
+        text = "Settings →",
+        style = MaterialTheme.typography.labelLarge,
+        color = colors.accent,
+        modifier =
+          Modifier
+            .padding(top = ModernistTokens.Space.x4)
+            .clickable(onClick = onOpenSettings)
+            .testTag("placeholder:open-settings"),
       )
     }
   }

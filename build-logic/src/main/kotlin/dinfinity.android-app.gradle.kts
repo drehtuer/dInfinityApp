@@ -172,6 +172,9 @@ dependencies {
   "implementation"(libs.findLibrary("androidx-core-ktx").get())
   "implementation"(libs.findLibrary("androidx-activity-compose").get())
   "implementation"(libs.findLibrary("androidx-navigation-compose").get())
+  // collectAsStateWithLifecycle: settings are observed for as long as the
+  // activity is actually on screen, and no longer.
+  "implementation"(libs.findLibrary("androidx-lifecycle-runtime-compose").get())
   "debugImplementation"(libs.findLibrary("compose-ui-tooling").get())
   "debugImplementation"(libs.findLibrary("compose-ui-test-manifest").get())
   "testImplementation"(bom)

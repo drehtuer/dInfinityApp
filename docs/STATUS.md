@@ -46,6 +46,10 @@ changelog.
 - CI (plan Step 2, in part): build, test and every linter on each PR, CodeQL,
   Dependabot, dependency review and the resolved dependency graph. Coverage
   and the Sonar gate are the remainder.
+- Identity: the `d∞` mark from `design/Logo.dc.html`, as real Archivo outlines,
+  in `README.md` and as the launcher icon.
+- First working screen, out of plan order because the accent needed somewhere
+  to live: Settings picks the accent, DataStore persists it, the theme follows.
 
 ## In progress
 
