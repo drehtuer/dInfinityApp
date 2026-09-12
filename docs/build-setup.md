@@ -284,6 +284,18 @@ versions.
 Device-only code — the physics bridge and the renderer — is excluded from the
 *coverage* figure but not from the analysis, and its device results are reported
 separately, so the gap stays visible instead of quietly counting as covered.
+`tools/` is excluded from coverage on the same principle: it is developer
+tooling run by hand about once in the life of the project, not something the app
+ships, and its lines said nothing about whether the app is tested while costing
+the figure six points.
+
+**SonarQube cannot show function coverage.** Its coverage model has exactly two
+counters, lines and conditions; there is no method counter to import, whatever
+JaCoCo measures. So `.claude/CLAUDE.md`'s pair is only half met on the server:
+**branch** coverage is published as `branch_coverage` and is in the README
+badges, while **function** coverage exists only in the JaCoCo reports, where
+`./gradlew coverageReport` writes it and the reports CI uploads carry it. Making
+it fail a build needs a check of our own — `docs/TODO.md`.
 
 ## Continuous integration
 

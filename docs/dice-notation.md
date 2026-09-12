@@ -2,7 +2,7 @@
 
 > **Design:** the notation field (option 2a), the three dice pickers (1h–1j),
 > the parse-error state (9c) and the saved-roll screens (1n–1p, editor 1r,
-> import 9f–9g) are in the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)).
+> import 9f–9g) are in the [clickable design](../design/dInfinity.dc.html) ([design/](../design/)).
 
 dInfinity accepts the tabletop notation most players already know, e.g.
 `3d6 + 1d20 - 4`. This document defines exactly what is accepted and how it

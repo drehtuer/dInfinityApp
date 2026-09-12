@@ -13,7 +13,9 @@
 [![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=drehtuer_dInfinityApp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=drehtuer_dInfinityApp)
 [![Security rating](https://sonarcloud.io/api/project_badges/measure?project=drehtuer_dInfinityApp&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=drehtuer_dInfinityApp)
 [![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=drehtuer_dInfinityApp&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=drehtuer_dInfinityApp)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=drehtuer_dInfinityApp&metric=coverage)](https://sonarcloud.io/summary/new_code?id=drehtuer_dInfinityApp)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=drehtuer_dInfinityApp&metric=coverage)](https://sonarcloud.io/component_measures?id=drehtuer_dInfinityApp&metric=coverage)
+[![Line coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fsonarcloud.io%2Fapi%2Fmeasures%2Fcomponent%3Fcomponent%3Ddrehtuer_dInfinityApp%26metricKeys%3Dline_coverage&query=%24.component.measures%5B0%5D.value&suffix=%25&label=lines&color=4c1)](https://sonarcloud.io/component_measures?id=drehtuer_dInfinityApp&metric=line_coverage)
+[![Branch coverage](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fsonarcloud.io%2Fapi%2Fmeasures%2Fcomponent%3Fcomponent%3Ddrehtuer_dInfinityApp%26metricKeys%3Dbranch_coverage&query=%24.component.measures%5B0%5D.value&suffix=%25&label=branches&color=4c1)](https://sonarcloud.io/component_measures?id=drehtuer_dInfinityApp&metric=branch_coverage)
 [![License](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
 [![Android](https://img.shields.io/badge/Android-17%20(API%2037)-3ddc84?logo=android&logoColor=white)](#platform)
 
@@ -35,8 +37,10 @@ hunting for the d12 that rolled under the couch.
 
 ## The design is clickable
 
-**▶ [Open the dInfinity prototype](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html)** — every v1 screen, live in the
-browser.
+**▶ [design/dInfinity.dc.html](design/dInfinity.dc.html)** — every v1 screen,
+live in the browser. Clone the repository and open the file; GitHub shows you
+its source, not the running prototype, and it renders from this folder with no
+account or sign-in of any kind.
 
 It is not a picture of the app: the notation parser, the table capacity rule
 and the exact outcome graph all run, following the specification in `docs/`.
@@ -46,9 +50,9 @@ a tumble; everything else is real.
 
 | | |
 |---|---|
-| [Design canvas](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) | Every screen and every variant on one board — start here |
-| [Phone prototype](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinityPhone.dc.html) | The prototype on its own, without the board around it |
-| [design/](design/) | The same files in this repo, and how to run them offline — see [design/README.md](design/README.md) |
+| [design/dInfinity.dc.html](design/dInfinity.dc.html) | The canvas: every screen and every variant on one board — start here |
+| [design/dInfinityPhone.dc.html](design/dInfinityPhone.dc.html) | The phone prototype on its own, without the board around it |
+| [design/README.md](design/README.md) | What each file is, and what the prototype needs to run |
 
 ## Features
 

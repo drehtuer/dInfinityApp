@@ -2,7 +2,7 @@
 
 > **Design:** the installed-set list (options 1s and 1t), the set details
 > (6a, and 6b for a failed validation), the disable/remove dialog (5a) and the
-> update flow (9h–9i) are in the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html)
+> update flow (9h–9i) are in the [clickable design](../design/dInfinity.dc.html)
 > ([design/](../design/)).
 
 A **dice set** is a folder containing a `diceset.toml` file and, optionally,
