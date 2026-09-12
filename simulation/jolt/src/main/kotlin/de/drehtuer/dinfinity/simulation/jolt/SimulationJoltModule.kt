@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.simulation.jolt
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object SimulationJoltModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":simulation:jolt"
+  /** This module's Gradle path. */
+  const val PATH: String = ":simulation:jolt"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":simulation:api")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":simulation:api")
 }

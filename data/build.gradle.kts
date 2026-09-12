@@ -1,12 +1,12 @@
 plugins {
-    id("dinfinity.android-library")
+  id("dinfinity.android-library")
 }
 
 android {
-    namespace = "de.drehtuer.dinfinity.data"
+  namespace = "de.drehtuer.dinfinity.data"
 }
 
 dependencies {
-    api(project(":core:model"))
-    api(project(":core:stats"))
+  api(project(":core:model"))
+  api(project(":core:stats"))
 }

@@ -22,17 +22,17 @@ import androidx.compose.ui.unit.em
  * colours, but new UI should prefer these tokens.
  */
 val LocalModernistColors =
-    staticCompositionLocalOf {
-        ModernistColors(
-            background = ModernistTokens.Light.background,
-            surface = ModernistTokens.Light.surface,
-            text = ModernistTokens.Light.text,
-            accent = ModernistTokens.accent,
-            accentPressed = ModernistTokens.accent700,
-            divider = ModernistTokens.divider(ModernistTokens.Light.text),
-            isDark = false,
-        )
-    }
+  staticCompositionLocalOf {
+    ModernistColors(
+      background = ModernistTokens.Light.background,
+      surface = ModernistTokens.Light.surface,
+      text = ModernistTokens.Light.text,
+      accent = ModernistTokens.accent,
+      accentPressed = ModernistTokens.accent700,
+      divider = ModernistTokens.divider(ModernistTokens.Light.text),
+      isDark = false,
+    )
+  }
 
 /**
  * Archivo is the system's typeface. It is not bundled yet — adding the font
@@ -42,102 +42,102 @@ val LocalModernistColors =
 private val ModernistFontFamily = FontFamily.SansSerif
 
 private fun typography(): Typography {
-    val t = ModernistTokens.Type
+  val t = ModernistTokens.Type
 
-    fun heading(size: TextUnit) =
-        TextStyle(
-            fontFamily = ModernistFontFamily,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = size,
-            letterSpacing = (-0.015).em,
-        )
+  fun heading(size: TextUnit) =
+    TextStyle(
+      fontFamily = ModernistFontFamily,
+      fontWeight = FontWeight.ExtraBold,
+      fontSize = size,
+      letterSpacing = (-0.015).em,
+    )
 
-    fun body(
-        size: TextUnit,
-        weight: FontWeight = FontWeight.Normal,
-    ) = TextStyle(
-        fontFamily = ModernistFontFamily,
-        fontWeight = weight,
-        fontSize = size,
-    )
-    return Typography(
-        displayLarge = heading(t.display),
-        headlineLarge = heading(t.heading),
-        headlineMedium = heading(t.title),
-        titleLarge = heading(t.subtitle),
-        bodyLarge = body(t.body),
-        labelLarge = body(t.label, FontWeight.SemiBold),
-        labelSmall = body(t.caption),
-    )
+  fun body(
+    size: TextUnit,
+    weight: FontWeight = FontWeight.Normal,
+  ) = TextStyle(
+    fontFamily = ModernistFontFamily,
+    fontWeight = weight,
+    fontSize = size,
+  )
+  return Typography(
+    displayLarge = heading(t.display),
+    headlineLarge = heading(t.heading),
+    headlineMedium = heading(t.title),
+    titleLarge = heading(t.subtitle),
+    bodyLarge = body(t.body),
+    labelLarge = body(t.label, FontWeight.SemiBold),
+    labelSmall = body(t.caption),
+  )
 }
 
 /** Zero radius everywhere — `--radius-*` is 0 by design. */
 private val ModernistShapes =
-    Shapes(
-        extraSmall = RoundedCornerShape(ModernistTokens.radius),
-        small = RoundedCornerShape(ModernistTokens.radius),
-        medium = RoundedCornerShape(ModernistTokens.radius),
-        large = RoundedCornerShape(ModernistTokens.radius),
-        extraLarge = RoundedCornerShape(ModernistTokens.radius),
-    )
+  Shapes(
+    extraSmall = RoundedCornerShape(ModernistTokens.radius),
+    small = RoundedCornerShape(ModernistTokens.radius),
+    medium = RoundedCornerShape(ModernistTokens.radius),
+    large = RoundedCornerShape(ModernistTokens.radius),
+    extraLarge = RoundedCornerShape(ModernistTokens.radius),
+  )
 
 @Composable
 fun DInfinityTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
+  darkTheme: Boolean = isSystemInDarkTheme(),
+  content: @Composable () -> Unit,
 ) {
-    val palette =
-        if (darkTheme) {
-            ModernistColors(
-                background = ModernistTokens.Dark.background,
-                surface = ModernistTokens.Dark.surface,
-                text = ModernistTokens.Dark.text,
-                accent = ModernistTokens.accent,
-                accentPressed = ModernistTokens.accent600,
-                divider = ModernistTokens.divider(ModernistTokens.Dark.text),
-                isDark = true,
-            )
-        } else {
-            ModernistColors(
-                background = ModernistTokens.Light.background,
-                surface = ModernistTokens.Light.surface,
-                text = ModernistTokens.Light.text,
-                accent = ModernistTokens.accent,
-                accentPressed = ModernistTokens.accent700,
-                divider = ModernistTokens.divider(ModernistTokens.Light.text),
-                isDark = false,
-            )
-        }
-
-    val scheme =
-        if (darkTheme) {
-            darkColorScheme(
-                primary = palette.accent,
-                onPrimary = palette.background,
-                background = palette.background,
-                onBackground = palette.text,
-                surface = palette.surface,
-                onSurface = palette.text,
-                outline = palette.divider,
-            )
-        } else {
-            lightColorScheme(
-                primary = palette.accent,
-                onPrimary = palette.background,
-                background = palette.background,
-                onBackground = palette.text,
-                surface = palette.surface,
-                onSurface = palette.text,
-                outline = palette.divider,
-            )
-        }
-
-    CompositionLocalProvider(LocalModernistColors provides palette) {
-        MaterialTheme(
-            colorScheme = scheme,
-            typography = typography(),
-            shapes = ModernistShapes,
-            content = content,
-        )
+  val palette =
+    if (darkTheme) {
+      ModernistColors(
+        background = ModernistTokens.Dark.background,
+        surface = ModernistTokens.Dark.surface,
+        text = ModernistTokens.Dark.text,
+        accent = ModernistTokens.accent,
+        accentPressed = ModernistTokens.accent600,
+        divider = ModernistTokens.divider(ModernistTokens.Dark.text),
+        isDark = true,
+      )
+    } else {
+      ModernistColors(
+        background = ModernistTokens.Light.background,
+        surface = ModernistTokens.Light.surface,
+        text = ModernistTokens.Light.text,
+        accent = ModernistTokens.accent,
+        accentPressed = ModernistTokens.accent700,
+        divider = ModernistTokens.divider(ModernistTokens.Light.text),
+        isDark = false,
+      )
     }
+
+  val scheme =
+    if (darkTheme) {
+      darkColorScheme(
+        primary = palette.accent,
+        onPrimary = palette.background,
+        background = palette.background,
+        onBackground = palette.text,
+        surface = palette.surface,
+        onSurface = palette.text,
+        outline = palette.divider,
+      )
+    } else {
+      lightColorScheme(
+        primary = palette.accent,
+        onPrimary = palette.background,
+        background = palette.background,
+        onBackground = palette.text,
+        surface = palette.surface,
+        onSurface = palette.text,
+        outline = palette.divider,
+      )
+    }
+
+  CompositionLocalProvider(LocalModernistColors provides palette) {
+    MaterialTheme(
+      colorScheme = scheme,
+      typography = typography(),
+      shapes = ModernistShapes,
+      content = content,
+    )
+  }
 }

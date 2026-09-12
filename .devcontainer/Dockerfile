@@ -1,11 +1,11 @@
 # dInfinity development image.
 #
 # Everything the project needs to build, test and analyse itself. Nothing is
-# expected on the host except Docker: see .claude/CLAUDE.md ("Environment").
-# Emulators and physical devices are attached from the host and are not part
-# of this image.
+# expected on the host except Docker (see .claude/CLAUDE.md, "Environment").
+# A phone is attached over WiFi debugging with the adb in this image, so the
+# on-device suites run from inside the container too — see docs/build-setup.md.
 
-FROM eclipse-temurin:21-jdk-noble
+FROM ubuntu:26.04
 
 ARG ANDROID_API=37
 ARG CMDLINE_TOOLS=13114758
@@ -17,13 +17,17 @@ ARG INSTALL_NDK=true
 
 ENV ANDROID_HOME=/opt/android-sdk \
     ANDROID_SDK_ROOT=/opt/android-sdk \
+    JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 \
     GRADLE_HOME=/opt/gradle \
     SONAR_SCANNER_HOME=/opt/sonar-scanner \
     DEBIAN_FRONTEND=noninteractive \
+    LANG=C.UTF-8 \
     JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        ca-certificates curl unzip zip git jq python3 ripgrep less \
+        openjdk-21-jdk \
+        ca-certificates curl unzip zip git jq python3 ripgrep less sudo \
+        android-sdk-platform-tools-common \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Android SDK ──────────────────────────────────────────────────────────
@@ -34,17 +38,24 @@ RUN mkdir -p "${ANDROID_HOME}/cmdline-tools" \
  && mv /tmp/clt/cmdline-tools "${ANDROID_HOME}/cmdline-tools/latest" \
  && rm -rf /tmp/clt /tmp/clt.zip
 
+# build-tools is added to PATH after it is installed, below, so apksigner,
+# zipalign and aapt2 are usable by hand.
 ENV PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${GRADLE_HOME}/bin:${SONAR_SCANNER_HOME}/bin:${PATH}"
 
 # The platform and build-tools are resolved from what the repository actually
-# offers, so a new Android release does not need this file edited. Note that
-# platform packages are minor-versioned since Android 16 ("platforms;android-37.0",
-# "…-37.1", …): ANDROID_API names the major, and the newest stable minor of that
-# major is installed. Pre-release packages (-beta, -rc, -alpha) are never used.
+# offers, so a new Android release does not need this file edited.
+#
+# Platform packages are minor-versioned since Android 16 ("platforms;android-37.0",
+# "…-37.1", …). `compileSdk = 37` resolves to the *base* minor, android-37.0, so
+# that is what gets installed — installing 37.2 instead just makes the build
+# download 37.0 itself on first run. Using a later minor would mean setting
+# compileSdkMinor as well. Pre-release packages are never used.
+#
+# platform-tools brings adb, which is what talks to a phone over WiFi debugging.
 RUN yes | sdkmanager --licenses > /dev/null 2>&1 || true \
  && sdkmanager --list 2>/dev/null | awk -F'|' '{gsub(/[ \t]/, "", $1); print $1}' \
       | grep -vE 'alpha|beta|rc[0-9]*$' | sort -uV > /tmp/sdk-packages.txt \
- && PLATFORM="$(grep -E "^platforms;android-${ANDROID_API}(\.[0-9]+)?$" /tmp/sdk-packages.txt | tail -1)" \
+ && PLATFORM="$(grep -E "^platforms;android-${ANDROID_API}(\.0)?$" /tmp/sdk-packages.txt | head -1)" \
  && if [ -z "${PLATFORM}" ]; then \
       echo "ERROR: no stable platform for API ${ANDROID_API} in the SDK repository."; \
       echo "Newest platforms offered:"; grep -E '^platforms;android-[0-9.]+$' /tmp/sdk-packages.txt | tail -6; \
@@ -58,6 +69,9 @@ RUN yes | sdkmanager --licenses > /dev/null 2>&1 || true \
  && sdkmanager --install "platform-tools" "${PLATFORM}" "${BUILD_TOOLS}" > /dev/null \
  && echo "${PLATFORM##*android-}" > "${ANDROID_HOME}/.platform-version" \
  && echo "${BUILD_TOOLS##*;}" > "${ANDROID_HOME}/.build-tools-version"
+
+ENV PATH="${ANDROID_HOME}/build-tools/latest:${PATH}"
+RUN ln -s "${ANDROID_HOME}/build-tools/$(cat ${ANDROID_HOME}/.build-tools-version)" "${ANDROID_HOME}/build-tools/latest"
 
 RUN if [ "${INSTALL_NDK}" = "true" ]; then \
       NDK="$(grep -E '^ndk;[0-9]+\.[0-9]+\.[0-9]+$' /tmp/sdk-packages.txt | tail -1)" \
@@ -89,7 +103,8 @@ ARG USER_UID=1000
 ARG USER_GID=${USER_UID}
 RUN groupadd --gid ${USER_GID} dev 2>/dev/null || true \
  && useradd --uid ${USER_UID} --gid ${USER_GID} --create-home --shell /bin/bash dev 2>/dev/null || true \
- && mkdir -p /home/dev/.gradle \
+ && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
+ && mkdir -p /home/dev/.gradle /home/dev/.android \
  && chown -R ${USER_UID}:${USER_GID} "${ANDROID_HOME}" /home/dev
 
 USER dev

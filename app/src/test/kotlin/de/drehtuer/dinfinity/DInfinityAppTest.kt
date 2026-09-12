@@ -13,27 +13,27 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class DInfinityAppTest {
-    @get:Rule
-    val compose = createComposeRule()
+  @get:Rule
+  val compose = createComposeRule()
 
-    @Test
-    fun `starts on the roll screen`() {
-        compose.setContent {
-            DInfinityTheme {
-                DInfinityApp()
-            }
-        }
-        compose.onNodeWithTag("screen:${Destination.Roll.route}").assertIsDisplayed()
-        compose.onNodeWithText(Destination.Roll.title).assertIsDisplayed()
+  @Test
+  fun `starts on the roll screen`() {
+    compose.setContent {
+      DInfinityTheme {
+        DInfinityApp()
+      }
     }
+    compose.onNodeWithTag("screen:${Destination.Roll.route}").assertIsDisplayed()
+    compose.onNodeWithText(Destination.Roll.title).assertIsDisplayed()
+  }
 
-    @Test
-    fun `renders in dark theme too`() {
-        compose.setContent {
-            DInfinityTheme(darkTheme = true) {
-                DInfinityApp()
-            }
-        }
-        compose.onNodeWithTag("screen:${Destination.Roll.route}").assertIsDisplayed()
+  @Test
+  fun `renders in dark theme too`() {
+    compose.setContent {
+      DInfinityTheme(darkTheme = true) {
+        DInfinityApp()
+      }
     }
+    compose.onNodeWithTag("screen:${Destination.Roll.route}").assertIsDisplayed()
+  }
 }

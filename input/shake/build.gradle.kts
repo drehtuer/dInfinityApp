@@ -1,11 +1,11 @@
 plugins {
-    id("dinfinity.android-library")
+  id("dinfinity.android-library")
 }
 
 android {
-    namespace = "de.drehtuer.dinfinity.input.shake"
+  namespace = "de.drehtuer.dinfinity.input.shake"
 }
 
 dependencies {
-    api(project(":simulation:api"))
+  api(project(":simulation:api"))
 }

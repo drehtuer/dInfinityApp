@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.feature.roll
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object FeatureRollModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":feature:roll"
+  /** This module's Gradle path. */
+  const val PATH: String = ":feature:roll"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":core:notation", ":simulation:api", ":data")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":core:notation", ":simulation:api", ":data")
 }

@@ -1,0 +1,13 @@
+# build-logic is a separate Gradle build, and ktlint resolves .editorconfig
+# from the build's own root rather than chaining up to the repository's. This
+# file repeats the settings that matter so the convention plugins are held to
+# the same style as the rest of the code; the repository root's .editorconfig
+# stays the source of truth.
+
+[*.{kt,kts}]
+indent_style = space
+indent_size = 2
+max_line_length = 120
+insert_final_newline = true
+end_of_line = lf
+ktlint_standard_function-naming = disabled

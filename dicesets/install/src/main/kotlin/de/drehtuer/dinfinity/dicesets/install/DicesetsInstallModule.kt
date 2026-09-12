@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.dicesets.install
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object DicesetsInstallModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":dicesets:install"
+  /** This module's Gradle path. */
+  const val PATH: String = ":dicesets:install"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":dicesets:format")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":dicesets:format")
 }

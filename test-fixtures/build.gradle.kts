@@ -1,3 +1,3 @@
 plugins {
-    id("dinfinity.kotlin-jvm")
+  id("dinfinity.kotlin-jvm")
 }

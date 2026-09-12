@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.simulation.api
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object SimulationApiModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":simulation:api"
+  /** This module's Gradle path. */
+  const val PATH: String = ":simulation:api"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":core:model")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":core:model")
 }

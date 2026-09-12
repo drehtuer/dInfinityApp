@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.feature.stats
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object FeatureStatsModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":feature:stats"
+  /** This module's Gradle path. */
+  const val PATH: String = ":feature:stats"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":core:stats", ":data")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":core:stats", ":data")
 }

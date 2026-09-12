@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.designer
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object DesignerModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":designer"
+  /** This module's Gradle path. */
+  const val PATH: String = ":designer"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":dicesets:format")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":dicesets:format")
 }

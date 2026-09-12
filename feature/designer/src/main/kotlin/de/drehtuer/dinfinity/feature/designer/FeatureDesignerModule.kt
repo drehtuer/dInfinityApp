@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.feature.designer
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object FeatureDesignerModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":feature:designer"
+  /** This module's Gradle path. */
+  const val PATH: String = ":feature:designer"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":designer")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":designer")
 }

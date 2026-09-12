@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.core.model
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object CoreModelModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":core:model"
+  /** This module's Gradle path. */
+  const val PATH: String = ":core:model"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf()
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf()
 }

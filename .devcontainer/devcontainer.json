@@ -11,9 +11,10 @@
   "remoteUser": "dev",
   "workspaceFolder": "/workspace",
   "mounts": [
-    "source=dinfinity-gradle,target=/home/dev/.gradle,type=volume"
+    "source=dinfinity-gradle,target=/home/dev/.gradle,type=volume",
+    "source=dinfinity-android,target=/home/dev/.android,type=volume"
   ],
-  "postCreateCommand": "sudo chown -R dev /home/dev/.gradle || true",
+  "postCreateCommand": "sudo chown -R dev /home/dev/.gradle /home/dev/.android || true",
   "customizations": {
     "vscode": {
       "extensions": [

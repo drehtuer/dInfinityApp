@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.core.notation
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object CoreNotationModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":core:notation"
+  /** This module's Gradle path. */
+  const val PATH: String = ":core:notation"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":core:model")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":core:model")
 }
