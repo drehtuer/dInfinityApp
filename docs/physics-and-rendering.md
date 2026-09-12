@@ -51,7 +51,11 @@ Every die is a **convex** rigid body:
 
 ## Timestep and determinism
 
-- Fixed timestep of **1/120 s**, up to 4 sub-steps per rendered frame.
+- Fixed timestep of **1/120 s**, up to 4 sub-steps per rendered frame. Every
+  threshold below is counted in *steps* rather than seconds — 30 steps to rest,
+  1,440 to the cap — because a count of fixed steps is exact where a running
+  total of doubles is not, and two devices that disagreed by one step about
+  when a die stopped would disagree about the roll.
 - The simulation is seeded per roll. The seed and every input impulse are
   recorded in the `RollResult` so a roll can be replayed exactly.
 - The engine is configured in deterministic mode (single-threaded solver or
@@ -106,6 +110,14 @@ Reading a face: for each face of the die, take the dot product of its outward
 normal (in world space) with the up vector. The face with the largest dot
 product is the result **if** that dot product is at least `cos(15°)`.
 Otherwise the die is *cocked* — see below.
+
+The face normals come from `simulation/api`'s shape geometry, which computes
+every catalogue solid from its closed form. The renderer's mesh and the
+solver's hull are built from the same arithmetic, so all three agree about
+which way a face points by construction rather than by inspection. The face
+order — from the top of the reference orientation down, anticlockwise around
+each ring — is the same order a set file's `faces` list and its texture atlas
+use (`docs/dice-sets.md`).
 
 Special cases:
 

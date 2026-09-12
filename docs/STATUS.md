@@ -82,8 +82,12 @@ changelog.
   `docs/dice-sets.md` and either installed or rejected with a `file:line`
   report — and `dicesets/builtin` is now a real `diceset.toml` read through
   that same validator, so the app eats its own dog food on every launch.
-  `simulation/api` is next, and the physics engine spike (Jolt vs. Bullet) is
-  the decide-first item after it.
+  `simulation/api` is done as well: the tray's geometry, the capacity rule
+  reproducing every worked number in `docs/tables.md`, settle detection in
+  fixed steps, face reading for all eight solids including the d4's vertex, and
+  the correction ladder with "nothing touches a die at rest" as a function
+  rather than a paragraph. The physics engine spike (Jolt vs. Bullet) is next
+  and is the decide-first item.
 
 ## Blocked / waiting on
 
