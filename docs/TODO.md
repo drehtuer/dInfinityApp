@@ -15,12 +15,13 @@ Everything a machine can check, on every PR. Emulator and device suites are
 Step 5 and stay off CI.
 
 - [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready
-- [ ] Cut a throwaway release to prove `release.yml` end to end. Its pieces are tested — the signing and fingerprint checks were run against real APKs, and against a debug-signed one to see them refuse — but the workflow itself has never run
 - [ ] *Optional:* add a `DEPENDABOT_METADATA_TOKEN` Dependabot secret so the metadata commit starts the checks by itself. Without it the automation still works, and the pull request shows an *Approve workflows to run* banner to press (`docs/build-setup.md`)
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 
-**Done when** a PR shows one green check per concern, Sonar decorates it with
-coverage, and a throwaway tag produces a correctly named release APK.
+**Done.** A pull request shows a green check per concern, Sonar decorates it
+with coverage, and `v0.0.1` produced a signed `dInfinityApp-0.0.1.apk`. The
+three boxes above are not blocking anything: two wait on other projects and one
+is optional.
 
 ## Step 3 — Foundations
 
