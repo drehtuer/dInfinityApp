@@ -1,0 +1,83 @@
+# Dependency updates. The point is not to be current for its own sake: a
+# dependency that is never updated is one nobody is watching, and this app
+# installs content other people wrote (SECURITY.md), so the libraries that
+# parse and sandbox that content are exactly the ones that must not rot.
+#
+# Updates are grouped so a week produces a handful of pull requests rather than
+# thirty. Major bumps stay ungrouped — they need reading, not batching.
+version: 2
+
+updates:
+  # Gradle: the version catalog at gradle/libs.versions.toml, the root build
+  # and every module. build-logic shares the same catalog, so it is covered.
+  - package-ecosystem: gradle
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Berlin
+    open-pull-requests-limit: 10
+    labels:
+      - dependencies
+    commit-message:
+      prefix: "deps"
+    groups:
+      androidx:
+        patterns:
+          - "androidx.*"
+        update-types:
+          - minor
+          - patch
+      kotlin-and-build:
+        patterns:
+          - "org.jetbrains.kotlin*"
+          - "com.android.tools.build*"
+          - "io.gitlab.arturbosch.detekt*"
+          - "org.jlleitschuh.gradle*"
+        update-types:
+          - minor
+          - patch
+      test-libraries:
+        patterns:
+          - "org.junit*"
+          - "junit*"
+          - "org.robolectric*"
+          - "app.cash.turbine*"
+        update-types:
+          - minor
+          - patch
+
+  # The Actions used by the workflows in this directory. Without this the
+  # workflows silently pin themselves to whatever tag they were written with.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Berlin
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # The devcontainer's base image. Everything else in the image is resolved at
+  # build time from upstream (docs/build-setup.md), so this is the one pin.
+  - package-ecosystem: docker
+    directory: /.devcontainer
+    schedule:
+      interval: monthly
+    labels:
+      - dependencies
+      - devcontainer
+    commit-message:
+      prefix: "devcontainer"

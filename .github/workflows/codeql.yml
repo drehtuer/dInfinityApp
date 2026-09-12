@@ -1,0 +1,80 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, so a newly published query finds old code without waiting for
+    # someone to touch it.
+    - cron: "23 4 * * 1"
+
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyse ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The workflows in this repository are code too, and the queries for
+          # them catch the expression-injection mistakes that turn a pull
+          # request title into a shell command.
+          - language: actions
+            build-mode: none
+
+          # java-kotlin is NOT analysed yet, and cannot be:
+          #
+          #   KotlinVersionTooRecentError: Kotlin version 2.4.20 is too recent.
+          #   CodeQL currently supports versions below 2.4.20
+          #
+          # The extractor hooks the Kotlin compiler and throws, so the build
+          # fails rather than degrading — and `build-mode: none` is no way out,
+          # because it does not analyse Kotlin at all, only Java, of which this
+          # project has none. Until the CodeQL bundle catches up, the app's own
+          # code is covered by detekt, Android Lint and SonarQube's Kotlin
+          # rules instead. Restore by uncommenting; the manual build steps
+          # below are kept ready for it.
+          #
+          # - language: java-kotlin
+          #   build-mode: manual
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up the Android build
+        if: matrix.build-mode == 'manual'
+        uses: ./.github/actions/setup-android-build
+
+      - name: Initialise CodeQL
+        uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-and-quality
+
+      # CodeQL extracts what it watches being compiled, so the build must
+      # actually compile: no daemon to hide the work in, and neither cache
+      # allowed to answer instead of the compiler.
+      - name: Build for analysis
+        if: matrix.build-mode == 'manual'
+        run: |
+          ./gradlew assembleDebug \
+            --no-daemon --no-build-cache --no-configuration-cache --stacktrace
+
+      - name: Analyse
+        uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          category: /language:${{ matrix.language }}

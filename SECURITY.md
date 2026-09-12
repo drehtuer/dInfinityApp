@@ -71,10 +71,27 @@ includes the roll seeds.
 
 Keystores and their passwords are never committed — see
 [keystore/README.md](keystore/README.md). A leaked release key cannot be
-un-leaked, only rotated, and rotating it breaks upgrades for everyone who
-already installed the app. Release signing happens where the key lives; a
+un-leaked, only rotated. Releases are signed with **v3**, which carries a
+proof-of-rotation record, so a compromised key *can* be replaced without
+stranding everyone who already installed the app — but rotation is still a
+last resort, not a plan. Release signing happens where the key lives; a
 checkout without the keystore still builds, it just produces unsigned release
 artifacts.
+
+## Automated checks
+
+None of these replace review, but they catch the boring half:
+
+- **CodeQL** on every pull request and weekly on `main`, over Kotlin/Java and
+  over the workflow files themselves. Findings land in the repository's code
+  scanning alerts.
+- **Dependabot** — alerts, automated security updates, and grouped weekly
+  version bumps for Gradle, Actions and the devcontainer base image
+  ([.github/dependabot.yml](.github/dependabot.yml)).
+- **Dependency review** on every pull request, which fails when a change pulls
+  in a dependency with a known moderate-or-worse advisory.
+- **Secret scanning with push protection**, so a keystore password cannot be
+  committed by accident.
 
 ## Out of scope
 

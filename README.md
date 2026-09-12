@@ -1,5 +1,14 @@
 # dInfinity
 
+[![CI](https://github.com/drehtuer/dInfinityApp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/drehtuer/dInfinityApp/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/drehtuer/dInfinityApp/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/drehtuer/dInfinityApp/actions/workflows/codeql.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot&logoColor=white)](.github/dependabot.yml)
+[![Quality gate](https://sonarcloud.io/api/project_badges/measure?project=drehtuer_dInfinityApp&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=drehtuer_dInfinityApp)
+[![Security rating](https://sonarcloud.io/api/project_badges/measure?project=drehtuer_dInfinityApp&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=drehtuer_dInfinityApp)
+[![Maintainability](https://sonarcloud.io/api/project_badges/measure?project=drehtuer_dInfinityApp&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=drehtuer_dInfinityApp)
+[![License](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-17%20(API%2037)-3ddc84?logo=android&logoColor=white)](#platform)
+
 A dice roller for Android where the roll is *real*: every throw is a rigid-body
 physics simulation of the actual dice shapes, rendered in 3D. Shake the phone
 like you would shake a fistful of dice, and read the result off the faces that

@@ -1,0 +1,51 @@
+name: Set up the Android build
+description: >
+  JDK, the Android SDK packages this project pins, and Gradle with caching.
+  Shared by every workflow so CI and CodeQL cannot drift apart.
+
+inputs:
+  setup-gradle:
+    description: >
+      Whether to install Gradle with caching. Turn it off for jobs that bring
+      their own Gradle, such as the dependency submission action.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up JDK 21
+      uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+      with:
+        distribution: temurin
+        java-version: "21"
+
+    - name: Install the pinned Android SDK packages
+      shell: bash
+      run: |
+        set -euo pipefail
+        # One source of truth: the same properties the devcontainer image and
+        # the Gradle build read (docs/build-setup.md).
+        api="$(grep '^dinfinity.androidApi=' gradle.properties | cut -d= -f2)"
+        build_tools="$(grep '^dinfinity.buildTools=' gradle.properties | cut -d= -f2)"
+        sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+        if [ -z "$sdk" ]; then
+          echo "::error::No Android SDK on this runner (ANDROID_HOME unset)."
+          exit 1
+        fi
+        sdkmanager="$sdk/cmdline-tools/latest/bin/sdkmanager"
+        if [ ! -x "$sdkmanager" ]; then
+          echo "::error::sdkmanager not found at $sdkmanager"
+          exit 1
+        fi
+        yes | "$sdkmanager" --licenses > /dev/null 2>&1 || true
+        # Platform packages have been minor-versioned since Android 16, and AGP
+        # asks for the base minor of the API it compiles against.
+        "$sdkmanager" "platforms;android-${api}.0" "build-tools;${build_tools}"
+        echo "$sdk/build-tools/${build_tools}" >> "$GITHUB_PATH"
+
+    - name: Set up Gradle
+      if: inputs.setup-gradle == 'true'
+      uses: gradle/actions/setup-gradle@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      with:
+        cache-read-only: ${{ github.ref != 'refs/heads/main' }}

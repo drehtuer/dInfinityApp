@@ -236,10 +236,44 @@ Notes:
 ./gradlew ktlintFormat              # fix what can be fixed automatically
 ```
 
-SonarQube is configured in [../sonar-project.properties](../sonar-project.properties).
-CI runs the scanner with `SONAR_TOKEN` from the repository secrets; the token
-is never in the repository. Coverage is reported for **functions and branches**
-and may not drop in a pull request (`.claude/CLAUDE.md`).
+SonarQube analyses the project on every push and pull request. There are two
+configuration files and it matters which one is in force:
+
+| File | Read by |
+|---|---|
+| [../.sonarcloud.properties](../.sonarcloud.properties) | SonarQube Cloud's **automatic analysis** — what runs today |
+| [../sonar-project.properties](../sonar-project.properties) | The `sonar-scanner` CLI, once CI runs the scan itself |
+
+Automatic analysis does not read `sonar-project.properties`. Until the scanner
+runs in CI, exclusions written only there have no effect — which is how the
+`design/` prototype came to account for 211 of the first 229 findings. Keep the
+two in step.
+
+Coverage is not wired yet; when it is, it is reported for **functions and
+branches** and may not drop in a pull request (`.claude/CLAUDE.md`).
+
+## Continuous integration
+
+Workflows live in `.github/workflows/`. They run the same commands this
+document gives a developer, so a green pull request means what a green
+terminal means.
+
+| Workflow | Runs | Does |
+|---|---|---|
+| `ci.yml` — Build, test and analyse | PR, push to `main` | `./gradlew build test lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below |
+| `ci.yml` — Device tests compile | PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
+| `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
+| `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
+| `codeql.yml` | PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
+
+The JDK, the SDK packages and Gradle come from one composite action,
+`.github/actions/setup-android-build`, so CI and CodeQL cannot drift apart. It
+reads `dinfinity.androidApi` and `dinfinity.buildTools` straight out of
+`gradle.properties` — the same two properties the container image and the
+Gradle build read, so there is no fourth place to update an SDK version.
+
+Coverage and the SonarQube quality gate are not wired yet; `docs/TODO.md`
+Step 2 has what is left.
 
 ## Repository invariants
 
