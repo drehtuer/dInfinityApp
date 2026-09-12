@@ -14,15 +14,16 @@ on CI (see `.claude/CLAUDE.md`).
 Everything a machine can check, on every PR. Emulator and device suites are
 Step 5 and stay off CI.
 
-- [ ] **Build and test:** `assembleDebug`, JVM unit tests, Robolectric tests; test results and failures annotated on the PR
-- [ ] **Static analysis:** ktlint, detekt, Android Lint — warnings fail the build (`.claude/CLAUDE.md`)
+- [ ] Annotate test results and failures on the pull request itself, rather than only in the run log and the uploaded reports
 - [ ] **Coverage → SonarQube:** JaCoCo on JVM + Robolectric, reports merged into one XML. `sonar-project.properties` and `SONAR_TOKEN` are already in place; CI has to run the scanner and wire JaCoCo so the report paths it names actually exist. Quality gate blocks merge; coverage on new code ≥ 80 %
 - [ ] Coverage counters are **function and branch**, not lines alone, and a PR that lowers either against `main` fails — the comparison job needs `main`'s report cached or recomputed
 - [ ] Sonar exclusions: generated code, Compose previews, and the JNI/renderer bridges whose tests only run on a device — excluded from *coverage*, never from *analysis*, with the device results reported separately so the gap is visible rather than hidden
 - [ ] **Docs:** markdown lint, link check (internal links must resolve), mermaid fences must parse, and a check that `README.md` indexes every `docs/*.md` — the rule in `.claude/CLAUDE.md` should be enforced, not remembered
 - [ ] **Docs site:** publish `docs/` and `design/` to GitHub Pages so the prototype is clickable straight from the repo, not only from claude.ai
 - [ ] **Release on tag `vX.Y.Z`:** optimised build (R8, shrinking), `dInfinityApp-<version>.apk` attached to a GitHub Release, docs site built for the tag. Releases are immutable — the workflow refuses to overwrite an existing tag
-- [ ] Caching (Gradle, SDK) so a PR run stays under ~10 minutes
+- [ ] Confirm a PR run stays under ~10 minutes now that Gradle caching is in place, and cache the SDK packages and Robolectric's `android-all` jars if it does not
+- [ ] Require the CI checks in the `main` ruleset once their names are stable — the ruleset enforces pull requests today but no status check has to pass
+- [ ] Consider pinning the Actions to commit SHAs rather than major tags; Dependabot updates either, and SHAs remove the tag-moved-under-us risk
 - [ ] Lint `build-logic` too. ktlint cannot currently be kept off the plugin accessors Gradle generates into that build's main source set, so the convention plugins are styled by hand and unchecked
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 

@@ -1,5 +1,11 @@
 # dInfinity
 
+[![CI](https://github.com/drehtuer/dInfinityApp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/drehtuer/dInfinityApp/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/drehtuer/dInfinityApp/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/drehtuer/dInfinityApp/actions/workflows/codeql.yml)
+[![Dependabot](https://img.shields.io/badge/dependabot-enabled-025e8c?logo=dependabot&logoColor=white)](.github/dependabot.yml)
+[![License](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
+[![Android](https://img.shields.io/badge/Android-17%20(API%2037)-3ddc84?logo=android&logoColor=white)](#platform)
+
 A dice roller for Android where the roll is *real*: every throw is a rigid-body
 physics simulation of the actual dice shapes, rendered in 3D. Shake the phone
 like you would shake a fistful of dice, and read the result off the faces that

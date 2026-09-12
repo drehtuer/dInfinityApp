@@ -241,6 +241,29 @@ CI runs the scanner with `SONAR_TOKEN` from the repository secrets; the token
 is never in the repository. Coverage is reported for **functions and branches**
 and may not drop in a pull request (`.claude/CLAUDE.md`).
 
+## Continuous integration
+
+Workflows live in `.github/workflows/`. They run the same commands this
+document gives a developer, so a green pull request means what a green
+terminal means.
+
+| Workflow | Runs | Does |
+|---|---|---|
+| `ci.yml` — Build, test and analyse | PR, push to `main` | `./gradlew build test lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below |
+| `ci.yml` — Device tests compile | PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
+| `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
+| `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
+| `codeql.yml` | PR, push to `main`, weekly | CodeQL over Kotlin/Java and over the workflow files themselves |
+
+The JDK, the SDK packages and Gradle come from one composite action,
+`.github/actions/setup-android-build`, so CI and CodeQL cannot drift apart. It
+reads `dinfinity.androidApi` and `dinfinity.buildTools` straight out of
+`gradle.properties` — the same two properties the container image and the
+Gradle build read, so there is no fourth place to update an SDK version.
+
+Coverage and the SonarQube quality gate are not wired yet; `docs/TODO.md`
+Step 2 has what is left.
+
 ## Repository invariants
 
 Three rules that are easy to break are checked by the build rather than by

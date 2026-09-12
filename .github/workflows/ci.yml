@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# A new push to a branch makes the run in flight pointless. main is exempt:
+# its runs feed the dependency graph and the caches.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, test and analyse
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/setup-android-build
+
+      # The same command docs/build-setup.md tells a developer to run, so a
+      # green PR means the same thing as a green machine. `check` also carries
+      # the repository invariants: the module graph, the README index, and that
+      # git ignores no source file.
+      - name: Build, test and analyse
+        run: ./gradlew build test lint detekt ktlintCheck --stacktrace
+
+      - name: Upload test and lint reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            **/build/reports/**
+            **/build/test-results/**
+          retention-days: 14
+          if-no-files-found: ignore
+
+  # Instrumented tests cannot run here — they need the phone (.claude/CLAUDE.md,
+  # docs/build-setup.md). This job only proves the device suite still compiles,
+  # so it cannot rot between runs on real hardware.
+  device-tests-compile:
+    name: Device tests compile
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-android-build
+      - run: ./gradlew assembleDebugAndroidTest --stacktrace
+
+  dependency-review:
+    name: Dependency review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          # A dependency that ships a known-vulnerable transitive is exactly
+          # the failure this repository's threat model cares about.
+          fail-on-severity: moderate
+          comment-summary-in-pr: on-failure
+          # GPL-2.0-or-later, so copyleft is fine and permissive is fine.
+          # These three are the ones that would actually be a problem.
+          deny-licenses: BUSL-1.1, SSPL-1.0, Elastic-2.0
+
+  # Feeds the resolved Gradle graph — transitive dependencies included — to
+  # GitHub's dependency graph, so Dependabot alerts see what the build actually
+  # pulls in rather than only what the version catalog names.
+  dependency-graph:
+    name: Submit dependency graph
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      # Resolving every configuration configures the Android plugins, so the
+      # SDK has to be here too. The action brings its own Gradle.
+      - uses: ./.github/actions/setup-android-build
+        with:
+          setup-gradle: "false"
+      - uses: gradle/actions/dependency-submission@v4

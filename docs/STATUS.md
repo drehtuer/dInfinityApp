@@ -12,7 +12,7 @@ changelog.
 - **Phase:** implementation, Step 1 of `docs/TODO.md` done. The app builds,
   tests and lints; no features yet.
 - **Latest release:** none.
-- **Branch state:** PRs #1–#8 merged. The device test tier is in PR #9.
+- **Branch state:** PRs #1–#11 merged. Step 2 (CI) is under way.
 
 ## Done
 
@@ -42,10 +42,15 @@ changelog.
 - The device tier works end to end: the Pixel 10a is paired from inside the
   container over WiFi, and `connectedDebugAndroidTest` builds, installs and
   runs instrumented tests on it. Step 5 has somewhere to land.
+- Real signing keys exist locally and as GitHub secrets; releases sign v2+v3.
+- CI (plan Step 2, in part): build, test and every linter on each PR, CodeQL,
+  Dependabot, dependency review and the resolved dependency graph. Coverage
+  and the Sonar gate are the remainder.
 
 ## In progress
 
-- Nothing. `docs/TODO.md` Step 2 (CI, with SonarQube coverage) is next.
+- `docs/TODO.md` Step 2: coverage (JaCoCo, function and branch) feeding the
+  SonarQube quality gate, then the docs site and release-on-tag.
 
 ## Blocked / waiting on
 
