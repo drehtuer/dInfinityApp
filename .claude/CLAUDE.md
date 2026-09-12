@@ -14,6 +14,11 @@ structure.
 - Branch names: `feature/<short-slug>`, `fix/<short-slug>`, `docs/<short-slug>`.
 - Commit messages: imperative subject, body explaining *why* when it is not
   obvious.
+- **Delete the local branch once its PR is merged.** Pull `main`, then
+  `git branch -d <branch>` — it refuses anything not fully merged, so it can
+  only remove work that is already on `main`. Do this as part of finishing
+  the PR, not as an occasional tidy-up: a list of stale branches makes it
+  hard to see what is actually in flight.
 
 ## Tracking files
 
@@ -69,6 +74,26 @@ structure.
 - If verifying a change requires something you cannot do (a physical shake
   test, checking haptics, judging how a texture looks), ask the user to
   check and say exactly what to look for.
+
+### Coverage
+
+- Measure **function and branch** coverage, not lines alone — JaCoCo's
+  `METHOD` and `BRANCH` counters, merged across JVM and Robolectric runs and
+  published to SonarQube. Line coverage rewards code that is merely executed;
+  branch coverage is what says the error path was tried, and function
+  coverage is what catches the helper nobody ever calls from a test.
+- **Coverage must not sink in a PR.** CI compares both counters against
+  `main` and fails on a drop in either. Shipping untested code next to tested
+  code is not a trade — write the tests in the same PR.
+- A drop is occasionally legitimate (deleting well-covered code, or a
+  refactor that moves logic behind the device-only line). Then say so in the
+  PR description with the numbers; do not lower the threshold to make the
+  check pass.
+- Code that can only be exercised on a device (the physics bridge, the
+  renderer) is excluded from the coverage figure but **not** from static
+  analysis, and its device test results are reported separately — the gap
+  should be visible, not hidden by an exclusion that quietly counts as
+  covered.
 
 ## Releases and builds
 
