@@ -11,8 +11,8 @@ changelog.
 
 - **Phase:** design. UI prototype exists (`design/`); no application code yet.
 - **Latest release:** none.
-- **Branch state:** PRs #1 and #2 merged. Design import and the d3 / d%
-  doc changes are in PR #3.
+- **Branch state:** PRs #1–#3 merged. The design's decisions are folded into
+  `docs/` in PR #4.
 
 ## Done
 
@@ -24,8 +24,10 @@ changelog.
 - UI prototype for every v1 screen, imported from Claude Design into
   `design/`, cross-referenced with `docs/` in both directions and linked
   from `README.md`.
-- d3 dropped from the dice catalogue; `d%` documented as the alias for
-  `d100`.
+- The design's decisions are in `docs/`: v1's shape catalogue closed at nine
+  solids (no d3, no d30, no author meshes), `d%` an alias for `d100`, seeds
+  never exposed and no replay, tables global, import refuses duplicate
+  groups, per-throw rounding override, manual-only power-saving.
 
 ## In progress
 
@@ -37,12 +39,8 @@ changelog.
 
 ## Decisions pending
 
-- Design decisions recorded in `design/github.md` that `docs/` does not yet
-  reflect (no replay / seeds not exposed, no d30 or custom-mesh dice in v1,
-  import refuses duplicate group names, per-throw rounding override, tables
-  global across packages, no low-battery auto power-saving). Tracked in
-  `docs/TODO.md`.
-
+- Two smaller decisions from the prototype are not yet in `docs/` (designer
+  3D preview, picker remembering the last set per group) — see `docs/TODO.md`.
 - Physics engine (Jolt vs. Bullet) — spike planned in Milestone 0.
 - TOML parser choice.
 

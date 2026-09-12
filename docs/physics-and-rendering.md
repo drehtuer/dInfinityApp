@@ -37,9 +37,10 @@ Every die is a **convex** rigid body:
 - Built-in shapes come from the shape catalogue (see `docs/dice-sets.md`):
   tetrahedron, cube, octahedron, pentagonal trapezohedron (d10), dodecahedron,
   icosahedron, enneagonal trapezohedron (d18), coin (d2), etc.
-- Custom mesh dice are loaded as convex hulls of their vertices. If the hull
-  differs from the source mesh by more than a tolerance, the set fails
-  validation (it was not convex).
+- The catalogue is closed in v1 (`docs/dice-sets.md`), so every body is one
+  of nine known solids. A set changes a die's size, material, face values and
+  artwork, never its geometry — which is what makes the tuning below hold for
+  every installed set.
 - Mass is uniform density over the hull volume; inertia tensor from the hull.
   Standard sets use realistic sizes (a d6 of 16 mm) and density (~1.2 g/cm³,
   roughly acrylic).
@@ -153,7 +154,7 @@ the simulation, so power-saving mode gets identical behaviour.
   plus an image-based light for reflections, soft shadows from the key light.
 - Camera looks down at the tray at a slight angle; auto-frames all dice once
   they settle, then eases in on the results.
-- Die meshes come from the shape catalogue or the validated custom mesh.
+- Die meshes come from the shape catalogue.
   Face textures are applied via a per-face UV atlas (see `docs/dice-sets.md`);
   dice without textures render numbers with a built-in SDF font on a plain
   PBR material with the set's colour.
@@ -178,12 +179,16 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
   simulation as a batch.
 - Haptics and sounds can stay on; they are then triggered from recorded
   impact events played back over ~1 s rather than in real time.
-- Auto-enable option: switch to power-saving mode below a battery percentage
-  or when the system's battery saver is on.
+- Power-saving is a setting the user turns on or off. It is never switched
+  automatically — not on a low battery, not by the system's battery saver.
+  A roll that silently stops being rendered because the battery dipped is a
+  surprise, and the mode is one tap away in Settings.
 
 ## Debug tooling
 
 - Overlay toggle showing collision shapes, contact points, rest timers, nudge
   count.
-- "Replay last roll" and "replay from seed" actions.
+- "Replay last roll" and "replay from seed" actions. These live behind the
+  developer toggle only: the app's history has no replay and never shows a
+  seed (`docs/statistics.md`).
 - Anomaly log (forced settles, snapped faces) exported with statistics.

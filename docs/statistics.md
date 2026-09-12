@@ -63,11 +63,11 @@ Counts of nudges, forced settles and snapped faces (see
   faint line for the expected uniform frequency.
 - **All dice:** table of every die ever rolled, sortable.
 - **Saved rolls:** per-formula history with expected vs. observed graph.
-- **History:** scrollable list of past rolls with breakdowns; tap to replay
-  the physics from the stored seed.
-- **Sessions:** create/rename/delete, and a share sheet for a session
-  summary as text ("Tuesday: 214 rolls, 11 nat 20s, 9 nat 1s, d20 avg
-  10.7").
+- **History:** scrollable list of past rolls with breakdowns. A past roll is
+  a record, not something to re-run: there is no replay action and the seed
+  is never shown. Re-rolling a formula means rolling it again.
+- **Sessions:** create/rename/delete. Deleting one moves its rolls to
+  Unfiled.
 
 ## Storage
 
@@ -86,8 +86,11 @@ Streaks and sums are updated in the same transaction as the history insert.
 `roll_history` is capped at 50,000 rows by default (oldest pruned); aggregates
 are never pruned. Uninstalling a dice set keeps its rows.
 
-`input_blob` holds the quantised shake samples (or the default throw
-parameters) so that any historical roll can be replayed exactly.
+`seed` and `input_blob` (the quantised shake samples, or the default throw
+parameters) are kept so a roll can be reproduced exactly when a bug report
+needs it. They are **internal**: no screen shows them, and the export leaves
+them out. Reproducing a stored roll is a developer action
+(`docs/physics-and-rendering.md`, Debug tooling), not a feature of the app.
 
 ## Export and reset
 

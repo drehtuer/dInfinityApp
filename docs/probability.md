@@ -60,12 +60,12 @@ convex solids and honest tumbling *is* fair for the catalogue shapes, up to
 numerical noise; the built-in test suite rolls each catalogue die 100,000
 times in power-saving mode and asserts a chi-squared test passes.
 
-For custom-mesh dice the graph still assumes fairness (each face equally
-likely), because there is no way to know the true distribution from the
-geometry alone. The set browser's fairness preview (see `docs/dice-sets.md`)
-shows the empirical histogram so authors can see how far off they are; the
-graph screen shows a small "custom shape — assumed fair" note when such dice
-are in the formula.
+Since v1's shape catalogue is closed (`docs/dice-sets.md`), every die in
+every set is one of those nine tested solids, however it is painted: a
+custom-looking die is still a fair die, and the graph is exact for all of
+them. If author-supplied mesh shapes arrive later, the graph will have to
+assume fairness it cannot verify and say so on screen — which is one more
+reason they are not in v1.
 
 ## Testing
 
