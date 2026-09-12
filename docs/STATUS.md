@@ -9,10 +9,12 @@ changelog.
 
 ## Where we are
 
-- **Phase:** implementation, Step 1 of `docs/TODO.md` done. The app builds,
-  tests and lints; no features yet.
-- **Latest release:** none.
-- **Branch state:** PRs #1–#15 merged. Step 2 (CI) is nearly done.
+- **Phase:** implementation, Steps 1 and 2 of `docs/TODO.md` done. The app
+  builds, tests, lints and releases; one screen exists, no dice yet.
+- **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the
+  release pipeline. Signed, fingerprint-checked, published with its SHA-256.
+- **Branch state:** PRs #1–#25 merged. Step 2 (CI) is done bar two entries
+  waiting on other projects and one optional secret; Step 3 is next.
 
 ## Done
 
@@ -71,11 +73,8 @@ changelog.
 
 ## In progress
 
-- `docs/TODO.md` Step 2 is essentially done: release-on-tag, the documentation
-  site, test annotations and required status checks all landed. What is left is
-  one thing to prove (a throwaway tag, to run `release.yml` for real), one to
-  automate (regenerating the dependency metadata on Dependabot branches), and
-  two waiting on other people (CodeQL's Kotlin support, an AGP fix).
+- Step 3 — foundations. Nothing started yet; the physics engine spike (Jolt
+  vs. Bullet) is the decide-first item.
 
 ## Blocked / waiting on
 
