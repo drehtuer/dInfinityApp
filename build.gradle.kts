@@ -131,6 +131,159 @@ val verifySourcesTracked by tasks.registering {
   }
 }
 
+/**
+ * A relative link that points at nothing is a broken document, and the ones
+ * that break are exactly the ones nobody clicks: a renamed file, a moved
+ * heading, a `docs/` link written from the wrong directory. All three happened
+ * while the design links were being repointed away from claude.ai.
+ *
+ * Only relative links are checked. External URLs need the network and would
+ * turn an offline build into a failing one.
+ */
+val verifyDocsLinks by tasks.registering {
+  group = "verification"
+  description = "Checks that every relative Markdown link points at something that exists."
+
+  val rootDir = layout.projectDirectory.asFile
+  outputs.upToDateWhen { false }
+
+  doLast {
+    val ignored = setOf("build", ".git", ".gradle", "node_modules")
+    val markdown = rootDir.walkTopDown()
+      .onEnter { it == rootDir || (it.name !in ignored && !it.name.startsWith(".")) }
+      .filter { it.isFile && it.extension == "md" }
+      .toList()
+
+    // [text](target) — skipping images is not wanted; a missing image is a
+    // broken document too. Anchors, absolute URLs and mailto: are not ours.
+    val link = Regex("""\[[^]]*]\(([^)\s]+)(?:\s+"[^"]*")?\)""")
+    val problems = markdown.flatMap { file ->
+      link.findAll(file.readText())
+        .map { it.groupValues[1] }
+        .filterNot { it.startsWith("http://") || it.startsWith("https://") }
+        .filterNot { it.startsWith("#") || it.startsWith("mailto:") }
+        .map { it.substringBefore('#') }
+        .filter { it.isNotEmpty() }
+        .filterNot { file.parentFile.resolve(it).exists() }
+        .map { "${file.relativeTo(rootDir).path} -> $it" }
+        .toList()
+    }
+    if (problems.isNotEmpty()) {
+      error(
+        "Broken relative links:\n" + problems.sorted().joinToString("\n") { "  - $it" }
+      )
+    }
+    logger.lifecycle("Documentation links: ${markdown.size} files, every relative link resolves.")
+  }
+}
+
+/**
+ * The coverage floor, enforced here because SonarQube cannot enforce half of it.
+ *
+ * `.claude/CLAUDE.md` asks for **function and branch** coverage, and for
+ * neither to sink in a pull request. SonarQube's coverage model has only line
+ * and condition counters — there is no method counter to import — so the
+ * function figure reaches JaCoCo's reports and stops there. This task reads
+ * those reports and holds both numbers to a floor.
+ *
+ * A floor rather than a comparison against `main`: the numbers live in
+ * `gradle.properties`, so raising them is a visible line in a diff and lowering
+ * them is an argument someone has to make in a pull request. A job that
+ * recomputes `main`'s coverage to compare against would be slower, would only
+ * work on CI, and would still need someone to notice the drop.
+ *
+ * Device-only modules are left out for the same reason SonarQube leaves them
+ * out of the coverage figure: their tests cannot run here, so their number
+ * would measure the runner rather than the code.
+ */
+val coverageReportFiles: List<File> =
+  run {
+    // Kept in step with sonar.coverage.exclusions: device-only modules cannot
+    // run their tests here, so their figure would measure the runner.
+    val deviceOnly = setOf("simulation/jolt", "render/filament")
+    val rootDirectory = layout.projectDirectory.asFile
+    subprojects
+      .filterNot { deviceOnly.contains(it.projectDir.relativeTo(rootDirectory).path) }
+      .flatMap { project ->
+        listOf(
+          "reports/jacoco/test/jacocoTestReport.xml",
+          "reports/coverage/test/debug/report.xml",
+        ).map { project.layout.buildDirectory.file(it).get().asFile }
+      }
+  }
+
+val verifyCoverage by tasks.registering {
+  group = "verification"
+  description = "Checks that function and branch coverage stay at or above the floor."
+
+  val minFunction = providers.gradleProperty("dinfinity.coverage.minFunction").get().toDouble()
+  val minBranch = providers.gradleProperty("dinfinity.coverage.minBranch").get().toDouble()
+  val candidates = coverageReportFiles
+
+  outputs.upToDateWhen { false }
+
+  doLast {
+    val reports = candidates.filter { it.isFile }
+    if (reports.isEmpty()) {
+      error("No JaCoCo report found. Run `./gradlew coverageReport` first.")
+    }
+
+    // A validating parser would fetch the report's DTD over the network, which
+    // would make an offline build fail on a document it does not need.
+    val factory =
+      javax.xml.parsers.DocumentBuilderFactory.newInstance().apply {
+        setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+        isValidating = false
+      }
+    val covered = mutableMapOf("METHOD" to 0, "BRANCH" to 0)
+    val missed = mutableMapOf("METHOD" to 0, "BRANCH" to 0)
+    reports.forEach { report ->
+      val counters = factory.newDocumentBuilder().parse(report).documentElement.childNodes
+      for (index in 0 until counters.length) {
+        val node = counters.item(index)
+        if (node.nodeName != "counter") continue
+        val type = node.attributes.getNamedItem("type").nodeValue
+        if (!covered.containsKey(type)) continue
+        covered[type] = covered.getValue(type) + node.attributes.getNamedItem("covered").nodeValue.toInt()
+        missed[type] = missed.getValue(type) + node.attributes.getNamedItem("missed").nodeValue.toInt()
+      }
+    }
+
+    val percentage = { type: String ->
+      val total = covered.getValue(type) + missed.getValue(type)
+      if (total == 0) 100.0 else 100.0 * covered.getValue(type) / total
+    }
+    val function = percentage("METHOD")
+    val branch = percentage("BRANCH")
+    val shortfall =
+      buildList {
+        if (function < minFunction) add("function %.1f%% is below the %.1f%% floor".format(function, minFunction))
+        if (branch < minBranch) add("branch %.1f%% is below the %.1f%% floor".format(branch, minBranch))
+      }
+    if (shortfall.isNotEmpty()) {
+      error(
+        "Coverage has sunk:\n" + shortfall.joinToString("\n") { "  - $it" } +
+          "\nWrite the tests in this pull request. Lowering the floor in " +
+          "gradle.properties is an argument to make in the description, not a fix."
+      )
+    }
+    logger.lifecycle(
+      "Coverage: functions %.1f%% (floor %.1f), branches %.1f%% (floor %.1f), over %d reports."
+        .format(function, minFunction, branch, minBranch, reports.size)
+    )
+  }
+}
+
+// Coverage can only be judged once every module has written its report.
+subprojects {
+  plugins.withId("jacoco") {
+    verifyCoverage.configure { dependsOn(tasks.named("coverageReport")) }
+  }
+}
+
 tasks.named("check") {
-  dependsOn(verifyModuleGraph, verifyDocsIndex, verifySourcesTracked)
+  dependsOn(verifyModuleGraph, verifyDocsIndex, verifyDocsLinks, verifySourcesTracked, verifyCoverage)
+  // build-logic is a separate, included build: nothing here reaches its tasks
+  // unless it is asked for by name, so its linter would never run.
+  dependsOn(gradle.includedBuild("build-logic").task(":ktlintCheckConventions"))
 }

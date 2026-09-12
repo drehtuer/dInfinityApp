@@ -1,0 +1,29 @@
+// Markdown linting. The rules that are off are off for a reason, not because
+// they were noisy.
+{
+  "config": {
+    "default": true,
+
+    // MD013 (line length): the prose in docs/ is hand-wrapped at about 80, but
+    // table rows and the one-line task items in docs/TODO.md cannot be, and
+    // reflowing them would make the diffs worse rather than the documents
+    // better. The wrapping is a convention, not a check.
+    "MD013": false,
+
+    // MD033 (inline HTML): the README's logo is a <picture> that switches on
+    // the reader's colour scheme, which Markdown has no syntax for. The mermaid
+    // diagrams are fenced code, not HTML, so nothing else needs this.
+    "MD033": { "allowed_elements": ["picture", "source", "img", "div", "p", "br"] },
+
+    // MD041 (first line must be a heading): the README opens with that logo.
+    "MD041": false
+  },
+  "globs": [
+    "**/*.md",
+    "!**/build/**",
+    "!node_modules/**",
+    // Someone else's generated export, kept verbatim so it stays comparable
+    // with the source it came from.
+    "!design/_ds/**"
+  ]
+}

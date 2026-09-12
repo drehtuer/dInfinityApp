@@ -26,7 +26,7 @@ is evaluated.
 
 ## Grammar
 
-```
+```ebnf
 formula   := expr label?
 expr      := term (("+" | "-") term)*
 term      := factor (("*" | "/") factor)*
@@ -131,7 +131,7 @@ also define a true 100-face die but it is never chosen by `d100` implicitly.
 
 A saved roll is a named formula with an icon, living in a group:
 
-```
+```text
 SavedRollGroup {
   id, name ("Curse of Strahd" / "Thorin"), icon,
   parentId?              // one level of nesting: game → character
@@ -199,7 +199,7 @@ rolls.
 Parse errors point at the offending character range and are shown inline
 under the formula field, e.g.
 
-```
+```text
 3d6 + 1d7 - 4
        ^^ no d7 in set "builtin"
 ```

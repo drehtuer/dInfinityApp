@@ -43,7 +43,7 @@ across devices.
 
 Before any physics body is created, the roll is checked against the table:
 
-```
+```text
 floorArea     = longSide × shortSide
 footprint(d)  = π × r(d)²           r = bounding-sphere radius of die d at scale 1
 required      = Σ footprint(d) over all dice in the roll

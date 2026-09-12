@@ -25,7 +25,7 @@ Design rules, in priority order:
 
 ## File layout
 
-```
+```text
 my-dice/
   diceset.toml
   textures/

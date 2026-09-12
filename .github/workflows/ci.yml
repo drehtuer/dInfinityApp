@@ -93,6 +93,57 @@ jobs:
       - uses: ./.github/actions/setup-android-build
       - run: ./gradlew assembleDebugAndroidTest --stacktrace
 
+  # Markdown is most of the specification, so it gets the same treatment as the
+  # code. The checks that need no Node — that README.md indexes every document,
+  # and that every relative link resolves — are Gradle tasks in `check`, so a
+  # developer runs them without leaving the devcontainer. These two need Node
+  # and a headless browser, which the devcontainer does not carry for one
+  # linter and one diagram.
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@992badcdf24e3b8eb7e87ff9287fe931bcb00c6e # v20.0.0
+
+      # A mermaid fence that does not parse renders as an error box on GitHub,
+      # which nobody notices until someone opens the document. mermaid-cli
+      # brings its own Chromium, so this runs in the published image rather
+      # than installing a browser on the runner.
+      - name: Mermaid diagrams parse
+        run: |
+          set -euo pipefail
+          mapfile -t documents < <(grep -rl '```mermaid' --include='*.md' \
+            --exclude-dir=build --exclude-dir=node_modules --exclude-dir=.git . || true)
+          if [ ${#documents[@]} -eq 0 ]; then
+            echo "No mermaid diagrams found."
+            exit 0
+          fi
+          mkdir -p "${RUNNER_TEMP}/mermaid"
+          python3 - "${RUNNER_TEMP}/mermaid" "${documents[@]}" <<'PY'
+          import pathlib, re, sys
+          out = pathlib.Path(sys.argv[1])
+          for document in sys.argv[2:]:
+              source = pathlib.Path(document)
+              for index, match in enumerate(re.finditer(r"```mermaid\n(.*?)```", source.read_text(), re.S)):
+                  name = f"{source.as_posix().replace('/', '_')}.{index}.mmd"
+                  (out / name).write_text(match.group(1))
+                  print(f"{document}: diagram {index + 1} -> {name}")
+          PY
+          # The image's entrypoint is mmdc itself, so it is replaced to loop over
+          # the diagrams. That means repeating what the entrypoint did: mmdc by
+          # full path, and -p, which is how it finds the bundled Chromium.
+          docker run --rm -v "${RUNNER_TEMP}/mermaid:/data" -w /data --entrypoint sh \
+            minlag/mermaid-cli@sha256:bad64c9d9ad917c8dfbe9d9e9c162b96f6615ff019b37058638d16eb27ce7783 \
+            -c 'for diagram in *.mmd; do
+                  echo "parsing $diagram"
+                  /home/mermaidcli/node_modules/.bin/mmdc -p /puppeteer-config.json \
+                    -i "$diagram" -o /tmp/out.svg || exit 1
+                done'
+
   dependency-review:
     name: Dependency review
     runs-on: ubuntu-latest
