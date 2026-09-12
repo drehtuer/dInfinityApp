@@ -58,9 +58,9 @@ Every die is a **convex** rigid body:
   when a die stopped would disagree about the roll.
 - The simulation is seeded per roll. The seed and every input impulse are
   recorded in the `RollResult` so a roll can be replayed exactly.
-- The engine is configured in deterministic mode (single-threaded solver or
-  Jolt's deterministic multithreading), no `System.nanoTime()` in any
-  simulation decision.
+- The engine is configured in deterministic mode — Jolt built with
+  `CROSS_PLATFORM_DETERMINISTIC=ON` (`docs/build-setup.md`) — and no
+  `System.nanoTime()` takes part in any simulation decision.
 - Golden tests: a fixed list of (seed, formula, impulse sequence) tuples with
   their expected outcomes, run on every CI build and on multiple ABIs.
   Any diff is a bug.
