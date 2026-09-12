@@ -123,6 +123,25 @@ $EDITOR keystore/keystore.properties   # fill in the passwords
 CI runs everything except the last line. Instrumented tests need a device, and
 that device is yours.
 
+### The verdict on an instrumented run
+
+`connectedDebugAndroidTest` is followed by `verifyDeviceTestResults`, which
+reads the JUnit XML the run produced and fails the build if anything in it
+failed, erred, or if the run produced no results at all.
+
+That indirection is a workaround for a bug in AGP 9.4.0, not a softening of the
+check. AGP keys its per-device verdict by the device id it pulls back out of the
+JUnit unique id — but JUnit percent-escapes a unique id segment, so a phone
+attached as `192.168.89.49:39337` is recorded under
+`192.168.89.49%3A39337` and then looked up under its raw serial. The lookup
+misses and the run is declared failed however green the tests were. Every
+wireless device has a colon in its serial, so the task can never pass on its
+own here. `ignoreFailures` is therefore set on it and the XML — which is
+correct — decides instead.
+
+Delete `VerifyDeviceTestResultsTask` and the `ignoreFailures` beside it once
+AGP compares like with like.
+
 ## Connecting a phone over WiFi
 
 The container has `adb`, so on-device tests run from inside it — no need to
@@ -136,14 +155,17 @@ Then, inside the container:
 
 ```sh
 # 1. "Pair device with pairing code" on the phone shows an ip:port and a code.
-adb pair 192.168.1.42:37105        # it will prompt for the six-digit code
+adb pair 192.168.1.42:37105 832269   # or omit the code and be prompted
 
 # 2. The Wireless debugging screen itself shows a different ip:port. Connect:
-adb connect 192.168.1.42:5555
+adb connect 192.168.1.42:39337
 
 adb devices                        # should list the phone as "device"
 ./gradlew connectedDebugAndroidTest
 ```
+
+This is the procedure as run, not as imagined: a Pixel 10a on Android 17,
+paired and driven from the container over the default Docker bridge.
 
 Notes:
 
@@ -180,13 +202,19 @@ and may not drop in a pull request (`.claude/CLAUDE.md`).
 
 ## Repository invariants
 
-Two rules that are easy to break are checked by the build rather than by
+Three rules that are easy to break are checked by the build rather than by
 memory, and run as part of `check`:
 
 ```sh
-./gradlew verifyModuleGraph   # every module on disk is in settings.gradle.kts
-./gradlew verifyDocsIndex     # README.md links every document in docs/
+./gradlew verifyModuleGraph     # every module on disk is in settings.gradle.kts
+./gradlew verifyDocsIndex       # README.md links every document in docs/
+./gradlew verifySourcesTracked  # git ignores no Kotlin source file
 ```
+
+The last one exists because `build/` in `.gitignore` matches any directory of
+that name, and the convention plugins' task classes live in a Kotlin package
+called `build` — so they were quietly kept out of the repository while every
+machine that already had them kept building fine.
 
 ## Editor settings
 

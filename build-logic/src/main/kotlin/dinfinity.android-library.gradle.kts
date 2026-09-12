@@ -1,5 +1,7 @@
 // Android library modules that carry no Compose UI.
 
+import de.drehtuer.dinfinity.build.configureDeviceTestVerification
+
 plugins {
   id("com.android.library")
   id("dinfinity.quality")
@@ -43,6 +45,8 @@ kotlin {
   }
 }
 
+configureDeviceTestVerification()
+
 val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 dependencies {
@@ -51,6 +55,13 @@ dependencies {
   "testImplementation"(libs.findLibrary("androidx-test-junit").get())
   "testImplementation"(libs.findLibrary("kotlinx-coroutines-test").get())
   "testImplementation"(libs.findLibrary("turbine").get())
+  // The device tier: the physics bridge and the renderer can only be proven on
+  // real hardware, so every Android module can carry instrumented tests.
+  "androidTestImplementation"(libs.findLibrary("junit4").get())
+  "androidTestImplementation"(libs.findLibrary("androidx-test-core").get())
+  "androidTestImplementation"(libs.findLibrary("androidx-test-junit").get())
+  "androidTestImplementation"(libs.findLibrary("androidx-test-runner").get())
+  "androidTestImplementation"(libs.findLibrary("androidx-test-espresso-core").get())
 }
 
 // Robolectric reaches into JDK internals (java.io.FileDescriptor among others),

@@ -2,6 +2,7 @@
 
 import com.android.build.api.artifact.SingleArtifact
 import de.drehtuer.dinfinity.build.RenameApkTask
+import de.drehtuer.dinfinity.build.configureDeviceTestVerification
 import java.util.Properties
 
 plugins {
@@ -133,6 +134,8 @@ androidComponents {
   }
 }
 
+configureDeviceTestVerification()
+
 val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 
 dependencies {
@@ -152,6 +155,15 @@ dependencies {
   "testImplementation"(libs.findLibrary("robolectric").get())
   "testImplementation"(libs.findLibrary("androidx-test-junit").get())
   "testImplementation"(libs.findLibrary("compose-ui-test-junit4").get())
+  // The device tier: these run on the Pixel 10a over WiFi debugging, never
+  // on CI (.claude/CLAUDE.md).
+  "androidTestImplementation"(bom)
+  "androidTestImplementation"(libs.findLibrary("junit4").get())
+  "androidTestImplementation"(libs.findLibrary("androidx-test-core").get())
+  "androidTestImplementation"(libs.findLibrary("androidx-test-junit").get())
+  "androidTestImplementation"(libs.findLibrary("androidx-test-runner").get())
+  "androidTestImplementation"(libs.findLibrary("androidx-test-espresso-core").get())
+  "androidTestImplementation"(libs.findLibrary("compose-ui-test-junit4").get())
 }
 
 // Robolectric reaches into JDK internals (java.io.FileDescriptor among others),
