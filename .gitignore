@@ -19,7 +19,6 @@ captures/
 # docs/build-setup.md; keystore/keystore.properties holds their passwords.
 keystore/*
 !keystore/README.md
-!keystore/keystore.properties.example
 *.keystore
 *.jks
 keystore.properties
