@@ -47,11 +47,38 @@ outcome to probability, stored as a dense array with an offset.
 | `r n` (reroll once) | conditional PMF composition |
 | `min n` | clamp remap |
 
-Support size is bounded by the notation parse limit (1,000 dice × max face
-value), so memory stays small. Results are cached per formula string.
-
 Precision: `Double`, with probabilities renormalised after each convolution
-step. For display we show 4 significant digits.
+step. For display we show 4 significant digits. The extreme tails of a very
+large sum are dropped rather than drawn: all five hundred dice of `500d6`
+showing a six has probability 6⁻⁵⁰⁰, which is smaller than a `Double` can hold,
+and there is no bar to draw for an outcome that cannot be written down.
+
+Division uses the rounding **from Settings**, always. The graph is computed
+before the throw exists, so the result sheet's per-throw override has nothing
+yet to apply to (`docs/dice-notation.md`, "Division rounding").
+
+## Limits
+
+Exactness has a price: a distribution is an array with an entry per reachable
+total, and some perfectly legal formulas reach a great many.
+
+| Limit | Value | Behaviour when exceeded |
+|---|---|---|
+| Totals in one distribution | 1,000,000 | The graph says it cannot be exact about this one |
+| Multiply-adds in one step | 200,000,000 | Same |
+| Explosion depth | 20, the same as the notation's | The truncated mass is reported with the graph |
+
+`1000d20` is twenty thousand totals and perfectly fine. A dice set is free to
+give a d20 face *values* in the thousands, though, and a thousand of those
+reach ten million — an array nobody asked for, on a phone. The
+order-statistics program is the other one that bites: keeping one of two
+hundred dice is cheap, keeping a hundred of them is thousands of times more
+work.
+
+So the graph says "too large" rather than either lying with an approximation
+or filling memory with a set file's arithmetic. A formula the graph refuses
+can still be rolled if it fits on the table, and one the table refuses can
+still be graphed; the two limits have nothing to do with each other.
 
 ## Physics vs. probability
 
@@ -70,5 +97,15 @@ reason they are not in v1.
 ## Testing
 
 - Property tests: the PMF sums to 1 ± 1e-12; mean of `NdX` equals
-  N·(X+1)/2 for standard faces; `2d20kh1` matches the closed form.
-- Golden tests against a brute-force enumerator for small formulas.
+  N·(X+1)/2 for standard faces; `2d20kh1` and `2d20kl1` match the closed forms
+  for the maximum and the minimum of two.
+- **Golden tests against the dice themselves.** Small formulas are rolled every
+  possible way and each outcome scored by the same evaluator a real roll uses
+  (`:core:notation`), then the tally is compared against what the chart would
+  draw. The reference is deliberately not a second piece of probability theory:
+  two derivations can agree and both be wrong about what the app does. This
+  cannot. If the graph and the enumeration disagree, the chart is telling the
+  player something the dice will not do.
+- The two convolution implementations — the direct double loop and the
+  transform — are checked against each other well past the size at which the
+  code switches over, so the chart cannot change shape at the threshold.
