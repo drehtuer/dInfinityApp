@@ -25,14 +25,22 @@ ENV ANDROID_HOME=/opt/android-sdk \
     JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        openjdk-21-jdk \
-        ca-certificates curl unzip zip git jq python3 ripgrep less sudo \
         android-sdk-platform-tools-common \
-    && rm -rf /var/lib/apt/lists/*
-
+        ca-certificates \
+        curl \
+        git \
+        jq \
+        less \
+        openjdk-21-jdk \
+        python3 \
+        ripgrep \
+        sudo \
+        unzip \
+        zip \
+    && rm -rf /var/lib/apt/lists/* \
 # ── Android SDK ──────────────────────────────────────────────────────────
-RUN mkdir -p "${ANDROID_HOME}/cmdline-tools" \
- && curl -fsSL -o /tmp/clt.zip \
+ && mkdir -p "${ANDROID_HOME}/cmdline-tools" \
+ && curl --proto '=https' --proto-redir '=https' -fsSL -o /tmp/clt.zip \
       "https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS}_latest.zip" \
  && unzip -q /tmp/clt.zip -d /tmp/clt \
  && mv /tmp/clt/cmdline-tools "${ANDROID_HOME}/cmdline-tools/latest" \
@@ -71,9 +79,8 @@ RUN yes | sdkmanager --licenses > /dev/null 2>&1 || true \
  && echo "${BUILD_TOOLS##*;}" > "${ANDROID_HOME}/.build-tools-version"
 
 ENV PATH="${ANDROID_HOME}/build-tools/latest:${PATH}"
-RUN ln -s "${ANDROID_HOME}/build-tools/$(cat ${ANDROID_HOME}/.build-tools-version)" "${ANDROID_HOME}/build-tools/latest"
-
-RUN if [ "${INSTALL_NDK}" = "true" ]; then \
+RUN ln -s "${ANDROID_HOME}/build-tools/$(cat "${ANDROID_HOME}/.build-tools-version")" "${ANDROID_HOME}/build-tools/latest" \
+ && if [ "${INSTALL_NDK}" = "true" ]; then \
       NDK="$(grep -E '^ndk;[0-9]+\.[0-9]+\.[0-9]+$' /tmp/sdk-packages.txt | tail -1)" \
       && CMAKE="$(grep -E '^cmake;[0-9]+\.[0-9]+\.[0-9]+$' /tmp/sdk-packages.txt | tail -1)" \
       && echo "Using ${NDK} and ${CMAKE}" \
@@ -86,13 +93,12 @@ RUN if [ "${INSTALL_NDK}" = "true" ]; then \
 # ── Gradle ───────────────────────────────────────────────────────────────
 # The project uses the wrapper; this Gradle exists so the wrapper can be
 # (re)generated and so a clean checkout has a working `gradle` on PATH.
-RUN curl -fsSL -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+RUN curl --proto '=https' --proto-redir '=https' -fsSL -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
  && unzip -q /tmp/gradle.zip -d /opt \
  && mv "/opt/gradle-${GRADLE_VERSION}" "${GRADLE_HOME}" \
- && rm /tmp/gradle.zip
-
+ && rm /tmp/gradle.zip \
 # ── SonarQube scanner ────────────────────────────────────────────────────
-RUN curl -fsSL -o /tmp/sonar.zip \
+ && curl --proto '=https' --proto-redir '=https' -fsSL -o /tmp/sonar.zip \
       "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip" \
  && unzip -q /tmp/sonar.zip -d /opt \
  && mv "/opt/sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64" "${SONAR_SCANNER_HOME}" \
@@ -101,11 +107,24 @@ RUN curl -fsSL -o /tmp/sonar.zip \
 # ── Non-root user ────────────────────────────────────────────────────────
 ARG USER_UID=1000
 ARG USER_GID=${USER_UID}
-RUN groupadd --gid ${USER_GID} dev 2>/dev/null || true \
- && useradd --uid ${USER_UID} --gid ${USER_GID} --create-home --shell /bin/bash dev 2>/dev/null || true \
+# Ubuntu ships its own `ubuntu` account at uid 1000, which is exactly the uid a
+# devcontainer wants for the developer so that files written in the bind mount
+# belong to them on the host. It is removed first, and the creation below is
+# *not* guarded with `|| true`: a swallowed failure here leaves `USER dev`
+# pointing at an account that does not exist, and the image then refuses to
+# start at all with "unable to find user dev".
+RUN if getent passwd "${USER_UID}" > /dev/null; then \
+      userdel --remove "$(getent passwd "${USER_UID}" | cut -d: -f1)"; \
+    fi \
+ && if getent group "${USER_GID}" > /dev/null; then \
+      groupdel "$(getent group "${USER_GID}" | cut -d: -f1)"; \
+    fi \
+ && groupadd --gid "${USER_GID}" dev \
+ && useradd --uid "${USER_UID}" --gid "${USER_GID}" --create-home --shell /bin/bash dev \
  && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
  && mkdir -p /home/dev/.gradle /home/dev/.android \
- && chown -R ${USER_UID}:${USER_GID} "${ANDROID_HOME}" /home/dev
+ && chown -R "${USER_UID}:${USER_GID}" "${ANDROID_HOME}" /home/dev \
+ && [ "$(id -u dev)" = "${USER_UID}" ]
 
 USER dev
 ENV GRADLE_USER_HOME=/home/dev/.gradle

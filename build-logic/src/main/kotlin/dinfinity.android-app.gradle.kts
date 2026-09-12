@@ -51,6 +51,14 @@ fun keystoreEntry(prefix: String): Map<String, String>? {
   return values.takeIf { entry -> entry.values.none(String::isBlank) }
 }
 
+val jacocoToolVersion =
+  extensions
+    .getByType<VersionCatalogsExtension>()
+    .named("libs")
+    .findVersion("jacoco")
+    .get()
+    .requiredVersion
+
 val androidApi = providers.gradleProperty("dinfinity.androidApi").get().toInt()
 val minimumSdk = providers.gradleProperty("dinfinity.minSdk").get().toInt()
 val buildTools = providers.gradleProperty("dinfinity.buildTools").get()
@@ -103,6 +111,9 @@ android {
   buildTypes {
     getByName("debug") {
       isMinifyEnabled = false
+      // See dinfinity.android-library: AGP builds the JaCoCo report for the
+      // debug unit tests, so the coverage plugin need not know its layout.
+      enableUnitTestCoverage = true
     }
     getByName("release") {
       isMinifyEnabled = true
@@ -122,6 +133,10 @@ android {
       isIncludeAndroidResources = true
       isReturnDefaultValues = true
     }
+  }
+
+  testCoverage {
+    jacocoVersion = jacocoToolVersion
   }
 
   lint {
