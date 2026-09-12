@@ -104,4 +104,9 @@ jobs:
           #
           # Build-tool advisories are still handled, by the weekly AGP and
           # Kotlin bumps that carry the fixed transitives with them.
-          dependency-graph-include-configurations: "^(runtimeClasspath|debugRuntimeClasspath|releaseRuntimeClasspath)$"
+          # Note the absence of a bare `runtimeClasspath`: that is the
+          # configuration build-logic uses, and build-logic depends on AGP,
+          # which is where jdom2, bouncycastle, jose4j and commons-lang3 come
+          # from. The app's own debug and release runtime classpaths already
+          # carry every shipped dependency transitively, so nothing is lost.
+          dependency-graph-include-configurations: "^(debug|release)RuntimeClasspath$"
