@@ -58,6 +58,14 @@ The defences, all documented in `docs/dice-sets.md`:
 If you find an input that gets past any of these, that is exactly the kind of
 report this file is asking for.
 
+## Network
+
+The app works offline. The only traffic it ever makes is a download the user
+asked for — a dice set, a table or a saved-roll collection — and those are
+`https` only: the manifest sets `android:usesCleartextTraffic="false"`, so a
+set that names an `http://` URL fails to download rather than fetching over a
+link anyone on the network can rewrite.
+
 ## Data on the device
 
 Statistics, saved rolls, history and installed sets stay on the phone. There is
@@ -66,6 +74,14 @@ no telemetry and no upload. Cloud backup is switched off deliberately
 may carry the data, so a new phone does not cost you your campaign's history.
 Export is a manual action through the share sheet, and the export never
 includes the roll seeds.
+
+`android:allowBackup` is deliberately left at its default rather than set to
+`false`. On Android 12 and above `false` only stops cloud backup — which
+`data_extraction_rules.xml` already stops, completely — while device-to-device
+migration cannot reliably be disabled at all. Android's own guidance for an app
+with data worth protecting is to keep the attribute and restrict through the
+extraction rules, which is what this app does. Static analysis flags the
+default as worth a look; it has been looked at, and this is the answer.
 
 ## Signing keys
 

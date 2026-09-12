@@ -93,3 +93,15 @@ jobs:
         with:
           setup-gradle: "false"
       - uses: gradle/actions/dependency-submission@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+        with:
+          # Only what ships in the APK. Resolving *every* configuration also
+          # submits the build's own toolchain — the copies of jdom2,
+          # bouncycastle, commons-lang3, logback and httpclient that AGP and
+          # the Kotlin plugin drag in — and Dependabot then opens security
+          # updates it cannot possibly apply, because nothing in this
+          # repository declares those dependencies to bump. Thirteen alerts
+          # and thirteen failing jobs, none of them actionable.
+          #
+          # Build-tool advisories are still handled, by the weekly AGP and
+          # Kotlin bumps that carry the fixed transitives with them.
+          dependency-graph-include-configurations: "^(runtimeClasspath|debugRuntimeClasspath|releaseRuntimeClasspath)$"
