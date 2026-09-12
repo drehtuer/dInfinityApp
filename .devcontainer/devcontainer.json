@@ -1,0 +1,34 @@
+{
+  "name": "dInfinity",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "ANDROID_API": "37",
+      "INSTALL_NDK": "true",
+      "USER_UID": "1000"
+    }
+  },
+  "remoteUser": "dev",
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=dinfinity-gradle,target=/home/dev/.gradle,type=volume"
+  ],
+  "postCreateCommand": "sudo chown -R dev /home/dev/.gradle || true",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "fwcd.kotlin",
+        "vscjava.vscode-gradle",
+        "redhat.vscode-yaml",
+        "DavidAnson.vscode-markdownlint",
+        "bierner.markdown-mermaid",
+        "SonarSource.sonarlint-vscode"
+      ],
+      "settings": {
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true,
+        "editor.rulers": [100]
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+# Rejected: `faces` must have exactly one entry per face of the shape.
+format = 1
+
+[set]
+id = "fixture-face-count"
+name = "Fixture, wrong face count"
+version = "1.0.0"
+
+[[die]]
+id = "d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5]

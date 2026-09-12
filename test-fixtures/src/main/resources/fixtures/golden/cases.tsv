@@ -1,0 +1,16 @@
+# Golden roll cases: the (seed, formula) pairs the determinism suite locks down.
+# The expected column is filled in when the simulator lands (plan Step 3); until
+# then these are the inputs the suite will run, chosen to cover the notation and
+# the table capacity rule. One case per line, tab separated.
+#
+# seed	formula	expected
+1	1d20	
+2	3d6 + 1d20 - 4	
+3	2d20kh1 + 6 [Attack]	
+4	4d6dl1	
+5	8d6!	
+6	1d100	
+7	2d10kl1	
+8	(3d6 + 5) / 2 [Half]	
+9	20d6	
+10	1d4 + 1d2	
