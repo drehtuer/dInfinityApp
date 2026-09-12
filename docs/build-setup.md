@@ -276,7 +276,10 @@ merges the list, because the two kinds of module produce coverage differently:
 | Android (`app`, `data`, `feature/*`, …) | AGP's `createDebugUnitTestCoverageReport` | `build/reports/coverage/test/debug/report.xml` |
 
 `coverageReport` is the one name that works in either, so CI and a developer run
-the same command. AGP builds the Android report rather than a hand-written
+the same command. The reports are written one at a time, build-wide: JaCoCo's
+HTML formatter shares an open jar of static resources between concurrent report
+tasks, and they close it under each other. Writing a report takes milliseconds,
+so nothing is lost by queueing them. AGP builds the Android report rather than a hand-written
 `JacocoReport` task so that nothing has to hard-code the paths of AGP's
 intermediate class directories, which are not API and have moved between
 versions.
