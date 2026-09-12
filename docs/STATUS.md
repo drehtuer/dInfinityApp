@@ -5,7 +5,7 @@ moves, a decision is taken or something is blocked; prune anything that is no
 longer current. This is a snapshot, not a changelog — git history is the
 changelog.
 
-**Last updated:** 2026-09-12
+**Last updated:** 2026-09-13
 
 ## Where we are
 
