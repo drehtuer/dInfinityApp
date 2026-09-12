@@ -53,6 +53,8 @@ changelog.
   coverage only the reports — SonarQube has no counter for it. `verifyCoverage`
   holds both to a floor in `gradle.properties`, so the half SonarQube cannot
   see is still enforced.
+- Every dependency is pinned by SHA-256 in `gradle/verification-metadata.xml`,
+  verified on a cold cache.
 - Everything in the repository is now linted by something: Markdown by
   markdownlint, mermaid by `mermaid-cli`, relative links and the docs index by
   Gradle tasks in `check`, and the convention plugins in `build-logic` by the
@@ -65,9 +67,8 @@ changelog.
 ## In progress
 
 - `docs/TODO.md` Step 2, what is left: release-on-tag, the docs site, test
-  annotations on pull requests, required status checks on `main`, and Gradle
-  dependency verification. Two entries are waiting on other people: CodeQL's
-  Kotlin support and an AGP fix.
+  annotations on pull requests, and required status checks on `main`. Two
+  entries are waiting on other people: CodeQL's Kotlin support and an AGP fix.
 
 ## Blocked / waiting on
 

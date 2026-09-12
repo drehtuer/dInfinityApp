@@ -360,6 +360,41 @@ in the pull request. Recomputing `main`'s coverage to diff against would be
 slower, would only work on CI, and would still need someone to read the number.
 Device-only modules are left out, exactly as they are from SonarQube's figure.
 
+## Dependency verification
+
+Every dependency the build resolves is pinned by SHA-256 in
+[../gradle/verification-metadata.xml](../gradle/verification-metadata.xml), and
+Gradle refuses to use an artifact whose checksum does not match. A version
+number says which artifact was asked for; a checksum says which one arrived.
+
+**Adding or upgrading a dependency means regenerating it**, or the build fails
+with "Dependency verification failed" and the artifact's name:
+
+```sh
+./gradlew --write-verification-metadata sha256 \
+  build test coverageReport lint detekt ktlintCheck assembleDebugAndroidTest
+```
+
+Run it with a **cold** dependency cache, in a throwaway `GRADLE_USER_HOME`:
+
+```sh
+GRADLE_USER_HOME=/tmp/cold ./gradlew --write-verification-metadata sha256 …
+```
+
+A warm cache does not re-resolve what it already has, so the generated file
+silently omits it and the next clean machine — CI, or a new clone — fails on a
+POM nobody has seen for weeks. That is not hypothetical: the first generated
+file was missing `kotlinx-coroutines-bom`, and passed locally while failing the
+moment the cache was empty.
+
+The task list matters for the same reason. It has to resolve every configuration
+the build uses, `assembleDebugAndroidTest` included, or the device suite fails on
+its own dependencies.
+
+This also means a Dependabot pull request will fail its build until the metadata
+is regenerated on that branch. That is the cost of the check, and it is the
+point of it: a changed artifact is supposed to stop the build.
+
 ## Linting the convention plugins
 
 `build-logic` is linted by the ktlint **CLI**, not its Gradle plugin, and

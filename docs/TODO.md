@@ -19,7 +19,7 @@ Step 5 and stay off CI.
 - [ ] **Release on tag `vX.Y.Z`:** optimised build (R8, shrinking), `dInfinityApp-<version>.apk` attached to a GitHub Release, docs site built for the tag. Releases are immutable — the workflow refuses to overwrite an existing tag
 - [ ] Require the CI checks in the `main` ruleset once their names are stable — the ruleset enforces pull requests today but no status check has to pass
 - [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready
-- [ ] Gradle dependency verification (`gradle/verification-metadata.xml`) so dependency versions and checksums are pinned, not merely resolved — Sonar `text:S8569`, and a real supply-chain gap for an app that installs downloaded content
+- [ ] Regenerate `gradle/verification-metadata.xml` automatically on a Dependabot branch, or those pull requests fail their build until someone does it by hand (`docs/build-setup.md`)
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 
 **Done when** a PR shows one green check per concern, Sonar decorates it with
