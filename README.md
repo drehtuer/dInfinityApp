@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+    <img src="docs/assets/logo-light.svg" alt="dInfinity" width="200">
+  </picture>
+</p>
+
 # dInfinity
 
 [![CI](https://github.com/drehtuer/dInfinityApp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/drehtuer/dInfinityApp/actions/workflows/ci.yml)
@@ -68,6 +75,8 @@ a tumble; everything else is real.
   never changes: it is the phone's screen, walls at the edges.
 - **Safe imports** — a broken or malicious dice set can fail to load, but it
   cannot crash the app or affect other sets.
+- **Your accent** — the one colour the interface spends is yours to choose,
+  from a palette checked for legibility on both the light and the dark ground.
 - **Face designer** — draw die faces with your finger and roll them.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
@@ -98,6 +107,7 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/probability.md](docs/probability.md) | How the outcome graph is computed |
 | [docs/face-designer.md](docs/face-designer.md) | Finger-drawn face textures |
 | [docs/statistics.md](docs/statistics.md) | What is tracked, how it is stored, privacy |
+| [docs/assets/README.md](docs/assets/README.md) | The logo files, how they are generated from Archivo, and the font licence |
 | [design/README.md](design/README.md) | The prototype: what each file is, how to open it offline, how to keep it in step with `docs/` |
 
 ## Status

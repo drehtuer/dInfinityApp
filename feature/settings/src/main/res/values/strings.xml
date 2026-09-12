@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="settings_title">Settings</string>
+  <string name="settings_accent_heading">Accent colour</string>
+  <string name="settings_accent_explanation">The one colour the interface spends. It does not change the app icon.</string>
+
+  <string name="accent_vermilion">Vermilion</string>
+  <string name="accent_coral">Coral</string>
+  <string name="accent_sky">Sky</string>
+  <string name="accent_moss">Moss</string>
+  <string name="accent_amber">Amber</string>
+  <string name="accent_violet">Violet</string>
+</resources>

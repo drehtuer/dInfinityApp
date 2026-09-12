@@ -18,6 +18,9 @@ dependencies {
   implementation(project(":feature:stats"))
   implementation(project(":feature:settings"))
 
+  implementation(project(":core:model"))
+  implementation(project(":data"))
+
   implementation(project(":dicesets:builtin"))
   implementation(project(":input:shake"))
   implementation(project(":render:filament"))

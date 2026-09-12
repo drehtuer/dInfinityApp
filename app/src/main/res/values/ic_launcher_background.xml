@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The icon is the "ink" lockup from design/Logo.dc.html: the mark reversed out
+  of the ink ground. The launcher icon cannot follow the accent colour the user
+  picks in Settings, so it uses the identity's own blue, which is fixed.
+-->
+<resources>
+  <color name="ic_launcher_background">#201E1D</color>
+</resources>

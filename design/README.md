@@ -16,6 +16,7 @@ folder is for reading, diffing and running offline.
 | `dInfinity.dc.html` | The canvas: an options board of every design turn — layouts, result-sheet densities, picker styles, graph styles, saved-roll tile styles, and one phone per screen. Open this one. |
 | `dInfinityPhone.dc.html` | The phone prototype itself, imported by the canvas once per variant with different attributes (`screen`, `formula`, `theme`, …). |
 | `android-frame.jsx` | Android (Material 3) device frame: status bar, app bar, gesture nav, keyboard. Starter scaffold; intentionally uses raw values. |
+| `Logo.dc.html` | The identity: the `d∞` monogram, its lockups and the app icon. The blue there is the mark's own and is not the interface accent, which the player chooses ([docs/assets/README.md](../docs/assets/README.md)). |
 | `support.js` | Claude Design's generated runtime that renders `.dc.html` files. Do not edit. |
 | `_ds/modernist-…/` | The "Modernist" design system the prototype is built on: `styles.css` (tokens + component classes), `readme.md` (usage guide), `_ds_manifest.json`, `_ds_bundle.js`, and the adherence lint config. |
 

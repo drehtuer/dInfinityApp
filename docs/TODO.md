@@ -182,7 +182,8 @@ Design `6c`. Spec: `docs/statistics.md`.
 Design `1q`, `1y`, `2d`. Spec: `README.md`, `docs/architecture.md`.
 
 - [ ] Full-screen menu (`1q`), grouped Play / Look back / Customise / App
-- [ ] Appearance (System / Light / Dark), power-saving (on/off only), shake, haptics, sound, rounding default, default set, table, session
+- [ ] Appearance (System / Light / Dark), power-saving (on/off only), shake, haptics, sound, rounding default, default set, table, session — the accent picker is already there and is the pattern the rest follow
+- [ ] Replace the single field on `DInfinityApplication` with a real container once more than settings hangs off it
 - [ ] Version and repository link (`2d`)
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
