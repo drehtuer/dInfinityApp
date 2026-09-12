@@ -425,7 +425,14 @@ worth doing by hand every week, so
 [`.github/workflows/dependabot-metadata.yml`](../.github/workflows/dependabot-metadata.yml)
 does it: it regenerates the file on the branch and commits it.
 
-One wrinkle is worth knowing rather than puzzling over. A push made with
+It runs as two jobs, and the split is the point. Regenerating the metadata means
+running the project's build, and a build runs code from the branch — so that job
+has **no write access**. The job that does have write access never checks out
+the branch and never runs anything from it: it takes the finished file as an
+artifact and commits it through the contents API. CodeQL flags the one-job
+version of this, rightly.
+
+One wrinkle is worth knowing rather than puzzling over. A commit made with
 `GITHUB_TOKEN` deliberately starts no new workflow run, so the pull request's
 checks stay attached to the commit *before* the metadata fix and show as failed.
 Everything is correct; the checks simply need one re-run.

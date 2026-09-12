@@ -5,6 +5,12 @@ name: Dependabot metadata
 # says so. That is the check working, not a fault — but it makes every
 # Dependabot pull request fail until someone regenerates the file by hand.
 # This does it for them.
+#
+# The work is split across two jobs on purpose. Regenerating the metadata means
+# running the project's own build, and a build runs code from the branch. That
+# job therefore gets no write access. The job that does have write access never
+# checks out the branch and never runs anything from it: it takes the finished
+# file as an artifact and commits it through the API.
 on:
   pull_request:
     branches: [main]
@@ -17,28 +23,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  update:
-    name: Update verification metadata
-    # Only Dependabot's own pull requests. Workflows it triggers have respected
-    # the permissions key since October 2021, so this needs no personal token
-    # to write — see the note on pushing below.
-    if: ${{ github.actor == 'dependabot[bot]' }}
+  regenerate:
+    name: Regenerate verification metadata
+    # Both the actor and the pull request's author, so that pushing to a branch
+    # named `dependabot/...` is not enough to reach this workflow.
+    if: >-
+      ${{ github.actor == 'dependabot[bot]' &&
+          github.event.pull_request.user.login == 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    # Unprivileged: this job builds the branch's code.
     permissions:
-      contents: write
+      contents: read
+    outputs:
+      changed: ${{ steps.regenerate.outputs.changed }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The branch itself, not the merge commit: this job writes to it.
-          ref: ${{ github.head_ref }}
-          # A push made with GITHUB_TOKEN deliberately starts no new workflow
-          # run, which would leave CI red against the commit before this one.
-          # If DEPENDABOT_METADATA_TOKEN exists (a Dependabot secret — Actions
-          # secrets are not readable here), the push re-runs the checks and the
-          # pull request goes green on its own. Without it everything still
-          # works; the checks need one re-run.
-          token: ${{ secrets.DEPENDABOT_METADATA_TOKEN || github.token }}
+          # The exact commit the pull request is at, not the branch, so nothing
+          # can move underneath between the check above and this checkout.
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
 
       - uses: ./.github/actions/setup-android-build
 
@@ -46,35 +51,82 @@ jobs:
       # written without the dependencies of whatever was not built — which is
       # how the first hand-made version came out missing kotlinx-coroutines-bom.
       # Gradle merges into the existing file rather than replacing it, so a warm
-      # cache cannot drop entries here; only the new artifacts need adding.
-      - name: Regenerate the verification metadata
+      # cache cannot drop entries here; only new artifacts are added.
+      - name: Regenerate
+        id: regenerate
         run: |
+          set -euo pipefail
           ./gradlew --write-verification-metadata sha256 \
             build test coverageReport lint detekt ktlintCheck assembleDebugAndroidTest \
             --stacktrace
+          if git diff --quiet -- gradle/verification-metadata.xml; then
+            echo "The metadata already covers this update; nothing to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Commit it
-        # The token is read as an environment variable rather than interpolated
-        # into the script: `${{ }}` would paste its value into the shell.
+      - if: ${{ steps.regenerate.outputs.changed == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verification-metadata
+          path: gradle/verification-metadata.xml
+          retention-days: 1
+
+  commit:
+    name: Commit it
+    needs: regenerate
+    if: ${{ needs.regenerate.outputs.changed == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: verification-metadata
+          path: metadata
+
+      # Committed through the contents API rather than by cloning the branch:
+      # this job holds a write token, and the branch is code someone else wrote.
+      # Nothing from it is fetched, let alone run.
+      - name: Commit through the API
         env:
+          # Falls back to GITHUB_TOKEN when the Dependabot secret is absent —
+          # see the note in docs/build-setup.md about re-running the checks.
+          GH_TOKEN: ${{ secrets.DEPENDABOT_METADATA_TOKEN || github.token }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          REPOSITORY: ${{ github.repository }}
           HAS_PUSH_TOKEN: ${{ secrets.DEPENDABOT_METADATA_TOKEN != '' }}
         run: |
           set -euo pipefail
-          if git diff --quiet -- gradle/verification-metadata.xml; then
-            echo "The metadata already covers this update; nothing to commit."
-            exit 0
+          path="gradle/verification-metadata.xml"
+          current="$(gh api "repos/${REPOSITORY}/contents/${path}?ref=${BRANCH}" --jq '.sha')"
+          # The payload carries a 300 KB file, which is past what is comfortable
+          # on a command line, so it goes to the API as a file.
+          python3 - "$current" > payload.json <<'PY'
+          import base64, json, os, sys
+          body = {
+              "message": "Update the dependency verification metadata\n\n"
+                         "Written by .github/workflows/dependabot-metadata.yml. This bump\n"
+                         "changes which artifacts the build resolves, and every one of them\n"
+                         "is pinned by checksum, so the file has to say so before the build\n"
+                         "will run.",
+              "content": base64.b64encode(open("metadata/verification-metadata.xml", "rb").read()).decode(),
+              "sha": sys.argv[1],
+              "branch": os.environ["BRANCH"],
+          }
+          json.dump(body, sys.stdout)
+          PY
+          # The contents API takes at most 1 MB of base64, and the metadata
+          # grows with every dependency. Better a clear failure here than a
+          # rejected request nobody can read.
+          size="$(wc -c < payload.json)"
+          if [ "$size" -gt 900000 ]; then
+            echo "::error::The payload is ${size} bytes, near the contents API's 1 MB limit. This job needs to switch to the git data API."
+            exit 1
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add gradle/verification-metadata.xml
-          git commit --file=- <<'MESSAGE'
-          Update the dependency verification metadata
-
-          Written by .github/workflows/dependabot-metadata.yml. This bump changes
-          which artifacts the build resolves, and every one of them is pinned by
-          checksum, so the file has to say so before the build will run.
-          MESSAGE
-          git push
+          gh api -X PUT "repos/${REPOSITORY}/contents/${path}" --input payload.json --jq '.commit.sha'
           if [ "${HAS_PUSH_TOKEN}" != "true" ]; then
             echo "::notice::Metadata updated. The checks ran against the commit before this one — re-run them. A DEPENDABOT_METADATA_TOKEN Dependabot secret makes that automatic."
           fi
