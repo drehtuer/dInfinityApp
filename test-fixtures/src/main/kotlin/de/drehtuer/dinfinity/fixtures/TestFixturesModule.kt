@@ -3,15 +3,14 @@ package de.drehtuer.dinfinity.fixtures
 /**
  * Marks `:test-fixtures` as present and wired into the build.
  *
- * The module is a skeleton: plan Step 1 builds the graph, and the step that
- * owns this module fills it with real types. Until then this object and its
- * test are what prove the module compiles, runs its tests, and can see the
- * modules it depends on — a graph that only compiles proves nothing.
+ * It also records what this module may depend on, which matters more here than
+ * elsewhere: fixtures are seen by every other module's tests, so anything this
+ * module pulls in, every test everywhere pulls in with it.
  */
 object TestFixturesModule {
   /** This module's Gradle path. */
   const val PATH: String = ":test-fixtures"
 
   /** The Gradle paths this module declares a dependency on. */
-  val DEPENDS_ON: List<String> = listOf()
+  val DEPENDS_ON: List<String> = listOf(":core:model")
 }

@@ -33,7 +33,7 @@ term      := factor (("*" | "/") factor)*
 factor    := ("-")? atom
 atom      := dice | integer | "(" expr ")"
 dice      := (setref ":")? count? "d" sides modifier*
-count     := integer                     ; default 1, max 200
+count     := integer                     ; default 1, max 1000 (see Limits)
 sides     := integer | "%" | "F"          ; "%" is an alias for 100 (as 2d10), "F" = fudge/fate die
 setref    := identifier                  ; installed dice set id
 modifier  := "kh" integer                ; keep highest n
@@ -85,12 +85,47 @@ capacity check happens before any body is created and the UI explains it
 5. Exploding dice: extra dice are thrown in a *second* throw after the first
    settles, and so on, up to the depth limit. In power-saving mode this is
    invisible; in normal mode the extra dice drop into the tray.
-6. Apply keep/drop/reroll/min per group, then arithmetic. See Division
-   rounding below.
+6. Apply the group's modifiers in the fixed order below, then the arithmetic.
+   See Division rounding below.
 7. Produce a `RollResult` with the total and a per-die breakdown including
    dropped dice (shown struck through). The result screen shows the total
    large, then each group's subtotal and the individual dice, then the
    modifiers — the user never has to add anything up.
+
+### The order modifiers are applied in
+
+Modifiers take effect in this order whatever order they were written in, so
+`4d6r1dl1` and `4d6dl1r1` mean the same thing:
+
+1. **`r n`** — a die showing `n` or less is thrown once more. Once: the
+   replacement stands however low it is. Both dice stay in the breakdown, the
+   first struck through.
+2. **`!`** — a die showing its highest face throws another of the same die.
+   The new die joins *that die's* chain rather than the group at large, so
+   `2d6!kh1` keeps the better of two chains, which is what a player means by
+   it. A chain stops after the explosion depth limit, and the die that would
+   have exploded again is marked in the breakdown.
+3. **`min n`** — a die below `n` counts as `n`, per die. The face it actually
+   landed on is still what the breakdown shows; only its contribution changes.
+4. **`kh` / `kl` / `dh` / `dl`** — whole chains are kept or dropped, ranked by
+   what each chain came to together. A percentile pair counts as one unit, so
+   `2d%kh1` keeps the better of two 1–100 results.
+
+A group may carry each modifier at most once, and may keep **or** drop, not
+both: `4d6dl1dl1` and `4d6kh1dl1` are refused rather than quietly meaning
+something. Keeping or dropping more dice than the group rolls is refused too.
+
+### What is settled before the dice are thrown
+
+Everything that can be known without rolling is checked while the formula is
+still text, so a roll in front of a player never fails halfway through:
+
+- a die the set does not have, with the nearest one it does have offered;
+- a `kh`/`kl`/`dh`/`dl` count the group cannot satisfy;
+- a `!` on a die whose every face is its highest, which would never stop;
+- a division whose divisor could be zero — `1d6 / 1dF` is refused, `1d6 / 1d4`
+  is not;
+- a result that could not be added up in 64 bits.
 
 ## Division rounding
 

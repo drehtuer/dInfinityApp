@@ -73,10 +73,13 @@ changelog.
 
 ## In progress
 
-- Step 3 — foundations, bottom-up. `core/model` is done: the eight-solid shape
-  catalogue, dice, sets, table looks, roll plans, results and saved rolls, all
-  pure data. `core/notation` is next. The physics engine spike (Jolt vs.
-  Bullet) is still the decide-first item further down the step.
+- Step 3 — foundations, bottom-up. `core/model` (the eight-solid catalogue,
+  dice, sets, table looks, plans, results, saved rolls) and `core/notation`
+  (parser, planner, evaluator, with the whole grammar, every limit and every
+  error range) are done; a formula can be parsed, resolved against installed
+  sets and scored from a unit test. `core/probability` is next. The physics
+  engine spike (Jolt vs. Bullet) is still the decide-first item further down
+  the step.
 
 ## Blocked / waiting on
 
