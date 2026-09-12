@@ -1,5 +1,10 @@
 # Dice sets
 
+> **Design:** the installed-set list (options 1s and 1t), the set details
+> (6a, and 6b for a failed validation), the disable/remove dialog (5a) and the
+> update flow (9h–9i) are in the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html)
+> ([design/](../design/)).
+
 A **dice set** is a folder containing a `diceset.toml` file and, optionally,
 textures. The built-in dice are a dice set too; there is no privileged code
 path for them. Anyone can publish a set on a git forge or as a plain archive
@@ -120,7 +125,7 @@ sound = "felt"
 | `defaults.*` | no | Material and physics defaults, all clamped. |
 | `die.id` | yes | Slug, unique within the set. Standard names (`d2`…`d100`) are what plain notation resolves to. |
 | `die.shape` | yes | Catalogue name or `mesh`. |
-| `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (d3-as-d6). |
+| `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (d2-as-d6). |
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
 | `die.read` | no | `face-up` (default) or `vertex-up`. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
@@ -137,11 +142,10 @@ by the app (documented in `dicesets/format/shapes/` with reference images):
 | Name | Faces | Typical use |
 |---|---|---|
 | `coin` | 2 | d2 |
-| `triangular-prism` | 3 (+2 capped ends that are never "up") | d3 |
 | `tetrahedron` | 4 | d4 |
-| `cube` | 6 | d6, d3-as-d6, d2-as-d6 |
+| `cube` | 6 | d6, d2-as-d6 |
 | `octahedron` | 8 | d8 |
-| `pentagonal-trapezohedron` | 10 | d10, d10-tens |
+| `pentagonal-trapezohedron` | 10 | d10, d10-tens (together: d100 / `d%`) |
 | `dodecahedron` | 12 | d12 |
 | `enneagonal-trapezohedron` | 18 | d18 |
 | `icosahedron` | 20 | d20 |

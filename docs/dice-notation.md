@@ -1,5 +1,9 @@
 # Dice notation
 
+> **Design:** the notation field (option 2a), the three dice pickers (1h–1j),
+> the parse-error state (9c) and the saved-roll screens (1n–1p, editor 1r,
+> import 9f–9g) are in the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)).
+
 dInfinity accepts the tabletop notation most players already know, e.g.
 `3d6 + 1d20 - 4`. This document defines exactly what is accepted and how it
 is evaluated.
@@ -14,7 +18,7 @@ is evaluated.
 | `2d20kh1` | roll two d20, keep the highest (advantage) |
 | `2d20kl1` | keep the lowest (disadvantage) |
 | `4d6dl1` | roll four d6, drop the lowest (stat generation) |
-| `d%` or `d100` | percentile: two d10 as tens and units |
+| `d100` or `d%` | percentile: two d10 as tens and units (`d%` is an alias for `d100`) |
 | `8d6!` | exploding d6: each 6 rolls an additional d6 |
 | `2 * (1d8 + 3)` | arithmetic and grouping |
 | `1d6 + 1d4 [Fire]` | trailing label, ignored for math, shown in breakdown |
@@ -30,7 +34,7 @@ factor    := ("-")? atom
 atom      := dice | integer | "(" expr ")"
 dice      := (setref ":")? count? "d" sides modifier*
 count     := integer                     ; default 1, max 200
-sides     := integer | "%" | "F"          ; "%" = 100 (as 2d10), "F" = fudge/fate die
+sides     := integer | "%" | "F"          ; "%" is an alias for 100 (as 2d10), "F" = fudge/fate die
 setref    := identifier                  ; installed dice set id
 modifier  := "kh" integer                ; keep highest n
            | "kl" integer                ; keep lowest n
@@ -94,18 +98,19 @@ the outcome graph, the breakdown and statistics work identically for picked
 dice and typed formulas. A picked roll can be turned into a saved roll with
 one tap.
 
-## d100 handling
+## d100 and d%
 
-`d100` and `d%` are always resolved to a tens d10 (faces 00–90) and a units
+`d%` is an alias for `d100` everywhere: in typed formulas, saved rolls,
+imported collections and the breakdown (which always prints `d100`).
+Both are always resolved to a tens d10 (faces 00–90) and a units
 d10 (0–9) from the same set, marked as a pair. Result = tens + units, with
 00+0 = 100. If the set has a `d100-tens` die it is used; otherwise the normal
 d10 is used with its face values multiplied by ten in the breakdown. Sets can
 also define a true 100-face die but it is never chosen by `d100` implicitly.
 
-## d3 and d2
+## d2
 
-`d3` uses the set's `d3` if present (a triangular prism), otherwise a d6 with
-face values `1,2,3,1,2,3`. `d2` uses a coin if present, otherwise a d6 with
+`d2` uses the set's coin if present, otherwise a d6 with face values
 `1,2,1,2,1,2`. Which one was used is visible in the breakdown.
 
 ## Saved rolls

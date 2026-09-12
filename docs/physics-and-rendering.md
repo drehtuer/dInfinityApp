@@ -1,5 +1,9 @@
 # Physics and rendering
 
+> **Design:** the tray, a settled roll and the power-saving result are
+> options 1a and 1z of the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)).
+> The dice there are flat silhouettes standing in for the 3D render.
+
 ## Overview
 
 Each roll is a rigid-body simulation of dice inside a tray. The number on a
@@ -32,8 +36,7 @@ Every die is a **convex** rigid body:
 
 - Built-in shapes come from the shape catalogue (see `docs/dice-sets.md`):
   tetrahedron, cube, octahedron, pentagonal trapezohedron (d10), dodecahedron,
-  icosahedron, enneagonal trapezohedron (d18), triangular prism (d3), coin
-  (d2), etc.
+  icosahedron, enneagonal trapezohedron (d18), coin (d2), etc.
 - Custom mesh dice are loaded as convex hulls of their vertices. If the hull
   differs from the source mesh by more than a tolerance, the set fails
   validation (it was not convex).

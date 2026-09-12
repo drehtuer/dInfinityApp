@@ -1,5 +1,9 @@
 # Outcome graph
 
+> **Design:** the three graph treatments are options 1k–1m of the
+> [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)); 7a shows the graph opened
+> after a roll, with the rolled total marked.
+
 Before rolling, the app shows the probability distribution of the total.
 This works for a typed formula in the editor *and* for dice picked by
 tapping on the roll screen — both are the same `RollPlan` underneath. It
@@ -33,7 +37,7 @@ outcome to probability, stored as a dense array with an offset.
 | Node | PMF |
 |---|---|
 | integer `n` | `{n: 1}` |
-| single die with faces `f₁…fₘ` | each distinct value with probability (count / m) — face values come from the set, so a d6 labelled `1,2,3,1,2,3` gives the d3 distribution automatically |
+| single die with faces `f₁…fₘ` | each distinct value with probability (count / m) — face values come from the set, so a d6 labelled `1,2,1,2,1,2` gives the d2 distribution automatically |
 | `NdX` | convolve the single-die PMF with itself N times (FFT above ~64 dice, plain O(N·m²) below) |
 | `+`, `-` | convolution (with negation for `-`) |
 | `*`, `/` by a constant | value remap |
