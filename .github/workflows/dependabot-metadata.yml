@@ -92,8 +92,10 @@ jobs:
       # Nothing from it is fetched, let alone run.
       - name: Commit through the API
         env:
-          # Falls back to GITHUB_TOKEN when the Dependabot secret is absent —
-          # see the note in docs/build-setup.md about re-running the checks.
+          # Falls back to GITHUB_TOKEN when the Dependabot secret is absent.
+          # The secret is worth having only because it is a *different*
+          # credential: GitHub holds runs caused by GITHUB_TOKEN for approval so
+          # that a workflow cannot set itself off again (docs/build-setup.md).
           GH_TOKEN: ${{ secrets.DEPENDABOT_METADATA_TOKEN || github.token }}
           BRANCH: ${{ github.event.pull_request.head.ref }}
           REPOSITORY: ${{ github.repository }}
@@ -128,5 +130,5 @@ jobs:
           fi
           gh api -X PUT "repos/${REPOSITORY}/contents/${path}" --input payload.json --jq '.commit.sha'
           if [ "${HAS_PUSH_TOKEN}" != "true" ]; then
-            echo "::notice::Metadata updated. The checks ran against the commit before this one — re-run them. A DEPENDABOT_METADATA_TOKEN Dependabot secret makes that automatic."
+            echo "::notice::Metadata updated. GitHub holds runs caused by GITHUB_TOKEN for approval, so the pull request should show an 'Approve workflows to run' banner — press it. A DEPENDABOT_METADATA_TOKEN Dependabot secret removes the step."
           fi
