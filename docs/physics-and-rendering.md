@@ -1,7 +1,7 @@
 # Physics and rendering
 
 > **Design:** the tray, a settled roll and the power-saving result are
-> options 1a and 1z of the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)).
+> options 1a and 1z of the [clickable design](../design/dInfinity.dc.html) ([design/](../design/)).
 > The dice there are flat silhouettes standing in for the 3D render.
 
 ## Overview

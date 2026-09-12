@@ -1,6 +1,6 @@
 # Tables
 
-> **Design:** the table picker is option 1u of the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html)
+> **Design:** the table picker is option 1u of the [clickable design](../design/dInfinity.dc.html)
 > ([design/](../design/)); 9j adds an installed set's table and 8a pins one to
 > a saved-roll group.
 

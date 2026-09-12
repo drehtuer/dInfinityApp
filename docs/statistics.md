@@ -2,7 +2,7 @@
 
 > **Design:** statistics (option 1w), history (1x), per-set filtering
 > (5b–5c), sessions (6c) and saved-roll statistics (8b) are in the
-> [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)).
+> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)).
 
 Players care about how their dice behave even though every face is equally
 likely. dInfinity records enough to answer "how many natural 20s have I

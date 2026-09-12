@@ -3,14 +3,44 @@
 The mark is the notation: `d` in ink, an accent-coloured infinity, Archivo 800
 at -0.05em tracking (design/Logo.dc.html).
 """
-import os, sys
+import argparse
+from pathlib import Path
+
 from fontTools.ttLib import TTFont
 from fontTools.varLib import instancer
 from fontTools.pens.svgPathPen import SVGPathPen
 from fontTools.pens.boundsPen import BoundsPen
 
-OUT = sys.argv[2]
-font = TTFont(sys.argv[1])
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Generate the dInfinity mark.")
+    parser.add_argument("font", type=Path, help="Archivo variable font (.ttf)")
+    parser.add_argument("out", type=Path, help="repository root to write into")
+    return parser.parse_args(argv)
+
+
+args = parse_args()
+FONT_PATH = args.font.resolve(strict=True)
+OUT = args.out.resolve(strict=True)
+
+
+def out_file(*parts):
+    """A path under OUT, with its directory made.
+
+    Both arguments come from the command line, so the destination is resolved
+    and checked to be inside OUT before anything is written. Nothing hostile is
+    expected — a developer runs this by hand, about once in the life of the
+    project — but a generator that can be talked into writing outside the tree
+    it was pointed at is worth a few lines to rule out.
+    """
+    destination = OUT.joinpath(*parts).resolve()
+    if not destination.is_relative_to(OUT):
+        raise ValueError(f"refusing to write outside {OUT}: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    return destination
+
+
+font = TTFont(FONT_PATH)
 font = instancer.instantiateVariableFont(font, {"wght": 800, "wdth": 100})
 UPEM = font["head"].unitsPerEm
 cmap, gs, hmtx = font.getBestCmap(), font.getGlyphSet(), font["hmtx"]
@@ -47,9 +77,8 @@ width="{w / 8:.0f}" height="{h / 8:.0f}" role="img" aria-label="dInfinity">
 </svg>
 '''
 
-os.makedirs(f"{OUT}/docs/assets", exist_ok=True)
-open(f"{OUT}/docs/assets/logo-light.svg", "w").write(svg(INK_LIGHT, BLUE, pad=40))
-open(f"{OUT}/docs/assets/logo-dark.svg", "w").write(svg(INK_DARK, BLUE, pad=40))
+out_file("docs", "assets", "logo-light.svg").write_text(svg(INK_LIGHT, BLUE, pad=40))
+out_file("docs", "assets", "logo-dark.svg").write_text(svg(INK_DARK, BLUE, pad=40))
 
 # --- Android adaptive icon -------------------------------------------------
 # 108dp viewport; art must stay inside the middle 72dp or a round mask clips it.
@@ -83,8 +112,7 @@ def vector(dfill, inffill):
 </vector>
 '''
 
-res = f"{OUT}/app/src/main/res"
-os.makedirs(f"{res}/drawable", exist_ok=True)
-open(f"{res}/drawable/ic_launcher_foreground.xml", "w").write(vector(PAPER, BLUE))
-open(f"{res}/drawable/ic_launcher_monochrome.xml", "w").write(vector("#FFFFFF", "#FFFFFF"))
+RES = ("app", "src", "main", "res", "drawable")
+out_file(*RES, "ic_launcher_foreground.xml").write_text(vector(PAPER, BLUE))
+out_file(*RES, "ic_launcher_monochrome.xml").write_text(vector("#FFFFFF", "#FFFFFF"))
 print(f"mark {W:.0f}x{H:.0f} units, icon scale {scale:.4f}")

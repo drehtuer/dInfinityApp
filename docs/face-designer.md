@@ -2,7 +2,7 @@
 
 > **Design:** the designer is options 1v (d6 with a skull on the 1), 4c
 > (colour picker) and 8d (d20, triangular face mask) of the
-> [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)).
+> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)).
 
 The face designer lets a user draw the faces of a die with a finger and roll
 the result immediately. Its output is a normal dice set (see

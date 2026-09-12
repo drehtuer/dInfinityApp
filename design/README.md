@@ -1,13 +1,20 @@
 # Design
 
-The UI design of dInfinity, exported from a [Claude Design](https://claude.ai/design)
-project. It is a living prototype, not a picture: every screen runs in the
+The UI design of dInfinity, exported from a Claude Design project. It is a
+living prototype, not a picture: every screen runs in the
 browser with a working notation parser, the table capacity rule and the exact
 outcome distribution, all following the specification in `docs/`. Physics is
 faked with a random face and a tumble animation.
 
-**▶ [Open it in the browser](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html)** — no checkout needed. The copy in this
-folder is for reading, diffing and running offline.
+**▶ [Open `dInfinity.dc.html`](dInfinity.dc.html) in a browser.** These files are
+the prototype — there is nothing to sign in to and nothing to install. Open the
+file from a clone; a link to it on GitHub shows the source instead of running
+it, because GitHub does not serve HTML from a repository.
+
+It does need the internet, though not an account: `support.js` pulls React and
+Babel from unpkg (pinned, with subresource integrity) to render
+`android-frame.jsx`. Everything else — the styles, the design system, the
+prototype's own logic — is in this folder.
 
 ## Files
 
@@ -58,7 +65,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 
 ## Editing
 
-Edit in the [Claude Design project](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706) and re-import here so the two stay in
+Edit in the [Claude Design project](./) and re-import here so the two stay in
 step. Decisions made in the design that change behaviour, limits or defaults
 must be reflected in `docs/` in the same PR (see `../.claude/CLAUDE.md`).
 An import brings the project's own `github.md` sync notes along; fold its

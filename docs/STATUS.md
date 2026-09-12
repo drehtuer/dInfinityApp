@@ -46,9 +46,11 @@ changelog.
 - CI (plan Step 2, in part): build, test and every linter on each PR, CodeQL,
   Dependabot, dependency review and the resolved dependency graph.
 - SonarQube runs from CI as the `sonar-scanner` CLI, not as automatic
-  analysis, and the scanner blocks on the quality gate. JaCoCo publishes
-  function and branch coverage from both the JVM and the Robolectric suites.
+  analysis, and the scanner blocks on the quality gate.
   `sonar-project.properties` is the only Sonar configuration there is.
+- Coverage is measured by JaCoCo across the JVM and Robolectric suites and
+  published: branch coverage reaches SonarQube and the README badges, function
+  coverage only the reports — SonarQube has no counter for it.
 - Identity: the `d∞` mark from `design/Logo.dc.html`, as real Archivo outlines,
   in `README.md` and as the launcher icon.
 - First working screen, out of plan order because the accent needed somewhere

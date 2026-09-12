@@ -1,7 +1,7 @@
 # Architecture
 
 > **Design:** every screen this module map has to serve exists as a live
-> prototype — open the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) or [design/](../design/).
+> prototype — open the [clickable design](../design/dInfinity.dc.html) or [design/](../design/).
 > The menu (option 1q) and Settings (1y) show the navigation.
 
 ## Goals that shape the design
