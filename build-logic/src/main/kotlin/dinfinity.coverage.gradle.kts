@@ -19,9 +19,18 @@
 //
 // What counts is **function and branch** coverage, not lines (.claude/CLAUDE.md).
 
+import de.drehtuer.dinfinity.build.CoverageReportLock
+
 plugins {
   id("jacoco")
 }
+
+// Only one report may be written at a time, build-wide: JaCoCo's HTML formatter
+// shares an open jar of static resources between them. See CoverageReportLock.
+val coverageReportLock =
+  gradle.sharedServices.registerIfAbsent("coverageReportLock", CoverageReportLock::class) {
+    maxParallelUsages.set(1)
+  }
 
 // The catalog is reached the long way round, as in the other convention
 // plugins: the generated `libs` accessor is not available to them.
@@ -53,6 +62,7 @@ val coverageReport =
 plugins.withId("org.jetbrains.kotlin.jvm") {
   tasks.named<JacocoReport>("jacocoTestReport") {
     dependsOn(tasks.named("test"))
+    usesService(coverageReportLock)
     reports {
       xml.required.set(true)
       html.required.set(true)
@@ -68,5 +78,8 @@ plugins.withId("org.jetbrains.kotlin.jvm") {
 listOf("com.android.library", "com.android.application").forEach { androidPlugin ->
   pluginManager.withPlugin(androidPlugin) {
     coverageReport.configure { dependsOn("createDebugUnitTestCoverageReport") }
+    tasks.matching { it.name == "createDebugUnitTestCoverageReport" }.configureEach {
+      usesService(coverageReportLock)
+    }
   }
 }
