@@ -24,6 +24,10 @@ jobs:
       contents: read
       # SonarQube decorates the pull request with its findings.
       pull-requests: write
+      # The test-results check is published as a check run, which needs its own
+      # permission — without it the annotation step reads the results, reports
+      # what it found, and then silently fails to post anything.
+      checks: write
     # At job level so the `if:` on the scan step can see it. A step's own `env:`
     # is not in scope for that step's own condition.
     env:
