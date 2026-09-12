@@ -6,6 +6,7 @@ import io.gitlab.arturbosch.detekt.Detekt
 plugins {
   id("io.gitlab.arturbosch.detekt")
   id("org.jlleitschuh.gradle.ktlint")
+  id("dinfinity.coverage")
 }
 
 detekt {

@@ -12,7 +12,7 @@ changelog.
 - **Phase:** implementation, Step 1 of `docs/TODO.md` done. The app builds,
   tests and lints; no features yet.
 - **Latest release:** none.
-- **Branch state:** PRs #1–#11 merged. Step 2 (CI) is under way.
+- **Branch state:** PRs #1–#15 merged. Step 2 (CI) is nearly done.
 
 ## Done
 
@@ -44,8 +44,11 @@ changelog.
   runs instrumented tests on it. Step 5 has somewhere to land.
 - Real signing keys exist locally and as GitHub secrets; releases sign v2+v3.
 - CI (plan Step 2, in part): build, test and every linter on each PR, CodeQL,
-  Dependabot, dependency review and the resolved dependency graph. Coverage
-  and the Sonar gate are the remainder.
+  Dependabot, dependency review and the resolved dependency graph.
+- SonarQube runs from CI as the `sonar-scanner` CLI, not as automatic
+  analysis, and the scanner blocks on the quality gate. JaCoCo publishes
+  function and branch coverage from both the JVM and the Robolectric suites.
+  `sonar-project.properties` is the only Sonar configuration there is.
 - Identity: the `d∞` mark from `design/Logo.dc.html`, as real Archivo outlines,
   in `README.md` and as the launcher icon.
 - First working screen, out of plan order because the accent needed somewhere
@@ -53,8 +56,8 @@ changelog.
 
 ## In progress
 
-- `docs/TODO.md` Step 2: coverage (JaCoCo, function and branch) feeding the
-  SonarQube quality gate, then the docs site and release-on-tag.
+- `docs/TODO.md` Step 2, what is left: a coverage floor that a PR cannot sink
+  below, the docs site and release-on-tag.
 
 ## Blocked / waiting on
 

@@ -15,17 +15,13 @@ Everything a machine can check, on every PR. Emulator and device suites are
 Step 5 and stay off CI.
 
 - [ ] Annotate test results and failures on the pull request itself, rather than only in the run log and the uploaded reports
-- [ ] **Coverage → SonarQube:** JaCoCo on JVM + Robolectric, reports merged into one XML. `sonar-project.properties` and `SONAR_TOKEN` are already in place; CI has to run the scanner and wire JaCoCo so the report paths it names actually exist. Quality gate blocks merge; coverage on new code ≥ 80 %
-- [ ] Coverage counters are **function and branch**, not lines alone, and a PR that lowers either against `main` fails — the comparison job needs `main`'s report cached or recomputed
-- [ ] Sonar exclusions: generated code, Compose previews, and the JNI/renderer bridges whose tests only run on a device — excluded from *coverage*, never from *analysis*, with the device results reported separately so the gap is visible rather than hidden
+- [ ] Enforce the coverage floor: quality gate set to ≥ 80 % on new code, and a PR that lowers **function or branch** coverage against `main` fails. The counters are measured and published now; nothing yet compares them, and the comparison job needs `main`'s report cached or recomputed
 - [ ] **Docs:** markdown lint, link check (internal links must resolve), mermaid fences must parse, and a check that `README.md` indexes every `docs/*.md` — the rule in `.claude/CLAUDE.md` should be enforced, not remembered
 - [ ] **Docs site:** publish `docs/` and `design/` to GitHub Pages so the prototype is clickable straight from the repo, not only from claude.ai
 - [ ] **Release on tag `vX.Y.Z`:** optimised build (R8, shrinking), `dInfinityApp-<version>.apk` attached to a GitHub Release, docs site built for the tag. Releases are immutable — the workflow refuses to overwrite an existing tag
 - [ ] Confirm a PR run stays under ~10 minutes now that Gradle caching is in place, and cache the SDK packages and Robolectric's `android-all` jars if it does not
 - [ ] Require the CI checks in the `main` ruleset once their names are stable — the ruleset enforces pull requests today but no status check has to pass
 - [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready
-- [ ] Switch Sonar from automatic analysis to the scanner in CI, so `sonar-project.properties` is the single configuration and coverage can be uploaded; `.sonarcloud.properties` goes at the same time
-- [ ] Widen Sonar past `sonar.inclusions=**/src/main/**` so the repository's own infrastructure is analysed again, then clear what it finds — 14 issues in `.devcontainer/Dockerfile` (unquoted variables, `curl` not pinned to HTTPS). They are currently invisible because that inclusion limits analysis to application sources, not because they were fixed
 - [ ] Gradle dependency verification (`gradle/verification-metadata.xml`) so dependency versions and checksums are pinned, not merely resolved — Sonar `text:S8569`, and a real supply-chain gap for an app that installs downloaded content
 - [ ] Lint `build-logic` too. ktlint cannot currently be kept off the plugin accessors Gradle generates into that build's main source set, so the convention plugins are styled by hand and unchecked
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)

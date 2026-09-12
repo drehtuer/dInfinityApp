@@ -76,6 +76,12 @@ files the build writes belong to you:
 docker build --build-arg USER_UID="$(id -u)" -t dinfinity-dev .devcontainer
 ```
 
+The image takes that uid over from whoever already holds it — Ubuntu's base
+image ships its own `ubuntu` account at uid 1000 — and then asserts that `dev`
+really ended up with it. That check is there because the failure it catches is
+silent and total: if the account is not created, `USER dev` refers to nobody and
+the image cannot start at all, with `unable to find user dev`.
+
 ## Building the app
 
 ```sh
@@ -236,21 +242,48 @@ Notes:
 ./gradlew ktlintFormat              # fix what can be fixed automatically
 ```
 
-SonarQube analyses the project on every push and pull request. There are two
-configuration files and it matters which one is in force:
+SonarQube analyses the project on every push and pull request. The scan runs
+from CI as part of the build job, using the `sonar-scanner` CLI and the single
+configuration file [../sonar-project.properties](../sonar-project.properties).
+The scanner blocks on the quality gate, so a red gate is a red check.
 
-| File | Read by |
-|---|---|
-| [../.sonarcloud.properties](../.sonarcloud.properties) | SonarQube Cloud's **automatic analysis** — what runs today |
-| [../sonar-project.properties](../sonar-project.properties) | The `sonar-scanner` CLI, once CI runs the scan itself |
+It used to run as SonarQube Cloud **automatic analysis**, which is switched off
+now. Automatic analysis reads `.sonarcloud.properties` and ignores
+`sonar-project.properties`, which is how the `design/` prototype came to account
+for 211 of the first 229 findings. It also cannot ingest a coverage report at
+all, and it ignores `sonar.issue.ignore.*`, so a reviewed-and-accepted finding
+could only be clicked away in the web UI instead of being recorded in the
+repository. Both files existed for a while and had to be kept in step; there is
+now only one.
 
-Automatic analysis does not read `sonar-project.properties`. Until the scanner
-runs in CI, exclusions written only there have no effect — which is how the
-`design/` prototype came to account for 211 of the first 229 findings. Keep the
-two in step.
+If a scan ever reports the whole repository as new code, the checkout was
+shallow: Sonar reads the git history to decide what "new" means, which is why
+the build job clones with `fetch-depth: 0`.
 
-Coverage is not wired yet; when it is, it is reported for **functions and
-branches** and may not drop in a pull request (`.claude/CLAUDE.md`).
+### Coverage
+
+```sh
+./gradlew coverageReport            # every module; JVM and Robolectric
+```
+
+Coverage is JaCoCo, and the counters that matter are **function and branch**,
+not lines (`.claude/CLAUDE.md`). Each module writes its own report and Sonar
+merges the list, because the two kinds of module produce coverage differently:
+
+| Module kind | Report task | XML |
+|---|---|---|
+| Pure Kotlin (`core/*`, `simulation/api`, …) | Gradle's `jacocoTestReport` | `build/reports/jacoco/test/jacocoTestReport.xml` |
+| Android (`app`, `data`, `feature/*`, …) | AGP's `createDebugUnitTestCoverageReport` | `build/reports/coverage/test/debug/report.xml` |
+
+`coverageReport` is the one name that works in either, so CI and a developer run
+the same command. AGP builds the Android report rather than a hand-written
+`JacocoReport` task so that nothing has to hard-code the paths of AGP's
+intermediate class directories, which are not API and have moved between
+versions.
+
+Device-only code — the physics bridge and the renderer — is excluded from the
+*coverage* figure but not from the analysis, and its device results are reported
+separately, so the gap stays visible instead of quietly counting as covered.
 
 ## Continuous integration
 
@@ -260,7 +293,7 @@ terminal means.
 
 | Workflow | Runs | Does |
 |---|---|---|
-| `ci.yml` — Build, test and analyse | PR, push to `main` | `./gradlew build test lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below |
+| `ci.yml` — Build, test and analyse | PR, push to `main` | `./gradlew build test coverageReport lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below, then the SonarQube scan and its quality gate |
 | `ci.yml` — Device tests compile | PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
 | `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
 | `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
@@ -272,8 +305,10 @@ reads `dinfinity.androidApi` and `dinfinity.buildTools` straight out of
 `gradle.properties` — the same two properties the container image and the
 Gradle build read, so there is no fourth place to update an SDK version.
 
-Coverage and the SonarQube quality gate are not wired yet; `docs/TODO.md`
-Step 2 has what is left.
+The SonarQube scan is part of the build job rather than a job of its own, so it
+reuses that build instead of paying for a second one. It is skipped when
+`SONAR_TOKEN` is absent — what a pull request from a fork looks like — because a
+missing token should not read as a failed build.
 
 ## Repository invariants
 
