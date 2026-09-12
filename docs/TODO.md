@@ -23,7 +23,9 @@ Step 5 and stay off CI.
 - [ ] **Release on tag `vX.Y.Z`:** optimised build (R8, shrinking), `dInfinityApp-<version>.apk` attached to a GitHub Release, docs site built for the tag. Releases are immutable — the workflow refuses to overwrite an existing tag
 - [ ] Confirm a PR run stays under ~10 minutes now that Gradle caching is in place, and cache the SDK packages and Robolectric's `android-all` jars if it does not
 - [ ] Require the CI checks in the `main` ruleset once their names are stable — the ruleset enforces pull requests today but no status check has to pass
-- [ ] Consider pinning the Actions to commit SHAs rather than major tags; Dependabot updates either, and SHAs remove the tag-moved-under-us risk
+- [ ] Switch Sonar from automatic analysis to the scanner in CI, so `sonar-project.properties` is the single configuration and coverage can be uploaded; `.sonarcloud.properties` goes at the same time
+- [ ] Clear the Sonar findings that are ours rather than the prototype's: 14 in `.devcontainer/Dockerfile` (unquoted variables, `curl` not pinned to HTTPS), and `usesCleartextTraffic` unset in the manifest
+- [ ] Gradle dependency verification (`gradle/verification-metadata.xml`) so dependency versions and checksums are pinned, not merely resolved — Sonar `text:S8569`, and a real supply-chain gap for an app that installs downloaded content
 - [ ] Lint `build-logic` too. ktlint cannot currently be kept off the plugin accessors Gradle generates into that build's main source set, so the convention plugins are styled by hand and unchecked
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 

@@ -236,10 +236,21 @@ Notes:
 ./gradlew ktlintFormat              # fix what can be fixed automatically
 ```
 
-SonarQube is configured in [../sonar-project.properties](../sonar-project.properties).
-CI runs the scanner with `SONAR_TOKEN` from the repository secrets; the token
-is never in the repository. Coverage is reported for **functions and branches**
-and may not drop in a pull request (`.claude/CLAUDE.md`).
+SonarQube analyses the project on every push and pull request. There are two
+configuration files and it matters which one is in force:
+
+| File | Read by |
+|---|---|
+| [../.sonarcloud.properties](../.sonarcloud.properties) | SonarQube Cloud's **automatic analysis** — what runs today |
+| [../sonar-project.properties](../sonar-project.properties) | The `sonar-scanner` CLI, once CI runs the scan itself |
+
+Automatic analysis does not read `sonar-project.properties`. Until the scanner
+runs in CI, exclusions written only there have no effect — which is how the
+`design/` prototype came to account for 211 of the first 229 findings. Keep the
+two in step.
+
+Coverage is not wired yet; when it is, it is reported for **functions and
+branches** and may not drop in a pull request (`.claude/CLAUDE.md`).
 
 ## Continuous integration
 
