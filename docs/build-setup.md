@@ -16,7 +16,7 @@ that only works on one laptop is a build nobody else can reproduce.
 | Android SDK platform | newest stable minor of API 37 | `compileSdk` / `targetSdk` |
 | Android build-tools | newest for API 37 | aapt2, d8, apksigner |
 | `adb` (platform-tools) | newest | Talking to a phone over WiFi debugging |
-| Android NDK + CMake | newest stable | The native physics bridge (from plan Step 3) |
+| Android NDK + CMake | newest stable | The physics engine and the renderer are native (`simulation/jolt`, `render/filament`), so the NDK is not optional — it is only switched off for a quick image with no native code in it |
 | Gradle | 9.7.1 | Also present as the wrapper in the repository |
 | ktlint, detekt | via Gradle | Style and static analysis |
 | sonar-scanner | 7.3 | Coverage and quality gate |
@@ -56,11 +56,16 @@ volume and takes a few minutes; later runs are seconds.
 
 ### A quicker image
 
-The NDK is about 2.5 GB and is only needed once there is native code:
+The full image is about 7 GB, most of it the NDK. Until `simulation/jolt` and
+`render/filament` have their native sources there is nothing for it to
+compile, so skipping it gives a 2.1 GB image that is fine for doc or UI work:
 
 ```sh
 docker build --build-arg INSTALL_NDK=false -t dinfinity-dev .devcontainer
 ```
+
+The default is `true`, because the physics engine and the renderer are native
+and every real build of the app needs it.
 
 ### File ownership
 
@@ -144,6 +149,11 @@ Notes:
 
 - Pairing and connecting use **different ports**. The pairing port changes
   every time the dialog is opened; the connect port is stable per session.
+- **`adb connect` failing while the port is plainly open means you are
+  pointing at the pairing port.** Check the port is reachable at all with
+  `bash -c 'cat < /dev/null > /dev/tcp/<ip>/<port>'`; if that succeeds and
+  `adb connect` still says "failed to connect", the port speaks the pairing
+  protocol and wants `adb pair` and a code, not `adb connect`.
 - Pairing is needed once per machine. After that `adb connect` is enough, until
   the phone reboots or the port changes.
 - The phone and the container must be on the same network. With Docker's

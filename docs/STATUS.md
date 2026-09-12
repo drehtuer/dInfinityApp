@@ -52,8 +52,6 @@ changelog.
 
 ## Decisions pending
 
-- `minSdk` is 36 rather than 37, because Robolectric cannot run API 37 yet.
-  `targetSdk` is 37. Needs confirming — see `docs/TODO.md`.
 - Two smaller decisions from the prototype are not yet in `docs/` (designer
   3D preview, picker remembering the last set per group) — see `docs/TODO.md`.
 - Physics engine (Jolt vs. Bullet) — spike planned in Milestone 0.

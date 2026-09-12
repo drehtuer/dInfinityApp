@@ -273,7 +273,6 @@ Written down so the format need not change later. Not v1 scope.
 
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
-- [ ] `minSdk` is 36, not 37. Robolectric 4.17 cannot start API 37 (its `InputManager` shadow calls a method API 37 removed) and cannot run below `minSdk`, so `minSdk = 37` would mean no Robolectric tests at all. `targetSdk`/`compileSdk` are 37. Confirm 36, or accept losing the Robolectric tier until Robolectric catches up
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] d18 shape: the enneagonal trapezohedron is assumed; verify it reads well at phone size
 - [ ] Division rounding default is Down with a per-throw override — confirm Nearest is worth having
