@@ -12,9 +12,7 @@ changelog.
 - **Phase:** implementation, Step 1 of `docs/TODO.md` done. The app builds,
   tests and lints; no features yet.
 - **Latest release:** none.
-- **Branch state:** PRs #1–#6 merged. The skeleton is in PR #7, and the
-  build setup (devcontainer, signing, Sonar, security policy) in PR #8 on
-  top of it.
+- **Branch state:** PRs #1–#8 merged. The device test tier is in PR #9.
 
 ## Done
 
@@ -41,6 +39,9 @@ changelog.
 - Build setup: Ubuntu 26.04 devcontainer with `adb` for WiFi debugging,
   `docs/build-setup.md`, signing keys kept out of the repository,
   `SECURITY.md`, `sonar-project.properties`.
+- The device tier works end to end: the Pixel 10a is paired from inside the
+  container over WiFi, and `connectedDebugAndroidTest` builds, installs and
+  runs instrumented tests on it. Step 5 has somewhere to land.
 
 ## In progress
 

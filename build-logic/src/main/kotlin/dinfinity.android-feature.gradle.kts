@@ -26,4 +26,6 @@ dependencies {
   "debugImplementation"(libs.findLibrary("compose-ui-test-manifest").get())
   "testImplementation"(bom)
   "testImplementation"(libs.findLibrary("compose-ui-test-junit4").get())
+  "androidTestImplementation"(bom)
+  "androidTestImplementation"(libs.findLibrary("compose-ui-test-junit4").get())
 }

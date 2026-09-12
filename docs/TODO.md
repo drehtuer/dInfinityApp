@@ -24,6 +24,7 @@ Step 5 and stay off CI.
 - [ ] **Release on tag `vX.Y.Z`:** optimised build (R8, shrinking), `dInfinityApp-<version>.apk` attached to a GitHub Release, docs site built for the tag. Releases are immutable — the workflow refuses to overwrite an existing tag
 - [ ] Caching (Gradle, SDK) so a PR run stays under ~10 minutes
 - [ ] Lint `build-logic` too. ktlint cannot currently be kept off the plugin accessors Gradle generates into that build's main source set, so the convention plugins are styled by hand and unchecked
+- [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 
 **Done when** a PR shows one green check per concern, Sonar decorates it with
 coverage, and a throwaway tag produces a correctly named release APK.

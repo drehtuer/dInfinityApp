@@ -14,6 +14,8 @@ junit5 = "6.1.3"
 junit4 = "4.13.2"
 robolectric = "4.17"
 androidxTestJunit = "1.3.0"
+androidxTest = "1.7.0"
+espresso = "3.7.0"
 turbine = "1.2.1"
 detekt = "1.23.8"
 ktlintPlugin = "14.2.0"
@@ -29,6 +31,11 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 junit4 = { module = "junit:junit", version.ref = "junit4" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestJunit" }
+androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTest" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTest" }
+# Pinned explicitly: compose-ui-test-junit4 still drags in Espresso 3.5, whose
+# input injection calls InputManager.getInstance() — gone in Android 17.
+androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "espresso" }
 turbine = { module = "app.cash.turbine:turbine", version.ref = "turbine" }
 
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }

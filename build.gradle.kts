@@ -80,6 +80,57 @@ val verifyDocsIndex by tasks.registering {
   }
 }
 
+/**
+ * Source that git ignores is source that never reaches a clone. That is how
+ * `RenameApkTask.kt` went missing: the `build/` line in `.gitignore` matches
+ * any directory of that name, and one Kotlin package happens to be called
+ * `build`. The repository still built for everyone who already had the file,
+ * which is exactly what makes the failure worth a check rather than care.
+ */
+val verifySourcesTracked by tasks.registering {
+  group = "verification"
+  description = "Checks that git does not ignore any Kotlin source file."
+
+  val rootDir = layout.projectDirectory.asFile
+  outputs.upToDateWhen { false }
+
+  doLast {
+    // A directory named `build` is Gradle output when it sits next to a build
+    // script, and a Kotlin package otherwise — which is the whole point here.
+    fun isGradleOutput(dir: File) = dir.name == "build" && dir.parentFile.resolve("build.gradle.kts").isFile
+    val sources = rootDir.walkTopDown()
+      .onEnter { it == rootDir || (!it.name.startsWith(".") && !isGradleOutput(it)) }
+      .filter { it.isFile && it.extension in setOf("kt", "kts") }
+      .map { it.relativeTo(rootDir).path }
+      .toList()
+    if (sources.isEmpty()) return@doLast
+
+    val process = ProcessBuilder("git", "check-ignore", "--stdin")
+      .directory(rootDir)
+      .redirectErrorStream(true)
+      .start()
+    process.outputStream.bufferedWriter().use { writer ->
+      sources.forEach { writer.appendLine(it) }
+    }
+    val ignored = process.inputStream.bufferedReader().readLines().filter { it.isNotBlank() }
+    val status = process.waitFor()
+    // 0: some path is ignored. 1: none is. Anything else means git could not
+    // answer (no repository, no git), which is not this check's business.
+    if (status > 1) {
+      logger.lifecycle("Tracked sources: skipped, git could not be asked.")
+      return@doLast
+    }
+    if (ignored.isNotEmpty()) {
+      error(
+        "git ignores these source files, so they will not reach a clone:\n" +
+          ignored.sorted().joinToString("\n") { "  - $it" } +
+          "\nFix .gitignore rather than committing them with --force."
+      )
+    }
+    logger.lifecycle("Tracked sources: git ignores none of the ${sources.size} Kotlin files.")
+  }
+}
+
 tasks.named("check") {
-  dependsOn(verifyModuleGraph, verifyDocsIndex)
+  dependsOn(verifyModuleGraph, verifyDocsIndex, verifySourcesTracked)
 }
