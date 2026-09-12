@@ -1,0 +1,34 @@
+# Overrides on top of detekt's default rule set (buildUponDefaultConfig = true).
+# Only deviations are listed; everything else is detekt's default.
+
+build:
+  maxIssues: 0
+
+complexity:
+  LongParameterList:
+    # Compose functions legitimately take many parameters.
+    ignoreAnnotated: ['Composable']
+  TooManyFunctions:
+    ignoreAnnotatedFunctions: ['Composable']
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][_A-Za-z0-9]*'
+
+style:
+  MagicNumber:
+    ignoreAnnotated: ['Composable']
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+  MaxLineLength:
+    maxLineLength: 120
+  ReturnCount:
+    max: 3
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview']
+
+exceptions:
+  TooGenericExceptionCaught:
+    active: true

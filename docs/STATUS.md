@@ -9,10 +9,10 @@ changelog.
 
 ## Where we are
 
-- **Phase:** design. UI prototype exists (`design/`); no application code yet.
+- **Phase:** implementation, Step 1 of `docs/TODO.md` done. The app builds,
+  tests and lints; no features yet.
 - **Latest release:** none.
-- **Branch state:** PRs #1–#4 merged. The implementation plan is in PR #5.
-  No code yet — Step 1 of the plan is the next thing to do.
+- **Branch state:** PRs #1–#6 merged. The skeleton is in PR #7.
 
 ## Done
 
@@ -32,10 +32,14 @@ changelog.
   foundations, ten screens, an on-device physics step, release.
 - Anti-stacking policy rewritten: nothing touches a resting die; a cocked die
   is re-thrown rather than nudged.
+- Skeleton (plan Step 1): devcontainer, Gradle convention plugins, 24 modules
+  matching `docs/architecture.md`, 60 tests, Compose theme from the Modernist
+  tokens, navigation graph for all ten screens, APK naming. `./gradlew build
+  test lint detekt ktlintCheck` is green.
 
 ## In progress
 
-- Nothing. `docs/TODO.md` Step 1 (skeleton) is the next step.
+- Nothing. `docs/TODO.md` Step 2 (CI, with SonarQube coverage) is next.
 
 ## Blocked / waiting on
 
@@ -43,6 +47,8 @@ changelog.
 
 ## Decisions pending
 
+- `minSdk` is 36 rather than 37, because Robolectric cannot run API 37 yet.
+  `targetSdk` is 37. Needs confirming — see `docs/TODO.md`.
 - Two smaller decisions from the prototype are not yet in `docs/` (designer
   3D preview, picker remembering the last set per group) — see `docs/TODO.md`.
 - Physics engine (Jolt vs. Bullet) — spike planned in Milestone 0.

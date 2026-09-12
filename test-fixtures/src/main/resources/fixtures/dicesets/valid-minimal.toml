@@ -1,0 +1,13 @@
+# The smallest dice set that must install cleanly.
+format = 1
+
+[set]
+id = "fixture-minimal"
+name = "Fixture, minimal"
+version = "1.0.0"
+license = "CC0-1.0"
+
+[[die]]
+id = "d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5, 6]

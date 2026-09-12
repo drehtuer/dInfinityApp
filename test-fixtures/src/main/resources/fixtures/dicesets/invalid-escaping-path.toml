@@ -1,0 +1,13 @@
+# Rejected: a file reference may not leave the set's own folder.
+format = 1
+
+[set]
+id = "fixture-escaping-path"
+name = "Fixture, path escape"
+version = "1.0.0"
+
+[[die]]
+id = "d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5, 6]
+texture = "../../../etc/passwd"

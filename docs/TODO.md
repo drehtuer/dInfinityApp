@@ -9,24 +9,6 @@ Everything here builds the specification in `README.md`, `docs/` and the
 prototype in [design/](../design/). Where a step says *device*, it cannot run
 on CI (see `.claude/CLAUDE.md`).
 
-## Step 1 — Skeleton
-
-An empty but complete module graph that builds and tests green. No features.
-
-- [ ] Devcontainer: JDK 21, Android SDK API 37, NDK, Gradle, ktlint, detekt, sonar-scanner, `adb`
-- [ ] Gradle: version catalog (`gradle/libs.versions.toml`) and convention plugins (`kotlin-jvm`, `android-library`, `compose`, `test`) so no module repeats build config
-- [ ] Module graph exactly as `docs/architecture.md`: `core/{model,notation,probability,stats}`, `dicesets/{format,install,builtin}`, `simulation/{api,jolt}`, `render/{filament,headless}`, `input/shake`, `designer`, `data`, `feature/*`, `app`
-- [ ] Every module gets one placeholder type **and one real test that asserts something true about it** — a graph that only compiles proves nothing
-- [ ] Test stack: JUnit5 + `kotlin.test` on the JVM, Robolectric + Compose UI test for Android modules, Turbine for flows, an `androidTest` source set in `simulation/jolt` and `render/filament`
-- [ ] `test-fixtures/`: golden roll seeds, a valid `diceset.toml`, one file per validator rejection case, sample saved-roll collections
-- [ ] App shell: single activity, Compose theme generated from the Modernist tokens (`design/_ds/…/styles.css` → colours, type, spacing), navigation graph with one empty destination per screen in Step 4
-- [ ] Version in one place (`version.txt` or the tag), APK naming `dInfinityApp-<version>[-debug].apk` wired into the build
-- [ ] `.editorconfig`, ktlint and detekt configs, `gradle.properties`
-
-**Done when** `./gradlew build test lint detekt ktlintCheck` is green in the
-devcontainer and every module named in `docs/architecture.md` exists and is
-reachable from `app`.
-
 ## Step 2 — CI
 
 Everything a machine can check, on every PR. Emulator and device suites are
@@ -291,7 +273,8 @@ Written down so the format need not change later. Not v1 scope.
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
 - [ ] SonarCloud or a self-hosted SonarQube? SonarCloud is free for public repositories and decorates PRs out of the box
-- [ ] Should `minSdk` stay at Android 17, or drop lower once v1 is out?
+- [ ] `minSdk` is 36, not 37. Robolectric 4.17 cannot start API 37 (its `InputManager` shadow calls a method API 37 removed) and cannot run below `minSdk`, so `minSdk = 37` would mean no Robolectric tests at all. `targetSdk`/`compileSdk` are 37. Confirm 36, or accept losing the Robolectric tier until Robolectric catches up
+- [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] d18 shape: the enneagonal trapezohedron is assumed; verify it reads well at phone size
 - [ ] Division rounding default is Down with a per-throw override — confirm Nearest is worth having
 - [ ] The design project's `.thumbnail` is not imported; decide whether a preview image belongs in the repo

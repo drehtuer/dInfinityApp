@@ -1,0 +1,11 @@
+{
+  "_comment": "Rejected outright: a group name that already exists is never merged (docs/dice-notation.md).",
+  "format": 1,
+  "name": "Thorin again",
+  "groups": [
+    { "id": "thorin-2", "name": "Thorin", "icon": "⚔️", "parent": null }
+  ],
+  "rolls": [
+    { "group": "thorin-2", "name": "Longsword", "icon": "🗡️", "formula": "1d20 + 7" }
+  ]
+}

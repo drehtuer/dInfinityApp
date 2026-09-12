@@ -98,6 +98,21 @@ shipped yet. See
 [docs/STATUS.md](docs/STATUS.md) for the current state and
 [docs/TODO.md](docs/TODO.md) for what is next.
 
+## Building
+
+Everything happens in the devcontainer — it carries the JDK, the Android SDK,
+Gradle and the linters, and nothing is expected on the host but Docker. Open
+the repository in a devcontainer-aware editor, or:
+
+```sh
+docker build -t dinfinity-dev .devcontainer
+docker run --rm -it -v "$PWD":/workspace -w /workspace dinfinity-dev \
+  ./gradlew build test lint detekt ktlintCheck
+```
+
+Release and debug APKs land in `app/build/outputs/named-apk/` as
+`dInfinityApp-<version>.apk` and `dInfinityApp-<version>-debug.apk`.
+
 ## Contributing
 
 The working agreements — branching, PRs, tests, releases, build naming, how
@@ -106,7 +121,8 @@ the tracking files are kept tidy — are in
 
 ## Platform
 
-- Android 17 (API 37) is the target and minimum SDK for v1
+- Targets Android 17 (API 37); `minSdk` is 36 for now — see
+  [docs/TODO.md](docs/TODO.md), "Open questions"
 - Reference device: Google Pixel 10a; that is where it is tested first
 - Kotlin, Jetpack Compose
 - 3D rendering and physics run on-device; the app works fully offline.

@@ -39,9 +39,10 @@ that swapping is contained to one module.
 ## Modules
 
 ```
-app/                 Android application, DI wiring, navigation
+build-logic/         Gradle convention plugins — every module's build config lives here, once
+app/                 Application: single activity, theme, navigation graph
 core/
-  model/             Die, DiceSet, Face, RollFormula, RollResult — pure Kotlin, no Android deps
+  model/             Die, DiceSet, Face, RollPlan, RollResult — pure Kotlin, no Android deps
   notation/          Formula parser + evaluator (docs/dice-notation.md)
   probability/       Exact PMF computation (docs/probability.md)
   stats/             Statistics aggregation logic
@@ -59,17 +60,33 @@ input/
   shake/             Sensor fusion → throw impulses
 designer/            Face drawing canvas → dice set export (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
-feature/
-  roll/              Main roll screen
-  formula/           Formula editor + outcome graph
+feature/             One module per screen group; see docs/TODO.md Step 4
+  roll/              Roll screen: tray, dice picker, formula field, result sheet
+  graph/             Outcome graph
   saved/             Saved rolls: groups, list, editor, import/export
-  sets/              Dice set and table browser / installer
-  stats/             Statistics screens
+  sets/              Dice set browser, details, installer
+  tables/            Table picker
+  designer/          Face designer screen over the designer/ engine
+  stats/             Statistics, history and sessions — the "Look back" screens
+  settings/          Settings and the menu
+test-fixtures/       Test data shared by every module: dice sets, collections, golden roll cases
 ```
 
-Rule: `core/*` and `simulation/api` have no Android dependency and are fully
-unit-testable on the JVM. `simulation/jolt` is tested with instrumented tests
-plus a golden-result determinism suite.
+Ten screens, eight `feature/` modules: statistics, history and sessions are one
+module because they are one screen group over one set of data
+(`design/dInfinity.dc.html`, options 1w, 1x, 6c) and splitting them would only
+split the queries.
+
+Rule: `core/*`, `dicesets/format`, `simulation/api`, `render/headless` and
+`test-fixtures` are plain Kotlin modules with no Android dependency, so they
+run on the JVM and stay fast; everything else is an Android library.
+`simulation/jolt` and `render/filament` are tested with instrumented tests on
+a device plus the golden determinism suite (`docs/TODO.md`, Step 5).
+
+Build configuration is not repeated per module: `build-logic` provides four
+convention plugins — `dinfinity.kotlin-jvm`, `dinfinity.android-library`,
+`dinfinity.android-feature` (a library with Compose) and `dinfinity.android-app`
+— and every module's build script is a plugin line plus its dependencies.
 
 ## Data flow of a roll
 
