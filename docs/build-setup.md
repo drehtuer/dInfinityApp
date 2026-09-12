@@ -312,6 +312,7 @@ terminal means.
 | `ci.yml` — Documentation | PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. These two need Node and a headless browser, which the devcontainer does not carry for one linter and one diagram, so unlike the invariants above they run only here |
 | `release.yml` | tag `vX.Y.Z` | The full check suite, then a signed release APK attached to a GitHub Release with its SHA-256. Refuses to republish an existing release, refuses a tag that disagrees with `version.txt`, and refuses an APK not signed by the release key |
 | `pages.yml` | push to `main` touching docs, design or the site config | Publishes `docs/` and `design/` to GitHub Pages, so the prototype opens from a link instead of a clone |
+| `dependabot-metadata.yml` | PR opened by Dependabot | Regenerates `gradle/verification-metadata.xml` for the bumped dependency and commits it to the branch |
 | `codeql.yml` | PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
 
 The JDK, the SDK packages and Gradle come from one composite action,
@@ -417,9 +418,30 @@ The task list matters for the same reason. It has to resolve every configuration
 the build uses, `assembleDebugAndroidTest` included, or the device suite fails on
 its own dependencies.
 
-This also means a Dependabot pull request will fail its build until the metadata
-is regenerated on that branch. That is the cost of the check, and it is the
-point of it: a changed artifact is supposed to stop the build.
+A Dependabot pull request changes which artifacts the build resolves, so it
+would fail until someone regenerated the file by hand. That is the check
+working — a changed artifact is supposed to stop the build — but it is not work
+worth doing by hand every week, so
+[`.github/workflows/dependabot-metadata.yml`](../.github/workflows/dependabot-metadata.yml)
+does it: it regenerates the file on the branch and commits it.
+
+It runs as two jobs, and the split is the point. Regenerating the metadata means
+running the project's build, and a build runs code from the branch — so that job
+has **no write access**. The job that does have write access never checks out
+the branch and never runs anything from it: it takes the finished file as an
+artifact and commits it through the contents API. CodeQL flags the one-job
+version of this, rightly.
+
+One wrinkle is worth knowing rather than puzzling over. A commit made with
+`GITHUB_TOKEN` deliberately starts no new workflow run, so the pull request's
+checks stay attached to the commit *before* the metadata fix and show as failed.
+Everything is correct; the checks simply need one re-run.
+
+To make that automatic, add a fine-grained personal access token with
+**contents: write** on this repository as a **Dependabot secret** named
+`DEPENDABOT_METADATA_TOKEN` (Settings → Secrets and variables → Dependabot — not
+the Actions secrets, which a Dependabot-triggered run cannot read). The workflow
+uses it if it is there and falls back to `GITHUB_TOKEN` if it is not.
 
 ## Linting the convention plugins
 
