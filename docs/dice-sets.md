@@ -119,11 +119,11 @@ sound = "felt"
 | Field | Required | Notes |
 |---|---|---|
 | `format` | yes | Integer. The app refuses formats newer than it knows. |
-| `set.id` | yes | Slug. Used as the `setref` in notation and as the folder name. |
+| `set.id` | yes | Slug of 3–40 characters (`[a-z0-9-]`, starting and ending with a letter or digit). Used as the `setref` in notation and as the folder name, which is why it has a floor. |
 | `set.name`, `set.version` | yes | |
 | `set.author`, `license`, `description`, `homepage` | no | Displayed only. `homepage` is shown as text, opened only on explicit tap, `https` only. |
 | `defaults.*` | no | Material and physics defaults, all clamped. |
-| `die.id` | yes | Slug, unique within the set. Standard names (`d2`…`d100`, `d10-tens`, `df`) are what typed notation resolves, optionally set-qualified as `brass:2d20`. A die with any other id is rolled by tapping it in the dice picker — the grammar in `docs/dice-notation.md` has no unambiguous way to write `skull-d6kh1`, since a slug and a modifier are made of the same characters. |
+| `die.id` | yes | Slug of 1–40 characters, unique within the set — shorter than a set id, because `d2`, `d4` and `d6` are the ids plain notation resolves. Standard names (`d2`…`d100`, `d10-tens`, `df`) are what typed notation resolves, optionally set-qualified as `brass:2d20`. A die with any other id is rolled by tapping it in the dice picker — the grammar in `docs/dice-notation.md` has no unambiguous way to write `skull-d6kh1`, since a slug and a modifier are made of the same characters. |
 | `die.shape` | yes | A name from the shape catalogue below. v1 has no other option. |
 | `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (d2-as-d6). |
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
@@ -265,24 +265,54 @@ face designer exports and the built-in set. It produces a report of
 
 Errors (set is rejected):
 
-- TOML syntax error, unknown `format`, missing required fields
-- Bad slug, duplicate die id
-- Unknown shape (including `mesh`, which v1 does not implement); `faces` length ≠ shape face count
-- Referenced file missing, outside the folder, wrong extension, over size
-- Texture over dimension or byte limits, not decodable
+- TOML syntax error, unknown `format`, missing required fields, a field of the
+  wrong kind
+- Bad slug, duplicate die id, duplicate table id
+- Unknown shape (including `mesh`, which v1 does not implement); `faces` length
+  ≠ shape face count; a face value outside −9999..9999
+- A `read`, `sound` or `light` naming something the app does not have
+- Referenced file missing, outside the folder, absolute, wrong extension, over
+  size; the package's textures over 24 MiB together
+- Texture over the dimension limit, or not a picture of the kind its name
+  claims
 - Any numeric physics value non-finite
+- `homepage` that is not `https`
 
 Warnings (set installs, user sees them):
 
-- Physics value clamped
+- Physics value clamped, table tiling clamped
 - A standard die id missing (e.g. no `d12`) — notation will fall back
 - Label longer than 4 chars truncated
-- Texture atlas has empty cells
+- Unknown key, ignored
+- A texture that does not divide into square atlas cells
 
-The parser is a strict, hand-written (or `tomlkt` with a fixed schema) TOML
-reader into plain data classes. No reflection, no polymorphic deserialization,
-no default-on-error. Unknown keys are ignored with a warning to allow future
-extensions.
+Every error is reported, not only the first: an author fixing a set wants the
+whole list, and the screen that shows a failed install has room for it
+(option 6b).
+
+The whole check runs over an abstraction of the package's files rather than
+over a folder, so the same code validates a temporary extraction during an
+install, a zip, the app's own assets and a test's memory. A validator that
+could only read one of those would only ever be tested on one of those.
+
+**Dimensions before decoding.** A texture's width and height are read out of
+its PNG `IHDR` or WebP header, in plain Kotlin, before any decoder sees the
+bytes — that is what makes refusing a 30,000-pixel image safe, since the
+decoder is the part with the attack surface. The same read is what rejects a
+truncated download or a `.png` that is not one. The full decode happens later,
+on the IO dispatcher at load time, inside these same caps; a file that
+survives the header check but cannot actually be decoded is reported then, and
+the die falls back to its label.
+
+The parser is [tomlj](https://github.com/tomlj/tomlj), a TOML 1.0 reader,
+chosen over a hand-written one because parsing TOML is exactly the sort of
+thing that should not be hand-rolled (`.claude/CLAUDE.md`) and over the
+alternatives because it reports the line and column of every key it read —
+without which the report above could not carry `file:line` at all. It is used
+through its document tree only: every field is asked for by name and checked by
+hand into a plain data class. No reflection, no polymorphic deserialization, no
+default-on-error, and no deserializer ever sees a downloaded file. Unknown keys
+are ignored with a warning to allow future extensions.
 
 ## Runtime isolation
 
