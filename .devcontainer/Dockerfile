@@ -79,7 +79,9 @@ RUN yes | sdkmanager --licenses > /dev/null 2>&1 || true \
  && echo "${BUILD_TOOLS##*;}" > "${ANDROID_HOME}/.build-tools-version"
 
 ENV PATH="${ANDROID_HOME}/build-tools/latest:${PATH}"
-RUN ln -s "${ANDROID_HOME}/build-tools/$(cat "${ANDROID_HOME}/.build-tools-version")" "${ANDROID_HOME}/build-tools/latest" \
+RUN BUILD_TOOLS_VERSION="$(cat "${ANDROID_HOME}/.build-tools-version")" \
+ && ln -s "${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}" \
+          "${ANDROID_HOME}/build-tools/latest" \
  && if [ "${INSTALL_NDK}" = "true" ]; then \
       NDK="$(grep -E '^ndk;[0-9]+\.[0-9]+\.[0-9]+$' /tmp/sdk-packages.txt | tail -1)" \
       && CMAKE="$(grep -E '^cmake;[0-9]+\.[0-9]+\.[0-9]+$' /tmp/sdk-packages.txt | tail -1)" \
@@ -88,12 +90,13 @@ RUN ln -s "${ANDROID_HOME}/build-tools/$(cat "${ANDROID_HOME}/.build-tools-versi
       && echo "${NDK##*;}" > "${ANDROID_HOME}/.ndk-version"; \
     else \
       echo "NDK skipped (INSTALL_NDK=${INSTALL_NDK})"; \
-    fi
-
+    fi \
 # ── Gradle ───────────────────────────────────────────────────────────────
 # The project uses the wrapper; this Gradle exists so the wrapper can be
 # (re)generated and so a clean checkout has a working `gradle` on PATH.
-RUN curl --proto '=https' --proto-redir '=https' -fsSL -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+ && curl --proto '=https' --proto-redir '=https' -fsSL \
+      -o /tmp/gradle.zip \
+      "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
  && unzip -q /tmp/gradle.zip -d /opt \
  && mv "/opt/gradle-${GRADLE_VERSION}" "${GRADLE_HOME}" \
  && rm /tmp/gradle.zip \
