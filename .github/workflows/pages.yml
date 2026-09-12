@@ -1,0 +1,95 @@
+name: Documentation site
+
+# The specification — docs/ and the clickable prototype in design/ — published
+# so it can be opened from a link. GitHub does not serve HTML out of a
+# repository, so without this the prototype needs a clone to look at
+# (docs/build-setup.md).
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "design/**"
+      - "README.md"
+      - "SECURITY.md"
+      - "_config.yml"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time, and never cancel one half-done: the site would be
+# left in whatever state the interrupted upload reached.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      # Jekyll renders a Markdown file only if it has front matter, and copies
+      # it verbatim otherwise — which would publish a site of raw .md
+      # downloads. Adding the block here rather than to every document keeps it
+      # out of the repository, where it would be noise in every diff and would
+      # show up in the files GitHub renders.
+      - name: Give every document front matter
+        run: |
+          set -euo pipefail
+          count=0
+          while IFS= read -r -d '' document; do
+            printf -- '---\n---\n' | cat - "$document" > "${document}.tmp"
+            mv "${document}.tmp" "$document"
+            count=$((count + 1))
+          done < <({ find . -maxdepth 1 -name '*.md' -print0
+                    find docs design -name '*.md' -print0
+                  })
+          echo "Prepared ${count} documents."
+
+      - uses: actions/jekyll-build-pages@44a6e6beabd48582f863aeeb6cb2151cc1716697 # v1.0.13
+
+      # The prototype is the reason this site exists, so its absence is a
+      # failure rather than something to notice weeks later. `_ds` is the case
+      # that actually breaks: Jekyll skips anything starting with an underscore
+      # unless `include:` names it, and without it the prototype renders with no
+      # styles at all.
+      - name: Check the prototype was published
+        run: |
+          set -euo pipefail
+          for required in \
+            _site/design/dInfinity.dc.html \
+            _site/design/dInfinityPhone.dc.html \
+            _site/design/support.js \
+            _site/docs/architecture.html
+          do
+            [ -f "$required" ] || { echo "::error::$required is missing from the site."; exit 1; }
+          done
+          if ! find _site/design/_ds -name 'styles.css' | grep -q .; then
+            echo '::error::The design system styles are missing — check include: in _config.yml.'
+            exit 1
+          fi
+          echo "Prototype and documentation published."
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

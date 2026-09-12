@@ -55,6 +55,11 @@ changelog.
   see is still enforced.
 - Every dependency is pinned by SHA-256 in `gradle/verification-metadata.xml`,
   verified on a cold cache.
+- `main` requires its checks to pass before a merge, and releases are cut by
+  `release.yml` from a `vX.Y.Z` tag: signed, fingerprint-checked, immutable.
+- The specification is published at
+  <https://drehtuer.github.io/dInfinityApp/> — documents and the clickable
+  prototype, no clone needed.
 - Everything in the repository is now linted by something: Markdown by
   markdownlint, mermaid by `mermaid-cli`, relative links and the docs index by
   Gradle tasks in `check`, and the convention plugins in `build-logic` by the
@@ -66,9 +71,11 @@ changelog.
 
 ## In progress
 
-- `docs/TODO.md` Step 2, what is left: release-on-tag, the docs site, test
-  annotations on pull requests, and required status checks on `main`. Two
-  entries are waiting on other people: CodeQL's Kotlin support and an AGP fix.
+- `docs/TODO.md` Step 2 is essentially done: release-on-tag, the documentation
+  site, test annotations and required status checks all landed. What is left is
+  one thing to prove (a throwaway tag, to run `release.yml` for real), one to
+  automate (regenerating the dependency metadata on Dependabot branches), and
+  two waiting on other people (CodeQL's Kotlin support, an AGP fix).
 
 ## Blocked / waiting on
 

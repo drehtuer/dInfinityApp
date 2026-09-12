@@ -1,0 +1,140 @@
+name: Release
+
+# `vX.Y.Z` only. A tag of any other shape is not a release (.claude/CLAUDE.md).
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+
+# Two runs for the same tag would race to publish the same artifacts, and a
+# release is immutable, so the second must not start at all.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Releases are immutable: never move, delete or re-tag a published
+      # version, ship a new one instead (.claude/CLAUDE.md). The tag itself is
+      # protected by the repository's `releases` ruleset; this refuses to
+      # overwrite the release and the assets attached to it.
+      - name: Refuse to republish an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" --json tagName > /dev/null 2>&1; then
+            echo "::error::A release for $TAG already exists. Releases are immutable — ship a new version."
+            exit 1
+          fi
+          echo "No release for $TAG yet."
+
+      # The tag and version.txt have to agree, or the APK inside the release is
+      # named for a different version than the release itself.
+      - name: Check the tag matches version.txt
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="$(cat version.txt)"
+          if [ "v${version}" != "$TAG" ]; then
+            echo "::error::Tag $TAG does not match version.txt (${version}). Bump version.txt in the commit you tag."
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_ENV"
+
+      - uses: ./.github/actions/setup-android-build
+
+      # The release key never reaches the repository — it is rebuilt here from
+      # the secrets and removed again, whatever happens afterwards.
+      - name: Restore the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEYSTORE_BASE64}" ]; then
+            echo "::error::SIGNING_KEYSTORE_BASE64 is not set; a release must be signed."
+            exit 1
+          fi
+          mkdir -p keystore
+          printf '%s' "${KEYSTORE_BASE64}" | base64 -d > keystore/release.keystore
+          {
+            echo "releaseStoreFile=keystore/release.keystore"
+            echo "releaseStorePassword=${KEYSTORE_PASSWORD}"
+            echo "releaseKeyAlias=${KEY_ALIAS}"
+            echo "releaseKeyPassword=${KEY_PASSWORD}"
+          } > keystore/keystore.properties
+          chmod 600 keystore/keystore.properties keystore/release.keystore
+
+      # The same checks a pull request gets. A tag is not a reason to skip them.
+      - name: Build, test and analyse
+        run: ./gradlew build test coverageReport lint detekt ktlintCheck --stacktrace
+
+      - name: Assemble the release APK
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      # A release APK that is unsigned, or signed with the debug key, installs
+      # as a different app and can never update anyone. Worth proving rather
+      # than assuming: without keystore.properties the build quietly produces an
+      # unsigned APK instead of failing.
+      - name: Verify the APK is signed, by the right key, and named correctly
+        run: |
+          set -euo pipefail
+          apk="app/build/outputs/named-apk/release/dInfinityApp-${version}.apk"
+          if [ ! -f "$apk" ]; then
+            echo "::error::$apk was not produced."
+            ls -R app/build/outputs/named-apk || true
+            exit 1
+          fi
+          apksigner="$(find "${ANDROID_HOME}/build-tools" -name apksigner | sort | tail -1)"
+
+          # apksigner reports only the scheme it actually used, and for an APK
+          # whose minSdk is 36 that is v3 alone — v2 shows as false even though
+          # the block is there. So each scheme is checked in the era it governs.
+          "$apksigner" verify --verbose --print-certs "$apk" | tee signing.txt
+          grep -q "^Verifies$" signing.txt
+          grep -q "Verified using v3 scheme (APK Signature Scheme v3): true" signing.txt
+          "$apksigner" verify --min-sdk-version 24 --max-sdk-version 27 --verbose "$apk" > v2.txt
+          grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" v2.txt
+
+          # The signature verifying is not the same as it being *our* signature.
+          # This is what catches a release accidentally signed with the debug key
+          # or a regenerated one, which would strand every existing install.
+          expected="$(cat keystore/release-certificate.sha256)"
+          actual="$(sed -n 's/.*certificate SHA-256 digest: //p' signing.txt | head -1)"
+          if [ "$actual" != "$expected" ]; then
+            echo "::error::Signed by the wrong key. Expected ${expected}, got ${actual}."
+            exit 1
+          fi
+          echo "Signed by the release key ${actual}."
+
+          sha256sum "$apk" | tee "${apk}.sha256"
+          echo "apk=${apk}" >> "$GITHUB_ENV"
+
+      - name: Remove the signing key
+        if: ${{ always() }}
+        run: rm -rf keystore/release.keystore keystore/keystore.properties
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --title "dInfinity ${version}" \
+            --generate-notes \
+            "${apk}" "${apk}.sha256"

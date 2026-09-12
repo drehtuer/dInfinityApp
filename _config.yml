@@ -1,0 +1,63 @@
+# GitHub Pages. The site is the specification: the documents in docs/ and the
+# clickable prototype in design/, so both can be opened from a link instead of
+# needing a clone.
+title: dInfinity
+description: An Android dice roller where every roll is a physics simulation.
+theme: jekyll-theme-primer
+
+# The prototype's design system lives in design/_ds/. Jekyll skips anything
+# beginning with an underscore unless told otherwise, which would leave the
+# prototype rendering without a single style.
+include:
+  - "_ds"
+
+# Everything that is code, build output or tooling. Whatever is not listed here
+# is published, so a new document appears on the site without anyone
+# remembering to add it.
+exclude:
+  - .devcontainer/
+  - .github/
+  - .gradle/
+  - .kotlin/
+  - app/
+  - build/
+  - build-logic/
+  - config/
+  - core/
+  - data/
+  - designer/
+  - dicesets/
+  - feature/
+  - gradle/
+  - input/
+  - keystore/
+  - render/
+  - simulation/
+  - test-fixtures/
+  - tools/
+  - Gemfile
+  - "*.gradle.kts"
+  - "*.properties"
+  - gradlew
+  - gradlew.bat
+  - version.txt
+
+# Markdown links between documents are written for the repository — they point
+# at .md files. This rewrites them to the pages Jekyll actually produces, so the
+# same link works in both places.
+plugins:
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: false
+
+# Jekyll renders a Markdown file only if it has front matter, and copies it
+# verbatim otherwise — a site of raw .md downloads. The publish workflow adds an
+# empty front-matter block to each document as it builds, and this supplies the
+# layout, so nothing has to be added to the files in the repository.
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default

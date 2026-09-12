@@ -14,11 +14,8 @@ on CI (see `.claude/CLAUDE.md`).
 Everything a machine can check, on every PR. Emulator and device suites are
 Step 5 and stay off CI.
 
-- [ ] Annotate test results and failures on the pull request itself, rather than only in the run log and the uploaded reports
-- [ ] **Docs site:** publish `docs/` and `design/` to GitHub Pages so the prototype can be opened from a link rather than only from a clone — GitHub does not serve HTML from a repository, so today it takes a checkout
-- [ ] **Release on tag `vX.Y.Z`:** optimised build (R8, shrinking), `dInfinityApp-<version>.apk` attached to a GitHub Release, docs site built for the tag. Releases are immutable — the workflow refuses to overwrite an existing tag
-- [ ] Require the CI checks in the `main` ruleset once their names are stable — the ruleset enforces pull requests today but no status check has to pass
 - [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready
+- [ ] Cut a throwaway release to prove `release.yml` end to end. Its pieces are tested — the signing and fingerprint checks were run against real APKs, and against a debug-signed one to see them refuse — but the workflow itself has never run
 - [ ] Regenerate `gradle/verification-metadata.xml` automatically on a Dependabot branch, or those pull requests fail their build until someone does it by hand (`docs/build-setup.md`)
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 
