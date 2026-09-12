@@ -1,5 +1,9 @@
 # Dice notation
 
+> **Design:** the notation field (option 2a), the three dice pickers (1h–1j),
+> the parse-error state (9c) and the saved-roll screens (1n–1p, editor 1r,
+> import 9f–9g) are in the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)).
+
 dInfinity accepts the tabletop notation most players already know, e.g.
 `3d6 + 1d20 - 4`. This document defines exactly what is accepted and how it
 is evaluated.
@@ -14,7 +18,7 @@ is evaluated.
 | `2d20kh1` | roll two d20, keep the highest (advantage) |
 | `2d20kl1` | keep the lowest (disadvantage) |
 | `4d6dl1` | roll four d6, drop the lowest (stat generation) |
-| `d%` or `d100` | percentile: two d10 as tens and units |
+| `d100` or `d%` | percentile: two d10 as tens and units (`d%` is an alias for `d100`) |
 | `8d6!` | exploding d6: each 6 rolls an additional d6 |
 | `2 * (1d8 + 3)` | arithmetic and grouping |
 | `1d6 + 1d4 [Fire]` | trailing label, ignored for math, shown in breakdown |
@@ -30,7 +34,7 @@ factor    := ("-")? atom
 atom      := dice | integer | "(" expr ")"
 dice      := (setref ":")? count? "d" sides modifier*
 count     := integer                     ; default 1, max 200
-sides     := integer | "%" | "F"          ; "%" = 100 (as 2d10), "F" = fudge/fate die
+sides     := integer | "%" | "F"          ; "%" is an alias for 100 (as 2d10), "F" = fudge/fate die
 setref    := identifier                  ; installed dice set id
 modifier  := "kh" integer                ; keep highest n
            | "kl" integer                ; keep lowest n
@@ -70,8 +74,10 @@ capacity check happens before any body is created and the UI explains it
 
 1. Parse into an AST.
 2. Resolve each `dice` node to concrete `Die` definitions: `setref` if given,
-   otherwise the user's current default set, falling back to the built-in set
-   if the default set lacks that die.
+   otherwise the default set from Settings, falling back to the built-in set
+   **per die** when the default set lacks that one (so a set with no d12 still
+   rolls `1d20 + 1d12`). The breakdown names the set each die came from and
+   says when it fell back.
 3. Run the table capacity check on the total die count (including the dice
    that a first explosion could add). Refuse with a message if it fails.
 4. All dice from all groups go into **one** physics throw. The breakdown
@@ -79,12 +85,24 @@ capacity check happens before any body is created and the UI explains it
 5. Exploding dice: extra dice are thrown in a *second* throw after the first
    settles, and so on, up to the depth limit. In power-saving mode this is
    invisible; in normal mode the extra dice drop into the tray.
-6. Apply keep/drop/reroll/min per group, then arithmetic. Division rounds
-   down (`7/2 = 3`), matching most game rules; this is configurable.
+6. Apply keep/drop/reroll/min per group, then arithmetic. See Division
+   rounding below.
 7. Produce a `RollResult` with the total and a per-die breakdown including
    dropped dice (shown struck through). The result screen shows the total
    large, then each group's subtotal and the individual dice, then the
    modifiers — the user never has to add anything up.
+
+## Division rounding
+
+Division rounds **down** by default (`7/2 = 3`), which is what most game
+rules say. The default is a setting, and the result sheet offers Down /
+Nearest / Up for the throw in front of you — the total is recomputed from the
+same dice, which stay as they landed. Nearest rounds `.5` up and anything
+below `.5` down.
+
+The per-throw override is not remembered: the next roll uses the setting
+again. The outcome graph always uses the setting, since it is computed before
+the throw exists.
 
 ## Picking dice without typing
 
@@ -94,18 +112,19 @@ the outcome graph, the breakdown and statistics work identically for picked
 dice and typed formulas. A picked roll can be turned into a saved roll with
 one tap.
 
-## d100 handling
+## d100 and d%
 
-`d100` and `d%` are always resolved to a tens d10 (faces 00–90) and a units
+`d%` is an alias for `d100` everywhere: in typed formulas, saved rolls,
+imported collections and the breakdown (which always prints `d100`).
+Both are always resolved to a tens d10 (faces 00–90) and a units
 d10 (0–9) from the same set, marked as a pair. Result = tens + units, with
 00+0 = 100. If the set has a `d100-tens` die it is used; otherwise the normal
 d10 is used with its face values multiplied by ten in the breakdown. Sets can
 also define a true 100-face die but it is never chosen by `d100` implicitly.
 
-## d3 and d2
+## d2
 
-`d3` uses the set's `d3` if present (a triangular prism), otherwise a d6 with
-face values `1,2,3,1,2,3`. `d2` uses a coin if present, otherwise a d6 with
+`d2` uses the set's coin if present, otherwise a d6 with face values
 `1,2,1,2,1,2`. Which one was used is visible in the breakdown.
 
 ## Saved rolls
@@ -164,9 +183,11 @@ rolls.
 - **Import** from a file, from a pasted URL, or from a git repository (same
   sources as dice sets, see `docs/dice-sets.md`). A community can keep a
   repo of "stat blocks for monster manual X" this way.
-- Import is a merge: existing groups with the same id get new rolls added,
-  identical rolls (same group, name, formula) are skipped, conflicting ones
-  are shown for the user to decide. Nothing is deleted on import.
+- Import **never merges and never deletes**. A collection whose group name
+  already exists is refused outright, naming the clash; rename the group in
+  the file (or the one in the app) and import again. Everything else is added
+  as new groups and rolls. There is no conflict-resolution UI to get wrong,
+  and an import can never damage what is already there.
 - Every formula goes through the parser and limits above. Unknown dice set
   references are kept but flagged; icons are restricted to emoji or names
   from the built-in icon pack (no image files in collections).

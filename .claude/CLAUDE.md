@@ -14,20 +14,27 @@ structure.
 - Branch names: `feature/<short-slug>`, `fix/<short-slug>`, `docs/<short-slug>`.
 - Commit messages: imperative subject, body explaining *why* when it is not
   obvious.
+- **Delete the local branch once its PR is merged.** Pull `main`, then
+  `git branch -d <branch>` — it refuses anything not fully merged, so it can
+  only remove work that is already on `main`. Do this as part of finishing
+  the PR, not as an occasional tidy-up: a list of stale branches makes it
+  hard to see what is actually in flight.
 
 ## Tracking files
 
-- `docs/TODO.md` holds open tasks; `docs/STATUS.md` holds the current state
-  of the project (phase, what is done, in progress, blocked, pending
-  decisions).
+- `docs/TODO.md` is the implementation plan and the list of open tasks;
+  `docs/STATUS.md` holds the current state of the project (phase, what is
+  done, in progress, blocked, pending decisions).
 - Update them as part of the work, not afterwards: starting a task moves it
   to "In progress" in `docs/STATUS.md`; finishing it removes it from
   `docs/TODO.md` and
   moves the status line to "Done" (or drops it once it is old news).
-- **Compact and clean both files regularly** — at least whenever a milestone
+- **Compact and clean both files regularly** — at least whenever a step
   completes or a PR touches them. Remove finished items, merge duplicates,
-  drop stale "Done" entries that git history already records, and keep each
-  file to roughly one screen. They are snapshots, not changelogs.
+  drop stale "Done" entries that git history already records. `docs/TODO.md`
+  is as long as the remaining plan needs, and gets shorter as steps are
+  deleted; `docs/STATUS.md` stays at roughly one screen. Neither is a
+  changelog — git history is.
 - Refresh the `Last updated` date in `docs/STATUS.md` when you change it.
 
 ## Documentation
@@ -42,6 +49,12 @@ structure.
 - **Every document in `docs/` is linked from the table in `README.md`.**
   Adding, renaming or removing a document updates that table in the same
   PR; the README is the index and must never be incomplete.
+- The prototype in `design/` is the visual half of the specification. It is
+  linked from `README.md`, each document in `docs/` links to the screens that
+  realise it, and `design/README.md` carries the same map in reverse — a
+  change to any of the three keeps the other two true. A design decision that
+  changes behaviour, limits or defaults is only done when `docs/` says the
+  same thing.
 - Diagrams are **mermaid** (` ```mermaid ` fences). No ASCII art, no images
   for things mermaid can draw.
 
@@ -55,12 +68,33 @@ structure.
   an **actual device** (reference device: Pixel 10a).
 - CI can only run JVM unit tests, Robolectric tests, linters and builds.
   Emulator and on-device tests **cannot run on CI**; they run on the
-  developer's machine. When a change needs those, run what you can, then
+  developer's machine, from inside the devcontainer, against a phone attached
+  over WiFi debugging (`docs/build-setup.md`). When a change needs those, run what you can, then
   ask the user to run the emulator/device suite and report back — do not
   claim they passed.
 - If verifying a change requires something you cannot do (a physical shake
   test, checking haptics, judging how a texture looks), ask the user to
   check and say exactly what to look for.
+
+### Coverage
+
+- Measure **function and branch** coverage, not lines alone — JaCoCo's
+  `METHOD` and `BRANCH` counters, merged across JVM and Robolectric runs and
+  published to SonarQube. Line coverage rewards code that is merely executed;
+  branch coverage is what says the error path was tried, and function
+  coverage is what catches the helper nobody ever calls from a test.
+- **Coverage must not sink in a PR.** CI compares both counters against
+  `main` and fails on a drop in either. Shipping untested code next to tested
+  code is not a trade — write the tests in the same PR.
+- A drop is occasionally legitimate (deleting well-covered code, or a
+  refactor that moves logic behind the device-only line). Then say so in the
+  PR description with the numbers; do not lower the threshold to make the
+  check pass.
+- Code that can only be exercised on a device (the physics bridge, the
+  renderer) is excluded from the coverage figure but **not** from static
+  analysis, and its device test results are reported separately — the gap
+  should be visible, not hidden by an exclusion that quietly counts as
+  covered.
 
 ## Releases and builds
 
@@ -88,6 +122,11 @@ structure.
   `docs/dice-sets.md`. Do not add code paths that bypass it.
 - The physics result *is* the roll. Do not introduce any RNG shortcut that
   decides a die's value outside the simulation, in any mode.
+- **Nothing touches a die that has come to rest.** No impulse, no tray tilt,
+  no snapping to a face. Dice are kept from stacking by prevention and by
+  corrections applied while they are still moving; a die that ends up cocked
+  is re-thrown visibly. A settled die that twitches is a bug
+  (`docs/physics-and-rendering.md`).
 - Run the linters and static checks (ktlint/detekt, Android Lint) before
   opening a PR and keep them clean. New warnings are not acceptable in a PR.
 
@@ -96,5 +135,11 @@ structure.
 - Development happens in the **devcontainer**; it has the JDK, Android SDK,
   NDK, Gradle, linters and everything else needed. Do not install tools on
   the host or assume host tools exist.
-- The emulator and physical devices are attached from the developer's
-  machine, outside the container's control — see Testing.
+- The container has `adb`. A phone is attached over **WiFi debugging** and
+  paired from inside the container, so `connectedAndroidTest` runs there like
+  any other Gradle task; `docs/build-setup.md` has the procedure. USB
+  passthrough is not used — it is awkward in a container and wireless is
+  enough.
+- Signing keys are never committed. `keystore/keystore.properties` and the
+  keystores it points at are gitignored; without them the build still works,
+  producing default-signed debug builds and unsigned release builds.

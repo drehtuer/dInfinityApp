@@ -1,5 +1,9 @@
 # Tables
 
+> **Design:** the table picker is option 1u of the [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html)
+> ([design/](../design/)); 9j adds an installed set's table and 8a pins one to
+> a saved-roll group.
+
 The **table** is the dice tray: the box the dice tumble in. Two things about
 it are fixed and one is exchangeable.
 
@@ -130,11 +134,17 @@ be exported with the rest of `mine`.
 
 ## Selecting a table
 
+- **Tables are global.** Every look from every installed package is listed in
+  every table picker, whatever dice set it shipped with. A dice set never
+  brings its own table along or overrides the chosen one: a roll that mixes
+  Brass & Bone dice with built-in dice happens on the one selected table,
+  like reaching into two bags over the same tray.
 - Settings → Table shows all installed looks as thumbnails rendered on the
   actual box mesh, with a "roll a d20 here" preview.
 - Saved-roll groups can pin a table ("the Strahd campaign is always played on
-  black felt"). The group's table wins over the global default while that
-  group is active.
+  black felt"), and so can an individual saved roll ("Fireball is thrown on
+  black felt"). Precedence, most specific first: the saved roll's pin, then
+  the active group's pin, then the app default from Settings.
 - Power-saving mode ignores the table look entirely; the physics values of
   the *selected* table are still used so the roll is identical to what
   normal mode would produce.

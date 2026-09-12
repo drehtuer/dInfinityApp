@@ -1,0 +1,32 @@
+# Gradle
+.gradle/
+build/
+!build-logic/
+# `build/` above matches any directory of that name, including the Kotlin
+# package the convention plugins' task classes live in. That is source, not
+# output, and leaving it ignored silently kept it out of the repository.
+!build-logic/src/main/kotlin/de/drehtuer/dinfinity/build/
+local.properties
+
+# Android
+*.apk
+*.aab
+*.dex
+captures/
+.cxx/
+
+# Signing keys — never commit these. Generate them with the commands in
+# docs/build-setup.md; keystore/keystore.properties holds their passwords.
+keystore/*
+!keystore/README.md
+*.keystore
+*.jks
+keystore.properties
+
+# IDE
+.idea/
+*.iml
+.kotlin/
+
+# OS
+.DS_Store

@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "name": "Thorin, level 5 fighter",
+  "groups": [
+    { "id": "thorin", "name": "Thorin", "icon": "⚔️", "parent": null }
+  ],
+  "rolls": [
+    { "group": "thorin", "name": "Longsword", "icon": "🗡️", "formula": "1d20 + 7 [Attack]" },
+    { "group": "thorin", "name": "Longsword damage", "icon": "💥", "formula": "1d8 + 4 [Slashing]" },
+    { "group": "thorin", "name": "Second Wind", "icon": "❤️", "formula": "1d10 + 5" }
+  ]
+}

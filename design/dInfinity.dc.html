@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/modernist-f7022762-4cb9-409e-a6ce-7116795bae5b/styles.css">
+<script src="_ds/modernist-f7022762-4cb9-409e-a6ce-7116795bae5b/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:#e6e4e3;font-family:var(--font-body);color:var(--color-text)}
+a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
+.dv-turn{padding:40px 44px 32px;border-bottom:2px solid var(--color-divider);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#201e1d;color:#fff;text-decoration:none}
+.dv-tname{font:800 13px/1.2 var(--font-heading);color:#201e1d}
+.dv-row{display:flex;flex-direction:column;gap:12px;margin:0 0 36px}
+.dv-rh{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--color-divider);padding-bottom:6px;max-width:1400px}
+.dv-rh h3{margin:0;font-size:22px}
+.dv-rh p{margin:0;font-size:12px;opacity:.65;max-width:70ch}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#201e1d;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 var(--font-body);color:rgba(0,0,0,.6);max-width:428px}
+.dv-opt:target .dv-oid{background:var(--color-accent);color:#fff}
+.dv-next{margin:22px 0 0;font:12px/1.5 var(--font-body);color:rgba(0,0,0,.55)}
+.dv-brief{max-width:760px;font-size:14px;line-height:1.5}
+.dv-brief h1{font-size:40px;margin:0 0 8px}
+.dv-brief h6{margin:18px 0 6px;color:var(--color-accent)}
+.dv-brief ul{margin:0;padding-left:18px}
+</style>
+</helmet>
+<section class="dv-turn" id="t9">
+<div class="dv-thd"><a class="dv-tid" href="#t9">9</a><span class="dv-tname">First launch · invalid-notation badge · coloured icons · import success · updates with progress · no d30, no custom meshes</span></div>
+<div class="dv-brief" style="margin-bottom:20px"><p>Also: every table look is listed for everyone (Bone felt from Brass &amp; Bone now sits in the picker and in group / saved-roll pins); "Nearest" rounds .5 up and below .5 down; the designer has no 3D preview — "Roll it" is the preview.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="9a"><div class="dv-olabel"><a class="dv-oid" href="#9a">9a</a><span>First launch — only the built-in set, group "Unfiled", no saved rolls, no history, no sessions. The strip invites the first save.</span></div><dc-import name="dInfinityPhone" screen="roll" first-launch="{{ true }}" formula="1d20" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9b"><div class="dv-olabel"><a class="dv-oid" href="#9b">9b</a><span>First launch — Saved rolls empty state.</span></div><dc-import name="dInfinityPhone" screen="saved" first-launch="{{ true }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9c"><div class="dv-olabel"><a class="dv-oid" href="#9c">9c</a><span>Invalid notation: red badge under the formula on the tray, squiggle in the editor, rolling blocked.</span></div><dc-import name="dInfinityPhone" screen="roll" formula="2d6 + 1d7 - 4" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9d"><div class="dv-olabel"><a class="dv-oid" href="#9d">9d</a><span>Saved-roll icons print in the roll's colour tag (or custom colour).</span></div><dc-import name="dInfinityPhone" screen="saved" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9e"><div class="dv-olabel"><a class="dv-oid" href="#9e">9e</a><span>Saved-roll statistics — group roll-up line, per-roll chart of observed vs. expected, and a table of every rolled formula with mean, expected and Δ.</span></div><dc-import name="dInfinityPhone" screen="rollstats" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9f"><div class="dv-olabel"><a class="dv-oid" href="#9f">9f</a><span>Import — source picker (file / URL / git). Thorin refuses (name exists); Goblins succeeds.</span></div><dc-import name="dInfinityPhone" screen="saved" import-dialog="pick" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9g"><div class="dv-olabel"><a class="dv-oid" href="#9g">9g</a><span>Import success — what was added, from where, nothing existing touched; "Open Goblins" switches the active group.</span></div><dc-import name="dInfinityPhone" screen="saved" import-dialog="ok" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9h"><div class="dv-olabel"><a class="dv-oid" href="#9h">9h</a><span>Dice sets after "Check for updates": Brass &amp; Bone 1.3.0 available as a tag; the detail screen gets an Update button.</span></div><dc-import name="dInfinityPhone" screen="sets" update-state="available" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9i"><div class="dv-olabel"><a class="dv-oid" href="#9i">9i</a><span>Update in progress — download bar, then validation, then installed; cancel while downloading. Live: tap "Update to 1.3.0" in <a class="dv-oid" href="#9h">9h</a>'s detail.</span></div><dc-import name="dInfinityPhone" screen="setdetail" detail-set="brass" update-state="progress" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="9j"><div class="dv-olabel"><a class="dv-oid" href="#9j">9j</a><span>Table picker with Bone felt from Brass &amp; Bone — no private tables.</span></div><dc-import name="dInfinityPhone" screen="tables" hint-size="428px,908px"></dc-import></div>
+</div>
+<p class="dv-next">Try next: "onboarding card on first launch explaining shake-to-roll" · "update-all when several sets have updates" · "collection export dialog"</p>
+</section>
+<section class="dv-turn" id="t8">
+<div class="dv-thd"><a class="dv-tid" href="#t8">8</a><span class="dv-tname">Group table switcher · saved-roll statistics · export My dice · designer for every shape · cleanup</span></div>
+<div class="dv-brief" style="margin-bottom:20px"><p>Removed: session share, built-in export (the repo's <code>examples/</code> set is linked instead), the "low battery" power-saving option. No visual shake indicator — the rendered dice are the feedback.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="8a"><div class="dv-olabel"><a class="dv-oid" href="#8a">8a</a><span>Group switcher now carries "Table for Thorin" — App default or any look; wins over Settings while the group is active, loses to a saved roll's own pin.</span></div><dc-import name="dInfinityPhone" screen="roll" group-menu-open="{{ true }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="8b"><div class="dv-olabel"><a class="dv-oid" href="#8b">8b</a><span>Saved-roll statistics — pick a roll of the active group; observed totals as ink bars against the exact expected distribution as red marks; mean vs. expected, range, last result.</span></div><dc-import name="dInfinityPhone" screen="rollstats" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="8c"><div class="dv-olabel"><a class="dv-oid" href="#8c">8c</a><span>My dice details — every shape you doodled, plus Export as zip gated on a license dropdown.</span></div><dc-import name="dInfinityPhone" screen="setdetail" detail-set="mine" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="8d"><div class="dv-olabel"><a class="dv-oid" href="#8d">8d</a><span>Face designer on a d20 — base-die selector, triangular face mask clips the strokes, 20-face strip scrolls; kite for d10/d18, pentagon for d12, circle for d2.</span></div><dc-import name="dInfinityPhone" screen="designer" designer-die="20" hint-size="428px,908px"></dc-import></div>
+</div>
+<p class="dv-next">Try next: "copy face → paste with rotate/mirror in the designer" · "empty states for first launch" · "disabled-set fallback badge in the breakdown"</p>
+</section>
+<section class="dv-turn" id="t7">
+<div class="dv-thd"><a class="dv-tid" href="#t7">7</a><span class="dv-tname">Graph marks your roll · designer banner off the tray · per-roll table</span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="7a"><div class="dv-olabel"><a class="dv-oid" href="#7a">7a</a><span>Outcome graph opened after a roll: a solid red line at the rolled total with its exact / at-least odds; mean stays dashed. Shown only while the graph's formula matches the roll.</span></div><dc-import name="dInfinityPhone" screen="graph" show-result="{{ true }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="7b"><div class="dv-olabel"><a class="dv-oid" href="#7b">7b</a><span>Saved-roll editor with "Table for this roll" — Fireball is pinned to Black felt; the tray switches when it is thrown.</span></div><dc-import name="dInfinityPhone" screen="editor" edit-roll="{{ 8 }}" hint-size="428px,908px"></dc-import></div>
+</div>
+<p class="dv-next">Try next: "show the roll's percentile as a number on the graph" · "pin a table per group from the group switcher"</p>
+</section>
+<section class="dv-turn" id="t6">
+<div class="dv-thd"><a class="dv-tid" href="#t6">6</a><span class="dv-tname">Set details · sessions · per-throw rounding · default-set resolution · import refusal · squiggles · no d3</span></div>
+<div class="dv-brief" style="margin-bottom:20px"><p>Also in this turn, not shown as separate phones: the picker remembers the last set per group; plain <code>d20</code> resolves to the default set from Settings and falls back to Built-in when that set lacks the die (the breakdown says so under the group); rolls are blocked while the formula has an error; the d18 silhouette is the enneagonal trapezohedron; d3 is gone from the set, picker and stats; seeds are never exposed and there is no replay.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="6a"><div class="dv-olabel"><a class="dv-oid" href="#6a">6a</a><span>Set details — Brass &amp; Bone: status, author, license, clickable source with commit, dice rendered from the set, default-set and manage actions. Tap any set row to get here.</span></div><dc-import name="dInfinityPhone" screen="setdetail" detail-set="brass" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="6b"><div class="dv-olabel"><a class="dv-oid" href="#6b">6b</a><span>Set details — Nordic runes, validation failed: the report replaces the dice grid; folder kept for an update.</span></div><dc-import name="dInfinityPhone" screen="setdetail" detail-set="runes" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="6c"><div class="dv-olabel"><a class="dv-oid" href="#6c">6c</a><span>Sessions — buckets for statistics with roll counts and nat 20s; tap to make active, rename inline, delete moves rolls to Unfiled, create new.</span></div><dc-import name="dInfinityPhone" screen="sessions" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="6d"><div class="dv-olabel"><a class="dv-oid" href="#6d">6d</a><span>Result sheet for a formula with division — Down / Nearest / Up for this throw only; the total updates, the dice stay. Default comes from Settings (Down).</span></div><dc-import name="dInfinityPhone" screen="roll" show-result="{{ true }}" formula="(3d6 + 5) / 2 [Half]" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="6e"><div class="dv-olabel"><a class="dv-oid" href="#6e">6e</a><span>Import refused — a collection whose group name already exists is rejected outright; nothing merges.</span></div><dc-import name="dInfinityPhone" screen="saved" import-dialog="refused" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="6f"><div class="dv-olabel"><a class="dv-oid" href="#6f">6f</a><span>Unsupported notation gets a red squiggle under the offending range; the tray says "Fix the formula to roll" and every roll action is disabled until it parses.</span></div><dc-import name="dInfinityPhone" screen="roll" picker-style="type" formula="2d6 + 1d3 - 4" hint-size="428px,908px"></dc-import></div>
+</div>
+<p class="dv-next">Repo follow-up (I can't push): drop d3 / triangular-prism from README, docs/dice-notation.md and docs/dice-sets.md, and note "no replay, seed not exposed" in docs/statistics.md. Try next: "set details for My dice with an export-as-zip action" · "session summary share sheet"</p>
+</section>
+<section class="dv-turn" id="t5">
+<div class="dv-thd"><a class="dv-tid" href="#t5">5</a><span class="dv-tname">Dice sets: long-press to disable / remove · statistics per set</span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="5a"><div class="dv-olabel"><a class="dv-oid" href="#5a">5a</a><span>Long-press (or right-click) a set → sheet-style dialog: Remove deletes the folder, Disable keeps it but hides its dice; statistics are kept either way. The bundled set can't be touched.</span></div><dc-import name="dInfinityPhone" screen="sets" set-dialog="brass" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="5b"><div class="dv-olabel"><a class="dv-oid" href="#5b">5b</a><span>Statistics filtered to Brass &amp; Bone — its own die list, tiles and histogram; the table below lists every set:die ever thrown.</span></div><dc-import name="dInfinityPhone" screen="stats" stats-set="brass" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="5c"><div class="dv-olabel"><a class="dv-oid" href="#5c">5c</a><span>Statistics across all sets (default) — "brass:d20" and "d20" roll up into one d20 line here, listed separately in the table.</span></div><dc-import name="dInfinityPhone" screen="stats" hint-size="428px,908px"></dc-import></div>
+</div>
+<p class="dv-next">Try next: "swipe a set row to reveal Disable / Remove instead" · "per-face histogram in the set details" · "confirm Remove with the set's roll count"</p>
+</section>
+<section class="dv-turn" id="t4">
+<div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">Decisions locked · set dropdown · designer colour picker</span></div>
+<div class="dv-brief" style="margin-bottom:20px"><p>Defaults are now <a class="dv-oid" href="#1b">1b</a> stack layout, <a class="dv-oid" href="#1f">1f</a> full result sheet, <a class="dv-oid" href="#1h">1h</a> row picker, <a class="dv-oid" href="#1k">1k</a> bar graph, <a class="dv-oid" href="#1o">1o</a> row-style saved rolls. <a class="dv-oid" href="#1a">1a</a> and every phone without an explicit variant reflect them.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="4a"><div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a><span>Set selection is a dropdown under the picker row — name, note and a check; "Install another set…" jumps to Dice sets.</span></div><dc-import name="dInfinityPhone" screen="roll" set-menu-open="{{ true }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="4b"><div class="dv-olabel"><a class="dv-oid" href="#4b">4b</a><span>Home with the locked defaults and a settled roll.</span></div><dc-import name="dInfinityPhone" screen="roll" show-result="{{ true }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="4c"><div class="dv-olabel"><a class="dv-oid" href="#4c">4c</a><span>Face designer: custom-colour swatch after the 12 presets; the face strip scrolls sideways.</span></div><dc-import name="dInfinityPhone" screen="designer" hint-size="428px,908px"></dc-import></div>
+</div>
+<p class="dv-next">Try next: "collapse turn 1's unused variants" · "set dropdown remembers the last choice per group" · "add a d10-tens die to Brass &amp; Bone"</p>
+</section>
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Dice picker — custom dice and mixed sets</span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a><span>Grid sheet sectioned per installed set: Built-in, Brass &amp; Bone, My dice. Counts add up to one formula — <code>2d6 + brass:1d20 + brass:1d8</code>.</span></div><dc-import name="dInfinityPhone" screen="roll" picker-style="grid" picker-open="{{ true }}" formula="2d6 + brass:1d20 + brass:1d8" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="3b"><div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Row picker: the leading "Set" cell cycles Built-in → Brass &amp; Bone → My dice; tapped dice carry the set prefix, bone-coloured on the tray. Result mixes both sets.</div><dc-import name="dInfinityPhone" screen="roll" picker-style="row" show-result="{{ true }}" formula="2d6 + brass:1d20 + brass:1d8 [Mixed]" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="3c"><div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a><span>Type-first: set chip beside the shortcuts; a missing die errors per set (<code>brass:1d12</code> — no d12 in Brass &amp; Bone).</span></div><dc-import name="dInfinityPhone" screen="roll" picker-style="type" formula="1d20 + brass:1d12" hint-size="428px,908px"></dc-import></div>
+</div>
+<p class="dv-next">Try next: "show the set name under each die on the tray" · "remember the last set per group" · "let plain d20 resolve to the group's default set"</p>
+</section>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Notation entry on the roll screen · dark mode (system by default) · version + repo link in Settings</span></div>
+<div class="dv-opts">
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Tap the formula on the tray (dashed underline) to type notation; the keyboard slides up, Enter rolls. Also works in <a class="dv-oid" href="#1a">1a</a>.</div><dc-import name="dInfinityPhone" screen="roll" editing="{{ true }}" formula="2d20kh1 + 6 [Attack]" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Dark mode, roll screen with result — ink and ground swap, red stays, felt unchanged.</div><dc-import name="dInfinityPhone" screen="roll" theme="dark" show-result="{{ true }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>Dark mode, outcome graph.</div><dc-import name="dInfinityPhone" screen="graph" theme="dark" formula="8d6 [Fire]" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="2d"><div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a>Settings — Appearance (System / Light / Dark) at the top; version and GitHub link at the bottom.</div><dc-import name="dInfinityPhone" screen="settings" theme="dark" hint-size="428px,908px"></dc-import></div>
+</div>
+<p class="dv-next">All phones in turn 1 now follow your system's dark-mode setting. Try next: "black felt when dark" · "keep the notation field always visible" · "add a version row to the menu too"</p>
+</section>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">dInfinity — first pass, all screens, working notation parser and exact outcome graph</span></div>
+<div class="dv-brief">
+<h1>dInfinity</h1>
+<p>Android dice roller where the roll is a physics simulation. Designed from the repo's spec docs (no UI code exists yet) in the Modernist system: Archivo, one red, 2px rules, zero radius, everything flush left. The tray follows the chosen table look; the 3D dice are flat grayscale silhouettes standing in for the render.</p>
+<h6>Assumptions</h6>
+<ul>
+<li>Roll screen is home; every other destination sits behind the top-bar menu (a full-screen list with rules).</li>
+<li>Active group (Curse of Strahd / Thorin) is switched from the top bar and doubles as the statistics session.</li>
+<li>Rolls, breakdowns, history and stats are computed live: the notation grammar, keep/drop/explode/reroll/min, the table capacity rule (30 % floor, 0.40 min scale, hard cap 100) and the exact PMF all follow the docs. Physics is faked with a random face + tumble.</li>
+<li>Natural max faces print in red; dropped dice are struck through. Tap a bar in the graph for exact numbers.</li>
+</ul>
+<h6>How to try it</h6>
+<p>Every phone below is live. Tap dice in the picker row (long-press removes), tap the tray to roll, tap a saved roll to roll it, long-press to edit. Type <code>500d6</code> to see a refusal, <code>2d20kh1 + 6</code> for advantage, <code>8d6!</code> to explode. The face designer canvas takes finger/mouse strokes.</p>
+</div>
+</section>
+<section class="dv-turn" id="t1b">
+<div class="dv-row">
+<div class="dv-rh"><h3>Full prototype</h3><p>Default combination — stack layout, full result sheet, picker row, bar graph, tile-style saved rolls. Use this one to walk the whole flow.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Home, green felt, Thorin active</div><dc-import name="dInfinityPhone" screen="roll" hint-size="428px,908px"></dc-import></div>
+</div>
+</div>
+
+<div class="dv-row">
+<div class="dv-rh"><h3>Roll screen layout</h3><p>Where the chrome sits relative to the tray. Same state in all three: 3d6 + 1d20 − 4 just rolled.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Stack — picker above the tray, saved tiles below. The by-the-book option.</div><dc-import name="dInfinityPhone" screen="roll" roll-layout="stack" show-result="{{ false }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Overlay — the tray is the whole screen; chrome prints in light ink on the felt; saved rolls behind a pull-up.</div><dc-import name="dInfinityPhone" screen="roll" roll-layout="overlay" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Ledger — fixed-height tray up top, dense list of the active group's rolls with last results filling the rest.</div><dc-import name="dInfinityPhone" screen="roll" roll-layout="ledger" hint-size="428px,908px"></dc-import></div>
+</div>
+</div>
+
+<div class="dv-row">
+<div class="dv-rh"><h3>Result sheet density</h3><p>The bottom sheet after the dice settle. Per-group rows with subtotals, then modifiers, as agreed.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Compact — one strip: total, formula, all dice inline. Tray stays mostly visible.</div><dc-import name="dInfinityPhone" screen="roll" show-result="{{ true }}" result-density="compact" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Full — big total, kicker, group rows with subtotals, modifiers, actions.</div><dc-import name="dInfinityPhone" screen="roll" show-result="{{ true }}" result-density="full" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1g"><div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a>Poster — the total as a red field (the system's one place for red as a ground), rows beneath.</div><dc-import name="dInfinityPhone" screen="roll" show-result="{{ true }}" result-density="poster" hint-size="428px,908px"></dc-import></div>
+</div>
+</div>
+
+<div class="dv-row">
+<div class="dv-rh"><h3>Dice picker interaction</h3><p>How dice get into the plan without typing. All three write the same formula string, so the graph, breakdown and stats are identical.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="1h"><div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>Row — tap adds, long-press removes, count badge on the die. Your default.</div><dc-import name="dInfinityPhone" screen="roll" picker-style="row" formula="2d6 + 1d20" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1i"><div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>Grid sheet — every die in the set with − / + and a count; roll straight from the sheet.</div><dc-import name="dInfinityPhone" screen="roll" picker-style="grid" picker-open="{{ true }}" formula="2d6 + 1d20" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1j"><div class="dv-olabel"><a class="dv-oid" href="#1j">1j</a>Type-first — formula field with die shortcuts; parse errors underline the offending range.</div><dc-import name="dInfinityPhone" screen="roll" picker-style="type" formula="3d6 + 1d7 - 4" hint-size="428px,908px"></dc-import></div>
+</div>
+</div>
+
+<div class="dv-row">
+<div class="dv-rh"><h3>Outcome graph treatment</h3><p>Exact distribution of 2d20kh1 + 6, mean dashed, ±1σ shaded. Toggle P(= k) / P(≥ k); tap for exact numbers.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="1k"><div class="dv-olabel"><a class="dv-oid" href="#1k">1k</a>Bars — discrete bars, σ band behind, mean line.</div><dc-import name="dInfinityPhone" screen="graph" graph-style="bars" formula="2d20kh1 + 6" show-result="{{ true }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1l"><div class="dv-olabel"><a class="dv-oid" href="#1l">1l</a>Steps — a solid stepped area with an ink top edge; tapping sets a red target line.</div><dc-import name="dInfinityPhone" screen="graph" graph-style="steps" formula="2d20kh1 + 6" show-result="{{ true }}" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1m"><div class="dv-olabel"><a class="dv-oid" href="#1m">1m</a>Ledger — a numbers table with inline bars; for players who want the odds of hitting AC 15, not a picture.</div><dc-import name="dInfinityPhone" screen="graph" graph-style="ledger" formula="2d20kh1 + 6" show-result="{{ true }}" hint-size="428px,908px"></dc-import></div>
+</div>
+</div>
+
+<div class="dv-row">
+<div class="dv-rh"><h3>Saved-roll tile style</h3><p>The active group's rolls: favourites first, then by recent use. Tap rolls, long-press edits. Also changes the strip on the home screen.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="1n"><div class="dv-olabel"><a class="dv-oid" href="#1n">1n</a>Tiles — two-up surface cards, icon, name, formula.</div><dc-import name="dInfinityPhone" screen="saved" tile-style="tiles" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1o"><div class="dv-olabel"><a class="dv-oid" href="#1o">1o</a>Rows — dense ruled list, formula right-aligned, pencil per row.</div><dc-import name="dInfinityPhone" screen="saved" tile-style="rows" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1p"><div class="dv-olabel"><a class="dv-oid" href="#1p">1p</a>Poster — favourites as display-size bands with a red kicker; the rest as rows.</div><dc-import name="dInfinityPhone" screen="saved" tile-style="poster" hint-size="428px,908px"></dc-import></div>
+</div>
+</div>
+
+<div class="dv-row">
+<div class="dv-rh"><h3>Other screens — one take each</h3><p>Reachable from the menu in <a class="dv-oid" href="#1a">1a</a>; shown here directly.</p></div>
+<div class="dv-opts">
+<div class="dv-opt" id="1q"><div class="dv-olabel"><a class="dv-oid" href="#1q">1q</a>Menu — full-screen list, rules between rows, grouped Play / Look back / Customise / App.</div><dc-import name="dInfinityPhone" screen="menu" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1r"><div class="dv-olabel"><a class="dv-oid" href="#1r">1r</a>Saved roll editor — live-validated formula with mean and range, icon pack, colour tag, group, favourite.</div><dc-import name="dInfinityPhone" screen="editor" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1s"><div class="dv-olabel"><a class="dv-oid" href="#1s">1s</a>Dice sets — installed list; Brass &amp; Bone validated with 3 warnings and a fairness preview for its custom d7.</div><dc-import name="dInfinityPhone" screen="sets" install-state="ok" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1t"><div class="dv-olabel"><a class="dv-oid" href="#1t">1t</a>Dice sets — skulls.zip rejected; three errors with file:line, nothing installed.</div><dc-import name="dInfinityPhone" screen="sets" install-state="fail" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1u"><div class="dv-olabel"><a class="dv-oid" href="#1u">1u</a>Table picker — built-in looks on the real box, "use a photo", group pinning note. Picking one recolours the tray.</div><dc-import name="dInfinityPhone" screen="tables" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1v"><div class="dv-olabel"><a class="dv-oid" href="#1v">1v</a>Face designer — d6, skull on the 1. Draw on the canvas; pen widths, eraser, fill, stamp, undo/redo, face strip.</div><dc-import name="dInfinityPhone" screen="designer" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1w"><div class="dv-olabel"><a class="dv-oid" href="#1w">1w</a>Statistics — last-rolled die by default; natural highs in red, histogram against the fair line, all-dice table.</div><dc-import name="dInfinityPhone" screen="stats" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1x"><div class="dv-olabel"><a class="dv-oid" href="#1x">1x</a>History — three sessions of seeded rolls with per-group breakdowns; nat-20 totals in red.</div><dc-import name="dInfinityPhone" screen="history" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1y"><div class="dv-olabel"><a class="dv-oid" href="#1y">1y</a>Settings — power-saving (off / on / low battery), shake, haptics, sound, rounding, default set, session.</div><dc-import name="dInfinityPhone" screen="settings" hint-size="428px,908px"></dc-import></div>
+<div class="dv-opt" id="1z"><div class="dv-olabel"><a class="dv-oid" href="#1z">1z</a>Power-saving result — no render; plain grey echo of the table, result appears at once.</div><dc-import name="dInfinityPhone" screen="roll" power-saving="{{ true }}" show-result="{{ true }}" hint-size="428px,908px"></dc-import></div>
+</div>
+</div>
+<p class="dv-next">Try next: "make <a class="dv-oid" href="#1c">1c</a> the home but with the sheet from <a class="dv-oid" href="#1g">1g</a>" · "combine <a class="dv-oid" href="#1h">1h</a> row with a formula field like <a class="dv-oid" href="#1j">1j</a>" · "black felt by default" · "add the fairness preview to set details"</p>
+</section>
+</x-dc>
+</body>
+</html>

@@ -1,5 +1,9 @@
 # Outcome graph
 
+> **Design:** the three graph treatments are options 1k–1m of the
+> [clickable design](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) ([design/](../design/)); 7a shows the graph opened
+> after a roll, with the rolled total marked.
+
 Before rolling, the app shows the probability distribution of the total.
 This works for a typed formula in the editor *and* for dice picked by
 tapping on the roll screen — both are the same `RollPlan` underneath. It
@@ -33,7 +37,7 @@ outcome to probability, stored as a dense array with an offset.
 | Node | PMF |
 |---|---|
 | integer `n` | `{n: 1}` |
-| single die with faces `f₁…fₘ` | each distinct value with probability (count / m) — face values come from the set, so a d6 labelled `1,2,3,1,2,3` gives the d3 distribution automatically |
+| single die with faces `f₁…fₘ` | each distinct value with probability (count / m) — face values come from the set, so a d6 labelled `1,2,1,2,1,2` gives the d2 distribution automatically |
 | `NdX` | convolve the single-die PMF with itself N times (FFT above ~64 dice, plain O(N·m²) below) |
 | `+`, `-` | convolution (with negation for `-`) |
 | `*`, `/` by a constant | value remap |
@@ -56,12 +60,12 @@ convex solids and honest tumbling *is* fair for the catalogue shapes, up to
 numerical noise; the built-in test suite rolls each catalogue die 100,000
 times in power-saving mode and asserts a chi-squared test passes.
 
-For custom-mesh dice the graph still assumes fairness (each face equally
-likely), because there is no way to know the true distribution from the
-geometry alone. The set browser's fairness preview (see `docs/dice-sets.md`)
-shows the empirical histogram so authors can see how far off they are; the
-graph screen shows a small "custom shape — assumed fair" note when such dice
-are in the formula.
+Since v1's shape catalogue is closed (`docs/dice-sets.md`), every die in
+every set is one of those nine tested solids, however it is painted: a
+custom-looking die is still a fair die, and the graph is exact for all of
+them. If author-supplied mesh shapes arrive later, the graph will have to
+assume fairness it cannot verify and say so on screen — which is one more
+reason they are not in v1.
 
 ## Testing
 
