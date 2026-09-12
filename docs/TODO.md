@@ -40,21 +40,23 @@ section grows past a screen, split it into milestones or prune.
 - [ ] Table looks (`[[table]]`), built-in tables, "use a photo"
 - [ ] Face designer
 - [ ] Statistics screens and Room schema
-- [ ] Fairness preview for custom-mesh dice
-- [ ] Battery-based auto power-saving
+- [ ] `examples/` dice set in this repo: every catalogue shape, commented, blank atlases (the built-in set has no export)
 
-## Reconcile docs with the design prototype
+## After v1
 
-`design/github.md` lists decisions taken in the UI design that `docs/` does
-not yet reflect. Each is a small docs PR once confirmed:
+Written down so the format does not have to change later. None of it is v1
+scope:
 
-- [ ] Seeds are never exposed; no "tap to replay" from history (`docs/statistics.md`)
-- [ ] No d30 and no custom-mesh dice in v1; catalogue is d2, d4, d6, d8, d10, d12, d18, d20, d100 (`docs/dice-sets.md`)
-- [ ] Saved-roll collection import refuses on a duplicate group name instead of merging (`docs/dice-notation.md`)
-- [ ] Division rounding overridable per throw from the result sheet; Nearest rounds .5 up (`docs/dice-notation.md`)
-- [ ] Tables from any package are global; sets never override the table (`docs/tables.md`)
-- [ ] No auto power-saving on low battery; no session share sheet (`docs/physics-and-rendering.md`, `docs/statistics.md`)
-- [ ] Add an `examples/` dice set to the repo; built-in set has no export (`docs/dice-sets.md`)
+- [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
+- [ ] Author-supplied convex meshes, with the fairness preview they require (`docs/dice-sets.md`, "Shapes after v1")
+
+## From the prototype, not yet in `docs/`
+
+Smaller decisions visible in the canvas (`design/dInfinity.dc.html`) that the
+documents do not mention. Confirm, then fold in:
+
+- [ ] The face designer has no 3D preview — "Roll it" is the preview (`docs/face-designer.md` still describes one)
+- [ ] The dice picker remembers the last set per saved-roll group (`docs/dice-notation.md`)
 
 ## Open questions
 
@@ -62,4 +64,5 @@ not yet reflect. Each is a small docs PR once confirmed:
 - d18 shape: enneagonal trapezohedron is assumed; verify it reads well at phone size
 - `.thumbnail` from the design project is not imported (binary); decide whether a
   preview image belongs in the repo at all
-- Division rounding default (floor) — confirm against the games players actually use
+- Division rounding default is Down, overridable per throw — confirm Nearest is worth
+  having at all

@@ -129,7 +129,7 @@ kept (they are keyed by set id and die id, not by file path).
 | 1 | Result comes from physics, always | Core value proposition; avoids "is the animation just theatre?" |
 | 2 | Fixed-timestep, seeded, deterministic sim | Power-saving mode must be provably the same roll; reproducible bugs |
 | 3 | TOML for dice sets | Human-editable, no code execution, comments allowed, simple to validate |
-| 4 | Only convex shapes from a whitelist *or* validated convex meshes | Convex-convex collision is fast and robust; concave dice are not a thing |
+| 4 | v1's shape catalogue is closed: nine convex solids, no author-supplied meshes | Convex-convex collision is fast and robust, and nine known-fair solids need no fairness UI; sets vary values and artwork, not geometry |
 | 5 | Dice sets installed into sandboxed per-set folders | Containment; a set cannot reference files outside its folder |
 | 6 | Exact PMF via convolution, not a normal approximation | It is cheap for realistic formulas and correct for small dice counts |
 | 7 | d100 is two d10s (tens + units) | Matches table convention; a 100-sided ball does not roll honestly in a tray |
@@ -138,3 +138,7 @@ kept (they are keyed by set id and die id, not by file path).
 | 10 | Rolls that exceed table capacity are refused, not batched | Too many bodies in a small box produces tunnelling and jitter — that is not a roll, it is a bug generator |
 | 11 | Downloads from any `https` archive URL, with first-class support for git forges | Not everyone is on GitHub; the safety comes from the validator, not from the host |
 | 12 | GPL-2.0-or-later | Author's choice; user content (sets, tables, saved rolls) is explicitly not covered |
+| 13 | Seeds and inputs are recorded but never surfaced; no replay in the app | Determinism is for testing and bug reports, not a feature; a past roll is a record, not something to re-run |
+| 14 | Tables are global; a dice set never overrides the selected table | One tray on the screen, whatever mix of sets is in the throw |
+| 15 | Saved-roll import refuses a duplicate group name instead of merging | No conflict UI to get wrong, and an import can never damage existing rolls |
+| 16 | Power-saving is manual only | A roll that silently stops rendering because the battery dipped is a surprise |

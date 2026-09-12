@@ -18,9 +18,14 @@ folder is for reading, diffing and running offline.
 | `android-frame.jsx` | Android (Material 3) device frame: status bar, app bar, gesture nav, keyboard. Starter scaffold; intentionally uses raw values. |
 | `support.js` | Claude Design's generated runtime that renders `.dc.html` files. Do not edit. |
 | `_ds/modernist-…/` | The "Modernist" design system the prototype is built on: `styles.css` (tokens + component classes), `readme.md` (usage guide), `_ds_manifest.json`, `_ds_bundle.js`, and the adherence lint config. |
-| `github.md` | The design project's own sync notes: what it read from this repo, and design decisions that still need feeding back into `docs/`. |
 
 The project's `.thumbnail` (a binary preview image) is not imported.
+
+**Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, whose last
+sync from this repo was 2026-09-11. Every design decision it recorded for
+feeding back has been folded into `docs/`; what remains open is listed under
+"From the prototype, not yet in `docs/`" in
+[../docs/TODO.md](../docs/TODO.md).
 
 ## Viewing
 
@@ -54,6 +59,8 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 
 Edit in the [Claude Design project](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706) and re-import here so the two stay in
 step. Decisions made in the design that change behaviour, limits or defaults
-must be reflected in `docs/` in the same PR (see `../.claude/CLAUDE.md`);
-`github.md` lists the ones still outstanding, and they are tracked in
-[../docs/TODO.md](../docs/TODO.md).
+must be reflected in `docs/` in the same PR (see `../.claude/CLAUDE.md`).
+An import brings the project's own `github.md` sync notes along; fold its
+decisions into `docs/`, list anything left over in
+[../docs/TODO.md](../docs/TODO.md), and drop the file — `docs/` is where
+decisions live once they are taken.

@@ -11,7 +11,7 @@ Most dice apps draw a random number and show a picture. dInfinity simulates
 the dice. The number you get is whatever face ends up on top after the dice
 tumble, collide, and settle in the tray — the same way it works on a table.
 That makes rolls feel honest, lets you watch the d20 wobble before it stops,
-and means the app can support *any* convex die shape someone cares to define.
+and means a die is defined by its shape, not by a lookup table.
 
 Passing one phone around the table beats passing a bag of dice around and
 hunting for the d12 that rolled under the couch.
@@ -32,7 +32,6 @@ a tumble; everything else is real.
 | [Design canvas](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinity.dc.html) | Every screen and every variant on one board — start here |
 | [Phone prototype](https://claude.ai/design/p/5cee69c8-e516-4414-a446-7fd89bb7c706?file=dInfinityPhone.dc.html) | The prototype on its own, without the board around it |
 | [design/](design/) | The same files in this repo, and how to run them offline — see [design/README.md](design/README.md) |
-| [design/github.md](design/github.md) | The design's own notes: what it read from `docs/`, and decisions still to feed back |
 
 ## Features
 

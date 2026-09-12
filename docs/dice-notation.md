@@ -74,8 +74,10 @@ capacity check happens before any body is created and the UI explains it
 
 1. Parse into an AST.
 2. Resolve each `dice` node to concrete `Die` definitions: `setref` if given,
-   otherwise the user's current default set, falling back to the built-in set
-   if the default set lacks that die.
+   otherwise the default set from Settings, falling back to the built-in set
+   **per die** when the default set lacks that one (so a set with no d12 still
+   rolls `1d20 + 1d12`). The breakdown names the set each die came from and
+   says when it fell back.
 3. Run the table capacity check on the total die count (including the dice
    that a first explosion could add). Refuse with a message if it fails.
 4. All dice from all groups go into **one** physics throw. The breakdown
@@ -83,12 +85,24 @@ capacity check happens before any body is created and the UI explains it
 5. Exploding dice: extra dice are thrown in a *second* throw after the first
    settles, and so on, up to the depth limit. In power-saving mode this is
    invisible; in normal mode the extra dice drop into the tray.
-6. Apply keep/drop/reroll/min per group, then arithmetic. Division rounds
-   down (`7/2 = 3`), matching most game rules; this is configurable.
+6. Apply keep/drop/reroll/min per group, then arithmetic. See Division
+   rounding below.
 7. Produce a `RollResult` with the total and a per-die breakdown including
    dropped dice (shown struck through). The result screen shows the total
    large, then each group's subtotal and the individual dice, then the
    modifiers — the user never has to add anything up.
+
+## Division rounding
+
+Division rounds **down** by default (`7/2 = 3`), which is what most game
+rules say. The default is a setting, and the result sheet offers Down /
+Nearest / Up for the throw in front of you — the total is recomputed from the
+same dice, which stay as they landed. Nearest rounds `.5` up and anything
+below `.5` down.
+
+The per-throw override is not remembered: the next roll uses the setting
+again. The outcome graph always uses the setting, since it is computed before
+the throw exists.
 
 ## Picking dice without typing
 
@@ -169,9 +183,11 @@ rolls.
 - **Import** from a file, from a pasted URL, or from a git repository (same
   sources as dice sets, see `docs/dice-sets.md`). A community can keep a
   repo of "stat blocks for monster manual X" this way.
-- Import is a merge: existing groups with the same id get new rolls added,
-  identical rolls (same group, name, formula) are skipped, conflicting ones
-  are shown for the user to decide. Nothing is deleted on import.
+- Import **never merges and never deletes**. A collection whose group name
+  already exists is refused outright, naming the clash; rename the group in
+  the file (or the one in the app) and import again. Everything else is added
+  as new groups and rolls. There is no conflict-resolution UI to get wrong,
+  and an import can never damage what is already there.
 - Every formula goes through the parser and limits above. Unknown dice set
   references are kept but flagged; icons are restricted to emoji or names
   from the built-in icon pack (no image files in collections).
