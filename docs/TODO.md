@@ -16,13 +16,14 @@ Step 5 and stay off CI.
 
 - [ ] **Build and test:** `assembleDebug`, JVM unit tests, Robolectric tests; test results and failures annotated on the PR
 - [ ] **Static analysis:** ktlint, detekt, Android Lint — warnings fail the build (`.claude/CLAUDE.md`)
-- [ ] **Coverage → SonarQube:** JaCoCo on JVM + Robolectric, reports merged into one XML, `sonar-scanner` publishes it. Quality gate blocks merge; coverage on new code ≥ 80 %
+- [ ] **Coverage → SonarQube:** JaCoCo on JVM + Robolectric, reports merged into one XML. `sonar-project.properties` and `SONAR_TOKEN` are already in place; CI has to run the scanner and wire JaCoCo so the report paths it names actually exist. Quality gate blocks merge; coverage on new code ≥ 80 %
 - [ ] Coverage counters are **function and branch**, not lines alone, and a PR that lowers either against `main` fails — the comparison job needs `main`'s report cached or recomputed
 - [ ] Sonar exclusions: generated code, Compose previews, and the JNI/renderer bridges whose tests only run on a device — excluded from *coverage*, never from *analysis*, with the device results reported separately so the gap is visible rather than hidden
 - [ ] **Docs:** markdown lint, link check (internal links must resolve), mermaid fences must parse, and a check that `README.md` indexes every `docs/*.md` — the rule in `.claude/CLAUDE.md` should be enforced, not remembered
 - [ ] **Docs site:** publish `docs/` and `design/` to GitHub Pages so the prototype is clickable straight from the repo, not only from claude.ai
 - [ ] **Release on tag `vX.Y.Z`:** optimised build (R8, shrinking), `dInfinityApp-<version>.apk` attached to a GitHub Release, docs site built for the tag. Releases are immutable — the workflow refuses to overwrite an existing tag
 - [ ] Caching (Gradle, SDK) so a PR run stays under ~10 minutes
+- [ ] Lint `build-logic` too. ktlint cannot currently be kept off the plugin accessors Gradle generates into that build's main source set, so the convention plugins are styled by hand and unchecked
 
 **Done when** a PR shows one green check per concern, Sonar decorates it with
 coverage, and a throwaway tag produces a correctly named release APK.
@@ -272,7 +273,6 @@ Written down so the format need not change later. Not v1 scope.
 
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
-- [ ] SonarCloud or a self-hosted SonarQube? SonarCloud is free for public repositories and decorates PRs out of the box
 - [ ] `minSdk` is 36, not 37. Robolectric 4.17 cannot start API 37 (its `InputManager` shadow calls a method API 37 removed) and cannot run below `minSdk`, so `minSdk = 37` would mean no Robolectric tests at all. `targetSdk`/`compileSdk` are 37. Confirm 36, or accept losing the Robolectric tier until Robolectric catches up
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] d18 shape: the enneagonal trapezohedron is assumed; verify it reads well at phone size

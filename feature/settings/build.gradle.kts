@@ -1,11 +1,11 @@
 plugins {
-    id("dinfinity.android-feature")
+  id("dinfinity.android-feature")
 }
 
 android {
-    namespace = "de.drehtuer.dinfinity.feature.settings"
+  namespace = "de.drehtuer.dinfinity.feature.settings"
 }
 
 dependencies {
-    api(project(":data"))
+  api(project(":data"))
 }

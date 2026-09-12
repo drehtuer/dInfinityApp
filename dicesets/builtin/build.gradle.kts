@@ -1,11 +1,11 @@
 plugins {
-    id("dinfinity.android-library")
+  id("dinfinity.android-library")
 }
 
 android {
-    namespace = "de.drehtuer.dinfinity.dicesets.builtin"
+  namespace = "de.drehtuer.dinfinity.dicesets.builtin"
 }
 
 dependencies {
-    api(project(":dicesets:format"))
+  api(project(":dicesets:format"))
 }

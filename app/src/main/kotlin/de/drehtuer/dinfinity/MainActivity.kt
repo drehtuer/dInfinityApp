@@ -11,13 +11,13 @@ import de.drehtuer.dinfinity.theme.DInfinityTheme
  * destinations, not activities (`docs/architecture.md`).
  */
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
-        super.onCreate(savedInstanceState)
-        setContent {
-            DInfinityTheme {
-                DInfinityApp()
-            }
-        }
+  override fun onCreate(savedInstanceState: Bundle?) {
+    enableEdgeToEdge()
+    super.onCreate(savedInstanceState)
+    setContent {
+      DInfinityTheme {
+        DInfinityApp()
+      }
     }
+  }
 }

@@ -7,17 +7,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class FeatureStatsModuleTest {
-    @Test
-    fun `knows its own Gradle path`() {
-        assertEquals(":feature:stats", FeatureStatsModule.PATH)
-    }
+  @Test
+  fun `knows its own Gradle path`() {
+    assertEquals(":feature:stats", FeatureStatsModule.PATH)
+  }
 
-    // Importing the objects below only compiles when the Gradle dependency
-    // is really there, so this asserts the declaration matches the build.
-    @Test
-    fun `reaches every module it depends on`() {
-        assertTrue(CoreStatsModule.PATH in FeatureStatsModule.DEPENDS_ON)
-        assertTrue(DataModule.PATH in FeatureStatsModule.DEPENDS_ON)
-        assertEquals(2, FeatureStatsModule.DEPENDS_ON.size)
-    }
+  // Importing the objects below only compiles when the Gradle dependency
+  // is really there, so this asserts the declaration matches the build.
+  @Test
+  fun `reaches every module it depends on`() {
+    assertTrue(CoreStatsModule.PATH in FeatureStatsModule.DEPENDS_ON)
+    assertTrue(DataModule.PATH in FeatureStatsModule.DEPENDS_ON)
+    assertEquals(2, FeatureStatsModule.DEPENDS_ON.size)
+  }
 }

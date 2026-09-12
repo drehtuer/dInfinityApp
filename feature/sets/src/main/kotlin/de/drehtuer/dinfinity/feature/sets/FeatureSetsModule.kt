@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.feature.sets
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object FeatureSetsModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":feature:sets"
+  /** This module's Gradle path. */
+  const val PATH: String = ":feature:sets"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":dicesets:format", ":dicesets:install")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":dicesets:format", ":dicesets:install")
 }

@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.feature.graph
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object FeatureGraphModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":feature:graph"
+  /** This module's Gradle path. */
+  const val PATH: String = ":feature:graph"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":core:notation", ":core:probability")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":core:notation", ":core:probability")
 }

@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.feature.saved
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object FeatureSavedModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":feature:saved"
+  /** This module's Gradle path. */
+  const val PATH: String = ":feature:saved"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":core:notation", ":data")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":core:notation", ":data")
 }

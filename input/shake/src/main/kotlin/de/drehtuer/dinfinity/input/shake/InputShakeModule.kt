@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.input.shake
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object InputShakeModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":input:shake"
+  /** This module's Gradle path. */
+  const val PATH: String = ":input:shake"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":simulation:api")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":simulation:api")
 }

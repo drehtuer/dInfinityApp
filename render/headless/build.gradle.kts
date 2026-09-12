@@ -1,7 +1,7 @@
 plugins {
-    id("dinfinity.kotlin-jvm")
+  id("dinfinity.kotlin-jvm")
 }
 
 dependencies {
-    api(project(":simulation:api"))
+  api(project(":simulation:api"))
 }

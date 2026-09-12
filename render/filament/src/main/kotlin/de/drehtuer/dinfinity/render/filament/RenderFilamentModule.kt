@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.render.filament
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object RenderFilamentModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":render:filament"
+  /** This module's Gradle path. */
+  const val PATH: String = ":render:filament"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":simulation:api")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":simulation:api")
 }

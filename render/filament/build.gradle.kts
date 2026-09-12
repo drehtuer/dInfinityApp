@@ -1,11 +1,11 @@
 plugins {
-    id("dinfinity.android-library")
+  id("dinfinity.android-library")
 }
 
 android {
-    namespace = "de.drehtuer.dinfinity.render.filament"
+  namespace = "de.drehtuer.dinfinity.render.filament"
 }
 
 dependencies {
-    api(project(":simulation:api"))
+  api(project(":simulation:api"))
 }

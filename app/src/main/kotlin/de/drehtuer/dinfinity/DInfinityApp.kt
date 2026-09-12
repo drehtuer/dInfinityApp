@@ -26,46 +26,46 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  */
 @Composable
 fun DInfinityApp() {
-    val navController = rememberNavController()
-    NavHost(
-        navController = navController,
-        startDestination = Destination.home.route,
-    ) {
-        Destination.entries.forEach { destination ->
-            composable(destination.route) {
-                PlaceholderScreen(destination)
-            }
-        }
+  val navController = rememberNavController()
+  NavHost(
+    navController = navController,
+    startDestination = Destination.home.route,
+  ) {
+    Destination.entries.forEach { destination ->
+      composable(destination.route) {
+        PlaceholderScreen(destination)
+      }
     }
+  }
 }
 
 /** Stands in for a screen that has not been built yet. */
 @Composable
 internal fun PlaceholderScreen(destination: Destination) {
-    val colors = LocalModernistColors.current
-    Box(
-        modifier =
-            Modifier
-                .fillMaxSize()
-                .background(colors.background)
-                .testTag("screen:${destination.route}"),
-        contentAlignment = Alignment.Center,
+  val colors = LocalModernistColors.current
+  Box(
+    modifier =
+      Modifier
+        .fillMaxSize()
+        .background(colors.background)
+        .testTag("screen:${destination.route}"),
+    contentAlignment = Alignment.Center,
+  ) {
+    Column(
+      verticalArrangement = Arrangement.spacedBy(ModernistTokens.Space.x2),
+      horizontalAlignment = Alignment.Start,
+      modifier = Modifier.padding(ModernistTokens.Space.x6),
     ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(ModernistTokens.Space.x2),
-            horizontalAlignment = Alignment.Start,
-            modifier = Modifier.padding(ModernistTokens.Space.x6),
-        ) {
-            Text(
-                text = destination.title,
-                style = MaterialTheme.typography.headlineMedium,
-                color = colors.text,
-            )
-            Text(
-                text = "Not built yet — see docs/TODO.md",
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.accent,
-            )
-        }
+      Text(
+        text = destination.title,
+        style = MaterialTheme.typography.headlineMedium,
+        color = colors.text,
+      )
+      Text(
+        text = "Not built yet — see docs/TODO.md",
+        style = MaterialTheme.typography.labelSmall,
+        color = colors.accent,
+      )
     }
+  }
 }

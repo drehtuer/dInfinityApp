@@ -68,7 +68,8 @@ structure.
   an **actual device** (reference device: Pixel 10a).
 - CI can only run JVM unit tests, Robolectric tests, linters and builds.
   Emulator and on-device tests **cannot run on CI**; they run on the
-  developer's machine. When a change needs those, run what you can, then
+  developer's machine, from inside the devcontainer, against a phone attached
+  over WiFi debugging (`docs/build-setup.md`). When a change needs those, run what you can, then
   ask the user to run the emulator/device suite and report back — do not
   claim they passed.
 - If verifying a change requires something you cannot do (a physical shake
@@ -134,5 +135,11 @@ structure.
 - Development happens in the **devcontainer**; it has the JDK, Android SDK,
   NDK, Gradle, linters and everything else needed. Do not install tools on
   the host or assume host tools exist.
-- The emulator and physical devices are attached from the developer's
-  machine, outside the container's control — see Testing.
+- The container has `adb`. A phone is attached over **WiFi debugging** and
+  paired from inside the container, so `connectedAndroidTest` runs there like
+  any other Gradle task; `docs/build-setup.md` has the procedure. USB
+  passthrough is not used — it is awkward in a container and wireless is
+  enough.
+- Signing keys are never committed. `keystore/keystore.properties` and the
+  keystores it points at are gitignored; without them the build still works,
+  producing default-signed debug builds and unsigned release builds.

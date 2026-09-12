@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.feature.settings
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object FeatureSettingsModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":feature:settings"
+  /** This module's Gradle path. */
+  const val PATH: String = ":feature:settings"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":data")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":data")
 }

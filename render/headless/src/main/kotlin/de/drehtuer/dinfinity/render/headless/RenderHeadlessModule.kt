@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.render.headless
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object RenderHeadlessModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":render:headless"
+  /** This module's Gradle path. */
+  const val PATH: String = ":render:headless"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":simulation:api")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":simulation:api")
 }

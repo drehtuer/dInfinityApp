@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.data
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object DataModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":data"
+  /** This module's Gradle path. */
+  const val PATH: String = ":data"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":core:model", ":core:stats")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":core:model", ":core:stats")
 }

@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!--
+  <!--
       The platform theme only has to hand Compose a window with no action bar;
       every colour and every type style comes from the Modernist tokens in
       theme/ModernistTokens.kt, not from resources.
-    -->
-    <style name="Theme.DInfinity" parent="@android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">#f3f2f2</item>
-        <item name="android:statusBarColor">#f3f2f2</item>
-        <item name="android:windowLightStatusBar">true</item>
-    </style>
+  -->
+  <style name="Theme.DInfinity" parent="@android:style/Theme.Material.Light.NoActionBar">
+    <item name="android:windowBackground">#f3f2f2</item>
+    <item name="android:statusBarColor">#f3f2f2</item>
+    <item name="android:windowLightStatusBar">true</item>
+  </style>
 </resources>

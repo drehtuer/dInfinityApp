@@ -12,7 +12,9 @@ changelog.
 - **Phase:** implementation, Step 1 of `docs/TODO.md` done. The app builds,
   tests and lints; no features yet.
 - **Latest release:** none.
-- **Branch state:** PRs #1–#6 merged. The skeleton is in PR #7.
+- **Branch state:** PRs #1–#6 merged. The skeleton is in PR #7, and the
+  build setup (devcontainer, signing, Sonar, security policy) in PR #8 on
+  top of it.
 
 ## Done
 
@@ -33,9 +35,12 @@ changelog.
 - Anti-stacking policy rewritten: nothing touches a resting die; a cocked die
   is re-thrown rather than nudged.
 - Skeleton (plan Step 1): devcontainer, Gradle convention plugins, 24 modules
-  matching `docs/architecture.md`, 60 tests, Compose theme from the Modernist
+  matching `docs/architecture.md`, 63 tests, Compose theme from the Modernist
   tokens, navigation graph for all ten screens, APK naming. `./gradlew build
   test lint detekt ktlintCheck` is green.
+- Build setup: Ubuntu 26.04 devcontainer with `adb` for WiFi debugging,
+  `docs/build-setup.md`, signing keys kept out of the repository,
+  `SECURITY.md`, `sonar-project.properties`.
 
 ## In progress
 

@@ -1,0 +1,23 @@
+# Every text file in this repository is stored and checked out with unix line
+# endings, whatever the developer's platform does by default. Development
+# happens in a Linux devcontainer, and a stray CRLF turns a one-line change
+# into a whole-file diff.
+* text=auto eol=lf
+
+# Binary files git must not touch.
+*.png binary
+*.webp binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.zip binary
+*.jar binary
+*.apk binary
+*.aab binary
+*.keystore binary
+*.jks binary
+*.so binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary

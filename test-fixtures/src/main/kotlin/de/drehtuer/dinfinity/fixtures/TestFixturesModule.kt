@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.fixtures
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object TestFixturesModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":test-fixtures"
+  /** This module's Gradle path. */
+  const val PATH: String = ":test-fixtures"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf()
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf()
 }

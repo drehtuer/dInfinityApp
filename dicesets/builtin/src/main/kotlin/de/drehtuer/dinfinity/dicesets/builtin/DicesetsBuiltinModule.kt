@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.dicesets.builtin
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object DicesetsBuiltinModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":dicesets:builtin"
+  /** This module's Gradle path. */
+  const val PATH: String = ":dicesets:builtin"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":dicesets:format")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":dicesets:format")
 }

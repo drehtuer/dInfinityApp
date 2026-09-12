@@ -80,6 +80,7 @@ is the visual one. Each document below links to the screens that realise it.
 |---|---|
 | [docs/STATUS.md](docs/STATUS.md) | Where the project stands right now: phase, in progress, blocked, pending decisions |
 | [docs/TODO.md](docs/TODO.md) | Open tasks by milestone and open questions |
+| [docs/build-setup.md](docs/build-setup.md) | Devcontainer, building, signing keys, running tests, connecting a phone over WiFi |
 | [docs/architecture.md](docs/architecture.md) | Module layout, tech stack, data flow, key decisions |
 | [docs/physics-and-rendering.md](docs/physics-and-rendering.md) | Simulation, shake input, settling and face detection, stacking avoidance, power-saving mode |
 | [docs/dice-notation.md](docs/dice-notation.md) | Roll formula grammar, evaluation rules, saved rolls |
@@ -111,7 +112,12 @@ docker run --rm -it -v "$PWD":/workspace -w /workspace dinfinity-dev \
 ```
 
 Release and debug APKs land in `app/build/outputs/named-apk/` as
-`dInfinityApp-<version>.apk` and `dInfinityApp-<version>-debug.apk`.
+`dInfinityApp-<version>.apk` and `dInfinityApp-<version>-debug.apk`. The
+container also carries `adb`, so a phone attached over WiFi debugging runs the
+on-device tests without leaving it.
+
+[docs/build-setup.md](docs/build-setup.md) has the details: signing keys,
+wireless debugging, static analysis, and what the container contains.
 
 ## Contributing
 
@@ -128,6 +134,12 @@ the tracking files are kept tidy — are in
 - 3D rendering and physics run on-device; the app works fully offline.
   Network access is only used when you explicitly install a dice set, a
   table or a saved-roll collection from a URL.
+
+## Security
+
+The app installs dice sets other people wrote, and that is the whole attack
+surface worth caring about. [SECURITY.md](SECURITY.md) sets out the threat
+model, the defences, and how to report a vulnerability privately.
 
 ## License
 

@@ -9,9 +9,9 @@ package de.drehtuer.dinfinity.core.probability
  * modules it depends on — a graph that only compiles proves nothing.
  */
 object CoreProbabilityModule {
-    /** This module's Gradle path. */
-    const val PATH: String = ":core:probability"
+  /** This module's Gradle path. */
+  const val PATH: String = ":core:probability"
 
-    /** The Gradle paths this module declares a dependency on. */
-    val DEPENDS_ON: List<String> = listOf(":core:model")
+  /** The Gradle paths this module declares a dependency on. */
+  val DEPENDS_ON: List<String> = listOf(":core:model")
 }

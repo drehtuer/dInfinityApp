@@ -11,6 +11,15 @@ local.properties
 captures/
 .cxx/
 
+# Signing keys — never commit these. Generate them with the commands in
+# docs/build-setup.md; keystore/keystore.properties holds their passwords.
+keystore/*
+!keystore/README.md
+!keystore/keystore.properties.example
+*.keystore
+*.jks
+keystore.properties
+
 # IDE
 .idea/
 *.iml
