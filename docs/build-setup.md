@@ -101,16 +101,57 @@ keytool -genkeypair -v \
   -storepass android -keypass android \
   -dname "CN=dInfinity Debug, OU=dev, O=dInfinity, C=DE"
 
-# The release key. Use a real password, and keep a backup somewhere safe:
-# losing it means never being able to update the published app again.
+# The release key. Keep a backup somewhere safe: losing it means never being
+# able to update the published app again.
+RELEASE_PW="$(openssl rand -hex 24)"
 keytool -genkeypair -v \
   -keystore keystore/release.keystore \
   -alias dinfinity -keyalg RSA -keysize 4096 -validity 10950 \
+  -storepass "$RELEASE_PW" -keypass "$RELEASE_PW" \
   -dname "CN=dInfinity, O=dInfinity, C=DE"
-
-cp keystore/keystore.properties.example keystore/keystore.properties
-$EDITOR keystore/keystore.properties   # fill in the passwords
 ```
+
+Both keystores are PKCS12, where the key password must equal the store
+password. Then write `keystore/keystore.properties` — the build reads it, git
+never sees it:
+
+```properties
+# Paths are relative to the repository root.
+debugStoreFile=keystore/debug.keystore
+debugStorePassword=android
+debugKeyAlias=androiddebugkey
+debugKeyPassword=android
+
+releaseStoreFile=keystore/release.keystore
+releaseStorePassword=<the release password>
+releaseKeyAlias=dinfinity
+releaseKeyPassword=<the release password>
+```
+
+```sh
+chmod 600 keystore/keystore.properties keystore/*.keystore
+```
+
+The debug password is deliberately the well-known `android`: the debug key is
+shared so debug builds from any machine install over each other. The release
+password is not — generate it, and back up both it and `release.keystore`
+somewhere that is not this directory.
+
+### Signature schemes
+
+Releases are signed with **v2 and v3**, set in the app convention plugin. v3 is
+the one that matters: it carries the proof-of-rotation record that lets a lost
+or compromised release key be replaced without breaking updates for anyone who
+already installed the app. AGP does not enable it by default.
+
+v1 is off — it is only read below API 24 and this app starts at 36. v4 is off
+because it writes a separate `.apk.idsig` that only speeds up
+`adb install --incremental` and would have to travel with every release
+artefact.
+
+`apksigner verify --verbose` reports v2 as `false` on these APKs. That is not a
+missing signature: with `minSdk` 36 it verifies through v3 alone and does not
+consult the v2 block. Pass `--min-sdk-version 24` and both report `true`.
 
 ## Running tests
 

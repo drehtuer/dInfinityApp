@@ -21,6 +21,28 @@ val keystoreProperties: Properties? =
     .takeIf { it.isFile }
     ?.let { file -> Properties().apply { file.inputStream().use(::load) } }
 
+/**
+ * v2 and v3, and neither v1 nor v4.
+ *
+ * v3 is the one that matters: it carries a proof-of-rotation record, so a
+ * release key that is lost or compromised can be rotated to a new one and
+ * installed apps still accept the update. Without it the key signed into the
+ * first published APK is the only key that can ever update it. AGP does not
+ * turn v3 on by default, so it is set here.
+ *
+ * v1 (JAR signing) is only read below API 24 and this app starts at 36, so it
+ * would add a second, weaker signature nobody verifies. v4 is left off because
+ * it writes a separate `.apk.idsig` next to the APK, which only speeds up
+ * `adb install --incremental` and would have to be carried alongside every
+ * release artefact.
+ */
+fun com.android.build.api.dsl.ApkSigningConfig.applySigningSchemes() {
+  enableV1Signing = false
+  enableV2Signing = true
+  enableV3Signing = true
+  enableV4Signing = false
+}
+
 fun keystoreEntry(prefix: String): Map<String, String>? {
   val props = keystoreProperties ?: return null
   val values =
@@ -64,6 +86,7 @@ android {
         storePassword = entry.getValue("StorePassword")
         keyAlias = entry.getValue("KeyAlias")
         keyPassword = entry.getValue("KeyPassword")
+        applySigningSchemes()
       }
     }
     keystoreEntry("release")?.let { entry ->
@@ -72,6 +95,7 @@ android {
         storePassword = entry.getValue("StorePassword")
         keyAlias = entry.getValue("KeyAlias")
         keyPassword = entry.getValue("KeyPassword")
+        applySigningSchemes()
       }
     }
   }
