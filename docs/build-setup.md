@@ -432,16 +432,29 @@ the branch and never runs anything from it: it takes the finished file as an
 artifact and commits it through the contents API. CodeQL flags the one-job
 version of this, rightly.
 
-One wrinkle is worth knowing rather than puzzling over. A commit made with
-`GITHUB_TOKEN` deliberately starts no new workflow run, so the pull request's
-checks stay attached to the commit *before* the metadata fix and show as failed.
-Everything is correct; the checks simply need one re-run.
+One wrinkle is worth knowing rather than puzzling over. GitHub will not let a
+workflow set itself off again, so events caused by `GITHUB_TOKEN` are treated
+specially: for a pull request updated this way, the resulting run is created in
+an **approval-required** state. The pull request shows an *Approve workflows to
+run* banner in the merge box, and someone with write access presses it. The
+metadata commit is correct either way — the checks are waiting to be allowed to
+start, not failing.
 
-To make that automatic, add a fine-grained personal access token with
+(That is what GitHub's documentation describes. No Dependabot pull request has
+opened since this workflow landed, so it has not yet been watched happening
+here.)
+
+To skip that press, add a fine-grained personal access token with
 **contents: write** on this repository as a **Dependabot secret** named
 `DEPENDABOT_METADATA_TOKEN` (Settings → Secrets and variables → Dependabot — not
-the Actions secrets, which a Dependabot-triggered run cannot read). The workflow
-uses it if it is there and falls back to `GITHUB_TOKEN` if it is not.
+the Actions secrets, which a Dependabot-triggered run cannot read). A token that
+is not `GITHUB_TOKEN` is not subject to the rule above, so the checks start on
+their own.
+
+It has to be a *separate* credential to be worth anything. `GITHUB_TOKEN` is
+already what the workflow falls back to when the secret is absent, and it is
+minted per run and expires with it, so there is no value to copy into a secret
+even if it would help.
 
 ## Linting the convention plugins
 
