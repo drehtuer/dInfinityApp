@@ -19,6 +19,9 @@ captures/
 # docs/build-setup.md; keystore/keystore.properties holds their passwords.
 keystore/*
 !keystore/README.md
+# The certificate's fingerprint is public by design — it is what proves a
+# downloaded APK was signed by this project's key. The key itself is not.
+!keystore/release-certificate.sha256
 *.keystore
 *.jks
 keystore.properties

@@ -83,6 +83,26 @@ with data worth protecting is to keep the attribute and restrict through the
 extraction rules, which is what this app does. Static analysis flags the
 default as worth a look; it has been looked at, and this is the answer.
 
+## Verifying a release
+
+Every release APK is signed with the project's release key. Its certificate
+fingerprint is public, and pinned in the repository at
+[keystore/release-certificate.sha256](keystore/release-certificate.sha256):
+
+```text
+ce1366a9471577ad7bf5423351a1c45f2c5a6bfcd9d99fef1cc6436a62d26f39
+```
+
+To check a downloaded APK yourself:
+
+```sh
+apksigner verify --print-certs dInfinityApp-<version>.apk
+```
+
+The release workflow checks the same thing before publishing, so an APK signed
+with the debug key or a regenerated one never reaches a release. Each release
+also carries the APK's own SHA-256 alongside it.
+
 ## Signing keys
 
 Keystores and their passwords are never committed — see

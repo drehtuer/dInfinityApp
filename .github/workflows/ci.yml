@@ -64,6 +64,23 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+      # Puts failures where they are read: on the pull request, as a check with
+      # the failing test named and its stack trace, rather than only in the run
+      # log and the uploaded reports. Runs even when the build failed — that is
+      # exactly when it is worth having.
+      - name: Annotate test results
+        if: ${{ !cancelled() }}
+        uses: mikepenz/action-junit-report@a9170d5795813c01ab4901ffb045b52bab4ab09d # v6.5.0
+        with:
+          report_paths: "**/build/test-results/*/TEST-*.xml"
+          check_name: "Test results"
+          detailed_summary: true
+          include_passed: false
+          # The build step has already failed the job by this point; a second
+          # failure here would only obscure which step was the cause.
+          fail_on_failure: false
+          require_tests: true
+
       # Runs after the build so it can pick up the JaCoCo XML and the JUnit
       # results; sonar-project.properties names the paths. Skipped when the
       # token is absent, which is what a pull request from a fork looks like —

@@ -310,6 +310,8 @@ terminal means.
 | `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
 | `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
 | `ci.yml` — Documentation | PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. These two need Node and a headless browser, which the devcontainer does not carry for one linter and one diagram, so unlike the invariants above they run only here |
+| `release.yml` | tag `vX.Y.Z` | The full check suite, then a signed release APK attached to a GitHub Release with its SHA-256. Refuses to republish an existing release, refuses a tag that disagrees with `version.txt`, and refuses an APK not signed by the release key |
+| `pages.yml` | push to `main` touching docs, design or the site config | Publishes `docs/` and `design/` to GitHub Pages, so the prototype opens from a link instead of a clone |
 | `codeql.yml` | PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
 
 The JDK, the SDK packages and Gradle come from one composite action,
@@ -359,6 +361,30 @@ is a visible line in a diff while lowering it is an argument someone has to make
 in the pull request. Recomputing `main`'s coverage to diff against would be
 slower, would only work on CI, and would still need someone to read the number.
 Device-only modules are left out, exactly as they are from SonarQube's figure.
+
+## Releasing
+
+Push a tag of the form `vX.Y.Z`. Nothing else triggers a release, and the
+workflow refuses more than it accepts:
+
+| Refusal | Why |
+|---|---|
+| A release for the tag already exists | Releases are immutable — never move, delete or re-tag a published version, ship a new one (`.claude/CLAUDE.md`). The tag itself is protected by the repository's `releases` ruleset |
+| The tag disagrees with `version.txt` | The APK is named from `version.txt`, so `v1.2.0` around an APK called `dInfinityApp-1.1.0.apk` is a release nobody can reason about. Bump `version.txt` in the commit you tag |
+| The APK is not signed by the release key | Checked against the fingerprint in `keystore/release-certificate.sha256`. Without `keystore.properties` the build produces an *unsigned* APK rather than failing, and a release signed with the debug key — or a regenerated one — installs as a different app and can never update anyone |
+
+The signing key is rebuilt from the repository secrets for the length of the
+job and removed again whatever happens, including on failure.
+
+One quirk worth knowing if you read the log: `apksigner verify` reports only the
+scheme it actually used, and for an APK whose `minSdk` is 36 that is v3 alone —
+v2 shows as `false` even though the block is there. The workflow therefore
+checks each scheme in the era it governs, verifying v2 with
+`--min-sdk-version 24 --max-sdk-version 27`.
+
+The documentation site tracks `main`, not the tag. There is one published site
+and it has no versions, so building it per tag would only overwrite it with the
+same content.
 
 ## Dependency verification
 
