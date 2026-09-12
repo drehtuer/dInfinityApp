@@ -80,7 +80,8 @@ abstract class VerifyDeviceTestResultsTask : DefaultTask() {
     logger.lifecycle("$tests instrumented tests passed on device ($skipped skipped).")
   }
 
-  private fun isJUnitReport(file: File): Boolean = file.isFile && file.name.startsWith("TEST-") && file.extension == "xml"
+  private fun isJUnitReport(file: File): Boolean =
+    file.isFile && file.name.startsWith("TEST-") && file.extension == "xml"
 
   private fun readCounts(report: File): Counts {
     val root =
@@ -90,6 +91,7 @@ abstract class VerifyDeviceTestResultsTask : DefaultTask() {
         .newDocumentBuilder()
         .parse(report)
         .documentElement
+
     fun attribute(name: String): Int = root.getAttribute(name).toIntOrNull() ?: 0
     return Counts(
       tests = attribute("tests"),

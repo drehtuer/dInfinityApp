@@ -98,8 +98,11 @@ artifacts.
 
 None of these replace review, but they catch the boring half:
 
-- **CodeQL** on every pull request and weekly on `main`, over Kotlin/Java and
-  over the workflow files themselves. Findings land in the repository's code
+- **CodeQL** on every pull request and weekly on `main`, over the workflow
+  files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and
+  fails rather than degrading, so it is switched off until the bundle catches
+  up — detekt, Android Lint and SonarQube cover Kotlin meanwhile
+  (`.github/workflows/codeql.yml`). Findings land in the repository's code
   scanning alerts.
 - **Dependabot** — alerts, automated security updates, and grouped weekly
   version bumps for Gradle, Actions and the devcontainer base image
@@ -108,6 +111,13 @@ None of these replace review, but they catch the boring half:
   in a dependency with a known moderate-or-worse advisory.
 - **Secret scanning with push protection**, so a keystore password cannot be
   committed by accident.
+- **Dependency verification**: every dependency the build resolves is pinned by
+  SHA-256 in [gradle/verification-metadata.xml](gradle/verification-metadata.xml),
+  and Gradle refuses an artifact whose checksum does not match. A version number
+  says which artifact was asked for; a checksum says which one arrived. An app
+  that installs downloaded content should not be built by a toolchain that
+  cannot tell those apart. The metadata is regenerated on a cold cache —
+  [docs/build-setup.md](docs/build-setup.md) says why that matters.
 
 ## Out of scope
 

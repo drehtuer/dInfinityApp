@@ -15,16 +15,11 @@ Everything a machine can check, on every PR. Emulator and device suites are
 Step 5 and stay off CI.
 
 - [ ] Annotate test results and failures on the pull request itself, rather than only in the run log and the uploaded reports
-- [ ] Enforce the coverage floor: a PR that lowers **function or branch** coverage against `main` fails. The gate already blocks on ≥ 80 % of new code, and branch coverage is published; the comparison needs `main`'s report cached or recomputed
-- [ ] **Function coverage has to be checked by us.** SonarQube's coverage model has only line and condition counters — there is no method counter to import — so JaCoCo's `METHOD` figure reaches the reports but never the server. A Gradle verification rule on the JaCoCo XML would put it back under the build rather than leaving half of `.claude/CLAUDE.md`'s pair unenforced
-- [ ] **Docs:** markdown lint, link check (internal links must resolve), mermaid fences must parse, and a check that `README.md` indexes every `docs/*.md` — the rule in `.claude/CLAUDE.md` should be enforced, not remembered
 - [ ] **Docs site:** publish `docs/` and `design/` to GitHub Pages so the prototype can be opened from a link rather than only from a clone — GitHub does not serve HTML from a repository, so today it takes a checkout
 - [ ] **Release on tag `vX.Y.Z`:** optimised build (R8, shrinking), `dInfinityApp-<version>.apk` attached to a GitHub Release, docs site built for the tag. Releases are immutable — the workflow refuses to overwrite an existing tag
-- [ ] Confirm a PR run stays under ~10 minutes now that Gradle caching is in place, and cache the SDK packages and Robolectric's `android-all` jars if it does not
 - [ ] Require the CI checks in the `main` ruleset once their names are stable — the ruleset enforces pull requests today but no status check has to pass
 - [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready
-- [ ] Gradle dependency verification (`gradle/verification-metadata.xml`) so dependency versions and checksums are pinned, not merely resolved — Sonar `text:S8569`, and a real supply-chain gap for an app that installs downloaded content
-- [ ] Lint `build-logic` too. ktlint cannot currently be kept off the plugin accessors Gradle generates into that build's main source set, so the convention plugins are styled by hand and unchecked
+- [ ] Regenerate `gradle/verification-metadata.xml` automatically on a Dependabot branch, or those pull requests fail their build until someone does it by hand (`docs/build-setup.md`)
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 
 **Done when** a PR shows one green check per concern, Sonar decorates it with

@@ -50,7 +50,15 @@ changelog.
   `sonar-project.properties` is the only Sonar configuration there is.
 - Coverage is measured by JaCoCo across the JVM and Robolectric suites and
   published: branch coverage reaches SonarQube and the README badges, function
-  coverage only the reports — SonarQube has no counter for it.
+  coverage only the reports — SonarQube has no counter for it. `verifyCoverage`
+  holds both to a floor in `gradle.properties`, so the half SonarQube cannot
+  see is still enforced.
+- Every dependency is pinned by SHA-256 in `gradle/verification-metadata.xml`,
+  verified on a cold cache.
+- Everything in the repository is now linted by something: Markdown by
+  markdownlint, mermaid by `mermaid-cli`, relative links and the docs index by
+  Gradle tasks in `check`, and the convention plugins in `build-logic` by the
+  ktlint CLI.
 - Identity: the `d∞` mark from `design/Logo.dc.html`, as real Archivo outlines,
   in `README.md` and as the launcher icon.
 - First working screen, out of plan order because the accent needed somewhere
@@ -58,8 +66,9 @@ changelog.
 
 ## In progress
 
-- `docs/TODO.md` Step 2, what is left: a coverage floor that a PR cannot sink
-  below, the docs site and release-on-tag.
+- `docs/TODO.md` Step 2, what is left: release-on-tag, the docs site, test
+  annotations on pull requests, and required status checks on `main`. Two
+  entries are waiting on other people: CodeQL's Kotlin support and an AGP fix.
 
 ## Blocked / waiting on
 

@@ -73,7 +73,7 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
 
 Room database, three tables:
 
-```
+```text
 roll_history(id, timestamp, session_id, saved_roll_id?, group_id?, formula, total,
              seed, input_blob, breakdown_json, anomalies)
 die_stats(set_id, die_id, sides, face_value, count, dropped_count,

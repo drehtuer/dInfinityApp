@@ -309,6 +309,7 @@ terminal means.
 | `ci.yml` — Device tests compile | PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
 | `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
 | `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
+| `ci.yml` — Documentation | PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. These two need Node and a headless browser, which the devcontainer does not carry for one linter and one diagram, so unlike the invariants above they run only here |
 | `codeql.yml` | PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
 
 The JDK, the SDK packages and Gradle come from one composite action,
@@ -324,19 +325,90 @@ missing token should not read as a failed build.
 
 ## Repository invariants
 
-Three rules that are easy to break are checked by the build rather than by
-memory, and run as part of `check`:
+Rules that are easy to break are checked by the build rather than by memory,
+and all of these run as part of `check`:
 
 ```sh
 ./gradlew verifyModuleGraph     # every module on disk is in settings.gradle.kts
 ./gradlew verifyDocsIndex       # README.md links every document in docs/
+./gradlew verifyDocsLinks       # every relative Markdown link resolves
 ./gradlew verifySourcesTracked  # git ignores no Kotlin source file
+./gradlew verifyCoverage        # function and branch coverage are above the floor
 ```
 
-The last one exists because `build/` in `.gitignore` matches any directory of
-that name, and the convention plugins' task classes live in a Kotlin package
-called `build` — so they were quietly kept out of the repository while every
-machine that already had them kept building fine.
+`verifySourcesTracked` exists because `build/` in `.gitignore` matches any
+directory of that name, and the convention plugins' task classes live in a
+Kotlin package called `build` — so they were quietly kept out of the repository
+while every machine that already had them kept building fine.
+
+`verifyDocsLinks` checks relative links only. External URLs need the network,
+and a link checker that fails without it turns an offline build into a broken
+one.
+
+`verifyCoverage` reads the JaCoCo reports and holds **function** and **branch**
+coverage to the floors in `gradle.properties`:
+
+```properties
+dinfinity.coverage.minFunction=85.0
+dinfinity.coverage.minBranch=62.0
+```
+
+A floor rather than a comparison against `main`, because the floor works
+everywhere — a developer sees the same failure CI does — and because raising it
+is a visible line in a diff while lowering it is an argument someone has to make
+in the pull request. Recomputing `main`'s coverage to diff against would be
+slower, would only work on CI, and would still need someone to read the number.
+Device-only modules are left out, exactly as they are from SonarQube's figure.
+
+## Dependency verification
+
+Every dependency the build resolves is pinned by SHA-256 in
+[../gradle/verification-metadata.xml](../gradle/verification-metadata.xml), and
+Gradle refuses to use an artifact whose checksum does not match. A version
+number says which artifact was asked for; a checksum says which one arrived.
+
+**Adding or upgrading a dependency means regenerating it**, or the build fails
+with "Dependency verification failed" and the artifact's name:
+
+```sh
+./gradlew --write-verification-metadata sha256 \
+  build test coverageReport lint detekt ktlintCheck assembleDebugAndroidTest
+```
+
+Run it with a **cold** dependency cache, in a throwaway `GRADLE_USER_HOME`:
+
+```sh
+GRADLE_USER_HOME=/tmp/cold ./gradlew --write-verification-metadata sha256 …
+```
+
+A warm cache does not re-resolve what it already has, so the generated file
+silently omits it and the next clean machine — CI, or a new clone — fails on a
+POM nobody has seen for weeks. That is not hypothetical: the first generated
+file was missing `kotlinx-coroutines-bom`, and passed locally while failing the
+moment the cache was empty.
+
+The task list matters for the same reason. It has to resolve every configuration
+the build uses, `assembleDebugAndroidTest` included, or the device suite fails on
+its own dependencies.
+
+This also means a Dependabot pull request will fail its build until the metadata
+is regenerated on that branch. That is the cost of the check, and it is the
+point of it: a changed artifact is supposed to stop the build.
+
+## Linting the convention plugins
+
+`build-logic` is linted by the ktlint **CLI**, not its Gradle plugin, and
+`check` reaches into that build to run it:
+
+```sh
+./gradlew -p build-logic ktlintCheckConventions   # or ktlintFormatConventions
+```
+
+The Gradle plugin lints whole source sets, and Gradle generates its plugin
+accessors into that build's main source set — tens of thousands of violations in
+code nobody wrote, and neither a path filter nor overriding the tasks' source
+would keep it off them. The CLI takes explicit file patterns, so it sees the
+hand-written files and nothing else.
 
 ## Editor settings
 

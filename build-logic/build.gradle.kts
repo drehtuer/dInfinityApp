@@ -16,9 +16,38 @@ kotlin {
   jvmToolchain(21)
 }
 
-// ktlint is deliberately not applied here. Gradle generates the plugin
-// accessors into a source directory under build/, they end up in the main
-// source set, and neither a path filter nor overriding the tasks' source keeps
-// ktlint off them — it reports tens of thousands of violations in generated
-// code. The convention plugins follow the same style as the rest of the
-// repository (build-logic/.editorconfig), just unenforced. See docs/TODO.md.
+// The convention plugins are linted by the ktlint *CLI* rather than its Gradle
+// plugin. The plugin lints whole source sets, and Gradle generates its plugin
+// accessors into this build's main source set — tens of thousands of
+// violations in code nobody wrote. Neither a path filter nor overriding the
+// tasks' source kept it off them. The CLI takes explicit patterns instead, so
+// it sees the hand-written files and nothing else.
+val ktlintCli: Configuration by configurations.creating
+
+dependencies {
+  ktlintCli(libs.ktlint.cli)
+}
+
+val ktlintCheckConventions by tasks.registering(JavaExec::class) {
+  group = "verification"
+  description = "Runs ktlint over the convention plugins."
+  classpath = ktlintCli
+  mainClass.set("com.pinterest.ktlint.Main")
+  // ktlint resolves .editorconfig from the working directory upwards, and this
+  // is a separate build, so it finds build-logic/.editorconfig.
+  workingDir = layout.projectDirectory.asFile
+  args("src/main/kotlin/**/*.kt", "src/main/kotlin/**/*.kts", "*.kts")
+}
+
+val ktlintFormatConventions by tasks.registering(JavaExec::class) {
+  group = "formatting"
+  description = "Fixes what ktlint can fix in the convention plugins."
+  classpath = ktlintCli
+  mainClass.set("com.pinterest.ktlint.Main")
+  workingDir = layout.projectDirectory.asFile
+  args("--format", "src/main/kotlin/**/*.kt", "src/main/kotlin/**/*.kts", "*.kts")
+}
+
+tasks.named("check") {
+  dependsOn(ktlintCheckConventions)
+}
