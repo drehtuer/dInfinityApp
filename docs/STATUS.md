@@ -80,8 +80,10 @@ changelog.
   rolling small formulas every possible way. `dicesets/format` is done too: a
   package downloaded from a stranger is parsed, checked against every rule in
   `docs/dice-sets.md` and either installed or rejected with a `file:line`
-  report. `dicesets/builtin` is next, and the physics engine spike (Jolt vs.
-  Bullet) is still the decide-first item further down the step.
+  report — and `dicesets/builtin` is now a real `diceset.toml` read through
+  that same validator, so the app eats its own dog food on every launch.
+  `simulation/api` is next, and the physics engine spike (Jolt vs. Bullet) is
+  the decide-first item after it.
 
 ## Blocked / waiting on
 

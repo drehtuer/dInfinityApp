@@ -1,0 +1,158 @@
+# The dice the app ships with.
+#
+# This is an ordinary package. It is read by the same parser and checked by the
+# same validator as a set downloaded from a stranger's repository
+# (docs/dice-sets.md) — there is no privileged path, because a validator the
+# built-in set skips is a validator the built-in set is never tested on.
+#
+# It has no textures. Every die prints its `labels` in `number_color` on the
+# body colour, which is what a set without artwork looks like and is therefore
+# the case most worth having working out of the box.
+
+format = 1
+
+[set]
+id = "builtin"
+name = "dInfinity"
+version = "1.0.0"
+author = "dInfinity"
+license = "GPL-2.0-or-later"
+description = "The standard dice: d2 to d20, percentile and fudge, in bone and ink."
+
+[defaults]
+color = "#e8dcc0"          # bone-coloured resin
+number_color = "#2b2b2b"   # ink
+roughness = 0.35
+metallic = 0.0
+size_mm = 16
+density = 1.2              # ~acrylic
+restitution = 0.3
+friction = 0.5
+
+# --- dice ------------------------------------------------------------
+
+# A real d2 is a coin, not a cube. A set without one falls back to a d6
+# labelled 1,2,1,2,1,2 (docs/dice-notation.md, "d2"); this one need not.
+[[die]]
+id = "d2"
+shape = "coin"
+faces = [1, 2]
+
+# A tetrahedron resting on a face never has a face pointing up, so a d4 is
+# read from the vertex at the top — the convention every d4 uses.
+[[die]]
+id = "d4"
+shape = "tetrahedron"
+read = "vertex-up"
+faces = [1, 2, 3, 4]
+
+[[die]]
+id = "d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5, 6]
+
+[[die]]
+id = "d8"
+shape = "octahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8]
+
+# Scores 1 to 10, but is printed the way a real one is moulded: 1 to 9 and
+# then 0. As the units half of a percentile pair the 10 reads as the 0 the
+# player can see (docs/dice-notation.md, "d100 and d%").
+[[die]]
+id = "d10"
+shape = "pentagonal-trapezohedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+labels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+
+[[die]]
+id = "d10-tens"
+shape = "pentagonal-trapezohedron"
+faces = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+labels = ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"]
+
+[[die]]
+id = "d12"
+shape = "dodecahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+[[die]]
+id = "d18"
+shape = "enneagonal-trapezohedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+
+[[die]]
+id = "d20"
+shape = "icosahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+
+# The fudge die: two minuses, two blanks, two pluses.
+[[die]]
+id = "df"
+shape = "cube"
+faces = [-1, -1, 0, 0, 1, 1]
+labels = ["−", "−", "0", "0", "+", "+"]
+
+# --- tables ----------------------------------------------------------
+#
+# The five looks docs/tables.md says the bundled package ships. No textures
+# here either: a colour, a material and a sound profile are enough for a tray,
+# and every one of them works on a phone with nothing downloaded.
+
+[[table]]
+id = "felt-green"
+name = "Green felt"
+floor_color = "#1f5e3a"
+wall_color = "#3a2a18"
+roughness = 0.9
+friction = 0.6
+restitution = 0.2
+sound = "felt"
+light = "warm"
+
+[[table]]
+id = "felt-black"
+name = "Black felt"
+floor_color = "#1a1a1a"
+wall_color = "#2b2b2b"
+roughness = 0.9
+friction = 0.6
+restitution = 0.2
+sound = "felt"
+light = "neutral"
+
+[[table]]
+id = "oak"
+name = "Oak"
+floor_color = "#5a3a1e"
+wall_color = "#3f2913"
+roughness = 0.55
+friction = 0.45
+restitution = 0.35
+sound = "wood"
+light = "warm"
+
+[[table]]
+id = "dark-glass"
+name = "Dark glass"
+floor_color = "#20262b"
+wall_color = "#161a1e"
+roughness = 0.1
+metallic = 0.1
+friction = 0.3
+restitution = 0.45
+sound = "glass"
+light = "cool"
+
+# The neutral grey that is easy on the eyes and on the battery, and what
+# power-saving mode's result screen echoes (docs/tables.md).
+[[table]]
+id = "plain"
+name = "Plain"
+floor_color = "#6e6e6e"
+wall_color = "#4a4a4a"
+roughness = 0.8
+friction = 0.55
+restitution = 0.25
+sound = "plastic"
+light = "dim"
