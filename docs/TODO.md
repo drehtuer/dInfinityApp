@@ -16,7 +16,7 @@ Step 5 and stay off CI.
 
 - [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready
 - [ ] Cut a throwaway release to prove `release.yml` end to end. Its pieces are tested — the signing and fingerprint checks were run against real APKs, and against a debug-signed one to see them refuse — but the workflow itself has never run
-- [ ] Regenerate `gradle/verification-metadata.xml` automatically on a Dependabot branch, or those pull requests fail their build until someone does it by hand (`docs/build-setup.md`)
+- [ ] *Optional:* add a `DEPENDABOT_METADATA_TOKEN` Dependabot secret so the metadata commit re-runs the checks by itself. Without it the automation still works and the checks need one re-run (`docs/build-setup.md`)
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 
 **Done when** a PR shows one green check per concern, Sonar decorates it with

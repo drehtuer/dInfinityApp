@@ -1,0 +1,80 @@
+name: Dependabot metadata
+
+# Every dependency is pinned by SHA-256 in gradle/verification-metadata.xml, so
+# a version bump changes the artifacts and the build stops until the metadata
+# says so. That is the check working, not a fault — but it makes every
+# Dependabot pull request fail until someone regenerates the file by hand.
+# This does it for them.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependabot-metadata-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  update:
+    name: Update verification metadata
+    # Only Dependabot's own pull requests. Workflows it triggers have respected
+    # the permissions key since October 2021, so this needs no personal token
+    # to write — see the note on pushing below.
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The branch itself, not the merge commit: this job writes to it.
+          ref: ${{ github.head_ref }}
+          # A push made with GITHUB_TOKEN deliberately starts no new workflow
+          # run, which would leave CI red against the commit before this one.
+          # If DEPENDABOT_METADATA_TOKEN exists (a Dependabot secret — Actions
+          # secrets are not readable here), the push re-runs the checks and the
+          # pull request goes green on its own. Without it everything still
+          # works; the checks need one re-run.
+          token: ${{ secrets.DEPENDABOT_METADATA_TOKEN || github.token }}
+
+      - uses: ./.github/actions/setup-android-build
+
+      # Every configuration the build uses has to be resolved, or the file is
+      # written without the dependencies of whatever was not built — which is
+      # how the first hand-made version came out missing kotlinx-coroutines-bom.
+      # Gradle merges into the existing file rather than replacing it, so a warm
+      # cache cannot drop entries here; only the new artifacts need adding.
+      - name: Regenerate the verification metadata
+        run: |
+          ./gradlew --write-verification-metadata sha256 \
+            build test coverageReport lint detekt ktlintCheck assembleDebugAndroidTest \
+            --stacktrace
+
+      - name: Commit it
+        # The token is read as an environment variable rather than interpolated
+        # into the script: `${{ }}` would paste its value into the shell.
+        env:
+          HAS_PUSH_TOKEN: ${{ secrets.DEPENDABOT_METADATA_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- gradle/verification-metadata.xml; then
+            echo "The metadata already covers this update; nothing to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add gradle/verification-metadata.xml
+          git commit --file=- <<'MESSAGE'
+          Update the dependency verification metadata
+
+          Written by .github/workflows/dependabot-metadata.yml. This bump changes
+          which artifacts the build resolves, and every one of them is pinned by
+          checksum, so the file has to say so before the build will run.
+          MESSAGE
+          git push
+          if [ "${HAS_PUSH_TOKEN}" != "true" ]; then
+            echo "::notice::Metadata updated. The checks ran against the commit before this one — re-run them. A DEPENDABOT_METADATA_TOKEN Dependabot secret makes that automatic."
+          fi
