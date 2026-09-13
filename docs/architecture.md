@@ -202,10 +202,18 @@ file.
 | `Rolling` | — | "Rolling…" | — | disabled | live |
 | `Settled` | the total | — | breakdown, and rounding if the formula divides | **enabled** (throws again) | live |
 
+The picker row is not in that table because it is on screen, and live, in
+every state — for the same reason the formula field is, and in fact for
+exactly that reason: it is the formula field reached with a thumb.
+
 Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
 - **the formula field** calls `type`, on every keystroke;
+- **the dice picker row** calls `add` on a tap and `remove` on a long press,
+  and both are `type` underneath — a tap *is* an edit to the formula, so it
+  re-validates, re-checks the table's capacity and abandons a throw in the air
+  exactly as a keystroke does (`docs/dice-notation.md`);
 - **the Roll button** calls `roll`, which is one press for one throw — a
   settled roll is put away by the presenter rather than by a second press;
 - **a shake** calls the same `roll`, which is why it had to be one act;

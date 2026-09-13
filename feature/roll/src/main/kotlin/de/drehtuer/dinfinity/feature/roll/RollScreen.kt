@@ -35,9 +35,9 @@ import de.drehtuer.dinfinity.core.model.Rounding
  * formula means, whether it fits, what the dice came to and what that adds up
  * to are all settled before a pixel is placed.
  *
- * This is the first of the screen's pieces, not all of them: the dice picker
- * row, the full result sheet, the rounding control and the first-launch state
- * are still to come (`docs/TODO.md`, Step 4.1).
+ * Not all of the screen's pieces yet: the squiggle under a bad formula, the
+ * power-saving path and the first-launch state are still to come
+ * (`docs/TODO.md`, Step 4.1).
  */
 @Composable
 fun RollScreen(
@@ -69,6 +69,12 @@ fun RollScreen(
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       Outcome(state, onRound = presenter::round)
+      PickerRow(
+        dice = presenter.pickable,
+        counts = presenter.counts,
+        onAdd = presenter::add,
+        onRemove = presenter::remove,
+      )
       Formula(
         text = presenter.text,
         wrong = state is RollState.Invalid || state is RollState.TooMany,
@@ -232,6 +238,13 @@ object RollTestTags {
   const val ROLLING: String = "roll:rolling"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = "roll:invalid"
+
+  /** The dice picker row, and one die on it (design option 1h). */
+  const val PICKER: String = "roll:picker"
+
+  fun pickerDie(notation: String): String = "roll:picker:$notation"
+
+  fun pickerCount(notation: String): String = "roll:picker:$notation:count"
 
   /** The Down / Nearest / Up control, shown only for a formula that divides. */
   const val ROUNDING: String = "roll:sheet:rounding"

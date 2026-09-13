@@ -5,10 +5,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -111,6 +116,53 @@ class RollScreenTest {
 
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
     compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
+  }
+
+  @Test
+  fun `a tap on the picker row types the formula for you`() {
+    // The row is not a second way to describe a roll: it edits the field, and
+    // what comes out is a formula somebody could have typed
+    // (`docs/architecture.md`, decision 31).
+    show(faces = mapOf(0 to 0))
+
+    // Scrolled to first, because ten dice at a touch target worth pressing do
+    // not fit across a phone — which is why the row scrolls.
+    compose.onNodeWithTag(RollTestTags.pickerDie("d20")).performScrollTo().performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("1d20")
+    compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
+  }
+
+  @Test
+  fun `tapping twice asks for two of them and the badge says so`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
+    compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("2d6")
+    compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("2")
+  }
+
+  @Test
+  fun `a long press takes the last one off and empties the field`() {
+    show()
+    compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
+
+    compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performTouchInput { longClick() }
+
+    compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
+  }
+
+  @Test
+  fun `typing puts the badge on the row, so both agree about the same roll`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("4d6 + 1d20")
+
+    compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("4")
+    compose.onNodeWithTag(RollTestTags.pickerCount("d20"), useUnmergedTree = true).assertTextEquals("1")
   }
 
   @Test

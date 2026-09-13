@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
@@ -39,6 +40,13 @@ class RollPresenter(
   /** The formula as typed, valid or not. */
   var text: String by mutableStateOf(machine.text)
     private set
+
+  /** How many of each of [pickable] the formula is asking for. */
+  var counts: Map<PickableDie, Int> by mutableStateOf(machine.counts)
+    private set
+
+  /** The dice the picker row offers (`design/dInfinity.dc.html`, option 1h). */
+  val pickable: List<PickableDie> get() = machine.pickable
 
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
@@ -102,6 +110,18 @@ class RollPresenter(
     driver.shake(sample)
   }
 
+  /** A tap on the picker row: one more of that die in the formula. */
+  fun add(die: PickableDie) {
+    machine.add(die)
+    publish()
+  }
+
+  /** A long press on the picker row: one fewer, or the group gone. */
+  fun remove(die: PickableDie) {
+    machine.remove(die)
+    publish()
+  }
+
   /** The same throw under a different rounding. The dice do not move. */
   fun round(rounding: Rounding) {
     machine.round(rounding)
@@ -117,6 +137,7 @@ class RollPresenter(
   private fun publish() {
     state = machine.state
     text = machine.text
+    counts = machine.counts
   }
 
   private companion object {
