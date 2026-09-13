@@ -43,6 +43,10 @@ dependencies {
   api(project(":core:model"))
   api(project(":core:stats"))
 
+  // What an imported collection arrives as. The reading and the refusing are
+  // core/collection's; writing it down is this module's.
+  api(project(":core:collection"))
+
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)

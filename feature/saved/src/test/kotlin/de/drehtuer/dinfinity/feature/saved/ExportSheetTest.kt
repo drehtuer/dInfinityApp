@@ -133,6 +133,19 @@ class ExportSheetTest {
   }
 
   @Test
+  fun `the same sheet is the way in as well as the way out`() {
+    // A file arriving and a file leaving are one idea to a player, and the
+    // alternative is a second control on a bar that has a group name in it.
+    show()
+
+    compose.onNodeWithTag(ExportTestTags.OPEN).performClick()
+    compose.onNodeWithTag(ExportTestTags.IMPORT).performClick()
+
+    assertTrue("the import screen was never asked for", importing)
+    compose.onNodeWithTag(ExportTestTags.SHEET).assertDoesNotExist()
+  }
+
+  @Test
   fun `Cancel exports nothing`() {
     given(roll("axe", SavedRollGroup.UNFILED_ID, "Axe"))
     show()
@@ -161,6 +174,7 @@ class ExportSheetTest {
   }
 
   private var exported: CollectionFile? = null
+  private var importing = false
 
   private fun show() {
     val presenter =
@@ -172,7 +186,12 @@ class ExportSheetTest {
       )
     val groups = GroupPresenter(repository, scope, "Unfiled")
     compose.setContent {
-      SavedScreen(presenter = presenter, groups = groups, onExport = { exported = it })
+      SavedScreen(
+        presenter = presenter,
+        groups = groups,
+        onExport = { exported = it },
+        onImport = { importing = true },
+      )
     }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
   }

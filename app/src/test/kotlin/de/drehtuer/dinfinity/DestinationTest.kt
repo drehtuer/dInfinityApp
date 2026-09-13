@@ -16,10 +16,12 @@ class DestinationTest {
 
   @Test
   fun `a screen that is not in the menu is one you arrive at from somewhere`() {
-    // The menu, which is the list; and the saved-roll editor, which is about
-    // one roll and is reached from that roll.
+    // The menu, which is the list; the saved-roll editor, which is about one
+    // roll and is reached from that roll; and importing a collection, which is
+    // about saved rolls and would be a menu row that means nothing until
+    // somebody has a file.
     assertEquals(
-      listOf(Destination.Menu, Destination.SavedRollEditor),
+      listOf(Destination.Menu, Destination.SavedRollEditor, Destination.CollectionImport),
       Destination.entries.filter { it.group == null },
     )
   }

@@ -70,6 +70,16 @@ enum class Destination(
    * option 1r).
    */
   SavedRollEditor("editor", "Saved roll", "", group = null, arguments = listOf(EditorArgument.ROLL)),
+
+  /**
+   * Taking a collection of saved rolls in
+   * (`design/dInfinity.dc.html`, options 9f and 9g).
+   *
+   * Not in the menu, for the same reason the editor is not: it is about saved
+   * rolls, and the way to it is the saved-rolls screen's own control. A menu
+   * row for it would be a row that means nothing until somebody has a file.
+   */
+  CollectionImport("import", "Import a collection", "", group = null),
   ;
 
   /**

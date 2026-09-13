@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity
 
 import android.app.Application
+import de.drehtuer.dinfinity.data.CollectionImporter
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
@@ -28,6 +29,15 @@ class DInfinityApplication : Application() {
 
   /** Saved rolls and their groups (`docs/dice-notation.md`). */
   val savedRolls: SavedRollRepository by lazy { SavedRollRepository(database) }
+
+  /**
+   * Taking a collection of saved rolls in.
+   *
+   * Its own thing rather than a method on [savedRolls], because importing is a
+   * transaction with a refusal in front of it rather than a repository
+   * operation (`docs/architecture.md`, decision 15).
+   */
+  val collectionImporter: CollectionImporter by lazy { CollectionImporter(database) }
 
   /** The roll screen's engine and catalogue, named in one place (`RollWiring`). */
   val rolls: RollWiring by lazy { RollWiring(this) }

@@ -180,9 +180,11 @@ that knew what the menu was would be one feature module depending on another,
 and the navigation graph belongs to `:app`. Each screen takes a `menu`
 composable slot and draws it where it has room.
 
-Two destinations are not in the menu, and for the same reason: they are about
-something rather than about a subject. The menu *is* the list, and the
-saved-roll editor is about one roll, reached from that roll.
+Three destinations are not in the menu, and for the same reason: they are
+about something rather than about a subject. The menu *is* the list; the
+saved-roll editor is about one roll, reached from that roll; and importing a
+collection is about saved rolls, reached from their screen. A menu row for the
+last of those would be a row that means nothing until somebody has a file.
 
 **Three destinations are opened with arguments.** The outcome graph is about a
 formula, and after a roll it also marks the total that came up, so its route
@@ -472,7 +474,7 @@ favourites first, then by recent use — is SQL's, because it is what the list
 | a group in the switcher | `open` | which group's rolls are listed, and the stored active group |
 | a group's **…**, or a long press on it | `GroupPresenter.edit` | the group sheet opens on that group |
 | **New group**, at the foot of the switcher | `GroupPresenter.create` | the group sheet opens on a group that does not exist yet |
-| **⤴** | the export sheet | which of the two exports is offered: this group with its subgroups, or everything |
+| **⤴** | the collections sheet | the two ways out — this group with its subgroups, or everything — and the one way in |
 | a row, tapped | `used`, then navigation | one more use, and the tray with that formula in its field |
 | a row, long-pressed | the editor | which screen is on, opened on that roll |
 | **New** | the editor | the same, opened on a roll that does not exist yet |
@@ -533,6 +535,47 @@ offers one file, and a directory that only grows is a directory of everything
 anybody ever exported. `res/xml/collection_paths.xml` lets the provider see
 that directory and nothing else: a file-sharing provider that can reach the
 database is one that will eventually be asked for it.
+
+### Importing
+
+Two steps, and the order of them is the whole of it. A file is **read** first,
+by `core/collection`, which cannot write anything; only a file that came back
+sound is offered to `CollectionImporter`, which writes it in one transaction.
+Every way an import can fail has therefore already happened before anything is
+at risk.
+
+The importer's own rule is a refusal. A collection whose group name is already
+taken is turned away outright, naming the clash, with nothing merged and
+nothing deleted (decision 15). It is checked ignoring case, because two groups
+a capital apart are one group to a person — the same rule the group sheet keeps
+when somebody types a name by hand.
+
+The file's own ids are not reused. A slug is stable *inside* a file, which is
+what lets somebody edit one by hand; it says nothing about what this database
+already uses, and an id taken from a stranger is an id that can collide with
+one made here.
+
+| State | What it means |
+|---|---|
+| `Waiting` | nothing chosen; what an import will and will not do is on screen |
+| `Reading` | brief, but not instant for five hundred rolls |
+| `Unopenable` | the file could not be opened at all — moved, or the permission withdrawn |
+| `Unreadable` | it is not a collection, and **every** line wrong with it is listed, each saying where in the file it is |
+| `Clash` | a group name is taken. Its own state, not another kind of problem: the file is fine and so is what is saved, and one of the two names has to change |
+| `Imported` | it is in, with the counts and any roll whose dice are not installed |
+
+| Control | Calls | What changes |
+|---|---|---|
+| **Choose a file** | the picker, in `:app` | a content URI arrives, is read bounded, and becomes text |
+| *(not a control)* the file's text | `offer` | the state, to one of the four above |
+| **Choose another file** | `again`, then the picker | back to `Waiting` |
+| **See the rolls** | *(navigation)* | the saved-rolls list, with the import taken off the back stack |
+
+The picker is in `:app` rather than on the screen, because a content URI is the
+application's business. The screen takes text; the permission, the **bounded**
+read — one byte past the limit and no further, which is what tells a file at
+the limit from one over it — and the failure to open all happen on that side of
+the seam.
 
 ### The saved-roll editor
 

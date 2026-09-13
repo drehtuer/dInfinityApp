@@ -144,6 +144,20 @@ interface SavedRollGroupDao {
   @Query("SELECT * FROM saved_roll_group WHERE id = :id")
   suspend fun byId(id: String): SavedRollGroupRow?
 
+  /**
+   * Every group's name.
+   *
+   * Read in one go rather than asked per group: an import checks up to fifty
+   * names against what is here, and fifty queries to answer one question is
+   * fifty chances for the answer to change halfway through.
+   */
+  @Query("SELECT name FROM saved_roll_group")
+  suspend fun allNames(): List<String>
+
+  /** The bottom of the switcher, so imported groups land after what is there. */
+  @Query("SELECT MAX(sort_order) FROM saved_roll_group")
+  suspend fun maxSortOrder(): Int?
+
   @Query("SELECT COUNT(*) FROM saved_roll_group WHERE name = :name AND id <> :exceptId")
   suspend fun countNamed(
     name: String,

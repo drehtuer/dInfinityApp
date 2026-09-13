@@ -122,12 +122,10 @@ a roll to send its formula to the tray. Groups can be made, renamed, moved and
 deleted, from the switcher or from the editor — the same sheet in both places.
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
-- [ ] Import from file, URL or repo, over the same reader
-- [ ] Import refuses a duplicate group name outright (`6e`), naming the clash — no merge, nothing deleted
-- [ ] The import-success screen (`9g`)
+- [ ] Import from a **URL or a git repository**, over the same reader and `dicesets/install`'s fetcher. It is separate from importing a file because it needs the `INTERNET` permission, which the app has never asked for — a change to what the app can do, and one that deserves its own review
 - [ ] The active group drives the **home strip** on the roll screen, which is what `9a` means by "the strip invites the first save"
 - [ ] A broken roll falls back to the built-in set when it is thrown; today it says so on the list but the fallback itself is the planner's and untested from here
-- [ ] `SavedRollRepository` is at its function ceiling (detekt's `TooManyFunctions`, 11). Import needs to read a group by id, so the split — groups one class, rolls another — comes with it rather than by raising the threshold
+- [ ] `SavedRollRepository` is at its function ceiling (detekt's `TooManyFunctions`, 11). Nothing needs to grow it yet — importing went into a class of its own, because it is a transaction rather than a repository operation — but the next thing that does needs the split first: groups one class, rolls another, rather than a raised threshold
 
 ### 4.4 Dice sets — `feature/sets`
 

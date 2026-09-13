@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity
 
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +36,8 @@ import de.drehtuer.dinfinity.feature.roll.RollScreen
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorScreen
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
+import de.drehtuer.dinfinity.feature.saved.ImportPresenter
+import de.drehtuer.dinfinity.feature.saved.ImportScreen
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
@@ -63,6 +67,7 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  *   database.
  * @param savedGroups the same, for the group sheet the saved-rolls list and
  *   the editor both open.
+ * @param collectionImport the same, for the screen that takes a collection in.
  * @param navController taken rather than only made, so a test can open a
  *   screen the way a control would rather than by pressing its way there.
  */
@@ -75,6 +80,7 @@ fun DInfinityApp(
   savedRolls: (() -> SavedPresenter)? = null,
   savedRollEditor: ((String?) -> EditorPresenter)? = null,
   savedGroups: (() -> GroupPresenter)? = null,
+  collectionImport: (() -> ImportPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -117,6 +123,9 @@ fun DInfinityApp(
 
           Destination.SavedRollEditor if savedRollEditor != null && savedGroups != null ->
             Editor(savedRollEditor, savedGroups, entry, navController)
+
+          Destination.CollectionImport if collectionImport != null ->
+            Import(collectionImport, entry, navController)
 
           Destination.Settings ->
             SettingsScreen(
@@ -213,6 +222,7 @@ private fun Saved(
     // file to another app, because the provider that does it is declared in
     // this module's manifest.
     onExport = { file -> CollectionSharing.share(context, file) },
+    onImport = { navController.navigate(Destination.CollectionImport.route) },
     menu = { MenuTo(navController) },
   )
 }
@@ -241,6 +251,48 @@ private fun Editor(
         popUpTo(Destination.home.route) { inclusive = true }
       }
     },
+  )
+}
+
+/**
+ * Taking a collection in.
+ *
+ * The file picker is here rather than in the screen because a content URI is
+ * the application's business: the screen takes text, and everything about
+ * *getting* text out of something another app controls — the permission, the
+ * bounded read, the failure to open — happens on this side of the seam.
+ */
+@Composable
+private fun Import(
+  presenter: () -> ImportPresenter,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+) {
+  val importer = remember(entry) { presenter() }
+  val resolver = LocalContext.current.contentResolver
+  val choose =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      // A null uri is the picker being dismissed, which is not a failure and
+      // has nothing to say.
+      if (uri == null) return@rememberLauncherForActivityResult
+      when (val read = CollectionFileReading.read(resolver, uri)) {
+        is CollectionFileReading.Result.Read -> importer.offer(read.text)
+        is CollectionFileReading.Result.Failed -> importer.unopenable(read.why)
+      }
+    }
+  ImportScreen(
+    presenter = importer,
+    // Anything, not just application/json: a collection mailed through three
+    // apps arrives as text/plain or application/octet-stream as often as not,
+    // and a picker that hides the file somebody is looking at is worse than
+    // one that lets them choose the wrong thing and be told so.
+    onChooseFile = { choose.launch(arrayOf("*/*")) },
+    onDone = {
+      navController.navigate(Destination.SavedRolls.route) {
+        popUpTo(Destination.CollectionImport.route) { inclusive = true }
+      }
+    },
+    menu = { MenuTo(navController) },
   )
 }
 

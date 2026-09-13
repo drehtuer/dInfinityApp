@@ -57,6 +57,7 @@ fun SavedScreen(
   onEdit: (SavedEntry) -> Unit = {},
   onNew: () -> Unit = {},
   onExport: (CollectionFile) -> Unit = {},
+  onImport: () -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
@@ -87,6 +88,10 @@ fun SavedScreen(
         everything = everything,
         onDismiss = { exporting = false },
         onExport = onExport,
+        onImport = {
+          exporting = false
+          onImport()
+        },
       )
     }
 
@@ -154,10 +159,12 @@ private fun Exporting(
   everything: String,
   onDismiss: () -> Unit,
   onExport: (CollectionFile) -> Unit,
+  onImport: () -> Unit,
 ) {
   ExportSheet(
     state = state,
     onDismiss = onDismiss,
+    onImport = onImport,
     onExport = { groupId ->
       onDismiss()
       val called =

@@ -258,12 +258,20 @@ rolls.
   one use. Nothing the app holds is made readable to do it.
 - **Import** from a file, from a pasted URL, or from a git repository (same
   sources as dice sets, see `docs/dice-sets.md`). A community can keep a
-  repo of "stat blocks for monster manual X" this way.
+  repo of "stat blocks for monster manual X" this way. The file picker offers
+  every file rather than only `application/json`: a collection mailed through
+  three apps arrives as `text/plain` as often as not, and a picker that hides
+  the file somebody is looking at is worse than one that lets them choose the
+  wrong thing and be told so.
 - Import **never merges and never deletes**. A collection whose group name
   already exists is refused outright, naming the clash; rename the group in
   the file (or the one in the app) and import again. Everything else is added
   as new groups and rolls. There is no conflict-resolution UI to get wrong,
-  and an import can never damage what is already there.
+  and an import can never damage what is already there. The clash is checked
+  ignoring case, and the name reported is the one the *file* spells, since that
+  is the one to go and change. The file's own ids are not reused: they are
+  stable inside the file, which is what lets somebody edit one by hand, and say
+  nothing about what this app already uses.
 - Every formula goes through the parser and limits above. Unknown dice set
   references are kept but flagged; icons are restricted to emoji or names
   from the built-in icon pack (no image files in collections).

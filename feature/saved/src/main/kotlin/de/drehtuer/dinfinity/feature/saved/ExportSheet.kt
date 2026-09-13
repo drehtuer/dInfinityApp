@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -15,9 +16,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 
 /**
- * What to export (`docs/dice-notation.md`, "Export and import").
+ * Collections, in and out (`docs/dice-notation.md`, "Export and import").
  *
- * Two choices, because the specification names two: a group with its
+ * Two ways out, because the specification names two: a group with its
  * subgroups, or everything. Both say how much is in them before they are
  * pressed — an export is a thing somebody sends to another person, and
  * "everything" is a word that deserves a number beside it.
@@ -25,11 +26,15 @@ import androidx.compose.ui.unit.dp
  * There is no third choice for a hand-picked selection. A collection is a
  * group or it is the lot; anything finer is a file somebody has to describe
  * when they send it.
+ *
+ * One way in, which leads to a screen rather than doing anything here: an
+ * import has five states and two of them are lists.
  */
 @Composable
 internal fun ExportSheet(
   state: SavedState,
   onExport: (String?) -> Unit,
+  onImport: () -> Unit,
   onDismiss: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -37,7 +42,7 @@ internal fun ExportSheet(
   AlertDialog(
     modifier = modifier.testTag(ExportTestTags.SHEET),
     onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.export_title)) },
+    title = { Text(stringResource(R.string.collections_title)) },
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
@@ -63,6 +68,16 @@ internal fun ExportSheet(
             ),
           tag = ExportTestTags.EVERYTHING,
           onClick = { onExport(null) },
+        )
+        HorizontalDivider()
+        // In as well as out. The same sheet, because a file arriving and a
+        // file leaving are one idea to a player and the alternative is a
+        // second control on a bar that already has a group name in it.
+        Choice(
+          label = stringResource(R.string.import_open),
+          note = stringResource(R.string.import_note),
+          tag = ExportTestTags.IMPORT,
+          onClick = onImport,
         )
       }
     },
@@ -99,5 +114,6 @@ object ExportTestTags {
   const val SHEET: String = "export:sheet"
   const val GROUP: String = "export:group"
   const val EVERYTHING: String = "export:everything"
+  const val IMPORT: String = "export:import"
   const val CANCEL: String = "export:cancel"
 }
