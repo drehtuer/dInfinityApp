@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.render.filament
 import android.view.Surface
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 
 /**
@@ -49,6 +50,14 @@ interface Tray : AutoCloseable {
     start: (Renderer) -> WatchedRoll,
     onSettled: (SimulationOutcome) -> Unit,
   )
+
+  /**
+   * One more moment of the shake that is throwing the dice now.
+   *
+   * Arrives from wherever the sensors are read and is handed to the roll on
+   * the thread the roll lives on. A sample with no roll to drive is dropped.
+   */
+  fun shake(sample: ShakeSample)
 
   /** Takes whatever is on the tray off it. */
   fun clear()

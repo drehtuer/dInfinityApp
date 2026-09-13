@@ -8,6 +8,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -264,6 +265,7 @@ class TrayLoopTest {
     private val steps: Int,
   ) : WatchedRoll {
     val advanced = mutableListOf<Double>()
+    val shaken = mutableListOf<ShakeSample>()
     var closed = false
       private set
 
@@ -281,6 +283,10 @@ class TrayLoopTest {
       // skipped this would let a loop that never drew anything pass.
       if (running) watcher?.show(frame) else watcher?.settled(frame)
       return frame
+    }
+
+    override fun shake(sample: ShakeSample) {
+      shaken += sample
     }
 
     override fun close() {

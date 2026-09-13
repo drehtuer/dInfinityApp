@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 
 /**
@@ -81,6 +82,11 @@ class TrayLoop : AutoCloseable {
     roll = start(renderer)
     settling = onSettled
     lastFrameNanos = null
+  }
+
+  /** One more moment of the shake, if there is a roll for it to drive. */
+  fun shake(sample: ShakeSample) {
+    roll?.shake(sample)
   }
 
   /** Takes whatever is on the tray off it. */

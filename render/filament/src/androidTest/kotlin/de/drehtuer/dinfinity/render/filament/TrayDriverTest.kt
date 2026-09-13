@@ -14,6 +14,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -190,6 +191,8 @@ class TrayDriverTest {
       if (!running) finished.countDown()
       return frame
     }
+
+    override fun shake(sample: ShakeSample) = Unit
 
     override fun close() {
       watcher?.end()

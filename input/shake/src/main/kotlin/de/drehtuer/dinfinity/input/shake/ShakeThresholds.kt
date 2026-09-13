@@ -12,16 +12,24 @@ object ShakeThresholds {
    * How hard the phone has to move, in millimetres per second squared, before
    * it counts as being shaken rather than carried.
    *
-   * About 0.35 g. Walking with a phone in a hand reaches a fraction of that;
-   * shaking dice reaches many times it.
+   * About 0.6 g, held for [START_MILLIS]. Both halves matter and the second is
+   * the one that does the work: picking a phone up, setting it down or handing
+   * it over all cross 0.6 g for a moment, and none of them stays there for a
+   * tenth of a second. Shaking dice is one to three g for as long as the arm
+   * keeps going.
+   *
+   * It started at 0.35 g and was raised because ordinary handling was
+   * registering. Whether it is now *too* hard to trigger is a question a
+   * person answers with a phone in their hand, not a number anyone can derive
+   * (`docs/TODO.md`, Step 5.6).
    */
-  const val START_MM_PER_SECOND2: Double = 3_500.0
+  const val START_MM_PER_SECOND2: Double = 6_000.0
 
   /** And how gently it has to move again before the shake has stopped. */
   const val STOP_MM_PER_SECOND2: Double = 1_500.0
 
   /** How long it has to keep moving before a jolt becomes a shake. */
-  const val START_MILLIS: Long = 80
+  const val START_MILLIS: Long = 100
 
   /** And how long it has to be still before a pause becomes the end of one. */
   const val STOP_MILLIS: Long = 400

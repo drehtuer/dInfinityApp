@@ -22,6 +22,7 @@ import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.SettleRule
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -96,17 +97,18 @@ class RollScreenTest {
   }
 
   @Test
-  fun `after a total the button throws the same formula again`() {
+  fun `after a total one press throws the same formula again`() {
+    // One press, one roll. Putting the total away and then throwing was two
+    // presses for one act, and a shake could never have expressed the first of
+    // them anyway.
     show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
 
-    // The first press of a settled screen puts the total away; the formula
-    // stays, so the second press is the same throw again.
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
-    compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
     compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
   }
 
@@ -189,6 +191,8 @@ class RollScreenTest {
   }
 
   private class DirectTray : Tray {
+    val shaken = mutableListOf<ShakeSample>()
+
     override fun surfaceAvailable(
       surface: Surface,
       width: Int,
@@ -207,6 +211,10 @@ class RollScreenTest {
       live.close()
     }
 
+    override fun shake(sample: ShakeSample) {
+      shaken += sample
+    }
+
     override fun clear() = Unit
 
     override fun close() = Unit
@@ -214,6 +222,8 @@ class RollScreenTest {
 
   /** A tray that takes the throw and leaves the dice in the air. */
   private class PendingTray : Tray {
+    val shaken = mutableListOf<ShakeSample>()
+
     override fun surfaceAvailable(
       surface: Surface,
       width: Int,
@@ -227,6 +237,10 @@ class RollScreenTest {
       onSettled: (SimulationOutcome) -> Unit,
     ) {
       start(HeadlessRenderer())
+    }
+
+    override fun shake(sample: ShakeSample) {
+      shaken += sample
     }
 
     override fun clear() = Unit
@@ -255,6 +269,8 @@ class RollScreenTest {
             spec.dice.indices.map { BodyTransform(it, Vector3(0.0, 0.0, 8.0), Quaternion.Identity) },
           )
         }
+
+        override fun shake(sample: ShakeSample) = Unit
 
         override fun close() = Unit
       }

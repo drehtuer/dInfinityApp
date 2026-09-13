@@ -59,6 +59,11 @@ class RollPresenter(
    * @param shake what the phone did, or empty for a tap.
    */
   fun roll(shake: List<ShakeSample> = emptyList()) {
+    // A roll that has landed is a roll that is over. Throwing again is one act
+    // — one press, one shake — not "put the total away" followed by "now
+    // throw", which is what a shake could never have expressed anyway.
+    if (state is RollState.Settled) machine.clear()
+
     val spec = machine.throwDice(shake) ?: return
     publish()
 
@@ -71,6 +76,18 @@ class RollPresenter(
         }
       },
     )
+  }
+
+  /**
+   * One more moment of the shake that is throwing the dice now.
+   *
+   * The dice were spawned when the shake began, so the rest of it reaches them
+   * while they are already in the air — which is what makes a shake look like
+   * a hand rather than like a button pressed afterwards
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   */
+  fun shaking(sample: ShakeSample) {
+    driver.shake(sample)
   }
 
   /** The same throw under a different rounding. The dice do not move. */

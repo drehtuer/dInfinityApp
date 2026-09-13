@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.headless
 
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -139,6 +140,19 @@ interface WatchedRoll : AutoCloseable {
    * frame.
    */
   fun advance(elapsedSeconds: Double): RenderFrame
+
+  /**
+   * One more moment of the shake that is throwing these dice.
+   *
+   * The one thing that reaches a roll in progress from outside — and it is the
+   * player's hand, not anything the app decided. It cannot touch a die: a
+   * sample says which way down is for one step, and the solver does the rest.
+   *
+   * Note where this is *not*: [Renderer] has no such method and no method that
+   * returns anything. Drawing a roll still cannot change it; shaking the phone
+   * is supposed to (`docs/physics-and-rendering.md`, "Shake input").
+   */
+  fun shake(sample: ShakeSample)
 }
 
 /**

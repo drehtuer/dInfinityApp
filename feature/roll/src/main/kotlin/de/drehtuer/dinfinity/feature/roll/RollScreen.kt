@@ -75,7 +75,7 @@ fun RollScreen(
       ThrowButton(
         enabled = state is RollState.Ready || state is RollState.Settled,
         settled = state is RollState.Settled,
-        onRoll = { if (state is RollState.Settled) presenter.clear() else presenter.roll() },
+        onRoll = { presenter.roll() },
       )
     }
   }
@@ -196,7 +196,9 @@ private fun ThrowButton(
 ) {
   // Rolling is blocked while the formula is invalid or the table is too small,
   // and while the dice are still in the air — a second throw would replace the
-  // first mid-flight, which is not what a second tap means.
+  // first mid-flight, which is not what a second tap means. A roll that has
+  // landed can be thrown again, and that is one press: the presenter puts the
+  // total away itself.
   Button(
     onClick = onRoll,
     enabled = enabled,

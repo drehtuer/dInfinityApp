@@ -33,7 +33,7 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
 class ShakeDriver(
   samples: List<ShakeSample>,
 ) {
-  private val byStep: Map<Int, ShakeSample> = samples.associateBy(ShakeSample::stepIndex)
+  private val byStep: MutableMap<Int, ShakeSample> = samples.associateByTo(mutableMapOf(), ShakeSample::stepIndex)
 
   private var down: Vector3 = DEFAULT_GRAVITY
 
@@ -46,6 +46,25 @@ class ShakeDriver(
 
   /** True when there is no shake at all and this is a tap-to-roll throw. */
   val isStill: Boolean get() = byStep.isEmpty()
+
+  /**
+   * Takes one more moment of a shake that is still happening.
+   *
+   * The dice are spawned when the shake begins, so most of a shake arrives
+   * *after* the roll has started and has to reach it as it comes. Each sample
+   * carries the step it belongs to, counted from the start of the shake by
+   * `ShakeRecorder` — and because the frame clock never runs the simulation
+   * faster than real time, the step a sample names is always still ahead of
+   * the step the world is on. So a sample is in place before it is needed, and
+   * the same record replayed afterwards drives exactly the same steps
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * A sample for a step already held replaces it: sensors deliver faster than
+   * 120 Hz and a step has one gravity.
+   */
+  fun add(sample: ShakeSample) {
+    byStep[sample.stepIndex] = sample
+  }
 
   /**
    * Takes the sample belonging to [step], if there is one.

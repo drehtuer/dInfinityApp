@@ -16,6 +16,7 @@ import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.SettleRule
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -116,6 +117,22 @@ class RollPresenterTest {
   }
 
   @Test
+  fun `a shake throws again without the total having to be put away first`() {
+    // A shake cannot press "Roll again" first. Before this, shaking after a
+    // roll did nothing at all, which is what it looked like on the phone.
+    val rolls = RecordingRolls(faces = mapOf(0 to 0))
+    val presenter = presenter(rolls)
+    presenter.type("1d20")
+    presenter.roll()
+    assertTrue(presenter.state is RollState.Settled)
+
+    presenter.roll()
+
+    assertEquals("a shake after a roll threw nothing", 2, rolls.started.size)
+    assertTrue(presenter.state is RollState.Settled)
+  }
+
+  @Test
   fun `rounding again redraws the total without touching the dice`() {
     val rolls = RecordingRolls(faces = mapOf(0 to 6))
     val presenter = presenter(rolls)
@@ -186,6 +203,8 @@ class RollPresenterTest {
    * (`docs/architecture.md`, decision 40).
    */
   private class DirectTray : Tray {
+    val shaken = mutableListOf<ShakeSample>()
+
     override fun surfaceAvailable(
       surface: Surface,
       width: Int,
@@ -205,6 +224,10 @@ class RollPresenterTest {
       while (live.running && frames++ < MOST_FRAMES) live.advance(SettleRule.TIMESTEP_SECONDS)
       live.outcome?.let(onSettled)
       live.close()
+    }
+
+    override fun shake(sample: ShakeSample) {
+      shaken += sample
     }
 
     override fun clear() = Unit
@@ -241,6 +264,8 @@ class RollPresenterTest {
             spec.dice.indices.map { BodyTransform(it, Vector3(0.0, 0.0, 8.0), Quaternion.Identity) },
           )
         }
+
+        override fun shake(sample: ShakeSample) = Unit
 
         override fun close() = Unit
       }

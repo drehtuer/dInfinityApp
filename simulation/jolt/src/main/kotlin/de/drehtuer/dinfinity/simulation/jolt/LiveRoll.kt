@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.FrameClock
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
@@ -96,6 +97,17 @@ class LiveRoll internal constructor(
     while (running) step()
     present()
     return requireNotNull(outcome)
+  }
+
+  /**
+   * One more moment of the shake, for a roll that is still going.
+   *
+   * A sample for a roll that has already settled is dropped rather than
+   * applied: nothing touches a die that has come to rest, and the hand is not
+   * an exception (`.claude/CLAUDE.md`).
+   */
+  override fun shake(sample: ShakeSample) {
+    if (running) loop.shake(sample)
   }
 
   /** The dice as they are at this moment, ready to be drawn. */

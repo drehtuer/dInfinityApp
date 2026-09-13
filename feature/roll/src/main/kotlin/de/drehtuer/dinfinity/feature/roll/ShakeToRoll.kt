@@ -13,12 +13,11 @@ import de.drehtuer.dinfinity.input.shake.SensorShakeSource
  * accelerometer left running behind a backgrounded app is a battery bill for
  * nothing.
  *
- * The throw is made when the shake *ends*, driven by what the phone actually
- * did: the recorded session goes into the `ThrowSpec` and reaches the solver
- * as an inverse acceleration on gravity, which is what makes the dice slam
- * into the walls the way they do in a cupped hand. The refinement still to
- * come is spawning the dice when the shake *begins* so they tumble in the tray
- * while the player is still shaking (`docs/TODO.md`, Step 4.1).
+ * **The dice are spawned when the shake begins**, not when it ends. Every
+ * moment after that reaches the roll while the dice are already in the air, so
+ * what the player sees is dice answering their hand rather than dice thrown
+ * once the hand has stopped. The samples carry the step they belong to, so the
+ * same record replayed afterwards drives exactly the same roll.
  *
  * A shake with no valid formula behind it throws nothing; the presenter
  * refuses it for the same reason the button is disabled.
@@ -32,7 +31,8 @@ internal fun ShakeToRoll(presenter: RollPresenter) {
       sensors?.let {
         SensorShakeSource(
           sensors = it,
-          onEnded = { session -> presenter.roll(session.recorded()) },
+          onStarted = { presenter.roll() },
+          onSample = presenter::shaking,
         ).apply { start() }
       }
     onPauseOrDispose { shakes?.stop() }

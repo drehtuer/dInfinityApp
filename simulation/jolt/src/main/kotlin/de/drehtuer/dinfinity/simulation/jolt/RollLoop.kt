@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.simulation.api.FaceReader
 import de.drehtuer.dinfinity.simulation.api.Reading
 import de.drehtuer.dinfinity.simulation.api.RestTracker
 import de.drehtuer.dinfinity.simulation.api.SettleRule
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
@@ -57,6 +58,18 @@ class RollLoop(
 
   /** How many fixed steps the roll has taken so far. */
   val stepsTaken: Int get() = tracker.stepsTaken
+
+  /**
+   * Takes one more moment of the shake that is throwing these dice.
+   *
+   * The only thing that reaches a roll in progress from outside, and it is the
+   * player's hand rather than anything the app decided. It cannot touch a die:
+   * a shake changes which way down is, for one step, and the solver does the
+   * rest ([ShakeDriver]).
+   */
+  fun shake(sample: ShakeSample) {
+    shake.add(sample)
+  }
 
   /** What the throw came to, once [advance] has said there is nothing left. */
   fun outcome(): SimulationOutcome = requireNotNull(result) { "the roll has not finished yet" }

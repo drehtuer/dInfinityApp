@@ -6,6 +6,7 @@ import android.view.Choreographer
 import android.view.Surface
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import java.util.concurrent.CountDownLatch
 
@@ -82,6 +83,18 @@ class TrayDriver(
       loop.roll(start, onSettled)
       schedule()
     }
+  }
+
+  /**
+   * One more moment of the shake, handed to the roll on its own thread.
+   *
+   * Posted rather than applied where it arrives: the sensors are read on the
+   * main thread and the roll belongs to this one, and a shake written into a
+   * world that is mid-step is a race with a physics engine on the other end
+   * of it.
+   */
+  override fun shake(sample: ShakeSample) {
+    handler.post { loop.shake(sample) }
   }
 
   /** Takes whatever is on the tray off it. */

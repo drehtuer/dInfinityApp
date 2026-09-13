@@ -160,13 +160,22 @@ no spin *would* be predictable. We do not do that.)
   `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go
   when it is not — an accelerometer running behind a backgrounded app is a
   battery bill for nothing.
-- **Today the throw is made when the shake ends**, driven by the recorded
-  motion: the samples go into the `ThrowSpec` and reach the solver as an
-  inverse acceleration on gravity. Spawning the dice when the shake *begins*,
-  so they tumble in the tray while the player is still shaking, is the
-  refinement still to come (`docs/TODO.md`, Step 4.1). What is already true is
-  that the dice are thrown by what the hand actually did, not by a canned
-  impulse.
+- **The dice are spawned when the shake begins**, and every moment after that
+  reaches them while they are already in the air. What the player sees is dice
+  answering their hand, not dice thrown once the hand has stopped.
+- That works without a clock between the two because the samples name their
+  own step. `ShakeRecorder` counts steps from the start of the shake at the
+  simulation's own 120 Hz, and the frame clock never runs the simulation
+  *faster* than real time — it drops steps when it falls behind and never
+  gains any. So the step a sample names is always still ahead of the step the
+  world is on: every sample is in place before it is needed, and replaying the
+  record afterwards drives exactly the same steps. No gate, no waiting, and the
+  live roll and its replay are the same roll.
+- The samples are handed to the roll on the thread the roll lives on. A shake
+  written into a world that is mid-step is a race with a physics engine on the
+  other end of it.
+- A sample that arrives after the dice have stopped is dropped. Nothing touches
+  a die that has come to rest, and a hand is not an exception.
 - A shake session starts when acceleration magnitude stays above 3,500 mm/s²
   (about 0.35 g) for more than 80 ms, and ends after 400 ms below 1,500 mm/s².
   Two thresholds rather than one, with a gap between them: a single threshold
