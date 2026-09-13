@@ -44,8 +44,10 @@ class ShakeRecorder {
   /**
    * Records one moment.
    *
-   * A moment that lands on a step already recorded replaces it: sensors can
-   * deliver faster than 120 Hz, and the simulation has only one step to give.
+   * A moment that lands on a step already recorded replaces it, which happens
+   * when the sensors outrun the simulation's 120 Hz. Usually they do not —
+   * `SENSOR_DELAY_GAME` is about 50 Hz — so most steps get no sample at all,
+   * and holding the last one across them is `ShakeDriver`'s job.
    *
    * Hands back the sample it stored, so a roll already in progress can be
    * given the same moment the record keeps — one value, quantised once, driving

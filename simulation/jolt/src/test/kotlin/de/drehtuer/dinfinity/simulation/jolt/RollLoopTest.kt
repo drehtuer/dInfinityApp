@@ -203,6 +203,34 @@ class RollLoopTest {
       }
     }
 
+  @Test
+  fun `a roll does not end while the phone is still being shaken`() {
+    // Dice that look still while the hand is still going are not a roll that is
+    // over — they are a roll caught at the top of a swing. Before this, the
+    // shake was the signal to tumble and nothing more: the dice settled under
+    // it and every later moment of the shake was dropped.
+    val shaking = List(SHAKE_STEPS) { ShakeSample(it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+
+    val outcome = loop(listOf(StandardDice.d6), world, shake = shaking).run()
+
+    assertTrue(
+      "the roll ended after ${outcome.steps} steps, with the hand still shaking at $SHAKE_STEPS",
+      outcome.steps > SHAKE_STEPS,
+    )
+  }
+
+  @Test
+  fun `a tapped roll still ends the moment its dice are at rest`() {
+    // The rule above must not cost a throw that nobody is shaking a single
+    // step: there is no hand to wait for.
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+
+    val outcome = loop(listOf(StandardDice.d6), world).run()
+
+    assertEquals(SettleRule.REST_STEPS.toLong(), outcome.steps.toLong())
+  }
+
   private fun loop(
     dice: List<Die>,
     world: FakeWorld,
@@ -240,6 +268,12 @@ class RollLoopTest {
 
   private companion object {
     const val RADIUS_MM = 8.0
+
+    /** A shake that outlasts the settle rule several times over. */
+    const val SHAKE_STEPS = 200
+
+    /** Straight down, as the gyroscope reports it: a direction, not a magnitude. */
+    val DOWN = Vector3(0.0, 0.0, -1.0)
     const val TROUBLE_STEPS = 12
   }
 }

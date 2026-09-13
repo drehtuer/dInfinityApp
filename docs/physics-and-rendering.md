@@ -180,11 +180,28 @@ enough.
   world is on: every sample is in place before it is needed, and replaying the
   record afterwards drives exactly the same steps. No gate, no waiting, and the
   live roll and its replay are the same roll.
+- **The hand's force is held between readings.** `SENSOR_DELAY_GAME` is about
+  50 Hz and the simulation runs at 120, so most steps have no reading of their
+  own. A step with no reading keeps the last one rather than falling back to
+  plain gravity: an arm does not stop between two moments of a shake, and
+  letting the force go on every step without a sample drove the dice on two
+  steps in five and let them coast through the rest. The hold lasts a tenth of
+  a second, which is long against the gap between readings and short against a
+  shake — so a shake that has actually ended stops driving and the dice come
+  down.
 - The samples are handed to the roll on the thread the roll lives on. A shake
   written into a world that is mid-step is a race with a physics engine on the
   other end of it.
+- **A roll cannot end while the phone is still being shaken.** Dice that look
+  still for a moment under a hand that is still going are not a roll that is
+  over; they are a roll caught at the top of a swing. The settle rule is the
+  dice's answer and this is the hand's, and both have to agree before a throw
+  is read. A shake is not the signal to tumble the dice — it is what is
+  throwing them, for as long as it lasts.
 - A sample that arrives after the dice have stopped is dropped. Nothing touches
-  a die that has come to rest, and a hand is not an exception.
+  a die that has come to rest, and a hand is not an exception. That is not in
+  tension with the rule above: the dice only come to rest once the hand has
+  stopped, so by then there is nothing left to drop.
 - A shake session starts when acceleration magnitude stays above 3,500 mm/s²
   (about 0.35 g) for more than 80 ms, and ends after 400 ms below 1,500 mm/s².
   Two thresholds rather than one, with a gap between them: a single threshold

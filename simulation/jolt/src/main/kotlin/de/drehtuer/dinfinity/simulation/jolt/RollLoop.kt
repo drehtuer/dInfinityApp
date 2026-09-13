@@ -102,7 +102,13 @@ class RollLoop(
    */
   fun advance(): Boolean {
     if (result != null) return false
-    if (diceCount == 0 || tracker.finished()) return closeOutOrRethrow()
+    // Dice that look still while the phone is still being shaken are not a
+    // roll that is over — they are a roll caught at the top of a swing. The
+    // hand decides when it has finished throwing, not the dice
+    // (`docs/physics-and-rendering.md`, "Shake input").
+    if (diceCount == 0 || (tracker.finished() && !shake.stillShaking(tracker.stepsTaken))) {
+      return closeOutOrRethrow()
+    }
 
     val step = tracker.stepsTaken
     shake.advance(step)
