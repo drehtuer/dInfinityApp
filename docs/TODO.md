@@ -185,7 +185,7 @@ after every physics change.
 - [ ] On-device instrumented runner: N rolls headless, dumps JSON — per-face histogram, settle times, correction and re-throw counts, contact depths, frame times
 - [ ] Devcontainer script that installs, runs, pulls the JSON and prints a pass/fail table against the targets below
 - [ ] Soak mode (run for minutes, report worst case) and 60 fps screen capture for visual review
-- [ ] Same harness runs on the emulator, so a regression is caught before the phone
+- [ ] Same harness runs on the emulator, which is in the devcontainer (`docs/build-setup.md`), so a regression is caught before the phone
 
 ### 5.2 Fairness and determinism
 

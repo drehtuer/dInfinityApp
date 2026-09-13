@@ -1,3 +1,4 @@
+// devcontainer.json is JSONC: the comments below are part of the format.
 {
   "name": "dInfinity",
   "build": {
@@ -5,16 +6,22 @@
     "args": {
       "ANDROID_API": "37",
       "INSTALL_NDK": "true",
+      "INSTALL_EMULATOR": "true",
       "USER_UID": "1000"
     }
   },
+  // The emulator needs the host's KVM device to run at anything like a useful
+  // speed. A host that has no /dev/kvm cannot start this container at all —
+  // Docker refuses a device that is not there — so on such a machine delete
+  // this line and build with INSTALL_EMULATOR=false (docs/build-setup.md).
+  "runArgs": ["--device=/dev/kvm"],
   "remoteUser": "dev",
   "workspaceFolder": "/workspace",
   "mounts": [
     "source=dinfinity-gradle,target=/home/dev/.gradle,type=volume",
     "source=dinfinity-android,target=/home/dev/.android,type=volume"
   ],
-  "postCreateCommand": "sudo chown -R dev /home/dev/.gradle /home/dev/.android || true",
+  "postCreateCommand": "dinfinity-post-create",
   "customizations": {
     "vscode": {
       "extensions": [

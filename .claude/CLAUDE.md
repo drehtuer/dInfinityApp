@@ -68,10 +68,12 @@ structure.
   an **actual device** (reference device: Pixel 10a).
 - CI can only run JVM unit tests, Robolectric tests, linters and builds.
   Emulator and on-device tests **cannot run on CI**; they run on the
-  developer's machine, from inside the devcontainer, against a phone attached
-  over WiFi debugging (`docs/build-setup.md`). When a change needs those, run what you can, then
-  ask the user to run the emulator/device suite and report back — do not
-  claim they passed.
+  developer's machine, from inside the devcontainer — on the emulator that
+  ships in the image (`dinfinity-emulator`, needs `/dev/kvm`) or against a
+  phone attached over WiFi debugging (`docs/build-setup.md`). Run the emulator
+  suite yourself where it can answer the question; ask the user for the phone
+  when it cannot — a real GPU, real sensors, how something looks or feels — and
+  do not claim any of it passed without having seen it.
 - If verifying a change requires something you cannot do (a physical shake
   test, checking haptics, judging how a texture looks), ask the user to
   check and say exactly what to look for.

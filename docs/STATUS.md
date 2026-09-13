@@ -113,6 +113,10 @@ changelog.
   construction and turned by the same rotation, and checked against each other:
   every face direction has to be the outward normal of a real face of the hull.
   That check found two bugs in the geometry that shipped a step earlier.
+- The devcontainer now carries the middle testing tier: an emulator that boots
+  headless in half a minute and runs `connectedDebugAndroidTest` in ten
+  seconds, plus `cmake` and `ninja` on `PATH` for the native build. The
+  instrumented suite has been run on it.
 
 ## Blocked / waiting on
 
