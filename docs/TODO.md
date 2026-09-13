@@ -32,7 +32,7 @@ screen.
 - [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* that a roll driven by a recorded shake replays to itself on hardware (`input/shake`). The thresholds half of this is answered: shaking rolls and ordinary handling does not, confirmed on the Pixel 10a. What is not yet shown is the replay, and it cannot be until a throw's record carries its shake (4.1)
-- [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)
+- [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration*: sessions (4.9) and the installed-set registry (4.4). Saved rolls and groups landed as version 2
 - [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
 **Done when** a formula can be parsed, planned, simulated headless and scored
@@ -112,6 +112,11 @@ screen's **See the odds**.
 
 Design `1n`–`1p`, `1r`, `6e`, `7b`, `9b`, `9d`, `9f`, `9g`. Spec:
 `docs/dice-notation.md` (Saved rolls).
+
+The tables, their migration and the repository over them are built and tested:
+groups nest one level and nothing can make them nest deeper, a roll always has
+somewhere to be, and deleting a group moves its rolls rather than deleting
+them. What is left is the screens.
 
 - [ ] Group switcher (one level: game → character), active group drives the home strip
 - [ ] Row-style list (`1o`), favourites first then by recent use; icons in the roll's colour (`9d`)

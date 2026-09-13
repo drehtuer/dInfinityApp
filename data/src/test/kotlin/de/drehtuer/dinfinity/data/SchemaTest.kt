@@ -48,9 +48,17 @@ class SchemaTest {
   }
 
   @Test
-  fun `the exported schema has the three tables docs statistics names`() {
+  fun `the exported schema has every table the docs name`() {
     val exported = schema(DInfinityDatabase.VERSION)!!
-    listOf("roll_history", "die_stats", "die_summary").forEach { table ->
+    listOf(
+      // docs/statistics.md, "Storage"
+      "roll_history",
+      "die_stats",
+      "die_summary",
+      // docs/dice-notation.md, "Saved rolls"
+      "saved_roll_group",
+      "saved_roll",
+    ).forEach { table ->
       assertTrue("the schema has no $table", exported.contains("\"tableName\": \"$table\""))
     }
   }
@@ -80,6 +88,8 @@ class SchemaTest {
     assertNotNull(database.rollHistory())
     assertNotNull(database.dieStats())
     assertNotNull(database.dieSummary())
+    assertNotNull(database.savedRollGroups())
+    assertNotNull(database.savedRolls())
     database.close()
   }
 

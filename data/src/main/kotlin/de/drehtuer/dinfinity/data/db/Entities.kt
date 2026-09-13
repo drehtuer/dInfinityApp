@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.data.db
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
@@ -136,4 +137,88 @@ data class DieSummaryRow(
   val lowestStreakMax: Int = 0,
   @ColumnInfo(name = "last_rolled_at")
   val lastRolledAtEpochMs: Long = 0,
+)
+
+/**
+ * A group of saved rolls: a game, a character, a stat block
+ * (`docs/dice-notation.md`, "Saved rolls").
+ *
+ * Groups nest **exactly one level** — `D&D / Thorin` — and that is a rule
+ * about the UI as much as about the data: a deeper tree needs a tree control,
+ * and one level is what a campaign actually looks like. The depth is enforced
+ * where groups are written rather than by the schema, because SQLite cannot
+ * say "a parent may not have a parent" and a foreign key that could would
+ * still let an import build a cycle.
+ *
+ * @param id a slug the collection format uses, stable across export and
+ *   import, so a re-import can recognise what it already has.
+ */
+@Entity(
+  tableName = "saved_roll_group",
+  indices = [Index("parent_id"), Index("sort_order")],
+)
+data class SavedRollGroupRow(
+  @PrimaryKey
+  val id: String,
+  val name: String,
+  val icon: String = "",
+  @ColumnInfo(name = "parent_id")
+  val parentId: String? = null,
+  @ColumnInfo(name = "sort_order")
+  val sortOrder: Int = 0,
+  @ColumnInfo(name = "table_set_id")
+  val tableSetId: String? = null,
+  @ColumnInfo(name = "table_id")
+  val tableId: String? = null,
+)
+
+/**
+ * A named formula, rolled with one tap
+ * (`docs/dice-notation.md`, "Saved rolls").
+ *
+ * The formula is **text**, not a parse tree, and is re-validated every time it
+ * is shown. The dice set it names may have been uninstalled since, and a saved
+ * roll that no longer resolves is neither deleted nor rewritten: it shows a
+ * warning and falls back to the built-in set when thrown. Storing anything
+ * more resolved than the text would make an uninstall quietly rewrite what
+ * somebody wrote.
+ *
+ * Deleting a group takes its rolls with it in SQL, which is what the foreign
+ * key is for — but the screens move them to Unfiled instead, and only ever
+ * delete a group that is already empty. The cascade is the floor, not the
+ * behaviour.
+ */
+@Entity(
+  tableName = "saved_roll",
+  foreignKeys = [
+    ForeignKey(
+      entity = SavedRollGroupRow::class,
+      parentColumns = ["id"],
+      childColumns = ["group_id"],
+      onDelete = ForeignKey.CASCADE,
+    ),
+  ],
+  indices = [Index("group_id"), Index("favourite"), Index("last_used_at")],
+)
+data class SavedRollRow(
+  @PrimaryKey
+  val id: String,
+  @ColumnInfo(name = "group_id")
+  val groupId: String,
+  val name: String,
+  val formula: String,
+  val icon: String = "",
+  @ColumnInfo(name = "colour_argb")
+  val colourArgb: Int? = null,
+  val favourite: Boolean = false,
+  @ColumnInfo(name = "table_set_id")
+  val tableSetId: String? = null,
+  @ColumnInfo(name = "table_id")
+  val tableId: String? = null,
+  @ColumnInfo(name = "created_at")
+  val createdAtEpochMs: Long = 0,
+  @ColumnInfo(name = "last_used_at")
+  val lastUsedAtEpochMs: Long? = null,
+  @ColumnInfo(name = "use_count")
+  val useCount: Int = 0,
 )

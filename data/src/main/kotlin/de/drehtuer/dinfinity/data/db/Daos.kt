@@ -127,3 +127,94 @@ interface DieSummaryDao {
   @Query("DELETE FROM die_summary")
   suspend fun deleteAll(): Int
 }
+
+/** Groups of saved rolls (`docs/dice-notation.md`, "Saved rolls"). */
+@Dao
+interface SavedRollGroupDao {
+  /**
+   * Every group, in the order the switcher shows them.
+   *
+   * Parents and children in one list rather than a tree: groups nest exactly
+   * one level, so a list plus a parent id *is* the tree, and the screen that
+   * draws it does not have to walk anything.
+   */
+  @Query("SELECT * FROM saved_roll_group ORDER BY sort_order, name")
+  fun all(): Flow<List<SavedRollGroupRow>>
+
+  @Query("SELECT * FROM saved_roll_group WHERE id = :id")
+  suspend fun byId(id: String): SavedRollGroupRow?
+
+  @Query("SELECT COUNT(*) FROM saved_roll_group WHERE name = :name AND id <> :exceptId")
+  suspend fun countNamed(
+    name: String,
+    exceptId: String = "",
+  ): Int
+
+  @Upsert
+  suspend fun upsert(row: SavedRollGroupRow)
+
+  /**
+   * Lifts the children of one group to the top level.
+   *
+   * What deleting a parent does to them. The alternative — deleting the
+   * children too — would take rolls with it, and a folder being removed
+   * should not remove what somebody put in it.
+   */
+  @Query("UPDATE saved_roll_group SET parent_id = NULL WHERE parent_id = :id")
+  suspend fun detachChildren(id: String)
+
+  @Query("DELETE FROM saved_roll_group WHERE id = :id")
+  suspend fun delete(id: String)
+}
+
+/** Saved rolls (`docs/dice-notation.md`, "Saved rolls"). */
+@Dao
+interface SavedRollDao {
+  /**
+   * The rolls of one group, favourites first and then by recent use.
+   *
+   * The ordering is in SQL rather than in Kotlin because it is what the list
+   * is: a roll used ten minutes ago belongs above one used last month, and a
+   * favourite belongs above both. A roll that has never been used sorts last
+   * among its kind, which is what `last_used_at IS NULL` does here.
+   */
+  @Query(
+    """
+    SELECT * FROM saved_roll WHERE group_id = :groupId
+    ORDER BY favourite DESC, last_used_at IS NULL, last_used_at DESC, name
+    """,
+  )
+  fun inGroup(groupId: String): Flow<List<SavedRollRow>>
+
+  @Query("SELECT * FROM saved_roll ORDER BY favourite DESC, last_used_at IS NULL, last_used_at DESC, name")
+  fun all(): Flow<List<SavedRollRow>>
+
+  @Query("SELECT * FROM saved_roll WHERE id = :id")
+  suspend fun byId(id: String): SavedRollRow?
+
+  @Upsert
+  suspend fun upsert(row: SavedRollRow)
+
+  @Query("DELETE FROM saved_roll WHERE id = :id")
+  suspend fun delete(id: String)
+
+  /** Moves every roll of one group to another, which is what deleting a group does. */
+  @Query("UPDATE saved_roll SET group_id = :toGroupId WHERE group_id = :fromGroupId")
+  suspend fun move(
+    fromGroupId: String,
+    toGroupId: String,
+  )
+
+  /**
+   * One more use of this roll, at [atEpochMs].
+   *
+   * An increment in SQL rather than a read and a write: two taps in quick
+   * succession would otherwise both read the old count and both store the
+   * same new one.
+   */
+  @Query("UPDATE saved_roll SET use_count = use_count + 1, last_used_at = :atEpochMs WHERE id = :id")
+  suspend fun used(
+    id: String,
+    atEpochMs: Long,
+  )
+}
