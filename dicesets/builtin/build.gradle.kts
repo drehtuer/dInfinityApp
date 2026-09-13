@@ -8,4 +8,6 @@ android {
 
 dependencies {
   api(project(":dicesets:format"))
+
+  testImplementation(project(":test-fixtures"))
 }

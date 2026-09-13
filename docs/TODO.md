@@ -29,7 +29,6 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] `dicesets/builtin` — the bundled set as a real `diceset.toml` package, loaded through the same validator as any download (no privileged path)
 - [ ] `simulation/api` — table geometry, the capacity rule with its worked numbers, settle detection, face reading (including `vertex-up` for the d4), the correction ladder in `docs/physics-and-rendering.md`. Testable without a physics engine via a fake simulator
 - [ ] `simulation/jolt` — JNI bridge, fixed 120 Hz timestep, seeded and deterministic. **Decide Jolt vs. Bullet with a spike first** and record the result in `docs/architecture.md`
 - [ ] Golden determinism suite: (seed, formula, input) → outcome, asserted on every ABI CI can run, and re-asserted on the device in Step 5
@@ -37,6 +36,7 @@ screen.
 - [ ] `input/shake` — sensor fusion to tray motion, recorded and quantised so a roll stays reproducible
 - [ ] `data` — Room schema from `docs/statistics.md`, DAOs, migrations from day one
 - [ ] `dicesets/install` — fetch (forges, archive URLs, local files), safe extraction (path traversal, symlinks, size and entry caps), atomic install. Tests include a malicious archive per rejection rule
+- [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
 **Done when** a formula can be parsed, planned, simulated headless and scored
 from a unit test, with no UI in the picture, and Sonar reports ≥ 80 % on these
@@ -263,6 +263,12 @@ Written down so the format need not change later. Not v1 scope.
 
 ## Open questions
 
+- [ ] `core/probability` hand-rolls its convolution and its FFT rather than
+      taking a library, which `.claude/CLAUDE.md` names as a "complex part".
+      The judgement was that the exact PMF *is* the domain logic and that
+      pulling in a general maths library for ninety lines of transform is a
+      worse trade than owning them — but it is a trade, and it is worth a
+      second opinion
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
