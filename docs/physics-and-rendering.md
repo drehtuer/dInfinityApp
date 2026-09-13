@@ -39,8 +39,10 @@ geometry, the capacity rule and how the *look* of the table can be swapped.
   walls run all the way up to that ceiling rather than stopping at the rim the
   renderer draws, because a box open at the sides between the two is a box dice
   leave (`docs/tables.md`).
-- The table orientation follows device gravity: tilt the phone and the dice
-  slide. Hold it flat and they settle.
+- **The table is horizontal, whatever the phone is doing.** Gravity in the tray
+  is straight down and stays there; the hand moves the dice, the table does not
+  tip under them. It used to follow the phone, and the cost was worse than the
+  feature was worth — see "Shake input".
 - Floor and walls have a slightly higher friction than the dice-on-dice
   contact so the pile spreads instead of stacking.
 - Because the table cannot grow, **dice shrink** when there are many of them
@@ -232,8 +234,21 @@ enough.
   move in a direction with nothing to do with the hand. `PhoneAxes` is the one
   place that map lives, and both the accelerometer and the gyroscope go through
   it.
-- Phone rotation from the gyroscope rotates the gravity vector in the
-  simulation.
+- **The gyroscope no longer turns the world.** It did, and a tray that tips
+  with the phone is a nice idea that does not survive being shaken:
+  `GravityTracker` starts each shake at "straight down relative to the screen"
+  and integrates rates with nothing to re-anchor them, so a vigorous shake
+  could leave down pointing sideways in the tray — and it stayed there for the
+  rest of the roll, because the last sample's direction is the one that sticks.
+  A tray whose down points at a wall is a chute: the dice slide into it, pack
+  against it and stop tumbling, which is what a hundred d6 heaped into one
+  corner looked like on the Pixel 10a. Twenty dice shaken along the tray's own
+  length end in a heap at every seed tried with the tilt and at none without
+  it.
+- The direction is still **recorded** with every sample. It costs nothing, it
+  is what a replay would need if this is revisited, and the question of what a
+  tilted phone should mean is deferred rather than answered
+  (`docs/TODO.md`, Step 5.6).
 - An acceleration above 40,000 mm/s² — about four gravities, harder than anyone
   shakes a fistful of dice — is clamped. Past that it is a sensor fault or a
   dropped phone, and no thickness of wall survives it.

@@ -130,31 +130,48 @@ class ShakeDriverTest {
   }
 
   @Test
-  fun `turning the phone turns gravity, and its length is still gravity`() {
+  fun `the table stays horizontal however the phone is held`() {
+    // The virtual table is horizontal, whatever the phone is doing. It was not
+    // always: the gyroscope turned the world, and a vigorous shake could leave
+    // down pointing at a wall for the rest of the roll — which is a chute, and
+    // is what a hundred dice heaped into one corner looked like on the phone.
     val sideways = Vector3(1.0, 0.0, 0.0)
     val driver = ShakeDriver(listOf(ShakeSample(0, Vector3.Zero, sideways)))
+
     driver.advance(0)
 
-    assertEquals(ShakeDriver.GRAVITY_MM_PER_SECOND2, driver.gravity.length, 1e-6)
-    assertEquals(ShakeDriver.GRAVITY_MM_PER_SECOND2, driver.gravity.x, 1e-6)
+    assertEquals("the tray was tipped on its side", ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
   }
 
   @Test
-  fun `a gravity vector of no length at all is ignored rather than divided by`() {
-    val driver = ShakeDriver(listOf(ShakeSample(0, Vector3.Zero, Vector3.Zero)))
-    driver.advance(0)
+  fun `whatever the gyroscope says, down is down`() {
+    // Every direction a sensor could report, including the ones it should not.
+    val directions =
+      listOf(
+        Vector3(1.0, 0.0, 0.0),
+        Vector3(0.0, -1.0, 0.0),
+        Vector3(0.0, 0.0, 1.0),
+        Vector3.Zero,
+      )
 
-    assertEquals(ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
+    directions.forEach { direction ->
+      val driver = ShakeDriver(listOf(ShakeSample(0, Vector3.Zero, direction)))
+      driver.advance(0)
+
+      assertEquals("gravity followed $direction", ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
+    }
   }
 
   @Test
-  fun `gravity stays where the last sample left it`() {
-    val driver = ShakeDriver(listOf(ShakeSample(0, Vector3.Zero, Vector3(1.0, 0.0, 0.0))))
-    driver.advance(0)
-    val turned = driver.gravity
-    repeat(20) { driver.advance(it + 1) }
+  fun `a shake still loads the dice sideways, on a table that stays flat`() {
+    // Horizontal is not inert: the hand is what moves the dice, and it still
+    // does. What it no longer does is tip the table under them.
+    val driver = ShakeDriver(listOf(sample(step = 0, x = 10_000.0)))
 
-    assertEquals("a phone that stops being sampled has not been put down", turned, driver.gravity)
+    driver.advance(0)
+
+    assertTrue("the hand stopped reaching the dice", driver.gravity.x < 0.0)
+    assertEquals("the table was tilted after all", ShakeDriver.DEFAULT_GRAVITY.z, driver.gravity.z, 1e-6)
   }
 
   private fun sample(

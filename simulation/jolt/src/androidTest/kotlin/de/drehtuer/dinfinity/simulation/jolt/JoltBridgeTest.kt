@@ -317,6 +317,49 @@ class JoltBridgeTest {
     assertTrue("twenty dice ended in a heap: ${heaped.map { it.first }}", heaped.isEmpty())
   }
 
+  @Test
+  fun aShakenThrowSpreadsOutJustAsATappedOneDoes() {
+    // The table is horizontal whatever the phone is doing, so a shaken roll has
+    // to end up as spread out as a tapped one. It did not: the gyroscope turned
+    // the world, a vigorous shake left down pointing at a wall, and the dice
+    // slid into it and packed (`docs/physics-and-rendering.md`).
+    //
+    // The shake here is the awkward one — the phone waved along its own long
+    // axis, which is what put a hundred dice in one corner on the Pixel 10a.
+    val dice = List(TWENTY) { d6() }
+    val alongTheTray =
+      List(SHAKE_STEPS) { step ->
+        val swing = if ((step / SWING_STEPS) % 2 == 0) SHAKE_MM_PER_SECOND2 else -SHAKE_MM_PER_SECOND2
+        ShakeSample(
+          stepIndex = step,
+          accelerationMmPerSecond2 = Vector3(swing, 0.0, 0.0),
+          // A phone held at an angle, reported by a gyroscope that has drifted:
+          // exactly the reading that used to tip the table on its side.
+          gravity = Vector3(0.8, 0.0, -0.6),
+        )
+      }
+
+    val heaped =
+      (1L..4L).filter { seed ->
+        val spec = spec(dice, seed).copy(shake = alongTheTray)
+        val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = dice.size))
+        val layout = SpawnLayout(geometry, radiusOf(d6()), spec.seed)
+        val states =
+          world.use {
+            dice.forEachIndexed { index, die ->
+              world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
+            }
+            world.finish()
+            RollLoop(spec, world, layout, ShakeDriver(spec.shake)).run()
+            world.readStates()
+          }
+        val spread = states.maxOf { it.position.x } - states.minOf { it.position.x }
+        spread < geometry.longSideMm / 4
+      }
+
+    assertTrue("a shaken throw ended in a heap at seeds $heaped", heaped.isEmpty())
+  }
+
   private fun d4(): Die = Die.standard("d4", DieShape.Tetrahedron)
 
   private fun d20(): Die = Die.standard("d20", DieShape.Icosahedron)
