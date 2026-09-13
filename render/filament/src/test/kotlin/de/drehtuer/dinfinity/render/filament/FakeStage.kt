@@ -29,6 +29,10 @@ class FakeStage(
   var clears: Int = 0
     private set
 
+  /** True once the stage has been given up. */
+  var closed: Boolean = false
+    private set
+
   /** Whether the lights are in the scene. */
   var lit: Boolean = false
     private set
@@ -70,5 +74,9 @@ class FakeStage(
     added.clear()
     placed.clear()
     lit = false
+  }
+
+  override fun close() {
+    closed = true
   }
 }

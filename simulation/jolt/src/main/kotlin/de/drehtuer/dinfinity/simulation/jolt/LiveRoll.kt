@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
+import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.FrameClock
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -38,7 +39,8 @@ class LiveRoll internal constructor(
   private val loop: RollLoop,
   private val renderer: Renderer = HeadlessRenderer(),
   private val clock: FrameClock = FrameClock(),
-) : AutoCloseable {
+) : WatchedRoll,
+  AutoCloseable {
   private var previous: List<BodyTransform> = transforms()
   private var current: List<BodyTransform> = previous
   private var settledShown = false
@@ -48,7 +50,7 @@ class LiveRoll internal constructor(
     private set
 
   /** True until the last die has come to rest. */
-  val running: Boolean get() = outcome == null
+  override val running: Boolean get() = outcome == null
 
   /** How many fixed steps the roll has taken. Simulated time, never wall time. */
   val stepsTaken: Int get() = loop.stepsTaken
@@ -72,7 +74,7 @@ class LiveRoll internal constructor(
    * fixed steps first — so a stutter, a slow frame or a 120 Hz panel change
    * when the roll is drawn and never what it comes to.
    */
-  fun advance(elapsedSeconds: Double): RenderFrame {
+  override fun advance(elapsedSeconds: Double): RenderFrame {
     var steps = clock.advance(elapsedSeconds)
     while (steps > 0 && running) {
       step()

@@ -29,7 +29,7 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] Draw the renderer into a real `SurfaceView`. The engine, the material, the lights, the meshes, the camera and the blend between simulation states are all built and run on both devices, and a roll can now be stepped from a frame clock and watched while it happens (`LiveRoll`); what is left is a surface to draw on, and it arrives with the roll screen (4.1)
+- [ ] Put the tray on screen: a Compose `AndroidExternalSurface` handing its surface to `TrayDriver`. Everything under it is built and runs on both devices — the engine, the material, the lights, the meshes, the camera, the blend between simulation states, the roll stepped from a frame clock (`LiveRoll`) and the thread that draws it frame by frame onto a real surface (`TrayDriver`). What is left is the composable, and it arrives with the roll screen (4.1)
 - [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)

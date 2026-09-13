@@ -77,12 +77,14 @@ changelog.
 
 ## In progress
 
-- **Step 4.1, the roll screen.** First piece: a roll can now be *watched*. The
-  loop steps one step at a time and a frame clock decides when, so a rendered
-  roll is the same object as a power-saving roll with somebody calling it —
-  rather than a second implementation of the one rule the app cannot bend
-  (`docs/architecture.md`, decision 48). What is still missing before the phone
-  can be shaken is a surface to draw on and a screen to put it in.
+- **Step 4.1, the roll screen.** A roll can now be *watched*: the loop steps one
+  step at a time, a frame clock decides when, and a rendered roll is the same
+  object as a power-saving roll with somebody calling it — rather than a second
+  implementation of the one rule the app cannot bend (`docs/architecture.md`,
+  decision 48). The tray now draws onto a real surface from its own thread, and
+  survives the surface going away and coming back without the roll noticing
+  (decision 49). What is still missing before the phone can be shaken is the
+  composable that hands a surface over, and a screen to put it in.
 
 ## Blocked / waiting on
 

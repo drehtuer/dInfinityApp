@@ -310,10 +310,27 @@ all, and **zero** corrections applied after rest.
   rounded corners are drawn as six segments to the quarter, which is under a
   pixel of a 12 mm arc at any size this is drawn at.
 - The renderer draws through a `Stage` interface. `FilamentStage` is the one
-  file in the module that talks to Filament, and the one excluded from the
-  coverage figure; everything that *decides* what a roll looks like sits on
-  the near side of it and is tested on a JVM
+  file in the module that talks to Filament, and everything that *decides*
+  what a roll looks like sits on the near side of it and is tested on a JVM
   (`docs/architecture.md`, decision 47).
+- **The surface comes and goes; the roll does not.** Filament fixes its swap
+  chain and viewport when a stage is made, so a resize, a rotation or the app
+  coming back from the background is a *new* stage. A roll being drawn on the
+  old one is still going, and restarting it to get a picture back would be a
+  different roll wearing the same seed's name — with the player watching the
+  dice they were already watching begin again. So the picture is rebuilt
+  instead: `TrayRenderer` remembers the throw, the tray and the last frame, and
+  replays them onto the new stage. With no stage at all it draws nothing, which
+  is the right thing to be while the app is in the background — the roll goes
+  on and the dice are where they should be the moment there is somewhere to put
+  them.
+- The thread that steps the roll is the thread that draws it, off its own
+  `Choreographer` (`docs/architecture.md`, decision 49). `TrayDriver` is that
+  thread and the surface it draws to; `TrayLoop` is what it does each frame,
+  and is tested on a JVM.
+- `FilamentStage` and `TrayDriver` are the two files excluded from the coverage
+  figure — a GPU context and a thread. Neither is excluded from static
+  analysis (`.claude/CLAUDE.md`).
 - The engine is created, the material compiled and the scene built in that one
   file.
   Everything it is *told* (where the camera stands, what shape a die is, how
