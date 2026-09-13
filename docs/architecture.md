@@ -149,10 +149,13 @@ that knew what the menu was would be one feature module depending on another,
 and the navigation graph belongs to `:app`. Each screen takes a `menu`
 composable slot and draws it where it has room.
 
-**One destination is opened with arguments, and it is the first.** The outcome
-graph is about a formula, and after a roll it also marks the total that came
-up, so its route is `graph?formula={formula}&total={total}`. Two rules keep
-that from spreading trouble:
+**Two destinations are opened with arguments.** The outcome graph is about a
+formula, and after a roll it also marks the total that came up, so its route
+is `graph?formula={formula}&total={total}`. The tray takes a formula too —
+`roll?formula={formula}` — which is what tapping a saved roll does: it puts
+the formula in the field and leaves the throw to the player, because a saved
+roll is a formula with a name rather than a roll waiting to happen. Two rules
+keep arguments from spreading trouble:
 
 - **Every argument is optional and defaults to empty.** A destination that
   could only be opened with an argument is a destination the menu could not
@@ -401,6 +404,38 @@ Tapping a bar and changing the question both stay in `Graphed` and redraw the
 same distribution — neither is a new computation. Retyping drops the tapped
 bar with it, because a bar at 14 on one distribution is not the same bar at 14
 on the next.
+
+### Saved rolls
+
+`SavedState` is the third of these machines and the first that **watches**
+rather than holds. Its groups and rolls come from the database as flows, so a
+roll saved in the editor or arriving in an import appears without anybody
+asking. The two flows are combined rather than collected apart: a list of
+rolls and the groups they belong to arriving a frame apart is a list that
+flickers through a state that was never true.
+
+| | |
+|---|---|
+| `loaded = false` | the database has not answered yet — **not** the same as empty |
+| `loaded && rolls.isEmpty()` | nothing saved in this group, which is a thing to say |
+| `switching` | the group switcher is open over the list |
+
+The first row is the one worth having a field for. "Nothing saved yet" drawn
+under a list that has simply not arrived is the app telling a player their
+rolls are gone.
+
+Two things the screen does *not* decide. Whether a formula still resolves is
+re-checked every time the list is drawn rather than stored, because the set it
+names can be uninstalled between one drawing and the next; and the order —
+favourites first, then by recent use — is SQL's, because it is what the list
+*is* (`docs/dice-notation.md`, "Saved rolls").
+
+| Control | Calls | What changes |
+|---|---|---|
+| the group name | `showGroups` | whether the switcher is open |
+| a group in the switcher | `open` | which group's rolls are listed, and the stored active group |
+| a row, tapped | `used`, then navigation | one more use, and the tray with that formula in its field |
+| a row, long-pressed | the editor | *(Step 4.3, still to come)* |
 
 ### Settings, and the screens that are not built yet
 

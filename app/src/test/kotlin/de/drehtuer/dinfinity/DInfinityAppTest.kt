@@ -19,6 +19,7 @@ import de.drehtuer.dinfinity.feature.graph.GraphTestTags
 import de.drehtuer.dinfinity.feature.settings.MenuTestTags
 import de.drehtuer.dinfinity.feature.settings.SettingsTestTags
 import de.drehtuer.dinfinity.navigation.Destination
+import de.drehtuer.dinfinity.navigation.GraphArgument
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -88,7 +89,8 @@ class DInfinityAppTest {
     compose.onNodeWithTag(MenuTestTags.entryOf(Destination.Settings.route)).performScrollTo().performClick()
     compose.waitForIdle()
 
-    assertEquals(Destination.Roll.route, compose.runOnIdle { navigation.previousBackStackEntry?.destination?.route })
+    val behind = compose.runOnIdle { navigation.previousBackStackEntry?.destination?.route }
+    assertEquals(Destination.Roll, behind?.let(Destination::ofRoute))
   }
 
   @Test
@@ -152,6 +154,23 @@ class DInfinityAppTest {
       }
     }
     return navigation
+  }
+
+  @Test
+  fun `a formula sent to the tray arrives in the field`() {
+    // What tapping a saved roll does, and what the graph's way back will do.
+    val navigation = graphApp()
+
+    compose.runOnIdle { navigation.navigate(rollRoute("2d6 + 1d20")) }
+
+    assertEquals(
+      Destination.Roll,
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute),
+    )
+    assertEquals(
+      "2d6 + 1d20",
+      compose.runOnIdle { navigation.currentBackStackEntry?.arguments?.getString(GraphArgument.FORMULA) },
+    )
   }
 
   @Test

@@ -28,4 +28,13 @@ data class AppSettings(
    * repository for one boolean would be a second file to keep in step.
    */
   val welcomeSeen: Boolean = false,
+  /**
+   * The group of saved rolls the app is currently in
+   * (`docs/dice-notation.md`, "Saved rolls").
+   *
+   * A preference in the sense that matters: it outlives the screen that
+   * changed it, and it is what the home strip and the default statistics
+   * session follow.
+   */
+  val activeGroupId: String = SavedRollGroup.UNFILED_ID,
 )

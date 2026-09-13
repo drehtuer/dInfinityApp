@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="saved_title">Saved rolls</string>
+  <string name="saved_loading">Saved rolls</string>
+  <string name="saved_unfiled">Unfiled</string>
+  <string name="saved_new">New</string>
+  <string name="saved_order">Favourites first, then by recent use. Tap to roll, long-press to edit.</string>
+  <!-- %1$d is how many rolls are in that group. -->
+  <plurals name="saved_group_rolls">
+    <item quantity="one">%1$d roll</item>
+    <item quantity="other">%1$d rolls</item>
+  </plurals>
+  <!-- %1$s is the roll's name, for TalkBack. -->
+  <string name="saved_roll_it">Roll %1$s</string>
+  <string name="saved_edit_it">Edit %1$s</string>
+  <string name="saved_broken">Its dice are not installed — it will fall back</string>
+  <!-- The empty state (design option 9b). -->
+  <string name="saved_empty_title">Nothing saved yet.</string>
+  <string name="saved_empty_body">Name a formula, give it an icon — “Longsword”, “Fireball” — and roll it with one tap.</string>
+  <string name="saved_empty_new">New saved roll</string>
+</resources>

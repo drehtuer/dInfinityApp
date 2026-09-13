@@ -75,9 +75,12 @@ changelog.
   the first navigation in the app to carry an argument. The formula cannot yet
   be edited there — that wants the roll screen's squiggling field somewhere
   both screens can reach.
-- **Step 4.3 has its data layer.** Database version 2 adds saved rolls and
-  their groups, arriving as a migration that is run — not merely asserted to
-  exist — against a database built from version 1's own exported schema.
+- **Step 4.3.** Database version 2 adds saved rolls and their groups, arriving
+  as a migration that is run — not merely asserted to exist — against a
+  database built from version 1's own exported schema. The list is on screen
+  too: groups, favourites-first ordering, a warning on a roll whose dice are
+  gone, and a tap that sends a formula to the tray. The editor and
+  import/export are next.
 - **The navigation graph is connected.** Step 4.10's menu lists every screen
   and every screen carries the button that opens it, so nothing is reachable
   only by not having left it yet. The placeholders are still placeholders.

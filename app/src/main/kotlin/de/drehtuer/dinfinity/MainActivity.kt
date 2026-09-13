@@ -8,6 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.feature.saved.R
+import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import kotlinx.coroutines.launch
 
@@ -37,6 +39,18 @@ class MainActivity : ComponentActivity() {
           onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
           rollPresenter = { app.rolls.presenter(powerSaving = settings.powerSaving) },
           graphMachine = { app.rolls.graph() },
+          savedRolls = {
+            SavedPresenter(
+              repository = app.savedRolls,
+              catalog = app.rolls.catalog,
+              scope = lifecycleScope,
+              unfiledName = getString(R.string.saved_unfiled),
+              onActiveGroup = { groupId ->
+                lifecycleScope.launch { repository.setActiveGroup(groupId) }
+              },
+              activeGroupId = settings.activeGroupId,
+            )
+          },
         )
       }
     }

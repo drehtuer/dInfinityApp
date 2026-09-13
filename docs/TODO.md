@@ -87,7 +87,6 @@ not have yet.
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
 - [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now" and its way straight to the tray. Its other two offers — import a collection, add dice sets — are missing because both lead to screens that are still placeholders (4.3, 4.4), and so is the rest of the count line: "0 saved rolls, 0 sessions" is only worth printing once there is somewhere for them to be kept
-- [ ] The saved-rolls strip on the roll screen, which is what `9a` means by "the strip invites the first save" (4.3)
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -118,13 +117,16 @@ groups nest one level and nothing can make them nest deeper, a roll always has
 somewhere to be, and deleting a group moves its rolls rather than deleting
 them. What is left is the screens.
 
-- [ ] Group switcher (one level: game → character), active group drives the home strip
-- [ ] Row-style list (`1o`), favourites first then by recent use; icons in the roll's colour (`9d`)
-- [ ] Editor (`1r`): live-validated formula with mean and range, icon, colour, group, favourite, per-roll table pin (`7b`)
+The list is built: the group switcher, the row-style list in favourites-first
+order, the warning on a roll whose dice are gone, the empty state, and tapping
+a roll to send its formula to the tray.
+
+- [ ] Editor (`1r`): live-validated formula with mean and range, icon, colour, group, favourite, per-roll table pin (`7b`). It wants the roll screen's squiggling field — the shared-UI question again (4.2)
+- [ ] Creating and renaming groups, which the switcher lists but cannot yet add to
 - [ ] Export a group or everything as a collection; import from file, URL or repo
 - [ ] Import refuses a duplicate group name outright (`6e`), naming the clash — no merge, nothing deleted
-- [ ] Broken saved rolls (set uninstalled) show a warning badge and fall back
-- [ ] Empty state (`9b`)
+- [ ] The active group drives the **home strip** on the roll screen, which is what `9a` means by "the strip invites the first save"
+- [ ] A broken roll falls back to the built-in set when it is thrown; today it says so on the list but the fallback itself is the planner's and untested from here
 
 ### 4.4 Dice sets — `feature/sets`
 

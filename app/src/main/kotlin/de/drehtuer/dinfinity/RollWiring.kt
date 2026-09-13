@@ -40,7 +40,7 @@ class RollWiring(
    * validator as a package from a stranger, on every launch
    * (`docs/dice-sets.md`).
    */
-  private val catalog: DiceCatalog by lazy { DiceCatalog.of(listOf(BuiltinDiceSet.set)) }
+  val catalog: DiceCatalog by lazy { DiceCatalog.of(listOf(BuiltinDiceSet.set)) }
 
   /**
    * The tray, shaped to this phone.

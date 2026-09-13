@@ -33,7 +33,13 @@ enum class Destination(
    */
   val arguments: List<String> = emptyList(),
 ) {
-  Roll("roll", "Roll", "The tray. Shake it, or pick dice and press Roll.", MenuGroup.Play),
+  Roll(
+    "roll",
+    "Roll",
+    "The tray. Shake it, or pick dice and press Roll.",
+    MenuGroup.Play,
+    arguments = listOf(GraphArgument.FORMULA),
+  ),
   Graph(
     "graph",
     "Outcome graph",
@@ -96,7 +102,12 @@ enum class Destination(
  * (`design/dInfinity.dc.html`, option 7a).
  */
 object GraphArgument {
-  /** The formula the graph is about. */
+  /**
+   * The formula a screen is about.
+   *
+   * The outcome graph is opened with one; so is the roll screen, when a saved
+   * roll or the graph sends a formula to the tray.
+   */
   const val FORMULA: String = "formula"
 
   /** The total that was rolled, to mark on the chart. Empty for no mark. */

@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -40,6 +41,9 @@ import de.drehtuer.dinfinity.core.model.Rounding
  * formula means, whether it fits, what the dice came to and what that adds up
  * to are all settled before a pixel is placed.
  *
+ * @param openWith a formula to start from — a saved roll tapped, or a graph
+ *   sent to the tray. Empty leaves whatever is in the field alone, which is
+ *   what arriving from the menu means.
  * @param menu the way to the menu, drawn in the top corner over the tray. It
  *   is handed in because the navigation graph is `:app`'s and a screen that
  *   knew about another screen would be a feature module depending on one
@@ -57,7 +61,14 @@ fun RollScreen(
   onWelcomeSeen: () -> Unit = {},
   onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
   menu: @Composable () -> Unit = {},
+  openWith: String = "",
 ) {
+  // Typed in rather than set some other way: a formula arriving from a saved
+  // roll or from the graph goes through the same `type` a keystroke does, so
+  // it is validated, checked against the table and shown identically
+  // (`docs/architecture.md`, "Screens and the states behind them").
+  LaunchedEffect(openWith) { if (openWith.isNotBlank()) presenter.type(openWith) }
+
   ShakeToRoll(presenter)
   KeepTheScreenAwake()
   LockTheOrientation()
