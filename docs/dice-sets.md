@@ -196,10 +196,24 @@ silently repaint every die of every set ever published. `simulation/api` owns
 it, and the renderer and the physics hull are built from the same arithmetic
 rather than from a model somebody exported.
 
-`size_mm` is the die's **nominal size**, quoted the way a dice maker quotes
-one: the edge length for a polyhedron, the diameter for the coin. Each shape
-has a fixed ratio from that to its bounding-sphere radius, which is what the
-table's capacity rule sums — the ratios are listed in `docs/tables.md`.
+### Size
+
+`size_mm` is **how wide the die is**: the diameter of the sphere its corners
+sit on, whatever solid it is. A 16 mm d6, a 16 mm d12 and a 16 mm d20 are all
+16 mm across at their widest. Half of it is the bounding radius the table's
+capacity rule sums (`docs/tables.md`).
+
+It is deliberately not the dice maker's *nominal* size — the edge length for a
+polyhedron — even though that is what a manufacturer quotes. A set author
+writing `size_mm = 16` means "a 16 mm die", and should not have to know that a
+dodecahedron's edge is 0.36 of its width to get one. Read as an edge length,
+`size_mm = 16` makes a d12 that is 45 mm across, and dice that size under
+ordinary gravity fall slowly enough to look weightless.
+
+One consequence worth knowing: a d4 and a d20 of the same `size_mm` have the
+same bounding sphere, so the d4 is the smaller solid inside it. That is how a
+real set looks — the dice are sized to sit together in a hand, not to enclose
+the same volume.
 
 ## Shapes after v1
 

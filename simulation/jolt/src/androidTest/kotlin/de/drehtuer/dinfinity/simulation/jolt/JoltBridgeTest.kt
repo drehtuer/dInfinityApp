@@ -170,7 +170,7 @@ class JoltBridgeTest {
 
   private fun d6(): Die = Die.standard("d6", DieShape.Cube)
 
-  private fun radiusOf(die: Die): Double = ShapeGeometry.boundingRadiusPerSize(die.shape) * die.material.sizeMm
+  private fun radiusOf(die: Die): Double = die.material.boundingRadiusMm
 
   private fun spec(
     dice: List<Die>,

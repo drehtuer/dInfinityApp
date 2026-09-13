@@ -4,7 +4,6 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
@@ -104,7 +103,7 @@ class FilamentDiceRenderer(
   private fun radiusOf(
     die: Die,
     scale: Double,
-  ): Double = ShapeGeometry.boundingRadiusPerSize(die.shape) * die.material.sizeMm * scale
+  ): Double = die.material.boundingRadiusMm * scale
 
   private fun aspectRatio(): Double = stage.width.toDouble() / stage.height
 }

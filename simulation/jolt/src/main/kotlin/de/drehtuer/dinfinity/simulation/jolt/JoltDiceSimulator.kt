@@ -93,7 +93,7 @@ class JoltDiceSimulator(
  */
 internal fun largestRadiusMm(spec: ThrowSpec): Double =
   spec.dice.maxOf {
-    ShapeGeometry.boundingRadiusPerSize(it.die.shape) * it.die.material.sizeMm * spec.dieScale
+    it.die.material.boundingRadiusMm * spec.dieScale
   }
 
 /** Opens the world one throw runs in. The seam the tests come in through. */

@@ -103,7 +103,15 @@ class GoldenCasesTest {
         )
       }
       assertTrue("a roll recorded past the cap is a recorded bug", expected.steps in 1..SettleRule.HARD_CAP_STEPS)
-      assertTrue("more corrections than dice", expected.corrections <= spec.dice.size)
+      // A die may be corrected once per throw, and a re-thrown die is a fresh
+      // throw that gets a fresh chance to be helped (`RollLoop`, rung 3). So
+      // the bound is one per die plus one per re-throw — not one per die,
+      // which held only while no recorded case had both.
+      assertTrue(
+        "'${case.formula}' recorded ${expected.corrections} corrections for ${spec.dice.size} dice " +
+          "and ${expected.rethrows} re-throws, which is more nudges than there were chances to nudge",
+        expected.corrections <= spec.dice.size + expected.rethrows,
+      )
     }
   }
 

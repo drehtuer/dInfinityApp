@@ -92,6 +92,11 @@ changelog.
   their total on screen. The faces are blank — the SDF numbers are still a
   Step 3 item — and the tray is black until the first throw. Both are in
   `docs/TODO.md`; neither is in the way of the shake test.
+- **Dice are the size they say they are.** `size_mm` now means how wide a die
+  is, not the edge length a dice maker quotes, which had been making a "16 mm"
+  d12 45 mm across — and dice that size under ordinary gravity fall slowly
+  enough to read as weightless. The golden cases were re-recorded on the Pixel
+  10a and the emulator agrees with them bit for bit.
 
 ## Blocked / waiting on
 

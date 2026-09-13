@@ -119,7 +119,7 @@ class ShapeHullTest {
   fun `a hull is the corners at the die's own size`() {
     val d20 = StandardDice.d20
     val hull = ShapeGeometry.hullOf(d20)
-    val radius = ShapeGeometry.boundingRadiusPerSize(DieShape.Icosahedron) * d20.material.sizeMm
+    val radius = d20.material.boundingRadiusMm
     assertEquals(12, hull.size)
     hull.forEach { corner -> assertEquals(radius, corner.length, 1e-9) }
   }

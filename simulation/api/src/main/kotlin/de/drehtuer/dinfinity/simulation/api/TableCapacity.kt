@@ -62,7 +62,7 @@ object TableCapacity {
 
   /** How much floor one die covers at scale 1: the circle its bounding sphere casts. */
   fun footprintMm2(die: Die): Double {
-    val radius = ShapeGeometry.boundingRadiusPerSize(die.shape) * die.material.sizeMm
+    val radius = die.material.boundingRadiusMm
     return PI * radius * radius
   }
 

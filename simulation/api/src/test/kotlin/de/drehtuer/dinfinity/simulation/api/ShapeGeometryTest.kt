@@ -1,7 +1,7 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import de.drehtuer.dinfinity.core.model.DieShape
-import kotlin.math.PI
+import de.drehtuer.dinfinity.fixtures.StandardDice
 import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.test.Test
@@ -60,40 +60,49 @@ class ShapeGeometryTest {
   }
 
   @Test
-  fun `the Platonic solids have the bounding radius their closed form gives`() {
-    assertEquals(sqrt(6.0) / 4, ShapeGeometry.boundingRadiusPerSize(DieShape.Tetrahedron), 1e-12)
-    assertEquals(sqrt(3.0) / 2, ShapeGeometry.boundingRadiusPerSize(DieShape.Cube), 1e-12)
-    assertEquals(sqrt(2.0) / 2, ShapeGeometry.boundingRadiusPerSize(DieShape.Octahedron), 1e-12)
-    assertEquals(
-      (sqrt(3.0) / 4) * (1 + sqrt(5.0)),
-      ShapeGeometry.boundingRadiusPerSize(DieShape.Dodecahedron),
-      1e-12,
-    )
-    assertEquals(sqrt(10 + 2 * sqrt(5.0)) / 4, ShapeGeometry.boundingRadiusPerSize(DieShape.Icosahedron), 1e-12)
+  fun `the Platonic solids have the proportions their closed forms give`() {
+    // Measured off the corners this catalogue actually builds, not read back
+    // out of a table of the same constants. Every solid here has its corners
+    // on the unit sphere, so the circumradius is 1 and the closed form for
+    // circumradius-per-edge is simply one over the edge length.
+    assertEquals(sqrt(6.0) / 4, 1 / edgeOf(DieShape.Tetrahedron), 1e-12)
+    assertEquals(sqrt(3.0) / 2, 1 / edgeOf(DieShape.Cube), 1e-12)
+    assertEquals(sqrt(2.0) / 2, 1 / edgeOf(DieShape.Octahedron), 1e-12)
+    assertEquals((sqrt(3.0) / 4) * (1 + sqrt(5.0)), 1 / edgeOf(DieShape.Dodecahedron), 1e-12)
+    assertEquals(sqrt(10 + 2 * sqrt(5.0)) / 4, 1 / edgeOf(DieShape.Icosahedron), 1e-12)
   }
 
   @Test
-  fun `a trapezohedron's bounding radius comes out of its own two conditions`() {
-    // There is no closed form worth writing down: the radius falls out of flat
-    // kite faces and every corner on one sphere. These are the numbers that
-    // fall out, and docs/tables.md quotes them.
-    assertEquals(0.747674, ShapeGeometry.boundingRadiusPerSize(DieShape.PentagonalTrapezohedron), 1e-6)
-    assertEquals(0.718362, ShapeGeometry.boundingRadiusPerSize(DieShape.EnneagonalTrapezohedron), 1e-6)
-  }
+  fun `a sixteen millimetre die is sixteen millimetres across, whatever shape it is`() {
+    // What `size_mm` means, asserted once for every shape in the catalogue.
+    // It used to mean the edge length, which a dice maker quotes and nobody
+    // else means: it made a 16 mm d12 45 mm across (`docs/dice-sets.md`).
+    StandardDice.all.forEach { die ->
+      val sized = die.copy(material = die.material.copy(sizeMm = 16.0))
 
-  @Test
-  fun `a trapezohedron is a little wider than its apex edge is long`() {
-    listOf(DieShape.PentagonalTrapezohedron, DieShape.EnneagonalTrapezohedron).forEach { shape ->
-      val radius = ShapeGeometry.boundingRadiusPerSize(shape)
-      assertTrue(radius in 0.5..1.0, "${shape.id} has a bounding radius of $radius per edge")
+      assertEquals(
+        8.0,
+        ShapeGeometry.hullOf(sized).maxOf { it.length },
+        1e-9,
+        "a 16 mm ${die.shape.id} is not 16 mm across",
+      )
     }
   }
 
   @Test
-  fun `a sixteen millimetre d6 has the bounding radius the capacity table is built on`() {
-    val radius = ShapeGeometry.boundingRadiusPerSize(DieShape.Cube) * 16
-    assertEquals(13.856, radius, 1e-3)
-    assertEquals(603.2, PI * radius * radius, 0.1)
+  fun `a die is shrunk by the scale the table asked for`() {
+    val die = StandardDice.d6.let { it.copy(material = it.material.copy(sizeMm = 16.0)) }
+
+    assertEquals(4.0, ShapeGeometry.hullOf(die, scale = 0.5).maxOf { it.length }, 1e-9)
+  }
+
+  /** The edge length of a solid whose corners are on the unit sphere. */
+  private fun edgeOf(shape: DieShape): Double {
+    val corners = ShapeGeometry.verticesOf(shape)
+    return corners.indices
+      .flatMap { a ->
+        (a + 1 until corners.size).map { b -> (corners[a] - corners[b]).length }
+      }.min()
   }
 
   @Test
@@ -131,14 +140,17 @@ class ShapeGeometryTest {
   }
 
   @Test
-  fun `every shape is inside the bounding sphere its radius claims`() {
-    // The face normals touch the insphere, not the circumsphere, so the
-    // circumradius must be the larger of the two for every solid.
+  fun `every corner is outside every face, which is what makes a solid convex`() {
+    // The face normals touch the insphere and the corners the circumsphere, so
+    // no corner may lie inside a face's plane. A solid where one did would
+    // collide and read as something other than what it is drawn as.
     DieShape.entries.forEach { shape ->
-      assertTrue(
-        ShapeGeometry.boundingRadiusPerSize(shape) > 0.0,
-        "${shape.id} has no size",
-      )
+      val corners = ShapeGeometry.verticesOf(shape)
+      ShapeGeometry.directionsOf(shape).forEach { face ->
+        val insphere = corners.maxOf { it dot face }
+        assertTrue(insphere > 0.0, "${shape.id} has a face with nothing behind it")
+        assertTrue(insphere <= 1.0 + 1e-9, "${shape.id} has a corner outside its own bounding sphere")
+      }
     }
   }
 }

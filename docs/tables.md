@@ -64,46 +64,43 @@ if diceCount > 100 → roll refused (engine hard cap, independent of scale)
 else               → all dice are spawned at `scale`
 ```
 
-`r(d)` comes from the shape, not from a guess. A die's `size_mm` is its
-**nominal size**, quoted the way a dice maker quotes one: the edge length for a
-polyhedron, the diameter for the coin. The bounding-sphere radius is then a
-fixed ratio of it, one per catalogue shape:
+`r(d)` does not come from the shape at all. A die's `size_mm` is **how wide it
+is** — the diameter of the sphere its corners sit on — so its bounding radius
+is `size_mm / 2` whatever solid is inside it. A 16 mm d6, a 16 mm d12 and a
+16 mm d20 are all 16 mm across at their widest, which is how a set of dice
+looks in a hand.
 
-| Shape | radius ÷ nominal size | | Shape | radius ÷ nominal size |
-|---|---|---|---|---|
-| `coin` | √(¼ + 1/64) ≈ 0.5154 | | `dodecahedron` | (√3/4)(1+√5) ≈ 1.4013 |
-| `tetrahedron` | √6/4 ≈ 0.6124 | | `enneagonal-trapezohedron` | ≈ 0.7184 |
-| `cube` | √3/2 ≈ 0.8660 | | `icosahedron` | √(10+2√5)/4 ≈ 0.9511 |
-| `octahedron` | √2/2 ≈ 0.7071 | | `pentagonal-trapezohedron` | ≈ 0.7477 |
-
-So a "16 mm d6" is a cube with 16 mm edges and a bounding radius of
-16·√3/2 ≈ 13.9 mm, which is where every number in the worked table below comes
-from. For the coin, nominal size is its diameter — a cylinder has no edge to
-measure — and for the two trapezohedra it is the long apex edge.
-
-A trapezohedron has no closed form worth writing down. It is fixed by its own
-two conditions and they leave no freedom at all: its kite faces have to be
-**flat**, which forces the apex to sit `2/(1 − cos(π/n)) − 1` times the ring
-height up, and every corner has to be on one sphere, which is what a fair die
-is — an insphere touching every face, a circumsphere through every corner. The
-ratios above are what falls out.
+`size_mm` used to be read as a dice maker's *nominal* size — the edge length
+for a polyhedron — and each shape had its own ratio from that to its bounding
+radius. That convention is defensible and is what a manufacturer quotes, but
+it is not what anybody means by "a 16 mm die": a dodecahedron with 16 mm edges
+is 45 mm across. Dice that size under ordinary gravity take half again as long
+to fall their own length, and the roll reads as weightless — a miniature
+filmed at normal speed. See `docs/dice-sets.md`, "Size".
 
 That is: dice may collectively cover at most 30 % of the floor with their
-bounding circles, and they may shrink to 40 % of their nominal size to get
-there. Both numbers are tunable constants and both are covered by the golden
+bounding circles, and they may shrink to 40 % of their size to get there. Both numbers are tunable constants and both are covered by the golden
 determinism tests.
 
 Worked example on a Pixel 10a table (240 × 108 mm ≈ 259 cm²):
 
 | Roll | Required at scale 1 | Result |
 |---|---|---|
-| `1d20` | 7.3 cm² | scale 1.0 |
-| `8d6` (16 mm d6) | 48 cm² | scale 1.0 |
-| `20d6` | 121 cm² | scale 0.80 |
-| `60d6` | 362 cm² | scale 0.46 |
-| `80d6` | 483 cm² | scale 0.40 — the limit |
-| `100d6` | 604 cm² | refused: "100 dice don't fit on the table; up to 80 do" |
+| `1d20` (16 mm) | 2.0 cm² | scale 1.0 |
+| `8d6` (16 mm) | 16 cm² | scale 1.0 |
+| `38d6` | 76 cm² | scale 1.0 — the most that roll full size |
+| `60d6` | 121 cm² | scale 0.80 |
+| `100d6` | 201 cm² | scale 0.62 — the engine's whole cap |
+| `101d6` | — | refused: "101 dice don't fit on the table; up to 100 do" |
 | `500d6` | — | refused |
+
+Note what the first column no longer does: **the floor rule stops refusing
+anything.** Dice of the right size are small enough that it would take about
+240 of them to shrink past the 40 % floor, and the engine stops at 100 long
+before that. The rule still does its real job — it shrinks a crowded tray so
+the dice have room to tumble — but the refusal a player actually meets is the
+body cap. Whether 30 % and 40 % are still the right numbers now that they bite
+so much later is a question for Step 5.3, with a device.
 
 The refusal message always says the largest count that *would* fit, and
 offers to open the outcome graph instead, which has no such limit.
