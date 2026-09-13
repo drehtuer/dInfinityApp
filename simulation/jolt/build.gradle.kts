@@ -44,6 +44,13 @@ android {
 dependencies {
   api(project(":simulation:api"))
 
+  // The Renderer contract and the renderer that draws nothing. A roll in
+  // progress is handed to a renderer frame by frame, and the arrow only goes
+  // that way: `render/headless` is plain Kotlin with no engine in it, and
+  // nothing here can be reached from a renderer (`docs/architecture.md`,
+  // "Data flow of a roll").
+  api(project(":render:headless"))
+
   // A golden case starts as a formula, so both test tiers parse and plan one.
   // Test-only, in both directions: nothing in this module's own code knows
   // that notation exists.

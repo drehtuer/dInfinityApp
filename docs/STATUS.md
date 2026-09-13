@@ -12,13 +12,13 @@ changelog.
 - **Phase:** implementation. Steps 1 and 2 of `docs/TODO.md` are done and Step
   3 is nearly done: a formula can now be parsed, planned, thrown as real dice,
   read off their faces and pinned against a recorded outcome, end to end. What
-  is left of Step 3 is the renderer, the shake on real hardware and the three
-  smaller items listed there.
+  is left of Step 3 needs a screen to land on, which is Step 4.1 — now in
+  progress — plus the shake on real hardware and the smaller items listed
+  there.
 - **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to and including #51 is merged. Two stacked
-  branches are in flight: `feature/dice-material` and `feature/filament-engine`
-  on top of it. They merge in that order.
+- **Branch state:** everything up to and including #54 is merged and `main` is
+  green. Step 4.1, the roll screen, is what is being built now.
 
 ## Done
 
@@ -77,10 +77,12 @@ changelog.
 
 ## In progress
 
-- Nothing. `render/filament` draws: the engine opens, the material compiles on
-  the driver that is actually there, and a scene of a tray and its dice renders
-  a frame on the emulator and on the Pixel 10a. What is left of it needs a
-  screen, and arrives with the roll screen in Step 4.1.
+- **Step 4.1, the roll screen.** First piece: a roll can now be *watched*. The
+  loop steps one step at a time and a frame clock decides when, so a rendered
+  roll is the same object as a power-saving roll with somebody calling it —
+  rather than a second implementation of the one rule the app cannot bend
+  (`docs/architecture.md`, decision 48). What is still missing before the phone
+  can be shaken is a surface to draw on and a screen to put it in.
 
 ## Blocked / waiting on
 
