@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="graph_no_formula">No formula</string>
+  <string name="graph_empty">Type a formula on the roll screen and come back, or open this from a roll.</string>
+  <!-- The question the bars answer (design option 1k). -->
+  <string name="graph_mode_exact">P(total = k)</string>
+  <string name="graph_mode_at_least">P(total ≥ k)</string>
+  <string name="graph_tap_a_bar">Tap a bar for the exact numbers.</string>
+  <!-- %1$d is a total, %2$s and %3$s are percentages. -->
+  <string name="graph_picked">%1$d: exactly %2$s · at least %3$s</string>
+  <string name="graph_your_roll">Your roll: %1$d — exactly %2$s · at least %3$s</string>
+  <!-- %1$s is the mean, to one decimal. -->
+  <string name="graph_mean_is">mean %1$s · dashed</string>
+  <string name="graph_stat_mean">Mean</string>
+  <string name="graph_stat_deviation">Standard deviation</string>
+  <string name="graph_stat_range">Range</string>
+  <!-- %1$d is the lowest or highest total the formula can give. -->
+  <string name="graph_stat_chance_of">Chance of %1$d</string>
+  <string name="graph_stat_dice">Dice</string>
+</resources>

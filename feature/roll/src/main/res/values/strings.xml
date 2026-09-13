@@ -32,6 +32,8 @@
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->
   <string name="roll_picker_add">Add a %1$s</string>
   <string name="roll_picker_remove">Take a %1$s off</string>
+  <!-- The way to the outcome graph (design option 7a). -->
+  <string name="roll_see_the_odds">See the odds</string>
   <string name="roll_throw">Roll</string>
   <string name="roll_again">Roll again</string>
   <string name="roll_rolling">Rolling…</string>

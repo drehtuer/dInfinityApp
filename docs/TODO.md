@@ -98,14 +98,14 @@ and off.
 
 Design `1k`–`1m`, `2c`, `7a`. Spec: `docs/probability.md`.
 
-The state is built and tested: the exact distribution, the bars (gathered into
-buckets past 110 totals, by summing rather than sampling), the six statistics,
-the `P(= k)` / `P(≥ k)` question, the tapped bar and the rolled total's mark.
-What is left is the picture and the way in.
+The screen is built: the bar chart with its mean line and ±1σ band, the
+`P(= k)` / `P(≥ k)` question, a tap for the exact numbers, the six statistics,
+and the roll that opened it marked in the accent. It is reached from the roll
+screen's **See the odds**.
 
-- [ ] Draw it: bars, the dashed mean line, the ±1σ band behind them, and the solid line at the rolled total (`1k`, `7a`)
-- [ ] The screen around it: the formula field with its squiggle, the mode toggle, the tapped bar's numbers, the six statistics, "Roll this" and "Save as roll"
-- [ ] The way in. The graph needs the formula and, after a roll, the total — which is the first navigation in the app to carry an argument (`docs/architecture.md`, "Screens and the states behind them"). Reaching it at all also wants the menu (4.10)
+- [ ] **The formula cannot be edited here.** Editing it wants the same live-validated field with a squiggle the roll screen has, and that field belongs somewhere both screens can reach before it belongs to two of them. That is the first real argument for a shared UI module — the die silhouettes (`1h`) and the Modernist furniture are behind it (`docs/architecture.md`, Modules)
+- [ ] "Roll this" and "Save as roll" under the chart. The first needs to hand a formula back to the roll screen, which no navigation does yet; the second needs saved rolls (4.3)
+- [ ] *Judge the chart on the phone:* whether a hundred and ten bars at three dp each reads as a distribution or as a smear, and whether the ±1σ band behind the bars is visible enough to mean anything in both themes
 - [ ] The ledger (`1m`) and the stepped area (`1l`) are alternative presentations of the same numbers; `1k` is the default and the other two are not v1
 
 ### 4.3 Saved rolls — `feature/saved`
@@ -184,7 +184,7 @@ Design `6c`. Spec: `docs/statistics.md`.
 
 Design `1q`, `1y`, `2d`. Spec: `README.md`, `docs/architecture.md`.
 
-- [ ] Full-screen menu (`1q`), grouped Play / Look back / Customise / App. **This is the only thing standing between the app and a connected navigation graph**: today the single in-app control that navigates anywhere is the placeholder screens' Settings row, and every other move between screens is the system back gesture — the roll screen cannot be left deliberately at all (`docs/architecture.md`, "Screens and the states behind them")
+- [ ] Full-screen menu (`1q`), grouped Play / Look back / Customise / App. **This is the only thing standing between the app and a connected navigation graph**: today the two in-app controls that navigate anywhere are the roll screen's "See the odds" and the placeholder screens' Settings row, and every other move between screens is the system back gesture (`docs/architecture.md`, "Screens and the states behind them")
 - [ ] Appearance (System / Light / Dark), shake, haptics, sound, rounding default, default set, table, session — the accent picker and the power-saving switch are already there and are the pattern the rest follow
 - [ ] Replace the single field on `DInfinityApplication` with a real container once more than settings hangs off it
 - [ ] Version and repository link (`2d`)

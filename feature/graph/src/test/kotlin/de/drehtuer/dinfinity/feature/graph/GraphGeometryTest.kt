@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.graph
 import de.drehtuer.dinfinity.core.probability.Pmf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -91,6 +92,32 @@ class GraphGeometryTest {
     val bars = GraphBars.of(Pmf.certain(0), GraphMode.Exact)
 
     assertTrue(bars.all { it.share in 0.0..1.0 })
+  }
+
+  @Test
+  fun `a tap lands on the bar under the finger`() {
+    val bars = GraphBars.of(Pmf.uniformOver((1..10).toList()), GraphMode.Exact)
+
+    assertEquals(bars.first(), barAt(bars, 0f))
+    assertEquals(bars.last(), barAt(bars, 1f))
+    assertEquals(bars[5], barAt(bars, 0.55f))
+  }
+
+  @Test
+  fun `a tap outside the chart lands on nothing`() {
+    val bars = GraphBars.of(Pmf.uniformOver((1..10).toList()), GraphMode.Exact)
+
+    assertNull(barAt(bars, -0.1f))
+    assertNull(barAt(bars, 1.1f))
+    assertNull(barAt(emptyList(), 0.5f))
+  }
+
+  @Test
+  fun `a probability too small to print as a percentage is not printed as zero`() {
+    // The one answer a screen about probability must not give.
+    assertEquals("< 0.1 %", percent(1e-9))
+    assertEquals("0 %", percent(0.0))
+    assertEquals("16.7 %", percent(6.0 / 36.0))
   }
 
   private fun statsOf(pmf: Pmf): GraphStats = GraphStats.of(pmf, dice = 1)

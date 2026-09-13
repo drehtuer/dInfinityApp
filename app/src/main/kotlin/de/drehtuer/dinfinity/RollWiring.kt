@@ -4,6 +4,7 @@ import android.content.Context
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
@@ -86,6 +87,15 @@ class RollWiring(
    * (`docs/architecture.md`, decision 38).
    */
   private fun tray(powerSaving: Boolean): Tray = if (powerSaving) PowerSavingTray() else TrayDriver()
+
+  /**
+   * The outcome graph's state, for one visit to that screen.
+   *
+   * It shares the catalogue with the roll screen and nothing else: the graph
+   * has no simulator, no tray and no thread, because it is about the formula
+   * rather than about a throw (`docs/probability.md`).
+   */
+  fun graph(): GraphMachine = GraphMachine(catalog)
 
   private fun aspect(): Double {
     val metrics = context.resources.displayMetrics

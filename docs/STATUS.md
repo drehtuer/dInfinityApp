@@ -68,10 +68,13 @@ changelog.
   the dice without drawing them, and a first-launch screen that offers to throw
   a d20 and then gets out of the way. What it has not: the set dropdown, the
   saved-rolls strip, and numbers on the faces. All listed in `docs/TODO.md`.
-- **Step 4.2.** The outcome graph's state is built and tested — the exact
-  distribution from `core/probability`, its bars, its statistics, the
-  `P(= k)` / `P(≥ k)` question and the mark for the roll that opened it. The
-  chart itself, the screen around it and the way in are next.
+- **Step 4.2.** The outcome graph is on screen: the exact distribution from
+  `core/probability` as bars, with its mean line, its ±1σ band, the
+  `P(= k)` / `P(≥ k)` question, a tap for the exact numbers, and the roll that
+  opened it marked. Reached from the roll screen's "See the odds", which is
+  the first navigation in the app to carry an argument. The formula cannot yet
+  be edited there — that wants the roll screen's squiggling field somewhere
+  both screens can reach.
 - **The screens' state machines are written down.** `docs/architecture.md` now
   carries the navigation graph, `RollState`, the shake, the tray and the
   Settings screen as diagrams and control tables, so a transition nobody

@@ -36,6 +36,7 @@ class MainActivity : ComponentActivity() {
           },
           onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
           rollPresenter = { app.rolls.presenter(powerSaving = settings.powerSaving) },
+          graphMachine = { app.rolls.graph() },
         )
       }
     }

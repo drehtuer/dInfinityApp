@@ -273,6 +273,50 @@ class RollScreenTest {
   }
 
   @Test
+  fun `the odds are offered for a throw that has landed, with its total`() {
+    val asked = mutableListOf<Pair<String, Long?>>()
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0, 1 to 0, 2 to 0))),
+        onSeeTheOdds = { formula, total -> asked += formula to total },
+      )
+    }
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+
+    assertEquals(listOf("3d6" to 3L), asked)
+  }
+
+  @Test
+  fun `the odds are offered for a throw the table refuses, which is when they matter most`() {
+    // `500d6` cannot be rolled here. "What would it have been" is then the only
+    // answer there is (`docs/probability.md`).
+    val asked = mutableListOf<Pair<String, Long?>>()
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        onSeeTheOdds = { formula, total -> asked += formula to total },
+      )
+    }
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("500d6")
+
+    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+
+    assertEquals(listOf("500d6" to null), asked)
+  }
+
+  @Test
+  fun `a formula that does not read is not offered odds on itself`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6 +")
+
+    compose.onNodeWithTag(RollTestTags.ODDS).assertDoesNotExist()
+  }
+
+  @Test
   fun `the screen honours a modifier its caller gives it`() {
     // Every other test lets the default stand, so without this the screen has
     // never once been drawn the way the navigation graph will draw it.

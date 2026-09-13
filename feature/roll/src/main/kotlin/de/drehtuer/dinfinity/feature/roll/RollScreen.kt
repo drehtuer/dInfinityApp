@@ -13,6 +13,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -49,6 +50,7 @@ fun RollScreen(
   modifier: Modifier = Modifier,
   firstLaunch: Boolean = false,
   onWelcomeSeen: () -> Unit = {},
+  onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
 ) {
   val state = presenter.state
   ShakeToRoll(presenter)
@@ -80,6 +82,15 @@ fun RollScreen(
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       Outcome(state, formula = presenter.text, onRound = presenter::round, onSuggestion = presenter::type)
+      // The odds for the formula in the field, with the throw that just landed
+      // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
+      // throw the table refuses too: that is exactly when "what would it have
+      // been" is the only answer there is (`docs/probability.md`).
+      if (state is RollState.Ready || state is RollState.TooMany || state is RollState.Settled) {
+        SeeTheOdds(
+          onClick = { onSeeTheOdds(presenter.text, (state as? RollState.Settled)?.result?.total) },
+        )
+      }
       PickerRow(
         dice = presenter.pickable,
         counts = presenter.counts,
@@ -270,6 +281,17 @@ private fun Formula(
   )
 }
 
+/** The way to the outcome graph, for whatever is in the field right now. */
+@Composable
+private fun SeeTheOdds(onClick: () -> Unit) {
+  TextButton(
+    onClick = onClick,
+    modifier = Modifier.testTag(RollTestTags.ODDS),
+  ) {
+    Text(stringResource(R.string.roll_see_the_odds))
+  }
+}
+
 /** The same: values in, one lambda out, so it skips when nothing has moved. */
 @Composable
 private fun ThrowButton(
@@ -310,6 +332,9 @@ object RollTestTags {
 
   /** What to do next, when there is no result and nothing wrong. */
   const val HINT: String = "roll:hint"
+
+  /** The way to the outcome graph (design option 7a). */
+  const val ODDS: String = "roll:odds"
 
   /** The first-launch screen and its two ways out (design option 9a). */
   const val WELCOME: String = "roll:welcome"

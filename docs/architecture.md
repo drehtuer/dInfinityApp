@@ -113,9 +113,12 @@ that adding one is a change in a single place. `Roll` is home.
 stateDiagram-v2
     [*] --> Roll
     Roll: Roll (home)
+    Graph: Outcome graph
     Settings: Settings
-    Other: Graph · Saved · Stats · History · Sessions<br/>Sets · Tables · Designer
+    Other: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer
 
+    Roll --> Graph: See the odds
+    Graph --> Roll: system back
     Other --> Settings: the placeholder's Settings row
     Settings --> Other: system back
     Other --> Roll: system back
@@ -123,15 +126,32 @@ stateDiagram-v2
 ```
 
 That diagram is the honest one rather than the intended one, and the gap is
-worth naming: **the only in-app control that navigates anywhere is the
-placeholder screens' Settings row.** Every other move between screens is the
-system back gesture. The menu that reaches all ten (`design/dInfinity.dc.html`,
-option `1q`) is Step 4.10, and until it exists the roll screen has no way out
-but back, and no screen but a placeholder can be left deliberately.
+worth naming: **the only two in-app controls that navigate anywhere are the
+roll screen's "See the odds" and the placeholder screens' Settings row.** Every
+other move between screens is the system back gesture. The menu that reaches
+all ten (`design/dInfinity.dc.html`, option `1q`) is Step 4.10, and until it
+exists most screens can only be left, not entered.
 
 Nothing is *undefined*, though. `NavHost` answers back on every destination,
 `Destination.home` is where the app opens, and a route that does not resolve
 cannot be reached — `Destination.ofRoute` is the only way in and it is total.
+
+**One destination is opened with arguments, and it is the first.** The outcome
+graph is about a formula, and after a roll it also marks the total that came
+up, so its route is `graph?formula={formula}&total={total}`. Two rules keep
+that from spreading trouble:
+
+- **Every argument is optional and defaults to empty.** A destination that
+  could only be opened with an argument is a destination the menu could not
+  open, and the menu is what Step 4.10 is for. A bare `graph` is a graph with
+  no formula, which says where a formula comes from.
+- **The formula is URI-encoded on the way in.** `+` and `/` are characters a
+  formula is made of and a URI reserves; unencoded, `3d6 + 4` arrives as
+  `3d6   4` and graphs a different roll.
+
+A screen built from its arguments is a screen that comes back the same from a
+restored back stack, which is the other half of "a screen left and returned to
+is built again from scratch".
 
 ### The roll screen
 
@@ -236,7 +256,13 @@ and none of them decides anything itself:
   suggested, so a suggestion taken is indistinguishable from the same
   correction typed by hand;
 - **pinch and two-finger drag** call `look`, which moves the camera and is not
-  a state change at all — where a player is standing is not what the dice did.
+  a state change at all — where a player is standing is not what the dice did;
+- **See the odds** is the one control that leaves the screen. It navigates and
+  changes no state here at all, carrying the formula as typed and, for a throw
+  that has landed, its total (`design/dInfinity.dc.html`, option 7a). Offered
+  in `Ready`, `TooMany` and `Settled` — including the refusal, because a throw
+  the table cannot hold is exactly when "what would it have been" is the only
+  answer there is.
 
 In power-saving mode the tray is not there at all, and the list is otherwise
 unchanged: the dice are thrown by the same `roll`, stepped by the same loop,
@@ -326,6 +352,42 @@ a roll that has already landed — has nothing coming after it to cover for a
 skipped frame, so it is *owed* one and goes on asking until one lands. With no
 surface there is nothing to pay it with, so the debt is simply carried until a
 surface arrives.
+
+### The outcome graph
+
+`GraphState` is a smaller machine of the same shape, and it is smaller for a
+reason: the graph has no thread, no engine and nothing to wait for. A formula
+goes in and a distribution comes out.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Empty
+    Empty: Empty<br/>no formula
+    Invalid: Invalid<br/>error + range
+    TooLarge: TooLarge<br/>past what is exact
+    Graphed: Graphed<br/>bars, statistics, mode, pick, mark
+
+    Empty --> Graphed: opened with a formula that graphs
+    Empty --> Invalid: opened with one that does not read
+    Empty --> TooLarge: opened with one past the limit
+    Graphed --> Graphed: ask the other question, or tap a bar
+    Graphed --> Invalid: retype
+    Graphed --> TooLarge: retype
+    Graphed --> Empty: clear
+    Invalid --> Graphed: retype
+    TooLarge --> Graphed: retype
+```
+
+`TooLarge` is the state worth reading twice. The formula is legal and may even
+be rollable; what cannot be done is working out its distribution exactly, and
+the screen says so rather than drawing an approximation. An approximated curve
+presented as the odds is a number somebody bets on
+(`docs/probability.md`).
+
+Tapping a bar and changing the question both stay in `Graphed` and redraw the
+same distribution — neither is a new computation. Retyping drops the tapped
+bar with it, because a bar at 14 on one distribution is not the same bar at 14
+on the next.
 
 ### Settings, and the screens that are not built yet
 
