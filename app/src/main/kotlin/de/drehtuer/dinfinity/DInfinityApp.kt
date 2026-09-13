@@ -36,6 +36,7 @@ import de.drehtuer.dinfinity.feature.roll.RollScreen
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorScreen
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
+import de.drehtuer.dinfinity.feature.saved.HomeStrip
 import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportScreen
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
@@ -109,7 +110,7 @@ fun DInfinityApp(
           // world. Leaving the screen gives all three back
           // (`docs/architecture.md`, decision 49).
           Destination.Roll if rollPresenter != null ->
-            Roll(rollPresenter, entry, navController, !settings.welcomeSeen, onWelcomeSeen)
+            Roll(rollPresenter, savedRolls, entry, navController, !settings.welcomeSeen, onWelcomeSeen)
 
           // Every screen the app has, and the only way to most of them
           // (`docs/architecture.md`, "Screens and the states behind them").
@@ -157,17 +158,32 @@ private fun MenuTo(navController: NavHostController) {
 @Composable
 private fun Roll(
   presenter: () -> RollPresenter,
+  savedRolls: (() -> SavedPresenter)?,
   entry: NavBackStackEntry,
   navController: NavHostController,
   firstLaunch: Boolean,
   onWelcomeSeen: () -> Unit,
 ) {
+  val saved = savedRolls?.let { make -> remember(entry) { make() } }
   RollScreen(
     presenter = remember(presenter) { presenter() },
     firstLaunch = firstLaunch,
     onWelcomeSeen = onWelcomeSeen,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
     menu = { MenuTo(navController) },
+    // The active group's saved rolls, handed to the tray as a slot: the roll
+    // screen does not know what a saved roll is, and does not have to
+    // (`design/dInfinity.dc.html`, option 9a).
+    strip = { rollIt ->
+      if (saved != null) {
+        HomeStrip(
+          presenter = saved,
+          onRoll = rollIt,
+          onEdit = { rollId -> navController.navigate(editorRoute(rollId)) },
+          onNew = { navController.navigate(editorRoute(null)) },
+        )
+      }
+    },
     openWith = entry.arguments?.getString(GraphArgument.FORMULA).orEmpty(),
   )
 }

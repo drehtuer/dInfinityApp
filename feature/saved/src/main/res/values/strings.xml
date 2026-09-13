@@ -97,4 +97,8 @@
   <string name="import_see">See the rolls</string>
   <string name="import_open">Import a collection…</string>
   <string name="import_note">From a file somebody sent you</string>
+  <!-- The saved-roll strip on the tray (design option 9a). -->
+  <string name="strip_first">Save a roll</string>
+  <string name="strip_new">New</string>
+  <string name="strip_broken">dice missing</string>
 </resources>

@@ -513,6 +513,29 @@ import writes without ever passing through the sheet.
 Unfiled is the one group with no **Delete**: it is where a deleted group's
 rolls go, so it has to be there to go to.
 
+### The saved-roll strip on the tray
+
+The active group's rolls sit above the dice picker, as tiles: a roll somebody
+named comes before a die they have to assemble.
+
+**A tap here throws**, where a tap on the saved-rolls list only puts the
+formula in the field. The two are not inconsistent. A saved roll *is* a named
+formula rolled with one tap, and this is the one place in the app where the
+tray is already on screen to roll it on; from the list you are somewhere else,
+and arriving at the tray with a throw already finished would be a roll nobody
+watched.
+
+It is handed to the roll screen as a **slot**, the same way the menu button is,
+and for the same reason: a roll screen that knew what a saved roll was would be
+one feature module depending on another. The slot is given the callback that
+rolls a formula, so the strip hands back text and the roll screen does the rest
+— through the same `type` a keystroke goes through.
+
+The invitation tile is last and is the only thing there when the group is
+empty, which is what design option `9a` means by "the strip invites the first
+save". A strip that vanished when there was nothing in it would never tell
+anybody saved rolls exist.
+
 ### Exporting
 
 Two halves, split where Android begins. `CollectionExport` decides what goes

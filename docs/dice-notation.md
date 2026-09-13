@@ -225,7 +225,10 @@ SavedRoll {
 - Deleting a group never deletes a roll. Its rolls move to Unfiled and its
   child groups are lifted to the top level.
 - The home screen shows the **active group** as tiles; tap to roll,
-  long-press to edit. Favourites are pinned first, the rest ordered by recent
+  long-press to edit. A tap *throws* there, unlike a tap on the saved-rolls
+  list, which only puts the formula in the field: the tray is already on
+  screen, and arriving at it with the throw already over would be a roll nobody
+  watched. Favourites are pinned first, the rest ordered by recent
   use. Switching the active group is one tap in the top bar, and the active
   group also sets the default statistics session (`docs/statistics.md`).
 - The formula is re-validated when displayed, because the dice set it

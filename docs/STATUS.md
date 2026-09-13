@@ -62,12 +62,13 @@ changelog.
   refusal for a throw the table cannot hold, a total, the breakdown under it
   with every die that landed, Down / Nearest / Up for a throw that divides,
   pinch-to-zoom and two-finger pan over a camera that never moves on its own,
-  a dice picker row that taps dice into the formula field, and
+  a dice picker row that taps dice into the formula field, the active group's
+  saved rolls as a strip of tiles that throw with one tap, and
   a squiggle under the part of a bad formula that is wrong, with a one-tap fix
   where the mistake has an obvious reading, and a power-saving mode that throws
   the dice without drawing them, and a first-launch screen that offers to throw
-  a d20 and then gets out of the way. What it has not: the set dropdown, the
-  saved-rolls strip, and numbers on the faces. All listed in `docs/TODO.md`.
+  a d20 and then gets out of the way. What it has not: the set dropdown and
+  numbers on the faces. All listed in `docs/TODO.md`.
 - **Step 4.2.** The outcome graph is on screen: the exact distribution from
   `core/probability` as bars, with its mean line, its ±1σ band, the
   `P(= k)` / `P(≥ k)` question, a tap for the exact numbers, and the roll that

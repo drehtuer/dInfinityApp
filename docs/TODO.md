@@ -86,7 +86,7 @@ not have yet.
 - [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
-- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now" and its way straight to the tray. Its other two offers — import a collection, add dice sets — are missing because both lead to screens that are still placeholders (4.3, 4.4), and so is the rest of the count line: "0 saved rolls, 0 sessions" is only worth printing once there is somewhere for them to be kept
+- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now" and its way straight to the tray, and the saved-roll strip beneath it. Its other two offers — import a collection, add dice sets — are still missing: importing has a screen now and could be offered, and dice sets is still a placeholder (4.4). So is the rest of the count line: "0 saved rolls, 0 sessions" waits on sessions (4.9)
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -123,7 +123,6 @@ deleted, from the switcher or from the editor — the same sheet in both places.
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
 - [ ] Import from a **URL or a git repository**, over the same reader and `dicesets/install`'s fetcher. It is separate from importing a file because it needs the `INTERNET` permission, which the app has never asked for — a change to what the app can do, and one that deserves its own review
-- [ ] The active group drives the **home strip** on the roll screen, which is what `9a` means by "the strip invites the first save"
 - [ ] A broken roll falls back to the built-in set when it is thrown; today it says so on the list but the fallback itself is the planner's and untested from here
 - [ ] `SavedRollRepository` is at its function ceiling (detekt's `TooManyFunctions`, 11). Nothing needs to grow it yet — importing went into a class of its own, because it is a transaction rather than a repository operation — but the next thing that does needs the split first: groups one class, rolls another, rather than a raised threshold
 

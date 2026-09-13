@@ -60,6 +60,7 @@ fun RollScreen(
   onWelcomeSeen: () -> Unit = {},
   onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
   menu: @Composable () -> Unit = {},
+  strip: @Composable ((String) -> Unit) -> Unit = {},
   openWith: String = "",
 ) {
   // Typed in rather than set some other way: a formula arriving from a saved
@@ -89,6 +90,7 @@ fun RollScreen(
     Controls(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
+      strip = strip,
       modifier = Modifier.align(Alignment.BottomCenter),
     )
 
@@ -160,6 +162,7 @@ private const val FIRST_ROLL = "1d20"
 private fun Controls(
   presenter: RollPresenter,
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
+  strip: @Composable ((String) -> Unit) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state = presenter.state
@@ -181,6 +184,14 @@ private fun Controls(
       SeeTheOdds(
         onClick = { onSeeTheOdds(presenter.text, (state as? RollState.Settled)?.result?.total) },
       )
+    }
+    // The active group's saved rolls, above the loose dice: a roll somebody
+    // named comes before a die they have to assemble. Handed in as a slot, so
+    // this module does not have to know what a saved roll is
+    // (`design/dInfinity.dc.html`, option 9a).
+    strip { formula ->
+      presenter.type(formula)
+      presenter.roll()
     }
     PickerRow(
       dice = presenter.pickable,
