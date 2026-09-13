@@ -220,6 +220,102 @@ has no way to change it: `Renderer` has no method that returns anything
 tray deliberately does nothing yet (`docs/physics-and-rendering.md`, "Starting
 a roll").
 
+### While the phone is being shaken
+
+`RollState` is what the *roll* is doing, and it is not everything the screen
+knows. There is one more piece of state, deliberately outside the sealed
+interface: **whether a shake is going on right now**. It is owned by
+`ShakeToRoll` and read by nothing that scores a roll.
+
+It is separate because it is not about the dice. A shake begins, the dice are
+thrown, `RollState` goes to `Rolling` — and the hand carries on moving through
+all of that, and after the dice have settled too. What this state drives is the
+phone, not the roll.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Still
+    Still: Still<br/>the back gesture works as it always does
+    Shaking: Shaking<br/>edges claimed, samples fed to the roll
+
+    Still --> Shaking: the shake source says one began<br/>(and calls roll)
+    Shaking --> Still: the shake ended
+    Shaking --> Still: the screen was paused or left
+```
+
+While it is `Shaking`, `HoldTheEdges` keeps the back gesture off a band down
+each side, because a hand around a phone being shaken is a hand on both edges
+of it. The edges are given straight back afterwards, and leaving the screen
+mid-shake counts as afterwards — an app that kept the back gesture because it
+never saw the shake end would be a worse citizen than the problem it solves.
+
+Three more things hang off the screen's lifecycle rather than off any state,
+and none of them is a control anybody presses:
+
+| | Held while | Given back |
+|---|---|---|
+| the accelerometer | the screen is resumed | on pause — a sensor left running behind a backgrounded app is a battery bill for nothing |
+| the screen staying awake | the screen is on screen | on leaving it; a tray is something a table looks at between turns, and a phone that blanks after fifteen seconds has to be poked to read a roll |
+| the orientation lock | the same | the same. The tray *is* the screen (`docs/tables.md`), so turning the phone rebuilds the table — the right answer for a player who meant it, a surprise for one who is shaking it |
+
+### What the tray is drawing
+
+The tray has a small state machine of its own, in `TrayLoop`, and it is worth
+drawing because it is the one place where a transition nobody thought about
+strands a roll — which it did, for real, on the phone.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Nothing
+    Nothing: Nothing yet<br/>opened, told nothing
+    Table: An empty table
+    Throw: A throw<br/>in the air, or landed where it stopped
+
+    Nothing --> Table: table(geometry, look)
+    Table --> Throw: roll
+    Throw --> Throw: roll<br/>(a second throw replaces the first)
+    Throw --> Table: clear
+```
+
+A surface arriving or going is **not** on that diagram, and that is the point:
+it is not a state of the tray but of where the tray draws. The two are crossed,
+not merged, and one rule decides who asks for the next frame:
+
+| | A roll is in the air | Nothing is moving |
+|---|---|---|
+| **a surface** | a frame every vsync | one frame, and only until a frame actually lands |
+| **no surface** | a frame every vsync anyway | none — nothing to draw on, nothing owed that could be paid |
+
+The top-right cell is the subtle one. The frame callback is what *steps the
+simulation*, so a roll that stops being asked for frames is a roll that stops:
+never read, never reported, never over, with the screen on "Rolling…" for good.
+Drawing is the part that needs a surface; the physics is not, and must not wait
+for anybody to be looking.
+
+The bottom-right is the other half. A still picture — an empty table, a pinch,
+a roll that has already landed — has nothing coming after it to cover for a
+skipped frame, so it is *owed* one and goes on asking until one lands. With no
+surface there is nothing to pay it with, so the debt is simply carried until a
+surface arrives.
+
+### Settings, and the screens that are not built yet
+
+`Settings` is the only screen besides `Roll` that does anything, and it is
+built the other way round: no presenter, no state of its own. It takes an
+`AppSettings` and a lambda. What it is showing is held *above* the navigation
+graph, in the activity and backed by DataStore, because a preference outlives
+the screen that changed it — which is the opposite of what a roll does, and
+why the two are not built the same way (decision 49).
+
+| Control | Calls | What changes |
+|---|---|---|
+| one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
+| a placeholder's **Settings →** | `navigate(Settings)` | which screen is on |
+
+The second row is scaffolding and is labelled as such in the code: it exists
+so that a setting is reachable on a device at all before the menu is built,
+and it goes when `PlaceholderScreen` does (Step 4.10).
+
 ## Data flow of a roll
 
 ```mermaid

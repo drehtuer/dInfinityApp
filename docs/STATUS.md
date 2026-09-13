@@ -18,10 +18,7 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #64 is merged and `main` is green.
-  #65–#67 are three stacked pull requests waiting on review, in that order:
-  the table drawn before the first throw, the engine kept across surfaces, and
-  pinch-to-zoom. They merge oldest first.
+- **Branch state:** everything up to #75 is merged and `main` is green.
 
 ## Done
 
@@ -62,10 +59,16 @@ changelog.
 - **Step 4.1.** What the screen has: the tray — drawn from the moment the
   screen opens, with nothing on it, rather than black until the first throw —
   a live-validated formula field, roll from the Roll button or a shake, a
-  refusal for a throw the table cannot hold, a total, and pinch-to-zoom and
-  two-finger pan over a camera that never moves on its own. What it has not:
-  the dice picker, the result sheet, the rounding control, the first-launch
-  state, and numbers on the faces. All listed in `docs/TODO.md`.
+  refusal for a throw the table cannot hold, a total, the breakdown under it
+  with every die that landed, Down / Nearest / Up for a throw that divides, and
+  pinch-to-zoom and two-finger pan over a camera that never moves on its own.
+  What it has not: the dice picker, the squiggle under a bad formula, the
+  power-saving path, the first-launch state, and numbers on the faces. All
+  listed in `docs/TODO.md`.
+- **The screens' state machines are written down.** `docs/architecture.md` now
+  carries the navigation graph, `RollState`, the shake, the tray and the
+  Settings screen as diagrams and control tables, so a transition nobody
+  thought about is visible rather than latent.
 
 ## Blocked / waiting on
 
