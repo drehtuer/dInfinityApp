@@ -81,8 +81,7 @@ not have yet.
 - [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
 - [ ] Dice picker row (`1h`) — tap adds, long-press removes, count badges; set dropdown (`4a`)
 - [ ] Formula editor (`2a`): the field validates live and blocks rolling, but the error is a line of text rather than a squiggle over the offending range (`6f`, `9c`)
-- [ ] Result sheet, full density (`1f`): total, per-group subtotals, dice, modifiers, dropped dice struck through, natural max in the accent
-- [ ] Division rounding control on the sheet (`6d`) — Down / Nearest / Up for this throw only
+- [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
 - [ ] Power-saving path (`1z`) — no renderer created, result appears at once
 - [ ] First-launch state (`9a`): built-in set only, Unfiled group, no saved rolls
 - [ ] *Device:* the whole of Step 5 hangs off this screen
@@ -177,7 +176,7 @@ Design `6c`. Spec: `docs/statistics.md`.
 
 Design `1q`, `1y`, `2d`. Spec: `README.md`, `docs/architecture.md`.
 
-- [ ] Full-screen menu (`1q`), grouped Play / Look back / Customise / App
+- [ ] Full-screen menu (`1q`), grouped Play / Look back / Customise / App. **This is the only thing standing between the app and a connected navigation graph**: today the single in-app control that navigates anywhere is the placeholder screens' Settings row, and every other move between screens is the system back gesture — the roll screen cannot be left deliberately at all (`docs/architecture.md`, "Screens and the states behind them")
 - [ ] Appearance (System / Light / Dark), power-saving (on/off only), shake, haptics, sound, rounding default, default set, table, session — the accent picker is already there and is the pattern the rest follow
 - [ ] Replace the single field on `DInfinityApplication` with a real container once more than settings hangs off it
 - [ ] Version and repository link (`2d`)

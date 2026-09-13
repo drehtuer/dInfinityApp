@@ -1,6 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
   <string name="roll_formula_label">Formula</string>
+  <!-- The set a group's dice actually came from, when it is not the one asked for. -->
+  <string name="roll_group_fell_back">from %1$s</string>
+  <!-- Division rounding, offered for this throw only (design option 6d). -->
+  <string name="roll_rounding_label">Rounding</string>
+  <string name="roll_rounding_down">Down</string>
+  <string name="roll_rounding_nearest">Nearest</string>
+  <string name="roll_rounding_up">Up</string>
   <!--
     Dice notation, not prose: the "-" is the subtraction operator the parser
     reads, and an en dash is not something the player could type back

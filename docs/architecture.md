@@ -94,6 +94,132 @@ convention plugins — `dinfinity.kotlin-jvm`, `dinfinity.android-library`,
 `dinfinity.android-feature` (a library with Compose) and `dinfinity.android-app`
 — and every module's build script is a plugin line plus its dependencies.
 
+## Screens and the states behind them
+
+Two state machines, and they are deliberately not the same one. **Which screen
+is on** is navigation, owned by the `NavHost` and keyed by `Destination`.
+**What a screen is doing** is that screen's own state, owned by its presenter
+and never by the navigation graph. A screen left and returned to is built
+again from scratch; nothing about a roll survives the trip, and that is the
+point — a presenter owns a thread, a Filament engine and a physics world, and
+leaving the screen gives all three back (decision 49).
+
+### Navigation
+
+Every screen is a `Destination`, and the graph has all ten from the start so
+that adding one is a change in a single place. `Roll` is home.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Roll
+    Roll: Roll (home)
+    Settings: Settings
+    Other: Graph · Saved · Stats · History · Sessions<br/>Sets · Tables · Designer
+
+    Other --> Settings: the placeholder's Settings row
+    Settings --> Other: system back
+    Other --> Roll: system back
+    Roll --> [*]: system back leaves the app
+```
+
+That diagram is the honest one rather than the intended one, and the gap is
+worth naming: **the only in-app control that navigates anywhere is the
+placeholder screens' Settings row.** Every other move between screens is the
+system back gesture. The menu that reaches all ten (`design/dInfinity.dc.html`,
+option `1q`) is Step 4.10, and until it exists the roll screen has no way out
+but back, and no screen but a placeholder can be left deliberately.
+
+Nothing is *undefined*, though. `NavHost` answers back on every destination,
+`Destination.home` is where the app opens, and a route that does not resolve
+cannot be reached — `Destination.ofRoute` is the only way in and it is total.
+
+### The roll screen
+
+`RollState` is what the roll screen is doing. It is a sealed interface, so the
+screen's `when` over it is exhaustive by the compiler rather than by
+inspection: a state nobody drew would not compile.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Empty
+    Empty: Empty<br/>nothing typed
+    Invalid: Invalid<br/>error + range to squiggle
+    TooMany: TooMany<br/>asked for N, M fit
+    Ready: Ready<br/>diceCount, scale
+    Rolling: Rolling<br/>dice in the air
+    Settled: Settled<br/>result, divides
+
+    Empty --> Ready: type a formula that reads and fits
+    Empty --> Invalid: type a formula that does not read
+    Empty --> TooMany: type more dice than the table holds
+
+    Invalid --> Ready: type
+    Invalid --> TooMany: type
+    Invalid --> Empty: clear the field
+    TooMany --> Ready: type
+    TooMany --> Invalid: type
+    TooMany --> Empty: clear the field
+
+    Ready --> Empty: clear the field
+    Ready --> Invalid: type
+    Ready --> TooMany: type
+    Ready --> Rolling: Roll, or a shake
+
+    Rolling --> Settled: the last die comes to rest
+    Rolling --> Ready: type<br/>(abandons the throw)
+    Rolling --> Invalid: type
+    Rolling --> TooMany: type
+    Rolling --> Empty: clear the field
+
+    Settled --> Settled: Down / Nearest / Up<br/>(rescored, dice never move)
+    Settled --> Rolling: Roll, or a shake
+    Settled --> Ready: type
+    Settled --> Invalid: type
+    Settled --> TooMany: type
+    Settled --> Empty: clear the field
+```
+
+**Typing is the one input every state accepts**, which is why it reaches every
+state in the diagram: the field is live on every keystroke and is never
+disabled, including while the dice are in the air. That last edge is the one
+worth reading twice. Typing during `Rolling` *abandons* the throw — the record
+of it is dropped, so when the physics finishes, `settled` finds nothing waiting
+for the outcome and discards it. The dice keep tumbling on screen, because
+nothing touches a roll that is under way; what has gone is anybody's interest
+in the answer. A result that arrived for a throw nobody is waiting for is
+ignored rather than shown, and that is deliberate: a screen one stray callback
+away from a total with no roll behind it would not be worth the rest of the
+file.
+
+### What each state puts on screen
+
+| State | Total | Message | Sheet | Roll button | Formula field |
+|---|---|---|---|---|---|
+| `Empty` | — | — | — | disabled | live |
+| `Invalid` | — | the parse error | — | disabled | live, in error |
+| `TooMany` | — | how many were asked for and how many fit | — | disabled | live, in error |
+| `Ready` | — | — | — | **enabled** | live |
+| `Rolling` | — | "Rolling…" | — | disabled | live |
+| `Settled` | the total | — | breakdown, and rounding if the formula divides | **enabled** (throws again) | live |
+
+Every control on the screen is connected to exactly one of those transitions,
+and none of them decides anything itself:
+
+- **the formula field** calls `type`, on every keystroke;
+- **the Roll button** calls `roll`, which is one press for one throw — a
+  settled roll is put away by the presenter rather than by a second press;
+- **a shake** calls the same `roll`, which is why it had to be one act;
+- **Down / Nearest / Up** call `round`, which rescores from subtotals that
+  already landed and never moves a die;
+- **pinch and two-finger drag** call `look`, which moves the camera and is not
+  a state change at all — where a player is standing is not what the dice did.
+
+The tray is not in that list on purpose. It draws what the roll is doing and
+has no way to change it: `Renderer` has no method that returns anything
+(decision 48), so drawing a roll cannot alter one, and a one-finger tap on the
+tray deliberately does nothing yet (`docs/physics-and-rendering.md`, "Starting
+a roll").
+
 ## Data flow of a roll
 
 ```mermaid
