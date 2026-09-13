@@ -30,8 +30,8 @@ installed by other users like any other set.
    merely warn about afterwards.
 3. **Preview.** A 3D preview of the die with the drawn atlas applied, rotatable
    by drag, updated live.
-4. **Roll it.** One tap rolls the die in the tray to see how it looks in
-   motion.
+4. **Roll it.** The Roll button throws the die into the tray to see how it
+   looks in motion (`docs/physics-and-rendering.md`, "Starting a roll").
 5. **Save.** The die is added to the user's personal set ("My dice", id
    `mine`), or to a new set the user names. The set folder is written with a
    generated `diceset.toml` and one atlas PNG per die, and then run through

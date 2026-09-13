@@ -44,7 +44,7 @@ account or sign-in of any kind.
 
 It is not a picture of the app: the notation parser, the table capacity rule
 and the exact outcome graph all run, following the specification in `docs/`.
-Tap dice to build a formula, tap the tray to roll, type `500d6` to see it
+Tap dice to build a formula, press Roll to throw them, type `500d6` to see it
 refused, `2d20kh1 + 6` for advantage. Physics is faked with a random face and
 a tumble; everything else is real.
 

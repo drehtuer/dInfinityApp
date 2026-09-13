@@ -65,7 +65,7 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 `docs/physics-and-rendering.md`.
 
 The screen rolls. A formula is typed, validated on every keystroke, refused if
-the table cannot hold it, thrown on a tap or a shake, simulated and drawn on
+the table cannot hold it, thrown from the Roll button or a shake, simulated and drawn on
 the Pixel 10a, and its total read off the faces. What is below is what it does
 not have yet.
 
@@ -75,7 +75,7 @@ not have yet.
 - [ ] Numbers on the faces. Dice are blank cream solids on the phone right now, which is the SDF item in Step 3 above; until it lands, the tray shows a roll that cannot be read without the total
 - [ ] A shake-driven throw's `ThrowSpec` carries an empty `shake`: the dice are spawned the moment the shake is confirmed, and the samples arrive afterwards. The roll is driven by them and is reproducible from them, but the *record* of the throw does not yet hold them — which is what a replay and a bug report would need (`docs/physics-and-rendering.md`, "Shake input"). Attach the recorded session to the result when history arrives (4.8)
 - [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
-- [ ] **Pinch to zoom, two fingers to pan.** The camera frames the whole tray and never moves off it, because a camera that closes in on the dice takes the table away and a player cannot then tell four dice from two. Looking closer is the player's to do, and nothing yet lets them. `FilamentDiceRenderer` and `TrayCamera` both point here for it
+- [ ] **Pinch to zoom, two fingers to pan.** The camera frames the whole tray and never moves off it, because a camera that closes in on the dice takes the table away and a player cannot then tell four dice from two. Looking closer is the player's to do, and nothing yet lets them. `FilamentDiceRenderer` and `TrayCamera` both point here for it. The one-finger tap on the tray is kept free for this and for picking a die up (`docs/physics-and-rendering.md`, "Starting a roll") — it deliberately does not roll
 - [ ] **Keep the engine when the surface goes.** Filament fixes its swap chain and viewport when a `FilamentStage` is made, so every new surface — a rotation, a resize, the lock screen — builds a whole new engine and recompiles the material. The roll survives it (`TrayRenderer` replays the scene) but the tray is visibly black for a moment while it happens. Split what outlives a surface (the engine, the compiled material, the blank texture) from what does not (the swap chain, the viewport) and rebuild only the second
 - [ ] Dice picker row (`1h`) — tap adds, long-press removes, count badges; set dropdown (`4a`)
 - [ ] Formula editor (`2a`): the field validates live and blocks rolling, but the error is a line of text rather than a squiggle over the offending range (`6f`, `9c`)

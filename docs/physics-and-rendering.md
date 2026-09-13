@@ -142,9 +142,9 @@ mode; there is no other one.
 
 ## Starting a roll
 
-Two ways to start:
+Two ways to start, and only two:
 
-1. **Tap / button.** Dice are spawned in a cluster above the tray with a
+1. **The Roll button.** Dice are spawned in a cluster above the tray with a
    randomised (seeded) orientation, angular velocity and a modest downward
    plus lateral impulse. This is the "drop from the hand" throw.
 2. **Shake.** See below. The dice are spawned when the shake begins and are
@@ -153,6 +153,15 @@ Two ways to start:
 In both cases the initial angular velocity is large enough that the outcome is
 not predictable from the starting orientation. (A die dropped from 2 cm with
 no spin *would* be predictable. We do not do that.)
+
+**Tapping the tray does not roll.** It is the largest target on the screen and
+the most tempting one, which is exactly why it is not spent here: the tray is
+where the camera will be moved and where individual dice will be picked up and
+re-thrown, and a surface that throws the whole formula the moment it is touched
+has nowhere left to put either. A roll is also not something to start by
+accident — it replaces a result somebody may still be reading. Two deliberate
+gestures, one of them a button and the other a shake of the whole phone, are
+enough.
 
 ## Shake input
 
