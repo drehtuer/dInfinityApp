@@ -1,4 +1,4 @@
-package de.drehtuer.dinfinity.feature.roll
+package de.drehtuer.dinfinity.ui.common
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -48,7 +48,7 @@ import de.drehtuer.dinfinity.core.notation.NotationError
  * tap (`docs/dice-notation.md`, "Error messages").
  */
 @Composable
-internal fun FormulaError(
+fun FormulaError(
   formula: String,
   error: NotationError,
   modifier: Modifier = Modifier,
@@ -66,17 +66,17 @@ internal fun FormulaError(
       text = said(formula, error.message),
       under = squiggleOver(formula, error.range),
       colour = MaterialTheme.colorScheme.error,
-      modifier = Modifier.testTag(RollTestTags.INVALID),
+      modifier = Modifier.testTag(FormulaTestTags.ERROR),
     )
 
     val suggestion = error.suggestion
     if (suggestion != null) {
       TextButton(
         onClick = { onSuggestion(suggestion) },
-        modifier = Modifier.testTag(RollTestTags.SUGGESTION),
+        modifier = Modifier.testTag(FormulaTestTags.SUGGESTION),
       ) {
         Text(
-          text = stringResource(R.string.roll_formula_suggestion, suggestion),
+          text = stringResource(R.string.formula_suggestion, suggestion),
           style = MaterialTheme.typography.labelMedium,
         )
       }

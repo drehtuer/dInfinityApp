@@ -8,6 +8,10 @@ android {
 
 dependencies {
   api(project(":core:notation"))
+
+  // The formula field and the die silhouettes, which more than this screen
+  // wants (`docs/architecture.md`, Modules).
+  api(project(":ui:common"))
   api(project(":simulation:api"))
   api(project(":data"))
 

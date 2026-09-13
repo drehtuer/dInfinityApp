@@ -1,4 +1,4 @@
-package de.drehtuer.dinfinity.feature.roll
+package de.drehtuer.dinfinity.ui.common
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
@@ -27,7 +27,7 @@ import de.drehtuer.dinfinity.core.notation.Sides
  * *is*.
  */
 @Composable
-internal fun DieSilhouette(
+fun DieSilhouette(
   sides: Sides,
   fill: Color,
   ink: Color,

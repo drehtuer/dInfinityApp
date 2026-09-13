@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.notation.PickableDie
+import de.drehtuer.dinfinity.ui.common.DieSilhouette
 
 /**
  * Dice added by tapping rather than by typing

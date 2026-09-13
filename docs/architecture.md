@@ -61,6 +61,8 @@ input/
   shake/             Sensor fusion → throw impulses
 designer/            Face drawing canvas → dice set export (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
+ui/
+  common/            Screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes
 feature/             One module per screen group; see docs/TODO.md Step 4
   roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
@@ -77,6 +79,21 @@ Ten screens, eight `feature/` modules: statistics, history and sessions are one
 module because they are one screen group over one set of data
 (`design/dInfinity.dc.html`, options 1w, 1x, 6c) and splitting them would only
 split the queries.
+
+`ui/common` is **not** a feature and is not a place for anything that is
+merely shared. Nothing in it knows what screen it is on, and it depends on
+`core/notation` and nothing else — so a piece of furniture cannot reach a
+database, a simulator or the navigation graph. It exists because three screens
+take a formula, validate it on every keystroke and have to say the same thing
+about the same mistake: the tray, the outcome graph and the saved-roll editor.
+Two copies of "the same thing" is one copy too many, and the disagreement
+would eventually be about whether somebody's formula is valid.
+
+The rule for putting something in it is the same rule: **more than one screen
+needs it, and it needs no screen.** A control that navigates does not go in —
+the menu button lives in `feature/settings` and is handed to each screen as a
+slot, because where it goes is the navigation graph's business and the
+navigation graph is `:app`'s.
 
 Rule: `core/*`, `dicesets/format`, `simulation/api`, `render/headless` and
 `test-fixtures` are plain Kotlin modules with no Android dependency, so they

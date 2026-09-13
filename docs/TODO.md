@@ -102,7 +102,6 @@ The screen is built: the bar chart with its mean line and ±1σ band, the
 and the roll that opened it marked in the accent. It is reached from the roll
 screen's **See the odds**.
 
-- [ ] **The formula cannot be edited here.** Editing it wants the same live-validated field with a squiggle the roll screen has, and that field belongs somewhere both screens can reach before it belongs to two of them. That is the first real argument for a shared UI module — the die silhouettes (`1h`) and the Modernist furniture are behind it (`docs/architecture.md`, Modules)
 - [ ] "Roll this" and "Save as roll" under the chart. The first needs to hand a formula back to the roll screen, which no navigation does yet; the second needs saved rolls (4.3)
 - [ ] *Judge the chart on the phone:* whether a hundred and ten bars at three dp each reads as a distribution or as a smear, and whether the ±1σ band behind the bars is visible enough to mean anything in both themes
 - [ ] The ledger (`1m`) and the stepped area (`1l`) are alternative presentations of the same numbers; `1k` is the default and the other two are not v1
@@ -121,7 +120,7 @@ The list is built: the group switcher, the row-style list in favourites-first
 order, the warning on a roll whose dice are gone, the empty state, and tapping
 a roll to send its formula to the tray.
 
-- [ ] Editor (`1r`): live-validated formula with mean and range, icon, colour, group, favourite, per-roll table pin (`7b`). It wants the roll screen's squiggling field — the shared-UI question again (4.2)
+- [ ] Editor (`1r`): live-validated formula with mean and range, icon, colour, group, favourite, per-roll table pin (`7b`). The field it needs is `ui/common`'s now
 - [ ] Creating and renaming groups, which the switcher lists but cannot yet add to
 - [ ] Export a group or everything as a collection; import from file, URL or repo
 - [ ] Import refuses a duplicate group name outright (`6e`), naming the clash — no merge, nothing deleted

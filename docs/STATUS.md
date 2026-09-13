@@ -81,6 +81,11 @@ changelog.
   too: groups, favourites-first ordering, a warning on a roll whose dice are
   gone, and a tap that sends a formula to the tray. The editor and
   import/export are next.
+- **`ui/common` holds the screen furniture more than one screen needs**: the
+  live-validated formula field with its squiggle, and the die silhouettes. The
+  outcome graph's formula is editable now for the same reason it exists — two
+  screens validating a formula separately would eventually disagree about
+  whether somebody's formula is valid.
 - **The navigation graph is connected.** Step 4.10's menu lists every screen
   and every screen carries the button that opens it, so nothing is reachable
   only by not having left it yet. The placeholders are still placeholders.

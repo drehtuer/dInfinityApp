@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.ui.common.FormulaField
 
 /**
  * What a formula is likely to come to, before or after it is thrown
@@ -30,10 +31,9 @@ import androidx.compose.ui.unit.dp
  * distribution, the bars and every number beside them are settled before a
  * pixel is placed.
  *
- * The formula it is about arrives with the screen and is shown rather than
- * edited. Editing it here wants the same live-validated field with a squiggle
- * the roll screen has, and that field belongs somewhere both screens can reach
- * before it belongs to two of them (`docs/TODO.md`, Step 4.2).
+ * The formula it is about arrives with the screen and can be edited there, in
+ * the same live-validated field the tray has — `ui/common`'s, so the two
+ * cannot come to disagree about whether a formula is valid.
  */
 @Composable
 fun GraphScreen(
@@ -56,12 +56,16 @@ fun GraphScreen(
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(
-        text = presenter.text.ifBlank { stringResource(R.string.graph_no_formula) },
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.weight(1f).testTag(GraphTestTags.FORMULA),
+      // The same live-validated field the tray has, squiggle and all. It is
+      // `ui/common`'s, so the two screens cannot come to disagree about
+      // whether a formula is valid (`docs/architecture.md`, Modules).
+      FormulaField(
+        text = presenter.text,
+        onChange = presenter::type,
+        label = stringResource(R.string.graph_formula_label),
+        hint = stringResource(R.string.graph_formula_hint),
+        error = (presenter.state as? GraphState.Invalid)?.error,
+        modifier = Modifier.weight(1f),
       )
       menu()
     }
@@ -70,12 +74,9 @@ fun GraphScreen(
       GraphState.Empty ->
         Note(text = stringResource(R.string.graph_empty), tag = GraphTestTags.EMPTY)
 
-      is GraphState.Invalid ->
-        Note(
-          text = state.error.message,
-          tag = GraphTestTags.INVALID,
-          colour = MaterialTheme.colorScheme.error,
-        )
+      // The field says what is wrong, under the part that is wrong. Saying it
+      // twice on one screen is saying it once too often.
+      is GraphState.Invalid -> Unit
 
       // Legal, and past what can be worked out exactly. Saying so is the only
       // honest answer: an approximated curve presented as the odds would be a
