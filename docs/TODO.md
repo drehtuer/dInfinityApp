@@ -98,11 +98,15 @@ and off.
 
 Design `1k`–`1m`, `2c`, `7a`. Spec: `docs/probability.md`.
 
-- [ ] Bar chart (`1k`) of the exact PMF, mean line, ±1σ band
-- [ ] P(= k) / P(≥ k) toggle; tap a bar for exact numbers
-- [ ] Opened after a roll: the rolled total marked, shown only while the formula still matches (`7a`)
-- [ ] Works for a typed formula and for picked dice; works for formulas too large to roll
-- [ ] Tests: rendered values match `core/probability` exactly, not approximately
+The state is built and tested: the exact distribution, the bars (gathered into
+buckets past 110 totals, by summing rather than sampling), the six statistics,
+the `P(= k)` / `P(≥ k)` question, the tapped bar and the rolled total's mark.
+What is left is the picture and the way in.
+
+- [ ] Draw it: bars, the dashed mean line, the ±1σ band behind them, and the solid line at the rolled total (`1k`, `7a`)
+- [ ] The screen around it: the formula field with its squiggle, the mode toggle, the tapped bar's numbers, the six statistics, "Roll this" and "Save as roll"
+- [ ] The way in. The graph needs the formula and, after a roll, the total — which is the first navigation in the app to carry an argument (`docs/architecture.md`, "Screens and the states behind them"). Reaching it at all also wants the menu (4.10)
+- [ ] The ledger (`1m`) and the stepped area (`1l`) are alternative presentations of the same numbers; `1k` is the default and the other two are not v1
 
 ### 4.3 Saved rolls — `feature/saved`
 
