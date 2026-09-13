@@ -197,7 +197,10 @@ class SavedScreenTest {
         unfiledName = "Unfiled",
         onActiveGroup = onActiveGroup,
       )
-    compose.setContent { SavedScreen(presenter = presenter, onRoll = onRoll, onEdit = onEdit) }
+    val groups = GroupPresenter(repository = repository, scope = scope, unfiledName = "Unfiled")
+    compose.setContent {
+      SavedScreen(presenter = presenter, groups = groups, onRoll = onRoll, onEdit = onEdit)
+    }
   }
 
   private fun roll(

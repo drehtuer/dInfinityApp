@@ -63,6 +63,11 @@ class SavedRollRepository(
   /**
    * Writes a group, new or changed.
    *
+   * One level is checked from both ends, because there are two ways to break
+   * it and they are not the same mistake: putting a group inside one that is
+   * already inside another, and moving a group that has children of its own
+   * into anything at all.
+   *
    * @throws IllegalArgumentException if it would nest more than one level
    *   deep, or be its own parent.
    */
@@ -74,6 +79,9 @@ class SavedRollRepository(
       requireNotNull(parent) { "There is no group '$parentId' to put '${group.name}' in" }
       require(parent.parentId == null) {
         "Groups nest ${SavedRollGroup.MAX_DEPTH} deep: '${parent.name}' is already inside another group"
+      }
+      require(database.savedRollGroups().countChildren(group.id) == 0) {
+        "Groups nest ${SavedRollGroup.MAX_DEPTH} deep: '${group.name}' has groups inside it already"
       }
     }
     database.savedRollGroups().upsert(group.asRow())

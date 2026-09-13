@@ -32,6 +32,7 @@ import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.RollScreen
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorScreen
+import de.drehtuer.dinfinity.feature.saved.GroupPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
@@ -59,6 +60,8 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  *   installed sets.
  * @param savedRolls the same, for the saved-rolls screen, which needs the
  *   database.
+ * @param savedGroups the same, for the group sheet the saved-rolls list and
+ *   the editor both open.
  * @param navController taken rather than only made, so a test can open a
  *   screen the way a control would rather than by pressing its way there.
  */
@@ -70,6 +73,7 @@ fun DInfinityApp(
   graphMachine: (() -> GraphMachine)? = null,
   savedRolls: (() -> SavedPresenter)? = null,
   savedRollEditor: ((String?) -> EditorPresenter)? = null,
+  savedGroups: (() -> GroupPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -107,10 +111,11 @@ fun DInfinityApp(
 
           Destination.Graph if graphMachine != null -> Graph(graphMachine, entry, navController)
 
-          Destination.SavedRolls if savedRolls != null -> Saved(savedRolls, entry, navController)
+          Destination.SavedRolls if savedRolls != null && savedGroups != null ->
+            Saved(savedRolls, savedGroups, entry, navController)
 
-          Destination.SavedRollEditor if savedRollEditor != null ->
-            Editor(savedRollEditor, entry, navController)
+          Destination.SavedRollEditor if savedRollEditor != null && savedGroups != null ->
+            Editor(savedRollEditor, savedGroups, entry, navController)
 
           Destination.Settings ->
             SettingsScreen(
@@ -185,11 +190,13 @@ private fun Graph(
 @Composable
 private fun Saved(
   presenter: () -> SavedPresenter,
+  groups: () -> GroupPresenter,
   entry: NavBackStackEntry,
   navController: NavHostController,
 ) {
   SavedScreen(
     presenter = remember(entry) { presenter() },
+    groups = remember(entry) { groups() },
     onRoll = { saved ->
       // Back to the tray with that formula in the field. The throw itself is
       // the player's to make: a saved roll is a formula with a name, not a
@@ -214,12 +221,14 @@ private fun Saved(
 @Composable
 private fun Editor(
   presenter: (String?) -> EditorPresenter,
+  groups: () -> GroupPresenter,
   entry: NavBackStackEntry,
   navController: NavHostController,
 ) {
   val editing = entry.arguments?.getString(EditorArgument.ROLL)?.ifBlank { null }
   EditorScreen(
     presenter = remember(entry) { presenter(editing) },
+    groups = remember(entry) { groups() },
     onDone = { navController.popBackStack() },
     onRollNow = { formula ->
       navController.navigate(rollRoute(formula)) {

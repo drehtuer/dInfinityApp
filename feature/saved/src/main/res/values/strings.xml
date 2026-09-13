@@ -37,4 +37,26 @@
   <string name="editor_save">Save roll</string>
   <string name="editor_roll_now">Roll now</string>
   <string name="editor_delete">Delete</string>
+  <!-- Making, renaming and removing groups (design option 1p). -->
+  <string name="group_title_new">New group</string>
+  <string name="group_title_edit">Edit group</string>
+  <string name="group_name">Name</string>
+  <string name="group_name_hint">Curse of Strahd</string>
+  <!-- %1$s is the name of the group that already has this name. -->
+  <string name="group_name_taken">“%1$s” already has that name. Pick another.</string>
+  <string name="group_icon">Mark</string>
+  <string name="group_parent">Inside</string>
+  <string name="group_parent_none">Nothing — top level</string>
+  <string name="group_parent_has_children">This group has groups inside it, so it cannot go inside another. Groups nest one level.</string>
+  <string name="group_save">Save group</string>
+  <string name="group_delete">Delete</string>
+  <string name="group_cancel">Cancel</string>
+  <string name="group_new">New group</string>
+  <!-- %1$s is the group's name, for TalkBack. -->
+  <string name="group_edit_it">Edit the group %1$s</string>
+  <!-- %1$d is how many rolls would move to Unfiled if the group went. -->
+  <plurals name="group_delete_moves">
+    <item quantity="one">Deleting it moves %1$d roll to Unfiled. Nothing is deleted.</item>
+    <item quantity="other">Deleting it moves %1$d rolls to Unfiled. Nothing is deleted.</item>
+  </plurals>
 </resources>

@@ -110,6 +110,39 @@ class SavedRollRepositoryTest {
     }
 
   @Test
+  fun `a group with groups inside it cannot itself be put inside another`() =
+    runTest {
+      // The other end of the same rule. Checking only the parent lets a
+      // three-deep tree be built from the bottom: make the child, then move
+      // its parent. A list that nests three deep is one the switcher cannot
+      // draw (`docs/dice-notation.md`).
+      repository.save(SavedRollGroup(id = "dnd", name = "D&D"))
+      repository.save(SavedRollGroup(id = "thorin", name = "Thorin", parentId = "dnd"))
+      repository.save(SavedRollGroup(id = "pf", name = "Pathfinder"))
+
+      assertRefused {
+        repository.save(SavedRollGroup(id = "dnd", name = "D&D", parentId = "pf"))
+      }
+    }
+
+  @Test
+  fun `a group with no groups inside it can still be moved`() =
+    runTest {
+      repository.save(SavedRollGroup(id = "dnd", name = "D&D"))
+      repository.save(SavedRollGroup(id = "thorin", name = "Thorin"))
+
+      repository.save(SavedRollGroup(id = "thorin", name = "Thorin", parentId = "dnd"))
+
+      assertEquals(
+        "dnd",
+        repository.groups
+          .first()
+          .first { it.id == "thorin" }
+          .parentId,
+      )
+    }
+
+  @Test
   fun `a group cannot be put inside itself`() =
     runTest {
       assertRefused {

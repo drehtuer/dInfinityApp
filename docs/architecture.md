@@ -460,9 +460,45 @@ favourites first, then by recent use — is SQL's, because it is what the list
 |---|---|---|
 | the group name | `showGroups` | whether the switcher is open |
 | a group in the switcher | `open` | which group's rolls are listed, and the stored active group |
+| a group's **…**, or a long press on it | `GroupPresenter.edit` | the group sheet opens on that group |
+| **New group**, at the foot of the switcher | `GroupPresenter.create` | the group sheet opens on a group that does not exist yet |
 | a row, tapped | `used`, then navigation | one more use, and the tray with that formula in its field |
 | a row, long-pressed | the editor | which screen is on, opened on that roll |
 | **New** | the editor | the same, opened on a roll that does not exist yet |
+
+### The group sheet
+
+`GroupDraft` is a machine of its own but not a screen: a group is a name, a
+mark and which group it sits in, and three fields do not deserve a destination
+— nor a place in the navigation graph that the back button would then have to
+mean something on. It is a dialog over whichever screen opened it, and both
+the saved-rolls list and the editor open the same one, so a group made while
+writing a roll is made the same way and refused for the same reasons.
+
+It watches the same two flows the list does, which is what lets both of its
+rules be answered *while the player types* rather than when they press Save:
+
+| Rule | Answered by | Why it is not only checked at import |
+|---|---|---|
+| a group's name is its own | the group list, ignoring case | an import refuses a collection whose group name is taken (decision 15); a name the app itself let you duplicate would make that refusal arbitrary |
+| groups nest exactly one level | `parents`, and `nestable` | checked from *both* ends — a group cannot go inside one that is already inside another, and a group with groups inside it cannot go inside anything |
+
+The second is the one that was wrong until this sheet existed. Checking only
+the parent lets a three-deep tree be built from the bottom: make the child,
+then move its parent. `SavedRollRepository.save` refuses both, because an
+import writes without ever passing through the sheet.
+
+| Control | Calls | What changes |
+|---|---|---|
+| the name field | `name` | the name, and whether another group already has it — named, not merely reported |
+| a mark | `icon` | that mark, or none when the chosen one is tapped again |
+| **Inside** | `parent` | which group it sits in; the chooser is absent, with its reason, for a group that has children |
+| **Save group** | `save` | the group is written, the sheet closes, and whoever opened it is handed the id |
+| **Delete** | `deleteGroup` | the group goes, its rolls move to Unfiled and its child groups are lifted to the top level. Nothing a player wrote is deleted, and the sheet says how many rolls will move before it is pressed |
+| **Cancel** | `dismiss` | the draft is thrown away |
+
+Unfiled is the one group with no **Delete**: it is where a deleted group's
+rolls go, so it has to be there to go to.
 
 ### The saved-roll editor
 
@@ -483,6 +519,7 @@ numbers beside it.
 | the name field | `name` | what it will be called; blank means the formula is its name |
 | the formula field | `formula` | the formula, its error and its odds, all from one plan |
 | icon, colour, group, table, favourite | `choose` | that one field and nothing else — none of them needs re-validating |
+| **New group** | `GroupPresenter.create` | the group sheet opens; the group it writes becomes this roll's |
 | **Save roll** | `save` | the roll is written down, and the editor leaves |
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
 | **Delete** | `delete` | the roll is taken away, and the editor leaves |

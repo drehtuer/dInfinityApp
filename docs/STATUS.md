@@ -5,7 +5,7 @@ moves, a decision is taken or something is blocked; prune anything that is no
 longer current. This is a snapshot, not a changelog — git history is the
 changelog.
 
-**Last updated:** 2026-09-13
+**Last updated:** 2026-09-14
 
 ## Where we are
 
@@ -18,7 +18,7 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #75 is merged and `main` is green.
+- **Branch state:** everything up to #93 is merged and `main` is green.
 
 ## Done
 
@@ -81,7 +81,10 @@ changelog.
   too: groups, favourites-first ordering, a warning on a roll whose dice are
   gone, and a tap that sends a formula to the tray. The editor writes one down
   — name, formula with its exact mean and range, icon, colour, group, table
-  pin and favourite — and refuses to save a formula that does not read.
+  pin and favourite — and refuses to save a formula that does not read. Groups
+  can be made, renamed, moved and deleted from one sheet the list and the
+  editor both open; a name another group has is refused while it is typed and
+  the clash is named, and one level of nesting is now checked from both ends.
   Import/export is what is left.
 - **`ui/common` holds the screen furniture more than one screen needs**: the
   live-validated formula field with its squiggle, and the die silhouettes. The

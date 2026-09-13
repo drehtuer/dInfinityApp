@@ -9,6 +9,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
+import de.drehtuer.dinfinity.feature.saved.GroupPresenter
 import de.drehtuer.dinfinity.feature.saved.R
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.theme.DInfinityTheme
@@ -50,6 +51,13 @@ class MainActivity : ComponentActivity() {
                 lifecycleScope.launch { repository.setActiveGroup(groupId) }
               },
               activeGroupId = settings.activeGroupId,
+            )
+          },
+          savedGroups = {
+            GroupPresenter(
+              repository = app.savedRolls,
+              scope = lifecycleScope,
+              unfiledName = getString(R.string.saved_unfiled),
             )
           },
           savedRollEditor = { editing ->

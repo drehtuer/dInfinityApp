@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SavedScreen(
   presenter: SavedPresenter,
+  groups: GroupPresenter,
   modifier: Modifier = Modifier,
   onRoll: (SavedEntry) -> Unit = {},
   onEdit: (SavedEntry) -> Unit = {},
@@ -69,8 +70,18 @@ fun SavedScreen(
     )
 
     if (state.switching) {
-      GroupSwitcher(groups = state.groups, activeId = state.activeGroupId, onOpen = presenter::open)
+      GroupSwitcher(
+        groups = state.groups,
+        activeId = state.activeGroupId,
+        onOpen = presenter::open,
+        onEdit = groups::edit,
+        onNew = { groups.create() },
+      )
     }
+
+    // The sheet is drawn over whatever is below it, so making a group while
+    // looking at a list does not lose the list.
+    groups.draft?.let { draft -> GroupSheet(draft = draft, presenter = groups) }
 
     if (state.empty) {
       Empty(onNew = onNew)
@@ -139,6 +150,8 @@ private fun GroupSwitcher(
   groups: List<GroupEntry>,
   activeId: String,
   onOpen: (String) -> Unit,
+  onEdit: (String) -> Unit,
+  onNew: () -> Unit,
 ) {
   Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant)) {
     groups.forEach { entry ->
@@ -148,8 +161,11 @@ private fun GroupSwitcher(
         modifier =
           Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = { onOpen(entry.group.id) })
-            .semantics(mergeDescendants = true) {}
+            .combinedClickable(
+              onLongClickLabel = stringResource(R.string.group_edit_it, entry.group.name),
+              onClick = { onOpen(entry.group.id) },
+              onLongClick = { onEdit(entry.group.id) },
+            ).semantics(mergeDescendants = true) {}
             .testTag(SavedTestTags.groupOf(entry.group.id))
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -174,7 +190,22 @@ private fun GroupSwitcher(
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // A second way in, because a long press is not discoverable and the
+        // switcher is the only place a group is ever seen.
+        TextButton(
+          onClick = { onEdit(entry.group.id) },
+          modifier = Modifier.testTag(GroupTestTags.editOf(entry.group.id)),
+        ) {
+          Text("…")
+        }
       }
+    }
+    HorizontalDivider()
+    TextButton(
+      onClick = onNew,
+      modifier = Modifier.fillMaxWidth().testTag(GroupTestTags.NEW),
+    ) {
+      Text(stringResource(R.string.group_new))
     }
     HorizontalDivider()
   }

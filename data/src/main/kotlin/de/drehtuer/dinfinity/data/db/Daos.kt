@@ -150,6 +150,16 @@ interface SavedRollGroupDao {
     exceptId: String = "",
   ): Int
 
+  /**
+   * How many groups are inside this one.
+   *
+   * Asked before a group is given a parent of its own: a group with children
+   * that moved inside another would be three levels deep, which is the one
+   * shape `docs/dice-notation.md` says does not exist.
+   */
+  @Query("SELECT COUNT(*) FROM saved_roll_group WHERE parent_id = :id")
+  suspend fun countChildren(id: String): Int
+
   @Upsert
   suspend fun upsert(row: SavedRollGroupRow)
 

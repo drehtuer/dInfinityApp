@@ -215,6 +215,15 @@ SavedRoll {
 - Groups are how players organise rolls per game, per character, per
   monster stat block — whatever they want. Groups nest one level deep
   (`D&D / Thorin`, `Pathfinder / Ezren`); deeper trees are not worth the UI.
+  One level is checked from both ends: a group cannot be put inside one that
+  is already inside another, and a group that has groups inside it cannot be
+  put inside anything.
+- **A group's name is its own.** Two groups may not share a name, ignoring
+  case. This is the same rule an import enforces when it refuses a collection
+  whose group name is taken; a name the app itself let you duplicate would
+  make that refusal arbitrary.
+- Deleting a group never deletes a roll. Its rolls move to Unfiled and its
+  child groups are lifted to the top level.
 - The home screen shows the **active group** as tiles; tap to roll,
   long-press to edit. Favourites are pinned first, the rest ordered by recent
   use. Switching the active group is one tap in the top bar, and the active
