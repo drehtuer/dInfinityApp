@@ -97,6 +97,72 @@ class PackageInstaller(
     }
 
   /**
+   * Moves whatever is installed under this id out of the way, so that a
+   * failure from here on leaves the old package rather than neither.
+   *
+   * Whether the move worked is the whole question. Taken for granted, a
+   * rename that quietly failed would leave the old folder sitting where the
+   * new one is about to be written, and the promise this method's name makes
+   * would be broken in the one case it exists for.
+   *
+   * A folder left over from an install that was interrupted is cleared first.
+   * Without that, one crash at the wrong moment would block every future
+   * install of that set, with a message about a package nobody can see.
+   */
+  private fun movedAside(
+    destination: File,
+    id: String,
+  ): Aside {
+    if (!destination.exists()) return Aside.Moved(null)
+    val aside = File(root, "$id$REPLACING_SUFFIX")
+    return when {
+      aside.exists() && !aside.deleteRecursively() ->
+        Aside.Stuck("an earlier install of '$id' left a folder behind that cannot be removed")
+      !destination.renameTo(aside) ->
+        Aside.Stuck("the copy of '$id' already installed could not be moved aside")
+      else -> Aside.Moved(aside)
+    }
+  }
+
+  /**
+   * Puts the old package back after a failed replacement, and says what
+   * actually happened.
+   *
+   * The one thing this must not do is promise that the old package is safe
+   * when putting it back is what failed. A user who is told their set is
+   * untouched will not go looking for it.
+   *
+   * Not private, because the case worth being sure about — the restore itself
+   * failing — needs a filesystem that refuses a rename, and arranging that
+   * around a whole install is harder than arranging it around this.
+   */
+  internal fun restored(
+    previous: File?,
+    destination: File,
+  ): String =
+    when {
+      previous == null -> "the package could not be moved into place"
+      previous.renameTo(destination) ->
+        "the package could not be moved into place; the one already installed is untouched"
+      else ->
+        "the package could not be moved into place, and the copy already installed could not be put back; " +
+          "it is in '${previous.name}'"
+    }
+
+  /** What became of the package that was already installed under this id. */
+  private sealed interface Aside {
+    /** Out of the way, or there was nothing there. */
+    data class Moved(
+      val folder: File?,
+    ) : Aside
+
+    /** It could not be moved, so the install stops before writing anything. */
+    data class Stuck(
+      val reason: String,
+    ) : Aside
+  }
+
+  /**
    * Moves the validated folder into place, replacing whatever was there.
    *
    * The old folder is moved aside first and deleted afterwards, so a failure
@@ -109,11 +175,13 @@ class PackageInstaller(
   ): Result {
     val destination = File(root, validated.set.id)
     root.mkdirs()
-    val previous = if (destination.exists()) File(root, "${validated.set.id}.replacing") else null
-    previous?.let { destination.renameTo(it) }
+    val previous =
+      when (val aside = movedAside(destination, validated.set.id)) {
+        is Aside.Stuck -> return Result.Failed(aside.reason)
+        is Aside.Moved -> aside.folder
+      }
     if (!folder.renameTo(destination) && !folder.copyRecursivelyTo(destination)) {
-      previous?.renameTo(destination)
-      return Result.Failed("the package could not be moved into place")
+      return Result.Failed(restored(previous, destination))
     }
     previous?.deleteRecursively()
     File(destination, META_FILE).writeText(identity.asJson(validated.set))
@@ -149,6 +217,9 @@ class PackageInstaller(
   private companion object {
     /** Where the source, the checksum and the install time live (`docs/architecture.md`). */
     const val META_FILE = ".meta.json"
+
+    /** Where a package being replaced waits until the new one is in place. */
+    const val REPLACING_SUFFIX = ".replacing"
 
     /** A rename across filesystems fails; a copy is the fallback, not the plan. */
     fun File.copyRecursivelyTo(destination: File): Boolean =

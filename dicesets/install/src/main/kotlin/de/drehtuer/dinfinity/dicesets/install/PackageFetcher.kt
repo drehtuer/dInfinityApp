@@ -120,14 +120,28 @@ class PackageFetcher(
           target.outputStream().use { output -> copyBounded(input, output, digest) }
         }
       }.getOrElse {
-        target.delete()
+        target.discard()
         return Result.Failed((it as? IOException)?.message ?: "the download failed")
       }
     if (written == null) {
-      target.delete()
+      target.discard()
       return Result.Failed("the download is larger than ${InstallLimits.MAX_DOWNLOAD_BYTES shr MIB_SHIFT} MiB")
     }
     return Result.Downloaded(file = target, bytes = written, sha256 = digest.digest().toHex())
+  }
+
+  /**
+   * Throws away a half-written download.
+   *
+   * Whether the file went is worth acting on rather than ignoring: one that
+   * will not delete now is one that sits in the cache for ever, and a refused
+   * download is exactly the case where it might be held open a moment longer
+   * by the stream that just failed. Marking it for the end of the process is
+   * not a guarantee on Android, where the process is killed rather than
+   * closed, but it costs nothing and it is better than deciding not to look.
+   */
+  private fun File.discard() {
+    if (!delete()) deleteOnExit()
   }
 
   /**
