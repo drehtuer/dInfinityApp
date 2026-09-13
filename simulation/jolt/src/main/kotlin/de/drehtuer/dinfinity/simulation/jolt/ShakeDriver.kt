@@ -35,7 +35,24 @@ class ShakeDriver(
 ) {
   private val byStep: MutableMap<Int, ShakeSample> = samples.associateByTo(mutableMapOf(), ShakeSample::stepIndex)
 
-  private var down: Vector3 = DEFAULT_GRAVITY
+  /**
+   * Which way down is on the table, which is always straight down.
+   *
+   * **The virtual table is horizontal, whatever the phone is doing.** The
+   * gyroscope's reading is still recorded with every sample — it costs nothing
+   * and a decision taken later may want it — but nothing turns the world by it.
+   *
+   * It was turned by it, and the cost was not subtle. `GravityTracker` starts
+   * each shake at "straight down relative to the screen" and integrates
+   * gyroscope rates with nothing to re-anchor them, so a vigorous shake could
+   * leave down pointing sideways in the tray — and it stayed there for the
+   * rest of the roll, because the last sample's direction is the one that
+   * sticks. A tray whose down points at a wall is a chute: the dice slide into
+   * that wall, pack against it and stop tumbling, which is what a hundred d6
+   * heaped into one corner looked like on the phone
+   * (`docs/physics-and-rendering.md`).
+   */
+  private val down: Vector3 = DEFAULT_GRAVITY
 
   /** The hand's part, held between samples. See [advance]. */
   private var hand: Vector3 = Vector3.Zero
@@ -101,7 +118,6 @@ class ShakeDriver(
     val sample = byStep[step]
     when {
       sample != null -> {
-        down = downFrom(sample.gravity)
         hand = capped(sample.accelerationMmPerSecond2)
         handFromStep = step
       }
@@ -127,14 +143,6 @@ class ShakeDriver(
       acceleration * (MAX_SHAKE_MM_PER_SECOND2 / size)
     }
   }
-
-  /**
-   * The sample's gravity is a direction — the gyroscope has turned it, but its
-   * length is whatever the sensor fusion made of it. Only the direction is
-   * meant, so it is given the one magnitude gravity has.
-   */
-  private fun downFrom(direction: Vector3): Vector3 =
-    if (direction.length <= 0.0) DEFAULT_GRAVITY else direction.normalised() * GRAVITY_MM_PER_SECOND2
 
   companion object {
     /** Standard gravity in the units the tray is measured in. */
