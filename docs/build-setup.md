@@ -348,6 +348,19 @@ consult the v2 block. Pass `--min-sdk-version 24` and both report `true`.
 ./gradlew connectedDebugAndroidTest   # on the emulator or a phone
 ```
 
+**Which API Robolectric runs against is said once**, in `gradle.properties` as
+`dinfinity.robolectricSdk`, and written into every Android module's test
+resources by the convention plugins. It has to be the same everywhere and it
+cannot be the API the app targets: Robolectric's `InputManager` shadow still
+calls `InputManager.getInstance()`, which API 37 removed
+(`docs/architecture.md`, decision 17).
+
+A module that simply had no such file did not fail with anything about SDKs —
+it failed with `NoSuchMethodException: InputManager.getInstance()` in tests
+that have nothing to do with input, which is a long way from "this module is
+missing a properties file". Six modules carried identical copies before this
+was generated; the seventh is what found out.
+
 CI runs everything except the last line — including the native build, so
 `simulation/jolt` is compiled for both ABIs on every pull request. It costs a
 few minutes of NDK download and about a minute of Jolt, and it buys the one

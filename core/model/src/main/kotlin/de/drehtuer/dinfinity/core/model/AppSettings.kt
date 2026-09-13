@@ -9,4 +9,32 @@ package de.drehtuer.dinfinity.core.model
  */
 data class AppSettings(
   val accentColor: AccentColor = AccentColor.Default,
+  /**
+   * Roll without drawing the dice (`design/dInfinity.dc.html`, option 1z).
+   *
+   * Off by default and **only ever changed here**: a roll that silently
+   * stopped rendering because the battery dipped would be a surprise in the
+   * middle of a game (`docs/architecture.md`, decision 16). It is the same
+   * simulation either way, so the same seed gives the same faces — what is
+   * saved is the drawing.
+   */
+  val powerSaving: Boolean = false,
+  /**
+   * Whether the player has been past the first-launch screen
+   * (`design/dInfinity.dc.html`, option 9a).
+   *
+   * Not a setting and not shown in Settings — it lives here because it is the
+   * one other thing the app remembers between launches, and a second
+   * repository for one boolean would be a second file to keep in step.
+   */
+  val welcomeSeen: Boolean = false,
+  /**
+   * The group of saved rolls the app is currently in
+   * (`docs/dice-notation.md`, "Saved rolls").
+   *
+   * A preference in the sense that matters: it outlives the screen that
+   * changed it, and it is what the home strip and the default statistics
+   * session follow.
+   */
+  val activeGroupId: String = SavedRollGroup.UNFILED_ID,
 )

@@ -1,11 +1,15 @@
 package de.drehtuer.dinfinity.feature.settings
 
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import org.junit.Assert.assertEquals
@@ -37,6 +41,49 @@ class SettingsScreenTest {
     }
     compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Moss)).assertIsSelected()
     compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Vermilion)).assertIsNotSelected()
+  }
+
+  @Test
+  fun `power saving is off unless it has been turned on`() {
+    // A roll that silently stopped rendering because the battery dipped would
+    // be a surprise in the middle of a game (decision 16).
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {})
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.POWER_SAVING).assertIsOff()
+  }
+
+  @Test
+  fun `power saving shows as on when it is`() {
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(powerSaving = true), onAccentSelected = {})
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.POWER_SAVING).assertIsOn()
+  }
+
+  @Test
+  fun `turning power saving on reports it, and decides nothing itself`() {
+    val asked = mutableListOf<Boolean>()
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {}, onPowerSavingChanged = asked::add)
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.POWER_SAVING).performScrollTo().performClick()
+
+    assertEquals(listOf(true), asked)
+  }
+
+  @Test
+  fun `the whole row is the switch, not just the switch`() {
+    // A 56 dp target at the right-hand edge of the screen is a target for a
+    // right thumb and nobody else.
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(powerSaving = true), onAccentSelected = {})
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.POWER_SAVING).assertHasClickAction()
   }
 
   @Test

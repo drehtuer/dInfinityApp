@@ -13,8 +13,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
@@ -35,16 +41,34 @@ import de.drehtuer.dinfinity.core.model.Rounding
  * formula means, whether it fits, what the dice came to and what that adds up
  * to are all settled before a pixel is placed.
  *
- * This is the first of the screen's pieces, not all of them: the dice picker
- * row, the full result sheet, the rounding control and the first-launch state
- * are still to come (`docs/TODO.md`, Step 4.1).
+ * @param openWith a formula to start from — a saved roll tapped, or a graph
+ *   sent to the tray. Empty leaves whatever is in the field alone, which is
+ *   what arriving from the menu means.
+ * @param menu the way to the menu, drawn in the top corner over the tray. It
+ *   is handed in because the navigation graph is `:app`'s and a screen that
+ *   knew about another screen would be a feature module depending on one
+ *   (`docs/architecture.md`, Modules).
+ *
+ * Not all of the screen's pieces yet: the squiggle under a bad formula, the
+ * power-saving path and the first-launch state are still to come
+ * (`docs/TODO.md`, Step 4.1).
  */
 @Composable
 fun RollScreen(
   presenter: RollPresenter,
   modifier: Modifier = Modifier,
+  firstLaunch: Boolean = false,
+  onWelcomeSeen: () -> Unit = {},
+  onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
+  menu: @Composable () -> Unit = {},
+  openWith: String = "",
 ) {
-  val state = presenter.state
+  // Typed in rather than set some other way: a formula arriving from a saved
+  // roll or from the graph goes through the same `type` a keystroke does, so
+  // it is validated, checked against the table and shown identically
+  // (`docs/architecture.md`, "Screens and the states behind them").
+  LaunchedEffect(openWith) { if (openWith.isNotBlank()) presenter.type(openWith) }
+
   ShakeToRoll(presenter)
   KeepTheScreenAwake()
   LockTheOrientation()
@@ -56,30 +80,125 @@ fun RollScreen(
         .background(MaterialTheme.colorScheme.background)
         .testTag(RollTestTags.SCREEN),
   ) {
-    DiceTray(driver = presenter.tray, geometry = presenter.geometry, modifier = Modifier.fillMaxSize())
+    // No surface at all in power-saving mode, rather than one nothing draws
+    // to: a surface is a buffer the compositor keeps, and the claim that mode
+    // makes is that none of it exists (`docs/architecture.md`, decision 38).
+    if (presenter.draws) {
+      DiceTray(driver = presenter.tray, geometry = presenter.geometry, modifier = Modifier.fillMaxSize())
+    }
 
-    Column(
+    Controls(
+      presenter = presenter,
+      onSeeTheOdds = onSeeTheOdds,
+      modifier = Modifier.align(Alignment.BottomCenter),
+    )
+
+    // Over the tray rather than in a bar above it: the tray is the screen, and
+    // a bar would be a strip of chrome taken off the table. Handed in rather
+    // than built here, so this screen does not have to know what a menu is —
+    // which would be one feature module depending on another
+    // (`design/dInfinity.dc.html`, option 1q).
+    Box(
       modifier =
         Modifier
-          .fillMaxWidth()
-          .align(Alignment.BottomCenter)
+          .align(Alignment.TopEnd)
           .safeDrawingPadding()
-          .padding(24.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
+          .padding(8.dp),
     ) {
-      Outcome(state, onRound = presenter::round)
-      Formula(
-        text = presenter.text,
-        wrong = state is RollState.Invalid || state is RollState.TooMany,
-        onChange = presenter::type,
-      )
-      ThrowButton(
-        enabled = state is RollState.Ready || state is RollState.Settled,
-        settled = state is RollState.Settled,
-        onRoll = { presenter.roll() },
+      menu()
+    }
+
+    if (firstLaunch) FirstLaunch(presenter, onWelcomeSeen)
+  }
+}
+
+/**
+ * The first-launch screen, over the tray, until it is pressed past
+ * (`design/dInfinity.dc.html`, option 9a).
+ *
+ * Dismissed here as well as remembered on disk, so the screen changes the
+ * moment a button is pressed rather than when a write comes back — and it
+ * survives a rotation, because a welcome that reappeared when the phone turned
+ * would be a welcome that looked broken.
+ *
+ * Its d20 is thrown for real: `1d20` is typed into the field and the roll is
+ * asked for, which is what the player would have done. There is no
+ * demonstration path and no canned number (`docs/architecture.md`, goal 1).
+ */
+@Composable
+private fun FirstLaunch(
+  presenter: RollPresenter,
+  onWelcomeSeen: () -> Unit,
+) {
+  var welcomed by rememberSaveable { mutableStateOf(false) }
+  if (welcomed) return
+  Welcome(
+    sets = presenter.sets,
+    onRollNow = {
+      welcomed = true
+      onWelcomeSeen()
+      presenter.type(FIRST_ROLL)
+      presenter.roll()
+    },
+    onDismiss = {
+      welcomed = true
+      onWelcomeSeen()
+    },
+  )
+}
+
+/** What the first-launch screen offers to throw. One die, and the famous one. */
+private const val FIRST_ROLL = "1d20"
+
+/**
+ * Everything below the tray: what the roll came to, the picker, the field and
+ * the button.
+ *
+ * One stack at the bottom of the screen, because the tray is the screen and
+ * these sit on it rather than beside it.
+ */
+@Composable
+private fun Controls(
+  presenter: RollPresenter,
+  onSeeTheOdds: (formula: String, total: Long?) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val state = presenter.state
+  Column(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .safeDrawingPadding()
+        .padding(24.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Outcome(state, formula = presenter.text, onRound = presenter::round, onSuggestion = presenter::type)
+    // The odds for the formula in the field, with the throw that just landed
+    // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
+    // throw the table refuses too: that is exactly when "what would it have
+    // been" is the only answer there is (`docs/probability.md`).
+    if (state is RollState.Ready || state is RollState.TooMany || state is RollState.Settled) {
+      SeeTheOdds(
+        onClick = { onSeeTheOdds(presenter.text, (state as? RollState.Settled)?.result?.total) },
       )
     }
+    PickerRow(
+      dice = presenter.pickable,
+      counts = presenter.counts,
+      onAdd = presenter::add,
+      onRemove = presenter::remove,
+    )
+    Formula(
+      text = presenter.text,
+      wrong = state is RollState.Invalid || state is RollState.TooMany,
+      onChange = presenter::type,
+    )
+    ThrowButton(
+      enabled = state is RollState.Ready || state is RollState.Settled,
+      settled = state is RollState.Settled,
+      onRoll = { presenter.roll() },
+    )
   }
 }
 
@@ -108,7 +227,9 @@ private fun KeepTheScreenAwake() {
 @Composable
 private fun Outcome(
   state: RollState,
+  formula: String,
   onRound: (Rounding) -> Unit,
+  onSuggestion: (String) -> Unit,
 ) {
   when (state) {
     is RollState.Settled ->
@@ -142,14 +263,27 @@ private fun Outcome(
         tag = RollTestTags.REFUSED,
       )
 
+    // The formula again, with a squiggle under the part that is wrong, rather
+    // than a sentence about it (design options 6f and 9c).
     is RollState.Invalid ->
+      FormulaError(formula = formula, error = state.error, onSuggestion = onSuggestion)
+
+    // Not a blank: a tray with nothing on it and a button that does nothing is
+    // a screen with no way in, and shaking is the part nobody would guess
+    // (`design/dInfinity.dc.html`, option 9a).
+    RollState.Empty ->
       Message(
-        text = state.error.message,
-        colour = MaterialTheme.colorScheme.error,
-        tag = RollTestTags.INVALID,
+        text = stringResource(R.string.roll_hint_empty),
+        colour = MaterialTheme.colorScheme.onSurfaceVariant,
+        tag = RollTestTags.HINT,
       )
 
-    RollState.Empty, is RollState.Ready -> Unit
+    is RollState.Ready ->
+      Message(
+        text = stringResource(R.string.roll_hint_ready),
+        colour = MaterialTheme.colorScheme.onSurfaceVariant,
+        tag = RollTestTags.HINT,
+      )
   }
 }
 
@@ -198,6 +332,17 @@ private fun Formula(
   )
 }
 
+/** The way to the outcome graph, for whatever is in the field right now. */
+@Composable
+private fun SeeTheOdds(onClick: () -> Unit) {
+  TextButton(
+    onClick = onClick,
+    modifier = Modifier.testTag(RollTestTags.ODDS),
+  ) {
+    Text(stringResource(R.string.roll_see_the_odds))
+  }
+}
+
 /** The same: values in, one lambda out, so it skips when nothing has moved. */
 @Composable
 private fun ThrowButton(
@@ -232,6 +377,28 @@ object RollTestTags {
   const val ROLLING: String = "roll:rolling"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = "roll:invalid"
+
+  /** The one-tap fix, shown only when the mistake has an obvious reading. */
+  const val SUGGESTION: String = "roll:invalid:suggestion"
+
+  /** What to do next, when there is no result and nothing wrong. */
+  const val HINT: String = "roll:hint"
+
+  /** The way to the outcome graph (design option 7a). */
+  const val ODDS: String = "roll:odds"
+
+  /** The first-launch screen and its two ways out (design option 9a). */
+  const val WELCOME: String = "roll:welcome"
+  const val WELCOME_SETS: String = "roll:welcome:sets"
+  const val WELCOME_ROLL: String = "roll:welcome:roll"
+  const val WELCOME_DISMISS: String = "roll:welcome:dismiss"
+
+  /** The dice picker row, and one die on it (design option 1h). */
+  const val PICKER: String = "roll:picker"
+
+  fun pickerDie(notation: String): String = "roll:picker:$notation"
+
+  fun pickerCount(notation: String): String = "roll:picker:$notation:count"
 
   /** The Down / Nearest / Up control, shown only for a formula that divides. */
   const val ROUNDING: String = "roll:sheet:rounding"

@@ -255,6 +255,75 @@ class RollMachineTest {
     assertTrue("a roll with no clock behind it", (machine.state as? RollState.Rolling) != null)
   }
 
+  @Test
+  fun `the picker row offers the standard dice the default set defines`() {
+    val machine = machine()
+
+    assertEquals(
+      listOf("d2", "d4", "d6", "d8", "d10", "d%", "d12", "d18", "d20", "dF"),
+      machine.pickable.map { it.notation },
+    )
+  }
+
+  @Test
+  fun `a tap on the row is an edit to the formula and nothing else`() {
+    val machine = machine()
+
+    machine.add(machine.pickable.first { it.notation == "d20" })
+
+    assertEquals("1d20", machine.text)
+    assertEquals(1, (machine.state as RollState.Ready).diceCount)
+  }
+
+  @Test
+  fun `a tap on the row is refused by the table like any other formula`() {
+    // The row goes through `type`, so the capacity rule sees it. Nothing is
+    // special-cased for picked dice (`docs/tables.md`).
+    val machine = machine()
+    machine.type("500d6")
+
+    machine.add(machine.pickable.first { it.notation == "d6" })
+
+    assertTrue("a tap slipped past the capacity rule", machine.state is RollState.TooMany)
+    assertNull("a refused formula produced a throw", machine.throwDice())
+  }
+
+  @Test
+  fun `a tap while the dice are in the air abandons the throw, like typing`() {
+    val machine = machine()
+    machine.type("3d6")
+    machine.throwDice()
+
+    machine.add(machine.pickable.first { it.notation == "d6" })
+    machine.settled(SimulationOutcome(faces = mapOf(0 to 0, 1 to 0, 2 to 0)))
+
+    assertTrue("a throw nobody was waiting for was scored anyway", machine.state is RollState.Ready)
+  }
+
+  @Test
+  fun `the counts follow the formula however it was written`() {
+    val machine = machine()
+
+    machine.type("2d6 + 1d20")
+
+    val d6 = machine.pickable.first { it.notation == "d6" }
+    val d20 = machine.pickable.first { it.notation == "d20" }
+    assertEquals(2, machine.counts[d6])
+    assertEquals(1, machine.counts[d20])
+  }
+
+  @Test
+  fun `a long press takes one off and the counts follow`() {
+    val machine = machine()
+    machine.type("3d6")
+    val d6 = machine.pickable.first { it.notation == "d6" }
+
+    machine.remove(d6)
+
+    assertEquals("2d6", machine.text)
+    assertEquals(2, machine.counts[d6])
+  }
+
   private fun machine(
     simulator: DiceSimulator = CountingSimulator(),
     seed: Long = 1L,

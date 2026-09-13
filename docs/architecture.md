@@ -106,32 +106,68 @@ leaving the screen gives all three back (decision 49).
 
 ### Navigation
 
-Every screen is a `Destination`, and the graph has all ten from the start so
-that adding one is a change in a single place. `Roll` is home.
+Every screen is a `Destination`, and the graph has had all ten from the start
+so that adding one is a change in a single place. `Roll` is home. The eleventh
+destination is the **menu**, which lists the other ten and is not in the list
+itself (`design/dInfinity.dc.html`, option `1q`).
 
 ```mermaid
 stateDiagram-v2
     [*] --> Roll
     Roll: Roll (home)
-    Settings: Settings
-    Other: Graph · Saved · Stats · History · Sessions<br/>Sets · Tables · Designer
+    Menu: Menu
+    Graph: Outcome graph
+    Screen: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer · Settings
 
-    Other --> Settings: the placeholder's Settings row
-    Settings --> Other: system back
-    Other --> Roll: system back
+    Roll --> Graph: See the odds
+    Roll --> Menu: the menu button
+    Graph --> Menu: the menu button
+    Screen --> Menu: the menu button
+    Menu --> Roll: choose Roll
+    Menu --> Graph: choose the graph
+    Menu --> Screen: choose any of them
+    Graph --> Roll: system back
+    Screen --> Roll: system back
+    Menu --> Roll: system back
     Roll --> [*]: system back leaves the app
 ```
 
-That diagram is the honest one rather than the intended one, and the gap is
-worth naming: **the only in-app control that navigates anywhere is the
-placeholder screens' Settings row.** Every other move between screens is the
-system back gesture. The menu that reaches all ten (`design/dInfinity.dc.html`,
-option `1q`) is Step 4.10, and until it exists the roll screen has no way out
-but back, and no screen but a placeholder can be left deliberately.
+**Every screen is now reachable, and every one of them by the same control.**
+The menu button sits in the top corner of each, so wherever a player is, every
+other screen is two presses away. Choosing a row takes the menu *off* the back
+stack with it, so back from what it opened goes where the menu was opened
+from — a menu you have to press back through twice reads as a detour. Choosing
+the screen you are already on does not stack a second copy of it.
 
-Nothing is *undefined*, though. `NavHost` answers back on every destination,
-`Destination.home` is where the app opens, and a route that does not resolve
-cannot be reached — `Destination.ofRoute` is the only way in and it is total.
+Nothing is undefined, and nothing is unreachable. `NavHost` answers back on
+every destination, `Destination.home` is where the app opens, and a route that
+does not resolve cannot be reached — `Destination.ofRoute` is the only way in
+and it is total.
+
+The menu button is **handed to each screen rather than built by it**. A screen
+that knew what the menu was would be one feature module depending on another,
+and the navigation graph belongs to `:app`. Each screen takes a `menu`
+composable slot and draws it where it has room.
+
+**Two destinations are opened with arguments.** The outcome graph is about a
+formula, and after a roll it also marks the total that came up, so its route
+is `graph?formula={formula}&total={total}`. The tray takes a formula too —
+`roll?formula={formula}` — which is what tapping a saved roll does: it puts
+the formula in the field and leaves the throw to the player, because a saved
+roll is a formula with a name rather than a roll waiting to happen. Two rules
+keep arguments from spreading trouble:
+
+- **Every argument is optional and defaults to empty.** A destination that
+  could only be opened with an argument is a destination the menu could not
+  open, and the menu opens every one of them. A bare `graph` is a graph with
+  no formula, which says where a formula comes from.
+- **The formula is URI-encoded on the way in.** `+` and `/` are characters a
+  formula is made of and a URI reserves; unencoded, `3d6 + 4` arrives as
+  `3d6   4` and graphs a different roll.
+
+A screen built from its arguments is a screen that comes back the same from a
+restored back stack, which is the other half of "a screen left and returned to
+is built again from scratch".
 
 ### The roll screen
 
@@ -195,24 +231,59 @@ file.
 
 | State | Total | Message | Sheet | Roll button | Formula field |
 |---|---|---|---|---|---|
-| `Empty` | — | — | — | disabled | live |
-| `Invalid` | — | the parse error | — | disabled | live, in error |
+| `Empty` | — | what to do next | — | disabled | live |
+| `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | disabled | live, in error |
 | `TooMany` | — | how many were asked for and how many fit | — | disabled | live, in error |
-| `Ready` | — | — | — | **enabled** | live |
+| `Ready` | — | that shaking also rolls | — | **enabled** | live |
 | `Rolling` | — | "Rolling…" | — | disabled | live |
 | `Settled` | the total | — | breakdown, and rounding if the formula divides | **enabled** (throws again) | live |
+
+Neither blank cell in the first two rows is an accident: a tray with nothing
+on it and a button that does nothing is a screen with no way in, and shaking —
+the one input nobody would guess at — has nowhere else to be announced.
+
+**Over all of it, once**, a new install shows the first-launch screen
+(`design/dInfinity.dc.html`, option 9a). It is not a state of `RollState`: the
+machine underneath is `Empty` like any other new screen, and the welcome is a
+sheet on top with two ways out, both of them forward. Its "roll a d20 now"
+types `1d20` into the field and asks for a roll — there is no demonstration
+path and no canned number. That it has been seen is remembered on disk, and
+also in the composition, so the screen changes when the button is pressed
+rather than when a write comes back.
+
+The picker row is not in that table because it is on screen, and live, in
+every state — for the same reason the formula field is, and in fact for
+exactly that reason: it is the formula field reached with a thumb.
 
 Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
 - **the formula field** calls `type`, on every keystroke;
+- **the dice picker row** calls `add` on a tap and `remove` on a long press,
+  and both are `type` underneath — a tap *is* an edit to the formula, so it
+  re-validates, re-checks the table's capacity and abandons a throw in the air
+  exactly as a keystroke does (`docs/dice-notation.md`);
 - **the Roll button** calls `roll`, which is one press for one throw — a
   settled roll is put away by the presenter rather than by a second press;
 - **a shake** calls the same `roll`, which is why it had to be one act;
 - **Down / Nearest / Up** call `round`, which rescores from subtotals that
   already landed and never moves a die;
+- **the one-tap fix under an error** calls `type` with the formula the parser
+  suggested, so a suggestion taken is indistinguishable from the same
+  correction typed by hand;
 - **pinch and two-finger drag** call `look`, which moves the camera and is not
-  a state change at all — where a player is standing is not what the dice did.
+  a state change at all — where a player is standing is not what the dice did;
+- **See the odds** is the one control that leaves the screen. It navigates and
+  changes no state here at all, carrying the formula as typed and, for a throw
+  that has landed, its total (`design/dInfinity.dc.html`, option 7a). Offered
+  in `Ready`, `TooMany` and `Settled` — including the refusal, because a throw
+  the table cannot hold is exactly when "what would it have been" is the only
+  answer there is.
+
+In power-saving mode the tray is not there at all, and the list is otherwise
+unchanged: the dice are thrown by the same `roll`, stepped by the same loop,
+and the total arrives in the same `Settled`. Only pinch and pan have nothing
+to move (`design/dInfinity.dc.html`, option 1z).
 
 The tray is not in that list on purpose. It draws what the roll is doing and
 has no way to change it: `Renderer` has no method that returns anything
@@ -298,6 +369,74 @@ skipped frame, so it is *owed* one and goes on asking until one lands. With no
 surface there is nothing to pay it with, so the debt is simply carried until a
 surface arrives.
 
+### The outcome graph
+
+`GraphState` is a smaller machine of the same shape, and it is smaller for a
+reason: the graph has no thread, no engine and nothing to wait for. A formula
+goes in and a distribution comes out.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Empty
+    Empty: Empty<br/>no formula
+    Invalid: Invalid<br/>error + range
+    TooLarge: TooLarge<br/>past what is exact
+    Graphed: Graphed<br/>bars, statistics, mode, pick, mark
+
+    Empty --> Graphed: opened with a formula that graphs
+    Empty --> Invalid: opened with one that does not read
+    Empty --> TooLarge: opened with one past the limit
+    Graphed --> Graphed: ask the other question, or tap a bar
+    Graphed --> Invalid: retype
+    Graphed --> TooLarge: retype
+    Graphed --> Empty: clear
+    Invalid --> Graphed: retype
+    TooLarge --> Graphed: retype
+```
+
+`TooLarge` is the state worth reading twice. The formula is legal and may even
+be rollable; what cannot be done is working out its distribution exactly, and
+the screen says so rather than drawing an approximation. An approximated curve
+presented as the odds is a number somebody bets on
+(`docs/probability.md`).
+
+Tapping a bar and changing the question both stay in `Graphed` and redraw the
+same distribution — neither is a new computation. Retyping drops the tapped
+bar with it, because a bar at 14 on one distribution is not the same bar at 14
+on the next.
+
+### Saved rolls
+
+`SavedState` is the third of these machines and the first that **watches**
+rather than holds. Its groups and rolls come from the database as flows, so a
+roll saved in the editor or arriving in an import appears without anybody
+asking. The two flows are combined rather than collected apart: a list of
+rolls and the groups they belong to arriving a frame apart is a list that
+flickers through a state that was never true.
+
+| | |
+|---|---|
+| `loaded = false` | the database has not answered yet — **not** the same as empty |
+| `loaded && rolls.isEmpty()` | nothing saved in this group, which is a thing to say |
+| `switching` | the group switcher is open over the list |
+
+The first row is the one worth having a field for. "Nothing saved yet" drawn
+under a list that has simply not arrived is the app telling a player their
+rolls are gone.
+
+Two things the screen does *not* decide. Whether a formula still resolves is
+re-checked every time the list is drawn rather than stored, because the set it
+names can be uninstalled between one drawing and the next; and the order —
+favourites first, then by recent use — is SQL's, because it is what the list
+*is* (`docs/dice-notation.md`, "Saved rolls").
+
+| Control | Calls | What changes |
+|---|---|---|
+| the group name | `showGroups` | whether the switcher is open |
+| a group in the switcher | `open` | which group's rolls are listed, and the stored active group |
+| a row, tapped | `used`, then navigation | one more use, and the tray with that formula in its field |
+| a row, long-pressed | the editor | *(Step 4.3, still to come)* |
+
 ### Settings, and the screens that are not built yet
 
 `Settings` is the only screen besides `Roll` that does anything, and it is
@@ -310,11 +449,15 @@ why the two are not built the same way (decision 49).
 | Control | Calls | What changes |
 |---|---|---|
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
-| a placeholder's **Settings →** | `navigate(Settings)` | which screen is on |
+| the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
+| *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
+| the menu button, on every screen | `navigate(Menu)` | which screen is on |
 
-The second row is scaffolding and is labelled as such in the code: it exists
-so that a setting is reachable on a device at all before the menu is built,
-and it goes when `PlaceholderScreen` does (Step 4.10).
+The power-saving row is the one setting that does not take effect where it is
+pressed. It is read when the roll screen opens and not watched, because a
+renderer appearing or vanishing under a roll in progress is not a setting
+taking effect — it is a bug (`docs/physics-and-rendering.md`, "Power-saving
+mode").
 
 ## Data flow of a roll
 

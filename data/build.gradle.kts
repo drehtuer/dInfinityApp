@@ -8,8 +8,10 @@ android {
   namespace = "de.drehtuer.dinfinity.data"
 }
 
-// SchemaTest reads the schemas that are checked in, not a copy of them, so it
-// is told where they are rather than given them on a classpath.
+// SchemaTest and MigrationTest read the schemas that are checked in, not a copy
+// of them, so they are told where they are rather than given them on a
+// classpath. MigrationTest builds a real version-1 database out of version 1's
+// own exported schema, which is the artifact that says what shipped.
 tasks.withType<Test>().configureEach {
   systemProperty(
     "dinfinity.schemas",
@@ -22,8 +24,10 @@ tasks.withType<Test>().configureEach {
 room {
   // The schema of every version is written out and checked in, which is what
   // makes "migrations from day one" enforceable rather than aspirational:
-  // Room refuses to bump a version without one, and MigrationTest walks every
-  // published schema up to the current one (docs/statistics.md).
+  // Room refuses to bump a version without one, SchemaTest walks every
+  // published schema up to the current one, and MigrationTest actually runs
+  // the migrations against a database built from the oldest of them
+  // (docs/statistics.md).
   //
   // Through Room's own plugin rather than as a bare KSP argument, because a
   // KSP argument is global: every variant would write the same file, and the

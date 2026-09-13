@@ -4,6 +4,14 @@
   <string name="settings_accent_heading">Accent colour</string>
   <string name="settings_accent_explanation">The one colour the interface spends. It does not change the app icon.</string>
 
+  <!-- The menu (design option 1q). -->
+  <string name="menu_open">Menu</string>
+  <string name="menu_offline">Works fully offline. The network is used only when you install a set, a table or a collection from a URL.</string>
+  <!-- Power saving (design option 1z). -->
+  <string name="settings_power_heading">Power saving</string>
+  <string name="settings_power_explanation">Roll without drawing the dice. The same roll, decided the same way — the result just appears.</string>
+  <string name="settings_power_label">Do not draw the dice</string>
+
   <string name="accent_vermilion">Vermilion</string>
   <string name="accent_coral">Coral</string>
   <string name="accent_sky">Sky</string>

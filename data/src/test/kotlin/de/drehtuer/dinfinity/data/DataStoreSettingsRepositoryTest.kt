@@ -11,6 +11,8 @@ import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -53,6 +55,30 @@ class DataStoreSettingsRepositoryTest {
         repository.setAccentColor(accent)
         assertEquals(accent, repository.settings.first().accentColor)
       }
+    }
+
+  @Test
+  fun `power saving is off until it is turned on, and is read back`() =
+    runTest {
+      val repository = DataStoreSettingsRepository(dataStore(this))
+      assertFalse("a new install started without drawing the dice", repository.settings.first().powerSaving)
+
+      repository.setPowerSaving(true)
+      assertTrue("power saving did not survive being written", repository.settings.first().powerSaving)
+
+      repository.setPowerSaving(false)
+      assertFalse("power saving could be turned on but not off", repository.settings.first().powerSaving)
+    }
+
+  @Test
+  fun `the first launch is remembered as having happened`() =
+    runTest {
+      val repository = DataStoreSettingsRepository(dataStore(this))
+      assertFalse("a new install had already been welcomed", repository.settings.first().welcomeSeen)
+
+      repository.setWelcomeSeen()
+
+      assertTrue("the welcome would have come back", repository.settings.first().welcomeSeen)
     }
 
   @Test

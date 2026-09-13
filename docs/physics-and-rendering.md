@@ -512,10 +512,18 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
 
 ## Power-saving mode
 
-- No Filament engine is created at all; the `headless` renderer is used.
-- The simulation runs on the simulation thread as fast as possible, still at
+- No Filament engine is created at all; the `headless` renderer is used. The
+  screen goes further and puts **no surface on the screen**, rather than a
+  surface nothing draws to: a surface is a buffer the compositor keeps, and
+  what this mode claims is that none of it exists. `PowerSavingTray` is the
+  other implementation of `Tray`, and there is no Filament type in it.
+- The simulation runs on a worker thread as fast as possible, still at
   the same fixed timestep, still with the same seed, correction logic and
   settle rules. Typical roll finishes in well under 100 ms of wall time.
+- The mode is read **once, when the roll screen opens**, and not watched. A
+  renderer appearing or vanishing under a roll in progress is not a setting
+  taking effect, it is a bug; turning it on takes effect the next time the
+  screen is opened.
 - It is the *same* roll, not an equivalent one: the same loop over the same
   world, with nobody calling the clock. The difference between the two modes
   is one call — a frame callback asking for the time since the last frame, or

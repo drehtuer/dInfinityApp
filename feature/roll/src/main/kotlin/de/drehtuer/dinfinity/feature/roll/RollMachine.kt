@@ -5,11 +5,13 @@ import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.core.notation.DicePicker
 import de.drehtuer.dinfinity.core.notation.ExtraThrow
 import de.drehtuer.dinfinity.core.notation.Formula
 import de.drehtuer.dinfinity.core.notation.FormulaParser
 import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.ParseResult
+import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.core.notation.PlanResult
 import de.drehtuer.dinfinity.core.notation.RollEvaluator
 import de.drehtuer.dinfinity.core.notation.RollPlanner
@@ -79,6 +81,29 @@ class RollMachine(
     private set
 
   /**
+   * The dice the picker row offers, from the default set
+   * (`design/dInfinity.dc.html`, option 1h).
+   *
+   * Fixed for the life of the screen, because the catalogue is: choosing a
+   * different set is the set dropdown's job and the dropdown waits on the
+   * installed-set registry (`docs/TODO.md`, Step 4.4).
+   */
+  val pickable: List<PickableDie> =
+    catalog.set(catalog.defaultSetId)?.let { DicePicker.offeredBy(it) }.orEmpty()
+
+  /**
+   * How many of each of [pickable] the formula is asking for.
+   *
+   * Recomputed with the formula rather than on demand: it is one parse for the
+   * whole row, and it is read on every recomposition.
+   */
+  var counts: Map<PickableDie, Int> = emptyMap()
+    private set
+
+  /** How many dice sets are installed, which the first-launch screen counts. */
+  val sets: Int get() = catalog.installed.size
+
+  /**
    * The formula field changed.
    *
    * Validated on every keystroke, which is why `core/notation` has no storage
@@ -97,6 +122,24 @@ class RollMachine(
         is ParseResult.Failed -> if (typed.isBlank()) RollState.Empty else RollState.Invalid(parsed.error)
         is ParseResult.Parsed -> planned(parsed.formula)
       }
+    counts = DicePicker.counts(typed, pickable)
+  }
+
+  /**
+   * A tap on the picker row: one more of [die].
+   *
+   * Goes through [type], which is not a shortcut but the point. A tap is an
+   * edit to the formula, so it has to do everything an edit does — re-validate,
+   * re-check the table's capacity, and abandon a throw that is in the air
+   * (`docs/architecture.md`, "Screens and the states behind them").
+   */
+  fun add(die: PickableDie) {
+    type(DicePicker.add(text, die))
+  }
+
+  /** A long press on the picker row: one fewer of [die], or none at all. */
+  fun remove(die: PickableDie) {
+    type(DicePicker.remove(text, die))
   }
 
   /**
