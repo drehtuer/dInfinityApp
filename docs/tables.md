@@ -64,15 +64,21 @@ fixed ratio of it, one per catalogue shape:
 | Shape | radius ÷ nominal size | | Shape | radius ÷ nominal size |
 |---|---|---|---|---|
 | `coin` | √(¼ + 1/64) ≈ 0.5154 | | `dodecahedron` | (√3/4)(1+√5) ≈ 1.4013 |
-| `tetrahedron` | √6/4 ≈ 0.6124 | | `enneagonal-trapezohedron` | cos(π/18) ≈ 0.9848 |
+| `tetrahedron` | √6/4 ≈ 0.6124 | | `enneagonal-trapezohedron` | ≈ 0.7184 |
 | `cube` | √3/2 ≈ 0.8660 | | `icosahedron` | √(10+2√5)/4 ≈ 0.9511 |
-| `octahedron` | √2/2 ≈ 0.7071 | | `pentagonal-trapezohedron` | cos(π/10) ≈ 0.9511 |
+| `octahedron` | √2/2 ≈ 0.7071 | | `pentagonal-trapezohedron` | ≈ 0.7477 |
 
 So a "16 mm d6" is a cube with 16 mm edges and a bounding radius of
 16·√3/2 ≈ 13.9 mm, which is where every number in the worked table below comes
-from. The two trapezohedra are the ones with every vertex on a single sphere
-and every edge the same length — which is what a real d10 is, and which works
-out at exactly cos(π/2n).
+from. For the coin, nominal size is its diameter — a cylinder has no edge to
+measure — and for the two trapezohedra it is the long apex edge.
+
+A trapezohedron has no closed form worth writing down. It is fixed by its own
+two conditions and they leave no freedom at all: its kite faces have to be
+**flat**, which forces the apex to sit `2/(1 − cos(π/n)) − 1` times the ring
+height up, and every corner has to be on one sphere, which is what a fair die
+is — an insphere touching every face, a circumsphere through every corner. The
+ratios above are what falls out.
 
 That is: dice may collectively cover at most 30 % of the floor with their
 bounding circles, and they may shrink to 40 % of their nominal size to get

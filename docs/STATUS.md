@@ -108,6 +108,11 @@ changelog.
   plain archives, an https-only fetch capped by what arrives, streamed
   extraction that refuses every hostile archive `SECURITY.md` names, and an
   install that either happens or leaves the app exactly as it was.
+- The catalogue's solids now carry their **corners** as well as their face
+  normals — the convex hulls the physics will collide — built from the same
+  construction and turned by the same rotation, and checked against each other:
+  every face direction has to be the outward normal of a real face of the hull.
+  That check found two bugs in the geometry that shipped a step earlier.
 
 ## Blocked / waiting on
 

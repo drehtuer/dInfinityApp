@@ -3,7 +3,6 @@ package de.drehtuer.dinfinity.simulation.api
 import de.drehtuer.dinfinity.core.model.DieShape
 import kotlin.math.PI
 import kotlin.math.abs
-import kotlin.math.cos
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -74,9 +73,20 @@ class ShapeGeometryTest {
   }
 
   @Test
-  fun `a trapezohedron's bounding radius is the cosine its construction gives`() {
-    assertEquals(cos(PI / 10), ShapeGeometry.boundingRadiusPerSize(DieShape.PentagonalTrapezohedron), 1e-12)
-    assertEquals(cos(PI / 18), ShapeGeometry.boundingRadiusPerSize(DieShape.EnneagonalTrapezohedron), 1e-12)
+  fun `a trapezohedron's bounding radius comes out of its own two conditions`() {
+    // There is no closed form worth writing down: the radius falls out of flat
+    // kite faces and every corner on one sphere. These are the numbers that
+    // fall out, and docs/tables.md quotes them.
+    assertEquals(0.747674, ShapeGeometry.boundingRadiusPerSize(DieShape.PentagonalTrapezohedron), 1e-6)
+    assertEquals(0.718362, ShapeGeometry.boundingRadiusPerSize(DieShape.EnneagonalTrapezohedron), 1e-6)
+  }
+
+  @Test
+  fun `a trapezohedron is a little wider than its apex edge is long`() {
+    listOf(DieShape.PentagonalTrapezohedron, DieShape.EnneagonalTrapezohedron).forEach { shape ->
+      val radius = ShapeGeometry.boundingRadiusPerSize(shape)
+      assertTrue(radius in 0.5..1.0, "${shape.id} has a bounding radius of $radius per edge")
+    }
   }
 
   @Test

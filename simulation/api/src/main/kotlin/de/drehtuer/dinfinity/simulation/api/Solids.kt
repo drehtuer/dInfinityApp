@@ -44,32 +44,63 @@ internal object Solids {
   fun icosahedronVertices(): List<Vector3> = cycled(0.0, 1.0, PHI).distinctDirections()
 
   /** An icosahedron's twenty faces point at a dodecahedron's twenty vertices. */
-  fun dodecahedronVertices(): List<Vector3> = (signs(1.0, 1.0, 1.0) + cycled(0.0, 1 / PHI, PHI)).distinctDirections()
+  fun dodecahedronVertices(): List<Vector3> = (signs(1.0, 1.0, 1.0) + cycled(0.0, PHI, 1 / PHI)).distinctDirections()
 
   /**
-   * The outward normals of the 2n kite faces of an n-gonal trapezohedron whose
-   * vertices all sit on one sphere and whose edges are all the same length —
-   * which is what a real d10 or d18 is.
+   * The corners of an n-gonal trapezohedron: two apexes and two staggered
+   * rings, all of them on one sphere.
+   *
+   * These are the points the physics collides, and they and the face normals
+   * below come out of the same two numbers — see [ringHeight] for what those
+   * two numbers have to satisfy.
+   */
+  fun trapezohedronVertices(n: Int): List<Vector3> {
+    val ring = ringHeight(n)
+    val apex = apexHeight(n)
+    return listOf(Vector3(0.0, 0.0, apex), Vector3(0.0, 0.0, -apex)) +
+      (0 until n).flatMap { k ->
+        listOf(ringVertex(k.toDouble() / n, ring), ringVertex((k + HALF) / n, -ring))
+      }
+  }
+
+  /**
+   * The outward normals of the 2n kite faces of an n-gonal trapezohedron.
+   *
+   * A kite is four points, and a normal taken from three of them is the
+   * *face's* normal only if the fourth lies on the same plane. That planarity
+   * is not free: it is the condition [ringHeight] solves, and it is what makes
+   * this a trapezohedron rather than a bag of triangles with a die's outline.
    */
   fun trapezohedron(n: Int): List<Vector3> {
     val ring = ringHeight(n)
-    val apex = Vector3(0.0, 0.0, sqrt(1 + ring * ring))
+    val apex = Vector3(0.0, 0.0, apexHeight(n))
+    val upper = (0 until n).map { ringVertex(it.toDouble() / n, ring) }
+    val lower = (0 until n).map { ringVertex((it + HALF) / n, -ring) }
     return (0 until n).flatMap { k ->
-      val a = ringVertex(k.toDouble() / n, ring)
-      val b = ringVertex((k + HALF) / n, -ring)
-      val next = ringVertex((k + 1.0) / n, ring)
-      listOf(outward(apex, a, b), outward(-apex, next, b))
+      listOf(
+        outward(apex, upper[k], lower[k], upper[(k + 1) % n]),
+        outward(-apex, lower[k], upper[(k + 1) % n], lower[(k + 1) % n]),
+      )
     }
   }
 
-  /** The outward normal of the kite through [tip], [left] and [right]. */
+  /** The bounding radius of an n-gonal trapezohedron whose apex edge is 1. */
+  fun trapezohedronRadiusPerEdge(n: Int): Double {
+    val ring = ringHeight(n)
+    val apex = apexHeight(n)
+    return apex / sqrt(1 + (apex - ring) * (apex - ring))
+  }
+
+  /** The outward normal of the plane through a kite's four corners. */
   private fun outward(
     tip: Vector3,
     left: Vector3,
+    far: Vector3,
     right: Vector3,
   ): Vector3 {
-    val normal = cross(left - tip, right - tip).normalised()
-    return if (normal dot (tip + left + right) < 0) -normal else normal
+    val normal = cross(left - tip, far - tip).normalised()
+    val centre = (tip + left + far + right) * QUARTER
+    return if (normal dot centre < 0) -normal else normal
   }
 
   private fun ringVertex(
@@ -77,43 +108,37 @@ internal object Solids {
     height: Double,
   ): Vector3 = Vector3(cos(TURN * turns), sin(TURN * turns), height)
 
-  /**
-   * How far the ring of vertices sits above the middle, solved by bisection
-   * because the condition — apex edge equal to ring edge, with every vertex on
-   * one sphere — has no closed form worth writing down.
-   *
-   * The bounding radius that falls out of it does: `cos(π / 2n)`.
-   */
-  private fun ringHeight(n: Int): Double {
-    var low = SMALLEST_RING
-    var high = LARGEST_RING
-    repeat(BISECTIONS) {
-      val middle = (low + high) / 2
-      if (edgeDifference(n, low) * edgeDifference(n, middle) <= 0) high = middle else low = middle
-    }
-    return (low + high) / 2
-  }
-
-  private fun edgeDifference(
-    n: Int,
-    ring: Double,
-  ): Double {
-    val apex = sqrt(1 + ring * ring)
-    val apexEdge = sqrt(1 + (apex - ring) * (apex - ring))
-    val ringEdge = sqrt(2 - 2 * cos(PI / n) + FOUR * ring * ring)
-    return apexEdge - ringEdge
-  }
-
   private const val HALF = 0.5
-  private const val FOUR = 4.0
+  private const val QUARTER = 0.25
   private const val FIVE = 5.0
-  private const val BISECTIONS = 200
-  private const val SMALLEST_RING = 1e-9
-  private const val LARGEST_RING = 5.0
 }
 
 private const val TURN = 2 * PI
 private const val ROUNDING = 1e9
+private const val TWO = 2.0
+
+/**
+ * How far the rings sit above and below the middle, for a ring of radius 1.
+ *
+ * Two conditions fix it and leave no freedom at all.
+ *
+ * The kite faces have to be **planar** — that is what makes this a
+ * trapezohedron rather than a bag of triangles with a die's outline, and a
+ * die with no flat face has nothing to land on. Planarity forces the apex to
+ * sit a fixed multiple of the ring height up: `2 / (1 − cos(π/n)) − 1`.
+ *
+ * And every corner has to be on one sphere, which is what a fair die is: an
+ * insphere touching every face, a circumsphere through every corner.
+ */
+private fun ringHeight(n: Int): Double = 1 / sqrt(apexRatio(n) * apexRatio(n) - 1)
+
+private fun apexHeight(n: Int): Double = apexRatio(n) * ringHeight(n)
+
+/** How many times higher than the ring the apex sits, for the faces to be flat. */
+private fun apexRatio(n: Int): Double = TWO / (1 - cos(PI / n)) - 1
+
+/** How many sides a coin's rim is drawn and collided with. */
+private const val COIN_SEGMENTS = 24
 
 /**
  * Unit vectors in the catalogue's face order: from the top of the reference
@@ -130,14 +155,26 @@ private const val ROUNDING = 1e9
  * up when nothing has been turned, which is what both the atlas and every test
  * of a face reading expect.
  */
-internal fun order(directions: List<Vector3>): List<Vector3> {
+internal fun order(directions: List<Vector3>): List<Vector3> =
+  uprightRotation(directions).let { rotation -> directions.turnedAndOrdered(rotation) }
+
+/**
+ * The rotation that puts the highest of [directions] straight up.
+ *
+ * Worked out once and applied to a solid's faces *and* its corners, so the two
+ * describe the same solid in the same orientation.
+ */
+internal fun uprightRotation(directions: List<Vector3>): Quaternion {
   val unit = directions.map(Vector3::normalised)
   val highest = unit.maxWith(compareBy<Vector3> { rounded(it.z) }.thenByDescending(::azimuth))
-  val upright = Quaternion.taking(highest, Vector3.Up)
-  return unit
-    .map { upright.rotate(it).normalised() }
-    .sortedWith(compareByDescending<Vector3> { rounded(it.z) }.thenBy(::azimuth))
+  return Quaternion.taking(highest, Vector3.Up)
 }
+
+/** These directions, turned by [rotation] and put in the catalogue's order. */
+internal fun List<Vector3>.turnedAndOrdered(rotation: Quaternion): List<Vector3> =
+  map(Vector3::normalised)
+    .map { rotation.rotate(it).normalised() }
+    .sortedWith(compareByDescending<Vector3> { rounded(it.z) }.thenBy(::azimuth))
 
 internal fun List<Vector3>.distinctDirections(): List<Vector3> =
   map(Vector3::normalised).distinctBy { Triple(rounded(it.x), rounded(it.y), rounded(it.z)) }
@@ -149,3 +186,24 @@ private fun azimuth(direction: Vector3): Double {
 
 /** Rounds away the last few bits, so two directions that are the same sort as the same. */
 private fun rounded(value: Double): Long = Math.round(value * ROUNDING)
+
+/**
+ * The corners of a coin: a rim of [segments] points at each end of a
+ * cylinder as thick as a quarter of its width.
+ *
+ * A cylinder is not a polyhedron, so the hull is an approximation — but a
+ * 24-sided one is smoother than any d2 anybody has ever minted, and the
+ * corners of the rim are exactly the furthest points from the middle, which
+ * is what the bounding radius is computed from.
+ */
+fun coinVertices(
+  thicknessRatio: Double,
+  segments: Int = COIN_SEGMENTS,
+): List<Vector3> =
+  (0 until segments).flatMap { k ->
+    val turns = k.toDouble() / segments
+    listOf(
+      Vector3(cos(TURN * turns) / 2, sin(TURN * turns) / 2, thicknessRatio / 2),
+      Vector3(cos(TURN * turns) / 2, sin(TURN * turns) / 2, -thicknessRatio / 2),
+    )
+  }
