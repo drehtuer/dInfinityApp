@@ -16,10 +16,8 @@ changelog.
   smaller items listed there.
 - **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to and including #48 is merged. Three stacked
-  branches are in flight: `feature/tray-camera`, `feature/forge-ref-sha` on top
-  of it and `feature/filament-buffers` on top of that. They merge in that
-  order.
+- **Branch state:** everything up to and including #51 is merged. One branch is
+  in flight: `feature/dice-material`.
 
 ## Done
 
@@ -79,10 +77,10 @@ changelog.
 ## In progress
 
 - `render/filament`. The die meshes, the tray mesh, their GPU buffers, the
-  blend between simulation states and the camera framing are built and tested
-  on the JVM. What is left is the Filament engine itself — the dependency, the
-  material compiled at launch, lights and shadows — which is the part that
-  needs a GPU and a person to look at it.
+  blend between simulation states, the camera framing and the material's
+  parameters are built and tested on the JVM. What is left is the Filament
+  engine itself — the dependency, compiling the material at launch, lights and
+  shadows — which is the part that needs a GPU and a person to look at it.
 
 ## Blocked / waiting on
 
