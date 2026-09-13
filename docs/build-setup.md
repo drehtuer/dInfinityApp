@@ -327,7 +327,8 @@ attached as `192.168.89.49:39337` is recorded under
 `192.168.89.49%3A39337` and then looked up under its raw serial. The lookup
 misses and the run is declared failed however green the tests were. Every
 wireless device has a colon in its serial, so the task can never pass on its
-own here. `ignoreFailures` is therefore set on it and the XML — which is
+own here — the phone run above printed `There were failing tests` with all
+three passing, which is the bug in one line. `ignoreFailures` is therefore set on it and the XML — which is
 correct — decides instead.
 
 Delete `VerifyDeviceTestResultsTask` and the `ignoreFailures` beside it once
@@ -365,6 +366,13 @@ dinfinity-phone pair 192.168.1.42:37105 832269
 
 This is the procedure as run, not as imagined: a Pixel 10a on Android 17,
 paired and driven from the container over the default Docker bridge.
+`dinfinity-phone 192.168.89.49:40697` attached it, `connectedDebugAndroidTest`
+installed and ran, and the JUnit XML came back `tests=3 failures=0 errors=0`.
+
+That run is also the one the emulator cannot stand in for: the phone is
+**API 37 on `arm64-v8a`**, the API the app targets and the ABI it ships, where
+the container's image is API 36 on x86_64. Both tiers run the same suite; only
+one of them runs it on what a user will hold.
 
 ### When both a phone and the emulator are attached
 

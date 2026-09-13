@@ -34,11 +34,14 @@ changelog.
   SonarQube has no counter for is still enforced. Every dependency is pinned
   by SHA-256. `main` requires its checks; a `vX.Y.Z` tag cuts a signed,
   fingerprint-checked, immutable release.
-- **All three testing tiers are reachable.** JVM and Robolectric on CI; the
-  emulator that ships in the devcontainer, which boots headless in half a
-  minute and runs the instrumented suite in ten seconds; and the Pixel 10a,
-  paired from inside the container over WiFi debugging. Step 5 has somewhere
-  to land, and a regression in the physics can be caught before the phone.
+- **All three testing tiers are reachable, and each has been run.** JVM and
+  Robolectric on CI; the emulator that ships in the devcontainer, which boots
+  headless in half a minute and runs the instrumented suite in ten seconds;
+  and the Pixel 10a over wireless debugging, one command away
+  (`dinfinity-phone`, which remembers where the phone was). The emulator is
+  API 36 on x86_64 and the phone API 37 on `arm64-v8a`, so between them they
+  cover the API the app targets and the ABI it ships. Step 5 has somewhere to
+  land, and a regression in the physics can be caught before the phone.
 - **Step 3's foundations.** A formula can be parsed and resolved against the
   installed sets (`core/notation`), graphed exactly — checked against the
   evaluator itself by rolling small formulas every possible way
