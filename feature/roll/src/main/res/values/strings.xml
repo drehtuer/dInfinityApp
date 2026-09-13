@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
   <string name="roll_formula_label">Formula</string>
+  <!-- The set a group's dice actually came from, when it is not the one asked for. -->
+  <string name="roll_group_fell_back">from %1$s</string>
   <!--
     Dice notation, not prose: the "-" is the subtraction operator the parser
     reads, and an en dash is not something the player could type back

@@ -108,13 +108,19 @@ private fun KeepTheScreenAwake() {
 private fun Outcome(state: RollState) {
   when (state) {
     is RollState.Settled ->
-      Text(
-        text = state.result.total.toString(),
-        style = MaterialTheme.typography.displayMedium,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.testTag(RollTestTags.TOTAL),
-      )
+      Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Text(
+          text = state.result.total.toString(),
+          style = MaterialTheme.typography.displayMedium,
+          fontWeight = FontWeight.Bold,
+          color = MaterialTheme.colorScheme.onBackground,
+          modifier = Modifier.testTag(RollTestTags.TOTAL),
+        )
+        ResultSheet(state.result)
+      }
 
     is RollState.Rolling ->
       Message(
@@ -222,4 +228,15 @@ object RollTestTags {
   const val ROLLING: String = "roll:rolling"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = "roll:invalid"
+
+  /** The breakdown under the total (`design/dInfinity.dc.html`, option 1f). */
+  const val SHEET: String = "roll:sheet"
+  const val SHEET_FORMULA: String = "roll:sheet:formula"
+
+  /** One group's subtotal, and one die as it landed. */
+  fun subtotalOf(groupId: Int): String = "roll:sheet:subtotal:$groupId"
+
+  fun fallbackOf(groupId: Int): String = "roll:sheet:fellback:$groupId"
+
+  fun dieAt(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex"
 }
