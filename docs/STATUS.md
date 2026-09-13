@@ -87,7 +87,9 @@ changelog.
   the clash is named, and one level of nesting is now checked from both ends.
   The collection format — the JSON saved rolls travel as — is built and tested
   in `core/collection`: read, written, and refused with every reason at once.
-  The screens that export and import over it are what is left.
+  Exporting is built on it: a group with its subgroups, or everything, handed
+  to whatever the player wants through the share sheet. Importing is what is
+  left.
 - **`ui/common` holds the screen furniture more than one screen needs**: the
   live-validated formula field with its squiggle, and the die silhouettes. The
   outcome graph's formula is editable now for the same reason it exists — two

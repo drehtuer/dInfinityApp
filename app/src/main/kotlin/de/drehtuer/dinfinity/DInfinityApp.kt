@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
@@ -194,6 +195,7 @@ private fun Saved(
   entry: NavBackStackEntry,
   navController: NavHostController,
 ) {
+  val context = LocalContext.current
   SavedScreen(
     presenter = remember(entry) { presenter() },
     groups = remember(entry) { groups() },
@@ -207,6 +209,10 @@ private fun Saved(
     },
     onEdit = { saved -> navController.navigate(editorRoute(saved.roll.id)) },
     onNew = { navController.navigate(editorRoute(null)) },
+    // The screen decides what is in the file; the app knows how to hand a
+    // file to another app, because the provider that does it is declared in
+    // this module's manifest.
+    onExport = { file -> CollectionSharing.share(context, file) },
     menu = { MenuTo(navController) },
   )
 }

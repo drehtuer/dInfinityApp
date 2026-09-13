@@ -253,6 +253,9 @@ rolls.
 ```
 
 - **Export** a group (with its subgroups) or everything via the share sheet.
+  The file is named after what is in it — `curse-of-strahd.dinfinity.json` —
+  and is a copy in the cache, handed over through a content URI granted for
+  one use. Nothing the app holds is made readable to do it.
 - **Import** from a file, from a pasted URL, or from a git repository (same
   sources as dice sets, see `docs/dice-sets.md`). A community can keep a
   repo of "stat blocks for monster manual X" this way.

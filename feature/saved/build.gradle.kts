@@ -10,6 +10,9 @@ dependencies {
   api(project(":core:notation"))
   api(project(":data"))
 
+  // The file saved rolls travel in, and the rules about what may be in it.
+  api(project(":core:collection"))
+
   // The formula field with its squiggle, shared with the tray and the graph.
   api(project(":ui:common"))
 

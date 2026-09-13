@@ -122,7 +122,6 @@ a roll to send its formula to the tray. Groups can be made, renamed, moved and
 deleted, from the switcher or from the editor — the same sheet in both places.
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
-- [ ] Export a group or everything as a collection through the share sheet; the format itself is built and tested in `core/collection`
 - [ ] Import from file, URL or repo, over the same reader
 - [ ] Import refuses a duplicate group name outright (`6e`), naming the clash — no merge, nothing deleted
 - [ ] The import-success screen (`9g`)

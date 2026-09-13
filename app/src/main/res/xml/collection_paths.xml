@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The one directory a collection on its way out of the app is copied into.
+  Nothing else in the app's storage is reachable through this provider: a
+  file-sharing provider that can see the database is a file-sharing provider
+  that will one day be asked for it.
+-->
+<paths>
+  <cache-path name="collections" path="collections/" />
+</paths>

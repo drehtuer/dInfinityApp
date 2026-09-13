@@ -472,6 +472,7 @@ favourites first, then by recent use — is SQL's, because it is what the list
 | a group in the switcher | `open` | which group's rolls are listed, and the stored active group |
 | a group's **…**, or a long press on it | `GroupPresenter.edit` | the group sheet opens on that group |
 | **New group**, at the foot of the switcher | `GroupPresenter.create` | the group sheet opens on a group that does not exist yet |
+| **⤴** | the export sheet | which of the two exports is offered: this group with its subgroups, or everything |
 | a row, tapped | `used`, then navigation | one more use, and the tray with that formula in its field |
 | a row, long-pressed | the editor | which screen is on, opened on that roll |
 | **New** | the editor | the same, opened on a roll that does not exist yet |
@@ -509,6 +510,29 @@ import writes without ever passing through the sheet.
 
 Unfiled is the one group with no **Delete**: it is where a deleted group's
 rolls go, so it has to be there to go to.
+
+### Exporting
+
+Two halves, split where Android begins. `CollectionExport` decides what goes
+into the file and what it is called — a group with its subgroups, or the lot;
+the name slugged, because a group called `D&D / 5e?` is a fine group and a poor
+path. `CollectionSharing`, in `app/`, hands that file to another application.
+
+It is in `app/` rather than in `feature/saved` because the `FileProvider` it
+needs is declared in the application's manifest and its authority is the
+application's id. The screen hands its file up exactly the way it hands up a
+request to navigate; what the app does with it is the app's.
+
+The share sheet rather than a file picker, because "export" is not one action:
+it is mailing a stat block to a player, saving it into Files, putting it in a
+chat, or pushing it to a repository the group keeps. One sheet offers all of
+them and the app does not have to have an opinion.
+
+The copy goes into `cacheDir/collections`, which is emptied first — the sheet
+offers one file, and a directory that only grows is a directory of everything
+anybody ever exported. `res/xml/collection_paths.xml` lets the provider see
+that directory and nothing else: a file-sharing provider that can reach the
+database is one that will eventually be asked for it.
 
 ### The saved-roll editor
 

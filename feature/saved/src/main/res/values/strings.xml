@@ -59,4 +59,11 @@
     <item quantity="one">Deleting it moves %1$d roll to Unfiled. Nothing is deleted.</item>
     <item quantity="other">Deleting it moves %1$d rolls to Unfiled. Nothing is deleted.</item>
   </plurals>
+  <!-- Exporting a collection (docs/dice-notation.md, "Export and import"). -->
+  <string name="export_title">Export</string>
+  <string name="export_note">A collection travels as one file: the names, the formulas and the marks, and nothing the app made of them.</string>
+  <!-- %1$s is the group's name. -->
+  <string name="export_group">“%1$s”, with any groups inside it</string>
+  <string name="export_everything">Everything</string>
+  <string name="export_open">Export</string>
 </resources>

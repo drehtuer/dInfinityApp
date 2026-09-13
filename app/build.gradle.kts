@@ -26,4 +26,9 @@ dependencies {
   implementation(project(":render:filament"))
   implementation(project(":render:headless"))
   implementation(project(":simulation:jolt"))
+
+  // FileProvider, for handing an exported collection to another app without
+  // making anything world-readable. The provider is declared in this module's
+  // manifest because its authority is the application's id.
+  implementation(libs.androidx.core.ktx)
 }
