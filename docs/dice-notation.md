@@ -264,8 +264,30 @@ rolls.
 - Every formula goes through the parser and limits above. Unknown dice set
   references are kept but flagged; icons are restricted to emoji or names
   from the built-in icon pack (no image files in collections).
-- Limits: 500 rolls and 50 groups per collection, 1 MiB file. Bigger files
-  are rejected with a message.
+- **Ids are slugs** — lower-case letters, digits, `-` and `_` — not UUIDs,
+  because a collection is a file people edit by hand: `"group": "thorin"` is
+  something a person can type where a UUID is something a person mistypes.
+  Exporting re-derives them from the group names, so exporting the same
+  collection twice gives the same file.
+- **Two groups in one collection may not share a name**, ignoring case. It is
+  the same rule the app itself keeps, so a file that could never be imported
+  says so when it is read rather than when it is refused.
+- **A `format` this version does not know is refused**, not read as best it
+  can. Reading a newer file anyway is how a format silently drops whatever the
+  newer version added.
+- A collection that fails is refused **entirely**, and the report lists
+  everything wrong with it rather than the first thing: somebody fixing a file
+  by hand wants the whole list, and each line says where in the file it is
+  (`rolls[3].formula`).
+- What travels is what somebody wrote — names, formulas, marks, groups and
+  favourites. What the app made of it does not: no use counts, no timestamps,
+  no seeds, no colour tags from the app's own palette, and no table pin naming
+  a package the other phone has never heard of.
+- Limits: 500 rolls and 50 groups per collection, 1 MiB file (counted in
+  bytes, not characters). Bigger files are rejected with a message, without
+  being parsed. Names are capped at 100 characters, icons at 16 and formulas
+  at 500 — limits on what a file can do to a screen rather than on what anyone
+  will write.
 
 ## Error messages
 

@@ -85,7 +85,9 @@ changelog.
   can be made, renamed, moved and deleted from one sheet the list and the
   editor both open; a name another group has is refused while it is typed and
   the clash is named, and one level of nesting is now checked from both ends.
-  Import/export is what is left.
+  The collection format — the JSON saved rolls travel as — is built and tested
+  in `core/collection`: read, written, and refused with every reason at once.
+  The screens that export and import over it are what is left.
 - **`ui/common` holds the screen furniture more than one screen needs**: the
   live-validated formula field with its squiggle, and the die silhouettes. The
   outcome graph's formula is editable now for the same reason it exists — two

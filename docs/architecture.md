@@ -47,6 +47,7 @@ core/
   notation/          Formula parser + evaluator (docs/dice-notation.md)
   probability/       Exact PMF computation (docs/probability.md)
   stats/             Statistics aggregation logic
+  collection/        The saved-roll collection format: read, written, validated (docs/dice-notation.md)
 dicesets/
   format/            TOML schema, validator, table definitions (docs/dice-sets.md, docs/tables.md)
   install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage
@@ -79,6 +80,15 @@ Ten screens, eight `feature/` modules: statistics, history and sessions are one
 module because they are one screen group over one set of data
 (`design/dInfinity.dc.html`, options 1w, 1x, 6c) and splitting them would only
 split the queries.
+
+`core/collection` is the saved-roll collection format, and it lives in `core/`
+rather than in `feature/saved` for the same reason `dicesets/format` is not in
+`feature/sets`: a file from a stranger is validated in one place, by code that
+cannot write anything. Its shape is the import rule made structural —
+`CollectionReader` hands back either a collection that is known to be sound or
+a list of reasons it is not, never something in between, so whatever imports it
+has no judgement left to make. That is how "an import can never damage what is
+already there" stops being something every screen must remember.
 
 `ui/common` is **not** a feature and is not a place for anything that is
 merely shared. Nothing in it knows what screen it is on, and it depends on
