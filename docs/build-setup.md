@@ -416,7 +416,6 @@ Notes:
   the adb key the phone authorises and the remembered address, so you approve
   the connection once instead of on every container start.
 
-
 ## Static analysis and coverage
 
 ```sh
