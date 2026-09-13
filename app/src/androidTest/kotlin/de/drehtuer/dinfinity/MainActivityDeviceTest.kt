@@ -4,9 +4,8 @@ import android.os.Build
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import de.drehtuer.dinfinity.navigation.Destination
+import de.drehtuer.dinfinity.feature.roll.RollTestTags
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -29,15 +28,19 @@ class MainActivityDeviceTest {
 
   @Test
   fun launchesOnTheRollScreen() {
-    compose.onNodeWithTag("screen:${Destination.Roll.route}").assertIsDisplayed()
-    compose.onNodeWithText(Destination.Roll.title).assertIsDisplayed()
+    // The real screen, not the placeholder the graph shows where there is
+    // nothing to build a presenter with: on a device there is, so the tray is
+    // what has to be on screen.
+    compose.onNodeWithTag(RollTestTags.SCREEN).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.TRAY).assertIsDisplayed()
   }
 
   @Test
   fun survivesActivityRecreation() {
     compose.activityRule.scenario.recreate()
     compose.waitForIdle()
-    compose.onNodeWithTag("screen:${Destination.Roll.route}").assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.SCREEN).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.TRAY).assertIsDisplayed()
   }
 
   /**
