@@ -106,35 +106,48 @@ leaving the screen gives all three back (decision 49).
 
 ### Navigation
 
-Every screen is a `Destination`, and the graph has all ten from the start so
-that adding one is a change in a single place. `Roll` is home.
+Every screen is a `Destination`, and the graph has had all ten from the start
+so that adding one is a change in a single place. `Roll` is home. The eleventh
+destination is the **menu**, which lists the other ten and is not in the list
+itself (`design/dInfinity.dc.html`, option `1q`).
 
 ```mermaid
 stateDiagram-v2
     [*] --> Roll
     Roll: Roll (home)
+    Menu: Menu
     Graph: Outcome graph
-    Settings: Settings
-    Other: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer
+    Screen: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer · Settings
 
     Roll --> Graph: See the odds
+    Roll --> Menu: the menu button
+    Graph --> Menu: the menu button
+    Screen --> Menu: the menu button
+    Menu --> Roll: choose Roll
+    Menu --> Graph: choose the graph
+    Menu --> Screen: choose any of them
     Graph --> Roll: system back
-    Other --> Settings: the placeholder's Settings row
-    Settings --> Other: system back
-    Other --> Roll: system back
+    Screen --> Roll: system back
+    Menu --> Roll: system back
     Roll --> [*]: system back leaves the app
 ```
 
-That diagram is the honest one rather than the intended one, and the gap is
-worth naming: **the only two in-app controls that navigate anywhere are the
-roll screen's "See the odds" and the placeholder screens' Settings row.** Every
-other move between screens is the system back gesture. The menu that reaches
-all ten (`design/dInfinity.dc.html`, option `1q`) is Step 4.10, and until it
-exists most screens can only be left, not entered.
+**Every screen is now reachable, and every one of them by the same control.**
+The menu button sits in the top corner of each, so wherever a player is, every
+other screen is two presses away. Choosing a row takes the menu *off* the back
+stack with it, so back from what it opened goes where the menu was opened
+from — a menu you have to press back through twice reads as a detour. Choosing
+the screen you are already on does not stack a second copy of it.
 
-Nothing is *undefined*, though. `NavHost` answers back on every destination,
-`Destination.home` is where the app opens, and a route that does not resolve
-cannot be reached — `Destination.ofRoute` is the only way in and it is total.
+Nothing is undefined, and nothing is unreachable. `NavHost` answers back on
+every destination, `Destination.home` is where the app opens, and a route that
+does not resolve cannot be reached — `Destination.ofRoute` is the only way in
+and it is total.
+
+The menu button is **handed to each screen rather than built by it**. A screen
+that knew what the menu was would be one feature module depending on another,
+and the navigation graph belongs to `:app`. Each screen takes a `menu`
+composable slot and draws it where it has room.
 
 **One destination is opened with arguments, and it is the first.** The outcome
 graph is about a formula, and after a roll it also marks the total that came
@@ -143,7 +156,7 @@ that from spreading trouble:
 
 - **Every argument is optional and defaults to empty.** A destination that
   could only be opened with an argument is a destination the menu could not
-  open, and the menu is what Step 4.10 is for. A bare `graph` is a graph with
+  open, and the menu opens every one of them. A bare `graph` is a graph with
   no formula, which says where a formula comes from.
 - **The formula is URI-encoded on the way in.** `+` and `/` are characters a
   formula is made of and a URI reserves; unencoded, `3d6 + 4` arrives as
@@ -403,17 +416,13 @@ why the two are not built the same way (decision 49).
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
 | the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
-| a placeholder's **Settings →** | `navigate(Settings)` | which screen is on |
+| the menu button, on every screen | `navigate(Menu)` | which screen is on |
 
 The power-saving row is the one setting that does not take effect where it is
 pressed. It is read when the roll screen opens and not watched, because a
 renderer appearing or vanishing under a roll in progress is not a setting
 taking effect — it is a bug (`docs/physics-and-rendering.md`, "Power-saving
 mode").
-
-The second row is scaffolding and is labelled as such in the code: it exists
-so that a setting is reachable on a device at all before the menu is built,
-and it goes when `PlaceholderScreen` does (Step 4.10).
 
 ## Data flow of a roll
 

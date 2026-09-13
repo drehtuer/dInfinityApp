@@ -184,7 +184,12 @@ Design `6c`. Spec: `docs/statistics.md`.
 
 Design `1q`, `1y`, `2d`. Spec: `README.md`, `docs/architecture.md`.
 
-- [ ] Full-screen menu (`1q`), grouped Play / Look back / Customise / App. **This is the only thing standing between the app and a connected navigation graph**: today the two in-app controls that navigate anywhere are the roll screen's "See the odds" and the placeholder screens' Settings row, and every other move between screens is the system back gesture (`docs/architecture.md`, "Screens and the states behind them")
+The menu is built and **the navigation graph is connected**: every screen
+carries the same menu button and the menu reaches every screen
+(`docs/architecture.md`, "Screens and the states behind them").
+
+- [ ] Two rows the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll) and "Saved-roll statistics" (4.7). Decide whether the first is a screen or belongs in the README
+- [ ] The menu's header shows the active session beside the app's name in the design; that waits on sessions (4.9)
 - [ ] Appearance (System / Light / Dark), shake, haptics, sound, rounding default, default set, table, session — the accent picker and the power-saving switch are already there and are the pattern the rest follow
 - [ ] Replace the single field on `DInfinityApplication` with a real container once more than settings hangs off it
 - [ ] Version and repository link (`2d`)

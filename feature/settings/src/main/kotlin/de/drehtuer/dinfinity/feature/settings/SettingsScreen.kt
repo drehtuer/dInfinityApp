@@ -46,6 +46,7 @@ fun SettingsScreen(
   onAccentSelected: (AccentColor) -> Unit,
   modifier: Modifier = Modifier,
   onPowerSavingChanged: (Boolean) -> Unit = {},
+  menu: @Composable () -> Unit = {},
 ) {
   Column(
     modifier =
@@ -61,11 +62,18 @@ fun SettingsScreen(
         .testTag(SettingsTestTags.SCREEN),
     verticalArrangement = Arrangement.spacedBy(24.dp),
   ) {
-    Text(
-      text = stringResource(R.string.settings_title),
-      style = MaterialTheme.typography.headlineMedium,
-      color = MaterialTheme.colorScheme.onBackground,
-    )
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = stringResource(R.string.settings_title),
+        style = MaterialTheme.typography.headlineMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+      )
+      menu()
+    }
     AccentSection(selected = settings.accentColor, onAccentSelected = onAccentSelected)
     PowerSection(on = settings.powerSaving, onChanged = onPowerSavingChanged)
   }

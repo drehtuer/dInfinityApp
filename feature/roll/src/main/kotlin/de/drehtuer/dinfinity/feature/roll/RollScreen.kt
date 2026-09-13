@@ -40,6 +40,11 @@ import de.drehtuer.dinfinity.core.model.Rounding
  * formula means, whether it fits, what the dice came to and what that adds up
  * to are all settled before a pixel is placed.
  *
+ * @param menu the way to the menu, drawn in the top corner over the tray. It
+ *   is handed in because the navigation graph is `:app`'s and a screen that
+ *   knew about another screen would be a feature module depending on one
+ *   (`docs/architecture.md`, Modules).
+ *
  * Not all of the screen's pieces yet: the squiggle under a bad formula, the
  * power-saving path and the first-launch state are still to come
  * (`docs/TODO.md`, Step 4.1).
@@ -51,8 +56,8 @@ fun RollScreen(
   firstLaunch: Boolean = false,
   onWelcomeSeen: () -> Unit = {},
   onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
+  menu: @Composable () -> Unit = {},
 ) {
-  val state = presenter.state
   ShakeToRoll(presenter)
   KeepTheScreenAwake()
   LockTheOrientation()
@@ -71,42 +76,25 @@ fun RollScreen(
       DiceTray(driver = presenter.tray, geometry = presenter.geometry, modifier = Modifier.fillMaxSize())
     }
 
-    Column(
+    Controls(
+      presenter = presenter,
+      onSeeTheOdds = onSeeTheOdds,
+      modifier = Modifier.align(Alignment.BottomCenter),
+    )
+
+    // Over the tray rather than in a bar above it: the tray is the screen, and
+    // a bar would be a strip of chrome taken off the table. Handed in rather
+    // than built here, so this screen does not have to know what a menu is —
+    // which would be one feature module depending on another
+    // (`design/dInfinity.dc.html`, option 1q).
+    Box(
       modifier =
         Modifier
-          .fillMaxWidth()
-          .align(Alignment.BottomCenter)
+          .align(Alignment.TopEnd)
           .safeDrawingPadding()
-          .padding(24.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
-      horizontalAlignment = Alignment.CenterHorizontally,
+          .padding(8.dp),
     ) {
-      Outcome(state, formula = presenter.text, onRound = presenter::round, onSuggestion = presenter::type)
-      // The odds for the formula in the field, with the throw that just landed
-      // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
-      // throw the table refuses too: that is exactly when "what would it have
-      // been" is the only answer there is (`docs/probability.md`).
-      if (state is RollState.Ready || state is RollState.TooMany || state is RollState.Settled) {
-        SeeTheOdds(
-          onClick = { onSeeTheOdds(presenter.text, (state as? RollState.Settled)?.result?.total) },
-        )
-      }
-      PickerRow(
-        dice = presenter.pickable,
-        counts = presenter.counts,
-        onAdd = presenter::add,
-        onRemove = presenter::remove,
-      )
-      Formula(
-        text = presenter.text,
-        wrong = state is RollState.Invalid || state is RollState.TooMany,
-        onChange = presenter::type,
-      )
-      ThrowButton(
-        enabled = state is RollState.Ready || state is RollState.Settled,
-        settled = state is RollState.Settled,
-        onRoll = { presenter.roll() },
-      )
+      menu()
     }
 
     if (firstLaunch) FirstLaunch(presenter, onWelcomeSeen)
@@ -150,6 +138,58 @@ private fun FirstLaunch(
 
 /** What the first-launch screen offers to throw. One die, and the famous one. */
 private const val FIRST_ROLL = "1d20"
+
+/**
+ * Everything below the tray: what the roll came to, the picker, the field and
+ * the button.
+ *
+ * One stack at the bottom of the screen, because the tray is the screen and
+ * these sit on it rather than beside it.
+ */
+@Composable
+private fun Controls(
+  presenter: RollPresenter,
+  onSeeTheOdds: (formula: String, total: Long?) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val state = presenter.state
+  Column(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .safeDrawingPadding()
+        .padding(24.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+    horizontalAlignment = Alignment.CenterHorizontally,
+  ) {
+    Outcome(state, formula = presenter.text, onRound = presenter::round, onSuggestion = presenter::type)
+    // The odds for the formula in the field, with the throw that just landed
+    // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
+    // throw the table refuses too: that is exactly when "what would it have
+    // been" is the only answer there is (`docs/probability.md`).
+    if (state is RollState.Ready || state is RollState.TooMany || state is RollState.Settled) {
+      SeeTheOdds(
+        onClick = { onSeeTheOdds(presenter.text, (state as? RollState.Settled)?.result?.total) },
+      )
+    }
+    PickerRow(
+      dice = presenter.pickable,
+      counts = presenter.counts,
+      onAdd = presenter::add,
+      onRemove = presenter::remove,
+    )
+    Formula(
+      text = presenter.text,
+      wrong = state is RollState.Invalid || state is RollState.TooMany,
+      onChange = presenter::type,
+    )
+    ThrowButton(
+      enabled = state is RollState.Ready || state is RollState.Settled,
+      settled = state is RollState.Settled,
+      onRoll = { presenter.roll() },
+    )
+  }
+}
 
 /**
  * Holds the screen on while the tray is up.

@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 fun GraphScreen(
   presenter: GraphPresenter,
   modifier: Modifier = Modifier,
+  menu: @Composable () -> Unit = {},
 ) {
   Column(
     modifier =
@@ -50,13 +51,20 @@ fun GraphScreen(
         .testTag(GraphTestTags.SCREEN),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    Text(
-      text = presenter.text.ifBlank { stringResource(R.string.graph_no_formula) },
-      style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
-      color = MaterialTheme.colorScheme.onBackground,
-      modifier = Modifier.testTag(GraphTestTags.FORMULA),
-    )
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = presenter.text.ifBlank { stringResource(R.string.graph_no_formula) },
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.weight(1f).testTag(GraphTestTags.FORMULA),
+      )
+      menu()
+    }
 
     when (val state = presenter.state) {
       GraphState.Empty ->

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import de.drehtuer.dinfinity.core.model.AccentColor
@@ -15,10 +16,12 @@ import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.graph.GraphTestTags
+import de.drehtuer.dinfinity.feature.settings.MenuTestTags
 import de.drehtuer.dinfinity.feature.settings.SettingsTestTags
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -41,17 +44,66 @@ class DInfinityAppTest {
   }
 
   @Test
-  fun `settings can be reached and reports the accent chosen there`() {
+  fun `the menu reaches every screen the app has`() {
+    // The graph has had all ten destinations from the first commit; what it
+    // did not have was a way in to any of them.
+    compose.setContent { DInfinityTheme { DInfinityApp() } }
+
+    compose.onNodeWithTag(MenuTestTags.BUTTON).performClick()
+
+    compose.onNodeWithTag(MenuTestTags.SCREEN).assertIsDisplayed()
+    Destination.inTheMenu.forEach { destination ->
+      compose.onNodeWithTag(MenuTestTags.entryOf(destination.route)).performScrollTo().assertIsDisplayed()
+    }
+  }
+
+  @Test
+  fun `settings can be reached from the menu and reports the accent chosen there`() {
     val chosen = mutableListOf<AccentColor>()
     compose.setContent {
       DInfinityTheme {
         DInfinityApp(settings = AppSettings(), onAccentSelected = { chosen += it })
       }
     }
-    compose.onNodeWithTag("placeholder:open-settings").performClick()
+
+    compose.onNodeWithTag(MenuTestTags.BUTTON).performClick()
+    compose.onNodeWithTag(MenuTestTags.entryOf(Destination.Settings.route)).performScrollTo().performClick()
+
     compose.onNodeWithTag(SettingsTestTags.SCREEN).assertIsDisplayed()
-    compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Amber)).performClick()
+    compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Amber)).performScrollTo().performClick()
     assertEquals(listOf(AccentColor.Amber), chosen)
+  }
+
+  @Test
+  fun `choosing a screen takes the menu off the way back`() {
+    // A menu you have to press back through twice is a detour: back from what
+    // the menu opened goes where the menu was opened from.
+    lateinit var navigation: NavHostController
+    compose.setContent {
+      navigation = rememberNavController()
+      DInfinityTheme { DInfinityApp(navController = navigation) }
+    }
+    compose.onNodeWithTag(MenuTestTags.BUTTON).performClick()
+
+    compose.onNodeWithTag(MenuTestTags.entryOf(Destination.Settings.route)).performScrollTo().performClick()
+    compose.waitForIdle()
+
+    assertEquals(Destination.Roll.route, compose.runOnIdle { navigation.previousBackStackEntry?.destination?.route })
+  }
+
+  @Test
+  fun `choosing the screen you are on does not stack a second copy of it`() {
+    lateinit var navigation: NavHostController
+    compose.setContent {
+      navigation = rememberNavController()
+      DInfinityTheme { DInfinityApp(navController = navigation) }
+    }
+
+    compose.onNodeWithTag(MenuTestTags.BUTTON).performClick()
+    compose.onNodeWithTag(MenuTestTags.entryOf(Destination.Roll.route)).performScrollTo().performClick()
+    compose.waitForIdle()
+
+    assertNull(compose.runOnIdle { navigation.previousBackStackEntry })
   }
 
   @Test
@@ -109,8 +161,9 @@ class DInfinityAppTest {
         DInfinityApp(settings = AppSettings(accentColor = AccentColor.Violet))
       }
     }
-    compose.onNodeWithTag("placeholder:open-settings").performClick()
-    compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Violet)).assertIsSelected()
+    compose.onNodeWithTag(MenuTestTags.BUTTON).performClick()
+    compose.onNodeWithTag(MenuTestTags.entryOf(Destination.Settings.route)).performScrollTo().performClick()
+    compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Violet)).performScrollTo().assertIsSelected()
   }
 
   @Test

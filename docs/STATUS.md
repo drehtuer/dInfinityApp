@@ -75,6 +75,9 @@ changelog.
   the first navigation in the app to carry an argument. The formula cannot yet
   be edited there — that wants the roll screen's squiggling field somewhere
   both screens can reach.
+- **The navigation graph is connected.** Step 4.10's menu lists every screen
+  and every screen carries the button that opens it, so nothing is reachable
+  only by not having left it yet. The placeholders are still placeholders.
 - **The screens' state machines are written down.** `docs/architecture.md` now
   carries the navigation graph, `RollState`, the shake, the tray and the
   Settings screen as diagrams and control tables, so a transition nobody

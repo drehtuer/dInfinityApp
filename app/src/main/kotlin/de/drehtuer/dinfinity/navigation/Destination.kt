@@ -11,8 +11,18 @@ package de.drehtuer.dinfinity.navigation
 enum class Destination(
   val route: String,
   val title: String,
-  /** The section of the menu this screen sits in. */
-  val group: MenuGroup,
+  /**
+   * One line saying what the screen is for, shown under its name in the menu.
+   *
+   * English here beside [title], which is where the English already was.
+   * Extracting both is Step 6's localisation pass (`docs/TODO.md`).
+   */
+  val description: String,
+  /**
+   * The section of the menu this screen sits in, or `null` for one that is
+   * not in the menu — which is the menu.
+   */
+  val group: MenuGroup?,
   /**
    * What this screen is opened *with*, as query arguments on its route.
    *
@@ -23,19 +33,28 @@ enum class Destination(
    */
   val arguments: List<String> = emptyList(),
 ) {
-  Roll("roll", "Roll", MenuGroup.Play),
-  Graph("graph", "Outcome graph", MenuGroup.Play, arguments = listOf(GraphArgument.FORMULA, GraphArgument.TOTAL)),
-  SavedRolls("saved", "Saved rolls", MenuGroup.Play),
+  Roll("roll", "Roll", "The tray. Shake it, or pick dice and press Roll.", MenuGroup.Play),
+  Graph(
+    "graph",
+    "Outcome graph",
+    "Exact odds before you roll, with the mean and σ.",
+    MenuGroup.Play,
+    arguments = listOf(GraphArgument.FORMULA, GraphArgument.TOTAL),
+  ),
+  SavedRolls("saved", "Saved rolls", "Groups per game and per character.", MenuGroup.Play),
 
-  Statistics("stats", "Statistics", MenuGroup.LookBack),
-  History("history", "History", MenuGroup.LookBack),
-  Sessions("sessions", "Sessions", MenuGroup.LookBack),
+  Statistics("stats", "Statistics", "Natural highs and lows, averages — per die and per set.", MenuGroup.LookBack),
+  History("history", "History", "Every roll with its breakdown. No replays: a roll is a roll.", MenuGroup.LookBack),
+  Sessions("sessions", "Sessions", "Buckets for statistics, and where collections are imported.", MenuGroup.LookBack),
 
-  DiceSets("sets", "Dice sets", MenuGroup.Customise),
-  Tables("tables", "Table", MenuGroup.Customise),
-  FaceDesigner("designer", "Face designer", MenuGroup.Customise),
+  DiceSets("sets", "Dice sets", "What is installed, and how to install more.", MenuGroup.Customise),
+  Tables("tables", "Table", "Felt, wood, glass or your own photo. Same tray.", MenuGroup.Customise),
+  FaceDesigner("designer", "Face designer", "Draw die faces with a finger, then roll them.", MenuGroup.Customise),
 
-  Settings("settings", "Settings", MenuGroup.App),
+  Settings("settings", "Settings", "Appearance, power saving, haptics, rounding.", MenuGroup.App),
+
+  /** Everything above, in a list. Not in the menu, being the menu. */
+  Menu("menu", "dInfinity", "", group = null),
   ;
 
   /**
@@ -54,6 +73,9 @@ enum class Destination(
 
   companion object {
     val home: Destination = Roll
+
+    /** Every screen the menu lists, in the order it lists them. */
+    val inTheMenu: List<Destination> get() = entries.filter { it.group != null }
 
     /**
      * The destination [route] names, or `null` for a route nothing serves.
