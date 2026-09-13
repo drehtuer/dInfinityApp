@@ -17,5 +17,6 @@ dependencies {
   implementation(libs.filament.android)
   implementation(libs.filamat.android)
 
+  testImplementation(project(":test-fixtures"))
   androidTestImplementation(project(":test-fixtures"))
 }

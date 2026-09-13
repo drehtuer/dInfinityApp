@@ -55,11 +55,13 @@ import com.google.android.filament.Renderer as FilamentFrameRenderer
  */
 @Suppress("TooManyFunctions")
 class FilamentStage(
-  val width: Int,
-  val height: Int,
+  override val width: Int,
+  override val height: Int,
   surface: Any? = null,
   postProcessing: Boolean = true,
-) : AutoCloseable {
+  private val atlases: (String) -> Texture? = { null },
+) : Stage,
+  AutoCloseable {
   private val engine: Engine = Engine.create()
   private val frames: FilamentFrameRenderer = engine.createRenderer()
   private val scene: Scene = engine.createScene()
@@ -105,7 +107,7 @@ class FilamentStage(
   }
 
   /** Points the camera where [shot] says, for this viewport. */
-  fun aim(shot: CameraShot) {
+  override fun aim(shot: CameraShot) {
     camera.setProjection(
       shot.verticalFieldOfViewDegrees,
       width.toDouble() / height,
@@ -134,20 +136,19 @@ class FilamentStage(
    * other side keeps the shadowed faces from going to black, where a number
    * cannot be read (`docs/physics-and-rendering.md`).
    */
-  fun light() {
+  override fun light() {
     addLight(intensity = KEY_LUX, direction = KEY_DIRECTION, shadows = true)
     addLight(intensity = FILL_LUX, direction = FILL_DIRECTION, shadows = false)
   }
 
-  /** Puts one mesh in the scene and hands back the entity it was given. */
-  fun add(
+  override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,
-    atlas: Texture? = null,
   ): Int {
     // Nought is Filament's word for "no entity", and a mesh with nothing in it
     // is not worth one.
-    if (mesh.triangleCount == 0 || mesh.vertexCount == 0) return 0
+    if (mesh.triangleCount == 0 || mesh.vertexCount == 0) return Stage.NOTHING
+    val atlas = parameters.texturePath?.let(atlases)
     val vertices = verticesOf(mesh)
     val triangles = indicesOf(mesh)
     val instance = instanceOf(parameters, atlas)
@@ -177,7 +178,7 @@ class FilamentStage(
    * arithmetic of turning a die's position and orientation into a matrix
    * lives — on the JVM, where it is tested.
    */
-  fun place(
+  override fun place(
     entity: Int,
     matrix: FloatArray,
   ) {
@@ -185,15 +186,17 @@ class FilamentStage(
     transforms.setTransform(transforms.getInstance(entity), matrix)
   }
 
+  /** Draws one frame. False when Filament asked to skip it. */
+  override fun draw(): Boolean = draw(capture = null)
+
   /**
-   * Draws one frame. False when Filament asked to skip it.
+   * The same, copying the pixels that were drawn into [capture].
    *
-   * @param capture where to copy the pixels that were drawn, or null. Reading
-   *   them back means waiting for the GPU, which no real frame should ever do
-   *   — it is how a test on a device can ask whether anything was drawn at
-   *   all, and nothing else uses it.
+   * Reading them back means waiting for the GPU, which no real frame should
+   * ever do — it is how a test on a device can ask whether anything was drawn
+   * at all, and nothing else uses it.
    */
-  fun draw(capture: ByteBuffer? = null): Boolean {
+  fun draw(capture: ByteBuffer?): Boolean {
     if (!frames.beginFrame(swapChain, 0)) return false
     frames.render(view)
     capture?.let {
@@ -218,7 +221,7 @@ class FilamentStage(
    * and a roll that left its dice behind would add eighty more to the next
    * one.
    */
-  fun clear() {
+  override fun clear() {
     entities.forEach {
       scene.removeEntity(it)
       engine.destroyEntity(it)

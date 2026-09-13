@@ -1,0 +1,201 @@
+package de.drehtuer.dinfinity.render.filament
+
+import de.drehtuer.dinfinity.core.model.DieInstance
+import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.fixtures.StandardDice
+import de.drehtuer.dinfinity.render.headless.BodyTransform
+import de.drehtuer.dinfinity.render.headless.RenderFrame
+import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.api.Vector3
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import kotlin.math.PI
+
+/**
+ * What the renderer decides, asked where it is decided.
+ *
+ * None of this needs a GPU, which is the point: a device can show that a frame
+ * was drawn, but only a test like this can say that the dice in it were the
+ * right size, that the camera moved to them when they settled, and that a
+ * second roll did not arrive on top of the first
+ * (`docs/architecture.md`, decision 40).
+ */
+class FilamentDiceRendererTest {
+  private val geometry = TableGeometry.referenceDevice()
+  private val look = TableLook(id = "plain", name = "Plain")
+  private val stage = FakeStage()
+  private val renderer = FilamentDiceRenderer(stage)
+
+  @Test
+  fun `a throw puts a tray, its rim and every die in the scene`() {
+    renderer.begin(spec(), geometry, look)
+
+    assertTrue("a scene with no lights in it is a black picture", stage.lit)
+    assertEquals("a floor, its walls, its rim and three dice", TRAY_PARTS + 3, stage.added.size)
+  }
+
+  @Test
+  fun `each die is drawn at the size the capacity rule picked`() {
+    val scale = 0.6
+    renderer.begin(spec(scale), geometry, look)
+
+    spec(scale).dice.forEachIndexed { index, instance ->
+      val reach = ShapeGeometry.boundingRadiusPerSize(instance.die.shape) * instance.die.material.sizeMm * scale
+      val drawn =
+        stage.added[TRAY_PARTS + index]
+          .first.positions
+          .take(3)
+      val corner = Vector3(drawn[0].toDouble(), drawn[1].toDouble(), drawn[2].toDouble())
+
+      assertEquals("${instance.die.id} is drawn the wrong size", reach, corner.length, TOLERANCE)
+    }
+  }
+
+  @Test
+  fun `the tray takes the table's colours and the rim takes no texture`() {
+    val felt =
+      look.copy(
+        floorTexturePath = "tables/felt.png",
+        wallTexturePath = "tables/oak.png",
+        floorColorArgb = 0xFF1F5E3A.toInt(),
+      )
+
+    renderer.begin(spec(), geometry, felt)
+
+    assertEquals(Colour.of(felt.floorColorArgb), stage.added[0].second.colour)
+    assertEquals("tables/felt.png", stage.added[0].second.texturePath)
+    assertEquals("tables/oak.png", stage.added[1].second.texturePath)
+    assertFalse("six millimetres of rim is not where anybody looks", stage.added[2].second.textured)
+  }
+
+  @Test
+  fun `a roll starts with the whole tray in shot`() {
+    renderer.begin(spec(), geometry, look)
+
+    assertEquals(TrayCamera.framingTheTray(geometry, ASPECT), stage.shots.single())
+  }
+
+  @Test
+  fun `every die is put where the frame says, blended`() {
+    renderer.begin(spec(), geometry, look)
+    val moving =
+      RenderFrame(
+        previous = List(3) { at(it, Vector3.Zero) },
+        current = List(3) { at(it, Vector3(10.0, 0.0, 0.0)) },
+        interpolation = 0.5,
+      )
+
+    renderer.show(moving)
+
+    assertEquals("a frame was not drawn", 1, stage.frames)
+    stage.placed.values.forEach {
+      assertEquals("a die halfway between two steps is halfway", 5.0f, it[TRANSLATION_X], FLOAT_TOLERANCE)
+    }
+  }
+
+  @Test
+  fun `settling moves the camera onto the dice, framing all of each one`() {
+    // Framing die centres would clip whichever die is at the edge of the
+    // group, which is the one a player is most likely to be looking at.
+    renderer.begin(spec(), geometry, look)
+    val rest = RenderFrame.still(List(3) { at(it, Vector3(it * 40.0 - 40.0, 0.0, 8.0)) })
+
+    renderer.settled(rest)
+
+    val biggest = spec().dice.maxOf { ShapeGeometry.boundingRadiusPerSize(it.die.shape) * it.die.material.sizeMm }
+    assertEquals(
+      TrayCamera.framingTheDice(rest.current.map { it.position }, biggest, geometry, ASPECT),
+      stage.shots.last(),
+    )
+  }
+
+  @Test
+  fun `a die the stage would not take is not moved either`() {
+    // `add` hands back "no entity" for a mesh with nothing in it, and nought
+    // is not an entity anything may be done to.
+    stage.refuse = GpuMesh.of(DieMesh.of(StandardDice.d6.shape).faces, scale = radiusOf(StandardDice.d6))
+    renderer.begin(spec(), geometry, look)
+
+    renderer.show(RenderFrame.still(List(3) { at(it, Vector3.Zero) }))
+
+    assertFalse("the stage refused this die and it was moved anyway", stage.placed.containsKey(Stage.NOTHING))
+  }
+
+  @Test
+  fun `a second roll does not land on top of the first`() {
+    renderer.begin(spec(), geometry, look)
+    val first = stage.added.size
+
+    renderer.begin(spec(), geometry, look)
+
+    assertEquals("one roll's dice were left in the scene for the next", first, stage.added.size)
+    assertEquals(2, stage.clears)
+  }
+
+  @Test
+  fun `the end of a roll takes it out of the scene`() {
+    renderer.begin(spec(), geometry, look)
+
+    renderer.end()
+
+    assertTrue(stage.added.isEmpty())
+    // And nothing is left pointing at entities that have gone.
+    renderer.show(RenderFrame.still(List(3) { at(it, Vector3.Zero) }))
+    assertTrue(stage.placed.isEmpty())
+  }
+
+  @Test
+  fun `a throw with no dice in it still draws the tray`() {
+    renderer.begin(spec().copy(dice = emptyList()), geometry, look)
+
+    assertEquals(TRAY_PARTS, stage.added.size)
+    renderer.settled(RenderFrame.still(emptyList()))
+    assertEquals(
+      "with nothing to look at, the tray is what is framed",
+      TrayCamera.framingTheTray(geometry, ASPECT),
+      stage.shots.last(),
+    )
+  }
+
+  private fun at(
+    index: Int,
+    position: Vector3,
+  ): BodyTransform =
+    BodyTransform(
+      index = index,
+      position = position,
+      orientation = Quaternion.about(Vector3(0.0, 0.0, 1.0), PI / 4),
+    )
+
+  private fun radiusOf(die: de.drehtuer.dinfinity.core.model.Die): Double =
+    ShapeGeometry.boundingRadiusPerSize(die.shape) * die.material.sizeMm
+
+  private fun spec(scale: Double = 1.0): ThrowSpec =
+    ThrowSpec(
+      dice =
+        listOf(StandardDice.d20, StandardDice.d6, StandardDice.d4).mapIndexed { index, die ->
+          DieInstance(index = index, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = die)
+        },
+      geometry = geometry,
+      table = look,
+      seed = 1L,
+      dieScale = scale,
+    )
+
+  private companion object {
+    /** The floor, the walls and the rim. */
+    const val TRAY_PARTS = 3
+
+    const val ASPECT = 320.0 / 640.0
+    const val TOLERANCE = 1e-6
+    const val FLOAT_TOLERANCE = 1e-4f
+
+    /** Where the position sits in a column-major 4x4. */
+    const val TRANSLATION_X = 12
+  }
+}

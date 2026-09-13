@@ -1,6 +1,6 @@
 package de.drehtuer.dinfinity.render.filament
 
-import com.google.android.filament.Texture
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
@@ -22,14 +22,12 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * two simulation steps are all decided elsewhere and tested on a JVM; what is
  * here is the order those are put together in.
  *
- * @param atlases where a die's artwork comes from, by the path its set names.
- *   Nothing supplies one yet — textures are decoded where a package is
- *   installed, which is 4.4 — so dice are drawn in their own colours until it
- *   does, and the seam is here so that arriving is a change of one argument.
+ * Every line of it is a decision and none of it is a GPU, which is why it
+ * takes a [Stage] rather than a Filament one: the same seam, and the same
+ * reason, as the physics bridge's `PhysicsWorld`.
  */
 class FilamentDiceRenderer(
-  private val stage: FilamentStage,
-  private val atlases: (String) -> Texture? = { null },
+  private val stage: Stage,
 ) : Renderer {
   private var dice: List<Int> = emptyList()
   private var geometry: TableGeometry? = null
@@ -89,7 +87,7 @@ class FilamentDiceRenderer(
     frame.blended().forEach { body ->
       // Nought is Filament's word for "no entity", which is what a die with
       // nothing to draw was given.
-      dice.getOrNull(body.index)?.takeIf { it != NOTHING }?.let { entity ->
+      dice.getOrNull(body.index)?.takeIf { it != Stage.NOTHING }?.let { entity ->
         stage.place(entity, Transform.of(body.position, body.orientation))
       }
     }
@@ -102,33 +100,27 @@ class FilamentDiceRenderer(
     val tray = TrayMesh.of(geometry, look)
     val floor = DiceMaterial.floorOf(look)
     val wall = DiceMaterial.wallOf(look)
-    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Floor)), floor, look.floorTexturePath?.let(atlases))
-    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Wall)), wall, look.wallTexturePath?.let(atlases))
+    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Floor)), floor)
+    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Wall)), wall)
     // The rim is the wall seen end-on, so it takes the wall's colour and none
     // of its texture: six millimetres is not where anybody looks.
-    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Rim)), wall)
+    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Rim)), wall.copy(texturePath = null))
   }
 
   private fun addDie(
-    die: de.drehtuer.dinfinity.core.model.Die,
+    die: Die,
     scale: Double,
   ): Int =
     stage.add(
       mesh = GpuMesh.of(DieMesh.of(die.shape).faces, scale = radiusOf(die, scale)),
       parameters = DiceMaterial.dieOf(die.material, die.texturePath),
-      atlas = die.texturePath?.let(atlases),
     )
 
   /** How far a die of this shape reaches from its middle, at the throw's scale. */
   private fun radiusOf(
-    die: de.drehtuer.dinfinity.core.model.Die,
+    die: Die,
     scale: Double,
   ): Double = ShapeGeometry.boundingRadiusPerSize(die.shape) * die.material.sizeMm * scale
 
   private fun aspectRatio(): Double = stage.width.toDouble() / stage.height
-
-  private companion object {
-    /** Filament's word for "no entity". */
-    const val NOTHING = 0
-  }
 }

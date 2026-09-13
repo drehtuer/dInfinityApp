@@ -278,8 +278,13 @@ all, and **zero** corrections applied after rest.
   which is what lets the player see over it rather than at the back of it. The
   rounded corners are drawn as six segments to the quarter, which is under a
   pixel of a 12 mm arc at any size this is drawn at.
-- The engine is created, the material compiled and the scene built in one
-  file, `FilamentStage` — the only one in the module that talks to Filament.
+- The renderer draws through a `Stage` interface. `FilamentStage` is the one
+  file in the module that talks to Filament, and the one excluded from the
+  coverage figure; everything that *decides* what a roll looks like sits on
+  the near side of it and is tested on a JVM
+  (`docs/architecture.md`, decision 47).
+- The engine is created, the material compiled and the scene built in that one
+  file.
   Everything it is *told* (where the camera stands, what shape a die is, how
   its mesh packs, which numbers its material takes, where it is between two
   simulation steps) is decided elsewhere and tested on a JVM
