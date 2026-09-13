@@ -10,9 +10,16 @@
 set -euo pipefail
 
 timeout="${1:-300}"
-adb wait-for-device
-
 deadline=$(( $(date +%s) + timeout ))
+
+# `adb wait-for-device` waits for ever by default, so the timeout above would
+# not be a timeout at all for the one case it most needs to cover: a device
+# that never appears, because the emulator died on the way up.
+if ! timeout "${timeout}" adb wait-for-device; then
+  echo "No device attached within ${timeout}s." >&2
+  adb devices >&2
+  exit 1
+fi
 while [ "$(date +%s)" -lt "${deadline}" ]; do
   booted="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
   animation="$(adb shell getprop init.svc.bootanim 2>/dev/null | tr -d '\r')"

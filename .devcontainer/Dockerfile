@@ -225,6 +225,7 @@ RUN if getent passwd "${USER_UID}" > /dev/null; then \
 
 COPY --chmod=0755 emulator.sh /usr/local/bin/dinfinity-emulator
 COPY --chmod=0755 await-device.sh /usr/local/bin/dinfinity-await-device
+COPY --chmod=0755 phone.sh /usr/local/bin/dinfinity-phone
 COPY --chmod=0755 post-create.sh /usr/local/bin/dinfinity-post-create
 
 USER dev

@@ -31,6 +31,19 @@ if [ ! -e /dev/kvm ]; then
   exit 1
 fi
 
+# Being able to see /dev/kvm is not the same as being able to open it, and the
+# emulator's own complaint about the difference points at /etc/group, which is
+# by then already correct. The group *is* correct; this process is holding the
+# membership it was given before `dinfinity-post-create` renumbered it, and
+# only a new session picks that up.
+if [ ! -w /dev/kvm ]; then
+  echo "This shell cannot open /dev/kvm: it is group $(stat -c %G /dev/kvm)" \
+       "($(stat -c %g /dev/kvm)), and this shell has groups $(id -G | tr ' ' ',')." >&2
+  echo "Run dinfinity-post-create, then open a new terminal — group membership" \
+       "is fixed when a session starts and cannot be changed underneath it." >&2
+  exit 1
+fi
+
 # The AVD is made from one system image and is no use with another, so a
 # rebuilt container image that resolved a different one gets a new AVD rather
 # than a puzzling failure to boot.

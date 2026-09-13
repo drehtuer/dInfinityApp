@@ -177,6 +177,13 @@ inside the container is moved onto it. (The emulator separately reads
 `/etc/group` looking for the group by name, and reports `LINE_NOT_FOUND`
 rather than anything about permissions when it is missing. Both are handled.)
 
+A shell that was already open when the group was renumbered keeps the
+membership it started with — group membership is fixed when a session begins
+and cannot be changed underneath it — so the emulator would fail in it with a
+complaint about `/etc/group` that is, by then, wrong. `dinfinity-emulator`
+checks whether it can actually open `/dev/kvm` rather than whether the file
+exists, and says to open a new terminal.
+
 **A host with no `/dev/kvm` cannot start the devcontainer at all** — Docker
 refuses a device that is not there. On such a machine, delete the `runArgs`
 line from `devcontainer.json` and build with `INSTALL_EMULATOR=false`.
@@ -294,9 +301,17 @@ consult the v2 block. Pass `--min-sdk-version 24` and both report `true`.
 ```
 
 CI runs everything except the last line. Instrumented tests need a device: the
-[emulator](#the-emulator), which is in the container, or
-[a phone](#connecting-a-phone-over-wifi), which is yours. Whichever is attached
-is the one they run on, so start only the one you mean.
+[emulator](#the-emulator), which is in the container and is a minute away, or
+[the phone](#connecting-a-phone-over-wifi), which answers what the emulator
+cannot — a real GPU, real sensors, real timing, the API the app targets.
+
+```sh
+dinfinity-emulator &   # boots in ~30 s; needs /dev/kvm
+dinfinity-phone        # attaches the phone over wireless debugging
+```
+
+Whichever is attached is the one they run on, and if both are, both run them
+— [choose with `ANDROID_SERIAL`](#when-both-a-phone-and-the-emulator-are-attached).
 
 ### The verdict on an instrumented run
 
@@ -330,18 +345,45 @@ debugging**, on.
 Then, inside the container:
 
 ```sh
-# 1. "Pair device with pairing code" on the phone shows an ip:port and a code.
-adb pair 192.168.1.42:37105 832269   # or omit the code and be prompted
-
-# 2. The Wireless debugging screen itself shows a different ip:port. Connect:
-adb connect 192.168.1.42:39337
-
-adb devices                        # should list the phone as "device"
+dinfinity-phone                      # reconnect to the address last used
+dinfinity-phone 192.168.1.42:39337   # a new address; it is remembered
 ./gradlew connectedDebugAndroidTest
+```
+
+`dinfinity-phone` connects, waits until the phone can actually be installed on,
+and writes the address into the `dinfinity-android` volume, so every later
+session is the bare command. An address is only typed again when the phone has
+rebooted or wireless debugging has been switched off and on, because the port
+changes then.
+
+Pairing is separate, and needed once per machine:
+
+```sh
+# "Pair device with pairing code" shows a DIFFERENT ip:port, and a code.
+dinfinity-phone pair 192.168.1.42:37105 832269
 ```
 
 This is the procedure as run, not as imagined: a Pixel 10a on Android 17,
 paired and driven from the container over the default Docker bridge.
+
+### When both a phone and the emulator are attached
+
+A run that does not choose runs on both, and every plain `adb` command fails
+with `more than one device/emulator`. `ANDROID_SERIAL` chooses, for adb and for
+Gradle alike:
+
+```sh
+export ANDROID_SERIAL=192.168.1.42:39337
+```
+
+That it reaches AGP is checked rather than assumed: with the emulator attached
+and `ANDROID_SERIAL` naming a device that is not, `connectedDebugAndroidTest`
+runs no tests at all — and says so, because `verifyDeviceTestResults` refuses
+an empty result rather than passing it.
+
+`dinfinity-phone` prints the line to export when it sees the emulator running.
+It cannot set the variable itself: it is a child of the shell that would need
+it.
 
 Notes:
 
@@ -352,17 +394,20 @@ Notes:
   `bash -c 'cat < /dev/null > /dev/tcp/<ip>/<port>'`; if that succeeds and
   `adb connect` still says "failed to connect", the port speaks the pairing
   protocol and wants `adb pair` and a code, not `adb connect`.
-- Pairing is needed once per machine. After that `adb connect` is enough, until
-  the phone reboots or the port changes.
 - The phone and the container must be on the same network. With Docker's
   default bridge that works out of the box; the container reaches the LAN even
   though the LAN cannot reach it.
-- mDNS discovery (`adb mdns services`) usually does **not** work through the
-  bridge, which is why the addresses above are typed by hand. If you want
-  discovery, run the container with `--network=host`.
+- mDNS discovery (`adb mdns services`) runs but finds nothing through the
+  bridge, which does not carry multicast — which is why the addresses above
+  are typed by hand. `dinfinity-phone` asks anyway when it has no address to
+  try, since it costs a second and is the one route that needs no typing.
+  **Do not reach for `--network=host` to fix it here:** on Docker Desktop
+  under WSL2 the container then shares the host's port 5037 with Windows' own
+  adb server, and every `adb` command hangs instead of answering.
 - Keep the `dinfinity-android` volume mounted at `/home/dev/.android`: it holds
-  the adb key the phone authorises, so you approve the connection once instead
-  of on every container start.
+  the adb key the phone authorises and the remembered address, so you approve
+  the connection once instead of on every container start.
+
 
 ## Static analysis and coverage
 
