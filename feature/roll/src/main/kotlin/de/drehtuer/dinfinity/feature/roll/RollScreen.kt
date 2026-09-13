@@ -68,7 +68,7 @@ fun RollScreen(
       verticalArrangement = Arrangement.spacedBy(12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      Outcome(state, onRound = presenter::round)
+      Outcome(state, formula = presenter.text, onRound = presenter::round, onSuggestion = presenter::type)
       PickerRow(
         dice = presenter.pickable,
         counts = presenter.counts,
@@ -114,7 +114,9 @@ private fun KeepTheScreenAwake() {
 @Composable
 private fun Outcome(
   state: RollState,
+  formula: String,
   onRound: (Rounding) -> Unit,
+  onSuggestion: (String) -> Unit,
 ) {
   when (state) {
     is RollState.Settled ->
@@ -148,12 +150,10 @@ private fun Outcome(
         tag = RollTestTags.REFUSED,
       )
 
+    // The formula again, with a squiggle under the part that is wrong, rather
+    // than a sentence about it (design options 6f and 9c).
     is RollState.Invalid ->
-      Message(
-        text = state.error.message,
-        colour = MaterialTheme.colorScheme.error,
-        tag = RollTestTags.INVALID,
-      )
+      FormulaError(formula = formula, error = state.error, onSuggestion = onSuggestion)
 
     RollState.Empty, is RollState.Ready -> Unit
   }
@@ -238,6 +238,9 @@ object RollTestTags {
   const val ROLLING: String = "roll:rolling"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = "roll:invalid"
+
+  /** The one-tap fix, shown only when the mistake has an obvious reading. */
+  const val SUGGESTION: String = "roll:invalid:suggestion"
 
   /** The dice picker row, and one die on it (design option 1h). */
   const val PICKER: String = "roll:picker"

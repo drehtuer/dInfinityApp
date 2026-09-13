@@ -14,6 +14,8 @@
     (`docs/dice-notation.md`).
   -->
   <string name="roll_formula_hint" tools:ignore="TypographyDashes">3d6 + 1d20 - 4</string>
+  <!-- Offered when a mistake has an obvious reading. %1$s is a formula. -->
+  <string name="roll_formula_suggestion">Did you mean %1$s?</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->
   <string name="roll_picker_add">Add a %1$s</string>
   <string name="roll_picker_remove">Take a %1$s off</string>

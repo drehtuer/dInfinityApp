@@ -196,7 +196,7 @@ file.
 | State | Total | Message | Sheet | Roll button | Formula field |
 |---|---|---|---|---|---|
 | `Empty` | — | — | — | disabled | live |
-| `Invalid` | — | the parse error | — | disabled | live, in error |
+| `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | disabled | live, in error |
 | `TooMany` | — | how many were asked for and how many fit | — | disabled | live, in error |
 | `Ready` | — | — | — | **enabled** | live |
 | `Rolling` | — | "Rolling…" | — | disabled | live |
@@ -219,6 +219,9 @@ and none of them decides anything itself:
 - **a shake** calls the same `roll`, which is why it had to be one act;
 - **Down / Nearest / Up** call `round`, which rescores from subtotals that
   already landed and never moves a die;
+- **the one-tap fix under an error** calls `type` with the formula the parser
+  suggested, so a suggestion taken is indistinguishable from the same
+  correction typed by hand;
 - **pinch and two-finger drag** call `look`, which moves the camera and is not
   a state change at all — where a player is standing is not what the dice did.
 

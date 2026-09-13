@@ -261,12 +261,25 @@ rolls.
 ## Error messages
 
 Parse errors point at the offending character range and are shown inline
-under the formula field, e.g.
+under the formula field: **the formula is printed again with a squiggle under
+the characters that are wrong**, and the message after it
+(`design/dInfinity.dc.html`, options 6f and 9c).
 
 ```text
-3d6 + 1d7 - 4
-       ^^ no d7 in set "builtin"
+3d6 + 1d7 - 4 — this set has no d7
+       ~~~
 ```
 
+Printed again rather than marked up in the field itself. The field is where
+somebody is typing, and a squiggle that moves under the cursor as they type is
+a squiggle that fights them. A wave rather than a straight underline, because
+a straight underline under text reads as a link.
+
+The blame is clamped to a character that exists: a formula that stops in the
+middle of something (`3d6 +`) is blamed on a position one past its end, and
+there is nothing there to underline.
+
 Suggestions are offered when the intent is obvious (`d7` → nearest available,
-`3 d 6` → `3d6`).
+`3 d 6` → `3d6`), as one tap under the message. Where there is no honest
+reading there is no suggestion: a guess that is wrong is one tap away from
+replacing a formula somebody meant.

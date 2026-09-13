@@ -62,10 +62,11 @@ changelog.
   refusal for a throw the table cannot hold, a total, the breakdown under it
   with every die that landed, Down / Nearest / Up for a throw that divides,
   pinch-to-zoom and two-finger pan over a camera that never moves on its own,
-  and a dice picker row that taps dice into the formula field. What it has
-  not: the set dropdown, the squiggle under a bad formula, the power-saving
-  path, the first-launch state, and numbers on the faces. All listed in
-  `docs/TODO.md`.
+  a dice picker row that taps dice into the formula field, and
+  a squiggle under the part of a bad formula that is wrong, with a one-tap fix
+  where the mistake has an obvious reading. What it has not: the set dropdown,
+  the power-saving path, the first-launch state, and numbers on the faces. All
+  listed in `docs/TODO.md`.
 - **The screens' state machines are written down.** `docs/architecture.md` now
   carries the navigation graph, `RollState`, the shake, the tray and the
   Settings screen as diagrams and control tables, so a transition nobody
