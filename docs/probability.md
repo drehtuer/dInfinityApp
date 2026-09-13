@@ -61,7 +61,7 @@ numerical noise; the built-in test suite rolls each catalogue die 100,000
 times in power-saving mode and asserts a chi-squared test passes.
 
 Since v1's shape catalogue is closed (`docs/dice-sets.md`), every die in
-every set is one of those nine tested solids, however it is painted: a
+every set is one of those eight tested solids, however it is painted: a
 custom-looking die is still a fair die, and the graph is exact for all of
 them. If author-supplied mesh shapes arrive later, the graph will have to
 assume fairness it cannot verify and say so on screen — which is one more

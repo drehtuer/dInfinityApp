@@ -38,7 +38,7 @@ Every die is a **convex** rigid body:
   tetrahedron, cube, octahedron, pentagonal trapezohedron (d10), dodecahedron,
   icosahedron, enneagonal trapezohedron (d18), coin (d2), etc.
 - The catalogue is closed in v1 (`docs/dice-sets.md`), so every body is one
-  of nine known solids. A set changes a die's size, material, face values and
+  of eight known solids. A set changes a die's size, material, face values and
   artwork, never its geometry — which is what makes the tuning below hold for
   every installed set.
 - Mass is uniform density over the hull volume; inertia tensor from the hull.

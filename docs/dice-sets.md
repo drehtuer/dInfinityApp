@@ -134,7 +134,7 @@ sound = "felt"
 
 ## Shape catalogue
 
-The catalogue is **closed in v1**: these nine shapes and nothing else. Face
+The catalogue is **closed in v1**: these eight shapes and nothing else. Face
 count, face order and texture atlas layout are defined by the app (documented
 in `dicesets/format/shapes/` with reference images).
 
