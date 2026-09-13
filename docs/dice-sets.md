@@ -159,6 +159,22 @@ The atlas layout for a catalogue shape is a fixed grid: face *i* occupies cell
 matching the catalogue's reference orientation. The face designer produces
 exactly this layout, so hand-drawn and hand-authored sets are interchangeable.
 
+"Up" on a face is up in the tray, flattened onto the face — the part of the
+tray's `+z` that lies in the face's plane. A face that points straight up or
+straight down has no such part, and those two are turned by the tray's `+y`
+instead. The face's own circle fills the cell, so a triangle and a pentagon
+both touch its edges and a strip of cells is drawn at one size.
+
+**The d4 is the one shape where a cell and a readable position are different
+things.** A tetrahedron is read from the corner pointing up, so its four
+numbers belong to corners, while its four cells are painted on faces. Cell *i*
+is the face **opposite** corner *i*. Four corners and four faces could have
+been paired either way round; this is the pairing that needs no second
+ordering, because it follows the numbering that is already there. An author
+drawing the common "top number" d4 puts each number at the corner it belongs
+to, on all three faces that meet there — which is what a moulded d4 does, and
+why a d4's cell is a triangle carrying three numbers rather than one.
+
 **Face order.** Faces are numbered from the top of the shape's reference
 orientation downwards, and anticlockwise around each ring starting from the
 `+x` side; face 0 is the one that is up when the die has not been turned. That

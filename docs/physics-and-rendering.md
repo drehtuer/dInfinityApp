@@ -256,10 +256,14 @@ all, and **zero** corrections applied after rest.
   plus an image-based light for reflections, soft shadows from the key light.
 - Camera looks down at the tray at a slight angle; auto-frames all dice once
   they settle, then eases in on the results.
-- Die meshes come from the shape catalogue.
-  Face textures are applied via a per-face UV atlas (see `docs/dice-sets.md`);
-  dice without textures render numbers with a built-in SDF font on a plain
-  PBR material with the set's colour.
+- Die meshes come from the shape catalogue — the same closed forms the solver
+  collides, grouped onto the same face directions the reader reads, so face *i*
+  of the picture is face *i* of the roll by construction
+  (`docs/architecture.md`, decision 45). Face textures are applied via a
+  per-face UV atlas (see `docs/dice-sets.md`); dice without textures render
+  numbers with a built-in SDF font on a plain PBR material with the set's
+  colour. A coin's rim belongs to neither face and carries no cell: it is drawn
+  in the die's own colour.
 - Transforms are interpolated between the last two simulation states based on
   render time, so 120 Hz physics looks smooth at any display refresh rate.
 - Results are overlaid as labels near each die once settled; tap a die to

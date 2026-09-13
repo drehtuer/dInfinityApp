@@ -16,10 +16,8 @@ changelog.
   smaller items listed there.
 - **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to and including #41 is merged; `main` is
-  green. Three stacked branches are in flight: `feature/jolt-bridge` (#42),
-  `fix/exact-trigonometry` (#43) on top of it, and `feature/golden-determinism`
-  on top of that. They merge in that order.
+- **Branch state:** everything up to and including #44 is merged. One branch
+  is in flight: `feature/die-meshes`.
 
 ## Done
 
@@ -78,8 +76,9 @@ changelog.
 
 ## In progress
 
-- Nothing. `simulation/jolt` and the golden determinism suite have landed on
-  their branches; the next piece is `render/filament`.
+- `render/filament`. The die meshes are built and tested; the tray mesh, the
+  camera, the interpolation between simulation states and the Filament engine
+  itself are still to come.
 
 ## Blocked / waiting on
 

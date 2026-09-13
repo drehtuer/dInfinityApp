@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.dicesets.format
 
+import de.drehtuer.dinfinity.core.model.ShapeAtlas
 import org.tomlj.TomlTable
 
 /**
