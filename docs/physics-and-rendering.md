@@ -10,6 +10,22 @@ Each roll is a rigid-body simulation of dice inside a tray. The number on a
 die is read from whichever face normal points closest to "up" once the die has
 come to rest. Rendering is a passive observer of the simulation.
 
+## Coordinates
+
+One right-handed system, shared by the tray, the solver and the renderer:
+**`+z` is up**, the tray's long side runs along `+x` and its short side along
+`+y`, and the origin is the middle of the floor. Distances are millimetres
+everywhere above the bridge; the solver runs in centimetres on the far side of
+it and converts in one place (decision 41).
+
+Nothing is turned over on the way between the three. A renderer that used a
+different up would have to flip every transform it was handed, and the first
+thing to go wrong would be a die drawn resting on the face it did not land on.
+It is also what "up" means everywhere else in this document: the face reading,
+the reference orientation a shape's face order is numbered in, and the
+direction a face's texture is drawn the right way up in
+(`docs/dice-sets.md`).
+
 ## The table
 
 The table (tray) is a fixed rectangular box whose floor is the phone's screen:
@@ -256,10 +272,16 @@ all, and **zero** corrections applied after rest.
   plus an image-based light for reflections, soft shadows from the key light.
 - Camera looks down at the tray at a slight angle; auto-frames all dice once
   they settle, then eases in on the results.
-- Die meshes come from the shape catalogue.
-  Face textures are applied via a per-face UV atlas (see `docs/dice-sets.md`);
-  dice without textures render numbers with a built-in SDF font on a plain
-  PBR material with the set's colour.
+- Die meshes come from the shape catalogue — the same closed forms the solver
+  collides, grouped onto the same face directions the reader reads, so face *i*
+  of the picture is face *i* of the roll by construction
+  (`docs/architecture.md`, decision 45). Face textures are applied via a
+  per-face UV atlas (see `docs/dice-sets.md`); dice without textures render
+  numbers with a built-in SDF font on a plain PBR material with the set's
+  colour — and a d4 draws three of them per triangle, one at each corner,
+  because its values belong to corners rather than to faces
+  (`docs/dice-sets.md`, "The d4"). A coin's rim belongs to neither face and
+  carries no cell: it is drawn in the die's own colour.
 - Transforms are interpolated between the last two simulation states based on
   render time, so 120 Hz physics looks smooth at any display refresh rate.
 - Results are overlaid as labels near each die once settled; tap a die to

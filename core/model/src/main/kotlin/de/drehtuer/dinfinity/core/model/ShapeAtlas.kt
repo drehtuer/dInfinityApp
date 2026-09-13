@@ -1,6 +1,5 @@
-package de.drehtuer.dinfinity.dicesets.format
+package de.drehtuer.dinfinity.core.model
 
-import de.drehtuer.dinfinity.core.model.DieShape
 import kotlin.math.ceil
 import kotlin.math.sqrt
 

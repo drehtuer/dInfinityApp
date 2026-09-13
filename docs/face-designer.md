@@ -19,6 +19,15 @@ installed by other users like any other set.
    masked in. Swipe left/right or use the strip at the bottom to move between
    faces. The current face value is shown faintly as a guide and can be
    hidden.
+
+   **A d4 is the exception and needs three guides, not one.** Its numbers
+   belong to corners rather than to faces, so each of its four triangles
+   carries the values of its three corners, one at each corner of the canvas
+   (`docs/dice-sets.md`, "The d4"). The guide shows all three in place, and
+   the two triangles sharing an edge have to agree along it — a die drawn
+   otherwise reads as a different number depending on which way it is looked
+   at, which the designer should make hard to do by accident rather than
+   merely warn about afterwards.
 3. **Preview.** A 3D preview of the die with the drawn atlas applied, rotatable
    by drag, updated live.
 4. **Roll it.** One tap rolls the die in the tray to see how it looks in

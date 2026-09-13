@@ -112,7 +112,15 @@ data class Quaternion(
   }
 }
 
-internal fun cross(
+/**
+ * The vector perpendicular to both, right-handed.
+ *
+ * Public because a mesh is built out of it: a face's texture frame and the
+ * winding of its triangles are both cross products, and `render/filament`
+ * has to agree with this module about which way "outward" is or it will draw
+ * dice inside out (`docs/architecture.md`, decision 35).
+ */
+fun cross(
   a: Vector3,
   b: Vector3,
 ): Vector3 =
