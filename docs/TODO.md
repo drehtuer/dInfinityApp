@@ -65,7 +65,13 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 `1z`. Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md`.
 
-- [ ] Tray view bound to the simulation, stack layout (`1b`), table look applied
+The state behind the screen is built: `RollMachine` turns a typed formula into
+a throw and a throw's faces into a result, refuses what the table cannot hold
+before a body exists, and throws an exploding die again *through the
+simulator*. What is left below is the screen itself.
+
+- [ ] Tray view bound to the simulation, stack layout (`1b`), table look applied — a Compose `AndroidExternalSurface` handing its surface to `TrayDriver`
+- [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
 - [ ] Dice picker row (`1h`) — tap adds, long-press removes, count badges; set dropdown (`4a`)
 - [ ] Formula display and inline editor (`2a`) with live validation, error squiggle over the offending range (`6f`, `9c`), rolling blocked while invalid
 - [ ] Roll by tap; shake to roll wired to `input/shake`

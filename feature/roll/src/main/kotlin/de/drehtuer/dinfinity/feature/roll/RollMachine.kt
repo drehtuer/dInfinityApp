@@ -1,0 +1,292 @@
+package de.drehtuer.dinfinity.feature.roll
+
+import de.drehtuer.dinfinity.core.model.RollPlan
+import de.drehtuer.dinfinity.core.model.RollResult
+import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.core.notation.ExtraThrow
+import de.drehtuer.dinfinity.core.notation.Formula
+import de.drehtuer.dinfinity.core.notation.FormulaParser
+import de.drehtuer.dinfinity.core.notation.NotationError
+import de.drehtuer.dinfinity.core.notation.ParseResult
+import de.drehtuer.dinfinity.core.notation.PlanResult
+import de.drehtuer.dinfinity.core.notation.RollEvaluator
+import de.drehtuer.dinfinity.core.notation.RollPlanner
+import de.drehtuer.dinfinity.core.notation.ThrowOutcome
+import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
+import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.TableCapacity
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import java.security.SecureRandom
+
+/**
+ * What the roll screen is showing, and what typing or tapping does to it
+ * (`docs/TODO.md`, Step 4.1).
+ *
+ * No Compose, no Android, no engine: a formula goes in, a throw comes out, a
+ * throw's faces go back in and a result comes out. The screen is a rendering
+ * of [state] and the two buttons that call [type] and [throwDice]
+ * (`docs/architecture.md`, decision 40, one level up from the physics).
+ *
+ * The one thing it must never do is produce a number. Every total here comes
+ * from faces the simulation reported; there is no branch that scores a roll
+ * some other way, not for an invalid formula, not for a refused one, not when
+ * the engine will not open (`.claude/CLAUDE.md`).
+ */
+class RollMachine(
+  private val catalog: DiceCatalog,
+  private val geometry: TableGeometry,
+  private val table: TableLook,
+  private val simulator: DiceSimulator,
+  private val seeds: () -> Long = { SecureRandom().nextLong() },
+  private val clock: () -> Long = System::currentTimeMillis,
+) {
+  /**
+   * A formula that resolved and the plan it resolved to, held together because
+   * neither is any use without the other. Non-null exactly while [state] is
+   * [RollState.Ready] — which is what lets every guard below be a single
+   * question rather than three that cannot all be answered.
+   */
+  private class Prepared(
+    val formula: Formula,
+    val plan: RollPlan,
+    val scale: Double,
+    val diceCount: Int,
+  )
+
+  /** The same, plus the seed it was thrown with. Non-null exactly while rolling. */
+  private class InFlight(
+    val prepared: Prepared,
+    val seed: Long,
+  )
+
+  private var prepared: Prepared? = null
+  private var inFlight: InFlight? = null
+  private var scored: Pair<Formula, RollResult>? = null
+
+  /** What the screen draws. */
+  var state: RollState = RollState.Empty
+    private set
+
+  /** The formula as typed, valid or not. */
+  var text: String = ""
+    private set
+
+  /**
+   * The formula field changed.
+   *
+   * Validated on every keystroke, which is why `core/notation` has no storage
+   * behind it (`docs/architecture.md`, decision 31). An error keeps its range
+   * so the screen can put a squiggle under the part that is wrong rather than
+   * under the whole field (`design/dInfinity.dc.html`, options 6f and 9c).
+   */
+  fun type(typed: String) {
+    text = typed
+    prepared = null
+    inFlight = null
+    scored = null
+
+    state =
+      when (val parsed = FormulaParser.parse(typed)) {
+        is ParseResult.Failed -> if (typed.isBlank()) RollState.Empty else RollState.Invalid(parsed.error)
+        is ParseResult.Parsed -> planned(parsed.formula)
+      }
+  }
+
+  /**
+   * Throws the dice, or says why it will not.
+   *
+   * Hands back the throw for whoever is going to run it, and `null` when there
+   * is nothing to throw — an empty field, a formula that does not read, one the
+   * table cannot hold, or a throw already in the air. A refusal happens
+   * **before a single body is created**, which is what makes `500d6` a message
+   * rather than a hang (`docs/tables.md`).
+   *
+   * @param shake the recorded motion of the phone, or empty for a tap.
+   */
+  fun throwDice(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
+    val ready = prepared ?: return null
+    prepared = null
+
+    val spec =
+      ThrowSpec(
+        dice = ready.plan.dice,
+        geometry = geometry,
+        table = table,
+        seed = seeds(),
+        dieScale = ready.scale,
+        shake = shake,
+      )
+    inFlight = InFlight(ready, spec.seed)
+    state = RollState.Rolling(ready.diceCount)
+    return spec
+  }
+
+  /**
+   * The dice have stopped. [outcome] is what they came to, and this is where it
+   * becomes a total.
+   *
+   * Faces nobody asked for are ignored: only a throw that was made can land,
+   * and a screen one stray callback away from a total with no roll behind it
+   * would not be worth the rest of this file.
+   *
+   * The faces are the simulation's, unexamined and unadjusted. Scoring is
+   * arithmetic over them — keep, drop, explode, modifiers, rounding — and
+   * nothing in it can change what a die landed on.
+   */
+  fun settled(
+    outcome: SimulationOutcome,
+    rounding: Rounding = Rounding.Default,
+  ) {
+    val flight = inFlight ?: return
+    inFlight = null
+
+    val result =
+      RollEvaluator.score(
+        formula = flight.prepared.formula,
+        plan = flight.prepared.plan,
+        outcome =
+          ThrowOutcome(
+            faces = outcome.faces,
+            rethrows = outcome.rethrows,
+            forcedSettles = outcome.forcedSettles,
+            rolledAtEpochMs = clock(),
+          ),
+        rounding = rounding,
+        extra = extraThrows(flight),
+      )
+    scored = flight.prepared.formula to result
+    state = RollState.Settled(result)
+  }
+
+  /**
+   * The same throw under a different rounding (`design/dInfinity.dc.html`,
+   * option 6d).
+   *
+   * The dice do not move. Only the arithmetic around them is redone, from
+   * subtotals that are already recorded — which is the only honest way to offer
+   * this at all.
+   */
+  fun round(rounding: Rounding) {
+    val (formula, result) = scored ?: return
+    val rescored = RollEvaluator.rescore(formula, result, rounding)
+    scored = formula to rescored
+    state = RollState.Settled(rescored)
+  }
+
+  /** Puts the result away, ready to throw the same formula again. */
+  fun clear() {
+    type(text)
+  }
+
+  /**
+   * How a die that explodes or is rerolled is thrown.
+   *
+   * It is a real simulation of one die, not a number from somewhere else.
+   * `docs/architecture.md`'s first goal has no exception for the second die of
+   * an exploding six, and a shortcut here would be exactly the shortcut the
+   * whole app exists not to take.
+   *
+   * Seeded from the roll's own seed and the die's position after it, so a
+   * formula with explosions in it replays like any other
+   * (`docs/physics-and-rendering.md`).
+   *
+   * These dice are not yet *drawn*: they are thrown once the tray has settled,
+   * and putting them into the tray the player is looking at is its own piece of
+   * work (`docs/TODO.md`, Step 4.1).
+   */
+  private fun extraThrows(flight: InFlight): ExtraThrow {
+    var extra = 0
+    return ExtraThrow { die ->
+      // The die is one of the dice already in the throw, so which set it came
+      // from is a lookup rather than a guess and the statistics stay attributed
+      // to the right one.
+      val came =
+        flight.prepared.plan.dice
+          .first { it.die == die }
+      val one =
+        ThrowSpec(
+          dice = listOf(came.copy(index = 0)),
+          geometry = geometry,
+          table = table,
+          seed = flight.seed + ++extra,
+        )
+      simulator.run(one).faces.getValue(0)
+    }
+  }
+
+  private fun planned(parsed: Formula): RollState =
+    when (val planned = RollPlanner.plan(parsed, catalog)) {
+      is PlanResult.Failed -> RollState.Invalid(planned.error)
+      is PlanResult.Planned -> checked(parsed, planned.plan)
+    }
+
+  private fun checked(
+    parsed: Formula,
+    planned: RollPlan,
+  ): RollState =
+    when (val room = TableCapacity.check(planned, geometry)) {
+      is CapacityVerdict.Refused -> RollState.TooMany(room.diceCount, room.largestThatFits, room.reason)
+      is CapacityVerdict.Fits -> {
+        prepared = Prepared(parsed, planned, room.scale, room.diceCount)
+        RollState.Ready(diceCount = room.diceCount, scale = room.scale)
+      }
+    }
+}
+
+/**
+ * The four things the roll screen can be showing, and nothing in between.
+ *
+ * A sealed set rather than a bag of nullable fields, because "rolling with an
+ * error showing" and "a result for a formula that has since been edited" are
+ * states that should be impossible to write down, not states to remember not
+ * to reach (`design/dInfinity.dc.html`, options 1a–1j).
+ */
+sealed interface RollState {
+  /** Nothing typed and nothing picked. The first thing a new install shows. */
+  data object Empty : RollState
+
+  /**
+   * The formula does not read. [error] carries the range that is wrong, so the
+   * squiggle goes under the offending part rather than the whole field.
+   */
+  data class Invalid(
+    val error: NotationError,
+  ) : RollState
+
+  /**
+   * The formula reads but the table cannot hold it. No body is ever created
+   * for one of these.
+   */
+  data class TooMany(
+    val diceCount: Int,
+    val largestThatFits: Int,
+    val reason: String,
+  ) : RollState
+
+  /**
+   * Ready to throw.
+   *
+   * [scale] is how far the capacity rule shrank the dice to make them fit
+   * (`docs/tables.md`). It is on screen because a player who asked for forty
+   * dice and got small ones should be able to see why.
+   */
+  data class Ready(
+    val diceCount: Int,
+    val scale: Double,
+  ) : RollState
+
+  /** The dice are in the air. */
+  data class Rolling(
+    val diceCount: Int,
+  ) : RollState
+
+  /** They have landed, and this is what they came to. */
+  data class Settled(
+    val result: RollResult,
+  ) : RollState
+}
