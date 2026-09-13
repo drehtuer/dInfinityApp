@@ -29,7 +29,6 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] `dicesets/format` — strict TOML reader, atlas layouts, validator. One test per error and per warning in `docs/dice-sets.md`, driven from `test-fixtures/`
 - [ ] `dicesets/builtin` — the bundled set as a real `diceset.toml` package, loaded through the same validator as any download (no privileged path)
 - [ ] `simulation/api` — table geometry, the capacity rule with its worked numbers, settle detection, face reading (including `vertex-up` for the d4), the correction ladder in `docs/physics-and-rendering.md`. Testable without a physics engine via a fake simulator
 - [ ] `simulation/jolt` — JNI bridge, fixed 120 Hz timestep, seeded and deterministic. **Decide Jolt vs. Bullet with a spike first** and record the result in `docs/architecture.md`

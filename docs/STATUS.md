@@ -77,9 +77,11 @@ changelog.
   `core/probability` are done: a formula can be parsed, resolved against
   installed sets, graphed exactly and scored, all from a unit test with no UI
   and no physics engine. The graph is checked against the evaluator itself, by
-  rolling small formulas every possible way. `dicesets/format` is next, and the
-  physics engine spike (Jolt vs. Bullet) is still the decide-first item further
-  down the step.
+  rolling small formulas every possible way. `dicesets/format` is done too: a
+  package downloaded from a stranger is parsed, checked against every rule in
+  `docs/dice-sets.md` and either installed or rejected with a `file:line`
+  report. `dicesets/builtin` is next, and the physics engine spike (Jolt vs.
+  Bullet) is still the decide-first item further down the step.
 
 ## Blocked / waiting on
 
@@ -90,7 +92,6 @@ changelog.
 - Two smaller decisions from the prototype are not yet in `docs/` (designer
   3D preview, picker remembering the last set per group) — see `docs/TODO.md`.
 - Physics engine (Jolt vs. Bullet) — spike planned in Milestone 0.
-- TOML parser choice.
 
 ## Known risks
 
