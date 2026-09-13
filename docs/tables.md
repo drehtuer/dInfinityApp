@@ -36,8 +36,13 @@ renderer draws — the wall you can see. The *collision* walls run the full two
 hundred up to the ceiling, because "dice cannot leave the table no matter how
 hard the phone is shaken" is not true of a box with a lid two hundred
 millimetres up and sides only sixty: a die thrown hard leaves through the gap
-and never comes back. The rounded corners are only as tall as the rim, which is
-as far up as a die can wedge into anything.
+and never comes back. **The rounded corners run the full height too.** They
+were once only as tall as the rim, on the reasoning that the rim is as far up
+as a die can wedge into anything — which is true, and beside the point: a post
+that stops at sixty has a *top*, and four horizontal ledges sixty millimetres
+up inside the tray are four places a die can come to rest in mid-air. It took
+a phone to see it, and what it looked like was a die floating with its shadow
+on the floor beneath it.
 
 Orientation follows the phone: portrait phone → portrait table. Rotating the
 device mid-roll does not rotate the table; the current roll finishes first.

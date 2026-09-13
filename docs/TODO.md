@@ -218,7 +218,7 @@ after every physics change.
 - [ ] No tunnelling at maximum shake velocity — assert every body inside the box on every step, all roll long
 - [ ] Dice driven into a corner at speed neither wedge nor jitter
 - [ ] A settled pile is stable: no creep, no vibration, no slow slide
-- [ ] **Seen on the Pixel 10a at 100 dice:** one die came to rest on the top right *wall* rather than in the tray, and others stopped in mid-air — their shadows show them floating clear of the floor. Either is a die at rest somewhere no die can be, and both are worse than a stacking failure because the roll is then read off a die that is not on the table. Assert it rather than watch for it: every body inside the box and supported by floor or dice, on every step, at the capacity limit
+- [ ] Assert containment on *every step* rather than only at rest, at the capacity limit: the at-rest check is in `JoltBridgeTest` now, but a die that leaves the tray mid-roll and comes back would still pass it
 
 ### 5.5 Stacking and cocking — and no invisible hand
 
