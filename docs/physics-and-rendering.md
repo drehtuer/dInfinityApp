@@ -278,6 +278,15 @@ all, and **zero** corrections applied after rest.
   which is what lets the player see over it rather than at the back of it. The
   rounded corners are drawn as six segments to the quarter, which is under a
   pixel of a 12 mm arc at any size this is drawn at.
+- The engine is created, the material compiled and the scene built in one
+  file, `FilamentStage` — the only one in the module that talks to Filament.
+  Everything it is *told* (where the camera stands, what shape a die is, how
+  its mesh packs, which numbers its material takes, where it is between two
+  simulation steps) is decided elsewhere and tested on a JVM
+  (`docs/architecture.md`, decision 40). Filament hands out native handles
+  rather than objects a garbage collector knows about, so everything made
+  there is destroyed in reverse; a roll's own entities go at the end of the
+  roll, and the engine and the compiled material stay.
 - **One material** draws every surface of a roll: a lit, opaque, physically
   based one with a base colour, a roughness and a metalness, optionally
   multiplied by an atlas. Dice are dice and a tray is a tray. Everything a

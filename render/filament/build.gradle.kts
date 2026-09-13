@@ -13,4 +13,9 @@ dependencies {
   // nothing: a headless mode built out of this one, with the drawing switched
   // off, would still hold a GPU context (docs/physics-and-rendering.md).
   api(project(":render:headless"))
+
+  implementation(libs.filament.android)
+  implementation(libs.filamat.android)
+
+  androidTestImplementation(project(":test-fixtures"))
 }

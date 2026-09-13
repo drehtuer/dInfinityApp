@@ -27,6 +27,7 @@ room = "2.8.5"
 ksp = "2.3.9"
 okhttp = "5.5.0"
 commonsCompress = "1.28.0"
+filament = "1.75.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -35,6 +36,13 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotl
 # it read — which is what a dice set's validation report is made of
 # (docs/dice-sets.md). Used through its DOM, never through a deserializer.
 tomlj = { module = "org.tomlj:tomlj", version.ref = "tomlj" }
+
+# The renderer, and the compiler that turns its material source into shaders on
+# the device. Filament ships no default material, and compiling at launch keeps
+# the toolchain out of the devcontainer image and out of CI
+# (docs/architecture.md, decision 46).
+filament-android = { module = "com.google.android.filament:filament-android", version.ref = "filament" }
+filamat-android = { module = "com.google.android.filament:filamat-android", version.ref = "filament" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
