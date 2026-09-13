@@ -67,13 +67,3 @@ fun interface WorldFactory {
   /** A world for [spec], or null when there is no engine to open one with. */
   fun open(spec: ThrowSpec): PhysicsWorld?
 }
-
-/** The real one: Jolt, sized for this throw. */
-object JoltWorldFactory : WorldFactory {
-  override fun open(spec: ThrowSpec): PhysicsWorld? =
-    JoltWorld.open(
-      geometry = spec.geometry,
-      table = spec.table,
-      maxDice = spec.dice.size,
-    )
-}

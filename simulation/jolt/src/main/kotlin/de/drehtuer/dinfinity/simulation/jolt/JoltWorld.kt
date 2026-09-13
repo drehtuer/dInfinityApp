@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.DieMotion
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
@@ -241,4 +242,22 @@ internal object Units {
   fun mmToUnits(millimetres: Double): Float = (millimetres / MM_PER_UNIT).toFloat()
 
   fun unitsToMm(units: Float): Double = units.toDouble() * MM_PER_UNIT
+}
+
+/**
+ * The [WorldFactory] that opens a real one, sized for this throw.
+ *
+ * It lives beside [JoltWorld] rather than beside [JoltDiceSimulator] because
+ * it is the same thing: a line that can only run where the engine is. Every
+ * other line of the simulator is decided on the JVM and tested there, and
+ * keeping this one out of that file is what lets the coverage exclusion stay
+ * as narrow as it is (`sonar-project.properties`).
+ */
+object JoltWorldFactory : WorldFactory {
+  override fun open(spec: ThrowSpec): PhysicsWorld? =
+    JoltWorld.open(
+      geometry = spec.geometry,
+      table = spec.table,
+      maxDice = spec.dice.size,
+    )
 }
