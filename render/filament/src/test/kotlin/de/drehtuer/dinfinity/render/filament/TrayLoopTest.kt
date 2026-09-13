@@ -227,7 +227,34 @@ class TrayLoopTest {
     assertTrue("the stage was left holding a surface that has gone", stage.closed)
     assertFalse(roll.closed)
     assertTrue("the roll was ended with the surface", loop.rolling)
-    assertFalse("the loop kept asking for frames with nowhere to draw", loop.wantsFrames)
+    // And it keeps asking for frames, because the frame callback is what steps
+    // the simulation. A roll that stops being asked is a roll that stops — and
+    // one stopped half way is never read and never over, which is a screen
+    // stuck on "Rolling…" for good.
+    assertTrue("the roll was left stranded with nobody to step it", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a roll that loses its surface still finishes`() {
+    // The whole of why the rule above matters. The app is backgrounded, the
+    // screen blanks, the view is resized — and the throw has to run to its end
+    // regardless, because nothing else is going to finish it.
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 4)
+    val reported = mutableListOf<SimulationOutcome>()
+    loop.stage(FakeStage())
+    loop.roll(roll.start(), reported::add)
+
+    loop.surfaceLost()
+    var frames = 0
+    var nanos = SOME_LATE_UPTIME
+    while (loop.wantsFrames && frames++ < PATIENCE_FRAMES) {
+      nanos += SIXTIETH_OF_A_SECOND_NANOS
+      loop.frame(nanos)
+    }
+
+    assertFalse("the roll never finished with nobody watching", loop.rolling)
+    assertEquals("a roll nobody watched reported nothing", 1, reported.size)
   }
 
   @Test
@@ -398,5 +425,8 @@ class TrayLoopTest {
     const val SOME_LATE_UPTIME = 86_400_000_000_000L
     const val SIXTIETH_OF_A_SECOND_NANOS = 16_666_667L
     const val SPARE_FRAMES = 3
+
+    /** Enough frames for a short roll, and a bound so a stranded one fails rather than hangs. */
+    const val PATIENCE_FRAMES = 50
   }
 }

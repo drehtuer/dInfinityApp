@@ -37,6 +37,12 @@ class ShakeDriver(
 
   private var down: Vector3 = DEFAULT_GRAVITY
 
+  /** The hand's part, held between samples. See [advance]. */
+  private var hand: Vector3 = Vector3.Zero
+  private var handFromStep: Int = Int.MIN_VALUE
+
+  private var lastSampleStep: Int = byStep.keys.maxOrNull() ?: -1
+
   /**
    * Which way down is and how hard, in mm/s²: gravity as the gyroscope has
    * turned it, plus the inverse of whatever the hand is doing.
@@ -46,6 +52,21 @@ class ShakeDriver(
 
   /** True when there is no shake at all and this is a tap-to-roll throw. */
   val isStill: Boolean get() = byStep.isEmpty()
+
+  /**
+   * True while the hand is still throwing these dice.
+   *
+   * A roll may not be declared over while this holds, however still the dice
+   * look for a moment. A player who is still shaking has not finished throwing,
+   * and dice that stopped in their hand would be a roll that ended because the
+   * phone happened to be at the top of a swing (`docs/physics-and-rendering.md`,
+   * "Shake input").
+   *
+   * It is a question about the *record*, so it answers the same during a live
+   * roll and during a replay of one: the samples always run ahead of the step
+   * the world is on, so both see the same ones by the time they are asked.
+   */
+  fun stillShaking(step: Int): Boolean = !isStill && step <= lastSampleStep + HOLD_STEPS
 
   /**
    * Takes one more moment of a shake that is still happening.
@@ -64,6 +85,7 @@ class ShakeDriver(
    */
   fun add(sample: ShakeSample) {
     byStep[sample.stepIndex] = sample
+    lastSampleStep = maxOf(lastSampleStep, sample.stepIndex)
   }
 
   /**
@@ -77,12 +99,19 @@ class ShakeDriver(
    */
   fun advance(step: Int) {
     val sample = byStep[step]
-    if (sample == null) {
-      gravity = down
-      return
+    when {
+      sample != null -> {
+        down = downFrom(sample.gravity)
+        hand = capped(sample.accelerationMmPerSecond2)
+        handFromStep = step
+      }
+      // The hand does not stop between sensor readings, so neither does its
+      // force. It is let go only once the readings have actually stopped
+      // coming, which is what ends a shake rather than what falls between two
+      // moments of one.
+      step - handFromStep > HOLD_STEPS -> hand = Vector3.Zero
     }
-    down = downFrom(sample.gravity)
-    gravity = down - capped(sample.accelerationMmPerSecond2)
+    gravity = down - hand
   }
 
   /**
@@ -116,5 +145,17 @@ class ShakeDriver(
 
     /** About four gravities: harder than anyone shakes a fistful of dice. */
     const val MAX_SHAKE_MM_PER_SECOND2: Double = 40_000.0
+
+    /**
+     * How many steps the hand's last reading stands for before it is let go.
+     *
+     * A tenth of a second, which is a long time for a sensor and no time at
+     * all for an arm. It has to be at least the gap between readings —
+     * `SENSOR_DELAY_GAME` is about 50 Hz against the simulation's 120, so most
+     * steps have no reading of their own and would otherwise be handed plain
+     * gravity, leaving the dice driven on two steps in five and coasting
+     * through the rest.
+     */
+    const val HOLD_STEPS: Int = 12
   }
 }

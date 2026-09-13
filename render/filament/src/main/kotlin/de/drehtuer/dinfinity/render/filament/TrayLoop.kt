@@ -39,16 +39,25 @@ class TrayLoop : AutoCloseable {
   private var owed = false
 
   /**
-   * True while there is something to draw and somewhere to draw it — which is
-   * exactly when it is worth asking for another frame.
+   * True while another frame is worth asking for.
    *
-   * Two things count as something to draw: a roll, which wants every frame it
-   * can get, and a still picture that has not landed yet. The second is why
-   * this is not simply "is there a roll": an empty table is worth one frame,
-   * but Filament may decline the one it is offered, so the asking has to go on
-   * until a frame actually lands.
+   * **A roll always wants one, with or without somewhere to draw.** The frame
+   * callback is what steps the simulation, so a roll that stops being asked is
+   * a roll that stops — and one that stops half way is never read, never
+   * reported and never over. The screen sits on "Rolling…" for good and the
+   * dice are frozen where the last frame left them, which is what losing the
+   * surface mid-throw used to do: the app backgrounded, the screen blanked, or
+   * the view resized, and the throw was stranded.
+   *
+   * Drawing is the part that needs a surface, and [TrayRenderer] already has
+   * nothing to say without one. The physics does not, and must not wait for a
+   * player to be looking (`docs/physics-and-rendering.md`).
+   *
+   * A still picture is the other half, and it does need somewhere to draw: an
+   * empty table is worth one frame, but Filament may decline the one it is
+   * offered, so the asking goes on until a frame actually lands.
    */
-  val wantsFrames: Boolean get() = stage != null && (roll != null || owed)
+  val wantsFrames: Boolean get() = roll != null || (stage != null && owed)
 
   /** True while a roll is in progress, watched or not. */
   val rolling: Boolean get() = roll != null

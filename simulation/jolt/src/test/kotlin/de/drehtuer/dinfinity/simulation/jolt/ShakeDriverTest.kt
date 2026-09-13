@@ -40,17 +40,65 @@ class ShakeDriverTest {
   }
 
   @Test
-  fun `a sample only drives the step it was recorded for`() {
+  fun `the hand keeps pushing between one reading and the next`() {
+    // The sensors run at about 50 Hz and the simulation at 120, so most steps
+    // have no reading of their own. A hand does not stop between two moments of
+    // a shake, so its force does not either — dropping it would drive the dice
+    // on two steps in five and let them coast through the rest, which is what
+    // "the dice do not follow the shake" looked like on the phone.
     val driver = ShakeDriver(listOf(sample(step = 3, x = 10_000.0)))
 
     driver.advance(2)
     assertEquals("nothing happened before the sample's step", 0.0, driver.gravity.x, 0.0)
 
     driver.advance(3)
-    assertTrue("the sample's own step pushed the dice", driver.gravity.x < 0.0)
+    val pushed = driver.gravity.x
+    assertTrue("the sample's own step pushed the dice", pushed < 0.0)
 
     driver.advance(4)
-    assertEquals("and the push is over when the sample is", 0.0, driver.gravity.x, 0.0)
+    assertEquals("the push stopped between two readings", pushed, driver.gravity.x, 0.0)
+  }
+
+  @Test
+  fun `the hand is let go once the readings have actually stopped`() {
+    // Held, not held for ever: a shake that has ended must stop driving, or the
+    // dice would never come to rest.
+    val driver = ShakeDriver(listOf(sample(step = 0, x = 10_000.0)))
+
+    (0..ShakeDriver.HOLD_STEPS).forEach(driver::advance)
+    assertTrue("the hand was let go while it was still within reach", driver.gravity.x < 0.0)
+
+    driver.advance(ShakeDriver.HOLD_STEPS + 1)
+    assertEquals("the hand was never let go", 0.0, driver.gravity.x, 0.0)
+  }
+
+  @Test
+  fun `a roll is still being shaken while its readings run ahead of it`() {
+    val driver = ShakeDriver(List(10) { sample(step = it, x = 5_000.0) })
+
+    assertTrue("the hand had barely started", driver.stillShaking(0))
+    assertTrue("the last reading is still in reach", driver.stillShaking(9 + ShakeDriver.HOLD_STEPS))
+    assertFalse("the shake is long over", driver.stillShaking(9 + ShakeDriver.HOLD_STEPS + 1))
+  }
+
+  @Test
+  fun `a tap is never shaking`() {
+    // Nothing to wait for, so a tapped roll ends when the dice stop and not a
+    // step later.
+    val driver = ShakeDriver(emptyList())
+
+    assertTrue(driver.isStill)
+    assertFalse(driver.stillShaking(0))
+  }
+
+  @Test
+  fun `a sample arriving mid-roll extends how long the hand is still shaking`() {
+    val driver = ShakeDriver(listOf(sample(step = 0, x = 5_000.0)))
+    assertFalse(driver.stillShaking(ShakeDriver.HOLD_STEPS + 1))
+
+    driver.add(sample(step = 40, x = 5_000.0))
+
+    assertTrue("a hand that kept going was not noticed", driver.stillShaking(ShakeDriver.HOLD_STEPS + 1))
   }
 
   @Test
