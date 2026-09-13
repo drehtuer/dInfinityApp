@@ -46,6 +46,7 @@ fun RollScreen(
   val state = presenter.state
   ShakeToRoll(presenter)
   KeepTheScreenAwake()
+  LockTheOrientation()
 
   Box(
     modifier =
