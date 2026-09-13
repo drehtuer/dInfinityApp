@@ -69,8 +69,9 @@ the table cannot hold it, thrown from the Roll button or a shake, simulated and 
 the Pixel 10a, and its total read off the faces. What is below is what it does
 not have yet.
 
-- [ ] Judge the dice's size on a phone. A die is now `size_mm` across at its widest and the bundled set says 16 mm, which is realistic but small on a screen — and the numbers still have to be readable at arm's length once they are drawn (`docs/TODO.md`, Step 5.6). Raising the bundled set's `size_mm` is a one-line change; whether it wants raising is a question for a person
 - [ ] Revisit the capacity constants now that they bite much later. 30 % of the floor and a 40 % minimum scale no longer refuse anything the engine would take: it would take about 240 dice to reach the floor and the engine stops at 100 (`docs/tables.md`). Step 5.3 is where those numbers meet a device
+- [ ] **The surface outlives the screen going off.** After a lock and unlock the old rendering surface is still there. Found on the Pixel 10a; `DiceTray` gives the surface up on `onDestroyed` and the driver keeps the engine now (Step 4.1, done), so what is left is which of those two the lock screen actually triggers
+- [ ] **A shake during a roll is ignored.** Rolling is blocked until the dice have settled, so a second shake at dice still in the air does nothing. It should keep them moving instead — a hand that shakes again has not waited for the dice to stop, and `RollPresenter.shaking` already feeds a running roll. What a *new* shake means while one is in flight is the open half: more of the same roll, or a throw that replaces it
 - [ ] Numbers on the faces. Dice are blank cream solids on the phone right now, which is the SDF item in Step 3 above; until it lands, the tray shows a roll that cannot be read without the total
 - [ ] A shake-driven throw's `ThrowSpec` carries an empty `shake`: the dice are spawned the moment the shake is confirmed, and the samples arrive afterwards. The roll is driven by them and is reproducible from them, but the *record* of the throw does not yet hold them — which is what a replay and a bug report would need (`docs/physics-and-rendering.md`, "Shake input"). Attach the recorded session to the result when history arrives (4.8)
 - [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
@@ -217,6 +218,7 @@ after every physics change.
 - [ ] No tunnelling at maximum shake velocity — assert every body inside the box on every step, all roll long
 - [ ] Dice driven into a corner at speed neither wedge nor jitter
 - [ ] A settled pile is stable: no creep, no vibration, no slow slide
+- [ ] Assert containment on *every step* rather than only at rest, at the capacity limit: the at-rest check is in `JoltBridgeTest` now, but a die that leaves the tray mid-roll and comes back would still pass it
 
 ### 5.5 Stacking and cocking — and no invisible hand
 
@@ -232,14 +234,17 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
 - [ ] Settle time at 20 dice: median under 2 s, p99 under 4 s; the 12 s cap never reached in 10,000 rolls
 - [ ] Tune prevention (spawn spread and stagger, dice-on-dice friction, throw energy, scale) until the numbers above hold without leaning on corrections. **Where it starts:** 20 d20s at the capacity rule's scale settle in 89–132 steps on the Pixel 10a, with 9 of the 20 corrected, 0–1 re-thrown and **zero** post-rest corrections. The last figure is the one that must stay at zero and does; the correction rate is 45 % against a 0.5 % budget, and bringing it down is what this task is
+- [ ] **The corrections are visible at 100 dice, and they look like popcorn.** Seen on the Pixel 10a: dice stack against a wall and then *pop* apart to unstack, and individual dice jump to find a better spot. Every one of those lands while the die is still moving, so the honest rule holds and nothing touches a die at rest — but "it does not cheat" and "it does not look like it cheats" are different claims, and this is the second one failing. It is the 45 %-against-0.5 % correction rate above, seen rather than counted, and it is the argument for prevention over correction rather than a separate task
 - [ ] *With the user:* frame-by-frame review of 50 recorded 20-dice rolls — nobody can point at the moment a die was helped
 
 ### 5.6 Feel — the user's call, not a metric
 
-- [ ] Dice respond to a shake within ~100 ms, and they move the way the hand did — the tray itself never moves, because it is the screen (`docs/physics-and-rendering.md`)
-- [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling
+- [ ] Dice respond to a shake within ~100 ms, and they move the way the hand did — the tray itself never moves, because it is the screen (`docs/physics-and-rendering.md`). **Both halves are wrong on the Pixel 10a today.** The direction is the axis bug in 4.1. The timing reads as a lag: the dice are already travelling fast when the shake begins to reach them, so the hand seems to be catching up with dice that left without it. The 100 ms start threshold and the spawn impulse are the two numbers in it
+- [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling. **Not yet:** on the Pixel 10a the dice do not travel far enough and the tumble does not read as dice being thrown. Throw energy and spawn spread are where that is tuned (5.5), and this is the judgement that says when it is right
+- [ ] The rim's shadow still looks wrong — the band across the top of the wall casts something that does not read as a rim. Lighting and the shadow map, not geometry, on present evidence
+- [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
 - [ ] Haptics fire on real impacts only, sound pitch tracks impulse and die size
-- [ ] Settled faces are legible at arm's length without zooming
+- [ ] Settled faces are legible at arm's length without zooming. The *size* is settled — 16 mm reads fine on the Pixel 10a — so this is now a question about the numbers, once they are drawn
 - [ ] Power-saving feels instant and gives the same answer
 
 ### 5.7 Performance on the Pixel 10a

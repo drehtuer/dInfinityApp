@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import android.hardware.SensorManager
+import android.view.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -21,10 +22,16 @@ import de.drehtuer.dinfinity.input.shake.SensorShakeSource
  *
  * A shake with no valid formula behind it throws nothing; the presenter
  * refuses it for the same reason the button is disabled.
+ *
+ * The display's rotation is read per sample rather than captured once. The
+ * tray is the screen however the screen is held, so which device axis runs up
+ * the tray changes when the phone is turned — and it can be turned in the
+ * middle of a shake (`docs/physics-and-rendering.md`, "Coordinates").
  */
 @Composable
 internal fun ShakeToRoll(presenter: RollPresenter) {
-  val sensors = LocalContext.current.getSystemService(SensorManager::class.java)
+  val context = LocalContext.current
+  val sensors = context.getSystemService(SensorManager::class.java)
 
   LifecycleResumeEffect(presenter, sensors) {
     val shakes =
@@ -33,8 +40,22 @@ internal fun ShakeToRoll(presenter: RollPresenter) {
           sensors = it,
           onStarted = { presenter.roll() },
           onSample = presenter::shaking,
+          rotationDegrees = { context.display.rotation.asDegrees() },
         ).apply { start() }
       }
     onPauseOrDispose { shakes?.stop() }
   }
 }
+
+/** `Surface.ROTATION_*` is an ordinal of quarter turns; the map wants degrees. */
+private fun Int.asDegrees(): Int =
+  when (this) {
+    Surface.ROTATION_90 -> QUARTER
+    Surface.ROTATION_180 -> HALF_TURN
+    Surface.ROTATION_270 -> THREE_QUARTERS
+    else -> 0
+  }
+
+private const val QUARTER = 90
+private const val HALF_TURN = 180
+private const val THREE_QUARTERS = 270

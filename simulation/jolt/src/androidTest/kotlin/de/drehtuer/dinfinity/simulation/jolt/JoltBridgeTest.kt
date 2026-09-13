@@ -5,9 +5,11 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
+import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -168,6 +170,78 @@ class JoltBridgeTest {
     assertEquals(TEN, outcome.faces.size)
   }
 
+  @Test
+  fun aFullTrayLeavesEveryDieOnTheTableAndNoneInTheAir() {
+    // The throw from the phone: 2d4 + 3d6 + 95d20, which is the engine's cap.
+    // Two things were seen there that no roll may contain — a die at rest on
+    // the *wall*, outside the floor entirely, and dice stopped in mid-air with
+    // their shadows well below them (`docs/TODO.md`, Step 5.4).
+    //
+    // The older containment check allows a die a whole half-tray outside the
+    // wall before it complains, which is why neither showed up in a suite.
+    // This one asks what the screenshot asks: is every die on the table.
+    val dice = List(2) { d4() } + List(3) { d6() } + List(95) { d20() }
+    val verdict = TableCapacity.check(dice, geometry)
+    val scale = (verdict as CapacityVerdict.Fits).scale
+    val spec = spec(dice, seed = 7L).copy(dieScale = scale)
+
+    val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = dice.size))
+    val layout = SpawnLayout(geometry, radiusOf(d20()) * scale, spec.seed)
+
+    val states =
+      world.use {
+        dice.forEachIndexed { index, die ->
+          world.addDie(
+            hull = ShapeGeometry.hullOf(die, scale),
+            material = die.material,
+            placement = layout.placementOf(index, dice.size),
+          )
+        }
+        world.finish()
+        RollLoop(spec, world, layout, ShakeDriver(emptyList())).run()
+        world.readStates()
+      }
+
+    val halfLong = geometry.longSideMm / 2
+    val halfShort = geometry.shortSideMm / 2
+    val escaped =
+      states.withIndex().filter { (_, state) ->
+        abs(state.position.x) > halfLong || abs(state.position.y) > halfShort
+      }
+    assertTrue(
+      "dice came to rest outside the tray: ${escaped.map { it.index to it.value.position }}",
+      escaped.isEmpty(),
+    )
+
+    // A die resting on the floor sits about its own radius above it. One much
+    // higher than that is either on a pile or in the air, and the difference is
+    // whether anything is under it.
+    val radius = radiusOf(d20()) * scale
+    val floating =
+      states.withIndex().filter { (index, state) ->
+        state.position.z > radius * AIRBORNE &&
+          states.withIndex().none { (other, below) ->
+            other != index &&
+              below.position.z < state.position.z &&
+              abs(below.position.x - state.position.x) < radius * 2 &&
+              abs(below.position.y - state.position.y) < radius * 2
+          }
+      }
+    val highest = states.withIndex().sortedByDescending { it.value.position.z }.take(5)
+    assertTrue(
+      "dice came to rest in mid-air with nothing under them: " +
+        "${floating.map { it.index to it.value.position }}; " +
+        "tray ${geometry.longSideMm}x${geometry.shortSideMm} wall ${geometry.wallHeightMm} " +
+        "ceiling ${geometry.ceilingHeightMm}; scale $scale radius $radius; " +
+        "highest ${highest.map { it.index to it.value.position.z }}",
+      floating.isEmpty(),
+    )
+  }
+
+  private fun d4(): Die = Die.standard("d4", DieShape.Tetrahedron)
+
+  private fun d20(): Die = Die.standard("d20", DieShape.Icosahedron)
+
   private fun d6(): Die = Die.standard("d6", DieShape.Cube)
 
   private fun radiusOf(die: Die): Double = die.material.boundingRadiusMm
@@ -200,6 +274,9 @@ class JoltBridgeTest {
     const val SHAKE_STEPS = 120
     const val SWING_STEPS = 12
     const val SHAKE_MM_PER_SECOND2 = 18_000.0
+
+    /** Higher above the floor than this, in die radii, and something should be under it. */
+    const val AIRBORNE = 2.5
     val SEEDS = listOf(1L, 2L, 3L, 4L, 5L, 6L)
   }
 }

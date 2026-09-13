@@ -131,12 +131,14 @@ class SensorShakeSourceTest {
     shakeHard(atMillis = 0)
     shakeHard(atMillis = ShakeThresholds.START_MILLIS)
     // Android reports metres per second squared, so 12 m/s² is 12,000 mm/s².
+    // Asserted as a length, because which axis it lands on is the tray's frame
+    // rather than the phone's and has its own tests (`PhoneAxesTest`).
     assertEquals(
       12_000.0,
       session
         .recorded()
         .first()
-        .accelerationMmPerSecond2.x,
+        .accelerationMmPerSecond2.length,
       1.0,
     )
   }

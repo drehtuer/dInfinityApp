@@ -175,7 +175,6 @@ struct World::Impl : public ContactListener {
     // millimetres in a step, and the cost of a wall it can get through is a
     // die falling for ever outside the box.
     const float thickness = 5.0f;
-    const float wall = tray.wall_height;
     const float ceiling = tray.ceiling_height;
     const float radius = tray.corner_radius;
 
@@ -214,10 +213,16 @@ struct World::Impl : public ContactListener {
 
     // The rounded inner corners: a cylinder tangent to both walls, so a die
     // driven into a corner slides back out instead of wedging in the angle
-    // (`docs/tables.md`). Only as tall as the rim, which is as far up as a die
-    // can wedge into anything.
+    // (`docs/tables.md`).
+    //
+    // They run to the ceiling for the same reason the walls do, and it took a
+    // phone to see why. Stopping them at the rim left their top faces as four
+    // horizontal ledges inside the tray, sixty millimetres up — and a die that
+    // landed on one came to rest there, in mid-air as far as the player is
+    // concerned, with its shadow on the floor well below it. The roll was then
+    // read off a die that was never on the table.
     if (radius > 0.0f) {
-      const float corner_half = wall * 0.5f;
+      const float corner_half = ceiling * 0.5f;
       const Quat upright = Quat::sRotation(Vec3(1.0f, 0.0f, 0.0f), JPH_PI * 0.5f);
       for (int sx = -1; sx <= 1; sx += 2) {
         for (int sy = -1; sy <= 1; sy += 2) {
