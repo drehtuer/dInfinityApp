@@ -41,6 +41,7 @@ fun DInfinityApp(
   settings: AppSettings = AppSettings(),
   onAccentSelected: (AccentColor) -> Unit = {},
   rollPresenter: (() -> RollPresenter)? = null,
+  onPowerSavingChanged: (Boolean) -> Unit = {},
 ) {
   val navController = rememberNavController()
   NavHost(
@@ -61,6 +62,7 @@ fun DInfinityApp(
             SettingsScreen(
               settings = settings,
               onAccentSelected = onAccentSelected,
+              onPowerSavingChanged = onPowerSavingChanged,
             )
 
           else ->

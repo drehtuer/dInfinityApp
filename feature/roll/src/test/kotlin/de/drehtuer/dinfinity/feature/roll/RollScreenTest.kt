@@ -166,6 +166,29 @@ class RollScreenTest {
   }
 
   @Test
+  fun `power-saving mode puts no tray on the screen at all`() {
+    // Not a tray that draws nothing: no surface. A surface is a buffer the
+    // compositor keeps, and what power-saving claims is that none of it exists
+    // (`docs/architecture.md`, decision 38).
+    compose.setContent { RollScreen(presenter = presenter(UndrawnTray(), LandingRolls(mapOf(0 to 0)))) }
+
+    compose.onNodeWithTag(RollTestTags.SCREEN).assertExists()
+    compose.onNodeWithTag(RollTestTags.TRAY).assertDoesNotExist()
+  }
+
+  @Test
+  fun `power-saving still throws the dice, and the total arrives`() {
+    compose.setContent {
+      RollScreen(presenter = presenter(UndrawnTray(), LandingRolls(mapOf(0 to 0, 1 to 0, 2 to 0))))
+    }
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
+  }
+
+  @Test
   fun `the screen honours a modifier its caller gives it`() {
     // Every other test lets the default stand, so without this the screen has
     // never once been drawn the way the navigation graph will draw it.
@@ -243,7 +266,12 @@ class RollScreenTest {
     const val CALLER_TAG = "caller:modifier"
   }
 
-  private class DirectTray : Tray {
+  /** A tray that throws the dice where it stands and says it draws nothing. */
+  private class UndrawnTray : DirectTray() {
+    override val draws: Boolean = false
+  }
+
+  private open class DirectTray : Tray {
     val shaken = mutableListOf<ShakeSample>()
 
     /** Every table this tray has been told about, in order. */

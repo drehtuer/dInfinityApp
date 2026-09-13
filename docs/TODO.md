@@ -84,7 +84,8 @@ not have yet.
 - [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
 - [ ] Formula editor (`2a`): the formula on the tray is not tappable — the field is always on screen instead of appearing when the formula is tapped, and Enter does not roll. The squiggle and the error line under it are done (`6f`, `9c`)
 - [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
-- [ ] Power-saving path (`1z`) — no renderer created, result appears at once
+- [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
+- [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
 - [ ] First-launch state (`9a`): built-in set only, Unfiled group, no saved rolls
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
@@ -179,7 +180,7 @@ Design `6c`. Spec: `docs/statistics.md`.
 Design `1q`, `1y`, `2d`. Spec: `README.md`, `docs/architecture.md`.
 
 - [ ] Full-screen menu (`1q`), grouped Play / Look back / Customise / App. **This is the only thing standing between the app and a connected navigation graph**: today the single in-app control that navigates anywhere is the placeholder screens' Settings row, and every other move between screens is the system back gesture — the roll screen cannot be left deliberately at all (`docs/architecture.md`, "Screens and the states behind them")
-- [ ] Appearance (System / Light / Dark), power-saving (on/off only), shake, haptics, sound, rounding default, default set, table, session — the accent picker is already there and is the pattern the rest follow
+- [ ] Appearance (System / Light / Dark), shake, haptics, sound, rounding default, default set, table, session — the accent picker and the power-saving switch are already there and are the pattern the rest follow
 - [ ] Replace the single field on `DInfinityApplication` with a real container once more than settings hangs off it
 - [ ] Version and repository link (`2d`)
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed

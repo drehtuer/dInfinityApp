@@ -23,6 +23,15 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
  */
 interface Tray : AutoCloseable {
   /**
+   * Whether this tray needs somewhere to draw.
+   *
+   * False in power-saving mode, where the screen puts no surface on the
+   * screen at all rather than handing over one that nothing will draw to
+   * (`design/dInfinity.dc.html`, option 1z).
+   */
+  val draws: Boolean get() = true
+
+  /**
    * There is somewhere to draw, this big. Called again with a new size when
    * the view is resized or the phone is turned.
    */

@@ -15,4 +15,7 @@ interface SettingsRepository {
   val settings: Flow<AppSettings>
 
   suspend fun setAccentColor(accent: AccentColor)
+
+  /** Turns drawing the dice off, or back on (`docs/physics-and-rendering.md`). */
+  suspend fun setPowerSaving(on: Boolean)
 }

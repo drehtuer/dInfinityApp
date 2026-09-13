@@ -56,7 +56,12 @@ fun RollScreen(
         .background(MaterialTheme.colorScheme.background)
         .testTag(RollTestTags.SCREEN),
   ) {
-    DiceTray(driver = presenter.tray, geometry = presenter.geometry, modifier = Modifier.fillMaxSize())
+    // No surface at all in power-saving mode, rather than one nothing draws
+    // to: a surface is a buffer the compositor keeps, and the claim that mode
+    // makes is that none of it exists (`docs/architecture.md`, decision 38).
+    if (presenter.draws) {
+      DiceTray(driver = presenter.tray, geometry = presenter.geometry, modifier = Modifier.fillMaxSize())
+    }
 
     Column(
       modifier =

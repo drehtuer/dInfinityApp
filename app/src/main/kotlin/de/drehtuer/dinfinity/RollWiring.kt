@@ -6,6 +6,8 @@ import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
+import de.drehtuer.dinfinity.render.filament.PowerSavingTray
+import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayDriver
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -57,16 +59,33 @@ class RollWiring(
   /**
    * A presenter for one visit to the roll screen.
    *
-   * Built per visit rather than held, because it owns a [TrayDriver] and a
-   * driver owns a thread, a Filament engine and a physics world. Leaving the
-   * screen gives all three back (`docs/architecture.md`, decision 49).
+   * Built per visit rather than held, because it owns a [Tray] and a tray owns
+   * a thread, and in the drawing case a Filament engine and a physics world.
+   * Leaving the screen gives all three back (`docs/architecture.md`,
+   * decision 49).
+   *
+   * @param powerSaving whether to throw the dice without drawing them. It is
+   *   read once, when the screen opens, rather than watched: a renderer
+   *   appearing or vanishing under a roll in progress is not a setting taking
+   *   effect, it is a bug. Turning it on takes effect the next time the screen
+   *   is opened (`design/dInfinity.dc.html`, option 1z).
    */
-  fun presenter(): RollPresenter =
+  fun presenter(powerSaving: Boolean = false): RollPresenter =
     RollPresenter(
       machine = RollMachine(catalog = catalog, geometry = geometry, table = table, simulator = simulator),
-      driver = TrayDriver(),
+      driver = tray(powerSaving),
       rolls = Rolls(simulator::start),
     )
+
+  /**
+   * The tray this visit gets.
+   *
+   * This is where "power-saving mode creates no graphics engine" is decided,
+   * and it is one branch in one place: nothing below it knows there is a mode
+   * at all, and the roll it opens is the same roll either way
+   * (`docs/architecture.md`, decision 38).
+   */
+  private fun tray(powerSaving: Boolean): Tray = if (powerSaving) PowerSavingTray() else TrayDriver()
 
   private fun aspect(): Double {
     val metrics = context.resources.displayMetrics

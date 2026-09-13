@@ -51,6 +51,15 @@ class RollPresenter(
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
 
+  /**
+   * Whether this screen puts a tray on the screen at all.
+   *
+   * False in power-saving mode, where the dice are thrown and never drawn, so
+   * there is nothing for a surface to be for
+   * (`design/dInfinity.dc.html`, option 1z).
+   */
+  val draws: Boolean get() = driver.draws
+
   /** The table's shape, which the tray's gestures are measured against. */
   val geometry: TableGeometry get() = machine.geometry
 

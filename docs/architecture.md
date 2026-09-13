@@ -225,6 +225,11 @@ and none of them decides anything itself:
 - **pinch and two-finger drag** call `look`, which moves the camera and is not
   a state change at all — where a player is standing is not what the dice did.
 
+In power-saving mode the tray is not there at all, and the list is otherwise
+unchanged: the dice are thrown by the same `roll`, stepped by the same loop,
+and the total arrives in the same `Settled`. Only pinch and pan have nothing
+to move (`design/dInfinity.dc.html`, option 1z).
+
 The tray is not in that list on purpose. It draws what the roll is doing and
 has no way to change it: `Renderer` has no method that returns anything
 (decision 48), so drawing a roll cannot alter one, and a one-finger tap on the
@@ -321,7 +326,14 @@ why the two are not built the same way (decision 49).
 | Control | Calls | What changes |
 |---|---|---|
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
+| the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
 | a placeholder's **Settings →** | `navigate(Settings)` | which screen is on |
+
+The power-saving row is the one setting that does not take effect where it is
+pressed. It is read when the roll screen opens and not watched, because a
+renderer appearing or vanishing under a roll in progress is not a setting
+taking effect — it is a bug (`docs/physics-and-rendering.md`, "Power-saving
+mode").
 
 The second row is scaffolding and is labelled as such in the code: it exists
 so that a setting is reachable on a device at all before the menu is built,

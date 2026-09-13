@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.data
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -29,11 +30,18 @@ class DataStoreSettingsRepository(
       .catch { cause ->
         if (cause is IOException) emit(emptyPreferences()) else throw cause
       }.map { preferences ->
-        AppSettings(accentColor = AccentColor.ofId(preferences[ACCENT_COLOUR]))
+        AppSettings(
+          accentColor = AccentColor.ofId(preferences[ACCENT_COLOUR]),
+          powerSaving = preferences[POWER_SAVING] == true,
+        )
       }
 
   override suspend fun setAccentColor(accent: AccentColor) {
     dataStore.edit { preferences -> preferences[ACCENT_COLOUR] = accent.id }
+  }
+
+  override suspend fun setPowerSaving(on: Boolean) {
+    dataStore.edit { preferences -> preferences[POWER_SAVING] = on }
   }
 
   companion object {
@@ -41,5 +49,6 @@ class DataStoreSettingsRepository(
     const val FILE_NAME: String = "settings"
 
     private val ACCENT_COLOUR = stringPreferencesKey("accent_colour")
+    private val POWER_SAVING = booleanPreferencesKey("power_saving")
   }
 }

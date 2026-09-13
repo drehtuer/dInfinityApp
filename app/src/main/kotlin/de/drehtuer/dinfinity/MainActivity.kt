@@ -31,7 +31,10 @@ class MainActivity : ComponentActivity() {
           onAccentSelected = { accent ->
             lifecycleScope.launch { repository.setAccentColor(accent) }
           },
-          rollPresenter = { app.rolls.presenter() },
+          onPowerSavingChanged = { on ->
+            lifecycleScope.launch { repository.setPowerSaving(on) }
+          },
+          rollPresenter = { app.rolls.presenter(powerSaving = settings.powerSaving) },
         )
       }
     }
