@@ -54,14 +54,50 @@ interface Renderer {
 /**
  * Where the dice are at one moment, as the simulation reported it.
  *
- * @param bodies one entry per die, in throw order.
- * @param interpolation how far this frame sits between the previous
- *   simulation state and this one, `0` to `1`.
+ * It carries the last *two* simulation states rather than one because the
+ * physics runs at a fixed 120 Hz and a display does not. A renderer is told
+ * where the dice were, where they are, and how far between the two this
+ * moment falls, and draws them there — so the same simulation looks smooth on
+ * a 60 Hz panel and on a 120 Hz one without the simulation knowing either
+ * exists (`docs/physics-and-rendering.md`).
+ *
+ * @param previous the state before the most recent step.
+ * @param current the state after it, one entry per die in throw order.
+ * @param interpolation how far this frame sits between the two, `0` to `1`.
  */
 data class RenderFrame(
-  val bodies: List<BodyTransform>,
+  val previous: List<BodyTransform>,
+  val current: List<BodyTransform>,
   val interpolation: Double = 1.0,
-)
+) {
+  init {
+    require(previous.size == current.size) {
+      "a frame has the same dice before and after a step, not ${previous.size} and ${current.size}"
+    }
+    require(interpolation in 0.0..1.0) { "$interpolation is not a moment between two steps" }
+  }
+
+  /**
+   * Where each die is at this moment: the two states blended.
+   *
+   * Every renderer blends the same way or two of them would disagree about
+   * the same roll, so the arithmetic is here rather than in each of them.
+   * Positions move in a straight line and turns take the short way round
+   * ([Quaternion.slerp]).
+   */
+  fun blended(): List<BodyTransform> =
+    previous.zip(current) { before, after ->
+      after.copy(
+        position = before.position + (after.position - before.position) * interpolation,
+        orientation = before.orientation.slerp(after.orientation, interpolation),
+      )
+    }
+
+  companion object {
+    /** Dice that are not moving: the same state at both ends. */
+    fun still(bodies: List<BodyTransform>): RenderFrame = RenderFrame(bodies, bodies)
+  }
+}
 
 /** One die's place and orientation, in the tray's millimetres. */
 data class BodyTransform(

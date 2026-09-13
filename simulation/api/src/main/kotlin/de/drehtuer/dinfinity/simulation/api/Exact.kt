@@ -30,6 +30,9 @@ object Exact {
   /** [StrictMath.cos], for the reason this object exists. */
   fun cos(radians: Double): Double = StrictMath.cos(radians)
 
+  /** [StrictMath.acos], for the reason this object exists. */
+  fun acos(value: Double): Double = StrictMath.acos(value)
+
   /** [StrictMath.atan2], for the reason this object exists. */
   fun atan2(
     y: Double,
