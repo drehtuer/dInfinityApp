@@ -29,7 +29,7 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] `render/filament` — the Filament engine itself: scene, materials from the table look and the die material, the two lights, soft shadows, and the camera that looks down at the tray and auto-frames the dice once they settle. The meshes and the blend between simulation states are done; what is left is everything that needs a GPU. *Device:* nothing about how a renderer *looks* can be judged from a unit test
+- [ ] `render/filament` — the Filament engine itself: scene, materials from the table look and the die material, the two lights, soft shadows, and driving it from the simulation. The meshes, the blend between simulation states and the camera framing are done; what is left is everything that needs a GPU. *Device:* nothing about how a renderer *looks* can be judged from a unit test
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
 - [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)

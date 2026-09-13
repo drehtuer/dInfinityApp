@@ -284,8 +284,18 @@ all, and **zero** corrections applied after rest.
   along the short side as often as it asks for that, and a corner takes the
   rate of whichever it is nearer — so a change of rate stretches the pattern
   rather than cutting it.
-- Camera looks down at the tray at a slight angle; auto-frames all dice once
-  they settle, then eases in on the results.
+- Camera looks down at the tray at a slight angle — 22° off straight down,
+  40° field of view, standing off the near end of the tray. Straight down is a
+  diagram, and the point of rolling real dice is watching them tumble. While a
+  roll is running it frames the whole tray, because a die can be anywhere in
+  it; once the dice settle it frames *them* — each as the box around its
+  bounding sphere, so a die at the edge of the group is wholly in shot rather
+  than centred and clipped — and eases in with a smoothstep, because a camera
+  that starts and stops dead reads as a glitch rather than as attention.
+- The distance is solved, not guessed: each framed corner names the nearest the
+  camera may stand for it to be inside the frustum, and the camera takes the
+  furthest of those. That is what makes "the dice are in shot" a test rather
+  than a judgement.
 - Die meshes come from the shape catalogue — the same closed forms the solver
   collides, grouped onto the same face directions the reader reads, so face *i*
   of the picture is face *i* of the roll by construction

@@ -16,8 +16,8 @@ changelog.
   smaller items listed there.
 - **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to and including #47 is merged. One branch
-  is in flight: `feature/tray-and-frames`.
+- **Branch state:** everything up to and including #48 is merged. One branch
+  is in flight: `feature/tray-camera`.
 
 ## Done
 
@@ -76,10 +76,10 @@ changelog.
 
 ## In progress
 
-- `render/filament`. The die meshes, the tray mesh and the blend between
-  simulation states are built and tested on the JVM. What is left is the
-  Filament engine itself — materials, lights, shadows and the camera — which
-  is the part that needs a GPU and a person to look at it.
+- `render/filament`. The die meshes, the tray mesh, the blend between
+  simulation states and the camera framing are built and tested on the JVM.
+  What is left is the Filament engine itself — materials, lights, shadows —
+  which is the part that needs a GPU and a person to look at it.
 
 ## Blocked / waiting on
 
