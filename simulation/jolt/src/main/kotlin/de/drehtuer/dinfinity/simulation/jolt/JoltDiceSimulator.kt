@@ -47,20 +47,24 @@ class JoltDiceSimulator(
       RollLoop(spec, world, layout, ShakeDriver(spec.shake)).run()
     }
   }
-
-  /**
-   * The grid is laid out for the biggest die in the throw, not for each die's
-   * own size.
-   *
-   * A throw can mix a d4 and a d20 from different sets, and cells sized for
-   * the d4 would put the d20 through its neighbour's cell wall before anything
-   * had been thrown.
-   */
-  private fun largestRadiusMm(spec: ThrowSpec): Double =
-    spec.dice.maxOf {
-      ShapeGeometry.boundingRadiusPerSize(it.die.shape) * it.die.material.sizeMm * spec.dieScale
-    }
 }
+
+/**
+ * The grid is laid out for the biggest die in the throw, not for each die's
+ * own size.
+ *
+ * A throw can mix a d4 and a d20 from different sets, and cells sized for the
+ * d4 would put the d20 through its neighbour's cell wall before anything had
+ * been thrown.
+ *
+ * Not private, because the golden suite has to lay out the same grid to record
+ * what the engine was handed, and a second copy of this line is a second copy
+ * that can drift.
+ */
+internal fun largestRadiusMm(spec: ThrowSpec): Double =
+  spec.dice.maxOf {
+    ShapeGeometry.boundingRadiusPerSize(it.die.shape) * it.die.material.sizeMm * spec.dieScale
+  }
 
 /** Opens the world one throw runs in. The seam the tests come in through. */
 fun interface WorldFactory {

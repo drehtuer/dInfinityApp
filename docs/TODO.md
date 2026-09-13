@@ -29,7 +29,6 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] Golden determinism suite: (seed, formula, input) → outcome, asserted on every ABI CI can run, and re-asserted on the device in Step 5. The `expected` column of `test-fixtures/…/golden/cases.tsv` is what this fills; the bridge already gives byte-identical outcomes on `x86_64` and `arm64-v8a`, so there is something stable to write down
 - [ ] `render/filament` — scene, materials, camera, die meshes from the shape catalogue, the tray, and interpolation between the last two simulation states. *Device:* nothing about a renderer can be judged from a unit test
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
 - [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)
@@ -188,7 +187,7 @@ after every physics change.
 ### 5.2 Fairness and determinism
 
 - [ ] Every catalogue shape, 100,000 headless rolls: chi-squared p > 0.001, no face off by more than 1 %
-- [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker
+- [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker. The golden suite is the check and already holds for its ten cases on both ABIs; Step 5 is the same claim at ten thousand rolls and on a second phone
 - [ ] Power-saving and rendered mode agree on every seed in the golden suite
 
 ### 5.3 Capacity and corner cases

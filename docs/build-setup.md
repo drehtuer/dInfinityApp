@@ -365,6 +365,34 @@ dinfinity-phone        # attaches the phone over wireless debugging
 Whichever is attached is the one they run on, and if both are, both run them
 — [choose with `ANDROID_SERIAL`](#when-both-a-phone-and-the-emulator-are-attached).
 
+### Re-recording the golden cases
+
+`test-fixtures/src/main/resources/fixtures/golden/cases.tsv` holds what each
+(seed, formula, input) triple came to, and two suites assert it: the JVM half
+(`GoldenCasesTest`) checks everything the engine is handed, the device half
+(`GoldenDeterminismTest`) checks what it did with it
+(`docs/physics-and-rendering.md`, "Timestep and determinism").
+
+A deliberate change to the physics, the spawn or the capacity rule moves those
+numbers, and the fixture is then re-recorded rather than edited:
+
+```sh
+adb logcat -c
+./gradlew :simulation:jolt:connectedDebugAndroidTest      # fails, and records
+adb logcat -d -s dinfinity.golden:I -v raw | grep -P '^\d+\t'
+```
+
+Every run logs one ready-made line per case, matched or not, so the last
+command prints the new file body to paste in under the comment block. Record on
+**one** device and then run the suite on the other: the point of the fixture is
+that the emulator and the phone agree, and recording separately on each would
+be two fixtures that can never disagree.
+
+The diff is the review. A changed `spawn` column means something upstream of
+the engine moved; changed `faces` or `steps` mean the physics did. Either can
+be right — what is not right is either of them changing without anyone
+noticing.
+
 ### The verdict on an instrumented run
 
 `connectedDebugAndroidTest` is followed by `verifyDeviceTestResults`, which

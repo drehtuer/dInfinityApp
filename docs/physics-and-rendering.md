@@ -79,9 +79,19 @@ Every die is a **convex** rigid body:
   `simulation/api`'s `Exact`. `Math.sin` may be an intrinsic and is allowed to
   be an ulp out; one ulp in a starting quaternion is a different face a hundred
   steps later (`docs/architecture.md`, decision 43).
-- Golden tests: a fixed list of (seed, formula, impulse sequence) tuples with
-  their expected outcomes, run on every CI build and on multiple ABIs.
-  Any diff is a bug.
+- Golden tests: a fixed list of (seed, formula, input) triples with their
+  recorded outcomes, in
+  `test-fixtures/src/main/resources/fixtures/golden/cases.tsv`. They are
+  asserted in two halves, split where the engine begins. The JVM half runs on
+  every CI build and checks everything the engine is *handed* — which dice the
+  formula resolved to, how far the capacity rule shrank them, every die's
+  starting placement and hull, and the gravity of every step of the shake, as
+  one digest. The device half runs on the emulator and the phone and checks
+  what the engine *did* with it: the faces, the steps to rest, the corrections
+  and the re-throws, exactly. Both halves assert the digest, which is what
+  makes the CI half worth running: it is only evidence about a real roll while
+  the device still agrees with it about what the roll was. Any diff is a bug —
+  re-recording is deliberate and reviewed (`docs/build-setup.md`).
 
 ## Starting a roll
 

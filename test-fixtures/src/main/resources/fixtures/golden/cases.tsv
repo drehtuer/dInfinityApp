@@ -1,16 +1,44 @@
-# Golden roll cases: the (seed, formula) pairs the determinism suite locks down.
-# The expected column is filled in when the simulator lands (plan Step 3); until
-# then these are the inputs the suite will run, chosen to cover the notation and
-# the table capacity rule. One case per line, tab separated.
+# Golden roll cases: the (seed, formula, input) triples the determinism suite
+# locks down, and what they came to (`docs/physics-and-rendering.md`,
+# "Timestep and determinism"). Any diff is a bug.
 #
-# seed	formula	expected
-1	1d20	
-2	3d6 + 1d20 - 4	
-3	2d20kh1 + 6 [Attack]	
-4	4d6dl1	
-5	8d6!	
-6	1d100	
-7	2d10kl1	
-8	(3d6 + 5) / 2 [Half]	
-9	20d6	
-10	1d4 + 1d2	
+# Tab separated, one case per line. The first three columns are the input and
+# are chosen by hand to cover the notation and the table capacity rule; the
+# rest are *recorded*, never edited by hand:
+#
+#   seed         the roll's seed.
+#   formula      as typed. Resolved against the standard set.
+#   input        'tap' for a drop from the hand, 'shake' for GoldenShake.
+#   scale        what the capacity rule shrank the dice to (`docs/tables.md`).
+#   spawn        digest of everything the engine is handed before it steps:
+#                the dice in throw order, their hulls, where each one starts
+#                and how hard it is thrown, and the gravity of every step.
+#                Asserted on the JVM, which is the half of the chain CI can
+#                reach, and again on each ABI.
+#   faces        the face index each die came to rest on, in throw order.
+#                This is the roll.
+#   steps        fixed steps to rest — simulated time, so the same everywhere.
+#   corrections  dice nudged while still moving (rung 2).
+#   rethrows     dice picked up and thrown again (rung 3).
+#
+# A line that carries only its first three columns has not been recorded yet,
+# and the suite fails saying so rather than passing quietly.
+#
+# Forced settles and post-rest corrections are not columns: they are asserted
+# to be zero rather than recorded, because a recorded one would be a bug
+# written down as an expectation.
+#
+# To re-record after a deliberate physics change, see `docs/build-setup.md`,
+# "Re-recording the golden cases".
+#
+# seed	formula	input	scale	spawn	faces	steps	corrections	rethrows
+1	1d20	tap	1.000	404fc72a62251099	12	65	1	0
+2	3d6 + 1d20 - 4	tap	1.000	4d6311011abe9ce3	0,0,5,7	86	2	0
+3	2d20kh1 + 6 [Attack]	tap	1.000	28bb36d5016a6dce	12,18	81	1	0
+4	4d6dl1	tap	1.000	fdb14cebdd696111	0,5,0,5	69	3	0
+5	8d6!	tap	0.898	8cd8c340f5ebd41e	2,5,4,3,5,0,2,2	72	6	0
+6	1d100	tap	1.000	ac0f545cb1d9925f	1,0	75	1	0
+7	2d10kl1	shake	1.000	bdf747bd7ee788b2	8,9	145	1	0
+8	(3d6 + 5) / 2 [Half]	tap	1.000	0426bfc9bab253a7	0,5,4	71	1	0
+9	20d6	tap	0.803	6382a533a22c8927	5,4,3,2,1,4,2,5,4,1,5,2,4,0,0,0,5,3,1,5	141	10	1
+10	1d4 + 1d2	shake	1.000	3e6dd3263f2f19a5	2,1	131	0	0

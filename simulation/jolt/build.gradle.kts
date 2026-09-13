@@ -2,6 +2,9 @@ plugins {
   id("dinfinity.android-library")
 }
 
+/** Compiled into both test tiers; see the source-set block below. */
+val sharedTestSources = "src/sharedTest/kotlin"
+
 val ndk = providers.gradleProperty("dinfinity.ndk").get()
 val cmakeVersion = providers.gradleProperty("dinfinity.cmake").get()
 
@@ -20,6 +23,16 @@ android {
     }
   }
 
+  // The golden determinism suite is one suite with two halves: the JVM half
+  // asserts everything the engine is handed, the device half asserts what it
+  // did with it. They have to agree about what a case *means* before they can
+  // disagree about what it came to, so the code that turns a case into a throw
+  // is compiled into both rather than copied into each.
+  sourceSets {
+    getByName("test").kotlin.srcDir(sharedTestSources)
+    getByName("androidTest").kotlin.srcDir(sharedTestSources)
+  }
+
   externalNativeBuild {
     cmake {
       path = file("src/main/cpp/CMakeLists.txt")
@@ -31,5 +44,11 @@ android {
 dependencies {
   api(project(":simulation:api"))
 
+  // A golden case starts as a formula, so both test tiers parse and plan one.
+  // Test-only, in both directions: nothing in this module's own code knows
+  // that notation exists.
+  testImplementation(project(":core:notation"))
   testImplementation(project(":test-fixtures"))
+  androidTestImplementation(project(":core:notation"))
+  androidTestImplementation(project(":test-fixtures"))
 }
