@@ -60,10 +60,13 @@ data class DieMesh(
      * the two are the same thing. For a tetrahedron they are not: a d4 is read
      * from the corner pointing up, so the catalogue's directions are corners,
      * and the flat surface that carries cell *i* is the face **opposite**
-     * corner *i* (`docs/dice-sets.md`, "Shape catalogue"). That is a choice —
-     * four corners and four faces can be paired either way round — and it is
-     * the one that needs no second ordering: the artwork follows the numbering
-     * that is already there.
+     * corner *i* — the triangle whose corners are the three that are not *i*
+     * (`docs/dice-sets.md`, "The d4").
+     *
+     * That pairing is what lets a d4's numbers stay with its corners. Each
+     * cell carries the values of its three corners, each drawn at its own
+     * corner, so the number at the top of a settled d4 appears on all three
+     * faces you can see and two faces sharing an edge agree along it.
      */
     private fun outwardNormals(shape: DieShape): List<Vector3> =
       ShapeGeometry.directionsOf(shape).map { direction ->
@@ -204,11 +207,13 @@ data class TextureCoordinate(
  * The two directions that make a face's texture the right way up.
  *
  * A cell is drawn with the face's "up" matching the shape's reference
- * orientation (`docs/dice-sets.md`), so up on the face is up in the tray,
- * flattened onto the face: the part of `+z` that lies in the plane. A face
- * that points straight up or straight down has no such part, and for those two
- * the tray's `+y` is used instead — which is the same rule the catalogue's own
- * face order leans on, where a ring is walked anticlockwise from the `+x` side.
+ * orientation (`docs/dice-sets.md`), and up is `+z` — one right-handed
+ * coordinate system shared by the tray, the solver and the renderer, so
+ * nothing is turned over on the way between them. Up on a *face* is that up
+ * flattened onto it: the part of `+z` that lies in the plane. A face pointing
+ * straight up or straight down has no such part, and for those two the tray's
+ * `+y` is used instead — which is the same rule the catalogue's own face order
+ * leans on, where a ring is walked anticlockwise from the `+x` side.
  */
 private class TextureFrame(
   private val right: Vector3,

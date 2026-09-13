@@ -30,6 +30,7 @@ completion before the screens start, because a bug here is a bug in every
 screen.
 
 - [ ] `render/filament` — scene, materials, camera, the tray mesh, and interpolation between the last two simulation states. The die meshes are done. *Device:* nothing about how a renderer *looks* can be judged from a unit test
+- [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
 - [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)
 - [ ] Resolving a forge ref to a commit SHA, so "check for updates" can tell one HEAD from another (`docs/dice-sets.md`, "Updates"). The install itself records the archive's SHA-256, which is enough to install reproducibly; telling two commits apart is what the update flow in 4.4 needs
@@ -128,6 +129,7 @@ Design `1u`, `9j`. Spec: `docs/tables.md`.
 Design `1v`, `4c`, `8d`. Spec: `docs/face-designer.md`.
 
 - [ ] Canvas with the face's outline masked in; strokes stored as vectors so drafts survive process death
+- [ ] **The d4 draws three numbers per triangle, one per corner** — its values belong to corners, not faces (`docs/dice-sets.md`, "The d4"). Three guides rather than one, and the two triangles sharing an edge have to agree along it: a die drawn otherwise reads as a different number depending which way it is looked at. Make that hard to do by accident, not a warning afterwards
 - [ ] Pen widths, eraser, fill, stamp, undo/redo, 12 presets plus custom colour (`4c`)
 - [ ] Face strip for every shape (`8d`): triangle, kite, pentagon, circle
 - [ ] "Roll it" throws the die being drawn

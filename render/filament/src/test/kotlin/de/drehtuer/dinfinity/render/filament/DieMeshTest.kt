@@ -216,8 +216,8 @@ class DieMeshTest {
   @Test
   fun `a d4 carries its cells on the faces opposite its corners`() {
     // A tetrahedron is read from the corner pointing up, so its four cells
-    // have to be paired with its four faces somehow. This is the pairing, and
-    // it is a decision rather than a fact (`docs/dice-sets.md`).
+    // have to be paired with its four faces somehow. This is the pairing
+    // (`docs/dice-sets.md`, "The d4").
     val corners = ShapeGeometry.directionsOf(DieShape.Tetrahedron)
 
     DieMesh.of(DieShape.Tetrahedron).faces.forEach { face ->
@@ -226,6 +226,45 @@ class DieMeshTest {
         face.normal.approximates(-corners[face.index!!].normalised(), TOLERANCE),
       )
       assertEquals("a tetrahedron's faces are triangles", TRIANGLE, face.positions.size)
+    }
+  }
+
+  @Test
+  fun `a d4's cell is drawn on the three corners that are not its own`() {
+    // What makes a d4 readable: a number belongs to a corner and is drawn on
+    // every face meeting it, so the corner pointing up shows its number on all
+    // three faces you can see. That only works if cell i's triangle is the one
+    // whose corners are the three that are not i — which is the same statement
+    // as "the face opposite corner i", said in the terms an author draws in.
+    val corners = ShapeGeometry.directionsOf(DieShape.Tetrahedron).map { it.normalised() }
+
+    DieMesh.of(DieShape.Tetrahedron).faces.forEach { face ->
+      val drawn = face.positions.map { position -> corners.indexOfFirst { it.approximates(position, TOLERANCE) } }
+
+      assertEquals(
+        "cell ${face.index} is not drawn on the corners it has to carry numbers for",
+        (corners.indices - face.index!!).toSet(),
+        drawn.toSet(),
+      )
+    }
+  }
+
+  @Test
+  fun `two faces of a d4 that share an edge share both its corners`() {
+    // So the value drawn at each end of a shared edge is the same on both
+    // sides of it. A die whose two faces disagree along an edge reads as two
+    // different numbers depending on which way you look at it.
+    val faces = DieMesh.of(DieShape.Tetrahedron).faces
+    val pairs = faces.flatMap { first -> faces.filter { it.index!! > first.index!! }.map { first to it } }
+
+    assertEquals("a tetrahedron has six edges", EDGES_OF_A_TETRAHEDRON, pairs.size)
+    pairs.forEach { (first, second) ->
+      val shared = first.positions.filter { corner -> second.positions.any { it.approximates(corner, TOLERANCE) } }
+      assertEquals(
+        "faces ${first.index} and ${second.index} meet along ${shared.size} corners, not an edge",
+        2,
+        shared.size,
+      )
     }
   }
 
@@ -285,6 +324,7 @@ class DieMeshTest {
     const val COIN_SEGMENTS = 24
     const val ROUNDING = 1e6
     const val HALF = 0.5
+    const val EDGES_OF_A_TETRAHEDRON = 6
 
     /** Past this, a face is lying flat and has no "up" of its own to check. */
     const val LYING_FLAT = 0.999

@@ -159,21 +159,33 @@ The atlas layout for a catalogue shape is a fixed grid: face *i* occupies cell
 matching the catalogue's reference orientation. The face designer produces
 exactly this layout, so hand-drawn and hand-authored sets are interchangeable.
 
-"Up" on a face is up in the tray, flattened onto the face — the part of the
-tray's `+z` that lies in the face's plane. A face that points straight up or
-straight down has no such part, and those two are turned by the tray's `+y`
-instead. The face's own circle fills the cell, so a triangle and a pentagon
-both touch its edges and a strip of cells is drawn at one size.
+**Up is `+z`**, in the tray, in the physics and in the renderer — one
+right-handed coordinate system shared by all three, so nothing has to be
+turned over on the way between them. "Up" on a *face* is that up flattened
+onto the face: the part of `+z` that lies in the face's plane. A face pointing
+straight up or straight down has no such part, and those two are turned by
+`+y` instead. The face's own circle fills the cell, so a triangle and a
+pentagon both touch its edges and a strip of cells is drawn at one size.
 
-**The d4 is the one shape where a cell and a readable position are different
-things.** A tetrahedron is read from the corner pointing up, so its four
-numbers belong to corners, while its four cells are painted on faces. Cell *i*
-is the face **opposite** corner *i*. Four corners and four faces could have
-been paired either way round; this is the pairing that needs no second
-ordering, because it follows the numbering that is already there. An author
-drawing the common "top number" d4 puts each number at the corner it belongs
-to, on all three faces that meet there — which is what a moulded d4 does, and
-why a d4's cell is a triangle carrying three numbers rather than one.
+### The d4
+
+The one shape where a cell and a readable position are different things. A
+tetrahedron is read from the corner pointing up, so its four **numbers belong
+to corners**, while its four **cells are painted on faces**.
+
+Cell *i* is the face **opposite** corner *i* — which is to say, the triangle
+whose three corners are the three that are *not* *i*.
+
+A number is drawn at the corner it belongs to, on **every face that meets that
+corner**. So cell *i* carries three numbers, not one: the values of the three
+corners other than *i*, each at its own corner of the triangle. That is what a
+moulded d4 does, and it is what makes the die readable — when a corner points
+up, all three faces you can see carry that corner's number at their apex.
+
+It also means the two faces sharing an edge agree along it: both draw the same
+value at each end of that edge, because the value belongs to the corner rather
+than to either face. An author who draws them differently has drawn a die that
+reads as two different numbers depending on which way you look at it.
 
 **Face order.** Faces are numbered from the top of the shape's reference
 orientation downwards, and anticlockwise around each ring starting from the
