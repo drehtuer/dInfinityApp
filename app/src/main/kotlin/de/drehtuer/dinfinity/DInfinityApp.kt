@@ -30,6 +30,8 @@ import de.drehtuer.dinfinity.feature.graph.GraphPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphScreen
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.RollScreen
+import de.drehtuer.dinfinity.feature.saved.EditorPresenter
+import de.drehtuer.dinfinity.feature.saved.EditorScreen
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
@@ -38,6 +40,7 @@ import de.drehtuer.dinfinity.feature.settings.MenuScreen
 import de.drehtuer.dinfinity.feature.settings.MenuSection
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
 import de.drehtuer.dinfinity.navigation.Destination
+import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
 import de.drehtuer.dinfinity.navigation.MenuGroup
 import de.drehtuer.dinfinity.theme.LocalModernistColors
@@ -66,6 +69,7 @@ fun DInfinityApp(
   rollPresenter: (() -> RollPresenter)? = null,
   graphMachine: (() -> GraphMachine)? = null,
   savedRolls: (() -> SavedPresenter)? = null,
+  savedRollEditor: ((String?) -> EditorPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -104,6 +108,9 @@ fun DInfinityApp(
           Destination.Graph if graphMachine != null -> Graph(graphMachine, entry, navController)
 
           Destination.SavedRolls if savedRolls != null -> Saved(savedRolls, entry, navController)
+
+          Destination.SavedRollEditor if savedRollEditor != null ->
+            Editor(savedRollEditor, entry, navController)
 
           Destination.Settings ->
             SettingsScreen(
@@ -191,9 +198,43 @@ private fun Saved(
         popUpTo(Destination.home.route) { inclusive = true }
       }
     },
+    onEdit = { saved -> navController.navigate(editorRoute(saved.roll.id)) },
+    onNew = { navController.navigate(editorRoute(null)) },
     menu = { MenuTo(navController) },
   )
 }
+
+/**
+ * Writing down one saved roll.
+ *
+ * Leaves when it is saved or deleted, by going back rather than forward: the
+ * editor is a detour from the list, and finishing one is arriving back where
+ * it started.
+ */
+@Composable
+private fun Editor(
+  presenter: (String?) -> EditorPresenter,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+) {
+  val editing = entry.arguments?.getString(EditorArgument.ROLL)?.ifBlank { null }
+  EditorScreen(
+    presenter = remember(entry) { presenter(editing) },
+    onDone = { navController.popBackStack() },
+    onRollNow = { formula ->
+      navController.navigate(rollRoute(formula)) {
+        popUpTo(Destination.home.route) { inclusive = true }
+      }
+    },
+  )
+}
+
+/** The route that opens the editor on [rollId], or on a new roll for null. */
+internal fun editorRoute(rollId: String?): String =
+  buildString {
+    append(Destination.SavedRollEditor.route)
+    if (rollId != null) append("?${EditorArgument.ROLL}=${Uri.encode(rollId)}")
+  }
 
 /**
  * The route that opens the tray with [formula] already in the field.

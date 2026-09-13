@@ -174,6 +174,14 @@ class DInfinityAppTest {
   }
 
   @Test
+  fun `the editor is opened on a roll, or on a new one`() {
+    // Not in the menu: it is about one roll, and the way to it is that roll.
+    assertEquals("editor?roll=fireball", editorRoute("fireball"))
+    assertEquals("editor", editorRoute(null))
+    assertEquals(Destination.SavedRollEditor, Destination.ofRoute(editorRoute("fireball")))
+  }
+
+  @Test
   fun `the settings screen shows the accent it was given`() {
     compose.setContent {
       DInfinityTheme {

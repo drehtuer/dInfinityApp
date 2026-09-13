@@ -109,6 +109,9 @@ class SavedRollRepository(
     }
   }
 
+  /** One saved roll by its id, or null when nothing answers to it. */
+  suspend fun byId(rollId: String): SavedRoll? = database.savedRolls().byId(rollId)?.asRoll()
+
   /** Takes one saved roll away. */
   suspend fun delete(rollId: String) {
     database.savedRolls().delete(rollId)
