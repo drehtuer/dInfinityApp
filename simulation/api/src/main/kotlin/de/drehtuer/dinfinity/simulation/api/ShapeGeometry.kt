@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import de.drehtuer.dinfinity.core.model.DieShape
-import kotlin.math.sqrt
 
 /**
  * The geometry of the catalogue solids: which way each readable position
@@ -37,34 +36,6 @@ object ShapeGeometry {
   fun directionsOf(shape: DieShape): List<Vector3> = SOLIDS.getValue(shape).directions
 
   /**
-   * The radius of the sphere that contains a die of this shape whose nominal
-   * size is one millimetre.
-   *
-   * Nominal size is what a dice maker quotes: the edge length for a
-   * polyhedron, the diameter for the coin. A "16 mm d6" is therefore a cube
-   * with 16 mm edges, whose bounding sphere has a radius of 16·√3/2 ≈ 13.9 mm
-   * — the number every worked figure in `docs/tables.md`'s capacity table is
-   * built on.
-   */
-  fun boundingRadiusPerSize(shape: DieShape): Double = RADII.getValue(shape)
-
-  private val RADII: Map<DieShape, Double> =
-    mapOf(
-      // A coin's furthest point from its middle is the corner of its rim.
-      DieShape.Coin to sqrt(QUARTER + COIN_THICKNESS_RATIO * COIN_THICKNESS_RATIO / FOUR),
-      DieShape.Tetrahedron to sqrt(SIX) / FOUR,
-      DieShape.Cube to sqrt(THREE) / TWO,
-      DieShape.Octahedron to sqrt(TWO) / TWO,
-      // A trapezohedron is fixed by its own two conditions — flat kite faces
-      // and every corner on one sphere — and its radius falls out of them
-      // rather than out of a closed form worth writing down. See `Solids`.
-      DieShape.PentagonalTrapezohedron to Solids.trapezohedronRadiusPerEdge(PENTAGONAL.toInt()),
-      DieShape.Dodecahedron to (sqrt(THREE) / FOUR) * (1 + sqrt(FIVE)),
-      DieShape.EnneagonalTrapezohedron to Solids.trapezohedronRadiusPerEdge(ENNEAGONAL.toInt()),
-      DieShape.Icosahedron to sqrt(TEN + TWO * sqrt(FIVE)) / FOUR,
-    )
-
-  /**
    * The corners of [shape], as unit vectors in the same orientation as
    * [directionsOf].
    *
@@ -81,14 +52,22 @@ object ShapeGeometry {
    * The hull of [die] in millimetres, at [scale].
    *
    * Every catalogue solid has all its corners on one sphere, so the hull is
-   * the unit corners times the bounding radius — which is the same number the
-   * table's capacity rule shares the floor out by (`docs/tables.md`).
+   * simply the unit corners times the die's own bounding radius — which is the
+   * same number the table's capacity rule shares the floor out by
+   * (`docs/tables.md`).
+   *
+   * That radius is half the die's `size_mm`, whatever shape it is: a 16 mm die
+   * is 16 mm across. It used to be `size_mm` read as an *edge* length and
+   * multiplied by the solid's circumradius-per-edge, which is the convention a
+   * dice maker quotes but is not the one anybody means — a d12 with 16 mm
+   * edges is 45 mm across, and dice that size under ordinary gravity fall
+   * slowly enough to look weightless (`docs/dice-sets.md`, "Size").
    */
   fun hullOf(
     die: de.drehtuer.dinfinity.core.model.Die,
     scale: Double = 1.0,
   ): List<Vector3> {
-    val radius = boundingRadiusPerSize(die.shape) * die.material.sizeMm * scale
+    val radius = die.material.boundingRadiusMm * scale
     return verticesOf(die.shape).map { it * radius }
   }
 
@@ -183,13 +162,6 @@ object ShapeGeometry {
         ),
     )
 
-  private const val QUARTER = 0.25
-  private const val TWO = 2.0
-  private const val THREE = 3.0
-  private const val FOUR = 4.0
-  private const val FIVE = 5.0
-  private const val SIX = 6.0
-  private const val TEN = 10.0
   private const val PENTAGONAL = 5.0
   private const val ENNEAGONAL = 9.0
 }

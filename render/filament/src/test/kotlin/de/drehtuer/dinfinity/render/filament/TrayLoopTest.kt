@@ -8,6 +8,8 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -109,6 +111,37 @@ class TrayLoopTest {
   }
 
   @Test
+  fun `what the dice came to is reported once, when they stop`() {
+    val loop = TrayLoop()
+    val reported = mutableListOf<SimulationOutcome>()
+    loop.stage(FakeStage())
+    loop.roll(FakeRoll(steps = 2).start(), reported::add)
+
+    loop.frame(SOME_LATE_UPTIME)
+    assertTrue("a roll still in the air reported a result", reported.isEmpty())
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+    repeat(SPARE_FRAMES) { loop.frame(SOME_LATE_UPTIME + 2 * SIXTIETH_OF_A_SECOND_NANOS) }
+
+    assertEquals("the result arrived more than once", 1, reported.size)
+  }
+
+  @Test
+  fun `a roll abandoned before it landed reports nothing`() {
+    // The player left the screen. Nothing landed, so there is nothing to
+    // score — and a half-finished roll must never become a total.
+    val loop = TrayLoop()
+    val reported = mutableListOf<SimulationOutcome>()
+    loop.stage(FakeStage())
+    loop.roll(FakeRoll(steps = 100).start(), reported::add)
+    loop.frame(SOME_LATE_UPTIME)
+
+    loop.clear()
+    loop.close()
+
+    assertTrue("an abandoned roll produced a result", reported.isEmpty())
+  }
+
+  @Test
   fun `a frame with no roll to advance is not asked for again`() {
     val loop = TrayLoop()
     loop.stage(FakeStage())
@@ -145,6 +178,40 @@ class TrayLoopTest {
     loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
 
     assertEquals("a roll nobody is watching stopped being stepped", 2, roll.advanced.size)
+  }
+
+  @Test
+  fun `a roll that has landed is still on screen when the surface comes back`() {
+    // The screensaver. The surface goes, the surface returns, and the dice are
+    // where they stopped — without the simulation being asked for anything,
+    // because a roll that has ended cannot be asked.
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.roll(FakeRoll(steps = 1).start())
+    loop.frame(SOME_LATE_UPTIME)
+    assertFalse("the roll did not land", loop.rolling)
+
+    loop.surfaceLost()
+    val returned = FakeStage()
+    loop.stage(returned)
+
+    assertTrue("the tray came back empty after a roll had landed", returned.added.isNotEmpty())
+    assertTrue("the dice came back but were put nowhere", returned.placed.isNotEmpty())
+    assertTrue("the returned tray was left dark", returned.lit)
+  }
+
+  @Test
+  fun `giving up the tray takes the picture with it`() {
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.roll(FakeRoll(steps = 1).start())
+    loop.frame(SOME_LATE_UPTIME)
+
+    loop.close()
+
+    val afterwards = FakeStage()
+    TrayLoop().stage(afterwards)
+    assertTrue("a closed loop left a scene behind", afterwards.added.isEmpty())
   }
 
   @Test
@@ -198,12 +265,16 @@ class TrayLoopTest {
     private val steps: Int,
   ) : WatchedRoll {
     val advanced = mutableListOf<Double>()
+    val shaken = mutableListOf<ShakeSample>()
     var closed = false
       private set
 
     private var watcher: Renderer? = null
 
     override val running: Boolean get() = advanced.size < steps
+
+    override val outcome: SimulationOutcome?
+      get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds
@@ -212,6 +283,10 @@ class TrayLoopTest {
       // skipped this would let a loop that never drew anything pass.
       if (running) watcher?.show(frame) else watcher?.settled(frame)
       return frame
+    }
+
+    override fun shake(sample: ShakeSample) {
+      shaken += sample
     }
 
     override fun close() {
@@ -258,5 +333,6 @@ class TrayLoopTest {
     /** A phone that has been awake for a day, which is what a frame clock counts from. */
     const val SOME_LATE_UPTIME = 86_400_000_000_000L
     const val SIXTIETH_OF_A_SECOND_NANOS = 16_666_667L
+    const val SPARE_FRAMES = 3
   }
 }

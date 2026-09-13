@@ -46,12 +46,16 @@ class ShakeRecorder {
    *
    * A moment that lands on a step already recorded replaces it: sensors can
    * deliver faster than 120 Hz, and the simulation has only one step to give.
+   *
+   * Hands back the sample it stored, so a roll already in progress can be
+   * given the same moment the record keeps — one value, quantised once, driving
+   * the live roll and any replay of it alike.
    */
   fun record(
     atMillis: Long,
     accelerationMmPerSecond2: Vector3,
     gravity: Vector3,
-  ) {
+  ): ShakeSample {
     if (firstMillis < 0) firstMillis = atMillis
     val step = stepOf(atMillis)
     val sample =
@@ -63,6 +67,7 @@ class ShakeRecorder {
       )
     val existing = samples.indexOfLast { it.stepIndex == step }
     if (existing >= 0) samples[existing] = sample else samples += sample
+    return sample
   }
 
   /** Which simulation step a moment belongs to, counted from the start of the shake. */

@@ -10,12 +10,12 @@ import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.simulation.api.FrameClock
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.SettleRule
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -202,6 +202,44 @@ class LiveRollTest {
   }
 
   @Test
+  fun `a shake that arrives mid-roll reaches the dice`() {
+    // The dice are spawned when the shake begins, so most of a shake arrives
+    // after the throw has started. It reaches the solver as the one thing a
+    // shake changes: which way down is, for one step.
+    val world = FakeWorld(DICE, tumblingThenSettling())
+    liveOver(world).use { live ->
+      live.advance(SettleRule.TIMESTEP_SECONDS)
+      val sideways = Vector3(5_000.0, 0.0, 0.0)
+      live.shake(ShakeSample(live.stepsTaken, sideways, DOWN))
+
+      live.advance(SettleRule.TIMESTEP_SECONDS)
+
+      assertTrue(
+        "the shake never reached the world's gravity",
+        world.gravities.last().x < 0.0,
+      )
+    }
+  }
+
+  @Test
+  fun `a shake that arrives after the dice have stopped is dropped`() {
+    // Nothing touches a die that has come to rest, and a hand is not an
+    // exception (`.claude/CLAUDE.md`).
+    val world = FakeWorld(DICE, awkward())
+    liveOver(world).use { live ->
+      while (live.running) live.advance(1.0 / FRAMES_PER_SECOND)
+      val steps = world.steps
+      val gravities = world.gravities.size
+
+      live.shake(ShakeSample(live.stepsTaken, Vector3(9_000.0, 0.0, 0.0), DOWN))
+      live.advance(1.0 / FRAMES_PER_SECOND)
+
+      assertEquals("a settled roll was stepped again", steps, world.steps)
+      assertEquals("a settled roll's gravity was changed", gravities, world.gravities.size)
+    }
+  }
+
+  @Test
   fun `a roll that has finished is not between two states`() {
     liveOver(FakeWorld(DICE, awkward())).use { live ->
       while (live.running) live.advance(1.0 / FRAMES_PER_SECOND)
@@ -211,9 +249,15 @@ class LiveRollTest {
   }
 
   @Test
-  fun `ending a roll closes the world and the renderer, finished or not`() {
-    // A LiveRoll holds native memory. Abandoning one mid-roll — the player
+  fun `ending a roll gives the world back and leaves the picture standing`() {
+    // A LiveRoll holds native memory, and abandoning one mid-roll — the player
     // left the screen — has to free it just as finishing does.
+    //
+    // What it must *not* free is the scene. A roll that has landed is still on
+    // screen and the player is still reading it, so the picture outlives the
+    // simulation that made it; ending it here meant a settled roll vanished
+    // the moment anything took the surface away and gave it back, and the
+    // screen blanking was enough to do that.
     val world = FakeWorld(DICE, tumblingThenSettling())
     val watcher = HeadlessRenderer()
     liveOver(world, watcher).use { live ->
@@ -222,7 +266,7 @@ class LiveRollTest {
     }
 
     assertTrue("the physics world was left open", world.closed)
-    assertFalse("the renderer was left believing a roll was in progress", watcher.running)
+    assertTrue("the picture was torn down with the physics world", watcher.running)
   }
 
   @Test
@@ -291,5 +335,6 @@ class LiveRollTest {
     const val TROUBLE_STEPS = 12
     const val SPARE_FRAMES = 5
     const val CATCH_UP_CAP = 4
+    val DOWN = Vector3(0.0, 0.0, -1.0)
   }
 }

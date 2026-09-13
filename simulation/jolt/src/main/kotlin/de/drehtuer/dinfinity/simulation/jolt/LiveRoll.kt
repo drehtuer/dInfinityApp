@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.FrameClock
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
@@ -46,7 +47,7 @@ class LiveRoll internal constructor(
   private var settledShown = false
 
   /** What the throw came to, or null while it is still going. */
-  var outcome: SimulationOutcome? = null
+  override var outcome: SimulationOutcome? = null
     private set
 
   /** True until the last die has come to rest. */
@@ -98,6 +99,17 @@ class LiveRoll internal constructor(
     return requireNotNull(outcome)
   }
 
+  /**
+   * One more moment of the shake, for a roll that is still going.
+   *
+   * A sample for a roll that has already settled is dropped rather than
+   * applied: nothing touches a die that has come to rest, and the hand is not
+   * an exception (`.claude/CLAUDE.md`).
+   */
+  override fun shake(sample: ShakeSample) {
+    if (running) loop.shake(sample)
+  }
+
   /** The dice as they are at this moment, ready to be drawn. */
   fun frame(): RenderFrame =
     RenderFrame(
@@ -108,9 +120,20 @@ class LiveRoll internal constructor(
       interpolation = if (running) clock.interpolation else 1.0,
     )
 
-  /** Ends the roll, whether or not it finished, and closes the world. */
+  /**
+   * Gives the physics world back, whether or not the roll finished.
+   *
+   * It deliberately does **not** end the renderer. A roll that has landed is
+   * still on screen and the player is still reading it; the picture outlives
+   * the simulation that produced it, and tearing the scene down here meant a
+   * settled roll vanished the moment anything took the surface away and gave
+   * it back — the screen blanking was enough
+   * (`docs/physics-and-rendering.md`, "The simulation clock").
+   *
+   * Whoever set the renderer up ends it, when there is nothing left to look
+   * at.
+   */
   override fun close() {
-    renderer.end()
     world.close()
   }
 

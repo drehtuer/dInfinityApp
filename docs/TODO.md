@@ -29,10 +29,9 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] Put the tray on screen: a Compose `AndroidExternalSurface` handing its surface to `TrayDriver`. Everything under it is built and runs on both devices — the engine, the material, the lights, the meshes, the camera, the blend between simulation states, the roll stepped from a frame clock (`LiveRoll`) and the thread that draws it frame by frame onto a real surface (`TrayDriver`). What is left is the composable, and it arrives with the roll screen (4.1)
 - [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
-- [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
+- [ ] *Device:* that a roll driven by a recorded shake replays to itself on hardware (`input/shake`). The thresholds half of this is answered: shaking rolls and ordinary handling does not, confirmed on the Pixel 10a. What is not yet shown is the replay, and it cannot be until a throw's record carries its shake (4.1)
 - [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)
 - [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
@@ -65,19 +64,23 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 `1z`. Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md`.
 
-The state behind the screen is built: `RollMachine` turns a typed formula into
-a throw and a throw's faces into a result, refuses what the table cannot hold
-before a body exists, and throws an exploding die again *through the
-simulator*. What is left below is the screen itself.
+The screen rolls. A formula is typed, validated on every keystroke, refused if
+the table cannot hold it, thrown on a tap or a shake, simulated and drawn on
+the Pixel 10a, and its total read off the faces. What is below is what it does
+not have yet.
 
-- [ ] Tray view bound to the simulation, stack layout (`1b`), table look applied — a Compose `AndroidExternalSurface` handing its surface to `TrayDriver`
+- [ ] Judge the dice's size on a phone. A die is now `size_mm` across at its widest and the bundled set says 16 mm, which is realistic but small on a screen — and the numbers still have to be readable at arm's length once they are drawn (`docs/TODO.md`, Step 5.6). Raising the bundled set's `size_mm` is a one-line change; whether it wants raising is a question for a person
+- [ ] Revisit the capacity constants now that they bite much later. 30 % of the floor and a 40 % minimum scale no longer refuse anything the engine would take: it would take about 240 dice to reach the floor and the engine stops at 100 (`docs/tables.md`). Step 5.3 is where those numbers meet a device
+- [ ] **The tray is black until the first roll.** Nothing is drawn before a throw begins, so a new launch is an empty screen rather than a table waiting (`1b`). Draw the tray and its look as soon as there is a surface — a scene with no dice in it — and keep drawing it when a roll ends
+- [ ] Numbers on the faces. Dice are blank cream solids on the phone right now, which is the SDF item in Step 3 above; until it lands, the tray shows a roll that cannot be read without the total
+- [ ] A shake-driven throw's `ThrowSpec` carries an empty `shake`: the dice are spawned the moment the shake is confirmed, and the samples arrive afterwards. The roll is driven by them and is reproducible from them, but the *record* of the throw does not yet hold them — which is what a replay and a bug report would need (`docs/physics-and-rendering.md`, "Shake input"). Attach the recorded session to the result when history arrives (4.8)
 - [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
+- [ ] **Pinch to zoom, two fingers to pan.** The camera frames the whole tray and never moves off it, because a camera that closes in on the dice takes the table away and a player cannot then tell four dice from two. Looking closer is the player's to do, and nothing yet lets them. `FilamentDiceRenderer` and `TrayCamera` both point here for it
+- [ ] **Keep the engine when the surface goes.** Filament fixes its swap chain and viewport when a `FilamentStage` is made, so every new surface — a rotation, a resize, the lock screen — builds a whole new engine and recompiles the material. The roll survives it (`TrayRenderer` replays the scene) but the tray is visibly black for a moment while it happens. Split what outlives a surface (the engine, the compiled material, the blank texture) from what does not (the swap chain, the viewport) and rebuild only the second
 - [ ] Dice picker row (`1h`) — tap adds, long-press removes, count badges; set dropdown (`4a`)
-- [ ] Formula display and inline editor (`2a`) with live validation, error squiggle over the offending range (`6f`, `9c`), rolling blocked while invalid
-- [ ] Roll by tap; shake to roll wired to `input/shake`
+- [ ] Formula editor (`2a`): the field validates live and blocks rolling, but the error is a line of text rather than a squiggle over the offending range (`6f`, `9c`)
 - [ ] Result sheet, full density (`1f`): total, per-group subtotals, dice, modifiers, dropped dice struck through, natural max in the accent
 - [ ] Division rounding control on the sheet (`6d`) — Down / Nearest / Up for this throw only
-- [ ] Capacity refusal (`500d6`) with the largest count that would fit
 - [ ] Power-saving path (`1z`) — no renderer created, result appears at once
 - [ ] First-launch state (`9a`): built-in set only, Unfiled group, no saved rolls
 - [ ] *Device:* the whole of Step 5 hangs off this screen

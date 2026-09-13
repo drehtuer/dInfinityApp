@@ -9,89 +9,67 @@ changelog.
 
 ## Where we are
 
-- **Phase:** implementation. Steps 1 and 2 of `docs/TODO.md` are done and Step
-  3 is nearly done: a formula can now be parsed, planned, thrown as real dice,
-  read off their faces and pinned against a recorded outcome, end to end. What
-  is left of Step 3 needs a screen to land on, which is Step 4.1 — now in
-  progress — plus the shake on real hardware and the smaller items listed
-  there.
-- **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the release
+- **Phase:** implementation. Steps 1 and 2 of `docs/TODO.md` are done. Step 3
+  is done but for the SDF numbers, the atlases and the database migrations,
+  each of which now arrives with the screen that needs it. **Step 4.1, the
+  roll screen, is where the work is.**
+- **The app rolls dice on a phone.** Type a formula, tap Roll or shake the
+  Pixel 10a, and the dice tumble onto a green felt tray, come to rest, and
+  their total appears. That is the first end of the app meeting the other.
+- **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to and including #54 is merged and `main` is
-  green. Step 4.1, the roll screen, is what is being built now.
+- **Branch state:** everything up to #58 is merged and `main` is green.
+  #59–#63 are four stacked pull requests waiting on review, in that order:
+  the roll screen, the tray's rendering defects, shake-to-spawn, and the die
+  size. They merge oldest first.
 
 ## Done
 
 - **The specification.** `README.md`, `docs/` and the clickable prototype in
-  `design/`, cross-referenced in both directions and published at
+  `design/`, cross-referenced both ways and published at
   <https://drehtuer.github.io/dInfinityApp/>. GPL-2.0-or-later.
-- **The skeleton.** Devcontainer, Gradle convention plugins, the 24 modules
-  `docs/architecture.md` describes, the Compose theme from the Modernist
-  tokens, the navigation graph for all ten screens, APK naming. Settings picks
-  the accent and DataStore remembers it — the one screen that exists.
-- **CI.** Build, tests and every linter on each PR, plus CodeQL, Dependabot,
-  dependency review and the submitted dependency graph. SonarQube runs as the
-  scanner and blocks on its quality gate; JaCoCo measures function *and*
-  branch coverage against a floor in `gradle.properties`, so the half
-  SonarQube has no counter for is still enforced. Every dependency is pinned
-  by SHA-256. `main` requires its checks; a `vX.Y.Z` tag cuts a signed,
-  fingerprint-checked, immutable release.
-- **All three testing tiers are reachable, and each has been run.** JVM and
-  Robolectric on CI; the emulator that ships in the devcontainer, which boots
-  headless in half a minute and runs the instrumented suite in ten seconds;
-  and the Pixel 10a over wireless debugging, one command away
-  (`dinfinity-phone`, which remembers where the phone was). The emulator is
-  API 36 on x86_64 and the phone API 37 on `arm64-v8a`, so between them they
-  cover the API the app targets and the ABI it ships. Step 5 has somewhere to
-  land, and a regression in the physics can be caught before the phone.
-- **Step 3's foundations.** A formula can be parsed and resolved against the
-  installed sets (`core/notation`), graphed exactly — checked against the
-  evaluator itself by rolling small formulas every possible way
-  (`core/probability`) — planned against the tray's capacity rule, settled and
-  read face by face (`simulation/api`), watched by a renderer that cannot
-  touch it (`render/headless`), thrown by a shake that replays to itself
-  (`input/shake`) and written down in one transaction (`core/stats`, `data`).
-  A package from a stranger is validated rule by rule with a `file:line`
-  report (`dicesets/format`) and installed without leaving anything behind if
-  it fails (`dicesets/install`); the bundled dice go through that same
-  validator on every launch. Every catalogue solid carries its corners as well
-  as its face normals, from one construction — which is how two geometry bugs
-  were found.
-- **The physics engine is decided and wired up:** Jolt 5.3.0, chosen by
-  building both candidates against this project's own toolchain rather than by
-  reading about them (`docs/architecture.md`, decision 37), and now a working
-  bridge. Dice spawn on a staggered grid, are shaken by an inverse acceleration
-  rather than by a moving tray, settle, and are read off their faces. The
-  engine is native but every *decision* about a roll is Kotlin over an
-  interface (decision 40), so the rule that matters most — nothing touches a
-  die that has come to rest — is proved by JVM tests rather than sampled on a
-  phone. Built for `arm64-v8a` and `x86_64` on every CI run.
-- **Rolls are written down and asserted.** Ten (seed, formula, input) cases
-  carry what they came to — the scale, the throw handed to the engine, the
-  faces, the steps, the corrections, the re-throws. The half of the chain CI
-  can reach is checked on every pull request and the whole of it on each ABI,
-  and the emulator and the Pixel 10a agree bit for bit, digest included. The
-  trigonometry upstream of the engine went to `StrictMath` first, so that
-  agreement rests on a guarantee rather than on two libms happening to match
-  (`docs/architecture.md`, decisions 43 and 44).
+- **The skeleton and CI.** Devcontainer, convention plugins, 24 modules, the
+  Modernist theme, the navigation graph. Every linter and both test tiers run
+  on each pull request; SonarQube blocks on its gate and JaCoCo on a function
+  *and* branch floor. Dependencies pinned by SHA-256; a `vX.Y.Z` tag cuts a
+  signed, immutable release.
+- **All three testing tiers are reachable and each is run every time.** JVM
+  and Robolectric on CI; the devcontainer's emulator (API 36, `x86_64`); the
+  Pixel 10a over wireless debugging (API 37, `arm64-v8a`). Between them they
+  cover the API the app targets and the ABI it ships.
+- **Step 3's foundations.** A formula parsed and resolved against the
+  installed sets, graphed exactly, planned against the capacity rule, settled
+  and read face by face, watched by a renderer that cannot touch it, thrown by
+  a shake, and written down in one transaction. A package from a stranger is
+  validated rule by rule and installed without leaving anything behind if it
+  fails; the bundled dice go through that same validator on every launch.
+- **The physics.** Jolt 5.3.0, chosen by building both candidates against this
+  project's own toolchain. Every *decision* about a roll is Kotlin over an
+  interface, so the rule that matters most — nothing touches a die that has
+  come to rest — is proved by JVM tests rather than sampled on a phone.
+- **Determinism is asserted, not assumed.** Ten (seed, formula, input) cases
+  carry what they came to; the emulator and the Pixel 10a agree bit for bit,
+  spawn digest included. The trigonometry upstream of the engine went to
+  `StrictMath` first, so that agreement rests on a guarantee rather than on
+  two libms happening to match.
+- **The renderer draws a roll.** Filament opens on the device's own driver and
+  compiles its material there; the tray, the dice, the lights and the camera
+  are all built from the same geometry the solver collides. One thread owns
+  the physics world, the engine and the frame callback.
 
 ## In progress
 
-- **Step 4.1, the roll screen.** A roll can now be *watched*: the loop steps one
-  step at a time, a frame clock decides when, and a rendered roll is the same
-  object as a power-saving roll with somebody calling it — rather than a second
-  implementation of the one rule the app cannot bend (`docs/architecture.md`,
-  decision 48). The tray now draws onto a real surface from its own thread, and
-  survives the surface going away and coming back without the roll noticing
-  (decision 49). The state behind the screen is built too: a typed formula
-  becomes a throw, a throw's faces become a result, `500d6` is refused before a
-  body exists, and an exploding die is thrown again through the simulator
-  rather than decided. What is still missing before the phone can be shaken is
-  the composable that hands a surface over, and the screen to put it in.
+- **Step 4.1.** What the screen has: the tray, a live-validated formula field,
+  roll by tap or by shake, a refusal for a throw the table cannot hold, and a
+  total. What it has not: the dice picker, the result sheet, the rounding
+  control, the first-launch state, and numbers on the faces. All listed in
+  `docs/TODO.md`.
 
 ## Blocked / waiting on
 
-- Nothing.
+- **Two judgements that need a person and a phone**, both in `docs/TODO.md`:
+  whether the dice now have weight, and whether 16 mm dice read too small on
+  a screen. Neither blocks anything else.
 
 ## Decisions pending
 
@@ -100,25 +78,23 @@ changelog.
 
 ## Known risks
 
-- The "no invisible hand" bar — zero post-rest corrections, zero stacked dice
-  — is the hardest thing in the plan and can only be judged on a device. If
-  prevention cannot get there, the fallback is a visible re-throw, which is
+- The **"no invisible hand"** bar — zero post-rest corrections, zero stacked
+  dice — is the hardest thing in the plan and can only be judged on a device.
+  If prevention cannot get there, the fallback is a visible re-throw, which is
   honest but must not become common.
-- Physics determinism across ABIs is no longer assumed *or* sampled: the golden
-  suite asserts the same faces, step counts and correction counts on the
-  emulator (`x86_64`, API 36) and the Pixel 10a (`arm64-v8a`, API 37), and
-  fails if either moves. What is still unproven is determinism across *devices*
-  of the same ABI and across time, which is the same suite run somewhere else.
-- Table capacity constants (30 % floor, 0.40 minimum scale) were worked out on
-  paper. First evidence is good: 20 d20s at the scale the rule picks (0.73)
-  settle on the Pixel 10a in 89–132 steps with no forced settles. Twenty dice
-  at *full* size, which the rule would refuse, need eight or nine re-throws —
-  which is the rule earning its keep.
 - **The correction ladder leans on corrections far too hard.** Nine of twenty
-  dice get a nudge, against a budget of one in two hundred. Every one of them
-  lands while the die is still moving and post-rest corrections are zero, so
-  the honest rule holds — but Step 5.5 is where the prevention has to get good
-  enough that the ladder is rarely reached at all.
-- The container's emulator is an API 36 automated-test image, so it has no
-  real GPU and is one API below `targetSdk`. It answers "does this run", not
-  "does this look right" — the phone remains the only answer to the second.
+  dice get a nudge, against a budget of one in two hundred. Every one lands
+  while the die is still moving and post-rest corrections are zero, so the
+  honest rule holds — but Step 5.5 is where prevention has to get good enough
+  that the ladder is rarely reached.
+- **The capacity constants now barely bite.** Since a die is sized by its
+  width rather than by its edge, it would take about 240 dice to reach the
+  40 % floor and the engine stops at 100 — so the refusal a player meets is
+  the body cap, not the table. Whether 30 % and 40 % are still the right
+  numbers is a Step 5.3 question, with a device.
+- Determinism holds across the two ABIs. What is unproven is determinism
+  across *devices* of the same ABI and across time, which is the same suite
+  run somewhere else.
+- The container's emulator is an automated-test image with no real GPU and no
+  display, so `screencap` returns black. It answers "does this run", never
+  "does this look right" — the phone is the only answer to the second.

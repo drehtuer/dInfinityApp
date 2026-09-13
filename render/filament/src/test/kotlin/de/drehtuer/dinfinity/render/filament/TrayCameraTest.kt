@@ -24,32 +24,33 @@ class TrayCameraTest {
   private val geometry = TableGeometry.referenceDevice()
 
   @Test
-  fun `the whole tray is in shot while the dice are still moving`() {
-    // A die can be anywhere in the tray until it stops, so anywhere in the
-    // tray has to be on screen.
+  fun `the whole tray is in shot at every shape of phone`() {
+    // The camera never moves off this now — a roll is watched on the table it
+    // happened on, start to finish — so "the tray fits" is the only framing
+    // claim there is, and every die is inside it by construction.
     ASPECTS.forEach { aspect ->
       val shot = TrayCamera.framingTheTray(geometry, aspect)
       trayCorners().forEach { corner ->
-        assertTrue("$corner is out of shot at $aspect", shot.holds(corner, aspect))
+        assertTrue("the tray is clipped at $aspect", shot.holds(corner, aspect))
       }
     }
   }
 
   @Test
-  fun `every settled die is wholly in shot, not merely its middle`() {
-    val dice =
-      listOf(
-        Vector3(-100.0, -40.0, 8.0),
-        Vector3(95.0, 44.0, 8.0),
-        Vector3(0.0, 0.0, 8.0),
+  fun `a die against the far wall is still wholly in shot`() {
+    // The corner a player is most likely to be squinting at, and the one a
+    // camera framed a hair too tight would cut in half.
+    val corner =
+      Vector3(
+        geometry.longSideMm / 2 - RADIUS_MM,
+        geometry.shortSideMm / 2 - RADIUS_MM,
+        RADIUS_MM,
       )
 
     ASPECTS.forEach { aspect ->
-      val shot = TrayCamera.framingTheDice(dice, RADIUS_MM, geometry, aspect)
-      dice.forEach { die ->
-        cornersAround(die).forEach { corner ->
-          assertTrue("a die at $die is clipped at $aspect", shot.holds(corner, aspect))
-        }
+      val shot = TrayCamera.framingTheTray(geometry, aspect)
+      cornersAround(corner).forEach { point ->
+        assertTrue("a die in the far corner is clipped at $aspect", shot.holds(point, aspect))
       }
     }
   }
@@ -76,17 +77,6 @@ class TrayCameraTest {
   }
 
   @Test
-  fun `settling eases the camera in, rather than out`() {
-    // The dice are a smaller thing to look at than the tray they are in, so
-    // the camera that frames them stands closer. If it did not, "eases in on
-    // the results" would be a lie.
-    val tray = TrayCamera.framingTheTray(geometry, PORTRAIT)
-    val dice = TrayCamera.framingTheDice(listOf(Vector3(0.0, 0.0, 8.0)), RADIUS_MM, geometry, PORTRAIT)
-
-    assertTrue("framing one die did not come closer than framing the tray", dice.distanceMm < tray.distanceMm)
-  }
-
-  @Test
   fun `a narrower viewport puts the camera further back`() {
     val wide = TrayCamera.framingTheTray(geometry, 1.0)
     val narrow = TrayCamera.framingTheTray(geometry, 0.3)
@@ -95,46 +85,9 @@ class TrayCameraTest {
   }
 
   @Test
-  fun `a roll with no dice left to look at falls back to the tray`() {
-    assertEquals(
-      TrayCamera.framingTheTray(geometry, PORTRAIT),
-      TrayCamera.framingTheDice(emptyList(), RADIUS_MM, geometry, PORTRAIT),
-    )
-  }
-
-  @Test
   fun `a viewport with no width is refused rather than divided by`() {
     assertThrows(IllegalArgumentException::class.java) { TrayCamera.framingTheTray(geometry, 0.0) }
     assertThrows(IllegalArgumentException::class.java) { TrayCamera.framingTheTray(geometry, -1.0) }
-  }
-
-  @Test
-  fun `a move starts where it was and ends where it is going`() {
-    val from = TrayCamera.framingTheTray(geometry, PORTRAIT)
-    val to = TrayCamera.framingTheDice(listOf(Vector3.Zero), RADIUS_MM, geometry, PORTRAIT)
-
-    assertEquals(from, TrayCamera.eased(from, to, 0.0))
-    assertEquals(to.position.x, TrayCamera.eased(from, to, 1.0).position.x, TOLERANCE)
-    assertEquals(to.distanceMm, TrayCamera.eased(from, to, 1.0).distanceMm, TOLERANCE)
-  }
-
-  @Test
-  fun `a move starts and ends at rest, so it reads as attention and not as a cut`() {
-    val from = TrayCamera.framingTheTray(geometry, PORTRAIT)
-    val to = TrayCamera.framingTheDice(listOf(Vector3.Zero), RADIUS_MM, geometry, PORTRAIT)
-    val steps = (0..10).map { TrayCamera.eased(from, to, it / 10.0).position }
-
-    val distances = steps.zipWithNext { a, b -> (b - a).length }
-
-    assertTrue("the move does not ease in", distances.first() < distances[distances.size / 2])
-    assertTrue("the move does not ease out", distances.last() < distances[distances.size / 2])
-    distances.forEach { assertTrue("a move that goes backwards is not a move", it >= 0.0) }
-  }
-
-  @Test
-  fun `a move outside its own length is refused`() {
-    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT)
-    assertThrows(IllegalArgumentException::class.java) { TrayCamera.eased(shot, shot, 1.5) }
   }
 
   @Test

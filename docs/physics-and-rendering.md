@@ -157,7 +157,25 @@ no spin *would* be predictable. We do not do that.)
 ## Shake input
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
-  `SENSOR_DELAY_GAME`.
+  `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go
+  when it is not — an accelerometer running behind a backgrounded app is a
+  battery bill for nothing.
+- **The dice are spawned when the shake begins**, and every moment after that
+  reaches them while they are already in the air. What the player sees is dice
+  answering their hand, not dice thrown once the hand has stopped.
+- That works without a clock between the two because the samples name their
+  own step. `ShakeRecorder` counts steps from the start of the shake at the
+  simulation's own 120 Hz, and the frame clock never runs the simulation
+  *faster* than real time — it drops steps when it falls behind and never
+  gains any. So the step a sample names is always still ahead of the step the
+  world is on: every sample is in place before it is needed, and replaying the
+  record afterwards drives exactly the same steps. No gate, no waiting, and the
+  live roll and its replay are the same roll.
+- The samples are handed to the roll on the thread the roll lives on. A shake
+  written into a world that is mid-step is a race with a physics engine on the
+  other end of it.
+- A sample that arrives after the dice have stopped is dropped. Nothing touches
+  a die that has come to rest, and a hand is not an exception.
 - A shake session starts when acceleration magnitude stays above 3,500 mm/s²
   (about 0.35 g) for more than 80 ms, and ends after 400 ms below 1,500 mm/s².
   Two thresholds rather than one, with a gap between them: a single threshold
@@ -299,8 +317,16 @@ all, and **zero** corrections applied after rest.
 
 ## Rendering (normal mode)
 
-- Filament scene: tray mesh, one renderable per die, one directional light
-  plus an image-based light for reflections, soft shadows from the key light.
+- Filament scene: tray mesh, one renderable per die, a key directional light
+  casting soft shadows, a dimmer fill from the other side, and a flat ambient.
+- **The ambient is not decoration.** Two directional lights and nothing else
+  leave every surface facing away from both at exactly black, and the surfaces
+  facing away from both are the inner walls: the tray showed its lit rim, a
+  shadow across the floor, and nothing in between casting it. It is a single
+  spherical-harmonic band — the constant term, the same irradiance from every
+  direction — rather than a sky-above/ground-below gradient, which would need
+  three bands and this code being right about which axis Filament's harmonics
+  run along. That is invisible when wrong, and a tray is lit by a room.
 - The tray mesh is a function of the tray's geometry and nothing else — no
   package supplies one (`docs/tables.md`). Only the **inside** is modelled:
   the floor, the inner walls up to the 60 mm rim, and a 6 mm band across the

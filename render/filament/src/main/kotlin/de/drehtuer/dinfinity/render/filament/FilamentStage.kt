@@ -5,6 +5,7 @@ import com.google.android.filament.Engine
 import com.google.android.filament.EntityManager
 import com.google.android.filament.Filament
 import com.google.android.filament.IndexBuffer
+import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
 import com.google.android.filament.Material
 import com.google.android.filament.MaterialInstance
@@ -94,6 +95,9 @@ class FilamentStage(
   private val sampler =
     TextureSampler(TextureSampler.MinFilter.LINEAR, TextureSampler.MagFilter.LINEAR, TextureSampler.WrapMode.REPEAT)
 
+  /** The room the tray sits in. Built with the lights, given back with them. */
+  private var ambient: IndirectLight? = null
+
   private val instances = mutableListOf<MaterialInstance>()
   private val buffers = mutableListOf<VertexBuffer>()
   private val indices = mutableListOf<IndexBuffer>()
@@ -129,16 +133,23 @@ class FilamentStage(
   }
 
   /**
-   * The key light and the fill, which is the whole of the lighting.
+   * The key light, the fill and the ambient — the whole of the lighting.
    *
    * One directional light throws the shadows that tell a player a die is
    * sitting on the table rather than floating above it; a dimmer one from the
    * other side keeps the shadowed faces from going to black, where a number
    * cannot be read (`docs/physics-and-rendering.md`).
+   *
+   * The ambient is not a nicety. Two directional lights and nothing else means
+   * every surface facing away from both is *exactly* black, and the surfaces
+   * that face away from both are the inner walls: a player saw the lit top of
+   * the wall, a shadow cast across the floor, and nothing in between casting
+   * it. A tray is lit by a room, not by two lamps in a void.
    */
   override fun light() {
     addLight(intensity = KEY_LUX, direction = KEY_DIRECTION, shadows = true)
     addLight(intensity = FILL_LUX, direction = FILL_DIRECTION, shadows = false)
+    scene.indirectLight = ambient(engine).also { ambient = it }
   }
 
   override fun add(
@@ -238,6 +249,8 @@ class FilamentStage(
 
   override fun close() {
     clear()
+    ambient?.let(engine::destroyIndirectLight)
+    ambient = null
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
     engine.destroyView(view)
@@ -390,6 +403,28 @@ class FilamentStage(
      */
     private val KEY_DIRECTION = Vector3(-0.4, -0.3, -1.0)
 
+    /**
+     * The ambient, as a constant: the same irradiance from every direction.
+     *
+     * One spherical-harmonic band, which is the constant term and nothing
+     * else. A sky-above/ground-below gradient would want three bands, and
+     * three bands would want this file to be right about which axis Filament's
+     * harmonics run along — a thing that is invisible when wrong and is not
+     * worth being clever about for a tray lit by a room
+     * (`docs/physics-and-rendering.md`).
+     */
+    private val AMBIENT_SH = floatArrayOf(1.0f, 1.0f, 1.0f)
+
+    /**
+     * How bright that room is: about a seventh of the key light.
+     *
+     * Enough that a wall facing away from both lamps reads as a wall rather
+     * than as a hole, and low enough that the key still casts the shadow that
+     * puts a die on the table. Tuned against the Pixel 10a, which is the only
+     * place it can be judged (`docs/TODO.md`, Step 5.6).
+     */
+    private const val AMBIENT_LUX = 12_000.0f
+
     /** And back the other way, across the tray, to lift the shadowed faces. */
     private val FILL_DIRECTION = Vector3(0.6, 0.5, -0.7)
 
@@ -403,6 +438,13 @@ class FilamentStage(
     fun ready() {
       Filament.init()
     }
+
+    private fun ambient(engine: Engine): IndirectLight =
+      IndirectLight
+        .Builder()
+        .irradiance(1, AMBIENT_SH)
+        .intensity(AMBIENT_LUX)
+        .build(engine)
 
     private fun compileMaterial(engine: Engine): Material {
       MaterialBuilder.init()

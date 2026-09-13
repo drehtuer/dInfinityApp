@@ -62,7 +62,7 @@ input/
 designer/            Face drawing canvas → dice set export (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
 feature/             One module per screen group; see docs/TODO.md Step 4
-  roll/              Roll screen: tray, dice picker, formula field, result sheet
+  roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
   saved/             Saved rolls: groups, list, editor, import/export
   sets/              Dice set browser, details, installer
@@ -102,8 +102,10 @@ flowchart TD
     P -->|resolve dice from installed sets| C{Table capacity check<br/>docs/tables.md}
     C -->|does not fit| R["Roll refused<br/>'up to N dice fit'"]
     C -->|fits| T["ThrowSpec<br/>dice, dieScale, seed, table,<br/>initial impulse (shake or default)"]
-    T -->|DiceSimulator.run| S["SimulationOutcome<br/>per-die face index, steps, rethrows"]
-    S -.->|body transforms, optional| V[Renderer]
+    T -->|"DiceSimulator.start / run"| L["LiveRoll<br/>one fixed step at a time"]
+    L -->|"every step, while shaking"| L
+    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows"]
+    L -.->|body transforms, optional| V[Renderer]
     S -->|face index → value<br/>keep/drop/explode, modifier| O["RollResult<br/>total, per-die breakdown,<br/>formula, timestamp"]
     O --> UI[UI]
     O --> ST[stats.record]
@@ -115,6 +117,12 @@ mode it is stepped as fast as the CPU allows on a background thread and only
 the outcome is delivered. Same code path, same result for the same seed — and
 "same code path" is literal: both are a `LiveRoll`, and the difference is who
 calls it (decision 48).
+
+The loop back into `LiveRoll` is a shake. The dice are spawned when the shake
+is confirmed, so most of one arrives while they are already in the air; each
+sample names the step it belongs to, and the roll is reproducible from the
+record afterwards because the frame clock never runs the simulation faster
+than real time (`docs/physics-and-rendering.md`, "Shake input").
 
 ## Threading
 

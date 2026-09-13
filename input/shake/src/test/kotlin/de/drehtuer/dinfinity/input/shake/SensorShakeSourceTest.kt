@@ -88,15 +88,51 @@ class SensorShakeSourceTest {
   }
 
   @Test
+  fun `every moment of a shake is handed over as it arrives, not at the end`() {
+    // The dice are spawned when the shake begins, so the rest of the shake has
+    // to reach a roll that is already running. A source that only spoke at the
+    // end would be describing a throw that had already happened.
+    addSensors()
+    val moments = mutableListOf<de.drehtuer.dinfinity.simulation.api.ShakeSample>()
+    val source = SensorShakeSource(manager, ShakeSession(), onSample = moments::add)
+    source.start()
+
+    shakeHard(atMillis = 0)
+    assertTrue("a moment before the shake was confirmed was handed over", moments.isEmpty())
+    shakeHard(atMillis = ShakeThresholds.START_MILLIS)
+    shakeHard(atMillis = ShakeThresholds.START_MILLIS + 20)
+
+    assertEquals("the shake was not handed over while it was happening", 2, moments.size)
+    assertTrue("the moments are not in step order", moments[0].stepIndex <= moments[1].stepIndex)
+  }
+
+  @Test
+  fun `ordinary handling is not a shake`() {
+    // Picking the phone up, setting it down, handing it over: all of them
+    // cross the threshold for a moment and none of them stays there.
+    addSensors()
+    var started = 0
+    val source = SensorShakeSource(manager, ShakeSession(), onStarted = { started++ })
+    source.start()
+
+    send(Sensor.TYPE_LINEAR_ACCELERATION, atMillis = 0, x = 8f)
+    send(Sensor.TYPE_LINEAR_ACCELERATION, atMillis = 40, x = 1f)
+    send(Sensor.TYPE_LINEAR_ACCELERATION, atMillis = 80, x = 8f)
+    send(Sensor.TYPE_LINEAR_ACCELERATION, atMillis = 120, x = 1f)
+
+    assertEquals("a phone being handled was taken for a shake", 0, started)
+  }
+
+  @Test
   fun `metres become millimetres on the way through`() {
     addSensors()
     val session = ShakeSession()
     SensorShakeSource(manager, session).start()
     shakeHard(atMillis = 0)
     shakeHard(atMillis = ShakeThresholds.START_MILLIS)
-    // Android reports metres per second squared, so 4 m/s² is 4,000 mm/s².
+    // Android reports metres per second squared, so 12 m/s² is 12,000 mm/s².
     assertEquals(
-      4_000.0,
+      12_000.0,
       session
         .recorded()
         .first()
@@ -138,7 +174,8 @@ class SensorShakeSourceTest {
     shadow.addSensor(ShadowSensor.newInstance(Sensor.TYPE_GYROSCOPE))
   }
 
-  private fun shakeHard(atMillis: Long) = send(Sensor.TYPE_LINEAR_ACCELERATION, atMillis, x = 4f)
+  /** Well over the start threshold: about 1.2 g, which is a shake and not a nudge. */
+  private fun shakeHard(atMillis: Long) = send(Sensor.TYPE_LINEAR_ACCELERATION, atMillis, x = 12f)
 
   private fun beStill(atMillis: Long) = send(Sensor.TYPE_LINEAR_ACCELERATION, atMillis, x = 0.1f)
 

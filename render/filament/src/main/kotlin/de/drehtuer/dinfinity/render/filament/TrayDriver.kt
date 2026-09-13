@@ -6,6 +6,8 @@ import android.view.Choreographer
 import android.view.Surface
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import java.util.concurrent.CountDownLatch
 
 /**
@@ -35,7 +37,7 @@ import java.util.concurrent.CountDownLatch
  */
 class TrayDriver(
   private val stages: (Surface, Int, Int) -> Stage = ::filamentStage,
-) : AutoCloseable {
+) : Tray {
   private val loop = TrayLoop()
   private val thread = HandlerThread(THREAD_NAME).apply { start() }
   private val handler = Handler(thread.looper)
@@ -52,7 +54,7 @@ class TrayDriver(
    * There is somewhere to draw, this big. Called again with a new size when
    * the view is resized or the phone is turned.
    */
-  fun surfaceAvailable(
+  override fun surfaceAvailable(
     surface: Surface,
     width: Int,
     height: Int,
@@ -64,21 +66,39 @@ class TrayDriver(
   }
 
   /** The surface is being taken away. Blocks until the stage is closed. */
-  fun surfaceLost() = onTheRollThread(loop::surfaceLost)
+  override fun surfaceLost() = onTheRollThread(loop::surfaceLost)
 
   /**
    * Throws the dice. [start] runs on the roll thread and is handed the
    * renderer to watch with, so the world it opens is stepped where it is made.
+   *
+   * [onSettled] arrives on the roll thread too, once, with what the dice came
+   * to. Whoever wants it on the main thread posts it there.
    */
-  fun roll(start: (Renderer) -> WatchedRoll) {
+  override fun roll(
+    start: (Renderer) -> WatchedRoll,
+    onSettled: (SimulationOutcome) -> Unit,
+  ) {
     handler.post {
-      loop.roll(start)
+      loop.roll(start, onSettled)
       schedule()
     }
   }
 
+  /**
+   * One more moment of the shake, handed to the roll on its own thread.
+   *
+   * Posted rather than applied where it arrives: the sensors are read on the
+   * main thread and the roll belongs to this one, and a shake written into a
+   * world that is mid-step is a race with a physics engine on the other end
+   * of it.
+   */
+  override fun shake(sample: ShakeSample) {
+    handler.post { loop.shake(sample) }
+  }
+
   /** Takes whatever is on the tray off it. */
-  fun clear() {
+  override fun clear() {
     handler.post(loop::clear)
   }
 

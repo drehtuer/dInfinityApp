@@ -4,7 +4,6 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
@@ -32,14 +31,6 @@ class FilamentDiceRenderer(
   private var dice: List<Int> = emptyList()
   private var geometry: TableGeometry? = null
 
-  /**
-   * The biggest die in the throw, which is what the settled camera frames by.
-   *
-   * Framing die *centres* would centre the group and clip whichever die is at
-   * the edge of it — the one a player is most likely to be squinting at.
-   */
-  private var reachMm: Double = 0.0
-
   override fun begin(
     spec: ThrowSpec,
     geometry: TableGeometry,
@@ -50,7 +41,6 @@ class FilamentDiceRenderer(
     stage.light()
     addTray(geometry, look)
     dice = spec.dice.map { instance -> addDie(instance.die, spec.dieScale) }
-    reachMm = spec.dice.maxOfOrNull { radiusOf(it.die, spec.dieScale) } ?: 0.0
     stage.aim(TrayCamera.framingTheTray(geometry, aspectRatio()))
   }
 
@@ -60,20 +50,13 @@ class FilamentDiceRenderer(
   }
 
   override fun settled(frame: RenderFrame) {
+    // The camera does not move. It framed the whole tray when the roll began
+    // and it frames the whole tray now: a player watching dice land wants to
+    // see where they landed *on the table*, and a camera that closes in on
+    // them takes the table away and leaves no way to tell four dice from two
+    // (`docs/TODO.md`, Step 4.1 — panning and pinching are the way to look
+    // closer, and they are the player's to do).
     place(frame)
-    // The dice have stopped, so the only thing worth looking at is where they
-    // stopped. The move itself is eased by whoever is driving the frames; this
-    // is where it ends up (`TrayCamera`).
-    geometry?.let { table ->
-      stage.aim(
-        TrayCamera.framingTheDice(
-          positions = frame.current.map { it.position },
-          dieRadiusMm = reachMm,
-          geometry = table,
-          aspectRatio = aspectRatio(),
-        ),
-      )
-    }
     stage.draw()
   }
 
@@ -120,7 +103,7 @@ class FilamentDiceRenderer(
   private fun radiusOf(
     die: Die,
     scale: Double,
-  ): Double = ShapeGeometry.boundingRadiusPerSize(die.shape) * die.material.sizeMm * scale
+  ): Double = die.material.boundingRadiusMm * scale
 
   private fun aspectRatio(): Double = stage.width.toDouble() / stage.height
 }

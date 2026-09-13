@@ -18,6 +18,18 @@ class ShakeSession {
   private val gravity = GravityTracker()
   private val recorder = ShakeRecorder()
 
+  /**
+   * The moment last recorded, or null when nothing was — before a shake is
+   * confirmed, and after it has ended.
+   *
+   * This is what drives a roll that is *already running*: the dice are spawned
+   * when the shake begins, so every sample after that has to reach them as it
+   * arrives rather than waiting for the hand to stop
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   */
+  var latest: ShakeSample? = null
+    private set
+
   /** True while the player is shaking. */
   val shaking: Boolean get() =
     detector.state == ShakeDetector.State.Shaking ||
@@ -34,6 +46,7 @@ class ShakeSession {
     detector.reset()
     gravity.reset()
     recorder.reset()
+    latest = null
   }
 
   /**
@@ -53,7 +66,7 @@ class ShakeSession {
       recorder.reset()
       gravity.reset()
     }
-    if (shaking) recorder.record(atMillis, accelerationMmPerSecond2, gravity.gravity())
+    latest = if (shaking) recorder.record(atMillis, accelerationMmPerSecond2, gravity.gravity()) else null
     return event
   }
 

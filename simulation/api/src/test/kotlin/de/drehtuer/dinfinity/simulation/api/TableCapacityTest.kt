@@ -35,8 +35,11 @@ class TableCapacityTest {
 
   @Test
   fun `the published footprints are what the rule computes`() {
-    assertEquals(7.27, footprintCm2(StandardDice.d20), 0.01)
-    assertEquals(6.03, footprintCm2(StandardDice.d6), 0.01)
+    // Every shape of the same size covers the same circle now: `size_mm` is
+    // the die's width, so its bounding sphere is the same whatever solid is
+    // inside it (`docs/dice-sets.md`, "Size").
+    assertEquals(2.01, footprintCm2(StandardDice.d20), 0.01)
+    assertEquals(2.01, footprintCm2(StandardDice.d6), 0.01)
   }
 
   @Test
@@ -50,33 +53,33 @@ class TableCapacityTest {
   }
 
   @Test
-  fun `twenty d6 shrink to four fifths`() {
-    assertEquals(0.80, scaleFor(StandardDice.d6, 20), 0.005)
+  fun `thirty-eight d6 are the most that roll at full size`() {
+    assertEquals(1.0, scaleFor(StandardDice.d6, 38), 1e-9)
+    assertTrue(scaleFor(StandardDice.d6, 39) < 1.0)
   }
 
   @Test
-  fun `sixty d6 shrink to under a half`() {
-    assertEquals(0.46, scaleFor(StandardDice.d6, 60), 0.005)
+  fun `sixty d6 shrink to four fifths`() {
+    assertEquals(0.80, scaleFor(StandardDice.d6, 60), 0.005)
   }
 
   @Test
-  fun `eighty d6 is exactly the limit`() {
-    assertEquals(TableCapacity.MIN_SCALE, scaleFor(StandardDice.d6, 80), 0.005)
-    assertTrue(scaleFor(StandardDice.d6, 80) >= TableCapacity.MIN_SCALE)
+  fun `a hundred d6 — the engine's whole cap — still fit, well clear of the floor`() {
+    // The floor rule no longer refuses anything the engine would take. Dice of
+    // the right size are small enough that it would take about two hundred and
+    // forty of them to shrink past the minimum, and the engine stops at a
+    // hundred (`docs/tables.md`).
+    val scale = scaleFor(StandardDice.d6, TableCapacity.MAX_DICE)
+
+    assertEquals(0.62, scale, 0.005)
+    assertTrue(scale > TableCapacity.MIN_SCALE, "a full tray is already at the floor")
   }
 
   @Test
-  fun `eighty-one d6 is one too many`() {
-    val verdict = TableCapacity.check(List(81) { StandardDice.d6 }, table)
+  fun `a hundred and one d6 are refused, and the message says how many would fit`() {
+    val verdict = TableCapacity.check(List(100) { StandardDice.d6 }, table, diceCount = 101)
     assertTrue(verdict is CapacityVerdict.Refused, "$verdict")
-    assertEquals(80, verdict.largestThatFits)
-  }
-
-  @Test
-  fun `a hundred d6 are refused, and the message says how many would fit`() {
-    val verdict = TableCapacity.check(List(100) { StandardDice.d6 }, table)
-    assertTrue(verdict is CapacityVerdict.Refused, "$verdict")
-    assertEquals("100 dice don't fit on the table; up to 80 do", verdict.reason)
+    assertEquals("101 dice don't fit on the table; up to 100 do", verdict.reason)
   }
 
   @Test
@@ -108,11 +111,11 @@ class TableCapacityTest {
 
   @Test
   fun `an exploding group is given room for the dice it could add`() {
-    // 8d6! could reach sixteen dice in the tray, which still fits but shrinks.
+    // 8d6! could reach sixteen dice in the tray, which still fits at full size.
     val verdict = TableCapacity.check(planOf(StandardDice.d6, count = 8, explodes = true), table)
     assertTrue(verdict is CapacityVerdict.Fits, "$verdict")
     assertEquals(16, verdict.diceCount)
-    assertEquals(0.90, verdict.scale, 0.01)
+    assertEquals(1.0, verdict.scale, 0.01)
   }
 
   @Test

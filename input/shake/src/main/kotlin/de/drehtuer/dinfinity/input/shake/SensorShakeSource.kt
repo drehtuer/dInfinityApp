@@ -4,6 +4,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
@@ -21,13 +22,17 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
  * platform, and the gyroscope, both at `SENSOR_DELAY_GAME`.
  *
  * @param onStarted called when a shake is confirmed: the dice are spawned now.
- * @param onEnded called when it is over: the dice are released.
+ * @param onEnded called when it is over.
+ * @param onSample every moment recorded while the shake lasts, in order. The
+ *   dice are already in the air by then, so these reach the roll as they come
+ *   rather than waiting for the hand to stop.
  */
 class SensorShakeSource(
   private val sensors: SensorManager,
   private val session: ShakeSession = ShakeSession(),
   private val onStarted: () -> Unit = {},
   private val onEnded: (ShakeSession) -> Unit = {},
+  private val onSample: (ShakeSample) -> Unit = {},
 ) : SensorEventListener {
   /** Starts listening. Returns false when the phone has no sensors to listen to. */
   fun start(): Boolean {
@@ -60,11 +65,15 @@ class SensorShakeSource(
 
   private fun acceleration(event: SensorEvent) {
     val atMillis = event.timestamp / NANOS_PER_MILLI
-    when (session.acceleration(atMillis, vectorOf(event, MM_PER_METRE))) {
+    val change = session.acceleration(atMillis, vectorOf(event, MM_PER_METRE))
+    // The spawn happens first, so the sample that confirmed the shake drives
+    // the roll it started rather than being the one moment that is thrown away.
+    when (change) {
       ShakeDetector.Event.Started -> onStarted()
       ShakeDetector.Event.Ended -> onEnded(session)
       ShakeDetector.Event.None -> Unit
     }
+    session.latest?.let(onSample)
   }
 
   private fun vectorOf(

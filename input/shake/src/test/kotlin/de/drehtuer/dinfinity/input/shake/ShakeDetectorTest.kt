@@ -109,7 +109,9 @@ class ShakeDetectorTest {
 
   @Test
   fun `the published thresholds are these`() {
-    assertEquals(80L, ShakeThresholds.START_MILLIS)
+    assertEquals(6_000.0, ShakeThresholds.START_MM_PER_SECOND2, 0.0)
+    assertEquals(1_500.0, ShakeThresholds.STOP_MM_PER_SECOND2, 0.0)
+    assertEquals(100L, ShakeThresholds.START_MILLIS)
     assertEquals(400L, ShakeThresholds.STOP_MILLIS)
     assertEquals(120, ShakeThresholds.SAMPLE_RATE_HZ)
   }

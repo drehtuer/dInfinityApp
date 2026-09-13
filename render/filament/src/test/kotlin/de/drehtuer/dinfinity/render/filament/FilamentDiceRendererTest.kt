@@ -6,7 +6,6 @@ import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -45,7 +44,7 @@ class FilamentDiceRendererTest {
     renderer.begin(spec(scale), geometry, look)
 
     spec(scale).dice.forEachIndexed { index, instance ->
-      val reach = ShapeGeometry.boundingRadiusPerSize(instance.die.shape) * instance.die.material.sizeMm * scale
+      val reach = instance.die.material.boundingRadiusMm * scale
       val drawn =
         stage.added[TRAY_PARTS + index]
           .first.positions
@@ -99,19 +98,18 @@ class FilamentDiceRendererTest {
   }
 
   @Test
-  fun `settling moves the camera onto the dice, framing all of each one`() {
-    // Framing die centres would clip whichever die is at the edge of the
-    // group, which is the one a player is most likely to be looking at.
+  fun `settling leaves the camera where it was, with the whole tray in shot`() {
+    // A camera that closes in on the dice when they land takes the table away
+    // with it, and a player cannot then tell four dice from two, or see that
+    // one has finished against the far wall. Looking closer is a thing the
+    // player does, by pinching (`docs/TODO.md`, Step 4.1).
     renderer.begin(spec(), geometry, look)
-    val rest = RenderFrame.still(List(3) { at(it, Vector3(it * 40.0 - 40.0, 0.0, 8.0)) })
+    val framing = stage.shots.single()
 
-    renderer.settled(rest)
+    renderer.settled(RenderFrame.still(List(3) { at(it, Vector3(it * 40.0 - 40.0, 0.0, 8.0)) }))
 
-    val biggest = spec().dice.maxOf { ShapeGeometry.boundingRadiusPerSize(it.die.shape) * it.die.material.sizeMm }
-    assertEquals(
-      TrayCamera.framingTheDice(rest.current.map { it.position }, biggest, geometry, ASPECT),
-      stage.shots.last(),
-    )
+    assertEquals("the camera moved when the dice stopped", listOf(framing), stage.shots)
+    assertEquals(TrayCamera.framingTheTray(geometry, ASPECT), framing)
   }
 
   @Test
@@ -172,8 +170,7 @@ class FilamentDiceRendererTest {
       orientation = Quaternion.about(Vector3(0.0, 0.0, 1.0), PI / 4),
     )
 
-  private fun radiusOf(die: de.drehtuer.dinfinity.core.model.Die): Double =
-    ShapeGeometry.boundingRadiusPerSize(die.shape) * die.material.sizeMm
+  private fun radiusOf(die: de.drehtuer.dinfinity.core.model.Die): Double = die.material.boundingRadiusMm
 
   private fun spec(scale: Double = 1.0): ThrowSpec =
     ThrowSpec(

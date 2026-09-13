@@ -19,7 +19,8 @@ class MainActivity : ComponentActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
     super.onCreate(savedInstanceState)
-    val repository = (application as DInfinityApplication).settingsRepository
+    val app = application as DInfinityApplication
+    val repository = app.settingsRepository
     setContent {
       // Until the file has been read the defaults stand in, which is one frame
       // of the design's own accent rather than a blank screen.
@@ -30,6 +31,7 @@ class MainActivity : ComponentActivity() {
           onAccentSelected = { accent ->
             lifecycleScope.launch { repository.setAccentColor(accent) }
           },
+          rollPresenter = { app.rolls.presenter() },
         )
       }
     }
