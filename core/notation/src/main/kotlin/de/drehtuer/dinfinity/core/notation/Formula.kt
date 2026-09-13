@@ -20,6 +20,24 @@ data class Formula(
 ) {
   val diceNodes: List<DiceNode> get() = collectDice(root)
 
+  /**
+   * True when this formula divides anywhere in it.
+   *
+   * The rounding control on the result sheet is offered only for a throw it
+   * could change, which is a throw with a division in it: `Down`, `Nearest` and
+   * `Up` all give the same answer to `3d6 + 4`, and three buttons that do
+   * nothing are worse than no buttons (`docs/dice-notation.md`, "Division
+   * rounding").
+   */
+  val divides: Boolean get() = divides(root)
+
+  private fun divides(node: FormulaNode): Boolean =
+    when (node) {
+      is BinaryNode -> node.operator == BinaryOperator.Divide || divides(node.left) || divides(node.right)
+      is NegateNode -> divides(node.operand)
+      is DiceNode, is NumberNode -> false
+    }
+
   private fun collectDice(node: FormulaNode): List<DiceNode> =
     when (node) {
       is DiceNode -> listOf(node)

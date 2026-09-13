@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.Rounding
 
 /**
  * Home: the tray, the formula and the total
@@ -67,7 +68,7 @@ fun RollScreen(
       verticalArrangement = Arrangement.spacedBy(12.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-      Outcome(state)
+      Outcome(state, onRound = presenter::round)
       Formula(
         text = presenter.text,
         wrong = state is RollState.Invalid || state is RollState.TooMany,
@@ -105,7 +106,10 @@ private fun KeepTheScreenAwake() {
 
 /** The total, or why there is not one. */
 @Composable
-private fun Outcome(state: RollState) {
+private fun Outcome(
+  state: RollState,
+  onRound: (Rounding) -> Unit,
+) {
   when (state) {
     is RollState.Settled ->
       Column(
@@ -119,7 +123,7 @@ private fun Outcome(state: RollState) {
           color = MaterialTheme.colorScheme.onBackground,
           modifier = Modifier.testTag(RollTestTags.TOTAL),
         )
-        ResultSheet(state.result)
+        ResultSheet(result = state.result, divides = state.divides, onRound = onRound)
       }
 
     is RollState.Rolling ->
@@ -228,6 +232,11 @@ object RollTestTags {
   const val ROLLING: String = "roll:rolling"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = "roll:invalid"
+
+  /** The Down / Nearest / Up control, shown only for a formula that divides. */
+  const val ROUNDING: String = "roll:sheet:rounding"
+
+  fun roundingOf(rounding: de.drehtuer.dinfinity.core.model.Rounding): String = "roll:sheet:rounding:${rounding.id}"
 
   /** The breakdown under the total (`design/dInfinity.dc.html`, option 1f). */
   const val SHEET: String = "roll:sheet"

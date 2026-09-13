@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
+import de.drehtuer.dinfinity.core.model.Rounding
 
 /**
  * What the dice came to, in full (`design/dInfinity.dc.html`, option 1f).
@@ -40,6 +42,8 @@ import de.drehtuer.dinfinity.core.model.RolledGroup
 internal fun ResultSheet(
   result: RollResult,
   modifier: Modifier = Modifier,
+  divides: Boolean = false,
+  onRound: (Rounding) -> Unit = {},
 ) {
   Column(
     modifier = modifier.fillMaxWidth().testTag(RollTestTags.SHEET),
@@ -55,8 +59,58 @@ internal fun ResultSheet(
     // One row per group rather than one per die: `3d6 + 1d20` is two things a
     // player asked for, and the dice under each are how it came out.
     result.groups.forEach { group -> GroupRow(group) }
+
+    // Offered only for a throw it could change. `Down`, `Nearest` and `Up` all
+    // give the same answer to `3d6 + 4`.
+    if (divides) RoundingControl(chosen = result.rounding, onRound = onRound)
   }
 }
+
+/**
+ * Down, Nearest or Up, **for this throw only**
+ * (`design/dInfinity.dc.html`, option 6d).
+ *
+ * The dice do not move and are never thrown again. Changing this redoes the
+ * arithmetic around subtotals that are already recorded, which is the only
+ * honest way to offer it at all: a control that re-rolled to get a different
+ * answer would be the app choosing the number (`docs/dice-notation.md`,
+ * "Division rounding").
+ *
+ * Nor is the choice remembered. It belongs to the throw in front of the
+ * player; the next roll uses the setting again.
+ */
+@Composable
+private fun RoundingControl(
+  chosen: Rounding,
+  onRound: (Rounding) -> Unit,
+) {
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    modifier = Modifier.testTag(RollTestTags.ROUNDING),
+  ) {
+    Text(
+      text = stringResource(R.string.roll_rounding_label),
+      style = MaterialTheme.typography.labelSmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Rounding.entries.forEach { rounding ->
+      FilterChip(
+        selected = rounding == chosen,
+        onClick = { onRound(rounding) },
+        label = { Text(stringResource(rounding.label())) },
+        modifier = Modifier.testTag(RollTestTags.roundingOf(rounding)),
+      )
+    }
+  }
+}
+
+private fun Rounding.label(): Int =
+  when (this) {
+    Rounding.Down -> R.string.roll_rounding_down
+    Rounding.Nearest -> R.string.roll_rounding_nearest
+    Rounding.Up -> R.string.roll_rounding_up
+  }
 
 @Composable
 private fun GroupRow(group: RolledGroup) {

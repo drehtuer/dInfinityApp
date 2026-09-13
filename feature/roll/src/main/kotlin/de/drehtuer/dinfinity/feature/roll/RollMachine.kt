@@ -162,7 +162,7 @@ class RollMachine(
         extra = extraThrows(flight),
       )
     scored = flight.prepared.formula to result
-    state = RollState.Settled(result)
+    state = RollState.Settled(result, divides = flight.prepared.formula.divides)
   }
 
   /**
@@ -177,7 +177,7 @@ class RollMachine(
     val (formula, result) = scored ?: return
     val rescored = RollEvaluator.rescore(formula, result, rounding)
     scored = formula to rescored
-    state = RollState.Settled(rescored)
+    state = RollState.Settled(rescored, divides = formula.divides)
   }
 
   /** Puts the result away, ready to throw the same formula again. */
@@ -287,8 +287,16 @@ sealed interface RollState {
     val diceCount: Int,
   ) : RollState
 
-  /** They have landed, and this is what they came to. */
+  /**
+   * They have landed, and this is what they came to.
+   *
+   * @param divides whether the formula has a division in it, and so whether
+   *   the rounding control is worth offering. `Down`, `Nearest` and `Up` all
+   *   give the same answer to `3d6 + 4`, and three buttons that change nothing
+   *   are worse than no buttons (`docs/dice-notation.md`).
+   */
   data class Settled(
     val result: RollResult,
+    val divides: Boolean = false,
   ) : RollState
 }

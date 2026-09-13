@@ -1,14 +1,19 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import de.drehtuer.dinfinity.core.model.DieNote
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
+import de.drehtuer.dinfinity.core.model.Rounding
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -108,6 +113,53 @@ class ResultSheetTest {
     compose.onNodeWithTag(RollTestTags.subtotalOf(0)).assertIsDisplayed()
     compose.onNodeWithTag(RollTestTags.subtotalOf(1)).assertIsDisplayed()
   }
+
+  @Test
+  fun `a formula that divides offers Down, Nearest and Up`() {
+    compose.setContent { ResultSheet(result = halved(), divides = true) }
+
+    compose.onNodeWithTag(RollTestTags.ROUNDING).assertIsDisplayed()
+    Rounding.entries.forEach { rounding ->
+      compose.onNodeWithTag(RollTestTags.roundingOf(rounding)).assertIsDisplayed()
+    }
+  }
+
+  @Test
+  fun `a formula that never divides is offered nothing`() {
+    // Three buttons that all give the same answer are worse than no buttons.
+    compose.setContent { ResultSheet(result = fourD6DropLowest(), divides = false) }
+
+    compose.onNodeWithTag(RollTestTags.ROUNDING).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the rounding the throw was scored under is the one shown as chosen`() {
+    compose.setContent { ResultSheet(result = halved().copy(rounding = Rounding.Up), divides = true) }
+
+    compose.onNodeWithTag(RollTestTags.roundingOf(Rounding.Up)).assertIsSelected()
+    compose.onNodeWithTag(RollTestTags.roundingOf(Rounding.Down)).assertIsNotSelected()
+  }
+
+  @Test
+  fun `choosing a rounding asks for it rather than deciding anything itself`() {
+    // The sheet does not rescore. It says what was pressed and the machine
+    // redoes the arithmetic from dice that already landed.
+    val asked = mutableListOf<Rounding>()
+    compose.setContent { ResultSheet(result = halved(), divides = true, onRound = asked::add) }
+
+    compose.onNodeWithTag(RollTestTags.roundingOf(Rounding.Nearest)).performClick()
+
+    assertEquals(listOf(Rounding.Nearest), asked)
+  }
+
+  /** `(3d6 + 5) / 2`: a throw the rounding control can actually change. */
+  private fun halved(): RollResult =
+    RollResult(
+      formula = "(3d6 + 5) / 2",
+      total = 8,
+      rounding = Rounding.Down,
+      groups = listOf(group().copy(notation = "3d6")),
+    )
 
   /** `4d6dl1`: three kept, one dropped, and the 6 is a natural maximum. */
   private fun fourD6DropLowest(): RollResult =

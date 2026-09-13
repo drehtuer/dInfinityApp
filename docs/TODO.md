@@ -82,7 +82,6 @@ not have yet.
 - [ ] Dice picker row (`1h`) — tap adds, long-press removes, count badges; set dropdown (`4a`)
 - [ ] Formula editor (`2a`): the field validates live and blocks rolling, but the error is a line of text rather than a squiggle over the offending range (`6f`, `9c`)
 - [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
-- [ ] Division rounding control on the sheet (`6d`) — Down / Nearest / Up for this throw only
 - [ ] Power-saving path (`1z`) — no renderer created, result appears at once
 - [ ] First-launch state (`9a`): built-in set only, Unfiled group, no saved rolls
 - [ ] *Device:* the whole of Step 5 hangs off this screen
