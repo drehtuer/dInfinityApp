@@ -205,6 +205,16 @@ enough.
   already inside a die and the solver pushes that die out of whichever face is
   nearer, which half the time is the outside. It was built with a moving tray
   first and the dice escaped.
+- **Every sensor vector is turned into the tray's frame before it is used.**
+  Android reports in the device's own: `+x` across the screen to the right,
+  `+y` up it, `+z` out of the glass. The tray's long side is the screen's long
+  side and runs along `+x`, its short side along `+y` — so the two frames are a
+  quarter turn apart before the phone is turned at all, and the app is not
+  orientation-locked, so the map follows the display's rotation. Used straight,
+  a sideways shake loads the dice along the length of the tray and the dice
+  move in a direction with nothing to do with the hand. `PhoneAxes` is the one
+  place that map lives, and both the accelerometer and the gyroscope go through
+  it.
 - Phone rotation from the gyroscope rotates the gravity vector in the
   simulation.
 - An acceleration above 40,000 mm/s² — about four gravities, harder than anyone

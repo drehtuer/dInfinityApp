@@ -21,11 +21,20 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
  * acceleration, which is the accelerometer with gravity already removed by the
  * platform, and the gyroscope, both at `SENSOR_DELAY_GAME`.
  *
+ * Every vector goes through [PhoneAxes] on the way in. Android reports sensors
+ * in the device's frame and the tray has its own, a quarter turn away before
+ * the phone is turned at all, so a vector used as it arrives moves the dice in
+ * a direction unrelated to the hand (`docs/physics-and-rendering.md`,
+ * "Coordinates").
+ *
  * @param onStarted called when a shake is confirmed: the dice are spawned now.
  * @param onEnded called when it is over.
  * @param onSample every moment recorded while the shake lasts, in order. The
  *   dice are already in the air by then, so these reach the roll as they come
  *   rather than waiting for the hand to stop.
+ * @param rotationDegrees how far the display is turned from the phone's
+ *   natural orientation, asked for every sample because the player is holding
+ *   the thing and may turn it mid-shake.
  */
 class SensorShakeSource(
   private val sensors: SensorManager,
@@ -33,6 +42,7 @@ class SensorShakeSource(
   private val onStarted: () -> Unit = {},
   private val onEnded: (ShakeSession) -> Unit = {},
   private val onSample: (ShakeSample) -> Unit = {},
+  private val rotationDegrees: () -> Int = { 0 },
 ) : SensorEventListener {
   /** Starts listening. Returns false when the phone has no sensors to listen to. */
   fun start(): Boolean {
@@ -52,7 +62,7 @@ class SensorShakeSource(
   override fun onSensorChanged(event: SensorEvent) {
     when (event.sensor?.type) {
       Sensor.TYPE_LINEAR_ACCELERATION -> acceleration(event)
-      Sensor.TYPE_GYROSCOPE -> session.rotation(event.timestamp, vectorOf(event, scale = 1.0))
+      Sensor.TYPE_GYROSCOPE -> session.rotation(event.timestamp, trayVectorOf(event, scale = 1.0))
       else -> Unit
     }
   }
@@ -65,7 +75,7 @@ class SensorShakeSource(
 
   private fun acceleration(event: SensorEvent) {
     val atMillis = event.timestamp / NANOS_PER_MILLI
-    val change = session.acceleration(atMillis, vectorOf(event, MM_PER_METRE))
+    val change = session.acceleration(atMillis, trayVectorOf(event, MM_PER_METRE))
     // The spawn happens first, so the sample that confirmed the shake drives
     // the roll it started rather than being the one moment that is thrown away.
     when (change) {
@@ -76,14 +86,18 @@ class SensorShakeSource(
     session.latest?.let(onSample)
   }
 
-  private fun vectorOf(
+  /** The event's vector, in the units the tray uses and the axes it uses. */
+  private fun trayVectorOf(
     event: SensorEvent,
     scale: Double,
   ): Vector3 =
-    Vector3(
-      event.values[0].toDouble() * scale,
-      event.values[1].toDouble() * scale,
-      event.values[2].toDouble() * scale,
+    PhoneAxes.toTray(
+      Vector3(
+        event.values[0].toDouble() * scale,
+        event.values[1].toDouble() * scale,
+        event.values[2].toDouble() * scale,
+      ),
+      rotationDegrees(),
     )
 
   private companion object {
