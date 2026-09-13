@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity
 
 import android.content.Context
+import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.RollRecording
@@ -81,10 +82,18 @@ class RollWiring(
    */
   fun presenter(
     powerSaving: Boolean = false,
+    rounding: Rounding = Rounding.Default,
     scope: CoroutineScope,
   ): RollPresenter =
     RollPresenter(
-      machine = RollMachine(catalog = catalog, geometry = geometry, table = table, simulator = simulator),
+      machine =
+        RollMachine(
+          catalog = catalog,
+          geometry = geometry,
+          table = table,
+          simulator = simulator,
+          defaultRounding = rounding,
+        ),
       driver = tray(powerSaving),
       rolls = Rolls(simulator::start),
       recorder = recorder(scope),

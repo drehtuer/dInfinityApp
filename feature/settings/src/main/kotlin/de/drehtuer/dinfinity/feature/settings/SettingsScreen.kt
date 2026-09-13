@@ -30,6 +30,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.Appearance
+import de.drehtuer.dinfinity.core.model.Rounding
 
 /**
  * Settings. Stateless: the caller owns [AppSettings] and persists the change,
@@ -45,7 +47,12 @@ fun SettingsScreen(
   settings: AppSettings,
   onAccentSelected: (AccentColor) -> Unit,
   modifier: Modifier = Modifier,
+  onAppearanceSelected: (Appearance) -> Unit = {},
   onPowerSavingChanged: (Boolean) -> Unit = {},
+  onShakeChanged: (Boolean) -> Unit = {},
+  onRoundingSelected: (Rounding) -> Unit = {},
+  onRepository: () -> Unit = {},
+  version: String = "",
   menu: @Composable () -> Unit = {},
 ) {
   Column(
@@ -53,8 +60,8 @@ fun SettingsScreen(
       modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
-        // Scrolls, because the list only grows: appearance, shake, haptics,
-        // sound, rounding, the default set and the table are all still to come
+        // Scrolls, because the list only grows: haptics, sound, the default
+        // set, the table and the session are all still to come
         // (`docs/TODO.md`, Step 4.10), and a setting below the fold on a short
         // phone is a setting nobody can reach.
         .verticalScroll(rememberScrollState())
@@ -74,8 +81,12 @@ fun SettingsScreen(
       )
       menu()
     }
+    AppearanceSection(chosen = settings.appearance, onChosen = onAppearanceSelected)
     AccentSection(selected = settings.accentColor, onAccentSelected = onAccentSelected)
+    ShakeSection(on = settings.shakeToRoll, onChanged = onShakeChanged)
+    RoundingSection(chosen = settings.rounding, onChosen = onRoundingSelected)
     PowerSection(on = settings.powerSaving, onChanged = onPowerSavingChanged)
+    AboutSection(version = version, onRepository = onRepository)
   }
 }
 
@@ -208,6 +219,17 @@ object SettingsTestTags {
 
   /** The power-saving switch (design option 1z). */
   const val POWER_SAVING: String = "settings:power-saving"
+
+  /** Whether shaking the phone throws the dice. */
+  const val SHAKE: String = "settings:shake"
+
+  /** What this is and where it came from (design option 2d). */
+  const val VERSION: String = "settings:version"
+  const val REPOSITORY: String = "settings:repository"
+
+  fun appearanceOf(appearance: Appearance): String = "settings:appearance:${appearance.id}"
+
+  fun roundingOf(rounding: Rounding): String = "settings:rounding:${rounding.id}"
 
   fun accentSwatch(accent: AccentColor): String = "settings:accent:${accent.id}"
 }

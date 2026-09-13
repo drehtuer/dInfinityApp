@@ -18,4 +18,26 @@
   <string name="accent_moss">Moss</string>
   <string name="accent_amber">Amber</string>
   <string name="accent_violet">Violet</string>
+  <!-- Appearance (design option 1q). -->
+  <string name="settings_appearance_heading">Appearance</string>
+  <string name="settings_appearance_explanation">Light, dark, or whatever the phone is doing.</string>
+  <string name="appearance_system">System</string>
+  <string name="appearance_light">Light</string>
+  <string name="appearance_dark">Dark</string>
+  <!-- Shake to roll (docs/physics-and-rendering.md). -->
+  <string name="settings_shake_heading">Shake</string>
+  <string name="settings_shake_explanation">Off means the motion sensors are never switched on at all, which is the one setting here that saves any power.</string>
+  <string name="settings_shake_label">Shake the phone to throw</string>
+  <!-- Division rounding (docs/dice-notation.md). -->
+  <string name="settings_rounding_heading">Division</string>
+  <string name="settings_rounding_explanation">Which way a division rounds. The result sheet can re-round the throw in front of you; that choice is not remembered.</string>
+  <string name="rounding_down">Down</string>
+  <string name="rounding_nearest">Nearest</string>
+  <string name="rounding_up">Up</string>
+  <!-- About (design option 2d). -->
+  <string name="settings_about_heading">About</string>
+  <string name="settings_about_licence">Free software, GPL-2.0-or-later. Your dice, your statistics, your phone — nothing is uploaded anywhere.</string>
+  <!-- %1$s is the installed version, e.g. 1.2.0. -->
+  <string name="settings_about_version">Version %1$s</string>
+  <string name="settings_about_repository">Source code and issues</string>
 </resources>

@@ -744,10 +744,32 @@ why the two are not built the same way (decision 49).
 
 | Control | Calls | What changes |
 |---|---|---|
+| System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
+| the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
+| Down / Nearest / Up | `onRoundingSelected` | which way division rounds on the next throw, and on every outcome graph. The per-throw override on the result sheet is still not remembered |
 | the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
+| **Source code and issues** | `onRepository` | a browser. The app's only outward link |
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
+
+Three of those take effect **when the roll screen next opens** rather than
+where they are pressed — power saving, the shake, and the default rounding.
+A renderer appearing under a roll in progress, sensors registering mid-throw,
+or a total changing its arithmetic while the dice are in the air are not
+settings taking effect; they are bugs (decision 16).
+
+`SettingsRepository` has one write, not one setter per setting. The list of
+settings is still growing, and an interface with a method for each is an
+interface that changes every time somebody adds a checkbox. `update` takes
+what changed and the named operations are extensions beside it, so call sites
+still read like English. The store writes every key on each change: `edit` is
+one transaction either way, and writing the whole of what was decided means a
+setting can never be half-applied.
+
+The version comes from the **installed package** rather than a generated
+constant, so it is what is on the phone rather than what some build thought it
+was compiling.
 
 The power-saving row is the one setting that does not take effect where it is
 pressed. It is read when the roll screen opens and not watched, because a

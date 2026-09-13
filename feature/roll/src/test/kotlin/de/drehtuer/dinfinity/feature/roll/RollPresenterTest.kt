@@ -197,8 +197,7 @@ class RollPresenterTest {
         object : DiceSimulator {
           override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
         },
-      seeds = { 1L },
-      clock = { 0L },
+      outside = Outside(seeds = { 1L }, clock = { 0L }),
     )
 
   @Test

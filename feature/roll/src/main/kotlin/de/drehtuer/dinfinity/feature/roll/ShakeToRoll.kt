@@ -33,9 +33,15 @@ import de.drehtuer.dinfinity.input.shake.SensorShakeSource
  * middle of a shake (`docs/physics-and-rendering.md`, "Coordinates").
  */
 @Composable
-internal fun ShakeToRoll(presenter: RollPresenter) {
+internal fun ShakeToRoll(
+  presenter: RollPresenter,
+  enabled: Boolean = true,
+) {
   val context = LocalContext.current
-  val sensors = context.getSystemService(SensorManager::class.java)
+  // Not registered at all rather than registered and ignored: this is the one
+  // setting on the Settings screen that saves any power, and it only saves it
+  // if the sensors are never switched on (`docs/TODO.md`, Step 4.10).
+  val sensors = if (enabled) context.getSystemService(SensorManager::class.java) else null
   var shaking by remember { mutableStateOf(false) }
 
   // A hand around a phone that is being shaken is a hand on both edges of it.

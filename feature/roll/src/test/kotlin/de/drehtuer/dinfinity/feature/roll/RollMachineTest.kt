@@ -332,8 +332,7 @@ class RollMachineTest {
     geometry = geometry,
     table = table,
     simulator = simulator,
-    seeds = { seed },
-    clock = { FIXED_TIME },
+    outside = Outside(seeds = { seed }, clock = { FIXED_TIME }),
   )
 
   /** A simulator that counts what it was asked and always lands on one face. */

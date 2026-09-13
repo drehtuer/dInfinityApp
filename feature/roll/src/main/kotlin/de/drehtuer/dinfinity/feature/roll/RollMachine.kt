@@ -23,7 +23,6 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
-import java.security.SecureRandom
 
 /**
  * What the roll screen is showing, and what typing or tapping does to it
@@ -46,9 +45,20 @@ class RollMachine(
   /** The look that table wears. The table picker changes it (Step 4.5). */
   val table: TableLook,
   private val simulator: DiceSimulator,
-  private val seeds: () -> Long = { SecureRandom().nextLong() },
-  private val clock: () -> Long = System::currentTimeMillis,
+  /**
+   * Which way division rounds when a throw lands
+   * (`docs/dice-notation.md`, "Division rounding").
+   *
+   * The player's setting, read when the screen opens. The result sheet can
+   * still re-round the throw in front of them from the same dice, and that
+   * override is deliberately not remembered.
+   */
+  private val defaultRounding: Rounding = Rounding.Default,
+  private val outside: Outside = Outside(),
 ) {
+  private val seeds: () -> Long get() = outside.seeds
+  private val clock: () -> Long get() = outside.clock
+
   /**
    * A formula that resolved and the plan it resolved to, held together because
    * neither is any use without the other. Non-null exactly while [state] is
@@ -185,7 +195,7 @@ class RollMachine(
    */
   fun settled(
     outcome: SimulationOutcome,
-    rounding: Rounding = Rounding.Default,
+    rounding: Rounding = defaultRounding,
   ): FinishedThrow? {
     val flight = inFlight ?: return null
     inFlight = null

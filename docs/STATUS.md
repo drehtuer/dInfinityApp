@@ -116,6 +116,12 @@ changelog.
   through — the set a roll fell back to, corrections counted, and a natural
   maximum in the accent. No replay and no seed, guaranteed by the type the
   screen is given rather than by the screen remembering.
+- **Step 4.10.** Settings has its rows: appearance (System / Light / Dark),
+  the accent, shake — off means the sensors are never registered, which is the
+  one setting that saves power — the default rounding, power saving, the
+  installed version and a link to the repository. Haptics and sound are
+  deliberately absent: nothing plays anything yet, and a settings row that does
+  nothing is a lie.
 - **The navigation graph is connected.** Step 4.10's menu lists every screen
   and every screen carries the button that opens it, so nothing is reachable
   only by not having left it yet. The placeholders are still placeholders.

@@ -28,6 +28,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.Appearance
+import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.graph.GraphPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphScreen
@@ -82,6 +84,11 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
 fun DInfinityApp(
   settings: AppSettings = AppSettings(),
   onAccentSelected: (AccentColor) -> Unit = {},
+  onAppearanceSelected: (Appearance) -> Unit = {},
+  onShakeChanged: (Boolean) -> Unit = {},
+  onRoundingSelected: (Rounding) -> Unit = {},
+  onRepository: () -> Unit = {},
+  version: String = "",
   rollPresenter: (() -> RollPresenter)? = null,
   graphMachine: (() -> GraphMachine)? = null,
   savedRolls: (() -> SavedPresenter)? = null,
@@ -118,7 +125,7 @@ fun DInfinityApp(
           // world. Leaving the screen gives all three back
           // (`docs/architecture.md`, decision 49).
           Destination.Roll if rollPresenter != null ->
-            Roll(rollPresenter, savedRolls, entry, navController, !settings.welcomeSeen, onWelcomeSeen)
+            Roll(rollPresenter, savedRolls, entry, navController, settings, onWelcomeSeen)
 
           // Every screen the app has, and the only way to most of them
           // (`docs/architecture.md`, "Screens and the states behind them").
@@ -152,7 +159,12 @@ fun DInfinityApp(
             SettingsScreen(
               settings = settings,
               onAccentSelected = onAccentSelected,
+              onAppearanceSelected = onAppearanceSelected,
               onPowerSavingChanged = onPowerSavingChanged,
+              onShakeChanged = onShakeChanged,
+              onRoundingSelected = onRoundingSelected,
+              onRepository = onRepository,
+              version = version,
               menu = { MenuTo(navController) },
             )
 
@@ -181,14 +193,15 @@ private fun Roll(
   savedRolls: (() -> SavedPresenter)?,
   entry: NavBackStackEntry,
   navController: NavHostController,
-  firstLaunch: Boolean,
+  settings: AppSettings,
   onWelcomeSeen: () -> Unit,
 ) {
   val saved = savedRolls?.let { make -> remember(entry) { make() } }
   RollScreen(
     presenter = remember(presenter) { presenter() },
-    firstLaunch = firstLaunch,
+    firstLaunch = !settings.welcomeSeen,
     onWelcomeSeen = onWelcomeSeen,
+    shakeToRoll = settings.shakeToRoll,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
     menu = { MenuTo(navController) },
     // The active group's saved rolls, handed to the tray as a slot: the roll

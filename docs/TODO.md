@@ -206,9 +206,12 @@ carries the same menu button and the menu reaches every screen
 
 - [ ] Two rows the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll) and "Saved-roll statistics" (4.7). Decide whether the first is a screen or belongs in the README
 - [ ] The menu's header shows the active session beside the app's name in the design; that waits on sessions (4.9)
-- [ ] Appearance (System / Light / Dark), shake, haptics, sound, rounding default, default set, table, session — the accent picker and the power-saving switch are already there and are the pattern the rest follow
-- [ ] Replace the single field on `DInfinityApplication` with a real container once more than settings hangs off it
-- [ ] Version and repository link (`2d`)
+Appearance, the accent, shake, the default rounding, power saving, the version
+and the repository link are all there, and each of them does something.
+
+- [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
+- [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)
+- [ ] Replace the single field on `DInfinityApplication` with a real container. `RollWiring` and `SavedWiring` are now the shape it should take; what is left is the application holding one of those rather than eight lazy fields
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone

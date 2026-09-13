@@ -6,13 +6,17 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.Appearance
+import de.drehtuer.dinfinity.core.model.Rounding
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -115,5 +119,98 @@ class SettingsScreenTest {
   fun `each accent has its own label`() {
     val labels = AccentColor.entries.map { it.labelRes() }
     assertEquals("two accents share a label resource", labels.size, labels.toSet().size)
+  }
+
+  @Test
+  fun `the three appearances are offered, and the chosen one is chosen`() {
+    compose.setContent {
+      SettingsScreen(
+        settings = AppSettings(appearance = Appearance.Dark),
+        onAccentSelected = {},
+      )
+    }
+
+    Appearance.entries.forEach { appearance ->
+      compose.onNodeWithTag(SettingsTestTags.appearanceOf(appearance)).performScrollTo().assertExists()
+    }
+    compose.onNodeWithTag(SettingsTestTags.appearanceOf(Appearance.Dark)).assertIsSelected()
+  }
+
+  @Test
+  fun `choosing an appearance says which`() {
+    val chosen = mutableListOf<Appearance>()
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {}, onAppearanceSelected = chosen::add)
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.appearanceOf(Appearance.Light)).performScrollTo().performClick()
+
+    assertEquals(listOf(Appearance.Light), chosen)
+  }
+
+  @Test
+  fun `shake is a switch, and it says which way it was moved`() {
+    val changed = mutableListOf<Boolean>()
+    compose.setContent {
+      SettingsScreen(
+        settings = AppSettings(shakeToRoll = true),
+        onAccentSelected = {},
+        onShakeChanged = changed::add,
+      )
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.SHAKE).performScrollTo().performClick()
+
+    assertEquals(listOf(false), changed)
+  }
+
+  @Test
+  fun `the three roundings are offered, and the chosen one is chosen`() {
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(rounding = Rounding.Up), onAccentSelected = {})
+    }
+
+    Rounding.entries.forEach { rounding ->
+      compose.onNodeWithTag(SettingsTestTags.roundingOf(rounding)).performScrollTo().assertExists()
+    }
+    compose.onNodeWithTag(SettingsTestTags.roundingOf(Rounding.Up)).assertIsSelected()
+  }
+
+  @Test
+  fun `choosing a rounding says which`() {
+    val chosen = mutableListOf<Rounding>()
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {}, onRoundingSelected = chosen::add)
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.roundingOf(Rounding.Nearest)).performScrollTo().performClick()
+
+    assertEquals(listOf(Rounding.Nearest), chosen)
+  }
+
+  @Test
+  fun `the version on screen is the one it was handed`() {
+    // Read from the installed package rather than a generated constant, so it
+    // is what is on the phone rather than what a build thought it was making.
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {}, version = "1.2.0")
+    }
+
+    compose
+      .onNodeWithTag(SettingsTestTags.VERSION)
+      .performScrollTo()
+      .assertTextContains("1.2.0", substring = true)
+  }
+
+  @Test
+  fun `the repository link asks to be opened rather than opening anything itself`() {
+    var asked = false
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {}, onRepository = { asked = true })
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.REPOSITORY).performScrollTo().performClick()
+
+    assertTrue(asked)
   }
 }

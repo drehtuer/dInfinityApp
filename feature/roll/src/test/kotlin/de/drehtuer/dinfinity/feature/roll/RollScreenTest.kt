@@ -349,8 +349,7 @@ class RollScreenTest {
               object : DiceSimulator {
                 override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
               },
-            seeds = { 1L },
-            clock = { 0L },
+            outside = Outside(seeds = { 1L }, clock = { 0L }),
           ),
         driver = if (land) DirectTray() else PendingTray(),
         rolls = LandingRolls(faces),
@@ -381,8 +380,7 @@ class RollScreenTest {
           object : DiceSimulator {
             override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
           },
-        seeds = { 1L },
-        clock = { 0L },
+        outside = Outside(seeds = { 1L }, clock = { 0L }),
       ),
     driver = tray,
     rolls = rolls,
