@@ -1,6 +1,7 @@
 // Android library modules that carry no Compose UI.
 
 import de.drehtuer.dinfinity.build.configureDeviceTestVerification
+import de.drehtuer.dinfinity.build.generateRobolectricProperties
 
 plugins {
   id("com.android.library")
@@ -62,6 +63,10 @@ kotlin {
 }
 
 configureDeviceTestVerification()
+
+// Every module's unit tests run against the same API, without every module
+// having to remember to say so (`docs/build-setup.md`).
+generateRobolectricProperties(android)
 
 dependencies {
   "testImplementation"(catalog.findLibrary("junit4").get())

@@ -1,0 +1,99 @@
+package de.drehtuer.dinfinity.feature.settings
+
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+
+/**
+ * The menu (`design/dInfinity.dc.html`, option 1q).
+ *
+ * It is the screen that connects the navigation graph, so what it has to get
+ * right is small and total: every row is there, every row opens the screen it
+ * names, and every row says what that screen is *for*.
+ */
+@RunWith(RobolectricTestRunner::class)
+class MenuScreenTest {
+  @get:Rule
+  val compose = createComposeRule()
+
+  @Test
+  fun `every section and every row is listed`() {
+    show()
+
+    compose.onNodeWithTag(MenuTestTags.SCREEN).assertIsDisplayed()
+    compose.onNodeWithText("PLAY").assertIsDisplayed()
+    compose.onNodeWithTag(MenuTestTags.entryOf("roll")).assertIsDisplayed()
+    compose.onNodeWithTag(MenuTestTags.entryOf("settings")).performScrollTo().assertIsDisplayed()
+  }
+
+  @Test
+  fun `a row says what its screen is for, not only its name`() {
+    // A menu of ten names is a quiz.
+    show()
+
+    compose.onNodeWithTag(MenuTestTags.entryOf("roll")).assertTextContains("The tray.", substring = true)
+  }
+
+  @Test
+  fun `choosing a row opens that screen and no other`() {
+    val opened = mutableListOf<String>()
+    show(onOpen = opened::add)
+
+    compose.onNodeWithTag(MenuTestTags.entryOf("settings")).performScrollTo().performClick()
+
+    assertEquals(listOf("settings"), opened)
+  }
+
+  @Test
+  fun `it says what the app does with the network, which is almost nothing`() {
+    show()
+
+    compose.onNodeWithText("Works fully offline.", substring = true).performScrollTo().assertIsDisplayed()
+  }
+
+  @Test
+  fun `the way in is labelled for somebody who cannot see three lines`() {
+    val opened = mutableListOf<Unit>()
+    compose.setContent { MenuButton(onOpen = { opened += Unit }) }
+
+    compose.onNodeWithTag(MenuTestTags.BUTTON).assertIsDisplayed()
+    compose.onNodeWithContentDescription("Menu").performClick()
+
+    assertEquals(1, opened.size)
+  }
+
+  private fun show(onOpen: (String) -> Unit = {}) {
+    compose.setContent {
+      MenuScreen(
+        sections =
+          listOf(
+            MenuSection(
+              name = "Play",
+              entries = listOf(entry("roll", "Roll", "The tray. Shake it, or pick dice.", onOpen)),
+            ),
+            MenuSection(
+              name = "App",
+              entries = listOf(entry("settings", "Settings", "Appearance, power saving.", onOpen)),
+            ),
+          ),
+      )
+    }
+  }
+
+  private fun entry(
+    id: String,
+    title: String,
+    description: String,
+    onOpen: (String) -> Unit,
+  ) = MenuEntry(id = id, title = title, description = description, open = { onOpen(id) })
+}

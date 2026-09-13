@@ -18,10 +18,7 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #64 is merged and `main` is green.
-  #65–#67 are three stacked pull requests waiting on review, in that order:
-  the table drawn before the first throw, the engine kept across surfaces, and
-  pinch-to-zoom. They merge oldest first.
+- **Branch state:** everything up to #75 is merged and `main` is green.
 
 ## Done
 
@@ -62,10 +59,35 @@ changelog.
 - **Step 4.1.** What the screen has: the tray — drawn from the moment the
   screen opens, with nothing on it, rather than black until the first throw —
   a live-validated formula field, roll from the Roll button or a shake, a
-  refusal for a throw the table cannot hold, a total, and pinch-to-zoom and
-  two-finger pan over a camera that never moves on its own. What it has not:
-  the dice picker, the result sheet, the rounding control, the first-launch
-  state, and numbers on the faces. All listed in `docs/TODO.md`.
+  refusal for a throw the table cannot hold, a total, the breakdown under it
+  with every die that landed, Down / Nearest / Up for a throw that divides,
+  pinch-to-zoom and two-finger pan over a camera that never moves on its own,
+  a dice picker row that taps dice into the formula field, and
+  a squiggle under the part of a bad formula that is wrong, with a one-tap fix
+  where the mistake has an obvious reading, and a power-saving mode that throws
+  the dice without drawing them, and a first-launch screen that offers to throw
+  a d20 and then gets out of the way. What it has not: the set dropdown, the
+  saved-rolls strip, and numbers on the faces. All listed in `docs/TODO.md`.
+- **Step 4.2.** The outcome graph is on screen: the exact distribution from
+  `core/probability` as bars, with its mean line, its ±1σ band, the
+  `P(= k)` / `P(≥ k)` question, a tap for the exact numbers, and the roll that
+  opened it marked. Reached from the roll screen's "See the odds", which is
+  the first navigation in the app to carry an argument. The formula cannot yet
+  be edited there — that wants the roll screen's squiggling field somewhere
+  both screens can reach.
+- **Step 4.3.** Database version 2 adds saved rolls and their groups, arriving
+  as a migration that is run — not merely asserted to exist — against a
+  database built from version 1's own exported schema. The list is on screen
+  too: groups, favourites-first ordering, a warning on a roll whose dice are
+  gone, and a tap that sends a formula to the tray. The editor and
+  import/export are next.
+- **The navigation graph is connected.** Step 4.10's menu lists every screen
+  and every screen carries the button that opens it, so nothing is reachable
+  only by not having left it yet. The placeholders are still placeholders.
+- **The screens' state machines are written down.** `docs/architecture.md` now
+  carries the navigation graph, `RollState`, the shake, the tray and the
+  Settings screen as diagrams and control tables, so a transition nobody
+  thought about is visible rather than latent.
 
 ## Blocked / waiting on
 

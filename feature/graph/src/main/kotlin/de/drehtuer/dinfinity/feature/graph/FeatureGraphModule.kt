@@ -1,12 +1,13 @@
 package de.drehtuer.dinfinity.feature.graph
 
 /**
- * Marks `:feature:graph` as present and wired into the build.
+ * What `:feature:graph` is and what it may depend on.
  *
- * The module is a skeleton: plan Step 1 builds the graph, and the step that
- * owns this module fills it with real types. Until then this object and its
- * test are what prove the module compiles, runs its tests, and can see the
- * modules it depends on — a graph that only compiles proves nothing.
+ * Kept now that the module has real types in it, because the dependency list
+ * is the interesting part: the outcome graph sees notation and probability and
+ * nothing else. It has no simulator and no table, which is the module boundary
+ * saying what `docs/probability.md` says in words — the graph is about the
+ * formula, and `500d6` graphs perfectly well however few dice fit on a tray.
  */
 object FeatureGraphModule {
   /** This module's Gradle path. */

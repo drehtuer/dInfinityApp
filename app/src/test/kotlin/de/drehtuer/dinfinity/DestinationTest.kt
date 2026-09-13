@@ -10,8 +10,23 @@ import org.junit.Test
 class DestinationTest {
   @Test
   fun `every screen in the plan has a destination`() {
-    // Step 4 of docs/TODO.md lists ten screens.
-    assertEquals(10, Destination.entries.size)
+    // Step 4 of docs/TODO.md lists ten screens, and the menu is the eleventh
+    // destination: it lists the other ten and is not in the list itself.
+    assertEquals(10, Destination.inTheMenu.size)
+    assertEquals(11, Destination.entries.size)
+  }
+
+  @Test
+  fun `every screen the menu lists says what it is for`() {
+    // A menu of ten names is a quiz. "Sessions" means nothing until it does.
+    Destination.inTheMenu.forEach { destination ->
+      assertTrue("${destination.route} has no description", destination.description.isNotBlank())
+    }
+  }
+
+  @Test
+  fun `the menu is not a row in itself`() {
+    assertNull(Destination.Menu.group)
   }
 
   @Test
@@ -40,7 +55,7 @@ class DestinationTest {
 
   @Test
   fun `every menu group is used`() {
-    val used = Destination.entries.map { it.group }.toSet()
+    val used = Destination.inTheMenu.map { it.group }.toSet()
     assertEquals(MenuGroup.entries.toSet(), used)
   }
 }

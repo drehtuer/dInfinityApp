@@ -3,6 +3,7 @@
 import com.android.build.api.artifact.SingleArtifact
 import de.drehtuer.dinfinity.build.RenameApkTask
 import de.drehtuer.dinfinity.build.configureDeviceTestVerification
+import de.drehtuer.dinfinity.build.generateRobolectricProperties
 import java.util.Properties
 
 plugins {
@@ -174,6 +175,10 @@ androidComponents {
 }
 
 configureDeviceTestVerification()
+
+// Every module's unit tests run against the same API, without every module
+// having to remember to say so (`docs/build-setup.md`).
+generateRobolectricProperties(android)
 
 val libs = extensions.getByType<VersionCatalogsExtension>().named("libs")
 

@@ -80,17 +80,37 @@ is one whose first migration gets written under pressure.
 Every version's schema is exported to `data/schemas/` and checked in, and
 `SchemaTest` asserts there is one for every version and a migration for every
 step between them — so a version bump without a migration fails the build
-rather than a player's phone. There is no destructive fallback: a player's
-natural-20 count is not something to throw away because a schema moved.
+rather than a player's phone. `MigrationTest` goes further and **runs** them:
+it builds a database out of version 1's own exported schema, puts a roll in
+it, and opens it through the real builder, which is where Room refuses a
+migrated schema that does not match the entities. There is no destructive
+fallback: a player's natural-20 count is not something to throw away because a
+schema moved.
 
 ```text
+-- version 1
 roll_history(id, timestamp, session_id, saved_roll_id?, group_id?, formula, total,
              seed, input_blob, breakdown_json, anomalies)
 die_stats(set_id, die_id, sides, face_value, count, dropped_count,
           PRIMARY KEY(set_id, die_id, face_value))
 die_summary(set_id, die_id, sides, throws, sum, sum_sq, hi_streak, hi_streak_max,
             lo_streak, lo_streak_max, last_rolled_at)
+
+-- version 2 (docs/dice-notation.md, "Saved rolls")
+saved_roll_group(id, name, icon, parent_id?, sort_order, table_set_id?, table_id?)
+saved_roll(id, group_id, name, formula, icon, colour_argb?, favourite,
+           table_set_id?, table_id?, created_at, last_used_at?, use_count)
 ```
+
+A saved roll's formula is stored as **text**. The dice set it names may be
+uninstalled later, and a roll that no longer resolves is neither deleted nor
+rewritten — storing anything more resolved would let an uninstall quietly
+rewrite what somebody wrote (`docs/dice-notation.md`).
+
+Deleting a group **moves its rolls to Unfiled and lifts its child groups to
+the top level** rather than cascading. The foreign key cascades, and that is
+the floor under the behaviour rather than the behaviour: a group is a folder,
+and removing a folder should not remove what somebody put in it.
 
 Streaks and sums are updated in the same transaction as the history insert.
 `roll_history` is capped at 50,000 rows by default (oldest pruned); aggregates

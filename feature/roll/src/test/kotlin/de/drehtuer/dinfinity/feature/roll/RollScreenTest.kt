@@ -5,10 +5,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -28,6 +33,7 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -114,6 +120,203 @@ class RollScreenTest {
   }
 
   @Test
+  fun `a tap on the picker row types the formula for you`() {
+    // The row is not a second way to describe a roll: it edits the field, and
+    // what comes out is a formula somebody could have typed
+    // (`docs/architecture.md`, decision 31).
+    show(faces = mapOf(0 to 0))
+
+    // Scrolled to first, because ten dice at a touch target worth pressing do
+    // not fit across a phone — which is why the row scrolls.
+    compose.onNodeWithTag(RollTestTags.pickerDie("d20")).performScrollTo().performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("1d20")
+    compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
+  }
+
+  @Test
+  fun `tapping twice asks for two of them and the badge says so`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
+    compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("2d6")
+    compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("2")
+  }
+
+  @Test
+  fun `a long press takes the last one off and empties the field`() {
+    show()
+    compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
+
+    compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performTouchInput { longClick() }
+
+    compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
+  }
+
+  @Test
+  fun `typing puts the badge on the row, so both agree about the same roll`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("4d6 + 1d20")
+
+    compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("4")
+    compose.onNodeWithTag(RollTestTags.pickerCount("d20"), useUnmergedTree = true).assertTextEquals("1")
+  }
+
+  @Test
+  fun `power-saving mode puts no tray on the screen at all`() {
+    // Not a tray that draws nothing: no surface. A surface is a buffer the
+    // compositor keeps, and what power-saving claims is that none of it exists
+    // (`docs/architecture.md`, decision 38).
+    compose.setContent { RollScreen(presenter = presenter(UndrawnTray(), LandingRolls(mapOf(0 to 0)))) }
+
+    compose.onNodeWithTag(RollTestTags.SCREEN).assertExists()
+    compose.onNodeWithTag(RollTestTags.TRAY).assertDoesNotExist()
+  }
+
+  @Test
+  fun `power-saving still throws the dice, and the total arrives`() {
+    compose.setContent {
+      RollScreen(presenter = presenter(UndrawnTray(), LandingRolls(mapOf(0 to 0, 1 to 0, 2 to 0))))
+    }
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
+  }
+
+  @Test
+  fun `a new install is welcomed, and the tray is behind it`() {
+    compose.setContent {
+      RollScreen(presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))), firstLaunch = true)
+    }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertExists()
+  }
+
+  @Test
+  fun `an install that has been welcomed before is not welcomed again`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the welcome's d20 is thrown for real, and is remembered as seen`() {
+    // Not a demonstration and not a canned number: it types `1d20` into the
+    // field and presses Roll, which is what the player would have done.
+    val seen = mutableListOf<Unit>()
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        firstLaunch = true,
+        onWelcomeSeen = { seen += Unit },
+      )
+    }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_ROLL).performClick()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("1d20")
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
+    assertEquals(1, seen.size)
+  }
+
+  @Test
+  fun `going straight to the tray is remembered too`() {
+    // A welcome that comes back is a welcome that was not read the first time.
+    val seen = mutableListOf<Unit>()
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        firstLaunch = true,
+        onWelcomeSeen = { seen += Unit },
+      )
+    }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
+    assertEquals(1, seen.size)
+  }
+
+  @Test
+  fun `an empty field says what to do rather than nothing`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Type a formula, or tap a die below.")
+  }
+
+  @Test
+  fun `a throw that is ready says the part nobody would guess`() {
+    // Shaking is not discoverable. The button is right there and says Roll.
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("1d20")
+
+    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Shake the phone, or press Roll.")
+  }
+
+  @Test
+  fun `a hint gives way to whatever the screen has to say instead`() {
+    show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.HINT).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
+  }
+
+  @Test
+  fun `the odds are offered for a throw that has landed, with its total`() {
+    val asked = mutableListOf<Pair<String, Long?>>()
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0, 1 to 0, 2 to 0))),
+        onSeeTheOdds = { formula, total -> asked += formula to total },
+      )
+    }
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+
+    assertEquals(listOf("3d6" to 3L), asked)
+  }
+
+  @Test
+  fun `the odds are offered for a throw the table refuses, which is when they matter most`() {
+    // `500d6` cannot be rolled here. "What would it have been" is then the only
+    // answer there is (`docs/probability.md`).
+    val asked = mutableListOf<Pair<String, Long?>>()
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        onSeeTheOdds = { formula, total -> asked += formula to total },
+      )
+    }
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("500d6")
+
+    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+
+    assertEquals(listOf("500d6" to null), asked)
+  }
+
+  @Test
+  fun `a formula that does not read is not offered odds on itself`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6 +")
+
+    compose.onNodeWithTag(RollTestTags.ODDS).assertDoesNotExist()
+  }
+
+  @Test
   fun `the screen honours a modifier its caller gives it`() {
     // Every other test lets the default stand, so without this the screen has
     // never once been drawn the way the navigation graph will draw it.
@@ -191,7 +394,12 @@ class RollScreenTest {
     const val CALLER_TAG = "caller:modifier"
   }
 
-  private class DirectTray : Tray {
+  /** A tray that throws the dice where it stands and says it draws nothing. */
+  private class UndrawnTray : DirectTray() {
+    override val draws: Boolean = false
+  }
+
+  private open class DirectTray : Tray {
     val shaken = mutableListOf<ShakeSample>()
 
     /** Every table this tray has been told about, in order. */

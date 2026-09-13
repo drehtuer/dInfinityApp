@@ -32,7 +32,7 @@ screen.
 - [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* that a roll driven by a recorded shake replays to itself on hardware (`input/shake`). The thresholds half of this is answered: shaking rolls and ordinary handling does not, confirmed on the Pixel 10a. What is not yet shown is the replay, and it cannot be until a throw's record carries its shake (4.1)
-- [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)
+- [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration*: sessions (4.9) and the installed-set registry (4.4). Saved rolls and groups landed as version 2
 - [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
 **Done when** a formula can be parsed, planned, simulated headless and scored
@@ -79,11 +79,14 @@ not have yet.
 - [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
-- [ ] Dice picker row (`1h`) — tap adds, long-press removes, count badges; set dropdown (`4a`)
-- [ ] Formula editor (`2a`): the field validates live and blocks rolling, but the error is a line of text rather than a squiggle over the offending range (`6f`, `9c`)
+- [ ] Set dropdown under the picker row (`4a`) — waits on the installed-set registry (4.4); until there is a second set to choose, a chooser with one entry is furniture
+- [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
+- [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
+- [ ] Formula editor (`2a`): the formula on the tray is not tappable — the field is always on screen instead of appearing when the formula is tapped, and Enter does not roll. The squiggle and the error line under it are done (`6f`, `9c`)
 - [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
-- [ ] Power-saving path (`1z`) — no renderer created, result appears at once
-- [ ] First-launch state (`9a`): built-in set only, Unfiled group, no saved rolls
+- [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
+- [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
+- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now" and its way straight to the tray. Its other two offers — import a collection, add dice sets — are missing because both lead to screens that are still placeholders (4.3, 4.4), and so is the rest of the count line: "0 saved rolls, 0 sessions" is only worth printing once there is somewhere for them to be kept
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -94,24 +97,36 @@ and off.
 
 Design `1k`–`1m`, `2c`, `7a`. Spec: `docs/probability.md`.
 
-- [ ] Bar chart (`1k`) of the exact PMF, mean line, ±1σ band
-- [ ] P(= k) / P(≥ k) toggle; tap a bar for exact numbers
-- [ ] Opened after a roll: the rolled total marked, shown only while the formula still matches (`7a`)
-- [ ] Works for a typed formula and for picked dice; works for formulas too large to roll
-- [ ] Tests: rendered values match `core/probability` exactly, not approximately
+The screen is built: the bar chart with its mean line and ±1σ band, the
+`P(= k)` / `P(≥ k)` question, a tap for the exact numbers, the six statistics,
+and the roll that opened it marked in the accent. It is reached from the roll
+screen's **See the odds**.
+
+- [ ] **The formula cannot be edited here.** Editing it wants the same live-validated field with a squiggle the roll screen has, and that field belongs somewhere both screens can reach before it belongs to two of them. That is the first real argument for a shared UI module — the die silhouettes (`1h`) and the Modernist furniture are behind it (`docs/architecture.md`, Modules)
+- [ ] "Roll this" and "Save as roll" under the chart. The first needs to hand a formula back to the roll screen, which no navigation does yet; the second needs saved rolls (4.3)
+- [ ] *Judge the chart on the phone:* whether a hundred and ten bars at three dp each reads as a distribution or as a smear, and whether the ±1σ band behind the bars is visible enough to mean anything in both themes
+- [ ] The ledger (`1m`) and the stepped area (`1l`) are alternative presentations of the same numbers; `1k` is the default and the other two are not v1
 
 ### 4.3 Saved rolls — `feature/saved`
 
 Design `1n`–`1p`, `1r`, `6e`, `7b`, `9b`, `9d`, `9f`, `9g`. Spec:
 `docs/dice-notation.md` (Saved rolls).
 
-- [ ] Group switcher (one level: game → character), active group drives the home strip
-- [ ] Row-style list (`1o`), favourites first then by recent use; icons in the roll's colour (`9d`)
-- [ ] Editor (`1r`): live-validated formula with mean and range, icon, colour, group, favourite, per-roll table pin (`7b`)
+The tables, their migration and the repository over them are built and tested:
+groups nest one level and nothing can make them nest deeper, a roll always has
+somewhere to be, and deleting a group moves its rolls rather than deleting
+them. What is left is the screens.
+
+The list is built: the group switcher, the row-style list in favourites-first
+order, the warning on a roll whose dice are gone, the empty state, and tapping
+a roll to send its formula to the tray.
+
+- [ ] Editor (`1r`): live-validated formula with mean and range, icon, colour, group, favourite, per-roll table pin (`7b`). It wants the roll screen's squiggling field — the shared-UI question again (4.2)
+- [ ] Creating and renaming groups, which the switcher lists but cannot yet add to
 - [ ] Export a group or everything as a collection; import from file, URL or repo
 - [ ] Import refuses a duplicate group name outright (`6e`), naming the clash — no merge, nothing deleted
-- [ ] Broken saved rolls (set uninstalled) show a warning badge and fall back
-- [ ] Empty state (`9b`)
+- [ ] The active group drives the **home strip** on the roll screen, which is what `9a` means by "the strip invites the first save"
+- [ ] A broken roll falls back to the built-in set when it is thrown; today it says so on the list but the fallback itself is the planner's and untested from here
 
 ### 4.4 Dice sets — `feature/sets`
 
@@ -176,8 +191,13 @@ Design `6c`. Spec: `docs/statistics.md`.
 
 Design `1q`, `1y`, `2d`. Spec: `README.md`, `docs/architecture.md`.
 
-- [ ] Full-screen menu (`1q`), grouped Play / Look back / Customise / App. **This is the only thing standing between the app and a connected navigation graph**: today the single in-app control that navigates anywhere is the placeholder screens' Settings row, and every other move between screens is the system back gesture — the roll screen cannot be left deliberately at all (`docs/architecture.md`, "Screens and the states behind them")
-- [ ] Appearance (System / Light / Dark), power-saving (on/off only), shake, haptics, sound, rounding default, default set, table, session — the accent picker is already there and is the pattern the rest follow
+The menu is built and **the navigation graph is connected**: every screen
+carries the same menu button and the menu reaches every screen
+(`docs/architecture.md`, "Screens and the states behind them").
+
+- [ ] Two rows the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll) and "Saved-roll statistics" (4.7). Decide whether the first is a screen or belongs in the README
+- [ ] The menu's header shows the active session beside the app's name in the design; that waits on sessions (4.9)
+- [ ] Appearance (System / Light / Dark), shake, haptics, sound, rounding default, default set, table, session — the accent picker and the power-saving switch are already there and are the pattern the rest follow
 - [ ] Replace the single field on `DInfinityApplication` with a real container once more than settings hangs off it
 - [ ] Version and repository link (`2d`)
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed

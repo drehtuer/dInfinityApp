@@ -15,4 +15,13 @@ interface SettingsRepository {
   val settings: Flow<AppSettings>
 
   suspend fun setAccentColor(accent: AccentColor)
+
+  /** Turns drawing the dice off, or back on (`docs/physics-and-rendering.md`). */
+  suspend fun setPowerSaving(on: Boolean)
+
+  /** The player has been past the first-launch screen, and will not see it again. */
+  suspend fun setWelcomeSeen()
+
+  /** The group of saved rolls the app is in (`docs/dice-notation.md`). */
+  suspend fun setActiveGroup(groupId: String)
 }
