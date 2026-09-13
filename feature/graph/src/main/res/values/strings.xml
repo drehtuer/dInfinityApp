@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
   <string name="graph_no_formula">No formula</string>
+  <string name="graph_formula_label">Formula</string>
+  <string name="graph_formula_hint" >3d6 + 1d20</string>
   <string name="graph_empty">Type a formula on the roll screen and come back, or open this from a roll.</string>
   <!-- The question the bars answer (design option 1k). -->
   <string name="graph_mode_exact">P(total = k)</string>

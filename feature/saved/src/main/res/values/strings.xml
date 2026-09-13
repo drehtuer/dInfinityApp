@@ -18,4 +18,23 @@
   <string name="saved_empty_title">Nothing saved yet.</string>
   <string name="saved_empty_body">Name a formula, give it an icon — “Longsword”, “Fireball” — and roll it with one tap.</string>
   <string name="saved_empty_new">New saved roll</string>
+  <!-- The saved-roll editor (design options 1r and 7b). -->
+  <string name="editor_title_new">New saved roll</string>
+  <string name="editor_title_edit">Edit saved roll</string>
+  <string name="editor_name">Name</string>
+  <string name="editor_name_hint">Fireball</string>
+  <string name="editor_formula">Formula</string>
+  <string name="editor_formula_hint">8d6 [Fire]</string>
+  <!-- %1$s is the mean to one decimal, %2$d and %3$d the lowest and highest totals. -->
+  <string name="editor_odds">mean %1$s · %2$d to %3$d</string>
+  <string name="editor_icon">Icon</string>
+  <string name="editor_colour">Colour tag</string>
+  <string name="editor_group">Group</string>
+  <string name="editor_table">Table for this roll</string>
+  <string name="editor_table_default">Default</string>
+  <string name="editor_table_note">“Default” follows the group’s pinned table, then the app’s.</string>
+  <string name="editor_favourite">Favourite — pinned first in the list</string>
+  <string name="editor_save">Save roll</string>
+  <string name="editor_roll_now">Roll now</string>
+  <string name="editor_delete">Delete</string>
 </resources>

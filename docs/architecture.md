@@ -61,6 +61,8 @@ input/
   shake/             Sensor fusion → throw impulses
 designer/            Face drawing canvas → dice set export (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
+ui/
+  common/            Screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes
 feature/             One module per screen group; see docs/TODO.md Step 4
   roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
@@ -77,6 +79,21 @@ Ten screens, eight `feature/` modules: statistics, history and sessions are one
 module because they are one screen group over one set of data
 (`design/dInfinity.dc.html`, options 1w, 1x, 6c) and splitting them would only
 split the queries.
+
+`ui/common` is **not** a feature and is not a place for anything that is
+merely shared. Nothing in it knows what screen it is on, and it depends on
+`core/notation` and nothing else — so a piece of furniture cannot reach a
+database, a simulator or the navigation graph. It exists because three screens
+take a formula, validate it on every keystroke and have to say the same thing
+about the same mistake: the tray, the outcome graph and the saved-roll editor.
+Two copies of "the same thing" is one copy too many, and the disagreement
+would eventually be about whether somebody's formula is valid.
+
+The rule for putting something in it is the same rule: **more than one screen
+needs it, and it needs no screen.** A control that navigates does not go in —
+the menu button lives in `feature/settings` and is handed to each screen as a
+slot, because where it goes is the navigation graph's business and the
+navigation graph is `:app`'s.
 
 Rule: `core/*`, `dicesets/format`, `simulation/api`, `render/headless` and
 `test-fixtures` are plain Kotlin modules with no Android dependency, so they
@@ -118,9 +135,13 @@ stateDiagram-v2
     Menu: Menu
     Graph: Outcome graph
     Screen: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer · Settings
+    Editor: Saved roll editor
 
     Roll --> Graph: See the odds
     Roll --> Menu: the menu button
+    Screen --> Editor: a saved roll, or New
+    Editor --> Screen: saved, deleted, or back
+    Editor --> Roll: Roll now
     Graph --> Menu: the menu button
     Screen --> Menu: the menu button
     Menu --> Roll: choose Roll
@@ -149,10 +170,15 @@ that knew what the menu was would be one feature module depending on another,
 and the navigation graph belongs to `:app`. Each screen takes a `menu`
 composable slot and draws it where it has room.
 
-**Two destinations are opened with arguments.** The outcome graph is about a
+Two destinations are not in the menu, and for the same reason: they are about
+something rather than about a subject. The menu *is* the list, and the
+saved-roll editor is about one roll, reached from that roll.
+
+**Three destinations are opened with arguments.** The outcome graph is about a
 formula, and after a roll it also marks the total that came up, so its route
 is `graph?formula={formula}&total={total}`. The tray takes a formula too —
-`roll?formula={formula}` — which is what tapping a saved roll does: it puts
+`roll?formula={formula}` — which is what tapping a saved roll does, and the
+editor takes the roll it is editing, or nothing for a new one: it puts
 the formula in the field and leaves the throw to the player, because a saved
 roll is a formula with a name rather than a roll waiting to happen. Two rules
 keep arguments from spreading trouble:
@@ -435,7 +461,34 @@ favourites first, then by recent use — is SQL's, because it is what the list
 | the group name | `showGroups` | whether the switcher is open |
 | a group in the switcher | `open` | which group's rolls are listed, and the stored active group |
 | a row, tapped | `used`, then navigation | one more use, and the tray with that formula in its field |
-| a row, long-pressed | the editor | *(Step 4.3, still to come)* |
+| a row, long-pressed | the editor | which screen is on, opened on that roll |
+| **New** | the editor | the same, opened on a roll that does not exist yet |
+
+### The saved-roll editor
+
+`EditorState` is the fourth machine and the only one that can **refuse to
+finish**. Saving is disabled while the formula does not read, because a saved
+roll is a button somebody presses in the middle of a game and one that fails
+then is worse than one that was never made.
+
+When the formula does read, the editor says what it is *worth* — the exact
+mean and range from `core/probability`, which is the thing a player is
+choosing between when they write `2d6 + 3` or `1d12 + 2`, and which costs
+nothing because nothing has to be thrown to know it (`docs/probability.md`).
+A formula too large to graph exactly is still worth saving; it simply has no
+numbers beside it.
+
+| Control | Calls | What changes |
+|---|---|---|
+| the name field | `name` | what it will be called; blank means the formula is its name |
+| the formula field | `formula` | the formula, its error and its odds, all from one plan |
+| icon, colour, group, table, favourite | `choose` | that one field and nothing else — none of them needs re-validating |
+| **Save roll** | `save` | the roll is written down, and the editor leaves |
+| **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
+| **Delete** | `delete` | the roll is taken away, and the editor leaves |
+
+The editor leaves by going *back* rather than forward: it is a detour from the
+list, and finishing one is arriving back where it started.
 
 ### Settings, and the screens that are not built yet
 

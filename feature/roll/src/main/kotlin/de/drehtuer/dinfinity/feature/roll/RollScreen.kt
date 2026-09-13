@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -27,10 +25,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.ui.common.FormulaField
+import de.drehtuer.dinfinity.ui.common.FormulaTestTags
 
 /**
  * Home: the tray, the formula and the total
@@ -173,7 +172,7 @@ private fun Controls(
     verticalArrangement = Arrangement.spacedBy(12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Outcome(state, formula = presenter.text, onRound = presenter::round, onSuggestion = presenter::type)
+    Outcome(state, onRound = presenter::round)
     // The odds for the formula in the field, with the throw that just landed
     // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
     // throw the table refuses too: that is exactly when "what would it have
@@ -189,10 +188,15 @@ private fun Controls(
       onAdd = presenter::add,
       onRemove = presenter::remove,
     )
-    Formula(
+    FormulaField(
       text = presenter.text,
-      wrong = state is RollState.Invalid || state is RollState.TooMany,
       onChange = presenter::type,
+      label = stringResource(R.string.roll_formula_label),
+      hint = stringResource(R.string.roll_formula_hint),
+      error = (state as? RollState.Invalid)?.error,
+      // A throw the table cannot hold is a formula that reads perfectly well.
+      // The field is marked, and what is wrong is said where the total goes.
+      wrong = state is RollState.Invalid || state is RollState.TooMany,
     )
     ThrowButton(
       enabled = state is RollState.Ready || state is RollState.Settled,
@@ -227,9 +231,7 @@ private fun KeepTheScreenAwake() {
 @Composable
 private fun Outcome(
   state: RollState,
-  formula: String,
   onRound: (Rounding) -> Unit,
-  onSuggestion: (String) -> Unit,
 ) {
   when (state) {
     is RollState.Settled ->
@@ -263,10 +265,9 @@ private fun Outcome(
         tag = RollTestTags.REFUSED,
       )
 
-    // The formula again, with a squiggle under the part that is wrong, rather
-    // than a sentence about it (design options 6f and 9c).
-    is RollState.Invalid ->
-      FormulaError(formula = formula, error = state.error, onSuggestion = onSuggestion)
+    // The squiggle under a bad formula is the field's now, not the outcome's
+    // (`ui/common`'s `FormulaField`), so an invalid formula says nothing here.
+    is RollState.Invalid -> Unit
 
     // Not a blank: a tray with nothing on it and a button that does nothing is
     // a screen with no way in, and shaking is the part nobody would guess
@@ -299,36 +300,6 @@ private fun Message(
     color = colour,
     textAlign = TextAlign.Center,
     modifier = Modifier.testTag(tag),
-  )
-}
-
-/**
- * Takes what it draws rather than the presenter that holds it.
- *
- * Not style for its own sake: a composable handed a whole presenter cannot be
- * skipped on recomposition, because Compose has no way to know what changed
- * inside it, so it re-runs on every keystroke and carries the generated code
- * that decides so. Handed a string and a lambda, it skips when the string has
- * not moved.
- */
-@Composable
-private fun Formula(
-  text: String,
-  wrong: Boolean,
-  onChange: (String) -> Unit,
-) {
-  OutlinedTextField(
-    value = text,
-    onValueChange = onChange,
-    isError = wrong,
-    singleLine = true,
-    label = { Text(stringResource(R.string.roll_formula_label)) },
-    placeholder = { Text(stringResource(R.string.roll_formula_hint)) },
-    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .testTag(RollTestTags.FORMULA),
   )
 }
 
@@ -371,15 +342,21 @@ private fun ThrowButton(
 object RollTestTags {
   const val SCREEN: String = "roll:screen"
   const val TRAY: String = "roll:tray"
-  const val FORMULA: String = "roll:formula"
+
+  /**
+   * The formula field and its squiggle, which are `ui/common`'s and shared
+   * with the saved-roll editor and the outcome graph. Named here so a test of
+   * this screen reads as a test of this screen.
+   */
+  const val FORMULA: String = FormulaTestTags.FIELD
   const val THROW: String = "roll:throw"
   const val TOTAL: String = "roll:total"
   const val ROLLING: String = "roll:rolling"
   const val REFUSED: String = "roll:refused"
-  const val INVALID: String = "roll:invalid"
+  const val INVALID: String = FormulaTestTags.ERROR
 
   /** The one-tap fix, shown only when the mistake has an obvious reading. */
-  const val SUGGESTION: String = "roll:invalid:suggestion"
+  const val SUGGESTION: String = FormulaTestTags.SUGGESTION
 
   /** What to do next, when there is no result and nothing wrong. */
   const val HINT: String = "roll:hint"

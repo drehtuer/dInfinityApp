@@ -1,4 +1,4 @@
-package de.drehtuer.dinfinity.feature.roll
+package de.drehtuer.dinfinity.ui.common
 
 import androidx.compose.ui.geometry.Size
 import de.drehtuer.dinfinity.core.notation.Sides

@@ -61,6 +61,15 @@ enum class Destination(
 
   /** Everything above, in a list. Not in the menu, being the menu. */
   Menu("menu", "dInfinity", "", group = null),
+
+  /**
+   * Writing down one saved roll.
+   *
+   * Not in the menu: it is about a roll, and the way to it is a row on the
+   * saved-rolls screen or its "New" button (`design/dInfinity.dc.html`,
+   * option 1r).
+   */
+  SavedRollEditor("editor", "Saved roll", "", group = null, arguments = listOf(EditorArgument.ROLL)),
   ;
 
   /**
@@ -112,6 +121,12 @@ object GraphArgument {
 
   /** The total that was rolled, to mark on the chart. Empty for no mark. */
   const val TOTAL: String = "total"
+}
+
+/** What the saved-roll editor is opened with. */
+object EditorArgument {
+  /** The roll being edited, or empty for a new one. */
+  const val ROLL: String = "roll"
 }
 
 /** The menu's four groups (`design/dInfinity.dc.html`, option 1q). */

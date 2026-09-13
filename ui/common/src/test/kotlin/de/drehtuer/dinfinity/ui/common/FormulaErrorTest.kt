@@ -1,4 +1,4 @@
-package de.drehtuer.dinfinity.feature.roll
+package de.drehtuer.dinfinity.ui.common
 
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
@@ -52,7 +52,7 @@ class FormulaErrorTest {
     show(NotationError(NotationErrorCode.UnknownDie, "this set has no d7", 6..8))
 
     compose
-      .onNodeWithTag(RollTestTags.INVALID)
+      .onNodeWithTag(FormulaTestTags.ERROR)
       .assertTextContains("2d6 + 1d7 - 4 — this set has no d7", substring = true)
   }
 
@@ -62,7 +62,7 @@ class FormulaErrorTest {
       NotationError(NotationErrorCode.SpacedDice, "dice are written without spaces in them", 0..4, suggestion = "3d6"),
     )
 
-    compose.onNodeWithTag(RollTestTags.SUGGESTION).assertIsDisplayed()
+    compose.onNodeWithTag(FormulaTestTags.SUGGESTION).assertIsDisplayed()
   }
 
   @Test
@@ -75,7 +75,7 @@ class FormulaErrorTest {
       onSuggestion = taken::add,
     )
 
-    compose.onNodeWithTag(RollTestTags.SUGGESTION).performClick()
+    compose.onNodeWithTag(FormulaTestTags.SUGGESTION).performClick()
 
     assertEquals(listOf("3d6"), taken)
   }
@@ -86,7 +86,7 @@ class FormulaErrorTest {
     // replacing a formula somebody meant.
     show(NotationError(NotationErrorCode.UnknownDie, "this set has no d7", 6..8))
 
-    compose.onNodeWithTag(RollTestTags.SUGGESTION).assertDoesNotExist()
+    compose.onNodeWithTag(FormulaTestTags.SUGGESTION).assertDoesNotExist()
   }
 
   @Test
