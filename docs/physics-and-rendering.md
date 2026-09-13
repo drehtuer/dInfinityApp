@@ -278,6 +278,17 @@ all, and **zero** corrections applied after rest.
   which is what lets the player see over it rather than at the back of it. The
   rounded corners are drawn as six segments to the quarter, which is under a
   pixel of a 12 mm arc at any size this is drawn at.
+- **One material** draws every surface of a roll: a lit, opaque, physically
+  based one with a base colour, a roughness and a metalness, optionally
+  multiplied by an atlas. Dice are dice and a tray is a tray. Everything a
+  package may vary is a number going into it rather than a line of it changing
+  (`docs/tables.md`, "Table looks"; `docs/TODO.md`, After v1).
+- **Colours are converted out of sRGB before the renderer sees them.** A
+  package writes `#1f5e3a`, which is the space a screen shows and a person
+  picks colours in; light adds up in linear space. Handing a renderer sRGB
+  makes every midtone too bright — mid grey is 21 % of the light, not 50 % —
+  in a way nobody can point at and everybody sees. Alpha is coverage rather
+  than light and is left alone.
 - Every surface carries a **tangent frame**, not a bare normal: which way it
   faces and which way its texture runs, as one quaternion, because that is what
   a vertex buffer holds and what a lit surface needs. It comes from the same
