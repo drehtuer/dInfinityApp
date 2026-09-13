@@ -29,7 +29,7 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] `render/filament` — the Filament engine itself: scene, materials from the table look and the die material, the two lights, soft shadows, and driving it from the simulation. The meshes, the blend between simulation states and the camera framing are done; what is left is everything that needs a GPU. *Device:* nothing about how a renderer *looks* can be judged from a unit test
+- [ ] `render/filament` — the Filament engine itself: `filamat-android`, the material compiled at launch (`docs/architecture.md`, decision 46), its parameters from the table look and the die material, the two lights, soft shadows, and driving it from the simulation. The meshes, their GPU buffers, the blend between simulation states and the camera framing are all done and tested on the JVM; what is left is everything that needs a GPU. *Device:* nothing about how a renderer *looks* can be judged from a unit test
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
 - [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)
@@ -258,6 +258,7 @@ Written down so the format need not change later. Not v1 scope.
 
 - [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
 - [ ] Author-supplied convex meshes, with the fairness preview they require (`docs/dice-sets.md`, "Shapes after v1")
+- [ ] **Author-supplied materials.** Compiling materials at runtime (`docs/architecture.md`, decision 46) means a set *could* ship its own `.mat` rather than only values for the built-in one — iridescent dice, a proper glass d20, a table that is actually brushed metal. v1 does not allow it, and the reason is not effort: a shader is code, it runs on the GPU, and "the app never runs anything from the repository" is a rule of the format (`docs/dice-sets.md`). Turning it on needs a decision about what a shader from a stranger may do — a compile that never finishes is a hung GPU, and a driver is a large attack surface — plus a limit on compile time, a cap on instruction count, and a refusal that is as legible as the validator's other refusals. Until then a set varies a material's *parameters*, which is what `roughness`, `metallic` and the colours already are
 
 ## Open questions
 

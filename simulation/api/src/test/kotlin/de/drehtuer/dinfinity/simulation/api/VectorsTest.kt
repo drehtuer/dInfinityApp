@@ -9,6 +9,22 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class VectorsTest {
+  private companion object {
+    /** Right-handed frames: the axes, a quarter turn, and something awkward. */
+    val FRAMES =
+      listOf(
+        Triple(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 0.0, 1.0)),
+        Triple(Vector3(0.0, 1.0, 0.0), Vector3(-1.0, 0.0, 0.0), Vector3(0.0, 0.0, 1.0)),
+        Triple(Vector3(0.0, 0.0, 1.0), Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0)),
+        Triple(Vector3(0.0, 0.0, -1.0), Vector3(0.0, 1.0, 0.0), Vector3(1.0, 0.0, 0.0)),
+        // Turned right about, once around each axis in turn: these are where
+        // the component solved for is x, then y, then z rather than w.
+        Triple(Vector3(1.0, 0.0, 0.0), Vector3(0.0, -1.0, 0.0), Vector3(0.0, 0.0, -1.0)),
+        Triple(Vector3(-1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 0.0, -1.0)),
+        Triple(Vector3(-1.0, 0.0, 0.0), Vector3(0.0, -1.0, 0.0), Vector3(0.0, 0.0, 1.0)),
+      )
+  }
+
   @Test
   fun `a vector knows how long it is and which way it points`() {
     val vector = Vector3(3.0, 4.0, 0.0)
@@ -183,6 +199,46 @@ class VectorsTest {
       val blended = from.slerp(to, step / 10.0)
       assertEquals(1.0, blended dot blended, 1e-12, "a blend of length ${blended dot blended} is not a turn")
     }
+  }
+
+  @Test
+  fun `a frame of three axes becomes the turn that makes them`() {
+    // What a renderer wants of a surface: which way is along the texture,
+    // which way across it, which way out — as one quaternion, because that is
+    // what a vertex buffer carries.
+    FRAMES.forEach { (right, up, forward) ->
+      val turn = Quaternion.of(right, up, forward)
+
+      assertVector(right, turn.rotate(Vector3(1.0, 0.0, 0.0)), "right")
+      assertVector(up, turn.rotate(Vector3(0.0, 1.0, 0.0)), "up")
+      assertVector(forward, turn.rotate(Vector3(0.0, 0.0, 1.0)), "forward")
+    }
+  }
+
+  @Test
+  fun `the axes themselves are no turn at all`() {
+    val identity = Quaternion.of(Vector3(1.0, 0.0, 0.0), Vector3(0.0, 1.0, 0.0), Vector3(0.0, 0.0, 1.0))
+
+    assertEquals(1.0, abs(identity dot Quaternion.Identity), 1e-12)
+  }
+
+  @Test
+  fun `a frame turned right about is still a turn, not a division by zero`() {
+    // The half-turn is where the naive form loses all its precision: the
+    // component it solves for goes to zero and everything else divides by it.
+    val turned = Quaternion.of(Vector3(-1.0, 0.0, 0.0), Vector3(0.0, -1.0, 0.0), Vector3(0.0, 0.0, 1.0))
+
+    assertEquals(1.0, turned dot turned, 1e-12)
+    assertVector(Vector3(-1.0, 0.0, 0.0), turned.rotate(Vector3(1.0, 0.0, 0.0)), "right")
+    assertVector(Vector3(0.0, 0.0, 1.0), turned.rotate(Vector3(0.0, 0.0, 1.0)), "forward")
+  }
+
+  private fun assertVector(
+    expected: Vector3,
+    actual: Vector3,
+    axis: String,
+  ) {
+    assertTrue(expected.approximates(actual, 1e-9), "$axis came out as $actual, not $expected")
   }
 
   /** Two quaternions are the same turn when they agree up to their sign. */

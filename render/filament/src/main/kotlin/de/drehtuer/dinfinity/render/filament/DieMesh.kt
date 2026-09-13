@@ -94,6 +94,7 @@ data class DieMesh(
         index = index,
         positions = ordered,
         normal = normal,
+        tangent = frame.along,
         uvs = ordered.map { frame.cell(it, grid, ShapeAtlas.cellOf(shape, index)) },
         triangles = fan(ordered.size),
       )
@@ -157,6 +158,7 @@ data class DieMesh(
         index = null,
         positions = wound,
         normal = outward,
+        tangent = (b - a).normalised(),
         uvs = emptyList(),
         triangles = fan(corners.size),
       )
@@ -179,17 +181,22 @@ data class DieMesh(
  * @param positions the corners, in winding order, one unit from the middle.
  * @param normal which way the surface faces. For a face-read solid this is
  *   exactly the direction `simulation/api` reads that face from.
+ * @param tangent which way the texture runs across the surface — `u`
+ *   increasing. With [normal] it is the frame a renderer needs for lighting,
+ *   and it comes from the same construction that laid the texture out rather
+ *   than being guessed back from it afterwards.
  * @param uvs where each corner sits in the die's texture, in image
  *   coordinates — `(0, 0)` is the top-left of the atlas. Empty for a rim.
  * @param triangles indices into [positions], three per triangle.
  */
 data class MeshFace(
   val index: Int?,
-  val positions: List<Vector3>,
-  val normal: Vector3,
-  val uvs: List<TextureCoordinate>,
-  val triangles: List<Int>,
-) {
+  override val positions: List<Vector3>,
+  override val normal: Vector3,
+  override val tangent: Vector3,
+  override val uvs: List<TextureCoordinate>,
+  override val triangles: List<Int>,
+) : Surface {
   init {
     require(uvs.isEmpty() || uvs.size == positions.size) {
       "a face has a texture coordinate per corner or none at all, not ${uvs.size} for ${positions.size}"
@@ -216,7 +223,7 @@ data class TextureCoordinate(
  * leans on, where a ring is walked anticlockwise from the `+x` side.
  */
 private class TextureFrame(
-  private val right: Vector3,
+  val along: Vector3,
   private val up: Vector3,
   private val middle: Vector3,
   private val radius: Double,
@@ -224,7 +231,7 @@ private class TextureFrame(
   /** Where [corner] sits around the face, for ordering its polygon. */
   fun angleOf(corner: Vector3): Double {
     val offset = corner - middle
-    return Exact.atan2(offset dot up, offset dot right)
+    return Exact.atan2(offset dot up, offset dot along)
   }
 
   /** [corner] as a point in the atlas, inside [cell] of [grid]. */
@@ -236,7 +243,7 @@ private class TextureFrame(
     val offset = corner - middle
     val (column, row) = cell
     return TextureCoordinate(
-      u = (column + HALF + (offset dot right) / (2 * radius)) / grid.columns,
+      u = (column + HALF + (offset dot along) / (2 * radius)) / grid.columns,
       // Down the image is the way the rows are counted, and up the face is the
       // way the die is drawn, so one of them has to be turned over.
       v = (row + HALF - (offset dot up) / (2 * radius)) / grid.rows,
@@ -251,7 +258,7 @@ private class TextureFrame(
       val up = flattened(Vector3.Up, normal) ?: flattened(SIDEWAYS, normal) ?: error("no frame for $normal")
       val middle = corners.reduce(Vector3::plus) * (1.0 / corners.size)
       return TextureFrame(
-        right = cross(up, normal),
+        along = cross(up, normal),
         up = up,
         middle = middle,
         // The face's own circle, so every cell is filled the same way whatever

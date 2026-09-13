@@ -278,6 +278,13 @@ all, and **zero** corrections applied after rest.
   which is what lets the player see over it rather than at the back of it. The
   rounded corners are drawn as six segments to the quarter, which is under a
   pixel of a 12 mm arc at any size this is drawn at.
+- Every surface carries a **tangent frame**, not a bare normal: which way it
+  faces and which way its texture runs, as one quaternion, because that is what
+  a vertex buffer holds and what a lit surface needs. It comes from the same
+  arithmetic that laid the texture out rather than being guessed back from the
+  mesh afterwards. Corners are not shared between surfaces — two faces of a die
+  meet at the same point but disagree about which way they face and where they
+  sit in the texture — which is what makes a die read as a solid with edges.
 - Floor and wall textures repeat as `floor_tiling` and `wall_tiling` ask. On
   the walls the texture walks continuously around the tray — a stretch running
   along the long side repeats as often as the look asks for that side, one

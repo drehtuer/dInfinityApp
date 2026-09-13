@@ -216,10 +216,28 @@ class TrayMeshTest {
   fun `a narrow tray still has a floor, however narrow`() {
     // The corner radius is 12 mm and the aspect ratio is clamped, but the
     // arithmetic should not fall over if a tray were ever narrower than two
-    // corners put together.
+    // corners put together — there the two arcs of a side meet and the
+    // straight stretch between them has no length at all.
     val narrow = TrayMesh.of(TableGeometry(shortSideMm = 20.0))
 
     assertTrue(areaOf(narrow.partsOf(TrayPart.Floor).single()) > 0.0)
+    narrow.surfaces.forEach { surface ->
+      assertTrue("a ${surface.part} of no width was drawn", areaOf(surface) > TOLERANCE)
+      assertEquals("a ${surface.part} has no direction for its texture", 1.0, surface.tangent.length, TOLERANCE)
+    }
+  }
+
+  @Test
+  fun `every surface carries the frame a renderer lights it by`() {
+    tray.surfaces.forEach { surface ->
+      assertEquals("${surface.part}'s tangent is not a direction", 1.0, surface.tangent.length, TOLERANCE)
+      assertEquals(
+        "${surface.part}'s texture runs into its own surface",
+        0.0,
+        surface.tangent dot surface.normal,
+        TOLERANCE,
+      )
+    }
   }
 
   @Test
