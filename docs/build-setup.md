@@ -16,14 +16,15 @@ that only works on one laptop is a build nobody else can reproduce.
 | Android SDK platform | newest stable minor of API 37 | `compileSdk` / `targetSdk` |
 | Android build-tools | newest for API 37 | aapt2, d8, apksigner |
 | `adb` (platform-tools) | newest | Talking to a phone over WiFi debugging |
-| Android NDK + CMake + Ninja | newest stable | The physics engine and the renderer are native (`simulation/jolt`, `render/filament`), so the NDK is not optional — it is only switched off for a quick image with no native code in it. `cmake` and `ninja` are on `PATH`, so a native build can be driven by hand as well as by Gradle |
+| Android NDK + CMake | pinned: 30.0.16248370 and 4.1.2 | The physics engine and the renderer are native (`simulation/jolt`, `render/filament`), so the NDK is not optional — it is only switched off for a quick image with no native code in it. These two are *pinned* rather than resolved, unlike everything else in this table: see [The native build](#the-native-build). `cmake` and `ninja` are on `PATH`, so a native build can be driven by hand as well as by Gradle |
 | Android emulator + one system image | newest automated-test image, API 36 | The middle testing tier: faster to reach than a phone, and the only place a regression in the physics is caught before one (Step 5.1). See [The emulator](#the-emulator) |
 | Gradle | 9.7.1 | Also present as the wrapper in the repository |
 | ktlint, detekt | via Gradle | Style and static analysis |
 | sonar-scanner | 7.3 | Coverage and quality gate |
 
 The SDK packages are *resolved* at image build time from what Google's
-repository offers, not pinned by name. Platform packages have been
+repository offers, not pinned by name — with one exception, the NDK and CMake,
+for the reason in [The native build](#the-native-build). Platform packages have been
 minor-versioned since Android 16 (`platforms;android-37.2`, not
 `platforms;android-37`), so a hard-coded name rots silently; the image asks for
 the newest stable minor of the API in `ANDROID_API` and fails loudly, listing
@@ -105,27 +106,46 @@ Both land in `app/build/outputs/named-apk/`. The version comes from
 
 ## The native build
 
-`simulation/jolt` is C++ compiled by the NDK. The container has everything it
-needs: NDK 30 and the SDK's own CMake, at `$ANDROID_HOME/cmake/4.1.2`.
+`simulation/jolt` is C++ compiled by the NDK, and it is part of the ordinary
+build: `./gradlew build` compiles Jolt from source and links
+`libdinfinity_jolt.so` for both ABIs. Nothing has to be run by hand.
 
-Jolt is built from source at a pinned tag with:
+The container has what it needs, and so does CI: **NDK 30.0.16248370 and CMake
+4.1.2**, pinned in `gradle.properties` as `dinfinity.ndk` and
+`dinfinity.cmake`. Pinned rather than resolved, unlike the platform and
+build-tools, because this is the compiler that builds the physics engine and a
+solver built by a different compiler is a different solver — which is the one
+thing goal 4 in `docs/architecture.md` cannot have. The devcontainer takes the
+same two values as build arguments and the CI action reads them straight out of
+`gradle.properties`, so there is one number to change and three places that
+follow it.
 
-```sh
-cmake -S <jolt>/Build -B <build> -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/<version>/build/cmake/android.toolchain.cmake" \
-  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-36 \
-  -DCMAKE_BUILD_TYPE=Distribution \
-  -DCROSS_PLATFORM_DETERMINISTIC=ON \
-  -DCMAKE_CXX_FLAGS="-Wno-overriding-option" \
-  -DTARGET_UNIT_TESTS=OFF -DTARGET_HELLO_WORLD=OFF -DTARGET_PERFORMANCE_TEST=OFF \
-  -DTARGET_SAMPLES=OFF -DTARGET_VIEWER=OFF
-```
+Two ABIs are built: `arm64-v8a`, which is the phone and every Android device
+that matters, and `x86_64`, which is the emulator in this container. Both,
+because "identical outcomes for identical seeds across JVM, emulator and
+device" is a release blocker and cannot be checked on an ABI nobody built.
 
-Two of those flags are not optional and are easy to lose.
+Jolt itself is fetched by `src/main/cpp/CMakeLists.txt` from its release
+tarball at a pinned tag **and a pinned SHA-256**, the way every other
+dependency in this project is pinned (`docs/architecture.md`, decision 28). A
+tag is a label somebody can move; a digest is not, and the engine that decides
+every roll is a poor place to make an exception. Each ABI fetches into its own
+build tree, which is CMake's default and is not worth being clever about: one
+source tree shared between two Android toolchains means one precompiled header
+shared between them too, and the build stops with *"AST file was compiled for
+the target x86_64 but the current translation unit is being compiled for
+aarch64"*. A second download is cheaper than that sentence.
+
+Three settings in that file are load-bearing.
 
 `CROSS_PLATFORM_DETERMINISTIC=ON` is the whole reason this engine was chosen
 (`docs/architecture.md`, decision 37). Without it the golden determinism suite
 is asserting nothing.
+
+`CMAKE_BUILD_TYPE=Distribution` is forced for **every** variant, the debug
+build included. An unoptimised solver is not a slower version of the same roll:
+it is too slow to step 120 Hz on a phone, so the emulator and device tiers
+would be judging something the release build never does (decision 42).
 
 `-Wno-overriding-option` is a workaround, and it is here rather than in a
 comment nobody reads because the failure is baffling without it. Jolt's
@@ -141,6 +161,34 @@ clang++: error: overriding '-ffp-model=precise' option with '-ffp-contract=off'
 Both flags are doing the same job — keeping the compiler from reassociating
 floating-point arithmetic — so silencing the overlap changes nothing about the
 determinism they exist for.
+
+### Building Jolt by hand
+
+Rarely needed, but the container has `cmake` and `ninja` on `PATH` and this is
+the line the engine spike was decided on:
+
+```sh
+cmake -S <jolt>/Build -B <build> -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/<version>/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-36 \
+  -DCMAKE_BUILD_TYPE=Distribution \
+  -DCROSS_PLATFORM_DETERMINISTIC=ON \
+  -DCMAKE_CXX_FLAGS="-Wno-overriding-option" \
+  -DTARGET_UNIT_TESTS=OFF -DTARGET_HELLO_WORLD=OFF -DTARGET_PERFORMANCE_TEST=OFF \
+  -DTARGET_SAMPLES=OFF -DTARGET_VIEWER=OFF
+```
+
+### The simulation's units are centimetres, not metres
+
+Written down here because it is the kind of thing that gets "tidied" back:
+`simulation/jolt` converts the app's millimetres to **centimetres and grams**,
+not to SI. Jolt's tolerances are absolute numbers tuned for objects about a
+metre across, and one of them cannot be configured at all — it tests a body's
+inertia tensor against a hard-coded `1e-12` and silently replaces anything
+smaller with the inertia of a **sphere a metre across**. A 16 mm die falls under
+it, friction can then no longer take the spin out of a die, and rolls never end.
+The symptom is dice that slide and spin for ever and look exactly like broken
+friction. See `docs/architecture.md`, decision 41.
 
 ## The emulator
 
@@ -300,7 +348,11 @@ consult the v2 block. Pass `--min-sdk-version 24` and both report `true`.
 ./gradlew connectedDebugAndroidTest   # on the emulator or a phone
 ```
 
-CI runs everything except the last line. Instrumented tests need a device: the
+CI runs everything except the last line — including the native build, so
+`simulation/jolt` is compiled for both ABIs on every pull request. It costs a
+few minutes of NDK download and about a minute of Jolt, and it buys the one
+thing CI can give native code: a build that cannot rot between runs on real
+hardware. Instrumented tests need a device: the
 [emulator](#the-emulator), which is in the container and is a minute away, or
 [the phone](#connecting-a-phone-over-wifi), which answers what the emulator
 cannot — a real GPU, real sensors, real timing, the API the app targets.

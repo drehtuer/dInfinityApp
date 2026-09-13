@@ -48,7 +48,7 @@ object FaceReader {
         best = index
       }
     }
-    return if (bestAlignment >= UPRIGHT_THRESHOLD) Reading.Face(best) else Reading.Cocked(bestAlignment)
+    return if (bestAlignment >= UPRIGHT_THRESHOLD) Reading.Face(best) else Reading.Cocked(best, bestAlignment)
   }
 
   /** True when a die read this way takes its value from a vertex, not a face. */
@@ -70,9 +70,15 @@ sealed interface Reading {
    * fabricate a result nobody rolled. It is thrown again, visibly
    * (`docs/physics-and-rendering.md`, rung 4: "Never").
    *
-   * @param bestAlignment how close the nearest position came, for the anomaly log.
+   * @param nearestIndex the position that came closest to being up. It is
+   *   **not** the result — reading it would fabricate a number nobody rolled —
+   *   but the anomaly log and the debug overlay both want to know which face
+   *   nearly won, and it is the only thing the safety valve at the 12-second
+   *   cap has left to report (`docs/physics-and-rendering.md`).
+   * @param bestAlignment how close that position came, for the same log.
    */
   data class Cocked(
+    val nearestIndex: Int,
     val bestAlignment: Double,
   ) : Reading
 }

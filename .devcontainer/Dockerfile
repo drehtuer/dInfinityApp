@@ -11,9 +11,17 @@ ARG ANDROID_API=37
 ARG CMDLINE_TOOLS=13114758
 ARG GRADLE_VERSION=9.7.1
 ARG SONAR_SCANNER_VERSION=7.3.0.5189
-# The NDK is only needed once simulation/jolt has native code (plan Step 3).
-# It is ~2.5 GB, so it can be switched off for a quick image.
+# simulation/jolt is C++ and compiles Jolt from source, so without the NDK the
+# module cannot be built at all. It is ~2.5 GB, so it can still be switched off
+# for a quick image with no native code in it.
 ARG INSTALL_NDK=true
+# Pinned rather than resolved, unlike the platform and build-tools above: this
+# is the compiler that builds the physics engine, and a solver built by a
+# different compiler is a different solver — which goal 4 in
+# docs/architecture.md cannot have. Keep in step with `dinfinity.ndk` and
+# `dinfinity.cmake` in gradle.properties, which is what AGP reads.
+ARG NDK_VERSION=30.0.16248370
+ARG CMAKE_VERSION=4.1.2
 # The emulator and one system image are another ~3 GB. They are the middle
 # testing tier: faster to reach than a phone and the only place a regression in
 # the physics can be caught before one (docs/TODO.md, Step 5.1).
@@ -110,12 +118,14 @@ RUN BUILD_TOOLS_VERSION="$(cat "${ANDROID_HOME}/.build-tools-version")" \
  && ln -s "${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}" \
           "${ANDROID_HOME}/build-tools/latest" \
  && if [ "${INSTALL_NDK}" = "true" ]; then \
-      NDK="$(grep -E '^ndk;[0-9]+\.[0-9]+\.[0-9]+$' /tmp/sdk-packages.txt | tail -1)" \
-      && CMAKE="$(grep -E '^cmake;[0-9]+\.[0-9]+\.[0-9]+$' /tmp/sdk-packages.txt | tail -1)" \
-      && echo "Using ${NDK} and ${CMAKE}" \
-      && sdkmanager --install "${NDK}" "${CMAKE}" > /dev/null \
-      && echo "${NDK##*;}" > "${ANDROID_HOME}/.ndk-version" \
-      && ln -s "${ANDROID_HOME}/cmake/${CMAKE##*;}" /opt/android-cmake; \
+      grep -qx "ndk;${NDK_VERSION}" /tmp/sdk-packages.txt \
+      || { echo "ERROR: ndk;${NDK_VERSION} is not offered by the SDK repository."; \
+           echo "Newest NDKs offered:"; grep -E '^ndk;' /tmp/sdk-packages.txt | tail -4; \
+           exit 1; } \
+      && echo "Using ndk;${NDK_VERSION} and cmake;${CMAKE_VERSION}" \
+      && sdkmanager --install "ndk;${NDK_VERSION}" "cmake;${CMAKE_VERSION}" > /dev/null \
+      && echo "${NDK_VERSION}" > "${ANDROID_HOME}/.ndk-version" \
+      && ln -s "${ANDROID_HOME}/cmake/${CMAKE_VERSION}" /opt/android-cmake; \
     else \
       echo "NDK skipped (INSTALL_NDK=${INSTALL_NDK})"; \
     fi \

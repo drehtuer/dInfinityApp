@@ -99,6 +99,18 @@ class RestTracker(
   /** True when the die at [index] has been still long enough to be read. */
   fun isAtRest(index: Int): Boolean = stillFor[index] >= SettleRule.REST_STEPS
 
+  /**
+   * Forgets that the die at [index] was ever still.
+   *
+   * A die that has been picked up and thrown again is not at rest, whatever it
+   * was doing a moment ago (`docs/physics-and-rendering.md`, rung 3). Without
+   * this the roll would count the re-thrown die as finished before its new
+   * throw had taken a single step, and would stop with it in mid-air.
+   */
+  fun rethrown(index: Int) {
+    stillFor[index] = 0
+  }
+
   /** True when every die is at rest, or the cap has fired. */
   fun finished(): Boolean = (0 until diceCount).all(::isAtRest) || capReached()
 
