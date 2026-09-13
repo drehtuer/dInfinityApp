@@ -278,6 +278,45 @@ class JoltBridgeTest {
     )
   }
 
+  @Test
+  fun twentyD6sEndSpreadOutAndNoneStandingOnAnother() {
+    // `20d6` on the phone came to rest as a neat column of cubes stacked
+    // against one wall (`docs/TODO.md`, Step 5.5: **zero** dice at rest
+    // supported by another die). This asks the same question of eight seeds.
+    val dice = List(TWENTY) { d6() }
+    val worst =
+      (1L..8L).map { seed ->
+        val spec = spec(dice, seed)
+        val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = dice.size))
+        val layout = SpawnLayout(geometry, radiusOf(d6()), spec.seed)
+        val states =
+          world.use {
+            dice.forEachIndexed { index, die ->
+              world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
+            }
+            world.finish()
+            RollLoop(spec, world, layout, ShakeDriver(emptyList())).run()
+            world.readStates()
+          }
+        seed to states
+      }
+
+    val stacked = worst.map { (seed, states) -> seed to states.count { it.supportedByDie } }
+    assertTrue(
+      "dice came to rest standing on other dice: ${stacked.filter { it.second > 0 }}",
+      stacked.all { it.second == 0 },
+    )
+
+    // And spread out rather than swept into one corner: a roll that pours into
+    // a heap against one wall is not a roll anybody can read.
+    val heaped =
+      worst.filter { (_, states) ->
+        val spreadX = states.maxOf { it.position.x } - states.minOf { it.position.x }
+        spreadX < geometry.longSideMm / 4
+      }
+    assertTrue("twenty dice ended in a heap: ${heaped.map { it.first }}", heaped.isEmpty())
+  }
+
   private fun d4(): Die = Die.standard("d4", DieShape.Tetrahedron)
 
   private fun d20(): Die = Die.standard("d20", DieShape.Icosahedron)

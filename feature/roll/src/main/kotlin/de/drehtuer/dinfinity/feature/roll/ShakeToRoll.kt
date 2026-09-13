@@ -3,6 +3,10 @@ package de.drehtuer.dinfinity.feature.roll
 import android.hardware.SensorManager
 import android.view.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import de.drehtuer.dinfinity.input.shake.SensorShakeSource
@@ -32,18 +36,30 @@ import de.drehtuer.dinfinity.input.shake.SensorShakeSource
 internal fun ShakeToRoll(presenter: RollPresenter) {
   val context = LocalContext.current
   val sensors = context.getSystemService(SensorManager::class.java)
+  var shaking by remember { mutableStateOf(false) }
+
+  // A hand around a phone that is being shaken is a hand on both edges of it.
+  HoldTheEdges(shaking)
 
   LifecycleResumeEffect(presenter, sensors) {
     val shakes =
       sensors?.let {
         SensorShakeSource(
           sensors = it,
-          onStarted = { presenter.roll() },
+          onStarted = {
+            shaking = true
+            presenter.roll()
+          },
+          onEnded = { shaking = false },
           onSample = presenter::shaking,
           rotationDegrees = { context.display.rotation.asDegrees() },
         ).apply { start() }
       }
-    onPauseOrDispose { shakes?.stop() }
+    onPauseOrDispose {
+      shakes?.stop()
+      // Leaving the screen mid-shake must not leave the edges claimed.
+      shaking = false
+    }
   }
 }
 
