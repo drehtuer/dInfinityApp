@@ -6,6 +6,12 @@
     "args": {
       "ANDROID_API": "37",
       "INSTALL_NDK": "true",
+      // The compiler that builds the physics engine, pinned: a solver built by
+      // a different compiler is a different solver, and determinism is goal 4
+      // (docs/architecture.md). Keep in step with dinfinity.ndk and
+      // dinfinity.cmake in gradle.properties, which is what AGP reads.
+      "NDK_VERSION": "30.0.16248370",
+      "CMAKE_VERSION": "4.1.2",
       "INSTALL_EMULATOR": "true",
       "USER_UID": "1000"
     }

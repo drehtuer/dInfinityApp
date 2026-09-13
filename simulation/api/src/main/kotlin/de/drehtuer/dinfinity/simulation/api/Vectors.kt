@@ -90,8 +90,8 @@ data class Quaternion(
     ): Quaternion {
       val unit = axis.normalised()
       val half = radians / 2
-      val sine = kotlin.math.sin(half)
-      return Quaternion(kotlin.math.cos(half), unit.x * sine, unit.y * sine, unit.z * sine)
+      val sine = Exact.sin(half)
+      return Quaternion(Exact.cos(half), unit.x * sine, unit.y * sine, unit.z * sine)
     }
 
     /** The shortest rotation taking [from] to [to]. */

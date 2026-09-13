@@ -19,8 +19,10 @@ geometry, the capacity rule and how the *look* of the table can be swapped.
 
 - The mesh never changes. Only textures, colours, material and sound profile
   are exchangeable.
-- Wall height is generous and there is an invisible ceiling; dice cannot leave
-  the table no matter how hard the phone is shaken.
+- Wall height is generous and there is an invisible ceiling. The *collision*
+  walls run all the way up to that ceiling rather than stopping at the rim the
+  renderer draws, because a box open at the sides between the two is a box dice
+  leave (`docs/tables.md`).
 - The table orientation follows device gravity: tilt the phone and the dice
   slide. Hold it flat and they settle.
 - Floor and walls have a slightly higher friction than the dice-on-dice
@@ -46,8 +48,10 @@ Every die is a **convex** rigid body:
   roughly acrylic).
 - Restitution around 0.3, friction around 0.5. These are tunable per die in
   the set file within clamped ranges.
-- Rounded edges: shapes with sharp corners (d4 especially) get a small hull
-  margin so they tumble instead of catching on the floor.
+- Rounded edges: shapes with sharp corners (d4 especially) get a hull margin of
+  3 % of the die's nominal size, so they tumble instead of catching on the
+  floor. A share rather than a fixed millimetre, so a die shrunk by the
+  capacity rule keeps the proportions it was tuned at.
 
 ## Timestep and determinism
 
@@ -59,11 +63,35 @@ Every die is a **convex** rigid body:
 - The simulation is seeded per roll. The seed and every input impulse are
   recorded in the `RollResult` so a roll can be replayed exactly.
 - The engine is configured in deterministic mode — Jolt built with
-  `CROSS_PLATFORM_DETERMINISTIC=ON` (`docs/build-setup.md`) — and no
-  `System.nanoTime()` takes part in any simulation decision.
-- Golden tests: a fixed list of (seed, formula, impulse sequence) tuples with
-  their expected outcomes, run on every CI build and on multiple ABIs.
-  Any diff is a bug.
+  `CROSS_PLATFORM_DETERMINISTIC=ON` (`docs/build-setup.md`) — stepped by a
+  single-threaded job system, and no `System.nanoTime()` takes part in any
+  simulation decision. Single-threaded because a roll is at most eighty small
+  convex bodies, where the threads would cost more than they save, and because
+  it removes a whole class of question about what "deterministic" depends on.
+- The simulation runs in **centimetres and grams**, converted from the app's
+  millimetres at the bridge and nowhere else. That is not cosmetic: at metre
+  scale a die's inertia tensor falls under a hard-coded "near zero" test inside
+  Jolt and is replaced by that of a sphere a metre across, which friction cannot
+  slow (`docs/architecture.md`, decision 41).
+- Everything that decides a throw *before* the engine sees it — the spawn
+  layout's orientations and spins, the catalogue's hull vertices, the threshold
+  a face is read against — is computed with `StrictMath` through
+  `simulation/api`'s `Exact`. `Math.sin` may be an intrinsic and is allowed to
+  be an ulp out; one ulp in a starting quaternion is a different face a hundred
+  steps later (`docs/architecture.md`, decision 43).
+- Golden tests: a fixed list of (seed, formula, input) triples with their
+  recorded outcomes, in
+  `test-fixtures/src/main/resources/fixtures/golden/cases.tsv`. They are
+  asserted in two halves, split where the engine begins. The JVM half runs on
+  every CI build and checks everything the engine is *handed* — which dice the
+  formula resolved to, how far the capacity rule shrank them, every die's
+  starting placement and hull, and the gravity of every step of the shake, as
+  one digest. The device half runs on the emulator and the phone and checks
+  what the engine *did* with it: the faces, the steps to rest, the corrections
+  and the re-throws, exactly. Both halves assert the digest, which is what
+  makes the CI half worth running: it is only evidence about a real roll while
+  the device still agrees with it about what the roll was. Any diff is a bug —
+  re-recording is deliberate and reviewed (`docs/build-setup.md`).
 
 ## Starting a roll
 
@@ -89,12 +117,25 @@ no spin *would* be predictable. We do not do that.)
   would flicker on and off through the quiet moment at the top of every swing.
   A session that runs past 30 s is ended anyway — it has stopped being an
   input.
-- During the session, the tray itself is moved: the phone's acceleration is
-  applied as an inverse acceleration to the tray (kinematic body), so the dice
-  slam into the walls the same way they would in a cupped hand. This feels
-  much more physical than applying random impulses to the dice.
+- During the session the phone's acceleration is applied **inverse**, added to
+  gravity. The dice slam into the walls the same way they would in a cupped
+  hand, because that is what a hand yanking a tray sideways is: in the frame
+  the player is looking at, everything inside gets thrown the other way. It
+  feels far more physical than applying random impulses to the dice, and it is
+  the same thing a moving tray would do without the tray having to move.
+- **The tray never moves.** It is the phone's screen, so in that frame it is
+  nailed down — and it has to stay that way for a second reason: a tray carried
+  at the speed a hand shakes crosses more than its own wall thickness in one
+  simulation step, and continuous collision detection sweeps a fast *die*
+  against the world, never a fast wall against a die. The wall then arrives
+  already inside a die and the solver pushes that die out of whichever face is
+  nearer, which half the time is the outside. It was built with a moving tray
+  first and the dice escaped.
 - Phone rotation from the gyroscope rotates the gravity vector in the
   simulation.
+- An acceleration above 40,000 mm/s² — about four gravities, harder than anyone
+  shakes a fistful of dice — is clamped. Past that it is a sensor fault or a
+  dropped phone, and no thickness of wall survives it.
 - Sensor samples are quantised — acceleration to 1 mm/s², direction components
   to 1/4096 — and indexed by *simulation step* rather than by wall-clock
   moment. Both are what make a roll reproducible from its own record: a
@@ -182,15 +223,25 @@ see.
    stay where they are. That is exactly what a player does with a cocked die,
    it is fair (the re-throw is uniform over the faces), and it is honest:
    the player sees a die being re-rolled instead of a die being moved. Each
-   re-throw is recorded in the outcome (`rethrows` counter).
+   re-throw is recorded in the outcome (`rethrows` counter). Re-throws come out
+   of the same twelve-second budget as the rest of the roll — the cap is a cap
+   on the throw, not on each attempt at it — and one die may be thrown again at
+   most three times. A die that has come up cocked three times running is not
+   unlucky, it is a physics bug, and letting it loop would spend the whole
+   budget on one die while the rest of the table waits.
 
 4. **Never.** No impulse on a resting die. No tray tilt to slide a settled
    pile. No snapping a die to its nearest face — that fabricates a result
    nobody rolled.
 
 The 12-second hard cap above is a safety valve for a simulation that has gone
-wrong, not part of this ladder; any die still cocked when it fires is
-re-thrown and the anomaly is logged.
+wrong, not part of this ladder. When it fires, every die still moving is
+force-settled. A die that is still cocked at that point has had its three
+re-throws and there is no budget left for a fourth: it reports the face that
+came nearest and is counted in `forcedSettles`, which makes the outcome
+`clean = false`. That is the one place in the app where a number is read off a
+die that was not properly resting, it is recorded rather than hidden, and Step 5
+asserts it never happens.
 
 The whole loop runs inside the simulation, so power-saving mode behaves
 identically — including the re-throws, which simply do not get drawn.

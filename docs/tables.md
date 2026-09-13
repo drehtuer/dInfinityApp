@@ -27,9 +27,17 @@ Simulation units are millimetres.
 |---|---|
 | Long side | 240 mm, always (a real dice tray, regardless of phone size) |
 | Short side | 240 mm × screen aspect ratio, clamped to 0.40–0.75 (Pixel 10a: 20:9 → ~108 mm) |
-| Wall height | 60 mm, plus an invisible ceiling at 200 mm |
+| Wall height | 60 mm as drawn; the collision box is closed to the ceiling at 200 mm |
 | Inner corner radius | 12 mm (dice do not wedge into sharp corners) |
 | Floor friction / restitution | from the table look, clamped (see below) |
+
+The two heights are not a contradiction. Sixty millimetres is the rim the
+renderer draws — the wall you can see. The *collision* walls run the full two
+hundred up to the ceiling, because "dice cannot leave the table no matter how
+hard the phone is shaken" is not true of a box with a lid two hundred
+millimetres up and sides only sixty: a die thrown hard leaves through the gap
+and never comes back. The rounded corners are only as tall as the rim, which is
+as far up as a die can wedge into anything.
 
 Orientation follows the phone: portrait phone → portrait table. Rotating the
 device mid-roll does not rotate the table; the current roll finishes first.

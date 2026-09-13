@@ -29,9 +29,6 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] `simulation/jolt` — JNI bridge over Jolt 5.3.0 (decided; `docs/architecture.md`, decision 37): CMake and NDK wiring, Jolt vendored at a pinned tag, convex hulls from the shape catalogue, the fixed 120 Hz step, spawn and shake input, and the correction ladder. Seeded and deterministic
-- [ ] *Device:* the bridge's first end-to-end run. The spike proved Jolt configures, builds and links for `arm64-v8a` with the NDK's toolchain; that a scene actually settles, and settles the same way on two ABIs, can only be seen on a device. The emulator in the container answers both questions (`docs/build-setup.md`), the phone confirms them
-- [ ] Golden determinism suite: (seed, formula, input) → outcome, asserted on every ABI CI can run, and re-asserted on the device in Step 5
 - [ ] `render/filament` — scene, materials, camera, die meshes from the shape catalogue, the tray, and interpolation between the last two simulation states. *Device:* nothing about a renderer can be judged from a unit test
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
 - [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)
@@ -190,7 +187,7 @@ after every physics change.
 ### 5.2 Fairness and determinism
 
 - [ ] Every catalogue shape, 100,000 headless rolls: chi-squared p > 0.001, no face off by more than 1 %
-- [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker
+- [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker. The golden suite is the check and already holds for its ten cases on both ABIs; Step 5 is the same claim at ten thousand rolls and on a second phone
 - [ ] Power-saving and rendered mode agree on every seed in the golden suite
 
 ### 5.3 Capacity and corner cases
@@ -224,12 +221,12 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - [ ] **Zero** post-rest corrections. The harness asserts this; one occurrence is a bug, not a statistic
 - [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
 - [ ] Settle time at 20 dice: median under 2 s, p99 under 4 s; the 12 s cap never reached in 10,000 rolls
-- [ ] Tune prevention (spawn spread and stagger, dice-on-dice friction, throw energy, scale) until the numbers above hold without leaning on corrections
+- [ ] Tune prevention (spawn spread and stagger, dice-on-dice friction, throw energy, scale) until the numbers above hold without leaning on corrections. **Where it starts:** 20 d20s at the capacity rule's scale settle in 89–132 steps on the Pixel 10a, with 9 of the 20 corrected, 0–1 re-thrown and **zero** post-rest corrections. The last figure is the one that must stay at zero and does; the correction rate is 45 % against a 0.5 % budget, and bringing it down is what this task is
 - [ ] *With the user:* frame-by-frame review of 50 recorded 20-dice rolls — nobody can point at the moment a die was helped
 
 ### 5.6 Feel — the user's call, not a metric
 
-- [ ] Dice respond to a shake within ~100 ms and the tray motion matches the hand
+- [ ] Dice respond to a shake within ~100 ms, and they move the way the hand did — the tray itself never moves, because it is the screen (`docs/physics-and-rendering.md`)
 - [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling
 - [ ] Haptics fire on real impacts only, sound pitch tracks impulse and die size
 - [ ] Settled faces are legible at arm's length without zooming

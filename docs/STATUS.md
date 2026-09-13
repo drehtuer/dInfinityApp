@@ -9,14 +9,17 @@ changelog.
 
 ## Where we are
 
-- **Phase:** implementation. Steps 1 and 2 of `docs/TODO.md` are done, Step 3
-  is nearly done: everything a formula touches before it becomes a physical
-  throw exists and is tested. What is left of Step 3 is the physics bridge,
-  the renderer and the golden determinism suite that ties them together.
+- **Phase:** implementation. Steps 1 and 2 of `docs/TODO.md` are done and Step
+  3 is nearly done: a formula can now be parsed, planned, thrown as real dice,
+  read off their faces and pinned against a recorded outcome, end to end. What
+  is left of Step 3 is the renderer, the shake on real hardware and the three
+  smaller items listed there.
 - **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** PRs #1–#25 are merged. #28 through #40 are open as a
-  stack, each based on the one before it, and they merge in that order.
+- **Branch state:** everything up to and including #41 is merged; `main` is
+  green. Three stacked branches are in flight: `feature/jolt-bridge` (#42),
+  `fix/exact-trigonometry` (#43) on top of it, and `feature/golden-determinism`
+  on top of that. They merge in that order.
 
 ## Done
 
@@ -55,16 +58,28 @@ changelog.
   validator on every launch. Every catalogue solid carries its corners as well
   as its face normals, from one construction — which is how two geometry bugs
   were found.
-- **The physics engine is decided:** Jolt 5.3.0, by building both candidates
-  against this project's own toolchain rather than by reading about them
-  (`docs/architecture.md`, decision 37).
+- **The physics engine is decided and wired up:** Jolt 5.3.0, chosen by
+  building both candidates against this project's own toolchain rather than by
+  reading about them (`docs/architecture.md`, decision 37), and now a working
+  bridge. Dice spawn on a staggered grid, are shaken by an inverse acceleration
+  rather than by a moving tray, settle, and are read off their faces. The
+  engine is native but every *decision* about a roll is Kotlin over an
+  interface (decision 40), so the rule that matters most — nothing touches a
+  die that has come to rest — is proved by JVM tests rather than sampled on a
+  phone. Built for `arm64-v8a` and `x86_64` on every CI run.
+- **Rolls are written down and asserted.** Ten (seed, formula, input) cases
+  carry what they came to — the scale, the throw handed to the engine, the
+  faces, the steps, the corrections, the re-throws. The half of the chain CI
+  can reach is checked on every pull request and the whole of it on each ABI,
+  and the emulator and the Pixel 10a agree bit for bit, digest included. The
+  trigonometry upstream of the engine went to `StrictMath` first, so that
+  agreement rests on a guarantee rather than on two libms happening to match
+  (`docs/architecture.md`, decisions 43 and 44).
 
 ## In progress
 
-- `simulation/jolt` — the JNI bridge over Jolt: CMake and NDK wiring, Jolt
-  vendored at a pinned tag, convex hulls from the shape catalogue, the fixed
-  120 Hz step, spawn and shake input, the correction ladder. This is the piece
-  that turns `simulation/api`'s contract into dice that actually land.
+- Nothing. `simulation/jolt` and the golden determinism suite have landed on
+  their branches; the next piece is `render/filament`.
 
 ## Blocked / waiting on
 
@@ -81,10 +96,21 @@ changelog.
   — is the hardest thing in the plan and can only be judged on a device. If
   prevention cannot get there, the fallback is a visible re-throw, which is
   honest but must not become common.
-- Physics determinism across ABIs and devices is assumed, not proven; the
-  golden suite in Step 3 is the check.
-- Table capacity constants (30 % floor, 0.40 minimum scale) are worked out on
-  paper and untried on the Pixel 10a.
+- Physics determinism across ABIs is no longer assumed *or* sampled: the golden
+  suite asserts the same faces, step counts and correction counts on the
+  emulator (`x86_64`, API 36) and the Pixel 10a (`arm64-v8a`, API 37), and
+  fails if either moves. What is still unproven is determinism across *devices*
+  of the same ABI and across time, which is the same suite run somewhere else.
+- Table capacity constants (30 % floor, 0.40 minimum scale) were worked out on
+  paper. First evidence is good: 20 d20s at the scale the rule picks (0.73)
+  settle on the Pixel 10a in 89–132 steps with no forced settles. Twenty dice
+  at *full* size, which the rule would refuse, need eight or nine re-throws —
+  which is the rule earning its keep.
+- **The correction ladder leans on corrections far too hard.** Nine of twenty
+  dice get a nudge, against a budget of one in two hundred. Every one of them
+  lands while the die is still moving and post-rest corrections are zero, so
+  the honest rule holds — but Step 5.5 is where the prevention has to get good
+  enough that the ladder is rarely reached at all.
 - The container's emulator is an API 36 automated-test image, so it has no
   real GPU and is one API below `targetSdk`. It answers "does this run", not
   "does this look right" — the phone remains the only answer to the second.

@@ -49,6 +49,33 @@ class SettleRuleTest {
   }
 
   @Test
+  fun `a die thrown again forgets how still it was being`() {
+    // Rung 3 puts a die back in the air. Without this it would still be
+    // carrying the stillness of the die it used to be and the roll would stop
+    // with it mid-flight (`docs/physics-and-rendering.md`).
+    val tracker = RestTracker(2)
+    repeat(SettleRule.REST_STEPS) { tracker.step(listOf(DieMotion.Stopped, DieMotion.Stopped)) }
+    assertTrue(tracker.isAtRest(0))
+
+    tracker.rethrown(0)
+
+    assertFalse(tracker.isAtRest(0), "a die in the air is not at rest")
+    assertTrue(tracker.isAtRest(1), "and the die beside it was not touched")
+  }
+
+  @Test
+  fun `a die thrown again has to settle all over again`() {
+    val tracker = RestTracker(1)
+    repeat(SettleRule.REST_STEPS) { tracker.step(listOf(DieMotion.Stopped)) }
+    tracker.rethrown(0)
+
+    repeat(SettleRule.REST_STEPS - 1) { tracker.step(listOf(DieMotion.Stopped)) }
+    assertFalse(tracker.isAtRest(0))
+    tracker.step(listOf(DieMotion.Stopped))
+    assertTrue(tracker.isAtRest(0), "the same quarter of a second as any other die")
+  }
+
+  @Test
   fun `a die that twitches starts counting again`() {
     val tracker = RestTracker(1)
     repeat(SettleRule.REST_STEPS - 1) { tracker.step(listOf(DieMotion.Stopped)) }

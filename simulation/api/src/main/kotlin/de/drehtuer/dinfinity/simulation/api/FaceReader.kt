@@ -2,7 +2,6 @@ package de.drehtuer.dinfinity.simulation.api
 
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.FaceRead
-import kotlin.math.cos
 
 /**
  * Reads the number off a die that has come to rest
@@ -23,7 +22,7 @@ object FaceReader {
   const val COCKED_DEGREES: Double = 15.0
 
   /** The dot product that corresponds to [COCKED_DEGREES]. */
-  val UPRIGHT_THRESHOLD: Double = cos(Math.toRadians(COCKED_DEGREES))
+  val UPRIGHT_THRESHOLD: Double = Exact.cos(Math.toRadians(COCKED_DEGREES))
 
   /**
    * Which position of [die] is up when it is turned by [orientation], or
@@ -48,7 +47,7 @@ object FaceReader {
         best = index
       }
     }
-    return if (bestAlignment >= UPRIGHT_THRESHOLD) Reading.Face(best) else Reading.Cocked(bestAlignment)
+    return if (bestAlignment >= UPRIGHT_THRESHOLD) Reading.Face(best) else Reading.Cocked(best, bestAlignment)
   }
 
   /** True when a die read this way takes its value from a vertex, not a face. */
@@ -70,9 +69,15 @@ sealed interface Reading {
    * fabricate a result nobody rolled. It is thrown again, visibly
    * (`docs/physics-and-rendering.md`, rung 4: "Never").
    *
-   * @param bestAlignment how close the nearest position came, for the anomaly log.
+   * @param nearestIndex the position that came closest to being up. It is
+   *   **not** the result — reading it would fabricate a number nobody rolled —
+   *   but the anomaly log and the debug overlay both want to know which face
+   *   nearly won, and it is the only thing the safety valve at the 12-second
+   *   cap has left to report (`docs/physics-and-rendering.md`).
+   * @param bestAlignment how close that position came, for the same log.
    */
   data class Cocked(
+    val nearestIndex: Int,
     val bestAlignment: Double,
   ) : Reading
 }

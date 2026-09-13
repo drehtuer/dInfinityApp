@@ -94,7 +94,10 @@ data class ShakeSample(
  * @param rethrows dice that came to rest cocked or stacked and were thrown
  *   again, visibly. Honest, and counted: a number that climbs is a physics
  *   bug.
- * @param forcedSettles dice still moving when the 12-second cap fired.
+ * @param forcedSettles dice the simulation had to finish for rather than
+ *   letting them finish: still moving when the 12-second cap fired, or still
+ *   cocked after their last re-throw. Either way the ladder has already failed
+ *   and [clean] is false; Step 5 asserts this stays zero.
  * @param postRestCorrections dice touched **after** they had come to rest.
  *   This must always be zero. It is reported rather than assumed so that the
  *   device harness can assert it, and one occurrence is a bug, not a statistic

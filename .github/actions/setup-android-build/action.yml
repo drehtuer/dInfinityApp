@@ -28,6 +28,8 @@ runs:
         # the Gradle build read (docs/build-setup.md).
         api="$(grep '^dinfinity.androidApi=' gradle.properties | cut -d= -f2)"
         build_tools="$(grep '^dinfinity.buildTools=' gradle.properties | cut -d= -f2)"
+        ndk="$(grep '^dinfinity.ndk=' gradle.properties | cut -d= -f2)"
+        cmake="$(grep '^dinfinity.cmake=' gradle.properties | cut -d= -f2)"
         sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
         if [ -z "$sdk" ]; then
           echo "::error::No Android SDK on this runner (ANDROID_HOME unset)."
@@ -41,7 +43,18 @@ runs:
         yes | "$sdkmanager" --licenses > /dev/null 2>&1 || true
         # Platform packages have been minor-versioned since Android 16, and AGP
         # asks for the base minor of the API it compiles against.
-        "$sdkmanager" "platforms;android-${api}.0" "build-tools;${build_tools}"
+        #
+        # The NDK and CMake are here because `simulation/jolt` is C++: Jolt is
+        # compiled from source on every build, so a runner without them cannot
+        # assemble the module at all. They are the slow part of this step —
+        # the NDK is a download of gigabytes — and they are worth it, because a
+        # native build that only ever happens on a developer's machine is a
+        # native build that rots between runs on real hardware.
+        "$sdkmanager" \
+          "platforms;android-${api}.0" \
+          "build-tools;${build_tools}" \
+          "ndk;${ndk}" \
+          "cmake;${cmake}"
         echo "$sdk/build-tools/${build_tools}" >> "$GITHUB_PATH"
 
     - name: Set up Gradle
