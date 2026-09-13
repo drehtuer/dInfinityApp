@@ -348,6 +348,18 @@ all, and **zero** corrections applied after rest.
   file in the module that talks to Filament, and everything that *decides*
   what a roll looks like sits on the near side of it and is tested on a JVM
   (`docs/architecture.md`, decision 47).
+- **The table is drawn before anything is thrown onto it, and after.** A tray
+  is a table, not a roll: the screen says *there is a table* as soon as it
+  opens, and the floor, the walls and the rim are built and drawn with nothing
+  standing on them. Putting a result away takes the dice off it and leaves the
+  table. Only giving the tray up entirely takes the table away too.
+- **A picture that is not moving still has to land.** A roll produces a frame
+  sixty times a second and a skipped one is covered by the next; an empty
+  table and a roll that has come to rest produce none at all, and there is no
+  next frame to cover for a skip. So a still picture is *owed* a frame — when
+  the table is named, when a surface arrives, and when the last die stops —
+  and is asked for again until Filament actually draws one. It is one frame
+  each time, not a loop: nothing is moving, so nothing more is worth drawing.
 - **The surface comes and goes; the roll does not.** Filament fixes its swap
   chain and viewport when a stage is made, so a resize, a rotation or the app
   coming back from the background is a *new* stage. A roll being drawn on the

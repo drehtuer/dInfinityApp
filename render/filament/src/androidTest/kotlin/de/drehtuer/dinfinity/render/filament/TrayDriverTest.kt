@@ -96,6 +96,34 @@ class TrayDriverTest {
   }
 
   @Test
+  fun anEmptyTableReachesTheSurfaceWithNoRollAtAll() {
+    // The screen before anything has been thrown. Nothing is moving, so no
+    // roll is driving the frame clock — and a table that never reaches the
+    // surface is the black rectangle this exists to stop
+    // (`docs/TODO.md`, Step 4.1).
+    val reader = surfaceReader()
+    val arrived = CountDownLatch(1)
+    val listening = HandlerThread("empty-table-arriving").apply { start() }
+    reader.setOnImageAvailableListener({ arrived.countDown() }, Handler(listening.looper))
+
+    try {
+      TrayDriver().use { driver ->
+        driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
+        driver.table(geometry, look)
+
+        assertTrue(
+          "an empty table never reached the other end of the surface",
+          arrived.await(PATIENCE_SECONDS, TimeUnit.SECONDS),
+        )
+      }
+      assertNotNull(reader.acquireLatestImage())
+    } finally {
+      reader.close()
+      listening.quitSafely()
+    }
+  }
+
+  @Test
   fun aSurfaceTakenAwayMidRollLeavesNothingHoldingIt() {
     // The thing that crashes if it is got wrong: a `Surface` may not be
     // touched after the callback that withdrew it returns, so `surfaceLost`

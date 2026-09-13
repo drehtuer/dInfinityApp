@@ -4,10 +4,12 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.view.Choreographer
 import android.view.Surface
+import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import java.util.concurrent.CountDownLatch
 
 /**
@@ -97,9 +99,28 @@ class TrayDriver(
     handler.post { loop.shake(sample) }
   }
 
+  /**
+   * There is a table, and nothing has been thrown onto it yet.
+   *
+   * Posted like everything else: the scene belongs to the roll thread, and the
+   * screen says this from the main one.
+   */
+  override fun table(
+    geometry: TableGeometry,
+    look: TableLook,
+  ) {
+    handler.post {
+      loop.table(geometry, look)
+      schedule()
+    }
+  }
+
   /** Takes whatever is on the tray off it. */
   override fun clear() {
-    handler.post(loop::clear)
+    handler.post {
+      loop.clear()
+      schedule()
+    }
   }
 
   /** Stops the thread. The driver cannot be used again. */

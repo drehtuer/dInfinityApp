@@ -1,10 +1,12 @@
 package de.drehtuer.dinfinity.render.filament
 
 import android.view.Surface
+import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
 
 /**
  * Somewhere to throw dice and watch them land.
@@ -49,6 +51,22 @@ interface Tray : AutoCloseable {
   fun roll(
     start: (Renderer) -> WatchedRoll,
     onSettled: (SimulationOutcome) -> Unit,
+  )
+
+  /**
+   * There is a table, and nothing has been thrown onto it yet.
+   *
+   * Said when the screen opens, and again whenever the look changes. Without
+   * it a tray has no scene until the first throw, and a player arriving at the
+   * screen is shown a black rectangle instead of a table waiting
+   * (`docs/TODO.md`, Step 4.1).
+   *
+   * It is remembered, so a surface that arrives afterwards — or arrives again
+   * after a rotation — is given the table too.
+   */
+  fun table(
+    geometry: TableGeometry,
+    look: TableLook,
   )
 
   /**

@@ -40,6 +40,13 @@ class FakeStage(
   /** A mesh to hand back [Stage.NOTHING] for, standing in for one with nothing in it. */
   var refuse: GpuMesh? = null
 
+  /**
+   * Whether [draw] declines the frames it is offered, as Filament's renderer
+   * does when it decides one is not worth beginning. A roll draws again a
+   * sixtieth of a second later; a picture that is not moving has to notice.
+   */
+  var refuseFrames: Boolean = false
+
   override fun light() {
     lit = true
   }
@@ -65,6 +72,7 @@ class FakeStage(
   }
 
   override fun draw(): Boolean {
+    if (refuseFrames) return false
     frames++
     return true
   }

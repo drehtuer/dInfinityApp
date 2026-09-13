@@ -31,17 +31,35 @@ class FilamentDiceRenderer(
   private var dice: List<Int> = emptyList()
   private var geometry: TableGeometry? = null
 
-  override fun begin(
-    spec: ThrowSpec,
+  /**
+   * The table, lit and framed, with nothing on it.
+   *
+   * What a player sees before they have thrown anything and after the result
+   * has been put away: a table waiting, rather than the black rectangle a
+   * scene that is never built leaves behind (`docs/TODO.md`, Step 4.1).
+   *
+   * Nothing here is a frame — the caller draws when it is ready to, because an
+   * empty table does not move and is worth exactly one draw.
+   */
+  fun table(
     geometry: TableGeometry,
     look: TableLook,
   ) {
     stage.clear()
     this.geometry = geometry
+    dice = emptyList()
     stage.light()
     addTray(geometry, look)
-    dice = spec.dice.map { instance -> addDie(instance.die, spec.dieScale) }
     stage.aim(TrayCamera.framingTheTray(geometry, aspectRatio()))
+  }
+
+  override fun begin(
+    spec: ThrowSpec,
+    geometry: TableGeometry,
+    look: TableLook,
+  ) {
+    table(geometry, look)
+    dice = spec.dice.map { instance -> addDie(instance.die, spec.dieScale) }
   }
 
   override fun show(frame: RenderFrame) {

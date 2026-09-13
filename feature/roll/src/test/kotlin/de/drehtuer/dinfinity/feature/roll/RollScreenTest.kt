@@ -193,6 +193,9 @@ class RollScreenTest {
   private class DirectTray : Tray {
     val shaken = mutableListOf<ShakeSample>()
 
+    /** Every table this tray has been told about, in order. */
+    val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
+
     override fun surfaceAvailable(
       surface: Surface,
       width: Int,
@@ -215,6 +218,13 @@ class RollScreenTest {
       shaken += sample
     }
 
+    override fun table(
+      geometry: TableGeometry,
+      look: TableLook,
+    ) {
+      tabled += geometry to look
+    }
+
     override fun clear() = Unit
 
     override fun close() = Unit
@@ -223,6 +233,9 @@ class RollScreenTest {
   /** A tray that takes the throw and leaves the dice in the air. */
   private class PendingTray : Tray {
     val shaken = mutableListOf<ShakeSample>()
+
+    /** Every table this tray has been told about, in order. */
+    val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
 
     override fun surfaceAvailable(
       surface: Surface,
@@ -241,6 +254,13 @@ class RollScreenTest {
 
     override fun shake(sample: ShakeSample) {
       shaken += sample
+    }
+
+    override fun table(
+      geometry: TableGeometry,
+      look: TableLook,
+    ) {
+      tabled += geometry to look
     }
 
     override fun clear() = Unit

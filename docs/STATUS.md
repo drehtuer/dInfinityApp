@@ -59,11 +59,12 @@ changelog.
 
 ## In progress
 
-- **Step 4.1.** What the screen has: the tray, a live-validated formula field,
-  roll from the Roll button or a shake, a refusal for a throw the table
-  cannot hold, and a total. What it has not: the dice picker, the result sheet, the rounding
-  control, the first-launch state, and numbers on the faces. All listed in
-  `docs/TODO.md`.
+- **Step 4.1.** What the screen has: the tray — drawn from the moment the
+  screen opens, with nothing on it, rather than black until the first throw —
+  a live-validated formula field, roll from the Roll button or a shake, a
+  refusal for a throw the table cannot hold, and a total. What it has not: the
+  dice picker, the result sheet, the rounding control, the first-launch state,
+  and numbers on the faces. All listed in `docs/TODO.md`.
 
 ## Blocked / waiting on
 

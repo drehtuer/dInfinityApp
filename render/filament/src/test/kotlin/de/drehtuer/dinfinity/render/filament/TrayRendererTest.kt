@@ -136,7 +136,10 @@ class TrayRendererTest {
   }
 
   @Test
-  fun `a roll that ended is not rebuilt by a stage that arrives after it`() {
+  fun `a roll that ended leaves its table behind, and no dice`() {
+    // Taking the dice away is not taking the table away. A stage arriving
+    // after the roll is over gets the tray the dice were thrown onto and
+    // nothing standing on it (`docs/TODO.md`, Step 4.1).
     val renderer = TrayRenderer()
     renderer.begin(spec(), geometry, look)
     renderer.show(frame(0.0))
@@ -145,7 +148,72 @@ class TrayRendererTest {
     val stage = FakeStage()
     renderer.stage(stage)
 
-    assertEquals("a roll that is over was put back on screen", 0, stage.added.size)
+    assertEquals("a roll that is over was put back on screen", TRAY_PARTS, stage.added.size)
+  }
+
+  @Test
+  fun `a renderer that never had a table draws nothing when one arrives`() {
+    // Nothing has been begun and no table has been named, so there is no
+    // scene to rebuild — and inventing one would be drawing a table the app
+    // never asked for.
+    val renderer = TrayRenderer()
+    renderer.end()
+
+    val stage = FakeStage()
+    renderer.stage(stage)
+
+    assertEquals(0, stage.added.size)
+    assertFalse(stage.lit)
+  }
+
+  @Test
+  fun `a table with nothing on it is drawn, and rebuilt on a stage that arrives later`() {
+    val renderer = TrayRenderer()
+    renderer.table(geometry, look)
+
+    val stage = FakeStage()
+    renderer.stage(stage)
+
+    assertEquals("the empty table was not built", TRAY_PARTS, stage.added.size)
+    assertTrue("an empty table was left unlit", stage.lit)
+    assertEquals("the camera never framed the empty table", 1, stage.shots.size)
+  }
+
+  @Test
+  fun `a table named while there is somewhere to draw is built at once`() {
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+
+    renderer.table(geometry, look)
+
+    assertEquals(TRAY_PARTS, stage.added.size)
+    assertTrue(stage.lit)
+  }
+
+  @Test
+  fun `a throw replaces the empty table it was thrown onto`() {
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+
+    renderer.begin(spec(), geometry, look)
+
+    assertEquals("the dice landed on top of the empty table", TRAY_PARTS + DICE, stage.added.size)
+  }
+
+  @Test
+  fun `redraw says whether there was anywhere to draw`() {
+    val renderer = TrayRenderer()
+    renderer.table(geometry, look)
+    assertFalse("a renderer with no stage claimed to have drawn", renderer.redraw())
+
+    val stage = FakeStage()
+    renderer.stage(stage)
+
+    assertTrue(renderer.redraw())
+    assertEquals(1, stage.frames)
   }
 
   @Test
