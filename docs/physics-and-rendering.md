@@ -83,16 +83,25 @@ no spin *would* be predictable. We do not do that.)
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
   `SENSOR_DELAY_GAME`.
-- A shake session starts when acceleration magnitude exceeds a threshold for
-  more than ~80 ms, and ends after ~400 ms below the threshold.
+- A shake session starts when acceleration magnitude stays above 3,500 mm/s²
+  (about 0.35 g) for more than 80 ms, and ends after 400 ms below 1,500 mm/s².
+  Two thresholds rather than one, with a gap between them: a single threshold
+  would flicker on and off through the quiet moment at the top of every swing.
+  A session that runs past 30 s is ended anyway — it has stopped being an
+  input.
 - During the session, the tray itself is moved: the phone's acceleration is
   applied as an inverse acceleration to the tray (kinematic body), so the dice
   slam into the walls the same way they would in a cupped hand. This feels
   much more physical than applying random impulses to the dice.
 - Phone rotation from the gyroscope rotates the gravity vector in the
   simulation.
-- Sensor samples are quantised and recorded with the roll so the roll is still
-  reproducible.
+- Sensor samples are quantised — acceleration to 1 mm/s², direction components
+  to 1/4096 — and indexed by *simulation step* rather than by wall-clock
+  moment. Both are what make a roll reproducible from its own record: a
+  quantised value survives being written down, stored and read back, and a
+  record indexed by step feeds the same steps in normal mode, where it is
+  consumed as it arrives, and in power-saving mode, where the session is
+  replayed as a batch afterwards.
 - Optional feedback: haptic ticks on wall/die impacts above an impulse
   threshold (rate-limited), and impact sounds with pitch/volume scaled by
   impulse and die size. Both default on, both individually switchable.

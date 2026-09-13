@@ -16,6 +16,8 @@ import org.gradle.kotlin.dsl.register
 fun Project.configureDeviceTestVerification() {
   val resultsDirectory = layout.buildDirectory.dir("outputs/androidTest-results/connected/debug")
   val hasDeviceTests = file("src/androidTest").isDirectory
+  // Read here rather than inside the task block, where `path` is the *task's*.
+  val modulePath = path
 
   val verify =
     tasks.register<VerifyDeviceTestResultsTask>("verifyDeviceTestResults") {
@@ -23,6 +25,7 @@ fun Project.configureDeviceTestVerification() {
       description = "Reads the instrumented test report and fails if anything in it failed."
       this.resultsDirectory.set(resultsDirectory)
       expectResults.set(hasDeviceTests)
+      this.modulePath.set(modulePath)
     }
 
   // The task does not exist yet while the convention plugin is applied, so it

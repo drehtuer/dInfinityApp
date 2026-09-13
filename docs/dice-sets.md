@@ -239,9 +239,14 @@ Users paste a URL. Accepted sources:
 
 The forge integrations exist for convenience (browse to a repo, paste the
 URL, get updates). They are not what makes an install safe — the validator
-is, and it runs identically for every source. Plain `http://` is refused.
-Redirects are followed only to `https` and at most 5 hops. Downloads are
-capped at 64 MiB and time out after 60 s.
+is, and it runs identically for every source; an unknown host is treated as a
+plain archive and goes through the same extraction and the same checks.
+
+Plain `http://` is refused before a request is made. Redirects are followed
+by hand rather than by the HTTP client, so that a redirect from `https` to
+`http` — the oldest downgrade there is — is refused instead of taken; at most
+5 hops. Downloads are capped at 64 MiB by the bytes that **arrive**, not by
+the `Content-Length` the server claims, and time out after 60 s.
 
 Install flow:
 
@@ -250,10 +255,23 @@ Install flow:
 2. Fetch the archive and record its identity (commit SHA or archive
    SHA-256) so updates are diffable and the install is reproducible.
 3. Stream-extract into a **temporary** folder with these checks:
-   - Reject absolute paths, `..`, symlinks, hard links, device files.
-   - Reject total uncompressed size > 64 MiB or > 500 entries.
+   - Reject absolute paths and `..`, in either slash direction — an archive
+     written on Windows carries `..\..\`, and a check that only knew about
+     `/` would wave it through to a filesystem that knows both.
+   - Reject a tar entry that declares itself a symbolic link, a hard link or a
+     device: tar puts that in the entry header, where a streaming reader sees
+     it. A zip cannot be checked the same way — its unix modes live in the
+     central directory at the *end* of the file, which a streaming reader never
+     reads — and does not need to be: the extractor has no code path that
+     creates a link, so a zip "symlink" extracts as an ordinary little file
+     whose contents are a path. The loader then refuses to read anything whose
+     canonical path leaves the folder anyway.
+   - Reject total uncompressed size > 64 MiB or > 500 entries, counted **as the
+     archive is read**. A thing that expands to a terabyte has to be refused at
+     the megabyte where that becomes obvious.
    - Only extract files whose extensions are on the allowlist
-     (`toml, png, webp, obj, md, txt, LICENSE`).
+     (`toml, png, webp, obj, md, txt`). Anything else is skipped rather than
+     refused: a repository is entitled to contain a `.gitignore`.
 4. Locate `diceset.toml` (at the root or at the given subfolder).
 5. Run the validator (below). On failure: delete the temp folder, show the
    report.

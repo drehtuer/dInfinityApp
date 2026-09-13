@@ -71,7 +71,17 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
 
 ## Storage
 
-Room database, three tables:
+Room database. Version 1 is these three tables and nothing else; saved rolls,
+sessions and the installed-set registry arrive with the screens that need them
+(`docs/TODO.md`, Step 4), each as a migration. That is what "migrations from
+day one" buys: a database that has only ever been created and never migrated
+is one whose first migration gets written under pressure.
+
+Every version's schema is exported to `data/schemas/` and checked in, and
+`SchemaTest` asserts there is one for every version and a migration for every
+step between them — so a version bump without a migration fails the build
+rather than a player's phone. There is no destructive fallback: a player's
+natural-20 count is not something to throw away because a schema moved.
 
 ```text
 roll_history(id, timestamp, session_id, saved_roll_id?, group_id?, formula, total,

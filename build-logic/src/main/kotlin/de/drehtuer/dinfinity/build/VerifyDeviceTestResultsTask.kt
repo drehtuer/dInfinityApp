@@ -46,6 +46,18 @@ abstract class VerifyDeviceTestResultsTask : DefaultTask() {
   @get:Input
   abstract val expectResults: Property<Boolean>
 
+  /**
+   * Which module this is, for the messages.
+   *
+   * Carried as a property rather than read from `project` at execution time,
+   * which the configuration cache does not allow. The mistake only ever showed
+   * on a module with *no* instrumented tests — the one branch that mentions
+   * the module by name — so it stayed hidden until a run that covered every
+   * module at once.
+   */
+  @get:Input
+  abstract val modulePath: Property<String>
+
   @TaskAction
   fun verify() {
     val directory = resultsDirectory.orNull?.asFile
@@ -58,7 +70,7 @@ abstract class VerifyDeviceTestResultsTask : DefaultTask() {
             "device is attached (`adb devices`), see docs/build-setup.md.",
         )
       }
-      logger.lifecycle("No instrumented tests in ${project.path}.")
+      logger.lifecycle("No instrumented tests in ${modulePath.get()}.")
       return
     }
 
@@ -75,7 +87,7 @@ abstract class VerifyDeviceTestResultsTask : DefaultTask() {
       )
     }
     if (tests == 0 && expectResults.get()) {
-      throw GradleException("The instrumented test run reported no tests at all in ${project.path}.")
+      throw GradleException("The instrumented test run reported no tests at all in ${modulePath.get()}.")
     }
     logger.lifecycle("$tests instrumented tests passed on device ($skipped skipped).")
   }

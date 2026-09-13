@@ -16,7 +16,8 @@ that only works on one laptop is a build nobody else can reproduce.
 | Android SDK platform | newest stable minor of API 37 | `compileSdk` / `targetSdk` |
 | Android build-tools | newest for API 37 | aapt2, d8, apksigner |
 | `adb` (platform-tools) | newest | Talking to a phone over WiFi debugging |
-| Android NDK + CMake | newest stable | The physics engine and the renderer are native (`simulation/jolt`, `render/filament`), so the NDK is not optional — it is only switched off for a quick image with no native code in it |
+| Android NDK + CMake + Ninja | newest stable | The physics engine and the renderer are native (`simulation/jolt`, `render/filament`), so the NDK is not optional — it is only switched off for a quick image with no native code in it. `cmake` and `ninja` are on `PATH`, so a native build can be driven by hand as well as by Gradle |
+| Android emulator + one system image | newest automated-test image, API 36 | The middle testing tier: faster to reach than a phone, and the only place a regression in the physics is caught before one (Step 5.1). See [The emulator](#the-emulator) |
 | Gradle | 9.7.1 | Also present as the wrapper in the repository |
 | ktlint, detekt | via Gradle | Style and static analysis |
 | sonar-scanner | 7.3 | Coverage and quality gate |
@@ -66,6 +67,16 @@ docker build --build-arg INSTALL_NDK=false -t dinfinity-dev .devcontainer
 
 The default is `true`, because the physics engine and the renderer are native
 and every real build of the app needs it.
+
+The emulator and its system image are another ~2.5 GB and come off the same
+way:
+
+```sh
+docker build --build-arg INSTALL_EMULATOR=false -t dinfinity-dev .devcontainer
+```
+
+Both off gives an image with no native toolchain and no device tier — enough
+for documentation, the JVM suites and the linters, which is most of a day.
 
 ### File ownership
 
@@ -130,6 +141,89 @@ clang++: error: overriding '-ffp-model=precise' option with '-ffp-contract=off'
 Both flags are doing the same job — keeping the compiler from reassociating
 floating-point arithmetic — so silencing the overlap changes nothing about the
 determinism they exist for.
+
+## The emulator
+
+The middle testing tier runs *inside* the container. Nothing is installed on
+the host and nothing is shared with it except one device node.
+
+```sh
+dinfinity-emulator &          # creates the AVD the first time, then boots it
+dinfinity-await-device        # waits until it can actually be installed on
+./gradlew connectedDebugAndroidTest
+```
+
+From a cold start that is about thirty seconds to a ready device and another
+ten to a green suite.
+
+### It needs `/dev/kvm`
+
+Without it the emulator interprets every instruction and takes minutes to boot,
+if it boots at all — so `dinfinity-emulator` refuses to start rather than
+appear to hang. The devcontainer passes the device through in `runArgs`; by
+hand it is:
+
+```sh
+docker run --rm -it --device=/dev/kvm \
+  -v "$PWD":/workspace -v dinfinity-gradle:/home/dev/.gradle \
+  -v dinfinity-android:/home/dev/.android \
+  -w /workspace dinfinity-dev bash -lc 'dinfinity-post-create; exec bash'
+```
+
+`dinfinity-post-create` is what the devcontainer runs on creation. Its job here
+is one line: the kernel checks the *numeric* group of `/dev/kvm`, and that
+number is the host's, which no image can know in advance — so the `kvm` group
+inside the container is moved onto it. (The emulator separately reads
+`/etc/group` looking for the group by name, and reports `LINE_NOT_FOUND`
+rather than anything about permissions when it is missing. Both are handled.)
+
+A shell that was already open when the group was renumbered keeps the
+membership it started with — group membership is fixed when a session begins
+and cannot be changed underneath it — so the emulator would fail in it with a
+complaint about `/etc/group` that is, by then, wrong. `dinfinity-emulator`
+checks whether it can actually open `/dev/kvm` rather than whether the file
+exists, and says to open a new terminal.
+
+**A host with no `/dev/kvm` cannot start the devcontainer at all** — Docker
+refuses a device that is not there. On such a machine, delete the `runArgs`
+line from `devcontainer.json` and build with `INSTALL_EMULATOR=false`.
+
+### Why the emulator is an API 36 test image
+
+The image is resolved at build time, like everything else in the SDK, but with
+a preference that matters: an **ATD** ("automated test device") image first,
+even if that means one API below `ANDROID_API`. An ATD image carries no
+launcher, no wallpaper and no Play services and is built to be driven headless.
+
+That is not a nicety. API 37's `google_apis` image crashes `surfaceflinger` in
+its `RegionSampling` thread under software rendering with no window, and takes
+the framework down with it; the install that follows fails with
+
+```text
+adb: failed to install …: cmd: Can't find service: package
+```
+
+which says nothing whatever about the cause. The ATD image at API 36 boots in
+half a minute and runs the suite in nine seconds.
+
+Testing one API below the target is a trade, and the same one this project has
+already made for Robolectric (`docs/architecture.md`, decision 17): API 36 is
+the app's own `minSdk`, so it is a device the app has to work on regardless,
+and the API it *targets* is covered by the phone. The fallback stops at
+`ANDROID_MIN_API`, so it can never slide further than that.
+
+The AVD is built on a Pixel 9 profile — the closest the SDK ships to this
+project's reference device, and the same screen shape, which matters here
+because the tray *is* the screen (`docs/tables.md`). It lives in the
+`dinfinity-android` volume rather than in the image, so it survives a rebuild;
+if the image is rebuilt onto a different system image, the AVD is replaced
+rather than left to fail puzzlingly.
+
+### What it cannot tell you
+
+It is headless and software-rendered. That is fine for physics, determinism and
+the instrumented suites, and useless for judging how the dice *look* or how a
+shake *feels*. Those need the phone (`docs/TODO.md`, Step 5.6).
 
 ## Signing keys
 
@@ -203,17 +297,28 @@ consult the v2 block. Pass `--min-sdk-version 24` and both report `true`.
 ```sh
 ./gradlew test                 # JVM unit tests and Robolectric, everywhere
 ./gradlew :core:notation:test  # one module
-./gradlew connectedDebugAndroidTest   # on a real phone, see below
+./gradlew connectedDebugAndroidTest   # on the emulator or a phone
 ```
 
-CI runs everything except the last line. Instrumented tests need a device, and
-that device is yours.
+CI runs everything except the last line. Instrumented tests need a device: the
+[emulator](#the-emulator), which is in the container and is a minute away, or
+[the phone](#connecting-a-phone-over-wifi), which answers what the emulator
+cannot — a real GPU, real sensors, real timing, the API the app targets.
+
+```sh
+dinfinity-emulator &   # boots in ~30 s; needs /dev/kvm
+dinfinity-phone        # attaches the phone over wireless debugging
+```
+
+Whichever is attached is the one they run on, and if both are, both run them
+— [choose with `ANDROID_SERIAL`](#when-both-a-phone-and-the-emulator-are-attached).
 
 ### The verdict on an instrumented run
 
 `connectedDebugAndroidTest` is followed by `verifyDeviceTestResults`, which
 reads the JUnit XML the run produced and fails the build if anything in it
-failed, erred, or if the run produced no results at all.
+failed, erred, or if the run produced no results at all. A module with no
+`src/androidTest` at all is expected to produce nothing and says so.
 
 That indirection is a workaround for a bug in AGP 9.4.0, not a softening of the
 check. AGP keys its per-device verdict by the device id it pulls back out of the
@@ -222,7 +327,8 @@ attached as `192.168.89.49:39337` is recorded under
 `192.168.89.49%3A39337` and then looked up under its raw serial. The lookup
 misses and the run is declared failed however green the tests were. Every
 wireless device has a colon in its serial, so the task can never pass on its
-own here. `ignoreFailures` is therefore set on it and the XML — which is
+own here — the phone run above printed `There were failing tests` with all
+three passing, which is the bug in one line. `ignoreFailures` is therefore set on it and the XML — which is
 correct — decides instead.
 
 Delete `VerifyDeviceTestResultsTask` and the `ignoreFailures` beside it once
@@ -240,18 +346,52 @@ debugging**, on.
 Then, inside the container:
 
 ```sh
-# 1. "Pair device with pairing code" on the phone shows an ip:port and a code.
-adb pair 192.168.1.42:37105 832269   # or omit the code and be prompted
-
-# 2. The Wireless debugging screen itself shows a different ip:port. Connect:
-adb connect 192.168.1.42:39337
-
-adb devices                        # should list the phone as "device"
+dinfinity-phone                      # reconnect to the address last used
+dinfinity-phone 192.168.1.42:39337   # a new address; it is remembered
 ./gradlew connectedDebugAndroidTest
+```
+
+`dinfinity-phone` connects, waits until the phone can actually be installed on,
+and writes the address into the `dinfinity-android` volume, so every later
+session is the bare command. An address is only typed again when the phone has
+rebooted or wireless debugging has been switched off and on, because the port
+changes then.
+
+Pairing is separate, and needed once per machine:
+
+```sh
+# "Pair device with pairing code" shows a DIFFERENT ip:port, and a code.
+dinfinity-phone pair 192.168.1.42:37105 832269
 ```
 
 This is the procedure as run, not as imagined: a Pixel 10a on Android 17,
 paired and driven from the container over the default Docker bridge.
+`dinfinity-phone 192.168.89.49:40697` attached it, `connectedDebugAndroidTest`
+installed and ran, and the JUnit XML came back `tests=3 failures=0 errors=0`.
+
+That run is also the one the emulator cannot stand in for: the phone is
+**API 37 on `arm64-v8a`**, the API the app targets and the ABI it ships, where
+the container's image is API 36 on x86_64. Both tiers run the same suite; only
+one of them runs it on what a user will hold.
+
+### When both a phone and the emulator are attached
+
+A run that does not choose runs on both, and every plain `adb` command fails
+with `more than one device/emulator`. `ANDROID_SERIAL` chooses, for adb and for
+Gradle alike:
+
+```sh
+export ANDROID_SERIAL=192.168.1.42:39337
+```
+
+That it reaches AGP is checked rather than assumed: with the emulator attached
+and `ANDROID_SERIAL` naming a device that is not, `connectedDebugAndroidTest`
+runs no tests at all — and says so, because `verifyDeviceTestResults` refuses
+an empty result rather than passing it.
+
+`dinfinity-phone` prints the line to export when it sees the emulator running.
+It cannot set the variable itself: it is a child of the shell that would need
+it.
 
 Notes:
 
@@ -262,17 +402,19 @@ Notes:
   `bash -c 'cat < /dev/null > /dev/tcp/<ip>/<port>'`; if that succeeds and
   `adb connect` still says "failed to connect", the port speaks the pairing
   protocol and wants `adb pair` and a code, not `adb connect`.
-- Pairing is needed once per machine. After that `adb connect` is enough, until
-  the phone reboots or the port changes.
 - The phone and the container must be on the same network. With Docker's
   default bridge that works out of the box; the container reaches the LAN even
   though the LAN cannot reach it.
-- mDNS discovery (`adb mdns services`) usually does **not** work through the
-  bridge, which is why the addresses above are typed by hand. If you want
-  discovery, run the container with `--network=host`.
+- mDNS discovery (`adb mdns services`) runs but finds nothing through the
+  bridge, which does not carry multicast — which is why the addresses above
+  are typed by hand. `dinfinity-phone` asks anyway when it has no address to
+  try, since it costs a second and is the one route that needs no typing.
+  **Do not reach for `--network=host` to fix it here:** on Docker Desktop
+  under WSL2 the container then shares the host's port 5037 with Windows' own
+  adb server, and every `adb` command hangs instead of answering.
 - Keep the `dinfinity-android` volume mounted at `/home/dev/.android`: it holds
-  the adb key the phone authorises, so you approve the connection once instead
-  of on every container start.
+  the adb key the phone authorises and the remembered address, so you approve
+  the connection once instead of on every container start.
 
 ## Static analysis and coverage
 

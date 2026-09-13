@@ -38,6 +38,20 @@ value class ReferencedFile private constructor(
         else -> null
       }
 
+    /**
+     * True when [raw] stays inside the package, whatever it is called.
+     *
+     * The two halves of [reasonToRefuse] are not the same kind of thing: a
+     * path that climbs out is an attack, and an extension that is not on the
+     * list is a `.gitignore`. An extractor has to tell them apart.
+     */
+    fun staysInsidePackage(raw: String): Boolean =
+      raw.isNotBlank() &&
+        !raw.startsWith('/') &&
+        !raw.startsWith('\\') &&
+        !DRIVE_LETTER.matches(raw) &&
+        raw.split('/', '\\').none { it == ".." || it.isEmpty() }
+
     /** [raw] as a reference, or `null` when [reasonToRefuse] has something to say. */
     fun parse(
       raw: String,

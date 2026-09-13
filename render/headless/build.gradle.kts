@@ -4,4 +4,6 @@ plugins {
 
 dependencies {
   api(project(":simulation:api"))
+
+  testImplementation(project(":test-fixtures"))
 }

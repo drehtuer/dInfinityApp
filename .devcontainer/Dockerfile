@@ -14,6 +14,18 @@ ARG SONAR_SCANNER_VERSION=7.3.0.5189
 # The NDK is only needed once simulation/jolt has native code (plan Step 3).
 # It is ~2.5 GB, so it can be switched off for a quick image.
 ARG INSTALL_NDK=true
+# The emulator and one system image are another ~3 GB. They are the middle
+# testing tier: faster to reach than a phone and the only place a regression in
+# the physics can be caught before one (docs/TODO.md, Step 5.1).
+ARG INSTALL_EMULATOR=true
+# The oldest API the emulator may fall back to, which is the app's own minSdk —
+# keep in step with `dinfinity.minSdk` in gradle.properties. See the emulator
+# block below for why it ever falls back at all.
+ARG ANDROID_MIN_API=36
+# The developer's uid, needed this early because every layer that writes into
+# the SDK hands it over in the same layer — see the note on the last one.
+ARG USER_UID=1000
+ARG USER_GID=${USER_UID}
 
 ENV ANDROID_HOME=/opt/android-sdk \
     ANDROID_SDK_ROOT=/opt/android-sdk \
@@ -24,13 +36,21 @@ ENV ANDROID_HOME=/opt/android-sdk \
     LANG=C.UTF-8 \
     JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8
 
+# The emulator's own libraries pull in exactly two things the base image does
+# not have — found by walking `ldd` over every library it ships, not guessed.
+# Everything else it needs it brings with it, and `-no-window` means it needs
+# no X server at all. `cpu-checker` earns its 30 KB the first time somebody
+# asks why the emulator will not start.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         android-sdk-platform-tools-common \
         ca-certificates \
+        cpu-checker \
         curl \
         git \
         jq \
         less \
+        libpulse0 \
+        libxkbfile1 \
         openjdk-21-jdk \
         python3 \
         ripgrep \
@@ -44,7 +64,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       "https://dl.google.com/android/repository/commandlinetools-linux-${CMDLINE_TOOLS}_latest.zip" \
  && unzip -q /tmp/clt.zip -d /tmp/clt \
  && mv /tmp/clt/cmdline-tools "${ANDROID_HOME}/cmdline-tools/latest" \
- && rm -rf /tmp/clt /tmp/clt.zip
+ && rm -rf /tmp/clt /tmp/clt.zip \
+ && chown -R "${USER_UID}:${USER_GID}" "${ANDROID_HOME}"
 
 # build-tools is added to PATH after it is installed, below, so apksigner,
 # zipalign and aapt2 are usable by hand.
@@ -76,9 +97,15 @@ RUN yes | sdkmanager --licenses > /dev/null 2>&1 || true \
  && echo "Using ${PLATFORM} and ${BUILD_TOOLS}" \
  && sdkmanager --install "platform-tools" "${PLATFORM}" "${BUILD_TOOLS}" > /dev/null \
  && echo "${PLATFORM##*android-}" > "${ANDROID_HOME}/.platform-version" \
- && echo "${BUILD_TOOLS##*;}" > "${ANDROID_HOME}/.build-tools-version"
+ && echo "${BUILD_TOOLS##*;}" > "${ANDROID_HOME}/.build-tools-version" \
+ && chown -R "${USER_UID}:${USER_GID}" "${ANDROID_HOME}"
 
-ENV PATH="${ANDROID_HOME}/build-tools/latest:${PATH}"
+# Symlinks rather than versioned paths on PATH: the versions above are resolved
+# from the repository at build time, so a path with a number in it would have to
+# be edited every time one moves. CMake's link lives outside ANDROID_HOME
+# because sdkmanager walks that tree and reports a symlinked copy of a package
+# as one installed "in an inconsistent location", on every invocation.
+ENV PATH="${ANDROID_HOME}/build-tools/latest:/opt/android-cmake/bin:${ANDROID_HOME}/emulator:${PATH}"
 RUN BUILD_TOOLS_VERSION="$(cat "${ANDROID_HOME}/.build-tools-version")" \
  && ln -s "${ANDROID_HOME}/build-tools/${BUILD_TOOLS_VERSION}" \
           "${ANDROID_HOME}/build-tools/latest" \
@@ -87,9 +114,67 @@ RUN BUILD_TOOLS_VERSION="$(cat "${ANDROID_HOME}/.build-tools-version")" \
       && CMAKE="$(grep -E '^cmake;[0-9]+\.[0-9]+\.[0-9]+$' /tmp/sdk-packages.txt | tail -1)" \
       && echo "Using ${NDK} and ${CMAKE}" \
       && sdkmanager --install "${NDK}" "${CMAKE}" > /dev/null \
-      && echo "${NDK##*;}" > "${ANDROID_HOME}/.ndk-version"; \
+      && echo "${NDK##*;}" > "${ANDROID_HOME}/.ndk-version" \
+      && ln -s "${ANDROID_HOME}/cmake/${CMAKE##*;}" /opt/android-cmake; \
     else \
       echo "NDK skipped (INSTALL_NDK=${INSTALL_NDK})"; \
+    fi \
+# ── Emulator ─────────────────────────────────────────────────────────────
+# The middle testing tier, resolved the same way as the platform and for the
+# same reason: a hard-coded image name rots the moment Google publishes a minor.
+#
+# **ATD images first, even if that means an older API.** An "automated test
+# device" image carries no launcher, no wallpaper and no Play services; it is
+# built to be driven headless, and it is the difference between an emulator
+# that works and one that does not. API 37's `google_apis` image crashes
+# `surfaceflinger` in its `RegionSampling` thread under software rendering with
+# no window, and takes the framework down with it — an install then fails with
+# "Can't find service: package", which says nothing whatever about the cause.
+# The ATD image at API 36 boots in half a minute and runs the suite in nine
+# seconds.
+#
+# Testing one API below the target is a trade, and the same one the project has
+# already made for Robolectric (docs/architecture.md, decision 17): API 36 is
+# the app's own minSdk, so it is a device the app must work on in any case, and
+# the API it *targets* is covered by the phone. The floor stops that trade
+# sliding any further than one release.
+#
+# The ABI follows the host, so this works on an Apple Silicon machine too.
+ && if [ "${INSTALL_EMULATOR}" = "true" ]; then \
+      case "$(dpkg --print-architecture)" in \
+        amd64) ABI=x86_64 ;; \
+        arm64) ABI=arm64-v8a ;; \
+        *) echo "ERROR: no emulator system image for $(dpkg --print-architecture)."; exit 1 ;; \
+      esac \
+      && IMAGE="" \
+      && API="${ANDROID_API}" \
+      && while [ "${API}" -ge "${ANDROID_MIN_API}" ] && [ -z "${IMAGE}" ]; do \
+           for TAG in aosp_atd google_atd; do \
+             CANDIDATE="$(grep -E "^system-images;android-${API}(\.0)?;${TAG};${ABI}$" \
+                            /tmp/sdk-packages.txt | head -1)"; \
+             if [ -n "${CANDIDATE}" ]; then IMAGE="${CANDIDATE}"; break; fi; \
+           done; \
+           API=$((API - 1)); \
+         done \
+      && if [ -z "${IMAGE}" ]; then \
+           echo "No automated-test image down to API ${ANDROID_MIN_API}; falling back to a full one."; \
+           for TAG in default google_apis; do \
+             CANDIDATE="$(grep -E "^system-images;android-${ANDROID_API}(\.0)?;${TAG};${ABI}$" \
+                            /tmp/sdk-packages.txt | head -1)"; \
+             if [ -n "${CANDIDATE}" ]; then IMAGE="${CANDIDATE}"; break; fi; \
+           done; \
+         fi \
+      && if [ -z "${IMAGE}" ]; then \
+           echo "ERROR: no ${ABI} system image for API ${ANDROID_API} in the SDK repository."; \
+           echo "Images offered for that API:"; \
+           grep -E "^system-images;android-${ANDROID_API}" /tmp/sdk-packages.txt | head -10; \
+           exit 1; \
+         fi \
+      && echo "Using emulator with ${IMAGE}" \
+      && sdkmanager --install "emulator" "${IMAGE}" > /dev/null \
+      && echo "${IMAGE}" > "${ANDROID_HOME}/.system-image"; \
+    else \
+      echo "Emulator skipped (INSTALL_EMULATOR=${INSTALL_EMULATOR})"; \
     fi \
 # ── Gradle ───────────────────────────────────────────────────────────────
 # The project uses the wrapper; this Gradle exists so the wrapper can be
@@ -105,11 +190,14 @@ RUN BUILD_TOOLS_VERSION="$(cat "${ANDROID_HOME}/.build-tools-version")" \
       "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip" \
  && unzip -q /tmp/sonar.zip -d /opt \
  && mv "/opt/sonar-scanner-${SONAR_SCANNER_VERSION}-linux-x64" "${SONAR_SCANNER_HOME}" \
- && rm /tmp/sonar.zip
+ && rm /tmp/sonar.zip \
+# Handed over here rather than at the end. A `chown -R` in a later layer copies
+# every file it touches into that layer, and by this point the SDK is five
+# gigabytes of NDK, emulator and system image — which is five gigabytes of
+# image for a change of ownership.
+ && chown -R "${USER_UID}:${USER_GID}" "${ANDROID_HOME}"
 
 # ── Non-root user ────────────────────────────────────────────────────────
-ARG USER_UID=1000
-ARG USER_GID=${USER_UID}
 # Ubuntu ships its own `ubuntu` account at uid 1000, which is exactly the uid a
 # devcontainer wants for the developer so that files written in the bind mount
 # belong to them on the host. It is removed first, and the creation below is
@@ -125,9 +213,20 @@ RUN if getent passwd "${USER_UID}" > /dev/null; then \
  && groupadd --gid "${USER_GID}" dev \
  && useradd --uid "${USER_UID}" --gid "${USER_GID}" --create-home --shell /bin/bash dev \
  && echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev \
+# The emulator checks /etc/group by hand for a `kvm` line with the user on it,
+# and says LINE_NOT_FOUND rather than anything about permissions when there is
+# none. The group's id here is arbitrary: `post-create.sh` moves it to whatever
+# the host's /dev/kvm actually uses, which is the number the kernel checks.
+ && groupadd --force kvm \
+ && usermod --append --groups kvm dev \
  && mkdir -p /home/dev/.gradle /home/dev/.android \
- && chown -R "${USER_UID}:${USER_GID}" "${ANDROID_HOME}" /home/dev \
+ && chown -R "${USER_UID}:${USER_GID}" /home/dev \
  && [ "$(id -u dev)" = "${USER_UID}" ]
+
+COPY --chmod=0755 emulator.sh /usr/local/bin/dinfinity-emulator
+COPY --chmod=0755 await-device.sh /usr/local/bin/dinfinity-await-device
+COPY --chmod=0755 phone.sh /usr/local/bin/dinfinity-phone
+COPY --chmod=0755 post-create.sh /usr/local/bin/dinfinity-post-create
 
 USER dev
 ENV GRADLE_USER_HOME=/home/dev/.gradle
