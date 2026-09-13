@@ -73,13 +73,13 @@ changelog.
 
 ## In progress
 
-- Step 3 — foundations, bottom-up. `core/model` (the eight-solid catalogue,
-  dice, sets, table looks, plans, results, saved rolls) and `core/notation`
-  (parser, planner, evaluator, with the whole grammar, every limit and every
-  error range) are done; a formula can be parsed, resolved against installed
-  sets and scored from a unit test. `core/probability` is next. The physics
-  engine spike (Jolt vs. Bullet) is still the decide-first item further down
-  the step.
+- Step 3 — foundations, bottom-up. `core/model`, `core/notation` and
+  `core/probability` are done: a formula can be parsed, resolved against
+  installed sets, graphed exactly and scored, all from a unit test with no UI
+  and no physics engine. The graph is checked against the evaluator itself, by
+  rolling small formulas every possible way. `dicesets/format` is next, and the
+  physics engine spike (Jolt vs. Bullet) is still the decide-first item further
+  down the step.
 
 ## Blocked / waiting on
 
