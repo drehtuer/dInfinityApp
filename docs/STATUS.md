@@ -104,6 +104,10 @@ changelog.
   `docs/statistics.md` describes, folded in one transaction into a Room
   database at version 1, with its schema checked in and a test that refuses a
   version bump without a migration.
+- `dicesets/install` is done: source recognition for GitHub, GitLab, Gitea and
+  plain archives, an https-only fetch capped by what arrives, streamed
+  extraction that refuses every hostile archive `SECURITY.md` names, and an
+  install that either happens or leaves the app exactly as it was.
 
 ## Blocked / waiting on
 

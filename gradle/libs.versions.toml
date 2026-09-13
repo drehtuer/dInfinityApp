@@ -25,6 +25,8 @@ ktlintCli = "1.8.0"
 tomlj = "1.1.1"
 room = "2.8.5"
 ksp = "2.3.9"
+okhttp = "5.5.0"
+commonsCompress = "1.28.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -56,6 +58,19 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "room" }
+
+# The only network the app ever does: installing a dice set, a table or a
+# saved-roll collection from a URL the user typed (docs/dice-sets.md).
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okhttp-mockwebserver = { module = "com.squareup.okhttp3:mockwebserver3-junit4", version.ref = "okhttp" }
+# So the test server can speak https: the fetcher refuses anything else, and a
+# test that had to be exempted from that would not be testing it.
+okhttp-tls = { module = "com.squareup.okhttp3:okhttp-tls", version.ref = "okhttp" }
+
+# Archive extraction, which .claude/CLAUDE.md names as a thing not to hand-roll
+# — and it is right: the interesting bugs in a zip reader are the ones an
+# attacker writes the archive to trigger.
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commonsCompress" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activityCompose" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }

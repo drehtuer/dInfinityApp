@@ -35,7 +35,7 @@ screen.
 - [ ] `render/filament` — scene, materials, camera, die meshes from the shape catalogue, the tray, and interpolation between the last two simulation states. *Device:* nothing about a renderer can be judged from a unit test
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
 - [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration* on the version-1 database: saved rolls and groups (4.3), sessions (4.9) and the installed-set registry (4.4)
-- [ ] `dicesets/install` — fetch (forges, archive URLs, local files), safe extraction (path traversal, symlinks, size and entry caps), atomic install. Tests include a malicious archive per rejection rule
+- [ ] Resolving a forge ref to a commit SHA, so "check for updates" can tell one HEAD from another (`docs/dice-sets.md`, "Updates"). The install itself records the archive's SHA-256, which is enough to install reproducibly; telling two commits apart is what the update flow in 4.4 needs
 - [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
 **Done when** a formula can be parsed, planned, simulated headless and scored
