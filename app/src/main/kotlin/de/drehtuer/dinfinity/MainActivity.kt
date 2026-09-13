@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.feature.saved.R
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
+import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import kotlinx.coroutines.launch
 
@@ -55,6 +56,14 @@ class MainActivity : ComponentActivity() {
           savedRollEditor = { editing -> saved.editor(editing, settings.activeGroupId) },
           collectionImport = saved::importing,
           history = { HistoryPresenter(history = app.history, scope = lifecycleScope) },
+          statistics = {
+            StatsPresenter(
+              statistics = app.dieStatistics,
+              writer = app.statistics,
+              catalog = app.rolls.catalog,
+              scope = lifecycleScope,
+            )
+          },
         )
       }
     }

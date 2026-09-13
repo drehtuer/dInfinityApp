@@ -669,6 +669,41 @@ numbers beside it.
 The editor leaves by going *back* rather than forward: it is a detour from the
 list, and finishing one is arriving back where it started.
 
+### Statistics
+
+Two screens in one destination: every die ever thrown, and one die opened.
+Opened rather than pushed, because going back from a histogram to the list is
+the same gesture as closing it, and a second destination for "the same screen
+about one row" is a back-stack entry nobody wanted.
+
+The list is ordered most recently used first, which is not a preference: a
+player comes here about a die they have just been rolling.
+
+**A die's values come from the installed set, not from its face count.** A die
+labelled `1,2,3,1,2,3` is a d3, and a histogram drawn against a sixth would
+show it as twice as lucky as it is on every value. `FaceHistogram` therefore
+takes the values *with repeats* and weights the fair line by them; the
+arithmetic is in `core/stats` rather than in a draw lambda, so it can be tested
+directly.
+
+When the set has been uninstalled since, the record is still the player's and
+is still shown — but the values are taken from what has actually come up, and
+the screen says the fair line is a guess. The alternatives were hiding somebody's
+record or drawing it against a line that is wrong without saying so.
+
+A value that has never come up is a bar of zero rather than a gap: *"this d20
+has never rolled a 20"* is the single most interesting thing a histogram can
+say, and a missing bar does not say it.
+
+| Control | Calls | What changes |
+|---|---|---|
+| a die in the list | `select` | that die opens, and its face counts start being watched |
+| **←** | `close` | back to the list, and the watching stops |
+| **Forget this die's record** | `confirm` | the confirmation, not the deletion |
+| **Forget everything** | `confirm` | the same, for the lot |
+| **Forget it** | `reset` | it happens. Nothing is forgotten without passing through here, and nothing reaches here without a confirmation |
+| **Keep it** | `confirm(null)` | nothing |
+
 ### History
 
 `HistoryState` watches, like the saved rolls do, so a throw made on the tray

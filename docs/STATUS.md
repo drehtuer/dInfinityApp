@@ -105,6 +105,12 @@ changelog.
   breakdown is stored whole, so a past roll means what it meant then even after
   the set that threw it is uninstalled. The roll screen still cannot see a
   database: it hands out a finished throw and `:app` writes it.
+- **Step 4.7.** The statistics screen is on: every die ever thrown with its
+  average, and choosing one opens its natural highs and lows, its average, its
+  throw count and its face histogram drawn against what a fair die would do —
+  weighted per *value*, so a die labelled 1,2,3,1,2,3 is shown as the d3 it is.
+  A die whose set has been uninstalled keeps its record and says the fair line
+  is a guess. Forgetting a die, or everything, is there behind a confirmation.
 - **Step 4.8.** The history screen is on: every roll newest first, a tap to
   open one breakdown with every die the throw used — the dropped ones struck
   through — the set a roll fell back to, corrections counted, and a natural

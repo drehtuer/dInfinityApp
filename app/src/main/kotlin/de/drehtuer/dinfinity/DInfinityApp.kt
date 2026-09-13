@@ -48,6 +48,8 @@ import de.drehtuer.dinfinity.feature.settings.MenuSection
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryScreen
+import de.drehtuer.dinfinity.feature.stats.StatsPresenter
+import de.drehtuer.dinfinity.feature.stats.StatsScreen
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
@@ -72,6 +74,7 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  *   the editor both open.
  * @param collectionImport the same, for the screen that takes a collection in.
  * @param history the same, for the list of past rolls.
+ * @param statistics the same, for what every die has done.
  * @param navController taken rather than only made, so a test can open a
  *   screen the way a control would rather than by pressing its way there.
  */
@@ -86,6 +89,7 @@ fun DInfinityApp(
   savedGroups: (() -> GroupPresenter)? = null,
   collectionImport: (() -> ImportPresenter)? = null,
   history: (() -> HistoryPresenter)? = null,
+  statistics: (() -> StatsPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -135,6 +139,12 @@ fun DInfinityApp(
           Destination.History if history != null ->
             HistoryScreen(
               presenter = remember(entry) { history() },
+              menu = { MenuTo(navController) },
+            )
+
+          Destination.Statistics if statistics != null ->
+            StatsScreen(
+              presenter = remember(entry) { statistics() },
               menu = { MenuTo(navController) },
             )
 

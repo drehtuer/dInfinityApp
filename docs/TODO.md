@@ -166,12 +166,15 @@ Design `1w`, `5b`, `5c`, `8b`, `9e`. Spec: `docs/statistics.md`.
 Rolls are recorded now — history rows, face counts and running summaries, one
 transaction each — so these screens have something to read.
 
-- [ ] Overview tiles for the selected die: natural highs and lows, average, throws
-- [ ] Face histogram against the fair line
-- [ ] All-dice table, sortable; filter by set (`5b`), roll-up across sets (`5c`)
+The list of every die thrown is built, with its average; choosing one opens
+its overview tiles — natural highs and lows, average, throws — and its face
+histogram against the fair line. Forgetting one die's record or everything is
+there, each behind a confirmation.
+
+- [ ] Sorting the all-dice list, filtering by set (`5b`) and rolling up across sets (`5c`). `DieStatisticsRepository.facesForSides` is written and nothing calls it yet
 - [ ] Saved-roll statistics: observed totals against the exact expected distribution (`8b`, `9e`)
 - [ ] Export as JSON/CSV — without seeds
-- [ ] Reset per die, per roll, per session, everything
+- [ ] Reset per saved roll and per session; per die and everything are done
 
 ### 4.8 History — `feature/stats`
 

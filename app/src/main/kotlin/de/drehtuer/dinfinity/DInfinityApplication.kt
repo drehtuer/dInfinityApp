@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity
 
 import android.app.Application
 import de.drehtuer.dinfinity.data.CollectionImporter
+import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.RollRecording
 import de.drehtuer.dinfinity.data.SavedRollRepository
@@ -50,6 +51,9 @@ class DInfinityApplication : Application() {
 
   /** Past rolls, to read. Apart from the one that writes them, and smaller. */
   val history: HistoryRepository by lazy { HistoryRepository(database) }
+
+  /** What every die has done, to read. */
+  val dieStatistics: DieStatisticsRepository by lazy { DieStatisticsRepository(database) }
 
   /** The roll screen's engine and catalogue, named in one place (`RollWiring`). */
   val rolls: RollWiring by lazy { RollWiring(this, recording) }
