@@ -321,6 +321,22 @@ Updates: "Check for updates" re-resolves the ref (forges) or re-downloads
 the archive headers and compares checksums (plain URLs); if the identity
 differs and the new `set.version` is higher, offer to reinstall.
 
+Resolving a ref means asking the forge which commit it is at now — GitHub and
+Gitea call that hash `sha`, GitLab calls it `id`, and Gitea answers with a list
+because its endpoint is "the log from here". The answer is recorded in
+`.meta.json` as `commit`, beside the archive's own SHA-256.
+
+Both are needed and neither replaces the other. The checksum is what makes an
+install *reproducible*: it is the bytes that actually arrived. It cannot answer
+"is there something newer", because a tarball built twice from the same commit
+need not be byte-identical — the commit answers that.
+
+A forge that cannot be asked, or that answers with something which is not a
+commit hash, **does not stop an install**. What comes back is checked for being
+forty or sixty-four hex digits and nothing else in the reply is read; if it is
+not one, the set still installs and only the update check is poorer for it. A
+forge is a stranger like any other host (`SECURITY.md`).
+
 The same fetch and extraction path is used for saved-roll collections
 (`docs/dice-notation.md`), which are a single JSON file rather than a folder.
 

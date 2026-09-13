@@ -16,8 +16,9 @@ changelog.
   smaller items listed there.
 - **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to and including #48 is merged. One branch
-  is in flight: `feature/tray-camera`.
+- **Branch state:** everything up to and including #48 is merged. Two stacked
+  branches are in flight: `feature/tray-camera`, and `feature/forge-ref-sha`
+  on top of it. They merge in that order.
 
 ## Done
 
