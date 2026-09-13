@@ -83,8 +83,11 @@ changelog.
   implementation of the one rule the app cannot bend (`docs/architecture.md`,
   decision 48). The tray now draws onto a real surface from its own thread, and
   survives the surface going away and coming back without the roll noticing
-  (decision 49). What is still missing before the phone can be shaken is the
-  composable that hands a surface over, and a screen to put it in.
+  (decision 49). The state behind the screen is built too: a typed formula
+  becomes a throw, a throw's faces become a result, `500d6` is refused before a
+  body exists, and an exploding die is thrown again through the simulator
+  rather than decided. What is still missing before the phone can be shaken is
+  the composable that hands a surface over, and the screen to put it in.
 
 ## Blocked / waiting on
 
