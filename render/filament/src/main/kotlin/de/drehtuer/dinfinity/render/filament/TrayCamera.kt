@@ -52,53 +52,6 @@ object TrayCamera {
     )
 
   /**
-   * The shot that holds the dice where they came to rest, for after.
-   *
-   * Each die is framed as the box around its bounding sphere, so a die at the
-   * edge of the group is wholly in shot rather than centred and clipped. With
-   * no dice at all there is nothing to look at and the tray is framed instead.
-   */
-  fun framingTheDice(
-    positions: List<Vector3>,
-    dieRadiusMm: Double,
-    geometry: TableGeometry,
-    aspectRatio: Double,
-  ): CameraShot {
-    if (positions.isEmpty()) return framingTheTray(geometry, aspectRatio)
-    val reach = Vector3(dieRadiusMm, dieRadiusMm, dieRadiusMm)
-    val lowest = positions.reduce(::lower) - reach
-    val highest = positions.reduce(::higher) + reach
-    val middle = (lowest + highest) * HALF
-    return shotOn(
-      target = middle,
-      framed = corners(lowest, highest),
-      aspectRatio = aspectRatio,
-    )
-  }
-
-  /**
-   * [from] eased towards [to], `0` to `1`.
-   *
-   * Smoothstep rather than a straight line: a camera that starts and stops
-   * dead is a cut, and a cut in the middle of watching dice settle reads as a
-   * glitch rather than as attention being drawn.
-   */
-  fun eased(
-    from: CameraShot,
-    to: CameraShot,
-    fraction: Double,
-  ): CameraShot {
-    require(fraction in 0.0..1.0) { "$fraction is not a moment during a move" }
-    val smoothed = fraction * fraction * (THREE - TWO * fraction)
-    return CameraShot(
-      position = from.position + (to.position - from.position) * smoothed,
-      target = from.target + (to.target - from.target) * smoothed,
-      up = from.up + (to.up - from.up) * smoothed,
-      verticalFieldOfViewDegrees = from.verticalFieldOfViewDegrees,
-    )
-  }
-
-  /**
    * A camera aimed at [target], pulled back until every one of [framed] is
    * inside the frustum.
    *
@@ -160,21 +113,8 @@ object TrayCamera {
     height: Double,
   ): List<Vector3> = corners(middle - reach, middle + reach + Vector3(0.0, 0.0, height))
 
-  private fun lower(
-    a: Vector3,
-    b: Vector3,
-  ): Vector3 = Vector3(minOf(a.x, b.x), minOf(a.y, b.y), minOf(a.z, b.z))
-
-  private fun higher(
-    a: Vector3,
-    b: Vector3,
-  ): Vector3 = Vector3(maxOf(a.x, b.x), maxOf(a.y, b.y), maxOf(a.z, b.z))
-
   private fun radians(degrees: Double): Double = degrees * Math.PI / HALF_TURN_DEGREES
 
-  private const val HALF = 0.5
-  private const val TWO = 2.0
-  private const val THREE = 3.0
   private const val HALF_TURN_DEGREES = 180.0
 }
 

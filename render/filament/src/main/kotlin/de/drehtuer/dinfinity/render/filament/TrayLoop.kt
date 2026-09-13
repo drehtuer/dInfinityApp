@@ -120,6 +120,10 @@ class TrayLoop : AutoCloseable {
 
   override fun close() {
     endRoll()
+    // The picture ends here rather than with the roll: a landed roll stays on
+    // screen for as long as there is a screen, and only giving the tray up
+    // takes it away.
+    renderer.end()
     closeStage()
   }
 

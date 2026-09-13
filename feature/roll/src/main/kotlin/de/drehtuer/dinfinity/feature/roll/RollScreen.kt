@@ -14,8 +14,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +45,7 @@ fun RollScreen(
 ) {
   val state = presenter.state
   ShakeToRoll(presenter)
+  KeepTheScreenAwake()
 
   Box(
     modifier =
@@ -75,6 +78,27 @@ fun RollScreen(
         onRoll = { if (state is RollState.Settled) presenter.clear() else presenter.roll() },
       )
     }
+  }
+}
+
+/**
+ * Holds the screen on while the tray is up.
+ *
+ * A dice tray is something a table looks at between turns, and a phone that
+ * blanks after fifteen seconds of nobody touching it is a phone that has to be
+ * poked every time somebody wants to read the roll. It also took the surface
+ * away with it, which is a thing the tray survives now but need not be asked
+ * to (`docs/TODO.md`, Step 4.1).
+ *
+ * On the view rather than on the window's flags, so it is undone by leaving
+ * the screen and not by remembering to undo it.
+ */
+@Composable
+private fun KeepTheScreenAwake() {
+  val view = LocalView.current
+  DisposableEffect(view) {
+    view.keepScreenOn = true
+    onDispose { view.keepScreenOn = false }
   }
 }
 

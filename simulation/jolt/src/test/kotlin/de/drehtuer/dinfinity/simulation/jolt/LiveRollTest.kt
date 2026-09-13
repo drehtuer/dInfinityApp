@@ -15,7 +15,6 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -211,9 +210,15 @@ class LiveRollTest {
   }
 
   @Test
-  fun `ending a roll closes the world and the renderer, finished or not`() {
-    // A LiveRoll holds native memory. Abandoning one mid-roll — the player
+  fun `ending a roll gives the world back and leaves the picture standing`() {
+    // A LiveRoll holds native memory, and abandoning one mid-roll — the player
     // left the screen — has to free it just as finishing does.
+    //
+    // What it must *not* free is the scene. A roll that has landed is still on
+    // screen and the player is still reading it, so the picture outlives the
+    // simulation that made it; ending it here meant a settled roll vanished
+    // the moment anything took the surface away and gave it back, and the
+    // screen blanking was enough to do that.
     val world = FakeWorld(DICE, tumblingThenSettling())
     val watcher = HeadlessRenderer()
     liveOver(world, watcher).use { live ->
@@ -222,7 +227,7 @@ class LiveRollTest {
     }
 
     assertTrue("the physics world was left open", world.closed)
-    assertFalse("the renderer was left believing a roll was in progress", watcher.running)
+    assertTrue("the picture was torn down with the physics world", watcher.running)
   }
 
   @Test

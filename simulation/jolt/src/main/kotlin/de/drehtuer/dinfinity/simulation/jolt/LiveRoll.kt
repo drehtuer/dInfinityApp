@@ -108,9 +108,20 @@ class LiveRoll internal constructor(
       interpolation = if (running) clock.interpolation else 1.0,
     )
 
-  /** Ends the roll, whether or not it finished, and closes the world. */
+  /**
+   * Gives the physics world back, whether or not the roll finished.
+   *
+   * It deliberately does **not** end the renderer. A roll that has landed is
+   * still on screen and the player is still reading it; the picture outlives
+   * the simulation that produced it, and tearing the scene down here meant a
+   * settled roll vanished the moment anything took the surface away and gave
+   * it back — the screen blanking was enough
+   * (`docs/physics-and-rendering.md`, "The simulation clock").
+   *
+   * Whoever set the renderer up ends it, when there is nothing left to look
+   * at.
+   */
   override fun close() {
-    renderer.end()
     world.close()
   }
 

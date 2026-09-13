@@ -180,6 +180,40 @@ class TrayLoopTest {
   }
 
   @Test
+  fun `a roll that has landed is still on screen when the surface comes back`() {
+    // The screensaver. The surface goes, the surface returns, and the dice are
+    // where they stopped — without the simulation being asked for anything,
+    // because a roll that has ended cannot be asked.
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.roll(FakeRoll(steps = 1).start())
+    loop.frame(SOME_LATE_UPTIME)
+    assertFalse("the roll did not land", loop.rolling)
+
+    loop.surfaceLost()
+    val returned = FakeStage()
+    loop.stage(returned)
+
+    assertTrue("the tray came back empty after a roll had landed", returned.added.isNotEmpty())
+    assertTrue("the dice came back but were put nowhere", returned.placed.isNotEmpty())
+    assertTrue("the returned tray was left dark", returned.lit)
+  }
+
+  @Test
+  fun `giving up the tray takes the picture with it`() {
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.roll(FakeRoll(steps = 1).start())
+    loop.frame(SOME_LATE_UPTIME)
+
+    loop.close()
+
+    val afterwards = FakeStage()
+    TrayLoop().stage(afterwards)
+    assertTrue("a closed loop left a scene behind", afterwards.added.isEmpty())
+  }
+
+  @Test
   fun `a new stage closes the one it replaces`() {
     // Turning the phone. Filament fixes its viewport when a stage is made, so
     // this happens on every resize, and a stage left behind is an engine left
