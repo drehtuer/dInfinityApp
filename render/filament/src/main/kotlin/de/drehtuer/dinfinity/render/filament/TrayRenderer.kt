@@ -38,6 +38,7 @@ class TrayRenderer : Renderer {
   private var scene: Scene? = null
   private var latest: RenderFrame? = null
   private var settled = false
+  private var view: TrayView = TrayView.Whole
 
   /** True while there is somewhere to draw. */
   val drawable: Boolean get() = drawing != null
@@ -60,16 +61,31 @@ class TrayRenderer : Renderer {
     if (spec == null) {
       // A table with nothing on it: there is no frame to replay, and the one
       // draw it is worth is the caller's to ask for.
-      renderer.table(showing.geometry, showing.look)
+      renderer.table(showing.geometry, showing.look, view)
       return
     }
 
     renderer.begin(spec, showing.geometry, showing.look)
+    // Where the player was looking is part of the picture, and a rotation is
+    // not a reason to put them back at the whole tray. `begin` framed the whole
+    // table, so this is only worth saying when they had moved off it.
+    if (view != TrayView.Whole) renderer.look(view)
     latest?.let { frame ->
       // A roll that had already finished is put back finished, not re-run: the
       // camera belongs on the dice, where it was.
       if (settled) renderer.settled(frame) else renderer.show(frame)
     }
+  }
+
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * Remembered like everything else here, so a surface arriving afterwards is
+   * aimed where the player left the camera rather than back at the whole tray.
+   */
+  fun look(view: TrayView) {
+    this.view = view
+    drawing?.look(view)
   }
 
   /**
@@ -86,7 +102,7 @@ class TrayRenderer : Renderer {
     scene = Scene(spec = null, geometry = geometry, look = look)
     latest = null
     settled = false
-    drawing?.table(geometry, look)
+    drawing?.table(geometry, look, view)
   }
 
   /**
@@ -105,6 +121,10 @@ class TrayRenderer : Renderer {
     scene = Scene(spec, geometry, look)
     latest = null
     settled = false
+    // A throw is watched from the whole table. The dice can land anywhere in
+    // it, and a camera left closed in on one corner would hide most of what
+    // was just rolled (`docs/physics-and-rendering.md`).
+    view = TrayView.Whole
     drawing?.begin(spec, geometry, look)
   }
 
@@ -137,7 +157,7 @@ class TrayRenderer : Renderer {
       drawing?.end()
       return
     }
-    drawing?.table(table.geometry, table.look)
+    drawing?.table(table.geometry, table.look, view)
   }
 
   /**

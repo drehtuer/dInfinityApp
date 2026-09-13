@@ -77,6 +77,18 @@ interface Tray : AutoCloseable {
    */
   fun shake(sample: ShakeSample)
 
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * The one thing that moves the camera. It frames the whole tray otherwise
+   * and never moves off it on its own — not even when the dice settle — so
+   * looking closer is the player's to do (`docs/physics-and-rendering.md`).
+   *
+   * Nothing about the roll changes. A view that would leave the table is
+   * brought back to its edge rather than refused.
+   */
+  fun look(view: TrayView)
+
   /** Takes whatever is on the tray off it. */
   fun clear()
 }

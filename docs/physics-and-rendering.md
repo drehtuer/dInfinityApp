@@ -348,6 +348,17 @@ all, and **zero** corrections applied after rest.
   file in the module that talks to Filament, and everything that *decides*
   what a roll looks like sits on the near side of it and is tested on a JVM
   (`docs/architecture.md`, decision 47).
+- **The camera frames the whole tray, and only the player moves it.** It never
+  closes in on its own, not even when the dice settle: a camera on the dice
+  takes the table away, and a player cannot then tell four dice from two.
+  Looking closer is theirs to do — **pinch to zoom, two fingers to pan** — and
+  what that produces is a `TrayView`, which cannot leave the table. At the
+  whole tray there is nowhere to pan to; every step closer earns exactly as
+  much room to move as it took away, so a fling cannot end up looking at the
+  void beside the tray. A new throw goes back to the whole table, because the
+  dice can land anywhere in it. A rotation does not: where the player was
+  looking is part of the picture that is rebuilt. One finger is left alone, for
+  picking a die up and for the tap that deliberately does not roll.
 - **The table is drawn before anything is thrown onto it, and after.** A tray
   is a table, not a roll: the screen says *there is a table* as soon as it
   opens, and the floor, the walls and the rim are built and drawn with nothing

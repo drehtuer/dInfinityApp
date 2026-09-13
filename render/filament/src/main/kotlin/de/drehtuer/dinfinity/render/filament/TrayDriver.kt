@@ -36,7 +36,15 @@ import java.util.concurrent.CountDownLatch
  * the near side of [Stage] where a JVM test can reach it. This file is a
  * thread, a surface and a vsync, which is why it is excluded from the coverage
  * figure and not from anything else (`.claude/CLAUDE.md`).
+ *
+ * The class carries a function-count suppression, like [FilamentStage] and for
+ * a related reason: eight of its methods are [Tray], one per thing a screen can
+ * say to a tray, and the other three are the thread, the vsync and the stage.
+ * Folding any of them together would hide the one thing this file exists to
+ * make obvious — every public method posts to the roll thread, and nothing
+ * reaches the loop from anywhere else.
  */
+@Suppress("TooManyFunctions")
 class TrayDriver(
   private val stages: ((Surface, Int, Int) -> Stage)? = null,
 ) : Tray {
@@ -122,6 +130,19 @@ class TrayDriver(
   ) {
     handler.post {
       loop.table(geometry, look)
+      schedule()
+    }
+  }
+
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * Posted like everything else: gestures arrive on the main thread and the
+   * camera belongs to this one.
+   */
+  override fun look(view: TrayView) {
+    handler.post {
+      loop.look(view)
       schedule()
     }
   }

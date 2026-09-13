@@ -204,6 +204,62 @@ class TrayRendererTest {
   }
 
   @Test
+  fun `where the player was looking survives the surface going and coming back`() {
+    // Turning the phone while zoomed in. The roll does not restart, and neither
+    // does the camera go back to the whole tray.
+    val renderer = TrayRenderer()
+    renderer.begin(spec(), geometry, look)
+    renderer.show(frame(0.0))
+    val closer = TrayView(zoom = 2.0, panAlongMm = 20.0).within(geometry)
+    renderer.look(closer)
+
+    val stage = FakeStage()
+    renderer.stage(stage)
+
+    val whole = TrayCamera.framingTheTray(geometry, stage.width.toDouble() / stage.height)
+    assertEquals(
+      "the new surface was framed somewhere the player had left",
+      TrayCamera.framingTheTray(geometry, stage.width.toDouble() / stage.height, closer),
+      stage.shots.last(),
+    )
+    assertTrue("the camera went back to the whole tray", stage.shots.last() != whole)
+  }
+
+  @Test
+  fun `a new throw is watched from the whole table, wherever the player had been looking`() {
+    // The dice can land anywhere in the tray, so a camera left closed in on one
+    // corner would hide most of what was just rolled.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    renderer.look(TrayView(zoom = TrayView.CLOSEST, panAlongMm = 50.0).within(geometry))
+
+    renderer.begin(spec(), geometry, look)
+
+    assertEquals(
+      TrayCamera.framingTheTray(geometry, stage.width.toDouble() / stage.height),
+      stage.shots.last(),
+    )
+  }
+
+  @Test
+  fun `looking around with nowhere to draw is remembered rather than lost`() {
+    val renderer = TrayRenderer()
+    renderer.table(geometry, look)
+    val closer = TrayView(zoom = 2.0).within(geometry)
+    renderer.look(closer)
+
+    val stage = FakeStage()
+    renderer.stage(stage)
+
+    assertEquals(
+      TrayCamera.framingTheTray(geometry, stage.width.toDouble() / stage.height, closer),
+      stage.shots.single(),
+    )
+  }
+
+  @Test
   fun `redraw says whether there was anywhere to draw`() {
     val renderer = TrayRenderer()
     renderer.table(geometry, look)

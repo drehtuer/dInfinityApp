@@ -18,10 +18,10 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #58 is merged and `main` is green.
-  #59–#63 are four stacked pull requests waiting on review, in that order:
-  the roll screen, the tray's rendering defects, shake-to-spawn, and the die
-  size. They merge oldest first.
+- **Branch state:** everything up to #64 is merged and `main` is green.
+  #65–#67 are three stacked pull requests waiting on review, in that order:
+  the table drawn before the first throw, the engine kept across surfaces, and
+  pinch-to-zoom. They merge oldest first.
 
 ## Done
 
@@ -62,15 +62,19 @@ changelog.
 - **Step 4.1.** What the screen has: the tray — drawn from the moment the
   screen opens, with nothing on it, rather than black until the first throw —
   a live-validated formula field, roll from the Roll button or a shake, a
-  refusal for a throw the table cannot hold, and a total. What it has not: the
-  dice picker, the result sheet, the rounding control, the first-launch state,
-  and numbers on the faces. All listed in `docs/TODO.md`.
+  refusal for a throw the table cannot hold, a total, and pinch-to-zoom and
+  two-finger pan over a camera that never moves on its own. What it has not:
+  the dice picker, the result sheet, the rounding control, the first-launch
+  state, and numbers on the faces. All listed in `docs/TODO.md`.
 
 ## Blocked / waiting on
 
-- **Two judgements that need a person and a phone**, both in `docs/TODO.md`:
-  whether the dice now have weight, and whether 16 mm dice read too small on
-  a screen. Neither blocks anything else.
+- **Judgements that need a person and a phone**, all in `docs/TODO.md`: whether
+  the dice now have weight; whether 16 mm dice read too small on a screen;
+  whether the empty table looks like a table worth rolling on; whether turning
+  the phone is now seamless; and whether four times in is the right limit on
+  the pinch. None of them blocks anything else, and none can be answered here —
+  the container's emulator has no real GPU and `screencap` returns black.
 
 ## Decisions pending
 

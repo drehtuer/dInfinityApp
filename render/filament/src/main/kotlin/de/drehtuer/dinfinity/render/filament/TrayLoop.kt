@@ -61,7 +61,7 @@ class TrayLoop : AutoCloseable {
    * so a new size means a new stage. The roll does not notice.
    */
   fun stage(stage: Stage) {
-    closeStage()
+    surfaceLost()
     this.stage = stage
     renderer.stage(stage)
     // A new surface has never been drawn to. Whatever is being shown — a table
@@ -86,9 +86,28 @@ class TrayLoop : AutoCloseable {
     owed = true
   }
 
-  /** The surface is gone. The roll, if there is one, carries on unwatched. */
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * Only the camera moves, and nothing about the roll does. Owed a frame like
+   * any other still picture: between throws nothing else would produce one, so
+   * a pinch would otherwise not appear until something else happened to draw.
+   */
+  fun look(view: TrayView) {
+    renderer.look(view)
+    owed = true
+  }
+
+  /**
+   * The surface is gone. The roll, if there is one, carries on unwatched.
+   *
+   * Also how a surface is let go of on the way to a new one, and on the way
+   * out: there is only one way to stop drawing to a surface, and this is it.
+   */
   fun surfaceLost() {
-    closeStage()
+    renderer.stage(null)
+    stage?.close()
+    stage = null
   }
 
   /**
@@ -184,7 +203,7 @@ class TrayLoop : AutoCloseable {
     // screen for as long as there is a screen, and only giving the tray up
     // takes it away.
     renderer.end()
-    closeStage()
+    surfaceLost()
   }
 
   private fun endRoll() {
@@ -192,12 +211,6 @@ class TrayLoop : AutoCloseable {
     roll = null
     settling = null
     lastFrameNanos = null
-  }
-
-  private fun closeStage() {
-    renderer.stage(null)
-    stage?.close()
-    stage = null
   }
 
   private companion object {

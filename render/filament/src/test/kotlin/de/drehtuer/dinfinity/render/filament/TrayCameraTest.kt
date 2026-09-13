@@ -98,6 +98,73 @@ class TrayCameraTest {
     )
   }
 
+  @Test
+  fun `looking closer stands the camera nearer and keeps it pointed at the table`() {
+    val whole = TrayCamera.framingTheTray(geometry, PORTRAIT)
+    val closer = TrayCamera.framingTheTray(geometry, PORTRAIT, TrayView(zoom = 2.0))
+
+    assertTrue(
+      "pinching in did not bring the camera any closer",
+      closer.distanceMm < whole.distanceMm,
+    )
+    // Still the middle of the table: zooming alone does not move what is
+    // being looked at, only how much of it is in shot.
+    assertEquals(0.0, closer.target.x, TOLERANCE)
+    assertEquals(0.0, closer.target.y, TOLERANCE)
+  }
+
+  @Test
+  fun `panning moves what the camera looks at, and nothing else`() {
+    val view = TrayView(zoom = 2.0, panAlongMm = 20.0, panAcrossMm = -10.0).within(geometry)
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT, view)
+
+    assertEquals(view.panAlongMm, shot.target.x, TOLERANCE)
+    assertEquals(view.panAcrossMm, shot.target.y, TOLERANCE)
+  }
+
+  @Test
+  fun `what the player asked to see is in shot, at every zoom and every shape of phone`() {
+    // The claim the whole feature rests on: whatever corner of the table the
+    // player has pinched and dragged to, it is actually on screen.
+    ASPECTS.forEach { aspect ->
+      ZOOMS.forEach { zoom ->
+        val view =
+          TrayView(
+            zoom = zoom,
+            panAlongMm = geometry.longSideMm,
+            panAcrossMm = geometry.shortSideMm,
+          ).within(geometry)
+        val shot = TrayCamera.framingTheTray(geometry, aspect, view)
+        heldCorners(view).forEach { corner ->
+          assertTrue("what was asked for is clipped at $aspect, $zoom×", shot.holds(corner, aspect))
+        }
+      }
+    }
+  }
+
+  @Test
+  fun `the default view is the whole tray`() {
+    val default = TrayCamera.framingTheTray(geometry, PORTRAIT)
+    val asked = TrayCamera.framingTheTray(geometry, PORTRAIT, TrayView.Whole)
+
+    assertEquals(default.distanceMm, asked.distanceMm, TOLERANCE)
+    assertEquals(default.target.x, asked.target.x, TOLERANCE)
+  }
+
+  /** The corners of the piece of table [view] asks to see. */
+  private fun heldCorners(view: TrayView): List<Vector3> =
+    listOf(-1.0, 1.0).flatMap { x ->
+      listOf(-1.0, 1.0).flatMap { y ->
+        listOf(0.0, geometry.wallHeightMm).map { z ->
+          Vector3(
+            view.panAlongMm + x * geometry.longSideMm / 2 / view.zoom,
+            view.panAcrossMm + y * geometry.shortSideMm / 2 / view.zoom,
+            z,
+          )
+        }
+      }
+    }
+
   /** True when [point] projects inside the picture this shot takes. */
   private fun CameraShot.holds(
     point: Vector3,
@@ -138,5 +205,8 @@ class TrayCameraTest {
     /** A Pixel 10a held upright, and two shapes of screen well either side of it. */
     const val PORTRAIT = 0.45
     val ASPECTS = listOf(PORTRAIT, 0.75, 1.0, 2.0)
+
+    /** The whole table, halfway in, and as close as the player may get. */
+    val ZOOMS = listOf(1.0, 2.0, TrayView.CLOSEST)
   }
 }

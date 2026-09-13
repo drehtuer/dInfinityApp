@@ -44,21 +44,42 @@ class FilamentDiceRenderer(
   fun table(
     geometry: TableGeometry,
     look: TableLook,
+    view: TrayView = TrayView.Whole,
   ) {
     stage.clear()
     this.geometry = geometry
     dice = emptyList()
     stage.light()
     addTray(geometry, look)
-    stage.aim(TrayCamera.framingTheTray(geometry, aspectRatio()))
+    stage.aim(TrayCamera.framingTheTray(geometry, aspectRatio(), view))
   }
 
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * Only the camera moves. Nothing in the scene is touched, and nothing about
+   * the roll is: this is where a player is standing, not what the dice did.
+   * Where the view is allowed to go is [TrayView]'s to say; this is told, and
+   * does not remember — [TrayRenderer] is the one that does.
+   */
+  fun look(view: TrayView) {
+    val framing = geometry ?: return
+    stage.aim(TrayCamera.framingTheTray(framing, aspectRatio(), view))
+  }
+
+  /**
+   * A throw, on the whole table.
+   *
+   * The view is not carried over from before it. The dice can land anywhere in
+   * the tray, and a camera left closed in on one corner would hide most of what
+   * was just rolled (`docs/physics-and-rendering.md`).
+   */
   override fun begin(
     spec: ThrowSpec,
     geometry: TableGeometry,
     look: TableLook,
   ) {
-    table(geometry, look)
+    table(geometry, look, TrayView.Whole)
     dice = spec.dice.map { instance -> addDie(instance.die, spec.dieScale) }
   }
 
@@ -113,15 +134,10 @@ class FilamentDiceRenderer(
     scale: Double,
   ): Int =
     stage.add(
-      mesh = GpuMesh.of(DieMesh.of(die.shape).faces, scale = radiusOf(die, scale)),
+      // How far this shape reaches from its middle, at the throw's scale.
+      mesh = GpuMesh.of(DieMesh.of(die.shape).faces, scale = die.material.boundingRadiusMm * scale),
       parameters = DiceMaterial.dieOf(die.material, die.texturePath),
     )
-
-  /** How far a die of this shape reaches from its middle, at the throw's scale. */
-  private fun radiusOf(
-    die: Die,
-    scale: Double,
-  ): Double = die.material.boundingRadiusMm * scale
 
   private fun aspectRatio(): Double = stage.width.toDouble() / stage.height
 }

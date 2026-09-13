@@ -9,6 +9,7 @@ import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
 
 /**
  * The roll screen's state, as Compose reads it.
@@ -41,6 +42,9 @@ class RollPresenter(
 
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
+
+  /** The table's shape, which the tray's gestures are measured against. */
+  val geometry: TableGeometry get() = machine.geometry
 
   init {
     // Before anything is thrown there is still a table, and it is what the
