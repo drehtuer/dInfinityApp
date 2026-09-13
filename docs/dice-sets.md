@@ -276,7 +276,14 @@ Install flow:
 5. Run the validator (below). On failure: delete the temp folder, show the
    report.
 6. On success: move the folder atomically to `dicesets/<set.id>/`. If a set
-   with that id exists, ask to replace (versions are compared).
+   with that id exists, ask to replace (versions are compared). Replacing
+   moves the old folder aside to `<set.id>.replacing` first and deletes it
+   only once the new one is in place, so a failure halfway leaves the *old*
+   set installed rather than neither. Every step of that is checked: if the
+   old folder cannot be moved aside the install stops before writing
+   anything, and if it cannot be put back after a failure the message says so
+   rather than claiming the set is untouched. A `.replacing` folder left by an
+   interrupted install is cleared by the next one.
 7. Write `.meta.json` with the source URL, SHA, timestamp and validator
    output.
 
