@@ -317,8 +317,16 @@ all, and **zero** corrections applied after rest.
 
 ## Rendering (normal mode)
 
-- Filament scene: tray mesh, one renderable per die, one directional light
-  plus an image-based light for reflections, soft shadows from the key light.
+- Filament scene: tray mesh, one renderable per die, a key directional light
+  casting soft shadows, a dimmer fill from the other side, and a flat ambient.
+- **The ambient is not decoration.** Two directional lights and nothing else
+  leave every surface facing away from both at exactly black, and the surfaces
+  facing away from both are the inner walls: the tray showed its lit rim, a
+  shadow across the floor, and nothing in between casting it. It is a single
+  spherical-harmonic band — the constant term, the same irradiance from every
+  direction — rather than a sky-above/ground-below gradient, which would need
+  three bands and this code being right about which axis Filament's harmonics
+  run along. That is invisible when wrong, and a tray is lit by a room.
 - The tray mesh is a function of the tray's geometry and nothing else — no
   package supplies one (`docs/tables.md`). Only the **inside** is modelled:
   the floor, the inner walls up to the 60 mm rim, and a 6 mm band across the
