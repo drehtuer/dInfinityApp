@@ -16,8 +16,9 @@ changelog.
   smaller items listed there.
 - **Latest release:** `v0.0.1` — the skeleton, cut mainly to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to and including #51 is merged. One branch is
-  in flight: `feature/dice-material`.
+- **Branch state:** everything up to and including #51 is merged. Two stacked
+  branches are in flight: `feature/dice-material` and `feature/filament-engine`
+  on top of it. They merge in that order.
 
 ## Done
 
@@ -76,11 +77,10 @@ changelog.
 
 ## In progress
 
-- `render/filament`. The die meshes, the tray mesh, their GPU buffers, the
-  blend between simulation states, the camera framing and the material's
-  parameters are built and tested on the JVM. What is left is the Filament
-  engine itself — the dependency, compiling the material at launch, lights and
-  shadows — which is the part that needs a GPU and a person to look at it.
+- Nothing. `render/filament` draws: the engine opens, the material compiles on
+  the driver that is actually there, and a scene of a tray and its dice renders
+  a frame on the emulator and on the Pixel 10a. What is left of it needs a
+  screen, and arrives with the roll screen in Step 4.1.
 
 ## Blocked / waiting on
 

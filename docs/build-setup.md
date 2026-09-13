@@ -365,6 +365,31 @@ dinfinity-phone        # attaches the phone over wireless debugging
 Whichever is attached is the one they run on, and if both are, both run them
 — [choose with `ANDROID_SERIAL`](#when-both-a-phone-and-the-emulator-are-attached).
 
+### What the renderer's device test can and cannot say
+
+`render/filament` has an instrumented suite, and it is deliberately narrow. It
+asks whether the native library loads, whether the material compiles **on this
+driver** — which is the thing compiling at launch both buys and costs
+(`docs/architecture.md`, decision 46) — whether the buffers make a scene
+Filament accepts, and whether a frame comes back with more than one colour in
+it. That last one is the cheapest thing that notices a scene which builds,
+draws, reports no error and shows nothing: a camera pointing the wrong way, a
+mesh wound inside out, a material that compiled to black.
+
+What it cannot say is whether the picture is any *good*. Nothing automated can.
+That is Step 5.6, and it needs a screen and a person.
+
+One wrinkle is worth knowing rather than rediscovering. The frame is read back
+with Filament's **post-processing turned off**, and only there. Filament renders
+the post pass to an offscreen target and blits it, and on the emulator's
+software backend (SwiftShader, feature level 1) that blit never reaches a
+readable headless swap chain: every pixel comes back opaque black while the
+same scene draws correctly on the Pixel 10a. Reading the frame before the post
+pass asks the question the test is for — was anything drawn — on both tiers
+rather than on one. A headless swap chain also has to be created with
+`CONFIG_READABLE`; without it a real driver may hand the pixels over anyway,
+which is how that would have shipped unnoticed.
+
 ### Re-recording the golden cases
 
 `test-fixtures/src/main/resources/fixtures/golden/cases.tsv` holds what each
