@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -111,5 +112,84 @@ class VectorsTest {
   fun `a rotation preserves length`() {
     val turned = Quaternion.about(Vector3(1.0, 1.0, 1.0), 1.1).rotate(Vector3(3.0, 4.0, 0.0))
     assertEquals(5.0, turned.length, 1e-12)
+  }
+
+  @Test
+  fun `a turn blended with itself is that turn, at either end`() {
+    val from = Quaternion.about(Vector3(1.0, 0.0, 0.0), PI / 3)
+    val to = Quaternion.about(Vector3(0.0, 1.0, 0.0), PI / 2)
+
+    assertSameTurn(from, from.slerp(to, 0.0))
+    assertSameTurn(to, from.slerp(to, 1.0))
+  }
+
+  @Test
+  fun `halfway between no turn and a half turn is a quarter turn`() {
+    val axis = Vector3(0.0, 0.0, 1.0)
+    val half = Quaternion.about(axis, PI)
+
+    val quarter = Quaternion.Identity.slerp(half, 0.5)
+
+    assertSameTurn(Quaternion.about(axis, PI / 2), quarter)
+  }
+
+  @Test
+  fun `a blend turns at an even rate, not faster through the middle`() {
+    val axis = Vector3(0.0, 1.0, 0.0)
+    val end = Quaternion.about(axis, PI * 0.75)
+    val step = Vector3(1.0, 0.0, 0.0)
+
+    val angles =
+      (0..4)
+        .map { Quaternion.Identity.slerp(end, it / 4.0).rotate(step) }
+        .zipWithNext { a, b -> Exact.acos((a dot b).coerceIn(-1.0, 1.0)) }
+
+    angles.zipWithNext { a, b ->
+      assertEquals(a, b, 1e-9, "a blend that speeds up in the middle is not a rotation")
+    }
+  }
+
+  @Test
+  fun `a blend takes the short way round`() {
+    // A rotation is two quaternions, q and -q. Blending towards the wrong one
+    // sends a die the long way about for no reason anybody watching could
+    // explain.
+    val axis = Vector3(0.0, 0.0, 1.0)
+    val small = Quaternion.about(axis, PI / 6)
+
+    val direct = Quaternion.Identity.slerp(small, 0.5)
+    val theLongWayRound = Quaternion.Identity.slerp(-small, 0.5)
+
+    assertSameTurn(direct, theLongWayRound)
+    assertSameTurn(Quaternion.about(axis, PI / 12), direct)
+  }
+
+  @Test
+  fun `a blend of two turns that are already the same is that turn`() {
+    // The arc has no length here, so the spherical form divides by zero and
+    // the straight line is the same answer.
+    val turn = Quaternion.about(Vector3(0.0, 1.0, 0.0), PI / 4)
+
+    assertSameTurn(turn, turn.slerp(turn, 0.5))
+    assertEquals(1.0, turn.slerp(turn, 0.5).let { q -> q dot q }, 1e-12)
+  }
+
+  @Test
+  fun `a blend is always a rotation, wherever it is taken`() {
+    val from = Quaternion.about(Vector3(1.0, 2.0, 3.0), 0.3)
+    val to = Quaternion.about(Vector3(-2.0, 1.0, 0.5), 2.7)
+
+    (0..10).forEach { step ->
+      val blended = from.slerp(to, step / 10.0)
+      assertEquals(1.0, blended dot blended, 1e-12, "a blend of length ${blended dot blended} is not a turn")
+    }
+  }
+
+  /** Two quaternions are the same turn when they agree up to their sign. */
+  private fun assertSameTurn(
+    expected: Quaternion,
+    actual: Quaternion,
+  ) {
+    assertEquals(1.0, abs(expected dot actual), 1e-9, "$actual is not the turn $expected")
   }
 }

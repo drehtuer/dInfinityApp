@@ -79,7 +79,52 @@ data class Quaternion(
     return vector + twice * 2.0
   }
 
+  /**
+   * The turn this one is, [fraction] of the way towards [to].
+   *
+   * Spherical, not straight-line: a die halfway between two orientations has
+   * turned halfway, and it turns at an even rate rather than rushing the
+   * middle. That is what makes 120 Hz physics look smooth on a panel running
+   * at some other rate — the renderer is shown the last two simulation states
+   * and asks this where the die is *now* (`docs/physics-and-rendering.md`).
+   *
+   * It takes the short way round. A rotation has two quaternions, `q` and
+   * `-q`, and blending towards the wrong one sends a die the long way about
+   * for no reason anybody watching could explain.
+   */
+  fun slerp(
+    to: Quaternion,
+    fraction: Double,
+  ): Quaternion {
+    val from = normalised()
+    val target = to.normalised()
+    val alignment = from dot target
+    val nearest = if (alignment < 0) -target else target
+    val cosine = abs(alignment)
+    if (cosine > STRAIGHT_LINE_ABOVE) {
+      // Too close to tell apart, and the arc length underflows. A straight
+      // line between two nearly equal rotations is the same answer.
+      return (from * (1 - fraction) + nearest * fraction).normalised()
+    }
+    val angle = Exact.acos(cosine)
+    val sine = Exact.sin(angle)
+    return (from * (Exact.sin((1 - fraction) * angle) / sine) + nearest * (Exact.sin(fraction * angle) / sine))
+      .normalised()
+  }
+
+  /** How closely this turn agrees with [other]; `±1` when they are the same. */
+  infix fun dot(other: Quaternion): Double = w * other.w + x * other.x + y * other.y + z * other.z
+
+  operator fun plus(other: Quaternion): Quaternion = Quaternion(w + other.w, x + other.x, y + other.y, z + other.z)
+
+  operator fun times(scale: Double): Quaternion = Quaternion(w * scale, x * scale, y * scale, z * scale)
+
+  operator fun unaryMinus(): Quaternion = Quaternion(-w, -x, -y, -z)
+
   companion object {
+    /** Past this the two turns are the same turn, and the arc has no length. */
+    private const val STRAIGHT_LINE_ABOVE = 0.9995
+
     /** No rotation at all: the shape in its reference orientation. */
     val Identity: Quaternion = Quaternion(1.0, 0.0, 0.0, 0.0)
 

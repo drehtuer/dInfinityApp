@@ -270,6 +270,20 @@ all, and **zero** corrections applied after rest.
 
 - Filament scene: tray mesh, one renderable per die, one directional light
   plus an image-based light for reflections, soft shadows from the key light.
+- The tray mesh is a function of the tray's geometry and nothing else — no
+  package supplies one (`docs/tables.md`). Only the **inside** is modelled:
+  the floor, the inner walls up to the 60 mm rim, and a 6 mm band across the
+  top of it. The camera looks down into the tray, so the outside of the walls
+  is never in shot, and the near wall's inner face points away and is culled —
+  which is what lets the player see over it rather than at the back of it. The
+  rounded corners are drawn as six segments to the quarter, which is under a
+  pixel of a 12 mm arc at any size this is drawn at.
+- Floor and wall textures repeat as `floor_tiling` and `wall_tiling` ask. On
+  the walls the texture walks continuously around the tray — a stretch running
+  along the long side repeats as often as the look asks for that side, one
+  along the short side as often as it asks for that, and a corner takes the
+  rate of whichever it is nearer — so a change of rate stretches the pattern
+  rather than cutting it.
 - Camera looks down at the tray at a slight angle; auto-frames all dice once
   they settle, then eases in on the results.
 - Die meshes come from the shape catalogue — the same closed forms the solver
@@ -283,7 +297,11 @@ all, and **zero** corrections applied after rest.
   (`docs/dice-sets.md`, "The d4"). A coin's rim belongs to neither face and
   carries no cell: it is drawn in the die's own colour.
 - Transforms are interpolated between the last two simulation states based on
-  render time, so 120 Hz physics looks smooth at any display refresh rate.
+  render time, so 120 Hz physics looks smooth at any display refresh rate. A
+  renderer is handed both states and how far between them the moment falls,
+  and blends them itself: positions in a straight line, turns spherically and
+  the short way round. The arithmetic is on `RenderFrame` rather than in each
+  renderer, so two of them cannot disagree about where the same die was.
 - Results are overlaid as labels near each die once settled; tap a die to
   highlight its contribution in the breakdown.
 
