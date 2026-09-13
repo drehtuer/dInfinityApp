@@ -108,6 +108,42 @@ class FilamentStageTest {
   }
 
   @Test
+  fun oneEngineOutlivesTheSurfacesMadeFromIt() {
+    // What a rotation does: the swap chain and the viewport go, the engine and
+    // the compiled material stay. Each stage has to draw on its own, and
+    // closing one must not take the next one's engine with it
+    // (`docs/TODO.md`, Step 4.1).
+    FilamentEngine().use { filament ->
+      repeat(SURFACES) {
+        filament.stage(surface = null, width = WIDTH, height = HEIGHT).use { stage ->
+          stage.light()
+          stage.aim(TrayCamera.framingTheTray(geometry, aspect()))
+          assertTrue("a stage sharing an engine would not draw", stage.draw())
+        }
+      }
+      // The engine is still usable after every stage made from it has gone.
+      filament.stage(surface = null, width = HEIGHT, height = WIDTH).use { turned ->
+        assertEquals(HEIGHT, turned.width)
+        turned.light()
+        turned.aim(TrayCamera.framingTheTray(geometry, HEIGHT.toDouble() / WIDTH))
+        assertTrue("the engine did not survive its stages", turned.draw())
+      }
+    }
+  }
+
+  @Test
+  fun aSharedEngineDrawsARollTheSameAsAPrivateOne() {
+    FilamentEngine().use { filament ->
+      filament.stage(surface = null, width = WIDTH, height = HEIGHT).use { stage ->
+        val renderer = FilamentDiceRenderer(stage)
+        renderer.begin(spec(), geometry, look)
+        renderer.show(frame())
+        assertTrue(stage.draw())
+      }
+    }
+  }
+
+  @Test
   fun aStageCanBeUsedForOneRollAfterAnother() {
     // `clear` is what keeps eighty dice from becoming a hundred and sixty.
     FilamentStage(WIDTH, HEIGHT).use { stage ->
@@ -148,5 +184,8 @@ class FilamentStageTest {
     const val WIDTH = 320
     const val HEIGHT = 640
     const val ROLLS = 3
+
+    /** Rotations, near enough: a new surface each, one engine behind them. */
+    const val SURFACES = 3
   }
 }

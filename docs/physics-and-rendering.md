@@ -367,7 +367,12 @@ all, and **zero** corrections applied after rest.
   different roll wearing the same seed's name — with the player watching the
   dice they were already watching begin again. So the picture is rebuilt
   instead: `TrayRenderer` remembers the throw, the tray and the last frame, and
-  replays them onto the new stage. With no stage at all it draws nothing, which
+  replays them onto the new stage. **The engine is not rebuilt with it.** The
+  material is compiled on the device for the driver that is actually there, and
+  that costs long enough that doing it again for every rotation was itself the
+  black tray: what a surface owns is its swap chain and its viewport, and
+  `FilamentEngine` keeps the rest across all of them. With no stage at all it
+  draws nothing, which
   is the right thing to be while the app is in the background — the roll goes
   on and the dice are where they should be the moment there is somewhere to put
   them.

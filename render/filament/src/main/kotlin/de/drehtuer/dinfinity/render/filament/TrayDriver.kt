@@ -38,13 +38,24 @@ import java.util.concurrent.CountDownLatch
  * figure and not from anything else (`.claude/CLAUDE.md`).
  */
 class TrayDriver(
-  private val stages: (Surface, Int, Int) -> Stage = ::filamentStage,
+  private val stages: ((Surface, Int, Int) -> Stage)? = null,
 ) : Tray {
   private val loop = TrayLoop()
   private val thread = HandlerThread(THREAD_NAME).apply { start() }
   private val handler = Handler(thread.looper)
 
   private var ticking = false
+
+  /**
+   * The engine and the compiled material, kept across every surface this
+   * driver ever draws to.
+   *
+   * Made on first use rather than here, because it has to be made on the roll
+   * thread — a graphics context belongs to the thread that made it, and this
+   * constructor runs on whichever thread built the screen. Null for a driver
+   * given its own way of making stages, which is what a test does.
+   */
+  private var filament: FilamentEngine? = null
 
   private val tick =
     Choreographer.FrameCallback { nanos ->
@@ -62,7 +73,7 @@ class TrayDriver(
     height: Int,
   ) {
     handler.post {
-      loop.stage(stages(surface, width, height))
+      loop.stage(stageFor(surface, width, height))
       schedule()
     }
   }
@@ -125,7 +136,13 @@ class TrayDriver(
 
   /** Stops the thread. The driver cannot be used again. */
   override fun close() {
-    onTheRollThread(loop::close)
+    onTheRollThread {
+      // The stage first, then what it was borrowing: a swap chain outliving
+      // its engine is a crash rather than a leak.
+      loop.close()
+      filament?.close()
+      filament = null
+    }
     thread.quitSafely()
   }
 
@@ -147,16 +164,25 @@ class TrayDriver(
     Choreographer.getInstance().postFrameCallback(tick)
   }
 
+  /**
+   * A stage for this surface, sharing the engine with every stage before it.
+   *
+   * The engine and the compiled material are made once, on this thread, and
+   * kept: compiling the material happens on the device for the driver that is
+   * actually there, and doing it again for every rotation is what used to
+   * leave the tray black for a moment (`docs/TODO.md`, Step 4.1).
+   */
+  private fun stageFor(
+    surface: Surface,
+    width: Int,
+    height: Int,
+  ): Stage {
+    stages?.let { return it(surface, width, height) }
+    val shared = filament ?: FilamentEngine().also { filament = it }
+    return shared.stage(surface, width, height)
+  }
+
   private companion object {
     const val THREAD_NAME = "dinfinity-roll"
-
-    fun filamentStage(
-      surface: Surface,
-      width: Int,
-      height: Int,
-    ): Stage {
-      FilamentStage.ready()
-      return FilamentStage(width, height, surface)
-    }
   }
 }
