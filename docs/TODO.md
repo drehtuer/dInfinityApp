@@ -29,7 +29,6 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] `simulation/api` — table geometry, the capacity rule with its worked numbers, settle detection, face reading (including `vertex-up` for the d4), the correction ladder in `docs/physics-and-rendering.md`. Testable without a physics engine via a fake simulator
 - [ ] `simulation/jolt` — JNI bridge, fixed 120 Hz timestep, seeded and deterministic. **Decide Jolt vs. Bullet with a spike first** and record the result in `docs/architecture.md`
 - [ ] Golden determinism suite: (seed, formula, input) → outcome, asserted on every ABI CI can run, and re-asserted on the device in Step 5
 - [ ] `render/headless` and `render/filament` — the headless one first, so power-saving works before anything is drawn

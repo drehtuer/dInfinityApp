@@ -56,6 +56,24 @@ if diceCount > 100 → roll refused (engine hard cap, independent of scale)
 else               → all dice are spawned at `scale`
 ```
 
+`r(d)` comes from the shape, not from a guess. A die's `size_mm` is its
+**nominal size**, quoted the way a dice maker quotes one: the edge length for a
+polyhedron, the diameter for the coin. The bounding-sphere radius is then a
+fixed ratio of it, one per catalogue shape:
+
+| Shape | radius ÷ nominal size | | Shape | radius ÷ nominal size |
+|---|---|---|---|---|
+| `coin` | √(¼ + 1/64) ≈ 0.5154 | | `dodecahedron` | (√3/4)(1+√5) ≈ 1.4013 |
+| `tetrahedron` | √6/4 ≈ 0.6124 | | `enneagonal-trapezohedron` | cos(π/18) ≈ 0.9848 |
+| `cube` | √3/2 ≈ 0.8660 | | `icosahedron` | √(10+2√5)/4 ≈ 0.9511 |
+| `octahedron` | √2/2 ≈ 0.7071 | | `pentagonal-trapezohedron` | cos(π/10) ≈ 0.9511 |
+
+So a "16 mm d6" is a cube with 16 mm edges and a bounding radius of
+16·√3/2 ≈ 13.9 mm, which is where every number in the worked table below comes
+from. The two trapezohedra are the ones with every vertex on a single sphere
+and every edge the same length — which is what a real d10 is, and which works
+out at exactly cos(π/2n).
+
 That is: dice may collectively cover at most 30 % of the floor with their
 bounding circles, and they may shrink to 40 % of their nominal size to get
 there. Both numbers are tunable constants and both are covered by the golden
@@ -65,7 +83,7 @@ Worked example on a Pixel 10a table (240 × 108 mm ≈ 259 cm²):
 
 | Roll | Required at scale 1 | Result |
 |---|---|---|
-| `1d20` | 7.6 cm² | scale 1.0 |
+| `1d20` | 7.3 cm² | scale 1.0 |
 | `8d6` (16 mm d6) | 48 cm² | scale 1.0 |
 | `20d6` | 121 cm² | scale 0.80 |
 | `60d6` | 362 cm² | scale 0.46 |

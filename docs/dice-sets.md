@@ -159,6 +159,20 @@ The atlas layout for a catalogue shape is a fixed grid: face *i* occupies cell
 matching the catalogue's reference orientation. The face designer produces
 exactly this layout, so hand-drawn and hand-authored sets are interchangeable.
 
+**Face order.** Faces are numbered from the top of the shape's reference
+orientation downwards, and anticlockwise around each ring starting from the
+`+x` side; face 0 is the one that is up when the die has not been turned. That
+is a choice rather than a law, but it is a fixed one — it is the order `faces`
+is read in and the order the atlas fills its cells, so changing it would
+silently repaint every die of every set ever published. `simulation/api` owns
+it, and the renderer and the physics hull are built from the same arithmetic
+rather than from a model somebody exported.
+
+`size_mm` is the die's **nominal size**, quoted the way a dice maker quotes
+one: the edge length for a polyhedron, the diameter for the coin. Each shape
+has a fixed ratio from that to its bounding-sphere radius, which is what the
+table's capacity rule sums — the ratios are listed in `docs/tables.md`.
+
 ## Shapes after v1
 
 Everything in this section is **planned, not implemented**. v1 rejects
