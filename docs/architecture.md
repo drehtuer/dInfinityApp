@@ -513,6 +513,48 @@ import writes without ever passing through the sheet.
 Unfiled is the one group with no **Delete**: it is where a deleted group's
 rolls go, so it has to be there to go to.
 
+### Writing a roll down
+
+The statistics tables have existed since database version 1 and nothing wrote
+to them. This is the seam that does, and it has one shape rule: **the roll
+screen cannot see a database.**
+
+`RollMachine.settled` hands out a `FinishedThrow` — the result, the plan it
+came from, and the seed. `feature/roll` declares a `ThrowRecorder` interface
+and `:app` implements it over `data`'s `RollRecording`. A roll screen that
+could reach a database is a roll screen that will eventually query one
+mid-throw.
+
+The plan travels with the result because the two know different things: the
+result knows which face came up, and only the plan knows which *die* it was and
+which set supplied it — and the statistics are kept per die. A breakdown line
+with no plan entry is not counted rather than counted wrongly, which keeps a
+bug upstream visible instead of hiding it in a histogram.
+
+The write is launched, not waited for. A roll is finished when the dice stop,
+not when SQLite says so; a failure to record is a missing statistic, which is
+much better than a roll that appears to hang.
+
+Re-rounding a throw does not come back through `settled`, so a roll is recorded
+once rather than once per rounding somebody tries. A history with a row per
+button pressed is a history of the buttons.
+
+The breakdown is stored **whole**, as JSON, rather than normalised into rows —
+and not for convenience. A roll's breakdown means what it meant *then*.
+Normalising it would let a set uninstalled last week quietly rewrite last
+week's rolls, so everything the history screen draws is in the text: the labels
+the faces carried, which dice were dropped, which came from an explosion, which
+showed a natural maximum. Nothing has to be looked up to draw a past roll, which
+also means nothing can be looked up wrong. Reading one back is deliberately
+lenient: a breakdown written by an older version is still a record of a roll
+somebody made, and the total is in its own column either way.
+
+Every roll carries a session id, and there are no sessions yet (Step 4.9). It
+is the name `default` rather than an empty string, because `""` in a history is
+a value somebody will one day have to guess the meaning of — and because the
+rolls filed there become a real session that can be renamed rather than a gap
+to migrate.
+
 ### The saved-roll strip on the tray
 
 The active group's rolls sit above the dice picker, as tiles: a roll somebody

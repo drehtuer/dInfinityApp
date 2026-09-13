@@ -163,6 +163,9 @@ Design `1v`, `4c`, `8d`. Spec: `docs/face-designer.md`.
 
 Design `1w`, `5b`, `5c`, `8b`, `9e`. Spec: `docs/statistics.md`.
 
+Rolls are recorded now — history rows, face counts and running summaries, one
+transaction each — so these screens have something to read.
+
 - [ ] Overview tiles for the selected die: natural highs and lows, average, throws
 - [ ] Face histogram against the fair line
 - [ ] All-dice table, sortable; filter by set (`5b`), roll-up across sets (`5c`)

@@ -2,9 +2,11 @@ package de.drehtuer.dinfinity
 
 import android.app.Application
 import de.drehtuer.dinfinity.data.CollectionImporter
+import de.drehtuer.dinfinity.data.RollRecording
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
+import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 
 /**
@@ -39,6 +41,12 @@ class DInfinityApplication : Application() {
    */
   val collectionImporter: CollectionImporter by lazy { CollectionImporter(database) }
 
+  /** Statistics and history, written in one transaction per roll. */
+  val statistics: StatisticsRepository by lazy { StatisticsRepository(database) }
+
+  /** What turns a finished throw into rows (`docs/statistics.md`). */
+  val recording: RollRecording by lazy { RollRecording(statistics) }
+
   /** The roll screen's engine and catalogue, named in one place (`RollWiring`). */
-  val rolls: RollWiring by lazy { RollWiring(this) }
+  val rolls: RollWiring by lazy { RollWiring(this, recording) }
 }

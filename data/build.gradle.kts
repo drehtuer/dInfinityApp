@@ -47,6 +47,11 @@ dependencies {
   // core/collection's; writing it down is this module's.
   api(project(":core:collection"))
 
+  // A roll's breakdown is stored as JSON, whole rather than normalised: a
+  // breakdown means what it meant then, and normalising it would let a set
+  // uninstalled last week rewrite last week's rolls (docs/statistics.md).
+  implementation(libs.kotlinx.serialization.json)
+
   implementation(libs.androidx.datastore.preferences)
   implementation(libs.androidx.room.runtime)
   implementation(libs.androidx.room.ktx)

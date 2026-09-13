@@ -186,8 +186,8 @@ class RollMachine(
   fun settled(
     outcome: SimulationOutcome,
     rounding: Rounding = Rounding.Default,
-  ) {
-    val flight = inFlight ?: return
+  ): FinishedThrow? {
+    val flight = inFlight ?: return null
     inFlight = null
 
     val result =
@@ -206,6 +206,11 @@ class RollMachine(
       )
     scored = flight.prepared.formula to result
     state = RollState.Settled(result, divides = flight.prepared.formula.divides)
+    // Handed out rather than written here: this module decides what a throw
+    // came to, and nothing else. Re-rounding the same throw does not come
+    // through here, which is why a roll is recorded once and not once per
+    // rounding somebody tries.
+    return FinishedThrow(result = result, plan = flight.prepared.plan, seed = flight.seed)
   }
 
   /**

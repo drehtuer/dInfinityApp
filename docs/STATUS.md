@@ -99,6 +99,12 @@ changelog.
   outcome graph's formula is editable now for the same reason it exists — two
   screens validating a formula separately would eventually disagree about
   whether somebody's formula is valid.
+- **Rolls are written down.** Every throw that lands becomes a history row, a
+  face count for each die and a running summary, in one transaction — which the
+  statistics tables have been waiting for since database version 1. The
+  breakdown is stored whole, so a past roll means what it meant then even after
+  the set that threw it is uninstalled. The roll screen still cannot see a
+  database: it hands out a finished throw and `:app` writes it.
 - **The navigation graph is connected.** Step 4.10's menu lists every screen
   and every screen carries the button that opens it, so nothing is reachable
   only by not having left it yet. The placeholders are still placeholders.

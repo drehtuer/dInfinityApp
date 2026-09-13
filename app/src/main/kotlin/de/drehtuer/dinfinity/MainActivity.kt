@@ -40,7 +40,7 @@ class MainActivity : ComponentActivity() {
             lifecycleScope.launch { repository.setPowerSaving(on) }
           },
           onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
-          rollPresenter = { app.rolls.presenter(powerSaving = settings.powerSaving) },
+          rollPresenter = { app.rolls.presenter(powerSaving = settings.powerSaving, scope = lifecycleScope) },
           graphMachine = { app.rolls.graph() },
           savedRolls = {
             SavedPresenter(
