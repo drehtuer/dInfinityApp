@@ -30,7 +30,7 @@ completion before the screens start, because a bug here is a bug in every
 screen.
 
 - [ ] `simulation/jolt` — JNI bridge over Jolt 5.3.0 (decided; `docs/architecture.md`, decision 37): CMake and NDK wiring, Jolt vendored at a pinned tag, convex hulls from the shape catalogue, the fixed 120 Hz step, spawn and shake input, and the correction ladder. Seeded and deterministic
-- [ ] *Device:* the bridge's first end-to-end run. The spike proved Jolt configures, builds and links for `arm64-v8a` with the NDK's toolchain; that a scene actually settles, and settles the same way on two ABIs, can only be seen on the emulator and the phone
+- [ ] *Device:* the bridge's first end-to-end run. The spike proved Jolt configures, builds and links for `arm64-v8a` with the NDK's toolchain; that a scene actually settles, and settles the same way on two ABIs, can only be seen on a device. The emulator in the container answers both questions (`docs/build-setup.md`), the phone confirms them
 - [ ] Golden determinism suite: (seed, formula, input) → outcome, asserted on every ABI CI can run, and re-asserted on the device in Step 5
 - [ ] `render/filament` — scene, materials, camera, die meshes from the shape catalogue, the tray, and interpolation between the last two simulation states. *Device:* nothing about a renderer can be judged from a unit test
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
@@ -272,6 +272,14 @@ Written down so the format need not change later. Not v1 scope.
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
+- [ ] Move the container's emulator up when an automated-test image exists
+      above API 36 — the same wait as the line above, for the same reason
+      (`docs/architecture.md`, decision 39)
+- [ ] The devcontainer asks Docker for `/dev/kvm` unconditionally, so a
+      machine without nested virtualisation cannot open the project at all.
+      Confirm that is the right default rather than building the image
+      without an emulator and asking for the device only when one is wanted
+      (`docs/build-setup.md`)
 - [ ] d18 shape: the enneagonal trapezohedron is assumed; verify it reads well at phone size
 - [ ] Division rounding default is Down with a per-throw override — confirm Nearest is worth having
 - [ ] The design project's `.thumbnail` is not imported; decide whether a preview image belongs in the repo
