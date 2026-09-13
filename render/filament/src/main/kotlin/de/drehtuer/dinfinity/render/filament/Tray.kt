@@ -47,7 +47,7 @@ interface Tray : AutoCloseable {
    */
   fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit = {},
+    onSettled: (SimulationOutcome) -> Unit,
   )
 
   /** Takes whatever is on the tray off it. */

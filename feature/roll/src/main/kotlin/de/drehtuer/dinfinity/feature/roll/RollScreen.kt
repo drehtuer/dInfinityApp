@@ -64,8 +64,16 @@ fun RollScreen(
       horizontalAlignment = Alignment.CenterHorizontally,
     ) {
       Outcome(state)
-      Formula(presenter, state)
-      ThrowButton(presenter, state)
+      Formula(
+        text = presenter.text,
+        wrong = state is RollState.Invalid || state is RollState.TooMany,
+        onChange = presenter::type,
+      )
+      ThrowButton(
+        enabled = state is RollState.Ready || state is RollState.Settled,
+        settled = state is RollState.Settled,
+        onRoll = { if (state is RollState.Settled) presenter.clear() else presenter.roll() },
+      )
     }
   }
 }
@@ -125,15 +133,25 @@ private fun Message(
   )
 }
 
+/**
+ * Takes what it draws rather than the presenter that holds it.
+ *
+ * Not style for its own sake: a composable handed a whole presenter cannot be
+ * skipped on recomposition, because Compose has no way to know what changed
+ * inside it, so it re-runs on every keystroke and carries the generated code
+ * that decides so. Handed a string and a lambda, it skips when the string has
+ * not moved.
+ */
 @Composable
 private fun Formula(
-  presenter: RollPresenter,
-  state: RollState,
+  text: String,
+  wrong: Boolean,
+  onChange: (String) -> Unit,
 ) {
   OutlinedTextField(
-    value = presenter.text,
-    onValueChange = presenter::type,
-    isError = state is RollState.Invalid || state is RollState.TooMany,
+    value = text,
+    onValueChange = onChange,
+    isError = wrong,
     singleLine = true,
     label = { Text(stringResource(R.string.roll_formula_label)) },
     placeholder = { Text(stringResource(R.string.roll_formula_hint)) },
@@ -145,29 +163,25 @@ private fun Formula(
   )
 }
 
+/** The same: values in, one lambda out, so it skips when nothing has moved. */
 @Composable
 private fun ThrowButton(
-  presenter: RollPresenter,
-  state: RollState,
+  enabled: Boolean,
+  settled: Boolean,
+  onRoll: () -> Unit,
 ) {
   // Rolling is blocked while the formula is invalid or the table is too small,
   // and while the dice are still in the air — a second throw would replace the
   // first mid-flight, which is not what a second tap means.
-  val ready = state is RollState.Ready
-
   Button(
-    onClick = { if (state is RollState.Settled) presenter.clear() else presenter.roll() },
-    enabled = ready || state is RollState.Settled,
+    onClick = onRoll,
+    enabled = enabled,
     modifier =
       Modifier
         .fillMaxWidth()
         .testTag(RollTestTags.THROW),
   ) {
-    Text(
-      stringResource(
-        if (state is RollState.Settled) R.string.roll_again else R.string.roll_throw,
-      ),
-    )
+    Text(stringResource(if (settled) R.string.roll_again else R.string.roll_throw))
   }
 }
 

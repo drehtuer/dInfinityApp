@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import android.view.Surface
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -109,6 +111,16 @@ class RollScreenTest {
   }
 
   @Test
+  fun `the screen honours a modifier its caller gives it`() {
+    // Every other test lets the default stand, so without this the screen has
+    // never once been drawn the way the navigation graph will draw it.
+    showWith(Modifier.testTag(CALLER_TAG))
+
+    compose.onNodeWithTag(CALLER_TAG).assertExists()
+    compose.onNodeWithTag(RollTestTags.TRAY).assertExists()
+  }
+
+  @Test
   fun `the tray is on screen from the start, before anything is thrown`() {
     show()
 
@@ -141,7 +153,41 @@ class RollScreenTest {
     compose.setContent { RollScreen(presenter = presenter) }
   }
 
+  private fun showWith(modifier: Modifier) {
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        modifier = modifier,
+      )
+    }
+  }
+
+  private fun presenter(
+    tray: Tray,
+    rolls: Rolls,
+  ) = RollPresenter(
+    machine =
+      RollMachine(
+        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+        geometry = TableGeometry.referenceDevice(),
+        table = TableLook(id = "plain", name = "Plain"),
+        simulator =
+          object : DiceSimulator {
+            override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
+          },
+        seeds = { 1L },
+        clock = { 0L },
+      ),
+    driver = tray,
+    rolls = rolls,
+    toTheScreen = { it() },
+  )
+
   /** Throws the dice where it stands, so a click and its total are one act. */
+  private companion object {
+    const val CALLER_TAG = "caller:modifier"
+  }
+
   private class DirectTray : Tray {
     override fun surfaceAvailable(
       surface: Surface,
