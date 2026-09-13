@@ -1,11 +1,18 @@
 package de.drehtuer.dinfinity.feature.graph
 
+import de.drehtuer.dinfinity.ui.common.FormulaTestTags
+
 /** What the tests reach the outcome graph by. */
 object GraphTestTags {
   const val SCREEN: String = "graph:screen"
-  const val FORMULA: String = "graph:formula"
+
+  /**
+   * The formula field and its squiggle, which are `ui/common`'s and shared
+   * with the tray. Named here so a test of this screen reads as one.
+   */
+  const val FORMULA: String = FormulaTestTags.FIELD
+  const val INVALID: String = FormulaTestTags.ERROR
   const val CHART: String = "graph:chart"
-  const val INVALID: String = "graph:invalid"
   const val TOO_LARGE: String = "graph:too-large"
   const val EMPTY: String = "graph:empty"
 

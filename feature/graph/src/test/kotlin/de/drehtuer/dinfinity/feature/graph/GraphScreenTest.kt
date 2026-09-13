@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Rule
@@ -88,7 +89,7 @@ class GraphScreenTest {
   }
 
   @Test
-  fun `a formula that does not read says so instead of drawing`() {
+  fun `a graph opened on a formula that does not read says so instead of drawing`() {
     show("3d6 +")
 
     compose.onNodeWithTag(GraphTestTags.INVALID).assertIsDisplayed()
@@ -102,6 +103,27 @@ class GraphScreenTest {
     show("300d20 * 300d20")
 
     compose.onNodeWithTag(GraphTestTags.TOO_LARGE).assertIsDisplayed()
+    compose.onNodeWithTag(GraphTestTags.CHART).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the formula can be changed here, and the chart follows`() {
+    // The same live-validated field the tray has, so the two screens cannot
+    // come to disagree about whether a formula is valid.
+    show("2d6")
+
+    compose.onNodeWithTag(GraphTestTags.FORMULA).performTextReplacement("1d20")
+
+    compose.onNodeWithTag(GraphTestTags.statOf("range")).assertTextContains("1–20", substring = true)
+  }
+
+  @Test
+  fun `a formula typed here that does not read is squiggled in the field`() {
+    show("2d6")
+
+    compose.onNodeWithTag(GraphTestTags.FORMULA).performTextReplacement("3d6 +")
+
+    compose.onNodeWithTag(GraphTestTags.INVALID).assertIsDisplayed()
     compose.onNodeWithTag(GraphTestTags.CHART).assertDoesNotExist()
   }
 

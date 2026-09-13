@@ -44,6 +44,10 @@ include(":input:shake")
 include(":designer")
 include(":data")
 
+// Screen furniture more than one screen needs. Not a feature: nothing in it
+// knows what screen it is on (docs/architecture.md, Modules).
+include(":ui:common")
+
 include(":feature:roll")
 include(":feature:graph")
 include(":feature:saved")
