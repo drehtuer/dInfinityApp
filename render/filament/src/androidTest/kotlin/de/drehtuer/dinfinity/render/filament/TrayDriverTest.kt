@@ -54,6 +54,7 @@ class TrayDriverTest {
     val listening = HandlerThread("frames-arriving").apply { start() }
     reader.setOnImageAvailableListener({ arrived.countDown() }, Handler(listening.looper))
     val counted = mutableListOf<Counted>()
+    val settled = CountDownLatch(1)
 
     try {
       TrayDriver { surface, width, height ->
@@ -61,11 +62,15 @@ class TrayDriverTest {
         Counted(FilamentStage(width, height, surface)).also { counted += it }
       }.use { driver ->
         driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
-        driver.roll(roll.start())
+        driver.roll(roll.start()) { settled.countDown() }
 
         assertTrue(
           "the roll thread was never given a frame callback",
           roll.finished.await(PATIENCE_SECONDS, TimeUnit.SECONDS),
+        )
+        assertTrue(
+          "the roll finished but what the dice came to was never reported",
+          settled.await(PATIENCE_SECONDS, TimeUnit.SECONDS),
         )
         // Drawn one frame at a time off the display's own clock, which is the
         // thing that cannot be checked anywhere but here.
@@ -100,7 +105,7 @@ class TrayDriverTest {
     try {
       TrayDriver().use { driver ->
         driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
-        driver.roll(roll.start())
+        driver.roll(roll.start()) {}
         driver.surfaceLost()
       }
     } finally {
@@ -119,7 +124,7 @@ class TrayDriverTest {
     try {
       TrayDriver().use { driver ->
         driver.surfaceAvailable(first.surface, WIDTH, HEIGHT)
-        driver.roll(roll.start())
+        driver.roll(roll.start()) {}
         driver.surfaceAvailable(second.surface, HEIGHT, WIDTH)
 
         assertTrue(
