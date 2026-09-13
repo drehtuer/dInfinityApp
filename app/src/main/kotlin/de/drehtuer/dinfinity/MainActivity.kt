@@ -8,11 +8,8 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import de.drehtuer.dinfinity.core.model.AppSettings
-import de.drehtuer.dinfinity.feature.saved.EditorPresenter
-import de.drehtuer.dinfinity.feature.saved.GroupPresenter
-import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.R
-import de.drehtuer.dinfinity.feature.saved.SavedPresenter
+import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import kotlinx.coroutines.launch
 
@@ -26,6 +23,13 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     val app = application as DInfinityApplication
     val repository = app.settingsRepository
+    val saved =
+      SavedWiring(
+        app = app,
+        catalog = app.rolls.catalog,
+        scope = lifecycleScope,
+        unfiledName = getString(R.string.saved_unfiled),
+      )
     setContent {
       // Until the file has been read the defaults stand in, which is one frame
       // of the design's own accent rather than a blank screen.
@@ -43,41 +47,14 @@ class MainActivity : ComponentActivity() {
           rollPresenter = { app.rolls.presenter(powerSaving = settings.powerSaving, scope = lifecycleScope) },
           graphMachine = { app.rolls.graph() },
           savedRolls = {
-            SavedPresenter(
-              repository = app.savedRolls,
-              catalog = app.rolls.catalog,
-              scope = lifecycleScope,
-              unfiledName = getString(R.string.saved_unfiled),
-              onActiveGroup = { groupId ->
-                lifecycleScope.launch { repository.setActiveGroup(groupId) }
-              },
-              activeGroupId = settings.activeGroupId,
-            )
+            saved.list(activeGroupId = settings.activeGroupId) { groupId ->
+              lifecycleScope.launch { repository.setActiveGroup(groupId) }
+            }
           },
-          savedGroups = {
-            GroupPresenter(
-              repository = app.savedRolls,
-              scope = lifecycleScope,
-              unfiledName = getString(R.string.saved_unfiled),
-            )
-          },
-          collectionImport = {
-            ImportPresenter(
-              importer = app.collectionImporter,
-              catalog = app.rolls.catalog,
-              scope = lifecycleScope,
-              unfiledName = getString(R.string.saved_unfiled),
-            )
-          },
-          savedRollEditor = { editing ->
-            EditorPresenter(
-              repository = app.savedRolls,
-              catalog = app.rolls.catalog,
-              scope = lifecycleScope,
-              editing = editing,
-              defaultGroupId = settings.activeGroupId,
-            )
-          },
+          savedGroups = saved::groups,
+          savedRollEditor = { editing -> saved.editor(editing, settings.activeGroupId) },
+          collectionImport = saved::importing,
+          history = { HistoryPresenter(history = app.history, scope = lifecycleScope) },
         )
       }
     }

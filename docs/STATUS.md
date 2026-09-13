@@ -105,6 +105,11 @@ changelog.
   breakdown is stored whole, so a past roll means what it meant then even after
   the set that threw it is uninstalled. The roll screen still cannot see a
   database: it hands out a finished throw and `:app` writes it.
+- **Step 4.8.** The history screen is on: every roll newest first, a tap to
+  open one breakdown with every die the throw used — the dropped ones struck
+  through — the set a roll fell back to, corrections counted, and a natural
+  maximum in the accent. No replay and no seed, guaranteed by the type the
+  screen is given rather than by the screen remembering.
 - **The navigation graph is connected.** Step 4.10's menu lists every screen
   and every screen carries the button that opens it, so nothing is reachable
   only by not having left it yet. The placeholders are still placeholders.

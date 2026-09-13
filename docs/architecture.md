@@ -669,6 +669,35 @@ numbers beside it.
 The editor leaves by going *back* rather than forward: it is a detour from the
 list, and finishing one is arriving back where it started.
 
+### History
+
+`HistoryState` watches, like the saved rolls do, so a throw made on the tray
+appears here without anybody asking — which also means the screen has nothing
+to refresh and no way to be stale.
+
+**A past roll is a record, not something to re-run.** There is no replay action
+and no seed anywhere on the screen, and that is not enforced by remembering it:
+`HistoryEntry` has no seed on it to show. The row in the table does; the type
+the screens are given does not. `HistoryRepository` is the line between them,
+and it is a separate class from the one that writes rolls because they are
+different jobs with different shapes — one transaction across three tables
+going in, a flow of one table coming out.
+
+Which row is open is held in the state rather than in the list, because it has
+to survive the list being rebuilt when a roll lands: an expanded breakdown that
+closed itself every time somebody rolled would be a breakdown nobody could
+read. One at a time — fifty open breakdowns is not a list.
+
+Session headings are drawn only when the list spans more than one session,
+which is never until Step 4.9. A heading repeated down a whole list says
+nothing.
+
+| Control | Calls | What changes |
+|---|---|---|
+| a row with a breakdown | `open` | that breakdown opens, and any other closes |
+| the same row again | `open` | it closes |
+| *(not a control)* a roll landing on the tray | — | the list, by itself |
+
 ### Settings, and the screens that are not built yet
 
 `Settings` is the only screen besides `Roll` that does anything, and it is

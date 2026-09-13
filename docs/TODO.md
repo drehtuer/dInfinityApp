@@ -173,13 +173,18 @@ transaction each — so these screens have something to read.
 - [ ] Export as JSON/CSV — without seeds
 - [ ] Reset per die, per roll, per session, everything
 
-### 4.8 History — `feature/history`
+### 4.8 History — `feature/stats`
 
 Design `1x`. Spec: `docs/statistics.md`.
 
-- [ ] Past rolls with breakdowns, grouped by session, natural max in the accent
-- [ ] No replay, no seed on screen
-- [ ] Pruning at 50,000 rows leaves aggregates intact
+The list is built: past rolls newest first, a tap to open one breakdown, every
+die including the dropped ones, the set a roll fell back to, corrections
+counted, and a natural maximum in the accent. No replay and no seed, which the
+types enforce rather than the screen remembering. Pruning at 50,000 rows was
+already done and tested in `StatisticsRepository`.
+
+- [ ] Filtering: by session once there are sessions (4.9), and by saved roll — the query is written and nothing calls it
+- [ ] Export as JSON/CSV, without seeds, shared like a collection (4.3's sharing is the pattern)
 
 ### 4.9 Sessions — `feature/sessions`
 

@@ -46,6 +46,8 @@ import de.drehtuer.dinfinity.feature.settings.MenuEntry
 import de.drehtuer.dinfinity.feature.settings.MenuScreen
 import de.drehtuer.dinfinity.feature.settings.MenuSection
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
+import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
+import de.drehtuer.dinfinity.feature.stats.HistoryScreen
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
@@ -69,6 +71,7 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  * @param savedGroups the same, for the group sheet the saved-rolls list and
  *   the editor both open.
  * @param collectionImport the same, for the screen that takes a collection in.
+ * @param history the same, for the list of past rolls.
  * @param navController taken rather than only made, so a test can open a
  *   screen the way a control would rather than by pressing its way there.
  */
@@ -82,6 +85,7 @@ fun DInfinityApp(
   savedRollEditor: ((String?) -> EditorPresenter)? = null,
   savedGroups: (() -> GroupPresenter)? = null,
   collectionImport: (() -> ImportPresenter)? = null,
+  history: (() -> HistoryPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -127,6 +131,12 @@ fun DInfinityApp(
 
           Destination.CollectionImport if collectionImport != null ->
             Import(collectionImport, entry, navController)
+
+          Destination.History if history != null ->
+            HistoryScreen(
+              presenter = remember(entry) { history() },
+              menu = { MenuTo(navController) },
+            )
 
           Destination.Settings ->
             SettingsScreen(
