@@ -109,6 +109,37 @@ Every die is a **convex** rigid body:
   the device still agrees with it about what the roll was. Any diff is a bug —
   re-recording is deliberate and reviewed (`docs/build-setup.md`).
 
+### The simulation clock
+
+A roll is a loop over fixed steps, and the only question is who turns it. That
+is the whole difference between a roll on screen and a roll in power-saving
+mode; there is no other one.
+
+- **A frame time never reaches the solver.** `FrameClock` accumulates the time
+  a frame actually took, cuts it into whole 1/120 s steps and carries the
+  remainder to the next frame, where it becomes the interpolation a renderer
+  blends the last two states with. The world is advanced by a fixed step or it
+  is not advanced.
+- **A frame that ran long is not paid in full.** At most four steps are taken
+  for one frame and the time behind the rest is dropped with them. Carrying it
+  would mean the next frame owed more than this one did and the one after that
+  more again — the spiral where a phone that fell behind once never catches up.
+  Dropping it costs nothing but wall-clock time: the roll takes the same steps
+  in the same order and comes to the same faces, it simply arrives there later.
+  A number here is a smoothness problem, and Step 5.7 is where it stops being
+  acceptable (`docs/TODO.md`).
+- **A re-throw takes no simulated time.** Rung 3 picks a die up and puts it
+  back at the spawn point between one step and the next, so there is nothing to
+  interpolate across and the renderer is told so: the die is drawn at its new
+  place, not sliding smoothly back through the air towards it. An invisible
+  hand with an animation on it is still an invisible hand.
+- **Watching is passive, and the type says so.** A roll in progress hands the
+  renderer a frame and takes nothing back. It cannot be stepped, reached into
+  or asked for another go from the far side of `Renderer`, so turning the
+  renderer off cannot change what a roll comes to — which is what makes
+  power-saving mode the same roll rather than a second implementation
+  (`docs/architecture.md`, decision 48).
+
 ## Starting a roll
 
 Two ways to start:
@@ -279,10 +310,27 @@ all, and **zero** corrections applied after rest.
   rounded corners are drawn as six segments to the quarter, which is under a
   pixel of a 12 mm arc at any size this is drawn at.
 - The renderer draws through a `Stage` interface. `FilamentStage` is the one
-  file in the module that talks to Filament, and the one excluded from the
-  coverage figure; everything that *decides* what a roll looks like sits on
-  the near side of it and is tested on a JVM
+  file in the module that talks to Filament, and everything that *decides*
+  what a roll looks like sits on the near side of it and is tested on a JVM
   (`docs/architecture.md`, decision 47).
+- **The surface comes and goes; the roll does not.** Filament fixes its swap
+  chain and viewport when a stage is made, so a resize, a rotation or the app
+  coming back from the background is a *new* stage. A roll being drawn on the
+  old one is still going, and restarting it to get a picture back would be a
+  different roll wearing the same seed's name — with the player watching the
+  dice they were already watching begin again. So the picture is rebuilt
+  instead: `TrayRenderer` remembers the throw, the tray and the last frame, and
+  replays them onto the new stage. With no stage at all it draws nothing, which
+  is the right thing to be while the app is in the background — the roll goes
+  on and the dice are where they should be the moment there is somewhere to put
+  them.
+- The thread that steps the roll is the thread that draws it, off its own
+  `Choreographer` (`docs/architecture.md`, decision 49). `TrayDriver` is that
+  thread and the surface it draws to; `TrayLoop` is what it does each frame,
+  and is tested on a JVM.
+- `FilamentStage` and `TrayDriver` are the two files excluded from the coverage
+  figure — a GPU context and a thread. Neither is excluded from static
+  analysis (`.claude/CLAUDE.md`).
 - The engine is created, the material compiled and the scene built in that one
   file.
   Everything it is *told* (where the camera stands, what shape a die is, how
@@ -357,6 +405,11 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
 - The simulation runs on the simulation thread as fast as possible, still at
   the same fixed timestep, still with the same seed, correction logic and
   settle rules. Typical roll finishes in well under 100 ms of wall time.
+- It is the *same* roll, not an equivalent one: the same loop over the same
+  world, with nobody calling the clock. The difference between the two modes
+  is one call — a frame callback asking for the time since the last frame, or
+  a worker thread asking for the lot — and no frames are shown, because there
+  is nobody to show them to (see "The simulation clock").
 - The UI shows the formula, a short progress indicator, then the result and
   breakdown as plain text/graphics.
 - Shake input still works: the shake session is recorded, then fed to the

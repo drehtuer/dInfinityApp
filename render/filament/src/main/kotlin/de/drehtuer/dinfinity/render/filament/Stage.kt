@@ -14,7 +14,7 @@ package de.drehtuer.dinfinity.render.filament
  * [FilamentStage] is the one implementation that ships; a test drives the same
  * renderer against a stage it can ask questions of.
  */
-interface Stage {
+interface Stage : AutoCloseable {
   /** The viewport, in pixels. The camera frames for its shape. */
   val width: Int
 
@@ -51,6 +51,16 @@ interface Stage {
 
   /** Throws away everything one roll put in the scene, and nothing else. */
   fun clear()
+
+  /**
+   * Gives up the engine, the surface and everything on it.
+   *
+   * Part of the interface rather than of the one implementation that needs it,
+   * because whoever holds a stage is the one who has to let it go: a surface
+   * is withdrawn while a roll is still running, and the code that notices has
+   * no business knowing whether a GPU was involved.
+   */
+  override fun close()
 
   companion object {
     /** What [add] returns for a mesh with nothing in it. */

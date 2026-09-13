@@ -43,49 +43,93 @@ class RollLoop(
   private var rethrows = 0
   private var postRestCorrections = 0
 
+  private var states: List<DieState> = if (diceCount == 0) emptyList() else world.readStates()
+  private var result: SimulationOutcome? = null
+
+  /**
+   * The dice as of the last step taken, in throw order.
+   *
+   * Read-only, and the only thing the loop lets out while a roll is in
+   * progress. A renderer is shown these and can do nothing with them but draw
+   * them (`docs/physics-and-rendering.md`).
+   */
+  val dice: List<DieState> get() = states
+
+  /** How many fixed steps the roll has taken so far. */
+  val stepsTaken: Int get() = tracker.stepsTaken
+
+  /** What the throw came to, once [advance] has said there is nothing left. */
+  fun outcome(): SimulationOutcome = requireNotNull(result) { "the roll has not finished yet" }
+
   /** Runs the throw to its end and reports what the dice did. */
   fun run(): SimulationOutcome {
-    if (diceCount == 0) return SimulationOutcome(faces = emptyMap())
-
-    var states = settle()
-    // A die that came to rest cocked or on top of another is thrown again —
-    // visibly, one die, while the others stay where they are — and then the
-    // roll has to settle once more. Re-throws come out of the same step budget
-    // as the rest of the roll: the 12-second cap is a cap on the throw, not on
-    // each attempt at it.
-    while (!tracker.capReached() && rethrowCocked(states)) {
-      states = settle()
+    @Suppress("ControlFlowWithEmptyBody")
+    while (advance()) {
+      // Every step is the same step; there is nothing to do between them.
     }
-
-    return SimulationOutcome(
-      faces = readFaces(states),
-      steps = tracker.stepsTaken,
-      corrections = corrections,
-      rethrows = rethrows,
-      // Per die, not per way of failing: a die that was still moving when the
-      // cap fired *and* was cocked when it was read is one die the simulation
-      // had to finish for, not two.
-      forcedSettles = forced.count { it },
-      postRestCorrections = postRestCorrections,
-    )
+    return outcome()
   }
 
-  /** Steps until every die is at rest or the cap fires. */
-  private fun settle(): List<DieState> {
-    var states = world.readStates()
-    while (!tracker.finished()) {
-      val step = tracker.stepsTaken
-      shake.advance(step)
-      world.setGravity(shake.gravity)
-      world.step(SettleRule.TIMESTEP_SECONDS)
+  /**
+   * Moves the roll on by the smallest amount it moves by, and says whether
+   * there is anything left to do.
+   *
+   * Usually that is one fixed step. Once every die is at rest it is instead
+   * the end of a settle phase, where a die that finished cocked or stacked is
+   * thrown again (rung 3) and the roll goes round once more — which takes no
+   * simulated time, so [stepsTaken] does not move and a caller drawing the
+   * result can tell the two apart.
+   *
+   * Splitting the roll this way is what lets it be stepped from a frame clock
+   * ([de.drehtuer.dinfinity.simulation.api.FrameClock]) without changing it:
+   * the steps, their order and everything decided between them are the same
+   * whether a caller asks for them one at a time or all at once, which is the
+   * whole of why power-saving mode is the same roll (`docs/architecture.md`,
+   * goal 1).
+   */
+  fun advance(): Boolean {
+    if (result != null) return false
+    if (diceCount == 0 || tracker.finished()) return closeOutOrRethrow()
 
+    val step = tracker.stepsTaken
+    shake.advance(step)
+    world.setGravity(shake.gravity)
+    world.step(SettleRule.TIMESTEP_SECONDS)
+
+    states = world.readStates()
+    tracker.step(states.map(DieState::motion))
+    correct(states, step)
+    return true
+  }
+
+  /**
+   * The end of a settle phase: either the roll is over, or a die has to be
+   * thrown again and there is another phase to come.
+   *
+   * Re-throws come out of the same step budget as the rest of the roll — the
+   * 12-second cap is a cap on the throw, not on each attempt at it.
+   */
+  private fun closeOutOrRethrow(): Boolean {
+    if (tracker.capReached()) tracker.stillMoving().forEach { forced[it] = true }
+
+    if (!tracker.capReached() && rethrowCocked(states)) {
       states = world.readStates()
-      tracker.step(states.map(DieState::motion))
-      correct(states, step)
+      return true
     }
 
-    if (tracker.capReached()) tracker.stillMoving().forEach { forced[it] = true }
-    return states
+    result =
+      SimulationOutcome(
+        faces = readFaces(states),
+        steps = tracker.stepsTaken,
+        corrections = corrections,
+        rethrows = rethrows,
+        // Per die, not per way of failing: a die that was still moving when
+        // the cap fired *and* was cocked when it was read is one die the
+        // simulation had to finish for, not two.
+        forcedSettles = forced.count { it },
+        postRestCorrections = postRestCorrections,
+      )
+    return false
   }
 
   /**

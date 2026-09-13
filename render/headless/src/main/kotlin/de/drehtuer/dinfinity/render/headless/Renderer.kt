@@ -105,3 +105,28 @@ data class BodyTransform(
   val position: Vector3,
   val orientation: Quaternion,
 )
+
+/**
+ * A roll in progress, as the thing drawing it sees one.
+ *
+ * The simulation knows what a roll is; a tray on a screen only needs to know
+ * that time has passed and that the roll is or is not over. This is that much
+ * of it, and no more — which is what lets `render/filament` drive a roll
+ * without depending on a physics engine, and lets a test drive one without
+ * having one (`docs/architecture.md`, decision 48).
+ *
+ * Note what is still missing: there is nothing here that reaches a die, asks
+ * for a re-throw or decides a face. Drawing a roll cannot change it, at this
+ * level for the same reason as at every other one.
+ */
+interface WatchedRoll : AutoCloseable {
+  /** True until the last die has come to rest. */
+  val running: Boolean
+
+  /**
+   * Moves the roll on by however much [elapsedSeconds] is worth and hands back
+   * where the dice are. The renderer watching has already been shown the same
+   * frame.
+   */
+  fun advance(elapsedSeconds: Double): RenderFrame
+}

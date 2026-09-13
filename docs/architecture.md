@@ -52,8 +52,8 @@ dicesets/
   install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage
   builtin/           The bundled standard set and default tables as a normal package (eats its own dog food)
 simulation/
-  api/               DiceSimulator interface, table geometry + capacity check, settle/face-read logic
-  jolt/              Jolt JNI bridge (C++)
+  api/               DiceSimulator interface, table geometry + capacity check, settle/face-read logic, the frame clock
+  jolt/              Jolt JNI bridge (C++), the roll loop and the roll in progress
 render/
   filament/          Scene setup, materials, camera, die meshes, tray
   headless/          The Renderer contract, and the renderer that draws nothing (power-saving mode)
@@ -112,17 +112,19 @@ flowchart TD
 The `DiceSimulator` runs at a fixed timestep. In normal mode it is stepped in
 lockstep with the frame clock and the renderer interpolates. In power-saving
 mode it is stepped as fast as the CPU allows on a background thread and only
-the outcome is delivered. Same code path, same result for the same seed.
+the outcome is delivered. Same code path, same result for the same seed — and
+"same code path" is literal: both are a `LiveRoll`, and the difference is who
+calls it (decision 48).
 
 ## Threading
 
 - **Main thread:** Compose UI only.
-- **Simulation thread:** owns the physics world. Steps at 120 Hz fixed
-  timestep (see physics doc). Publishes transforms via a lock-free
-  double-buffer.
-- **Render thread:** Filament's own thread; reads the latest transform buffer.
+- **Roll thread:** owns the physics world *and* the Filament engine. Steps at
+  the 120 Hz fixed timestep, off its own `Choreographer`, and draws each frame
+  where it stands (`render/filament`'s `TrayDriver`). One thread rather than
+  two, which is a change from the original design (decision 49).
 - **Sensor thread:** `SensorManager` callbacks are batched and forwarded to the
-  simulation thread as impulse events.
+  roll thread as impulse events.
 - **IO dispatcher:** database, dice set installation, texture decoding.
 
 ## Storage layout
@@ -196,3 +198,5 @@ kept (they are keyed by set id and die id, not by file path).
 | 45 | A die's mesh is grouped onto `simulation/api`'s own face directions, and lives beside the shape catalogue's atlas layout in `core/model` | The mesh is the third description of a solid, after the hull the solver collides and the directions the reader reads, and decision 35 already says all three come from one construction. This is that rule carried out: a face of the mesh is not *matched* to a catalogue face afterwards, it is built by asking which corners lie on that face's plane, so face *i* of the picture is face *i* of the roll by construction. A die whose printed face and scored face disagree looks exactly like the physics cheating, and it is the one accusation this app cannot answer. The atlas grid moved out of `dicesets/format` for the same reason: both the validator that checks an author's image and the renderer that samples it have to mean the same grid, and a renderer that depended on a package validator to find out would be the wrong way round |
 | 46 | Filament's materials are compiled on the device with `filamat-android`, not by `matc` at build time | Filament ships no default material: every surface needs one compiled from `.mat` source, and the two ways to get there are a host tool or the runtime compiler. `matc` would mean the devcontainer image and the CI action both gaining another pinned download, and the app build depending on a host binary — for a project whose whole build story is "it works in the container", that is a real cost. `filamat-android` is one dependency line, supports Vulkan as well as OpenGL ES and optimises what it compiles. It is paid for in APK size, because it bundles a shader compiler, and in some work at launch. If either turns out to matter on the Pixel 10a, the material source does not change — only who compiles it. It also leaves the door open to a dice set bringing its own material rather than only its own parameters, which `matc` at build time would have closed for good — but that door stays shut in v1, because a shader is code and `docs/dice-sets.md` says the app never runs anything from a package (`docs/TODO.md`, After v1) |
 | 47 | `render/filament` draws through a `Stage` interface, and one file implements it | The same line decision 40 draws through the physics, for the same reason and with the same shape. Which meshes a throw needs, how big each die is at the capacity rule's scale, which numbers its material takes, when the camera stops framing the tray and starts framing the dice — all judgement, and none of it physics or GPU. Behind the seam a JVM test can say the dice were the right size, that the camera moved when they settled and that a second roll did not land on top of the first; in front of it a device can only say a frame was drawn. `FilamentStage` is the one file that holds a context, and the one file excluded from the coverage figure |
+| 48 | A roll in progress is a `LiveRoll`: the loop steps one step at a time, and a `FrameClock` decides when. Power-saving mode is the same object with nobody calling the clock | The loop used to run to completion in one call, which meant a rendered roll could only be a second implementation of it — and two implementations of "the physics result *is* the roll" is one too many (goal 1). Splitting the loop at the step it was already taking costs nothing and buys the claim outright: normal mode asks for the time since the last frame, power-saving asks for the lot, and underneath it is one loop over one world taking the same steps in the same order. The clock is the other half. Handing a frame time to a solver would make the roll depend on the panel, the thermal state and whether the app was backgrounded, so the frame time stops at the clock: it is cut into whole fixed steps and the remainder becomes the moment a renderer interpolates at. That is also why a slow frame drops simulated *time* and never a step — the roll is unchanged, it simply arrives later. The dependency runs `simulation/jolt` → `render/headless`, the direction the data-flow diagram already showed: a renderer is handed frames and has no way back |
+| 49 | The physics and the Filament engine share one thread, driven by that thread's own `Choreographer` | The design started with a simulation thread publishing transforms to a render thread through a lock-free double-buffer. Written down, the render side turns out to have exactly one thing it can do with a transform, which is draw it — so the buffer would be eighty entries copied across a boundary neither side wanted, and a class of bug (torn reads, a frame drawn from two different steps, a stage closed while the other thread is mid-draw) bought in exchange for overlapping a copy with a draw. Filament also insists every engine call comes from the thread that made the engine, and the physics world is single-threaded for determinism, so both halves already wanted one owner each; giving them the same owner removes the hand-off rather than synchronising it. The thread is still not the main one — eighty convex bodies at 120 Hz does not belong where the UI is drawn. What it costs is that a long physics step delays that frame, which is the same trade the frame clock's four-step catch-up cap already makes visible |

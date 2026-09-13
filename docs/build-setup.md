@@ -376,8 +376,25 @@ it. That last one is the cheapest thing that notices a scene which builds,
 draws, reports no error and shows nothing: a camera pointing the wrong way, a
 mesh wound inside out, a material that compiled to black.
 
-What it cannot say is whether the picture is any *good*. Nothing automated can.
-That is Step 5.6, and it needs a screen and a person.
+The other half of that suite is the tray on a real thread. It asks whether a
+background thread gets vsync callbacks at all, whether Filament accepts a
+`Surface` belonging to something else, whether a whole roll is drawn *frame by
+frame* rather than in one callback, whether a resize replaces the engine
+without stopping the roll, and whether a surface withdrawn mid-roll leaves
+nothing holding it — the one that crashes if it is got wrong, because a
+`Surface` may not be touched once the callback that withdrew it has returned.
+The surface is an `ImageReader`'s rather than a `SurfaceView`'s: a
+`SurfaceView` needs a window and a window needs an activity, and from
+Filament's side a surface is a surface. What it buys is the last assertion —
+a frame can be taken off the other end, which is as close as an automated test
+gets to "it appeared".
+
+Both tiers pass that, including the frame arriving, so the emulator's
+software backend *can* deliver to a real surface. Its limitation below is
+specific to reading a headless swap chain back.
+
+What none of it can say is whether the picture is any *good*. Nothing automated
+can. That is Step 5.6, and it needs a screen and a person.
 
 One wrinkle is worth knowing rather than rediscovering. The frame is read back
 with Filament's **post-processing turned off**, and only there. Filament renders

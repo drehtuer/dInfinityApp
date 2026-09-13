@@ -29,7 +29,7 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] Draw the renderer into a real `SurfaceView` and drive it from the simulation clock. The engine, the material, the lights, the meshes, the camera and the blend between simulation states are all built and run on both devices; what is left needs a screen, and arrives with the roll screen (4.1)
+- [ ] Put the tray on screen: a Compose `AndroidExternalSurface` handing its surface to `TrayDriver`. Everything under it is built and runs on both devices — the engine, the material, the lights, the meshes, the camera, the blend between simulation states, the roll stepped from a frame clock (`LiveRoll`) and the thread that draws it frame by frame onto a real surface (`TrayDriver`). What is left is the composable, and it arrives with the roll screen (4.1)
 - [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* shake input on a real phone — that the thresholds match a hand shaking dice rather than a hand carrying a phone, and that a roll driven by a recorded session replays to itself on hardware (`input/shake`)
@@ -65,7 +65,13 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 `1z`. Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md`.
 
-- [ ] Tray view bound to the simulation, stack layout (`1b`), table look applied
+The state behind the screen is built: `RollMachine` turns a typed formula into
+a throw and a throw's faces into a result, refuses what the table cannot hold
+before a body exists, and throws an exploding die again *through the
+simulator*. What is left below is the screen itself.
+
+- [ ] Tray view bound to the simulation, stack layout (`1b`), table look applied — a Compose `AndroidExternalSurface` handing its surface to `TrayDriver`
+- [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
 - [ ] Dice picker row (`1h`) — tap adds, long-press removes, count badges; set dropdown (`4a`)
 - [ ] Formula display and inline editor (`2a`) with live validation, error squiggle over the offending range (`6f`, `9c`), rolling blocked while invalid
 - [ ] Roll by tap; shake to roll wired to `input/shake`

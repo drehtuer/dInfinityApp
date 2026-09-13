@@ -1,5 +1,7 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
+import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
+import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -26,6 +28,27 @@ class JoltDiceSimulator(
 ) : DiceSimulator {
   override fun run(spec: ThrowSpec): SimulationOutcome {
     if (spec.dice.isEmpty()) return SimulationOutcome(faces = emptyMap())
+    // Power-saving mode is not a second implementation, and this line is why:
+    // it is the same roll the screen would have watched, stepped by nobody
+    // (`docs/physics-and-rendering.md`, "Power-saving mode").
+    return start(spec).use(LiveRoll::runToEnd)
+  }
+
+  /**
+   * Opens the world, spawns the dice and hands back the roll for a caller to
+   * step — the roll screen's way in (`docs/TODO.md`, Step 4.1).
+   *
+   * The caller owns it and must close it: a [LiveRoll] holds a physics world,
+   * and a world that is never closed is native memory that is never freed.
+   *
+   * @param renderer what watches the throw. The default watches nothing, which
+   *   is what [run] uses.
+   */
+  fun start(
+    spec: ThrowSpec,
+    renderer: Renderer = HeadlessRenderer(),
+  ): LiveRoll {
+    require(spec.dice.isNotEmpty()) { "a throw of no dice has nothing to simulate" }
 
     // There is no fallback and there deliberately is not one: the physics
     // result *is* the roll, so a bridge that will not open has to stop the roll
@@ -34,7 +57,11 @@ class JoltDiceSimulator(
     // under `dinfinity.jolt`.
     val world = worlds.open(spec) ?: error("the physics bridge would not open (libdinfinity_jolt)")
 
-    return world.use {
+    // Everything from here to the `LiveRoll` is between an open world and a
+    // caller who could close it, so a hull the shape catalogue refuses or a
+    // spawn that will not fit has to take the world down with it. A native
+    // world nobody holds is native memory nobody frees.
+    return runCatching {
       val layout = SpawnLayout(spec.geometry, largestRadiusMm(spec), spec.seed)
       spec.dice.forEachIndexed { index, instance ->
         world.addDie(
@@ -44,7 +71,10 @@ class JoltDiceSimulator(
         )
       }
       world.finish()
-      RollLoop(spec, world, layout, ShakeDriver(spec.shake)).run()
+      LiveRoll(spec, world, RollLoop(spec, world, layout, ShakeDriver(spec.shake)), renderer)
+    }.getOrElse { failure ->
+      world.close()
+      throw failure
     }
   }
 }

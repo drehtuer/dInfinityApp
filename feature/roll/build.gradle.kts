@@ -10,4 +10,7 @@ dependencies {
   api(project(":core:notation"))
   api(project(":simulation:api"))
   api(project(":data"))
+
+  testImplementation(project(":test-fixtures"))
+  testImplementation(project(":dicesets:builtin"))
 }
