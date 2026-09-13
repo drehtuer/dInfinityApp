@@ -1,9 +1,11 @@
 package de.drehtuer.dinfinity.render.filament
 
+import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
 
 /**
  * What happens on the tray, frame by frame: which stage is being drawn to,
@@ -34,12 +36,19 @@ class TrayLoop : AutoCloseable {
   private var roll: WatchedRoll? = null
   private var settling: ((SimulationOutcome) -> Unit)? = null
   private var lastFrameNanos: Long? = null
+  private var owed = false
 
   /**
-   * True while there is a roll to advance and somewhere to draw it — which is
+   * True while there is something to draw and somewhere to draw it — which is
    * exactly when it is worth asking for another frame.
+   *
+   * Two things count as something to draw: a roll, which wants every frame it
+   * can get, and a still picture that has not landed yet. The second is why
+   * this is not simply "is there a roll": an empty table is worth one frame,
+   * but Filament may decline the one it is offered, so the asking has to go on
+   * until a frame actually lands.
    */
-  val wantsFrames: Boolean get() = roll != null && stage != null
+  val wantsFrames: Boolean get() = stage != null && (roll != null || owed)
 
   /** True while a roll is in progress, watched or not. */
   val rolling: Boolean get() = roll != null
@@ -52,14 +61,53 @@ class TrayLoop : AutoCloseable {
    * so a new size means a new stage. The roll does not notice.
    */
   fun stage(stage: Stage) {
-    closeStage()
+    surfaceLost()
     this.stage = stage
     renderer.stage(stage)
+    // A new surface has never been drawn to. Whatever is being shown — a table
+    // with nothing on it, or a roll that has already come to rest — owes it a
+    // frame, because neither of those will produce one on its own.
+    owed = true
   }
 
-  /** The surface is gone. The roll, if there is one, carries on unwatched. */
+  /**
+   * There is a table, and nothing has been thrown onto it yet.
+   *
+   * Told when the screen opens, before any roll, so that what a player sees on
+   * arrival is a table waiting rather than a black rectangle
+   * (`docs/TODO.md`, Step 4.1). Remembered, so a surface that arrives
+   * afterwards gets it too.
+   */
+  fun table(
+    geometry: TableGeometry,
+    look: TableLook,
+  ) {
+    renderer.table(geometry, look)
+    owed = true
+  }
+
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * Only the camera moves, and nothing about the roll does. Owed a frame like
+   * any other still picture: between throws nothing else would produce one, so
+   * a pinch would otherwise not appear until something else happened to draw.
+   */
+  fun look(view: TrayView) {
+    renderer.look(view)
+    owed = true
+  }
+
+  /**
+   * The surface is gone. The roll, if there is one, carries on unwatched.
+   *
+   * Also how a surface is let go of on the way to a new one, and on the way
+   * out: there is only one way to stop drawing to a surface, and this is it.
+   */
   fun surfaceLost() {
-    closeStage()
+    renderer.stage(null)
+    stage?.close()
+    stage = null
   }
 
   /**
@@ -89,10 +137,17 @@ class TrayLoop : AutoCloseable {
     roll?.shake(sample)
   }
 
-  /** Takes whatever is on the tray off it. */
+  /**
+   * Takes whatever is on the tray off it.
+   *
+   * The table stays. What is cleared is the throw, and what is left is the
+   * empty table it was thrown onto — which has to be drawn, because nothing
+   * else is going to.
+   */
   fun clear() {
     endRoll()
     renderer.end()
+    owed = true
   }
 
   /**
@@ -104,7 +159,17 @@ class TrayLoop : AutoCloseable {
    * (`.claude/CLAUDE.md`).
    */
   fun frame(nanos: Long): Boolean {
-    val live = roll ?: return false
+    val live = roll
+    if (live == null) {
+      // Nothing is moving, but something may not have been drawn yet: the
+      // table before the first throw, or a landed roll on a surface that has
+      // just arrived. One frame settles it — and only a frame that actually
+      // landed does, because a still picture has nothing coming after it to
+      // cover for a skip.
+      if (owed && renderer.redraw()) owed = false
+      return wantsFrames
+    }
+
     val previous = lastFrameNanos
     lastFrameNanos = nanos
 
@@ -114,13 +179,21 @@ class TrayLoop : AutoCloseable {
     val elapsed = if (previous == null) 0.0 else ((nanos - previous).coerceAtLeast(0)) / NANOS_PER_SECOND
     live.advance(elapsed)
 
-    if (live.running) return wantsFrames
+    // A roll draws every frame of its own accord, so nothing is owed while one
+    // is running.
+    owed = false
 
-    // Read before closing: a roll that has been given up holds nothing.
-    val reached = live.outcome
-    val report = settling
-    endRoll()
-    reached?.let { report?.invoke(it) }
+    if (!live.running) {
+      // Read before closing: a roll that has been given up holds nothing.
+      val reached = live.outcome
+      val report = settling
+      endRoll()
+      // The last frame of a roll is the picture that stays on screen, and the
+      // one frame with nothing after it to cover for a skip. Owed until it
+      // lands, like any other still picture.
+      owed = true
+      reached?.let { report?.invoke(it) }
+    }
     return wantsFrames
   }
 
@@ -130,7 +203,7 @@ class TrayLoop : AutoCloseable {
     // screen for as long as there is a screen, and only giving the tray up
     // takes it away.
     renderer.end()
-    closeStage()
+    surfaceLost()
   }
 
   private fun endRoll() {
@@ -138,12 +211,6 @@ class TrayLoop : AutoCloseable {
     roll = null
     settling = null
     lastFrameNanos = null
-  }
-
-  private fun closeStage() {
-    renderer.stage(null)
-    stage?.close()
-    stage = null
   }
 
   private companion object {

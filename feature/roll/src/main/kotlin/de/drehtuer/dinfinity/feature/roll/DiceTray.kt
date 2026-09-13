@@ -1,11 +1,15 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import androidx.compose.foundation.AndroidExternalSurface
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import de.drehtuer.dinfinity.render.filament.Tray
+import de.drehtuer.dinfinity.render.filament.TrayView
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
 
 /**
  * The tray, drawn by the roll thread onto a surface of its own
@@ -27,9 +31,10 @@ import de.drehtuer.dinfinity.render.filament.Tray
 @Composable
 fun DiceTray(
   driver: Tray,
+  geometry: TableGeometry,
   modifier: Modifier = Modifier,
 ) {
-  AndroidExternalSurface(modifier = modifier.testTag(RollTestTags.TRAY)) {
+  AndroidExternalSurface(modifier = modifier.testTag(RollTestTags.TRAY).lookAround(driver, geometry)) {
     onSurface { surface, width, height ->
       driver.surfaceAvailable(surface, width, height)
 
@@ -55,3 +60,42 @@ fun DiceTray(
     onDispose { driver.close() }
   }
 }
+
+/**
+ * Pinch to look closer, drag to look elsewhere (`docs/TODO.md`, Step 4.1).
+ *
+ * The camera frames the whole tray and never moves off it on its own, so this
+ * is the only thing that moves it. Where the view may go is [TrayView]'s to
+ * say — it keeps the camera on the table — and all that happens here is
+ * turning fingers into a ratio and two fractions of the screen.
+ *
+ * Fractions rather than pixels because the tray is measured in millimetres and
+ * the screen in neither: a drag of half the width should move the view half a
+ * screen's worth of table, whatever the phone's pixel density. Dragging *up*
+ * the screen looks further up the tray, which is `+x` (`docs/tables.md`), and
+ * the sign is flipped for each because dragging content moves it with the
+ * finger while the camera goes the other way.
+ *
+ * One finger is left alone. It is reserved for picking a die up, and a tap on
+ * the tray deliberately does not roll (`docs/physics-and-rendering.md`).
+ */
+private fun Modifier.lookAround(
+  driver: Tray,
+  geometry: TableGeometry,
+): Modifier =
+  this.pointerInput(driver, geometry) {
+    var view = TrayView.Whole
+    detectTransformGestures(panZoomLock = true) { _, pan, zoom, _ ->
+      val width = size.width.toFloat()
+      val height = size.height.toFloat()
+      if (width <= 0f || height <= 0f) return@detectTransformGestures
+      view =
+        view.movedBy(
+          by = zoom.toDouble(),
+          alongFraction = -(pan.y / height).toDouble(),
+          acrossFraction = -(pan.x / width).toDouble(),
+          geometry = geometry,
+        )
+      driver.look(view)
+    }
+  }

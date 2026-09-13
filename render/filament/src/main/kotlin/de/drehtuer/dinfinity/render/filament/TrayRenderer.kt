@@ -34,9 +34,11 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  */
 class TrayRenderer : Renderer {
   private var drawing: FilamentDiceRenderer? = null
+  private var canvas: Stage? = null
   private var scene: Scene? = null
   private var latest: RenderFrame? = null
   private var settled = false
+  private var view: TrayView = TrayView.Whole
 
   /** True while there is somewhere to draw. */
   val drawable: Boolean get() = drawing != null
@@ -50,17 +52,66 @@ class TrayRenderer : Renderer {
    * usually being torn down by the surface callback that called this.
    */
   fun stage(stage: Stage?) {
+    canvas = stage
     drawing = stage?.let(::FilamentDiceRenderer)
     val renderer = drawing ?: return
     val showing = scene ?: return
 
-    renderer.begin(showing.spec, showing.geometry, showing.look)
+    val spec = showing.spec
+    if (spec == null) {
+      // A table with nothing on it: there is no frame to replay, and the one
+      // draw it is worth is the caller's to ask for.
+      renderer.table(showing.geometry, showing.look, view)
+      return
+    }
+
+    renderer.begin(spec, showing.geometry, showing.look)
+    // Where the player was looking is part of the picture, and a rotation is
+    // not a reason to put them back at the whole tray. `begin` framed the whole
+    // table, so this is only worth saying when they had moved off it.
+    if (view != TrayView.Whole) renderer.look(view)
     latest?.let { frame ->
       // A roll that had already finished is put back finished, not re-run: the
       // camera belongs on the dice, where it was.
       if (settled) renderer.settled(frame) else renderer.show(frame)
     }
   }
+
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * Remembered like everything else here, so a surface arriving afterwards is
+   * aimed where the player left the camera rather than back at the whole tray.
+   */
+  fun look(view: TrayView) {
+    this.view = view
+    drawing?.look(view)
+  }
+
+  /**
+   * There is a table, and nothing has been thrown onto it yet.
+   *
+   * Told once when the screen opens, and again whenever the look changes. It
+   * is remembered like a throw is, so a surface that arrives later — or
+   * arrives again after a rotation — gets the table rather than nothing.
+   */
+  fun table(
+    geometry: TableGeometry,
+    look: TableLook,
+  ) {
+    scene = Scene(spec = null, geometry = geometry, look = look)
+    latest = null
+    settled = false
+    drawing?.table(geometry, look, view)
+  }
+
+  /**
+   * Draws the current scene again, and says whether a frame actually landed.
+   *
+   * For the pictures that do not move. False when there is nowhere to draw, so
+   * a caller that is asking until one lands stops asking when the surface goes.
+   */
+  fun redraw(): Boolean = canvas?.draw() ?: false
 
   override fun begin(
     spec: ThrowSpec,
@@ -70,6 +121,10 @@ class TrayRenderer : Renderer {
     scene = Scene(spec, geometry, look)
     latest = null
     settled = false
+    // A throw is watched from the whole table. The dice can land anywhere in
+    // it, and a camera left closed in on one corner would hide most of what
+    // was just rolled (`docs/physics-and-rendering.md`).
+    view = TrayView.Whole
     drawing?.begin(spec, geometry, look)
   }
 
@@ -84,16 +139,35 @@ class TrayRenderer : Renderer {
     drawing?.settled(frame)
   }
 
+  /**
+   * The roll is over and its dice are gone.
+   *
+   * What is left is the table they were thrown onto, not nothing: taking the
+   * dice away is not the same as taking the table away, and a player who puts
+   * a result away is still sitting in front of one (`docs/TODO.md`, Step 4.1).
+   * A renderer that was never told about a table has nothing to fall back to,
+   * and goes back to drawing nothing.
+   */
   override fun end() {
-    scene = null
     latest = null
     settled = false
-    drawing?.end()
+    val table = scene?.copy(spec = null)
+    scene = table
+    if (table == null) {
+      drawing?.end()
+      return
+    }
+    drawing?.table(table.geometry, table.look, view)
   }
 
-  /** What a new stage has to be told to catch up with the old one. */
+  /**
+   * What a new stage has to be told to catch up with the old one.
+   *
+   * A null [spec] is a table with nothing on it, which is a scene like any
+   * other: it has to be rebuilt on a new surface exactly as a throw does.
+   */
   private data class Scene(
-    val spec: ThrowSpec,
+    val spec: ThrowSpec?,
     val geometry: TableGeometry,
     val look: TableLook,
   )

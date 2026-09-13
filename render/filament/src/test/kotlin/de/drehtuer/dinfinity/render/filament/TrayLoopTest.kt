@@ -100,14 +100,78 @@ class TrayLoopTest {
     // The dice have stopped and nothing may touch them, so there is nothing
     // left to draw — and a frame callback that kept arriving would keep this
     // thread awake for as long as the screen was on.
+    //
+    // One frame after the last is not that callback: the roll's own final
+    // frame is the one that stays on screen and the one with nothing after it
+    // to cover for a skip, so it is asked for until it lands and then never
+    // again.
     val loop = TrayLoop()
     val roll = FakeRoll(steps = 2)
     loop.stage(FakeStage())
     loop.roll(roll.start())
 
     assertTrue(loop.frame(SOME_LATE_UPTIME))
-    assertFalse("the loop asked for another frame after the dice stopped", loop.frame(SOME_LATE_UPTIME + 1))
+    assertTrue("the last picture of the roll was never made sure of", loop.frame(SOME_LATE_UPTIME + 1))
+    assertFalse("the loop asked for another frame after the dice stopped", loop.frame(SOME_LATE_UPTIME + 2))
     assertFalse(loop.rolling)
+  }
+
+  @Test
+  fun `a table with nothing on it is drawn once, and then left alone`() {
+    // What a player sees before they have thrown anything. It does not move,
+    // so it is worth exactly one frame (`docs/TODO.md`, Step 4.1).
+    val stage = FakeStage()
+    val loop = TrayLoop()
+    loop.stage(stage)
+
+    loop.table(TableGeometry.referenceDevice(), TableLook(id = "plain", name = "Plain"))
+
+    assertTrue("the empty table was never drawn", loop.wantsFrames)
+    assertFalse("the table kept asking for frames", loop.frame(SOME_LATE_UPTIME))
+    assertEquals(1, stage.frames)
+    assertFalse(loop.rolling)
+  }
+
+  @Test
+  fun `a still picture is asked for again until a frame actually lands`() {
+    // Filament may decline the frame it is offered. A roll would simply draw
+    // the next one; a table that is not moving has no next one, so the debt
+    // stands until it is paid.
+    val stage = FakeStage()
+    stage.refuseFrames = true
+    val loop = TrayLoop()
+    loop.stage(stage)
+    loop.table(TableGeometry.referenceDevice(), TableLook(id = "plain", name = "Plain"))
+
+    assertTrue("a skipped frame settled the debt", loop.frame(SOME_LATE_UPTIME))
+    assertTrue(loop.frame(SOME_LATE_UPTIME + 1))
+
+    stage.refuseFrames = false
+    assertFalse("the frame that landed did not settle the debt", loop.frame(SOME_LATE_UPTIME + 2))
+  }
+
+  @Test
+  fun `a new surface is drawn to even when nothing is happening`() {
+    // Turning the phone between throws. Nothing is moving, so nothing would
+    // produce a frame on its own, and the new surface would stay black.
+    val loop = TrayLoop()
+    loop.table(TableGeometry.referenceDevice(), TableLook(id = "plain", name = "Plain"))
+
+    val stage = FakeStage()
+    loop.stage(stage)
+
+    assertTrue(loop.wantsFrames)
+    loop.frame(SOME_LATE_UPTIME)
+    assertEquals("the surface that arrived was never painted", 1, stage.frames)
+  }
+
+  @Test
+  fun `with nowhere to draw there is nothing to ask for`() {
+    val loop = TrayLoop()
+    loop.table(TableGeometry.referenceDevice(), TableLook(id = "plain", name = "Plain"))
+
+    assertFalse("a tray with no surface asked for a frame", loop.wantsFrames)
+    assertFalse(loop.frame(SOME_LATE_UPTIME))
   }
 
   @Test

@@ -54,7 +54,7 @@ fun RollScreen(
         .background(MaterialTheme.colorScheme.background)
         .testTag(RollTestTags.SCREEN),
   ) {
-    DiceTray(driver = presenter.tray, modifier = Modifier.fillMaxSize())
+    DiceTray(driver = presenter.tray, geometry = presenter.geometry, modifier = Modifier.fillMaxSize())
 
     Column(
       modifier =

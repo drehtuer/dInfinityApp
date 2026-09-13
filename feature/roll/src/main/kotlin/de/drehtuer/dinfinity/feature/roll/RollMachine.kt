@@ -39,8 +39,10 @@ import java.security.SecureRandom
  */
 class RollMachine(
   private val catalog: DiceCatalog,
-  private val geometry: TableGeometry,
-  private val table: TableLook,
+  /** The table every throw from here lands on, and the one the tray draws. */
+  val geometry: TableGeometry,
+  /** The look that table wears. The table picker changes it (Step 4.5). */
+  val table: TableLook,
   private val simulator: DiceSimulator,
   private val seeds: () -> Long = { SecureRandom().nextLong() },
   private val clock: () -> Long = System::currentTimeMillis,

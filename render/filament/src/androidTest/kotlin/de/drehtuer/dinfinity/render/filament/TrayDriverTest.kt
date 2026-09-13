@@ -96,6 +96,76 @@ class TrayDriverTest {
   }
 
   @Test
+  fun anEmptyTableReachesTheSurfaceWithNoRollAtAll() {
+    // The screen before anything has been thrown. Nothing is moving, so no
+    // roll is driving the frame clock — and a table that never reaches the
+    // surface is the black rectangle this exists to stop
+    // (`docs/TODO.md`, Step 4.1).
+    val reader = surfaceReader()
+    val arrived = CountDownLatch(1)
+    val listening = HandlerThread("empty-table-arriving").apply { start() }
+    reader.setOnImageAvailableListener({ arrived.countDown() }, Handler(listening.looper))
+
+    try {
+      TrayDriver().use { driver ->
+        driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
+        driver.table(geometry, look)
+
+        assertTrue(
+          "an empty table never reached the other end of the surface",
+          arrived.await(PATIENCE_SECONDS, TimeUnit.SECONDS),
+        )
+      }
+      assertNotNull(reader.acquireLatestImage())
+    } finally {
+      reader.close()
+      listening.quitSafely()
+    }
+  }
+
+  @Test
+  fun lookingCloserRedrawsWithNoRollToDriveTheClock() {
+    // A pinch between throws. Nothing is moving and no roll is asking for
+    // frames, so without the still-picture path the new camera would not
+    // appear until something else happened to draw (`docs/TODO.md`, Step 4.1).
+    val reader = surfaceReader()
+    val listening = HandlerThread("looking-around").apply { start() }
+    // Acquired as they arrive: the reader holds a fixed number of buffers, and
+    // one nobody takes is one the next frame cannot be written into.
+    var tabled = CountDownLatch(1)
+    reader.setOnImageAvailableListener({
+      it.acquireLatestImage()?.close()
+      tabled.countDown()
+    }, Handler(listening.looper))
+
+    try {
+      TrayDriver().use { driver ->
+        driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
+        driver.table(geometry, look)
+        assertTrue(
+          "the empty table never reached the surface",
+          tabled.await(PATIENCE_SECONDS, TimeUnit.SECONDS),
+        )
+
+        // Only now, so the pinch cannot be folded into the table's own frame:
+        // two asks before one vsync are one draw, which is right and would
+        // have made this test pass without proving anything.
+        val pinched = CountDownLatch(1)
+        tabled = pinched
+        driver.look(TrayView(zoom = 2.0))
+
+        assertTrue(
+          "a pinch with no roll running never reached the surface",
+          pinched.await(PATIENCE_SECONDS, TimeUnit.SECONDS),
+        )
+      }
+    } finally {
+      reader.close()
+      listening.quitSafely()
+    }
+  }
+
+  @Test
   fun aSurfaceTakenAwayMidRollLeavesNothingHoldingIt() {
     // The thing that crashes if it is got wrong: a `Surface` may not be
     // touched after the callback that withdrew it returns, so `surfaceLost`

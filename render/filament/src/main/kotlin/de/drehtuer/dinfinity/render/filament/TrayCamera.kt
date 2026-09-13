@@ -35,21 +35,33 @@ object TrayCamera {
   /** A little air around whatever is being framed, so nothing touches the edge. */
   const val MARGIN: Double = 1.06
 
-  /** The shot that holds the whole tray, for while the dice are still moving. */
+  /**
+   * The shot that holds the tray, or as much of it as [view] asks for.
+   *
+   * The default holds all of it, which is where every roll is watched from: a
+   * camera that closes in while the dice are moving takes the table away, and
+   * a player cannot then tell four dice from two. Looking closer is the
+   * player's to do, and [view] is them doing it
+   * (`docs/physics-and-rendering.md`).
+   */
   fun framingTheTray(
     geometry: TableGeometry,
     aspectRatio: Double,
-  ): CameraShot =
-    shotOn(
-      target = Vector3(0.0, 0.0, geometry.wallHeightMm / 2),
+    view: TrayView = TrayView.Whole,
+  ): CameraShot {
+    val held = view.within(geometry)
+    val middle = Vector3(held.panAlongMm, held.panAcrossMm, 0.0)
+    return shotOn(
+      target = middle + Vector3(0.0, 0.0, geometry.wallHeightMm / 2),
       framed =
         box(
-          middle = Vector3.Zero,
-          reach = Vector3(geometry.longSideMm / 2, geometry.shortSideMm / 2, 0.0),
+          middle = middle,
+          reach = Vector3(geometry.longSideMm / 2 / held.zoom, geometry.shortSideMm / 2 / held.zoom, 0.0),
           height = geometry.wallHeightMm,
         ),
       aspectRatio = aspectRatio,
     )
+  }
 
   /**
    * A camera aimed at [target], pulled back until every one of [framed] is

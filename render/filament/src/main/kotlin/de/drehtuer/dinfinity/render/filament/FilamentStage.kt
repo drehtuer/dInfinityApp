@@ -18,7 +18,6 @@ import com.google.android.filament.TextureSampler
 import com.google.android.filament.VertexBuffer
 import com.google.android.filament.View
 import com.google.android.filament.Viewport
-import com.google.android.filament.filamat.MaterialBuilder
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -38,6 +37,15 @@ import com.google.android.filament.Renderer as FilamentFrameRenderer
  * about, so everything made here is destroyed in [close] in the reverse order
  * it was made. A missed one is a leak the JVM cannot see.
  *
+ * **What is here is what a surface owns.** The swap chain is made from the
+ * surface and the viewport from its size, so both die with it. The engine, the
+ * compiled material and the blank texture do not: they are [FilamentEngine],
+ * they cost real time to make, and rebuilding them for every rotation is what
+ * used to leave the tray black for a moment (`docs/TODO.md`, Step 4.1). A
+ * stage given one shares it and leaves it alone; a stage given none makes one
+ * of its own and gives it back in [close], which is what a test that wants a
+ * stage and nothing else does.
+ *
  * Fifteen small methods rather than eleven larger ones is deliberate and is
  * why the class carries a suppression: this is the file that has to be read
  * against Filament's own documentation, and a method per thing Filament makes
@@ -53,6 +61,8 @@ import com.google.android.filament.Renderer as FilamentFrameRenderer
  *   for anything anybody looks at. Off only for reading a headless frame back
  *   on a software backend, where the post-processed result never arrives —
  *   see the device suite, which says why at more length.
+ * @param shared the engine and the material to draw with, or null to make a
+ *   private one that is destroyed with this stage.
  */
 @Suppress("TooManyFunctions")
 class FilamentStage(
@@ -61,9 +71,14 @@ class FilamentStage(
   surface: Any? = null,
   postProcessing: Boolean = true,
   private val atlases: (String) -> Texture? = { null },
+  shared: FilamentEngine? = null,
 ) : Stage,
   AutoCloseable {
-  private val engine: Engine = Engine.create()
+  /** Made here only when nobody handed one in, and then given back in [close]. */
+  private val own: FilamentEngine? = if (shared == null) FilamentEngine() else null
+
+  private val parts: FilamentEngine = shared ?: requireNotNull(own)
+  private val engine: Engine = parts.engine
   private val frames: FilamentFrameRenderer = engine.createRenderer()
   private val scene: Scene = engine.createScene()
   private val view: View = engine.createView()
@@ -81,19 +96,12 @@ class FilamentStage(
 
   private val camera: com.google.android.filament.Camera = engine.createCamera(cameraEntity)
 
-  private val material: Material = compileMaterial(engine)
+  private val material: Material get() = parts.material
 
-  /**
-   * A single white pixel, for every surface that has no atlas.
-   *
-   * Filament will not draw a material whose sampler is unbound, and the
-   * material has one because most dice do carry artwork. A die that does not
-   * is drawn through this, which multiplies its colour by one.
-   */
-  private val blank: Texture = whitePixel(engine)
+  /** The white pixel every surface with no atlas samples. Shared, like the material. */
+  private val blank: Texture get() = parts.blank
 
-  private val sampler =
-    TextureSampler(TextureSampler.MinFilter.LINEAR, TextureSampler.MagFilter.LINEAR, TextureSampler.WrapMode.REPEAT)
+  private val sampler: TextureSampler get() = parts.sampler
 
   /** The room the tray sits in. Built with the lights, given back with them. */
   private var ambient: IndirectLight? = null
@@ -247,12 +255,17 @@ class FilamentStage(
     indices.clear()
   }
 
+  /**
+   * Gives back everything this surface owned, and nothing it merely borrowed.
+   *
+   * The engine, the material and the blank texture belong to [FilamentEngine]
+   * and outlive any one surface — unless this stage made its own, in which case
+   * it is the one that has to give it back, and does so last of all.
+   */
   override fun close() {
     clear()
     ambient?.let(engine::destroyIndirectLight)
     ambient = null
-    engine.destroyTexture(blank)
-    engine.destroyMaterial(material)
     engine.destroyView(view)
     engine.destroyScene(scene)
     engine.destroyRenderer(frames)
@@ -260,7 +273,7 @@ class FilamentStage(
     engine.destroyEntity(cameraEntity)
     EntityManager.get().destroy(cameraEntity)
     engine.destroySwapChain(swapChain)
-    engine.destroy()
+    own?.close()
   }
 
   private fun addLight(
@@ -394,9 +407,6 @@ class FilamentStage(
     /** Neutral daylight, so a table look's own colour is the colour you see. */
     private const val DAYLIGHT_KELVIN = 6_500.0f
 
-    /** Every channel of the blank texture, which multiplies a colour by one. */
-    private const val OPAQUE_WHITE = 0xFF.toByte()
-
     /**
      * Down, and from over the player's shoulder — the direction a lamp is in
      * when somebody rolls dice on a table in front of them.
@@ -445,59 +455,5 @@ class FilamentStage(
         .irradiance(1, AMBIENT_SH)
         .intensity(AMBIENT_LUX)
         .build(engine)
-
-    private fun compileMaterial(engine: Engine): Material {
-      MaterialBuilder.init()
-      try {
-        val packet =
-          MaterialBuilder()
-            .name("dinfinity")
-            .material(DiceMaterial.SOURCE)
-            .shading(MaterialBuilder.Shading.LIT)
-            .blending(MaterialBuilder.BlendingMode.OPAQUE)
-            .require(MaterialBuilder.VertexAttribute.UV0)
-            .require(MaterialBuilder.VertexAttribute.TANGENTS)
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "baseColor")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughness")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "metallic")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")
-            .samplerParameter(
-              MaterialBuilder.SamplerType.SAMPLER_2D,
-              MaterialBuilder.SamplerFormat.FLOAT,
-              MaterialBuilder.ParameterPrecision.DEFAULT,
-              "atlas",
-            ).platform(MaterialBuilder.Platform.MOBILE)
-            // Every backend this app can meet: compiling on the device is only
-            // worth its size if it answers for the driver that is actually
-            // here (`docs/architecture.md`, decision 46).
-            .targetApi(MaterialBuilder.TargetApi.ALL)
-            .optimization(MaterialBuilder.Optimization.PERFORMANCE)
-            .build()
-        check(packet.isValid) { "the dice material did not compile on this device" }
-        return Material.Builder().payload(packet.buffer, packet.buffer.remaining()).build(engine)
-      } finally {
-        MaterialBuilder.shutdown()
-      }
-    }
-
-    private fun whitePixel(engine: Engine): Texture {
-      val texture =
-        Texture
-          .Builder()
-          .width(1)
-          .height(1)
-          .levels(1)
-          .format(Texture.InternalFormat.RGBA8)
-          .build(engine)
-      val pixel = ByteBuffer.allocateDirect(PIXEL_BYTES).order(ByteOrder.nativeOrder())
-      repeat(PIXEL_BYTES) { pixel.put(OPAQUE_WHITE) }
-      pixel.flip()
-      texture.setImage(
-        engine,
-        0,
-        Texture.PixelBufferDescriptor(pixel, Texture.Format.RGBA, Texture.Type.UBYTE),
-      )
-      return texture
-    }
   }
 }

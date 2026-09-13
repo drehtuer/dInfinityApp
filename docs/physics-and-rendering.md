@@ -348,6 +348,29 @@ all, and **zero** corrections applied after rest.
   file in the module that talks to Filament, and everything that *decides*
   what a roll looks like sits on the near side of it and is tested on a JVM
   (`docs/architecture.md`, decision 47).
+- **The camera frames the whole tray, and only the player moves it.** It never
+  closes in on its own, not even when the dice settle: a camera on the dice
+  takes the table away, and a player cannot then tell four dice from two.
+  Looking closer is theirs to do — **pinch to zoom, two fingers to pan** — and
+  what that produces is a `TrayView`, which cannot leave the table. At the
+  whole tray there is nowhere to pan to; every step closer earns exactly as
+  much room to move as it took away, so a fling cannot end up looking at the
+  void beside the tray. A new throw goes back to the whole table, because the
+  dice can land anywhere in it. A rotation does not: where the player was
+  looking is part of the picture that is rebuilt. One finger is left alone, for
+  picking a die up and for the tap that deliberately does not roll.
+- **The table is drawn before anything is thrown onto it, and after.** A tray
+  is a table, not a roll: the screen says *there is a table* as soon as it
+  opens, and the floor, the walls and the rim are built and drawn with nothing
+  standing on them. Putting a result away takes the dice off it and leaves the
+  table. Only giving the tray up entirely takes the table away too.
+- **A picture that is not moving still has to land.** A roll produces a frame
+  sixty times a second and a skipped one is covered by the next; an empty
+  table and a roll that has come to rest produce none at all, and there is no
+  next frame to cover for a skip. So a still picture is *owed* a frame — when
+  the table is named, when a surface arrives, and when the last die stops —
+  and is asked for again until Filament actually draws one. It is one frame
+  each time, not a loop: nothing is moving, so nothing more is worth drawing.
 - **The surface comes and goes; the roll does not.** Filament fixes its swap
   chain and viewport when a stage is made, so a resize, a rotation or the app
   coming back from the background is a *new* stage. A roll being drawn on the
@@ -355,7 +378,12 @@ all, and **zero** corrections applied after rest.
   different roll wearing the same seed's name — with the player watching the
   dice they were already watching begin again. So the picture is rebuilt
   instead: `TrayRenderer` remembers the throw, the tray and the last frame, and
-  replays them onto the new stage. With no stage at all it draws nothing, which
+  replays them onto the new stage. **The engine is not rebuilt with it.** The
+  material is compiled on the device for the driver that is actually there, and
+  that costs long enough that doing it again for every rotation was itself the
+  black tray: what a surface owns is its swap chain and its viewport, and
+  `FilamentEngine` keeps the rest across all of them. With no stage at all it
+  draws nothing, which
   is the right thing to be while the app is in the background — the roll goes
   on and the dice are where they should be the moment there is somewhere to put
   them.

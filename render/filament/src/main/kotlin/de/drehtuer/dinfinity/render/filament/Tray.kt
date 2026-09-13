@@ -1,10 +1,12 @@
 package de.drehtuer.dinfinity.render.filament
 
 import android.view.Surface
+import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
 
 /**
  * Somewhere to throw dice and watch them land.
@@ -52,12 +54,40 @@ interface Tray : AutoCloseable {
   )
 
   /**
+   * There is a table, and nothing has been thrown onto it yet.
+   *
+   * Said when the screen opens, and again whenever the look changes. Without
+   * it a tray has no scene until the first throw, and a player arriving at the
+   * screen is shown a black rectangle instead of a table waiting
+   * (`docs/TODO.md`, Step 4.1).
+   *
+   * It is remembered, so a surface that arrives afterwards — or arrives again
+   * after a rotation — is given the table too.
+   */
+  fun table(
+    geometry: TableGeometry,
+    look: TableLook,
+  )
+
+  /**
    * One more moment of the shake that is throwing the dice now.
    *
    * Arrives from wherever the sensors are read and is handed to the roll on
    * the thread the roll lives on. A sample with no roll to drive is dropped.
    */
   fun shake(sample: ShakeSample)
+
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * The one thing that moves the camera. It frames the whole tray otherwise
+   * and never moves off it on its own — not even when the dice settle — so
+   * looking closer is the player's to do (`docs/physics-and-rendering.md`).
+   *
+   * Nothing about the roll changes. A view that would leave the table is
+   * brought back to its edge rather than refused.
+   */
+  fun look(view: TrayView)
 
   /** Takes whatever is on the tray off it. */
   fun clear()

@@ -13,6 +13,7 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.render.filament.Tray
+import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
 import de.drehtuer.dinfinity.render.headless.RenderFrame
@@ -193,6 +194,12 @@ class RollScreenTest {
   private class DirectTray : Tray {
     val shaken = mutableListOf<ShakeSample>()
 
+    /** Every table this tray has been told about, in order. */
+    val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
+
+    /** Every view the player has asked for, in order. */
+    val looked = mutableListOf<TrayView>()
+
     override fun surfaceAvailable(
       surface: Surface,
       width: Int,
@@ -215,6 +222,17 @@ class RollScreenTest {
       shaken += sample
     }
 
+    override fun table(
+      geometry: TableGeometry,
+      look: TableLook,
+    ) {
+      tabled += geometry to look
+    }
+
+    override fun look(view: TrayView) {
+      looked += view
+    }
+
     override fun clear() = Unit
 
     override fun close() = Unit
@@ -223,6 +241,12 @@ class RollScreenTest {
   /** A tray that takes the throw and leaves the dice in the air. */
   private class PendingTray : Tray {
     val shaken = mutableListOf<ShakeSample>()
+
+    /** Every table this tray has been told about, in order. */
+    val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
+
+    /** Every view the player has asked for, in order. */
+    val looked = mutableListOf<TrayView>()
 
     override fun surfaceAvailable(
       surface: Surface,
@@ -241,6 +265,17 @@ class RollScreenTest {
 
     override fun shake(sample: ShakeSample) {
       shaken += sample
+    }
+
+    override fun table(
+      geometry: TableGeometry,
+      look: TableLook,
+    ) {
+      tabled += geometry to look
+    }
+
+    override fun look(view: TrayView) {
+      looked += view
     }
 
     override fun clear() = Unit

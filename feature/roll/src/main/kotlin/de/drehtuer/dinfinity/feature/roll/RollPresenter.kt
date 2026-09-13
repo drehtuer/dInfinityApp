@@ -9,6 +9,7 @@ import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
 
 /**
  * The roll screen's state, as Compose reads it.
@@ -41,6 +42,17 @@ class RollPresenter(
 
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
+
+  /** The table's shape, which the tray's gestures are measured against. */
+  val geometry: TableGeometry get() = machine.geometry
+
+  init {
+    // Before anything is thrown there is still a table, and it is what the
+    // screen opens on. Said here rather than at the first roll because a
+    // player arriving at the screen has not rolled yet, and a black rectangle
+    // is not what a dice tray looks like (`docs/TODO.md`, Step 4.1).
+    driver.table(machine.geometry, machine.table)
+  }
 
   /** The formula field changed. Re-validated on every keystroke. */
   fun type(typed: String) {
