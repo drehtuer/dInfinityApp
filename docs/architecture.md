@@ -195,12 +195,25 @@ file.
 
 | State | Total | Message | Sheet | Roll button | Formula field |
 |---|---|---|---|---|---|
-| `Empty` | — | — | — | disabled | live |
+| `Empty` | — | what to do next | — | disabled | live |
 | `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | disabled | live, in error |
 | `TooMany` | — | how many were asked for and how many fit | — | disabled | live, in error |
-| `Ready` | — | — | — | **enabled** | live |
+| `Ready` | — | that shaking also rolls | — | **enabled** | live |
 | `Rolling` | — | "Rolling…" | — | disabled | live |
 | `Settled` | the total | — | breakdown, and rounding if the formula divides | **enabled** (throws again) | live |
+
+Neither blank cell in the first two rows is an accident: a tray with nothing
+on it and a button that does nothing is a screen with no way in, and shaking —
+the one input nobody would guess at — has nowhere else to be announced.
+
+**Over all of it, once**, a new install shows the first-launch screen
+(`design/dInfinity.dc.html`, option 9a). It is not a state of `RollState`: the
+machine underneath is `Empty` like any other new screen, and the welcome is a
+sheet on top with two ways out, both of them forward. Its "roll a d20 now"
+types `1d20` into the field and asks for a roll — there is no demonstration
+path and no canned number. That it has been seen is remembered on disk, and
+also in the composition, so the screen changes when the button is pressed
+rather than when a write comes back.
 
 The picker row is not in that table because it is on screen, and live, in
 every state — for the same reason the formula field is, and in fact for
@@ -327,6 +340,7 @@ why the two are not built the same way (decision 49).
 |---|---|---|
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
 | the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
+| *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | a placeholder's **Settings →** | `navigate(Settings)` | which screen is on |
 
 The power-saving row is the one setting that does not take effect where it is

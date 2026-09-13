@@ -14,6 +14,16 @@ interface DiceCatalog {
   /** The set plain notation resolves against first (`docs/dice-notation.md`). */
   val defaultSetId: String
 
+  /**
+   * Every installed set, in the order they were installed.
+   *
+   * A list rather than a lookup because two screens want the whole of it: the
+   * first-launch screen counts it, and the dice-set browser lists it
+   * (`docs/TODO.md`, Steps 4.1 and 4.4). Resolving a formula still goes
+   * through [set], which is a lookup and stays one.
+   */
+  val installed: List<DiceSet>
+
   /** The installed set with this id, or `null` when nothing by that name is installed. */
   fun set(id: String): DiceSet?
 
@@ -35,6 +45,8 @@ interface DiceCatalog {
       val byId = sets.associateBy(DiceSet::id)
       return object : DiceCatalog {
         override val defaultSetId: String = defaultSetId
+
+        override val installed: List<DiceSet> = sets
 
         override fun set(id: String): DiceSet? = byId[id]
       }

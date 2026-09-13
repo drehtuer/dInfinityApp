@@ -14,6 +14,19 @@
     (`docs/dice-notation.md`).
   -->
   <string name="roll_formula_hint" tools:ignore="TypographyDashes">3d6 + 1d20 - 4</string>
+  <!-- First launch (design option 9a). %1$d is how many dice sets are installed. -->
+  <string name="roll_welcome_eyebrow">FIRST LAUNCH</string>
+  <string name="roll_welcome_title">Nothing to set up.</string>
+  <string name="roll_welcome_body">The dice are installed and the table is laid out. Shake the phone to roll, or press the button. Everything else — saved rolls, your own dice, statistics — waits in the menu until you want it.</string>
+  <plurals name="roll_welcome_sets">
+    <item quantity="one">%1$d dice set · 0 saved rolls</item>
+    <item quantity="other">%1$d dice sets · 0 saved rolls</item>
+  </plurals>
+  <string name="roll_welcome_roll_now">Roll a d20 now</string>
+  <string name="roll_welcome_dismiss">Just show me the tray</string>
+  <!-- The hint on an empty tray, and on one with a throw ready (design option 9a). -->
+  <string name="roll_hint_empty">Type a formula, or tap a die below.</string>
+  <string name="roll_hint_ready">Shake the phone, or press Roll.</string>
   <!-- Offered when a mistake has an obvious reading. %1$s is a formula. -->
   <string name="roll_formula_suggestion">Did you mean %1$s?</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->

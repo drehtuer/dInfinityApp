@@ -71,6 +71,17 @@ class DataStoreSettingsRepositoryTest {
     }
 
   @Test
+  fun `the first launch is remembered as having happened`() =
+    runTest {
+      val repository = DataStoreSettingsRepository(dataStore(this))
+      assertFalse("a new install had already been welcomed", repository.settings.first().welcomeSeen)
+
+      repository.setWelcomeSeen()
+
+      assertTrue("the welcome would have come back", repository.settings.first().welcomeSeen)
+    }
+
+  @Test
   fun `observers see a change without re-reading`() =
     runTest {
       val repository = DataStoreSettingsRepository(dataStore(this))

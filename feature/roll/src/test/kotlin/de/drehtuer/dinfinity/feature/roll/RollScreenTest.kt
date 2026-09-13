@@ -33,6 +33,7 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -185,6 +186,89 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
+  }
+
+  @Test
+  fun `a new install is welcomed, and the tray is behind it`() {
+    compose.setContent {
+      RollScreen(presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))), firstLaunch = true)
+    }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertExists()
+  }
+
+  @Test
+  fun `an install that has been welcomed before is not welcomed again`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the welcome's d20 is thrown for real, and is remembered as seen`() {
+    // Not a demonstration and not a canned number: it types `1d20` into the
+    // field and presses Roll, which is what the player would have done.
+    val seen = mutableListOf<Unit>()
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        firstLaunch = true,
+        onWelcomeSeen = { seen += Unit },
+      )
+    }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_ROLL).performClick()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("1d20")
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
+    assertEquals(1, seen.size)
+  }
+
+  @Test
+  fun `going straight to the tray is remembered too`() {
+    // A welcome that comes back is a welcome that was not read the first time.
+    val seen = mutableListOf<Unit>()
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        firstLaunch = true,
+        onWelcomeSeen = { seen += Unit },
+      )
+    }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
+    assertEquals(1, seen.size)
+  }
+
+  @Test
+  fun `an empty field says what to do rather than nothing`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Type a formula, or tap a die below.")
+  }
+
+  @Test
+  fun `a throw that is ready says the part nobody would guess`() {
+    // Shaking is not discoverable. The button is right there and says Roll.
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("1d20")
+
+    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Shake the phone, or press Roll.")
+  }
+
+  @Test
+  fun `a hint gives way to whatever the screen has to say instead`() {
+    show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.HINT).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
   }
 

@@ -65,8 +65,9 @@ changelog.
   a dice picker row that taps dice into the formula field, and
   a squiggle under the part of a bad formula that is wrong, with a one-tap fix
   where the mistake has an obvious reading, and a power-saving mode that throws
-  the dice without drawing them. What it has not: the set dropdown, the
-  first-launch state, and numbers on the faces. All listed in `docs/TODO.md`.
+  the dice without drawing them, and a first-launch screen that offers to throw
+  a d20 and then gets out of the way. What it has not: the set dropdown, the
+  saved-rolls strip, and numbers on the faces. All listed in `docs/TODO.md`.
 - **The screens' state machines are written down.** `docs/architecture.md` now
   carries the navigation graph, `RollState`, the shake, the tray and the
   Settings screen as diagrams and control tables, so a transition nobody

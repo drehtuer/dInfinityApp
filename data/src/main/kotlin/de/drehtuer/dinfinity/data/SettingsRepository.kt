@@ -18,4 +18,7 @@ interface SettingsRepository {
 
   /** Turns drawing the dice off, or back on (`docs/physics-and-rendering.md`). */
   suspend fun setPowerSaving(on: Boolean)
+
+  /** The player has been past the first-launch screen, and will not see it again. */
+  suspend fun setWelcomeSeen()
 }

@@ -63,6 +63,9 @@ class RollPresenter(
   /** The table's shape, which the tray's gestures are measured against. */
   val geometry: TableGeometry get() = machine.geometry
 
+  /** How many dice sets are installed, which first launch counts. */
+  val sets: Int get() = machine.sets
+
   init {
     // Before anything is thrown there is still a table, and it is what the
     // screen opens on. Said here rather than at the first roll because a

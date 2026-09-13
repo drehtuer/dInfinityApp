@@ -19,4 +19,13 @@ data class AppSettings(
    * saved is the drawing.
    */
   val powerSaving: Boolean = false,
+  /**
+   * Whether the player has been past the first-launch screen
+   * (`design/dInfinity.dc.html`, option 9a).
+   *
+   * Not a setting and not shown in Settings — it lives here because it is the
+   * one other thing the app remembers between launches, and a second
+   * repository for one boolean would be a second file to keep in step.
+   */
+  val welcomeSeen: Boolean = false,
 )

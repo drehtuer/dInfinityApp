@@ -100,6 +100,9 @@ class RollMachine(
   var counts: Map<PickableDie, Int> = emptyMap()
     private set
 
+  /** How many dice sets are installed, which the first-launch screen counts. */
+  val sets: Int get() = catalog.installed.size
+
   /**
    * The formula field changed.
    *

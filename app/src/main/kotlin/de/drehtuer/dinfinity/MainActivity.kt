@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
           onPowerSavingChanged = { on ->
             lifecycleScope.launch { repository.setPowerSaving(on) }
           },
+          onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
           rollPresenter = { app.rolls.presenter(powerSaving = settings.powerSaving) },
         )
       }

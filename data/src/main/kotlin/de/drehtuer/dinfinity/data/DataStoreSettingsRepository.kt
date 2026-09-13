@@ -33,6 +33,7 @@ class DataStoreSettingsRepository(
         AppSettings(
           accentColor = AccentColor.ofId(preferences[ACCENT_COLOUR]),
           powerSaving = preferences[POWER_SAVING] == true,
+          welcomeSeen = preferences[WELCOME_SEEN] == true,
         )
       }
 
@@ -44,11 +45,16 @@ class DataStoreSettingsRepository(
     dataStore.edit { preferences -> preferences[POWER_SAVING] = on }
   }
 
+  override suspend fun setWelcomeSeen() {
+    dataStore.edit { preferences -> preferences[WELCOME_SEEN] = true }
+  }
+
   companion object {
     /** The file this repository keeps, relative to the app's datastore directory. */
     const val FILE_NAME: String = "settings"
 
     private val ACCENT_COLOUR = stringPreferencesKey("accent_colour")
     private val POWER_SAVING = booleanPreferencesKey("power_saving")
+    private val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
   }
 }

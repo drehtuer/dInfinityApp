@@ -15,6 +15,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
@@ -43,6 +47,8 @@ import de.drehtuer.dinfinity.core.model.Rounding
 fun RollScreen(
   presenter: RollPresenter,
   modifier: Modifier = Modifier,
+  firstLaunch: Boolean = false,
+  onWelcomeSeen: () -> Unit = {},
 ) {
   val state = presenter.state
   ShakeToRoll(presenter)
@@ -91,8 +97,48 @@ fun RollScreen(
         onRoll = { presenter.roll() },
       )
     }
+
+    if (firstLaunch) FirstLaunch(presenter, onWelcomeSeen)
   }
 }
+
+/**
+ * The first-launch screen, over the tray, until it is pressed past
+ * (`design/dInfinity.dc.html`, option 9a).
+ *
+ * Dismissed here as well as remembered on disk, so the screen changes the
+ * moment a button is pressed rather than when a write comes back — and it
+ * survives a rotation, because a welcome that reappeared when the phone turned
+ * would be a welcome that looked broken.
+ *
+ * Its d20 is thrown for real: `1d20` is typed into the field and the roll is
+ * asked for, which is what the player would have done. There is no
+ * demonstration path and no canned number (`docs/architecture.md`, goal 1).
+ */
+@Composable
+private fun FirstLaunch(
+  presenter: RollPresenter,
+  onWelcomeSeen: () -> Unit,
+) {
+  var welcomed by rememberSaveable { mutableStateOf(false) }
+  if (welcomed) return
+  Welcome(
+    sets = presenter.sets,
+    onRollNow = {
+      welcomed = true
+      onWelcomeSeen()
+      presenter.type(FIRST_ROLL)
+      presenter.roll()
+    },
+    onDismiss = {
+      welcomed = true
+      onWelcomeSeen()
+    },
+  )
+}
+
+/** What the first-launch screen offers to throw. One die, and the famous one. */
+private const val FIRST_ROLL = "1d20"
 
 /**
  * Holds the screen on while the tray is up.
@@ -160,7 +206,22 @@ private fun Outcome(
     is RollState.Invalid ->
       FormulaError(formula = formula, error = state.error, onSuggestion = onSuggestion)
 
-    RollState.Empty, is RollState.Ready -> Unit
+    // Not a blank: a tray with nothing on it and a button that does nothing is
+    // a screen with no way in, and shaking is the part nobody would guess
+    // (`design/dInfinity.dc.html`, option 9a).
+    RollState.Empty ->
+      Message(
+        text = stringResource(R.string.roll_hint_empty),
+        colour = MaterialTheme.colorScheme.onSurfaceVariant,
+        tag = RollTestTags.HINT,
+      )
+
+    is RollState.Ready ->
+      Message(
+        text = stringResource(R.string.roll_hint_ready),
+        colour = MaterialTheme.colorScheme.onSurfaceVariant,
+        tag = RollTestTags.HINT,
+      )
   }
 }
 
@@ -246,6 +307,15 @@ object RollTestTags {
 
   /** The one-tap fix, shown only when the mistake has an obvious reading. */
   const val SUGGESTION: String = "roll:invalid:suggestion"
+
+  /** What to do next, when there is no result and nothing wrong. */
+  const val HINT: String = "roll:hint"
+
+  /** The first-launch screen and its two ways out (design option 9a). */
+  const val WELCOME: String = "roll:welcome"
+  const val WELCOME_SETS: String = "roll:welcome:sets"
+  const val WELCOME_ROLL: String = "roll:welcome:roll"
+  const val WELCOME_DISMISS: String = "roll:welcome:dismiss"
 
   /** The dice picker row, and one die on it (design option 1h). */
   const val PICKER: String = "roll:picker"

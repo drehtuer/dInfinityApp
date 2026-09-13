@@ -42,6 +42,7 @@ fun DInfinityApp(
   onAccentSelected: (AccentColor) -> Unit = {},
   rollPresenter: (() -> RollPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
+  onWelcomeSeen: () -> Unit = {},
 ) {
   val navController = rememberNavController()
   NavHost(
@@ -56,7 +57,11 @@ fun DInfinityApp(
           // world. Leaving the screen gives all three back
           // (`docs/architecture.md`, decision 49).
           Destination.Roll if rollPresenter != null ->
-            RollScreen(presenter = remember(rollPresenter) { rollPresenter() })
+            RollScreen(
+              presenter = remember(rollPresenter) { rollPresenter() },
+              firstLaunch = !settings.welcomeSeen,
+              onWelcomeSeen = onWelcomeSeen,
+            )
 
           Destination.Settings ->
             SettingsScreen(
