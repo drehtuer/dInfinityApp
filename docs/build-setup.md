@@ -92,6 +92,45 @@ the image cannot start at all, with `unable to find user dev`.
 Both land in `app/build/outputs/named-apk/`. The version comes from
 `version.txt` at the repository root — the only place it is written down.
 
+## The native build
+
+`simulation/jolt` is C++ compiled by the NDK. The container has everything it
+needs: NDK 30 and the SDK's own CMake, at `$ANDROID_HOME/cmake/4.1.2`.
+
+Jolt is built from source at a pinned tag with:
+
+```sh
+cmake -S <jolt>/Build -B <build> -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/<version>/build/cmake/android.toolchain.cmake" \
+  -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-36 \
+  -DCMAKE_BUILD_TYPE=Distribution \
+  -DCROSS_PLATFORM_DETERMINISTIC=ON \
+  -DCMAKE_CXX_FLAGS="-Wno-overriding-option" \
+  -DTARGET_UNIT_TESTS=OFF -DTARGET_HELLO_WORLD=OFF -DTARGET_PERFORMANCE_TEST=OFF \
+  -DTARGET_SAMPLES=OFF -DTARGET_VIEWER=OFF
+```
+
+Two of those flags are not optional and are easy to lose.
+
+`CROSS_PLATFORM_DETERMINISTIC=ON` is the whole reason this engine was chosen
+(`docs/architecture.md`, decision 37). Without it the golden determinism suite
+is asserting nothing.
+
+`-Wno-overriding-option` is a workaround, and it is here rather than in a
+comment nobody reads because the failure is baffling without it. Jolt's
+deterministic build passes both `-ffp-model=precise` and `-ffp-contract=off`;
+Clang 21, which is what NDK 30 ships, warns that the second overrides the
+first, and Jolt builds with `-Werror`. The build stops with:
+
+```text
+clang++: error: overriding '-ffp-model=precise' option with '-ffp-contract=off'
+         [-Werror,-Woverriding-option]
+```
+
+Both flags are doing the same job — keeping the compiler from reassociating
+floating-point arithmetic — so silencing the overlap changes nothing about the
+determinism they exist for.
+
 ## Signing keys
 
 A fresh checkout builds without any keys: debug builds use the Android default

@@ -25,16 +25,17 @@
 | Language | Kotlin | Native code (C++) only inside the physics/rendering bridge |
 | UI | Jetpack Compose | Material 3 |
 | 3D rendering | [Filament](https://github.com/google/filament) | PBR, Vulkan/OpenGL ES, Android-first, Kotlin bindings |
-| Physics | [Jolt Physics](https://github.com/jrouwe/JoltPhysics) via JNI | Deterministic, convex-hull collision, good mobile performance. Bullet is the fallback if the JNI binding proves too costly to maintain. |
+| Physics | [Jolt Physics](https://github.com/jrouwe/JoltPhysics) 5.3.0 via JNI | Decided by a spike, not by reading: see decision 37. Built with `CROSS_PLATFORM_DETERMINISTIC=ON`, which is what goal 4 needs and what Bullet does not offer. |
 | Persistence | Room (SQLite) | Statistics, saved rolls, installed set registry |
 | Settings | DataStore | Preferences |
 | Dice set parsing | [tomlj](https://github.com/tomlj/tomlj) (TOML 1.0), read through its document tree | Reports the line and column of every key, which is what a validation report is made of. No reflection-based deserialization of untrusted input |
 | Network | OkHttp | Only for installing dice sets, tables and saved-roll collections from a URL (`https` only) |
 | Images | Android `BitmapFactory` with bounds check first | Textures decoded with explicit size limits |
 
-The physics engine choice is the one most likely to change. The interface the
-rest of the app depends on (`DiceSimulator`, see below) is engine-agnostic so
-that swapping is contained to one module.
+The physics engine choice was the one most likely to change, and is now made
+(decision 37). The interface the rest of the app depends on (`DiceSimulator`)
+stays engine-agnostic anyway, so that swapping is contained to one module and
+so that everything above it can be tested without an engine at all.
 
 ## Modules
 
@@ -178,4 +179,5 @@ kept (they are keyed by set id and die id, not by file path).
 | 33 | A dice set is parsed by tomlj and read field by field into plain data classes | Parsing TOML is the kind of thing that should not be hand-rolled, and this parser is the one that carries the line and column of every key — without which the validation report could not say `file:line` at all (`docs/dice-sets.md`). Its deserializer is never used: a downloaded file reaches a document tree and nothing else |
 | 34 | A texture's dimensions are read from its own header, in plain Kotlin, before any decoder sees it | Refusing a 30,000-pixel image is only safe if the refusal happens before the decode, because the decoder is the part with the attack surface. It also means `dicesets/format` stays a JVM module and can be tested without an emulator |
 | 35 | Every catalogue solid is computed from its closed form in `simulation/api`, and the hull, the mesh and the face reading all come from that one place | Three descriptions of the same solid are three chances to be a hundredth of a degree apart, and the one that would show is a die whose printed face and scored face disagree. Face 0 is the face that is up in the reference orientation, which is what both the atlas and a settled reading expect |
+| 37 | Jolt Physics 5.3.0, not Bullet — decided by building both against the toolchain the app actually uses | Goal 4 is determinism, and Jolt offers cross-platform determinism as a supported build mode (`CROSS_PLATFORM_DETERMINISTIC=ON`) while Bullet offers no such guarantee at all. The spike settled the rest on evidence: Jolt configures and builds clean with the SDK's CMake 4.1.2 and NDK 30's Clang 21 in about three seconds, and a real slice of it — a convex-hull die, a box tray and fixed 1/120 s stepping — links to a 2.0 MB stripped `arm64-v8a` library. Bullet 3.25 does not configure at all: its `cmake_minimum_required(VERSION 2.4.3)` is below what CMake 4 still supports. An engine the build cannot even configure is not a fallback (`docs/build-setup.md`) |
 | 36 | `size_mm` is a die's nominal size — the edge length for a polyhedron, the diameter for the coin — not its bounding diameter | It is what a dice maker quotes, so "a d6 of 16 mm" means the same thing to an author as to the app. It is also the reading the capacity rule in `docs/tables.md` was worked out under: a 16 mm d6 covers 6.03 cm², and eighty of them are exactly what a phone-sized tray holds |

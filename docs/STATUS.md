@@ -86,8 +86,12 @@ changelog.
   reproducing every worked number in `docs/tables.md`, settle detection in
   fixed steps, face reading for all eight solids including the d4's vertex, and
   the correction ladder with "nothing touches a die at rest" as a function
-  rather than a paragraph. The physics engine spike (Jolt vs. Bullet) is next
-  and is the decide-first item.
+  rather than a paragraph.
+- The physics engine is decided: **Jolt 5.3.0**, by a spike that built both
+  against this project's own toolchain. Jolt builds clean and offers
+  cross-platform determinism as a supported mode; Bullet 3.25 does not
+  configure with the CMake the Android SDK ships. `simulation/jolt`'s JNI
+  bridge is the next piece of work.
 
 ## Blocked / waiting on
 
@@ -97,7 +101,6 @@ changelog.
 
 - Two smaller decisions from the prototype are not yet in `docs/` (designer
   3D preview, picker remembering the last set per group) — see `docs/TODO.md`.
-- Physics engine (Jolt vs. Bullet) — spike planned in Milestone 0.
 
 ## Known risks
 
