@@ -29,7 +29,6 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] `core/notation` — parser and evaluator per `docs/dice-notation.md`: full grammar, keep/drop/explode/reroll/min, set references, limits, error ranges with character offsets. Property tests plus one test per limit and per error message
 - [ ] `core/probability` — exact PMF by convolution, order statistics for keep/drop, truncated geometric for explode. Golden tests against a brute-force enumerator; PMF sums to 1 ± 1e-12
 - [ ] `dicesets/format` — strict TOML reader, atlas layouts, validator. One test per error and per warning in `docs/dice-sets.md`, driven from `test-fixtures/`
 - [ ] `dicesets/builtin` — the bundled set as a real `diceset.toml` package, loaded through the same validator as any download (no privileged path)

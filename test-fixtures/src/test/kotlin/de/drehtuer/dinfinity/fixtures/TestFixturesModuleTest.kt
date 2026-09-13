@@ -1,8 +1,8 @@
 package de.drehtuer.dinfinity.fixtures
 
+import de.drehtuer.dinfinity.core.model.CoreModelModule
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class TestFixturesModuleTest {
   @Test
@@ -11,7 +11,7 @@ class TestFixturesModuleTest {
   }
 
   @Test
-  fun `depends on nothing`() {
-    assertTrue(TestFixturesModule.DEPENDS_ON.isEmpty())
+  fun `depends on the model and nothing else`() {
+    assertEquals(listOf(CoreModelModule.PATH), TestFixturesModule.DEPENDS_ON)
   }
 }

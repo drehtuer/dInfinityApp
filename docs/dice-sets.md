@@ -90,7 +90,7 @@ faces = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
 labels = ["00","10","20","30","40","50","60","70","80","90"]
 
 [[die]]
-id = "skull-d6"                  # any id; used as "brass-and-bone:skull-d6"
+id = "skull-d6"                  # any id; reached from the dice picker
 shape = "cube"
 faces = [1, 2, 3, 4, 5, 6]
 labels = ["💀", "2", "3", "4", "5", "6"]   # what is printed if no texture
@@ -123,7 +123,7 @@ sound = "felt"
 | `set.name`, `set.version` | yes | |
 | `set.author`, `license`, `description`, `homepage` | no | Displayed only. `homepage` is shown as text, opened only on explicit tap, `https` only. |
 | `defaults.*` | no | Material and physics defaults, all clamped. |
-| `die.id` | yes | Slug, unique within the set. Standard names (`d2`…`d100`) are what plain notation resolves to. |
+| `die.id` | yes | Slug, unique within the set. Standard names (`d2`…`d100`, `d10-tens`, `df`) are what typed notation resolves, optionally set-qualified as `brass:2d20`. A die with any other id is rolled by tapping it in the dice picker — the grammar in `docs/dice-notation.md` has no unambiguous way to write `skull-d6kh1`, since a slug and a modifier are made of the same characters. |
 | `die.shape` | yes | A name from the shape catalogue below. v1 has no other option. |
 | `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (d2-as-d6). |
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
