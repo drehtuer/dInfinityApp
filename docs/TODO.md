@@ -70,6 +70,7 @@ the Pixel 10a, and its total read off the faces. What is below is what it does
 not have yet.
 
 - [ ] Revisit the capacity constants now that they bite much later. 30 % of the floor and a 40 % minimum scale no longer refuse anything the engine would take: it would take about 240 dice to reach the floor and the engine stops at 100 (`docs/tables.md`). Step 5.3 is where those numbers meet a device
+- [ ] *Confirm on the phone:* a roll stranded by losing its surface is fixed (a roll now asks for frames with nowhere to draw), but whether that was what left `100d4` on "Rolling…" for ever is unproven — the physics settles that throw headlessly on eight seeds, so the hang was never in the engine
 - [ ] **The surface outlives the screen going off.** After a lock and unlock the old rendering surface is still there. Found on the Pixel 10a; `DiceTray` gives the surface up on `onDestroyed` and the driver keeps the engine now (Step 4.1, done), so what is left is which of those two the lock screen actually triggers
 - [ ] **A shake during a roll is ignored.** Rolling is blocked until the dice have settled, so a second shake at dice still in the air does nothing. It should keep them moving instead — a hand that shakes again has not waited for the dice to stop, and `RollPresenter.shaking` already feeds a running roll. What a *new* shake means while one is in flight is the open half: more of the same roll, or a throw that replaces it
 - [ ] Numbers on the faces. Dice are blank cream solids on the phone right now, which is the SDF item in Step 3 above; until it lands, the tray shows a roll that cannot be read without the total
@@ -204,6 +205,8 @@ after every physics change.
 ### 5.3 Capacity and corner cases
 
 - [ ] Counts 1, 2, 5, 8, 20, 40, 60 and the capacity limit (~80 on the Pixel 10a): all settle, no NaN, no tunnelling
+- [ ] **`100d4` on the phone: the dice pile into one corner and some wedge between floor and wall.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. Eight seeds of `100d4` settle headlessly inside the cap with nothing forced (`JoltBridgeTest`), so the *engine* copes; what the phone shows is the pile, which is a prevention problem (5.5) rather than a settling one
+- [ ] Dice pooling against one wall at high counts, seen at `100d20` and `100d4`. Whether the axis fix changed it is untested — it was found before that landed
 - [ ] Exactly at the limit, and one over — the one over is refused before a single body is created
 - [ ] Worst shapes at the limit: d4 (sharpest corners) and the coin (flattest), which wedge and stack most easily
 - [ ] Smallest scale (0.40) with the largest nominal die

@@ -405,7 +405,13 @@ all, and **zero** corrections applied after rest.
   different roll wearing the same seed's name — with the player watching the
   dice they were already watching begin again. So the picture is rebuilt
   instead: `TrayRenderer` remembers the throw, the tray and the last frame, and
-  replays them onto the new stage. **The engine is not rebuilt with it.** The
+  replays them onto the new stage. **The roll is not paused with it either.**
+  The frame callback is what steps the simulation, so a roll that stops being
+  asked for frames is a roll that stops — and one stopped half way is never
+  read, never reported and never over, leaving the screen on "Rolling…" for
+  good. A roll therefore asks for frames whether or not there is anywhere to
+  draw; only the still pictures need a surface before they are worth one.
+  **The engine is not rebuilt with it.** The
   material is compiled on the device for the driver that is actually there, and
   that costs long enough that doing it again for every rotation was itself the
   black tray: what a surface owns is its swap chain and its viewport, and

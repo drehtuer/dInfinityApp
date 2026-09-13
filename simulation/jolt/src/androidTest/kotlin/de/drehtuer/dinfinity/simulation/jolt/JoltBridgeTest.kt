@@ -238,6 +238,46 @@ class JoltBridgeTest {
     )
   }
 
+  @Test
+  fun aHundredD4sFinishAndEveryOneIsOnTheTable() {
+    // `100d4` is the worst case the engine will accept: the sharpest solid,
+    // the one that cannot rest flat on another, at the capacity cap. On the
+    // phone this throw never finished — the screen said "Rolling…" for good
+    // (`docs/TODO.md`, Step 5.3).
+    val dice = List(100) { d4() }
+    val verdict = TableCapacity.check(dice, geometry)
+    val scale = (verdict as CapacityVerdict.Fits).scale
+
+    val report =
+      (1L..8L).map { seed ->
+        val spec = spec(dice, seed).copy(dieScale = scale)
+        val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = dice.size))
+        val layout = SpawnLayout(geometry, radiusOf(d4()) * scale, spec.seed)
+        val outcome =
+          world.use {
+            dice.forEachIndexed { index, die ->
+              world.addDie(ShapeGeometry.hullOf(die, scale), die.material, layout.placementOf(index, dice.size))
+            }
+            world.finish()
+            RollLoop(spec, world, layout, ShakeDriver(emptyList())).run()
+          }
+        assertEquals("a die went unread at seed $seed", dice.size, outcome.faces.size)
+        seed to outcome
+      }
+
+    val stuck = report.filter { (_, outcome) -> outcome.steps >= CAP_STEPS }
+    assertTrue(
+      "a hundred d4s ran out of time: " +
+        report.joinToString { (seed, o) -> "$seed:${o.steps}/${o.forcedSettles}f/${o.rethrows}r" },
+      stuck.isEmpty(),
+    )
+    assertTrue(
+      "a hundred d4s had to be forced to settle: " +
+        report.joinToString { (seed, o) -> "$seed:${o.forcedSettles}" },
+      report.all { (_, outcome) -> outcome.forcedSettles == 0 },
+    )
+  }
+
   private fun d4(): Die = Die.standard("d4", DieShape.Tetrahedron)
 
   private fun d20(): Die = Die.standard("d20", DieShape.Icosahedron)
