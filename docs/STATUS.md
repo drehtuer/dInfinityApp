@@ -86,8 +86,12 @@ changelog.
   (decision 49). The state behind the screen is built too: a typed formula
   becomes a throw, a throw's faces become a result, `500d6` is refused before a
   body exists, and an exploding die is thrown again through the simulator
-  rather than decided. What is still missing before the phone can be shaken is
-  the composable that hands a surface over, and the screen to put it in.
+  rather than decided.
+- **The app rolls dice on the phone.** Type a formula, tap Roll or shake the
+  Pixel 10a, and three d6 tumble onto a green felt tray and come to rest with
+  their total on screen. The faces are blank — the SDF numbers are still a
+  Step 3 item — and the tray is black until the first throw. Both are in
+  `docs/TODO.md`; neither is in the way of the shake test.
 
 ## Blocked / waiting on
 

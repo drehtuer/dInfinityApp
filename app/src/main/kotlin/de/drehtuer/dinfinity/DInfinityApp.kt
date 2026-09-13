@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -18,6 +19,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.feature.roll.RollPresenter
+import de.drehtuer.dinfinity.feature.roll.RollScreen
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.theme.LocalModernistColors
@@ -27,11 +30,17 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  * The navigation graph, with one destination per screen. Each destination is a
  * placeholder until the screen's own step builds it; the graph exists now so
  * navigation is never retro-fitted.
+ *
+ * @param rollPresenter how to build the roll screen's state, or null where
+ *   there is nothing to build it with — a Robolectric test of the graph itself
+ *   has no GPU and no physics engine, and the placeholder is the honest thing
+ *   to show rather than a tray that cannot draw.
  */
 @Composable
 fun DInfinityApp(
   settings: AppSettings = AppSettings(),
   onAccentSelected: (AccentColor) -> Unit = {},
+  rollPresenter: (() -> RollPresenter)? = null,
 ) {
   val navController = rememberNavController()
   NavHost(
@@ -41,6 +50,13 @@ fun DInfinityApp(
     Destination.entries.forEach { destination ->
       composable(destination.route) {
         when (destination) {
+          // Remembered per visit, not held by the application: a presenter owns
+          // the roll thread and, through it, a Filament engine and a physics
+          // world. Leaving the screen gives all three back
+          // (`docs/architecture.md`, decision 49).
+          Destination.Roll if rollPresenter != null ->
+            RollScreen(presenter = remember(rollPresenter) { rollPresenter() })
+
           Destination.Settings ->
             SettingsScreen(
               settings = settings,

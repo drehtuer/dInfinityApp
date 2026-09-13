@@ -65,16 +65,17 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 `1z`. Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md`.
 
-The state behind the screen is built: `RollMachine` turns a typed formula into
-a throw and a throw's faces into a result, refuses what the table cannot hold
-before a body exists, and throws an exploding die again *through the
-simulator*. What is left below is the screen itself.
+The screen rolls. A formula is typed, validated on every keystroke, refused if
+the table cannot hold it, thrown on a tap or a shake, simulated and drawn on
+the Pixel 10a, and its total read off the faces. What is below is what it does
+not have yet.
 
-- [ ] Tray view bound to the simulation, stack layout (`1b`), table look applied — a Compose `AndroidExternalSurface` handing its surface to `TrayDriver`
+- [ ] **The tray is black until the first roll.** Nothing is drawn before a throw begins, so a new launch is an empty screen rather than a table waiting (`1b`). Draw the tray and its look as soon as there is a surface — a scene with no dice in it — and keep drawing it when a roll ends
+- [ ] Numbers on the faces. Dice are blank cream solids on the phone right now, which is the SDF item in Step 3 above; until it lands, the tray shows a roll that cannot be read without the total
 - [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
+- [ ] Spawn the dice when a shake *begins* rather than when it ends, so they tumble in the tray while the player is still shaking (`docs/physics-and-rendering.md`, "Starting a roll"). The throw is already driven by the recorded motion; what is missing is that it starts sooner
 - [ ] Dice picker row (`1h`) — tap adds, long-press removes, count badges; set dropdown (`4a`)
-- [ ] Formula display and inline editor (`2a`) with live validation, error squiggle over the offending range (`6f`, `9c`), rolling blocked while invalid
-- [ ] Roll by tap; shake to roll wired to `input/shake`
+- [ ] Formula editor (`2a`): the field validates live and blocks rolling, but the error is a line of text rather than a squiggle over the offending range (`6f`, `9c`)
 - [ ] Result sheet, full density (`1f`): total, per-group subtotals, dice, modifiers, dropped dice struck through, natural max in the accent
 - [ ] Division rounding control on the sheet (`6d`) — Down / Nearest / Up for this throw only
 - [ ] Capacity refusal (`500d6`) with the largest count that would fit

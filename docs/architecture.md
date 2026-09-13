@@ -62,7 +62,7 @@ input/
 designer/            Face drawing canvas → dice set export (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
 feature/             One module per screen group; see docs/TODO.md Step 4
-  roll/              Roll screen: tray, dice picker, formula field, result sheet
+  roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
   saved/             Saved rolls: groups, list, editor, import/export
   sets/              Dice set browser, details, installer

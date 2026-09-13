@@ -8,6 +8,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -109,6 +110,37 @@ class TrayLoopTest {
   }
 
   @Test
+  fun `what the dice came to is reported once, when they stop`() {
+    val loop = TrayLoop()
+    val reported = mutableListOf<SimulationOutcome>()
+    loop.stage(FakeStage())
+    loop.roll(FakeRoll(steps = 2).start(), reported::add)
+
+    loop.frame(SOME_LATE_UPTIME)
+    assertTrue("a roll still in the air reported a result", reported.isEmpty())
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+    repeat(SPARE_FRAMES) { loop.frame(SOME_LATE_UPTIME + 2 * SIXTIETH_OF_A_SECOND_NANOS) }
+
+    assertEquals("the result arrived more than once", 1, reported.size)
+  }
+
+  @Test
+  fun `a roll abandoned before it landed reports nothing`() {
+    // The player left the screen. Nothing landed, so there is nothing to
+    // score — and a half-finished roll must never become a total.
+    val loop = TrayLoop()
+    val reported = mutableListOf<SimulationOutcome>()
+    loop.stage(FakeStage())
+    loop.roll(FakeRoll(steps = 100).start(), reported::add)
+    loop.frame(SOME_LATE_UPTIME)
+
+    loop.clear()
+    loop.close()
+
+    assertTrue("an abandoned roll produced a result", reported.isEmpty())
+  }
+
+  @Test
   fun `a frame with no roll to advance is not asked for again`() {
     val loop = TrayLoop()
     loop.stage(FakeStage())
@@ -205,6 +237,9 @@ class TrayLoopTest {
 
     override val running: Boolean get() = advanced.size < steps
 
+    override val outcome: SimulationOutcome?
+      get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
+
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds
       val frame = frame()
@@ -258,5 +293,6 @@ class TrayLoopTest {
     /** A phone that has been awake for a day, which is what a frame clock counts from. */
     const val SOME_LATE_UPTIME = 86_400_000_000_000L
     const val SIXTIETH_OF_A_SECOND_NANOS = 16_666_667L
+    const val SPARE_FRAMES = 3
   }
 }

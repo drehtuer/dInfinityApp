@@ -157,7 +157,16 @@ no spin *would* be predictable. We do not do that.)
 ## Shake input
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
-  `SENSOR_DELAY_GAME`.
+  `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go
+  when it is not — an accelerometer running behind a backgrounded app is a
+  battery bill for nothing.
+- **Today the throw is made when the shake ends**, driven by the recorded
+  motion: the samples go into the `ThrowSpec` and reach the solver as an
+  inverse acceleration on gravity. Spawning the dice when the shake *begins*,
+  so they tumble in the tray while the player is still shaking, is the
+  refinement still to come (`docs/TODO.md`, Step 4.1). What is already true is
+  that the dice are thrown by what the hand actually did, not by a canned
+  impulse.
 - A shake session starts when acceleration magnitude stays above 3,500 mm/s²
   (about 0.35 g) for more than 80 ms, and ends after 400 ms below 1,500 mm/s².
   Two thresholds rather than one, with a gap between them: a single threshold

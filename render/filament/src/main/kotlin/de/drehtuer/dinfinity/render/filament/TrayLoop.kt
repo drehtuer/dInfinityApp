@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 
 /**
  * What happens on the tray, frame by frame: which stage is being drawn to,
@@ -30,6 +31,7 @@ class TrayLoop : AutoCloseable {
 
   private var stage: Stage? = null
   private var roll: WatchedRoll? = null
+  private var settling: ((SimulationOutcome) -> Unit)? = null
   private var lastFrameNanos: Long? = null
 
   /**
@@ -66,10 +68,18 @@ class TrayLoop : AutoCloseable {
    * opened, so the physics world is created on whichever thread is going to
    * step it. A roll already in progress is ended first — a second throw
    * replaces the first rather than landing on top of it.
+   *
+   * [onSettled] is called once, on this thread, with what the dice came to —
+   * and only for a roll that actually finished. A roll abandoned because the
+   * player left the screen reports nothing, because nothing landed.
    */
-  fun roll(start: (Renderer) -> WatchedRoll) {
+  fun roll(
+    start: (Renderer) -> WatchedRoll,
+    onSettled: (SimulationOutcome) -> Unit = {},
+  ) {
     endRoll()
     roll = start(renderer)
+    settling = onSettled
     lastFrameNanos = null
   }
 
@@ -98,7 +108,13 @@ class TrayLoop : AutoCloseable {
     val elapsed = if (previous == null) 0.0 else ((nanos - previous).coerceAtLeast(0)) / NANOS_PER_SECOND
     live.advance(elapsed)
 
-    if (!live.running) endRoll()
+    if (live.running) return wantsFrames
+
+    // Read before closing: a roll that has been given up holds nothing.
+    val reached = live.outcome
+    val report = settling
+    endRoll()
+    reached?.let { report?.invoke(it) }
     return wantsFrames
   }
 
@@ -110,6 +126,7 @@ class TrayLoop : AutoCloseable {
   private fun endRoll() {
     roll?.close()
     roll = null
+    settling = null
     lastFrameNanos = null
   }
 

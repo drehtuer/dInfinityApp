@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+  <string name="roll_formula_label">Formula</string>
+  <!--
+    Dice notation, not prose: the "-" is the subtraction operator the parser
+    reads, and an en dash is not something the player could type back
+    (`docs/dice-notation.md`).
+  -->
+  <string name="roll_formula_hint" tools:ignore="TypographyDashes">3d6 + 1d20 - 4</string>
+  <string name="roll_throw">Roll</string>
+  <string name="roll_again">Roll again</string>
+  <string name="roll_rolling">Rolling…</string>
+</resources>

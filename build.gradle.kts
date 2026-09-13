@@ -196,6 +196,26 @@ val verifyDocsLinks by tasks.registering {
  * out of the coverage figure: their tests cannot run here, so their number
  * would measure the runner rather than the code.
  */
+/**
+ * Files that need a device, inside modules that mostly do not.
+ *
+ * Whole modules are left out below; these are the stragglers — a composable
+ * that can only be exercised by a real `Surface`, a sensor listener that needs
+ * real sensors, the one file that names the physics engine. Excluding them by
+ * name rather than excluding their modules keeps everything around them
+ * measured, which is the point: the gap should be visible and small, not hidden
+ * behind a directory (`.claude/CLAUDE.md`).
+ *
+ * Kept in step with sonar.coverage.exclusions, which lists the same files.
+ * Static analysis still covers every one of them.
+ */
+val deviceOnlyFiles: Set<String> =
+  setOf(
+    "DiceTray.kt",
+    "ShakeToRoll.kt",
+    "RollWiring.kt",
+  )
+
 val coverageReportFiles: List<File> =
   run {
     // Kept in step with sonar.coverage.exclusions: device-only modules cannot
@@ -220,6 +240,10 @@ val verifyCoverage by tasks.registering {
   val minBranch = providers.gradleProperty("dinfinity.coverage.minBranch").get().toDouble()
   val candidates = coverageReportFiles
 
+  // Captured into the task rather than read from the script inside `doLast`:
+  // the configuration cache cannot serialise a reference back to the script.
+  val excludedFiles = deviceOnlyFiles
+
   outputs.upToDateWhen { false }
 
   doLast {
@@ -238,14 +262,25 @@ val verifyCoverage by tasks.registering {
     val covered = mutableMapOf("METHOD" to 0, "BRANCH" to 0)
     val missed = mutableMapOf("METHOD" to 0, "BRANCH" to 0)
     reports.forEach { report ->
-      val counters = factory.newDocumentBuilder().parse(report).documentElement.childNodes
-      for (index in 0 until counters.length) {
-        val node = counters.item(index)
-        if (node.nodeName != "counter") continue
-        val type = node.attributes.getNamedItem("type").nodeValue
-        if (!covered.containsKey(type)) continue
-        covered[type] = covered.getValue(type) + node.attributes.getNamedItem("covered").nodeValue.toInt()
-        missed[type] = missed.getValue(type) + node.attributes.getNamedItem("missed").nodeValue.toInt()
+      // Summed class by class rather than read off the report's own totals,
+      // because that is the only level at which a single device-only *file*
+      // can be left out. JaCoCo gives every class its `sourcefilename`, which
+      // is what `deviceOnlyFiles` matches on — the same names, for the same
+      // reason, as sonar.coverage.exclusions.
+      val classes = factory.newDocumentBuilder().parse(report).getElementsByTagName("class")
+      for (index in 0 until classes.length) {
+        val element = classes.item(index)
+        val sourceFile = element.attributes.getNamedItem("sourcefilename")?.nodeValue
+        if (sourceFile != null && excludedFiles.contains(sourceFile)) continue
+        val counters = element.childNodes
+        for (counter in 0 until counters.length) {
+          val node = counters.item(counter)
+          if (node.nodeName != "counter") continue
+          val type = node.attributes.getNamedItem("type").nodeValue
+          if (!covered.containsKey(type)) continue
+          covered[type] = covered.getValue(type) + node.attributes.getNamedItem("covered").nodeValue.toInt()
+          missed[type] = missed.getValue(type) + node.attributes.getNamedItem("missed").nodeValue.toInt()
+        }
       }
     }
 

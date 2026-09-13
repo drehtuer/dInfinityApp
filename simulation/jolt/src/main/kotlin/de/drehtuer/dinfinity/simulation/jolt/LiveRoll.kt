@@ -46,7 +46,7 @@ class LiveRoll internal constructor(
   private var settledShown = false
 
   /** What the throw came to, or null while it is still going. */
-  var outcome: SimulationOutcome? = null
+  override var outcome: SimulationOutcome? = null
     private set
 
   /** True until the last die has come to rest. */

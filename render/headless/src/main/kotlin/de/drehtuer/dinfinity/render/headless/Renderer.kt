@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.headless
 
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -124,9 +125,39 @@ interface WatchedRoll : AutoCloseable {
   val running: Boolean
 
   /**
+   * What the throw came to, or null while it is still going — and null for
+   * good for a roll that was abandoned before it finished.
+   *
+   * The only thing that comes back out. A watcher may read what the dice did;
+   * it still has no way to change it.
+   */
+  val outcome: SimulationOutcome?
+
+  /**
    * Moves the roll on by however much [elapsedSeconds] is worth and hands back
    * where the dice are. The renderer watching has already been shown the same
    * frame.
    */
   fun advance(elapsedSeconds: Double): RenderFrame
+}
+
+/**
+ * How a roll is opened for something to watch.
+ *
+ * The one line between a screen and a physics engine. A screen knows it wants
+ * these dice thrown and wants to watch them land; which engine does it, and
+ * whether there is an engine at all, is the app's business
+ * (`docs/architecture.md`, decision 40).
+ */
+fun interface Rolls {
+  /**
+   * Opens [spec] as a roll in progress, with [watcher] shown every frame.
+   *
+   * Called on whichever thread is going to step it, because a roll belongs to
+   * one thread and so does the world underneath it.
+   */
+  fun start(
+    spec: ThrowSpec,
+    watcher: Renderer,
+  ): WatchedRoll
 }

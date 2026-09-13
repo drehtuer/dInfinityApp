@@ -14,6 +14,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -173,6 +174,9 @@ class TrayDriverTest {
     private var watcher: Renderer? = null
 
     override val running: Boolean get() = advanced.size < frames
+
+    override val outcome: SimulationOutcome?
+      get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds
