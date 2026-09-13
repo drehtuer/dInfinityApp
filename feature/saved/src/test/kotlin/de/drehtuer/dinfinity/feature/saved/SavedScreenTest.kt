@@ -18,6 +18,7 @@ import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -58,6 +59,10 @@ class SavedScreenTest {
 
   @After
   fun close() {
+    // The presenter watches the database for as long as its scope lives, so
+    // the scope has to go first: a collector left running against a closed
+    // connection fails the *next* test, which is a long way from here.
+    scope.cancel()
     database.close()
   }
 

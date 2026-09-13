@@ -120,8 +120,8 @@ The list is built: the group switcher, the row-style list in favourites-first
 order, the warning on a roll whose dice are gone, the empty state, and tapping
 a roll to send its formula to the tray.
 
-- [ ] Editor (`1r`): live-validated formula with mean and range, icon, colour, group, favourite, per-roll table pin (`7b`). The field it needs is `ui/common`'s now
-- [ ] Creating and renaming groups, which the switcher lists but cannot yet add to
+- [ ] Creating and renaming groups, which the switcher lists but cannot yet add to — and the editor can only put a roll in a group that already exists
+- [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
 - [ ] Export a group or everything as a collection; import from file, URL or repo
 - [ ] Import refuses a duplicate group name outright (`6e`), naming the clash — no merge, nothing deleted
 - [ ] The active group drives the **home strip** on the roll screen, which is what `9a` means by "the strip invites the first save"
