@@ -1,13 +1,12 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
+import de.drehtuer.dinfinity.simulation.api.Exact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlin.math.PI
 import kotlin.math.ceil
-import kotlin.math.cos
 import kotlin.math.max
-import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
@@ -140,10 +139,10 @@ class SpawnLayout(
     val root = sqrt(1 - u1)
     val rootComplement = sqrt(u1)
     return Quaternion(
-      w = rootComplement * cos(u3),
-      x = root * sin(u2),
-      y = root * cos(u2),
-      z = rootComplement * sin(u3),
+      w = rootComplement * Exact.cos(u3),
+      x = root * Exact.sin(u2),
+      y = root * Exact.cos(u2),
+      z = rootComplement * Exact.sin(u3),
     )
   }
 
@@ -166,7 +165,7 @@ class SpawnLayout(
     val z = random.nextDouble(-1.0, 1.0)
     val angle = random.nextDouble() * 2 * PI
     val ring = sqrt(1 - z * z)
-    return Vector3(ring * cos(angle), ring * sin(angle), z)
+    return Vector3(ring * Exact.cos(angle), ring * Exact.sin(angle), z)
   }
 
   /** One die's share of the floor, and which height band it starts in. */

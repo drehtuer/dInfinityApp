@@ -1,9 +1,6 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import kotlin.math.PI
-import kotlin.math.atan2
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
@@ -106,7 +103,7 @@ internal object Solids {
   private fun ringVertex(
     turns: Double,
     height: Double,
-  ): Vector3 = Vector3(cos(TURN * turns), sin(TURN * turns), height)
+  ): Vector3 = Vector3(Exact.cos(TURN * turns), Exact.sin(TURN * turns), height)
 
   private const val HALF = 0.5
   private const val QUARTER = 0.25
@@ -135,7 +132,7 @@ private fun ringHeight(n: Int): Double = 1 / sqrt(apexRatio(n) * apexRatio(n) - 
 private fun apexHeight(n: Int): Double = apexRatio(n) * ringHeight(n)
 
 /** How many times higher than the ring the apex sits, for the faces to be flat. */
-private fun apexRatio(n: Int): Double = TWO / (1 - cos(PI / n)) - 1
+private fun apexRatio(n: Int): Double = TWO / (1 - Exact.cos(PI / n)) - 1
 
 /** How many sides a coin's rim is drawn and collided with. */
 private const val COIN_SEGMENTS = 24
@@ -180,7 +177,7 @@ internal fun List<Vector3>.distinctDirections(): List<Vector3> =
   map(Vector3::normalised).distinctBy { Triple(rounded(it.x), rounded(it.y), rounded(it.z)) }
 
 private fun azimuth(direction: Vector3): Double {
-  val angle = atan2(direction.y, direction.x)
+  val angle = Exact.atan2(direction.y, direction.x)
   return if (angle < 0) angle + TURN else angle
 }
 
@@ -203,7 +200,7 @@ fun coinVertices(
   (0 until segments).flatMap { k ->
     val turns = k.toDouble() / segments
     listOf(
-      Vector3(cos(TURN * turns) / 2, sin(TURN * turns) / 2, thicknessRatio / 2),
-      Vector3(cos(TURN * turns) / 2, sin(TURN * turns) / 2, -thicknessRatio / 2),
+      Vector3(Exact.cos(TURN * turns) / 2, Exact.sin(TURN * turns) / 2, thicknessRatio / 2),
+      Vector3(Exact.cos(TURN * turns) / 2, Exact.sin(TURN * turns) / 2, -thicknessRatio / 2),
     )
   }

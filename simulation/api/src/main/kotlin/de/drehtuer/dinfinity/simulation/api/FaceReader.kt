@@ -2,7 +2,6 @@ package de.drehtuer.dinfinity.simulation.api
 
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.FaceRead
-import kotlin.math.cos
 
 /**
  * Reads the number off a die that has come to rest
@@ -23,7 +22,7 @@ object FaceReader {
   const val COCKED_DEGREES: Double = 15.0
 
   /** The dot product that corresponds to [COCKED_DEGREES]. */
-  val UPRIGHT_THRESHOLD: Double = cos(Math.toRadians(COCKED_DEGREES))
+  val UPRIGHT_THRESHOLD: Double = Exact.cos(Math.toRadians(COCKED_DEGREES))
 
   /**
    * Which position of [die] is up when it is turned by [orientation], or

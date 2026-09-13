@@ -73,6 +73,12 @@ Every die is a **convex** rigid body:
   scale a die's inertia tensor falls under a hard-coded "near zero" test inside
   Jolt and is replaced by that of a sphere a metre across, which friction cannot
   slow (`docs/architecture.md`, decision 41).
+- Everything that decides a throw *before* the engine sees it — the spawn
+  layout's orientations and spins, the catalogue's hull vertices, the threshold
+  a face is read against — is computed with `StrictMath` through
+  `simulation/api`'s `Exact`. `Math.sin` may be an intrinsic and is allowed to
+  be an ulp out; one ulp in a starting quaternion is a different face a hundred
+  steps later (`docs/architecture.md`, decision 43).
 - Golden tests: a fixed list of (seed, formula, impulse sequence) tuples with
   their expected outcomes, run on every CI build and on multiple ABIs.
   Any diff is a bug.
