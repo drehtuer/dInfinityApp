@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.Exact
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
+import de.drehtuer.dinfinity.simulation.api.cross
 import kotlin.math.PI
 import kotlin.math.abs
 
@@ -75,6 +76,8 @@ data class TrayMesh(
         part = TrayPart.Floor,
         positions = corners,
         normal = Vector3.Up,
+        // The floor's texture runs along the tray, so u increases along +x.
+        tangent = Vector3(1.0, 0.0, 0.0),
         uvs = corners.map { floorUv(it, geometry, look.floorTiling) },
         triangles =
           outline.points.indices.flatMap { step ->
@@ -113,6 +116,8 @@ data class TrayMesh(
       val height = Vector3(0.0, 0.0, geometry.wallHeightMm)
       val across = outline.acrossTheWall(geometry, look.wallTiling)
       return outline.steps().map { step ->
+        // u runs around the tray, which is the way this stretch of wall goes.
+        val along = (step.to.position - step.from.position).normalised()
         TraySurface(
           part = TrayPart.Wall,
           // Up the near edge, along the top and back down: wound so the
@@ -125,7 +130,15 @@ data class TrayMesh(
               step.to.position,
             ),
           // Into the tray: the face a player looking down at it can see.
-          normal = -step.from.outward,
+          //
+          // Square to this quad, not radial. On a rounded corner the chord
+          // between two points of the arc is not perpendicular to either
+          // point's own outward direction, and a normal that is not
+          // perpendicular to its own surface lights it wrongly — by up to half
+          // a segment, which is where the faceting of a six-segment corner
+          // actually is.
+          normal = -cross(along, Vector3.Up),
+          tangent = along,
           uvs =
             listOf(
               TextureCoordinate(across[step.index], 1.0),
@@ -161,6 +174,7 @@ data class TrayMesh(
               step.to.position + top,
             ),
           normal = Vector3.Up,
+          tangent = (step.to.position - step.from.position).normalised(),
           uvs = emptyList(),
           triangles = QUAD_FAN,
         )
@@ -190,15 +204,18 @@ enum class TrayPart {
  * One surface of the tray: a convex polygon wound anticlockwise as seen from
  * the side its [normal] points at.
  *
+ * @param tangent which way the texture runs across the surface — `u`
+ *   increasing. With [normal] it is the frame a renderer needs for lighting.
  * @param uvs one per corner, or empty where the surface takes a plain colour.
  */
 data class TraySurface(
   val part: TrayPart,
-  val positions: List<Vector3>,
-  val normal: Vector3,
-  val uvs: List<TextureCoordinate>,
-  val triangles: List<Int>,
-) {
+  override val positions: List<Vector3>,
+  override val normal: Vector3,
+  override val tangent: Vector3,
+  override val uvs: List<TextureCoordinate>,
+  override val triangles: List<Int>,
+) : Surface {
   init {
     require(uvs.isEmpty() || uvs.size == positions.size) {
       "a surface has a texture coordinate per corner or none at all, not ${uvs.size} for ${positions.size}"
@@ -268,6 +285,9 @@ private class Outline(
   }
 
   companion object {
+    /** Shorter than this and two points of the outline are one point. */
+    private const val NOTHING = 1e-9
+
     /** The outline of [geometry]'s floor. */
     fun of(geometry: TableGeometry): Outline {
       val halfLong = geometry.longSideMm / 2
@@ -280,8 +300,23 @@ private class Outline(
           Vector3(-halfLong + radius, -halfShort + radius, 0.0),
           Vector3(halfLong - radius, -halfShort + radius, 0.0),
         )
-      return Outline(centres.flatMapIndexed { quarter, centre -> arc(centre, radius, quarter) })
+      return Outline(distinct(centres.flatMapIndexed { quarter, centre -> arc(centre, radius, quarter) }))
     }
+
+    /**
+     * [points] with any that landed on top of each other removed.
+     *
+     * On a tray narrow enough that its two corner arcs meet, the straight
+     * stretch between them has no length at all, so the end of one arc and the
+     * start of the next are the same point. Left in, that is a wall quad with
+     * no width — no winding, and no direction for its texture to run in — and
+     * a floor triangle with no area.
+     */
+    private fun distinct(points: List<Point>): List<Point> =
+      points.filterIndexed { index, point ->
+        val before = points[(index - 1 + points.size) % points.size]
+        (point.position - before.position).length > NOTHING
+      }
 
     /**
      * One rounded corner, both ends included.

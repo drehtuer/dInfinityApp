@@ -299,6 +299,47 @@ class DieMeshTest {
     return sqrt(across * across + down * down)
   }
 
+  @Test
+  fun `every face carries the frame a renderer lights it by`() {
+    // The tangent comes from the same construction that laid the texture out,
+    // so it is square to the normal by arithmetic rather than by luck — which
+    // is what a lit surface needs and what guessing it back from the mesh
+    // afterwards would only approximate.
+    DieShape.entries.forEach { shape ->
+      DieMesh.of(shape).faces.forEach { face ->
+        assertEquals(
+          "${shape.id} face ${face.index} has no direction for its texture",
+          1.0,
+          face.tangent.length,
+          TOLERANCE,
+        )
+        assertEquals(
+          "${shape.id} face ${face.index} has a texture running into itself",
+          0.0,
+          face.tangent dot face.normal,
+          TOLERANCE,
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `the tangent points the way u increases`() {
+    DieShape.entries.forEach { shape ->
+      DieMesh.of(shape).faces.filter { it.index != null }.forEach { face ->
+        val furthest = face.positions.indices.maxBy { face.positions[it] dot face.tangent }
+        val widest = face.uvs.indices.maxBy { face.uvs[it].u }
+
+        assertEquals(
+          "${shape.id} face ${face.index} has its texture running backwards",
+          face.uvs[widest].u,
+          face.uvs[furthest].u,
+          TOLERANCE,
+        )
+      }
+    }
+  }
+
   /** True when this face is steep enough to have an "up" of its own to check. */
   private fun upright(face: MeshFace): Boolean = face.index != null && abs(face.normal dot Vector3.Up) < LYING_FLAT
 

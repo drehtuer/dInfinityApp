@@ -125,6 +125,49 @@ data class Quaternion(
     /** Past this the two turns are the same turn, and the arc has no length. */
     private const val STRAIGHT_LINE_ABOVE = 0.9995
 
+    /**
+     * The turn that takes the axes to [right], [up] and [forward].
+     *
+     * A renderer wants a surface's whole frame — which way is along the
+     * texture, which way is across it, which way is out — and wants it as one
+     * quaternion rather than three vectors, because that is what a vertex
+     * buffer carries. The three must be orthonormal and right-handed; they
+     * come from the same construction that laid the texture out, so they are.
+     *
+     * Shepperd's method: whichever of the four diagonal terms is largest is
+     * the component to solve for, because the other three then divide by
+     * something safely far from zero. Taking `w` every time is the version of
+     * this that quietly loses all its precision on a half-turn.
+     */
+    fun of(
+      right: Vector3,
+      up: Vector3,
+      forward: Vector3,
+    ): Quaternion {
+      val trace = right.x + up.y + forward.z
+      return when {
+        trace > 0 -> {
+          val s = sqrt(1 + trace) * 2
+          Quaternion(w = s / 4, x = (up.z - forward.y) / s, y = (forward.x - right.z) / s, z = (right.y - up.x) / s)
+        }
+
+        right.x > up.y && right.x > forward.z -> {
+          val s = sqrt(1 + right.x - up.y - forward.z) * 2
+          Quaternion(w = (up.z - forward.y) / s, x = s / 4, y = (up.x + right.y) / s, z = (forward.x + right.z) / s)
+        }
+
+        up.y > forward.z -> {
+          val s = sqrt(1 - right.x + up.y - forward.z) * 2
+          Quaternion(w = (forward.x - right.z) / s, x = (up.x + right.y) / s, y = s / 4, z = (forward.y + up.z) / s)
+        }
+
+        else -> {
+          val s = sqrt(1 - right.x - up.y + forward.z) * 2
+          Quaternion(w = (right.y - up.x) / s, x = (forward.x + right.z) / s, y = (forward.y + up.z) / s, z = s / 4)
+        }
+      }.normalised()
+    }
+
     /** No rotation at all: the shape in its reference orientation. */
     val Identity: Quaternion = Quaternion(1.0, 0.0, 0.0, 0.0)
 

@@ -16,12 +16,17 @@ import java.net.URI
  * @param archiveUrl where the bytes are actually fetched from.
  * @param subfolder the folder inside the archive to install from, for a URL
  *   that pointed at one.
+ * @param reference the branch, tag or commit the URL named, or [DEFAULT_REF].
+ * @param commitUrl the forge endpoint that says which commit [reference] is
+ *   at right now, or null for a plain archive, which has no commits to tell
+ *   apart ([RefResolver]).
  */
 data class InstallSource(
   val kind: Kind,
   val archiveUrl: String,
   val subfolder: String? = null,
   val reference: String = DEFAULT_REF,
+  val commitUrl: String? = null,
 ) {
   /** Which sort of place this is. */
   enum class Kind {
@@ -78,6 +83,7 @@ data class InstallSource(
         archiveUrl = "https://api.github.com/repos/$owner/$repository/tarball/$reference",
         subfolder = folder,
         reference = reference,
+        commitUrl = "https://api.github.com/repos/$owner/$repository/commits/$reference",
       ).takeIf { url.isNotBlank() }
     }
 
@@ -99,6 +105,7 @@ data class InstallSource(
         archiveUrl = "https://${uri.host}/api/v4/projects/$encoded/repository/archive.tar.gz?sha=$reference",
         subfolder = folder,
         reference = reference,
+        commitUrl = "https://${uri.host}/api/v4/projects/$encoded/repository/commits/$reference",
       ).takeIf { url.isNotBlank() }
     }
 
@@ -111,10 +118,16 @@ data class InstallSource(
       val (owner, repository) = segments
       val after = segments.drop(REPO_SEGMENTS)
       val reference = if (after.firstOrNull() == "src") after.getOrNull(2) ?: DEFAULT_REF else DEFAULT_REF
+      // Gitea answers "which commit is this ref" with a list rather than one
+      // commit, and it has no name for HEAD: asked for a branch called HEAD it
+      // returns nothing, where asked for no branch at all it returns the
+      // default one, which is what HEAD means.
+      val branch = if (reference == DEFAULT_REF) "" else "sha=$reference&"
       return InstallSource(
         kind = Kind.Gitea,
         archiveUrl = "https://${uri.host}/api/v1/repos/$owner/$repository/archive/$reference.tar.gz",
         reference = reference,
+        commitUrl = "https://${uri.host}/api/v1/repos/$owner/$repository/commits?${branch}limit=1&stat=false",
       ).takeIf { url.isNotBlank() }
     }
 

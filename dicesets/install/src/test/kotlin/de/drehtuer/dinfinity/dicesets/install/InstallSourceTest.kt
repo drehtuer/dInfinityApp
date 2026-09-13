@@ -124,4 +124,44 @@ class InstallSourceTest {
     assertEquals(60L, InstallLimits.TIMEOUT.inWholeSeconds)
     assertEquals("https", InstallLimits.SCHEME)
   }
+
+  @Test
+  fun `a github source knows where to ask which commit its ref is at`() {
+    assertEquals(
+      "https://api.github.com/repos/ada/brass-and-bone/commits/v1.2.0",
+      source("https://github.com/ada/brass-and-bone/tree/v1.2.0").commitUrl,
+    )
+  }
+
+  @Test
+  fun `a gitlab source asks its own host, self-hosted included`() {
+    assertEquals(
+      "https://git.example.org/api/v4/projects/ada%2Fbrass-and-bone/repository/commits/main",
+      source("https://git.example.org/ada/brass-and-bone/-/tree/main").commitUrl,
+    )
+  }
+
+  @Test
+  fun `a gitea source asks for a log of one, because that is the endpoint it has`() {
+    assertEquals(
+      "https://codeberg.org/api/v1/repos/ada/brass-and-bone/commits?sha=main&limit=1&stat=false",
+      source("https://codeberg.org/ada/brass-and-bone/src/branch/main").commitUrl,
+    )
+  }
+
+  @Test
+  fun `a gitea source with no branch named asks for the default one`() {
+    // Gitea has no name for HEAD: asked for a branch called HEAD it returns
+    // nothing, asked for no branch at all it returns the default one.
+    val url = source("https://codeberg.org/ada/brass-and-bone").commitUrl
+
+    assertEquals("https://codeberg.org/api/v1/repos/ada/brass-and-bone/commits?limit=1&stat=false", url)
+  }
+
+  @Test
+  fun `a plain archive has nowhere to ask, because it has no commits`() {
+    assertNull(source("https://example.org/dice/brass.zip").commitUrl)
+  }
+
+  private fun source(url: String): InstallSource = requireNotNull(InstallSource.of(url)) { "$url was not recognised" }
 }

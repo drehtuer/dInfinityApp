@@ -24,6 +24,7 @@ class PackageInstaller(
   private val root: File,
   private val fetcher: PackageFetcher = PackageFetcher(),
   private val extractor: SafeExtractor = SafeExtractor(),
+  private val commits: Commits = Commits.fromForges(),
 ) {
   /** What an install came to. */
   sealed interface Result {
@@ -50,12 +51,35 @@ class PackageInstaller(
   /** Installs from [url], which may be a forge, an archive, or nothing the app fetches. */
   fun installFrom(url: String): Result {
     val source = InstallSource.of(url) ?: return Result.Failed("'$url' is not a link this app installs from")
+    return installFrom(source, url)
+  }
+
+  /**
+   * The same, from a source already recognised.
+   *
+   * @param from what to record as where this came from, which is the URL the
+   *   user actually pasted rather than the API endpoint it was turned into.
+   */
+  fun installFrom(
+    source: InstallSource,
+    from: String = source.archiveUrl,
+  ): Result {
     val workspace = temporaryFolder()
     return try {
       when (val downloaded = fetcher.fetch(source.archiveUrl, workspace)) {
         is PackageFetcher.Result.Failed -> Result.Failed(downloaded.reason)
         is PackageFetcher.Result.Downloaded ->
-          install(downloaded.file, workspace, source.subfolder, Identity(url, downloaded.sha256))
+          install(
+            archive = downloaded.file,
+            workspace = workspace,
+            subfolder = source.subfolder,
+            // A forge that cannot be asked does not stop an install. The
+            // archive's own SHA-256 is what makes it reproducible; the commit
+            // is what the update check in 4.4 needs to tell one HEAD from
+            // another, and not having it costs that and nothing else
+            // (`docs/dice-sets.md`, "Updates").
+            identity = Identity(from, downloaded.sha256, commits.of(source)),
+          )
       }
     } finally {
       workspace.deleteRecursively()
@@ -200,12 +224,14 @@ class PackageInstaller(
   private data class Identity(
     val source: String,
     val sha256: String?,
+    val commit: String? = null,
   ) {
     fun asJson(set: DiceSet): String =
       buildString {
         append("{\n")
         append("  \"source\": \"${source.escaped()}\",\n")
         sha256?.let { append("  \"sha256\": \"$it\",\n") }
+        commit?.let { append("  \"commit\": \"$it\",\n") }
         append("  \"version\": \"${set.version.escaped()}\",\n")
         append("  \"installedAt\": ${System.currentTimeMillis()}\n")
         append("}\n")
