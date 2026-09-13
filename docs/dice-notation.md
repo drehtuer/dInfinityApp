@@ -142,10 +142,39 @@ the throw exists.
 ## Picking dice without typing
 
 The roll screen also has a **dice picker**: tap a d6 three times and a d20
-once and you have `3d6 + 1d20`. Internally this is the same `RollPlan`, so
-the outcome graph, the breakdown and statistics work identically for picked
-dice and typed formulas. A picked roll can be turned into a saved roll with
-one tap.
+once and you have `3d6 + 1d20`. A tap writes into the formula field, so what
+comes out is a formula somebody could have typed — which is what makes the
+outcome graph, the breakdown and statistics identical either way. A picked
+roll can be turned into a saved roll with one tap.
+
+The rules the picker follows, all of which fall out of "a tap writes a
+formula and never throws one away":
+
+- **A tap counts up a group that is already there**, so a second d6 turns
+  `1d6` into `2d6` rather than writing `1d6 + 1d6`.
+- **A new group is written in front of the first plain number**: tapping a d20
+  on `3d6 - 4` gives `3d6 + 1d20 - 4`, because a formula reads as dice and then
+  arithmetic.
+- **The count badge counts the top-level sum only, and only groups that are
+  added and carry no modifiers.** `4d6dl1` shows no badge: the picker could
+  not take a die away from it without silently changing what `dl1` drops.
+  Dice inside brackets and dice being subtracted are likewise not the
+  picker's to change.
+- **A long press takes one die off**, and takes the group away with it when it
+  was the last one. A press with nothing to remove does nothing.
+- **Everything else in the formula is left exactly as written.** Edits are
+  spliced into the text, not re-printed from the parse tree, so modifiers,
+  brackets, set references and a trailing `[label]` come back spelled the way
+  they were typed. Only the spacing around the top-level `+` and `-` is
+  normalised, because that is the part being cut into.
+- **A formula that does not parse has no badges and cannot be added to.**
+  There are no counts to show and nothing to splice into.
+
+The row offers the **standard dice the selected set defines** — `dN`, `d%`
+and `dF`. A set's own die ids (`skull-d6`) are not on it, because plain
+notation has no spelling for them (`docs/architecture.md`, decision 31), and
+a button whose taps could not be written into the field would be a button
+whose taps disappear.
 
 ## d100 and d%
 

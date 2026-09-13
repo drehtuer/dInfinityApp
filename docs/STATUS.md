@@ -62,7 +62,8 @@ changelog.
   refusal for a throw the table cannot hold, a total, the breakdown under it
   with every die that landed, Down / Nearest / Up for a throw that divides, and
   pinch-to-zoom and two-finger pan over a camera that never moves on its own.
-  What it has not: the dice picker, the squiggle under a bad formula, the
+  What it has not: the picker row itself — its rules are written and tested
+  in `core/notation` — the squiggle under a bad formula, the
   power-saving path, the first-launch state, and numbers on the faces. All
   listed in `docs/TODO.md`.
 - **The screens' state machines are written down.** `docs/architecture.md` now
