@@ -18,8 +18,9 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #93 is merged and `main` is green;
-  #94–#104 are a stack waiting to be merged oldest first.
+- **Branch state:** everything up to #107 is merged and `main` is green.
+  The only thing open is Dependabot's markdownlint bump (#105), which the
+  table-pipe fix in #107 unblocked.
 
 ## Done
 
