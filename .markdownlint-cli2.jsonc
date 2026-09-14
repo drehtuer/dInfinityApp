@@ -16,7 +16,16 @@
     "MD033": { "allowed_elements": ["picture", "source", "img", "div", "p", "br"] },
 
     // MD041 (first line must be a heading): the README opens with that logo.
-    "MD041": false
+    "MD041": false,
+
+    // MD060 (table column style): pinned rather than left at its default of
+    // "any". "any" checks that each table is internally consistent, which
+    // would let a new document arrive in the aligned style and leave the repo
+    // with two. Compact is what every table here already is — one space each
+    // side of the cell, dashes the same width as the rule they are — and it is
+    // the style that survives editing, because adding a longer cell to an
+    // aligned table means re-padding every row of it.
+    "MD060": { "style": "compact" }
   },
   "globs": [
     "**/*.md",

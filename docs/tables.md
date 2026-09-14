@@ -24,7 +24,7 @@ it are fixed and one is exchangeable.
 Simulation units are millimetres.
 
 | Property | Value |
-|---|---|
+| --- | --- |
 | Long side | 240 mm, always (a real dice tray, regardless of phone size) |
 | Short side | 240 mm × screen aspect ratio, clamped to 0.40–0.75 (Pixel 10a: 20:9 → ~108 mm) |
 | Wall height | 60 mm as drawn; the collision box is closed to the ceiling at 200 mm |
@@ -96,7 +96,7 @@ determinism tests.
 Worked example on a Pixel 10a table (240 × 108 mm ≈ 259 cm²):
 
 | Roll | Required at scale 1 | Result |
-|---|---|---|
+| --- | --- | --- |
 | `1d20` (16 mm) | 2.0 cm² | scale 1.0 |
 | `8d6` (16 mm) | 16 cm² | scale 1.0 |
 | `38d6` | 76 cm² | scale 1.0 — the most that roll full size |

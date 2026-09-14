@@ -10,7 +10,7 @@ that only works on one laptop is a build nobody else can reproduce.
 ## What the container has
 
 | Tool | Version | Why |
-|---|---|---|
+| --- | --- | --- |
 | Ubuntu | 26.04 LTS | Base image |
 | OpenJDK | 21 | Gradle and the Kotlin compiler |
 | Android SDK platform | newest stable minor of API 37 | `compileSdk` / `targetSdk` |
@@ -587,7 +587,7 @@ not lines (`.claude/CLAUDE.md`). Each module writes its own report and Sonar
 merges the list, because the two kinds of module produce coverage differently:
 
 | Module kind | Report task | XML |
-|---|---|---|
+| --- | --- | --- |
 | Pure Kotlin (`core/*`, `simulation/api`, …) | Gradle's `jacocoTestReport` | `build/reports/jacoco/test/jacocoTestReport.xml` |
 | Android (`app`, `data`, `feature/*`, …) | AGP's `createDebugUnitTestCoverageReport` | `build/reports/coverage/test/debug/report.xml` |
 
@@ -623,7 +623,7 @@ document gives a developer, so a green pull request means what a green
 terminal means.
 
 | Workflow | Runs | Does |
-|---|---|---|
+| --- | --- | --- |
 | `ci.yml` — Build, test and analyse | PR, push to `main` | `./gradlew build test coverageReport lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below, then the SonarQube scan and its quality gate |
 | `ci.yml` — Device tests compile | PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
 | `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
@@ -688,7 +688,7 @@ Push a tag of the form `vX.Y.Z`. Nothing else triggers a release, and the
 workflow refuses more than it accepts:
 
 | Refusal | Why |
-|---|---|
+| --- | --- |
 | A release for the tag already exists | Releases are immutable — never move, delete or re-tag a published version, ship a new one (`.claude/CLAUDE.md`). The tag itself is protected by the repository's `releases` ruleset |
 | The tag disagrees with `version.txt` | The APK is named from `version.txt`, so `v1.2.0` around an APK called `dInfinityApp-1.1.0.apk` is a release nobody can reason about. Bump `version.txt` in the commit you tag |
 | The APK is not signed by the release key | Checked against the fingerprint in `keystore/release-certificate.sha256`. Without `keystore.properties` the build produces an *unsigned* APK rather than failing, and a release signed with the debug key — or a regenerated one — installs as a different app and can never update anyone |

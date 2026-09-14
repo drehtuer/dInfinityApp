@@ -49,7 +49,7 @@ refused, `2d20kh1 + 6` for advantage. Physics is faked with a random face and
 a tumble; everything else is real.
 
 | | |
-|---|---|
+| --- | --- |
 | [design/dInfinity.dc.html](design/dInfinity.dc.html) | The canvas: every screen and every variant on one board — start here |
 | [design/dInfinityPhone.dc.html](design/dInfinityPhone.dc.html) | The phone prototype on its own, without the board around it |
 | [design/README.md](design/README.md) | What each file is, and what the prototype needs to run |
@@ -100,7 +100,7 @@ a tumble; everything else is real.
 is the visual one. Each document below links to the screens that realise it.
 
 | Document | Contents |
-|---|---|
+| --- | --- |
 | [docs/STATUS.md](docs/STATUS.md) | Where the project stands right now: phase, in progress, blocked, pending decisions |
 | [docs/TODO.md](docs/TODO.md) | Open tasks by milestone and open questions |
 | [docs/build-setup.md](docs/build-setup.md) | Devcontainer, building, signing keys, running tests, connecting a phone over WiFi |

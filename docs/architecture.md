@@ -21,7 +21,7 @@
 ## Tech stack
 
 | Concern | Choice | Notes |
-|---|---|---|
+| --- | --- | --- |
 | Language | Kotlin | Native code (C++) only inside the physics/rendering bridge |
 | UI | Jetpack Compose | Material 3 |
 | 3D rendering | [Filament](https://github.com/google/filament) | PBR, Vulkan/OpenGL ES, Android-first, Kotlin bindings |
@@ -268,7 +268,7 @@ file.
 ### What each state puts on screen
 
 | State | Total | Message | Sheet | Roll button | Formula field |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | `Empty` | — | what to do next | — | disabled | live |
 | `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | disabled | live, in error |
 | `TooMany` | — | how many were asked for and how many fit | — | disabled | live, in error |
@@ -362,7 +362,7 @@ Three more things hang off the screen's lifecycle rather than off any state,
 and none of them is a control anybody presses:
 
 | | Held while | Given back |
-|---|---|---|
+| --- | --- | --- |
 | the accelerometer | the screen is resumed | on pause — a sensor left running behind a backgrounded app is a battery bill for nothing |
 | the screen staying awake | the screen is on screen | on leaving it; a tray is something a table looks at between turns, and a phone that blanks after fifteen seconds has to be poked to read a roll |
 | the orientation lock | the same | the same. The tray *is* the screen (`docs/tables.md`), so turning the phone rebuilds the table — the right answer for a player who meant it, a surprise for one who is shaking it |
@@ -391,7 +391,7 @@ it is not a state of the tray but of where the tray draws. The two are crossed,
 not merged, and one rule decides who asks for the next frame:
 
 | | A roll is in the air | Nothing is moving |
-|---|---|---|
+| --- | --- | --- |
 | **a surface** | a frame every vsync | one frame, and only until a frame actually lands |
 | **no surface** | a frame every vsync anyway | none — nothing to draw on, nothing owed that could be paid |
 
@@ -453,7 +453,7 @@ rolls and the groups they belong to arriving a frame apart is a list that
 flickers through a state that was never true.
 
 | | |
-|---|---|
+| --- | --- |
 | `loaded = false` | the database has not answered yet — **not** the same as empty |
 | `loaded && rolls.isEmpty()` | nothing saved in this group, which is a thing to say |
 | `switching` | the group switcher is open over the list |
@@ -469,7 +469,7 @@ favourites first, then by recent use — is SQL's, because it is what the list
 *is* (`docs/dice-notation.md`, "Saved rolls").
 
 | Control | Calls | What changes |
-|---|---|---|
+| --- | --- | --- |
 | the group name | `showGroups` | whether the switcher is open |
 | a group in the switcher | `open` | which group's rolls are listed, and the stored active group |
 | a group's **…**, or a long press on it | `GroupPresenter.edit` | the group sheet opens on that group |
@@ -492,7 +492,7 @@ It watches the same two flows the list does, which is what lets both of its
 rules be answered *while the player types* rather than when they press Save:
 
 | Rule | Answered by | Why it is not only checked at import |
-|---|---|---|
+| --- | --- | --- |
 | a group's name is its own | the group list, ignoring case | an import refuses a collection whose group name is taken (decision 15); a name the app itself let you duplicate would make that refusal arbitrary |
 | groups nest exactly one level | `parents`, and `nestable` | checked from *both* ends — a group cannot go inside one that is already inside another, and a group with groups inside it cannot go inside anything |
 
@@ -502,7 +502,7 @@ then move its parent. `SavedRollRepository.save` refuses both, because an
 import writes without ever passing through the sheet.
 
 | Control | Calls | What changes |
-|---|---|---|
+| --- | --- | --- |
 | the name field | `name` | the name, and whether another group already has it — named, not merely reported |
 | a mark | `icon` | that mark, or none when the chosen one is tapped again |
 | **Inside** | `parent` | which group it sits in; the chooser is absent, with its reason, for a group that has children |
@@ -621,7 +621,7 @@ already uses, and an id taken from a stranger is an id that can collide with
 one made here.
 
 | State | What it means |
-|---|---|
+| --- | --- |
 | `Waiting` | nothing chosen; what an import will and will not do is on screen |
 | `Reading` | brief, but not instant for five hundred rolls |
 | `Unopenable` | the file could not be opened at all — moved, or the permission withdrawn |
@@ -630,7 +630,7 @@ one made here.
 | `Imported` | it is in, with the counts and any roll whose dice are not installed |
 
 | Control | Calls | What changes |
-|---|---|---|
+| --- | --- | --- |
 | **Choose a file** | the picker, in `:app` | a content URI arrives, is read bounded, and becomes text |
 | *(not a control)* the file's text | `offer` | the state, to one of the four above |
 | **Choose another file** | `again`, then the picker | back to `Waiting` |
@@ -657,7 +657,7 @@ A formula too large to graph exactly is still worth saving; it simply has no
 numbers beside it.
 
 | Control | Calls | What changes |
-|---|---|---|
+| --- | --- | --- |
 | the name field | `name` | what it will be called; blank means the formula is its name |
 | the formula field | `formula` | the formula, its error and its odds, all from one plan |
 | icon, colour, group, table, favourite | `choose` | that one field and nothing else — none of them needs re-validating |
@@ -700,7 +700,7 @@ asks for it per roll rather than capturing it, so an evening's rolls do not all
 land in whichever session was current when the screen opened.
 
 | Control | Calls | What changes |
-|---|---|---|
+| --- | --- | --- |
 | a session in the list | `activate` | which session new rolls are filed under, and the stored preference |
 | **New session** | `edit(SessionDraft())` | the naming sheet, on one that does not exist yet |
 | **Rename** | `edit(draft)` | the same sheet, on one that does. The id does not move, so the rolls filed under it stay filed under it |
@@ -734,7 +734,7 @@ has never rolled a 20"* is the single most interesting thing a histogram can
 say, and a missing bar does not say it.
 
 | Control | Calls | What changes |
-|---|---|---|
+| --- | --- | --- |
 | a die in the list | `select` | that die opens, and its face counts start being watched |
 | **←** | `close` | back to the list, and the watching stops |
 | **Forget this die's record** | `confirm` | the confirmation, not the deletion |
@@ -766,7 +766,7 @@ heading repeated down a whole list says nothing, which is what a fresh install
 would see.
 
 | Control | Calls | What changes |
-|---|---|---|
+| --- | --- | --- |
 | a row with a breakdown | `open` | that breakdown opens, and any other closes |
 | the same row again | `open` | it closes |
 | *(not a control)* a roll landing on the tray | — | the list, by itself |
@@ -781,7 +781,7 @@ the screen that changed it — which is the opposite of what a roll does, and
 why the two are not built the same way (decision 49).
 
 | Control | Calls | What changes |
-|---|---|---|
+| --- | --- | --- |
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
 | the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
@@ -879,7 +879,7 @@ kept (they are keyed by set id and die id, not by file path).
 ## Key decisions log
 
 | # | Decision | Reason |
-|---|---|---|
+| --- | --- | --- |
 | 1 | Result comes from physics, always | Core value proposition; avoids "is the animation just theatre?" |
 | 2 | Fixed-timestep, seeded, deterministic sim | Power-saving mode must be provably the same roll; reproducible bugs |
 | 3 | TOML for dice sets | Human-editable, no code execution, comments allowed, simple to validate |

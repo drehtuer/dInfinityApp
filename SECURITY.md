@@ -28,7 +28,7 @@ The threat model in one line: **a dice set, table or saved-roll collection is
 data written by a stranger, and the app treats it that way.**
 
 | Input | Treated as |
-|---|---|
+| --- | --- |
 | A downloaded dice set or table (`docs/dice-sets.md`) | Hostile until validated |
 | An imported saved-roll collection (`docs/dice-notation.md`) | Hostile until validated |
 | A formula typed by the user | Untrusted length and shape; bounded by the notation limits |
