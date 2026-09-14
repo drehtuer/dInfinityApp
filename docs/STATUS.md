@@ -18,8 +18,9 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #108 is merged and `main` is green; no
-  Dependabot PRs are open.
+- **Branch state:** everything up to #128 is merged and `main` is green; no
+  Dependabot PRs are open. The Pixel 10a is back on the LAN, so the device
+  tier has been run against it: 30 instrumented tests, no failures.
 
 ## Done
 
@@ -64,12 +65,14 @@ changelog.
   the dice picker row, the saved-roll strip, roll from the button or a shake, a
   refusal for a throw the table cannot hold, the total and its breakdown,
   Down / Nearest / Up, pinch and pan, power-saving, first launch. Missing: the
-  set dropdown and numbers on the faces. Two things the phone found: a shake
-  with the phone upside down pooled the dice at the wrong end, because the
-  screen pinned the display to the rotation it opened at and the shake map
-  reads that rotation — it now holds its *shape* either way up; and coming back
-  from the menu showed a black tray, because the Filament engine was rebuilt
-  per visit — the roll thread and the engine now outlive one.
+  set dropdown and numbers on the faces. Two things the phone found, both now
+  fixed and both re-checked on it: a shake with the phone upside down pooled
+  the dice at the wrong end, because the screen pinned the display to the
+  rotation it opened at and the shake map reads that rotation — it now holds
+  its *shape* either way up, and the app stays foreground at `ROTATION_180`
+  where before it was pushed to the home screen; and coming back from the menu
+  showed a black tray, because the Filament engine was rebuilt per visit — the
+  roll thread and the engine now outlive one, and the tray comes back drawn.
 - **4.2 Outcome graph.** The exact distribution as bars with its mean line and
   ±1σ band, `P(= k)` / `P(≥ k)`, a tap for the numbers, the roll that opened it
   marked. Reached from "See the odds" — the first navigation carrying an
@@ -115,7 +118,11 @@ changelog.
   screen carries the same button and the menu reaches every screen. Settings
   has appearance, the accent, shake, the default rounding, power saving, the
   version and a link to the source. Haptics and sound are deliberately absent —
-  nothing plays anything yet, and a row that does nothing is a lie.
+  nothing plays anything yet, and a row that does nothing is a lie. The menu's
+  header was drawn in the default content colour — black on the dark
+  background, invisible on the phone and invisible to every assertion about
+  text — because the screen was a bare `Column` that set no content colour. It
+  is a `Surface` now, and a pixel test holds the app name to WCAG's 3:1.
 - **The screens' state machines are written down.** `docs/architecture.md`
   carries every one as a diagram and a control table, so a transition nobody
   thought about is visible rather than latent.
@@ -129,8 +136,10 @@ changelog.
   the dice now have weight; whether 16 mm dice read too small on a screen;
   whether the empty table looks like a table worth rolling on; whether turning
   the phone is now seamless; and whether four times in is the right limit on
-  the pinch. None of them blocks anything else, and none can be answered here —
-  the container's emulator has no real GPU and `screencap` returns black.
+  the pinch. None of them blocks anything else. `screencap` on the phone does
+  return a real frame, so what a screen *contains* can now be checked from
+  here — that is how the menu's invisible header was found — but whether a
+  thing feels right is still a person's call.
 
 ## Decisions pending
 
