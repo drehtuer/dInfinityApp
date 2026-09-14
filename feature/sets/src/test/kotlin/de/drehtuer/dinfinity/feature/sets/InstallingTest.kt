@@ -184,17 +184,97 @@ class InstallingTest {
     assertTrue(presenter.state.outcome is PackageInstaller.Result.Failed)
   }
 
+  @Test
+  fun `a set that installs becomes a set a formula can resolve against`() {
+    // The point of the whole step. A package that installs and whose dice
+    // cannot be rolled is a list entry, not a dice set.
+    val presenter = loaded()
+    assertNull("a set nobody installed was already in the catalogue", library.catalogue.set("brass"))
+
+    presenter.install(zip("brass", toml("brass", "Brass")))
+    await("the new set never reached the list") { presenter.state.sets.any { it.id == "brass" } }
+
+    assertEquals("Brass", library.catalogue.set("brass")?.name)
+    assertEquals(
+      listOf("d6"),
+      library.catalogue
+        .set("brass")
+        ?.dice
+        ?.map { it.id },
+    )
+  }
+
+  @Test
+  fun `switching a set off takes its dice out of the catalogue`() {
+    // Switched off has to mean *not offered*, or the setting is decoration.
+    val presenter = loaded()
+    presenter.install(zip("brass", toml("brass", "Brass")))
+    await("the new set never reached the list") { presenter.state.sets.any { it.id == "brass" } }
+
+    presenter.setEnabled(presenter.state.sets.single { it.id == "brass" }, enabled = false)
+    await("the set was never switched off") {
+      presenter.state.sets
+        .single { it.id == "brass" }
+        .enabled
+        .not()
+    }
+
+    assertNull("a set that was switched off still handed out dice", library.catalogue.set("brass"))
+  }
+
+  @Test
+  fun `a set that stopped validating hands out no dice either`() {
+    // The other way a set can be unusable. Both have to reach the catalogue,
+    // or a broken package would go on resolving from whatever it said last.
+    write("runes", "format = 1\n\n[set]\nid = \"runes\"\n")
+
+    val presenter = loaded()
+
+    assertTrue("a broken package was not listed", presenter.state.sets.any { it.id == "runes" })
+    assertNull("a broken package handed out dice", library.catalogue.set("runes"))
+  }
+
+  @Test
+  fun `the bundled set is always in the catalogue, and is what everything falls back to`() {
+    loaded()
+
+    assertEquals(DiceSet.BUILTIN_ID, library.catalogue.defaultSetId)
+    assertEquals("Standard", library.catalogue.set(DiceSet.BUILTIN_ID)?.name)
+  }
+
+  @Test
+  fun `removing a set takes its dice with it`() {
+    val presenter = loaded()
+    presenter.install(zip("brass", toml("brass", "Brass")))
+    await("the new set never reached the list") { presenter.state.sets.any { it.id == "brass" } }
+
+    presenter.remove(presenter.state.sets.single { it.id == "brass" })
+    await("the set was never removed") { presenter.state.sets.none { it.id == "brass" } }
+
+    assertNull("a removed set still handed out dice", library.catalogue.set("brass"))
+  }
+
+  private fun write(
+    id: String,
+    toml: String,
+  ) {
+    val folder = File(root, id).apply { mkdirs() }
+    File(folder, DiceSetValidator.DICE_SET_FILE).writeText(toml)
+  }
+
+  private val library: SetLibrary by lazy {
+    SetLibrary(
+      bundled = bundledSet(),
+      installed = InstalledSets(root),
+      registry = registry,
+      io = Dispatchers.Unconfined,
+      installer = PackageInstaller(root),
+    )
+  }
+
   private fun loaded(): SetsPresenter =
-    SetsPresenter(
-      SetLibrary(
-        bundled = bundledSet(),
-        installed = InstalledSets(root),
-        registry = registry,
-        io = Dispatchers.Unconfined,
-        installer = PackageInstaller(root),
-      ),
-      scope,
-    ).also { presenter -> await("the disk was never read") { presenter.state.loaded } }
+    SetsPresenter(library, scope)
+      .also { presenter -> await("the disk was never read") { presenter.state.loaded } }
 
   private fun await(
     why: String,

@@ -425,6 +425,16 @@ are ignored with a warning to allow future extensions.
   because passing the validator once does not make a folder valid for ever. A
   broken package **keeps its folder**: an update is the way out of that state
   and an update needs somewhere to update from (design `6b`).
+- **What is installed is what a formula resolves against.** `SetLibrary` builds
+  the catalogue every time it reads the `dicesets/` folder, from the bundled set
+  plus every installed package that is *on and still validates* — the same test
+  a row's status shows. Reading the folder and deciding what a `d20` means are
+  the same facts, and keeping them apart is how a set comes to be listed as
+  installed and still not roll.
+- The folder is read once as the process starts, not when the dice-set screen
+  is first opened. The roll screen is home, so the first formula can be typed a
+  moment after launch; a set that only became rollable once somebody visited a
+  list would be a set that worked for the people who happened to look.
 - **A file somebody picked is copied bounded, into the app's own cache.** A
   content URI is a handle to something another application controls: its size
   is not knowable in advance, the provider may report one figure and hand over

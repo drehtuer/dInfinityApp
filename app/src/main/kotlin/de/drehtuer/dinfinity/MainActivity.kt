@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
     val saved =
       SavedWiring(
         app = app,
-        catalog = app.rolls.catalog,
+        catalog = app.setLibrary.catalogue,
         scope = lifecycleScope,
         unfiledName = getString(R.string.saved_unfiled),
       )
@@ -173,7 +173,7 @@ class MainActivity : ComponentActivity() {
         StatsPresenter(
           statistics = app.dieStatistics,
           writer = app.statistics,
-          catalog = app.rolls.catalog,
+          catalog = app.setLibrary.catalogue,
           scope = lifecycleScope,
         )
       },

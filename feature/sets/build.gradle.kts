@@ -12,6 +12,10 @@ dependencies {
 
   // The die outlines the details screen draws, shared with the roll screen's
   // picker so a d20 is the same shape in both.
+  // What a formula resolves against: the library rebuilds the catalogue every
+  // time it reads the folder, because those are the same facts.
+  api(project(":core:notation"))
+
   api(project(":ui:common"))
 
   // What the player has switched off. What is *installed* comes off the disk;

@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.sets
 
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
@@ -37,6 +38,25 @@ class SetLibrary(
   private val installer: PackageInstaller,
 ) {
   /**
+   * What a formula resolves against (`docs/dice-notation.md`).
+   *
+   * The bundled set and every installed set that is **on and valid** — which
+   * is the same question [SetRow.usable] answers for a row, because a set the
+   * player switched off and a set that stopped validating are both sets whose
+   * dice must not be handed out.
+   *
+   * Rebuilt by [all], and only by [all]. Reading the folder and deciding what
+   * a `d20` means are the same facts, and keeping them apart is how a set
+   * comes to be listed as installed and still not roll.
+   *
+   * Starts as the bundled set alone. That is what is true before anything has
+   * been read, and it is the floor everything falls back to in any case.
+   */
+  @Volatile
+  var catalogue: DiceCatalog = DiceCatalog.of(listOf(bundled))
+    private set
+
+  /**
    * Every set, the bundled one first and the rest by name.
    *
    * By name rather than by id, because the name is what a row shows: two sets
@@ -51,10 +71,13 @@ class SetLibrary(
     val packages = withContext(io) { installed.scan() }
     registry.keepOnly(packages.map(InstalledPackage::id))
     val off = registry.disabled()
-    return listOf(SetRow.bundled(bundled)) +
-      packages
-        .map { pack -> SetRow.of(pack, enabled = pack.id !in off) }
-        .sortedBy { it.name.lowercase() }
+    val rows =
+      listOf(SetRow.bundled(bundled)) +
+        packages
+          .map { pack -> SetRow.of(pack, enabled = pack.id !in off) }
+          .sortedBy { it.name.lowercase() }
+    catalogue = DiceCatalog.of(rows.filter(SetRow::usable).mapNotNull(SetRow::set).distinctBy(DiceSet::id))
+    return rows
   }
 
   /**
