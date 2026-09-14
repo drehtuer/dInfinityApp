@@ -64,6 +64,12 @@ class SavedStatsScreenTest {
           ApplicationProvider.getApplicationContext<Context>(),
           DInfinityDatabase::class.java,
         ).allowMainThreadQueries()
+        // Queries and invalidation on the calling thread, so a `Flow` from a
+        // `@Query` emits when the write happens rather than when a pool thread
+        // gets to it. Without it the first wait in a class races Room's own
+        // executors, which surfaces as an unrelated test failing now and then.
+        .setQueryExecutor(Runnable::run)
+        .setTransactionExecutor(Runnable::run)
         .build()
     saved = SavedRollRepository(database)
     history = HistoryRepository(database)
@@ -307,7 +313,7 @@ class SavedStatsScreenTest {
   ) {
     runBlocking {
       totals.forEachIndexed { index, total ->
-        database.rollHistory().insert(
+        database.rollHistoryWriting().insert(
           RollHistoryRow(
             timestamp = index.toLong(),
             sessionId = "default",

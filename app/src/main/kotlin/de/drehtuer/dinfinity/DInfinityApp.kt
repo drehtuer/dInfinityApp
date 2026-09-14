@@ -101,18 +101,13 @@ fun DInfinityApp(
   onRoundingSelected: (Rounding) -> Unit = {},
   onRepository: () -> Unit = {},
   version: String = "",
-  rollPresenter: (() -> RollPresenter)? = null,
-  graphMachine: (() -> GraphMachine)? = null,
-  savedRolls: (() -> SavedPresenter)? = null,
-  savedRollEditor: ((String?) -> EditorPresenter)? = null,
-  savedGroups: (() -> GroupPresenter)? = null,
-  collectionImport: (() -> ImportPresenter)? = null,
-  history: (() -> HistoryPresenter)? = null,
-  statistics: (() -> StatsPresenter)? = null,
-  sessions: (() -> SessionsPresenter)? = null,
-  savedStatistics: (() -> SavedStatsPresenter)? = null,
-  diceSets: (() -> SetsPresenter)? = null,
-  diceSet: ((String, () -> Unit) -> SetDetailPresenter)? = null,
+  /**
+   * How to build every screen, or null to draw placeholders for all of them.
+   *
+   * All or nothing on purpose: half a set of screens is how the sessions
+   * screen went missing for a whole step ([Presenters]).
+   */
+  screens: Presenters? = null,
   onSource: (String) -> Unit = {},
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
@@ -149,15 +144,23 @@ fun DInfinityApp(
             entry,
             navController,
             settings,
-            rollPresenter,
-            graphMachine,
-            savedRolls,
+            screens?.roll,
+            screens?.graph,
+            screens?.savedRolls,
             onWelcomeSeen,
           ) ||
-            saving(destination, entry, navController, savedRolls, savedGroups, savedRollEditor, collectionImport) ||
-            lookingBack(destination, entry, navController, history, statistics, sessions) ||
-            counting(destination, entry, navController, savedStatistics) ||
-            customising(destination, entry, navController, diceSets, diceSet, onSource) ||
+            saving(
+              destination,
+              entry,
+              navController,
+              screens?.savedRolls,
+              screens?.savedGroups,
+              screens?.savedRollEditor,
+              screens?.collectionImport,
+            ) ||
+            lookingBack(destination, entry, navController, screens?.history, screens?.statistics, screens?.sessions) ||
+            counting(destination, entry, navController, screens?.savedStatistics) ||
+            customising(destination, entry, navController, screens?.diceSets, screens?.diceSet, onSource) ||
             chrome(
               destination = destination,
               navController = navController,
@@ -179,6 +182,14 @@ fun DInfinityApp(
     }
   }
 }
+
+/**
+ * How a test says "this destination drew a placeholder rather than a screen".
+ *
+ * A tag rather than the words on it, so the sentence can be reworded without
+ * quietly turning the check off.
+ */
+internal fun notBuiltTag(destination: Destination): String = "notbuilt:${destination.route}"
 
 /** The way to the menu, which every screen carries in the same place. */
 @Composable
@@ -446,7 +457,12 @@ private fun lookingBack(
     }
 
     Destination.Statistics if statistics != null -> {
-      StatsScreen(presenter = remember(entry) { statistics() }, menu = { MenuTo(navController) })
+      val context = LocalContext.current
+      StatsScreen(
+        presenter = remember(entry) { statistics() },
+        onExport = { file -> NumbersSharing.share(context, file) },
+        menu = { MenuTo(navController) },
+      )
       true
     }
 
@@ -671,7 +687,16 @@ internal fun graphRoute(
     if (total != null) append("&${GraphArgument.TOTAL}=$total")
   }
 
-/** Stands in for a screen that has not been built yet. */
+/**
+ * Stands in for a screen that has not been built yet.
+ *
+ * It carries the same `screen:<route>` tag a real screen would, because from
+ * the navigation graph's point of view it *is* the screen at that route. It
+ * also carries [notBuiltTag], which is how a test tells the difference — and
+ * the difference is the whole of the bug this guards: a screen that was
+ * written and never plugged in looks exactly like a screen that was never
+ * written ([Presenters]).
+ */
 @Composable
 internal fun PlaceholderScreen(
   destination: Destination,
@@ -700,6 +725,7 @@ internal fun PlaceholderScreen(
         text = "Not built yet — see docs/TODO.md",
         style = MaterialTheme.typography.labelSmall,
         color = colors.accent,
+        modifier = Modifier.testTag(notBuiltTag(destination)),
       )
     }
     Box(

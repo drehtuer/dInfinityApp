@@ -177,11 +177,11 @@ sets (`5c`) with the fair line weighted by how often each die was thrown.
 Forgetting one die's record or everything is there, each behind a confirmation.
 Every saved roll's own totals sit against the exact distribution it was rolling
 against (`8b`, `9e`), with the drift judged against the standard error rather
-than shown bare.
-
-- [ ] Sorting the all-dice list. It is most-recently-used first and nothing else, which is the right default and the only one
-- [ ] Export as JSON/CSV — without seeds
-- [ ] Reset per saved roll and per session; per die and everything are done
+than shown bare. It exports as JSON or CSV through the share sheet: one row per
+face in the flat form, and the per-die runs added in the full one, because a
+run is the one thing face counts cannot give back. The list can be put in
+three orders — most recently used, most thrown, highest average — with recency
+the default, because that is the die somebody came about.
 
 ### 4.8 History — `feature/stats`
 
@@ -192,7 +192,9 @@ die including the dropped ones, the set a roll fell back to, corrections
 counted, and a natural maximum in the accent. It cuts to one session or one
 saved roll, with a chooser that is not drawn until there is more than one thing
 to choose between. It exports as JSON or CSV through the share sheet, carrying
-everything the filter matches rather than the page on screen. No replay and no
+everything the filter matches rather than the page on screen, and forgets those
+same rolls — a session's or a saved roll's — behind a confirmation that says
+what stays as well as what goes. No replay and no
 seed, which the types enforce rather than the screen remembering — the export
 is built from `HistoryEntry`, which has none to write. Pruning at 50,000 rows
 was already done and tested in `StatisticsRepository`.
@@ -226,6 +228,14 @@ The menu is built and **the navigation graph is connected**: every screen
 carries the same menu button and the menu reaches every screen
 (`docs/architecture.md`, "Screens and the states behind them").
 
+A screen can no longer be built and left unplugged. `Presenters` holds a
+factory per screen with no optional fields, so adding a destination stops the
+activity compiling until it says how to build one; the same object is what the
+tests wire, and one of them walks every menu destination and fails on a
+placeholder that is not Table picker or Face designer. Both halves were checked
+by putting the original bug back: removing the sessions screen's dispatch turns
+the list into `[sessions, tables, designer]`.
+
 - [ ] One row the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll). Decide whether it is a screen or belongs in the README. *Saved-roll statistics is built and in the menu (4.7).*
 - [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
@@ -233,8 +243,6 @@ and the repository link are all there, and each of them does something.
 
 - [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
 - [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)
-- [ ] Replace the single field on `DInfinityApplication` with a real container. `RollWiring` and `SavedWiring` are now the shape it should take; what is left is the application holding one of those rather than eight lazy fields
-- [ ] **Nothing catches a screen that was built and never plugged in.** `DInfinityApp` takes one nullable factory per screen and draws a placeholder for a null, which is right for a test of the graph and wrong for the app: the sessions screen was finished, tested and unreachable for a whole step, because `MainActivity` never passed its presenter and `DInfinityScreensTest` builds its own wiring and so cannot notice. The container above is the fix — one object holding every factory, used by the activity *and* by that test, so a missing screen is a compile error rather than a placeholder
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone

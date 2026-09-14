@@ -41,6 +41,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 abstract class DInfinityDatabase : RoomDatabase() {
   abstract fun rollHistory(): RollHistoryDao
 
+  abstract fun rollHistoryWriting(): RollHistoryWritingDao
+
   abstract fun dieStats(): DieStatsDao
 
   abstract fun dieSummary(): DieSummaryDao

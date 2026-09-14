@@ -29,6 +29,16 @@ class DieStatisticsRepository(
   ): Flow<List<FaceTally>> = database.dieStats().histogram(setId, dieId).map { rows -> rows.map(DieStatsRow::asTally) }
 
   /**
+   * Every face of every die, for an export (`docs/statistics.md`, "Export and
+   * reset").
+   *
+   * One shot rather than a flow: a file is a copy taken at a moment, and a
+   * screen that re-exported itself every time a roll landed would be opening
+   * share sheets.
+   */
+  suspend fun allFaces(): List<FaceTally> = database.dieStats().everything().map(DieStatsRow::asTally)
+
+  /**
    * "All my d20s", rolled up across every set that has one
    * (`docs/statistics.md`, per standard die type; design option `5c`).
    *

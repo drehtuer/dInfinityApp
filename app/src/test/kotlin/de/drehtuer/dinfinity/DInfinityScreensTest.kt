@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.navigation.NavHostController
@@ -12,35 +13,20 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
-import de.drehtuer.dinfinity.core.notation.DiceCatalog
-import de.drehtuer.dinfinity.data.CollectionImporter
-import de.drehtuer.dinfinity.data.DieStatisticsRepository
-import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
-import de.drehtuer.dinfinity.data.SessionRepository
-import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
-import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
-import de.drehtuer.dinfinity.feature.saved.GroupPresenter
-import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportTestTags
-import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedTestTags
-import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetDetailTestTags
 import de.drehtuer.dinfinity.feature.sets.SetLibrary
-import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsTestTags
-import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryTestTags
-import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsTestTags
-import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsTestTags
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.theme.DInfinityTheme
@@ -81,7 +67,6 @@ class DInfinityScreensTest {
 
   /** A `dicesets/` folder of its own, so one test's packages are not another's. */
   private val temporary: File = Files.createTempDirectory("dinfinity-app-sets").toFile()
-  private val catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set))
 
   @Before
   fun open() {
@@ -91,6 +76,12 @@ class DInfinityScreensTest {
           ApplicationProvider.getApplicationContext<Context>(),
           DInfinityDatabase::class.java,
         ).allowMainThreadQueries()
+        // Queries and invalidation on the calling thread, so a `Flow` from a
+        // `@Query` emits when the write happens rather than when a pool thread
+        // gets to it. Without it the first wait in a class races Room's own
+        // executors, which surfaces as an unrelated test failing now and then.
+        .setQueryExecutor(Runnable::run)
+        .setTransactionExecutor(Runnable::run)
         .build()
     saved = SavedRollRepository(database)
   }
@@ -235,6 +226,53 @@ class DInfinityScreensTest {
   }
 
   /** The disk and the database joined, as the application does it. */
+  @Test
+  fun `every screen the menu lists draws itself, and none of them is a placeholder`() {
+    // This is the test that should have caught the sessions screen. It was
+    // finished, tested and unreachable for a whole step, because the activity
+    // never passed its presenter and the app drew a placeholder — which looks
+    // exactly like a screen nobody has written yet.
+    //
+    // It asserts the absence of the placeholder rather than the presence of
+    // anything in particular, because "what this screen shows" is that
+    // screen's own test. What belongs here is only: something real is there.
+    val navigation = app()
+
+    val placeholders =
+      Destination.inTheMenu.filter { destination ->
+        compose.runOnIdle { navigation.navigate(destination.route) }
+        compose.waitForIdle()
+        compose.onAllNodesWithTag(notBuiltTag(destination)).fetchSemanticsNodes().isNotEmpty()
+      }
+
+    // Asserted exactly, in both directions. A screen that starts drawing a
+    // placeholder fails here, and so does one that stops — which is the prompt
+    // to delete its line below when 4.5 or 4.6 lands.
+    assertEquals(
+      "the screens drawing a placeholder are not the ones that have not been written",
+      NOT_WRITTEN_YET,
+      placeholders.map(Destination::route).toSet(),
+    )
+  }
+
+  @Test
+  fun `with no presenters at all every screen is a placeholder, which is a mode rather than a mistake`() {
+    // The other half of the rule. Drawing placeholders is legitimate — a
+    // Robolectric test of the graph has no GPU and no physics engine — and
+    // what it may not be is *partial*, which is why `Presenters` has no
+    // optional fields.
+    lateinit var navigation: NavHostController
+    compose.setContent {
+      navigation = rememberNavController()
+      DInfinityTheme { DInfinityApp(navController = navigation) }
+    }
+
+    compose.runOnIdle { navigation.navigate(Destination.Sessions.route) }
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(notBuiltTag(Destination.Sessions)).assertExists()
+  }
+
   private fun setLibrary() =
     SetLibrary(
       bundled = BuiltinDiceSet.set,
@@ -253,53 +291,7 @@ class DInfinityScreensTest {
       DInfinityTheme {
         DInfinityApp(
           navController = navigation,
-          savedRolls = {
-            SavedPresenter(
-              repository = saved,
-              catalog = catalog,
-              scope = scope,
-              unfiledName = "Unfiled",
-            )
-          },
-          savedGroups = { GroupPresenter(saved, scope, "Unfiled") },
-          savedRollEditor = { editing ->
-            EditorPresenter(repository = saved, catalog = catalog, scope = scope, editing = editing)
-          },
-          collectionImport = {
-            ImportPresenter(
-              importer = CollectionImporter(database),
-              catalog = catalog,
-              scope = scope,
-              unfiledName = "Unfiled",
-            )
-          },
-          history = { HistoryPresenter(history = HistoryRepository(database), scope = scope) },
-          sessions = {
-            SessionsPresenter(
-              repository = SessionRepository(database),
-              scope = scope,
-              defaultName = "First rolls",
-            )
-          },
-          diceSets = { SetsPresenter(setLibrary(), scope) },
-          diceSet = { id, onGone ->
-            SetDetailPresenter(
-              id = id.ifEmpty { BuiltinDiceSet.set.id },
-              library = setLibrary(),
-              scope = scope,
-              onGone = onGone,
-              defaultSetId = { BuiltinDiceSet.set.id },
-              onDefault = {},
-            )
-          },
-          statistics = {
-            StatsPresenter(
-              statistics = DieStatisticsRepository(database),
-              writer = StatisticsRepository(database),
-              catalog = catalog,
-              scope = scope,
-            )
-          },
+          screens = testPresenters(database, scope, setLibrary()),
         )
       }
     }
@@ -307,6 +299,15 @@ class DInfinityScreensTest {
   }
 
   private companion object {
+    /**
+     * The screens that genuinely have not been written (`docs/TODO.md`, 4.5
+     * and 4.6).
+     *
+     * A placeholder is right for these and wrong for everything else. The list
+     * shrinks as they land, and the test says so when one does.
+     */
+    val NOT_WRITTEN_YET = setOf(Destination.Tables.route, Destination.FaceDesigner.route)
+
     /** Long enough for a folder read and a database round trip, short enough to fail. */
     const val PATIENCE = 5_000L
   }

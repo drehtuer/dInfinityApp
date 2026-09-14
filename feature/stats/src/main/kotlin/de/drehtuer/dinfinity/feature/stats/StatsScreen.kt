@@ -26,6 +26,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -48,9 +52,11 @@ import de.drehtuer.dinfinity.core.stats.FaceBar
 fun StatsScreen(
   presenter: StatsPresenter,
   modifier: Modifier = Modifier,
+  onExport: (ExportFile) -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
+  var exporting by remember { mutableStateOf(false) }
   Column(
     modifier =
       modifier
@@ -59,7 +65,28 @@ fun StatsScreen(
         .safeDrawingPadding()
         .testTag(StatsTestTags.SCREEN),
   ) {
-    Header(open = state.selected, onClose = presenter::close, menu = menu)
+    Header(
+      open = state.selected,
+      onClose = presenter::close,
+      // Not while one die is open: what the button would write is the whole
+      // record either way, and a button that says one thing and does another
+      // on one screen out of two is worse than a button that waits.
+      offerExport = state.selected == null && !state.empty,
+      onExport = { exporting = true },
+      menu = menu,
+    )
+
+    if (exporting) {
+      ExportChoice(
+        tagPrefix = StatsTestTags.EXPORT,
+        body = stringResource(R.string.stats_export_body),
+        onDismiss = { exporting = false },
+        onChosen = { format ->
+          exporting = false
+          presenter.export(format, onExport)
+        },
+      )
+    }
 
     state.confirming?.let { what ->
       Confirm(what = what, onYes = presenter::reset, onNo = { presenter.confirm(null) })
@@ -77,6 +104,8 @@ fun StatsScreen(
 private fun Header(
   open: DieDetail?,
   onClose: () -> Unit,
+  offerExport: Boolean,
+  onExport: () -> Unit,
   menu: @Composable () -> Unit,
 ) {
   Row(
@@ -94,9 +123,69 @@ private fun Header(
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(1f),
     )
+    if (offerExport) {
+      TextButton(onClick = onExport, modifier = Modifier.testTag(StatsTestTags.EXPORT)) {
+        Text(stringResource(R.string.stats_export))
+      }
+    }
     menu()
   }
 }
+
+/**
+ * Which order the list is in (`docs/TODO.md`, 4.7).
+ *
+ * Drawn only once there is more than one die, because an order is a choice
+ * between arrangements and one row has none. The same rule the set chooser
+ * follows a line above.
+ */
+@Composable
+private fun Orders(
+  state: StatsState,
+  presenter: StatsPresenter,
+) {
+  if (state.dice.size < 2) return
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    DieOrder.entries.forEach { order ->
+      Cut(
+        label = stringResource(labelFor(order)),
+        chosen = state.order == order,
+        tag = StatsTestTags.orderOf(order),
+        onChoose = { presenter.orderBy(order) },
+      )
+    }
+  }
+}
+
+private fun labelFor(order: DieOrder): Int =
+  when (order) {
+    DieOrder.Recent -> R.string.stats_sort_recent
+    DieOrder.Throws -> R.string.stats_sort_throws
+    DieOrder.Average -> R.string.stats_sort_average
+  }
+
+/**
+ * The line above the list, which says what the order actually is.
+ *
+ * The roll-up's own note wins: what the rows *are* is more surprising than
+ * what order they are in, and two lines of explanation over one list is one
+ * line too many.
+ */
+private fun noteFor(state: StatsState): Int =
+  when {
+    state.acrossSets -> R.string.stats_across_sets_note
+    state.order == DieOrder.Throws -> R.string.stats_order_throws
+    state.order == DieOrder.Average -> R.string.stats_order_average
+    else -> R.string.stats_order
+  }
 
 /**
  * How the list is cut: by set, or not at all, or across all of them
@@ -168,8 +257,9 @@ private fun Dice(
 ) {
   val dice = state.dice
   Cuts(state, presenter)
+  Orders(state, presenter)
   Text(
-    text = stringResource(if (state.acrossSets) R.string.stats_across_sets_note else R.string.stats_order),
+    text = stringResource(noteFor(state)),
     style = MaterialTheme.typography.labelSmall,
     color = MaterialTheme.colorScheme.onSurfaceVariant,
     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -461,6 +551,15 @@ object StatsTestTags {
   const val DETAIL: String = "stats:detail"
   const val EMPTY: String = "stats:empty"
   const val BACK: String = "stats:back"
+
+  /** Also the prefix the export dialog's own tags are built from. */
+  const val EXPORT: String = "stats:export"
+  const val EXPORT_DIALOG: String = "$EXPORT:dialog"
+  const val EXPORT_JSON: String = "$EXPORT:json"
+  const val EXPORT_CSV: String = "$EXPORT:csv"
+
+  fun orderOf(order: DieOrder): String = "stats:order:${order.name.lowercase()}"
+
   const val HISTOGRAM: String = "stats:histogram"
   const val HIGHS: String = "stats:highs"
   const val LOWS: String = "stats:lows"

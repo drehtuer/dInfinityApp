@@ -16,27 +16,16 @@ import androidx.lifecycle.lifecycleScope
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setAccentColor
-import de.drehtuer.dinfinity.data.setActiveGroup
-import de.drehtuer.dinfinity.data.setActiveSession
 import de.drehtuer.dinfinity.data.setAppearance
-import de.drehtuer.dinfinity.data.setDefaultSet
 import de.drehtuer.dinfinity.data.setPowerSaving
 import de.drehtuer.dinfinity.data.setRounding
 import de.drehtuer.dinfinity.data.setShakeToRoll
 import de.drehtuer.dinfinity.data.setWelcomeSeen
-import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.saved.R
-import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
-import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.settings.MenuHeader
-import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
-import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
-import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
-import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import kotlinx.coroutines.launch
-import de.drehtuer.dinfinity.feature.stats.R as StatsR
 
 /**
  * The single activity. The app is one Compose tree; screens are navigation
@@ -161,57 +150,10 @@ class MainActivity : ComponentActivity() {
       version = installedVersion(),
       onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
       menuHeader = menuHeader(app, settings),
-      rollPresenter = {
-        app.rolls.presenter(
-          powerSaving = settings.powerSaving,
-          rounding = settings.rounding,
-          scope = lifecycleScope,
-        )
-      },
-      graphMachine = { app.rolls.graph() },
-      savedRolls = {
-        saved.list(activeGroupId = settings.activeGroupId) { groupId ->
-          lifecycleScope.launch { repository.setActiveGroup(groupId) }
-        }
-      },
-      savedGroups = saved::groups,
-      savedRollEditor = { editing -> saved.editor(editing, settings.activeGroupId) },
-      collectionImport = saved::importing,
-      history = { past(app) },
-      statistics = {
-        StatsPresenter(
-          statistics = app.dieStatistics,
-          writer = app.statistics,
-          catalog = app.setLibrary.catalogue,
-          scope = lifecycleScope,
-        )
-      },
-      sessions = { sessions(app, settings, repository) },
-      savedStatistics = { savedStatistics(app, settings) },
-      diceSets = { diceSets(app) },
-      diceSet = { id, onGone -> diceSet(app, repository, id, onGone) },
+      screens = ScreenWiring(app, settings, repository, saved, lifecycleScope).presenters(),
       onSource = { url -> open(url) },
     )
   }
-
-  /**
-   * The buckets rolls are filed into.
-   *
-   * Which one is active lives in the settings rather than on this screen,
-   * because the roll screen and the history both read it
-   * (`docs/statistics.md`).
-   */
-  private fun sessions(
-    app: DInfinityApplication,
-    settings: AppSettings,
-    repository: SettingsRepository,
-  ) = SessionsPresenter(
-    repository = app.sessions,
-    scope = lifecycleScope,
-    defaultName = getString(StatsR.string.sessions_first),
-    activeId = settings.activeSessionId,
-    onActive = { session -> lifecycleScope.launch { repository.setActiveSession(session) } },
-  )
 
   /**
    * What the menu says it is the menu of, and where the rolls are going.
@@ -235,58 +177,6 @@ class MainActivity : ComponentActivity() {
       sessions = sessions.size,
     )
   }
-
-  /**
-   * Past rolls, and what the chooser may filter them by.
-   *
-   * The sessions and the saved rolls are given rather than reached for,
-   * because which of each exist is the application's to know
-   * (`docs/statistics.md`).
-   */
-  private fun past(app: DInfinityApplication) =
-    HistoryPresenter(
-      history = app.history,
-      scope = lifecycleScope,
-      sessions = app.sessions,
-      saved = app.savedRolls,
-    )
-
-  /**
-   * What each saved roll has come to, against what it should
-   * (`docs/statistics.md`; design options `8b` and `9e`).
-   *
-   * About the active group, because a saved roll belongs to one and the roll
-   * somebody wants is one they have been using.
-   */
-  private fun savedStatistics(
-    app: DInfinityApplication,
-    settings: AppSettings,
-  ) = SavedStatsPresenter(
-    saved = app.savedRolls,
-    history = app.history,
-    catalog = app.setLibrary.catalogue,
-    scope = lifecycleScope,
-    groupId = settings.activeGroupId,
-    rounding = settings.rounding,
-  )
-
-  /** What is installed, and what may be done to it (`docs/dice-sets.md`). */
-  private fun diceSets(app: DInfinityApplication) = SetsPresenter(app.setLibrary, lifecycleScope)
-
-  /** One of them, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`). */
-  private fun diceSet(
-    app: DInfinityApplication,
-    repository: SettingsRepository,
-    id: String,
-    onGone: () -> Unit,
-  ) = SetDetailPresenter(
-    id = id.ifEmpty { BuiltinDiceSet.set.id },
-    library = app.setLibrary,
-    scope = lifecycleScope,
-    onGone = onGone,
-    defaultSetId = { app.defaultSet },
-    onDefault = { setId -> lifecycleScope.launch { repository.setDefaultSet(setId) } },
-  )
 
   private companion object {
     /** Where this came from (`README.md`). */

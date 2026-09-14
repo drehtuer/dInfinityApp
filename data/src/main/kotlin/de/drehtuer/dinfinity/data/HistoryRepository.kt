@@ -35,6 +35,49 @@ class HistoryRepository(
   fun forSavedRoll(savedRollId: String): Flow<List<HistoryEntry>> =
     database.rollHistory().forSavedRoll(savedRollId).map { rows -> rows.map(RollHistoryRow::asEntry) }
 
+  /**
+   * A copy of the history, taken now (`docs/statistics.md`, "Export and reset").
+   *
+   * @param sessionId only this session's rolls, or null for every session.
+   * @param savedRollId only this saved roll's throws, or null for all of them.
+   * @param limit how many at most. The table is pruned to
+   *   `StatisticsRepository.MAX_HISTORY_ROWS`, so asking for that many is
+   *   asking for everything there can be.
+   */
+  suspend fun snapshot(
+    sessionId: String? = null,
+    savedRollId: String? = null,
+    limit: Int = StatisticsRepository.MAX_HISTORY_ROWS,
+  ): List<HistoryEntry> =
+    database
+      .rollHistory()
+      .snapshot(sessionId = sessionId, savedRollId = savedRollId, limit = limit)
+      .map(RollHistoryRow::asEntry)
+
+  /**
+   * Forgets every roll made in one session (`docs/statistics.md`, "Export and
+   * reset").
+   *
+   * **The session itself stays**, and so does every per-die record. This
+   * forgets the *history*, which is one of the two records the app keeps and
+   * not the other — the same line `StatisticsRepository.resetDie` draws from
+   * the other side, where forgetting a die's aggregate leaves its rolls in the
+   * history. A screen that offers this has to say so.
+   *
+   * @return how many rolls were forgotten.
+   */
+  suspend fun forgetSession(sessionId: String): Int = database.rollHistoryWriting().forgetSession(sessionId)
+
+  /**
+   * Forgets every throw made through one saved roll.
+   *
+   * The saved roll itself stays; it is a formula somebody wrote down, and this
+   * is its record rather than the thing.
+   *
+   * @return how many throws were forgotten.
+   */
+  suspend fun forgetSavedRoll(savedRollId: String): Int = database.rollHistoryWriting().forgetSavedRoll(savedRollId)
+
   companion object {
     /**
      * How many rolls a history screen asks for.

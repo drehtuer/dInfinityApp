@@ -16,13 +16,23 @@
   <string name="history_clear_filter">Show everything</string>
 
   <string name="history_export">Export</string>
-  <string name="history_export_title">Export these rolls</string>
-  <string name="history_export_body">A copy of what this list is showing, to keep or to send on. No seeds: a past roll is a record, not something to re-run.</string>
-  <string name="history_export_json">JSON — everything, breakdown included</string>
-  <string name="history_export_csv">CSV — one row per roll, for a spreadsheet</string>
-  <string name="history_export_cancel">Cancel</string>
+  <string name="history_forget">Forget</string>
+  <string name="history_forget_title">Forget these rolls?</string>
+  <string name="history_forget_session">Every roll made in “%1$s” is deleted and cannot be brought back. The session itself stays, and so does what each die has done — the statistics count these throws whether they are listed here or not.</string>
+  <string name="history_forget_roll">Every throw made through “%1$s” is deleted and cannot be brought back. The saved roll itself stays, and so does what each die has done — the statistics count these throws whether they are listed here or not.</string>
+  <string name="history_forget_yes">Forget them</string>
+  <string name="history_forget_no">Keep them</string>
+  <string name="history_export_body">A copy of every roll this list is filtered to, to keep or to send on. No seeds: a past roll is a record, not something to re-run.</string>
 
   <!-- The statistics screen (design option 1w). -->
+  <!-- Shared by both screens that export; each supplies its own body line. -->
+  <string name="export_title">Export</string>
+  <string name="export_json">JSON — everything</string>
+  <string name="export_csv">CSV — for a spreadsheet</string>
+
+  <string name="stats_export">Export</string>
+  <string name="stats_export_body">A copy of what every die has done: one row per face, or everything with the runs included. Nothing about how the dice were thrown, only what they landed on.</string>
+
   <string name="stats_title">Statistics</string>
   <!-- Saved-roll statistics (design options 8b and 9e). -->
   <string name="savedstats_title">Saved-roll statistics</string>
@@ -48,6 +58,11 @@
   <string name="stats_across_sets_note">Every set’s dice of each kind, counted together. The fair line weighs each die by how often it was thrown.</string>
   <string name="stats_filtered_empty">No dice from that set have been thrown yet.</string>
   <string name="stats_order">Every die you have thrown, most recently used first. Tap one for its histogram.</string>
+  <string name="stats_order_throws">Every die you have thrown, most thrown first — the records with enough behind them to mean something.</string>
+  <string name="stats_order_average">Every die you have thrown, highest average first. A die nobody has thrown is last, not lowest.</string>
+  <string name="stats_sort_recent">Recent</string>
+  <string name="stats_sort_throws">Most thrown</string>
+  <string name="stats_sort_average">Average</string>
   <string name="stats_empty_title">Nothing thrown yet.</string>
   <string name="stats_empty_body">Roll some dice and this fills in: how often each face has come up, against how often a fair die would.</string>
   <!-- %1$d is how many times the die has been thrown. -->

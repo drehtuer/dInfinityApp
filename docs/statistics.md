@@ -145,9 +145,12 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
 - **Overview:** big tiles for the currently selected die type — natural
   highs, natural lows, average, total rolls — with a face histogram and a
   faint line for the expected uniform frequency.
-- **All dice:** table of every die ever rolled, most recently used first —
-  a player comes here about a die they have just been rolling. Choosing a
-  different order is not built yet (`docs/TODO.md`, 4.7).
+- **All dice:** table of every die ever rolled. Three orders: most recently
+  used (the default — a player comes here about a die they have just been
+  rolling), most thrown, and highest average. No ascending/descending toggle:
+  each of those has an interesting end and it is the top, and the other end is
+  the bottom of the same list. A die nobody has thrown sorts last by average
+  rather than lowest — it has not come out low, it has not come out.
 - **Saved rolls:** per-formula history with expected vs. observed graph.
 - **History:** scrollable list of past rolls with breakdowns. A past roll is
   a record, not something to re-run: there is no replay action and the seed
@@ -243,9 +246,37 @@ them out. Reproducing a stored roll is a developer action
 - Times are ISO-8601 in UTC, not the way the screen shows them: a file outlives
   the phone it was made on, and a localised date is one a spreadsheet has to
   guess at. CSV is RFC 4180, so a formula with a comma in it stays one column.
-- Exporting the **statistics** is not built yet (`docs/TODO.md`, 4.7).
-- Reset per die and everything are built, each behind a confirmation dialog;
-  per saved roll and per session are not yet (`docs/TODO.md`, 4.7).
+- **The statistics export too**, and the two formats carry different things.
+  The flat form is one row per *face* — `set, die, sides, face, count,
+  dropped` — because the question somebody exports statistics to answer is
+  *are my dice fair*, and that is asked of face counts. The full form adds each
+  die's summary, because a **run** is the one thing the counts cannot give
+  back: how often a die came up highest in a row is a fact about the order it
+  was thrown in, and a histogram has forgotten that. Everything else in the
+  summary *is* derivable from the counts — the throws are their sum, the mean
+  their weighted average — so it is not repeated down every row.
+- A set filter is carried into the file; **the roll-up is not.** A pooled row
+  stands for every d20 in every set at once and so belongs to no set, which is
+  right on a screen and wrong in a file, where the set is what makes a record
+  checkable. The per-die rows are also the ones a roll-up can be recomputed
+  from, and the reverse is not true, so the file keeps the half that can give
+  back the other.
+- Both exports are **snapshots**, read once when the player asks: a file is a
+  copy taken at a moment, and a screen that re-exported itself every time a
+  roll landed would be opening share sheets.
+- **Reset per die, per session, per saved roll and everything**, each behind a
+  confirmation. Per die and everything are on the statistics screen; per
+  session and per saved roll are on the **history**, beside Export and only
+  with that filter on — the two are the same act on the same rolls, keep a copy
+  of what you are looking at or be rid of it. "Forget the entire history" is
+  not offered there: it is a bigger thing than a filter being off, and
+  offering it beside a filter would make it look the same size.
+- **The two records are separate, and a reset says which one it forgets.**
+  Forgetting a die's aggregate leaves its rolls in the history; forgetting a
+  session's rolls leaves what each die has done, because `die_stats` and
+  `die_summary` carry no session to subtract from (see Storage). The
+  confirmation says so — a "forget" that half forgets, silently, would send
+  somebody back to the statistics wondering why nothing moved.
 - Nothing is uploaded anywhere. There is no analytics backend; the
   "statistics" in this document are the player's, on the player's phone. The
   share sheet is the player handing a copy on, which is a different act.

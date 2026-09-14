@@ -69,17 +69,21 @@ fun HistoryScreen(
         .safeDrawingPadding()
         .testTag(HistoryTestTags.SCREEN),
   ) {
-    Header(offerExport = !state.empty, onExport = { exporting = true }, menu = menu)
+    Header(
+      offerExport = !state.empty,
+      onExport = { exporting = true },
+      offerForget = state.forgettable,
+      onForget = { presenter.confirmForget(true) },
+      menu = menu,
+    )
 
-    if (exporting) {
-      ExportDialog(
-        onDismiss = { exporting = false },
-        onChosen = { format ->
-          exporting = false
-          presenter.export(format, onExport)
-        },
-      )
-    }
+    Asking(
+      state = state,
+      presenter = presenter,
+      exporting = exporting,
+      onExportDone = { exporting = false },
+      onExport = onExport,
+    )
 
     Choosers(state, presenter)
 
@@ -127,6 +131,8 @@ fun HistoryScreen(
 private fun Header(
   offerExport: Boolean,
   onExport: () -> Unit,
+  offerForget: Boolean,
+  onForget: () -> Unit,
   menu: @Composable () -> Unit,
 ) {
   Row(
@@ -147,42 +153,87 @@ private fun Header(
         Text(stringResource(R.string.history_export))
       }
     }
+    // Beside Export and only with a filter on, because the two are the same
+    // act on the same rolls: keep a copy of what you are looking at, or be rid
+    // of it.
+    if (offerForget) {
+      TextButton(onClick = onForget, modifier = Modifier.testTag(HistoryTestTags.FORGET)) {
+        Text(stringResource(R.string.history_forget), color = MaterialTheme.colorScheme.error)
+      }
+    }
     menu()
   }
 }
 
 /**
- * Which shape the file takes (`docs/statistics.md`, "Export and reset").
+ * Whichever question is open: whether to forget, or which shape a file takes.
  *
- * Two formats because they answer different questions: JSON keeps the
- * breakdown and is the one to keep, CSV is one row per roll and is the one a
- * spreadsheet can draw. Offering one would be choosing for the player which
- * question they are asking.
+ * Both together because only one can be open at a time and neither draws
+ * anything when it is not — and because the screen they sit on was at detekt's
+ * length limit, which is the limit doing its job.
  */
 @Composable
-private fun ExportDialog(
-  onDismiss: () -> Unit,
-  onChosen: (ExportFormat) -> Unit,
+private fun Asking(
+  state: HistoryState,
+  presenter: HistoryPresenter,
+  exporting: Boolean,
+  onExportDone: () -> Unit,
+  onExport: (ExportFile) -> Unit,
 ) {
+  if (state.confirmingForget) {
+    ForgetDialog(
+      filter = state.filter,
+      onYes = { presenter.forget() },
+      onNo = { presenter.confirmForget(false) },
+    )
+  }
+
+  if (exporting) {
+    ExportChoice(
+      tagPrefix = HistoryTestTags.EXPORT,
+      body = stringResource(R.string.history_export_body),
+      onDismiss = onExportDone,
+      onChosen = { format ->
+        onExportDone()
+        presenter.export(format, onExport)
+      },
+    )
+  }
+}
+
+/**
+ * The one question worth asking twice (`docs/statistics.md`, "Export and reset").
+ *
+ * It says what stays as well as what goes. The per-die statistics count these
+ * throws whether or not the history lists them, so a dialog that only said
+ * "this cannot be undone" would leave somebody expecting their d20's record to
+ * change and then wondering why it had not.
+ */
+@Composable
+private fun ForgetDialog(
+  filter: HistoryFilter,
+  onYes: () -> Unit,
+  onNo: () -> Unit,
+) {
+  val explanation =
+    when (filter) {
+      is HistoryFilter.InSession -> stringResource(R.string.history_forget_session, filter.name)
+      is HistoryFilter.OfSavedRoll -> stringResource(R.string.history_forget_roll, filter.name)
+      HistoryFilter.Everything -> return
+    }
   AlertDialog(
-    modifier = Modifier.testTag(HistoryTestTags.EXPORT_DIALOG),
-    onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.history_export_title)) },
-    text = { Text(stringResource(R.string.history_export_body)) },
+    modifier = Modifier.testTag(HistoryTestTags.FORGET_DIALOG),
+    onDismissRequest = onNo,
+    title = { Text(stringResource(R.string.history_forget_title)) },
+    text = { Text(explanation) },
     confirmButton = {
-      TextButton(
-        onClick = { onChosen(ExportFormat.Json) },
-        modifier = Modifier.testTag(HistoryTestTags.EXPORT_JSON),
-      ) {
-        Text(stringResource(R.string.history_export_json))
+      TextButton(onClick = onYes, modifier = Modifier.testTag(HistoryTestTags.FORGET_YES)) {
+        Text(stringResource(R.string.history_forget_yes), color = MaterialTheme.colorScheme.error)
       }
     },
     dismissButton = {
-      TextButton(
-        onClick = { onChosen(ExportFormat.Csv) },
-        modifier = Modifier.testTag(HistoryTestTags.EXPORT_CSV),
-      ) {
-        Text(stringResource(R.string.history_export_csv))
+      TextButton(onClick = onNo, modifier = Modifier.testTag(HistoryTestTags.FORGET_NO)) {
+        Text(stringResource(R.string.history_forget_no))
       }
     },
   )
@@ -444,10 +495,17 @@ object HistoryTestTags {
   const val ALL: String = "history:all"
   const val FILTERED_EMPTY: String = "history:filtered-empty"
   const val CLEAR_FILTER: String = "history:clear-filter"
+
+  /** Also the prefix the export dialog's own tags are built from. */
   const val EXPORT: String = "history:export"
-  const val EXPORT_DIALOG: String = "history:export:dialog"
-  const val EXPORT_JSON: String = "history:export:json"
-  const val EXPORT_CSV: String = "history:export:csv"
+  const val EXPORT_DIALOG: String = "$EXPORT:dialog"
+  const val EXPORT_JSON: String = "$EXPORT:json"
+  const val EXPORT_CSV: String = "$EXPORT:csv"
+
+  const val FORGET: String = "history:forget"
+  const val FORGET_DIALOG: String = "$FORGET:dialog"
+  const val FORGET_YES: String = "$FORGET:yes"
+  const val FORGET_NO: String = "$FORGET:no"
 
   /** The chooser's button for one session — not the heading, which is `sessionOf`. */
   fun sessionChoiceOf(id: String): String = "history:choose-session:$id"

@@ -87,9 +87,47 @@ class StatsPresenter(
     state = state.copy(setFilter = setId, acrossSets = false, selected = null)
   }
 
+  /**
+   * Put the list in a different order.
+   *
+   * The open die is left open: the order is about the list behind it, and
+   * closing a histogram because somebody re-sorted the list they were not
+   * looking at would be the screen deciding what they meant.
+   */
+  fun orderBy(order: DieOrder) {
+    state = state.copy(order = order)
+  }
+
   /** Roll every set's dice of each kind together, or stop (design option `5c`). */
   fun rollUp(across: Boolean) {
     state = state.copy(acrossSets = across, setFilter = null, selected = null)
+  }
+
+  /**
+   * What every die has done, as a file (`docs/statistics.md`, "Export and
+   * reset").
+   *
+   * The faces are read once, here, rather than watched: the screen only ever
+   * loads the open die's histogram, and a file is about all of them.
+   *
+   * @param to what to do with the file. The screen hands it up to the
+   *   application, which is where a share sheet lives.
+   */
+  fun export(
+    format: ExportFormat,
+    to: (ExportFile) -> Unit,
+  ) {
+    val dice = state.recorded
+    scope.launch {
+      to(
+        DiceExport.of(
+          dice = dice.map(DieRow::summary),
+          faces = statistics.allFaces(),
+          format = format,
+          called = state.setFilter ?: "dice",
+        ),
+      )
+    }
   }
 
   /** Back to the list. */
@@ -201,6 +239,32 @@ data class DieDetail(
   val fairLineIsAGuess: Boolean get() = !row.installed
 }
 
+/**
+ * The order the all-dice list is in (`docs/statistics.md`, "Screens").
+ *
+ * Recency is the default and stays it: a player comes to this screen about a
+ * die they have just been rolling. The other two are the questions the screen
+ * exists to answer and cannot be asked of a list in recency order — *which of
+ * these records is worth trusting* is [Throws], because a die thrown eleven
+ * times has a shape that means nothing, and *is this one lucky* is [Average].
+ *
+ * There is no ascending and descending. Each of these has an interesting end
+ * and it is the top: the die you just rolled, the die you have thrown most,
+ * the die running highest. A direction toggle would double the control for the
+ * half nobody opens the screen to see — and the other end is the bottom of the
+ * same list.
+ */
+enum class DieOrder {
+  /** Most recently thrown first. The default, and what the screen opens in. */
+  Recent,
+
+  /** Most thrown first: the records with enough behind them to mean something. */
+  Throws,
+
+  /** Highest average first. */
+  Average,
+}
+
 /** What a reset would forget. */
 sealed interface Reset {
   data class OneDie(
@@ -225,6 +289,7 @@ data class StatsState(
   val loaded: Boolean = false,
   val setFilter: String? = null,
   val acrossSets: Boolean = false,
+  val order: DieOrder = DieOrder.Recent,
 ) {
   /** Every set that has a record, in the order the list shows them (design `5b`). */
   val sets: List<String> get() = all.map(DieRow::setId).distinct().sorted()
@@ -238,7 +303,44 @@ data class StatsState(
    * looking at the brass d20 — and offering it would put two controls on
    * screen that cancel each other out.
    */
-  val dice: List<DieRow> get() = if (acrossSets) pooled() else all.filter { setFilter == null || it.setId == setFilter }
+  val dice: List<DieRow>
+    get() = inOrder(if (acrossSets) pooled() else all.filter { setFilter == null || it.setId == setFilter })
+
+  /**
+   * [rows] in the chosen order.
+   *
+   * [DieOrder.Recent] does nothing, because the query already answers in that
+   * order and re-sorting it here would be a second opinion about the same
+   * question. The other two sort a list that is already small — one row per
+   * die ever thrown — so they are done in Kotlin rather than in SQL, where
+   * they would need a second query per order and the roll-up has no table to
+   * order at all.
+   *
+   * A die nobody has thrown has no average, and sorts last rather than as
+   * zero: it has not come out low, it has not come out.
+   */
+  private fun inOrder(rows: List<DieRow>): List<DieRow> =
+    when (order) {
+      DieOrder.Recent -> rows
+      DieOrder.Throws -> rows.sortedByDescending { it.summary.throws }
+      // `nullsFirst` and not `nullsLast`: the comparator is reversed whole, so
+      // the nulls land at the end only if they start at the front.
+      DieOrder.Average -> rows.sortedWith(compareByDescending(nullsFirst()) { it.summary.mean })
+    }
+
+  /**
+   * The dice a file would carry: the real ones, and never the roll-up.
+   *
+   * A pooled row stands for every d20 in every set at once and so belongs to
+   * no set — which is right on a screen and wrong in a file, where the set is
+   * what makes a record checkable. The per-die rows are also the ones a
+   * roll-up can be recomputed from; the reverse is not true, so the file keeps
+   * the half that can give back the other (`docs/statistics.md`).
+   *
+   * A set filter *is* honoured, because that one hides dice rather than
+   * merging them.
+   */
+  val recorded: List<DieRow> get() = all.filter { setFilter == null || it.setId == setFilter }
 
   /** True when nothing has ever been rolled, rather than nothing has arrived. */
   val empty: Boolean get() = loaded && all.isEmpty()

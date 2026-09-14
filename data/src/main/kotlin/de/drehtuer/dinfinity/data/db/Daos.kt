@@ -6,12 +6,18 @@ import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
-/** Past rolls (`docs/statistics.md`, "History"). */
+/**
+ * Past rolls, to read (`docs/statistics.md`, "History").
+ *
+ * Reading and changing are two interfaces over one table, split when this one
+ * reached detekt's function ceiling. The line is not arbitrary: it is the same
+ * one the repositories above already draw, where `HistoryRepository` reads and
+ * `StatisticsRepository` writes. Raising the threshold would have hidden that
+ * the split was overdue (`docs/TODO.md`, 4.3 says the same about
+ * `SavedRollRepository`).
+ */
 @Dao
 interface RollHistoryDao {
-  @Insert
-  suspend fun insert(row: RollHistoryRow): Long
-
   /**
    * The most recent rolls, newest first.
    *
@@ -30,8 +36,46 @@ interface RollHistoryDao {
   @Query("SELECT * FROM roll_history WHERE saved_roll_id = :savedRollId ORDER BY timestamp DESC, id DESC")
   fun forSavedRoll(savedRollId: String): Flow<List<RollHistoryRow>>
 
+  /**
+   * The same three questions the flows above answer, asked once.
+   *
+   * One query rather than three because what varies is which filters are on,
+   * and a null means "not this one" — which is exactly what an export needs: a
+   * copy taken at a moment, of whatever the screen was cut to. A flow would be
+   * the wrong shape twice over, once because nobody is watching a file and
+   * once because a screen that re-exported itself on every roll would be
+   * opening share sheets.
+   */
+  @Query(
+    """
+    SELECT * FROM roll_history
+    WHERE (:sessionId IS NULL OR session_id = :sessionId)
+      AND (:savedRollId IS NULL OR saved_roll_id = :savedRollId)
+    ORDER BY timestamp DESC, id DESC
+    LIMIT :limit
+    """,
+  )
+  suspend fun snapshot(
+    sessionId: String?,
+    savedRollId: String?,
+    limit: Int,
+  ): List<RollHistoryRow>
+
   @Query("SELECT COUNT(*) FROM roll_history")
   suspend fun count(): Long
+}
+
+/**
+ * Past rolls, to change.
+ *
+ * Everything here either adds a roll or takes some away, which is why they are
+ * together: a reader of this file can see every way the history can shrink in
+ * one screenful, and there are four.
+ */
+@Dao
+interface RollHistoryWritingDao {
+  @Insert
+  suspend fun insert(row: RollHistoryRow): Long
 
   /**
    * Drops all but the newest [keep] rolls.
@@ -46,7 +90,25 @@ interface RollHistoryDao {
   )
   suspend fun pruneToNewest(keep: Int): Int
 
-  /** Deleting a session moves its rolls to Unfiled rather than deleting them. */
+  /**
+   * Forgets one session's rolls, or one saved roll's throws.
+   *
+   * Not the same act as deleting a session, which moves its rolls to the first
+   * one rather than deleting them — this is the one that takes them away.
+   *
+   * Two queries rather than one with two nullable parameters, which is how
+   * `snapshot` is written: a null there means "not filtered by this", and the
+   * same shape on a DELETE would mean that passing nothing deletes everything.
+   * A reading query with a footgun is a reading query; a deleting one is a bug
+   * report.
+   */
+  @Query("DELETE FROM roll_history WHERE session_id = :sessionId")
+  suspend fun forgetSession(sessionId: String): Int
+
+  @Query("DELETE FROM roll_history WHERE saved_roll_id = :savedRollId")
+  suspend fun forgetSavedRoll(savedRollId: String): Int
+
+  /** Deleting a session moves its rolls to the first one rather than deleting them. */
   @Query("UPDATE roll_history SET session_id = :unfiled WHERE session_id = :sessionId")
   suspend fun moveSessionToUnfiled(
     sessionId: String,
@@ -57,7 +119,6 @@ interface RollHistoryDao {
   suspend fun deleteAll(): Int
 }
 
-/** Per-face counts (`docs/statistics.md`, per die). */
 @Dao
 interface DieStatsDao {
   @Upsert
@@ -69,6 +130,17 @@ interface DieStatsDao {
     dieId: String,
     faceValue: Int,
   ): DieStatsRow?
+
+  /**
+   * Every face of every die, for an export.
+   *
+   * One shot rather than a flow, and unfiltered: a file is a copy taken at a
+   * moment, and the thing being copied is the whole record. The table is one
+   * row per face per die, so it is bounded by the dice that have been thrown
+   * rather than by how often they were.
+   */
+  @Query("SELECT * FROM die_stats ORDER BY set_id, die_id, face_value")
+  suspend fun everything(): List<DieStatsRow>
 
   @Query("SELECT * FROM die_stats WHERE set_id = :setId AND die_id = :dieId ORDER BY face_value")
   fun histogram(

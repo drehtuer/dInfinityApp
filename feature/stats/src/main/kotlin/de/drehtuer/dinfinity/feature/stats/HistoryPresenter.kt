@@ -9,11 +9,9 @@ import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.Session
 import de.drehtuer.dinfinity.data.SessionRepository
-import de.drehtuer.dinfinity.data.StatisticsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -109,10 +107,53 @@ class HistoryPresenter(
     format: ExportFormat,
     to: (ExportFile) -> Unit,
   ) {
+    val filter = state.filter
     scope.launch {
-      val everything = rollsFor(state.filter, StatisticsRepository.MAX_HISTORY_ROWS).first()
-      to(HistoryExport.of(everything, format, called = nameOf(state.filter)))
+      val everything =
+        history.snapshot(
+          sessionId = (filter as? HistoryFilter.InSession)?.id,
+          savedRollId = (filter as? HistoryFilter.OfSavedRoll)?.id,
+        )
+      to(HistoryExport.of(everything, format, called = nameOf(filter)))
     }
+  }
+
+  /**
+   * Forgets the rolls this list is filtered to
+   * (`docs/statistics.md`, "Export and reset").
+   *
+   * Only ever a session's or a saved roll's, never everything: those are the
+   * two resets the specification lists, and "forget the entire history" is a
+   * bigger thing than a filter being on.
+   *
+   * **The session or the saved roll itself stays**, and so does every per-die
+   * record. This forgets the *history*, which is one of the two records the
+   * app keeps and not the other — the same line the statistics screen's
+   * per-die reset draws from the other side, where forgetting a die's
+   * aggregate leaves its rolls in the history. The confirmation says so,
+   * because a "forget" that half forgets would otherwise be a lie.
+   */
+  fun forget(onDone: (Int) -> Unit = {}) {
+    val filter = state.filter
+    state = state.copy(confirmingForget = false)
+    scope.launch {
+      val forgotten =
+        when (filter) {
+          is HistoryFilter.InSession -> history.forgetSession(filter.id)
+          is HistoryFilter.OfSavedRoll -> history.forgetSavedRoll(filter.id)
+          HistoryFilter.Everything -> 0
+        }
+      // Back to everything: the list somebody was looking at is gone, and
+      // leaving the filter on would show them an empty screen and an
+      // explanation of why it is empty that is no longer the reason.
+      if (forgotten > 0) filterBy(HistoryFilter.Everything)
+      onDone(forgotten)
+    }
+  }
+
+  /** A forget was asked for, and has not been confirmed yet. */
+  fun confirmForget(asking: Boolean) {
+    state = state.copy(confirmingForget = asking)
   }
 
   /**
@@ -128,10 +169,7 @@ class HistoryPresenter(
       is HistoryFilter.OfSavedRoll -> filter.name
     }
 
-  private fun rollsFor(
-    filter: HistoryFilter,
-    limit: Int = this.limit,
-  ): Flow<List<HistoryEntry>> =
+  private fun rollsFor(filter: HistoryFilter): Flow<List<HistoryEntry>> =
     when (filter) {
       HistoryFilter.Everything -> history.recent(limit)
       is HistoryFilter.InSession -> history.inSession(filter.id, limit)
@@ -180,7 +218,18 @@ data class HistoryState(
   val filter: HistoryFilter = HistoryFilter.Everything,
   val sessionChoices: List<Session> = emptyList(),
   val rollChoices: List<SavedRoll> = emptyList(),
+  val confirmingForget: Boolean = false,
 ) {
+  /**
+   * Whether forgetting is on offer: only with a session or a saved roll
+   * chosen, and only when there is something to forget.
+   *
+   * Not with everything showing. "Forget the entire history" is a bigger thing
+   * than a filter being off, and offering it beside a filter would make it
+   * look like the same size of act as the other two.
+   */
+  val forgettable: Boolean get() = filter != HistoryFilter.Everything && rolls.isNotEmpty()
+
   /**
    * True when there really is nothing, rather than nothing yet — **or** when a
    * filter is hiding everything.
