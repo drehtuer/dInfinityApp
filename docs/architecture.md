@@ -133,6 +133,15 @@ gives both back (decision 49). The roll *thread* and the Filament engine on it
 are the exception, and belong to the application rather than to a visit
 (decision 50).
 
+**A visit is the back-stack entry, and nothing else.** A presenter is
+remembered against that entry, never against the lambda that builds it: such a
+lambda is built afresh on every recomposition, so remembering against one makes
+a new presenter — and on the roll screen a new tray — every time any preference
+changes. On a cold launch one always does, because the defaults stand in until
+the settings file has been read. The surface is handed to the tray that is
+there when the surface is *created* and to no other, so the discarded tray kept
+it and the dice rolled where nobody could see them.
+
 ### Navigation
 
 Every screen is a `Destination`, and the graph has had all ten from the start

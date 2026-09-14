@@ -73,6 +73,12 @@ changelog.
   where before it was pushed to the home screen; and coming back from the menu
   showed a black tray, because the Filament engine was rebuilt per visit — the
   roll thread and the engine now outlive one, and the tray comes back drawn.
+  A third, which the phone found on its own and no report had named: on a cold
+  launch the tray was black and stayed black — the dice rolled, settled, scored
+  and were written down on a surface nobody was drawing to. The presenter was
+  remembered against the lambda that builds it rather than against the visit,
+  so every preference arriving built a new tray, and the surface stayed with
+  the first. A cold launch always reads preferences, so it happened every time.
 - **4.2 Outcome graph.** The exact distribution as bars with its mean line and
   ±1σ band, `P(= k)` / `P(≥ k)`, a tap for the numbers, the roll that opened it
   marked. Reached from "See the odds" — the first navigation carrying an
