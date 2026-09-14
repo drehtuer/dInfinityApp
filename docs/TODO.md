@@ -310,6 +310,33 @@ Written down so the format need not change later. Not v1 scope.
 - [ ] Author-supplied convex meshes, with the fairness preview they require (`docs/dice-sets.md`, "Shapes after v1")
 - [ ] **Author-supplied materials.** Compiling materials at runtime (`docs/architecture.md`, decision 46) means a set *could* ship its own `.mat` rather than only values for the built-in one — iridescent dice, a proper glass d20, a table that is actually brushed metal. v1 does not allow it, and the reason is not effort: a shader is code, it runs on the GPU, and "the app never runs anything from the repository" is a rule of the format (`docs/dice-sets.md`). Turning it on needs a decision about what a shader from a stranger may do — a compile that never finishes is a hung GPU, and a driver is a large attack surface — plus a limit on compile time, a cap on instruction count, and a refusal that is as legible as the validator's other refusals. Until then a set varies a material's *parameters*, which is what `roughness`, `metallic` and the colours already are
 
+## Coverage
+
+Branch coverage sits around 70 % against a floor of 62, and roughly **seven in
+ten of the branches it is missing are inside `@Composable` functions**. That is
+not untested UI: the Compose compiler emits a skip branch for every parameter
+of every composable so that a recomposition can be avoided, and a test can only
+reach one side of each. A screen with twelve controls is a hundred branches no
+test will ever take.
+
+What that means in practice, and the rule the last few PRs have followed:
+
+- **Extract the decision, test the decision.** `FaceHistogram`, `Breakdown`,
+  `CollectionExport`, `GraphBars`, `underlinesOf` and `crestPath` are all
+  arithmetic that used to be inside a draw lambda. Each is now a plain object
+  with plain tests, and a Canvas is the one place a test genuinely cannot go.
+- **A shared component gets its own test.** `ui/common`'s formula field had
+  152 branches and none of them covered, because three screens each tested
+  *their use* of it and nobody tested the thing. That is a real gap and looks
+  exactly like the mechanical one in a report.
+- The number is worth watching for the second kind and not the first. It is
+  reported with the figures in every PR description either way.
+
+- [ ] Decide whether the floor should track the drift or stay where it is. It
+      has not been moved since it was set, and moving a floor to make a check
+      pass is the thing `.claude/CLAUDE.md` says not to do — so this is a
+      question for a person, not a change to make quietly
+
 ## Open questions
 
 - [ ] `core/probability` hand-rolls its convolution and its FFT rather than
