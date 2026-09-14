@@ -3,10 +3,10 @@ package de.drehtuer.dinfinity.feature.tables
 /**
  * Marks `:feature:tables` as present and wired into the build.
  *
- * The module is a skeleton: plan Step 1 builds the graph, and the step that
- * owns this module fills it with real types. Until then this object and its
- * test are what prove the module compiles, runs its tests, and can see the
- * modules it depends on — a graph that only compiles proves nothing.
+ * The module has real types now — the table picker (`docs/tables.md`) — so
+ * what this object still does is name the dependencies, which is the one thing
+ * a compiler cannot say back: a module that depends on more than it should
+ * compiles perfectly well.
  */
 object FeatureTablesModule {
   /** This module's Gradle path. */

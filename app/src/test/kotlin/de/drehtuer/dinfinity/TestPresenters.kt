@@ -33,6 +33,7 @@ import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
+import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.render.headless.Renderer
@@ -110,6 +111,7 @@ internal fun testPresenters(
       )
     },
     diceSets = { SetsPresenter(library, scope) },
+    tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}) },
     diceSet = { id, onGone ->
       SetDetailPresenter(
         id = id.ifEmpty { BuiltinDiceSet.set.id },

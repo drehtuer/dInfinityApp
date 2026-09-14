@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.data
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TablePin
 
 /*
  * The settings, one named change each.
@@ -47,3 +48,12 @@ suspend fun SettingsRepository.setActiveSession(sessionId: String) = update { it
  * still be the default when it is.
  */
 suspend fun SettingsRepository.setDefaultSet(setId: String) = update { it.copy(defaultSetId = setId) }
+
+/**
+ * The table every roll happens on, unless something more specific pins one
+ * (`docs/tables.md`, "Selecting a table").
+ *
+ * Null puts it back to whatever the bundled package ships first, which is
+ * where a new install starts.
+ */
+suspend fun SettingsRepository.setDefaultTable(pin: TablePin?) = update { it.copy(defaultTable = pin) }

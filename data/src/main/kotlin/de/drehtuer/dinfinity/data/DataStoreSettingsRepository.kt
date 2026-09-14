@@ -12,6 +12,7 @@ import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.core.model.TablePin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -52,6 +53,18 @@ class DataStoreSettingsRepository(
       preferences[ACTIVE_GROUP] = changed.activeGroupId
       preferences[ACTIVE_SESSION] = changed.activeSessionId
       preferences[DEFAULT_SET] = changed.defaultSetId
+      // Two keys rather than one joined string: a table id may contain
+      // anything a slug may, and a separator that can appear in a value is a
+      // parser waiting to be written.
+      changed.defaultTable.let { pin ->
+        if (pin == null) {
+          preferences.remove(TABLE_SET)
+          preferences.remove(TABLE_ID)
+        } else {
+          preferences[TABLE_SET] = pin.setId
+          preferences[TABLE_ID] = pin.tableId
+        }
+      }
     }
   }
 
@@ -68,6 +81,11 @@ class DataStoreSettingsRepository(
       activeGroupId = preferences[ACTIVE_GROUP] ?: SavedRollGroup.UNFILED_ID,
       activeSessionId = preferences[ACTIVE_SESSION] ?: AppSettings.DEFAULT_SESSION_ID,
       defaultSetId = preferences[DEFAULT_SET] ?: DiceSet.BUILTIN_ID,
+      // Both halves or neither: half a pin names no table.
+      defaultTable =
+        preferences[TABLE_SET]?.let { set ->
+          preferences[TABLE_ID]?.let { table -> TablePin(setId = set, tableId = table) }
+        },
     )
 
   companion object {
@@ -83,5 +101,7 @@ class DataStoreSettingsRepository(
     private val ACTIVE_GROUP = stringPreferencesKey("active_group")
     private val ACTIVE_SESSION = stringPreferencesKey("active_session")
     private val DEFAULT_SET = stringPreferencesKey("default_set")
+    private val TABLE_SET = stringPreferencesKey("table_set")
+    private val TABLE_ID = stringPreferencesKey("table_id")
   }
 }

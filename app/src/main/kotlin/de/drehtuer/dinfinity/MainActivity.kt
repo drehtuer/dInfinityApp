@@ -128,6 +128,9 @@ class MainActivity : ComponentActivity() {
     // reads it while building a catalogue, which is not a place that can
     // collect a flow (`docs/dice-sets.md`).
     LaunchedEffect(settings.defaultSetId) { app.defaultSet = settings.defaultSetId }
+    // And the table the tray is built on, for the same reason
+    // (`docs/tables.md`).
+    LaunchedEffect(settings.defaultTable) { app.chosenTable = settings.defaultTable }
 
     DInfinityApp(
       settings = settings,

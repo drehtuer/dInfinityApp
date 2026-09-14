@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity
 import android.app.Application
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.data.CollectionImporter
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
@@ -102,7 +103,29 @@ class DInfinityApplication : Application() {
   val sessions: SessionRepository by lazy { SessionRepository(database) }
 
   /** The roll screen's engine and catalogue, named in one place (`RollWiring`). */
-  val rolls: RollWiring by lazy { RollWiring(this, recording) { setLibrary.catalogue } }
+  val rolls: RollWiring by lazy {
+    // Both named, and the trailing lambda given up deliberately: `catalogue`
+    // used to be last, so `RollWiring(this, recording) { ... }` bound to it.
+    // Adding a parameter after it would have moved that lambda silently onto
+    // the new one.
+    RollWiring(
+      context = this,
+      recording = recording,
+      catalogue = { setLibrary.catalogue },
+      chosenTable = { chosenTable },
+    )
+  }
+
+  /**
+   * The table look the player chose, as last read from the settings.
+   *
+   * A field for the reason [activeSession] and [defaultSet] are fields: it is
+   * a preference, and what reads it is `RollWiring` building a tray rather
+   * than a composable that could collect a flow. The activity keeps it in
+   * step.
+   */
+  @Volatile
+  var chosenTable: TablePin? = null
 
   /** Which sets the player has switched off (`docs/dice-sets.md`, design `5a`). */
   val installedSets: InstalledSetRepository by lazy { InstalledSetRepository(database) }

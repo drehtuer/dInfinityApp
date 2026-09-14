@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="tables_title">Table</string>
+  <string name="tables_note">Every look from every installed set. A roll that mixes two sets happens on the one table you pick here.</string>
+  <string name="tables_chosen">Chosen</string>
+  <string name="tables_empty">No table looks are installed. The bundled set ships five, so something has gone wrong with it — the dice-set screen says what.</string>
+</resources>

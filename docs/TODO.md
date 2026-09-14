@@ -148,10 +148,18 @@ lists every error (`1t`). Database version 4 holds which sets are switched on.
 
 Design `1u`, `9j`. Spec: `docs/tables.md`.
 
-- [ ] Looks from every installed package, rendered on the real box mesh, with a "roll a d20 here" preview
-- [ ] Selecting one recolours the tray immediately
+The screen is built: every look from every installed package in one list —
+tables are global, so a set never brings its own along — with the chosen one
+marked, the package named beside a look only when more than one supplies
+tables, and a swatch of the two colours a look is actually made of. Choosing
+one writes it to the settings and the tray is built on it the next time it is
+opened, which is immediately in the only sense that matters. A pin whose
+package is gone shows the look the tray would really use, and the setting is
+left alone in case it comes back.
+
+- [ ] Thumbnails rendered on the real box mesh, with a "roll a d20 here" preview. The swatch stands in: it is two colours in a box and says so. This wants the renderer on a screen that is not the tray, which nothing has needed yet
 - [ ] "Use a photo" → downsize, write into the personal package, validate like any table
-- [ ] Precedence: saved roll pin > group pin > app default
+- [ ] Precedence: saved roll pin > group pin > app default. The app default is this screen's and is done; `SavedRoll.tablePin` is in the model and the editor has the field, so what is left is the group's pin and the three-way fallback at roll time
 
 ### 4.6 Face designer — `feature/designer`
 
