@@ -83,8 +83,9 @@ changelog.
   permission, which okhttp already puts in the merged manifest.
 - **4.4 Dice sets.** Started. `InstalledSets` reads the `dicesets/` folder and
   validates every package again on each reading, so a set that stopped being
-  valid shows its report instead of vanishing. The screens and the registry
-  row that says whether a set is enabled are still to come.
+  valid shows its report instead of vanishing; database version 4 adds the
+  registry that says whether a set is switched on, and a set with no row is on.
+  The screens are still to come.
 - **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
   a history row, a face count per die and a running summary, in one transaction
   — which the tables had been waiting for since version 1. The history lists

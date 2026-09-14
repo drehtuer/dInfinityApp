@@ -88,6 +88,25 @@ class MigrationTest {
     }
 
   @Test
+  fun `the registry arrives empty, and works`() =
+    runTest {
+      // Unlike the session table, nothing is inserted here. A set with no row
+      // is enabled, so a player upgrading from version 1 keeps every package
+      // they had switched on — which is all of them — without the migration
+      // reading the disk to find out what they are.
+      writeVersion1()
+
+      withDatabase { database ->
+        val registry = InstalledSetRepository(database)
+        assertEquals("the migration invented an opinion", emptySet<String>(), registry.disabled.first())
+
+        registry.setEnabled("brass", enabled = false)
+
+        assertEquals(setOf("brass"), registry.disabled.first())
+      }
+    }
+
+  @Test
   fun `the rolls made before sessions existed belong to the first session`() =
     runTest {
       // The session column has carried a value since version 1, which is why

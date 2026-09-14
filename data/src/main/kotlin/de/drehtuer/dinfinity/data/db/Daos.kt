@@ -301,3 +301,35 @@ data class SessionTally(
   val rolls: Long,
   val naturals: Long,
 )
+
+/**
+ * The installed-set registry (`docs/dice-sets.md`, design `5a`).
+ *
+ * Small on purpose. Everything about what a package *is* comes from the folder
+ * it lives in; this is only what the player has said about it.
+ */
+@Dao
+interface InstalledSetDao {
+  /** Every opinion on record. Sets with no row are enabled by default. */
+  @Query("SELECT * FROM installed_set")
+  fun all(): Flow<List<InstalledSetRow>>
+
+  @Query("SELECT * FROM installed_set WHERE id = :id")
+  suspend fun byId(id: String): InstalledSetRow?
+
+  @Upsert
+  suspend fun upsert(row: InstalledSetRow)
+
+  @Query("DELETE FROM installed_set WHERE id = :id")
+  suspend fun delete(id: String)
+
+  /**
+   * Forgets every set that is no longer on disk.
+   *
+   * A folder can vanish without the app being asked — a restore, a file
+   * manager, a failed update — and a row left behind would switch a *new* set
+   * off the moment somebody installed one under the same id.
+   */
+  @Query("DELETE FROM installed_set WHERE id NOT IN (:present)")
+  suspend fun keepOnly(present: List<String>)
+}

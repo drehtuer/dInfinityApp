@@ -100,7 +100,21 @@ die_summary(set_id, die_id, sides, throws, sum, sum_sq, hi_streak, hi_streak_max
 saved_roll_group(id, name, icon, parent_id?, sort_order, table_set_id?, table_id?)
 saved_roll(id, group_id, name, formula, icon, colour_argb?, favourite,
            table_set_id?, table_id?, created_at, last_used_at?, use_count)
+
+-- version 3 (per session, below)
+session(id, name, started_at)
+
+-- version 4 (docs/dice-sets.md, design 5a)
+installed_set(id, enabled)
 ```
+
+`installed_set` is the one table that is **not** a list of anything. Which dice
+sets exist is the `dicesets/` folder's answer, read and revalidated on every
+reading (`docs/dice-sets.md`); this table holds only what the player has
+decided about one, so a set with no row is enabled. Rows are pruned against
+what is actually on disk, because a folder can vanish without the app being
+asked and a row left behind would switch a *new* package off the moment
+somebody installed one under the same id.
 
 A saved roll's formula is stored as **text**. The dice set it names may be
 uninstalled later, and a roll that no longer resolves is neither deleted nor
