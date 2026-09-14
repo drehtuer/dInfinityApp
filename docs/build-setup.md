@@ -567,6 +567,20 @@ Notes:
 ./gradlew ktlintFormat              # fix what can be fixed automatically
 ```
 
+**Build the release variant before opening a pull request**, not just the debug
+one:
+
+```sh
+./gradlew assembleRelease           # R8 runs here and nowhere else
+```
+
+R8 only shrinks the release build, and it fails on a class it can see
+referenced and cannot find — which is a thing a *new dependency* can cause
+without a line of new code being wrong. Nothing in the debug build will tell
+you. CI runs `build`, so it catches this; a stacked pull request based on
+another branch does not get CI at all until it is retargeted, so on a stack it
+is the developer's to run.
+
 SonarQube analyses the project on every push and pull request. The scan runs
 from CI as part of the build job, using the `sonar-scanner` CLI and the single
 configuration file [../sonar-project.properties](../sonar-project.properties).
