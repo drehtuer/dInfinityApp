@@ -1,0 +1,219 @@
+package de.drehtuer.dinfinity.feature.designer
+
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
+import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.designer.Dot
+import de.drehtuer.dinfinity.designer.FaceDrawing
+import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+
+/**
+ * The face designer (`design/dInfinity.dc.html`, options `1v`, `4c`, `8d`).
+ *
+ * The canvas itself is a `Canvas` draw lambda, which a test cannot read — the
+ * arithmetic under it is `FaceShapesTest`'s. What is asserted here is the
+ * furniture: which tools are offered, which are reachable, and that the strip
+ * moves between faces.
+ */
+@RunWith(RobolectricTestRunner::class)
+class DesignerScreenTest {
+  @get:Rule
+  val compose = createComposeRule()
+
+  @Test
+  fun `the canvas and the face strip are there`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.SCREEN).assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).assertIsDisplayed()
+    // The strip scrolls, so a face is reached before it is looked at — the
+    // later ones are off-screen on a narrow phone, which is the point of it.
+    (0 until 6).forEach { compose.onNodeWithTag(DesignerTestTags.faceOf(it)).performScrollTo().assertIsDisplayed() }
+  }
+
+  @Test
+  fun `a d20 has twenty faces to move between`() {
+    show(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron })
+
+    compose.onNodeWithTag(DesignerTestTags.faceOf(19)).assertExists()
+  }
+
+  @Test
+  fun `tapping the strip moves to that face`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.faceOf(4)).performScrollTo().performClick()
+
+    assertEquals(4, presenter.state.cell)
+  }
+
+  @Test
+  fun `undo and redo are offered only when there is something to take back`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.UNDO).assertIsNotEnabled()
+    compose.onNodeWithTag(DesignerTestTags.REDO).assertIsNotEnabled()
+
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+
+    compose.onNodeWithTag(DesignerTestTags.UNDO).assertIsEnabled()
+    compose.onNodeWithTag(DesignerTestTags.UNDO).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.REDO).assertIsEnabled()
+  }
+
+  @Test
+  fun `clear is offered only on a face with something on it`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().assertIsNotEnabled()
+
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().assertIsEnabled()
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().performClick()
+    assertEquals(true, presenter.state.face.blank)
+  }
+
+  @Test
+  fun `every nib is offered, the eraser among them`() {
+    show(d6)
+
+    Nib.entries.forEach { compose.onNodeWithTag(DesignerTestTags.nibOf(it)).performScrollTo().assertIsDisplayed() }
+  }
+
+  @Test
+  fun `choosing a nib chooses it`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Broad)).performScrollTo().performClick()
+
+    assertEquals(Nib.Broad, presenter.state.nib)
+  }
+
+  @Test
+  fun `the guide can be turned off and on from the screen`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.GUIDE).performScrollTo().performClick()
+    assertEquals(false, presenter.state.guideShown)
+
+    compose.onNodeWithTag(DesignerTestTags.GUIDE).performScrollTo().performClick()
+    assertEquals(true, presenter.state.guideShown)
+  }
+
+  @Test
+  fun `nothing warns about a limit nobody is near`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.WARNING).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a face near the limit says so before it refuses`() {
+    val presenter = show(d6)
+
+    repeat(FaceDrawing.MAX_STROKES - 1) { presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))) }
+
+    compose.onNodeWithTag(DesignerTestTags.WARNING).assertIsDisplayed()
+  }
+
+  @Test
+  fun `dragging a finger across the canvas draws a stroke`() {
+    // The whole screen, in one gesture. Everything else here is furniture
+    // around this.
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performTouchInput {
+      down(percentOffset(.25f, .25f))
+      moveTo(percentOffset(.5f, .5f))
+      moveTo(percentOffset(.75f, .75f))
+      up()
+    }
+
+    val stroke =
+      presenter.state.face.strokes
+        .single()
+    assertTrue("a stroke of one point is not a line", stroke.dots.size >= 2)
+    assertTrue("the stroke left the canvas", stroke.dots.all { it.x in 0f..1f && it.y in 0f..1f })
+  }
+
+  @Test
+  fun `the stroke is in fractions of the canvas, not in pixels`() {
+    // What lets a draft outlive the screen it was drawn on and be re-rendered
+    // at export resolution.
+    //
+    // The *first* dot is not asserted: `detectDragGestures` starts a drag only
+    // once the touch slop is passed, so where the finger went down and where
+    // the stroke begins are deliberately not the same point. What is asserted
+    // is that every dot is a fraction and that the line went the way the
+    // finger did.
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performTouchInput {
+      down(percentOffset(.2f, .2f))
+      moveTo(percentOffset(.4f, .4f))
+      moveTo(percentOffset(.6f, .6f))
+      moveTo(percentOffset(.8f, .8f))
+      up()
+    }
+
+    val dots =
+      presenter.state.face.strokes
+        .single()
+        .dots
+    assertTrue("not a fraction of the canvas: $dots", dots.all { it.x in 0f..1f && it.y in 0f..1f })
+    assertTrue("the stroke did not follow the finger: $dots", dots.last().x > dots.first().x)
+  }
+
+  @Test
+  fun `a finger that touches and lifts without moving leaves nothing`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performTouchInput {
+      down(center)
+      up()
+    }
+
+    assertTrue(presenter.state.face.blank)
+  }
+
+  @Test
+  fun `the pen that is chosen is the pen that draws`() {
+    val presenter = show(d6)
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Eraser)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performTouchInput {
+      down(percentOffset(.3f, .3f))
+      moveTo(percentOffset(.7f, .7f))
+      up()
+    }
+
+    assertTrue(
+      "the eraser did not erase",
+      presenter.state.face.strokes
+        .single()
+        .erases,
+    )
+  }
+
+  private fun show(die: Die): DesignerPresenter {
+    val presenter = DesignerPresenter(die)
+    compose.setContent { DesignerScreen(presenter = presenter) }
+    return presenter
+  }
+
+  private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
+}

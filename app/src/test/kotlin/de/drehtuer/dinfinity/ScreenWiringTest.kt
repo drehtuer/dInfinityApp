@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -48,6 +49,16 @@ class ScreenWiringTest {
     assertNotNull("the saved-roll statistics", presenters.savedStatistics())
     assertNotNull("the dice sets", presenters.diceSets())
     assertNotNull("the table picker", presenters.tables())
+    assertNotNull("the face designer", presenters.faceDesigner())
+  }
+
+  @Test
+  fun `the designer opens on a die somebody would call a die`() {
+    // The set's first die is the d2. Opening a drawing app on a coin is a poor
+    // answer to "draw a die", so the d6 is picked out by shape.
+    val designer = wiring().presenters().faceDesigner()
+
+    assertEquals(de.drehtuer.dinfinity.core.model.DieShape.Cube, designer.state.draft.die.shape)
   }
 
   @Test

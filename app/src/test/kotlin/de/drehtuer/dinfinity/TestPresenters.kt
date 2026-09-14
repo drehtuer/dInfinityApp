@@ -18,6 +18,7 @@ import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.Outside
 import de.drehtuer.dinfinity.feature.roll.RollMachine
@@ -112,6 +113,7 @@ internal fun testPresenters(
     },
     diceSets = { SetsPresenter(library, scope) },
     tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}) },
+    faceDesigner = { DesignerPresenter(BuiltinDiceSet.set.dice.first()) },
     diceSet = { id, onGone ->
       SetDetailPresenter(
         id = id.ifEmpty { BuiltinDiceSet.set.id },

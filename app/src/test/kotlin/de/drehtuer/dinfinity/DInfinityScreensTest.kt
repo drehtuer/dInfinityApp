@@ -300,12 +300,13 @@ class DInfinityScreensTest {
 
   private companion object {
     /**
-     * The screens that genuinely have not been written (`docs/TODO.md`, 4.6).
+     * The screens that genuinely have not been written.
      *
-     * A placeholder is right for these and wrong for everything else. The list
-     * shrinks as they land, and the test says so when one does.
+     * **Empty, at last.** Every destination the menu lists now draws its own
+     * screen; a placeholder anywhere is a screen that came unplugged. The list
+     * grew for a while and then shrank to nothing, which is what it was for.
      */
-    val NOT_WRITTEN_YET = setOf(Destination.FaceDesigner.route)
+    val NOT_WRITTEN_YET = emptySet<String>()
 
     /** Long enough for a folder read and a database round trip, short enough to fail. */
     const val PATIENCE = 5_000L

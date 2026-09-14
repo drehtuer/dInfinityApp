@@ -30,6 +30,7 @@ import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.feature.designer.DesignerScreen
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.graph.GraphPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphScreen
@@ -397,6 +398,11 @@ private fun customising(
 
     Destination.Tables if screens != null -> {
       TablesScreen(presenter = remember(entry) { screens.tables() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    Destination.FaceDesigner if screens != null -> {
+      DesignerScreen(presenter = remember(entry) { screens.faceDesigner() }, menu = { MenuTo(navController) })
       true
     }
 

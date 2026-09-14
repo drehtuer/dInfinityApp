@@ -165,13 +165,21 @@ left alone in case it comes back.
 
 Design `1v`, `4c`, `8d`. Spec: `docs/face-designer.md`.
 
-- [ ] Canvas with the face's outline masked in; strokes stored as vectors so drafts survive process death
-- [ ] **The d4 draws three numbers per triangle, one per corner** — its values belong to corners, not faces (`docs/dice-sets.md`, "The d4"). Three guides rather than one, and the two triangles sharing an edge have to agree along it: a die drawn otherwise reads as a different number depending which way it is looked at. Make that hard to do by accident, not a warning afterwards
-- [ ] Pen widths, eraser, fill, stamp, undo/redo, 12 presets plus custom colour (`4c`)
-- [ ] Face strip for every shape (`8d`): triangle, kite, pentagon, circle
+Drawing is built: the canvas with the face's outline masked in, strokes stored
+as vectors in fractions of the canvas, the guide under them that can be turned
+off, three pen widths and an eraser, undo/redo and clear per face, the twelve
+presets, and the face strip. The d4's three-numbers-per-corner rule is
+**derived rather than checked** — a cell's numbers are read from the corners it
+meets, so two cells sharing an edge cannot be made to disagree along it.
+
+- [ ] Pick a base die: any catalogue shape or any installed die. It opens on the default set's first die for now
+- [ ] Fill bucket, stamp from the built-in font, copy face → paste with rotate/mirror, "fill all faces with numbers", and a colour picker beyond the twelve presets (`4c`)
+- [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
+- [ ] Drafts on disk — vectors survive a rotation today, not process death (`docs/face-designer.md`, "Drawing tools"), and the 50-draft limit comes with them
 - [ ] "Roll it" throws the die being drawn
-- [ ] Export to a real dice set through the standard validator
-- [ ] *Confirm first:* the prototype has no 3D preview — see Open questions
+- [ ] Export to a real dice set through the standard validator: atlas at 256 px per cell, transparent cells, generated `diceset.toml`, licence asked for before sharing
+- [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"
+- [ ] *Confirm first:* the prototype has no 3D preview — see Open questions. Nothing here builds one
 
 ### 4.7 Statistics — `feature/stats`
 

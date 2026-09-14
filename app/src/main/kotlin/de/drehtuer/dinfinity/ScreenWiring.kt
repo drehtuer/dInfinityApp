@@ -1,12 +1,14 @@
 package de.drehtuer.dinfinity
 
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setActiveGroup
 import de.drehtuer.dinfinity.data.setActiveSession
 import de.drehtuer.dinfinity.data.setDefaultSet
 import de.drehtuer.dinfinity.data.setDefaultTable
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
@@ -76,6 +78,7 @@ internal class ScreenWiring(
       savedStatistics = { savedStatistics() },
       diceSets = { diceSets() },
       tables = { tables() },
+      faceDesigner = { faceDesigner() },
       diceSet = { id, onGone -> diceSet(id, onGone) },
     )
 
@@ -126,6 +129,27 @@ internal class ScreenWiring(
       groupId = settings.activeGroupId,
       rounding = settings.rounding,
     )
+
+  /**
+   * Drawing the faces of a die (`docs/face-designer.md`).
+   *
+   * Opened on the default set's **d6**, or its first die if it has none.
+   *
+   * Picking a base die — any catalogue shape or any installed die — is the
+   * next piece of 4.6. Until it lands the designer has to start somewhere, and
+   * the d6 is what somebody means by "a die": the set's *first* die is the d2,
+   * and opening a drawing app on a coin is a poor answer to "draw a die".
+   */
+  private fun faceDesigner(): DesignerPresenter {
+    val catalogue = app.setLibrary.catalogue
+    val dice =
+      catalogue
+        .set(catalogue.defaultSetId)
+        ?.dice
+        .orEmpty()
+        .ifEmpty { catalogue.installed.flatMap { it.dice } }
+    return DesignerPresenter(dice.firstOrNull { it.shape == DieShape.Cube } ?: dice.first())
+  }
 
   /**
    * Which table the dice are thrown onto (`docs/tables.md`).
