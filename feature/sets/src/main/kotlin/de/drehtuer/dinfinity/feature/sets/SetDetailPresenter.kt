@@ -11,7 +11,17 @@ data class SetDetailState(
   val row: SetRow? = null,
   val loaded: Boolean = false,
   val gone: Boolean = false,
+  val isDefault: Boolean = false,
 ) {
+  /**
+   * Whether this set can be made the default.
+   *
+   * Not one that is already it, and not one whose dice are not being offered:
+   * making a switched-off or broken package the default would name a set that
+   * every formula then falls straight past (`docs/dice-notation.md`).
+   */
+  val canBeDefault: Boolean get() = row?.usable == true && !isDefault
+
   /**
    * True once the package has been looked for and not found.
    *
@@ -47,6 +57,8 @@ class SetDetailPresenter(
   private val library: SetLibrary,
   private val scope: CoroutineScope,
   private val onGone: () -> Unit,
+  private val defaultSetId: () -> String,
+  private val onDefault: (String) -> Unit,
 ) {
   /** What the screen draws. */
   var state: SetDetailState by mutableStateOf(SetDetailState())
@@ -59,8 +71,22 @@ class SetDetailPresenter(
   /** Reads this one package again. */
   fun refresh() {
     scope.launch {
-      state = SetDetailState(row = library.one(id), loaded = true)
+      state = SetDetailState(row = library.one(id), loaded = true, isDefault = id == defaultSetId())
     }
+  }
+
+  /**
+   * Makes this the set plain notation resolves against first (design `6a`).
+   *
+   * Where that is remembered is the settings' business, not a package's, so it
+   * leaves by [onDefault]. The screen says so immediately rather than waiting
+   * for the setting to come back round: the answer is not in doubt, and a
+   * button that stays unchanged for a frame reads as one that did not work.
+   */
+  fun makeDefault() {
+    val row = state.row?.takeIf { it.usable } ?: return
+    state = state.copy(isDefault = true)
+    onDefault(row.id)
   }
 
   /**

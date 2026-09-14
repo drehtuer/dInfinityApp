@@ -91,9 +91,12 @@ class SetDetailScreenTest {
             registry = registry,
             io = Dispatchers.Unconfined,
             installer = PackageInstaller(root),
+            defaultSetId = { DiceSet.BUILTIN_ID },
           ),
         scope = scope,
         onGone = {},
+        defaultSetId = { DiceSet.BUILTIN_ID },
+        onDefault = {},
       )
     compose.setContent { SetDetailScreen(presenter) }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
@@ -213,6 +216,56 @@ class SetDetailScreenTest {
   }
 
   @Test
+  fun `a set can be made the one a plain d20 comes from`() {
+    write("brass", toml("brass", "Brass"))
+    val chosen = mutableListOf<String>()
+    val presenter = show("brass", onDefault = chosen::add)
+
+    compose.onNodeWithTag(SetDetailTestTags.MAKE_DEFAULT).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.isDefault }
+    assertEquals(listOf("brass"), chosen)
+    // It says so at once rather than waiting for the setting to come back
+    // round: a button that stays unchanged for a frame reads as one that did
+    // not work.
+    compose.onNodeWithTag(SetDetailTestTags.IS_DEFAULT).assertIsDisplayed()
+    compose.onNodeWithTag(SetDetailTestTags.MAKE_DEFAULT).assertIsNotDisplayed()
+  }
+
+  @Test
+  fun `the set that is already the default is not offered the job again`() {
+    write("brass", toml("brass", "Brass"))
+
+    show("brass", default = "brass")
+
+    compose.onNodeWithTag(SetDetailTestTags.IS_DEFAULT).assertIsDisplayed()
+    compose.onNodeWithTag(SetDetailTestTags.MAKE_DEFAULT).assertIsNotDisplayed()
+  }
+
+  @Test
+  fun `a set that will not load is not offered the job at all`() {
+    // Naming it would point every plain d20 at a set that is then fallen
+    // straight past.
+    write("runes", "format = 1\n\n[set]\nid = \"runes\"\n")
+
+    show("runes")
+
+    compose.onNodeWithTag(SetDetailTestTags.MAKE_DEFAULT).assertIsNotDisplayed()
+    compose.onNodeWithTag(SetDetailTestTags.IS_DEFAULT).assertIsNotDisplayed()
+  }
+
+  @Test
+  fun `a set that is switched off is not offered the job either`() {
+    write("brass", toml("brass", "Brass"))
+    val presenter = show("brass")
+
+    compose.onNodeWithTag(SetDetailTestTags.TOGGLE).performClick()
+    compose.waitUntil(PATIENCE) { presenter.state.row?.enabled == false }
+
+    compose.onNodeWithTag(SetDetailTestTags.MAKE_DEFAULT).assertIsNotDisplayed()
+  }
+
+  @Test
   fun `the bundled set is shown without anything to do to it`() {
     show(DiceSet.BUILTIN_ID)
 
@@ -233,6 +286,8 @@ class SetDetailScreenTest {
     id: String,
     onSource: (String) -> Unit = {},
     onGone: () -> Unit = {},
+    default: String = "",
+    onDefault: (String) -> Unit = {},
   ): SetDetailPresenter {
     val presenter =
       SetDetailPresenter(
@@ -244,9 +299,12 @@ class SetDetailScreenTest {
             registry = registry,
             io = Dispatchers.Unconfined,
             installer = PackageInstaller(root),
+            defaultSetId = { DiceSet.BUILTIN_ID },
           ),
         scope = scope,
         onGone = onGone,
+        defaultSetId = { default },
+        onDefault = onDefault,
       )
     compose.setContent { SetDetailScreen(presenter, onSource = onSource) }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }

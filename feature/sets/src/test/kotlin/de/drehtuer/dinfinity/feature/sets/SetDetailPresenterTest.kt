@@ -208,9 +208,12 @@ class SetDetailPresenterTest {
           registry = registry,
           io = Dispatchers.Unconfined,
           installer = PackageInstaller(root),
+          defaultSetId = { DiceSet.BUILTIN_ID },
         ),
       scope = scope,
       onGone = onGone,
+      defaultSetId = { DiceSet.BUILTIN_ID },
+      onDefault = {},
     ).also { presenter -> await("the folder was never read") { presenter.state.loaded } }
 
   private fun await(

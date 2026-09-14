@@ -73,6 +73,55 @@ object FaceHistogram {
   }
 
   /**
+   * The bars for a **pool** of dice rolled up together — "all my d20s"
+   * (`docs/statistics.md`, per standard die type; design option `5c`).
+   *
+   * The fair line cannot be taken from one die's values here, because two sets'
+   * d20s need not be labelled the same way and, more to the point, need not
+   * have been thrown the same number of times. A pool of a fair d6 thrown a
+   * thousand times and a `1,2,3,1,2,3` thrown twice is very nearly a fair d6,
+   * and a line drawn from the two value lists alone would call it loaded.
+   *
+   * So each die contributes to the line **in proportion to how often it was
+   * thrown**: a die with `t` throws expects `t / sides` of them on each of its
+   * faces, and the expectations are summed per value and divided by the whole
+   * pool. A pool of one die gives exactly what [of] gives.
+   *
+   * @param pool every die in the roll-up: the values it can show, with
+   *   repeats, and how many times it was thrown.
+   * @param tallies what has been recorded across the whole pool.
+   */
+  fun ofPool(
+    pool: List<PooledDie>,
+    tallies: List<FaceTally>,
+  ): List<FaceBar> {
+    val thrown = pool.filter { it.values.isNotEmpty() && it.throws > 0 }
+    if (thrown.isEmpty()) return of(pool.flatMap(PooledDie::values), tallies)
+
+    val expected = mutableMapOf<Int, Double>()
+    thrown.forEach { die ->
+      val perFace = die.throws.toDouble() / die.values.size
+      die.values.forEach { value -> expected[value] = (expected[value] ?: 0.0) + perFace }
+    }
+    val pooledThrows = thrown.sumOf(PooledDie::throws).toDouble()
+
+    val counted = tallies.associateBy(FaceTally::faceValue)
+    val recorded = tallies.sumOf(FaceTally::count)
+    return expected.keys
+      .sorted()
+      .map { value ->
+        val tally = counted[value]
+        FaceBar(
+          value = value,
+          count = tally?.count ?: 0,
+          droppedCount = tally?.droppedCount ?: 0,
+          share = if (recorded == 0L) 0.0 else (tally?.count ?: 0).toDouble() / recorded,
+          fairShare = expected.getValue(value) / pooledThrows,
+        )
+      }
+  }
+
+  /**
    * How many of [tallies] landed on the die's highest value, and how many on
    * its lowest.
    *
@@ -102,4 +151,16 @@ data class Extremes(
   val lowestValue: Int = 0,
   val highs: Long = 0,
   val lows: Long = 0,
+)
+
+/**
+ * One die's part in a roll-up (design option `5c`).
+ *
+ * @param values every value it can show, with repeats.
+ * @param throws how many times it was thrown, which is its weight in the pool's
+ *   fair line.
+ */
+data class PooledDie(
+  val values: List<Int>,
+  val throws: Long,
 )

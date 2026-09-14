@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.feature.stats
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -229,6 +230,124 @@ class StatsScreenTest {
   ) {
     compose.onNodeWithTag(StatsTestTags.dieOf(setId, dieId)).performClick()
     compose.waitUntil(PATIENCE) { presenter.state.selected != null }
+  }
+
+  @Test
+  fun `the cuts are not offered until there is more than one set to cut by`() {
+    // One set is every set. A filter row that only ever says "all sets" is a
+    // control that cannot do anything.
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35)
+
+    show()
+
+    compose.onNodeWithTag(StatsTestTags.ALL_SETS).assertIsNotDisplayed()
+  }
+
+  @Test
+  fun `a set can be picked out of the list`() {
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 4, sum = 14)
+    val presenter = show()
+
+    compose.onNodeWithTag(StatsTestTags.setOf("brass")).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.setFilter == "brass" }
+    assertEquals(listOf("brass"), presenter.state.dice.map { it.setId })
+  }
+
+  @Test
+  fun `going back to every set shows them all again`() {
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 4, sum = 14)
+    val presenter = show()
+    compose.onNodeWithTag(StatsTestTags.setOf("brass")).performClick()
+    compose.waitUntil(PATIENCE) { presenter.state.setFilter == "brass" }
+
+    compose.onNodeWithTag(StatsTestTags.ALL_SETS).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.setFilter == null }
+    assertEquals(2, presenter.state.dice.size)
+  }
+
+  @Test
+  fun `a filter that hides everything says so, rather than looking like an empty history`() {
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 4, sum = 14)
+    val presenter = show()
+
+    presenter.filterBy("a-set-with-no-record")
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(StatsTestTags.FILTERED_EMPTY).assertIsDisplayed()
+    compose.onNodeWithTag(StatsTestTags.EMPTY).assertIsNotDisplayed()
+  }
+
+  @Test
+  fun `rolling up counts every set's dice of a kind together`() {
+    // "All my d20s". Throws and totals add up, so the mean is the mean of
+    // everything thrown rather than the mean of two means.
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 40)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 30, sum = 100)
+    val presenter = show()
+
+    compose.onNodeWithTag(StatsTestTags.ACROSS_SETS).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.acrossSets }
+    val pooled = presenter.state.dice.single()
+    assertEquals("d6", pooled.name)
+    assertEquals(40L, pooled.summary.throws)
+    assertEquals(140L, pooled.summary.sum)
+  }
+
+  @Test
+  fun `a rolled-up row claims no streak, because two dice do not share one`() {
+    // A streak is a run within one die's own sequence. Two dice's runs do not
+    // join end to end.
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 40)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 30, sum = 100)
+    val presenter = show()
+
+    presenter.rollUp(true)
+    compose.waitForIdle()
+
+    assertEquals(
+      0,
+      presenter.state.dice
+        .single()
+        .summary.highestStreakMax,
+    )
+  }
+
+  @Test
+  fun `rolling up and filtering by set put each other away`() {
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 40)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 30, sum = 100)
+    val presenter = show()
+
+    presenter.filterBy("brass")
+    presenter.rollUp(true)
+
+    assertEquals(null, presenter.state.setFilter)
+
+    presenter.filterBy("brass")
+    assertEquals(false, presenter.state.acrossSets)
+  }
+
+  @Test
+  fun `a rolled-up die opens a histogram of every set's faces`() {
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 6, sum = 21)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 6, sum = 21)
+    faces(setId = "builtin", dieId = "d6", sides = 6, counts = mapOf(1 to 6L))
+    faces(setId = "brass", dieId = "d6", sides = 6, counts = mapOf(1 to 6L))
+    val presenter = show()
+    presenter.rollUp(true)
+    compose.waitForIdle()
+
+    presenter.select("", "d6")
+
+    compose.waitUntil(PATIENCE) { presenter.state.selected != null }
+    val bars = presenter.state.selected!!.bars
+    assertEquals("the two sets' counts were not added", 12L, bars.single { it.value == 1 }.count)
   }
 
   private fun summaries(): Int = runBlocking { database.dieSummary().all().first() }.size

@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import kotlinx.coroutines.flow.Flow
@@ -50,6 +51,7 @@ class DataStoreSettingsRepository(
       preferences[WELCOME_SEEN] = changed.welcomeSeen
       preferences[ACTIVE_GROUP] = changed.activeGroupId
       preferences[ACTIVE_SESSION] = changed.activeSessionId
+      preferences[DEFAULT_SET] = changed.defaultSetId
     }
   }
 
@@ -65,6 +67,7 @@ class DataStoreSettingsRepository(
       welcomeSeen = preferences[WELCOME_SEEN] == true,
       activeGroupId = preferences[ACTIVE_GROUP] ?: SavedRollGroup.UNFILED_ID,
       activeSessionId = preferences[ACTIVE_SESSION] ?: AppSettings.DEFAULT_SESSION_ID,
+      defaultSetId = preferences[DEFAULT_SET] ?: DiceSet.BUILTIN_ID,
     )
 
   companion object {
@@ -79,5 +82,6 @@ class DataStoreSettingsRepository(
     private val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
     private val ACTIVE_GROUP = stringPreferencesKey("active_group")
     private val ACTIVE_SESSION = stringPreferencesKey("active_session")
+    private val DEFAULT_SET = stringPreferencesKey("default_set")
   }
 }

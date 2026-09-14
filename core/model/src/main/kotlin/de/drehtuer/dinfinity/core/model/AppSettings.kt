@@ -67,6 +67,16 @@ data class AppSettings(
    * know whether its session headings mean anything.
    */
   val activeSessionId: String = DEFAULT_SESSION_ID,
+  /**
+   * The set plain notation resolves against first
+   * (`docs/dice-notation.md`; `docs/dice-sets.md`, design `6a`).
+   *
+   * `d20` with no set named in front of it means *this* set's d20, falling
+   * back to the bundled one for any die it does not define. The bundled set
+   * until somebody chooses otherwise — and again if the set they chose is
+   * uninstalled, because a default that is not installed is not a default.
+   */
+  val defaultSetId: String = DiceSet.BUILTIN_ID,
 ) {
   companion object {
     /**

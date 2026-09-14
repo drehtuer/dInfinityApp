@@ -425,6 +425,12 @@ are ignored with a warning to allow future extensions.
   because passing the validator once does not make a folder valid for ever. A
   broken package **keeps its folder**: an update is the way out of that state
   and an update needs somewhere to update from (design `6b`).
+- **One installed set can be made the one plain notation reaches for first**
+  (design `6a`). `d20` with no set in front of it then means that set's d20,
+  falling back to the bundled set per die for anything it does not define
+  (`docs/dice-notation.md`). A set that is switched off or will not load is not
+  offered the job, and one that stops being usable after being given it falls
+  back without the setting being rewritten.
 - **What is installed is what a formula resolves against.** `SetLibrary` builds
   the catalogue every time it reads the `dicesets/` folder, from the bundled set
   plus every installed package that is *on and still validates* — the same test
