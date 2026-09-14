@@ -128,6 +128,7 @@ class DataStoreSettingsRepositoryTest {
           "rounding" to "down",
           "welcome_seen" to false,
           "active_group" to "unfiled",
+          "active_session" to "default",
         ),
         stored,
       )

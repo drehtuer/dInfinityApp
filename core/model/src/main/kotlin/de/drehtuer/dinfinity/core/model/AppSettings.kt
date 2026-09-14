@@ -59,4 +59,25 @@ data class AppSettings(
    * session follow.
    */
   val activeGroupId: String = SavedRollGroup.UNFILED_ID,
-)
+  /**
+   * The session new rolls are filed under (`docs/statistics.md`, per session).
+   *
+   * A preference in the sense that matters: it outlives the screen that chose
+   * it, the roll screen reads it on every throw, and the history reads it to
+   * know whether its session headings mean anything.
+   */
+  val activeSessionId: String = DEFAULT_SESSION_ID,
+) {
+  companion object {
+    /**
+     * The session a roll belongs to when nothing else says.
+     *
+     * The same id the sessions table's first row carries, so the rolls made
+     * before there were sessions belong to the first session rather than to
+     * nothing. `SessionRepository.DEFAULT_ID` is the other end of it; the
+     * model cannot see `data`, so the string is written twice and asserted
+     * equal in `RollRecordingTest`.
+     */
+    const val DEFAULT_SESSION_ID: String = "default"
+  }
+}

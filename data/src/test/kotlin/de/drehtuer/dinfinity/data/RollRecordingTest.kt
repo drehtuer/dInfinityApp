@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.data
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.DieShape
@@ -144,6 +145,17 @@ class RollRecordingTest {
           .single()
           .sessionId,
       )
+    }
+
+  @Test
+  fun `the two ends of the default session id agree`() =
+    runTest {
+      // `core/model` cannot see `data`, so the string is written in both and
+      // asserted equal here. If they ever drifted, every roll made before
+      // somebody opened the sessions screen would point at a session that does
+      // not exist.
+      assertEquals(AppSettings.DEFAULT_SESSION_ID, RollRecording.NO_SESSION)
+      assertEquals(SessionRepository.DEFAULT_ID, RollRecording.NO_SESSION)
     }
 
   @Test

@@ -189,12 +189,25 @@ already done and tested in `StatisticsRepository`.
 - [ ] Filtering: by session once there are sessions (4.9), and by saved roll — the query is written and nothing calls it
 - [ ] Export as JSON/CSV, without seeds, shared like a collection (4.3's sharing is the pattern)
 
-### 4.9 Sessions — `feature/sessions`
+### 4.9 Sessions — `feature/stats`
 
 Design `6c`. Spec: `docs/statistics.md`.
 
-- [ ] List with roll counts and nat-20 counts; tap to activate, rename inline, create
-- [ ] Delete moves its rolls to Unfiled
+Built: database version 3 and its migration, the list with its roll and
+natural-high counts, tap to activate, rename, create, and delete that moves the
+rolls to the first session rather than deleting them. The active session is a
+preference and every roll is filed under it.
+
+- [ ] Filtering the statistics and the history *by* session, which is what
+      sessions are for. The queries exist (`HistoryRepository.inSession`); what
+      is missing is a chooser on those two screens
+- [ ] The menu header shows the active session beside the app's name in the
+      design (`1q`)
+- [ ] `docs/statistics.md` says the active saved-roll *group*'s name is used as
+      the session by default. It is not: the first session is called "First
+      rolls" and a session is chosen on its own screen. One of the two has to
+      change — probably the document, since tying two independent choices
+      together is the sort of link that surprises somebody at a table
 
 ### 4.10 Settings and menu — `feature/settings`
 

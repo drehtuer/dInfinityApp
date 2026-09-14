@@ -64,13 +64,14 @@ class RollRecording(
 
   companion object {
     /**
-     * The session every roll belongs to until there are sessions to choose.
+     * The session a roll belongs to when nothing else says.
      *
      * A name rather than an empty string, because the column is not nullable
-     * and "" in a history is a value somebody will one day have to guess the
-     * meaning of. When Step 4.9 arrives, the rolls filed here are a real
-     * session that can be renamed rather than a gap to migrate.
+     * and "" in a history is a value somebody would one day have to guess the
+     * meaning of. It is the same id [SessionRepository.DEFAULT_ID] carries, so
+     * the rolls made before sessions existed belong to the first session
+     * rather than to nothing.
      */
-    const val NO_SESSION: String = "default"
+    const val NO_SESSION: String = SessionRepository.DEFAULT_ID
   }
 }

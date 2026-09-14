@@ -50,6 +50,8 @@ import de.drehtuer.dinfinity.feature.settings.MenuSection
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryScreen
+import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
+import de.drehtuer.dinfinity.feature.stats.SessionsScreen
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsScreen
 import de.drehtuer.dinfinity.navigation.Destination
@@ -77,6 +79,7 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  * @param collectionImport the same, for the screen that takes a collection in.
  * @param history the same, for the list of past rolls.
  * @param statistics the same, for what every die has done.
+ * @param sessions the same, for the buckets statistics are filtered by.
  * @param navController taken rather than only made, so a test can open a
  *   screen the way a control would rather than by pressing its way there.
  */
@@ -97,6 +100,7 @@ fun DInfinityApp(
   collectionImport: (() -> ImportPresenter)? = null,
   history: (() -> HistoryPresenter)? = null,
   statistics: (() -> StatsPresenter)? = null,
+  sessions: (() -> SessionsPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -119,44 +123,28 @@ fun DInfinityApp(
             }
           },
       ) { entry ->
-        when (destination) {
-          // Remembered per visit, not held by the application: a presenter owns
-          // the roll thread and, through it, a Filament engine and a physics
-          // world. Leaving the screen gives all three back
-          // (`docs/architecture.md`, decision 49).
-          Destination.Roll if rollPresenter != null ->
-            Roll(rollPresenter, savedRolls, entry, navController, settings, onWelcomeSeen)
-
-          // Every screen the app has, and the only way to most of them
-          // (`docs/architecture.md`, "Screens and the states behind them").
-          Destination.Menu ->
-            MenuScreen(sections = menuSections(navController))
-
-          Destination.Graph if graphMachine != null -> Graph(graphMachine, entry, navController)
-
-          Destination.SavedRolls if savedRolls != null && savedGroups != null ->
-            Saved(savedRolls, savedGroups, entry, navController)
-
-          Destination.SavedRollEditor if savedRollEditor != null && savedGroups != null ->
-            Editor(savedRollEditor, savedGroups, entry, navController)
-
-          Destination.CollectionImport if collectionImport != null ->
-            Import(collectionImport, entry, navController)
-
-          Destination.History if history != null ->
-            HistoryScreen(
-              presenter = remember(entry) { history() },
-              menu = { MenuTo(navController) },
-            )
-
-          Destination.Statistics if statistics != null ->
-            StatsScreen(
-              presenter = remember(entry) { statistics() },
-              menu = { MenuTo(navController) },
-            )
-
-          Destination.Settings ->
-            SettingsScreen(
+        // Split in three, by what the screens are *about* rather than for
+        // tidiness: the graph's own table outgrew both the length and the
+        // complexity limits when sessions arrived, and each of these is one
+        // question — what the app does, what a player saved, what they have
+        // done. Each returns whether it recognised the destination, so exactly
+        // one of them draws and nothing falls through silently.
+        val drawn =
+          playing(
+            destination,
+            entry,
+            navController,
+            settings,
+            rollPresenter,
+            graphMachine,
+            savedRolls,
+            onWelcomeSeen,
+          ) ||
+            saving(destination, entry, navController, savedRolls, savedGroups, savedRollEditor, collectionImport) ||
+            lookingBack(destination, entry, navController, history, statistics, sessions) ||
+            chrome(
+              destination = destination,
+              navController = navController,
               settings = settings,
               onAccentSelected = onAccentSelected,
               onAppearanceSelected = onAppearanceSelected,
@@ -165,11 +153,11 @@ fun DInfinityApp(
               onRoundingSelected = onRoundingSelected,
               onRepository = onRepository,
               version = version,
-              menu = { MenuTo(navController) },
             )
-
-          else -> PlaceholderScreen(destination = destination, menu = { MenuTo(navController) })
-        }
+        // A destination whose screen is not built yet, or whose presenter was
+        // not supplied — a Robolectric test of the graph has neither a GPU nor
+        // a physics engine, and a placeholder is the honest thing to draw.
+        if (!drawn) PlaceholderScreen(destination = destination, menu = { MenuTo(navController) })
       }
     }
   }
@@ -244,6 +232,143 @@ private fun Graph(
       },
   )
 }
+
+/**
+ * What the app *does*: the tray, the odds, and the way between them.
+ *
+ * @return true when this is one of them, so the caller knows it has been drawn.
+ */
+@Composable
+private fun playing(
+  destination: Destination,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+  settings: AppSettings,
+  rollPresenter: (() -> RollPresenter)?,
+  graphMachine: (() -> GraphMachine)?,
+  savedRolls: (() -> SavedPresenter)?,
+  onWelcomeSeen: () -> Unit,
+): Boolean =
+  when (destination) {
+    // Remembered per visit, not held by the application: a presenter owns the
+    // roll thread and, through it, a Filament engine and a physics world.
+    // Leaving the screen gives all three back (`docs/architecture.md`,
+    // decision 49).
+    Destination.Roll if rollPresenter != null -> {
+      Roll(rollPresenter, savedRolls, entry, navController, settings, onWelcomeSeen)
+      true
+    }
+
+    Destination.Graph if graphMachine != null -> {
+      Graph(graphMachine, entry, navController)
+      true
+    }
+
+    else -> false
+  }
+
+/** What a player wrote down: the list, the editor, and a collection arriving. */
+@Composable
+private fun saving(
+  destination: Destination,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+  savedRolls: (() -> SavedPresenter)?,
+  savedGroups: (() -> GroupPresenter)?,
+  savedRollEditor: ((String?) -> EditorPresenter)?,
+  collectionImport: (() -> ImportPresenter)?,
+): Boolean =
+  when (destination) {
+    Destination.SavedRolls if savedRolls != null && savedGroups != null -> {
+      Saved(savedRolls, savedGroups, entry, navController)
+      true
+    }
+
+    Destination.SavedRollEditor if savedRollEditor != null && savedGroups != null -> {
+      Editor(savedRollEditor, savedGroups, entry, navController)
+      true
+    }
+
+    Destination.CollectionImport if collectionImport != null -> {
+      Import(collectionImport, entry, navController)
+      true
+    }
+
+    else -> false
+  }
+
+/** What a player has done: the history, the dice, and the buckets they are in. */
+@Composable
+private fun lookingBack(
+  destination: Destination,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+  history: (() -> HistoryPresenter)?,
+  statistics: (() -> StatsPresenter)?,
+  sessions: (() -> SessionsPresenter)?,
+): Boolean =
+  when (destination) {
+    Destination.History if history != null -> {
+      HistoryScreen(presenter = remember(entry) { history() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    Destination.Statistics if statistics != null -> {
+      StatsScreen(presenter = remember(entry) { statistics() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    Destination.Sessions if sessions != null -> {
+      SessionsScreen(presenter = remember(entry) { sessions() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    else -> false
+  }
+
+/**
+ * The app's own two screens: the menu that reaches every other, and Settings.
+ *
+ * Neither takes a presenter. The menu *is* a list of destinations, and Settings
+ * is driven from above the navigation graph because a preference outlives the
+ * screen that changed it (`docs/architecture.md`, decision 49).
+ */
+@Composable
+private fun chrome(
+  destination: Destination,
+  navController: NavHostController,
+  settings: AppSettings,
+  onAccentSelected: (AccentColor) -> Unit,
+  onAppearanceSelected: (Appearance) -> Unit,
+  onPowerSavingChanged: (Boolean) -> Unit,
+  onShakeChanged: (Boolean) -> Unit,
+  onRoundingSelected: (Rounding) -> Unit,
+  onRepository: () -> Unit,
+  version: String,
+): Boolean =
+  when (destination) {
+    Destination.Menu -> {
+      MenuScreen(sections = menuSections(navController))
+      true
+    }
+
+    Destination.Settings -> {
+      SettingsScreen(
+        settings = settings,
+        onAccentSelected = onAccentSelected,
+        onAppearanceSelected = onAppearanceSelected,
+        onPowerSavingChanged = onPowerSavingChanged,
+        onShakeChanged = onShakeChanged,
+        onRoundingSelected = onRoundingSelected,
+        onRepository = onRepository,
+        version = version,
+        menu = { MenuTo(navController) },
+      )
+      true
+    }
+
+    else -> false
+  }
 
 /** Saved rolls, and the way from one back to the tray. */
 @Composable

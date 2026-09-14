@@ -37,4 +37,29 @@
   <string name="stats_confirm_all">Every die’s record and every roll in your history is forgotten.</string>
   <string name="stats_confirm_yes">Forget it</string>
   <string name="group_cancel_stats">Keep it</string>
+  <!-- Sessions (design option 6c). -->
+  <string name="sessions_title">Sessions</string>
+  <!-- The session every roll belongs to before anybody makes another. -->
+  <string name="sessions_first">First rolls</string>
+  <string name="sessions_explanation">A session is a label on a stretch of rolls — a campaign, an evening. Nothing starts or stops; new rolls go into whichever one is chosen.</string>
+  <string name="sessions_new">New session</string>
+  <string name="sessions_new_note">New rolls go here from now on.</string>
+  <string name="sessions_rename">Rename</string>
+  <string name="sessions_delete">Delete</string>
+  <string name="sessions_name">Name</string>
+  <string name="sessions_name_hint">Tuesday campaign</string>
+  <string name="sessions_save">Save</string>
+  <string name="sessions_cancel">Cancel</string>
+  <!-- %1$s is the session name; this marks the one new rolls go into. -->
+  <string name="sessions_active">%1$s — rolling into this one</string>
+  <!-- %1$s is a number of rolls, %2$s a number of natural maximums. -->
+  <string name="sessions_counts">%1$s, %2$s</string>
+  <plurals name="sessions_rolls">
+    <item quantity="one">%1$d roll</item>
+    <item quantity="other">%1$d rolls</item>
+  </plurals>
+  <plurals name="sessions_naturals">
+    <item quantity="one">%1$d with a natural high</item>
+    <item quantity="other">%1$d with a natural high</item>
+  </plurals>
 </resources>

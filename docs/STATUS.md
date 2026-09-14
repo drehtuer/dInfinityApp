@@ -105,6 +105,12 @@ changelog.
   breakdown is stored whole, so a past roll means what it meant then even after
   the set that threw it is uninstalled. The roll screen still cannot see a
   database: it hands out a finished throw and `:app` writes it.
+- **Step 4.9.** Database version 3 adds sessions, and the migration names the
+  session the rolls made before sessions existed already belonged to — the
+  column has carried a value since version 1, so nothing had to be invented for
+  them. The list shows each session's roll count and how many of those had a
+  natural high, choosing one is all it takes to roll into it, and deleting one
+  moves its rolls rather than deleting them.
 - **Step 4.7.** The statistics screen is on: every die ever thrown with its
   average, and choosing one opens its natural highs and lows, its average, its
   throw count and its face histogram drawn against what a fair die would do —

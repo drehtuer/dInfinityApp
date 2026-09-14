@@ -669,6 +669,44 @@ numbers beside it.
 The editor leaves by going *back* rather than forward: it is a detour from the
 list, and finishing one is arriving back where it started.
 
+### Sessions
+
+A session is a label somebody puts on a stretch of rolls, not a thing that
+happens. Nothing here starts one and nothing stops one: the app files what is
+thrown under whichever is active, so there is no button to forget to press and
+a session left running overnight is not a state that exists.
+
+Database version 3 adds the table, and the migration inserts the first row
+rather than leaving that to whichever screen first wants one. `roll_history`
+has carried a `session_id` since version 1 and every row already has a value
+— `RollRecording` files rolls under `default` — so the rolls made before
+sessions existed belong to a session that can now be *renamed*, rather than to
+a gap that had to be migrated. A history full of rows pointing at a session
+that does not exist is a join that quietly drops them.
+
+The same rule groups follow: **deleting a session moves its rolls to the first
+one rather than deleting them**, in one transaction, and the first session has
+no Delete at all because it is where they go.
+
+Each row carries two numbers, both counted in SQL: how many rolls are in the
+session, and how many of those had a die showing its highest face. The second
+is read out of the stored breakdown rather than by joining anything, because a
+breakdown means what it meant then and the set that threw it may be long
+uninstalled.
+
+The active session is a **preference**, like the active group: it outlives the
+screen that chose it, and the roll screen reads it on every throw. `RollRecording`
+asks for it per roll rather than capturing it, so an evening's rolls do not all
+land in whichever session was current when the screen opened.
+
+| Control | Calls | What changes |
+|---|---|---|
+| a session in the list | `activate` | which session new rolls are filed under, and the stored preference |
+| **New session** | `edit(SessionDraft())` | the naming sheet, on one that does not exist yet |
+| **Rename** | `edit(draft)` | the same sheet, on one that does. The id does not move, so the rolls filed under it stay filed under it |
+| **Save** | `save` | it is written, and a *new* one becomes active — making a session and then having to tap it is two acts where the player meant one |
+| **Delete** | `delete` | the session goes, its rolls move to the first one, and if it was the active one the rolling moves too. Otherwise the next throw would be filed under a session that is gone |
+
 ### Statistics
 
 Two screens in one destination: every die ever thrown, and one die opened.
@@ -723,9 +761,9 @@ to survive the list being rebuilt when a roll lands: an expanded breakdown that
 closed itself every time somebody rolled would be a breakdown nobody could
 read. One at a time — fifty open breakdowns is not a list.
 
-Session headings are drawn only when the list spans more than one session,
-which is never until Step 4.9. A heading repeated down a whole list says
-nothing.
+Session headings are drawn only when the list spans more than one session. A
+heading repeated down a whole list says nothing, which is what a fresh install
+would see.
 
 | Control | Calls | What changes |
 |---|---|---|

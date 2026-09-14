@@ -49,6 +49,7 @@ class DataStoreSettingsRepository(
       preferences[ROUNDING] = changed.rounding.id
       preferences[WELCOME_SEEN] = changed.welcomeSeen
       preferences[ACTIVE_GROUP] = changed.activeGroupId
+      preferences[ACTIVE_SESSION] = changed.activeSessionId
     }
   }
 
@@ -63,6 +64,7 @@ class DataStoreSettingsRepository(
       rounding = Rounding.ofId(preferences[ROUNDING]),
       welcomeSeen = preferences[WELCOME_SEEN] == true,
       activeGroupId = preferences[ACTIVE_GROUP] ?: SavedRollGroup.UNFILED_ID,
+      activeSessionId = preferences[ACTIVE_SESSION] ?: AppSettings.DEFAULT_SESSION_ID,
     )
 
   companion object {
@@ -76,5 +78,6 @@ class DataStoreSettingsRepository(
     private val ROUNDING = stringPreferencesKey("rounding")
     private val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
     private val ACTIVE_GROUP = stringPreferencesKey("active_group")
+    private val ACTIVE_SESSION = stringPreferencesKey("active_session")
   }
 }

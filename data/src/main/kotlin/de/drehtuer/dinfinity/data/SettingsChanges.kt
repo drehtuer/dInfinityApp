@@ -33,3 +33,6 @@ suspend fun SettingsRepository.setWelcomeSeen() = update { it.copy(welcomeSeen =
 
 /** The group of saved rolls the app is in (`docs/dice-notation.md`). */
 suspend fun SettingsRepository.setActiveGroup(groupId: String) = update { it.copy(activeGroupId = groupId) }
+
+/** The session new rolls are filed under (`docs/statistics.md`). */
+suspend fun SettingsRepository.setActiveSession(sessionId: String) = update { it.copy(activeSessionId = sessionId) }

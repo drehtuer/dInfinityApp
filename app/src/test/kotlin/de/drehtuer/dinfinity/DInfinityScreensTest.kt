@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.data.CollectionImporter
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
+import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -27,6 +28,8 @@ import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedTestTags
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryTestTags
+import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
+import de.drehtuer.dinfinity.feature.stats.SessionsTestTags
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsTestTags
 import de.drehtuer.dinfinity.navigation.Destination
@@ -134,6 +137,15 @@ class DInfinityScreensTest {
   }
 
   @Test
+  fun `the sessions screen draws`() {
+    val navigation = app()
+
+    go(navigation, Destination.Sessions)
+
+    compose.onNodeWithTag(SessionsTestTags.SCREEN).assertIsDisplayed()
+  }
+
+  @Test
   fun `the statistics screen draws`() {
     val navigation = app()
 
@@ -198,6 +210,13 @@ class DInfinityScreensTest {
             )
           },
           history = { HistoryPresenter(history = HistoryRepository(database), scope = scope) },
+          sessions = {
+            SessionsPresenter(
+              repository = SessionRepository(database),
+              scope = scope,
+              defaultName = "First rolls",
+            )
+          },
           statistics = {
             StatsPresenter(
               statistics = DieStatisticsRepository(database),
