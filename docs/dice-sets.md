@@ -419,6 +419,30 @@ are ignored with a warning to allow future extensions.
   fails to load (corrupted storage, app upgrade with stricter rules), it is
   marked *disabled* with a reason, and the app continues with the built-in
   set. Notation that references it falls back and the breakdown says so.
+- **What is installed is read off the disk and validated again every time, not
+  remembered from the install.** `InstalledSets` answers with a package that is
+  either ready or broken-with-its-report, and the two cases exist precisely
+  because passing the validator once does not make a folder valid for ever. A
+  broken package **keeps its folder**: an update is the way out of that state
+  and an update needs somewhere to update from (design `6b`).
+- **A row says which of the two ways a set can be unusable it is in.** Switched
+  off and will-not-load are not the same thing and the remedies are opposite —
+  one is a tap, the other is an update — so a list that showed only
+  "unavailable" would send the player to the wrong one (design `5a`).
+- **Whether a set is switched on is the database's to say, not the folder's.**
+  `installed_set` holds one row per package the player has had an opinion
+  about, and a package with no row is enabled — which is what a set does the
+  moment it installs (`docs/statistics.md`, "Storage"). Disabling keeps the
+  folder, the `.meta.json` and every statistic recorded against the set's dice,
+  which is what makes it a reversible decision and why the screen offers both
+  it and removal (design `5a`).
+- The bundled set cannot be switched off. Every fallback resolves against it
+  (`docs/dice-notation.md`), and unlike every other set there would be no way
+  to install it back.
+- A folder whose `diceset.toml` gives an id other than the folder's own name is
+  refused. Notation resolves a set by folder, so the dice it handed out would
+  come from a set the player never named — and the app cannot have produced it,
+  because an install names the folder after the id the validator accepted.
 - Physics/rendering never trust set data directly: every value passes through
   the clamps again at load time, and the convex hull is recomputed on load.
 

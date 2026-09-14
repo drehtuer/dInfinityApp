@@ -4,10 +4,12 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import android.graphics.Rect
 import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 
@@ -17,12 +19,34 @@ import androidx.compose.ui.platform.LocalView
 // something, and the system takes the difference as input.
 
 /**
- * Keeps the roll screen in the orientation it was opened in.
+ * Keeps the roll screen in the *shape* it was opened in — and no stiller than
+ * that.
  *
- * The tray *is* the screen (`docs/tables.md`), so turning the phone rebuilds
- * the table — a different shape, a different capacity, the camera reframed.
- * That is the right answer for a player who meant it and an unwelcome surprise
- * for one who is shaking the thing, which is most of the time on this screen.
+ * The tray *is* the screen (`docs/tables.md`), so a quarter turn rebuilds the
+ * table: a different shape, a different capacity, the camera reframed. That is
+ * the right answer for a player who meant it and an unwelcome surprise for one
+ * who is shaking the thing, which is most of the time on this screen. So a
+ * quarter turn is still refused.
+ *
+ * **A half turn is not, and used to be.** Turning a phone end over end gives
+ * the same table back — same aspect ratio, same capacity, same camera — so
+ * none of the reasoning above applies to it. `SCREEN_ORIENTATION_LOCKED` does
+ * not know that: it pins the display to the exact rotation the screen opened
+ * at, and a player who turns the phone upside down gets an upside-down screen
+ * that stays that way.
+ *
+ * That is worse than it looks, because the display's rotation is also how the
+ * shake knows which way the hand went. `PhoneAxes` maps a sensor vector into
+ * the tray using `Display.getRotation()`, and a display frozen at the rotation
+ * it opened at reports the phone as upright while it is being shaken upside
+ * down. The map is correct and is handed a lie: the dice pool at the end away
+ * from the hand instead of the end towards it
+ * (`docs/physics-and-rendering.md`, "Shake input").
+ *
+ * `USER_PORTRAIT`/`USER_LANDSCAPE` are the pair that say exactly this — keep
+ * this shape, take either way up — and they respect the player's own rotation
+ * lock, so a phone the player has told the system to hold still is still held
+ * still.
  *
  * Locked to whatever is on screen when it opens rather than to portrait: a
  * player who opened the app in landscape means it, and taking that away would
@@ -33,15 +57,39 @@ import androidx.compose.ui.platform.LocalView
 @Composable
 internal fun LockTheOrientation() {
   val activity = LocalContext.current.activity()
+  val shape = eitherWayUp(LocalConfiguration.current)
 
+  // Keyed on the activity and not on [shape]: what is held is the shape the
+  // screen *opened* in. A configuration that changes under it later — a
+  // multi-window resize, say — is not a reason to start asking for something
+  // else half way through a throw.
   DisposableEffect(activity) {
     val wasRequesting = activity?.requestedOrientation
-    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LOCKED
+    activity?.requestedOrientation = shape
     onDispose {
       activity?.requestedOrientation = wasRequesting ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
   }
 }
+
+/**
+ * The shape [configuration] is in now, either way up.
+ *
+ * Read from the configuration rather than from the display's rotation: what
+ * has to be held is the table's shape, and "portrait" is the question the
+ * configuration answers. A phone whose natural orientation is landscape — a
+ * tablet — would give the opposite answer to the same rotation.
+ *
+ * Takes the configuration rather than the activity so that it is a function of
+ * its argument and nothing else, which is what lets both answers be asserted
+ * without an activity in either orientation to ask.
+ */
+internal fun eitherWayUp(configuration: Configuration): Int =
+  if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+    ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
+  } else {
+    ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT
+  }
 
 /**
  * Keeps the back gesture off the edges of the screen while a shake is going on.

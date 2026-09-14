@@ -1,0 +1,257 @@
+package de.drehtuer.dinfinity.feature.sets
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+
+/**
+ * What is installed (`design/dInfinity.dc.html`, option `5a`;
+ * `docs/dice-sets.md`).
+ *
+ * A list, and a sheet on a long press. Everything that can be done to a set
+ * from here is reversible or replaceable: switching one off keeps the folder
+ * and the statistics, removing one keeps the statistics, and the bundled set
+ * is offered neither because there is nothing it could mean.
+ *
+ * A row says which of the two ways a set can be unusable it is in, because the
+ * remedies are opposite: **switched off** is a tap, and **will not load** is an
+ * update. A list that showed only "unavailable" would send the player to the
+ * wrong one.
+ *
+ * @param onOpen a row was tapped. Where that goes is the navigation graph's,
+ *   which is why this takes a function instead of a controller.
+ */
+@Composable
+fun SetsScreen(
+  presenter: SetsPresenter,
+  modifier: Modifier = Modifier,
+  onOpen: (SetRow) -> Unit = {},
+  menu: @Composable () -> Unit = {},
+) {
+  val state = presenter.state
+  Column(
+    modifier =
+      modifier
+        .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)
+        .safeDrawingPadding()
+        .testTag(SetsTestTags.SCREEN),
+  ) {
+    Header(menu)
+    // The note goes *above* the list rather than instead of it. The bundled
+    // set is a row like any other and is always there, so replacing the list
+    // would hide the one set every fallback resolves against (`5a`).
+    if (state.empty) EmptyNote()
+    Sets(state, presenter, onOpen)
+  }
+
+  state.acting?.let { row -> ActionSheet(row, presenter) }
+}
+
+@Composable
+private fun Header(menu: @Composable () -> Unit) {
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Text(
+      text = stringResource(R.string.sets_title),
+      style = MaterialTheme.typography.titleLarge,
+      fontWeight = FontWeight.Bold,
+      modifier = Modifier.weight(1f),
+    )
+    menu()
+  }
+  Text(
+    text = stringResource(R.string.sets_order),
+    style = MaterialTheme.typography.bodySmall,
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+  )
+}
+
+@Composable
+private fun EmptyNote() {
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(16.dp).testTag(SetsTestTags.EMPTY),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    Text(
+      text = stringResource(R.string.sets_empty_title),
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.Bold,
+    )
+    Text(
+      text = stringResource(R.string.sets_empty_body),
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+  }
+}
+
+@Composable
+private fun Sets(
+  state: SetsState,
+  presenter: SetsPresenter,
+  onOpen: (SetRow) -> Unit,
+) {
+  LazyColumn(modifier = Modifier.fillMaxSize().testTag(SetsTestTags.LIST)) {
+    items(state.sets, key = SetRow::id) { row ->
+      SetLine(row, onOpen = { onOpen(row) }, onHold = { presenter.act(row) })
+      HorizontalDivider()
+    }
+  }
+}
+
+/**
+ * One set.
+ *
+ * Tap opens it, long press asks what to do with it. Both through
+ * `detectTapGestures` rather than a `combinedClickable`, because the row is
+ * also a merge root for accessibility and the two gestures want to be one
+ * node with one label.
+ */
+@Composable
+private fun SetLine(
+  row: SetRow,
+  onOpen: () -> Unit,
+  onHold: () -> Unit,
+) {
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .pointerInput(row.id) {
+          detectTapGestures(onTap = { onOpen() }, onLongPress = { onHold() })
+        }.semantics(mergeDescendants = true) { }
+        .padding(horizontal = 16.dp, vertical = 12.dp)
+        .testTag(SetsTestTags.setOf(row.id)),
+    verticalArrangement = Arrangement.spacedBy(2.dp),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = row.name,
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.weight(1f),
+      )
+      row.version?.let { version ->
+        Text(
+          text = version,
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+    Text(
+      text = status(row),
+      style = MaterialTheme.typography.bodySmall,
+      color = if (row.usable) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+    )
+  }
+}
+
+/**
+ * The one line under the name, in words.
+ *
+ * Which of the four it is is [SetRow.status]'s to decide and is tested without
+ * a screen; all that happens here is looking the words up.
+ */
+@Composable
+private fun status(row: SetRow): String =
+  when (row.status) {
+    SetStatus.Broken -> pluralStringResource(R.plurals.sets_problems, row.problems, row.problems)
+    SetStatus.Off -> stringResource(R.string.sets_disabled)
+    SetStatus.Bundled -> stringResource(R.string.sets_bundled)
+    SetStatus.Ready -> pluralStringResource(R.plurals.sets_dice, row.dice, row.dice)
+  }
+
+/** Disable or remove, on a long press (`5a`). */
+@Composable
+private fun ActionSheet(
+  row: SetRow,
+  presenter: SetsPresenter,
+) {
+  AlertDialog(
+    onDismissRequest = { presenter.act(null) },
+    modifier = Modifier.testTag(SetsTestTags.SHEET),
+    title = { Text(row.name) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+          text = stringResource(if (row.enabled) R.string.sets_sheet_disable_note else R.string.sets_sheet_remove_note),
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(
+        onClick = { presenter.setEnabled(row, enabled = !row.enabled) },
+        modifier = Modifier.testTag(SetsTestTags.TOGGLE),
+      ) {
+        Text(stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable))
+      }
+    },
+    dismissButton = {
+      Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        TextButton(
+          onClick = { presenter.remove(row) },
+          modifier = Modifier.testTag(SetsTestTags.REMOVE),
+        ) {
+          Text(
+            text = stringResource(R.string.sets_sheet_remove),
+            color = MaterialTheme.colorScheme.error,
+          )
+        }
+        TextButton(
+          onClick = { presenter.act(null) },
+          modifier = Modifier.testTag(SetsTestTags.CANCEL),
+        ) {
+          Text(stringResource(R.string.sets_sheet_cancel))
+        }
+      }
+    },
+  )
+}
+
+/** What the tests reach for. */
+object SetsTestTags {
+  const val SCREEN: String = "sets:screen"
+  const val LIST: String = "sets:list"
+  const val EMPTY: String = "sets:empty"
+  const val SHEET: String = "sets:sheet"
+  const val TOGGLE: String = "sets:toggle"
+  const val REMOVE: String = "sets:remove"
+  const val CANCEL: String = "sets:cancel"
+
+  fun setOf(id: String): String = "sets:set:$id"
+}

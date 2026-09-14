@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -16,16 +17,21 @@ import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setAccentColor
 import de.drehtuer.dinfinity.data.setActiveGroup
+import de.drehtuer.dinfinity.data.setActiveSession
 import de.drehtuer.dinfinity.data.setAppearance
 import de.drehtuer.dinfinity.data.setPowerSaving
 import de.drehtuer.dinfinity.data.setRounding
 import de.drehtuer.dinfinity.data.setShakeToRoll
 import de.drehtuer.dinfinity.data.setWelcomeSeen
+import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.saved.R
+import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
+import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import kotlinx.coroutines.launch
+import de.drehtuer.dinfinity.feature.stats.R as StatsR
 
 /**
  * The single activity. The app is one Compose tree; screens are navigation
@@ -87,54 +93,108 @@ class MainActivity : ComponentActivity() {
       darkTheme = settings.appearance.isDark(isSystemInDarkTheme()),
       accent = settings.accentColor,
     ) {
-      DInfinityApp(
-        settings = settings,
-        onAccentSelected = { accent ->
-          lifecycleScope.launch { repository.setAccentColor(accent) }
-        },
-        onAppearanceSelected = { appearance ->
-          lifecycleScope.launch { repository.setAppearance(appearance) }
-        },
-        onPowerSavingChanged = { on ->
-          lifecycleScope.launch { repository.setPowerSaving(on) }
-        },
-        onShakeChanged = { on ->
-          lifecycleScope.launch { repository.setShakeToRoll(on) }
-        },
-        onRoundingSelected = { rounding ->
-          lifecycleScope.launch { repository.setRounding(rounding) }
-        },
-        onRepository = { openRepository() },
-        version = installedVersion(),
-        onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
-        rollPresenter = {
-          app.rolls.presenter(
-            powerSaving = settings.powerSaving,
-            rounding = settings.rounding,
-            scope = lifecycleScope,
-          )
-        },
-        graphMachine = { app.rolls.graph() },
-        savedRolls = {
-          saved.list(activeGroupId = settings.activeGroupId) { groupId ->
-            lifecycleScope.launch { repository.setActiveGroup(groupId) }
-          }
-        },
-        savedGroups = saved::groups,
-        savedRollEditor = { editing -> saved.editor(editing, settings.activeGroupId) },
-        collectionImport = saved::importing,
-        history = { HistoryPresenter(history = app.history, scope = lifecycleScope) },
-        statistics = {
-          StatsPresenter(
-            statistics = app.dieStatistics,
-            writer = app.statistics,
-            catalog = app.rolls.catalog,
-            scope = lifecycleScope,
-          )
-        },
-      )
+      Wiring(settings, app, repository, saved)
     }
   }
+
+  /**
+   * Which presenter belongs to which destination, and what a settings row
+   * writes when it is touched.
+   *
+   * Split from [Screens] because the two are different lists that happen to be
+   * adjacent: one is the theme the whole tree is drawn in, the other is the
+   * table of screens — and only the second one grows every time a screen
+   * lands.
+   */
+  @Composable
+  private fun Wiring(
+    settings: AppSettings,
+    app: DInfinityApplication,
+    repository: SettingsRepository,
+    saved: SavedWiring,
+  ) {
+    // What a finished throw is filed under. `RollRecording` asks for it on the
+    // roll thread, which cannot suspend and so cannot read a preference — so
+    // the value is pushed here, every time the settings say it has changed.
+    LaunchedEffect(settings.activeSessionId) { app.activeSession = settings.activeSessionId }
+
+    DInfinityApp(
+      settings = settings,
+      onAccentSelected = { accent ->
+        lifecycleScope.launch { repository.setAccentColor(accent) }
+      },
+      onAppearanceSelected = { appearance ->
+        lifecycleScope.launch { repository.setAppearance(appearance) }
+      },
+      onPowerSavingChanged = { on ->
+        lifecycleScope.launch { repository.setPowerSaving(on) }
+      },
+      onShakeChanged = { on ->
+        lifecycleScope.launch { repository.setShakeToRoll(on) }
+      },
+      onRoundingSelected = { rounding ->
+        lifecycleScope.launch { repository.setRounding(rounding) }
+      },
+      onRepository = { openRepository() },
+      version = installedVersion(),
+      onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
+      rollPresenter = {
+        app.rolls.presenter(
+          powerSaving = settings.powerSaving,
+          rounding = settings.rounding,
+          scope = lifecycleScope,
+        )
+      },
+      graphMachine = { app.rolls.graph() },
+      savedRolls = {
+        saved.list(activeGroupId = settings.activeGroupId) { groupId ->
+          lifecycleScope.launch { repository.setActiveGroup(groupId) }
+        }
+      },
+      savedGroups = saved::groups,
+      savedRollEditor = { editing -> saved.editor(editing, settings.activeGroupId) },
+      collectionImport = saved::importing,
+      history = { HistoryPresenter(history = app.history, scope = lifecycleScope) },
+      statistics = {
+        StatsPresenter(
+          statistics = app.dieStatistics,
+          writer = app.statistics,
+          catalog = app.rolls.catalog,
+          scope = lifecycleScope,
+        )
+      },
+      sessions = { sessions(app, settings, repository) },
+      diceSets = { diceSets(app) },
+    )
+  }
+
+  /**
+   * The buckets rolls are filed into.
+   *
+   * Which one is active lives in the settings rather than on this screen,
+   * because the roll screen and the history both read it
+   * (`docs/statistics.md`).
+   */
+  private fun sessions(
+    app: DInfinityApplication,
+    settings: AppSettings,
+    repository: SettingsRepository,
+  ) = SessionsPresenter(
+    repository = app.sessions,
+    scope = lifecycleScope,
+    defaultName = getString(StatsR.string.sessions_first),
+    activeId = settings.activeSessionId,
+    onActive = { session -> lifecycleScope.launch { repository.setActiveSession(session) } },
+  )
+
+  /** What is installed, and what may be done to it (`docs/dice-sets.md`). */
+  private fun diceSets(app: DInfinityApplication) =
+    SetsPresenter(
+      bundled = BuiltinDiceSet.set,
+      installed = app.packages,
+      registry = app.installedSets,
+      scope = lifecycleScope,
+    )
 
   private companion object {
     /** Where this came from (`README.md`). */

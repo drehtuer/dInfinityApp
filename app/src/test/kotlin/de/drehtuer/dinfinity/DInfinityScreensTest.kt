@@ -14,11 +14,13 @@ import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.CollectionImporter
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
+import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
@@ -26,6 +28,8 @@ import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportTestTags
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedTestTags
+import de.drehtuer.dinfinity.feature.sets.SetsPresenter
+import de.drehtuer.dinfinity.feature.sets.SetsTestTags
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryTestTags
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
@@ -45,6 +49,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.io.File
+import java.nio.file.Files
 
 /**
  * The navigation graph with real screens behind it.
@@ -66,6 +72,9 @@ class DInfinityScreensTest {
   private lateinit var database: DInfinityDatabase
   private lateinit var saved: SavedRollRepository
   private val scope = CoroutineScope(Dispatchers.Unconfined)
+
+  /** A `dicesets/` folder of its own, so one test's packages are not another's. */
+  private val temporary: File = Files.createTempDirectory("dinfinity-app-sets").toFile()
   private val catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set))
 
   @Before
@@ -146,6 +155,15 @@ class DInfinityScreensTest {
   }
 
   @Test
+  fun `the dice-set screen draws`() {
+    val navigation = app()
+
+    go(navigation, Destination.DiceSets)
+
+    compose.onNodeWithTag(SetsTestTags.SCREEN).assertIsDisplayed()
+  }
+
+  @Test
   fun `the statistics screen draws`() {
     val navigation = app()
 
@@ -215,6 +233,15 @@ class DInfinityScreensTest {
               repository = SessionRepository(database),
               scope = scope,
               defaultName = "First rolls",
+            )
+          },
+          diceSets = {
+            SetsPresenter(
+              bundled = BuiltinDiceSet.set,
+              installed = InstalledSets(File(temporary, "dicesets")),
+              registry = InstalledSetRepository(database),
+              scope = scope,
+              io = Dispatchers.Unconfined,
             )
           },
           statistics = {

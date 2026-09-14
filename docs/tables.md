@@ -45,13 +45,23 @@ a phone to see it, and what it looked like was a die floating with its shadow
 on the floor beneath it.
 
 Orientation follows the phone: portrait phone → portrait table. **The roll
-screen then holds whatever orientation it opened in**, because the tray *is*
-the screen and turning the phone rebuilds the table — a different shape, a
-different capacity, the camera reframed. That is the right answer for somebody
-who meant to turn it and an unwelcome surprise for somebody who is shaking it,
-which is most of the time on that screen. Locked to the orientation it was
-opened in rather than to portrait: a player who opened the app in landscape
-meant it. The rest of the app turns as it likes.
+screen then holds whatever *shape* it opened in**, because the tray *is* the
+screen and a quarter turn rebuilds the table — a different shape, a different
+capacity, the camera reframed. That is the right answer for somebody who meant
+to turn it and an unwelcome surprise for somebody who is shaking it, which is
+most of the time on that screen. Held to the shape it was opened in rather than
+to portrait: a player who opened the app in landscape meant it. The rest of the
+app turns as it likes.
+
+**A half turn is allowed, and a quarter turn is not.** Turning the phone end
+over end gives back the same table — same aspect ratio, same capacity, same
+camera — so none of the reasoning above applies to it, and refusing it costs
+something real: the display's rotation is how a shake knows which way the hand
+went, so a screen pinned to the rotation it opened at reports the phone as
+upright while it is being shaken upside down, and the dice pool at the end away
+from the hand (`docs/physics-and-rendering.md`, "Shake input"). The screen asks
+for its shape either way up, which also leaves a player who has locked rotation
+system-wide with the phone held still, as they asked.
 
 The physical size of the phone's screen is deliberately *not* used to scale
 the table. A 6.3" and a 6.9" phone get the same table; only the aspect ratio

@@ -248,3 +248,34 @@ data class SessionRow(
   @ColumnInfo(name = "started_at")
   val startedAtEpochMs: Long = 0,
 )
+
+/**
+ * What the app thinks about one installed dice set
+ * (`docs/architecture.md`, "Storage layout").
+ *
+ * **The disk is the list; this table is the opinion.** What is *installed* is
+ * the set of folders in `dicesets/`, read and revalidated by `InstalledSets`,
+ * and nothing here can add to it or take from it. What lives here is everything
+ * the player has decided about a package that the package itself cannot know —
+ * which today is whether it is switched on.
+ *
+ * A package with no row is enabled, because that is what a set does the moment
+ * it installs and writing a row to say so would be a row that means nothing. A
+ * row therefore appears when somebody first has an opinion, and uninstalling
+ * takes both the folder and the row.
+ *
+ * A row whose folder has gone is stale rather than wrong: a folder can vanish
+ * without the app being asked — a restore, a file manager — so the rows are
+ * pruned against what is actually there rather than trusted to match it.
+ *
+ * @param id the folder's name, which is how everything else addresses a set.
+ * @param enabled false when the player has switched it off. A disabled set
+ *   keeps its folder and its statistics; it is simply not offered
+ *   (`docs/dice-sets.md`, design `5a`).
+ */
+@Entity(tableName = "installed_set")
+data class InstalledSetRow(
+  @PrimaryKey
+  val id: String,
+  val enabled: Boolean = true,
+)

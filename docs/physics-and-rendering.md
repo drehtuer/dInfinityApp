@@ -171,6 +171,20 @@ enough.
   `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go
   when it is not — an accelerometer running behind a backgrounded app is a
   battery bill for nothing.
+- **The display's rotation has to stay truthful, which is why the roll screen
+  is not pinned to one.** `PhoneAxes` maps a sensor vector into the tray using
+  `Display.getRotation()`, so a screen held at the rotation it opened at
+  reports an upright phone while it is being shaken upside down. The map is
+  right and is handed a lie, and the dice pool at the end away from the hand
+  rather than the end towards it. The screen asks to keep its *shape* instead —
+  a quarter turn still refused, because that rebuilds the table; a half turn
+  allowed, because it does not (`docs/tables.md`).
+- **Shaking a phone hard can trip Android's Theft Detection Lock.** It watches
+  for the motion of a phone being snatched, and a good throw is not far off.
+  Nothing in the app can suppress it and nothing should try: it is a security
+  feature doing its job, and the player can turn it off in their own settings.
+  Worth knowing about before it is reported as a crash — the app is not
+  involved and carries on where it left off.
 - **The dice are spawned when the shake begins**, and every moment after that
   reaches them while they are already in the air. What the player sees is dice
   answering their hand, not dice thrown once the hand has stopped.
@@ -228,8 +242,9 @@ enough.
   Android reports in the device's own: `+x` across the screen to the right,
   `+y` up it, `+z` out of the glass. The tray's long side is the screen's long
   side and runs along `+x`, its short side along `+y` — so the two frames are a
-  quarter turn apart before the phone is turned at all, and the app is not
-  orientation-locked, so the map follows the display's rotation. Used straight,
+  quarter turn apart before the phone is turned at all, and the roll screen
+  holds its shape but not its rotation, so the map follows the display's.
+  Used straight,
   a sideways shake loads the dice along the length of the tray and the dice
   move in a direction with nothing to do with the hand. `PhoneAxes` is the one
   place that map lives, and both the accelerometer and the gyroscope go through
@@ -426,11 +441,16 @@ all, and **zero** corrections applied after rest.
   read, never reported and never over, leaving the screen on "Rolling…" for
   good. A roll therefore asks for frames whether or not there is anywhere to
   draw; only the still pictures need a surface before they are worth one.
-  **The engine is not rebuilt with it.** The
+  **The engine is not rebuilt with it, and not with a visit either.** The
   material is compiled on the device for the driver that is actually there, and
   that costs long enough that doing it again for every rotation was itself the
   black tray: what a surface owns is its swap chain and its viewport, and
-  `FilamentEngine` keeps the rest across all of them. With no stage at all it
+  `FilamentEngine` keeps the rest across all of them. The same line is drawn
+  once more around a *visit* to the screen — leaving for the menu and coming
+  back rebuilt the engine and showed the same black — so the engine and the
+  thread it lives on belong to the application (`RollThread`,
+  `docs/architecture.md`, decision 50). The world and the scene still go: a
+  throw the player walked away from never landed. With no stage at all it
   draws nothing, which
   is the right thing to be while the app is in the background — the roll goes
   on and the dice are where they should be the moment there is somewhere to put

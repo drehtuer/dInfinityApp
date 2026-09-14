@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,11 +10,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /**
  * The roll screen holding still while somebody waves the phone about.
@@ -28,17 +31,52 @@ class HoldTheScreenStillTest {
   val compose = createAndroidComposeRule<ComponentActivity>()
 
   @Test
-  fun `the roll screen is locked to the orientation it opened in`() {
-    // The tray *is* the screen, so turning the phone rebuilds the table. That
-    // is a surprise nobody asked for in the middle of a throw.
+  fun `the roll screen holds the shape it opened in`() {
+    // The tray *is* the screen, so a quarter turn rebuilds the table. That is
+    // a surprise nobody asked for in the middle of a throw.
     compose.setContent { LockTheOrientation() }
 
     compose.waitForIdle()
 
     assertEquals(
-      ActivityInfo.SCREEN_ORIENTATION_LOCKED,
+      ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT,
       compose.activity.requestedOrientation,
     )
+  }
+
+  @Test
+  @Config(qualifiers = "land")
+  fun `a screen opened in landscape holds landscape, not portrait`() {
+    // A player who opened the app in landscape meant it, and taking that away
+    // would be a second surprise in place of the first.
+    compose.setContent { LockTheOrientation() }
+
+    compose.waitForIdle()
+
+    assertEquals(
+      ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE,
+      compose.activity.requestedOrientation,
+    )
+  }
+
+  @Test
+  fun `turning the phone end over end is allowed, because the table does not change`() {
+    // The whole of this fix. `SCREEN_ORIENTATION_LOCKED` pins the display to
+    // the rotation the screen opened at, so a phone turned upside down keeps
+    // an upside-down screen — and `PhoneAxes` is then told the phone is
+    // upright while it is being shaken the other way up, which pools the dice
+    // at the end away from the hand.
+    //
+    // The `USER_*` pair is the one that keeps the shape and allows both ways
+    // up. Asserting it by name is the point: every other portrait constant
+    // either allows a quarter turn as well or forbids the half turn.
+    compose.setContent { LockTheOrientation() }
+    compose.waitForIdle()
+
+    val held = compose.activity.requestedOrientation
+    assertNotEquals("the display was pinned to one rotation", ActivityInfo.SCREEN_ORIENTATION_LOCKED, held)
+    assertNotEquals("a half turn was still refused", ActivityInfo.SCREEN_ORIENTATION_PORTRAIT, held)
+    assertEquals(ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT, held)
   }
 
   @Test
@@ -54,6 +92,31 @@ class HoldTheScreenStillTest {
     assertEquals(
       ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
       compose.activity.requestedOrientation,
+    )
+  }
+
+  @Test
+  fun `both shapes are answered from the configuration alone`() {
+    // A function of its argument and nothing else, so both answers can be
+    // asserted without an activity in each orientation to ask. The composable
+    // above only decides *when* to ask it.
+    assertEquals(
+      ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE,
+      eitherWayUp(Configuration().apply { orientation = Configuration.ORIENTATION_LANDSCAPE }),
+    )
+    assertEquals(
+      ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT,
+      eitherWayUp(Configuration().apply { orientation = Configuration.ORIENTATION_PORTRAIT }),
+    )
+  }
+
+  @Test
+  fun `a configuration that says nothing is taken as portrait`() {
+    // ORIENTATION_UNDEFINED. Portrait is the answer that keeps a phone
+    // working; guessing landscape would turn the table sideways under it.
+    assertEquals(
+      ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT,
+      eitherWayUp(Configuration()),
     )
   }
 

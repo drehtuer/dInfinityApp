@@ -43,6 +43,8 @@ import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportScreen
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedScreen
+import de.drehtuer.dinfinity.feature.sets.SetsPresenter
+import de.drehtuer.dinfinity.feature.sets.SetsScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
 import de.drehtuer.dinfinity.feature.settings.MenuEntry
 import de.drehtuer.dinfinity.feature.settings.MenuScreen
@@ -101,6 +103,7 @@ fun DInfinityApp(
   history: (() -> HistoryPresenter)? = null,
   statistics: (() -> StatsPresenter)? = null,
   sessions: (() -> SessionsPresenter)? = null,
+  diceSets: (() -> SetsPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -142,6 +145,7 @@ fun DInfinityApp(
           ) ||
             saving(destination, entry, navController, savedRolls, savedGroups, savedRollEditor, collectionImport) ||
             lookingBack(destination, entry, navController, history, statistics, sessions) ||
+            customising(destination, entry, navController, diceSets) ||
             chrome(
               destination = destination,
               navController = navController,
@@ -171,9 +175,9 @@ private fun MenuTo(navController: NavHostController) {
 
 /**
  * The tray, remembered per visit rather than held by the application: a
- * presenter owns the roll thread and, through it, a Filament engine and a
- * physics world. Leaving the screen gives all three back
- * (`docs/architecture.md`, decision 49).
+ * presenter owns a physics world and a scene, and leaving the screen gives
+ * both back (`docs/architecture.md`, decision 49). The thread and the Filament
+ * engine underneath outlive the visit (decision 50).
  */
 @Composable
 private fun Roll(
@@ -250,10 +254,10 @@ private fun playing(
   onWelcomeSeen: () -> Unit,
 ): Boolean =
   when (destination) {
-    // Remembered per visit, not held by the application: a presenter owns the
-    // roll thread and, through it, a Filament engine and a physics world.
-    // Leaving the screen gives all three back (`docs/architecture.md`,
-    // decision 49).
+    // Remembered per visit, not held by the application: a presenter owns a
+    // physics world and a scene, and leaving the screen gives both back
+    // (`docs/architecture.md`, decision 49). The thread and the Filament engine
+    // underneath outlive the visit (decision 50).
     Destination.Roll if rollPresenter != null -> {
       Roll(rollPresenter, savedRolls, entry, navController, settings, onWelcomeSeen)
       true
@@ -291,6 +295,30 @@ private fun saving(
 
     Destination.CollectionImport if collectionImport != null -> {
       Import(collectionImport, entry, navController)
+      true
+    }
+
+    else -> false
+  }
+
+/**
+ * What the player has installed, and what they may change about it.
+ *
+ * Its own question rather than a branch of [chrome]: settings are the app's
+ * own knobs, and these are the things the player has brought to it
+ * (`docs/dice-sets.md`). The table picker and the face designer land here too
+ * (`docs/TODO.md`, Steps 4.5 and 4.6).
+ */
+@Composable
+private fun customising(
+  destination: Destination,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+  diceSets: (() -> SetsPresenter)?,
+): Boolean =
+  when (destination) {
+    Destination.DiceSets if diceSets != null -> {
+      SetsScreen(presenter = remember(entry) { diceSets() }, menu = { MenuTo(navController) })
       true
     }
 

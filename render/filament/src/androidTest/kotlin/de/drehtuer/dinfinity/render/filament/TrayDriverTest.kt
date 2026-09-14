@@ -19,6 +19,7 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -120,6 +121,61 @@ class TrayDriverTest {
     } finally {
       reader.close()
       listening.quitSafely()
+    }
+  }
+
+  @Test
+  fun theEngineOutlivesOneVisitToTheScreen() {
+    // The black tray on the way back from the menu. A driver per visit is
+    // right — a driver owns a roll, and a roll the player walked away from
+    // never landed — but an *engine* per visit means compiling the dice
+    // material again, on the device, while they watch it happen.
+    //
+    // This is the same fix `FilamentEngine` already makes one level in, where
+    // it keeps the engine across surfaces so a rotation does not rebuild it.
+    // Keeping it across visits needs the thread kept too: Filament only takes
+    // calls from the thread that made the engine.
+    val listening = HandlerThread("two-visits").apply { start() }
+
+    RollThread().use { host ->
+      assertFalse("an engine was made before anything asked to draw", host.engineMade)
+
+      drawATable(host, listening)
+      assertTrue("the engine went out with the first visit", host.engineMade)
+
+      // The second visit. If this one has to build its own engine, the player
+      // is looking at black while it compiles the material again.
+      drawATable(host, listening)
+      assertTrue("the engine did not survive to the second visit", host.engineMade)
+    }
+
+    listening.quitSafely()
+  }
+
+  /** One visit to the screen: a driver, a surface, a table, and away again. */
+  private fun drawATable(
+    host: RollThread,
+    listening: HandlerThread,
+  ) {
+    val reader = surfaceReader()
+    val arrived = CountDownLatch(1)
+    reader.setOnImageAvailableListener({
+      it.acquireLatestImage()?.close()
+      arrived.countDown()
+    }, Handler(listening.looper))
+
+    try {
+      TrayDriver(shared = host).use { driver ->
+        driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
+        driver.table(geometry, look)
+
+        assertTrue(
+          "the table never reached the other end of the surface",
+          arrived.await(PATIENCE_SECONDS, TimeUnit.SECONDS),
+        )
+      }
+    } finally {
+      reader.close()
     }
   }
 

@@ -18,9 +18,8 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #107 is merged and `main` is green.
-  The only thing open is Dependabot's markdownlint bump (#105), which the
-  table-pipe fix in #107 unblocked.
+- **Branch state:** everything up to #108 is merged and `main` is green; no
+  Dependabot PRs are open.
 
 ## Done
 
@@ -65,7 +64,12 @@ changelog.
   the dice picker row, the saved-roll strip, roll from the button or a shake, a
   refusal for a throw the table cannot hold, the total and its breakdown,
   Down / Nearest / Up, pinch and pan, power-saving, first launch. Missing: the
-  set dropdown and numbers on the faces.
+  set dropdown and numbers on the faces. Two things the phone found: a shake
+  with the phone upside down pooled the dice at the wrong end, because the
+  screen pinned the display to the rotation it opened at and the shake map
+  reads that rotation — it now holds its *shape* either way up; and coming back
+  from the menu showed a black tray, because the Filament engine was rebuilt
+  per visit — the roll thread and the engine now outlive one.
 - **4.2 Outcome graph.** The exact distribution as bars with its mean line and
   ±1σ band, `P(= k)` / `P(≥ k)`, a tap for the numbers, the roll that opened it
   marked. Reached from "See the odds" — the first navigation carrying an
@@ -75,13 +79,24 @@ changelog.
   through `core/collection`: exported through the share sheet, imported from a
   file — read before anything is written, every line wrong with a bad file
   listed, and a duplicate group name refused outright with nothing merged.
-  Importing from a URL waits on the `INTERNET` permission.
+  Importing from a URL is not built yet — and is not waiting on the `INTERNET`
+  permission, which okhttp already puts in the merged manifest.
+- **4.4 Dice sets.** The list is on screen. `InstalledSets` reads the
+  `dicesets/` folder and validates every package again on each reading, so a
+  set that stopped being valid shows its report instead of vanishing; database
+  version 4 adds the registry that says whether a set is switched on, and a set
+  with no row is on. Long-press switches one off or removes it, and the bundled
+  set is offered neither. Still to come: the details screen, installing, and
+  update checking.
 - **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
   a history row, a face count per die and a running summary, in one transaction
   — which the tables had been waiting for since version 1. The history lists
   every roll with the breakdown it was made of; the statistics show each die
   against what a fair one would do; database version 3 adds sessions, and the
-  migration names the one the old rolls already belonged to.
+  migration names the one the old rolls already belonged to. The sessions
+  screen was finished but never plugged in — `MainActivity` passed no presenter
+  for it, so the app drew a placeholder and every roll was filed under the
+  first session whatever the player picked. Both are fixed.
 - **4.10 Settings and the menu.** The navigation graph is connected: every
   screen carries the same button and the menu reaches every screen. Settings
   has appearance, the accent, shake, the default rounding, power saving, the

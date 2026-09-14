@@ -11,6 +11,7 @@ import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
+import de.drehtuer.dinfinity.render.filament.RollThread
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayDriver
 import de.drehtuer.dinfinity.render.headless.Rolls
@@ -70,9 +71,10 @@ class RollWiring(
    * A presenter for one visit to the roll screen.
    *
    * Built per visit rather than held, because it owns a [Tray] and a tray owns
-   * a thread, and in the drawing case a Filament engine and a physics world.
-   * Leaving the screen gives all three back (`docs/architecture.md`,
-   * decision 49).
+   * a roll: in the drawing case a scene and a physics world. Leaving the screen
+   * gives both back (`docs/architecture.md`, decision 49). The thread and the
+   * engine underneath do not go with them — those are [rollThread]'s, and one
+   * of those serves every visit (decision 50).
    *
    * @param powerSaving whether to throw the dice without drawing them. It is
    *   read once, when the screen opens, rather than watched: a renderer
@@ -115,14 +117,28 @@ class RollWiring(
     } ?: ThrowRecorder.NONE
 
   /**
+   * The roll thread and the engine on it, shared by every visit.
+   *
+   * Lazy, so power-saving mode still starts no thread and opens no engine at
+   * all. Made once and never given back: compiling the dice material happens on
+   * the device and costs long enough to watch, so paying for it on every visit
+   * to the screen is the black tray somebody sees on the way back from the menu
+   * (`RollThread`).
+   */
+  private val rollThread: RollThread by lazy { RollThread() }
+
+  /**
    * The tray this visit gets.
    *
    * This is where "power-saving mode creates no graphics engine" is decided,
    * and it is one branch in one place: nothing below it knows there is a mode
    * at all, and the roll it opens is the same roll either way
    * (`docs/architecture.md`, decision 38).
+   *
+   * A driver per visit still, because a driver owns a roll — but handed the
+   * thread and the engine rather than making its own.
    */
-  private fun tray(powerSaving: Boolean): Tray = if (powerSaving) PowerSavingTray() else TrayDriver()
+  private fun tray(powerSaving: Boolean): Tray = if (powerSaving) PowerSavingTray() else TrayDriver(shared = rollThread)
 
   /**
    * The outcome graph's state, for one visit to that screen.

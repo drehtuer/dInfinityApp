@@ -11,11 +11,12 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * The app's database (`docs/statistics.md`, "Storage").
  *
  * Version 1 is the three statistics tables. Version 2 adds saved rolls and
- * their groups. Version 3 adds sessions. The installed-set registry arrives
- * with the screen that needs it (`docs/TODO.md`, Step 4), as a migration —
- * which is the point of writing migrations from day one rather than from the
- * first release. A database that has only ever been created, never migrated,
- * is a database whose first migration is written under pressure.
+ * their groups. Version 3 adds sessions. Version 4 adds the installed-set
+ * registry, which arrived with the screen that needed it (`docs/TODO.md`,
+ * Step 4.4) — which is the point of writing migrations from day one rather
+ * than from the first release. A database that has only ever been created,
+ * never migrated, is a database whose first migration is written under
+ * pressure.
  *
  * Every version's schema is exported to `data/schemas/` and checked in.
  * `SchemaTest` walks them, so a version bump without a migration fails the
@@ -32,6 +33,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     SavedRollGroupRow::class,
     SavedRollRow::class,
     SessionRow::class,
+    InstalledSetRow::class,
   ],
   version = DInfinityDatabase.VERSION,
   exportSchema = true,
@@ -49,9 +51,11 @@ abstract class DInfinityDatabase : RoomDatabase() {
 
   abstract fun sessions(): SessionDao
 
+  abstract fun installedSets(): InstalledSetDao
+
   companion object {
     /** Bumping this needs a migration and a checked-in schema. Both are enforced. */
-    const val VERSION: Int = 3
+    const val VERSION: Int = 4
 
     /** The file the app opens (`docs/architecture.md`, "Storage layout"). */
     const val NAME: String = "dinfinity.db"
@@ -62,7 +66,7 @@ abstract class DInfinityDatabase : RoomDatabase() {
      * The list was wired up while it was empty, which is why adding the first
      * entry was one line rather than a change to how the database opens.
      */
-    val MIGRATIONS: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3)
+    val MIGRATIONS: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 
     /** Opens the database, migrating it if it is older. */
     fun open(
@@ -169,6 +173,31 @@ internal val MIGRATION_2_3: Migration =
       db.execSQL(
         "INSERT OR IGNORE INTO `session` (`id`, `name`, `started_at`) VALUES " +
           "('default', 'First rolls', 0)",
+      )
+    }
+  }
+
+/**
+ * Version 3 → 4: the installed-set registry (`docs/dice-sets.md`, design `5a`).
+ *
+ * One new table and nothing touched. **Nothing is inserted into it**, which is
+ * the difference between this migration and the one before it: a session had
+ * to exist because every history row already pointed at one, whereas a set with
+ * no row is simply enabled. Writing a row per installed folder here would mean
+ * reading the disk from inside a migration, and would say nothing that the
+ * absence of a row does not already say.
+ */
+internal val MIGRATION_3_4: Migration =
+  object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `installed_set` (
+          `id` TEXT NOT NULL,
+          `enabled` INTEGER NOT NULL,
+          PRIMARY KEY(`id`)
+        )
+        """.trimIndent(),
       )
     }
   }

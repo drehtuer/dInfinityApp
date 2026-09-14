@@ -32,7 +32,7 @@ screen.
 - [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* that a roll driven by a recorded shake replays to itself on hardware (`input/shake`). The thresholds half of this is answered: shaking rolls and ordinary handling does not, confirmed on the Pixel 10a. What is not yet shown is the replay, and it cannot be until a throw's record carries its shake (4.1)
-- [ ] The installed-set registry, arriving with the screen that needs it (4.4) and as a *migration*, like the two before it. Saved rolls and groups landed as version 2 and sessions as version 3
+- [x] The installed-set registry, arriving with the screen that needs it (4.4) and as a *migration*, like the two before it. Saved rolls and groups landed as version 2, sessions as version 3, and the registry as version 4
 - [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
 **Done when** a formula can be parsed, planned, simulated headless and scored
@@ -122,7 +122,7 @@ a roll to send its formula to the tray. Groups can be made, renamed, moved and
 deleted, from the switcher or from the editor — the same sheet in both places.
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
-- [ ] Import from a **URL or a git repository**, over the same reader and `dicesets/install`'s fetcher. It is separate from importing a file because it needs the `INTERNET` permission, which the app has never asked for — a change to what the app can do, and one that deserves its own review
+- [ ] Import from a **URL or a git repository**, over the same reader and `dicesets/install`'s fetcher. Kept separate from importing a file because it is the first code path that would actually reach the network, and that deserves its own review. **Not because of the permission:** `android.permission.INTERNET` is already in the merged manifest of both the debug and the release build, contributed by `okhttp-android`'s own manifest by way of `dicesets:install`. So the app can already talk to the network and nothing yet does — which is worth knowing before somebody plans a review around a permission prompt that will never appear
 - [ ] A broken roll falls back to the built-in set when it is thrown; today it says so on the list but the fallback itself is the planner's and untested from here
 - [ ] `SavedRollRepository` is at its function ceiling (detekt's `TooManyFunctions`, 11). Nothing needs to grow it yet — importing went into a class of its own, because it is a transaction rather than a repository operation — but the next thing that does needs the split first: groups one class, rolls another, rather than a raised threshold
 
@@ -130,7 +130,7 @@ deleted, from the switcher or from the editor — the same sheet in both places.
 
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
 
-- [ ] Installed list with status; long-press → disable / remove (`5a`), bundled set protected
+- [x] Installed list with status; long-press → disable / remove (`5a`), bundled set protected
 - [ ] Set details (`6a`): author, license, source with commit, dice rendered from the set, set-as-default
 - [ ] Failed validation (`6b`): the report with file:line replaces the dice grid, folder kept for an update
 - [ ] Install from URL or file with progress, then the validator; rejection shows every error (`1t`)
@@ -225,6 +225,7 @@ and the repository link are all there, and each of them does something.
 - [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
 - [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)
 - [ ] Replace the single field on `DInfinityApplication` with a real container. `RollWiring` and `SavedWiring` are now the shape it should take; what is left is the application holding one of those rather than eight lazy fields
+- [ ] **Nothing catches a screen that was built and never plugged in.** `DInfinityApp` takes one nullable factory per screen and draws a placeholder for a null, which is right for a test of the graph and wrong for the app: the sessions screen was finished, tested and unreachable for a whole step, because `MainActivity` never passed its presenter and `DInfinityScreensTest` builds its own wiring and so cannot notice. The container above is the fix — one object holding every factory, used by the activity *and* by that test, so a missing screen is a compile error rather than a placeholder
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone
@@ -257,7 +258,7 @@ after every physics change.
 - [ ] Worst shapes at the limit: d4 (sharpest corners) and the coin (flattest), which wedge and stack most easily
 - [ ] Smallest scale (0.40) with the largest nominal die
 - [ ] Mixed shapes and mixed sets in one throw
-- [ ] Extreme input: sensor maxima, 30 s of shaking, rotation through all axes, shake-then-drop, phone vertical and upside down
+- [ ] Extreme input: sensor maxima, 30 s of shaking, rotation through all axes, shake-then-drop, phone vertical and upside down. **Upside down is done and was broken:** the roll screen pinned the display to the rotation it opened at, so `PhoneAxes` was told the phone was upright while it was being shaken the other way up and the dice pooled at the end away from the hand. The screen now holds its shape rather than its rotation (`docs/tables.md`); a quarter turn is still refused
 - [ ] Interruptions mid-roll: call, backgrounding, rotation, low memory — the roll finishes or is discarded cleanly, never half-resolved
 - [ ] Thermal: 100 consecutive 40-dice rolls with no frame-time cliff and no drift in outcomes
 
