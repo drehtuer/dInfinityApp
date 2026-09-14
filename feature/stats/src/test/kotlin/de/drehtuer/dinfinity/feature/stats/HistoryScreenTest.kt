@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.feature.stats
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,15 +14,21 @@ import de.drehtuer.dinfinity.core.model.DieNote
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
+import de.drehtuer.dinfinity.core.model.SavedRoll
+import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.data.Breakdown
 import de.drehtuer.dinfinity.data.HistoryRepository
+import de.drehtuer.dinfinity.data.SavedRollRepository
+import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.data.db.RollHistoryRow
+import de.drehtuer.dinfinity.data.db.SessionRow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -231,6 +238,170 @@ class HistoryScreenTest {
     org.junit.Assert.assertEquals(formulas, presenter.state.rolls.map { it.formula })
   }
 
+  private fun session(
+    id: String,
+    name: String,
+  ) {
+    runBlocking { database.sessions().upsert(SessionRow(id = id, name = name)) }
+  }
+
+  private fun savedRoll(
+    id: String,
+    name: String,
+  ) {
+    runBlocking {
+      val repository = SavedRollRepository(database)
+      // A roll needs a group to be in: the foreign key says so, and Unfiled is
+      // the one every roll falls back to.
+      repository.ensureUnfiled("Unfiled")
+      repository.save(SavedRoll(id = id, groupId = SavedRollGroup.UNFILED_ID, name = name, formula = "2d6"))
+    }
+  }
+
+  @Test
+  fun `the chooser is not drawn until there is something to choose between`() {
+    // One session and no saved rolls is every install until somebody makes a
+    // second. A chooser whose only option is "everything" cannot do anything.
+    given("2d6", 7)
+
+    show()
+
+    compose.onNodeWithTag(HistoryTestTags.ALL).assertIsNotDisplayed()
+  }
+
+  @Test
+  fun `one session's rolls can be picked out`() {
+    session("tuesday", "Tuesday")
+    session(SessionRepository.DEFAULT_ID, "First rolls")
+    given("1d20", 20, session = "tuesday")
+    given("2d6", 7, session = SessionRepository.DEFAULT_ID)
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.sessionChoices.size > 1 }
+
+    compose.onNodeWithTag(HistoryTestTags.sessionChoiceOf("tuesday")).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.filter is HistoryFilter.InSession }
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
+    assertEquals(listOf("1d20"), presenter.state.rolls.map { it.formula })
+  }
+
+  @Test
+  fun `one saved roll's throws can be picked out, wherever they were made`() {
+    savedRoll("fireball", "Fireball")
+    given("8d6", 28, session = "tuesday") { copy(savedRollId = "fireball") }
+    given("8d6", 30, session = SessionRepository.DEFAULT_ID) { copy(savedRollId = "fireball") }
+    given("2d6", 7)
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rollChoices.isNotEmpty() }
+
+    compose.onNodeWithTag(HistoryTestTags.savedRollOf("fireball")).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.filter is HistoryFilter.OfSavedRoll }
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 2 }
+    assertEquals(
+      listOf(28L, 30L),
+      presenter.state.rolls
+        .map { it.total }
+        .sorted(),
+    )
+  }
+
+  @Test
+  fun `going back to everything shows everything`() {
+    savedRoll("fireball", "Fireball")
+    given("8d6", 28) { copy(savedRollId = "fireball") }
+    given("2d6", 7)
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rollChoices.isNotEmpty() }
+    presenter.filterBy(HistoryFilter.OfSavedRoll("fireball", "Fireball"))
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
+
+    compose.onNodeWithTag(HistoryTestTags.ALL).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.filter == HistoryFilter.Everything }
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 2 }
+  }
+
+  @Test
+  fun `a filter that hides everything does not say you have never rolled anything`() {
+    // Wrong and discouraging in front of somebody who has rolled hundreds of
+    // times and picked a quiet session.
+    savedRoll("fireball", "Fireball")
+    given("2d6", 7)
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rollChoices.isNotEmpty() }
+
+    presenter.filterBy(HistoryFilter.OfSavedRoll("fireball", "Fireball"))
+
+    compose.waitUntil(PATIENCE) { presenter.state.filteredToNothing }
+    compose.onNodeWithTag(HistoryTestTags.FILTERED_EMPTY).assertIsDisplayed()
+    compose.onNodeWithTag(HistoryTestTags.EMPTY).assertIsNotDisplayed()
+    assertEquals(false, presenter.state.empty)
+  }
+
+  @Test
+  fun `the way out of an empty filter is offered`() {
+    savedRoll("fireball", "Fireball")
+    given("2d6", 7)
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rollChoices.isNotEmpty() }
+    presenter.filterBy(HistoryFilter.OfSavedRoll("fireball", "Fireball"))
+    compose.waitUntil(PATIENCE) { presenter.state.filteredToNothing }
+
+    compose.onNodeWithTag(HistoryTestTags.CLEAR_FILTER).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.filter == HistoryFilter.Everything }
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.isNotEmpty() }
+  }
+
+  @Test
+  fun `changing the filter closes the open breakdown`() {
+    // A row that was open in one filter is not the row under the finger in the
+    // next, and an expanded breakdown would be showing the wrong roll's dice.
+    savedRoll("fireball", "Fireball")
+    given("8d6", 28) { copy(savedRollId = "fireball") }
+    given("2d6", 7)
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 2 }
+    presenter.open(
+      presenter.state.rolls
+        .first()
+        .id,
+    )
+    assertEquals(
+      presenter.state.rolls
+        .first()
+        .id,
+      presenter.state.openId,
+    )
+
+    presenter.filterBy(HistoryFilter.OfSavedRoll("fireball", "Fireball"))
+
+    compose.waitUntil(PATIENCE) { presenter.state.openId == null }
+  }
+
+  @Test
+  fun `asking for the filter that is already on changes nothing`() {
+    given("2d6", 7)
+    val presenter = show()
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.isNotEmpty() }
+    presenter.open(
+      presenter.state.rolls
+        .first()
+        .id,
+    )
+
+    presenter.filterBy(HistoryFilter.Everything)
+
+    assertEquals(
+      "the open breakdown was closed for nothing",
+      presenter.state.rolls
+        .first()
+        .id,
+      presenter.state.openId,
+    )
+  }
+
   private fun given(
     formula: String,
     total: Long,
@@ -253,7 +424,13 @@ class HistoryScreenTest {
   }
 
   private fun show(): HistoryPresenter {
-    val presenter = HistoryPresenter(history = history, scope = scope)
+    val presenter =
+      HistoryPresenter(
+        history = history,
+        scope = scope,
+        sessions = SessionRepository(database),
+        saved = SavedRollRepository(database),
+      )
     compose.setContent { HistoryScreen(presenter = presenter, formatter = { "at $it" }) }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
     return presenter

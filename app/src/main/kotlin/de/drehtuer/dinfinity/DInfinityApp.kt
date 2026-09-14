@@ -49,6 +49,7 @@ import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
 import de.drehtuer.dinfinity.feature.settings.MenuEntry
+import de.drehtuer.dinfinity.feature.settings.MenuHeader
 import de.drehtuer.dinfinity.feature.settings.MenuScreen
 import de.drehtuer.dinfinity.feature.settings.MenuSection
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
@@ -115,6 +116,7 @@ fun DInfinityApp(
   onSource: (String) -> Unit = {},
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
+  menuHeader: MenuHeader? = null,
   navController: NavHostController = rememberNavController(),
 ) {
   NavHost(
@@ -167,6 +169,7 @@ fun DInfinityApp(
               onRoundingSelected = onRoundingSelected,
               onRepository = onRepository,
               version = version,
+              menuHeader = menuHeader,
             )
         // A destination whose screen is not built yet, or whose presenter was
         // not supplied — a Robolectric test of the graph has neither a GPU nor
@@ -462,10 +465,11 @@ private fun chrome(
   onRoundingSelected: (Rounding) -> Unit,
   onRepository: () -> Unit,
   version: String,
+  menuHeader: MenuHeader?,
 ): Boolean =
   when (destination) {
     Destination.Menu -> {
-      MenuScreen(sections = menuSections(navController))
+      MenuScreen(sections = menuSections(navController), header = menuHeader)
       true
     }
 

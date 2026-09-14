@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 fun MenuScreen(
   sections: List<MenuSection>,
   modifier: Modifier = Modifier,
+  header: MenuHeader? = null,
 ) {
   Column(
     modifier =
@@ -50,6 +51,7 @@ fun MenuScreen(
         .verticalScroll(rememberScrollState())
         .testTag(MenuTestTags.SCREEN),
   ) {
+    header?.let { Header(it) }
     sections.forEach { section ->
       Text(
         text = section.name.uppercase(),
@@ -70,6 +72,71 @@ fun MenuScreen(
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       modifier = Modifier.padding(16.dp),
     )
+  }
+}
+
+/**
+ * What the menu is the menu *of*, and where the rolls are going
+ * (`design/dInfinity.dc.html`, option 1q).
+ *
+ * The session is here rather than on the roll screen for the reason it is a
+ * preference at all: it outlives every screen, nothing on the tray should have
+ * to carry it, and the menu is the one place a player already looks to find
+ * out where they are. A roll is filed under it whether or not anybody
+ * remembers that (`docs/statistics.md`).
+ *
+ * @param appName the app's own name.
+ * @param session the active session's name, or null when there is only the one
+ *   every install starts with — naming it would be a line that never changes
+ *   and never means anything.
+ */
+data class MenuHeader(
+  val appName: String,
+  val session: String? = null,
+) {
+  companion object {
+    /**
+     * The header for an app with [sessions] sessions, of which [activeSession]
+     * is the current one's name.
+     *
+     * The session is named only when there is more than one. Every install
+     * starts with exactly one — the one the rolls made before anybody thought
+     * about sessions belong to — and naming it would be a line that never
+     * changes and never tells anybody anything.
+     */
+    fun of(
+      appName: String,
+      activeSession: String?,
+      sessions: Int,
+    ): MenuHeader = MenuHeader(appName = appName, session = activeSession?.takeIf { sessions > 1 })
+  }
+}
+
+@Composable
+private fun Header(header: MenuHeader) {
+  Column(
+    // One block for a screen reader: "dInfinity, rolling into Tuesday
+    // campaign" is the sentence, and two nodes would read it as two.
+    modifier =
+      Modifier
+        .semantics(mergeDescendants = true) { }
+        .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+        .testTag(MenuTestTags.HEADER),
+    verticalArrangement = Arrangement.spacedBy(2.dp),
+  ) {
+    Text(
+      text = header.appName,
+      style = MaterialTheme.typography.headlineSmall,
+      fontWeight = FontWeight.Bold,
+    )
+    header.session?.let { name ->
+      Text(
+        text = stringResource(R.string.menu_session, name),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag(MenuTestTags.SESSION),
+      )
+    }
   }
 }
 
@@ -122,6 +189,8 @@ data class MenuEntry(
 /** Stable handles for tests. */
 object MenuTestTags {
   const val SCREEN: String = "menu:screen"
+  const val HEADER: String = "menu:header"
+  const val SESSION: String = "menu:session"
 
   /** The way in, on every screen that has one. */
   const val BUTTON: String = "menu:button"

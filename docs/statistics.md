@@ -53,6 +53,38 @@ throws are counted in the bars while its faces are missing from the line, so
 the pool is marked the same way a single uninstalled die is: the line is a
 guess, and the screen says so.
 
+### Where the rolls are going
+
+The menu's header names the session new rolls are filed under, beside the app's
+own name (`design/dInfinity.dc.html`, option 1q). It says so **only once there
+is more than one session to be in**: every install starts with exactly one — the
+one the rolls made before anybody thought about sessions belong to — and naming
+it would be a line that never changes and never tells anybody anything.
+
+The menu rather than the roll screen, for the same reason it is a preference at
+all: it outlives every screen, nothing on the tray should have to carry it, and
+the menu is where a player already looks to find out where they are.
+
+### Filtering what you are looking at
+
+The history can be cut two ways: to one **session** — which is what sessions
+are for — or to one **saved roll**, wherever its throws were made. They are not
+combined: "Fireball on Tuesday" is a report rather than a list, and offering it
+would put two choosers on a screen whose whole job is to be scrollable.
+
+The chooser is not drawn until there is more than one thing to choose between.
+
+A filter that leaves nothing shows *that*, and not the message for a history
+with nothing in it: "you have never rolled anything" is wrong and discouraging
+in front of somebody who has rolled hundreds of times and picked a quiet
+session. Changing the filter closes any open breakdown, because the row that
+was open is not the row under the finger in the next list.
+
+**The statistics screens cannot be filtered by session yet, and the reason is
+the schema.** `die_stats` and `die_summary` are keyed by set and die and carry
+no session, so there is nothing there to filter; see `docs/TODO.md`, Step 4.9
+for the two ways out and why neither is a passing change.
+
 ### Per saved roll and per group
 
 - Times rolled, mean total, min/max total observed, last result

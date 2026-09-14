@@ -28,10 +28,12 @@ import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.saved.R
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
+import de.drehtuer.dinfinity.feature.settings.MenuHeader
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
+import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import kotlinx.coroutines.launch
 import de.drehtuer.dinfinity.feature.stats.R as StatsR
@@ -158,6 +160,7 @@ class MainActivity : ComponentActivity() {
       onRepository = { openRepository() },
       version = installedVersion(),
       onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
+      menuHeader = menuHeader(app, settings),
       rollPresenter = {
         app.rolls.presenter(
           powerSaving = settings.powerSaving,
@@ -174,7 +177,7 @@ class MainActivity : ComponentActivity() {
       savedGroups = saved::groups,
       savedRollEditor = { editing -> saved.editor(editing, settings.activeGroupId) },
       collectionImport = saved::importing,
-      history = { HistoryPresenter(history = app.history, scope = lifecycleScope) },
+      history = { past(app) },
       statistics = {
         StatsPresenter(
           statistics = app.dieStatistics,
@@ -209,6 +212,44 @@ class MainActivity : ComponentActivity() {
     activeId = settings.activeSessionId,
     onActive = { session -> lifecycleScope.launch { repository.setActiveSession(session) } },
   )
+
+  /**
+   * What the menu says it is the menu of, and where the rolls are going.
+   *
+   * The session is looked up by name rather than carried as an id, because the
+   * id is what the settings hold and a name is what a person reads. Whether it
+   * is worth saying at all is [MenuHeader]'s rule, and it is tested there.
+   *
+   * Lowercase because it returns a value: Android Lint's `ComposableNaming`
+   * asks for that, and it is right — this is a reading, not a piece of screen.
+   */
+  @Composable
+  private fun menuHeader(
+    app: DInfinityApplication,
+    settings: AppSettings,
+  ): MenuHeader {
+    val sessions by app.sessions.sessions.collectAsStateWithLifecycle(emptyList())
+    return MenuHeader.of(
+      appName = Destination.Menu.title,
+      activeSession = sessions.firstOrNull { it.id == settings.activeSessionId }?.name,
+      sessions = sessions.size,
+    )
+  }
+
+  /**
+   * Past rolls, and what the chooser may filter them by.
+   *
+   * The sessions and the saved rolls are given rather than reached for,
+   * because which of each exist is the application's to know
+   * (`docs/statistics.md`).
+   */
+  private fun past(app: DInfinityApplication) =
+    HistoryPresenter(
+      history = app.history,
+      scope = lifecycleScope,
+      sessions = app.sessions,
+      saved = app.savedRolls,
+    )
 
   /**
    * What each saved roll has come to, against what it should
