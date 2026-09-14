@@ -130,7 +130,7 @@ deleted, from the switcher or from the editor — the same sheet in both places.
 
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
 
-- [ ] Installed list with status; long-press → disable / remove (`5a`), bundled set protected
+- [x] Installed list with status; long-press → disable / remove (`5a`), bundled set protected
 - [ ] Set details (`6a`): author, license, source with commit, dice rendered from the set, set-as-default
 - [ ] Failed validation (`6b`): the report with file:line replaces the dice grid, folder kept for an update
 - [ ] Install from URL or file with progress, then the validator; rejection shows every error (`1t`)

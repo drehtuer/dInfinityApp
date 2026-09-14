@@ -310,9 +310,17 @@ data class SessionTally(
  */
 @Dao
 interface InstalledSetDao {
-  /** Every opinion on record. Sets with no row are enabled by default. */
+  /**
+   * Every opinion on record. Sets with no row are enabled by default.
+   *
+   * A one-shot read rather than a `Flow`, because nothing observes it: the
+   * dice-set screen reads the `dicesets/` folder when it opens and after
+   * anything that changes it, and the opinion is read in the same breath. A
+   * flow here would emit on a schedule that had nothing to do with when the
+   * disk was last looked at.
+   */
   @Query("SELECT * FROM installed_set")
-  fun all(): Flow<List<InstalledSetRow>>
+  suspend fun all(): List<InstalledSetRow>
 
   @Query("SELECT * FROM installed_set WHERE id = :id")
   suspend fun byId(id: String): InstalledSetRow?

@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.data.CollectionImporter
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
+import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.RollRecording
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SessionRepository
@@ -12,6 +13,8 @@ import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import java.io.File
 
 /**
  * Holds the few things that outlive an activity.
@@ -81,4 +84,20 @@ class DInfinityApplication : Application() {
 
   /** The roll screen's engine and catalogue, named in one place (`RollWiring`). */
   val rolls: RollWiring by lazy { RollWiring(this, recording) }
+
+  /** Which sets the player has switched off (`docs/dice-sets.md`, design `5a`). */
+  val installedSets: InstalledSetRepository by lazy { InstalledSetRepository(database) }
+
+  /**
+   * The packages on disk (`docs/architecture.md`, "Storage layout").
+   *
+   * `filesDir/dicesets/` is named here and nowhere else: every module below
+   * takes the folder as a parameter, because which directory it is is the one
+   * Android-shaped fact about it.
+   */
+  val packages: InstalledSets by lazy { InstalledSets(File(filesDir, DICE_SETS_FOLDER)) }
+
+  private companion object {
+    const val DICE_SETS_FOLDER = "dicesets"
+  }
 }

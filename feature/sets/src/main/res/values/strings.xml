@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- The dice-set list (design option 5a). -->
+  <string name="sets_title">Dice sets</string>
+  <string name="sets_order">What is installed. Long-press a set to switch it off or remove it.</string>
+  <string name="sets_empty_title">Only the built-in dice.</string>
+  <string name="sets_empty_body">Install a set and it appears here. Everything in one is checked before a single die of it is thrown.</string>
+
+  <!-- Row status. -->
+  <string name="sets_bundled">Built in</string>
+  <string name="sets_disabled">Switched off</string>
+  <string name="sets_broken">Will not load</string>
+  <!-- %1$d is how many dice the set defines. -->
+  <plurals name="sets_dice">
+    <item quantity="one">1 die</item>
+    <item quantity="other">%1$d dice</item>
+  </plurals>
+  <!-- %1$d is how many things the validator found wrong. -->
+  <plurals name="sets_problems">
+    <item quantity="one">1 problem</item>
+    <item quantity="other">%1$d problems</item>
+  </plurals>
+
+  <!-- The long-press sheet (design option 5a). -->
+  <string name="sets_sheet_disable">Switch off</string>
+  <string name="sets_sheet_enable">Switch on</string>
+  <string name="sets_sheet_disable_note">Keeps the folder and every statistic. Its dice stop being offered.</string>
+  <string name="sets_sheet_remove">Remove</string>
+  <string name="sets_sheet_remove_note">Deletes the folder. Statistics for its dice are kept.</string>
+  <string name="sets_sheet_cancel">Cancel</string>
+</resources>

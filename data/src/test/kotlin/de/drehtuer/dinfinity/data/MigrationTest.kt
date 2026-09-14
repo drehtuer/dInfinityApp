@@ -98,11 +98,11 @@ class MigrationTest {
 
       withDatabase { database ->
         val registry = InstalledSetRepository(database)
-        assertEquals("the migration invented an opinion", emptySet<String>(), registry.disabled.first())
+        assertEquals("the migration invented an opinion", emptySet<String>(), registry.disabled())
 
         registry.setEnabled("brass", enabled = false)
 
-        assertEquals(setOf("brass"), registry.disabled.first())
+        assertEquals(setOf("brass"), registry.disabled())
       }
     }
 

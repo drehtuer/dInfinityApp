@@ -5,7 +5,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -51,7 +50,7 @@ class InstalledSetRepositoryTest {
       // A package that installs is usable immediately. Writing a row to say so
       // would be a row that means nothing.
       assertTrue(repository.isEnabled("brass"))
-      assertEquals(emptySet<String>(), repository.disabled.first())
+      assertEquals(emptySet<String>(), repository.disabled())
     }
 
   @Test
@@ -60,7 +59,7 @@ class InstalledSetRepositoryTest {
       repository.setEnabled("brass", enabled = false)
 
       assertFalse(repository.isEnabled("brass"))
-      assertEquals(setOf("brass"), repository.disabled.first())
+      assertEquals(setOf("brass"), repository.disabled())
     }
 
   @Test
@@ -70,7 +69,7 @@ class InstalledSetRepositoryTest {
       repository.setEnabled("brass", enabled = true)
 
       assertTrue(repository.isEnabled("brass"))
-      assertEquals(emptySet<String>(), repository.disabled.first())
+      assertEquals(emptySet<String>(), repository.disabled())
     }
 
   @Test
@@ -80,7 +79,7 @@ class InstalledSetRepositoryTest {
       repository.setEnabled("copper", enabled = true)
       repository.setEnabled("amber", enabled = false)
 
-      assertEquals(setOf("amber", "brass"), repository.disabled.first())
+      assertEquals(setOf("amber", "brass"), repository.disabled())
     }
 
   @Test
@@ -92,7 +91,7 @@ class InstalledSetRepositoryTest {
       repository.setEnabled(DiceSet.BUILTIN_ID, enabled = false)
 
       assertTrue("the bundled set was switched off", repository.isEnabled(DiceSet.BUILTIN_ID))
-      assertEquals(emptySet<String>(), repository.disabled.first())
+      assertEquals(emptySet<String>(), repository.disabled())
     }
 
   @Test
@@ -129,7 +128,7 @@ class InstalledSetRepositoryTest {
 
       repository.keepOnly(emptyList())
 
-      assertEquals(emptySet<String>(), repository.disabled.first())
+      assertEquals(emptySet<String>(), repository.disabled())
     }
 
   @Test
@@ -137,6 +136,6 @@ class InstalledSetRepositoryTest {
     runTest {
       repository.setEnabled("brass", enabled = false)
 
-      assertEquals(repository.disabled.first(), repository.disabled.first())
+      assertEquals(repository.disabled(), repository.disabled())
     }
 }

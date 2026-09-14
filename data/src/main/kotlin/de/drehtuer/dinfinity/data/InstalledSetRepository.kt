@@ -3,8 +3,6 @@ package de.drehtuer.dinfinity.data
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.data.db.InstalledSetRow
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 
 /**
  * What the player has decided about the sets they have installed
@@ -30,12 +28,18 @@ class InstalledSetRepository(
    * moment it installs — so a fresh install needs no rows written for it, and
    * a package that arrives by some route the app never saw is usable straight
    * away rather than invisible until something remembers to register it.
+   *
+   * Asked rather than observed. What is installed is read off the disk, and
+   * the two have to be read together or the screen shows a folder with
+   * somebody else's opinion attached to it.
    */
-  val disabled: Flow<Set<String>> =
+  suspend fun disabled(): Set<String> =
     database
       .installedSets()
       .all()
-      .map { rows -> rows.filterNot(InstalledSetRow::enabled).map(InstalledSetRow::id).toSet() }
+      .filterNot(InstalledSetRow::enabled)
+      .map(InstalledSetRow::id)
+      .toSet()
 
   /**
    * Switches [id] on or off.

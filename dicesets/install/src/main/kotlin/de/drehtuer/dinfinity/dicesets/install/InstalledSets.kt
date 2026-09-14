@@ -122,6 +122,26 @@ class InstalledSets(
   }
 
   /**
+   * Takes a package off the disk (`docs/architecture.md`: uninstall deletes
+   * the folder and the registry row — this is the folder half).
+   *
+   * **Only ever a direct child of [root], named exactly.** An id arrives here
+   * from a screen, and a screen's idea of an id came from a folder name that
+   * came from an archive: the one thing that must not be possible is for
+   * `..`, a separator or an absolute path to turn a remove into a recursive
+   * delete of somewhere else. So the id is matched against what is actually in
+   * the folder rather than joined onto it.
+   *
+   * @return true when there is no longer a package under [id], which includes
+   *   there never having been one. The caller's next question is the same
+   *   either way.
+   */
+  fun remove(id: String): Boolean {
+    val folder = root.listFiles().orEmpty().firstOrNull { it.isDirectory && it.name == id } ?: return true
+    return folder.deleteRecursively()
+  }
+
+  /**
    * A valid package, if the set inside it is the one this folder claims to be.
    *
    * A folder called `brass` holding a set that calls itself something else is

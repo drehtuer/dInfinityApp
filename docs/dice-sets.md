@@ -425,6 +425,10 @@ are ignored with a warning to allow future extensions.
   because passing the validator once does not make a folder valid for ever. A
   broken package **keeps its folder**: an update is the way out of that state
   and an update needs somewhere to update from (design `6b`).
+- **A row says which of the two ways a set can be unusable it is in.** Switched
+  off and will-not-load are not the same thing and the remedies are opposite —
+  one is a tap, the other is an update — so a list that showed only
+  "unavailable" would send the player to the wrong one (design `5a`).
 - **Whether a set is switched on is the database's to say, not the folder's.**
   `installed_set` holds one row per package the player has had an opinion
   about, and a package with no row is enabled — which is what a set does the
