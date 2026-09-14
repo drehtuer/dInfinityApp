@@ -118,10 +118,22 @@ two of them.
 
 ### Per session
 
-A session is a user-defined bucket ("Tuesday campaign"). All stats above are
-also available filtered by session. The current session is selectable from
-the home screen; by default the active saved-roll group's name is used as
-the session, and "Unfiled" when no group is active.
+A session is a user-defined bucket ("Tuesday campaign"). Every roll is filed
+under the active one, which is chosen on the **Sessions** screen and remembered
+with the settings; the menu's header names it once there is more than one to be
+in. The first session is called "First rolls" and cannot be deleted — it is
+where the rolls made before anybody thought about sessions belong, and where
+the rolls of a deleted session go.
+
+**The history can be filtered by session; the statistics above cannot yet.**
+That is a storage question rather than a missing chooser: `die_stats` and
+`die_summary` are keyed by set and die and carry no session at all (see
+Storage), so there is nothing to filter on. Either they grow a session column —
+which multiplies every aggregate row by the number of sessions, for a number
+most players will never ask for — or per-session counts are computed from
+`roll_history.breakdown_json` on demand, which is a scan rather than a lookup
+and costs nothing until it is used. The decision is open (`docs/TODO.md`, 4.9)
+and this section will say which was taken.
 
 ### Anomalies (debug)
 
@@ -133,13 +145,17 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
 - **Overview:** big tiles for the currently selected die type — natural
   highs, natural lows, average, total rolls — with a face histogram and a
   faint line for the expected uniform frequency.
-- **All dice:** table of every die ever rolled, sortable.
+- **All dice:** table of every die ever rolled, most recently used first —
+  a player comes here about a die they have just been rolling. Choosing a
+  different order is not built yet (`docs/TODO.md`, 4.7).
 - **Saved rolls:** per-formula history with expected vs. observed graph.
 - **History:** scrollable list of past rolls with breakdowns. A past roll is
   a record, not something to re-run: there is no replay action and the seed
   is never shown. Re-rolling a formula means rolling it again.
-- **Sessions:** create/rename/delete. Deleting one moves its rolls to
-  Unfiled.
+- **Sessions:** create/rename/delete. Deleting one moves its rolls to the
+  first session rather than deleting them, so a session can be tidied away
+  without losing what was rolled in it. ("Unfiled" is the saved-roll *group*
+  default, and a different thing.)
 
 ## Storage
 

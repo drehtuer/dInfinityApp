@@ -64,7 +64,9 @@ enum class Destination(
   Tables("tables", "Table", "Felt, wood, glass or your own photo. Same tray.", MenuGroup.Customise),
   FaceDesigner("designer", "Face designer", "Draw die faces with a finger, then roll them.", MenuGroup.Customise),
 
-  Settings("settings", "Settings", "Appearance, power saving, haptics, rounding.", MenuGroup.App),
+  // No haptics in the list: nothing plays anything yet, and a menu row is as
+  // able to promise something that is not there as a settings row is.
+  Settings("settings", "Settings", "Appearance, shake, rounding, power saving.", MenuGroup.App),
 
   /** Everything above, in a list. Not in the menu, being the menu. */
   Menu("menu", "dInfinity", "", group = null),

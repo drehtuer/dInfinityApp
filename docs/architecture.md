@@ -76,10 +76,10 @@ feature/             One module per screen group; see docs/TODO.md Step 4
 test-fixtures/       Test data shared by every module: dice sets, collections, golden roll cases
 ```
 
-Ten screens, eight `feature/` modules: statistics, history and sessions are one
-module because they are one screen group over one set of data
-(`design/dInfinity.dc.html`, options 1w, 1x, 6c) and splitting them would only
-split the queries.
+Eleven screens in the menu, eight `feature/` modules: statistics, history,
+sessions and saved-roll statistics are one module because they are one screen
+group over one set of data (`design/dInfinity.dc.html`, options 1w, 1x, 6c, 8b)
+and splitting them would only split the queries.
 
 `core/collection` is the saved-roll collection format, and it lives in `core/`
 rather than in `feature/saved` for the same reason `dicesets/format` is not in
@@ -144,10 +144,10 @@ it and the dice rolled where nobody could see them.
 
 ### Navigation
 
-Every screen is a `Destination`, and the graph has had all ten from the start
-so that adding one is a change in a single place. `Roll` is home. The eleventh
-destination is the **menu**, which lists the other ten and is not in the list
-itself (`design/dInfinity.dc.html`, option `1q`).
+Every screen is a `Destination`, and the graph has had every one of them from
+the start so that adding one is a change in a single place. `Roll` is home. The
+**menu** is a destination too: it lists the other eleven and is not in the
+list itself (`design/dInfinity.dc.html`, option `1q`).
 
 ```mermaid
 stateDiagram-v2

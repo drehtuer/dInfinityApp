@@ -27,7 +27,7 @@ changelog.
 - **The specification.** `README.md`, `docs/` and the clickable prototype in
   `design/`, cross-referenced both ways and published at
   <https://drehtuer.github.io/dInfinityApp/>. GPL-2.0-or-later.
-- **The skeleton and CI.** Devcontainer, convention plugins, 24 modules, the
+- **The skeleton and CI.** Devcontainer, convention plugins, 26 modules, the
   Modernist theme, the navigation graph. Every linter and both test tiers run
   on each pull request; SonarQube blocks on its gate and JaCoCo on a function
   *and* branch floor. Dependencies pinned by SHA-256; a `vX.Y.Z` tag cuts a
@@ -58,7 +58,7 @@ changelog.
 
 ## In progress
 
-**Step 4 is where the work is: seven of the ten screens do something.**
+**Step 4 is where the work is: nine of the eleven screens do something.**
 
 - **4.1 Roll.** The tray from the moment the screen opens, a live-validated
   formula field with a squiggle under the part that is wrong and a one-tap fix,
