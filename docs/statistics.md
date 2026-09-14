@@ -35,6 +35,24 @@ The same counters rolled up by *sides*, so "all my d20s" is one line even if
 some rolls used the brass set and some the doodled one. Sets with non-standard
 dice appear only in the per-die view.
 
+Throws, totals and squares add up, so a pooled mean is the mean of everything
+thrown rather than the mean of two means. **Streaks do not**: a streak is a run
+within one die's own sequence, and two dice's runs do not join end to end, so a
+rolled-up row claims none.
+
+**The fair line is weighted by how often each die was thrown**
+(`FaceHistogram.ofPool`). Two sets' d20s need not be labelled the same way and,
+more to the point, need not have been thrown the same number of times: a fair
+d6 thrown a thousand times pooled with a `1,2,3,1,2,3` thrown twice is very
+nearly a fair d6, and a line drawn from the two value lists alone would call it
+loaded. Each die expects `throws / sides` of its throws on each of its faces;
+those expectations are summed per value and divided by the whole pool.
+
+If any die in the pool comes from a set that is **not installed any more**, its
+throws are counted in the bars while its faces are missing from the line, so
+the pool is marked the same way a single uninstalled die is: the line is a
+guess, and the screen says so.
+
 ### Per saved roll and per group
 
 - Times rolled, mean total, min/max total observed, last result

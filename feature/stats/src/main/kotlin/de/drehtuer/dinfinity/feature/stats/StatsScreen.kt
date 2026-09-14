@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.feature.stats
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,7 +68,7 @@ fun StatsScreen(
     when {
       state.selected != null -> Detail(state.selected, presenter)
       state.empty -> Empty()
-      else -> Dice(state.dice, presenter)
+      else -> Dice(state, presenter)
     }
   }
 }
@@ -97,17 +98,89 @@ private fun Header(
   }
 }
 
+/**
+ * How the list is cut: by set, or not at all, or across all of them
+ * (design options `5b` and `5c`).
+ *
+ * The two are exclusive on purpose. "All my d20s, but only the brass ones" is
+ * the same thing as looking at the brass d20, and offering it would put two
+ * controls on screen that cancel each other out.
+ */
 @Composable
-private fun Dice(
-  dice: List<DieRow>,
+private fun Cuts(
+  state: StatsState,
   presenter: StatsPresenter,
 ) {
+  if (state.sets.size < 2 && !state.acrossSets) return
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Cut(
+      label = stringResource(R.string.stats_all_sets),
+      chosen = state.setFilter == null && !state.acrossSets,
+      tag = StatsTestTags.ALL_SETS,
+      onChoose = { presenter.filterBy(null) },
+    )
+    state.sets.forEach { setId ->
+      Cut(
+        label = setId,
+        chosen = state.setFilter == setId,
+        tag = StatsTestTags.setOf(setId),
+        onChoose = { presenter.filterBy(setId) },
+      )
+    }
+    Cut(
+      label = stringResource(R.string.stats_across_sets),
+      chosen = state.acrossSets,
+      tag = StatsTestTags.ACROSS_SETS,
+      onChoose = { presenter.rollUp(!state.acrossSets) },
+    )
+  }
+}
+
+@Composable
+private fun Cut(
+  label: String,
+  chosen: Boolean,
+  tag: String,
+  onChoose: () -> Unit,
+) {
+  TextButton(onClick = onChoose, modifier = Modifier.testTag(tag)) {
+    Text(
+      text = label,
+      style = MaterialTheme.typography.labelLarge,
+      color = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+      fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
+    )
+  }
+}
+
+@Composable
+private fun Dice(
+  state: StatsState,
+  presenter: StatsPresenter,
+) {
+  val dice = state.dice
+  Cuts(state, presenter)
   Text(
-    text = stringResource(R.string.stats_order),
+    text = stringResource(if (state.acrossSets) R.string.stats_across_sets_note else R.string.stats_order),
     style = MaterialTheme.typography.labelSmall,
     color = MaterialTheme.colorScheme.onSurfaceVariant,
     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
   )
+  if (state.filteredToNothing) {
+    Text(
+      text = stringResource(R.string.stats_filtered_empty),
+      style = MaterialTheme.typography.bodyMedium,
+      modifier = Modifier.padding(16.dp).testTag(StatsTestTags.FILTERED_EMPTY),
+    )
+  }
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(StatsTestTags.LIST)) {
     items(dice, key = { "${it.setId}/${it.dieId}" }) { row ->
       HorizontalDivider()
@@ -394,6 +467,12 @@ object StatsTestTags {
   const val MEAN: String = "stats:mean"
   const val THROWS: String = "stats:throws"
   const val GUESSED: String = "stats:guessed"
+  const val ALL_SETS: String = "stats:allsets"
+  const val ACROSS_SETS: String = "stats:acrosssets"
+  const val FILTERED_EMPTY: String = "stats:filtered-empty"
+
+  fun setOf(setId: String): String = "stats:set:$setId"
+
   const val RESET_DIE: String = "stats:reset-die"
   const val RESET_ALL: String = "stats:reset-all"
   const val CONFIRM: String = "stats:confirm"

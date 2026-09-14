@@ -172,7 +172,8 @@ its overview tiles — natural highs and lows, average, throws — and its face
 histogram against the fair line. Forgetting one die's record or everything is
 there, each behind a confirmation.
 
-- [ ] Sorting the all-dice list, filtering by set (`5b`) and rolling up across sets (`5c`). `DieStatisticsRepository.facesForSides` is written and nothing calls it yet
+- [x] Filtering by set (`5b`) and rolling up across sets (`5c`), with a fair line weighted by how often each die was thrown
+- [ ] Sorting the all-dice list. It is most-recently-used first and nothing else, which is the right default and the only one
 - [ ] Saved-roll statistics: observed totals against the exact expected distribution (`8b`, `9e`)
 - [ ] Export as JSON/CSV — without seeds
 - [ ] Reset per saved roll and per session; per die and everything are done
