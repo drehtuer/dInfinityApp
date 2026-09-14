@@ -6,7 +6,7 @@ in the identity's blue. It is specified in
 app is about any die, so the name does the work".
 
 | File | Used by |
-|---|---|
+| --- | --- |
 | `logo-light.svg` | `README.md` on a light background |
 | `logo-dark.svg` | `README.md` on a dark background, via `<picture>` |
 | `app/src/main/res/drawable/ic_launcher_foreground.xml` | The launcher icon |

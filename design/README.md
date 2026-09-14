@@ -19,7 +19,7 @@ prototype's own logic — is in this folder.
 ## Files
 
 | File | What it is |
-|---|---|
+| --- | --- |
 | `dInfinity.dc.html` | The canvas: an options board of every design turn — layouts, result-sheet densities, picker styles, graph styles, saved-roll tile styles, and one phone per screen. Open this one. |
 | `dInfinityPhone.dc.html` | The phone prototype itself, imported by the canvas once per variant with different attributes (`screen`, `formula`, `theme`, …). |
 | `android-frame.jsx` | Android (Material 3) device frame: status bar, app bar, gesture nav, keyboard. Starter scaffold; intentionally uses raw values. |
@@ -52,7 +52,7 @@ links to the screens that realise it; this is the same map the other way
 round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 
 | Screens | Specified in |
-|---|---|
+| --- | --- |
 | Roll screen: tray, layouts, result sheet — 1a, 1b–1d, 1e–1g, 1z | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), [../docs/tables.md](../docs/tables.md) |
 | Notation field, dice pickers, errors — 2a, 1h–1j, 9c, 6d | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Outcome graph — 1k–1m, 7a | [../docs/probability.md](../docs/probability.md) |

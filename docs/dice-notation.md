@@ -11,7 +11,7 @@ is evaluated.
 ## Examples
 
 | Input | Meaning |
-|---|---|
+| --- | --- |
 | `d20` | one twenty-sided die |
 | `3d6` | three six-sided dice, summed |
 | `3d6 + 1d20 - 4` | sum of both groups minus 4 |
@@ -56,7 +56,7 @@ set ids.
 To keep the simulation and the probability graph tractable:
 
 | Limit | Value | Behaviour when exceeded |
-|---|---|---|
+| --- | --- | --- |
 | Dice per formula (parse) | 1,000 | Parse error, shown inline. This bound exists so the outcome graph stays cheap. |
 | Dice per *roll* | table capacity (`docs/tables.md`), hard cap 100 | Roll button disabled with the reason; the graph still works |
 | Sides per die | must exist in a set | Parse error naming the missing die |

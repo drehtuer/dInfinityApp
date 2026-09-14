@@ -117,7 +117,7 @@ sound = "felt"
 ### Fields
 
 | Field | Required | Notes |
-|---|---|---|
+| --- | --- | --- |
 | `format` | yes | Integer. The app refuses formats newer than it knows. |
 | `set.id` | yes | Slug of 3–40 characters (`[a-z0-9-]`, starting and ending with a letter or digit). Used as the `setref` in notation and as the folder name, which is why it has a floor. |
 | `set.name`, `set.version` | yes | |
@@ -139,7 +139,7 @@ count, face order and texture atlas layout are defined by the app (documented
 in `dicesets/format/shapes/` with reference images).
 
 | Name | Faces | Typical use |
-|---|---|---|
+| --- | --- | --- |
 | `coin` | 2 | d2 |
 | `tetrahedron` | 4 | d4 |
 | `cube` | 6 | d6, d2-as-d6 |
@@ -272,7 +272,7 @@ unfair dice and a fairness UI — a whole feature, not a field.
 Users paste a URL. Accepted sources:
 
 | Source | Example | How it is fetched |
-|---|---|---|
+| --- | --- | --- |
 | GitHub | `https://github.com/ada/brass-and-bone`<br>`…/tree/v1.2.0`<br>`…/tree/main/sets/skulls` | Ref resolved to a commit SHA via the API, tarball for that SHA |
 | GitLab (gitlab.com or self-hosted) | `https://gitlab.com/ada/brass-and-bone/-/tree/main` | Same, via the GitLab API |
 | Codeberg / Gitea / Forgejo | `https://codeberg.org/ada/brass-and-bone` | Same, via the Gitea API |
