@@ -1,7 +1,5 @@
 package de.drehtuer.dinfinity.render.filament
 
-import android.os.Handler
-import android.os.HandlerThread
 import android.view.Choreographer
 import android.view.Surface
 import de.drehtuer.dinfinity.core.model.TableLook
@@ -10,7 +8,6 @@ import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
-import java.util.concurrent.CountDownLatch
 
 /**
  * The thread a roll happens on, and the surface it is drawn to
@@ -46,24 +43,32 @@ import java.util.concurrent.CountDownLatch
  */
 @Suppress("TooManyFunctions")
 class TrayDriver(
+  shared: RollThread? = null,
   private val stages: ((Surface, Int, Int) -> Stage)? = null,
 ) : Tray {
   private val loop = TrayLoop()
-  private val thread = HandlerThread(THREAD_NAME).apply { start() }
-  private val handler = Handler(thread.looper)
+
+  /**
+   * The thread and engine this driver made for itself, if it was not given
+   * one — and therefore the only one it is allowed to close.
+   */
+  private val own: RollThread? = if (shared == null) RollThread() else null
+
+  private val host: RollThread = shared ?: requireNotNull(own)
+  private val handler get() = host.handler
 
   private var ticking = false
 
   /**
-   * The engine and the compiled material, kept across every surface this
-   * driver ever draws to.
+   * Set before anything is torn down, and checked inside everything posted.
    *
-   * Made on first use rather than here, because it has to be made on the roll
-   * thread — a graphics context belongs to the thread that made it, and this
-   * constructor runs on whichever thread built the screen. Null for a driver
-   * given its own way of making stages, which is what a test does.
+   * A driver used to own its thread, so closing it stopped the thread and with
+   * it anything still queued. The thread now outlives the visit, so a message
+   * posted a moment before the player left would otherwise run against a closed
+   * loop — on a thread the *next* visit is already using.
    */
-  private var filament: FilamentEngine? = null
+  @Volatile
+  private var closed = false
 
   private val tick =
     Choreographer.FrameCallback { nanos ->
@@ -80,14 +85,14 @@ class TrayDriver(
     width: Int,
     height: Int,
   ) {
-    handler.post {
+    post {
       loop.stage(stageFor(surface, width, height))
       schedule()
     }
   }
 
   /** The surface is being taken away. Blocks until the stage is closed. */
-  override fun surfaceLost() = onTheRollThread(loop::surfaceLost)
+  override fun surfaceLost() = host.await { if (!closed) loop.surfaceLost() }
 
   /**
    * Throws the dice. [start] runs on the roll thread and is handed the
@@ -100,7 +105,7 @@ class TrayDriver(
     start: (Renderer) -> WatchedRoll,
     onSettled: (SimulationOutcome) -> Unit,
   ) {
-    handler.post {
+    post {
       loop.roll(start, onSettled)
       schedule()
     }
@@ -115,7 +120,7 @@ class TrayDriver(
    * of it.
    */
   override fun shake(sample: ShakeSample) {
-    handler.post { loop.shake(sample) }
+    post { loop.shake(sample) }
   }
 
   /**
@@ -128,7 +133,7 @@ class TrayDriver(
     geometry: TableGeometry,
     look: TableLook,
   ) {
-    handler.post {
+    post {
       loop.table(geometry, look)
       schedule()
     }
@@ -141,7 +146,7 @@ class TrayDriver(
    * camera belongs to this one.
    */
   override fun look(view: TrayView) {
-    handler.post {
+    post {
       loop.look(view)
       schedule()
     }
@@ -149,34 +154,41 @@ class TrayDriver(
 
   /** Takes whatever is on the tray off it. */
   override fun clear() {
-    handler.post {
+    post {
       loop.clear()
       schedule()
     }
   }
 
-  /** Stops the thread. The driver cannot be used again. */
+  /**
+   * Gives up this visit's roll. The driver cannot be used again.
+   *
+   * The stage and the physics world go; the engine and the thread stay, unless
+   * this driver made them itself. A swap chain outliving its engine is a crash
+   * rather than a leak, so the order matters and the engine is never closed
+   * before the stage that borrowed it.
+   */
   override fun close() {
-    onTheRollThread {
-      // The stage first, then what it was borrowing: a swap chain outliving
-      // its engine is a crash rather than a leak.
+    if (closed) return
+    closed = true
+    host.await {
+      // The frame callback is removed by hand now that the thread survives:
+      // a tick left posted would step a loop that has been closed.
+      Choreographer.getInstance().removeFrameCallback(tick)
       loop.close()
-      filament?.close()
-      filament = null
     }
-    thread.quitSafely()
+    own?.close()
   }
 
-  private fun onTheRollThread(work: () -> Unit) {
-    val done = CountDownLatch(1)
-    handler.post {
-      try {
-        work()
-      } finally {
-        done.countDown()
-      }
-    }
-    done.await()
+  /**
+   * Runs [work] on the roll thread, unless this visit is over.
+   *
+   * The guard is both sides of the post: nothing is queued after [close], and
+   * anything already queued when it happened does nothing when it arrives.
+   */
+  private fun post(work: () -> Unit) {
+    if (closed) return
+    handler.post { if (!closed) work() }
   }
 
   private fun schedule() {
@@ -186,12 +198,14 @@ class TrayDriver(
   }
 
   /**
-   * A stage for this surface, sharing the engine with every stage before it.
+   * A stage for this surface, sharing the engine with every stage before it —
+   * including the ones from earlier visits to the screen.
    *
-   * The engine and the compiled material are made once, on this thread, and
-   * kept: compiling the material happens on the device for the driver that is
-   * actually there, and doing it again for every rotation is what used to
-   * leave the tray black for a moment (`docs/TODO.md`, Step 4.1).
+   * The engine and the compiled material are made once, on the roll thread,
+   * and kept there: compiling the material happens on the device for the
+   * driver that is actually there, and doing it again is what used to leave
+   * the tray black for a moment — first on every rotation, then on every visit
+   * ([RollThread]).
    */
   private fun stageFor(
     surface: Surface,
@@ -199,11 +213,6 @@ class TrayDriver(
     height: Int,
   ): Stage {
     stages?.let { return it(surface, width, height) }
-    val shared = filament ?: FilamentEngine().also { filament = it }
-    return shared.stage(surface, width, height)
-  }
-
-  private companion object {
-    const val THREAD_NAME = "dinfinity-roll"
+    return host.filament().stage(surface, width, height)
   }
 }

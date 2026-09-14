@@ -53,9 +53,11 @@ fun DiceTray(
     }
   }
 
-  // Leaving the screen gives up the thread, the engine and the physics world.
-  // The roll does not survive it and is not meant to: a throw the player
-  // walked away from never landed, so there is nothing to score.
+  // Leaving the screen gives up the physics world and the scene. The roll does
+  // not survive it and is not meant to: a throw the player walked away from
+  // never landed, so there is nothing to score. The thread and the engine
+  // underneath are not given up with them — rebuilding those is a black tray
+  // on the way back (`docs/architecture.md`, decision 50).
   DisposableEffect(driver) {
     onDispose { driver.close() }
   }

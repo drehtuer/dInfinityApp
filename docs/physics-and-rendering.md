@@ -441,11 +441,16 @@ all, and **zero** corrections applied after rest.
   read, never reported and never over, leaving the screen on "Rolling…" for
   good. A roll therefore asks for frames whether or not there is anywhere to
   draw; only the still pictures need a surface before they are worth one.
-  **The engine is not rebuilt with it.** The
+  **The engine is not rebuilt with it, and not with a visit either.** The
   material is compiled on the device for the driver that is actually there, and
   that costs long enough that doing it again for every rotation was itself the
   black tray: what a surface owns is its swap chain and its viewport, and
-  `FilamentEngine` keeps the rest across all of them. With no stage at all it
+  `FilamentEngine` keeps the rest across all of them. The same line is drawn
+  once more around a *visit* to the screen — leaving for the menu and coming
+  back rebuilt the engine and showed the same black — so the engine and the
+  thread it lives on belong to the application (`RollThread`,
+  `docs/architecture.md`, decision 50). The world and the scene still go: a
+  throw the player walked away from never landed. With no stage at all it
   draws nothing, which
   is the right thing to be while the app is in the background — the roll goes
   on and the dice are where they should be the moment there is somewhere to put

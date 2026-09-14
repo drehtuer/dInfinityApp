@@ -171,9 +171,9 @@ private fun MenuTo(navController: NavHostController) {
 
 /**
  * The tray, remembered per visit rather than held by the application: a
- * presenter owns the roll thread and, through it, a Filament engine and a
- * physics world. Leaving the screen gives all three back
- * (`docs/architecture.md`, decision 49).
+ * presenter owns a physics world and a scene, and leaving the screen gives
+ * both back (`docs/architecture.md`, decision 49). The thread and the Filament
+ * engine underneath outlive the visit (decision 50).
  */
 @Composable
 private fun Roll(
@@ -250,10 +250,10 @@ private fun playing(
   onWelcomeSeen: () -> Unit,
 ): Boolean =
   when (destination) {
-    // Remembered per visit, not held by the application: a presenter owns the
-    // roll thread and, through it, a Filament engine and a physics world.
-    // Leaving the screen gives all three back (`docs/architecture.md`,
-    // decision 49).
+    // Remembered per visit, not held by the application: a presenter owns a
+    // physics world and a scene, and leaving the screen gives both back
+    // (`docs/architecture.md`, decision 49). The thread and the Filament engine
+    // underneath outlive the visit (decision 50).
     Destination.Roll if rollPresenter != null -> {
       Roll(rollPresenter, savedRolls, entry, navController, settings, onWelcomeSeen)
       true

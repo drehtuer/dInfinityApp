@@ -64,10 +64,12 @@ changelog.
   the dice picker row, the saved-roll strip, roll from the button or a shake, a
   refusal for a throw the table cannot hold, the total and its breakdown,
   Down / Nearest / Up, pinch and pan, power-saving, first launch. Missing: the
-  set dropdown and numbers on the faces. On the phone: a shake with the phone
-  upside down pooled the dice at the wrong end, because the screen pinned the
-  display to the rotation it opened at and the shake map reads that rotation.
-  It now holds its *shape* either way up.
+  set dropdown and numbers on the faces. Two things the phone found: a shake
+  with the phone upside down pooled the dice at the wrong end, because the
+  screen pinned the display to the rotation it opened at and the shake map
+  reads that rotation — it now holds its *shape* either way up; and coming back
+  from the menu showed a black tray, because the Filament engine was rebuilt
+  per visit — the roll thread and the engine now outlive one.
 - **4.2 Outcome graph.** The exact distribution as bars with its mean line and
   ±1σ band, `P(= k)` / `P(≥ k)`, a tap for the numbers, the roll that opened it
   marked. Reached from "See the odds" — the first navigation carrying an
