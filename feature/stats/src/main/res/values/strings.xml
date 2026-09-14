@@ -13,6 +13,25 @@
   </plurals>
   <!-- The statistics screen (design option 1w). -->
   <string name="stats_title">Statistics</string>
+  <!-- Saved-roll statistics (design options 8b and 9e). -->
+  <string name="savedstats_title">Saved-roll statistics</string>
+  <string name="savedstats_order">What each roll has actually come to, against what the maths says it should.</string>
+  <string name="savedstats_empty_title">No saved rolls in this group.</string>
+  <string name="savedstats_empty_body">Save a roll and every throw of it is counted here, against its exact distribution.</string>
+  <string name="savedstats_never">Never rolled</string>
+  <string name="savedstats_expected">Expected %1$s</string>
+  <string name="savedstats_rolled">Rolled %1$s</string>
+  <string name="savedstats_range">Range %1$d to %2$d, of a possible %3$d to %4$d</string>
+  <string name="savedstats_range_observed">Range %1$d to %2$d</string>
+  <string name="savedstats_worth_a_look">That average is further from expectation than most runs of this length get. Worth a look, not a verdict.</string>
+  <string name="savedstats_too_few">Too few throws to say anything about the average yet.</string>
+  <string name="savedstats_back">Back</string>
+  <!-- %1$d is how many times the roll has been thrown. -->
+  <plurals name="savedstats_throws">
+    <item quantity="one">1 throw</item>
+    <item quantity="other">%1$d throws</item>
+  </plurals>
+
   <string name="stats_all_sets">All sets</string>
   <string name="stats_across_sets">All my d20s</string>
   <string name="stats_across_sets_note">Every set’s dice of each kind, counted together. The fair line weighs each die by how often it was thrown.</string>

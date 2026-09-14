@@ -29,6 +29,7 @@ import de.drehtuer.dinfinity.feature.saved.R
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
+import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.theme.DInfinityTheme
@@ -183,6 +184,7 @@ class MainActivity : ComponentActivity() {
         )
       },
       sessions = { sessions(app, settings, repository) },
+      savedStatistics = { savedStatistics(app, settings) },
       diceSets = { diceSets(app) },
       diceSet = { id, onGone -> diceSet(app, repository, id, onGone) },
       onSource = { url -> open(url) },
@@ -206,6 +208,25 @@ class MainActivity : ComponentActivity() {
     defaultName = getString(StatsR.string.sessions_first),
     activeId = settings.activeSessionId,
     onActive = { session -> lifecycleScope.launch { repository.setActiveSession(session) } },
+  )
+
+  /**
+   * What each saved roll has come to, against what it should
+   * (`docs/statistics.md`; design options `8b` and `9e`).
+   *
+   * About the active group, because a saved roll belongs to one and the roll
+   * somebody wants is one they have been using.
+   */
+  private fun savedStatistics(
+    app: DInfinityApplication,
+    settings: AppSettings,
+  ) = SavedStatsPresenter(
+    saved = app.savedRolls,
+    history = app.history,
+    catalog = app.setLibrary.catalogue,
+    scope = lifecycleScope,
+    groupId = settings.activeGroupId,
+    rounding = settings.rounding,
   )
 
   /** What is installed, and what may be done to it (`docs/dice-sets.md`). */

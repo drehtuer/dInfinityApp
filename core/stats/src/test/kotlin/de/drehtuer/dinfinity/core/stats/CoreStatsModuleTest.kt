@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.core.stats
 
 import de.drehtuer.dinfinity.core.model.CoreModelModule
+import de.drehtuer.dinfinity.core.probability.CoreProbabilityModule
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -16,6 +17,7 @@ class CoreStatsModuleTest {
   @Test
   fun `reaches every module it depends on`() {
     assertTrue(CoreModelModule.PATH in CoreStatsModule.DEPENDS_ON)
-    assertEquals(1, CoreStatsModule.DEPENDS_ON.size)
+    assertTrue(CoreProbabilityModule.PATH in CoreStatsModule.DEPENDS_ON)
+    assertEquals(2, CoreStatsModule.DEPENDS_ON.size)
   }
 }

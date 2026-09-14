@@ -174,7 +174,7 @@ there, each behind a confirmation.
 
 - [x] Filtering by set (`5b`) and rolling up across sets (`5c`), with a fair line weighted by how often each die was thrown
 - [ ] Sorting the all-dice list. It is most-recently-used first and nothing else, which is the right default and the only one
-- [ ] Saved-roll statistics: observed totals against the exact expected distribution (`8b`, `9e`)
+- [x] Saved-roll statistics: observed totals against the exact expected distribution (`8b`, `9e`), with the drift judged against the standard error rather than shown bare
 - [ ] Export as JSON/CSV — without seeds
 - [ ] Reset per saved roll and per session; per die and everything are done
 
@@ -219,7 +219,7 @@ The menu is built and **the navigation graph is connected**: every screen
 carries the same menu button and the menu reaches every screen
 (`docs/architecture.md`, "Screens and the states behind them").
 
-- [ ] Two rows the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll) and "Saved-roll statistics" (4.7). Decide whether the first is a screen or belongs in the README
+- [ ] One row the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll). Decide whether it is a screen or belongs in the README. *Saved-roll statistics is built and in the menu (4.7).*
 - [ ] The menu's header shows the active session beside the app's name in the design; that waits on sessions (4.9)
 - [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
