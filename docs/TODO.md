@@ -183,8 +183,6 @@ run is the one thing face counts cannot give back. The list can be put in
 three orders — most recently used, most thrown, highest average — with recency
 the default, because that is the die somebody came about.
 
-- [ ] Reset per saved roll and per session; per die and everything are done
-
 ### 4.8 History — `feature/stats`
 
 Design `1x`. Spec: `docs/statistics.md`.
@@ -194,7 +192,9 @@ die including the dropped ones, the set a roll fell back to, corrections
 counted, and a natural maximum in the accent. It cuts to one session or one
 saved roll, with a chooser that is not drawn until there is more than one thing
 to choose between. It exports as JSON or CSV through the share sheet, carrying
-everything the filter matches rather than the page on screen. No replay and no
+everything the filter matches rather than the page on screen, and forgets those
+same rolls — a session's or a saved roll's — behind a confirmation that says
+what stays as well as what goes. No replay and no
 seed, which the types enforce rather than the screen remembering — the export
 is built from `HistoryEntry`, which has none to write. Pruning at 50,000 rows
 was already done and tested in `StatisticsRepository`.

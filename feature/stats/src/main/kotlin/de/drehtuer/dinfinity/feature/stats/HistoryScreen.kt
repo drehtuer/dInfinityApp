@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -68,19 +69,21 @@ fun HistoryScreen(
         .safeDrawingPadding()
         .testTag(HistoryTestTags.SCREEN),
   ) {
-    Header(offerExport = !state.empty, onExport = { exporting = true }, menu = menu)
+    Header(
+      offerExport = !state.empty,
+      onExport = { exporting = true },
+      offerForget = state.forgettable,
+      onForget = { presenter.confirmForget(true) },
+      menu = menu,
+    )
 
-    if (exporting) {
-      ExportChoice(
-        tagPrefix = HistoryTestTags.EXPORT,
-        body = stringResource(R.string.history_export_body),
-        onDismiss = { exporting = false },
-        onChosen = { format ->
-          exporting = false
-          presenter.export(format, onExport)
-        },
-      )
-    }
+    Asking(
+      state = state,
+      presenter = presenter,
+      exporting = exporting,
+      onExportDone = { exporting = false },
+      onExport = onExport,
+    )
 
     Choosers(state, presenter)
 
@@ -128,6 +131,8 @@ fun HistoryScreen(
 private fun Header(
   offerExport: Boolean,
   onExport: () -> Unit,
+  offerForget: Boolean,
+  onForget: () -> Unit,
   menu: @Composable () -> Unit,
 ) {
   Row(
@@ -148,8 +153,90 @@ private fun Header(
         Text(stringResource(R.string.history_export))
       }
     }
+    // Beside Export and only with a filter on, because the two are the same
+    // act on the same rolls: keep a copy of what you are looking at, or be rid
+    // of it.
+    if (offerForget) {
+      TextButton(onClick = onForget, modifier = Modifier.testTag(HistoryTestTags.FORGET)) {
+        Text(stringResource(R.string.history_forget), color = MaterialTheme.colorScheme.error)
+      }
+    }
     menu()
   }
+}
+
+/**
+ * Whichever question is open: whether to forget, or which shape a file takes.
+ *
+ * Both together because only one can be open at a time and neither draws
+ * anything when it is not — and because the screen they sit on was at detekt's
+ * length limit, which is the limit doing its job.
+ */
+@Composable
+private fun Asking(
+  state: HistoryState,
+  presenter: HistoryPresenter,
+  exporting: Boolean,
+  onExportDone: () -> Unit,
+  onExport: (ExportFile) -> Unit,
+) {
+  if (state.confirmingForget) {
+    ForgetDialog(
+      filter = state.filter,
+      onYes = { presenter.forget() },
+      onNo = { presenter.confirmForget(false) },
+    )
+  }
+
+  if (exporting) {
+    ExportChoice(
+      tagPrefix = HistoryTestTags.EXPORT,
+      body = stringResource(R.string.history_export_body),
+      onDismiss = onExportDone,
+      onChosen = { format ->
+        onExportDone()
+        presenter.export(format, onExport)
+      },
+    )
+  }
+}
+
+/**
+ * The one question worth asking twice (`docs/statistics.md`, "Export and reset").
+ *
+ * It says what stays as well as what goes. The per-die statistics count these
+ * throws whether or not the history lists them, so a dialog that only said
+ * "this cannot be undone" would leave somebody expecting their d20's record to
+ * change and then wondering why it had not.
+ */
+@Composable
+private fun ForgetDialog(
+  filter: HistoryFilter,
+  onYes: () -> Unit,
+  onNo: () -> Unit,
+) {
+  val explanation =
+    when (filter) {
+      is HistoryFilter.InSession -> stringResource(R.string.history_forget_session, filter.name)
+      is HistoryFilter.OfSavedRoll -> stringResource(R.string.history_forget_roll, filter.name)
+      HistoryFilter.Everything -> return
+    }
+  AlertDialog(
+    modifier = Modifier.testTag(HistoryTestTags.FORGET_DIALOG),
+    onDismissRequest = onNo,
+    title = { Text(stringResource(R.string.history_forget_title)) },
+    text = { Text(explanation) },
+    confirmButton = {
+      TextButton(onClick = onYes, modifier = Modifier.testTag(HistoryTestTags.FORGET_YES)) {
+        Text(stringResource(R.string.history_forget_yes), color = MaterialTheme.colorScheme.error)
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onNo, modifier = Modifier.testTag(HistoryTestTags.FORGET_NO)) {
+        Text(stringResource(R.string.history_forget_no))
+      }
+    },
+  )
 }
 
 @Composable
@@ -414,6 +501,11 @@ object HistoryTestTags {
   const val EXPORT_DIALOG: String = "$EXPORT:dialog"
   const val EXPORT_JSON: String = "$EXPORT:json"
   const val EXPORT_CSV: String = "$EXPORT:csv"
+
+  const val FORGET: String = "history:forget"
+  const val FORGET_DIALOG: String = "$FORGET:dialog"
+  const val FORGET_YES: String = "$FORGET:yes"
+  const val FORGET_NO: String = "$FORGET:no"
 
   /** The chooser's button for one session — not the heading, which is `sessionOf`. */
   fun sessionChoiceOf(id: String): String = "history:choose-session:$id"

@@ -33,7 +33,7 @@ class StatisticsRepository(
     database.withTransaction {
       val result = roll.result
       val id =
-        database.rollHistory().insert(
+        database.rollHistoryWriting().insert(
           RollHistoryRow(
             timestamp = result.rolledAtEpochMs,
             sessionId = roll.context.sessionId,
@@ -57,7 +57,7 @@ class StatisticsRepository(
   /** Drops the oldest rolls once there are more than the cap allows. */
   suspend fun prune(): Int =
     if (database.rollHistory().count() > historyLimit) {
-      database.rollHistory().pruneToNewest(historyLimit)
+      database.rollHistoryWriting().pruneToNewest(historyLimit)
     } else {
       0
     }
@@ -74,7 +74,7 @@ class StatisticsRepository(
   /** Forgets everything, which is the last of the four reset choices. */
   suspend fun resetEverything() =
     database.withTransaction {
-      database.rollHistory().deleteAll()
+      database.rollHistoryWriting().deleteAll()
       database.dieStats().deleteAll()
       database.dieSummary().deleteAll()
     }

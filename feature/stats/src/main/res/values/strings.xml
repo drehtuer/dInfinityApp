@@ -16,6 +16,12 @@
   <string name="history_clear_filter">Show everything</string>
 
   <string name="history_export">Export</string>
+  <string name="history_forget">Forget</string>
+  <string name="history_forget_title">Forget these rolls?</string>
+  <string name="history_forget_session">Every roll made in “%1$s” is deleted and cannot be brought back. The session itself stays, and so does what each die has done — the statistics count these throws whether they are listed here or not.</string>
+  <string name="history_forget_roll">Every throw made through “%1$s” is deleted and cannot be brought back. The saved roll itself stays, and so does what each die has done — the statistics count these throws whether they are listed here or not.</string>
+  <string name="history_forget_yes">Forget them</string>
+  <string name="history_forget_no">Keep them</string>
   <string name="history_export_body">A copy of every roll this list is filtered to, to keep or to send on. No seeds: a past roll is a record, not something to re-run.</string>
 
   <!-- The statistics screen (design option 1w). -->

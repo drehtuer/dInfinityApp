@@ -202,7 +202,7 @@ class StatisticsRepositoryTest {
           .first()
           .size,
       )
-      database.rollHistory().moveSessionToUnfiled("friday", "unfiled")
+      database.rollHistoryWriting().moveSessionToUnfiled("friday", "unfiled")
       assertEquals(
         0,
         database

@@ -6,12 +6,18 @@ import androidx.room.Query
 import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
-/** Past rolls (`docs/statistics.md`, "History"). */
+/**
+ * Past rolls, to read (`docs/statistics.md`, "History").
+ *
+ * Reading and changing are two interfaces over one table, split when this one
+ * reached detekt's function ceiling. The line is not arbitrary: it is the same
+ * one the repositories above already draw, where `HistoryRepository` reads and
+ * `StatisticsRepository` writes. Raising the threshold would have hidden that
+ * the split was overdue (`docs/TODO.md`, 4.3 says the same about
+ * `SavedRollRepository`).
+ */
 @Dao
 interface RollHistoryDao {
-  @Insert
-  suspend fun insert(row: RollHistoryRow): Long
-
   /**
    * The most recent rolls, newest first.
    *
@@ -57,6 +63,19 @@ interface RollHistoryDao {
 
   @Query("SELECT COUNT(*) FROM roll_history")
   suspend fun count(): Long
+}
+
+/**
+ * Past rolls, to change.
+ *
+ * Everything here either adds a roll or takes some away, which is why they are
+ * together: a reader of this file can see every way the history can shrink in
+ * one screenful, and there are four.
+ */
+@Dao
+interface RollHistoryWritingDao {
+  @Insert
+  suspend fun insert(row: RollHistoryRow): Long
 
   /**
    * Drops all but the newest [keep] rolls.
@@ -71,7 +90,25 @@ interface RollHistoryDao {
   )
   suspend fun pruneToNewest(keep: Int): Int
 
-  /** Deleting a session moves its rolls to Unfiled rather than deleting them. */
+  /**
+   * Forgets one session's rolls, or one saved roll's throws.
+   *
+   * Not the same act as deleting a session, which moves its rolls to the first
+   * one rather than deleting them — this is the one that takes them away.
+   *
+   * Two queries rather than one with two nullable parameters, which is how
+   * `snapshot` is written: a null there means "not filtered by this", and the
+   * same shape on a DELETE would mean that passing nothing deletes everything.
+   * A reading query with a footgun is a reading query; a deleting one is a bug
+   * report.
+   */
+  @Query("DELETE FROM roll_history WHERE session_id = :sessionId")
+  suspend fun forgetSession(sessionId: String): Int
+
+  @Query("DELETE FROM roll_history WHERE saved_roll_id = :savedRollId")
+  suspend fun forgetSavedRoll(savedRollId: String): Int
+
+  /** Deleting a session moves its rolls to the first one rather than deleting them. */
   @Query("UPDATE roll_history SET session_id = :unfiled WHERE session_id = :sessionId")
   suspend fun moveSessionToUnfiled(
     sessionId: String,
@@ -82,7 +119,6 @@ interface RollHistoryDao {
   suspend fun deleteAll(): Int
 }
 
-/** Per-face counts (`docs/statistics.md`, per die). */
 @Dao
 interface DieStatsDao {
   @Upsert

@@ -202,7 +202,7 @@ class SessionsScreenTest {
     naturalMax: Boolean = false,
   ) {
     runBlocking {
-      database.rollHistory().insert(
+      database.rollHistoryWriting().insert(
         RollHistoryRow(
           timestamp = NOW,
           sessionId = session,

@@ -54,6 +54,30 @@ class HistoryRepository(
       .snapshot(sessionId = sessionId, savedRollId = savedRollId, limit = limit)
       .map(RollHistoryRow::asEntry)
 
+  /**
+   * Forgets every roll made in one session (`docs/statistics.md`, "Export and
+   * reset").
+   *
+   * **The session itself stays**, and so does every per-die record. This
+   * forgets the *history*, which is one of the two records the app keeps and
+   * not the other — the same line `StatisticsRepository.resetDie` draws from
+   * the other side, where forgetting a die's aggregate leaves its rolls in the
+   * history. A screen that offers this has to say so.
+   *
+   * @return how many rolls were forgotten.
+   */
+  suspend fun forgetSession(sessionId: String): Int = database.rollHistoryWriting().forgetSession(sessionId)
+
+  /**
+   * Forgets every throw made through one saved roll.
+   *
+   * The saved roll itself stays; it is a formula somebody wrote down, and this
+   * is its record rather than the thing.
+   *
+   * @return how many throws were forgotten.
+   */
+  suspend fun forgetSavedRoll(savedRollId: String): Int = database.rollHistoryWriting().forgetSavedRoll(savedRollId)
+
   companion object {
     /**
      * How many rolls a history screen asks for.

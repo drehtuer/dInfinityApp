@@ -264,8 +264,19 @@ them out. Reproducing a stored roll is a developer action
 - Both exports are **snapshots**, read once when the player asks: a file is a
   copy taken at a moment, and a screen that re-exported itself every time a
   roll landed would be opening share sheets.
-- Reset per die and everything are built, each behind a confirmation dialog;
-  per saved roll and per session are not yet (`docs/TODO.md`, 4.7).
+- **Reset per die, per session, per saved roll and everything**, each behind a
+  confirmation. Per die and everything are on the statistics screen; per
+  session and per saved roll are on the **history**, beside Export and only
+  with that filter on — the two are the same act on the same rolls, keep a copy
+  of what you are looking at or be rid of it. "Forget the entire history" is
+  not offered there: it is a bigger thing than a filter being off, and
+  offering it beside a filter would make it look the same size.
+- **The two records are separate, and a reset says which one it forgets.**
+  Forgetting a die's aggregate leaves its rolls in the history; forgetting a
+  session's rolls leaves what each die has done, because `die_stats` and
+  `die_summary` carry no session to subtract from (see Storage). The
+  confirmation says so — a "forget" that half forgets, silently, would send
+  somebody back to the statistics wondering why nothing moved.
 - Nothing is uploaded anywhere. There is no analytics backend; the
   "statistics" in this document are the player's, on the player's phone. The
   share sheet is the player handing a copy on, which is a different act.

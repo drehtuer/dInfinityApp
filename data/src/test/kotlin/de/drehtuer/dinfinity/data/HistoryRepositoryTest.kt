@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -156,6 +157,75 @@ class HistoryRepositoryTest {
       assertEquals(2, history.recent(limit = 2).first().size)
     }
 
+  @Test
+  fun `a snapshot is everything, in the order the screens show it`() =
+    runTest {
+      given(formula = "old", at = 1_000)
+      given(formula = "new", at = 2_000)
+
+      assertEquals(listOf("new", "old"), history.snapshot().map { it.formula })
+    }
+
+  @Test
+  fun `a snapshot can be cut to one session, or to one saved roll`() =
+    runTest {
+      given(formula = "tuesday", session = "tuesday")
+      given(formula = "fireball", savedRollId = "fireball")
+      given(formula = "typed")
+
+      assertEquals(listOf("tuesday"), history.snapshot(sessionId = "tuesday").map { it.formula })
+      assertEquals(listOf("fireball"), history.snapshot(savedRollId = "fireball").map { it.formula })
+    }
+
+  @Test
+  fun `a snapshot carries no seed either, because it is the same type`() =
+    runTest {
+      // The rows in the table have one; `HistoryEntry` has nowhere to put it.
+      given(formula = "2d6")
+
+      val entry = history.snapshot().single()
+
+      assertFalse(
+        "a seed reached the export type",
+        entry.javaClass.declaredFields.any { it.name.contains("seed", ignoreCase = true) },
+      )
+    }
+
+  @Test
+  fun `forgetting a session takes its rolls and leaves every other`() =
+    runTest {
+      given(formula = "tuesday", session = "tuesday")
+      given(formula = "elsewhere", session = "default")
+
+      assertEquals(1, history.forgetSession("tuesday"))
+
+      assertEquals(listOf("elsewhere"), history.snapshot().map { it.formula })
+    }
+
+  @Test
+  fun `forgetting a saved roll takes its throws and not the same formula typed by hand`() =
+    runTest {
+      // The history knows the difference because a roll started from a saved
+      // roll carries its id.
+      given(formula = "8d6", savedRollId = "fireball")
+      given(formula = "8d6")
+
+      assertEquals(1, history.forgetSavedRoll("fireball"))
+
+      assertEquals(1, history.snapshot().size)
+      assertNull("the typed roll was taken too", history.snapshot().single().savedRollId)
+    }
+
+  @Test
+  fun `forgetting something that has no rolls forgets nothing and says so`() =
+    runTest {
+      given(formula = "2d6")
+
+      assertEquals(0, history.forgetSession("never-used"))
+      assertEquals(0, history.forgetSavedRoll("never-thrown"))
+      assertEquals(1, history.snapshot().size)
+    }
+
   private fun given(
     formula: String,
     at: Long = 1_000,
@@ -164,7 +234,7 @@ class HistoryRepositoryTest {
     breakdown: RollResult = one(value = 4),
   ) {
     runTest {
-      database.rollHistory().insert(
+      database.rollHistoryWriting().insert(
         RollHistoryRow(
           timestamp = at,
           sessionId = session,

@@ -229,7 +229,7 @@ class SessionRepositoryTest {
     naturalMax: Boolean = false,
   ) {
     runTest {
-      database.rollHistory().insert(
+      database.rollHistoryWriting().insert(
         RollHistoryRow(
           timestamp = NOW,
           sessionId = session,

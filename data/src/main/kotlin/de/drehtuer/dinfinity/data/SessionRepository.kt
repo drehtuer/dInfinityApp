@@ -104,7 +104,7 @@ class SessionRepository(
     require(sessionId != DEFAULT_ID) { "The first session is where rolls go; it cannot be deleted" }
     database.withTransaction {
       ensureDefault(defaultName)
-      database.rollHistory().moveSessionToUnfiled(sessionId, DEFAULT_ID)
+      database.rollHistoryWriting().moveSessionToUnfiled(sessionId, DEFAULT_ID)
       database.sessions().delete(sessionId)
     }
   }

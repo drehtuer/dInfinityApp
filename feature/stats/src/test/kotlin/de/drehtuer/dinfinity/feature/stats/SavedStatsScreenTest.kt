@@ -313,7 +313,7 @@ class SavedStatsScreenTest {
   ) {
     runBlocking {
       totals.forEachIndexed { index, total ->
-        database.rollHistory().insert(
+        database.rollHistoryWriting().insert(
           RollHistoryRow(
             timestamp = index.toLong(),
             sessionId = "default",
