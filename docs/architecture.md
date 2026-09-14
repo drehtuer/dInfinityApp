@@ -133,6 +133,14 @@ gives both back (decision 49). The roll *thread* and the Filament engine on it
 are the exception, and belong to the application rather than to a visit
 (decision 50).
 
+**Every screen is wired in one place.** `Presenters` names a factory per
+screen, with no optional fields and no defaults, so a destination that has been
+added but not wired stops the activity compiling rather than drawing a
+placeholder nobody notices — which is what happened to the sessions screen for
+a whole step. `DInfinityApp` takes it as nullable, because drawing placeholders
+for *everything* is a real mode: a Robolectric test of the navigation graph has
+no GPU and no physics engine. What that mode may not be is partial.
+
 **A visit is the back-stack entry, and nothing else.** A presenter is
 remembered against that entry, never against the lambda that builds it: such a
 lambda is built afresh on every recomposition, so remembering against one makes

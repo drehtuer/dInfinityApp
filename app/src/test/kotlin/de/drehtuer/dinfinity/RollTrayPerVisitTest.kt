@@ -24,6 +24,7 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.theme.DInfinityTheme
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -54,6 +55,11 @@ class RollTrayPerVisitTest {
   @get:Rule
   val compose = createComposeRule()
 
+  private val app = TestApp()
+
+  @After
+  fun close() = app.close()
+
   @Test
   fun `a preference arriving after launch does not build a second tray`() {
     var built = 0
@@ -62,10 +68,13 @@ class RollTrayPerVisitTest {
       DInfinityTheme {
         DInfinityApp(
           settings = settings,
-          rollPresenter = {
-            built++
-            presenter()
-          },
+          screens =
+            app.presenters().copy(
+              roll = {
+                built++
+                presenter()
+              },
+            ),
         )
       }
     }
@@ -89,10 +98,13 @@ class RollTrayPerVisitTest {
       DInfinityTheme {
         DInfinityApp(
           settings = settings,
-          rollPresenter = {
-            built++
-            presenter()
-          },
+          screens =
+            app.presenters().copy(
+              roll = {
+                built++
+                presenter()
+              },
+            ),
         )
       }
     }

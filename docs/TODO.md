@@ -228,6 +228,14 @@ The menu is built and **the navigation graph is connected**: every screen
 carries the same menu button and the menu reaches every screen
 (`docs/architecture.md`, "Screens and the states behind them").
 
+A screen can no longer be built and left unplugged. `Presenters` holds a
+factory per screen with no optional fields, so adding a destination stops the
+activity compiling until it says how to build one; the same object is what the
+tests wire, and one of them walks every menu destination and fails on a
+placeholder that is not Table picker or Face designer. Both halves were checked
+by putting the original bug back: removing the sessions screen's dispatch turns
+the list into `[sessions, tables, designer]`.
+
 - [ ] One row the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll). Decide whether it is a screen or belongs in the README. *Saved-roll statistics is built and in the menu (4.7).*
 - [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
@@ -235,8 +243,6 @@ and the repository link are all there, and each of them does something.
 
 - [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
 - [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)
-- [ ] Replace the single field on `DInfinityApplication` with a real container. `RollWiring` and `SavedWiring` are now the shape it should take; what is left is the application holding one of those rather than eight lazy fields
-- [ ] **Nothing catches a screen that was built and never plugged in.** `DInfinityApp` takes one nullable factory per screen and draws a placeholder for a null, which is right for a test of the graph and wrong for the app: the sessions screen was finished, tested and unreachable for a whole step, because `MainActivity` never passed its presenter and `DInfinityScreensTest` builds its own wiring and so cannot notice. The container above is the fix — one object holding every factory, used by the activity *and* by that test, so a missing screen is a compile error rather than a placeholder
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone

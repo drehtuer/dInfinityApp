@@ -12,15 +12,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
-import de.drehtuer.dinfinity.core.notation.DiceCatalog
-import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
-import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.graph.GraphTestTags
 import de.drehtuer.dinfinity.feature.settings.MenuTestTags
 import de.drehtuer.dinfinity.feature.settings.SettingsTestTags
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.GraphArgument
 import de.drehtuer.dinfinity.theme.DInfinityTheme
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -32,6 +30,16 @@ import org.robolectric.RobolectricTestRunner
 class DInfinityAppTest {
   @get:Rule
   val compose = createComposeRule()
+
+  /**
+   * The whole app, for the few tests here that want a real screen behind a
+   * route. Most of this class drives the graph with nothing plugged in, which
+   * is the right way to test the graph's own rules.
+   */
+  private val app = TestApp()
+
+  @After
+  fun close() = app.close()
 
   @Test
   fun `starts on the roll screen`() {
@@ -148,7 +156,7 @@ class DInfinityAppTest {
       navigation = rememberNavController()
       DInfinityTheme {
         DInfinityApp(
-          graphMachine = { GraphMachine(DiceCatalog.of(listOf(BuiltinDiceSet.set))) },
+          screens = app.presenters(),
           navController = navigation,
         )
       }
