@@ -12,11 +12,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -48,9 +53,14 @@ fun HistoryScreen(
   presenter: HistoryPresenter,
   modifier: Modifier = Modifier,
   formatter: (Long) -> String = TimeStamp::of,
+  onExport: (ExportFile) -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
+  // Which format, asked once and here rather than in the presenter: it is a
+  // question about this tap, and nothing on the screen depends on the answer
+  // afterwards.
+  var exporting by remember { mutableStateOf(false) }
   Column(
     modifier =
       modifier
@@ -59,18 +69,16 @@ fun HistoryScreen(
         .safeDrawingPadding()
         .testTag(HistoryTestTags.SCREEN),
   ) {
-    Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Text(
-        text = stringResource(R.string.history_title),
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.weight(1f),
+    Header(offerExport = !state.empty, onExport = { exporting = true }, menu = menu)
+
+    if (exporting) {
+      ExportDialog(
+        onDismiss = { exporting = false },
+        onChosen = { format ->
+          exporting = false
+          presenter.export(format, onExport)
+        },
       )
-      menu()
     }
 
     Choosers(state, presenter)
@@ -106,6 +114,78 @@ fun HistoryScreen(
       }
     }
   }
+}
+
+/**
+ * The title, the way out to a file, and the menu.
+ *
+ * Its own composable because the screen it sits on was at detekt's length
+ * limit, which is the limit doing its job: a screen function that is a list of
+ * everything on the screen is one nobody reads.
+ */
+@Composable
+private fun Header(
+  offerExport: Boolean,
+  onExport: () -> Unit,
+  menu: @Composable () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+      text = stringResource(R.string.history_title),
+      style = MaterialTheme.typography.titleLarge,
+      fontWeight = FontWeight.Bold,
+      color = MaterialTheme.colorScheme.onBackground,
+      modifier = Modifier.weight(1f),
+    )
+    // Only when there is something to export. A button that writes an empty
+    // file is a button that lies about having done something.
+    if (offerExport) {
+      TextButton(onClick = onExport, modifier = Modifier.testTag(HistoryTestTags.EXPORT)) {
+        Text(stringResource(R.string.history_export))
+      }
+    }
+    menu()
+  }
+}
+
+/**
+ * Which shape the file takes (`docs/statistics.md`, "Export and reset").
+ *
+ * Two formats because they answer different questions: JSON keeps the
+ * breakdown and is the one to keep, CSV is one row per roll and is the one a
+ * spreadsheet can draw. Offering one would be choosing for the player which
+ * question they are asking.
+ */
+@Composable
+private fun ExportDialog(
+  onDismiss: () -> Unit,
+  onChosen: (ExportFormat) -> Unit,
+) {
+  AlertDialog(
+    modifier = Modifier.testTag(HistoryTestTags.EXPORT_DIALOG),
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.history_export_title)) },
+    text = { Text(stringResource(R.string.history_export_body)) },
+    confirmButton = {
+      TextButton(
+        onClick = { onChosen(ExportFormat.Json) },
+        modifier = Modifier.testTag(HistoryTestTags.EXPORT_JSON),
+      ) {
+        Text(stringResource(R.string.history_export_json))
+      }
+    },
+    dismissButton = {
+      TextButton(
+        onClick = { onChosen(ExportFormat.Csv) },
+        modifier = Modifier.testTag(HistoryTestTags.EXPORT_CSV),
+      ) {
+        Text(stringResource(R.string.history_export_csv))
+      }
+    },
+  )
 }
 
 @Composable
@@ -364,6 +444,10 @@ object HistoryTestTags {
   const val ALL: String = "history:all"
   const val FILTERED_EMPTY: String = "history:filtered-empty"
   const val CLEAR_FILTER: String = "history:clear-filter"
+  const val EXPORT: String = "history:export"
+  const val EXPORT_DIALOG: String = "history:export:dialog"
+  const val EXPORT_JSON: String = "history:export:json"
+  const val EXPORT_CSV: String = "history:export:csv"
 
   /** The chooser's button for one session — not the heading, which is `sessionOf`. */
   fun sessionChoiceOf(id: String): String = "history:choose-session:$id"

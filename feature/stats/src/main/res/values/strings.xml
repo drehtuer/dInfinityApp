@@ -15,6 +15,13 @@
   <string name="history_filtered_empty">Nothing matches that yet.</string>
   <string name="history_clear_filter">Show everything</string>
 
+  <string name="history_export">Export</string>
+  <string name="history_export_title">Export these rolls</string>
+  <string name="history_export_body">A copy of what this list is showing, to keep or to send on. No seeds: a past roll is a record, not something to re-run.</string>
+  <string name="history_export_json">JSON — everything, breakdown included</string>
+  <string name="history_export_csv">CSV — one row per roll, for a spreadsheet</string>
+  <string name="history_export_cancel">Cancel</string>
+
   <!-- The statistics screen (design option 1w). -->
   <string name="stats_title">Statistics</string>
   <!-- Saved-roll statistics (design options 8b and 9e). -->

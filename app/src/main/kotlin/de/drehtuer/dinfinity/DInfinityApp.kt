@@ -436,7 +436,12 @@ private fun lookingBack(
 ): Boolean =
   when (destination) {
     Destination.History if history != null -> {
-      HistoryScreen(presenter = remember(entry) { history() }, menu = { MenuTo(navController) })
+      val context = LocalContext.current
+      HistoryScreen(
+        presenter = remember(entry) { history() },
+        onExport = { file -> NumbersSharing.share(context, file) },
+        menu = { MenuTo(navController) },
+      )
       true
     }
 

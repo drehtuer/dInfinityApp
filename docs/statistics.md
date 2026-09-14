@@ -226,8 +226,26 @@ them out. Reproducing a stored roll is a developer action
 
 ## Export and reset
 
-- Export everything as JSON or CSV via the share sheet.
-- Reset per die, per saved roll, per session, or everything, each with a
-  confirmation dialog.
+- **The history exports as JSON or CSV**, through the share sheet the way a
+  collection does. Two formats because they answer different questions: JSON
+  keeps the breakdown and is the one to keep, CSV is one row per roll and is
+  the one a spreadsheet can draw.
+- **What is exported is what the list is filtered to** — one session, one saved
+  roll, or everything — but not what is *paged* to. The screen asks for two
+  hundred rolls because nobody scrolls further; the file carries every roll the
+  filter matches, because a file quietly missing all but the newest page is
+  worse than no file, nothing about it having said so.
+- **No seed is ever written, and that is structural rather than remembered.**
+  The export is built from `HistoryEntry`, which has no seed on it — the column
+  exists in `roll_history` and is dropped on the way out of the repository. A
+  past roll is a record, not something to re-run, and a record carrying its
+  seed is a replay waiting to be written.
+- Times are ISO-8601 in UTC, not the way the screen shows them: a file outlives
+  the phone it was made on, and a localised date is one a spreadsheet has to
+  guess at. CSV is RFC 4180, so a formula with a comma in it stays one column.
+- Exporting the **statistics** is not built yet (`docs/TODO.md`, 4.7).
+- Reset per die and everything are built, each behind a confirmation dialog;
+  per saved roll and per session are not yet (`docs/TODO.md`, 4.7).
 - Nothing is uploaded anywhere. There is no analytics backend; the
-  "statistics" in this document are the player's, on the player's phone.
+  "statistics" in this document are the player's, on the player's phone. The
+  share sheet is the player handing a copy on, which is a different act.

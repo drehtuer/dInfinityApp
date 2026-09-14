@@ -191,11 +191,11 @@ The list is built: past rolls newest first, a tap to open one breakdown, every
 die including the dropped ones, the set a roll fell back to, corrections
 counted, and a natural maximum in the accent. It cuts to one session or one
 saved roll, with a chooser that is not drawn until there is more than one thing
-to choose between. No replay and no seed, which the types enforce rather than
-the screen remembering. Pruning at 50,000 rows was already done and tested in
-`StatisticsRepository`.
-
-- [ ] Export as JSON/CSV, without seeds, shared like a collection (4.3's sharing is the pattern)
+to choose between. It exports as JSON or CSV through the share sheet, carrying
+everything the filter matches rather than the page on screen. No replay and no
+seed, which the types enforce rather than the screen remembering — the export
+is built from `HistoryEntry`, which has none to write. Pruning at 50,000 rows
+was already done and tested in `StatisticsRepository`.
 
 ### 4.9 Sessions — `feature/stats`
 
