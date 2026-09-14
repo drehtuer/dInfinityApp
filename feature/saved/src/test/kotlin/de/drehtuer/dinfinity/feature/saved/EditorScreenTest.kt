@@ -29,6 +29,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -264,8 +265,68 @@ class EditorScreenTest {
     runBlocking { rolls.forEach { repository.save(it) } }
   }
 
+  @Test
+  fun `two new rolls made without being told an id do not collide`() {
+    // Every other test here hands in an id so it can assert on one. That left
+    // the generator the app actually ships with — the only one a player ever
+    // meets — never once run.
+    val first = presenterWithRealIds().apply { formula("2d6") }.asRoll()
+    val second = presenterWithRealIds().apply { formula("2d6") }.asRoll()
+
+    assertNotEquals("two new rolls were given the same id", first.id, second.id)
+    assertTrue("an id that is not there is not an id", first.id.isNotBlank())
+  }
+
+  @Test
+  fun `a new roll can arrive with its formula already typed`() {
+    // What the outcome graph's "Save as roll" carries: somebody who has been
+    // reading a formula's odds should not have to type it again.
+    val presenter = show(startingFormula = "2d6 + 3")
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    assertEquals("2d6 + 3", presenter.state.formula)
+    compose.onNodeWithTag(FormulaTestTags.FIELD).assertTextContains("2d6 + 3", substring = true)
+  }
+
+  @Test
+  fun `an existing roll opens on its own formula, and there is no other it could open on`() {
+    // A link that carried a formula into an existing roll would edit somebody's
+    // saved roll by being followed. `Editing` makes that unsayable rather than
+    // forbidden: `Existing` has no formula to carry. This asserts the
+    // behaviour that falls out of it — the helper below is handed both and the
+    // type takes only one.
+    given(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "8d6"))
+    val presenter = show(editing = "fireball", startingFormula = "1d4")
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    assertEquals("8d6", presenter.state.formula)
+  }
+
+  @Test
+  fun `a formula arriving with a new roll is checked like any other`() {
+    // It goes through the same live validation the field does, so the odds
+    // appear and a bad one says so rather than waiting for a keystroke.
+    val presenter = show(startingFormula = "this is not a formula")
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+    compose.waitUntil(PATIENCE) { presenter.state.error != null }
+
+    compose.onNodeWithTag(FormulaTestTags.ERROR).assertIsDisplayed()
+  }
+
+  /** An editor with the id generator the app ships with, rather than a fixed one. */
+  private fun presenterWithRealIds() =
+    EditorPresenter(
+      repository = repository,
+      catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+      scope = scope,
+    )
+
   private fun show(
     editing: String? = null,
+    startingFormula: String = "",
     onDone: () -> Unit = {},
     onRollNow: (String) -> Unit = {},
   ): EditorPresenter {
@@ -275,7 +336,7 @@ class EditorScreenTest {
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         ids = { "made-up" },
-        editing = editing,
+        opening = editing?.let(Editing::Existing) ?: Editing.New(startingFormula),
       )
     val groups = GroupPresenter(repository = repository, scope = scope, unfiledName = "Unfiled", ids = { "new-group" })
     compose.setContent {

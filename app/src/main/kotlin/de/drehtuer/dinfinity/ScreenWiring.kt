@@ -52,7 +52,7 @@ internal class ScreenWiring(
         }
       },
       savedGroups = saved::groups,
-      savedRollEditor = { editing -> saved.editor(editing, settings.activeGroupId) },
+      savedRollEditor = { opening -> saved.editor(opening, settings.activeGroupId) },
       collectionImport = saved::importing,
       history = { past() },
       statistics = {

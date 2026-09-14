@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,6 +41,8 @@ import de.drehtuer.dinfinity.ui.common.FormulaField
 fun GraphScreen(
   presenter: GraphPresenter,
   modifier: Modifier = Modifier,
+  onRoll: (String) -> Unit = {},
+  onSave: (String) -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   Column(
@@ -84,7 +88,7 @@ fun GraphScreen(
       is GraphState.TooLarge ->
         Note(text = state.reason, tag = GraphTestTags.TOO_LARGE)
 
-      is GraphState.Graphed -> Graphed(state, presenter)
+      is GraphState.Graphed -> Graphed(state, presenter, onRoll, onSave)
     }
   }
 }
@@ -93,6 +97,8 @@ fun GraphScreen(
 private fun Graphed(
   state: GraphState.Graphed,
   presenter: GraphPresenter,
+  onRoll: (String) -> Unit,
+  onSave: (String) -> Unit,
 ) {
   Question(chosen = state.mode, onAsk = presenter::show)
 
@@ -140,6 +146,45 @@ private fun Graphed(
   )
 
   Numbers(state.stats)
+
+  // Under the chart, because they are what somebody does *after* reading it
+  // (`design/dInfinity.dc.html`, option 7a). Only here, inside `Graphed`: a
+  // formula that does not parse is not one to roll or to keep, and a button
+  // that refuses is worse than one that is not there.
+  Doing(formula = presenter.text, onRoll = onRoll, onSave = onSave)
+}
+
+/**
+ * The two things to do with a formula you have just read the odds of.
+ *
+ * "Roll this" hands it to the tray; "Save as roll" opens the editor with it
+ * already typed. Neither does the thing itself — where those go is the
+ * navigation graph's business, and that belongs to `:app`
+ * (`docs/architecture.md`, Modules).
+ */
+@Composable
+private fun Doing(
+  formula: String,
+  onRoll: (String) -> Unit,
+  onSave: (String) -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Button(
+      onClick = { onRoll(formula) },
+      modifier = Modifier.weight(1f).testTag(GraphTestTags.ROLL_THIS),
+    ) {
+      Text(stringResource(R.string.graph_roll_this))
+    }
+    OutlinedButton(
+      onClick = { onSave(formula) },
+      modifier = Modifier.weight(1f).testTag(GraphTestTags.SAVE_AS_ROLL),
+    ) {
+      Text(stringResource(R.string.graph_save_as_roll))
+    }
+  }
 }
 
 /** `P(total = k)` or `P(total ≥ k)` — the question the bars answer. */

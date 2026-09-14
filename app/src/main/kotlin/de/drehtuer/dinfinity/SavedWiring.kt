@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity
 
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.feature.saved.Editing
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportPresenter
@@ -57,14 +58,14 @@ class SavedWiring(
 
   /** Writing one saved roll down, or a new one when [editing] is null. */
   fun editor(
-    editing: String?,
+    opening: Editing,
     defaultGroupId: String,
   ): EditorPresenter =
     EditorPresenter(
       repository = app.savedRolls,
       catalog = catalog,
       scope = scope,
-      editing = editing,
+      opening = opening,
       defaultGroupId = defaultGroupId,
     )
 }

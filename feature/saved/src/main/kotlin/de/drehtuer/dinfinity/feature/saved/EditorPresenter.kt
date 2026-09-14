@@ -41,19 +41,21 @@ class EditorPresenter(
       .randomUUID()
       .toString()
   },
-  editing: String? = null,
+  opening: Editing = Editing.New(),
   defaultGroupId: String = SavedRollGroup.UNFILED_ID,
 ) {
   /** What the screen draws. */
-  var state: EditorState by mutableStateOf(EditorState(groupId = defaultGroupId, tables = tableChoices()))
+  var state: EditorState by mutableStateOf(
+    EditorState(formula = opening.startingFormula, groupId = defaultGroupId, tables = tableChoices()),
+  )
     private set
 
-  private var id: String? = editing
+  private var id: String? = opening.existingId
 
   init {
     scope.launch {
       val groups = repository.groups.first()
-      val roll = editing?.let { repository.byId(it) }
+      val roll = opening.existingId?.let { repository.byId(it) }
       state =
         state.copy(
           name = roll?.name ?: state.name,
@@ -188,6 +190,42 @@ data class Odds(
   val lowest: Int,
   val highest: Int,
 )
+
+/**
+ * What the editor opens on (`design/dInfinity.dc.html`, options `1o` and `7a`).
+ *
+ * Two cases rather than an id and a formula side by side, because side by side
+ * they need a rule about which wins: an existing roll has a formula already,
+ * and one arriving in a link would silently edit somebody's saved roll by
+ * being followed. As two cases there is no rule to remember and none to get
+ * wrong — an [Existing] roll has nothing to start from, and a [New] one has no
+ * id.
+ */
+sealed interface Editing {
+  /** A roll that already exists. Its own formula is the one it has. */
+  data class Existing(
+    val id: String,
+  ) : Editing
+
+  /**
+   * A roll that does not exist yet.
+   *
+   * @param formula what it starts from — what the outcome graph's "Save as
+   *   roll" carries, so somebody who has been reading a formula's odds does
+   *   not have to type it again. Empty for a roll started from nothing.
+   */
+  data class New(
+    val formula: String = "",
+  ) : Editing
+}
+
+/** The id being edited, or null for a roll that does not exist yet. */
+internal val Editing.existingId: String?
+  get() = (this as? Editing.Existing)?.id
+
+/** What the formula field starts with, which only a new roll has. */
+internal val Editing.startingFormula: String
+  get() = (this as? Editing.New)?.formula.orEmpty()
 
 /** What the saved-roll editor is showing. */
 data class EditorState(

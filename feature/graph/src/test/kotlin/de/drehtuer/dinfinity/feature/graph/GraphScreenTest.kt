@@ -6,9 +6,11 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -141,9 +143,63 @@ class GraphScreenTest {
     compose.onNodeWithTag(GraphTestTags.CHART).assertIsDisplayed()
   }
 
+  @Test
+  fun `the chart offers to roll the formula it is about`() {
+    val rolled = mutableListOf<String>()
+    show("2d6 + 3", onRoll = rolled::add)
+
+    compose.onNodeWithTag(GraphTestTags.ROLL_THIS).performScrollTo().performClick()
+
+    assertEquals(listOf("2d6 + 3"), rolled)
+  }
+
+  @Test
+  fun `and offers to keep it`() {
+    val saved = mutableListOf<String>()
+    show("2d6 + 3", onSave = saved::add)
+
+    compose.onNodeWithTag(GraphTestTags.SAVE_AS_ROLL).performScrollTo().performClick()
+
+    assertEquals(listOf("2d6 + 3"), saved)
+  }
+
+  @Test
+  fun `what is handed on is what is in the field, not what the screen opened with`() {
+    // The formula can be edited here, in the same live-validated field the
+    // tray has. Handing on the one it opened with would be handing on the
+    // odds somebody had stopped looking at.
+    val rolled = mutableListOf<String>()
+    show("2d6", onRoll = rolled::add)
+
+    compose.onNodeWithTag(GraphTestTags.FORMULA).performTextReplacement("3d8")
+    compose.onNodeWithTag(GraphTestTags.ROLL_THIS).performScrollTo().performClick()
+
+    assertEquals(listOf("3d8"), rolled)
+  }
+
+  @Test
+  fun `neither is offered for a formula there are no odds for`() {
+    // A formula that does not parse is not one to roll or to keep, and a
+    // button that refuses is worse than one that is not there.
+    show("this is not a formula")
+
+    compose.onNodeWithTag(GraphTestTags.ROLL_THIS).assertDoesNotExist()
+    compose.onNodeWithTag(GraphTestTags.SAVE_AS_ROLL).assertDoesNotExist()
+  }
+
+  @Test
+  fun `nor with no formula at all`() {
+    show("")
+
+    compose.onNodeWithTag(GraphTestTags.ROLL_THIS).assertDoesNotExist()
+    compose.onNodeWithTag(GraphTestTags.SAVE_AS_ROLL).assertDoesNotExist()
+  }
+
   private fun show(
     formula: String,
     rolled: Int? = null,
+    onRoll: (String) -> Unit = {},
+    onSave: (String) -> Unit = {},
   ) {
     val presenter =
       GraphPresenter(
@@ -151,6 +207,6 @@ class GraphScreenTest {
         formula = formula,
         rolled = rolled,
       )
-    compose.setContent { GraphScreen(presenter = presenter) }
+    compose.setContent { GraphScreen(presenter = presenter, onRoll = onRoll, onSave = onSave) }
   }
 }

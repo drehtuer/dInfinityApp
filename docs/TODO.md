@@ -99,9 +99,12 @@ Design `1k`–`1m`, `2c`, `7a`. Spec: `docs/probability.md`.
 The screen is built: the bar chart with its mean line and ±1σ band, the
 `P(= k)` / `P(≥ k)` question, a tap for the exact numbers, the six statistics,
 and the roll that opened it marked in the accent. It is reached from the roll
-screen's **See the odds**.
+screen's **See the odds**, and under the chart are the two things to do with a
+formula whose odds you have just read: **Roll this** hands it to the tray, and
+**Save as roll** opens the editor with it already typed. Both carry what is in
+the field rather than what the screen opened with, and neither is offered for a
+formula there are no odds for.
 
-- [ ] "Roll this" and "Save as roll" under the chart. The first needs to hand a formula back to the roll screen, which no navigation does yet; the second needs saved rolls (4.3)
 - [ ] *Judge the chart on the phone:* whether a hundred and ten bars at three dp each reads as a distribution or as a smear, and whether the ±1σ band behind the bars is visible enough to mean anything in both themes
 - [ ] The ledger (`1m`) and the stepped area (`1l`) are alternative presentations of the same numbers; `1k` is the default and the other two are not v1
 

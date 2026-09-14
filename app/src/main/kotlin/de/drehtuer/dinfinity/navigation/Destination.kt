@@ -78,7 +78,13 @@ enum class Destination(
    * saved-rolls screen or its "New" button (`design/dInfinity.dc.html`,
    * option 1r).
    */
-  SavedRollEditor("editor", "Saved roll", "", group = null, arguments = listOf(EditorArgument.ROLL)),
+  SavedRollEditor(
+    "editor",
+    "Saved roll",
+    "",
+    group = null,
+    arguments = listOf(EditorArgument.ROLL, EditorArgument.FORMULA),
+  ),
 
   /**
    * Taking a collection of saved rolls in
@@ -157,6 +163,18 @@ object GraphArgument {
 object EditorArgument {
   /** The roll being edited, or empty for a new one. */
   const val ROLL: String = "roll"
+
+  /**
+   * A formula to start a new roll from, or empty to start from nothing.
+   *
+   * What the outcome graph's "Save as roll" carries: somebody who has been
+   * looking at a formula's odds and decides to keep it should not have to
+   * retype it (`design/dInfinity.dc.html`, option 7a).
+   *
+   * Ignored when [ROLL] names a roll that already exists — that roll has a
+   * formula of its own, and the one in the link would be overwriting it.
+   */
+  const val FORMULA: String = "formula"
 }
 
 /**
