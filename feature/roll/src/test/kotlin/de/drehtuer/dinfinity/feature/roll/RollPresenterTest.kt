@@ -197,19 +197,82 @@ class RollPresenterTest {
         object : DiceSimulator {
           override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
         },
-      seeds = { 1L },
-      clock = { 0L },
+      outside = Outside(seeds = { 1L }, clock = { 0L }),
     )
 
-  private fun presenter(rolls: RecordingRolls) =
-    RollPresenter(
-      machine = machine(),
-      driver = DirectTray(),
-      rolls = rolls,
-      // Straight through, so the test sees what the screen would see without
-      // having to pump a looper for it.
-      toTheScreen = { it() },
+  @Test
+  fun `a throw that lands is handed over to be written down`() {
+    // Nothing recorded a roll before this: the statistics tables existed and
+    // were never written to (`docs/statistics.md`).
+    val written = mutableListOf<FinishedThrow>()
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5, 1 to 5)), { written += it })
+
+    presenter.type("2d6")
+    presenter.roll()
+
+    assertEquals(1, written.size)
+    assertEquals(12L, written.single().result.total)
+    // The plan goes with it, because the result knows which face came up and
+    // only the plan knows which die it was.
+    assertEquals(
+      2,
+      written
+        .single()
+        .plan.dice.size,
     )
+  }
+
+  @Test
+  fun `the seed goes with it, for a bug report that needs the throw back`() {
+    val written = mutableListOf<FinishedThrow>()
+    val rolls = RecordingRolls(faces = mapOf(0 to 5))
+    val presenter = presenter(rolls, { written += it })
+
+    presenter.type("1d6")
+    presenter.roll()
+
+    assertEquals(rolls.started.single().seed, written.single().seed)
+  }
+
+  @Test
+  fun `re-rounding the same throw does not write it down again`() {
+    // The dice do not move, so it is the same roll. A history with one row per
+    // rounding somebody tried would be a history of the buttons pressed.
+    val written = mutableListOf<FinishedThrow>()
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)), { written += it })
+    presenter.type("1d6 / 2")
+    presenter.roll()
+
+    presenter.round(Rounding.Up)
+    presenter.round(Rounding.Nearest)
+
+    assertEquals(1, written.size)
+  }
+
+  @Test
+  fun `throwing again writes a second roll down`() {
+    val written = mutableListOf<FinishedThrow>()
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)), { written += it })
+    presenter.type("1d6")
+
+    presenter.roll()
+    presenter.roll()
+
+    assertEquals(2, written.size)
+  }
+
+  private fun presenter(
+    rolls: RecordingRolls,
+    recorder: ThrowRecorder = ThrowRecorder.NONE,
+  ) = RollPresenter(
+    machine = machine(),
+    driver = DirectTray(),
+    rolls = rolls,
+    recorder = recorder,
+    // Straight through, so the test sees what the screen would see without
+    // having to pump a looper for it.
+    toTheScreen = { it() },
+  )
 
   /**
    * A tray that throws the dice where it stands.

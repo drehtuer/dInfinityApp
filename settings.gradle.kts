@@ -30,6 +30,11 @@ include(":core:notation")
 include(":core:probability")
 include(":core:stats")
 
+// The saved-roll collection format: read, written and validated. A collection
+// is a file from a stranger, so it lives beside the notation it carries rather
+// than in the screen that opens it (docs/architecture.md, Modules).
+include(":core:collection")
+
 include(":dicesets:format")
 include(":dicesets:builtin")
 include(":dicesets:install")

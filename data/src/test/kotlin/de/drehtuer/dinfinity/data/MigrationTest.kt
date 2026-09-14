@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.data.db.SavedRollGroupRow
 import de.drehtuer.dinfinity.data.db.SavedRollRow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -83,6 +84,36 @@ class MigrationTest {
         )
 
         assertEquals("Fireball", database.savedRolls().byId("fireball")?.name)
+      }
+    }
+
+  @Test
+  fun `the rolls made before sessions existed belong to the first session`() =
+    runTest {
+      // The session column has carried a value since version 1, which is why
+      // this is a rename rather than a migration: the migration gives the id
+      // those rows already point at a name (`docs/statistics.md`).
+      writeVersion1 { db ->
+        db.execSQL(
+          """
+          INSERT INTO roll_history
+            (timestamp, session_id, formula, total, seed, breakdown_json, anomalies)
+          VALUES (1, 'default', '1d20', 20, 7, '{}', 0)
+          """.trimIndent(),
+        )
+      }
+
+      withDatabase { database ->
+        val first = database.sessions().byId("default")
+        assertEquals("First rolls", first?.name)
+        assertEquals(
+          1,
+          database
+            .rollHistory()
+            .inSession("default", 10)
+            .first()
+            .size,
+        )
       }
     }
 

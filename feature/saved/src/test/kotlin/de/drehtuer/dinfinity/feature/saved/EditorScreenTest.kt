@@ -271,7 +271,10 @@ class EditorScreenTest {
         ids = { "made-up" },
         editing = editing,
       )
-    compose.setContent { EditorScreen(presenter = presenter, onDone = onDone, onRollNow = onRollNow) }
+    val groups = GroupPresenter(repository = repository, scope = scope, unfiledName = "Unfiled", ids = { "new-group" })
+    compose.setContent {
+      EditorScreen(presenter = presenter, groups = groups, onDone = onDone, onRollNow = onRollNow)
+    }
     return presenter
   }
 

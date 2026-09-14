@@ -11,8 +11,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * The app's database (`docs/statistics.md`, "Storage").
  *
  * Version 1 is the three statistics tables. Version 2 adds saved rolls and
- * their groups. Sessions and the installed-set registry arrive with the
- * screens that need them (`docs/TODO.md`, Step 4), each as a migration —
+ * their groups. Version 3 adds sessions. The installed-set registry arrives
+ * with the screen that needs it (`docs/TODO.md`, Step 4), as a migration —
  * which is the point of writing migrations from day one rather than from the
  * first release. A database that has only ever been created, never migrated,
  * is a database whose first migration is written under pressure.
@@ -31,6 +31,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     DieSummaryRow::class,
     SavedRollGroupRow::class,
     SavedRollRow::class,
+    SessionRow::class,
   ],
   version = DInfinityDatabase.VERSION,
   exportSchema = true,
@@ -46,9 +47,11 @@ abstract class DInfinityDatabase : RoomDatabase() {
 
   abstract fun savedRolls(): SavedRollDao
 
+  abstract fun sessions(): SessionDao
+
   companion object {
     /** Bumping this needs a migration and a checked-in schema. Both are enforced. */
-    const val VERSION: Int = 2
+    const val VERSION: Int = 3
 
     /** The file the app opens (`docs/architecture.md`, "Storage layout"). */
     const val NAME: String = "dinfinity.db"
@@ -59,7 +62,7 @@ abstract class DInfinityDatabase : RoomDatabase() {
      * The list was wired up while it was empty, which is why adding the first
      * entry was one line rather than a change to how the database opens.
      */
-    val MIGRATIONS: List<Migration> = listOf(MIGRATION_1_2)
+    val MIGRATIONS: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3)
 
     /** Opens the database, migrating it if it is older. */
     fun open(
@@ -132,5 +135,40 @@ internal val MIGRATION_1_2: Migration =
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_roll_group_id` ON `saved_roll` (`group_id`)")
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_roll_favourite` ON `saved_roll` (`favourite`)")
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_roll_last_used_at` ON `saved_roll` (`last_used_at`)")
+    }
+  }
+
+/**
+ * Version 2 → 3: sessions (`docs/statistics.md`, per session).
+ *
+ * One new table and nothing touched. `roll_history.session_id` has been there
+ * since version 1 and every row already carries a value, so the rolls somebody
+ * made before sessions existed do not become orphans the moment sessions do —
+ * they belong to a session that can now be named, which is why that column was
+ * never left empty (`RollRecording.NO_SESSION`).
+ *
+ * The default session is inserted here rather than by the first screen to want
+ * one: a history full of rows pointing at a session that does not exist is a
+ * join that quietly drops them.
+ */
+internal val MIGRATION_2_3: Migration =
+  object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `session` (
+          `id` TEXT NOT NULL,
+          `name` TEXT NOT NULL,
+          `started_at` INTEGER NOT NULL,
+          PRIMARY KEY(`id`)
+        )
+        """.trimIndent(),
+      )
+      db.execSQL("CREATE INDEX IF NOT EXISTS `index_session_started_at` ON `session` (`started_at`)")
+      // The one every roll made before this migration already belongs to.
+      db.execSQL(
+        "INSERT OR IGNORE INTO `session` (`id`, `name`, `started_at`) VALUES " +
+          "('default', 'First rolls', 0)",
+      )
     }
   }

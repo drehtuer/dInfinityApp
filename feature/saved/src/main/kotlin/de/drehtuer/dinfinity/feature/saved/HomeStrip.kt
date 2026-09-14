@@ -1,0 +1,181 @@
+package de.drehtuer.dinfinity.feature.saved
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+
+/**
+ * The active group's saved rolls, on the tray
+ * (`design/dInfinity.dc.html`, option 9a; `docs/dice-notation.md`:
+ * "the home screen shows the active group as tiles").
+ *
+ * **A tap here throws**, where a tap on the saved-rolls list only puts the
+ * formula in the field. The two are not inconsistent: a saved roll *is* a
+ * named formula rolled with one tap, and this is the one place in the app
+ * where the tray is already on screen to roll it on. From the list you are
+ * somewhere else, and arriving at the tray with a throw already finished would
+ * be a roll nobody watched.
+ *
+ * Tiles rather than rows, and one line of them: the tray is the screen, and
+ * every millimetre this takes is table a player is not looking at. Long-press
+ * edits, the same gesture as on the list.
+ *
+ * Handed to the roll screen as a slot rather than built by it. A feature module
+ * that knew what a saved roll was would be one feature module depending on
+ * another, which is the same rule the menu button follows
+ * (`docs/architecture.md`, "Screens and the states behind them").
+ */
+@Composable
+fun HomeStrip(
+  presenter: SavedPresenter,
+  modifier: Modifier = Modifier,
+  onRoll: (String) -> Unit = {},
+  onEdit: (String) -> Unit = {},
+  onNew: () -> Unit = {},
+) {
+  val state = presenter.state
+  // Nothing at all until the database has answered. An empty strip that fills
+  // in a frame later is the tray jumping as it opens.
+  if (!state.loaded) return
+
+  LazyRow(
+    modifier = modifier.fillMaxWidth().testTag(HomeStripTestTags.STRIP),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    items(state.rolls, key = { it.roll.id }) { entry ->
+      Tile(
+        entry = entry,
+        onRoll = {
+          presenter.used(entry.roll.id)
+          onRoll(entry.roll.formula)
+        },
+        onEdit = { onEdit(entry.roll.id) },
+      )
+    }
+    // Last, and the only thing there when the group is empty — which is what
+    // "the strip invites the first save" means. A strip that simply vanished
+    // would never tell anybody saved rolls exist.
+    item(key = INVITATION) {
+      Invitation(first = state.rolls.isEmpty(), onNew = onNew)
+    }
+  }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Tile(
+  entry: SavedEntry,
+  onRoll: () -> Unit,
+  onEdit: () -> Unit,
+) {
+  val roll = entry.roll
+  Column(
+    modifier =
+      Modifier
+        .widthIn(min = 72.dp, max = 132.dp)
+        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+        .combinedClickable(
+          onClickLabel = stringResource(R.string.saved_roll_it, roll.name),
+          onLongClickLabel = stringResource(R.string.saved_edit_it, roll.name),
+          onClick = onRoll,
+          onLongClick = onEdit,
+        ).semantics(mergeDescendants = true) {}
+        .testTag(HomeStripTestTags.tileOf(roll.id))
+        .padding(horizontal = 10.dp, vertical = 6.dp),
+    verticalArrangement = Arrangement.spacedBy(2.dp),
+  ) {
+    Text(
+      text = roll.icon.ifBlank { STRIP_ICON },
+      style = MaterialTheme.typography.bodyMedium,
+      color = roll.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary,
+    )
+    Text(
+      text = roll.name,
+      style = MaterialTheme.typography.labelLarge,
+      fontWeight = FontWeight.SemiBold,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
+    // A roll whose dice are gone is still throwable — it falls back — so it is
+    // marked rather than disabled (`docs/dice-notation.md`).
+    Text(
+      text = if (entry.broken) stringResource(R.string.strip_broken) else roll.formula,
+      style = MaterialTheme.typography.labelSmall,
+      color =
+        if (entry.broken) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+      modifier = Modifier.testTag(HomeStripTestTags.noteOf(roll.id)),
+    )
+  }
+}
+
+@Composable
+private fun Invitation(
+  first: Boolean,
+  onNew: () -> Unit,
+) {
+  Column(
+    modifier =
+      Modifier
+        .widthIn(min = 72.dp)
+        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+        .combinedClickableInvitation(onNew)
+        .testTag(HomeStripTestTags.NEW)
+        .padding(horizontal = 10.dp, vertical = 6.dp),
+    verticalArrangement = Arrangement.spacedBy(2.dp),
+  ) {
+    Text(
+      text = "+",
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.primary,
+    )
+    Text(
+      text = stringResource(if (first) R.string.strip_first else R.string.strip_new),
+      style = MaterialTheme.typography.labelLarge,
+      fontWeight = FontWeight.SemiBold,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      maxLines = 2,
+    )
+  }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+private fun Modifier.combinedClickableInvitation(onNew: () -> Unit): Modifier =
+  combinedClickable(onClick = onNew).semantics(mergeDescendants = true) {}
+
+/** What a roll with no mark of its own wears, small. */
+private const val STRIP_ICON = "●"
+
+/** The key the invitation keeps, so it is not re-made as rolls come and go. */
+private const val INVITATION = "strip:new"
+
+/** What the tests reach the home strip by. */
+object HomeStripTestTags {
+  const val STRIP: String = "strip"
+  const val NEW: String = "strip:new"
+
+  fun tileOf(id: String): String = "strip:tile:$id"
+
+  fun noteOf(id: String): String = "strip:tile:$id:note"
+}

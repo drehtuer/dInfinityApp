@@ -5,7 +5,7 @@ moves, a decision is taken or something is blocked; prune anything that is no
 longer current. This is a snapshot, not a changelog — git history is the
 changelog.
 
-**Last updated:** 2026-09-13
+**Last updated:** 2026-09-14
 
 ## Where we are
 
@@ -18,7 +18,8 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #75 is merged and `main` is green.
+- **Branch state:** everything up to #93 is merged and `main` is green;
+  #94–#104 are a stack waiting to be merged oldest first.
 
 ## Done
 
@@ -56,45 +57,41 @@ changelog.
 
 ## In progress
 
-- **Step 4.1.** What the screen has: the tray — drawn from the moment the
-  screen opens, with nothing on it, rather than black until the first throw —
-  a live-validated formula field, roll from the Roll button or a shake, a
-  refusal for a throw the table cannot hold, a total, the breakdown under it
-  with every die that landed, Down / Nearest / Up for a throw that divides,
-  pinch-to-zoom and two-finger pan over a camera that never moves on its own,
-  a dice picker row that taps dice into the formula field, and
-  a squiggle under the part of a bad formula that is wrong, with a one-tap fix
-  where the mistake has an obvious reading, and a power-saving mode that throws
-  the dice without drawing them, and a first-launch screen that offers to throw
-  a d20 and then gets out of the way. What it has not: the set dropdown, the
-  saved-rolls strip, and numbers on the faces. All listed in `docs/TODO.md`.
-- **Step 4.2.** The outcome graph is on screen: the exact distribution from
-  `core/probability` as bars, with its mean line, its ±1σ band, the
-  `P(= k)` / `P(≥ k)` question, a tap for the exact numbers, and the roll that
-  opened it marked. Reached from the roll screen's "See the odds", which is
-  the first navigation in the app to carry an argument. The formula cannot yet
-  be edited there — that wants the roll screen's squiggling field somewhere
-  both screens can reach.
-- **Step 4.3.** Database version 2 adds saved rolls and their groups, arriving
-  as a migration that is run — not merely asserted to exist — against a
-  database built from version 1's own exported schema. The list is on screen
-  too: groups, favourites-first ordering, a warning on a roll whose dice are
-  gone, and a tap that sends a formula to the tray. The editor writes one down
-  — name, formula with its exact mean and range, icon, colour, group, table
-  pin and favourite — and refuses to save a formula that does not read.
-  Import/export is what is left.
-- **`ui/common` holds the screen furniture more than one screen needs**: the
-  live-validated formula field with its squiggle, and the die silhouettes. The
-  outcome graph's formula is editable now for the same reason it exists — two
-  screens validating a formula separately would eventually disagree about
-  whether somebody's formula is valid.
-- **The navigation graph is connected.** Step 4.10's menu lists every screen
-  and every screen carries the button that opens it, so nothing is reachable
-  only by not having left it yet. The placeholders are still placeholders.
-- **The screens' state machines are written down.** `docs/architecture.md` now
-  carries the navigation graph, `RollState`, the shake, the tray and the
-  Settings screen as diagrams and control tables, so a transition nobody
+**Step 4 is where the work is: seven of the ten screens do something.**
+
+- **4.1 Roll.** The tray from the moment the screen opens, a live-validated
+  formula field with a squiggle under the part that is wrong and a one-tap fix,
+  the dice picker row, the saved-roll strip, roll from the button or a shake, a
+  refusal for a throw the table cannot hold, the total and its breakdown,
+  Down / Nearest / Up, pinch and pan, power-saving, first launch. Missing: the
+  set dropdown and numbers on the faces.
+- **4.2 Outcome graph.** The exact distribution as bars with its mean line and
+  ±1σ band, `P(= k)` / `P(≥ k)`, a tap for the numbers, the roll that opened it
+  marked. Reached from "See the odds" — the first navigation carrying an
+  argument.
+- **4.3 Saved rolls.** Database version 2, the list, the editor, and groups
+  made, renamed, moved and deleted from one sheet. Collections travel as JSON
+  through `core/collection`: exported through the share sheet, imported from a
+  file — read before anything is written, every line wrong with a bad file
+  listed, and a duplicate group name refused outright with nothing merged.
+  Importing from a URL waits on the `INTERNET` permission.
+- **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
+  a history row, a face count per die and a running summary, in one transaction
+  — which the tables had been waiting for since version 1. The history lists
+  every roll with the breakdown it was made of; the statistics show each die
+  against what a fair one would do; database version 3 adds sessions, and the
+  migration names the one the old rolls already belonged to.
+- **4.10 Settings and the menu.** The navigation graph is connected: every
+  screen carries the same button and the menu reaches every screen. Settings
+  has appearance, the accent, shake, the default rounding, power saving, the
+  version and a link to the source. Haptics and sound are deliberately absent —
+  nothing plays anything yet, and a row that does nothing is a lie.
+- **The screens' state machines are written down.** `docs/architecture.md`
+  carries every one as a diagram and a control table, so a transition nobody
   thought about is visible rather than latent.
+- **`ui/common`** holds the furniture more than one screen needs: the
+  live-validated formula field and the die silhouettes. Three screens agreeing
+  about a mistake is the whole reason it exists.
 
 ## Blocked / waiting on
 
@@ -132,3 +129,9 @@ changelog.
 - The container's emulator is an automated-test image with no real GPU and no
   display, so `screencap` returns black. It answers "does this run", never
   "does this look right" — the phone is the only answer to the second.
+- **Branch coverage sits near 70 % against a floor of 62 and has drifted down
+  as the screens landed.** Seven in ten of the missed branches are inside
+  `@Composable` functions, where the compiler emits a skip branch a test can
+  only take one side of. The answer has been to lift decisions out of draw
+  lambdas and test those; whether the floor should follow the drift is a
+  question in `docs/TODO.md` for a person.

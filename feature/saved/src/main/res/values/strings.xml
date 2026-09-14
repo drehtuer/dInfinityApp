@@ -37,4 +37,68 @@
   <string name="editor_save">Save roll</string>
   <string name="editor_roll_now">Roll now</string>
   <string name="editor_delete">Delete</string>
+  <!-- Making, renaming and removing groups (design option 1p). -->
+  <string name="group_title_new">New group</string>
+  <string name="group_title_edit">Edit group</string>
+  <string name="group_name">Name</string>
+  <string name="group_name_hint">Curse of Strahd</string>
+  <!-- %1$s is the name of the group that already has this name. -->
+  <string name="group_name_taken">“%1$s” already has that name. Pick another.</string>
+  <string name="group_icon">Mark</string>
+  <string name="group_parent">Inside</string>
+  <string name="group_parent_none">Nothing — top level</string>
+  <string name="group_parent_has_children">This group has groups inside it, so it cannot go inside another. Groups nest one level.</string>
+  <string name="group_save">Save group</string>
+  <string name="group_delete">Delete</string>
+  <string name="group_cancel">Cancel</string>
+  <string name="group_new">New group</string>
+  <!-- %1$s is the group's name, for TalkBack. -->
+  <string name="group_edit_it">Edit the group %1$s</string>
+  <!-- %1$d is how many rolls would move to Unfiled if the group went. -->
+  <plurals name="group_delete_moves">
+    <item quantity="one">Deleting it moves %1$d roll to Unfiled. Nothing is deleted.</item>
+    <item quantity="other">Deleting it moves %1$d rolls to Unfiled. Nothing is deleted.</item>
+  </plurals>
+  <!-- Exporting a collection (docs/dice-notation.md, "Export and import"). -->
+  <string name="collections_title">Collections</string>
+  <string name="export_note">A collection travels as one file: the names, the formulas and the marks, and nothing the app made of them.</string>
+  <!-- %1$s is the group's name. -->
+  <string name="export_group">“%1$s”, with any groups inside it</string>
+  <string name="export_everything">Everything</string>
+  <string name="export_open">Collections: export or import</string>
+  <!-- Importing a collection (design options 9f and 9g). -->
+  <string name="import_title">Import a collection</string>
+  <string name="import_explain">A collection is one file of saved rolls and the groups they live in — a character, a campaign, a stat block somebody shared.</string>
+  <string name="import_never_merges">Nothing already saved is changed. If a group in the file has a name you already use, the import is refused and says which.</string>
+  <string name="import_choose">Choose a file</string>
+  <string name="import_again">Choose another file</string>
+  <string name="import_unopenable">That file could not be opened.</string>
+  <!-- %1$d is how many things are wrong with the file. -->
+  <plurals name="import_unreadable">
+    <item quantity="one">That file is not a collection. One thing is wrong with it:</item>
+    <item quantity="other">That file is not a collection. %1$d things are wrong with it:</item>
+  </plurals>
+  <!-- %1$s is the group name in the file that is already taken. -->
+  <string name="import_clash">You already have a group called “%1$s”.</string>
+  <string name="import_clash_what_to_do">Nothing was imported and nothing was changed. Rename the group in the file, or the one here, and import again.</string>
+  <!-- %1$s is the collection's name. -->
+  <string name="import_done">“%1$s” is in.</string>
+  <!-- %1$s is a number of groups, %2$s a number of rolls. -->
+  <string name="import_counts">%1$s and %2$s were added.</string>
+  <plurals name="import_groups">
+    <item quantity="one">%1$d group</item>
+    <item quantity="other">%1$d groups</item>
+  </plurals>
+  <!-- %1$d is how many rolls use dice that are not installed. -->
+  <plurals name="import_warnings">
+    <item quantity="one">One roll uses dice that are not installed. It came in as written, and falls back to the built-in dice until that set is installed:</item>
+    <item quantity="other">%1$d rolls use dice that are not installed. They came in as written, and fall back to the built-in dice until those sets are installed:</item>
+  </plurals>
+  <string name="import_see">See the rolls</string>
+  <string name="import_open">Import a collection…</string>
+  <string name="import_note">From a file somebody sent you</string>
+  <!-- The saved-roll strip on the tray (design option 9a). -->
+  <string name="strip_first">Save a roll</string>
+  <string name="strip_new">New</string>
+  <string name="strip_broken">dice missing</string>
 </resources>

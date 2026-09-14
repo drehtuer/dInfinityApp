@@ -10,6 +10,28 @@ package de.drehtuer.dinfinity.core.model
 data class AppSettings(
   val accentColor: AccentColor = AccentColor.Default,
   /**
+   * Light, dark, or whatever the phone is doing
+   * (`design/dInfinity.dc.html`, option 1q).
+   */
+  val appearance: Appearance = Appearance.System,
+  /**
+   * Whether shaking the phone throws the dice
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * On by default, because it is the thing that makes this a dice app rather
+   * than a number generator. Off means the sensors are never registered at
+   * all, which is also the only setting here that saves any power.
+   */
+  val shakeToRoll: Boolean = true,
+  /**
+   * Which way division rounds unless a throw says otherwise
+   * (`docs/dice-notation.md`, "Division rounding").
+   *
+   * Down by default, which is what most game rules say. The result sheet can
+   * re-round the throw in front of you, and that override is not remembered.
+   */
+  val rounding: Rounding = Rounding.Default,
+  /**
    * Roll without drawing the dice (`design/dInfinity.dc.html`, option 1z).
    *
    * Off by default and **only ever changed here**: a roll that silently
@@ -37,4 +59,25 @@ data class AppSettings(
    * session follow.
    */
   val activeGroupId: String = SavedRollGroup.UNFILED_ID,
-)
+  /**
+   * The session new rolls are filed under (`docs/statistics.md`, per session).
+   *
+   * A preference in the sense that matters: it outlives the screen that chose
+   * it, the roll screen reads it on every throw, and the history reads it to
+   * know whether its session headings mean anything.
+   */
+  val activeSessionId: String = DEFAULT_SESSION_ID,
+) {
+  companion object {
+    /**
+     * The session a roll belongs to when nothing else says.
+     *
+     * The same id the sessions table's first row carries, so the rolls made
+     * before there were sessions belong to the first session rather than to
+     * nothing. `SessionRepository.DEFAULT_ID` is the other end of it; the
+     * model cannot see `data`, so the string is written twice and asserted
+     * equal in `RollRecordingTest`.
+     */
+    const val DEFAULT_SESSION_ID: String = "default"
+  }
+}

@@ -25,12 +25,16 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
  * between them goes through [toTheScreen] — so nothing here is ever touched
  * from two threads at once (`docs/architecture.md`, "Threading").
  *
+ * @param recorder what writes a finished throw down. An interface rather than
+ *   a repository, so this module cannot reach a database
+ *   (`docs/architecture.md`, "Modules").
  * @param toTheScreen how work gets back to the thread Compose reads on.
  */
 class RollPresenter(
   private val machine: RollMachine,
   private val driver: Tray,
   private val rolls: Rolls,
+  private val recorder: ThrowRecorder = ThrowRecorder.NONE,
   private val toTheScreen: (() -> Unit) -> Unit = { MAIN.post(it) },
 ) {
   /** What the screen draws. */
@@ -103,7 +107,10 @@ class RollPresenter(
       start = { watcher -> rolls.start(spec, watcher) },
       onSettled = { outcome ->
         toTheScreen {
-          machine.settled(outcome)
+          // Written down on the screen's thread, where the result exists, and
+          // handed to something that takes it away — a roll is finished when
+          // the dice stop, not when a database says so.
+          machine.settled(outcome)?.let(recorder::record)
           publish()
         }
       },

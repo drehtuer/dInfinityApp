@@ -8,6 +8,8 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.Appearance
+import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -22,6 +24,11 @@ import java.io.IOException
  * repairs it. That is only true for *read* failures — a write that fails still
  * throws, because silently not saving what someone just chose is worse than an
  * error.
+ *
+ * Every key is written on every change rather than only the one that moved.
+ * `edit` is one atomic transaction either way, the file is a handful of
+ * values, and writing the whole of what was decided means a setting can never
+ * be half-applied.
  */
 class DataStoreSettingsRepository(
   private val dataStore: DataStore<Preferences>,
@@ -30,38 +37,47 @@ class DataStoreSettingsRepository(
     dataStore.data
       .catch { cause ->
         if (cause is IOException) emit(emptyPreferences()) else throw cause
-      }.map { preferences ->
-        AppSettings(
-          accentColor = AccentColor.ofId(preferences[ACCENT_COLOUR]),
-          powerSaving = preferences[POWER_SAVING] == true,
-          welcomeSeen = preferences[WELCOME_SEEN] == true,
-          activeGroupId = preferences[ACTIVE_GROUP] ?: SavedRollGroup.UNFILED_ID,
-        )
-      }
+      }.map(::settingsOf)
 
-  override suspend fun setAccentColor(accent: AccentColor) {
-    dataStore.edit { preferences -> preferences[ACCENT_COLOUR] = accent.id }
+  override suspend fun update(change: (AppSettings) -> AppSettings) {
+    dataStore.edit { preferences ->
+      val changed = change(settingsOf(preferences))
+      preferences[ACCENT_COLOUR] = changed.accentColor.id
+      preferences[APPEARANCE] = changed.appearance.id
+      preferences[POWER_SAVING] = changed.powerSaving
+      preferences[SHAKE_TO_ROLL] = changed.shakeToRoll
+      preferences[ROUNDING] = changed.rounding.id
+      preferences[WELCOME_SEEN] = changed.welcomeSeen
+      preferences[ACTIVE_GROUP] = changed.activeGroupId
+      preferences[ACTIVE_SESSION] = changed.activeSessionId
+    }
   }
 
-  override suspend fun setPowerSaving(on: Boolean) {
-    dataStore.edit { preferences -> preferences[POWER_SAVING] = on }
-  }
-
-  override suspend fun setWelcomeSeen() {
-    dataStore.edit { preferences -> preferences[WELCOME_SEEN] = true }
-  }
-
-  override suspend fun setActiveGroup(groupId: String) {
-    dataStore.edit { preferences -> preferences[ACTIVE_GROUP] = groupId }
-  }
+  private fun settingsOf(preferences: Preferences): AppSettings =
+    AppSettings(
+      accentColor = AccentColor.ofId(preferences[ACCENT_COLOUR]),
+      appearance = Appearance.of(preferences[APPEARANCE]),
+      powerSaving = preferences[POWER_SAVING] == true,
+      // Absent means on, because the default is on and a fresh install has no
+      // key at all. `== true` would make every new install shake-less.
+      shakeToRoll = preferences[SHAKE_TO_ROLL] ?: true,
+      rounding = Rounding.ofId(preferences[ROUNDING]),
+      welcomeSeen = preferences[WELCOME_SEEN] == true,
+      activeGroupId = preferences[ACTIVE_GROUP] ?: SavedRollGroup.UNFILED_ID,
+      activeSessionId = preferences[ACTIVE_SESSION] ?: AppSettings.DEFAULT_SESSION_ID,
+    )
 
   companion object {
     /** The file this repository keeps, relative to the app's datastore directory. */
     const val FILE_NAME: String = "settings"
 
     private val ACCENT_COLOUR = stringPreferencesKey("accent_colour")
+    private val APPEARANCE = stringPreferencesKey("appearance")
     private val POWER_SAVING = booleanPreferencesKey("power_saving")
+    private val SHAKE_TO_ROLL = booleanPreferencesKey("shake_to_roll")
+    private val ROUNDING = stringPreferencesKey("rounding")
     private val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
     private val ACTIVE_GROUP = stringPreferencesKey("active_group")
+    private val ACTIVE_SESSION = stringPreferencesKey("active_session")
   }
 }

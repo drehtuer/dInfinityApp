@@ -1,9 +1,16 @@
 package de.drehtuer.dinfinity
 
 import android.app.Application
+import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.data.CollectionImporter
+import de.drehtuer.dinfinity.data.DieStatisticsRepository
+import de.drehtuer.dinfinity.data.HistoryRepository
+import de.drehtuer.dinfinity.data.RollRecording
 import de.drehtuer.dinfinity.data.SavedRollRepository
+import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
+import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 
 /**
@@ -29,6 +36,49 @@ class DInfinityApplication : Application() {
   /** Saved rolls and their groups (`docs/dice-notation.md`). */
   val savedRolls: SavedRollRepository by lazy { SavedRollRepository(database) }
 
+  /**
+   * Taking a collection of saved rolls in.
+   *
+   * Its own thing rather than a method on [savedRolls], because importing is a
+   * transaction with a refusal in front of it rather than a repository
+   * operation (`docs/architecture.md`, decision 15).
+   */
+  val collectionImporter: CollectionImporter by lazy { CollectionImporter(database) }
+
+  /** Statistics and history, written in one transaction per roll. */
+  val statistics: StatisticsRepository by lazy { StatisticsRepository(database) }
+
+  /**
+   * What turns a finished throw into rows (`docs/statistics.md`).
+   *
+   * The active session is read per roll rather than captured, because it is a
+   * preference and a preference changes while the app is running: a recorder
+   * that took it once would file an evening's rolls under whichever session
+   * was current when the roll screen opened.
+   */
+  val recording: RollRecording by lazy {
+    RollRecording(statistics) { activeSession }
+  }
+
+  /**
+   * The session new rolls are filed under, as last read from the settings.
+   *
+   * A field written from the activity rather than a flow collected here: the
+   * application has no scope of its own to collect on, and the one thing that
+   * reads it is called from a thread that cannot suspend.
+   */
+  @Volatile
+  var activeSession: String = AppSettings.DEFAULT_SESSION_ID
+
+  /** Past rolls, to read. Apart from the one that writes them, and smaller. */
+  val history: HistoryRepository by lazy { HistoryRepository(database) }
+
+  /** What every die has done, to read. */
+  val dieStatistics: DieStatisticsRepository by lazy { DieStatisticsRepository(database) }
+
+  /** The buckets statistics are filtered by (`docs/statistics.md`). */
+  val sessions: SessionRepository by lazy { SessionRepository(database) }
+
   /** The roll screen's engine and catalogue, named in one place (`RollWiring`). */
-  val rolls: RollWiring by lazy { RollWiring(this) }
+  val rolls: RollWiring by lazy { RollWiring(this, recording) }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,12 +19,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -45,13 +51,20 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun SavedScreen(
   presenter: SavedPresenter,
+  groups: GroupPresenter,
   modifier: Modifier = Modifier,
   onRoll: (SavedEntry) -> Unit = {},
   onEdit: (SavedEntry) -> Unit = {},
   onNew: () -> Unit = {},
+  onExport: (CollectionFile) -> Unit = {},
+  onImport: () -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
+  // Local to the screen rather than in the presenter: whether a sheet is open
+  // is not something the database or another screen has an opinion about.
+  var exporting by remember { mutableStateOf(false) }
+  val everything = stringResource(R.string.export_everything)
   Column(
     modifier =
       modifier
@@ -64,39 +77,111 @@ fun SavedScreen(
       groupName = state.activeGroup?.group?.name ?: stringResource(R.string.saved_loading),
       switching = state.switching,
       onSwitch = { presenter.showGroups(!state.switching) },
+      onExport = { exporting = true },
       onNew = onNew,
       menu = menu,
     )
 
-    if (state.switching) {
-      GroupSwitcher(groups = state.groups, activeId = state.activeGroupId, onOpen = presenter::open)
+    if (exporting) {
+      Exporting(
+        state = state,
+        everything = everything,
+        onDismiss = { exporting = false },
+        onExport = onExport,
+        onImport = {
+          exporting = false
+          onImport()
+        },
+      )
     }
+
+    if (state.switching) {
+      GroupSwitcher(
+        groups = state.groups,
+        activeId = state.activeGroupId,
+        onOpen = presenter::open,
+        onEdit = groups::edit,
+        onNew = { groups.create() },
+      )
+    }
+
+    // The sheet is drawn over whatever is below it, so making a group while
+    // looking at a list does not lose the list.
+    groups.draft?.let { draft -> GroupSheet(draft = draft, presenter = groups) }
 
     if (state.empty) {
       Empty(onNew = onNew)
       return@Column
     }
 
-    Text(
-      text = stringResource(R.string.saved_order),
-      style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    Rolls(
+      rolls = state.rolls,
+      onRoll = { entry ->
+        presenter.used(entry.roll.id)
+        onRoll(entry)
+      },
+      onEdit = onEdit,
     )
-    LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedTestTags.LIST)) {
-      items(state.rolls, key = { it.roll.id }) { entry ->
-        HorizontalDivider()
-        SavedRow(
-          entry = entry,
-          onRoll = {
-            presenter.used(entry.roll.id)
-            onRoll(entry)
-          },
-          onEdit = { onEdit(entry) },
-        )
-      }
+  }
+}
+
+/** The rolls of the group that is open, in the order SQL put them in. */
+@Composable
+private fun ColumnScope.Rolls(
+  rolls: List<SavedEntry>,
+  onRoll: (SavedEntry) -> Unit,
+  onEdit: (SavedEntry) -> Unit,
+) {
+  Text(
+    text = stringResource(R.string.saved_order),
+    style = MaterialTheme.typography.labelSmall,
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+  )
+  LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedTestTags.LIST)) {
+    items(rolls, key = { it.roll.id }) { entry ->
+      HorizontalDivider()
+      SavedRow(entry = entry, onRoll = { onRoll(entry) }, onEdit = { onEdit(entry) })
     }
   }
+}
+
+/**
+ * Gathering what was chosen and handing it up.
+ *
+ * The screen decides what goes in the file; what to *do* with a file is the
+ * app's, because the provider that hands one to another app is declared in the
+ * application's manifest (`CollectionSharing`).
+ */
+@Composable
+private fun Exporting(
+  state: SavedState,
+  everything: String,
+  onDismiss: () -> Unit,
+  onExport: (CollectionFile) -> Unit,
+  onImport: () -> Unit,
+) {
+  ExportSheet(
+    state = state,
+    onDismiss = onDismiss,
+    onImport = onImport,
+    onExport = { groupId ->
+      onDismiss()
+      val called =
+        state.groups
+          .firstOrNull { it.group.id == groupId }
+          ?.group
+          ?.name ?: everything
+      onExport(
+        CollectionExport.of(
+          groups = state.groups.map { it.group },
+          rolls = state.allRolls.map { it.roll },
+          only = groupId,
+          called = called,
+        ),
+      )
+    },
+  )
 }
 
 @Composable
@@ -104,6 +189,7 @@ private fun TopBar(
   groupName: String,
   switching: Boolean,
   onSwitch: () -> Unit,
+  onExport: () -> Unit,
   onNew: () -> Unit,
   menu: @Composable () -> Unit,
 ) {
@@ -112,6 +198,7 @@ private fun TopBar(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(4.dp),
   ) {
+    val exportLabel = stringResource(R.string.export_open)
     TextButton(onClick = onSwitch, modifier = Modifier.testTag(SavedTestTags.SWITCHER)) {
       Text(
         text = if (switching) "$groupName ▴" else "$groupName ▾",
@@ -120,6 +207,17 @@ private fun TopBar(
       )
     }
     Text(text = "", modifier = Modifier.weight(1f))
+    // A mark rather than a word, because the bar has a group name in it that
+    // may be long. The label is what TalkBack reads.
+    TextButton(
+      onClick = onExport,
+      modifier =
+        Modifier
+          .semantics { contentDescription = exportLabel }
+          .testTag(ExportTestTags.OPEN),
+    ) {
+      Text("⤴")
+    }
     Button(onClick = onNew, modifier = Modifier.testTag(SavedTestTags.NEW)) {
       Text(stringResource(R.string.saved_new))
     }
@@ -139,6 +237,8 @@ private fun GroupSwitcher(
   groups: List<GroupEntry>,
   activeId: String,
   onOpen: (String) -> Unit,
+  onEdit: (String) -> Unit,
+  onNew: () -> Unit,
 ) {
   Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant)) {
     groups.forEach { entry ->
@@ -148,8 +248,11 @@ private fun GroupSwitcher(
         modifier =
           Modifier
             .fillMaxWidth()
-            .combinedClickable(onClick = { onOpen(entry.group.id) })
-            .semantics(mergeDescendants = true) {}
+            .combinedClickable(
+              onLongClickLabel = stringResource(R.string.group_edit_it, entry.group.name),
+              onClick = { onOpen(entry.group.id) },
+              onLongClick = { onEdit(entry.group.id) },
+            ).semantics(mergeDescendants = true) {}
             .testTag(SavedTestTags.groupOf(entry.group.id))
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -174,7 +277,22 @@ private fun GroupSwitcher(
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        // A second way in, because a long press is not discoverable and the
+        // switcher is the only place a group is ever seen.
+        TextButton(
+          onClick = { onEdit(entry.group.id) },
+          modifier = Modifier.testTag(GroupTestTags.editOf(entry.group.id)),
+        ) {
+          Text("…")
+        }
       }
+    }
+    HorizontalDivider()
+    TextButton(
+      onClick = onNew,
+      modifier = Modifier.fillMaxWidth().testTag(GroupTestTags.NEW),
+    ) {
+      Text(stringResource(R.string.group_new))
     }
     HorizontalDivider()
   }

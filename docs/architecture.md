@@ -47,6 +47,7 @@ core/
   notation/          Formula parser + evaluator (docs/dice-notation.md)
   probability/       Exact PMF computation (docs/probability.md)
   stats/             Statistics aggregation logic
+  collection/        The saved-roll collection format: read, written, validated (docs/dice-notation.md)
 dicesets/
   format/            TOML schema, validator, table definitions (docs/dice-sets.md, docs/tables.md)
   install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage
@@ -79,6 +80,15 @@ Ten screens, eight `feature/` modules: statistics, history and sessions are one
 module because they are one screen group over one set of data
 (`design/dInfinity.dc.html`, options 1w, 1x, 6c) and splitting them would only
 split the queries.
+
+`core/collection` is the saved-roll collection format, and it lives in `core/`
+rather than in `feature/saved` for the same reason `dicesets/format` is not in
+`feature/sets`: a file from a stranger is validated in one place, by code that
+cannot write anything. Its shape is the import rule made structural —
+`CollectionReader` hands back either a collection that is known to be sound or
+a list of reasons it is not, never something in between, so whatever imports it
+has no judgement left to make. That is how "an import can never damage what is
+already there" stops being something every screen must remember.
 
 `ui/common` is **not** a feature and is not a place for anything that is
 merely shared. Nothing in it knows what screen it is on, and it depends on
@@ -170,9 +180,11 @@ that knew what the menu was would be one feature module depending on another,
 and the navigation graph belongs to `:app`. Each screen takes a `menu`
 composable slot and draws it where it has room.
 
-Two destinations are not in the menu, and for the same reason: they are about
-something rather than about a subject. The menu *is* the list, and the
-saved-roll editor is about one roll, reached from that roll.
+Three destinations are not in the menu, and for the same reason: they are
+about something rather than about a subject. The menu *is* the list; the
+saved-roll editor is about one roll, reached from that roll; and importing a
+collection is about saved rolls, reached from their screen. A menu row for the
+last of those would be a row that means nothing until somebody has a file.
 
 **Three destinations are opened with arguments.** The outcome graph is about a
 formula, and after a roll it also marks the total that came up, so its route
@@ -460,9 +472,175 @@ favourites first, then by recent use — is SQL's, because it is what the list
 |---|---|---|
 | the group name | `showGroups` | whether the switcher is open |
 | a group in the switcher | `open` | which group's rolls are listed, and the stored active group |
+| a group's **…**, or a long press on it | `GroupPresenter.edit` | the group sheet opens on that group |
+| **New group**, at the foot of the switcher | `GroupPresenter.create` | the group sheet opens on a group that does not exist yet |
+| **⤴** | the collections sheet | the two ways out — this group with its subgroups, or everything — and the one way in |
 | a row, tapped | `used`, then navigation | one more use, and the tray with that formula in its field |
 | a row, long-pressed | the editor | which screen is on, opened on that roll |
 | **New** | the editor | the same, opened on a roll that does not exist yet |
+
+### The group sheet
+
+`GroupDraft` is a machine of its own but not a screen: a group is a name, a
+mark and which group it sits in, and three fields do not deserve a destination
+— nor a place in the navigation graph that the back button would then have to
+mean something on. It is a dialog over whichever screen opened it, and both
+the saved-rolls list and the editor open the same one, so a group made while
+writing a roll is made the same way and refused for the same reasons.
+
+It watches the same two flows the list does, which is what lets both of its
+rules be answered *while the player types* rather than when they press Save:
+
+| Rule | Answered by | Why it is not only checked at import |
+|---|---|---|
+| a group's name is its own | the group list, ignoring case | an import refuses a collection whose group name is taken (decision 15); a name the app itself let you duplicate would make that refusal arbitrary |
+| groups nest exactly one level | `parents`, and `nestable` | checked from *both* ends — a group cannot go inside one that is already inside another, and a group with groups inside it cannot go inside anything |
+
+The second is the one that was wrong until this sheet existed. Checking only
+the parent lets a three-deep tree be built from the bottom: make the child,
+then move its parent. `SavedRollRepository.save` refuses both, because an
+import writes without ever passing through the sheet.
+
+| Control | Calls | What changes |
+|---|---|---|
+| the name field | `name` | the name, and whether another group already has it — named, not merely reported |
+| a mark | `icon` | that mark, or none when the chosen one is tapped again |
+| **Inside** | `parent` | which group it sits in; the chooser is absent, with its reason, for a group that has children |
+| **Save group** | `save` | the group is written, the sheet closes, and whoever opened it is handed the id |
+| **Delete** | `deleteGroup` | the group goes, its rolls move to Unfiled and its child groups are lifted to the top level. Nothing a player wrote is deleted, and the sheet says how many rolls will move before it is pressed |
+| **Cancel** | `dismiss` | the draft is thrown away |
+
+Unfiled is the one group with no **Delete**: it is where a deleted group's
+rolls go, so it has to be there to go to.
+
+### Writing a roll down
+
+The statistics tables have existed since database version 1 and nothing wrote
+to them. This is the seam that does, and it has one shape rule: **the roll
+screen cannot see a database.**
+
+`RollMachine.settled` hands out a `FinishedThrow` — the result, the plan it
+came from, and the seed. `feature/roll` declares a `ThrowRecorder` interface
+and `:app` implements it over `data`'s `RollRecording`. A roll screen that
+could reach a database is a roll screen that will eventually query one
+mid-throw.
+
+The plan travels with the result because the two know different things: the
+result knows which face came up, and only the plan knows which *die* it was and
+which set supplied it — and the statistics are kept per die. A breakdown line
+with no plan entry is not counted rather than counted wrongly, which keeps a
+bug upstream visible instead of hiding it in a histogram.
+
+The write is launched, not waited for. A roll is finished when the dice stop,
+not when SQLite says so; a failure to record is a missing statistic, which is
+much better than a roll that appears to hang.
+
+Re-rounding a throw does not come back through `settled`, so a roll is recorded
+once rather than once per rounding somebody tries. A history with a row per
+button pressed is a history of the buttons.
+
+The breakdown is stored **whole**, as JSON, rather than normalised into rows —
+and not for convenience. A roll's breakdown means what it meant *then*.
+Normalising it would let a set uninstalled last week quietly rewrite last
+week's rolls, so everything the history screen draws is in the text: the labels
+the faces carried, which dice were dropped, which came from an explosion, which
+showed a natural maximum. Nothing has to be looked up to draw a past roll, which
+also means nothing can be looked up wrong. Reading one back is deliberately
+lenient: a breakdown written by an older version is still a record of a roll
+somebody made, and the total is in its own column either way.
+
+Every roll carries a session id, and there are no sessions yet (Step 4.9). It
+is the name `default` rather than an empty string, because `""` in a history is
+a value somebody will one day have to guess the meaning of — and because the
+rolls filed there become a real session that can be renamed rather than a gap
+to migrate.
+
+### The saved-roll strip on the tray
+
+The active group's rolls sit above the dice picker, as tiles: a roll somebody
+named comes before a die they have to assemble.
+
+**A tap here throws**, where a tap on the saved-rolls list only puts the
+formula in the field. The two are not inconsistent. A saved roll *is* a named
+formula rolled with one tap, and this is the one place in the app where the
+tray is already on screen to roll it on; from the list you are somewhere else,
+and arriving at the tray with a throw already finished would be a roll nobody
+watched.
+
+It is handed to the roll screen as a **slot**, the same way the menu button is,
+and for the same reason: a roll screen that knew what a saved roll was would be
+one feature module depending on another. The slot is given the callback that
+rolls a formula, so the strip hands back text and the roll screen does the rest
+— through the same `type` a keystroke goes through.
+
+The invitation tile is last and is the only thing there when the group is
+empty, which is what design option `9a` means by "the strip invites the first
+save". A strip that vanished when there was nothing in it would never tell
+anybody saved rolls exist.
+
+### Exporting
+
+Two halves, split where Android begins. `CollectionExport` decides what goes
+into the file and what it is called — a group with its subgroups, or the lot;
+the name slugged, because a group called `D&D / 5e?` is a fine group and a poor
+path. `CollectionSharing`, in `app/`, hands that file to another application.
+
+It is in `app/` rather than in `feature/saved` because the `FileProvider` it
+needs is declared in the application's manifest and its authority is the
+application's id. The screen hands its file up exactly the way it hands up a
+request to navigate; what the app does with it is the app's.
+
+The share sheet rather than a file picker, because "export" is not one action:
+it is mailing a stat block to a player, saving it into Files, putting it in a
+chat, or pushing it to a repository the group keeps. One sheet offers all of
+them and the app does not have to have an opinion.
+
+The copy goes into `cacheDir/collections`, which is emptied first — the sheet
+offers one file, and a directory that only grows is a directory of everything
+anybody ever exported. `res/xml/collection_paths.xml` lets the provider see
+that directory and nothing else: a file-sharing provider that can reach the
+database is one that will eventually be asked for it.
+
+### Importing
+
+Two steps, and the order of them is the whole of it. A file is **read** first,
+by `core/collection`, which cannot write anything; only a file that came back
+sound is offered to `CollectionImporter`, which writes it in one transaction.
+Every way an import can fail has therefore already happened before anything is
+at risk.
+
+The importer's own rule is a refusal. A collection whose group name is already
+taken is turned away outright, naming the clash, with nothing merged and
+nothing deleted (decision 15). It is checked ignoring case, because two groups
+a capital apart are one group to a person — the same rule the group sheet keeps
+when somebody types a name by hand.
+
+The file's own ids are not reused. A slug is stable *inside* a file, which is
+what lets somebody edit one by hand; it says nothing about what this database
+already uses, and an id taken from a stranger is an id that can collide with
+one made here.
+
+| State | What it means |
+|---|---|
+| `Waiting` | nothing chosen; what an import will and will not do is on screen |
+| `Reading` | brief, but not instant for five hundred rolls |
+| `Unopenable` | the file could not be opened at all — moved, or the permission withdrawn |
+| `Unreadable` | it is not a collection, and **every** line wrong with it is listed, each saying where in the file it is |
+| `Clash` | a group name is taken. Its own state, not another kind of problem: the file is fine and so is what is saved, and one of the two names has to change |
+| `Imported` | it is in, with the counts and any roll whose dice are not installed |
+
+| Control | Calls | What changes |
+|---|---|---|
+| **Choose a file** | the picker, in `:app` | a content URI arrives, is read bounded, and becomes text |
+| *(not a control)* the file's text | `offer` | the state, to one of the four above |
+| **Choose another file** | `again`, then the picker | back to `Waiting` |
+| **See the rolls** | *(navigation)* | the saved-rolls list, with the import taken off the back stack |
+
+The picker is in `:app` rather than on the screen, because a content URI is the
+application's business. The screen takes text; the permission, the **bounded**
+read — one byte past the limit and no further, which is what tells a file at
+the limit from one over it — and the failure to open all happen on that side of
+the seam.
 
 ### The saved-roll editor
 
@@ -483,12 +661,115 @@ numbers beside it.
 | the name field | `name` | what it will be called; blank means the formula is its name |
 | the formula field | `formula` | the formula, its error and its odds, all from one plan |
 | icon, colour, group, table, favourite | `choose` | that one field and nothing else — none of them needs re-validating |
+| **New group** | `GroupPresenter.create` | the group sheet opens; the group it writes becomes this roll's |
 | **Save roll** | `save` | the roll is written down, and the editor leaves |
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
 | **Delete** | `delete` | the roll is taken away, and the editor leaves |
 
 The editor leaves by going *back* rather than forward: it is a detour from the
 list, and finishing one is arriving back where it started.
+
+### Sessions
+
+A session is a label somebody puts on a stretch of rolls, not a thing that
+happens. Nothing here starts one and nothing stops one: the app files what is
+thrown under whichever is active, so there is no button to forget to press and
+a session left running overnight is not a state that exists.
+
+Database version 3 adds the table, and the migration inserts the first row
+rather than leaving that to whichever screen first wants one. `roll_history`
+has carried a `session_id` since version 1 and every row already has a value
+— `RollRecording` files rolls under `default` — so the rolls made before
+sessions existed belong to a session that can now be *renamed*, rather than to
+a gap that had to be migrated. A history full of rows pointing at a session
+that does not exist is a join that quietly drops them.
+
+The same rule groups follow: **deleting a session moves its rolls to the first
+one rather than deleting them**, in one transaction, and the first session has
+no Delete at all because it is where they go.
+
+Each row carries two numbers, both counted in SQL: how many rolls are in the
+session, and how many of those had a die showing its highest face. The second
+is read out of the stored breakdown rather than by joining anything, because a
+breakdown means what it meant then and the set that threw it may be long
+uninstalled.
+
+The active session is a **preference**, like the active group: it outlives the
+screen that chose it, and the roll screen reads it on every throw. `RollRecording`
+asks for it per roll rather than capturing it, so an evening's rolls do not all
+land in whichever session was current when the screen opened.
+
+| Control | Calls | What changes |
+|---|---|---|
+| a session in the list | `activate` | which session new rolls are filed under, and the stored preference |
+| **New session** | `edit(SessionDraft())` | the naming sheet, on one that does not exist yet |
+| **Rename** | `edit(draft)` | the same sheet, on one that does. The id does not move, so the rolls filed under it stay filed under it |
+| **Save** | `save` | it is written, and a *new* one becomes active — making a session and then having to tap it is two acts where the player meant one |
+| **Delete** | `delete` | the session goes, its rolls move to the first one, and if it was the active one the rolling moves too. Otherwise the next throw would be filed under a session that is gone |
+
+### Statistics
+
+Two screens in one destination: every die ever thrown, and one die opened.
+Opened rather than pushed, because going back from a histogram to the list is
+the same gesture as closing it, and a second destination for "the same screen
+about one row" is a back-stack entry nobody wanted.
+
+The list is ordered most recently used first, which is not a preference: a
+player comes here about a die they have just been rolling.
+
+**A die's values come from the installed set, not from its face count.** A die
+labelled `1,2,3,1,2,3` is a d3, and a histogram drawn against a sixth would
+show it as twice as lucky as it is on every value. `FaceHistogram` therefore
+takes the values *with repeats* and weights the fair line by them; the
+arithmetic is in `core/stats` rather than in a draw lambda, so it can be tested
+directly.
+
+When the set has been uninstalled since, the record is still the player's and
+is still shown — but the values are taken from what has actually come up, and
+the screen says the fair line is a guess. The alternatives were hiding somebody's
+record or drawing it against a line that is wrong without saying so.
+
+A value that has never come up is a bar of zero rather than a gap: *"this d20
+has never rolled a 20"* is the single most interesting thing a histogram can
+say, and a missing bar does not say it.
+
+| Control | Calls | What changes |
+|---|---|---|
+| a die in the list | `select` | that die opens, and its face counts start being watched |
+| **←** | `close` | back to the list, and the watching stops |
+| **Forget this die's record** | `confirm` | the confirmation, not the deletion |
+| **Forget everything** | `confirm` | the same, for the lot |
+| **Forget it** | `reset` | it happens. Nothing is forgotten without passing through here, and nothing reaches here without a confirmation |
+| **Keep it** | `confirm(null)` | nothing |
+
+### History
+
+`HistoryState` watches, like the saved rolls do, so a throw made on the tray
+appears here without anybody asking — which also means the screen has nothing
+to refresh and no way to be stale.
+
+**A past roll is a record, not something to re-run.** There is no replay action
+and no seed anywhere on the screen, and that is not enforced by remembering it:
+`HistoryEntry` has no seed on it to show. The row in the table does; the type
+the screens are given does not. `HistoryRepository` is the line between them,
+and it is a separate class from the one that writes rolls because they are
+different jobs with different shapes — one transaction across three tables
+going in, a flow of one table coming out.
+
+Which row is open is held in the state rather than in the list, because it has
+to survive the list being rebuilt when a roll lands: an expanded breakdown that
+closed itself every time somebody rolled would be a breakdown nobody could
+read. One at a time — fifty open breakdowns is not a list.
+
+Session headings are drawn only when the list spans more than one session. A
+heading repeated down a whole list says nothing, which is what a fresh install
+would see.
+
+| Control | Calls | What changes |
+|---|---|---|
+| a row with a breakdown | `open` | that breakdown opens, and any other closes |
+| the same row again | `open` | it closes |
+| *(not a control)* a roll landing on the tray | — | the list, by itself |
 
 ### Settings, and the screens that are not built yet
 
@@ -501,10 +782,32 @@ why the two are not built the same way (decision 49).
 
 | Control | Calls | What changes |
 |---|---|---|
+| System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
+| the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
+| Down / Nearest / Up | `onRoundingSelected` | which way division rounds on the next throw, and on every outcome graph. The per-throw override on the result sheet is still not remembered |
 | the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
+| **Source code and issues** | `onRepository` | a browser. The app's only outward link |
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
+
+Three of those take effect **when the roll screen next opens** rather than
+where they are pressed — power saving, the shake, and the default rounding.
+A renderer appearing under a roll in progress, sensors registering mid-throw,
+or a total changing its arithmetic while the dice are in the air are not
+settings taking effect; they are bugs (decision 16).
+
+`SettingsRepository` has one write, not one setter per setting. The list of
+settings is still growing, and an interface with a method for each is an
+interface that changes every time somebody adds a checkbox. `update` takes
+what changed and the named operations are extensions beside it, so call sites
+still read like English. The store writes every key on each change: `edit` is
+one transaction either way, and writing the whole of what was decided means a
+setting can never be half-applied.
+
+The version comes from the **installed package** rather than a generated
+constant, so it is what is on the phone rather than what some build thought it
+was compiling.
 
 The power-saving row is the one setting that does not take effect where it is
 pressed. It is read when the roll screen opens and not watched, because a

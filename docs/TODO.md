@@ -32,7 +32,7 @@ screen.
 - [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* that a roll driven by a recorded shake replays to itself on hardware (`input/shake`). The thresholds half of this is answered: shaking rolls and ordinary handling does not, confirmed on the Pixel 10a. What is not yet shown is the replay, and it cannot be until a throw's record carries its shake (4.1)
-- [ ] The tables the rest of the app needs, each arriving with the screen that needs it and each as a *migration*: sessions (4.9) and the installed-set registry (4.4). Saved rolls and groups landed as version 2
+- [ ] The installed-set registry, arriving with the screen that needs it (4.4) and as a *migration*, like the two before it. Saved rolls and groups landed as version 2 and sessions as version 3
 - [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
 **Done when** a formula can be parsed, planned, simulated headless and scored
@@ -86,7 +86,7 @@ not have yet.
 - [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
-- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now" and its way straight to the tray. Its other two offers — import a collection, add dice sets — are missing because both lead to screens that are still placeholders (4.3, 4.4), and so is the rest of the count line: "0 saved rolls, 0 sessions" is only worth printing once there is somewhere for them to be kept
+- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now" and its way straight to the tray, and the saved-roll strip beneath it. Its other two offers — import a collection, add dice sets — are still missing: importing has a screen now and could be offered, and dice sets is still a placeholder (4.4). So is the rest of the count line: "0 saved rolls, 0 sessions" waits on sessions (4.9)
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -118,14 +118,13 @@ them. What is left is the screens.
 
 The list is built: the group switcher, the row-style list in favourites-first
 order, the warning on a roll whose dice are gone, the empty state, and tapping
-a roll to send its formula to the tray.
+a roll to send its formula to the tray. Groups can be made, renamed, moved and
+deleted, from the switcher or from the editor — the same sheet in both places.
 
-- [ ] Creating and renaming groups, which the switcher lists but cannot yet add to — and the editor can only put a roll in a group that already exists
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
-- [ ] Export a group or everything as a collection; import from file, URL or repo
-- [ ] Import refuses a duplicate group name outright (`6e`), naming the clash — no merge, nothing deleted
-- [ ] The active group drives the **home strip** on the roll screen, which is what `9a` means by "the strip invites the first save"
+- [ ] Import from a **URL or a git repository**, over the same reader and `dicesets/install`'s fetcher. It is separate from importing a file because it needs the `INTERNET` permission, which the app has never asked for — a change to what the app can do, and one that deserves its own review
 - [ ] A broken roll falls back to the built-in set when it is thrown; today it says so on the list but the fallback itself is the planner's and untested from here
+- [ ] `SavedRollRepository` is at its function ceiling (detekt's `TooManyFunctions`, 11). Nothing needs to grow it yet — importing went into a class of its own, because it is a transaction rather than a repository operation — but the next thing that does needs the split first: groups one class, rolls another, rather than a raised threshold
 
 ### 4.4 Dice sets — `feature/sets`
 
@@ -164,27 +163,51 @@ Design `1v`, `4c`, `8d`. Spec: `docs/face-designer.md`.
 
 Design `1w`, `5b`, `5c`, `8b`, `9e`. Spec: `docs/statistics.md`.
 
-- [ ] Overview tiles for the selected die: natural highs and lows, average, throws
-- [ ] Face histogram against the fair line
-- [ ] All-dice table, sortable; filter by set (`5b`), roll-up across sets (`5c`)
+Rolls are recorded now — history rows, face counts and running summaries, one
+transaction each — so these screens have something to read.
+
+The list of every die thrown is built, with its average; choosing one opens
+its overview tiles — natural highs and lows, average, throws — and its face
+histogram against the fair line. Forgetting one die's record or everything is
+there, each behind a confirmation.
+
+- [ ] Sorting the all-dice list, filtering by set (`5b`) and rolling up across sets (`5c`). `DieStatisticsRepository.facesForSides` is written and nothing calls it yet
 - [ ] Saved-roll statistics: observed totals against the exact expected distribution (`8b`, `9e`)
 - [ ] Export as JSON/CSV — without seeds
-- [ ] Reset per die, per roll, per session, everything
+- [ ] Reset per saved roll and per session; per die and everything are done
 
-### 4.8 History — `feature/history`
+### 4.8 History — `feature/stats`
 
 Design `1x`. Spec: `docs/statistics.md`.
 
-- [ ] Past rolls with breakdowns, grouped by session, natural max in the accent
-- [ ] No replay, no seed on screen
-- [ ] Pruning at 50,000 rows leaves aggregates intact
+The list is built: past rolls newest first, a tap to open one breakdown, every
+die including the dropped ones, the set a roll fell back to, corrections
+counted, and a natural maximum in the accent. No replay and no seed, which the
+types enforce rather than the screen remembering. Pruning at 50,000 rows was
+already done and tested in `StatisticsRepository`.
 
-### 4.9 Sessions — `feature/sessions`
+- [ ] Filtering: by session once there are sessions (4.9), and by saved roll — the query is written and nothing calls it
+- [ ] Export as JSON/CSV, without seeds, shared like a collection (4.3's sharing is the pattern)
+
+### 4.9 Sessions — `feature/stats`
 
 Design `6c`. Spec: `docs/statistics.md`.
 
-- [ ] List with roll counts and nat-20 counts; tap to activate, rename inline, create
-- [ ] Delete moves its rolls to Unfiled
+Built: database version 3 and its migration, the list with its roll and
+natural-high counts, tap to activate, rename, create, and delete that moves the
+rolls to the first session rather than deleting them. The active session is a
+preference and every roll is filed under it.
+
+- [ ] Filtering the statistics and the history *by* session, which is what
+      sessions are for. The queries exist (`HistoryRepository.inSession`); what
+      is missing is a chooser on those two screens
+- [ ] The menu header shows the active session beside the app's name in the
+      design (`1q`)
+- [ ] `docs/statistics.md` says the active saved-roll *group*'s name is used as
+      the session by default. It is not: the first session is called "First
+      rolls" and a session is chosen on its own screen. One of the two has to
+      change — probably the document, since tying two independent choices
+      together is the sort of link that surprises somebody at a table
 
 ### 4.10 Settings and menu — `feature/settings`
 
@@ -196,9 +219,12 @@ carries the same menu button and the menu reaches every screen
 
 - [ ] Two rows the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll) and "Saved-roll statistics" (4.7). Decide whether the first is a screen or belongs in the README
 - [ ] The menu's header shows the active session beside the app's name in the design; that waits on sessions (4.9)
-- [ ] Appearance (System / Light / Dark), shake, haptics, sound, rounding default, default set, table, session — the accent picker and the power-saving switch are already there and are the pattern the rest follow
-- [ ] Replace the single field on `DInfinityApplication` with a real container once more than settings hangs off it
-- [ ] Version and repository link (`2d`)
+Appearance, the accent, shake, the default rounding, power saving, the version
+and the repository link are all there, and each of them does something.
+
+- [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
+- [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)
+- [ ] Replace the single field on `DInfinityApplication` with a real container. `RollWiring` and `SavedWiring` are now the shape it should take; what is left is the application holding one of those rather than eight lazy fields
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone
@@ -296,6 +322,33 @@ Written down so the format need not change later. Not v1 scope.
 - [ ] More catalogue solids, `rhombic-triacontahedron` (d30) first
 - [ ] Author-supplied convex meshes, with the fairness preview they require (`docs/dice-sets.md`, "Shapes after v1")
 - [ ] **Author-supplied materials.** Compiling materials at runtime (`docs/architecture.md`, decision 46) means a set *could* ship its own `.mat` rather than only values for the built-in one — iridescent dice, a proper glass d20, a table that is actually brushed metal. v1 does not allow it, and the reason is not effort: a shader is code, it runs on the GPU, and "the app never runs anything from the repository" is a rule of the format (`docs/dice-sets.md`). Turning it on needs a decision about what a shader from a stranger may do — a compile that never finishes is a hung GPU, and a driver is a large attack surface — plus a limit on compile time, a cap on instruction count, and a refusal that is as legible as the validator's other refusals. Until then a set varies a material's *parameters*, which is what `roughness`, `metallic` and the colours already are
+
+## Coverage
+
+Branch coverage sits around 70 % against a floor of 62, and roughly **seven in
+ten of the branches it is missing are inside `@Composable` functions**. That is
+not untested UI: the Compose compiler emits a skip branch for every parameter
+of every composable so that a recomposition can be avoided, and a test can only
+reach one side of each. A screen with twelve controls is a hundred branches no
+test will ever take.
+
+What that means in practice, and the rule the last few PRs have followed:
+
+- **Extract the decision, test the decision.** `FaceHistogram`, `Breakdown`,
+  `CollectionExport`, `GraphBars`, `underlinesOf` and `crestPath` are all
+  arithmetic that used to be inside a draw lambda. Each is now a plain object
+  with plain tests, and a Canvas is the one place a test genuinely cannot go.
+- **A shared component gets its own test.** `ui/common`'s formula field had
+  152 branches and none of them covered, because three screens each tested
+  *their use* of it and nobody tested the thing. That is a real gap and looks
+  exactly like the mechanical one in a report.
+- The number is worth watching for the second kind and not the first. It is
+  reported with the figures in every PR description either way.
+
+- [ ] Decide whether the floor should track the drift or stay where it is. It
+      has not been moved since it was set, and moving a floor to make a check
+      pass is the thing `.claude/CLAUDE.md` says not to do — so this is a
+      question for a person, not a change to make quietly
 
 ## Open questions
 

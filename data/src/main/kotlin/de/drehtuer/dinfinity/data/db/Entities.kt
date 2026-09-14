@@ -222,3 +222,29 @@ data class SavedRollRow(
   @ColumnInfo(name = "use_count")
   val useCount: Int = 0,
 )
+
+/**
+ * A bucket for statistics: "Tuesday campaign", "the one-shot"
+ * (`docs/statistics.md`, per session).
+ *
+ * A session is not a thing that happens; it is a label somebody puts on a
+ * stretch of rolls. Every history row carries one, so every statistic can be
+ * asked for a session — and so a roll made before anybody thought about
+ * sessions still belongs to one.
+ *
+ * @param id what history rows carry. A slug, so a session named by hand and a
+ *   session named by the app look the same in the column.
+ * @param startedAt when it was made, which is the order the list shows and the
+ *   only ordering that means anything: a session is not renamed to the top.
+ */
+@Entity(
+  tableName = "session",
+  indices = [Index("started_at")],
+)
+data class SessionRow(
+  @PrimaryKey
+  val id: String,
+  val name: String,
+  @ColumnInfo(name = "started_at")
+  val startedAtEpochMs: Long = 0,
+)

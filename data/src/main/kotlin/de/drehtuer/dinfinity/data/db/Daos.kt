@@ -144,11 +144,35 @@ interface SavedRollGroupDao {
   @Query("SELECT * FROM saved_roll_group WHERE id = :id")
   suspend fun byId(id: String): SavedRollGroupRow?
 
+  /**
+   * Every group's name.
+   *
+   * Read in one go rather than asked per group: an import checks up to fifty
+   * names against what is here, and fifty queries to answer one question is
+   * fifty chances for the answer to change halfway through.
+   */
+  @Query("SELECT name FROM saved_roll_group")
+  suspend fun allNames(): List<String>
+
+  /** The bottom of the switcher, so imported groups land after what is there. */
+  @Query("SELECT MAX(sort_order) FROM saved_roll_group")
+  suspend fun maxSortOrder(): Int?
+
   @Query("SELECT COUNT(*) FROM saved_roll_group WHERE name = :name AND id <> :exceptId")
   suspend fun countNamed(
     name: String,
     exceptId: String = "",
   ): Int
+
+  /**
+   * How many groups are inside this one.
+   *
+   * Asked before a group is given a parent of its own: a group with children
+   * that moved inside another would be three levels deep, which is the one
+   * shape `docs/dice-notation.md` says does not exist.
+   */
+  @Query("SELECT COUNT(*) FROM saved_roll_group WHERE parent_id = :id")
+  suspend fun countChildren(id: String): Int
 
   @Upsert
   suspend fun upsert(row: SavedRollGroupRow)
@@ -218,3 +242,62 @@ interface SavedRollDao {
     atEpochMs: Long,
   )
 }
+
+/** Sessions, the buckets statistics are filtered by (`docs/statistics.md`). */
+@Dao
+interface SessionDao {
+  /** Every session, newest first. A session is not renamed to the top. */
+  @Query("SELECT * FROM session ORDER BY started_at DESC, name")
+  fun all(): Flow<List<SessionRow>>
+
+  @Query("SELECT * FROM session WHERE id = :id")
+  suspend fun byId(id: String): SessionRow?
+
+  /**
+   * Whether a name is taken, ignoring case.
+   *
+   * `COLLATE NOCASE` rather than lower-casing in Kotlin: SQLite's `=` is
+   * case-sensitive, and two sessions a capital apart are one session to a
+   * person.
+   */
+  @Query("SELECT COUNT(*) FROM session WHERE name = :name COLLATE NOCASE AND id <> :exceptId")
+  suspend fun countNamed(
+    name: String,
+    exceptId: String = "",
+  ): Int
+
+  @Upsert
+  suspend fun upsert(row: SessionRow)
+
+  @Query("DELETE FROM session WHERE id = :id")
+  suspend fun delete(id: String)
+
+  /**
+   * How many rolls each session holds, and how many of them showed a die's
+   * highest face.
+   *
+   * Counted in SQL rather than by reading the rolls: a session of a thousand
+   * throws is a thousand rows nobody wants on the way to a number, and the
+   * list shows both figures for every session at once.
+   *
+   * The natural-max count reads the stored breakdown rather than joining
+   * anything, because a breakdown means what it meant then — the set that
+   * threw it may be long uninstalled (`docs/statistics.md`, "Storage").
+   */
+  @Query(
+    """
+    SELECT session_id AS sessionId,
+           COUNT(*) AS rolls,
+           SUM(CASE WHEN breakdown_json LIKE '%"max":true%' THEN 1 ELSE 0 END) AS naturals
+    FROM roll_history GROUP BY session_id
+    """,
+  )
+  fun tallies(): Flow<List<SessionTally>>
+}
+
+/** How much is in one session. */
+data class SessionTally(
+  val sessionId: String,
+  val rolls: Long,
+  val naturals: Long,
+)

@@ -11,6 +11,23 @@
     android:supportsRtl="true"
     android:theme="@style/Theme.DInfinity">
 
+    <!--
+      Exporting a collection hands another app a file. A FileProvider is how
+      that is done without making anything world-readable: the other app gets
+      a content URI for one file, granted for one use, and `collection_paths`
+      says the provider can see nothing but the directory those copies are
+      written into.
+    -->
+    <provider
+      android:name="androidx.core.content.FileProvider"
+      android:authorities="${applicationId}.collections"
+      android:exported="false"
+      android:grantUriPermissions="true">
+      <meta-data
+        android:name="android.support.FILE_PROVIDER_PATHS"
+        android:resource="@xml/collection_paths" />
+    </provider>
+
     <activity
       android:name=".MainActivity"
       android:exported="true"

@@ -69,6 +69,11 @@ class EditorPresenter(
         )
       revalidate()
     }
+    // Kept watching rather than read once: a group made from the sheet on this
+    // screen has to appear in the chooser that asked for it.
+    scope.launch {
+      repository.groups.collect { groups -> state = state.copy(groups = groups) }
+    }
   }
 
   fun name(typed: String) {

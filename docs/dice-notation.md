@@ -215,8 +215,20 @@ SavedRoll {
 - Groups are how players organise rolls per game, per character, per
   monster stat block — whatever they want. Groups nest one level deep
   (`D&D / Thorin`, `Pathfinder / Ezren`); deeper trees are not worth the UI.
+  One level is checked from both ends: a group cannot be put inside one that
+  is already inside another, and a group that has groups inside it cannot be
+  put inside anything.
+- **A group's name is its own.** Two groups may not share a name, ignoring
+  case. This is the same rule an import enforces when it refuses a collection
+  whose group name is taken; a name the app itself let you duplicate would
+  make that refusal arbitrary.
+- Deleting a group never deletes a roll. Its rolls move to Unfiled and its
+  child groups are lifted to the top level.
 - The home screen shows the **active group** as tiles; tap to roll,
-  long-press to edit. Favourites are pinned first, the rest ordered by recent
+  long-press to edit. A tap *throws* there, unlike a tap on the saved-rolls
+  list, which only puts the formula in the field: the tray is already on
+  screen, and arriving at it with the throw already over would be a roll nobody
+  watched. Favourites are pinned first, the rest ordered by recent
   use. Switching the active group is one tap in the top bar, and the active
   group also sets the default statistics session (`docs/statistics.md`).
 - The formula is re-validated when displayed, because the dice set it
@@ -244,19 +256,52 @@ rolls.
 ```
 
 - **Export** a group (with its subgroups) or everything via the share sheet.
+  The file is named after what is in it — `curse-of-strahd.dinfinity.json` —
+  and is a copy in the cache, handed over through a content URI granted for
+  one use. Nothing the app holds is made readable to do it.
 - **Import** from a file, from a pasted URL, or from a git repository (same
   sources as dice sets, see `docs/dice-sets.md`). A community can keep a
-  repo of "stat blocks for monster manual X" this way.
+  repo of "stat blocks for monster manual X" this way. The file picker offers
+  every file rather than only `application/json`: a collection mailed through
+  three apps arrives as `text/plain` as often as not, and a picker that hides
+  the file somebody is looking at is worse than one that lets them choose the
+  wrong thing and be told so.
 - Import **never merges and never deletes**. A collection whose group name
   already exists is refused outright, naming the clash; rename the group in
   the file (or the one in the app) and import again. Everything else is added
   as new groups and rolls. There is no conflict-resolution UI to get wrong,
-  and an import can never damage what is already there.
+  and an import can never damage what is already there. The clash is checked
+  ignoring case, and the name reported is the one the *file* spells, since that
+  is the one to go and change. The file's own ids are not reused: they are
+  stable inside the file, which is what lets somebody edit one by hand, and say
+  nothing about what this app already uses.
 - Every formula goes through the parser and limits above. Unknown dice set
   references are kept but flagged; icons are restricted to emoji or names
   from the built-in icon pack (no image files in collections).
-- Limits: 500 rolls and 50 groups per collection, 1 MiB file. Bigger files
-  are rejected with a message.
+- **Ids are slugs** — lower-case letters, digits, `-` and `_` — not UUIDs,
+  because a collection is a file people edit by hand: `"group": "thorin"` is
+  something a person can type where a UUID is something a person mistypes.
+  Exporting re-derives them from the group names, so exporting the same
+  collection twice gives the same file.
+- **Two groups in one collection may not share a name**, ignoring case. It is
+  the same rule the app itself keeps, so a file that could never be imported
+  says so when it is read rather than when it is refused.
+- **A `format` this version does not know is refused**, not read as best it
+  can. Reading a newer file anyway is how a format silently drops whatever the
+  newer version added.
+- A collection that fails is refused **entirely**, and the report lists
+  everything wrong with it rather than the first thing: somebody fixing a file
+  by hand wants the whole list, and each line says where in the file it is
+  (`rolls[3].formula`).
+- What travels is what somebody wrote — names, formulas, marks, groups and
+  favourites. What the app made of it does not: no use counts, no timestamps,
+  no seeds, no colour tags from the app's own palette, and no table pin naming
+  a package the other phone has never heard of.
+- Limits: 500 rolls and 50 groups per collection, 1 MiB file (counted in
+  bytes, not characters). Bigger files are rejected with a message, without
+  being parsed. Names are capped at 100 characters, icons at 16 and formulas
+  at 500 — limits on what a file can do to a screen rather than on what anyone
+  will write.
 
 ## Error messages
 

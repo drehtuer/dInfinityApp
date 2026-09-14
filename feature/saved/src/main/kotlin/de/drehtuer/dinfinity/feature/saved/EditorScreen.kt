@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
@@ -51,6 +52,7 @@ import de.drehtuer.dinfinity.ui.common.FormulaField
 @Composable
 fun EditorScreen(
   presenter: EditorPresenter,
+  groups: GroupPresenter,
   modifier: Modifier = Modifier,
   onDone: () -> Unit = {},
   onRollNow: (String) -> Unit = {},
@@ -104,12 +106,20 @@ fun EditorScreen(
 
     Icons(chosen = state.icon) { icon -> presenter.choose { copy(icon = icon) } }
     Colours(chosen = state.colourArgb) { argb -> presenter.choose { copy(colourArgb = argb) } }
-    Groups(state = state) { groupId -> presenter.choose { copy(groupId = groupId) } }
+    Groups(
+      state = state,
+      onPick = { groupId -> presenter.choose { copy(groupId = groupId) } },
+      // A roll can be filed somewhere that does not exist yet. Without this
+      // the only way to make a group is to leave the roll half-written.
+      onNew = { groups.create() },
+    )
     Tables(state = state) { pin -> presenter.choose { copy(tablePin = pin) } }
 
     Favourite(on = state.favourite) { chosen -> presenter.choose { copy(favourite = chosen) } }
     Buttons(state = state, presenter = presenter, onRollNow = onRollNow)
   }
+
+  NewGroup(groups = groups, onMade = { groupId -> presenter.choose { copy(groupId = groupId) } })
 
   // Written down, or taken away: either way there is nothing left to edit.
   // An effect rather than a call from the composition, because leaving a
@@ -256,10 +266,26 @@ private fun Swatch(
   }
 }
 
+/**
+ * The same sheet the saved-rolls screen uses.
+ *
+ * Shared rather than a second dialog, so a group made from here is made the
+ * same way and refused for the same reasons. A group saved from it becomes
+ * this roll's, which is what asking for it meant.
+ */
+@Composable
+private fun NewGroup(
+  groups: GroupPresenter,
+  onMade: (String) -> Unit,
+) {
+  groups.draft?.let { draft -> GroupSheet(draft = draft, presenter = groups, onSaved = onMade) }
+}
+
 @Composable
 private fun Groups(
   state: EditorState,
   onPick: (String) -> Unit,
+  onNew: () -> Unit,
 ) {
   Field(stringResource(R.string.editor_group)) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -271,6 +297,11 @@ private fun Groups(
           modifier = Modifier.testTag(EditorTestTags.groupOf(group.id)),
         )
       }
+      AssistChip(
+        onClick = onNew,
+        label = { Text(stringResource(R.string.group_new)) },
+        modifier = Modifier.testTag(EditorTestTags.NEW_GROUP),
+      )
     }
   }
 }
@@ -335,6 +366,7 @@ object EditorTestTags {
   const val SAVE: String = "editor:save"
   const val ROLL_NOW: String = "editor:roll-now"
   const val DELETE: String = "editor:delete"
+  const val NEW_GROUP: String = "editor:new-group"
 
   fun iconOf(icon: String): String = "editor:icon:$icon"
 

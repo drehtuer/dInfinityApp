@@ -1,18 +1,23 @@
 package de.drehtuer.dinfinity
 
 import android.content.Context
+import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.RollRecording
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
+import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayDriver
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.jolt.JoltDiceSimulator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /**
  * Everything the roll screen needs, put together in the one place that is
@@ -26,9 +31,13 @@ import de.drehtuer.dinfinity.simulation.jolt.JoltDiceSimulator
  *
  * @param context used for the screen's shape and nothing else. Held by the
  *   application, so it is the application context.
+ * @param recording what a finished throw is written down with. Given here
+ *   rather than reached for from the screen, which is what keeps `feature/roll`
+ *   from being able to see a database at all.
  */
 class RollWiring(
   private val context: Context,
+  private val recording: RollRecording? = null,
 ) {
   private val simulator = JoltDiceSimulator()
 
@@ -71,12 +80,39 @@ class RollWiring(
    *   effect, it is a bug. Turning it on takes effect the next time the screen
    *   is opened (`design/dInfinity.dc.html`, option 1z).
    */
-  fun presenter(powerSaving: Boolean = false): RollPresenter =
+  fun presenter(
+    powerSaving: Boolean = false,
+    rounding: Rounding = Rounding.Default,
+    scope: CoroutineScope,
+  ): RollPresenter =
     RollPresenter(
-      machine = RollMachine(catalog = catalog, geometry = geometry, table = table, simulator = simulator),
+      machine =
+        RollMachine(
+          catalog = catalog,
+          geometry = geometry,
+          table = table,
+          simulator = simulator,
+          defaultRounding = rounding,
+        ),
       driver = tray(powerSaving),
       rolls = Rolls(simulator::start),
+      recorder = recorder(scope),
     )
+
+  /**
+   * Writing a throw down, off the thread the result arrived on.
+   *
+   * A roll is finished when the dice stop, not when a database says so, so the
+   * write is launched and not waited for. A failure to record is a statistic
+   * that is missing, which is a great deal better than a roll that appears to
+   * hang while SQLite thinks about it.
+   */
+  private fun recorder(scope: CoroutineScope): ThrowRecorder =
+    recording?.let { recording ->
+      ThrowRecorder { thrown ->
+        scope.launch { recording.record(result = thrown.result, plan = thrown.plan, seed = thrown.seed) }
+      }
+    } ?: ThrowRecorder.NONE
 
   /**
    * The tray this visit gets.

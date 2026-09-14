@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity
 
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
@@ -25,6 +28,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.Appearance
+import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.graph.GraphPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphScreen
@@ -32,6 +37,10 @@ import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.RollScreen
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorScreen
+import de.drehtuer.dinfinity.feature.saved.GroupPresenter
+import de.drehtuer.dinfinity.feature.saved.HomeStrip
+import de.drehtuer.dinfinity.feature.saved.ImportPresenter
+import de.drehtuer.dinfinity.feature.saved.ImportScreen
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
@@ -39,6 +48,12 @@ import de.drehtuer.dinfinity.feature.settings.MenuEntry
 import de.drehtuer.dinfinity.feature.settings.MenuScreen
 import de.drehtuer.dinfinity.feature.settings.MenuSection
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
+import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
+import de.drehtuer.dinfinity.feature.stats.HistoryScreen
+import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
+import de.drehtuer.dinfinity.feature.stats.SessionsScreen
+import de.drehtuer.dinfinity.feature.stats.StatsPresenter
+import de.drehtuer.dinfinity.feature.stats.StatsScreen
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
@@ -59,6 +74,12 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
  *   installed sets.
  * @param savedRolls the same, for the saved-rolls screen, which needs the
  *   database.
+ * @param savedGroups the same, for the group sheet the saved-rolls list and
+ *   the editor both open.
+ * @param collectionImport the same, for the screen that takes a collection in.
+ * @param history the same, for the list of past rolls.
+ * @param statistics the same, for what every die has done.
+ * @param sessions the same, for the buckets statistics are filtered by.
  * @param navController taken rather than only made, so a test can open a
  *   screen the way a control would rather than by pressing its way there.
  */
@@ -66,10 +87,20 @@ import de.drehtuer.dinfinity.theme.ModernistTokens
 fun DInfinityApp(
   settings: AppSettings = AppSettings(),
   onAccentSelected: (AccentColor) -> Unit = {},
+  onAppearanceSelected: (Appearance) -> Unit = {},
+  onShakeChanged: (Boolean) -> Unit = {},
+  onRoundingSelected: (Rounding) -> Unit = {},
+  onRepository: () -> Unit = {},
+  version: String = "",
   rollPresenter: (() -> RollPresenter)? = null,
   graphMachine: (() -> GraphMachine)? = null,
   savedRolls: (() -> SavedPresenter)? = null,
   savedRollEditor: ((String?) -> EditorPresenter)? = null,
+  savedGroups: (() -> GroupPresenter)? = null,
+  collectionImport: (() -> ImportPresenter)? = null,
+  history: (() -> HistoryPresenter)? = null,
+  statistics: (() -> StatsPresenter)? = null,
+  sessions: (() -> SessionsPresenter)? = null,
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -92,36 +123,41 @@ fun DInfinityApp(
             }
           },
       ) { entry ->
-        when (destination) {
-          // Remembered per visit, not held by the application: a presenter owns
-          // the roll thread and, through it, a Filament engine and a physics
-          // world. Leaving the screen gives all three back
-          // (`docs/architecture.md`, decision 49).
-          Destination.Roll if rollPresenter != null ->
-            Roll(rollPresenter, entry, navController, !settings.welcomeSeen, onWelcomeSeen)
-
-          // Every screen the app has, and the only way to most of them
-          // (`docs/architecture.md`, "Screens and the states behind them").
-          Destination.Menu ->
-            MenuScreen(sections = menuSections(navController))
-
-          Destination.Graph if graphMachine != null -> Graph(graphMachine, entry, navController)
-
-          Destination.SavedRolls if savedRolls != null -> Saved(savedRolls, entry, navController)
-
-          Destination.SavedRollEditor if savedRollEditor != null ->
-            Editor(savedRollEditor, entry, navController)
-
-          Destination.Settings ->
-            SettingsScreen(
+        // Split in three, by what the screens are *about* rather than for
+        // tidiness: the graph's own table outgrew both the length and the
+        // complexity limits when sessions arrived, and each of these is one
+        // question — what the app does, what a player saved, what they have
+        // done. Each returns whether it recognised the destination, so exactly
+        // one of them draws and nothing falls through silently.
+        val drawn =
+          playing(
+            destination,
+            entry,
+            navController,
+            settings,
+            rollPresenter,
+            graphMachine,
+            savedRolls,
+            onWelcomeSeen,
+          ) ||
+            saving(destination, entry, navController, savedRolls, savedGroups, savedRollEditor, collectionImport) ||
+            lookingBack(destination, entry, navController, history, statistics, sessions) ||
+            chrome(
+              destination = destination,
+              navController = navController,
               settings = settings,
               onAccentSelected = onAccentSelected,
+              onAppearanceSelected = onAppearanceSelected,
               onPowerSavingChanged = onPowerSavingChanged,
-              menu = { MenuTo(navController) },
+              onShakeChanged = onShakeChanged,
+              onRoundingSelected = onRoundingSelected,
+              onRepository = onRepository,
+              version = version,
             )
-
-          else -> PlaceholderScreen(destination = destination, menu = { MenuTo(navController) })
-        }
+        // A destination whose screen is not built yet, or whose presenter was
+        // not supplied — a Robolectric test of the graph has neither a GPU nor
+        // a physics engine, and a placeholder is the honest thing to draw.
+        if (!drawn) PlaceholderScreen(destination = destination, menu = { MenuTo(navController) })
       }
     }
   }
@@ -142,17 +178,33 @@ private fun MenuTo(navController: NavHostController) {
 @Composable
 private fun Roll(
   presenter: () -> RollPresenter,
+  savedRolls: (() -> SavedPresenter)?,
   entry: NavBackStackEntry,
   navController: NavHostController,
-  firstLaunch: Boolean,
+  settings: AppSettings,
   onWelcomeSeen: () -> Unit,
 ) {
+  val saved = savedRolls?.let { make -> remember(entry) { make() } }
   RollScreen(
     presenter = remember(presenter) { presenter() },
-    firstLaunch = firstLaunch,
+    firstLaunch = !settings.welcomeSeen,
     onWelcomeSeen = onWelcomeSeen,
+    shakeToRoll = settings.shakeToRoll,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
     menu = { MenuTo(navController) },
+    // The active group's saved rolls, handed to the tray as a slot: the roll
+    // screen does not know what a saved roll is, and does not have to
+    // (`design/dInfinity.dc.html`, option 9a).
+    strip = { rollIt ->
+      if (saved != null) {
+        HomeStrip(
+          presenter = saved,
+          onRoll = rollIt,
+          onEdit = { rollId -> navController.navigate(editorRoute(rollId)) },
+          onNew = { navController.navigate(editorRoute(null)) },
+        )
+      }
+    },
     openWith = entry.arguments?.getString(GraphArgument.FORMULA).orEmpty(),
   )
 }
@@ -181,15 +233,155 @@ private fun Graph(
   )
 }
 
+/**
+ * What the app *does*: the tray, the odds, and the way between them.
+ *
+ * @return true when this is one of them, so the caller knows it has been drawn.
+ */
+@Composable
+private fun playing(
+  destination: Destination,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+  settings: AppSettings,
+  rollPresenter: (() -> RollPresenter)?,
+  graphMachine: (() -> GraphMachine)?,
+  savedRolls: (() -> SavedPresenter)?,
+  onWelcomeSeen: () -> Unit,
+): Boolean =
+  when (destination) {
+    // Remembered per visit, not held by the application: a presenter owns the
+    // roll thread and, through it, a Filament engine and a physics world.
+    // Leaving the screen gives all three back (`docs/architecture.md`,
+    // decision 49).
+    Destination.Roll if rollPresenter != null -> {
+      Roll(rollPresenter, savedRolls, entry, navController, settings, onWelcomeSeen)
+      true
+    }
+
+    Destination.Graph if graphMachine != null -> {
+      Graph(graphMachine, entry, navController)
+      true
+    }
+
+    else -> false
+  }
+
+/** What a player wrote down: the list, the editor, and a collection arriving. */
+@Composable
+private fun saving(
+  destination: Destination,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+  savedRolls: (() -> SavedPresenter)?,
+  savedGroups: (() -> GroupPresenter)?,
+  savedRollEditor: ((String?) -> EditorPresenter)?,
+  collectionImport: (() -> ImportPresenter)?,
+): Boolean =
+  when (destination) {
+    Destination.SavedRolls if savedRolls != null && savedGroups != null -> {
+      Saved(savedRolls, savedGroups, entry, navController)
+      true
+    }
+
+    Destination.SavedRollEditor if savedRollEditor != null && savedGroups != null -> {
+      Editor(savedRollEditor, savedGroups, entry, navController)
+      true
+    }
+
+    Destination.CollectionImport if collectionImport != null -> {
+      Import(collectionImport, entry, navController)
+      true
+    }
+
+    else -> false
+  }
+
+/** What a player has done: the history, the dice, and the buckets they are in. */
+@Composable
+private fun lookingBack(
+  destination: Destination,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+  history: (() -> HistoryPresenter)?,
+  statistics: (() -> StatsPresenter)?,
+  sessions: (() -> SessionsPresenter)?,
+): Boolean =
+  when (destination) {
+    Destination.History if history != null -> {
+      HistoryScreen(presenter = remember(entry) { history() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    Destination.Statistics if statistics != null -> {
+      StatsScreen(presenter = remember(entry) { statistics() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    Destination.Sessions if sessions != null -> {
+      SessionsScreen(presenter = remember(entry) { sessions() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    else -> false
+  }
+
+/**
+ * The app's own two screens: the menu that reaches every other, and Settings.
+ *
+ * Neither takes a presenter. The menu *is* a list of destinations, and Settings
+ * is driven from above the navigation graph because a preference outlives the
+ * screen that changed it (`docs/architecture.md`, decision 49).
+ */
+@Composable
+private fun chrome(
+  destination: Destination,
+  navController: NavHostController,
+  settings: AppSettings,
+  onAccentSelected: (AccentColor) -> Unit,
+  onAppearanceSelected: (Appearance) -> Unit,
+  onPowerSavingChanged: (Boolean) -> Unit,
+  onShakeChanged: (Boolean) -> Unit,
+  onRoundingSelected: (Rounding) -> Unit,
+  onRepository: () -> Unit,
+  version: String,
+): Boolean =
+  when (destination) {
+    Destination.Menu -> {
+      MenuScreen(sections = menuSections(navController))
+      true
+    }
+
+    Destination.Settings -> {
+      SettingsScreen(
+        settings = settings,
+        onAccentSelected = onAccentSelected,
+        onAppearanceSelected = onAppearanceSelected,
+        onPowerSavingChanged = onPowerSavingChanged,
+        onShakeChanged = onShakeChanged,
+        onRoundingSelected = onRoundingSelected,
+        onRepository = onRepository,
+        version = version,
+        menu = { MenuTo(navController) },
+      )
+      true
+    }
+
+    else -> false
+  }
+
 /** Saved rolls, and the way from one back to the tray. */
 @Composable
 private fun Saved(
   presenter: () -> SavedPresenter,
+  groups: () -> GroupPresenter,
   entry: NavBackStackEntry,
   navController: NavHostController,
 ) {
+  val context = LocalContext.current
   SavedScreen(
     presenter = remember(entry) { presenter() },
+    groups = remember(entry) { groups() },
     onRoll = { saved ->
       // Back to the tray with that formula in the field. The throw itself is
       // the player's to make: a saved roll is a formula with a name, not a
@@ -200,6 +392,11 @@ private fun Saved(
     },
     onEdit = { saved -> navController.navigate(editorRoute(saved.roll.id)) },
     onNew = { navController.navigate(editorRoute(null)) },
+    // The screen decides what is in the file; the app knows how to hand a
+    // file to another app, because the provider that does it is declared in
+    // this module's manifest.
+    onExport = { file -> CollectionSharing.share(context, file) },
+    onImport = { navController.navigate(Destination.CollectionImport.route) },
     menu = { MenuTo(navController) },
   )
 }
@@ -214,18 +411,62 @@ private fun Saved(
 @Composable
 private fun Editor(
   presenter: (String?) -> EditorPresenter,
+  groups: () -> GroupPresenter,
   entry: NavBackStackEntry,
   navController: NavHostController,
 ) {
   val editing = entry.arguments?.getString(EditorArgument.ROLL)?.ifBlank { null }
   EditorScreen(
     presenter = remember(entry) { presenter(editing) },
+    groups = remember(entry) { groups() },
     onDone = { navController.popBackStack() },
     onRollNow = { formula ->
       navController.navigate(rollRoute(formula)) {
         popUpTo(Destination.home.route) { inclusive = true }
       }
     },
+  )
+}
+
+/**
+ * Taking a collection in.
+ *
+ * The file picker is here rather than in the screen because a content URI is
+ * the application's business: the screen takes text, and everything about
+ * *getting* text out of something another app controls — the permission, the
+ * bounded read, the failure to open — happens on this side of the seam.
+ */
+@Composable
+private fun Import(
+  presenter: () -> ImportPresenter,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+) {
+  val importer = remember(entry) { presenter() }
+  val resolver = LocalContext.current.contentResolver
+  val choose =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      // A null uri is the picker being dismissed, which is not a failure and
+      // has nothing to say.
+      if (uri == null) return@rememberLauncherForActivityResult
+      when (val read = CollectionFileReading.read(resolver, uri)) {
+        is CollectionFileReading.Result.Read -> importer.offer(read.text)
+        is CollectionFileReading.Result.Failed -> importer.unopenable(read.why)
+      }
+    }
+  ImportScreen(
+    presenter = importer,
+    // Anything, not just application/json: a collection mailed through three
+    // apps arrives as text/plain or application/octet-stream as often as not,
+    // and a picker that hides the file somebody is looking at is worse than
+    // one that lets them choose the wrong thing and be told so.
+    onChooseFile = { choose.launch(arrayOf("*/*")) },
+    onDone = {
+      navController.navigate(Destination.SavedRolls.route) {
+        popUpTo(Destination.CollectionImport.route) { inclusive = true }
+      }
+    },
+    menu = { MenuTo(navController) },
   )
 }
 

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- The history screen (design option 1x). -->
+  <string name="history_title">History</string>
+  <string name="history_empty_title">No rolls yet.</string>
+  <string name="history_empty_body">Every throw is written down here with what it was made of. Nothing leaves the phone.</string>
+  <!-- %1$s is the set the formula asked for, %2$s the one that supplied the dice. -->
+  <string name="history_fell_back">“%1$s” is not installed; the dice came from “%2$s”</string>
+  <!-- %1$d is how many dice had to be thrown again or were forced to settle. -->
+  <plurals name="history_anomalies">
+    <item quantity="one">One correction during this throw</item>
+    <item quantity="other">%1$d corrections during this throw</item>
+  </plurals>
+  <!-- The statistics screen (design option 1w). -->
+  <string name="stats_title">Statistics</string>
+  <string name="stats_order">Every die you have thrown, most recently used first. Tap one for its histogram.</string>
+  <string name="stats_empty_title">Nothing thrown yet.</string>
+  <string name="stats_empty_body">Roll some dice and this fills in: how often each face has come up, against how often a fair die would.</string>
+  <!-- %1$d is how many times the die has been thrown. -->
+  <plurals name="stats_throws">
+    <item quantity="one">%1$d throw</item>
+    <item quantity="other">%1$d throws</item>
+  </plurals>
+  <!-- %1$s is the id of a set that is no longer installed. -->
+  <string name="stats_set_gone">%1$s — not installed</string>
+  <!-- %1$d is the die's own highest value: 20 for a d20, 3 for a d6 labelled 1,2,3,1,2,3. -->
+  <string name="stats_natural_high">natural %1$d</string>
+  <string name="stats_natural_low">natural %1$d</string>
+  <string name="stats_average">average</string>
+  <string name="stats_total_throws">throws</string>
+  <string name="stats_guessed_line">That set is not installed, so the fair line is guessed from what has come up rather than from the die’s faces.</string>
+  <string name="stats_reset_die">Forget this die’s record</string>
+  <string name="stats_reset_all">Forget everything</string>
+  <string name="stats_confirm_title">This cannot be undone</string>
+  <!-- %1$s is the die's name. -->
+  <string name="stats_confirm_die">Every throw of %1$s is forgotten: its counts, its averages and its streaks. Your history of past rolls is left alone.</string>
+  <string name="stats_confirm_all">Every die’s record and every roll in your history is forgotten.</string>
+  <string name="stats_confirm_yes">Forget it</string>
+  <string name="group_cancel_stats">Keep it</string>
+  <!-- Sessions (design option 6c). -->
+  <string name="sessions_title">Sessions</string>
+  <!-- The session every roll belongs to before anybody makes another. -->
+  <string name="sessions_first">First rolls</string>
+  <string name="sessions_explanation">A session is a label on a stretch of rolls — a campaign, an evening. Nothing starts or stops; new rolls go into whichever one is chosen.</string>
+  <string name="sessions_new">New session</string>
+  <string name="sessions_new_note">New rolls go here from now on.</string>
+  <string name="sessions_rename">Rename</string>
+  <string name="sessions_delete">Delete</string>
+  <string name="sessions_name">Name</string>
+  <string name="sessions_name_hint">Tuesday campaign</string>
+  <string name="sessions_save">Save</string>
+  <string name="sessions_cancel">Cancel</string>
+  <!-- %1$s is the session name; this marks the one new rolls go into. -->
+  <string name="sessions_active">%1$s — rolling into this one</string>
+  <!-- %1$s is a number of rolls, %2$s a number of natural maximums. -->
+  <string name="sessions_counts">%1$s, %2$s</string>
+  <plurals name="sessions_rolls">
+    <item quantity="one">%1$d roll</item>
+    <item quantity="other">%1$d rolls</item>
+  </plurals>
+  <plurals name="sessions_naturals">
+    <item quantity="one">%1$d with a natural high</item>
+    <item quantity="other">%1$d with a natural high</item>
+  </plurals>
+</resources>

@@ -27,6 +27,7 @@ room = "2.8.5"
 ksp = "2.3.9"
 okhttp = "5.5.0"
 commonsCompress = "1.28.0"
+serialization = "1.11.0"
 filament = "1.75.1"
 
 [libraries]
@@ -43,6 +44,13 @@ tomlj = { module = "org.tomlj:tomlj", version.ref = "tomlj" }
 # (docs/architecture.md, decision 46).
 filament-android = { module = "com.google.android.filament:filament-android", version.ref = "filament" }
 filamat-android = { module = "com.google.android.filament:filamat-android", version.ref = "filament" }
+# JSON, for saved-roll collections (docs/dice-notation.md, "Export and
+# import"). Used through its DOM — parseToJsonElement and buildJsonObject —
+# never through a deserializer, for the same reason tomlj is: a file from a
+# stranger is validated field by field with a message naming what is wrong,
+# and a deserializer's own failure is not that message. Using it this way also
+# needs no compiler plugin.
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 
