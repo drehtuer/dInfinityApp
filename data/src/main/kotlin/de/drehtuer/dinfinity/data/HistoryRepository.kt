@@ -35,6 +35,25 @@ class HistoryRepository(
   fun forSavedRoll(savedRollId: String): Flow<List<HistoryEntry>> =
     database.rollHistory().forSavedRoll(savedRollId).map { rows -> rows.map(RollHistoryRow::asEntry) }
 
+  /**
+   * A copy of the history, taken now (`docs/statistics.md`, "Export and reset").
+   *
+   * @param sessionId only this session's rolls, or null for every session.
+   * @param savedRollId only this saved roll's throws, or null for all of them.
+   * @param limit how many at most. The table is pruned to
+   *   `StatisticsRepository.MAX_HISTORY_ROWS`, so asking for that many is
+   *   asking for everything there can be.
+   */
+  suspend fun snapshot(
+    sessionId: String? = null,
+    savedRollId: String? = null,
+    limit: Int = StatisticsRepository.MAX_HISTORY_ROWS,
+  ): List<HistoryEntry> =
+    database
+      .rollHistory()
+      .snapshot(sessionId = sessionId, savedRollId = savedRollId, limit = limit)
+      .map(RollHistoryRow::asEntry)
+
   companion object {
     /**
      * How many rolls a history screen asks for.

@@ -26,6 +26,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -48,9 +52,11 @@ import de.drehtuer.dinfinity.core.stats.FaceBar
 fun StatsScreen(
   presenter: StatsPresenter,
   modifier: Modifier = Modifier,
+  onExport: (ExportFile) -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
+  var exporting by remember { mutableStateOf(false) }
   Column(
     modifier =
       modifier
@@ -59,7 +65,28 @@ fun StatsScreen(
         .safeDrawingPadding()
         .testTag(StatsTestTags.SCREEN),
   ) {
-    Header(open = state.selected, onClose = presenter::close, menu = menu)
+    Header(
+      open = state.selected,
+      onClose = presenter::close,
+      // Not while one die is open: what the button would write is the whole
+      // record either way, and a button that says one thing and does another
+      // on one screen out of two is worse than a button that waits.
+      offerExport = state.selected == null && !state.empty,
+      onExport = { exporting = true },
+      menu = menu,
+    )
+
+    if (exporting) {
+      ExportChoice(
+        tagPrefix = StatsTestTags.EXPORT,
+        body = stringResource(R.string.stats_export_body),
+        onDismiss = { exporting = false },
+        onChosen = { format ->
+          exporting = false
+          presenter.export(format, onExport)
+        },
+      )
+    }
 
     state.confirming?.let { what ->
       Confirm(what = what, onYes = presenter::reset, onNo = { presenter.confirm(null) })
@@ -77,6 +104,8 @@ fun StatsScreen(
 private fun Header(
   open: DieDetail?,
   onClose: () -> Unit,
+  offerExport: Boolean,
+  onExport: () -> Unit,
   menu: @Composable () -> Unit,
 ) {
   Row(
@@ -94,6 +123,11 @@ private fun Header(
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(1f),
     )
+    if (offerExport) {
+      TextButton(onClick = onExport, modifier = Modifier.testTag(StatsTestTags.EXPORT)) {
+        Text(stringResource(R.string.stats_export))
+      }
+    }
     menu()
   }
 }
@@ -461,6 +495,12 @@ object StatsTestTags {
   const val DETAIL: String = "stats:detail"
   const val EMPTY: String = "stats:empty"
   const val BACK: String = "stats:back"
+
+  /** Also the prefix the export dialog's own tags are built from. */
+  const val EXPORT: String = "stats:export"
+  const val EXPORT_DIALOG: String = "$EXPORT:dialog"
+  const val EXPORT_JSON: String = "$EXPORT:json"
+  const val EXPORT_CSV: String = "$EXPORT:csv"
   const val HISTOGRAM: String = "stats:histogram"
   const val HIGHS: String = "stats:highs"
   const val LOWS: String = "stats:lows"

@@ -92,6 +92,33 @@ class StatsPresenter(
     state = state.copy(acrossSets = across, setFilter = null, selected = null)
   }
 
+  /**
+   * What every die has done, as a file (`docs/statistics.md`, "Export and
+   * reset").
+   *
+   * The faces are read once, here, rather than watched: the screen only ever
+   * loads the open die's histogram, and a file is about all of them.
+   *
+   * @param to what to do with the file. The screen hands it up to the
+   *   application, which is where a share sheet lives.
+   */
+  fun export(
+    format: ExportFormat,
+    to: (ExportFile) -> Unit,
+  ) {
+    val dice = state.recorded
+    scope.launch {
+      to(
+        DiceExport.of(
+          dice = dice.map(DieRow::summary),
+          faces = statistics.allFaces(),
+          format = format,
+          called = state.setFilter ?: "dice",
+        ),
+      )
+    }
+  }
+
   /** Back to the list. */
   fun close() {
     watching?.cancel()
@@ -239,6 +266,20 @@ data class StatsState(
    * screen that cancel each other out.
    */
   val dice: List<DieRow> get() = if (acrossSets) pooled() else all.filter { setFilter == null || it.setId == setFilter }
+
+  /**
+   * The dice a file would carry: the real ones, and never the roll-up.
+   *
+   * A pooled row stands for every d20 in every set at once and so belongs to
+   * no set — which is right on a screen and wrong in a file, where the set is
+   * what makes a record checkable. The per-die rows are also the ones a
+   * roll-up can be recomputed from; the reverse is not true, so the file keeps
+   * the half that can give back the other (`docs/statistics.md`).
+   *
+   * A set filter *is* honoured, because that one hides dice rather than
+   * merging them.
+   */
+  val recorded: List<DieRow> get() = all.filter { setFilter == null || it.setId == setFilter }
 
   /** True when nothing has ever been rolled, rather than nothing has arrived. */
   val empty: Boolean get() = loaded && all.isEmpty()

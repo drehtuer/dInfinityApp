@@ -446,7 +446,12 @@ private fun lookingBack(
     }
 
     Destination.Statistics if statistics != null -> {
-      StatsScreen(presenter = remember(entry) { statistics() }, menu = { MenuTo(navController) })
+      val context = LocalContext.current
+      StatsScreen(
+        presenter = remember(entry) { statistics() },
+        onExport = { file -> NumbersSharing.share(context, file) },
+        menu = { MenuTo(navController) },
+      )
       true
     }
 

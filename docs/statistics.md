@@ -243,7 +243,24 @@ them out. Reproducing a stored roll is a developer action
 - Times are ISO-8601 in UTC, not the way the screen shows them: a file outlives
   the phone it was made on, and a localised date is one a spreadsheet has to
   guess at. CSV is RFC 4180, so a formula with a comma in it stays one column.
-- Exporting the **statistics** is not built yet (`docs/TODO.md`, 4.7).
+- **The statistics export too**, and the two formats carry different things.
+  The flat form is one row per *face* — `set, die, sides, face, count,
+  dropped` — because the question somebody exports statistics to answer is
+  *are my dice fair*, and that is asked of face counts. The full form adds each
+  die's summary, because a **run** is the one thing the counts cannot give
+  back: how often a die came up highest in a row is a fact about the order it
+  was thrown in, and a histogram has forgotten that. Everything else in the
+  summary *is* derivable from the counts — the throws are their sum, the mean
+  their weighted average — so it is not repeated down every row.
+- A set filter is carried into the file; **the roll-up is not.** A pooled row
+  stands for every d20 in every set at once and so belongs to no set, which is
+  right on a screen and wrong in a file, where the set is what makes a record
+  checkable. The per-die rows are also the ones a roll-up can be recomputed
+  from, and the reverse is not true, so the file keeps the half that can give
+  back the other.
+- Both exports are **snapshots**, read once when the player asks: a file is a
+  copy taken at a moment, and a screen that re-exported itself every time a
+  roll landed would be opening share sheets.
 - Reset per die and everything are built, each behind a confirmation dialog;
   per saved roll and per session are not yet (`docs/TODO.md`, 4.7).
 - Nothing is uploaded anywhere. There is no analytics backend; the

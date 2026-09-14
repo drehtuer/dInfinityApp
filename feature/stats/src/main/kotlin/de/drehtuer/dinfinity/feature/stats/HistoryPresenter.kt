@@ -9,11 +9,9 @@ import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.Session
 import de.drehtuer.dinfinity.data.SessionRepository
-import de.drehtuer.dinfinity.data.StatisticsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -109,9 +107,14 @@ class HistoryPresenter(
     format: ExportFormat,
     to: (ExportFile) -> Unit,
   ) {
+    val filter = state.filter
     scope.launch {
-      val everything = rollsFor(state.filter, StatisticsRepository.MAX_HISTORY_ROWS).first()
-      to(HistoryExport.of(everything, format, called = nameOf(state.filter)))
+      val everything =
+        history.snapshot(
+          sessionId = (filter as? HistoryFilter.InSession)?.id,
+          savedRollId = (filter as? HistoryFilter.OfSavedRoll)?.id,
+        )
+      to(HistoryExport.of(everything, format, called = nameOf(filter)))
     }
   }
 
@@ -128,10 +131,7 @@ class HistoryPresenter(
       is HistoryFilter.OfSavedRoll -> filter.name
     }
 
-  private fun rollsFor(
-    filter: HistoryFilter,
-    limit: Int = this.limit,
-  ): Flow<List<HistoryEntry>> =
+  private fun rollsFor(filter: HistoryFilter): Flow<List<HistoryEntry>> =
     when (filter) {
       HistoryFilter.Everything -> history.recent(limit)
       is HistoryFilter.InSession -> history.inSession(filter.id, limit)

@@ -387,7 +387,93 @@ class StatsScreenTest {
     }
   }
 
-  private fun show(): StatsPresenter {
+  @Test
+  fun `there is nothing to export before anything has been rolled`() {
+    show()
+
+    compose.onNodeWithTag(StatsTestTags.EXPORT).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the flat file is one row per face of every die`() {
+    given(dieId = "d6", sides = 6, throws = 60, sum = 210)
+    faces(dieId = "d6", sides = 6, counts = mapOf(1 to 10L, 2 to 10L, 3 to 10L))
+    val exported = mutableListOf<ExportFile>()
+    show(onExport = exported::add)
+
+    compose.onNodeWithTag(StatsTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(StatsTestTags.EXPORT_CSV).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    assertEquals("text/csv", file.mediaType)
+    assertEquals(
+      "a header and three faces",
+      4,
+      file.text
+        .trim()
+        .lines()
+        .size,
+    )
+  }
+
+  @Test
+  fun `the full file carries the die's summary as well as its faces`() {
+    given(dieId = "d6", sides = 6, throws = 60, sum = 210)
+    faces(dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
+    val exported = mutableListOf<ExportFile>()
+    show(onExport = exported::add)
+
+    compose.onNodeWithTag(StatsTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(StatsTestTags.EXPORT_JSON).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    assertTrue("the throws are missing: ${file.text}", file.text.contains("\"throws\": 60"))
+    assertTrue("the faces are missing: ${file.text}", file.text.contains("\"faces\""))
+  }
+
+  @Test
+  fun `a list cut to one set exports that set and names the file after it`() {
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    faces(setId = "builtin", dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
+    faces(setId = "brass", dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
+    val exported = mutableListOf<ExportFile>()
+    val presenter = show(onExport = exported::add)
+
+    presenter.filterBy("brass")
+    compose.onNodeWithTag(StatsTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(StatsTestTags.EXPORT_CSV).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    assertEquals("brass.csv", file.name)
+    assertTrue("the other set reached the file: ${file.text}", !file.text.contains("builtin"))
+  }
+
+  @Test
+  fun `the roll-up is a way of looking, not a thing to export`() {
+    // A pooled row stands for every d6 at once and belongs to no set, which is
+    // right on a screen and wrong in a file. The per-die rows are also the
+    // ones a roll-up can be recomputed from; the reverse is not true.
+    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(setId = "brass", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    faces(setId = "builtin", dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
+    faces(setId = "brass", dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
+    val exported = mutableListOf<ExportFile>()
+    val presenter = show(onExport = exported::add)
+
+    presenter.rollUp(true)
+    compose.onNodeWithTag(StatsTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(StatsTestTags.EXPORT_CSV).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    assertTrue("the real sets are missing: ${file.text}", file.text.contains("builtin") && file.text.contains("brass"))
+  }
+
+  private fun show(onExport: (ExportFile) -> Unit = {}): StatsPresenter {
     val presenter =
       StatsPresenter(
         statistics = reading,
@@ -395,7 +481,7 @@ class StatsScreenTest {
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
       )
-    compose.setContent { StatsScreen(presenter = presenter) }
+    compose.setContent { StatsScreen(presenter = presenter, onExport = onExport) }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
     return presenter
   }

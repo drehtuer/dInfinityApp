@@ -30,6 +30,31 @@ interface RollHistoryDao {
   @Query("SELECT * FROM roll_history WHERE saved_roll_id = :savedRollId ORDER BY timestamp DESC, id DESC")
   fun forSavedRoll(savedRollId: String): Flow<List<RollHistoryRow>>
 
+  /**
+   * The same three questions the flows above answer, asked once.
+   *
+   * One query rather than three because what varies is which filters are on,
+   * and a null means "not this one" — which is exactly what an export needs: a
+   * copy taken at a moment, of whatever the screen was cut to. A flow would be
+   * the wrong shape twice over, once because nobody is watching a file and
+   * once because a screen that re-exported itself on every roll would be
+   * opening share sheets.
+   */
+  @Query(
+    """
+    SELECT * FROM roll_history
+    WHERE (:sessionId IS NULL OR session_id = :sessionId)
+      AND (:savedRollId IS NULL OR saved_roll_id = :savedRollId)
+    ORDER BY timestamp DESC, id DESC
+    LIMIT :limit
+    """,
+  )
+  suspend fun snapshot(
+    sessionId: String?,
+    savedRollId: String?,
+    limit: Int,
+  ): List<RollHistoryRow>
+
   @Query("SELECT COUNT(*) FROM roll_history")
   suspend fun count(): Long
 
@@ -69,6 +94,17 @@ interface DieStatsDao {
     dieId: String,
     faceValue: Int,
   ): DieStatsRow?
+
+  /**
+   * Every face of every die, for an export.
+   *
+   * One shot rather than a flow, and unfiltered: a file is a copy taken at a
+   * moment, and the thing being copied is the whole record. The table is one
+   * row per face per die, so it is bounded by the dice that have been thrown
+   * rather than by how often they were.
+   */
+  @Query("SELECT * FROM die_stats ORDER BY set_id, die_id, face_value")
+  suspend fun everything(): List<DieStatsRow>
 
   @Query("SELECT * FROM die_stats WHERE set_id = :setId AND die_id = :dieId ORDER BY face_value")
   fun histogram(

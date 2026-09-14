@@ -16,13 +16,17 @@
   <string name="history_clear_filter">Show everything</string>
 
   <string name="history_export">Export</string>
-  <string name="history_export_title">Export these rolls</string>
-  <string name="history_export_body">A copy of what this list is showing, to keep or to send on. No seeds: a past roll is a record, not something to re-run.</string>
-  <string name="history_export_json">JSON — everything, breakdown included</string>
-  <string name="history_export_csv">CSV — one row per roll, for a spreadsheet</string>
-  <string name="history_export_cancel">Cancel</string>
+  <string name="history_export_body">A copy of every roll this list is filtered to, to keep or to send on. No seeds: a past roll is a record, not something to re-run.</string>
 
   <!-- The statistics screen (design option 1w). -->
+  <!-- Shared by both screens that export; each supplies its own body line. -->
+  <string name="export_title">Export</string>
+  <string name="export_json">JSON — everything</string>
+  <string name="export_csv">CSV — for a spreadsheet</string>
+
+  <string name="stats_export">Export</string>
+  <string name="stats_export_body">A copy of what every die has done: one row per face, or everything with the runs included. Nothing about how the dice were thrown, only what they landed on.</string>
+
   <string name="stats_title">Statistics</string>
   <!-- Saved-roll statistics (design options 8b and 9e). -->
   <string name="savedstats_title">Saved-roll statistics</string>

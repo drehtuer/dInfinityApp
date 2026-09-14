@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -72,7 +71,9 @@ fun HistoryScreen(
     Header(offerExport = !state.empty, onExport = { exporting = true }, menu = menu)
 
     if (exporting) {
-      ExportDialog(
+      ExportChoice(
+        tagPrefix = HistoryTestTags.EXPORT,
+        body = stringResource(R.string.history_export_body),
         onDismiss = { exporting = false },
         onChosen = { format ->
           exporting = false
@@ -149,43 +150,6 @@ private fun Header(
     }
     menu()
   }
-}
-
-/**
- * Which shape the file takes (`docs/statistics.md`, "Export and reset").
- *
- * Two formats because they answer different questions: JSON keeps the
- * breakdown and is the one to keep, CSV is one row per roll and is the one a
- * spreadsheet can draw. Offering one would be choosing for the player which
- * question they are asking.
- */
-@Composable
-private fun ExportDialog(
-  onDismiss: () -> Unit,
-  onChosen: (ExportFormat) -> Unit,
-) {
-  AlertDialog(
-    modifier = Modifier.testTag(HistoryTestTags.EXPORT_DIALOG),
-    onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.history_export_title)) },
-    text = { Text(stringResource(R.string.history_export_body)) },
-    confirmButton = {
-      TextButton(
-        onClick = { onChosen(ExportFormat.Json) },
-        modifier = Modifier.testTag(HistoryTestTags.EXPORT_JSON),
-      ) {
-        Text(stringResource(R.string.history_export_json))
-      }
-    },
-    dismissButton = {
-      TextButton(
-        onClick = { onChosen(ExportFormat.Csv) },
-        modifier = Modifier.testTag(HistoryTestTags.EXPORT_CSV),
-      ) {
-        Text(stringResource(R.string.history_export_csv))
-      }
-    },
-  )
 }
 
 @Composable
@@ -444,10 +408,12 @@ object HistoryTestTags {
   const val ALL: String = "history:all"
   const val FILTERED_EMPTY: String = "history:filtered-empty"
   const val CLEAR_FILTER: String = "history:clear-filter"
+
+  /** Also the prefix the export dialog's own tags are built from. */
   const val EXPORT: String = "history:export"
-  const val EXPORT_DIALOG: String = "history:export:dialog"
-  const val EXPORT_JSON: String = "history:export:json"
-  const val EXPORT_CSV: String = "history:export:csv"
+  const val EXPORT_DIALOG: String = "$EXPORT:dialog"
+  const val EXPORT_JSON: String = "$EXPORT:json"
+  const val EXPORT_CSV: String = "$EXPORT:csv"
 
   /** The chooser's button for one session — not the heading, which is `sessionOf`. */
   fun sessionChoiceOf(id: String): String = "history:choose-session:$id"
