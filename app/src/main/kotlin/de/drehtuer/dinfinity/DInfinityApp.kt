@@ -43,6 +43,8 @@ import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportScreen
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedScreen
+import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
+import de.drehtuer.dinfinity.feature.sets.SetDetailScreen
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
@@ -60,8 +62,10 @@ import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
 import de.drehtuer.dinfinity.navigation.MenuGroup
+import de.drehtuer.dinfinity.navigation.SetArgument
 import de.drehtuer.dinfinity.theme.LocalModernistColors
 import de.drehtuer.dinfinity.theme.ModernistTokens
+import java.io.File
 
 /**
  * The navigation graph, with one destination per screen. Each destination is a
@@ -104,6 +108,8 @@ fun DInfinityApp(
   statistics: (() -> StatsPresenter)? = null,
   sessions: (() -> SessionsPresenter)? = null,
   diceSets: (() -> SetsPresenter)? = null,
+  diceSet: ((String, () -> Unit) -> SetDetailPresenter)? = null,
+  onSource: (String) -> Unit = {},
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -145,7 +151,7 @@ fun DInfinityApp(
           ) ||
             saving(destination, entry, navController, savedRolls, savedGroups, savedRollEditor, collectionImport) ||
             lookingBack(destination, entry, navController, history, statistics, sessions) ||
-            customising(destination, entry, navController, diceSets) ||
+            customising(destination, entry, navController, diceSets, diceSet, onSource) ||
             chrome(
               destination = destination,
               navController = navController,
@@ -302,6 +308,46 @@ private fun saving(
   }
 
 /**
+ * The dice-set list, with the file picker that installs one.
+ *
+ * The picker is here rather than in `feature/sets` because a content URI is the
+ * application's business: it is reached through a `ContentResolver`, and the
+ * presenter takes a `File`. The bytes are copied bounded into the app's own
+ * cache and the copy is deleted however the install ends, including when it
+ * throws (`docs/dice-sets.md`).
+ */
+@Composable
+private fun Sets(
+  presenter: SetsPresenter,
+  navController: NavHostController,
+) {
+  val context = LocalContext.current
+  val choose =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      // A null uri is the picker being dismissed, which is not a failure and
+      // has nothing to say.
+      if (uri == null) return@rememberLauncherForActivityResult
+      when (val copied = PackageFileReading.copy(context.contentResolver, uri, File(context.cacheDir, CHOSEN))) {
+        is PackageFileReading.Result.Copied -> presenter.install(copied.file) { copied.file.delete() }
+        is PackageFileReading.Result.Failed -> presenter.refused(copied.why)
+      }
+    }
+  SetsScreen(
+    presenter = presenter,
+    onOpen = { row -> navController.navigate("${Destination.SetDetail.route}?${SetArgument.SET}=${row.id}") },
+    // Anything, not just an archive type: a dice set downloaded through a
+    // browser and three apps arrives as application/octet-stream as often as
+    // not, and a picker that hides the file somebody is looking at is worse
+    // than one that lets them choose the wrong thing and be told so.
+    onInstall = { choose.launch(arrayOf("*/*")) },
+    menu = { MenuTo(navController) },
+  )
+}
+
+/** Where a chosen archive is copied to before the installer opens it. */
+private const val CHOSEN = "chosen-packages"
+
+/**
  * What the player has installed, and what they may change about it.
  *
  * Its own question rather than a branch of [chrome]: settings are the app's
@@ -315,10 +361,25 @@ private fun customising(
   entry: NavBackStackEntry,
   navController: NavHostController,
   diceSets: (() -> SetsPresenter)?,
+  diceSet: ((String, () -> Unit) -> SetDetailPresenter)?,
+  onSource: (String) -> Unit,
 ): Boolean =
   when (destination) {
     Destination.DiceSets if diceSets != null -> {
-      SetsScreen(presenter = remember(entry) { diceSets() }, menu = { MenuTo(navController) })
+      Sets(remember(entry) { diceSets() }, navController)
+      true
+    }
+
+    Destination.SetDetail if diceSet != null -> {
+      val id = entry.arguments?.getString(SetArgument.SET).orEmpty()
+      SetDetailScreen(
+        // Removing the set leaves the screen that was showing it: there is
+        // nothing left to show, and staying would be a page about a folder
+        // that is not there.
+        presenter = remember(entry) { diceSet(id) { navController.popBackStack() } },
+        onSource = onSource,
+        menu = { MenuTo(navController) },
+      )
       true
     }
 

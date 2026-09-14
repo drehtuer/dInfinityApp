@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.format.Severity
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -183,6 +184,52 @@ class InstalledSetsTest {
         .text
         .contains("fixture-set"),
     )
+  }
+
+  @Test
+  fun `one package can be asked for by name`() {
+    // What the details screen does: it is given an id and wants that folder,
+    // not a scan of every package on the phone.
+    write("brass", Archives.MINIMAL_TOML.replace("fixture-set", "brass"))
+    write("copper", Archives.MINIMAL_TOML.replace("fixture-set", "copper"))
+
+    assertEquals("brass", installed.find("brass")?.id)
+    assertEquals("copper", installed.find("copper")?.id)
+  }
+
+  @Test
+  fun `an id nothing is installed under is null, not an empty package`() {
+    assertNull(installed.find("nothing-here"))
+  }
+
+  @Test
+  fun `an id that tries to leave the folder finds nothing`() {
+    // The id arrives from a screen, having come from a folder name that came
+    // from an archive. Joining it onto the path is how a lookup becomes a way
+    // out of the sandbox.
+    write("brass", Archives.MINIMAL_TOML.replace("fixture-set", "brass"))
+
+    assertNull(installed.find(".."))
+    assertNull(installed.find("../brass"))
+    assertNull(installed.find("/etc"))
+  }
+
+  @Test
+  fun `removing refuses an id that is not a folder in there`() {
+    write("brass", Archives.MINIMAL_TOML.replace("fixture-set", "brass"))
+
+    assertTrue("a remove of nothing is not a failure", installed.remove("nothing-here"))
+    assertTrue(installed.remove(".."))
+    assertTrue("the package next door was deleted", File(root, "brass").isDirectory)
+  }
+
+  @Test
+  fun `removing takes the folder away`() {
+    write("brass", Archives.MINIMAL_TOML.replace("fixture-set", "brass"))
+
+    assertTrue(installed.remove("brass"))
+
+    assertEquals(emptyList<InstalledPackage>(), installed.scan())
   }
 
   private fun write(

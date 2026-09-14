@@ -1,11 +1,11 @@
 package de.drehtuer.dinfinity
 
 import android.content.Context
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.RollRecording
-import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
@@ -39,18 +39,24 @@ import kotlinx.coroutines.launch
 class RollWiring(
   private val context: Context,
   private val recording: RollRecording? = null,
+  private val catalogue: () -> DiceCatalog,
 ) {
   private val simulator = JoltDiceSimulator()
 
   /**
    * The installed sets a formula resolves against.
    *
-   * The bundled set only, for now: the installed-set registry arrives with the
-   * dice-set screen (`docs/TODO.md`, Step 4.4). It goes through the same
-   * validator as a package from a stranger, on every launch
-   * (`docs/dice-sets.md`).
+   * Asked for rather than held, and asked once per visit to a screen. The
+   * catalogue is fixed for the life of a roll screen by design — choosing a
+   * different set is a change to what is *installed*, and that happens
+   * somewhere else (`RollMachine`) — so the moment to read it is the moment
+   * the screen opens, and a set installed while the player was on another
+   * screen is there when they come back.
+   *
+   * `SetLibrary` is what builds it, from the packages on disk that are on and
+   * still validate (`docs/dice-sets.md`).
    */
-  val catalog: DiceCatalog by lazy { DiceCatalog.of(listOf(BuiltinDiceSet.set)) }
+  val catalog: DiceCatalog get() = catalogue()
 
   /**
    * The tray, shaped to this phone.
@@ -62,10 +68,17 @@ class RollWiring(
    */
   private val geometry: TableGeometry by lazy { TableGeometry.forAspect(aspect()) }
 
-  /** The default look. Choosing another is the table picker's job (Step 4.5). */
-  private val table: TableLook by lazy {
-    BuiltinDiceSet.set.tables.firstOrNull() ?: TableLook(id = "default", name = "Default")
-  }
+  /**
+   * The default look. Choosing another is the table picker's job (Step 4.5).
+   *
+   * Taken from the bundled set through the catalogue rather than from
+   * `dicesets:builtin` directly: it is the same package either way, and asking
+   * the catalogue is what keeps this file from naming the module that happens
+   * to ship it.
+   */
+  private val table: TableLook
+    get() =
+      catalog.set(DiceSet.BUILTIN_ID)?.tables?.firstOrNull() ?: TableLook(id = "default", name = "Default")
 
   /**
    * A presenter for one visit to the roll screen.

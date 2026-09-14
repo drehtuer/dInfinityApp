@@ -21,7 +21,7 @@ class DestinationTest {
     // about saved rolls and would be a menu row that means nothing until
     // somebody has a file.
     assertEquals(
-      listOf(Destination.Menu, Destination.SavedRollEditor, Destination.CollectionImport),
+      listOf(Destination.Menu, Destination.SavedRollEditor, Destination.CollectionImport, Destination.SetDetail),
       Destination.entries.filter { it.group == null },
     )
   }

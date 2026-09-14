@@ -2,8 +2,10 @@ package de.drehtuer.dinfinity
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
@@ -21,6 +23,7 @@ import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
@@ -28,6 +31,9 @@ import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportTestTags
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedTestTags
+import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
+import de.drehtuer.dinfinity.feature.sets.SetDetailTestTags
+import de.drehtuer.dinfinity.feature.sets.SetLibrary
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsTestTags
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
@@ -164,6 +170,35 @@ class DInfinityScreensTest {
   }
 
   @Test
+  fun `the set details screen draws, and reaches the bundled set with no argument`() {
+    // Every destination has to be reachable by its bare route — from a
+    // restored back stack, from a test — and the bundled set is the one that
+    // is always installed, so it is what an empty argument means.
+    val navigation = app()
+
+    go(navigation, Destination.SetDetail)
+
+    compose.onNodeWithTag(SetDetailTestTags.SCREEN).assertIsDisplayed()
+    compose.onNodeWithTag(SetDetailTestTags.NAME).assertTextContains(BuiltinDiceSet.set.name, substring = true)
+  }
+
+  @Test
+  fun `a row on the dice-set screen opens that set`() {
+    // The one wiring between two screens that a feature module cannot check on
+    // its own: the list hands an id out and the graph turns it into a route.
+    val navigation = app()
+    go(navigation, Destination.DiceSets)
+
+    compose.onNodeWithTag(SetsTestTags.setOf(BuiltinDiceSet.set.id)).performClick()
+
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.SetDetail
+    }
+    compose.onNodeWithTag(SetDetailTestTags.SCREEN).assertIsDisplayed()
+  }
+
+  @Test
   fun `the statistics screen draws`() {
     val navigation = app()
 
@@ -198,6 +233,16 @@ class DInfinityScreensTest {
   ) {
     compose.runOnIdle { navigation.navigate(destination.route) }
   }
+
+  /** The disk and the database joined, as the application does it. */
+  private fun setLibrary() =
+    SetLibrary(
+      bundled = BuiltinDiceSet.set,
+      installed = InstalledSets(File(temporary, "dicesets")),
+      registry = InstalledSetRepository(database),
+      io = Dispatchers.Unconfined,
+      installer = PackageInstaller(File(temporary, "dicesets")),
+    )
 
   /** The app with every screen that takes a presenter actually given one. */
   private fun app(): NavHostController {
@@ -235,13 +280,13 @@ class DInfinityScreensTest {
               defaultName = "First rolls",
             )
           },
-          diceSets = {
-            SetsPresenter(
-              bundled = BuiltinDiceSet.set,
-              installed = InstalledSets(File(temporary, "dicesets")),
-              registry = InstalledSetRepository(database),
+          diceSets = { SetsPresenter(setLibrary(), scope) },
+          diceSet = { id, onGone ->
+            SetDetailPresenter(
+              id = id.ifEmpty { BuiltinDiceSet.set.id },
+              library = setLibrary(),
               scope = scope,
-              io = Dispatchers.Unconfined,
+              onGone = onGone,
             )
           },
           statistics = {
@@ -256,5 +301,10 @@ class DInfinityScreensTest {
       }
     }
     return navigation
+  }
+
+  private companion object {
+    /** Long enough for a folder read and a database round trip, short enough to fail. */
+    const val PATIENCE = 5_000L
   }
 }

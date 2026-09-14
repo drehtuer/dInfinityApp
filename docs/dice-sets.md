@@ -425,6 +425,36 @@ are ignored with a warning to allow future extensions.
   because passing the validator once does not make a folder valid for ever. A
   broken package **keeps its folder**: an update is the way out of that state
   and an update needs somewhere to update from (design `6b`).
+- **What is installed is what a formula resolves against.** `SetLibrary` builds
+  the catalogue every time it reads the `dicesets/` folder, from the bundled set
+  plus every installed package that is *on and still validates* — the same test
+  a row's status shows. Reading the folder and deciding what a `d20` means are
+  the same facts, and keeping them apart is how a set comes to be listed as
+  installed and still not roll.
+- The folder is read once as the process starts, not when the dice-set screen
+  is first opened. The roll screen is home, so the first formula can be typed a
+  moment after launch; a set that only became rollable once somebody visited a
+  list would be a set that worked for the people who happened to look.
+- **A file somebody picked is copied bounded, into the app's own cache.** A
+  content URI is a handle to something another application controls: its size
+  is not knowable in advance, the provider may report one figure and hand over
+  another, and it may stream for ever. So the copy stops one byte past
+  `InstallLimits.MAX_DOWNLOAD_BYTES` — the same cap a download gets, because
+  the limit is about what the extractor is willing to open rather than about
+  where the bytes came from. The copy is deleted however the install ends.
+- **A rejection lists every error, not the first.** An author fixing a set
+  wants the whole list, and a report that stopped at the first problem would be
+  one round trip per mistake (design `1t`).
+- **The report is shown where the dice would be.** A set's details screen
+  answers one question — what is in this set — and for a package that no longer
+  validates the answer is "nothing yet, and here is why", so the report takes
+  the dice grid's place rather than appearing beside it (design `6b`). Each
+  line carries `file:line`, because the person who can fix it is the author.
+- **A link only when there is somewhere to go.** A set installed from a file,
+  or a folder the app never installed, records a source that is a name rather
+  than a URL; making that tappable would promise something it cannot do. Only
+  `https` is ever handed to the system, and the check happens where the intent
+  is started — the string came off a file on disk.
 - **A row says which of the two ways a set can be unusable it is in.** Switched
   off and will-not-load are not the same thing and the remedies are opposite —
   one is a tap, the other is an update — so a list that showed only

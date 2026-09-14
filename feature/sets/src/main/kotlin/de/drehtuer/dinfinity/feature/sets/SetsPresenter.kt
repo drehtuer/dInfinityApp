@@ -4,16 +4,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.DiceSet
-import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
-import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.dicesets.install.PackageMeta
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -133,6 +129,8 @@ data class SetsState(
   val sets: List<SetRow> = emptyList(),
   val acting: SetRow? = null,
   val loaded: Boolean = false,
+  val installing: Boolean = false,
+  val outcome: PackageInstaller.Result? = null,
 ) {
   /**
    * True once the disk has been read and found to hold nothing.
@@ -151,29 +149,13 @@ data class SetsState(
  * The dice sets that are installed, and what may be done to them
  * (`docs/dice-sets.md`; `design/dInfinity.dc.html`, option `5a`).
  *
- * Two sources, joined here and nowhere else: [InstalledSets] says what is on
- * disk and whether it still validates, and [InstalledSetRepository] says what
- * the player has switched off. Neither knows about the other, which is what
- * lets a folder appear or vanish without the app being asked and still be
- * right on the next reading.
- *
- * **The bundled set is handed in rather than reached for**, so this module
- * never learns that `dicesets:builtin` exists — the same reason the roll screen
- * is handed a catalogue instead of building one.
- *
- * Reading the folder means validating every package in it, which is TOML
- * parsing and image headers over real files. That is [io]'s job, not the main
- * thread's (`docs/architecture.md`, "Threading").
- *
- * @param bundled the set that ships inside the app.
- * @param io where the disk is touched.
+ * Everything about *what the sets are* is [SetLibrary]'s; what is here is what
+ * the screen is doing — which row the sheet is open on, and whether the first
+ * reading has finished.
  */
 class SetsPresenter(
-  private val bundled: DiceSet,
-  private val installed: InstalledSets,
-  private val registry: InstalledSetRepository,
+  private val library: SetLibrary,
   private val scope: CoroutineScope,
-  private val io: CoroutineDispatcher = Dispatchers.IO,
 ) {
   /** What the screen draws. */
   var state: SetsState by mutableStateOf(SetsState())
@@ -193,13 +175,7 @@ class SetsPresenter(
    */
   fun refresh() {
     scope.launch {
-      val packages = withContext(io) { installed.scan() }
-      // Every reading is also the moment the registry is reconciled with the
-      // disk. A row about a folder that has gone would switch a *new* package
-      // off the moment somebody installed one under the same id.
-      registry.keepOnly(packages.map(InstalledPackage::id))
-      val off = registry.disabled()
-      state = state.copy(sets = rows(packages, off), loaded = true)
+      state = state.copy(sets = library.all(), loaded = true)
     }
   }
 
@@ -209,58 +185,74 @@ class SetsPresenter(
     state = state.copy(acting = on?.takeUnless { it.bundled })
   }
 
-  /**
-   * Switches a set on or off.
-   *
-   * The folder is untouched, and so is every statistic recorded against the
-   * set's dice. That is what makes this the reversible half of the sheet.
-   */
+  /** Switches a set on or off, and closes the sheet. */
   fun setEnabled(
     row: SetRow,
     enabled: Boolean,
   ) {
-    if (row.bundled) return
     state = state.copy(acting = null)
     scope.launch {
-      registry.setEnabled(row.id, enabled)
+      library.setEnabled(row, enabled)
       refresh()
     }
   }
 
-  /**
-   * Takes a set off the phone: the folder, then the registry row.
-   *
-   * The folder first, because a row about a folder that is still there is a
-   * set the player was told had gone and has not; the other order leaves a row
-   * that the next reading prunes anyway.
-   *
-   * Statistics are kept. They are keyed by set id and die id rather than by
-   * anything on disk, so the rolls this set made last week stay the player's
-   * (`docs/statistics.md`).
-   */
+  /** Takes a set off the phone, and closes the sheet. */
   fun remove(row: SetRow) {
-    if (row.bundled) return
     state = state.copy(acting = null)
     scope.launch {
-      withContext(io) { installed.remove(row.id) }
-      registry.forget(row.id)
+      library.remove(row)
       refresh()
     }
   }
 
   /**
-   * The bundled set first, then everything else by name.
+   * Installs the package in [archive] and shows what came of it (design `1t`).
    *
-   * By name rather than by id, because the name is what the row shows: two
-   * sets whose folders sort one way and whose names sort the other would read
-   * as an unsorted list.
+   * [onDone] is called however it ends, including when it throws, and is where
+   * the temporary copy of the archive is deleted. The bytes belong to whoever
+   * chose the file; the copy exists only so the installer has something to
+   * open, and leaving it behind on a failure would be the one case that
+   * mattered.
+   *
+   * A refusal shows **every** error rather than the first. An author fixing a
+   * set wants the whole list, and there is room for it.
    */
-  private fun rows(
-    packages: List<InstalledPackage>,
-    off: Set<String>,
-  ): List<SetRow> =
-    listOf(SetRow.bundled(bundled)) +
-      packages
-        .map { pack -> SetRow.of(pack, enabled = pack.id !in off) }
-        .sortedBy { it.name.lowercase() }
+  fun install(
+    archive: File,
+    onDone: () -> Unit = {},
+  ) {
+    if (state.installing) return
+    state = state.copy(installing = true, outcome = null)
+    scope.launch {
+      // The installer answers Failed for everything it anticipates, so a throw
+      // here means the filesystem did something it was not asked about. It is
+      // still a refusal to the player, and saying so beats taking the screen
+      // down with them.
+      val result =
+        runCatching { library.install(archive) }
+          .getOrElse { cause ->
+            PackageInstaller.Result.Failed(cause.message ?: "the package could not be installed")
+          }
+      state = state.copy(installing = false, outcome = result)
+      onDone()
+      refresh()
+    }
+  }
+
+  /**
+   * The file could not even be opened, so no install was attempted.
+   *
+   * Shown the same way a refusal from the validator is, because to the player
+   * it is the same sentence: nothing was installed, and here is why. What
+   * differs is that the app never got as far as looking inside.
+   */
+  fun refused(why: String) {
+    state = state.copy(installing = false, outcome = PackageInstaller.Result.Failed(why))
+  }
+
+  /** Puts away whatever the last install said. */
+  fun dismiss() {
+    state = state.copy(outcome = null)
+  }
 }

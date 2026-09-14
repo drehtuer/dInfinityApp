@@ -11,6 +11,7 @@ import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.dicesets.install.PackageMeta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -312,14 +313,7 @@ class SetsPresenterTest {
   private fun loaded(): SetsPresenter =
     presenter().also { presenter -> await("the disk was never read") { presenter.state.loaded } }
 
-  private fun presenter(): SetsPresenter =
-    SetsPresenter(
-      bundled = bundledSet(),
-      installed = InstalledSets(root),
-      registry = registry,
-      scope = scope,
-      io = Dispatchers.Unconfined,
-    )
+  private fun presenter(): SetsPresenter = SetsPresenter(library(), scope)
 
   /** Polls until [until] holds, because Room answers on a thread of its own. */
   private fun await(
@@ -332,6 +326,16 @@ class SetsPresenterTest {
       Thread.sleep(POLL_MS)
     }
   }
+
+  /** The two halves joined, with the disk and the database both real. */
+  private fun library() =
+    SetLibrary(
+      bundled = bundledSet(),
+      installed = InstalledSets(root),
+      registry = registry,
+      io = Dispatchers.Unconfined,
+      installer = PackageInstaller(root),
+    )
 
   private fun write(
     id: String,

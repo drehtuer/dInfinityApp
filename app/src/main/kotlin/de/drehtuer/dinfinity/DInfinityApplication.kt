@@ -13,7 +13,14 @@ import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.feature.sets.SetLibrary
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 
 /**
@@ -83,7 +90,7 @@ class DInfinityApplication : Application() {
   val sessions: SessionRepository by lazy { SessionRepository(database) }
 
   /** The roll screen's engine and catalogue, named in one place (`RollWiring`). */
-  val rolls: RollWiring by lazy { RollWiring(this, recording) }
+  val rolls: RollWiring by lazy { RollWiring(this, recording) { setLibrary.catalogue } }
 
   /** Which sets the player has switched off (`docs/dice-sets.md`, design `5a`). */
   val installedSets: InstalledSetRepository by lazy { InstalledSetRepository(database) }
@@ -96,6 +103,43 @@ class DInfinityApplication : Application() {
    * Android-shaped fact about it.
    */
   val packages: InstalledSets by lazy { InstalledSets(File(filesDir, DICE_SETS_FOLDER)) }
+
+  /**
+   * The two joined, which is what a screen asks for (`SetLibrary`).
+   *
+   * The bundled set is handed in here, so `feature/sets` never learns that
+   * `dicesets:builtin` exists.
+   */
+  val setLibrary: SetLibrary by lazy {
+    SetLibrary(
+      bundled = BuiltinDiceSet.set,
+      installed = packages,
+      registry = installedSets,
+      io = Dispatchers.IO,
+      installer = PackageInstaller(File(filesDir, DICE_SETS_FOLDER)),
+    )
+  }
+
+  /**
+   * Reads what is installed, once, as the process starts.
+   *
+   * The roll screen is home, so the first formula can be typed a moment after
+   * launch — and what a `d20` means depends on which packages are on disk and
+   * still validate. Reading it here rather than when the dice-set screen is
+   * first opened is the difference between a set that installs and rolls and a
+   * set that installs and does nothing until somebody happens to visit a list.
+   *
+   * On a scope of the application's own, because nothing else here has one and
+   * a scan must not hold up `onCreate`. A failure is not fatal: the catalogue
+   * starts as the bundled set alone, which is what everything falls back to
+   * anyway (`docs/dice-notation.md`).
+   */
+  override fun onCreate() {
+    super.onCreate()
+    background.launch { runCatching { setLibrary.all() } }
+  }
+
+  private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
   private companion object {
     const val DICE_SETS_FOLDER = "dicesets"

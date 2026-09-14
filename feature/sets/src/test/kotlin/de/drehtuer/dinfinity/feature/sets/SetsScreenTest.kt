@@ -18,6 +18,7 @@ import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -77,6 +78,66 @@ class SetsScreenTest {
     compose
       .onNodeWithTag(SetsTestTags.setOf("builtin"))
       .assertTextContains("Built in", substring = true)
+  }
+
+  @Test
+  fun `tapping a row with nothing wired to it does nothing`() {
+    // The screen the menu reaches on a cold start has no handler attached yet.
+    // A tap then has to be harmless rather than fatal.
+    write("brass", toml("brass", "Brass"))
+    val presenter = show()
+
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).performClick()
+
+    compose.waitForIdle()
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).assertIsDisplayed()
+    assertEquals(null, presenter.state.acting)
+  }
+
+  @Test
+  fun `the install button asks, and says so while one is running`() {
+    // Choosing the file is the application's business, so the screen only
+    // asks. While an install is running it must not ask again: two extractions
+    // racing for one folder is the one thing the installer cannot guard.
+    var asked = 0
+    val presenter = show(onInstall = { asked++ })
+
+    compose.onNodeWithTag(SetsTestTags.INSTALL).performClick()
+    compose.waitForIdle()
+
+    assertEquals(1, asked)
+  }
+
+  @Test
+  fun `a screen with nothing wired to it still draws, and taps are harmless`() {
+    // What the menu reaches on a cold start: no handlers attached yet. Both
+    // gestures have to be harmless rather than fatal.
+    write("brass", toml("brass", "Brass"))
+    val presenter = SetsPresenter(library(), scope)
+    compose.setContent { SetsScreen(presenter) }
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).performClick()
+    compose.onNodeWithTag(SetsTestTags.INSTALL).performClick()
+
+    compose.waitForIdle()
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a refusal lists every error and can be put away`() {
+    val presenter = show()
+    presenter.refused("that file is not a dice set")
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(SetsTestTags.OUTCOME).assertIsDisplayed()
+    compose
+      .onNodeWithTag(SetsTestTags.OUTCOME_REASON)
+      .assertTextContains("that file is not a dice set", substring = true)
+
+    compose.onNodeWithTag(SetsTestTags.OUTCOME_CLOSE).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.outcome == null }
   }
 
   @Test
@@ -265,21 +326,28 @@ class SetsScreenTest {
     assertEquals(null, presenter.state.acting)
   }
 
-  private fun show(onOpen: (SetRow) -> Unit = {}): SetsPresenter {
+  private fun show(
+    onOpen: (SetRow) -> Unit = {},
+    onInstall: () -> Unit = {},
+  ): SetsPresenter {
     val presenter =
-      SetsPresenter(
-        bundled = bundledSet(),
-        installed = InstalledSets(root),
-        registry = registry,
-        scope = scope,
-        io = Dispatchers.Unconfined,
-      )
-    compose.setContent { SetsScreen(presenter, onOpen = onOpen) }
+      SetsPresenter(library(), scope)
+    compose.setContent { SetsScreen(presenter, onOpen = onOpen, onInstall = onInstall) }
     // The first reading of the disk is asynchronous, and every one of these
     // tests is about what the screen shows once it has happened.
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
     return presenter
   }
+
+  /** The two halves joined, with the disk and the database both real. */
+  private fun library() =
+    SetLibrary(
+      bundled = bundledSet(),
+      installed = InstalledSets(root),
+      registry = registry,
+      io = Dispatchers.Unconfined,
+      installer = PackageInstaller(root),
+    )
 
   private fun write(
     id: String,
