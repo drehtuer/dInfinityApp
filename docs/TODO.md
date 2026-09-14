@@ -32,7 +32,6 @@ screen.
 - [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
 - [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
 - [ ] *Device:* that a roll driven by a recorded shake replays to itself on hardware (`input/shake`). The thresholds half of this is answered: shaking rolls and ordinary handling does not, confirmed on the Pixel 10a. What is not yet shown is the replay, and it cannot be until a throw's record carries its shake (4.1)
-- [x] The installed-set registry, arriving with the screen that needs it (4.4) and as a *migration*, like the two before it. Saved rolls and groups landed as version 2, sessions as version 3, and the registry as version 4
 - [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
 **Done when** a formula can be parsed, planned, simulated headless and scored
@@ -130,10 +129,14 @@ deleted, from the switcher or from the editor — the same sheet in both places.
 
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
 
-- [x] Installed list with status; long-press → disable / remove (`5a`), bundled set protected
-- [x] Set details (`6a`): author, license, source with commit, dice drawn from the set, the manage actions, and set-as-default
-- [x] Failed validation (`6b`): the report with file:line replaces the dice grid, folder kept for an update
-- [x] Install **from a file** with the validator behind it; a rejection shows every error (`1t`)
+The screen is built: the installed list with each set's status and a long-press
+to disable or remove it (`5a`, bundled set protected); the details behind a tap
+(`6a`) with author, licence, source and commit, the dice the set defines, and
+set-as-default; the validation report standing where the dice grid would be for
+a package that stopped validating (`6b`), its folder kept so an update can fix
+it; and installing **from a file** through the validator, where a rejection
+lists every error (`1t`). Database version 4 holds which sets are switched on.
+
 - [ ] Install from a **URL**, over `dicesets/install`'s fetcher. The screen, the bounded copy and the report are all built and shared with the file path — what is left is the fetch itself, which is the app's first code that reaches the network
 - [ ] Check for updates, update with progress and cancel (`9h`, `9i`)
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)
@@ -169,12 +172,14 @@ transaction each — so these screens have something to read.
 
 The list of every die thrown is built, with its average; choosing one opens
 its overview tiles — natural highs and lows, average, throws — and its face
-histogram against the fair line. Forgetting one die's record or everything is
-there, each behind a confirmation.
+histogram against the fair line. It filters by set (`5b`) and rolls up across
+sets (`5c`) with the fair line weighted by how often each die was thrown.
+Forgetting one die's record or everything is there, each behind a confirmation.
+Every saved roll's own totals sit against the exact distribution it was rolling
+against (`8b`, `9e`), with the drift judged against the standard error rather
+than shown bare.
 
-- [x] Filtering by set (`5b`) and rolling up across sets (`5c`), with a fair line weighted by how often each die was thrown
 - [ ] Sorting the all-dice list. It is most-recently-used first and nothing else, which is the right default and the only one
-- [x] Saved-roll statistics: observed totals against the exact expected distribution (`8b`, `9e`), with the drift judged against the standard error rather than shown bare
 - [ ] Export as JSON/CSV — without seeds
 - [ ] Reset per saved roll and per session; per die and everything are done
 
@@ -184,12 +189,13 @@ Design `1x`. Spec: `docs/statistics.md`.
 
 The list is built: past rolls newest first, a tap to open one breakdown, every
 die including the dropped ones, the set a roll fell back to, corrections
-counted, and a natural maximum in the accent. No replay and no seed, which the
-types enforce rather than the screen remembering. Pruning at 50,000 rows was
-already done and tested in `StatisticsRepository`.
-
-- [x] Filtering: by session and by saved roll, with a chooser that is not drawn until there is more than one thing to choose between
-- [ ] Export as JSON/CSV, without seeds, shared like a collection (4.3's sharing is the pattern)
+counted, and a natural maximum in the accent. It cuts to one session or one
+saved roll, with a chooser that is not drawn until there is more than one thing
+to choose between. It exports as JSON or CSV through the share sheet, carrying
+everything the filter matches rather than the page on screen. No replay and no
+seed, which the types enforce rather than the screen remembering — the export
+is built from `HistoryEntry`, which has none to write. Pruning at 50,000 rows
+was already done and tested in `StatisticsRepository`.
 
 ### 4.9 Sessions — `feature/stats`
 
@@ -198,10 +204,9 @@ Design `6c`. Spec: `docs/statistics.md`.
 Built: database version 3 and its migration, the list with its roll and
 natural-high counts, tap to activate, rename, create, and delete that moves the
 rolls to the first session rather than deleting them. The active session is a
-preference and every roll is filed under it.
+preference and every roll is filed under it; the history filters by it, and the
+menu's header names it once there is more than one session to be in (`1q`).
 
-- [x] Filtering the **history** by session, and by saved roll while the chooser
-      was being built
 - [ ] **Filtering the statistics by session needs a decision, not just a
       chooser.** `die_stats` and `die_summary` are keyed by set and die and
       carry no session (`docs/statistics.md`, "Storage"), so there is nothing
@@ -212,13 +217,6 @@ preference and every roll is filed under it.
       lookup and is the only option that costs nothing until it is used. The
       second looks right; it is a schema decision either way and is not one to
       take in passing
-- [x] The menu header shows the active session beside the app's name (`1q`),
-      and only once there is more than one session to be in
-- [ ] `docs/statistics.md` says the active saved-roll *group*'s name is used as
-      the session by default. It is not: the first session is called "First
-      rolls" and a session is chosen on its own screen. One of the two has to
-      change — probably the document, since tying two independent choices
-      together is the sort of link that surprises somebody at a table
 
 ### 4.10 Settings and menu — `feature/settings`
 
@@ -229,7 +227,6 @@ carries the same menu button and the menu reaches every screen
 (`docs/architecture.md`, "Screens and the states behind them").
 
 - [ ] One row the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll). Decide whether it is a screen or belongs in the README. *Saved-roll statistics is built and in the menu (4.7).*
-- [x] The menu's header shows the active session beside the app's name, and only once there is more than one session to be in
 - [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
 and the repository link are all there, and each of them does something.

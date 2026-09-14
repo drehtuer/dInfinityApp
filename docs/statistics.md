@@ -118,10 +118,22 @@ two of them.
 
 ### Per session
 
-A session is a user-defined bucket ("Tuesday campaign"). All stats above are
-also available filtered by session. The current session is selectable from
-the home screen; by default the active saved-roll group's name is used as
-the session, and "Unfiled" when no group is active.
+A session is a user-defined bucket ("Tuesday campaign"). Every roll is filed
+under the active one, which is chosen on the **Sessions** screen and remembered
+with the settings; the menu's header names it once there is more than one to be
+in. The first session is called "First rolls" and cannot be deleted — it is
+where the rolls made before anybody thought about sessions belong, and where
+the rolls of a deleted session go.
+
+**The history can be filtered by session; the statistics above cannot yet.**
+That is a storage question rather than a missing chooser: `die_stats` and
+`die_summary` are keyed by set and die and carry no session at all (see
+Storage), so there is nothing to filter on. Either they grow a session column —
+which multiplies every aggregate row by the number of sessions, for a number
+most players will never ask for — or per-session counts are computed from
+`roll_history.breakdown_json` on demand, which is a scan rather than a lookup
+and costs nothing until it is used. The decision is open (`docs/TODO.md`, 4.9)
+and this section will say which was taken.
 
 ### Anomalies (debug)
 
@@ -133,13 +145,17 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
 - **Overview:** big tiles for the currently selected die type — natural
   highs, natural lows, average, total rolls — with a face histogram and a
   faint line for the expected uniform frequency.
-- **All dice:** table of every die ever rolled, sortable.
+- **All dice:** table of every die ever rolled, most recently used first —
+  a player comes here about a die they have just been rolling. Choosing a
+  different order is not built yet (`docs/TODO.md`, 4.7).
 - **Saved rolls:** per-formula history with expected vs. observed graph.
 - **History:** scrollable list of past rolls with breakdowns. A past roll is
   a record, not something to re-run: there is no replay action and the seed
   is never shown. Re-rolling a formula means rolling it again.
-- **Sessions:** create/rename/delete. Deleting one moves its rolls to
-  Unfiled.
+- **Sessions:** create/rename/delete. Deleting one moves its rolls to the
+  first session rather than deleting them, so a session can be tidied away
+  without losing what was rolled in it. ("Unfiled" is the saved-roll *group*
+  default, and a different thing.)
 
 ## Storage
 
@@ -210,8 +226,26 @@ them out. Reproducing a stored roll is a developer action
 
 ## Export and reset
 
-- Export everything as JSON or CSV via the share sheet.
-- Reset per die, per saved roll, per session, or everything, each with a
-  confirmation dialog.
+- **The history exports as JSON or CSV**, through the share sheet the way a
+  collection does. Two formats because they answer different questions: JSON
+  keeps the breakdown and is the one to keep, CSV is one row per roll and is
+  the one a spreadsheet can draw.
+- **What is exported is what the list is filtered to** — one session, one saved
+  roll, or everything — but not what is *paged* to. The screen asks for two
+  hundred rolls because nobody scrolls further; the file carries every roll the
+  filter matches, because a file quietly missing all but the newest page is
+  worse than no file, nothing about it having said so.
+- **No seed is ever written, and that is structural rather than remembered.**
+  The export is built from `HistoryEntry`, which has no seed on it — the column
+  exists in `roll_history` and is dropped on the way out of the repository. A
+  past roll is a record, not something to re-run, and a record carrying its
+  seed is a replay waiting to be written.
+- Times are ISO-8601 in UTC, not the way the screen shows them: a file outlives
+  the phone it was made on, and a localised date is one a spreadsheet has to
+  guess at. CSV is RFC 4180, so a formula with a comma in it stays one column.
+- Exporting the **statistics** is not built yet (`docs/TODO.md`, 4.7).
+- Reset per die and everything are built, each behind a confirmation dialog;
+  per saved roll and per session are not yet (`docs/TODO.md`, 4.7).
 - Nothing is uploaded anywhere. There is no analytics backend; the
-  "statistics" in this document are the player's, on the player's phone.
+  "statistics" in this document are the player's, on the player's phone. The
+  share sheet is the player handing a copy on, which is a different act.

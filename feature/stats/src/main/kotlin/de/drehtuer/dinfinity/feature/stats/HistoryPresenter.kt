@@ -9,9 +9,11 @@ import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.Session
 import de.drehtuer.dinfinity.data.SessionRepository
+import de.drehtuer.dinfinity.data.StatisticsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -86,7 +88,50 @@ class HistoryPresenter(
       }
   }
 
-  private fun rollsFor(filter: HistoryFilter): Flow<List<HistoryEntry>> =
+  /**
+   * What this filter matches, as a file (`docs/statistics.md`, "Export and reset").
+   *
+   * **Everything the filter matches, not the page on screen.** The list is
+   * capped at [HistoryRepository.PAGE] because nobody scrolls two hundred
+   * rolls, but "export my history" means the history — a file quietly missing
+   * every roll but the newest two hundred is worse than no file, because
+   * nothing about it says so. The read here is bounded by the cap on the table
+   * itself, so it is still bounded.
+   *
+   * One shot rather than a subscription: a file is a copy taken at a moment,
+   * and a screen that re-exported itself every time a roll landed would be
+   * opening share sheets.
+   *
+   * @param to what to do with the file. The screen hands it up to the
+   *   application, which is where a share sheet lives.
+   */
+  fun export(
+    format: ExportFormat,
+    to: (ExportFile) -> Unit,
+  ) {
+    scope.launch {
+      val everything = rollsFor(state.filter, StatisticsRepository.MAX_HISTORY_ROWS).first()
+      to(HistoryExport.of(everything, format, called = nameOf(state.filter)))
+    }
+  }
+
+  /**
+   * What the file is named after.
+   *
+   * Not localised, deliberately: this is a file name, and a file is the thing
+   * most likely to be read on a machine that is not this phone.
+   */
+  private fun nameOf(filter: HistoryFilter): String =
+    when (filter) {
+      HistoryFilter.Everything -> "rolls"
+      is HistoryFilter.InSession -> filter.name
+      is HistoryFilter.OfSavedRoll -> filter.name
+    }
+
+  private fun rollsFor(
+    filter: HistoryFilter,
+    limit: Int = this.limit,
+  ): Flow<List<HistoryEntry>> =
     when (filter) {
       HistoryFilter.Everything -> history.recent(limit)
       is HistoryFilter.InSession -> history.inSession(filter.id, limit)

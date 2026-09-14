@@ -29,6 +29,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -423,15 +424,132 @@ class HistoryScreenTest {
     }
   }
 
-  private fun show(): HistoryPresenter {
+  @Test
+  fun `there is nothing to export before anything has been rolled`() {
+    // A button that writes an empty file is a button that lies about having
+    // done something.
+    show()
+
+    compose.onNodeWithTag(HistoryTestTags.EXPORT).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the export button asks which shape the file should take`() {
+    given(formula = "2d6", total = 7)
+    show()
+
+    compose.onNodeWithTag(HistoryTestTags.EXPORT).performClick()
+
+    compose.onNodeWithTag(HistoryTestTags.EXPORT_DIALOG).assertIsDisplayed()
+  }
+
+  @Test
+  fun `choosing the flat form hands up a file of rows`() {
+    given(formula = "2d6", total = 7)
+    val exported = mutableListOf<ExportFile>()
+    show(onExport = exported::add)
+
+    compose.onNodeWithTag(HistoryTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(HistoryTestTags.EXPORT_CSV).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    assertTrue("not a CSV: ${file.name}", file.name.endsWith(".csv"))
+    assertEquals("text/csv", file.mediaType)
+    assertTrue("the roll is not in the file: ${file.text}", file.text.contains("2d6"))
+  }
+
+  @Test
+  fun `choosing the full form hands up a file with the breakdown in it`() {
+    given(formula = "2d6", total = 7)
+    val exported = mutableListOf<ExportFile>()
+    show(onExport = exported::add)
+
+    compose.onNodeWithTag(HistoryTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(HistoryTestTags.EXPORT_JSON).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    assertTrue("not JSON: ${file.name}", file.name.endsWith(".json"))
+    assertTrue("the breakdown is missing: ${file.text}", file.text.contains("\"groups\""))
+  }
+
+  @Test
+  fun `the file carries every roll, not the page the list is showing`() {
+    // The list is capped because nobody scrolls two hundred rolls. "Export my
+    // history" means the history, and a file quietly missing all but the
+    // newest page is worse than no file, because nothing about it says so.
+    repeat(3) { given(formula = "1d20", total = 20) }
+    val exported = mutableListOf<ExportFile>()
+    val presenter = show(onExport = exported::add, limit = 1)
+
+    assertEquals("the list should be showing one roll", 1, presenter.state.rolls.size)
+    compose.onNodeWithTag(HistoryTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(HistoryTestTags.EXPORT_CSV).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    val rows =
+      file.text
+        .trim()
+        .lines()
+        .drop(1)
+    assertEquals("the export was cut to the page on screen: ${file.text}", 3, rows.size)
+  }
+
+  @Test
+  fun `a filtered list exports what it is filtered to, and says so in the name`() {
+    session(id = "tuesday", name = "Tuesday campaign")
+    given(formula = "2d6", total = 7, session = "tuesday")
+    given(formula = "1d20", total = 20, session = "default")
+    val exported = mutableListOf<ExportFile>()
+    val presenter = show(onExport = exported::add)
+
+    presenter.filterBy(HistoryFilter.InSession("tuesday", "Tuesday campaign"))
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
+    compose.onNodeWithTag(HistoryTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(HistoryTestTags.EXPORT_CSV).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    assertEquals("tuesday-campaign.csv", file.name)
+    assertTrue("the other session's roll is in the file", !file.text.contains("1d20"))
+  }
+
+  @Test
+  fun `a list filtered to one saved roll exports under that roll's name`() {
+    // The other filter, and the other half of what the file is named after.
+    savedRoll(id = "fireball", name = "Fireball")
+    given(formula = "8d6", total = 28, row = { copy(savedRollId = "fireball") })
+    val exported = mutableListOf<ExportFile>()
+    val presenter = show(onExport = exported::add)
+
+    presenter.filterBy(HistoryFilter.OfSavedRoll("fireball", "Fireball"))
+    compose.waitUntil(PATIENCE) { presenter.state.rolls.size == 1 }
+    compose.onNodeWithTag(HistoryTestTags.EXPORT).performClick()
+    compose.onNodeWithTag(HistoryTestTags.EXPORT_JSON).performClick()
+
+    compose.waitUntil(PATIENCE) { exported.isNotEmpty() }
+    val file = exported.single()
+    assertEquals("fireball.json", file.name)
+    assertTrue("the roll is not in the file: ${file.text}", file.text.contains("8d6"))
+  }
+
+  private fun show(
+    onExport: (ExportFile) -> Unit = {},
+    limit: Int = HistoryRepository.PAGE,
+  ): HistoryPresenter {
     val presenter =
       HistoryPresenter(
         history = history,
         scope = scope,
         sessions = SessionRepository(database),
         saved = SavedRollRepository(database),
+        limit = limit,
       )
-    compose.setContent { HistoryScreen(presenter = presenter, formatter = { "at $it" }) }
+    compose.setContent {
+      HistoryScreen(presenter = presenter, formatter = { "at $it" }, onExport = onExport)
+    }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
     return presenter
   }
