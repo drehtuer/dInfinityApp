@@ -189,8 +189,17 @@ be exported with the rest of `mine`.
   brings its own table along or overrides the chosen one: a roll that mixes
   Brass & Bone dice with built-in dice happens on the one selected table,
   like reaching into two bags over the same tray.
-- Settings → Table shows all installed looks as thumbnails rendered on the
-  actual box mesh, with a "roll a d20 here" preview.
+- The **Table** screen shows every installed look in one list, with the chosen
+  one marked and the package named beside a look only when more than one
+  package supplies tables — repeating the same name down a list of five says
+  nothing. Choosing one is remembered with the settings, and the tray is built
+  on it the next time it is opened. A choice whose package is no longer
+  installed shows the look the tray would really use instead; the setting is
+  left as it was, because the package may be re-installed tomorrow.
+  Thumbnails rendered on the actual box mesh, with a "roll a d20 here"
+  preview, are still to come (`docs/TODO.md`, 4.5) — until then each row
+  carries a swatch of the two colours the look is made of, which is what
+  separates the bundled five.
 - Saved-roll groups can pin a table ("the Strahd campaign is always played on
   black felt"), and so can an individual saved roll ("Fireball is thrown on
   black felt"). Precedence, most specific first: the saved roll's pin, then

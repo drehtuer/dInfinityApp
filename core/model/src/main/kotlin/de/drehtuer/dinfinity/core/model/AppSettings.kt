@@ -77,6 +77,19 @@ data class AppSettings(
    * uninstalled, because a default that is not installed is not a default.
    */
   val defaultSetId: String = DiceSet.BUILTIN_ID,
+  /**
+   * The table every roll happens on, unless something more specific pins one
+   * (`docs/tables.md`, "Selecting a table").
+   *
+   * A [TablePin] rather than an id, because table ids are unique only within
+   * their package and two packages may both ship a `green-felt`.
+   *
+   * Null means the bundled package's first look, which is what a new install
+   * rolls on. It is not written out as a default the way [defaultSetId] is,
+   * because "whatever the bundled set ships first" is a fact about that
+   * package rather than a choice somebody made.
+   */
+  val defaultTable: TablePin? = null,
 ) {
   companion object {
     /**

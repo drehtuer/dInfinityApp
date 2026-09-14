@@ -13,6 +13,7 @@ import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
+import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 
 /**
  * How to build every screen's state — all of them, in one place
@@ -62,6 +63,8 @@ data class Presenters(
   val savedStatistics: () -> SavedStatsPresenter,
   /** What is installed. */
   val diceSets: () -> SetsPresenter,
+  /** Which table the dice are thrown onto (`docs/tables.md`). */
+  val tables: () -> TablesPresenter,
   /**
    * One set's details.
    *

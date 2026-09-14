@@ -300,13 +300,12 @@ class DInfinityScreensTest {
 
   private companion object {
     /**
-     * The screens that genuinely have not been written (`docs/TODO.md`, 4.5
-     * and 4.6).
+     * The screens that genuinely have not been written (`docs/TODO.md`, 4.6).
      *
      * A placeholder is right for these and wrong for everything else. The list
      * shrinks as they land, and the test says so when one does.
      */
-    val NOT_WRITTEN_YET = setOf(Destination.Tables.route, Destination.FaceDesigner.route)
+    val NOT_WRITTEN_YET = setOf(Destination.FaceDesigner.route)
 
     /** Long enough for a folder read and a database round trip, short enough to fail. */
     const val PATIENCE = 5_000L

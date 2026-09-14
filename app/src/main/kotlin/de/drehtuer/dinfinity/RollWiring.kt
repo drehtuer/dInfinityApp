@@ -4,6 +4,7 @@ import android.content.Context
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.RollRecording
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
@@ -40,6 +41,15 @@ class RollWiring(
   private val context: Context,
   private val recording: RollRecording? = null,
   private val catalogue: () -> DiceCatalog,
+  /**
+   * Which table look the player chose, or null for the bundled package's
+   * first (`docs/tables.md`).
+   *
+   * A function for the reason [catalogue] is one: it is a preference, and one
+   * read when this object was built would be the table the app started with
+   * rather than the one on the picker.
+   */
+  private val chosenTable: () -> TablePin? = { null },
 ) {
   private val simulator = JoltDiceSimulator()
 
@@ -69,16 +79,28 @@ class RollWiring(
   private val geometry: TableGeometry by lazy { TableGeometry.forAspect(aspect()) }
 
   /**
-   * The default look. Choosing another is the table picker's job (Step 4.5).
+   * The look the dice are thrown onto (`docs/tables.md`, "Selecting a table").
    *
-   * Taken from the bundled set through the catalogue rather than from
-   * `dicesets:builtin` directly: it is the same package either way, and asking
-   * the catalogue is what keeps this file from naming the module that happens
-   * to ship it.
+   * The one chosen in the table picker, and the bundled package's first look
+   * when nothing has been chosen — which is where a new install starts.
+   *
+   * A pin naming a package that is no longer installed falls back the same
+   * way, rather than leaving the tray with no look at all. The *setting* is
+   * left as it was: the package may be re-installed tomorrow, which is the
+   * rule the default dice set already follows.
+   *
+   * Read per visit rather than captured, because it is a preference and a
+   * preference changes while the app is running — choosing a table and going
+   * back to the tray should land on it.
    */
   private val table: TableLook
-    get() =
-      catalog.set(DiceSet.BUILTIN_ID)?.tables?.firstOrNull() ?: TableLook(id = "default", name = "Default")
+    get() {
+      val pinned = chosenTable()
+      val fromPin = pinned?.let { catalog.set(it.setId)?.tables?.firstOrNull { table -> table.id == it.tableId } }
+      return fromPin
+        ?: catalog.set(DiceSet.BUILTIN_ID)?.tables?.firstOrNull()
+        ?: TableLook(id = "default", name = "Default")
+    }
 
   /**
    * A presenter for one visit to the roll screen.

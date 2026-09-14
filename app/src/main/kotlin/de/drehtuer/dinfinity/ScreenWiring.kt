@@ -1,11 +1,11 @@
 package de.drehtuer.dinfinity
 
-import androidx.lifecycle.LifecycleCoroutineScope
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setActiveGroup
 import de.drehtuer.dinfinity.data.setActiveSession
 import de.drehtuer.dinfinity.data.setDefaultSet
+import de.drehtuer.dinfinity.data.setDefaultTable
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
@@ -13,6 +13,8 @@ import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
+import de.drehtuer.dinfinity.feature.tables.TablesPresenter
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import de.drehtuer.dinfinity.feature.stats.R as StatsR
 
@@ -34,7 +36,14 @@ internal class ScreenWiring(
   private val settings: AppSettings,
   private val repository: SettingsRepository,
   private val saved: SavedWiring,
-  private val scope: LifecycleCoroutineScope,
+  /**
+   * Where a settings write is launched.
+   *
+   * A plain [CoroutineScope] rather than the activity's own type: launching is
+   * all this class does with it, and the narrower type was the only thing
+   * keeping the app's real wiring out of a test.
+   */
+  private val scope: CoroutineScope,
 ) {
   fun presenters(): Presenters =
     Presenters(
@@ -66,6 +75,7 @@ internal class ScreenWiring(
       sessions = { sessions() },
       savedStatistics = { savedStatistics() },
       diceSets = { diceSets() },
+      tables = { tables() },
       diceSet = { id, onGone -> diceSet(id, onGone) },
     )
 
@@ -115,6 +125,20 @@ internal class ScreenWiring(
       scope = scope,
       groupId = settings.activeGroupId,
       rounding = settings.rounding,
+    )
+
+  /**
+   * Which table the dice are thrown onto (`docs/tables.md`).
+   *
+   * Every look from every usable package, which is what the catalogue already
+   * holds — a dice set never brings its own table along, so there is no
+   * per-set filtering to do here.
+   */
+  private fun tables() =
+    TablesPresenter(
+      sets = { app.setLibrary.catalogue.installed },
+      chosen = settings.defaultTable,
+      onChosen = { pin -> scope.launch { repository.setDefaultTable(pin) } },
     )
 
   /** What is installed, and what may be done to it (`docs/dice-sets.md`). */

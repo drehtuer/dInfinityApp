@@ -44,7 +44,6 @@ import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportScreen
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedScreen
-import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetDetailScreen
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsScreen
@@ -54,14 +53,11 @@ import de.drehtuer.dinfinity.feature.settings.MenuHeader
 import de.drehtuer.dinfinity.feature.settings.MenuScreen
 import de.drehtuer.dinfinity.feature.settings.MenuSection
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
-import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryScreen
-import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsScreen
-import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsScreen
-import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsScreen
+import de.drehtuer.dinfinity.feature.tables.TablesScreen
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
@@ -140,28 +136,11 @@ fun DInfinityApp(
         // done. Each returns whether it recognised the destination, so exactly
         // one of them draws and nothing falls through silently.
         val drawn =
-          playing(
-            destination,
-            entry,
-            navController,
-            settings,
-            screens?.roll,
-            screens?.graph,
-            screens?.savedRolls,
-            onWelcomeSeen,
-          ) ||
-            saving(
-              destination,
-              entry,
-              navController,
-              screens?.savedRolls,
-              screens?.savedGroups,
-              screens?.savedRollEditor,
-              screens?.collectionImport,
-            ) ||
-            lookingBack(destination, entry, navController, screens?.history, screens?.statistics, screens?.sessions) ||
-            counting(destination, entry, navController, screens?.savedStatistics) ||
-            customising(destination, entry, navController, screens?.diceSets, screens?.diceSet, onSource) ||
+          playing(destination, entry, navController, settings, screens, onWelcomeSeen) ||
+            saving(destination, entry, navController, screens) ||
+            lookingBack(destination, entry, navController, screens) ||
+            counting(destination, entry, navController, screens) ||
+            customising(destination, entry, navController, screens, onSource) ||
             chrome(
               destination = destination,
               navController = navController,
@@ -282,9 +261,7 @@ private fun playing(
   entry: NavBackStackEntry,
   navController: NavHostController,
   settings: AppSettings,
-  rollPresenter: (() -> RollPresenter)?,
-  graphMachine: (() -> GraphMachine)?,
-  savedRolls: (() -> SavedPresenter)?,
+  screens: Presenters?,
   onWelcomeSeen: () -> Unit,
 ): Boolean =
   when (destination) {
@@ -292,13 +269,13 @@ private fun playing(
     // physics world and a scene, and leaving the screen gives both back
     // (`docs/architecture.md`, decision 49). The thread and the Filament engine
     // underneath outlive the visit (decision 50).
-    Destination.Roll if rollPresenter != null -> {
-      Roll(rollPresenter, savedRolls, entry, navController, settings, onWelcomeSeen)
+    Destination.Roll if screens != null -> {
+      Roll(screens.roll, screens.savedRolls, entry, navController, settings, onWelcomeSeen)
       true
     }
 
-    Destination.Graph if graphMachine != null -> {
-      Graph(graphMachine, entry, navController)
+    Destination.Graph if screens != null -> {
+      Graph(screens.graph, entry, navController)
       true
     }
 
@@ -311,24 +288,21 @@ private fun saving(
   destination: Destination,
   entry: NavBackStackEntry,
   navController: NavHostController,
-  savedRolls: (() -> SavedPresenter)?,
-  savedGroups: (() -> GroupPresenter)?,
-  savedRollEditor: ((Editing) -> EditorPresenter)?,
-  collectionImport: (() -> ImportPresenter)?,
+  screens: Presenters?,
 ): Boolean =
   when (destination) {
-    Destination.SavedRolls if savedRolls != null && savedGroups != null -> {
-      Saved(savedRolls, savedGroups, entry, navController)
+    Destination.SavedRolls if screens != null -> {
+      Saved(screens.savedRolls, screens.savedGroups, entry, navController)
       true
     }
 
-    Destination.SavedRollEditor if savedRollEditor != null && savedGroups != null -> {
-      Editor(savedRollEditor, savedGroups, entry, navController)
+    Destination.SavedRollEditor if screens != null -> {
+      Editor(screens.savedRollEditor, screens.savedGroups, entry, navController)
       true
     }
 
-    Destination.CollectionImport if collectionImport != null -> {
-      Import(collectionImport, entry, navController)
+    Destination.CollectionImport if screens != null -> {
+      Import(screens.collectionImport, entry, navController)
       true
     }
 
@@ -388,11 +362,11 @@ private fun counting(
   destination: Destination,
   entry: NavBackStackEntry,
   navController: NavHostController,
-  savedStatistics: (() -> SavedStatsPresenter)?,
+  screens: Presenters?,
 ): Boolean =
   when (destination) {
-    Destination.SavedRollStats if savedStatistics != null -> {
-      SavedStatsScreen(presenter = remember(entry) { savedStatistics() }, menu = { MenuTo(navController) })
+    Destination.SavedRollStats if screens != null -> {
+      SavedStatsScreen(presenter = remember(entry) { screens.savedStatistics() }, menu = { MenuTo(navController) })
       true
     }
 
@@ -412,23 +386,27 @@ private fun customising(
   destination: Destination,
   entry: NavBackStackEntry,
   navController: NavHostController,
-  diceSets: (() -> SetsPresenter)?,
-  diceSet: ((String, () -> Unit) -> SetDetailPresenter)?,
+  screens: Presenters?,
   onSource: (String) -> Unit,
 ): Boolean =
   when (destination) {
-    Destination.DiceSets if diceSets != null -> {
-      Sets(remember(entry) { diceSets() }, navController)
+    Destination.DiceSets if screens != null -> {
+      Sets(remember(entry) { screens.diceSets() }, navController)
       true
     }
 
-    Destination.SetDetail if diceSet != null -> {
+    Destination.Tables if screens != null -> {
+      TablesScreen(presenter = remember(entry) { screens.tables() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    Destination.SetDetail if screens != null -> {
       val id = entry.arguments?.getString(SetArgument.SET).orEmpty()
       SetDetailScreen(
         // Removing the set leaves the screen that was showing it: there is
         // nothing left to show, and staying would be a page about a folder
         // that is not there.
-        presenter = remember(entry) { diceSet(id) { navController.popBackStack() } },
+        presenter = remember(entry) { screens.diceSet(id) { navController.popBackStack() } },
         onSource = onSource,
         menu = { MenuTo(navController) },
       )
@@ -444,33 +422,31 @@ private fun lookingBack(
   destination: Destination,
   entry: NavBackStackEntry,
   navController: NavHostController,
-  history: (() -> HistoryPresenter)?,
-  statistics: (() -> StatsPresenter)?,
-  sessions: (() -> SessionsPresenter)?,
+  screens: Presenters?,
 ): Boolean =
   when (destination) {
-    Destination.History if history != null -> {
+    Destination.History if screens != null -> {
       val context = LocalContext.current
       HistoryScreen(
-        presenter = remember(entry) { history() },
+        presenter = remember(entry) { screens.history() },
         onExport = { file -> NumbersSharing.share(context, file) },
         menu = { MenuTo(navController) },
       )
       true
     }
 
-    Destination.Statistics if statistics != null -> {
+    Destination.Statistics if screens != null -> {
       val context = LocalContext.current
       StatsScreen(
-        presenter = remember(entry) { statistics() },
+        presenter = remember(entry) { screens.statistics() },
         onExport = { file -> NumbersSharing.share(context, file) },
         menu = { MenuTo(navController) },
       )
       true
     }
 
-    Destination.Sessions if sessions != null -> {
-      SessionsScreen(presenter = remember(entry) { sessions() }, menu = { MenuTo(navController) })
+    Destination.Sessions if screens != null -> {
+      SessionsScreen(presenter = remember(entry) { screens.sessions() }, menu = { MenuTo(navController) })
       true
     }
 
