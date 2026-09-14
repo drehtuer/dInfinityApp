@@ -57,6 +57,12 @@ class SessionsScreenTest {
           ApplicationProvider.getApplicationContext<Context>(),
           DInfinityDatabase::class.java,
         ).allowMainThreadQueries()
+        // Queries and invalidation on the calling thread, so a `Flow` from a
+        // `@Query` emits when the write happens rather than when a pool thread
+        // gets to it. Without it the first wait in a class races Room's own
+        // executors, which surfaces as an unrelated test failing now and then.
+        .setQueryExecutor(Runnable::run)
+        .setTransactionExecutor(Runnable::run)
         .build()
     sessions = SessionRepository(database, clock = { NOW }, ids = { "made-${next++}" })
   }
