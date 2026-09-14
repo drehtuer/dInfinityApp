@@ -210,28 +210,27 @@ private fun Numbers(
         modifier = Modifier.testTag(SavedStatsTestTags.EXPECTED),
       )
     }
-    Range(comparison, observedOnly)
+    val lowest = comparison.lowest
+    val highest = comparison.highest
+    if (lowest == null || highest == null) return@Column
+    Text(
+      text =
+        if (observedOnly || comparison.possible.isEmpty()) {
+          stringResource(R.string.savedstats_range_observed, lowest, highest)
+        } else {
+          stringResource(
+            R.string.savedstats_range,
+            lowest,
+            highest,
+            comparison.possible.first,
+            comparison.possible.last,
+          )
+        },
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.testTag(SavedStatsTestTags.RANGE),
+    )
   }
-}
-
-@Composable
-private fun Range(
-  comparison: RollComparison,
-  observedOnly: Boolean,
-) {
-  val lowest = comparison.lowest ?: return
-  val highest = comparison.highest ?: return
-  Text(
-    text =
-      if (observedOnly || comparison.possible.isEmpty()) {
-        stringResource(R.string.savedstats_range_observed, lowest, highest)
-      } else {
-        stringResource(R.string.savedstats_range, lowest, highest, comparison.possible.first, comparison.possible.last)
-      },
-    style = MaterialTheme.typography.bodySmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-    modifier = Modifier.testTag(SavedStatsTestTags.RANGE),
-  )
 }
 
 /**
@@ -268,38 +267,24 @@ private fun Chart(bars: List<TotalBar>) {
   if (bars.isEmpty()) return
   val ink = MaterialTheme.colorScheme.onSurface
   val mark = MaterialTheme.colorScheme.error
-  val tallest = bars.maxOf { maxOf(it.observed, it.expected) }.coerceAtLeast(MINIMUM_SCALE)
   Canvas(modifier = Modifier.fillMaxWidth().height(CHART_HEIGHT).testTag(SavedStatsTestTags.CHART)) {
-    val step = size.width / bars.size
-    bars.forEachIndexed { index, bar ->
-      val left = index * step
-      val width = step * BAR_SHARE
-      val barHeight = (bar.observed / tallest * size.height).toFloat()
+    // Where every rectangle goes is arithmetic and lives in `ChartShapes`,
+    // which a test can read. What is left here is `drawRect`, which is the one
+    // thing a test cannot (`docs/statistics.md`).
+    ChartShapes.of(bars, size.width, size.height).forEach { shape ->
       drawRect(
-        color = ink,
-        topLeft = Offset(left + (step - width) / 2, size.height - barHeight),
-        size = Size(width, barHeight),
-      )
-      if (bar.expected <= 0.0) return@forEachIndexed
-      val markY = size.height - (bar.expected / tallest * size.height).toFloat()
-      drawRect(
-        color = mark,
-        topLeft = Offset(left + (step - width) / 2, markY),
-        size = Size(width, MARK_THICKNESS),
+        color = if (shape.isMark) mark else ink,
+        topLeft = Offset(shape.left, shape.top),
+        size = Size(shape.width, shape.height),
       )
     }
   }
 }
 
-@Composable
+/** Two decimals, or an em dash when there is no number. Not a composable: it composes nothing. */
 private fun format(value: Double?): String = value?.let { "%.2f".format(it) } ?: "—"
 
 private val CHART_HEIGHT = 140.dp
-private const val BAR_SHARE = 0.7f
-private const val MARK_THICKNESS = 2f
-
-/** A chart of nothing but zeroes still needs a scale to divide by. */
-private const val MINIMUM_SCALE = 1e-9
 
 /** What the tests reach for. */
 object SavedStatsTestTags {
