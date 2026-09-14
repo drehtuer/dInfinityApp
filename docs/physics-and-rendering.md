@@ -311,6 +311,97 @@ Special cases:
 - **d100:** two d10s rolled together; one is flagged as the tens die in the
   `RollPlan`. 0 + 0 reads as 100.
 
+## Are the dice fair
+
+The app's central claim is that the physics *is* the roll: no generator decides
+a face. That claim is worth nothing unless the physics turns out honest dice,
+and the only way to know is to throw a great many and count.
+
+`FairnessTest` in `simulation/jolt` is that count. It throws every catalogue
+shape headlessly — no renderer, no frame clock, no screen — and checks the
+histogram two ways, because a loaded die can fail either:
+
+- **chi-squared at p = 0.001**, which catches a die that is skewed overall;
+- **a worst-face bound of 1 %**, which catches one face that is wrong while the
+  others cover for it.
+
+Headless, but the same simulation a watched roll steps: the only difference is
+who asks for the steps ("Power-saving mode"), so a fairness result here is a
+fairness result for the app.
+
+The roll count is an instrumentation argument, because the honest number and
+the affordable number are not the same. The default is small enough to sit in
+the ordinary device suite and still catch a die that is grossly loaded; the
+claim above needs the hundred thousand and is run deliberately:
+
+```sh
+./gradlew :simulation:jolt:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
+  -Pandroid.testInstrumentationRunnerArguments.rolls=100000
+```
+
+**The seeds are stirred, not counted.** A roll's seed becomes a
+`kotlin.random.Random`, and two seeds differing only in their low bits do not
+give two independent streams — throws seeded `0, 1, 2, …` start in orientations
+spread *more* evenly than chance allows. Throws that are not independent break
+the assumption chi-squared rests on, in both directions, so the harness puts
+each roll number through SplitMix64 first. The roll number still decides the
+seed, so a run is as repeatable as it was. That the seeds themselves need
+stirring is a bug of its own, and has its own task (`docs/TODO.md`, Step 5.2).
+
+### What it measured
+
+100,000 rolls of each shape on the Pixel 10a, 800,000 in about fifteen minutes:
+
+| shape | χ² | limit | worst face off |
+| --- | --- | --- | --- |
+| coin | 0.80 | 10.83 | 0.141 % |
+| tetrahedron | 0.34 | 16.27 | 0.062 % |
+| cube | 1.99 | 20.52 | 0.136 % |
+| octahedron | 12.83 | 24.32 | 0.286 % |
+| pentagonal trapezohedron (d10) | 5.29 | 27.88 | 0.135 % |
+| dodecahedron | 12.73 | 31.26 | 0.239 % |
+| **enneagonal trapezohedron (d18)** | **197.34** | **40.79** | 0.455 % |
+| icosahedron | 21.35 | 43.82 | 0.131 % |
+
+The seven that pass sum to χ² 55.33 against 55 degrees of freedom, which is as
+close to "exactly as fair as chance predicts" as a number gets. That is also
+what makes the eighth worth believing.
+
+### The d18 is not fair, and the shape is not why
+
+197 against a limit of 41 is not an unlucky run. The bias is reproducible: the
+same faces are heavy across three independent seed schemes, the deviation
+patterns of separate runs correlate at +0.6 to +0.9 where independent samples of
+a fair die would sit near ±0.24. Some faces come up 6 % more often than their
+share; no single face passes 1 %, which is why the worst-face bound does not
+catch it and the chi-squared test does. Both are in the harness for this reason.
+
+**An enneagonal trapezohedron is isohedral** — its symmetry group carries any
+face onto any other — and the dice start in an orientation drawn evenly over all
+of them (`SpawnLayout`, Shoemake's method). Turning the starting orientation by
+one of the solid's own symmetries gives a physically identical throw with the
+face labels permuted, so a fair sample of orientations has to produce a fair
+sample of faces whatever happens in between. A bias means the die the engine
+collides is not the solid the arithmetic describes. What has been ruled out, each
+measured on the phone rather than argued:
+
+- **not the seeds** — three independent schemes favour the same faces;
+- **not Jolt's convex radius** — rebuilt with hull shrinking off entirely, the
+  same faces stayed heavy;
+- **not a dropped corner** — every corner of the d18 protrudes 35–70× Jolt's
+  hull tolerance, so none is being merged away;
+- **not a loaded die** — a dipole fit explains 12 % of the variance, so the
+  centre of mass is not off-centre.
+
+What the pattern does say: the deviations pair up antipodally. A face and the
+face opposite it move together, and they are the two readings of the same
+landing, so it is certain *axes* that finish vertical too often rather than
+certain faces that are sticky. Nine axes, spread from −4.4 % to +6.5 %.
+
+The d10 is the same family of solid and is fair (χ² 5.29 against 27.88), so
+whatever this is, it bites when the kites get narrow. Finding it is Step 5.2.
+
 ## Avoiding stacked and cocked dice
 
 On a real table dice practically never stay stacked on top of each other or

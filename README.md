@@ -105,7 +105,7 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/TODO.md](docs/TODO.md) | Open tasks by milestone and open questions |
 | [docs/build-setup.md](docs/build-setup.md) | Devcontainer, building, signing keys, running tests, connecting a phone over WiFi |
 | [docs/architecture.md](docs/architecture.md) | Module layout, tech stack, data flow, key decisions |
-| [docs/physics-and-rendering.md](docs/physics-and-rendering.md) | Simulation, shake input, settling and face detection, stacking avoidance, power-saving mode |
+| [docs/physics-and-rendering.md](docs/physics-and-rendering.md) | Simulation, shake input, settling and face detection, whether the dice are fair, stacking avoidance, power-saving mode |
 | [docs/dice-notation.md](docs/dice-notation.md) | Roll formula grammar, evaluation rules, saved rolls |
 | [docs/dice-sets.md](docs/dice-sets.md) | Dice set file format, shapes, textures, installing from git forges or archive URLs, validation and sandboxing |
 | [docs/tables.md](docs/tables.md) | Table (tray) geometry, capacity limits, exchangeable table looks |
