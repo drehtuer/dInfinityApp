@@ -101,7 +101,10 @@ changelog.
   — which the tables had been waiting for since version 1. The history lists
   every roll with the breakdown it was made of; the statistics show each die
   against what a fair one would do — by set, or every set's dice of a kind
-  pooled together with the fair line weighted by how often each was thrown; database version 3 adds sessions, and the
+  pooled together with the fair line weighted by how often each was thrown;
+  every saved roll's own totals sit against the exact distribution it was
+  rolling against, with the drift judged against the standard error rather than
+  shown bare; database version 3 adds sessions, and the
   migration names the one the old rolls already belonged to. The sessions
   screen was finished but never plugged in — `MainActivity` passed no presenter
   for it, so the app drew a placeholder and every roll was filed under the

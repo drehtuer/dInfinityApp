@@ -54,6 +54,8 @@ import de.drehtuer.dinfinity.feature.settings.MenuSection
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryScreen
+import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
+import de.drehtuer.dinfinity.feature.stats.SavedStatsScreen
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsScreen
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
@@ -107,6 +109,7 @@ fun DInfinityApp(
   history: (() -> HistoryPresenter)? = null,
   statistics: (() -> StatsPresenter)? = null,
   sessions: (() -> SessionsPresenter)? = null,
+  savedStatistics: (() -> SavedStatsPresenter)? = null,
   diceSets: (() -> SetsPresenter)? = null,
   diceSet: ((String, () -> Unit) -> SetDetailPresenter)? = null,
   onSource: (String) -> Unit = {},
@@ -151,6 +154,7 @@ fun DInfinityApp(
           ) ||
             saving(destination, entry, navController, savedRolls, savedGroups, savedRollEditor, collectionImport) ||
             lookingBack(destination, entry, navController, history, statistics, sessions) ||
+            counting(destination, entry, navController, savedStatistics) ||
             customising(destination, entry, navController, diceSets, diceSet, onSource) ||
             chrome(
               destination = destination,
@@ -346,6 +350,30 @@ private fun Sets(
 
 /** Where a chosen archive is copied to before the installer opens it. */
 private const val CHOSEN = "chosen-packages"
+
+/**
+ * What the saved rolls have come to, against what they should.
+ *
+ * Its own branch rather than one more parameter on [lookingBack], which is
+ * already at the limit: a table of screens that has to be split is split by
+ * what the screens are about, and this one is about the maths
+ * (`docs/statistics.md`).
+ */
+@Composable
+private fun counting(
+  destination: Destination,
+  entry: NavBackStackEntry,
+  navController: NavHostController,
+  savedStatistics: (() -> SavedStatsPresenter)?,
+): Boolean =
+  when (destination) {
+    Destination.SavedRollStats if savedStatistics != null -> {
+      SavedStatsScreen(presenter = remember(entry) { savedStatistics() }, menu = { MenuTo(navController) })
+      true
+    }
+
+    else -> false
+  }
 
 /**
  * What the player has installed, and what they may change about it.

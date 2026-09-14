@@ -62,6 +62,28 @@ guess, and the screen says so.
 - Rolled up per saved-roll group (a character, a game) so "Thorin's attack
   rolls this campaign" is one screen
 
+**Only the throws made through the saved roll are counted.** The same formula
+typed by hand is a different question — it is not that roll's record — and the
+history can tell them apart because a throw started from a saved roll carries
+its id.
+
+**The screen refuses to draw a conclusion.** A mean two tenths above
+expectation is remarkable after ten thousand throws and nothing at all after
+four, so the drift is divided by the standard error of the mean (σ/√n) before
+anything is said about it. Below twenty throws it says there are too few to
+judge; past two standard errors it says *worth a look*, which is a long way
+from *loaded*. Dice are not accused on the strength of forty throws.
+
+**A formula that no longer graphs keeps its bars and loses its marks.** A saved
+roll's formula is stored as text and the set it names can be uninstalled
+afterwards (`docs/dice-notation.md`), so a roll that graphed last week may not
+today. What the dice did is still the player's record and hiding it would lose
+the only copy — so the ink bars are drawn with nothing to draw them against,
+and the screen says which of the three things went wrong: the formula no longer
+parses, the set is not installed, or the throw is too large to compute exactly.
+They are different problems and one message for all three would be wrong about
+two of them.
+
 ### Per session
 
 A session is a user-defined bucket ("Tuesday campaign"). All stats above are

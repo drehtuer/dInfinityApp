@@ -3,7 +3,8 @@ package de.drehtuer.dinfinity.navigation
 /**
  * Every screen the app has. One entry per screen in the plan's Step 4, so the
  * navigation graph is complete before any screen is built and adding a screen
- * is a change in one place.
+ * is a change in one place — plus the few that belong *to* one of those steps
+ * rather than being one, like the saved-roll statistics inside Step 4.7.
  *
  * [Roll] is home; everything else is reached from the menu
  * (`design/dInfinity.dc.html`, option 1q).
@@ -52,6 +53,12 @@ enum class Destination(
   Statistics("stats", "Statistics", "Natural highs and lows, averages — per die and per set.", MenuGroup.LookBack),
   History("history", "History", "Every roll with its breakdown. No replays: a roll is a roll.", MenuGroup.LookBack),
   Sessions("sessions", "Sessions", "Buckets for statistics, and where collections are imported.", MenuGroup.LookBack),
+  SavedRollStats(
+    "savedstats",
+    "Saved-roll statistics",
+    "What each saved roll has come to, against what it should.",
+    MenuGroup.LookBack,
+  ),
 
   DiceSets("sets", "Dice sets", "What is installed, and how to install more.", MenuGroup.Customise),
   Tables("tables", "Table", "Felt, wood, glass or your own photo. Same tray.", MenuGroup.Customise),

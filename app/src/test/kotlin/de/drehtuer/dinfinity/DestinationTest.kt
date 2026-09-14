@@ -10,8 +10,12 @@ import org.junit.Test
 class DestinationTest {
   @Test
   fun `every screen in the plan has a destination`() {
-    // Step 4 of docs/TODO.md lists ten screens, and the menu lists all ten.
-    assertEquals(10, Destination.inTheMenu.size)
+    // Step 4 of docs/TODO.md lists ten screens and the menu lists all ten.
+    // Saved-roll statistics is the eleventh row: it belongs to Step 4.7 rather
+    // than being a step of its own, and the prototype's menu has it
+    // (`docs/TODO.md`, Step 4.10).
+    assertEquals(11, Destination.inTheMenu.size)
+    assertTrue(Destination.SavedRollStats in Destination.inTheMenu)
   }
 
   @Test

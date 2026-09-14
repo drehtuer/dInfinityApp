@@ -13,5 +13,5 @@ object CoreStatsModule {
   const val PATH: String = ":core:stats"
 
   /** The Gradle paths this module declares a dependency on. */
-  val DEPENDS_ON: List<String> = listOf(":core:model")
+  val DEPENDS_ON: List<String> = listOf(":core:model", ":core:probability")
 }
