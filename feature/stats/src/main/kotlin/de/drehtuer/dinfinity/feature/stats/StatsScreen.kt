@@ -133,6 +133,61 @@ private fun Header(
 }
 
 /**
+ * Which order the list is in (`docs/TODO.md`, 4.7).
+ *
+ * Drawn only once there is more than one die, because an order is a choice
+ * between arrangements and one row has none. The same rule the set chooser
+ * follows a line above.
+ */
+@Composable
+private fun Orders(
+  state: StatsState,
+  presenter: StatsPresenter,
+) {
+  if (state.dice.size < 2) return
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    DieOrder.entries.forEach { order ->
+      Cut(
+        label = stringResource(labelFor(order)),
+        chosen = state.order == order,
+        tag = StatsTestTags.orderOf(order),
+        onChoose = { presenter.orderBy(order) },
+      )
+    }
+  }
+}
+
+private fun labelFor(order: DieOrder): Int =
+  when (order) {
+    DieOrder.Recent -> R.string.stats_sort_recent
+    DieOrder.Throws -> R.string.stats_sort_throws
+    DieOrder.Average -> R.string.stats_sort_average
+  }
+
+/**
+ * The line above the list, which says what the order actually is.
+ *
+ * The roll-up's own note wins: what the rows *are* is more surprising than
+ * what order they are in, and two lines of explanation over one list is one
+ * line too many.
+ */
+private fun noteFor(state: StatsState): Int =
+  when {
+    state.acrossSets -> R.string.stats_across_sets_note
+    state.order == DieOrder.Throws -> R.string.stats_order_throws
+    state.order == DieOrder.Average -> R.string.stats_order_average
+    else -> R.string.stats_order
+  }
+
+/**
  * How the list is cut: by set, or not at all, or across all of them
  * (design options `5b` and `5c`).
  *
@@ -202,8 +257,9 @@ private fun Dice(
 ) {
   val dice = state.dice
   Cuts(state, presenter)
+  Orders(state, presenter)
   Text(
-    text = stringResource(if (state.acrossSets) R.string.stats_across_sets_note else R.string.stats_order),
+    text = stringResource(noteFor(state)),
     style = MaterialTheme.typography.labelSmall,
     color = MaterialTheme.colorScheme.onSurfaceVariant,
     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
@@ -501,6 +557,9 @@ object StatsTestTags {
   const val EXPORT_DIALOG: String = "$EXPORT:dialog"
   const val EXPORT_JSON: String = "$EXPORT:json"
   const val EXPORT_CSV: String = "$EXPORT:csv"
+
+  fun orderOf(order: DieOrder): String = "stats:order:${order.name.lowercase()}"
+
   const val HISTOGRAM: String = "stats:histogram"
   const val HIGHS: String = "stats:highs"
   const val LOWS: String = "stats:lows"

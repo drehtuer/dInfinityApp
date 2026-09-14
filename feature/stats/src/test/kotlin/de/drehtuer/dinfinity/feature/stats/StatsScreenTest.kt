@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.room.Room
@@ -134,7 +135,7 @@ class StatsScreenTest {
   fun `a die whose set is gone keeps its record, and says the fair line is a guess`() {
     // The record is the player's. Hiding it would be worse, and drawing it
     // against a line nobody can justify would be worse still.
-    given(setId = "brass", dieId = "d20", sides = 20, throws = 3, sum = 30)
+    given(dieId = "d20", sides = 20, throws = 3, sum = 30, row = { copy(setId = "brass") })
     faces(setId = "brass", dieId = "d20", sides = 20, counts = mapOf(11 to 3L))
     val presenter = show()
 
@@ -251,8 +252,8 @@ class StatsScreenTest {
 
   @Test
   fun `a set can be picked out of the list`() {
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 4, sum = 14)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(dieId = "d6", sides = 6, throws = 4, sum = 14, row = { copy(setId = "brass") })
     val presenter = show()
 
     compose.onNodeWithTag(StatsTestTags.setOf("brass")).performClick()
@@ -263,8 +264,8 @@ class StatsScreenTest {
 
   @Test
   fun `going back to every set shows them all again`() {
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 4, sum = 14)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(dieId = "d6", sides = 6, throws = 4, sum = 14, row = { copy(setId = "brass") })
     val presenter = show()
     compose.onNodeWithTag(StatsTestTags.setOf("brass")).performClick()
     compose.waitUntil(PATIENCE) { presenter.state.setFilter == "brass" }
@@ -277,8 +278,8 @@ class StatsScreenTest {
 
   @Test
   fun `a filter that hides everything says so, rather than looking like an empty history`() {
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 4, sum = 14)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(dieId = "d6", sides = 6, throws = 4, sum = 14, row = { copy(setId = "brass") })
     val presenter = show()
 
     presenter.filterBy("a-set-with-no-record")
@@ -292,8 +293,8 @@ class StatsScreenTest {
   fun `rolling up counts every set's dice of a kind together`() {
     // "All my d20s". Throws and totals add up, so the mean is the mean of
     // everything thrown rather than the mean of two means.
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 40)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 30, sum = 100)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 40)
+    given(dieId = "d6", sides = 6, throws = 30, sum = 100, row = { copy(setId = "brass") })
     val presenter = show()
 
     compose.onNodeWithTag(StatsTestTags.ACROSS_SETS).performClick()
@@ -309,8 +310,8 @@ class StatsScreenTest {
   fun `a rolled-up row claims no streak, because two dice do not share one`() {
     // A streak is a run within one die's own sequence. Two dice's runs do not
     // join end to end.
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 40)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 30, sum = 100)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 40)
+    given(dieId = "d6", sides = 6, throws = 30, sum = 100, row = { copy(setId = "brass") })
     val presenter = show()
 
     presenter.rollUp(true)
@@ -326,8 +327,8 @@ class StatsScreenTest {
 
   @Test
   fun `rolling up and filtering by set put each other away`() {
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 40)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 30, sum = 100)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 40)
+    given(dieId = "d6", sides = 6, throws = 30, sum = 100, row = { copy(setId = "brass") })
     val presenter = show()
 
     presenter.filterBy("brass")
@@ -341,8 +342,8 @@ class StatsScreenTest {
 
   @Test
   fun `a rolled-up die opens a histogram of every set's faces`() {
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 6, sum = 21)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 6, sum = 21)
+    given(dieId = "d6", sides = 6, throws = 6, sum = 21)
+    given(dieId = "d6", sides = 6, throws = 6, sum = 21, row = { copy(setId = "brass") })
     faces(setId = "builtin", dieId = "d6", sides = 6, counts = mapOf(1 to 6L))
     faces(setId = "brass", dieId = "d6", sides = 6, counts = mapOf(1 to 6L))
     val presenter = show()
@@ -358,16 +359,95 @@ class StatsScreenTest {
 
   private fun summaries(): Int = runBlocking { database.dieSummary().all().first() }.size
 
+  @Test
+  fun `the list opens most recently used first, because that is what somebody came about`() {
+    given(dieId = "d6", sides = 6, throws = 100, sum = 350, row = { copy(lastRolledAtEpochMs = 1_000) })
+    given(dieId = "d20", sides = 20, throws = 3, sum = 30, row = { copy(lastRolledAtEpochMs = 2_000) })
+    val presenter = show()
+
+    assertEquals(listOf("d20", "d6"), presenter.state.dice.map { it.dieId })
+  }
+
+  @Test
+  fun `most thrown first puts the records worth trusting at the top`() {
+    // A die thrown three times has a shape that means nothing.
+    given(dieId = "d6", sides = 6, throws = 100, sum = 350, row = { copy(lastRolledAtEpochMs = 1_000) })
+    given(dieId = "d20", sides = 20, throws = 3, sum = 30, row = { copy(lastRolledAtEpochMs = 2_000) })
+    val presenter = show()
+
+    compose.onNodeWithTag(StatsTestTags.orderOf(DieOrder.Throws)).performClick()
+
+    assertEquals(listOf("d6", "d20"), presenter.state.dice.map { it.dieId })
+  }
+
+  @Test
+  fun `highest average first, and a die nobody has thrown is last rather than lowest`() {
+    // It has not come out low. It has not come out.
+    given(dieId = "d6", sides = 6, throws = 10, sum = 20, row = { copy(lastRolledAtEpochMs = 1_000) })
+    given(dieId = "d20", sides = 20, throws = 10, sum = 150, row = { copy(lastRolledAtEpochMs = 2_000) })
+    given(dieId = "d4", sides = 4, throws = 0, sum = 0, row = { copy(lastRolledAtEpochMs = 3_000) })
+    val presenter = show()
+
+    compose.onNodeWithTag(StatsTestTags.orderOf(DieOrder.Average)).performClick()
+
+    assertEquals(listOf("d20", "d6", "d4"), presenter.state.dice.map { it.dieId })
+  }
+
+  @Test
+  fun `the order is not offered when there is only one die to arrange`() {
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35)
+    show()
+
+    compose.onNodeWithTag(StatsTestTags.orderOf(DieOrder.Throws)).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the line above the list says which order it is actually in`() {
+    given(dieId = "d6", sides = 6, throws = 100, sum = 350, row = { copy(lastRolledAtEpochMs = 1_000) })
+    given(dieId = "d20", sides = 20, throws = 3, sum = 30, row = { copy(lastRolledAtEpochMs = 2_000) })
+    show()
+
+    compose.onNodeWithText("most recently used first", substring = true).assertIsDisplayed()
+    compose.onNodeWithTag(StatsTestTags.orderOf(DieOrder.Throws)).performClick()
+    compose.onNodeWithText("most thrown first", substring = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `re-ordering does not close the die somebody is reading`() {
+    // The order is about the list behind the histogram, and closing it would
+    // be the screen deciding what they meant.
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35, row = { copy(lastRolledAtEpochMs = 1_000) })
+    given(dieId = "d20", sides = 20, throws = 10, sum = 100, row = { copy(lastRolledAtEpochMs = 2_000) })
+    val presenter = show()
+    presenter.select("builtin", "d6")
+    compose.waitUntil(PATIENCE) { presenter.state.selected != null }
+
+    presenter.orderBy(DieOrder.Throws)
+
+    assertEquals(
+      "d6",
+      presenter.state.selected!!
+        .row.dieId,
+    )
+  }
+
+  /**
+   * One die's record.
+   *
+   * The row is built here and adjusted through `row` rather than every column
+   * being a parameter of its own: detekt's limit is the signal, and a helper
+   * that lists a whole table has stopped helping and started restating it.
+   */
   private fun given(
-    setId: String = "builtin",
     dieId: String,
     sides: Int,
     throws: Long,
     sum: Long,
+    row: DieSummaryRow.() -> DieSummaryRow = { this },
   ) {
     runBlocking {
       database.dieSummary().upsert(
-        DieSummaryRow(setId = setId, dieId = dieId, sides = sides, throws = throws, sum = sum),
+        DieSummaryRow(setId = "builtin", dieId = dieId, sides = sides, throws = throws, sum = sum).row(),
       )
     }
   }
@@ -435,8 +515,8 @@ class StatsScreenTest {
 
   @Test
   fun `a list cut to one set exports that set and names the file after it`() {
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35, row = { copy(setId = "brass") })
     faces(setId = "builtin", dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
     faces(setId = "brass", dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
     val exported = mutableListOf<ExportFile>()
@@ -457,8 +537,8 @@ class StatsScreenTest {
     // A pooled row stands for every d6 at once and belongs to no set, which is
     // right on a screen and wrong in a file. The per-die rows are also the
     // ones a roll-up can be recomputed from; the reverse is not true.
-    given(setId = "builtin", dieId = "d6", sides = 6, throws = 10, sum = 35)
-    given(setId = "brass", dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35)
+    given(dieId = "d6", sides = 6, throws = 10, sum = 35, row = { copy(setId = "brass") })
     faces(setId = "builtin", dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
     faces(setId = "brass", dieId = "d6", sides = 6, counts = mapOf(1 to 10L))
     val exported = mutableListOf<ExportFile>()

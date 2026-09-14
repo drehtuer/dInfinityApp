@@ -52,6 +52,11 @@
   <string name="stats_across_sets_note">Every set’s dice of each kind, counted together. The fair line weighs each die by how often it was thrown.</string>
   <string name="stats_filtered_empty">No dice from that set have been thrown yet.</string>
   <string name="stats_order">Every die you have thrown, most recently used first. Tap one for its histogram.</string>
+  <string name="stats_order_throws">Every die you have thrown, most thrown first — the records with enough behind them to mean something.</string>
+  <string name="stats_order_average">Every die you have thrown, highest average first. A die nobody has thrown is last, not lowest.</string>
+  <string name="stats_sort_recent">Recent</string>
+  <string name="stats_sort_throws">Most thrown</string>
+  <string name="stats_sort_average">Average</string>
   <string name="stats_empty_title">Nothing thrown yet.</string>
   <string name="stats_empty_body">Roll some dice and this fills in: how often each face has come up, against how often a fair die would.</string>
   <!-- %1$d is how many times the die has been thrown. -->

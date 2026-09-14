@@ -145,9 +145,12 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
 - **Overview:** big tiles for the currently selected die type — natural
   highs, natural lows, average, total rolls — with a face histogram and a
   faint line for the expected uniform frequency.
-- **All dice:** table of every die ever rolled, most recently used first —
-  a player comes here about a die they have just been rolling. Choosing a
-  different order is not built yet (`docs/TODO.md`, 4.7).
+- **All dice:** table of every die ever rolled. Three orders: most recently
+  used (the default — a player comes here about a die they have just been
+  rolling), most thrown, and highest average. No ascending/descending toggle:
+  each of those has an interesting end and it is the top, and the other end is
+  the bottom of the same list. A die nobody has thrown sorts last by average
+  rather than lowest — it has not come out low, it has not come out.
 - **Saved rolls:** per-formula history with expected vs. observed graph.
 - **History:** scrollable list of past rolls with breakdowns. A past roll is
   a record, not something to re-run: there is no replay action and the seed

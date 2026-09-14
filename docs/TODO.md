@@ -179,9 +179,10 @@ Every saved roll's own totals sit against the exact distribution it was rolling
 against (`8b`, `9e`), with the drift judged against the standard error rather
 than shown bare. It exports as JSON or CSV through the share sheet: one row per
 face in the flat form, and the per-die runs added in the full one, because a
-run is the one thing face counts cannot give back.
+run is the one thing face counts cannot give back. The list can be put in
+three orders — most recently used, most thrown, highest average — with recency
+the default, because that is the die somebody came about.
 
-- [ ] Sorting the all-dice list. It is most-recently-used first and nothing else, which is the right default and the only one
 - [ ] Reset per saved roll and per session; per die and everything are done
 
 ### 4.8 History — `feature/stats`
