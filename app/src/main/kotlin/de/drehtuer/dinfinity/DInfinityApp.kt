@@ -35,6 +35,7 @@ import de.drehtuer.dinfinity.feature.graph.GraphPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphScreen
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.RollScreen
+import de.drehtuer.dinfinity.feature.saved.Editing
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorScreen
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
@@ -257,6 +258,8 @@ private fun Graph(
 ) {
   GraphScreen(
     menu = { MenuTo(navController) },
+    onRoll = { formula -> navController.navigate(rollRoute(formula)) },
+    onSave = { formula -> navController.navigate(editorRoute(rollId = null, formula = formula)) },
     presenter =
       remember(entry) {
         GraphPresenter(
@@ -310,7 +313,7 @@ private fun saving(
   navController: NavHostController,
   savedRolls: (() -> SavedPresenter)?,
   savedGroups: (() -> GroupPresenter)?,
-  savedRollEditor: ((String?) -> EditorPresenter)?,
+  savedRollEditor: ((Editing) -> EditorPresenter)?,
   collectionImport: (() -> ImportPresenter)?,
 ): Boolean =
   when (destination) {
@@ -559,14 +562,22 @@ private fun Saved(
  */
 @Composable
 private fun Editor(
-  presenter: (String?) -> EditorPresenter,
+  presenter: (Editing) -> EditorPresenter,
   groups: () -> GroupPresenter,
   entry: NavBackStackEntry,
   navController: NavHostController,
 ) {
-  val editing = entry.arguments?.getString(EditorArgument.ROLL)?.ifBlank { null }
+  // The id decides which case this is: a roll that exists has a formula
+  // already, and one arriving in the link would be editing it by being
+  // followed (`Editing`).
+  val opening =
+    entry.arguments
+      ?.getString(EditorArgument.ROLL)
+      ?.ifBlank { null }
+      ?.let(Editing::Existing)
+      ?: Editing.New(entry.arguments?.getString(EditorArgument.FORMULA).orEmpty())
   EditorScreen(
-    presenter = remember(entry) { presenter(editing) },
+    presenter = remember(entry) { presenter(opening) },
     groups = remember(entry) { groups() },
     onDone = { navController.popBackStack() },
     onRollNow = { formula ->
@@ -619,11 +630,25 @@ private fun Import(
   )
 }
 
-/** The route that opens the editor on [rollId], or on a new roll for null. */
-internal fun editorRoute(rollId: String?): String =
+/**
+ * The route that opens the editor on [rollId], or on a new roll for null.
+ *
+ * @param formula what a new roll starts from, which is what the outcome
+ *   graph's "Save as roll" carries. Encoded like every other formula in a
+ *   route: it is made of characters a URI reserves.
+ */
+internal fun editorRoute(
+  rollId: String?,
+  formula: String = "",
+): String =
   buildString {
     append(Destination.SavedRollEditor.route)
-    if (rollId != null) append("?${EditorArgument.ROLL}=${Uri.encode(rollId)}")
+    val arguments =
+      listOfNotNull(
+        rollId?.let { "${EditorArgument.ROLL}=${Uri.encode(it)}" },
+        formula.ifBlank { null }?.let { "${EditorArgument.FORMULA}=${Uri.encode(it)}" },
+      )
+    if (arguments.isNotEmpty()) append("?" + arguments.joinToString("&"))
   }
 
 /**

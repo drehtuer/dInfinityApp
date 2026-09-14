@@ -23,6 +23,14 @@ The graph is available even for formulas the table cannot physically roll
 - Mean, standard deviation, min, max, and the probability of the extreme
   results.
 - For formulas with a label, the label is used as the chart title.
+- Under the chart, the two things to do with a formula whose odds you have
+  just read: **Roll this**, which hands it to the tray, and **Save as roll**,
+  which opens the saved-roll editor with it already typed. Both carry what is
+  in the field rather than what the screen was opened with — the formula can
+  be edited here, and handing on the old one would be handing on the odds you
+  had stopped looking at. Neither is offered for a formula there are no odds
+  for: a formula that does not parse is not one to roll or to keep, and a
+  button that refuses is worse than one that is not there.
 
 The distribution is bell-shaped for sums of many dice (central limit
 theorem), but it is **not** computed as a normal approximation — that would be

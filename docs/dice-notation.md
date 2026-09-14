@@ -240,7 +240,12 @@ SavedRoll {
   group also sets the default statistics session (`docs/statistics.md`).
 - The formula is re-validated when displayed, because the dice set it
   references might have been uninstalled. A broken saved roll shows a warning
-  badge and falls back to the built-in set when rolled.
+  badge, and tapping it puts the formula in the field like any other — where
+  the error appears under it. **It does not fall back to the built-in set.**
+  The per-die fallback in step 2 above is the *default* set's; a `setref:` gets
+  none, because somebody who wrote `brass:1d20` asked for brass and quietly
+  handing them a different d20 would be changing their dice without saying so.
+  The roll is left exactly as written: the set may be re-installed tomorrow.
 - Statistics are tracked per saved roll and per group.
 
 ### Export and import

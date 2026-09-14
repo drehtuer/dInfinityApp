@@ -116,8 +116,10 @@ private fun Tile(
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
-    // A roll whose dice are gone is still throwable — it falls back — so it is
-    // marked rather than disabled (`docs/dice-notation.md`).
+    // Marked rather than disabled. Tapping it puts the formula in the field
+    // like any other, and the field says what is wrong — which is better than
+    // a tile that does nothing and does not say why. It does *not* fall back:
+    // a set reference gets no substitute (`SavedFormula`).
     Text(
       text = if (entry.broken) stringResource(R.string.strip_broken) else roll.formula,
       style = MaterialTheme.typography.labelSmall,

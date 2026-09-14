@@ -8,6 +8,9 @@
   <string name="graph_mode_exact">P(total = k)</string>
   <string name="graph_mode_at_least">P(total ≥ k)</string>
   <string name="graph_tap_a_bar">Tap a bar for the exact numbers.</string>
+
+  <string name="graph_roll_this">Roll this</string>
+  <string name="graph_save_as_roll">Save as roll</string>
   <!-- %1$d is a total, %2$s and %3$s are percentages. -->
   <string name="graph_picked">%1$d: exactly %2$s · at least %3$s</string>
   <string name="graph_your_roll">Your roll: %1$d — exactly %2$s · at least %3$s</string>

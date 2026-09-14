@@ -165,6 +165,17 @@ class DInfinityAppTest {
   }
 
   @Test
+  fun `the editor can be opened on a new roll with a formula already in it`() {
+    // What "Save as roll" on the outcome graph does. Both arguments are
+    // optional and they are separate, so the roll id is still the only thing
+    // that decides whether an existing roll is being edited.
+    assertEquals("editor?formula=2d6%20%2B%203", editorRoute(null, "2d6 + 3"))
+    assertEquals("editor?roll=fireball", editorRoute("fireball"))
+    assertEquals("editor", editorRoute(null))
+    assertEquals(Destination.SavedRollEditor, Destination.ofRoute(editorRoute(null, "2d6 + 3")))
+  }
+
+  @Test
   fun `a formula sent to the tray arrives in the field`() {
     // What tapping a saved roll does, and what the graph's way back will do.
     val navigation = graphApp()

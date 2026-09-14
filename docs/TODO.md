@@ -99,9 +99,12 @@ Design `1k`–`1m`, `2c`, `7a`. Spec: `docs/probability.md`.
 The screen is built: the bar chart with its mean line and ±1σ band, the
 `P(= k)` / `P(≥ k)` question, a tap for the exact numbers, the six statistics,
 and the roll that opened it marked in the accent. It is reached from the roll
-screen's **See the odds**.
+screen's **See the odds**, and under the chart are the two things to do with a
+formula whose odds you have just read: **Roll this** hands it to the tray, and
+**Save as roll** opens the editor with it already typed. Both carry what is in
+the field rather than what the screen opened with, and neither is offered for a
+formula there are no odds for.
 
-- [ ] "Roll this" and "Save as roll" under the chart. The first needs to hand a formula back to the roll screen, which no navigation does yet; the second needs saved rolls (4.3)
 - [ ] *Judge the chart on the phone:* whether a hundred and ten bars at three dp each reads as a distribution or as a smear, and whether the ±1σ band behind the bars is visible enough to mean anything in both themes
 - [ ] The ledger (`1m`) and the stepped area (`1l`) are alternative presentations of the same numbers; `1k` is the default and the other two are not v1
 
@@ -122,7 +125,6 @@ deleted, from the switcher or from the editor — the same sheet in both places.
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
 - [ ] Import from a **URL or a git repository**, over the same reader and `dicesets/install`'s fetcher. Kept separate from importing a file because it is the first code path that would actually reach the network, and that deserves its own review. **Not because of the permission:** `android.permission.INTERNET` is already in the merged manifest of both the debug and the release build, contributed by `okhttp-android`'s own manifest by way of `dicesets:install`. So the app can already talk to the network and nothing yet does — which is worth knowing before somebody plans a review around a permission prompt that will never appear
-- [ ] A broken roll falls back to the built-in set when it is thrown; today it says so on the list but the fallback itself is the planner's and untested from here
 - [ ] `SavedRollRepository` is at its function ceiling (detekt's `TooManyFunctions`, 11). Nothing needs to grow it yet — importing went into a class of its own, because it is a transaction rather than a repository operation — but the next thing that does needs the split first: groups one class, rolls another, rather than a raised threshold
 
 ### 4.4 Dice sets — `feature/sets`

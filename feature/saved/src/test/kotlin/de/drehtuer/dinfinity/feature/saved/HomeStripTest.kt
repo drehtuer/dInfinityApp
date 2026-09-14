@@ -158,8 +158,10 @@ class HomeStripTest {
 
   @Test
   fun `a roll whose dice are gone is marked rather than hidden`() {
-    // It still throws — it falls back to the built-in dice — so it is marked,
-    // not removed and not disabled (`docs/dice-notation.md`).
+    // Marked, not removed and not disabled: the set may be re-installed
+    // tomorrow, and a tile that vanished would take the roll with it. Tapping
+    // it puts the formula in the field, where the error is. It does not fall
+    // back — a set reference gets no substitute (`SavedFormulaTest`).
     given(roll("brass", formula = "brass:1d20"))
     show()
 

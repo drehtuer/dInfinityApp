@@ -76,8 +76,8 @@ internal fun testPresenters(
     roll = { rollPresenter(catalog) },
     graph = { GraphMachine(catalog) },
     savedRolls = { SavedPresenter(repository = saved, catalog = catalog, scope = scope, unfiledName = UNFILED) },
-    savedRollEditor = { editing ->
-      EditorPresenter(repository = saved, catalog = catalog, scope = scope, editing = editing)
+    savedRollEditor = { opening ->
+      EditorPresenter(repository = saved, catalog = catalog, scope = scope, opening = opening)
     },
     savedGroups = { GroupPresenter(saved, scope, UNFILED) },
     collectionImport = {

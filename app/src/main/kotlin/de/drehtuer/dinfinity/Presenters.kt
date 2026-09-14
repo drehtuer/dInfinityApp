@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity
 
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
+import de.drehtuer.dinfinity.feature.saved.Editing
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportPresenter
@@ -45,8 +46,8 @@ data class Presenters(
   val graph: () -> GraphMachine,
   /** The saved-roll list, and the strip on the tray. */
   val savedRolls: () -> SavedPresenter,
-  /** The saved-roll editor. Takes the id being edited, or null for a new one. */
-  val savedRollEditor: (String?) -> EditorPresenter,
+  /** The saved-roll editor, on an existing roll or a new one ([Editing]). */
+  val savedRollEditor: (Editing) -> EditorPresenter,
   /** The group sheet, which is the same sheet from the list and the editor. */
   val savedGroups: () -> GroupPresenter,
   /** A collection arriving from a file. */

@@ -16,6 +16,10 @@ object GraphTestTags {
   const val TOO_LARGE: String = "graph:too-large"
   const val EMPTY: String = "graph:empty"
 
+  /** What to do with a formula once its odds have been read (design `7a`). */
+  const val ROLL_THIS: String = "graph:roll-this"
+  const val SAVE_AS_ROLL: String = "graph:save-as-roll"
+
   /** The `P(total = k)` / `P(total ≥ k)` question. */
   const val MODE: String = "graph:mode"
 
