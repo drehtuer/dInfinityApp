@@ -540,6 +540,15 @@ Notes:
 - The phone and the container must be on the same network. With Docker's
   default bridge that works out of the box; the container reaches the LAN even
   though the LAN cannot reach it.
+- **A phone reached over a VPN does not stay reached.** It is worse than not
+  working, because it does work at first: `adb connect` succeeds, an APK
+  installs, `connectedDebugAndroidTest` runs and passes. Then the port starts
+  refusing, mid-session, with the phone untouched and wireless debugging still
+  switched on — and the only cure is a new address off the phone's screen,
+  which buys another few minutes. Treat the VPN route as unsupported rather
+  than flaky: put the phone and the container on the same LAN for anything
+  that has to finish, and do not read a drop as the phone having gone to
+  sleep.
 - mDNS discovery (`adb mdns services`) runs but finds nothing through the
   bridge, which does not carry multicast — which is why the addresses above
   are typed by hand. `dinfinity-phone` asks anyway when it has no address to
