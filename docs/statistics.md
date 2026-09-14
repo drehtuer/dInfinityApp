@@ -53,6 +53,18 @@ throws are counted in the bars while its faces are missing from the line, so
 the pool is marked the same way a single uninstalled die is: the line is a
 guess, and the screen says so.
 
+### Where the rolls are going
+
+The menu's header names the session new rolls are filed under, beside the app's
+own name (`design/dInfinity.dc.html`, option 1q). It says so **only once there
+is more than one session to be in**: every install starts with exactly one — the
+one the rolls made before anybody thought about sessions belong to — and naming
+it would be a line that never changes and never tells anybody anything.
+
+The menu rather than the roll screen, for the same reason it is a preference at
+all: it outlives every screen, nothing on the tray should have to carry it, and
+the menu is where a player already looks to find out where they are.
+
 ### Filtering what you are looking at
 
 The history can be cut two ways: to one **session** — which is what sessions

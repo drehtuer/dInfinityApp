@@ -100,7 +100,8 @@ changelog.
   a history row, a face count per die and a running summary, in one transaction
   — which the tables had been waiting for since version 1. The history lists
   every roll with the breakdown it was made of, and can be cut to one session
-  or one saved roll; the statistics show each die
+  or one saved roll, and the menu's header says which session the rolls are
+  going into once there is more than one; the statistics show each die
   against what a fair one would do — by set, or every set's dice of a kind
   pooled together with the fair line weighted by how often each was thrown;
   every saved roll's own totals sit against the exact distribution it was

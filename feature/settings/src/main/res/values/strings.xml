@@ -6,6 +6,8 @@
 
   <!-- The menu (design option 1q). -->
   <string name="menu_open">Menu</string>
+  <!-- The menu's header (design option 1q). %1$s is the active session's name. -->
+  <string name="menu_session">Rolling into “%1$s”</string>
   <string name="menu_offline">Works fully offline. The network is used only when you install a set, a table or a collection from a URL.</string>
   <!-- Power saving (design option 1z). -->
   <string name="settings_power_heading">Power saving</string>

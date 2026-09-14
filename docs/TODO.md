@@ -212,8 +212,8 @@ preference and every roll is filed under it.
       lookup and is the only option that costs nothing until it is used. The
       second looks right; it is a schema decision either way and is not one to
       take in passing
-- [ ] The menu header shows the active session beside the app's name in the
-      design (`1q`)
+- [x] The menu header shows the active session beside the app's name (`1q`),
+      and only once there is more than one session to be in
 - [ ] `docs/statistics.md` says the active saved-roll *group*'s name is used as
       the session by default. It is not: the first session is called "First
       rolls" and a session is chosen on its own screen. One of the two has to
@@ -229,7 +229,7 @@ carries the same menu button and the menu reaches every screen
 (`docs/architecture.md`, "Screens and the states behind them").
 
 - [ ] One row the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll). Decide whether it is a screen or belongs in the README. *Saved-roll statistics is built and in the menu (4.7).*
-- [ ] The menu's header shows the active session beside the app's name in the design; that waits on sessions (4.9)
+- [x] The menu's header shows the active session beside the app's name, and only once there is more than one session to be in
 - [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
 and the repository link are all there, and each of them does something.

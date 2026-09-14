@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.settings
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -72,9 +73,13 @@ class MenuScreenTest {
     assertEquals(1, opened.size)
   }
 
-  private fun show(onOpen: (String) -> Unit = {}) {
+  private fun show(
+    onOpen: (String) -> Unit = {},
+    header: MenuHeader? = null,
+  ) {
     compose.setContent {
       MenuScreen(
+        header = header,
         sections =
           listOf(
             MenuSection(
@@ -88,6 +93,32 @@ class MenuScreenTest {
           ),
       )
     }
+  }
+
+  @Test
+  fun `with no header the menu is the sections and nothing else`() {
+    // A header is something the application supplies; a menu that invented one
+    // would be a menu with the app's name hard-coded into a feature module.
+    show()
+
+    compose.onNodeWithTag(MenuTestTags.HEADER).assertIsNotDisplayed()
+  }
+
+  @Test
+  fun `the header names the app`() {
+    show(header = MenuHeader(appName = "dInfinity"))
+
+    compose.onNodeWithTag(MenuTestTags.HEADER).assertTextContains("dInfinity", substring = true)
+    compose.onNodeWithTag(MenuTestTags.SESSION, useUnmergedTree = true).assertIsNotDisplayed()
+  }
+
+  @Test
+  fun `the header says which session the rolls are going into`() {
+    show(header = MenuHeader(appName = "dInfinity", session = "Tuesday campaign"))
+
+    compose
+      .onNodeWithTag(MenuTestTags.SESSION, useUnmergedTree = true)
+      .assertTextContains("Tuesday campaign", substring = true)
   }
 
   private fun entry(
