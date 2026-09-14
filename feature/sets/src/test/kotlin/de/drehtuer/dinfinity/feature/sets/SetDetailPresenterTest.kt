@@ -11,6 +11,7 @@ import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.dicesets.install.PackageMeta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -206,6 +207,7 @@ class SetDetailPresenterTest {
           installed = InstalledSets(root),
           registry = registry,
           io = Dispatchers.Unconfined,
+          installer = PackageInstaller(root),
         ),
       scope = scope,
       onGone = onGone,

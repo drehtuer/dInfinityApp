@@ -89,7 +89,10 @@ changelog.
   set is offered neither. Tapping one opens its details: who wrote it, under
   what licence, the link it came from with its commit, and the dice it defines
   — or, for a package that stopped validating, the report standing where the
-  dice would. Still to come: installing, update checking, and "my dice".
+  dice would. A set installs from a file: picked, copied bounded into the app's
+  cache, extracted and validated before anything is written, and a refusal
+  lists every error. Still to come: installing from a URL, update checking,
+  and "my dice".
 - **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
   a history row, a face count per die and a running summary, in one transaction
   — which the tables had been waiting for since version 1. The history lists

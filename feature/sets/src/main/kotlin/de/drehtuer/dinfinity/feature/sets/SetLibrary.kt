@@ -4,8 +4,10 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * The dice sets, as a screen wants them (`docs/dice-sets.md`).
@@ -32,6 +34,7 @@ class SetLibrary(
   private val installed: InstalledSets,
   private val registry: InstalledSetRepository,
   private val io: CoroutineDispatcher,
+  private val installer: PackageInstaller,
 ) {
   /**
    * Every set, the bundled one first and the rest by name.
@@ -53,6 +56,20 @@ class SetLibrary(
         .map { pack -> SetRow.of(pack, enabled = pack.id !in off) }
         .sortedBy { it.name.lowercase() }
   }
+
+  /**
+   * Installs the package in [archive], or leaves the phone exactly as it was
+   * (`docs/dice-sets.md`, "Installing from a URL or file"; design `1t`).
+   *
+   * Nothing here decides whether the package is any good. [PackageInstaller]
+   * fetches into a temporary folder, extracts into another, validates *there*,
+   * and only then moves the folder into place — so there is no partially
+   * installed state to recover from and nothing for this layer to undo.
+   *
+   * A package that installs under an id already present replaces it, and says
+   * so. That is an update, and it is the same operation.
+   */
+  suspend fun install(archive: File): PackageInstaller.Result = withContext(io) { installer.installFrom(archive) }
 
   /** The one set called [id], or null when nothing is installed under that name. */
   suspend fun one(id: String): SetRow? {

@@ -26,6 +26,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 
 /**
  * What is installed (`design/dInfinity.dc.html`, option `5a`;
@@ -49,6 +50,7 @@ fun SetsScreen(
   presenter: SetsPresenter,
   modifier: Modifier = Modifier,
   onOpen: (SetRow) -> Unit = {},
+  onInstall: () -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
@@ -61,6 +63,7 @@ fun SetsScreen(
         .testTag(SetsTestTags.SCREEN),
   ) {
     Header(menu)
+    Installing(state, onInstall)
     // The note goes *above* the list rather than instead of it. The bundled
     // set is a row like any other and is always there, so replacing the list
     // would hide the one set every fallback resolves against (`5a`).
@@ -69,6 +72,109 @@ fun SetsScreen(
   }
 
   state.acting?.let { row -> ActionSheet(row, presenter) }
+  state.outcome?.let { outcome -> OutcomeSheet(outcome, presenter) }
+}
+
+/**
+ * The way in (design `1t`).
+ *
+ * Choosing the file is the application's business — a content URI is reached
+ * through a context — so this only asks. While an install is running the
+ * button says so and does nothing: an archive being extracted twice at once is
+ * two installs racing for one folder.
+ */
+@Composable
+private fun Installing(
+  state: SetsState,
+  onInstall: () -> Unit,
+) {
+  TextButton(
+    onClick = onInstall,
+    enabled = !state.installing,
+    modifier = Modifier.padding(horizontal = 8.dp).testTag(SetsTestTags.INSTALL),
+  ) {
+    Text(stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install))
+  }
+}
+
+/**
+ * What the install came to (design `1t`).
+ *
+ * A refusal lists **every** error rather than the first. An author fixing a set
+ * wants the whole list, and a rejection that stopped at the first problem would
+ * be one round trip per mistake.
+ */
+@Composable
+private fun OutcomeSheet(
+  outcome: PackageInstaller.Result,
+  presenter: SetsPresenter,
+) {
+  AlertDialog(
+    onDismissRequest = { presenter.dismiss() },
+    modifier = Modifier.testTag(SetsTestTags.OUTCOME),
+    title = { Text(outcomeTitle(outcome)) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (outcome is PackageInstaller.Result.Failed) {
+          Text(
+            text = outcome.reason,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.testTag(SetsTestTags.OUTCOME_REASON),
+          )
+        }
+        Messages(outcome)
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { presenter.dismiss() }, modifier = Modifier.testTag(SetsTestTags.OUTCOME_CLOSE)) {
+        Text(stringResource(R.string.sets_install_close))
+      }
+    },
+  )
+}
+
+@Composable
+private fun outcomeTitle(outcome: PackageInstaller.Result): String =
+  when (outcome) {
+    is PackageInstaller.Result.Installed ->
+      if (outcome.replaced) {
+        stringResource(R.string.sets_replaced, outcome.set.name)
+      } else {
+        stringResource(R.string.sets_installed, outcome.set.name)
+      }
+
+    is PackageInstaller.Result.Failed -> stringResource(R.string.sets_install_refused)
+  }
+
+/** Every line the validator wrote, as it wrote it. */
+@Composable
+private fun Messages(outcome: PackageInstaller.Result) {
+  val messages =
+    when (outcome) {
+      is PackageInstaller.Result.Installed -> outcome.warnings
+      is PackageInstaller.Result.Failed -> outcome.report
+    }
+  if (messages.isEmpty()) return
+  if (outcome is PackageInstaller.Result.Installed) {
+    Text(
+      text = stringResource(R.string.sets_install_warnings),
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+  }
+  messages.forEach { message ->
+    Text(
+      text = message.toString(),
+      style = MaterialTheme.typography.bodySmall,
+      color =
+        if (outcome is PackageInstaller.Result.Failed) {
+          MaterialTheme.colorScheme.error
+        } else {
+          MaterialTheme.colorScheme.onSurfaceVariant
+        },
+      modifier = Modifier.testTag(SetsTestTags.OUTCOME_LINE),
+    )
+  }
 }
 
 @Composable
@@ -252,6 +358,11 @@ object SetsTestTags {
   const val TOGGLE: String = "sets:toggle"
   const val REMOVE: String = "sets:remove"
   const val CANCEL: String = "sets:cancel"
+  const val INSTALL: String = "sets:install"
+  const val OUTCOME: String = "sets:outcome"
+  const val OUTCOME_REASON: String = "sets:outcome:reason"
+  const val OUTCOME_LINE: String = "sets:outcome:line"
+  const val OUTCOME_CLOSE: String = "sets:outcome:close"
 
   fun setOf(id: String): String = "sets:set:$id"
 }

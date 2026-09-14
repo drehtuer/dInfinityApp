@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.dicesets.install.PackageMeta
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -128,6 +129,8 @@ data class SetsState(
   val sets: List<SetRow> = emptyList(),
   val acting: SetRow? = null,
   val loaded: Boolean = false,
+  val installing: Boolean = false,
+  val outcome: PackageInstaller.Result? = null,
 ) {
   /**
    * True once the disk has been read and found to hold nothing.
@@ -201,5 +204,55 @@ class SetsPresenter(
       library.remove(row)
       refresh()
     }
+  }
+
+  /**
+   * Installs the package in [archive] and shows what came of it (design `1t`).
+   *
+   * [onDone] is called however it ends, including when it throws, and is where
+   * the temporary copy of the archive is deleted. The bytes belong to whoever
+   * chose the file; the copy exists only so the installer has something to
+   * open, and leaving it behind on a failure would be the one case that
+   * mattered.
+   *
+   * A refusal shows **every** error rather than the first. An author fixing a
+   * set wants the whole list, and there is room for it.
+   */
+  fun install(
+    archive: File,
+    onDone: () -> Unit = {},
+  ) {
+    if (state.installing) return
+    state = state.copy(installing = true, outcome = null)
+    scope.launch {
+      // The installer answers Failed for everything it anticipates, so a throw
+      // here means the filesystem did something it was not asked about. It is
+      // still a refusal to the player, and saying so beats taking the screen
+      // down with them.
+      val result =
+        runCatching { library.install(archive) }
+          .getOrElse { cause ->
+            PackageInstaller.Result.Failed(cause.message ?: "the package could not be installed")
+          }
+      state = state.copy(installing = false, outcome = result)
+      onDone()
+      refresh()
+    }
+  }
+
+  /**
+   * The file could not even be opened, so no install was attempted.
+   *
+   * Shown the same way a refusal from the validator is, because to the player
+   * it is the same sentence: nothing was installed, and here is why. What
+   * differs is that the app never got as far as looking inside.
+   */
+  fun refused(why: String) {
+    state = state.copy(installing = false, outcome = PackageInstaller.Result.Failed(why))
+  }
+
+  /** Puts away whatever the last install said. */
+  fun dismiss() {
+    state = state.copy(outcome = null)
   }
 }

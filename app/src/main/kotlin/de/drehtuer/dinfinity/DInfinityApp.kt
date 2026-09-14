@@ -65,6 +65,7 @@ import de.drehtuer.dinfinity.navigation.MenuGroup
 import de.drehtuer.dinfinity.navigation.SetArgument
 import de.drehtuer.dinfinity.theme.LocalModernistColors
 import de.drehtuer.dinfinity.theme.ModernistTokens
+import java.io.File
 
 /**
  * The navigation graph, with one destination per screen. Each destination is a
@@ -307,6 +308,46 @@ private fun saving(
   }
 
 /**
+ * The dice-set list, with the file picker that installs one.
+ *
+ * The picker is here rather than in `feature/sets` because a content URI is the
+ * application's business: it is reached through a `ContentResolver`, and the
+ * presenter takes a `File`. The bytes are copied bounded into the app's own
+ * cache and the copy is deleted however the install ends, including when it
+ * throws (`docs/dice-sets.md`).
+ */
+@Composable
+private fun Sets(
+  presenter: SetsPresenter,
+  navController: NavHostController,
+) {
+  val context = LocalContext.current
+  val choose =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      // A null uri is the picker being dismissed, which is not a failure and
+      // has nothing to say.
+      if (uri == null) return@rememberLauncherForActivityResult
+      when (val copied = PackageFileReading.copy(context.contentResolver, uri, File(context.cacheDir, CHOSEN))) {
+        is PackageFileReading.Result.Copied -> presenter.install(copied.file) { copied.file.delete() }
+        is PackageFileReading.Result.Failed -> presenter.refused(copied.why)
+      }
+    }
+  SetsScreen(
+    presenter = presenter,
+    onOpen = { row -> navController.navigate("${Destination.SetDetail.route}?${SetArgument.SET}=${row.id}") },
+    // Anything, not just an archive type: a dice set downloaded through a
+    // browser and three apps arrives as application/octet-stream as often as
+    // not, and a picker that hides the file somebody is looking at is worse
+    // than one that lets them choose the wrong thing and be told so.
+    onInstall = { choose.launch(arrayOf("*/*")) },
+    menu = { MenuTo(navController) },
+  )
+}
+
+/** Where a chosen archive is copied to before the installer opens it. */
+private const val CHOSEN = "chosen-packages"
+
+/**
  * What the player has installed, and what they may change about it.
  *
  * Its own question rather than a branch of [chrome]: settings are the app's
@@ -325,11 +366,7 @@ private fun customising(
 ): Boolean =
   when (destination) {
     Destination.DiceSets if diceSets != null -> {
-      SetsScreen(
-        presenter = remember(entry) { diceSets() },
-        onOpen = { row -> navController.navigate("${Destination.SetDetail.route}?${SetArgument.SET}=${row.id}") },
-        menu = { MenuTo(navController) },
-      )
+      Sets(remember(entry) { diceSets() }, navController)
       true
     }
 

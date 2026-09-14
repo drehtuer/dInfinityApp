@@ -23,6 +23,7 @@ import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
@@ -240,6 +241,7 @@ class DInfinityScreensTest {
       installed = InstalledSets(File(temporary, "dicesets")),
       registry = InstalledSetRepository(database),
       io = Dispatchers.Unconfined,
+      installer = PackageInstaller(File(temporary, "dicesets")),
     )
 
   /** The app with every screen that takes a presenter actually given one. */

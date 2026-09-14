@@ -21,6 +21,15 @@
     <item quantity="other">%1$d problems</item>
   </plurals>
 
+  <!-- Installing (design option 1t). -->
+  <string name="sets_install">Install from a file</string>
+  <string name="sets_installing">Installing…</string>
+  <string name="sets_installed">“%1$s” is installed.</string>
+  <string name="sets_replaced">“%1$s” was replaced with this one.</string>
+  <string name="sets_install_refused">Nothing was installed.</string>
+  <string name="sets_install_warnings">It installed, with notes:</string>
+  <string name="sets_install_close">Close</string>
+
   <!-- Set details (design options 6a and 6b). -->
   <string name="sets_detail_gone">This set is not installed.</string>
   <string name="sets_detail_gone_body">It may have been removed from another screen, or its folder taken away outside the app.</string>

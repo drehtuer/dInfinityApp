@@ -425,6 +425,16 @@ are ignored with a warning to allow future extensions.
   because passing the validator once does not make a folder valid for ever. A
   broken package **keeps its folder**: an update is the way out of that state
   and an update needs somewhere to update from (design `6b`).
+- **A file somebody picked is copied bounded, into the app's own cache.** A
+  content URI is a handle to something another application controls: its size
+  is not knowable in advance, the provider may report one figure and hand over
+  another, and it may stream for ever. So the copy stops one byte past
+  `InstallLimits.MAX_DOWNLOAD_BYTES` — the same cap a download gets, because
+  the limit is about what the extractor is willing to open rather than about
+  where the bytes came from. The copy is deleted however the install ends.
+- **A rejection lists every error, not the first.** An author fixing a set
+  wants the whole list, and a report that stopped at the first problem would be
+  one round trip per mistake (design `1t`).
 - **The report is shown where the dice would be.** A set's details screen
   answers one question — what is in this set — and for a package that no longer
   validates the answer is "nothing yet, and here is why", so the report takes
