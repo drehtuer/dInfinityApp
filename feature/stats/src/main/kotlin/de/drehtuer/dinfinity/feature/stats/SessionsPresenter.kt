@@ -35,13 +35,20 @@ class SessionsPresenter(
   var state: SessionsState by mutableStateOf(SessionsState(activeId = activeId))
     private set
 
+  /**
+   * A session that has been activated and has not appeared in the list yet.
+   *
+   * See [activeIn]: the list is a flow over a database, and an emission made
+   * before the insert lands arrives after it.
+   */
+  private var awaiting: String? = null
+
   init {
     scope.launch {
       repository.ensureDefault(defaultName)
       repository.sessions.collect { sessions ->
-        // A session deleted under us — on another screen, or by an import —
-        // is not one to go on filing rolls under.
-        val active = if (sessions.none { it.id == state.activeId }) SessionRepository.DEFAULT_ID else state.activeId
+        if (sessions.any { it.id == awaiting }) awaiting = null
+        val active = activeIn(sessions, state.activeId, awaiting)
         state = state.copy(sessions = sessions, activeId = active, loaded = true)
       }
     }
@@ -49,6 +56,7 @@ class SessionsPresenter(
 
   /** New rolls go here from now on. */
   fun activate(sessionId: String) {
+    awaiting = sessionId
     state = state.copy(activeId = sessionId)
     onActive(sessionId)
   }
@@ -115,3 +123,32 @@ data class SessionsState(
   /** The one new rolls are filed under, or null before anything has loaded. */
   val active: Session? get() = sessions.firstOrNull { it.id == activeId }
 }
+
+/**
+ * Which session new rolls are filed under, given the list that has just
+ * arrived.
+ *
+ * A session deleted under us — on another screen, or by an import — is not one
+ * to go on filing rolls under, so an [active] that is not in [sessions] falls
+ * back to the first session.
+ *
+ * **Except one that has just been made.** The list is a flow over a database:
+ * making a session and activating it happens before the emission carrying it,
+ * and an emission that was already in flight arrives *after*. Read without
+ * [awaiting], such a list says the brand-new session does not exist, and the
+ * session somebody just created and named is silently swapped for the default
+ * one — which is what a slower machine than mine found.
+ *
+ * A plain function because the rule is the part that can be wrong; the
+ * collector around it is a subscription.
+ */
+internal fun activeIn(
+  sessions: List<Session>,
+  active: String,
+  awaiting: String?,
+): String =
+  when {
+    active == awaiting -> active
+    sessions.any { it.id == active } -> active
+    else -> SessionRepository.DEFAULT_ID
+  }
