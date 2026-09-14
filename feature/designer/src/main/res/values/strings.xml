@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="designer_title">Face designer</string>
+  <string name="designer_nib_fine">Fine</string>
+  <string name="designer_nib_medium">Medium</string>
+  <string name="designer_nib_broad">Broad</string>
+  <string name="designer_eraser">Eraser</string>
+  <string name="designer_undo">Undo</string>
+  <string name="designer_redo">Redo</string>
+  <string name="designer_clear">Clear</string>
+  <string name="designer_guide_on">Show guide</string>
+  <string name="designer_guide_off">Hide guide</string>
+  <string name="designer_face_nearly_full">This face is nearly full — a few strokes left.</string>
+  <string name="designer_face_full">This face is full. Undo something, or clear it and start again.</string>
+</resources>

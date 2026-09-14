@@ -37,6 +37,22 @@ installed by other users like any other set.
    generated `diceset.toml` and one atlas PNG per die, and then run through
    the standard validator like any import.
 
+## What is built
+
+The canvas, and the taking-back. One face at a time with its outline masked
+in, the guide under it, three pen widths and an eraser, undo/redo and clear per
+face, the twelve presets, and the strip that moves between faces. Strokes are
+vectors in fractions of the canvas, so they survive a rotation and can be
+re-rendered at export resolution.
+
+**The d4 rule is derived, not checked.** A cell's three numbers are read from
+the three corners that cell meets, so two cells sharing an edge draw the same
+value at each end of it because they are reading the same corner. There is no
+second copy to disagree with and so nothing to warn about.
+
+Still to come, in `docs/TODO.md` 4.6: picking a base die, the fill bucket and
+stamp, drafts on disk, "Roll it", and the export.
+
 ## Drawing tools
 
 Deliberately small:

@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity
 
+import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.saved.Editing
@@ -65,6 +66,8 @@ data class Presenters(
   val diceSets: () -> SetsPresenter,
   /** Which table the dice are thrown onto (`docs/tables.md`). */
   val tables: () -> TablesPresenter,
+  /** Drawing the faces of a die (`docs/face-designer.md`). */
+  val faceDesigner: () -> DesignerPresenter,
   /**
    * One set's details.
    *
