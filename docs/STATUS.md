@@ -93,7 +93,10 @@ changelog.
   — which the tables had been waiting for since version 1. The history lists
   every roll with the breakdown it was made of; the statistics show each die
   against what a fair one would do; database version 3 adds sessions, and the
-  migration names the one the old rolls already belonged to.
+  migration names the one the old rolls already belonged to. The sessions
+  screen was finished but never plugged in — `MainActivity` passed no presenter
+  for it, so the app drew a placeholder and every roll was filed under the
+  first session whatever the player picked. Both are fixed.
 - **4.10 Settings and the menu.** The navigation graph is connected: every
   screen carries the same button and the menu reaches every screen. Settings
   has appearance, the accent, shake, the default rounding, power saving, the

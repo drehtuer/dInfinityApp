@@ -225,6 +225,7 @@ and the repository link are all there, and each of them does something.
 - [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
 - [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)
 - [ ] Replace the single field on `DInfinityApplication` with a real container. `RollWiring` and `SavedWiring` are now the shape it should take; what is left is the application holding one of those rather than eight lazy fields
+- [ ] **Nothing catches a screen that was built and never plugged in.** `DInfinityApp` takes one nullable factory per screen and draws a placeholder for a null, which is right for a test of the graph and wrong for the app: the sessions screen was finished, tested and unreachable for a whole step, because `MainActivity` never passed its presenter and `DInfinityScreensTest` builds its own wiring and so cannot notice. The container above is the fix — one object holding every factory, used by the activity *and* by that test, so a missing screen is a compile error rather than a placeholder
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone
