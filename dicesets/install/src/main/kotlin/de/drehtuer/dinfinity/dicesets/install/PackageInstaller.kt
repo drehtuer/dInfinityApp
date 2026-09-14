@@ -220,29 +220,33 @@ class PackageInstaller(
   private fun temporaryFolder(): File =
     File(root.parentFile ?: root, "install-${System.nanoTime()}").also { it.mkdirs() }
 
-  /** Where a package came from and what arrived, recorded beside it. */
+  /**
+   * Where a package came from and what arrived, recorded beside it.
+   *
+   * Written through [PackageMeta] rather than assembled as text. The escaping
+   * is the reason: a source string is whatever the player pasted, and building
+   * the JSON by hand meant handling backslashes and quotes and nothing else —
+   * so a URL with a control character in it wrote a file that could not be
+   * read back.
+   */
   private data class Identity(
     val source: String,
     val sha256: String?,
     val commit: String? = null,
   ) {
     fun asJson(set: DiceSet): String =
-      buildString {
-        append("{\n")
-        append("  \"source\": \"${source.escaped()}\",\n")
-        sha256?.let { append("  \"sha256\": \"$it\",\n") }
-        commit?.let { append("  \"commit\": \"$it\",\n") }
-        append("  \"version\": \"${set.version.escaped()}\",\n")
-        append("  \"installedAt\": ${System.currentTimeMillis()}\n")
-        append("}\n")
-      }
-
-    private fun String.escaped(): String = replace("\\", "\\\\").replace("\"", "\\\"")
+      PackageMeta(
+        source = source,
+        sha256 = sha256,
+        commit = commit,
+        version = set.version,
+        installedAtEpochMs = System.currentTimeMillis(),
+      ).asJson()
   }
 
   private companion object {
     /** Where the source, the checksum and the install time live (`docs/architecture.md`). */
-    const val META_FILE = ".meta.json"
+    const val META_FILE = PackageMeta.FILE_NAME
 
     /** Where a package being replaced waits until the new one is in place. */
     const val REPLACING_SUFFIX = ".replacing"

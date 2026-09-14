@@ -10,6 +10,10 @@ dependencies {
   api(project(":dicesets:format"))
 
   implementation(libs.okhttp)
+
+  // The note the app writes beside an installed package, read and written
+  // through a parser rather than assembled as text (`PackageMeta`).
+  implementation(libs.kotlinx.serialization.json)
   implementation(libs.commons.compress)
   implementation(libs.kotlinx.coroutines.core)
 

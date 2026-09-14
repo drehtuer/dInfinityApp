@@ -50,7 +50,7 @@ core/
   collection/        The saved-roll collection format: read, written, validated (docs/dice-notation.md)
 dicesets/
   format/            TOML schema, validator, table definitions (docs/dice-sets.md, docs/tables.md)
-  install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage
+  install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage, and reading back what is installed
   builtin/           The bundled standard set and default tables as a normal package (eats its own dog food)
 simulation/
   api/               DiceSimulator interface, table geometry + capacity check, settle/face-read logic, the frame clock
