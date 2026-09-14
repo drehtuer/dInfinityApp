@@ -188,7 +188,7 @@ counted, and a natural maximum in the accent. No replay and no seed, which the
 types enforce rather than the screen remembering. Pruning at 50,000 rows was
 already done and tested in `StatisticsRepository`.
 
-- [ ] Filtering: by session once there are sessions (4.9), and by saved roll — the query is written and nothing calls it
+- [x] Filtering: by session and by saved roll, with a chooser that is not drawn until there is more than one thing to choose between
 - [ ] Export as JSON/CSV, without seeds, shared like a collection (4.3's sharing is the pattern)
 
 ### 4.9 Sessions — `feature/stats`
@@ -200,9 +200,18 @@ natural-high counts, tap to activate, rename, create, and delete that moves the
 rolls to the first session rather than deleting them. The active session is a
 preference and every roll is filed under it.
 
-- [ ] Filtering the statistics and the history *by* session, which is what
-      sessions are for. The queries exist (`HistoryRepository.inSession`); what
-      is missing is a chooser on those two screens
+- [x] Filtering the **history** by session, and by saved roll while the chooser
+      was being built
+- [ ] **Filtering the statistics by session needs a decision, not just a
+      chooser.** `die_stats` and `die_summary` are keyed by set and die and
+      carry no session (`docs/statistics.md`, "Storage"), so there is nothing
+      to filter. Either they grow a session column — which multiplies every
+      aggregate row by the number of sessions, for a number most players will
+      never ask for — or per-session face counts are computed from
+      `roll_history.breakdown_json` on demand, which is a scan rather than a
+      lookup and is the only option that costs nothing until it is used. The
+      second looks right; it is a schema decision either way and is not one to
+      take in passing
 - [ ] The menu header shows the active session beside the app's name in the
       design (`1q`)
 - [ ] `docs/statistics.md` says the active saved-roll *group*'s name is used as

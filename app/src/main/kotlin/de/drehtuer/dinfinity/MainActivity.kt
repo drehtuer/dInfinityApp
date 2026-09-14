@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
       savedGroups = saved::groups,
       savedRollEditor = { editing -> saved.editor(editing, settings.activeGroupId) },
       collectionImport = saved::importing,
-      history = { HistoryPresenter(history = app.history, scope = lifecycleScope) },
+      history = { past(app) },
       statistics = {
         StatsPresenter(
           statistics = app.dieStatistics,
@@ -209,6 +209,21 @@ class MainActivity : ComponentActivity() {
     activeId = settings.activeSessionId,
     onActive = { session -> lifecycleScope.launch { repository.setActiveSession(session) } },
   )
+
+  /**
+   * Past rolls, and what the chooser may filter them by.
+   *
+   * The sessions and the saved rolls are given rather than reached for,
+   * because which of each exist is the application's to know
+   * (`docs/statistics.md`).
+   */
+  private fun past(app: DInfinityApplication) =
+    HistoryPresenter(
+      history = app.history,
+      scope = lifecycleScope,
+      sessions = app.sessions,
+      saved = app.savedRolls,
+    )
 
   /**
    * What each saved roll has come to, against what it should

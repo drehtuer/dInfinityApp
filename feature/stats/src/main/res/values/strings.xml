@@ -11,6 +11,10 @@
     <item quantity="one">One correction during this throw</item>
     <item quantity="other">%1$d corrections during this throw</item>
   </plurals>
+  <string name="history_all">Everything</string>
+  <string name="history_filtered_empty">Nothing matches that yet.</string>
+  <string name="history_clear_filter">Show everything</string>
+
   <!-- The statistics screen (design option 1w). -->
   <string name="stats_title">Statistics</string>
   <!-- Saved-roll statistics (design options 8b and 9e). -->

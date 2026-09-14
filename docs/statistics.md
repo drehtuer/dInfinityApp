@@ -53,6 +53,26 @@ throws are counted in the bars while its faces are missing from the line, so
 the pool is marked the same way a single uninstalled die is: the line is a
 guess, and the screen says so.
 
+### Filtering what you are looking at
+
+The history can be cut two ways: to one **session** — which is what sessions
+are for — or to one **saved roll**, wherever its throws were made. They are not
+combined: "Fireball on Tuesday" is a report rather than a list, and offering it
+would put two choosers on a screen whose whole job is to be scrollable.
+
+The chooser is not drawn until there is more than one thing to choose between.
+
+A filter that leaves nothing shows *that*, and not the message for a history
+with nothing in it: "you have never rolled anything" is wrong and discouraging
+in front of somebody who has rolled hundreds of times and picked a quiet
+session. Changing the filter closes any open breakdown, because the row that
+was open is not the row under the finger in the next list.
+
+**The statistics screens cannot be filtered by session yet, and the reason is
+the schema.** `die_stats` and `die_summary` are keyed by set and die and carry
+no session, so there is nothing there to filter; see `docs/TODO.md`, Step 4.9
+for the two ways out and why neither is a passing change.
+
 ### Per saved roll and per group
 
 - Times rolled, mean total, min/max total observed, last result

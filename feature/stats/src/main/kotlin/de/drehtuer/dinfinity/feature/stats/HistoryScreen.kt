@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.feature.stats
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,9 +11,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,8 +73,15 @@ fun HistoryScreen(
       menu()
     }
 
+    Choosers(state, presenter)
+
     if (state.empty) {
       Empty()
+      return@Column
+    }
+
+    if (state.filteredToNothing) {
+      FilteredToNothing(presenter)
       return@Column
     }
 
@@ -258,11 +268,107 @@ private fun Empty() {
   }
 }
 
+/**
+ * Which rolls are being looked at (`docs/statistics.md`; design `6c`).
+ *
+ * A row of choices rather than a menu, because there are rarely many and a
+ * tap beats two. Not drawn at all until there is more than one thing to choose
+ * between: a chooser whose only option is "everything" is a control that
+ * cannot do anything.
+ */
+@Composable
+private fun Choosers(
+  state: HistoryState,
+  presenter: HistoryPresenter,
+) {
+  if (!state.choosable) return
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Choice(
+      label = stringResource(R.string.history_all),
+      chosen = state.filter == HistoryFilter.Everything,
+      tag = HistoryTestTags.ALL,
+      onChoose = { presenter.filterBy(HistoryFilter.Everything) },
+    )
+    state.sessionChoices.forEach { session ->
+      Choice(
+        label = session.name,
+        chosen = (state.filter as? HistoryFilter.InSession)?.id == session.id,
+        tag = HistoryTestTags.sessionChoiceOf(session.id),
+        onChoose = { presenter.filterBy(HistoryFilter.InSession(session.id, session.name)) },
+      )
+    }
+    state.rollChoices.forEach { roll ->
+      Choice(
+        label = roll.name,
+        chosen = (state.filter as? HistoryFilter.OfSavedRoll)?.id == roll.id,
+        tag = HistoryTestTags.savedRollOf(roll.id),
+        onChoose = { presenter.filterBy(HistoryFilter.OfSavedRoll(roll.id, roll.name)) },
+      )
+    }
+  }
+}
+
+@Composable
+private fun Choice(
+  label: String,
+  chosen: Boolean,
+  tag: String,
+  onChoose: () -> Unit,
+) {
+  TextButton(onClick = onChoose, modifier = Modifier.testTag(tag)) {
+    Text(
+      text = label,
+      style = MaterialTheme.typography.labelLarge,
+      color = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+      fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
+    )
+  }
+}
+
+/**
+ * A filter that has left nothing to show.
+ *
+ * Deliberately not [Empty]: "you have never rolled anything" is wrong and
+ * discouraging in front of somebody who has rolled hundreds of times and
+ * picked a quiet session.
+ */
+@Composable
+private fun FilteredToNothing(presenter: HistoryPresenter) {
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(16.dp).testTag(HistoryTestTags.FILTERED_EMPTY),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    Text(text = stringResource(R.string.history_filtered_empty), style = MaterialTheme.typography.bodyMedium)
+    TextButton(
+      onClick = { presenter.filterBy(HistoryFilter.Everything) },
+      modifier = Modifier.testTag(HistoryTestTags.CLEAR_FILTER),
+    ) {
+      Text(stringResource(R.string.history_clear_filter))
+    }
+  }
+}
+
 /** What the tests reach the history screen by. */
 object HistoryTestTags {
   const val SCREEN: String = "history:screen"
   const val LIST: String = "history:list"
   const val EMPTY: String = "history:empty"
+  const val ALL: String = "history:all"
+  const val FILTERED_EMPTY: String = "history:filtered-empty"
+  const val CLEAR_FILTER: String = "history:clear-filter"
+
+  /** The chooser's button for one session — not the heading, which is `sessionOf`. */
+  fun sessionChoiceOf(id: String): String = "history:choose-session:$id"
+
+  fun savedRollOf(id: String): String = "history:savedroll:$id"
 
   fun rollOf(id: Long): String = "history:roll:$id"
 
