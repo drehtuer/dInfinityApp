@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity
 
 import android.app.Application
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.data.CollectionImporter
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
@@ -80,6 +81,17 @@ class DInfinityApplication : Application() {
   @Volatile
   var activeSession: String = AppSettings.DEFAULT_SESSION_ID
 
+  /**
+   * The set plain notation resolves against first
+   * (`docs/dice-sets.md`, design `6a`).
+   *
+   * A field for the same reason [activeSession] is one: it is a preference,
+   * and what reads it is `SetLibrary` building a catalogue rather than a
+   * composable that could collect a flow. The activity keeps it in step.
+   */
+  @Volatile
+  var defaultSet: String = DiceSet.BUILTIN_ID
+
   /** Past rolls, to read. Apart from the one that writes them, and smaller. */
   val history: HistoryRepository by lazy { HistoryRepository(database) }
 
@@ -117,6 +129,7 @@ class DInfinityApplication : Application() {
       registry = installedSets,
       io = Dispatchers.IO,
       installer = PackageInstaller(File(filesDir, DICE_SETS_FOLDER)),
+      defaultSetId = { defaultSet },
     )
   }
 

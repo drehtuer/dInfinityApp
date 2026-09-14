@@ -129,9 +129,35 @@ class DataStoreSettingsRepositoryTest {
           "welcome_seen" to false,
           "active_group" to "unfiled",
           "active_session" to "default",
+          "default_set" to "builtin",
         ),
         stored,
       )
+    }
+
+  @Test
+  fun `the set a plain d20 comes from is read back`() =
+    runTest {
+      val repository = DataStoreSettingsRepository(dataStore(this))
+
+      assertEquals("a fresh install did not start on the bundled dice", "builtin", settingsOf(repository).defaultSetId)
+
+      repository.setDefaultSet("brass")
+
+      assertEquals("brass", settingsOf(repository).defaultSetId)
+    }
+
+  @Test
+  fun `a default set is remembered even while that set is not installed`() =
+    runTest {
+      // Whether it is installed is a question for the moment a formula is
+      // resolved, not for the moment somebody taps a button: a set switched
+      // off for an evening should still be the default when it comes back.
+      val repository = DataStoreSettingsRepository(dataStore(this))
+
+      repository.setDefaultSet("a-set-nobody-has")
+
+      assertEquals("a-set-nobody-has", settingsOf(repository).defaultSetId)
     }
 
   @Test
@@ -196,4 +222,6 @@ class DataStoreSettingsRepositoryTest {
       assertEquals(Appearance.System, settings.appearance)
       assertEquals(Rounding.Default, settings.rounding)
     }
+
+  private suspend fun settingsOf(repository: DataStoreSettingsRepository) = repository.settings.first()
 }

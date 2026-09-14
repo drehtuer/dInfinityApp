@@ -254,6 +254,65 @@ class InstallingTest {
     assertNull("a removed set still handed out dice", library.catalogue.set("brass"))
   }
 
+  @Test
+  fun `the chosen default is what a plain die resolves against`() {
+    val presenter = loaded()
+    presenter.install(zip("brass", toml("brass", "Brass")))
+    await("the new set never reached the list") { presenter.state.sets.any { it.id == "brass" } }
+
+    chosenDefault = "brass"
+
+    assertEquals("brass", library.catalogue.defaultSetId)
+  }
+
+  @Test
+  fun `a default that is not installed falls back to the bundled set`() {
+    // The setting can name a set that was removed, or one that has not been
+    // installed yet. A catalogue pointing at a set nobody has cannot resolve
+    // `d20` at all, so the bundled set stands in.
+    loaded()
+
+    chosenDefault = "a-set-nobody-has"
+
+    assertEquals(DiceSet.BUILTIN_ID, library.catalogue.defaultSetId)
+  }
+
+  @Test
+  fun `a default that is switched off falls back, and is remembered`() {
+    // Falling back is about resolving a formula now. It must not quietly
+    // rewrite the setting: a set switched off for an evening is still the one
+    // the player chose.
+    val presenter = loaded()
+    presenter.install(zip("brass", toml("brass", "Brass")))
+    await("the new set never reached the list") { presenter.state.sets.any { it.id == "brass" } }
+    chosenDefault = "brass"
+
+    presenter.setEnabled(presenter.state.sets.single { it.id == "brass" }, enabled = false)
+    await("the set was never switched off") {
+      presenter.state.sets
+        .single { it.id == "brass" }
+        .enabled
+        .not()
+    }
+
+    assertEquals(DiceSet.BUILTIN_ID, library.catalogue.defaultSetId)
+    assertEquals("the setting was rewritten behind the player", "brass", chosenDefault)
+  }
+
+  @Test
+  fun `removing the default set falls back without leaving the catalogue broken`() {
+    val presenter = loaded()
+    presenter.install(zip("brass", toml("brass", "Brass")))
+    await("the new set never reached the list") { presenter.state.sets.any { it.id == "brass" } }
+    chosenDefault = "brass"
+
+    presenter.remove(presenter.state.sets.single { it.id == "brass" })
+    await("the set was never removed") { presenter.state.sets.none { it.id == "brass" } }
+
+    assertEquals(DiceSet.BUILTIN_ID, library.catalogue.defaultSetId)
+    assertEquals("Standard", library.catalogue.set(library.catalogue.defaultSetId)?.name)
+  }
+
   private fun write(
     id: String,
     toml: String,
@@ -262,6 +321,9 @@ class InstallingTest {
     File(folder, DiceSetValidator.DICE_SET_FILE).writeText(toml)
   }
 
+  /** What the settings say the default is, as the application's field would. */
+  private var chosenDefault: String = DiceSet.BUILTIN_ID
+
   private val library: SetLibrary by lazy {
     SetLibrary(
       bundled = bundledSet(),
@@ -269,6 +331,7 @@ class InstallingTest {
       registry = registry,
       io = Dispatchers.Unconfined,
       installer = PackageInstaller(root),
+      defaultSetId = { chosenDefault },
     )
   }
 

@@ -19,6 +19,7 @@ import de.drehtuer.dinfinity.data.setAccentColor
 import de.drehtuer.dinfinity.data.setActiveGroup
 import de.drehtuer.dinfinity.data.setActiveSession
 import de.drehtuer.dinfinity.data.setAppearance
+import de.drehtuer.dinfinity.data.setDefaultSet
 import de.drehtuer.dinfinity.data.setPowerSaving
 import de.drehtuer.dinfinity.data.setRounding
 import de.drehtuer.dinfinity.data.setShakeToRoll
@@ -131,6 +132,10 @@ class MainActivity : ComponentActivity() {
     // roll thread, which cannot suspend and so cannot read a preference — so
     // the value is pushed here, every time the settings say it has changed.
     LaunchedEffect(settings.activeSessionId) { app.activeSession = settings.activeSessionId }
+    // The same arrangement, for the set a plain `d20` comes from. `SetLibrary`
+    // reads it while building a catalogue, which is not a place that can
+    // collect a flow (`docs/dice-sets.md`).
+    LaunchedEffect(settings.defaultSetId) { app.defaultSet = settings.defaultSetId }
 
     DInfinityApp(
       settings = settings,
@@ -179,7 +184,7 @@ class MainActivity : ComponentActivity() {
       },
       sessions = { sessions(app, settings, repository) },
       diceSets = { diceSets(app) },
-      diceSet = { id, onGone -> diceSet(app, id, onGone) },
+      diceSet = { id, onGone -> diceSet(app, repository, id, onGone) },
       onSource = { url -> open(url) },
     )
   }
@@ -209,6 +214,7 @@ class MainActivity : ComponentActivity() {
   /** One of them, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`). */
   private fun diceSet(
     app: DInfinityApplication,
+    repository: SettingsRepository,
     id: String,
     onGone: () -> Unit,
   ) = SetDetailPresenter(
@@ -216,6 +222,8 @@ class MainActivity : ComponentActivity() {
     library = app.setLibrary,
     scope = lifecycleScope,
     onGone = onGone,
+    defaultSetId = { app.defaultSet },
+    onDefault = { setId -> lifecycleScope.launch { repository.setDefaultSet(setId) } },
   )
 
   private companion object {

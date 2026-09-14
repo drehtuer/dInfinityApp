@@ -38,6 +38,9 @@
   <string name="sets_detail_source">Installed from</string>
   <string name="sets_detail_commit">Commit %1$s</string>
   <string name="sets_detail_source_unknown">Not recorded. This set was not installed by this app.</string>
+  <string name="sets_detail_default">Roll these by default</string>
+  <string name="sets_detail_is_default">Rolled by default</string>
+  <string name="sets_detail_default_note">“d20” with no set in front of it comes from here, falling back to the built-in dice for anything this set does not define.</string>
   <string name="sets_detail_dice">Dice</string>
   <string name="sets_detail_report">What is wrong with it</string>
   <string name="sets_detail_report_note">The folder is kept, so an update can replace it. Nothing from this set is offered until it loads.</string>

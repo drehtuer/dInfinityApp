@@ -74,10 +74,17 @@ capacity check happens before any body is created and the UI explains it
 
 1. Parse into an AST.
 2. Resolve each `dice` node to concrete `Die` definitions: `setref` if given,
-   otherwise the default set from Settings, falling back to the built-in set
-   **per die** when the default set lacks that one (so a set with no d12 still
-   rolls `1d20 + 1d12`). The breakdown names the set each die came from and
-   says when it fell back.
+   otherwise the default set — chosen on that set's own details screen
+   (`docs/dice-sets.md`, design `6a`) and remembered with the settings —
+   falling back to the built-in set **per die** when the default set lacks that
+   one (so a set with no d12 still rolls `1d20 + 1d12`). The breakdown names
+   the set each die came from and says when it fell back.
+
+   A default that is **not installed, switched off, or no longer valid** is not
+   a default: the built-in set stands in for the whole catalogue rather than
+   per die, because a catalogue pointing at a set nobody has cannot resolve a
+   plain `d20` at all. The setting is left as it was — a set switched off for
+   an evening is still the one the player chose.
 3. Run the table capacity check on the total die count (including the dice
    that a first explosion could add). Refuse with a message if it fails.
 4. All dice from all groups go into **one** physics throw. The breakdown

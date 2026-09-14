@@ -93,7 +93,8 @@ changelog.
   cache, extracted and validated before anything is written, and a refusal
   lists every error — and **its dice can then be rolled**: the catalogue a
   formula resolves against is rebuilt from what is on disk and switched on, so
-  installing a set is the whole of what it sounds like. Still to come:
+  installing a set is the whole of what it sounds like, and one of them can be
+  made the set a plain `d20` comes from. Still to come:
   installing from a URL, update checking, and "my dice".
 - **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
   a history row, a face count per die and a running summary, in one transaction

@@ -125,6 +125,7 @@ private fun Body(
 ) {
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SetDetailTestTags.LIST)) {
     item { Provenance(row, onSource) }
+    item { Default(presenter) }
     item { Manage(row, presenter) }
     item { HorizontalDivider() }
     if (row.broken) report(row.report) else dice(row.set?.dice.orEmpty())
@@ -185,6 +186,44 @@ private fun Source(
     row.meta.commit?.let {
       Text(
         text = stringResource(R.string.sets_detail_commit, it),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+  }
+}
+
+/**
+ * Which set plain notation reaches for first (design `6a`).
+ *
+ * A set that is switched off or will not load is not offered the job: naming
+ * it would point every plain `d20` at a set that is then fallen straight past.
+ */
+@Composable
+private fun Default(presenter: SetDetailPresenter) {
+  val state = presenter.state
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+    verticalArrangement = Arrangement.spacedBy(2.dp),
+  ) {
+    if (state.isDefault) {
+      Text(
+        text = stringResource(R.string.sets_detail_is_default),
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.testTag(SetDetailTestTags.IS_DEFAULT),
+      )
+    } else if (state.canBeDefault) {
+      TextButton(
+        onClick = { presenter.makeDefault() },
+        modifier = Modifier.testTag(SetDetailTestTags.MAKE_DEFAULT),
+      ) {
+        Text(stringResource(R.string.sets_detail_default))
+      }
+    }
+    if (state.isDefault || state.canBeDefault) {
+      Text(
+        text = stringResource(R.string.sets_detail_default_note),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -328,6 +367,8 @@ object SetDetailTestTags {
   const val TOGGLE: String = "setdetail:toggle"
   const val REMOVE: String = "setdetail:remove"
   const val PROBLEM: String = "setdetail:problem"
+  const val MAKE_DEFAULT: String = "setdetail:makedefault"
+  const val IS_DEFAULT: String = "setdetail:isdefault"
 
   fun dieOf(id: String): String = "setdetail:die:$id"
 }

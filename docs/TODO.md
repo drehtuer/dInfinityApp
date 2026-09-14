@@ -131,7 +131,7 @@ deleted, from the switcher or from the editor — the same sheet in both places.
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
 
 - [x] Installed list with status; long-press → disable / remove (`5a`), bundled set protected
-- [x] Set details (`6a`): author, license, source with commit, dice drawn from the set, and the manage actions. **Set-as-default is not done** — it is a setting rather than a property of a package, so it belongs with the other defaults in 4.10
+- [x] Set details (`6a`): author, license, source with commit, dice drawn from the set, the manage actions, and set-as-default
 - [x] Failed validation (`6b`): the report with file:line replaces the dice grid, folder kept for an update
 - [x] Install **from a file** with the validator behind it; a rejection shows every error (`1t`)
 - [ ] Install from a **URL**, over `dicesets/install`'s fetcher. The screen, the bounded copy and the report are all built and shared with the file path — what is left is the fetch itself, which is the app's first code that reaches the network
@@ -220,6 +220,7 @@ carries the same menu button and the menu reaches every screen
 
 - [ ] Two rows the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll) and "Saved-roll statistics" (4.7). Decide whether the first is a screen or belongs in the README
 - [ ] The menu's header shows the active session beside the app's name in the design; that waits on sessions (4.9)
+- [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
 and the repository link are all there, and each of them does something.
 

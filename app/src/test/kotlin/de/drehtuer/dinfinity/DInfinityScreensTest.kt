@@ -242,6 +242,7 @@ class DInfinityScreensTest {
       registry = InstalledSetRepository(database),
       io = Dispatchers.Unconfined,
       installer = PackageInstaller(File(temporary, "dicesets")),
+      defaultSetId = { BuiltinDiceSet.set.id },
     )
 
   /** The app with every screen that takes a presenter actually given one. */
@@ -287,6 +288,8 @@ class DInfinityScreensTest {
               library = setLibrary(),
               scope = scope,
               onGone = onGone,
+              defaultSetId = { BuiltinDiceSet.set.id },
+              onDefault = {},
             )
           },
           statistics = {

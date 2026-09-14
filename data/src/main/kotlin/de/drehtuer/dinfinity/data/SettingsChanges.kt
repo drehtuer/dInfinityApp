@@ -36,3 +36,14 @@ suspend fun SettingsRepository.setActiveGroup(groupId: String) = update { it.cop
 
 /** The session new rolls are filed under (`docs/statistics.md`). */
 suspend fun SettingsRepository.setActiveSession(sessionId: String) = update { it.copy(activeSessionId = sessionId) }
+
+/**
+ * The set plain notation resolves against first
+ * (`docs/dice-sets.md`, design `6a`).
+ *
+ * Stored whatever it names. Whether that set is actually installed is a
+ * question for the moment a formula is resolved, not for the moment somebody
+ * taps a button: a set switched off for an evening and switched back on should
+ * still be the default when it is.
+ */
+suspend fun SettingsRepository.setDefaultSet(setId: String) = update { it.copy(defaultSetId = setId) }

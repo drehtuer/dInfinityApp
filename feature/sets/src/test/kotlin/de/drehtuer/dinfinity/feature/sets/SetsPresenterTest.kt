@@ -335,6 +335,7 @@ class SetsPresenterTest {
       registry = registry,
       io = Dispatchers.Unconfined,
       installer = PackageInstaller(root),
+      defaultSetId = { DiceSet.BUILTIN_ID },
     )
 
   private fun write(

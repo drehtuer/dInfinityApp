@@ -36,25 +36,48 @@ class SetLibrary(
   private val registry: InstalledSetRepository,
   private val io: CoroutineDispatcher,
   private val installer: PackageInstaller,
+  private val defaultSetId: () -> String,
 ) {
   /**
-   * What a formula resolves against (`docs/dice-notation.md`).
+   * The sets whose dice may be handed out: the bundled one, and every
+   * installed package that is **on and valid**.
    *
-   * The bundled set and every installed set that is **on and valid** — which
-   * is the same question [SetRow.usable] answers for a row, because a set the
+   * The same question [SetRow.usable] answers for a row, because a set the
    * player switched off and a set that stopped validating are both sets whose
-   * dice must not be handed out.
+   * dice must not be offered.
    *
    * Rebuilt by [all], and only by [all]. Reading the folder and deciding what
    * a `d20` means are the same facts, and keeping them apart is how a set
    * comes to be listed as installed and still not roll.
    *
-   * Starts as the bundled set alone. That is what is true before anything has
+   * Starts as the bundled set alone: that is what is true before anything has
    * been read, and it is the floor everything falls back to in any case.
    */
   @Volatile
-  var catalogue: DiceCatalog = DiceCatalog.of(listOf(bundled))
-    private set
+  private var usable: List<DiceSet> = listOf(bundled)
+
+  /**
+   * What a formula resolves against (`docs/dice-notation.md`).
+   *
+   * Built on the way out rather than cached, because it has two inputs that
+   * change at different times: which packages are on disk, which only [all]
+   * knows, and which of them is the *default*, which is a setting somebody can
+   * change on another screen without touching a folder.
+   *
+   * **A default that is not installed is not a default.** A set can be removed
+   * or switched off while it is still named in the settings, and
+   * `DiceCatalog.of` refuses a default it cannot find — rightly, since a
+   * catalogue pointing at a set nobody has is a catalogue that cannot resolve
+   * `d20`. So the bundled set stands in, and the setting is left alone: a set
+   * switched off for an evening should still be the default when it comes back.
+   */
+  val catalogue: DiceCatalog
+    get() {
+      val sets = usable
+      val wanted = defaultSetId()
+      val default = if (sets.any { it.id == wanted }) wanted else DiceSet.BUILTIN_ID
+      return DiceCatalog.of(sets, default)
+    }
 
   /**
    * Every set, the bundled one first and the rest by name.
@@ -76,7 +99,7 @@ class SetLibrary(
         packages
           .map { pack -> SetRow.of(pack, enabled = pack.id !in off) }
           .sortedBy { it.name.lowercase() }
-    catalogue = DiceCatalog.of(rows.filter(SetRow::usable).mapNotNull(SetRow::set).distinctBy(DiceSet::id))
+    usable = rows.filter(SetRow::usable).mapNotNull(SetRow::set).distinctBy(DiceSet::id)
     return rows
   }
 
