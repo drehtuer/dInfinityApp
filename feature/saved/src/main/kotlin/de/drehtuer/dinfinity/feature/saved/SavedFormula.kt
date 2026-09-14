@@ -15,9 +15,17 @@ import de.drehtuer.dinfinity.core.notation.RollPlanner
  * whether or not `brass` is installed, and the second half is the one that
  * goes wrong on somebody else's phone.
  *
- * A roll that fails this is not deleted and not rewritten. It carries a
- * warning and falls back to the built-in set when it is thrown, which is the
- * only answer that loses nothing: the set may be re-installed tomorrow.
+ * A roll that fails this is not deleted and not rewritten — the set may be
+ * re-installed tomorrow, and rewriting somebody's formula to keep it working
+ * would lose the thing they wrote.
+ *
+ * **It does not fall back when it is thrown, and should not.** The per-die
+ * fallback in `docs/dice-notation.md` is the *default* set's: a default with
+ * no d12 still rolls `1d20 + 1d12`, taking the d12 from the bundled set. A
+ * `setref:` gets none — somebody who wrote `brass:1d20` asked for brass, and
+ * handing them the bundled d20 under that name would be changing their dice
+ * without saying so. Thrown, it puts the formula in the field with the error
+ * under it, which is what typing it would have given them.
  */
 object SavedFormula {
   fun resolves(
