@@ -21,6 +21,23 @@
     <item quantity="other">%1$d problems</item>
   </plurals>
 
+  <!-- Set details (design options 6a and 6b). -->
+  <string name="sets_detail_gone">This set is not installed.</string>
+  <string name="sets_detail_gone_body">It may have been removed from another screen, or its folder taken away outside the app.</string>
+  <string name="sets_detail_author">Author</string>
+  <string name="sets_detail_license">Licence</string>
+  <string name="sets_detail_source">Installed from</string>
+  <string name="sets_detail_commit">Commit %1$s</string>
+  <string name="sets_detail_source_unknown">Not recorded. This set was not installed by this app.</string>
+  <string name="sets_detail_dice">Dice</string>
+  <string name="sets_detail_report">What is wrong with it</string>
+  <string name="sets_detail_report_note">The folder is kept, so an update can replace it. Nothing from this set is offered until it loads.</string>
+  <!-- %1$d is how many faces the die has. -->
+  <plurals name="sets_detail_faces">
+    <item quantity="one">1 face</item>
+    <item quantity="other">%1$d faces</item>
+  </plurals>
+
   <!-- The long-press sheet (design option 5a). -->
   <string name="sets_sheet_disable">Switch off</string>
   <string name="sets_sheet_enable">Switch on</string>

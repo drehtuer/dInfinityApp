@@ -43,6 +43,8 @@ import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportScreen
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedScreen
+import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
+import de.drehtuer.dinfinity.feature.sets.SetDetailScreen
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
@@ -60,6 +62,7 @@ import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
 import de.drehtuer.dinfinity.navigation.MenuGroup
+import de.drehtuer.dinfinity.navigation.SetArgument
 import de.drehtuer.dinfinity.theme.LocalModernistColors
 import de.drehtuer.dinfinity.theme.ModernistTokens
 
@@ -104,6 +107,8 @@ fun DInfinityApp(
   statistics: (() -> StatsPresenter)? = null,
   sessions: (() -> SessionsPresenter)? = null,
   diceSets: (() -> SetsPresenter)? = null,
+  diceSet: ((String, () -> Unit) -> SetDetailPresenter)? = null,
+  onSource: (String) -> Unit = {},
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   navController: NavHostController = rememberNavController(),
@@ -145,7 +150,7 @@ fun DInfinityApp(
           ) ||
             saving(destination, entry, navController, savedRolls, savedGroups, savedRollEditor, collectionImport) ||
             lookingBack(destination, entry, navController, history, statistics, sessions) ||
-            customising(destination, entry, navController, diceSets) ||
+            customising(destination, entry, navController, diceSets, diceSet, onSource) ||
             chrome(
               destination = destination,
               navController = navController,
@@ -315,10 +320,29 @@ private fun customising(
   entry: NavBackStackEntry,
   navController: NavHostController,
   diceSets: (() -> SetsPresenter)?,
+  diceSet: ((String, () -> Unit) -> SetDetailPresenter)?,
+  onSource: (String) -> Unit,
 ): Boolean =
   when (destination) {
     Destination.DiceSets if diceSets != null -> {
-      SetsScreen(presenter = remember(entry) { diceSets() }, menu = { MenuTo(navController) })
+      SetsScreen(
+        presenter = remember(entry) { diceSets() },
+        onOpen = { row -> navController.navigate("${Destination.SetDetail.route}?${SetArgument.SET}=${row.id}") },
+        menu = { MenuTo(navController) },
+      )
+      true
+    }
+
+    Destination.SetDetail if diceSet != null -> {
+      val id = entry.arguments?.getString(SetArgument.SET).orEmpty()
+      SetDetailScreen(
+        // Removing the set leaves the screen that was showing it: there is
+        // nothing left to show, and staying would be a page about a folder
+        // that is not there.
+        presenter = remember(entry) { diceSet(id) { navController.popBackStack() } },
+        onSource = onSource,
+        menu = { MenuTo(navController) },
+      )
       true
     }
 

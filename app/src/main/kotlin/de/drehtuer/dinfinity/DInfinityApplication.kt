@@ -13,7 +13,10 @@ import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.feature.sets.SetLibrary
+import kotlinx.coroutines.Dispatchers
 import java.io.File
 
 /**
@@ -96,6 +99,16 @@ class DInfinityApplication : Application() {
    * Android-shaped fact about it.
    */
   val packages: InstalledSets by lazy { InstalledSets(File(filesDir, DICE_SETS_FOLDER)) }
+
+  /**
+   * The two joined, which is what a screen asks for (`SetLibrary`).
+   *
+   * The bundled set is handed in here, so `feature/sets` never learns that
+   * `dicesets:builtin` exists.
+   */
+  val setLibrary: SetLibrary by lazy {
+    SetLibrary(bundled = BuiltinDiceSet.set, installed = packages, registry = installedSets, io = Dispatchers.IO)
+  }
 
   private companion object {
     const val DICE_SETS_FOLDER = "dicesets"

@@ -425,6 +425,16 @@ are ignored with a warning to allow future extensions.
   because passing the validator once does not make a folder valid for ever. A
   broken package **keeps its folder**: an update is the way out of that state
   and an update needs somewhere to update from (design `6b`).
+- **The report is shown where the dice would be.** A set's details screen
+  answers one question — what is in this set — and for a package that no longer
+  validates the answer is "nothing yet, and here is why", so the report takes
+  the dice grid's place rather than appearing beside it (design `6b`). Each
+  line carries `file:line`, because the person who can fix it is the author.
+- **A link only when there is somewhere to go.** A set installed from a file,
+  or a folder the app never installed, records a source that is a name rather
+  than a URL; making that tappable would promise something it cannot do. Only
+  `https` is ever handed to the system, and the check happens where the intent
+  is started — the string came off a file on disk.
 - **A row says which of the two ways a set can be unusable it is in.** Switched
   off and will-not-load are not the same thing and the remedies are opposite —
   one is a tap, the other is an update — so a list that showed only

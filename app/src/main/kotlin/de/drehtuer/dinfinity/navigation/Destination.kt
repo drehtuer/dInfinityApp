@@ -80,6 +80,17 @@ enum class Destination(
    * row for it would be a row that means nothing until somebody has a file.
    */
   CollectionImport("import", "Import a collection", "", group = null),
+
+  /**
+   * One dice set, in detail (`design/dInfinity.dc.html`, options `6a`
+   * and `6b`).
+   *
+   * Not in the menu: it is about *a* set, and the way to it is a row on the
+   * dice-set screen. Reached with no argument it shows the bundled set, which
+   * is the one set that is always installed — so the route is still a route
+   * rather than a screen that can fail to open.
+   */
+  SetDetail("setdetail", "Dice set", "", group = null, arguments = listOf(SetArgument.SET)),
   ;
 
   /**
@@ -137,6 +148,18 @@ object GraphArgument {
 object EditorArgument {
   /** The roll being edited, or empty for a new one. */
   const val ROLL: String = "roll"
+}
+
+/**
+ * What the set details screen is opened with.
+ *
+ * Its own object rather than constants on [Destination], for the reason
+ * [GraphArgument] gives: an enum's companion is not initialised when its
+ * entries are.
+ */
+object SetArgument {
+  /** The folder name of the set being shown. Empty means the bundled one. */
+  const val SET: String = "set"
 }
 
 /** The menu's four groups (`design/dInfinity.dc.html`, option 1q). */

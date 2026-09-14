@@ -10,6 +10,10 @@ dependencies {
   api(project(":dicesets:format"))
   api(project(":dicesets:install"))
 
+  // The die outlines the details screen draws, shared with the roll screen's
+  // picker so a d20 is the same shape in both.
+  api(project(":ui:common"))
+
   // What the player has switched off. What is *installed* comes off the disk;
   // only the opinion about it is in the database (`docs/dice-sets.md`).
   api(project(":data"))

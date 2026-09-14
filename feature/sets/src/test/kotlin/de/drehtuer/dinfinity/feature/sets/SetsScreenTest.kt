@@ -80,6 +80,20 @@ class SetsScreenTest {
   }
 
   @Test
+  fun `tapping a row with nothing wired to it does nothing`() {
+    // The screen the menu reaches on a cold start has no handler attached yet.
+    // A tap then has to be harmless rather than fatal.
+    write("brass", toml("brass", "Brass"))
+    val presenter = show()
+
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).performClick()
+
+    compose.waitForIdle()
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).assertIsDisplayed()
+    assertEquals(null, presenter.state.acting)
+  }
+
+  @Test
   fun `with nothing installed the screen says so instead of showing a bare list`() {
     show()
 
@@ -267,19 +281,22 @@ class SetsScreenTest {
 
   private fun show(onOpen: (SetRow) -> Unit = {}): SetsPresenter {
     val presenter =
-      SetsPresenter(
-        bundled = bundledSet(),
-        installed = InstalledSets(root),
-        registry = registry,
-        scope = scope,
-        io = Dispatchers.Unconfined,
-      )
+      SetsPresenter(library(), scope)
     compose.setContent { SetsScreen(presenter, onOpen = onOpen) }
     // The first reading of the disk is asynchronous, and every one of these
     // tests is about what the screen shows once it has happened.
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
     return presenter
   }
+
+  /** The two halves joined, with the disk and the database both real. */
+  private fun library() =
+    SetLibrary(
+      bundled = bundledSet(),
+      installed = InstalledSets(root),
+      registry = registry,
+      io = Dispatchers.Unconfined,
+    )
 
   private fun write(
     id: String,

@@ -122,6 +122,22 @@ class InstalledSets(
   }
 
   /**
+   * The one package called [id], or null when nothing is installed under that
+   * name.
+   *
+   * Matched against what is actually in the folder rather than joined onto it,
+   * for the reason [remove] gives: an id reaches this from a screen, having
+   * come from a folder name that came from an archive, and a `..` or a
+   * separator must not be able to point it anywhere else.
+   */
+  fun find(id: String): InstalledPackage? =
+    root
+      .listFiles()
+      .orEmpty()
+      .firstOrNull { it.isDirectory && it.name == id }
+      ?.let(::read)
+
+  /**
    * Takes a package off the disk (`docs/architecture.md`: uninstall deletes
    * the folder and the registry row — this is the folder half).
    *

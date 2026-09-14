@@ -86,8 +86,10 @@ changelog.
   set that stopped being valid shows its report instead of vanishing; database
   version 4 adds the registry that says whether a set is switched on, and a set
   with no row is on. Long-press switches one off or removes it, and the bundled
-  set is offered neither. Still to come: the details screen, installing, and
-  update checking.
+  set is offered neither. Tapping one opens its details: who wrote it, under
+  what licence, the link it came from with its commit, and the dice it defines
+  — or, for a package that stopped validating, the report standing where the
+  dice would. Still to come: installing, update checking, and "my dice".
 - **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
   a history row, a face count per die and a running summary, in one transaction
   — which the tables had been waiting for since version 1. The history lists

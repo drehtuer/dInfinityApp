@@ -131,8 +131,8 @@ deleted, from the switcher or from the editor — the same sheet in both places.
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
 
 - [x] Installed list with status; long-press → disable / remove (`5a`), bundled set protected
-- [ ] Set details (`6a`): author, license, source with commit, dice rendered from the set, set-as-default
-- [ ] Failed validation (`6b`): the report with file:line replaces the dice grid, folder kept for an update
+- [x] Set details (`6a`): author, license, source with commit, dice drawn from the set, and the manage actions. **Set-as-default is not done** — it is a setting rather than a property of a package, so it belongs with the other defaults in 4.10
+- [x] Failed validation (`6b`): the report with file:line replaces the dice grid, folder kept for an update
 - [ ] Install from URL or file with progress, then the validator; rejection shows every error (`1t`)
 - [ ] Check for updates, update with progress and cancel (`9h`, `9i`)
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)

@@ -312,14 +312,7 @@ class SetsPresenterTest {
   private fun loaded(): SetsPresenter =
     presenter().also { presenter -> await("the disk was never read") { presenter.state.loaded } }
 
-  private fun presenter(): SetsPresenter =
-    SetsPresenter(
-      bundled = bundledSet(),
-      installed = InstalledSets(root),
-      registry = registry,
-      scope = scope,
-      io = Dispatchers.Unconfined,
-    )
+  private fun presenter(): SetsPresenter = SetsPresenter(library(), scope)
 
   /** Polls until [until] holds, because Room answers on a thread of its own. */
   private fun await(
@@ -332,6 +325,15 @@ class SetsPresenterTest {
       Thread.sleep(POLL_MS)
     }
   }
+
+  /** The two halves joined, with the disk and the database both real. */
+  private fun library() =
+    SetLibrary(
+      bundled = bundledSet(),
+      installed = InstalledSets(root),
+      registry = registry,
+      io = Dispatchers.Unconfined,
+    )
 
   private fun write(
     id: String,

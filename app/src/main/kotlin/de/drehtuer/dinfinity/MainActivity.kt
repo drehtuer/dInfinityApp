@@ -25,6 +25,7 @@ import de.drehtuer.dinfinity.data.setShakeToRoll
 import de.drehtuer.dinfinity.data.setWelcomeSeen
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.saved.R
+import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
@@ -50,11 +51,24 @@ class MainActivity : ComponentActivity() {
       packageManager.getPackageInfo(packageName, 0).versionName
     }.getOrNull().orEmpty()
 
-  /** Opens the project's page in a browser. The app's only outward link. */
-  private fun openRepository() {
-    runCatching {
-      startActivity(Intent(Intent.ACTION_VIEW, REPOSITORY))
-    }
+  /** Opens the project's page in a browser. */
+  private fun openRepository() = open(REPOSITORY)
+
+  /**
+   * Hands a link to whatever the phone opens links with.
+   *
+   * Only `https`. The links this app produces are the repository's and the one
+   * a dice set recorded as where it came from — and the second of those came
+   * off a file on disk, so it is not a string to hand an intent without
+   * looking at it first (`docs/dice-sets.md`).
+   */
+  private fun open(url: String) {
+    if (!url.startsWith("https://")) return
+    open(url.toUri())
+  }
+
+  private fun open(uri: Uri) {
+    runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri)) }
   }
 
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -165,6 +179,8 @@ class MainActivity : ComponentActivity() {
       },
       sessions = { sessions(app, settings, repository) },
       diceSets = { diceSets(app) },
+      diceSet = { id, onGone -> diceSet(app, id, onGone) },
+      onSource = { url -> open(url) },
     )
   }
 
@@ -188,13 +204,19 @@ class MainActivity : ComponentActivity() {
   )
 
   /** What is installed, and what may be done to it (`docs/dice-sets.md`). */
-  private fun diceSets(app: DInfinityApplication) =
-    SetsPresenter(
-      bundled = BuiltinDiceSet.set,
-      installed = app.packages,
-      registry = app.installedSets,
-      scope = lifecycleScope,
-    )
+  private fun diceSets(app: DInfinityApplication) = SetsPresenter(app.setLibrary, lifecycleScope)
+
+  /** One of them, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`). */
+  private fun diceSet(
+    app: DInfinityApplication,
+    id: String,
+    onGone: () -> Unit,
+  ) = SetDetailPresenter(
+    id = id.ifEmpty { BuiltinDiceSet.set.id },
+    library = app.setLibrary,
+    scope = lifecycleScope,
+    onGone = onGone,
+  )
 
   private companion object {
     /** Where this came from (`README.md`). */
