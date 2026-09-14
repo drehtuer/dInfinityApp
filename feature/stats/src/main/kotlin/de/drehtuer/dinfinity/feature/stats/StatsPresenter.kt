@@ -12,9 +12,12 @@ import de.drehtuer.dinfinity.core.stats.FaceHistogram
 import de.drehtuer.dinfinity.core.stats.FaceTally
 import de.drehtuer.dinfinity.core.stats.PooledDie
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
+import de.drehtuer.dinfinity.data.Session
+import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /**
@@ -33,26 +36,75 @@ import kotlinx.coroutines.launch
  * record or drawing it against a line that is wrong without saying so.
  *
  * @param catalog the installed sets, for the faces and the names.
+ * @param sessions the sessions there are, for the chooser. Null draws no
+ *   chooser and leaves every number as every roll — and it has no default,
+ *   because a screen that quietly lost its sessions should be a compile error
+ *   rather than a chooser that stopped appearing (`Presenters`).
  */
 class StatsPresenter(
   private val statistics: DieStatisticsRepository,
   private val writer: StatisticsRepository,
   private val catalog: DiceCatalog,
   private val scope: CoroutineScope,
+  private val sessions: SessionRepository?,
 ) {
   /** What the screen draws. */
   var state: StatsState by mutableStateOf(StatsState())
     private set
 
   private var watching: Job? = null
+  private var cutToSession: Job? = null
 
   init {
+    // The whole record, always, whatever the screen is showing. It is what the
+    // export writes and what says whether a player has ever rolled anything —
+    // neither of which a session filter should be able to answer for.
     scope.launch {
-      statistics.dice.collect { dice ->
-        state = state.copy(all = dice.map(::rowOf), loaded = true)
+      statistics.dice.collect { summaries ->
+        val rows = summaries.map { rowOf(it, catalog) }
+        state = state.copy(allTime = rows, loaded = true, all = if (state.cutToSession) state.all else rows)
         // The open die's own numbers change when a roll lands too.
         state.selected?.let { open -> select(open.setId, open.dieId) }
       }
+    }
+    sessions?.let { repository ->
+      scope.launch { repository.sessions.collect { all -> state = state.copy(sessionChoices = all) } }
+    }
+  }
+
+  /**
+   * Cut the statistics to one session, or to none (`docs/statistics.md`, per
+   * session).
+   *
+   * A second subscription rather than a filter over the first, because the two
+   * are different queries: all-time comes off `die_summary`, and a session is
+   * added up from the face counts, which is the only place the session is
+   * recorded.
+   *
+   * The open die closes, because the histogram on screen is the wrong die's
+   * worth of throws the moment the filter moves — and a chart that changed
+   * under the finger without being asked to is worse than one that went away.
+   */
+  fun inSession(sessionId: String?) {
+    if (sessionId == state.sessionFilter) return
+    watching?.cancel()
+    watching = null
+    cutToSession?.cancel()
+    cutToSession = null
+    state =
+      state.copy(
+        sessionFilter = sessionId,
+        selected = null,
+        all = if (sessionId == null) state.allTime else emptyList(),
+      )
+    sessionId?.let { id ->
+      cutToSession =
+        scope.launch {
+          statistics.diceIn(id).collect { summaries ->
+            state = state.copy(all = summaries.map { rowOf(it, catalog) })
+            state.selected?.let { open -> select(open.setId, open.dieId) }
+          }
+        }
     }
   }
 
@@ -68,7 +120,7 @@ class StatsPresenter(
   ) {
     val row = state.dice.firstOrNull { it.setId == setId && it.dieId == dieId } ?: return
     watching?.cancel()
-    val tallies = if (row.acrossSets) statistics.facesForSides(row.summary.sides) else statistics.faces(setId, dieId)
+    val tallies = tallies(row, setId, dieId)
     watching =
       scope.launch {
         tallies.collect { counted ->
@@ -162,35 +214,69 @@ class StatsPresenter(
     }
   }
 
-  private fun rowOf(summary: DieSummary): DieRow {
-    val die = catalog.set(summary.setId)?.dice?.firstOrNull { it.id == summary.dieId }
-    return DieRow(
-      summary = summary,
-      name = die?.id ?: summary.dieId,
-      // A set that has been uninstalled since still has a record, and the
-      // record is the player's.
-      values = die?.faces?.map(Face::value).orEmpty(),
-      installed = die != null,
-    )
-  }
-
-  private fun detailOf(
+  /**
+   * The counts the open die's histogram is drawn from.
+   *
+   * Four queries rather than two, because the roll-up and the session filter
+   * are independent: "all my d20s, this campaign" is a real question and the
+   * only one of the four that needs both.
+   */
+  private fun tallies(
     row: DieRow,
-    tallies: List<FaceTally>,
-  ): DieDetail {
-    // When nobody can say what the die's faces were, the values it has
-    // actually shown are the best available guess — and the screen says so.
-    if (row.acrossSets) {
-      val bars = FaceHistogram.ofPool(row.pool, tallies)
-      return DieDetail(row = row, bars = bars, extremes = FaceHistogram.extremes(bars.map(FaceBar::value), tallies))
+    setId: String,
+    dieId: String,
+  ): Flow<List<FaceTally>> {
+    // Read into a local so the arms can smart-cast it. Asking `state` twice
+    // would need a `requireNotNull` in each arm, and a null check that cannot
+    // fail is a branch no test can ever take.
+    val session = state.sessionFilter
+    return when {
+      row.acrossSets && session != null -> statistics.facesForSidesIn(row.summary.sides, session)
+      row.acrossSets -> statistics.facesForSides(row.summary.sides)
+      session != null -> statistics.facesIn(setId, dieId, session)
+      else -> statistics.faces(setId, dieId)
     }
-    val values = row.values.ifEmpty { tallies.map(FaceTally::faceValue) }
-    return DieDetail(
-      row = row,
-      bars = FaceHistogram.of(values, tallies),
-      extremes = FaceHistogram.extremes(values, tallies),
-    )
   }
+}
+
+/**
+ * One die's record as a row of the list, named from the installed set.
+ *
+ * Out here rather than in the presenter because it is a mapping and not a
+ * decision: nothing about it depends on what the screen is showing.
+ */
+private fun rowOf(
+  summary: DieSummary,
+  catalog: DiceCatalog,
+): DieRow {
+  val die = catalog.set(summary.setId)?.dice?.firstOrNull { it.id == summary.dieId }
+  return DieRow(
+    summary = summary,
+    name = die?.id ?: summary.dieId,
+    // A set that has been uninstalled since still has a record, and the
+    // record is the player's.
+    values = die?.faces?.map(Face::value).orEmpty(),
+    installed = die != null,
+  )
+}
+
+/** One die opened: its bars, and the fair line they are drawn against. */
+private fun detailOf(
+  row: DieRow,
+  tallies: List<FaceTally>,
+): DieDetail {
+  // When nobody can say what the die's faces were, the values it has
+  // actually shown are the best available guess — and the screen says so.
+  if (row.acrossSets) {
+    val bars = FaceHistogram.ofPool(row.pool, tallies)
+    return DieDetail(row = row, bars = bars, extremes = FaceHistogram.extremes(bars.map(FaceBar::value), tallies))
+  }
+  val values = row.values.ifEmpty { tallies.map(FaceTally::faceValue) }
+  return DieDetail(
+    row = row,
+    bars = FaceHistogram.of(values, tallies),
+    extremes = FaceHistogram.extremes(values, tallies),
+  )
 }
 
 /** One die in the list. */
@@ -284,13 +370,35 @@ sealed interface Reset {
  */
 data class StatsState(
   val all: List<DieRow> = emptyList(),
+  /**
+   * Every die ever thrown, whatever the screen is cut to.
+   *
+   * The record the export writes and the one that says whether anything has
+   * ever been rolled. A session with nothing in it is a filter that found
+   * nothing, not an empty history — telling somebody who has rolled hundreds
+   * of times that they never have, because they picked a quiet campaign, is
+   * the mistake this exists to make impossible (`docs/statistics.md`).
+   */
+  val allTime: List<DieRow> = emptyList(),
   val selected: DieDetail? = null,
   val confirming: Reset? = null,
   val loaded: Boolean = false,
   val setFilter: String? = null,
   val acrossSets: Boolean = false,
   val order: DieOrder = DieOrder.Recent,
+  /** The session everything on screen is cut to, or null for every roll ever. */
+  val sessionFilter: String? = null,
+  val sessionChoices: List<Session> = emptyList(),
 ) {
+  /**
+   * True when a session is worth choosing between.
+   *
+   * The chooser is not drawn until there is more than one thing to choose
+   * between — the same rule the history follows, and for the same reason: a
+   * control with one option is a control that does nothing.
+   */
+  val sessionsChoosable: Boolean get() = sessionChoices.size > 1
+
   /** Every set that has a record, in the order the list shows them (design `5b`). */
   val sets: List<String> get() = all.map(DieRow::setId).distinct().sorted()
 
@@ -340,13 +448,16 @@ data class StatsState(
    * A set filter *is* honoured, because that one hides dice rather than
    * merging them.
    */
-  val recorded: List<DieRow> get() = all.filter { setFilter == null || it.setId == setFilter }
+  val recorded: List<DieRow> get() = allTime.filter { setFilter == null || it.setId == setFilter }
 
   /** True when nothing has ever been rolled, rather than nothing has arrived. */
-  val empty: Boolean get() = loaded && all.isEmpty()
+  val empty: Boolean get() = loaded && allTime.isEmpty()
 
   /** True when a filter is hiding everything there is, which is not the same as having nothing. */
-  val filteredToNothing: Boolean get() = loaded && all.isNotEmpty() && dice.isEmpty()
+  val filteredToNothing: Boolean get() = loaded && allTime.isNotEmpty() && dice.isEmpty()
+
+  /** True while the screen is showing one session rather than every roll. */
+  val cutToSession: Boolean get() = sessionFilter != null
 
   /**
    * One row per die *type*, summed across every set that has one.

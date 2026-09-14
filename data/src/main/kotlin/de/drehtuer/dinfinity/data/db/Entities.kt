@@ -80,22 +80,35 @@ data class RollHistoryRow(
 }
 
 /**
- * How often one face *value* of one die has come up
+ * How often one face *value* of one die has come up, in one session
  * (`docs/statistics.md`, per die).
  *
  * Keyed by value rather than by face index, so a d6 labelled `1,2,3,1,2,3` has
  * three rows and its histogram is the d3 it really is.
+ *
+ * **The session is part of the key**, which is what lets the statistics be cut
+ * to one campaign (`docs/TODO.md`, Step 4.9). It costs a row per face per die
+ * per session somebody rolled it in, and it buys a lookup where the other
+ * answer — recomputing a session's counts from `roll_history.breakdown_json`
+ * — was a scan of up to fifty thousand rows every time the screen drew.
+ *
+ * Counts **add**, which is the whole reason this table can be cut this way and
+ * [DieSummaryRow] cannot: every all-time number this table carries is the sum
+ * of its sessions, so nothing is lost by splitting it and nothing has to be
+ * kept twice.
  */
 @Entity(
   tableName = "die_stats",
-  primaryKeys = ["set_id", "die_id", "face_value"],
-  indices = [Index("sides")],
+  primaryKeys = ["set_id", "die_id", "session_id", "face_value"],
+  indices = [Index("sides"), Index("session_id")],
 )
 data class DieStatsRow(
   @ColumnInfo(name = "set_id")
   val setId: String,
   @ColumnInfo(name = "die_id")
   val dieId: String,
+  @ColumnInfo(name = "session_id")
+  val sessionId: String,
   val sides: Int,
   @ColumnInfo(name = "face_value")
   val faceValue: Int,
@@ -105,12 +118,21 @@ data class DieStatsRow(
 )
 
 /**
- * The running totals and streaks for one die
+ * The running totals and streaks for one die, over all of its throws
  * (`docs/statistics.md`, per die).
  *
  * Sums rather than a stored mean, because sums add: a roll updates this by
  * addition, in the same transaction as the history row, with no read of the
  * old average to get wrong.
+ *
+ * **No session here**, unlike [DieStatsRow], and the difference is the streaks.
+ * A streak is a property of the *sequence* of a die's throws: five twenties in
+ * a row are five twenties in a row whether or not somebody started a new
+ * campaign in the middle of them. Keyed by session, the all-time longest run
+ * would be the longest run *within* a session and would quietly come out short
+ * — a headline number reading lower than what actually happened. So this table
+ * stays what it has always been, and a session's throws, sum and mean are read
+ * off [DieStatsRow] instead, where they are exact.
  */
 @Entity(
   tableName = "die_summary",

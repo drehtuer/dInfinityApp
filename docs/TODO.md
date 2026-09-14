@@ -226,17 +226,11 @@ natural-high counts, tap to activate, rename, create, and delete that moves the
 rolls to the first session rather than deleting them. The active session is a
 preference and every roll is filed under it; the history filters by it, and the
 menu's header names it once there is more than one session to be in (`1q`).
-
-- [ ] **Filtering the statistics by session needs a decision, not just a
-      chooser.** `die_stats` and `die_summary` are keyed by set and die and
-      carry no session (`docs/statistics.md`, "Storage"), so there is nothing
-      to filter. Either they grow a session column — which multiplies every
-      aggregate row by the number of sessions, for a number most players will
-      never ask for — or per-session face counts are computed from
-      `roll_history.breakdown_json` on demand, which is a scan rather than a
-      lookup and is the only option that costs nothing until it is used. The
-      second looks right; it is a schema decision either way and is not one to
-      take in passing
+Database version 5 puts the session on every face count, so the **statistics**
+filter by it too — stored rather than recomputed, because a scan of fifty
+thousand history rows on every draw is the thing a column is for.
+`die_summary` deliberately did not grow one: counts add and streaks do not
+(`docs/statistics.md`, per session).
 
 ### 4.10 Settings and menu — `feature/settings`
 

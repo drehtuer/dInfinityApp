@@ -137,6 +137,38 @@ class MigrationTest {
     }
 
   @Test
+  fun `the face counts kept before sessions existed become the first session's`() =
+    runTest {
+      // Version 5 reshapes a table somebody already has rows in, which no
+      // earlier migration did. What must survive is the count itself and the
+      // agreement between the two aggregates: if these rows landed under any
+      // other session, or under none, the sum of the sessions would stop
+      // matching the all-time totals the first time the screen drew.
+      writeVersion1 { db ->
+        db.execSQL(
+          "INSERT INTO die_stats (set_id, die_id, sides, face_value, count, dropped_count) " +
+            "VALUES ('builtin', 'd20', 20, 20, 7, 2)",
+        )
+      }
+
+      withDatabase { database ->
+        val counted = database.dieStats().find("builtin", "d20", SessionRepository.DEFAULT_ID, 20)
+        assertEquals("the count did not survive the reshape", 7L, counted?.count)
+        assertEquals("the dropped dice did not survive it either", 2L, counted?.droppedCount)
+        assertEquals(
+          "the all-time total has to be the sum of the sessions",
+          7L,
+          database
+            .dieStats()
+            .histogram("builtin", "d20")
+            .first()
+            .single()
+            .count,
+        )
+      }
+    }
+
+  @Test
   fun `deleting a group takes its rolls with it rather than leaving them nowhere`() =
     runTest {
       writeVersion1()

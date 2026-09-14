@@ -54,6 +54,8 @@
   </plurals>
 
   <string name="stats_all_sets">All sets</string>
+  <string name="stats_all_sessions">All sessions</string>
+  <string name="stats_session_note">Only the dice thrown in this session, and only what they did there.</string>
   <string name="stats_across_sets">All my d20s</string>
   <string name="stats_across_sets_note">Every set’s dice of each kind, counted together. The fair line weighs each die by how often it was thrown.</string>
   <string name="stats_filtered_empty">No dice from that set have been thrown yet.</string>

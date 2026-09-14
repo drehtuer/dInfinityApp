@@ -80,10 +80,9 @@ in front of somebody who has rolled hundreds of times and picked a quiet
 session. Changing the filter closes any open breakdown, because the row that
 was open is not the row under the finger in the next list.
 
-**The statistics screens cannot be filtered by session yet, and the reason is
-the schema.** `die_stats` and `die_summary` are keyed by set and die and carry
-no session, so there is nothing there to filter; see `docs/TODO.md`, Step 4.9
-for the two ways out and why neither is a passing change.
+The **statistics** screen can be cut to a session too, and that chooser is not
+exclusive with the set one — see "Per session" below for what a session's
+numbers are, and the one number a session cannot have.
 
 ### Per saved roll and per group
 
@@ -125,15 +124,34 @@ in. The first session is called "First rolls" and cannot be deleted — it is
 where the rolls made before anybody thought about sessions belong, and where
 the rolls of a deleted session go.
 
-**The history can be filtered by session; the statistics above cannot yet.**
-That is a storage question rather than a missing chooser: `die_stats` and
-`die_summary` are keyed by set and die and carry no session at all (see
-Storage), so there is nothing to filter on. Either they grow a session column —
-which multiplies every aggregate row by the number of sessions, for a number
-most players will never ask for — or per-session counts are computed from
-`roll_history.breakdown_json` on demand, which is a scan rather than a lookup
-and costs nothing until it is used. The decision is open (`docs/TODO.md`, 4.9)
-and this section will say which was taken.
+**The history and the statistics can both be cut to a session.** On the
+statistics screen the chooser sits above the set chooser rather than in it,
+because the two cut across each other: "the brass d20, this campaign" is a
+sentence a player would say, where "all my d20s, but only the brass ones" is
+not. It is not drawn until there are two sessions to choose between.
+
+`die_stats` carries the session; `die_summary` does not. The counts are stored
+rather than recomputed — reading a campaign's histogram out of
+`roll_history.breakdown_json` is a scan of up to fifty thousand rows every time
+the screen draws, and a row per face per die per session buys a lookup instead.
+The asymmetry between the two tables is the streaks:
+
+- **Counts add.** Every all-time number in `die_stats` is the sum of its
+  sessions, so splitting it loses nothing and duplicates nothing — and a
+  session's throws, sum, mean and spread come straight off it, exactly the
+  numbers they would have been had they been counted separately all along.
+- **A streak does not.** Five twenties in a row are five twenties in a row
+  whether or not somebody started a new campaign in the middle of them. Keyed
+  by session, the all-time longest run would become the longest run *within* a
+  session and would quietly come out short — so `die_summary` stays what it has
+  always been, and a session's rows carry no streaks rather than wrong ones.
+
+The export is the whole record whatever is on screen, for the same reason: a
+file of what every die has done is not where anybody looks for one campaign,
+and a file written while a session was chosen would carry runs of zero.
+
+A session with nothing in it says *that*, and not the message for somebody who
+has never rolled anything — the same rule the history follows.
 
 ### Anomalies (debug)
 
@@ -183,7 +201,7 @@ schema moved.
 roll_history(id, timestamp, session_id, saved_roll_id?, group_id?, formula, total,
              seed, input_blob, breakdown_json, anomalies)
 die_stats(set_id, die_id, sides, face_value, count, dropped_count,
-          PRIMARY KEY(set_id, die_id, face_value))
+          PRIMARY KEY(set_id, die_id, face_value))   -- re-keyed in v5
 die_summary(set_id, die_id, sides, throws, sum, sum_sq, hi_streak, hi_streak_max,
             lo_streak, lo_streak_max, last_rolled_at)
 
@@ -197,7 +215,19 @@ session(id, name, started_at)
 
 -- version 4 (docs/dice-sets.md, design 5a)
 installed_set(id, enabled)
+
+-- version 5 (per session, above): die_stats grows a session and is re-keyed
+die_stats(set_id, die_id, session_id, sides, face_value, count, dropped_count,
+          PRIMARY KEY(set_id, die_id, session_id, face_value))
 ```
+
+Version 5 is the first migration to reshape a table somebody already has rows
+in, so it is the dance SQLite requires for a new primary key: build the table
+beside the old one, copy the rows across, drop the old one, rename. Every
+existing row becomes a row of the **first session** — not a default standing in
+for something unknown, but because the rolls those counts came from are already
+filed there in `roll_history`, so it is the same answer written in a second
+place. `die_summary` is untouched.
 
 `installed_set` is the one table that is **not** a list of anything. Which dice
 sets exist is the `dicesets/` folder's answer, read and revalidated on every

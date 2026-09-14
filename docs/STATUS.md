@@ -116,7 +116,11 @@ changelog.
   every saved roll's own totals sit against the exact distribution it was
   rolling against, with the drift judged against the standard error rather than
   shown bare; database version 3 adds sessions, and the
-  migration names the one the old rolls already belonged to. The sessions
+  migration names the one the old rolls already belonged to. Version 5 puts the
+  session on every face count, so the statistics cut to one campaign as well as
+  the history does — stored rather than recomputed, and only on the table whose
+  numbers add: `die_summary` keeps no session, because a streak that spanned a
+  session change would come out short. The sessions
   screen was finished but never plugged in — `MainActivity` passed no presenter
   for it, so the app drew a placeholder and every roll was filed under the
   first session whatever the player picked. Both are fixed.

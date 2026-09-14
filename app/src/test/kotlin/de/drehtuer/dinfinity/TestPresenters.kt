@@ -97,6 +97,7 @@ internal fun testPresenters(
         writer = StatisticsRepository(database),
         catalog = catalog,
         scope = scope,
+        sessions = SessionRepository(database),
       )
     },
     sessions = {
