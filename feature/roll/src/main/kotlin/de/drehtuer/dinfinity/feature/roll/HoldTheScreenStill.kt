@@ -9,6 +9,7 @@ import android.graphics.Rect
 import android.view.View
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 
@@ -55,10 +56,13 @@ import androidx.compose.ui.platform.LocalView
  */
 @Composable
 internal fun LockTheOrientation() {
-  val context = LocalContext.current
-  val activity = context.activity()
-  val shape = eitherWayUp(context.resources.configuration)
+  val activity = LocalContext.current.activity()
+  val shape = eitherWayUp(LocalConfiguration.current)
 
+  // Keyed on the activity and not on [shape]: what is held is the shape the
+  // screen *opened* in. A configuration that changes under it later — a
+  // multi-window resize, say — is not a reason to start asking for something
+  // else half way through a throw.
   DisposableEffect(activity) {
     val wasRequesting = activity?.requestedOrientation
     activity?.requestedOrientation = shape
