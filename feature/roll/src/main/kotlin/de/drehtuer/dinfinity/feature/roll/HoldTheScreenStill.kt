@@ -55,11 +55,13 @@ import androidx.compose.ui.platform.LocalView
  */
 @Composable
 internal fun LockTheOrientation() {
-  val activity = LocalContext.current.activity()
+  val context = LocalContext.current
+  val activity = context.activity()
+  val shape = eitherWayUp(context.resources.configuration)
 
   DisposableEffect(activity) {
     val wasRequesting = activity?.requestedOrientation
-    activity?.requestedOrientation = eitherWayUp(activity)
+    activity?.requestedOrientation = shape
     onDispose {
       activity?.requestedOrientation = wasRequesting ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
@@ -67,15 +69,19 @@ internal fun LockTheOrientation() {
 }
 
 /**
- * The shape [activity] is in now, either way up.
+ * The shape [configuration] is in now, either way up.
  *
  * Read from the configuration rather than from the display's rotation: what
  * has to be held is the table's shape, and "portrait" is the question the
  * configuration answers. A phone whose natural orientation is landscape — a
  * tablet — would give the opposite answer to the same rotation.
+ *
+ * Takes the configuration rather than the activity so that it is a function of
+ * its argument and nothing else, which is what lets both answers be asserted
+ * without an activity in either orientation to ask.
  */
-private fun eitherWayUp(activity: Activity?): Int =
-  if (activity?.resources?.configuration?.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+internal fun eitherWayUp(configuration: Configuration): Int =
+  if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
     ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE
   } else {
     ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT

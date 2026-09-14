@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -91,6 +92,31 @@ class HoldTheScreenStillTest {
     assertEquals(
       ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED,
       compose.activity.requestedOrientation,
+    )
+  }
+
+  @Test
+  fun `both shapes are answered from the configuration alone`() {
+    // A function of its argument and nothing else, so both answers can be
+    // asserted without an activity in each orientation to ask. The composable
+    // above only decides *when* to ask it.
+    assertEquals(
+      ActivityInfo.SCREEN_ORIENTATION_USER_LANDSCAPE,
+      eitherWayUp(Configuration().apply { orientation = Configuration.ORIENTATION_LANDSCAPE }),
+    )
+    assertEquals(
+      ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT,
+      eitherWayUp(Configuration().apply { orientation = Configuration.ORIENTATION_PORTRAIT }),
+    )
+  }
+
+  @Test
+  fun `a configuration that says nothing is taken as portrait`() {
+    // ORIENTATION_UNDEFINED. Portrait is the answer that keeps a phone
+    // working; guessing landscape would turn the table sideways under it.
+    assertEquals(
+      ActivityInfo.SCREEN_ORIENTATION_USER_PORTRAIT,
+      eitherWayUp(Configuration()),
     )
   }
 
