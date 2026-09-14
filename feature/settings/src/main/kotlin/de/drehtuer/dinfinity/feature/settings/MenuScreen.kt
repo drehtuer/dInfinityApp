@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -43,35 +44,42 @@ fun MenuScreen(
   modifier: Modifier = Modifier,
   header: MenuHeader? = null,
 ) {
-  Column(
-    modifier =
-      modifier
-        .fillMaxSize()
-        .safeDrawingPadding()
-        .verticalScroll(rememberScrollState())
-        .testTag(MenuTestTags.SCREEN),
-  ) {
-    header?.let { Header(it) }
-    sections.forEach { section ->
-      Text(
-        text = section.name.uppercase(),
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-      )
-      section.entries.forEach { entry ->
-        HorizontalDivider()
-        Entry(entry)
+  // A `Surface` rather than a bare `Column`, for the content colour it brings
+  // with it. Without one `LocalContentColor` is plain black, and a `Text` that
+  // does not name a colour is drawn black on the dark background — invisible,
+  // and invisible in a way no assertion about text catches. Every other `Text`
+  // here names its colour, so the app name was the only one that went missing.
+  Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Column(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .safeDrawingPadding()
+          .verticalScroll(rememberScrollState())
+          .testTag(MenuTestTags.SCREEN),
+    ) {
+      header?.let { Header(it) }
+      sections.forEach { section ->
+        Text(
+          text = section.name.uppercase(),
+          style = MaterialTheme.typography.labelSmall,
+          fontWeight = FontWeight.SemiBold,
+          color = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+        )
+        section.entries.forEach { entry ->
+          HorizontalDivider()
+          Entry(entry)
+        }
       }
+      HorizontalDivider()
+      Text(
+        text = stringResource(R.string.menu_offline),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(16.dp),
+      )
     }
-    HorizontalDivider()
-    Text(
-      text = stringResource(R.string.menu_offline),
-      style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      modifier = Modifier.padding(16.dp),
-    )
   }
 }
 
@@ -128,6 +136,7 @@ private fun Header(header: MenuHeader) {
       text = header.appName,
       style = MaterialTheme.typography.headlineSmall,
       fontWeight = FontWeight.Bold,
+      color = MaterialTheme.colorScheme.onBackground,
     )
     header.session?.let { name ->
       Text(

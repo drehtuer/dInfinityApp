@@ -203,7 +203,14 @@ private fun Roll(
 ) {
   val saved = savedRolls?.let { make -> remember(entry) { make() } }
   RollScreen(
-    presenter = remember(presenter) { presenter() },
+    // Keyed on the visit, like every other screen here, and emphatically not
+    // on the lambda: that one is built afresh every time `settings` changes,
+    // so keying on it made a *new* presenter — and a new tray — whenever any
+    // preference arrived. On a cold launch one always does, because the
+    // defaults stand in until the file has been read. The surface had already
+    // been handed to the tray that was just thrown away, and nothing hands it
+    // to the new one, so the dice rolled onto a tray nobody could see.
+    presenter = remember(entry) { presenter() },
     firstLaunch = !settings.welcomeSeen,
     onWelcomeSeen = onWelcomeSeen,
     shakeToRoll = settings.shakeToRoll,

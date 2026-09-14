@@ -4,6 +4,7 @@ import androidx.compose.foundation.AndroidExternalSurface
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
@@ -34,22 +35,30 @@ fun DiceTray(
   geometry: TableGeometry,
   modifier: Modifier = Modifier,
 ) {
-  AndroidExternalSurface(modifier = modifier.testTag(RollTestTags.TRAY).lookAround(driver, geometry)) {
-    onSurface { surface, width, height ->
-      driver.surfaceAvailable(surface, width, height)
+  // Keyed on the driver so that a new one gets a surface of its own. `onSurface`
+  // fires when the surface is *created*, not when this composable's arguments
+  // change, so a driver swapped in afterwards would otherwise never be told
+  // there is anywhere to draw — a silently black tray with the dice rolling on
+  // it. Swapping one mid-visit is a bug in the caller, and this is what stops
+  // that bug being invisible.
+  key(driver) {
+    AndroidExternalSurface(modifier = modifier.testTag(RollTestTags.TRAY).lookAround(driver, geometry)) {
+      onSurface { surface, width, height ->
+        driver.surfaceAvailable(surface, width, height)
 
-      // A resize is a new stage, because Filament fixes its swap chain and
-      // viewport when one is made. The roll being drawn does not notice: the
-      // scene is rebuilt from what the simulation has already said
-      // (`docs/architecture.md`, decision 49).
-      surface.onChanged { changedWidth, changedHeight ->
-        driver.surfaceAvailable(surface, changedWidth, changedHeight)
+        // A resize is a new stage, because Filament fixes its swap chain and
+        // viewport when one is made. The roll being drawn does not notice: the
+        // scene is rebuilt from what the simulation has already said
+        // (`docs/architecture.md`, decision 49).
+        surface.onChanged { changedWidth, changedHeight ->
+          driver.surfaceAvailable(surface, changedWidth, changedHeight)
+        }
+
+        // Blocks until the engine has let go. A `Surface` may not be touched
+        // after the callback that withdrew it has returned, and the roll thread
+        // is drawing to this one.
+        surface.onDestroyed { driver.surfaceLost() }
       }
-
-      // Blocks until the engine has let go. A `Surface` may not be touched
-      // after the callback that withdrew it has returned, and the roll thread
-      // is drawing to this one.
-      surface.onDestroyed { driver.surfaceLost() }
     }
   }
 
