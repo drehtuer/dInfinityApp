@@ -18,9 +18,8 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #107 is merged and `main` is green.
-  The only thing open is Dependabot's markdownlint bump (#105), which the
-  table-pipe fix in #107 unblocked.
+- **Branch state:** everything up to #108 is merged and `main` is green; no
+  Dependabot PRs are open.
 
 ## Done
 
@@ -65,7 +64,10 @@ changelog.
   the dice picker row, the saved-roll strip, roll from the button or a shake, a
   refusal for a throw the table cannot hold, the total and its breakdown,
   Down / Nearest / Up, pinch and pan, power-saving, first launch. Missing: the
-  set dropdown and numbers on the faces.
+  set dropdown and numbers on the faces. On the phone: a shake with the phone
+  upside down pooled the dice at the wrong end, because the screen pinned the
+  display to the rotation it opened at and the shake map reads that rotation.
+  It now holds its *shape* either way up.
 - **4.2 Outcome graph.** The exact distribution as bars with its mean line and
   ±1σ band, `P(= k)` / `P(≥ k)`, a tap for the numbers, the roll that opened it
   marked. Reached from "See the odds" — the first navigation carrying an

@@ -365,7 +365,7 @@ and none of them is a control anybody presses:
 | --- | --- | --- |
 | the accelerometer | the screen is resumed | on pause — a sensor left running behind a backgrounded app is a battery bill for nothing |
 | the screen staying awake | the screen is on screen | on leaving it; a tray is something a table looks at between turns, and a phone that blanks after fifteen seconds has to be poked to read a roll |
-| the orientation lock | the same | the same. The tray *is* the screen (`docs/tables.md`), so turning the phone rebuilds the table — the right answer for a player who meant it, a surprise for one who is shaking it |
+| the orientation lock | the same | the same. The tray *is* the screen (`docs/tables.md`), so a *quarter* turn rebuilds the table — the right answer for a player who meant it, a surprise for one who is shaking it. A *half* turn gives the same table back and is allowed: pinning the display to one rotation also freezes what `PhoneAxes` is told about which way the hand went (`docs/physics-and-rendering.md`) |
 
 ### What the tray is drawing
 
