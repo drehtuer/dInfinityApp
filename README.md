@@ -114,7 +114,7 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/probability.md](docs/probability.md) | How the outcome graph is computed |
 | [docs/face-designer.md](docs/face-designer.md) | Finger-drawn face textures |
 | [docs/statistics.md](docs/statistics.md) | What is tracked, how it is stored, privacy |
-| [docs/assets/README.md](docs/assets/README.md) | The logo files, how they are generated from Archivo, and the font licence |
+| [docs/assets/README.md](docs/assets/README.md) | The logo files and the die font, how both are generated from Archivo, and the font licence |
 | [design/README.md](design/README.md) | The prototype: what each file is, how to open it offline, how to keep it in step with `docs/` |
 
 ## Status

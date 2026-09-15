@@ -56,6 +56,53 @@ class FilamentDiceRendererTest {
   }
 
   @Test
+  fun `a die with no artwork is given its numbers to print`() {
+    renderer.begin(spec(), geometry, look)
+
+    spec().dice.indices.forEach { index ->
+      val parameters = stage.added[TRAY_PARTS + index].second
+      assertTrue("a plain die was drawn blank", parameters.numbered)
+    }
+    assertFalse("the tray prints nothing", stage.added[0].second.numbered)
+  }
+
+  @Test
+  fun `the same die's numbers are built once, however many are thrown`() {
+    // `20d20` is twenty of the same die. Turning the same labels into the same
+    // distance field twenty times is a pause between pressing Roll and the
+    // dice appearing.
+    val twenty = StandardDice.d20
+    val many =
+      spec().copy(
+        dice =
+          List(20) {
+            DieInstance(index = it, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = twenty)
+          },
+      )
+
+    renderer.begin(many, geometry, look)
+
+    val fields = (0 until 20).map { stage.added[TRAY_PARTS + it].second.numbers }
+    assertEquals("the field was rebuilt per body", 1, fields.distinct().size)
+  }
+
+  @Test
+  fun `a die whose author supplied artwork prints nothing over it`() {
+    // An author who drew a face decided what is on it.
+    val painted = StandardDice.d6.copy(texturePath = "textures/d6.png")
+    val throwSpec =
+      spec().copy(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "brass", requestedSetId = "brass", die = painted)),
+      )
+
+    renderer.begin(throwSpec, geometry, look)
+
+    val parameters = stage.added[TRAY_PARTS].second
+    assertTrue(parameters.textured)
+    assertFalse("the app wrote over the author's artwork", parameters.numbered)
+  }
+
+  @Test
   fun `the tray takes the table's colours and the rim takes no texture`() {
     val felt =
       look.copy(

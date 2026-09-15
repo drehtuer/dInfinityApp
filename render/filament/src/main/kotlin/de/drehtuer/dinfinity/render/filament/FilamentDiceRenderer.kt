@@ -31,6 +31,9 @@ class FilamentDiceRenderer(
   private var dice: List<Int> = emptyList()
   private var geometry: TableGeometry? = null
 
+  /** Each die's printed numbers, built once and kept for as long as this renderer is. */
+  private val printed = PrintedDice()
+
   /**
    * The table, lit and framed, with nothing on it.
    *
@@ -132,12 +135,14 @@ class FilamentDiceRenderer(
   private fun addDie(
     die: Die,
     scale: Double,
-  ): Int =
-    stage.add(
+  ): Int {
+    val mesh = DieMesh.of(die.shape)
+    return stage.add(
       // How far this shape reaches from its middle, at the throw's scale.
-      mesh = GpuMesh.of(DieMesh.of(die.shape).faces, scale = die.material.boundingRadiusMm * scale),
-      parameters = DiceMaterial.dieOf(die.material, die.texturePath),
+      mesh = GpuMesh.of(mesh.faces, scale = die.material.boundingRadiusMm * scale),
+      parameters = DiceMaterial.dieOf(die.material, die.texturePath, printed.of(die, mesh)),
     )
+  }
 
   private fun aspectRatio(): Double = stage.width.toDouble() / stage.height
 }

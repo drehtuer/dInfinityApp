@@ -103,10 +103,21 @@ class FilamentStage(
 
   private val sampler: TextureSampler get() = parts.sampler
 
+  private val glyphSampler: TextureSampler get() = parts.glyphSampler
+
   /** The room the tray sits in. Built with the lights, given back with them. */
   private var ambient: IndirectLight? = null
 
   private val instances = mutableListOf<MaterialInstance>()
+
+  /**
+   * The printed-number fields this scene uploaded, which it also destroys.
+   *
+   * Unlike an author's atlas — which is decoded once for the package it came
+   * from and outlives any one throw — a die's printed numbers are made for the
+   * die in this throw, so they go when the throw does.
+   */
+  private val textures = mutableListOf<Texture>()
   private val buffers = mutableListOf<VertexBuffer>()
   private val indices = mutableListOf<IndexBuffer>()
   private val entities = mutableListOf<Int>()
@@ -170,7 +181,7 @@ class FilamentStage(
     val atlas = parameters.texturePath?.let(atlases)
     val vertices = verticesOf(mesh)
     val triangles = indicesOf(mesh)
-    val instance = instanceOf(parameters, atlas)
+    val instance = instanceOf(parameters, atlas, parameters.numbers?.let(::glyphsOf))
     val entity = EntityManager.get().create()
 
     RenderableManager
@@ -249,10 +260,12 @@ class FilamentStage(
     instances.forEach(engine::destroyMaterialInstance)
     buffers.forEach(engine::destroyVertexBuffer)
     indices.forEach(engine::destroyIndexBuffer)
+    textures.forEach(engine::destroyTexture)
     entities.clear()
     instances.clear()
     buffers.clear()
     indices.clear()
+    textures.clear()
   }
 
   /**
@@ -296,6 +309,7 @@ class FilamentStage(
   private fun instanceOf(
     parameters: DiceMaterial.Parameters,
     atlas: Texture?,
+    glyphs: Texture?,
   ): MaterialInstance =
     material.createInstance().apply {
       setParameter(
@@ -309,7 +323,46 @@ class FilamentStage(
       setParameter("metallic", parameters.metallic.toFloat())
       setParameter("textured", if (atlas != null) 1.0f else 0.0f)
       setParameter("atlas", atlas ?: blank, sampler)
+      setParameter("numbered", if (glyphs != null) 1.0f else 0.0f)
+      setParameter(
+        "inkColor",
+        parameters.ink.red.toFloat(),
+        parameters.ink.green.toFloat(),
+        parameters.ink.blue.toFloat(),
+        parameters.ink.alpha.toFloat(),
+      )
+      setParameter("glyphs", glyphs ?: blank, glyphSampler)
     }
+
+  /**
+   * A die's printed numbers, uploaded.
+   *
+   * One channel, because a distance field is one measurement per pixel: a
+   * d20's atlas is 320 by 256, which is 80 kB as `R8` and four times that as
+   * anything else. It is made here rather than shared like the blank pixel
+   * because it belongs to a die rather than to a device, and it is destroyed
+   * with everything else the roll put in the scene.
+   *
+   * Uploading takes the buffer as it stands, so the caller may not reuse it —
+   * which is why [DieNumbers] hands out a fresh field rather than a view onto
+   * a cache.
+   */
+  private fun glyphsOf(numbers: NumberField): Texture {
+    val texture =
+      Texture
+        .Builder()
+        .width(numbers.width)
+        .height(numbers.height)
+        .levels(1)
+        .format(Texture.InternalFormat.R8)
+        .build(engine)
+    val pixels = ByteBuffer.allocateDirect(numbers.pixels.size).order(ByteOrder.nativeOrder())
+    pixels.put(numbers.pixels)
+    pixels.flip()
+    texture.setImage(engine, 0, Texture.PixelBufferDescriptor(pixels, Texture.Format.R, Texture.Type.UBYTE))
+    textures += texture
+    return texture
+  }
 
   private fun verticesOf(mesh: GpuMesh): VertexBuffer {
     val vertices =

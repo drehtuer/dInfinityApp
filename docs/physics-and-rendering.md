@@ -737,12 +737,26 @@ all, and **zero** corrections applied after rest.
   collides, grouped onto the same face directions the reader reads, so face *i*
   of the picture is face *i* of the roll by construction
   (`docs/architecture.md`, decision 45). Face textures are applied via a
-  per-face UV atlas (see `docs/dice-sets.md`); dice without textures render
-  numbers with a built-in SDF font on a plain PBR material with the set's
-  colour — and a d4 draws three of them per triangle, one at each corner,
-  because its values belong to corners rather than to faces
-  (`docs/dice-sets.md`, "The d4"). A coin's rim belongs to neither face and
-  carries no cell: it is drawn in the die's own colour.
+  per-face UV atlas (see `docs/dice-sets.md`); a coin's rim belongs to neither
+  face and carries no cell: it is drawn in the die's own colour.
+- **A die with no artwork prints its labels**, in the set's `number_color` on
+  the set's body colour, laid out in that same per-face atlas grid — so a
+  printed die and a painted one are the same surface with the same coordinates
+  and the renderer samples them the same way. A d4 draws three numbers per
+  triangle, one at each corner, because its values belong to corners rather
+  than to faces (`docs/dice-sets.md`, "The d4").
+- **The numbers are a distance field, not a picture of a number.** A rasterised
+  digit is a digit at one size and a die is looked at from wherever the player
+  pinches to, so what is uploaded is the *shape*: one byte per pixel saying how
+  far that pixel is from the edge of the ink and which side of it it is on. The
+  shader recovers a crisp edge from it at whatever size the die is drawn
+  (`core/glyphs`). It is built once per die rather than once per body, because
+  `20d20` is twenty of the same die.
+- The font is **real Archivo outlines**, converted by `tools/generate-font.py`
+  — the same source and the same licence note as the mark
+  (`docs/assets/README.md`). Live text would render in whatever font the device
+  happens to have, and a traced approximation would be somebody's guess at a
+  typeface.
 - Transforms are interpolated between the last two simulation states based on
   render time, so 120 Hz physics looks smooth at any display refresh rate. A
   renderer is handed both states and how far between them the moment falls,

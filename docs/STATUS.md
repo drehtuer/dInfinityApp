@@ -5,14 +5,14 @@ moves, a decision is taken or something is blocked; prune anything that is no
 longer current. This is a snapshot, not a changelog — git history is the
 changelog.
 
-**Last updated:** 2026-09-15
+**Last updated:** 2026-09-16
 
 ## Where we are
 
 - **Phase:** implementation, **Step 4**. Steps 1 and 2 are done; Step 3 is done
-  but for the SDF numbers and the atlases, each of which now arrives with the
-  screen that needs it. Step 5 — physics and rendering on a real phone — is
-  where the remaining hard problems are.
+  but for the atlases, which arrive with the screen that needs them. Step 5 —
+  physics and rendering on a real phone — is where the remaining hard problems
+  are.
 - **The app rolls dice on a phone.** Type a formula, tap Roll or shake the
   Pixel 10a, and the dice tumble onto a felt tray, come to rest, and their
   total appears. Every screen in the menu is written, connected and does
@@ -78,9 +78,10 @@ is mostly polish, the export paths, and the things that need a phone.
   dice picker row, the saved-roll strip, roll from the button or a shake, the
   total and a breakdown that itemises the modifiers as well as the dice, pinch
   and pan, power-saving, and a first launch that offers all three ways in with
-  a count line that counts. **Missing: numbers on the faces**, which is the SDF
-  item in Step 3 — until it lands the tray shows a roll that cannot be read
-  without the total.
+  a count line that counts. **The dice carry numbers now**: real Archivo
+  outlines turned into a distance field per die, so a `6` stays a `6` at four
+  times in, and barred when the same die also carries a `9` — the rule a
+  moulded die follows. A d4 prints three to a triangle, one at each corner.
 - **4.2 Graph, 4.3 Saved rolls, 4.4 Dice sets, 4.5 Tables, 4.7–4.9 Statistics,
   history and sessions, 4.10 Settings and Notation.** All built. Collections
   travel as JSON and arrive from a file or a link; dice sets install from

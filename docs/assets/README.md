@@ -39,9 +39,29 @@ python3 tools/generate-logo.py /tmp/Archivo.ttf .
 The script instantiates the variable font at `wght=800`, so the outlines match
 the weight the design names rather than a faux-bolded 400.
 
+## The die font comes from the same place
+
+The numbers on a die with no artwork are Archivo too, at weight 700, and they
+are generated the same way — by
+[../../tools/generate-font.py](../../tools/generate-font.py), into
+`core/glyphs/src/main/resources/glyphs/builtin-font.txt`. Same one-off install,
+same font file:
+
+```sh
+python3 tools/generate-font.py /tmp/Archivo.ttf .
+```
+
+What it writes is the digits, the two signs, a times, a per cent and a full
+stop, as closed polygons in em units with the curves already flattened — a die
+turns them into a distance field once and the field is what the shader reads
+(`docs/physics-and-rendering.md`). It is a resource rather than Kotlin so that
+it stays diffable and stays inside the hundred-and-twenty-column rule the
+linters hold everything else to.
+
 ## Font licence
 
 Archivo is by Omnibus-Type, under the
 [SIL Open Font License 1.1](https://openfontlicense.org/). The OFL permits
 embedding outlines in a work like this; the font itself is not redistributed
-here, only the two glyphs of the mark, as paths.
+here, only the two glyphs of the mark and the sixteen a die is printed with,
+as paths.

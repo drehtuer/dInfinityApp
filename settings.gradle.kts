@@ -35,6 +35,13 @@ include(":core:stats")
 // than in the screen that opens it (docs/architecture.md, Modules).
 include(":core:collection")
 
+// The built-in font, and the numbers it prints on a die that has no artwork.
+// It is `core/` rather than part of the renderer because the face designer
+// stamps from the same font the tray draws with, and two fonts that were
+// meant to be one would disagree about what a `6` looks like
+// (docs/architecture.md, Modules).
+include(":core:glyphs")
+
 include(":dicesets:format")
 include(":dicesets:builtin")
 include(":dicesets:install")

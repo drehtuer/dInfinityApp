@@ -267,6 +267,29 @@ unfair dice and a fairness UI — a whole feature, not a field.
   transparent, in which case the label is rendered in `number_color` on top
   of the die colour for that face.
 
+### Labels a die has no artwork for
+
+A die with no `texture` at all has its `labels` printed instead, in
+`number_color` on the body colour, in the same atlas grid an image would have
+filled. Three rules decide what a face ends up carrying:
+
+| The label | What is printed | Why |
+| --- | --- | --- |
+| something the built-in font can draw — digits, `+`, `−`, `×`, `%`, `.` | the label | it is what the author wrote |
+| something it cannot, such as `💀` | the face's **value** | a row of blanks would make the die unreadable, and a box would be a lie about what the author wrote. The value is the one thing about a face the app can always write down, and it is what the player is about to read off it anyway |
+| empty | nothing | a blank side is a face an author asked for, and half a Fudge die is exactly that |
+
+**A number is underlined when it could be read as another number on the same
+die.** Turn the label about; if what comes out is a *different* label this die
+also carries, both get a bar. That is why a d20's `6` and `9` are barred and a
+d6's `6` is not — a d6 has no `9` for its `6` to be mistaken for, which is
+exactly what a moulded d6 does. An `8` turns into itself and a `2` turns into
+nothing readable, so neither is ever barred.
+
+The font is not the set's to choose. It is one built-in face, cut from Archivo
+(`docs/assets/README.md`), and a set that wants its own lettering draws it and
+ships it as a texture — which is what a texture is for.
+
 ## Installing from a URL or file
 
 Users paste a URL. Accepted sources:
