@@ -301,13 +301,14 @@ rolls.
   The file is named after what is in it — `curse-of-strahd.dinfinity.json` —
   and is a copy in the cache, handed over through a content URI granted for
   one use. Nothing the app holds is made readable to do it.
-- **Import** from a file or from a pasted link. A git repository is the same
-  sources as dice sets (see `docs/dice-sets.md`) and is not built yet. A
-  community can keep a repo of "stat blocks for monster manual X" this way.
-  The file picker offers every file rather than only `application/json`: a
-  collection mailed through three apps arrives as `text/plain` as often as
-  not, and a picker that hides the file somebody is looking at is worse than
-  one that lets them choose the wrong thing and be told so.
+- **Import** from a file, from a pasted link, or from a **git repository** —
+  the same sources a dice set has (`docs/dice-sets.md`), recognised in the same
+  place, so a community can keep a repo of "stat blocks for monster manual X"
+  and a player can paste its URL. The file picker offers every file rather than
+  only `application/json`: a collection mailed through three apps arrives as
+  `text/plain` as often as not, and a picker that hides the file somebody is
+  looking at is worse than one that lets them choose the wrong thing and be
+  told so.
 - **A link is the app's one outward request**, and what comes back is treated
   as exactly what it is: bytes a stranger chose. It goes through the same
   downloader a dice set does — `https` only, a redirect that would leave
@@ -316,12 +317,56 @@ rolls.
   server cannot spend somebody's data allowance proving that it should not
   have. What arrives is then read by exactly the rules below, because there is
   one validator and no path around it. A download that does not arrive is said
-  differently from a collection that does not read: "nothing came back from
-  that link" and "this is not a collection" are different things to be told,
-  and only one of them is worth going and fixing the file over.
+  differently from a collection that does not read: "no collection came back
+  from that link" and "this is not a collection" are different things to be
+  told, and only one of them is worth going and fixing the file over. A
+  repository that arrives and holds no collection, or holds two, is said the
+  first way for the same reason: there is no file there to go and fix a line
+  of, and what is wrong is named in the line beneath.
   `android.permission.INTERNET` has been in the merged manifest all along,
   contributed by okhttp's own manifest, so nothing about this asks the player
   anything new.
+- **A repository holds one collection, at its root, named the way the app
+  names one.** A dice set is a folder and a collection is a single file, so
+  something has to say which file in a repository is meant: it is the one whose
+  name ends in `.dinfinity.json`, at the root. That is the same shape
+  `docs/dice-sets.md` gives a package — a well-known name marking the thing —
+  and it is a rule that can be followed without reading this: export from the
+  app, commit the file the app wrote, push.
+
+  | What is in the repository | What happens |
+  | --- | --- |
+  | one `*.dinfinity.json` at the root | it is imported |
+  | none at the root, one deeper | refused, naming where it found one |
+  | more than one at the root | refused, naming them all |
+  | none anywhere | refused, saying what a collection is called |
+
+  At the root rather than anywhere, because a repository of stat blocks is
+  full of JSON and "anywhere" would mean guessing; one rather than several,
+  because a link names a repository and not a file, and an import that quietly
+  picked one of two would be picking for somebody. A forge's tarball wraps
+  everything one folder deep in `repo-<sha>/`, and so does anybody who zips a
+  directory rather than its contents, so that one wrapper is seen through —
+  but only that one, because "the root" has to mean something definite.
+- **The repository takes the same road as the link, with an unpacking in the
+  middle.** Which repository a URL means is decided once, by the same code that
+  decides it for a dice set — GitHub, GitLab, Codeberg/Gitea, or any `https`
+  link to a `.zip` or `.tar.gz`, with the branch or tag the URL named. The
+  tarball is fetched by the same downloader under the **same one-megabyte cap**
+  as the collection itself, and unpacked by the same hardened extractor a dice
+  set goes through: absolute paths and `..` refused in either slash direction,
+  links and devices refused, the entry count and the expanded size counted as
+  the archive is read. Two things are narrowed for a collection: only `.json`
+  is written at all, and the whole archive may expand to no more than the
+  megabyte the collection itself is allowed. The app is here for one page of
+  JSON, and a repository that expands to more than the file it carries is
+  asking the phone to unpack a library to read a page.
+- **Nothing is kept from a repository but the collection.** The archive and
+  everything unpacked from it live in a folder of that fetch's own, deleted
+  whether the import succeeded or not; what is unpacked is read and never
+  installed. As with a file, the database is written only after the reader has
+  passed the collection, so a repository that turns out to be hostile costs
+  the download and nothing else.
 - Import **never merges and never deletes**. A collection whose group name
   already exists is refused outright, naming the clash; rename the group in
   the file (or the one in the app) and import again. Everything else is added

@@ -137,8 +137,13 @@ Rolls and groups are one repository each now, joined by `SavedRollLibrary` for
 the screens that need both — the split the class size had been asking for, and
 the place the table fallback below has to live.
 
+A collection comes in from a file, a link or a **git repository**, and the
+three are one path: `InstallSource` says which repository a URL means, the same
+downloader fetches it under the collection's own megabyte, the same hardened
+extractor unpacks it, and the one `*.dinfinity.json` at its root goes through
+`CollectionReader` like anything else.
+
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
-- [ ] Import from a **git repository**, which is the half of this the plain link does not cover — a repo of "stat blocks for monster manual X" resolved through `RefResolver` the way a dice set is (`docs/dice-sets.md`). Importing from a plain `https` link is built: it goes through the same downloader a dice set does, capped at the megabyte the reader refuses a file above, and what comes back goes through `CollectionReader` rule for rule
 
 ### 4.4 Dice sets — `feature/sets`
 
@@ -464,6 +469,18 @@ The figures are reported in every PR description either way.
       second opinion
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
+- [ ] A collection imported from a git repository records nothing about where
+      it came from, so there is no "check for updates" for one the way there is
+      for a dice set: an import becomes rows in the database rather than a
+      folder with a `.meta.json` beside it, and `RefResolver` is therefore not
+      asked which commit the ref was at. If a collection should be updatable
+      from its repository later, the commit is the thing to start recording
+      (`docs/dice-notation.md`)
+- [ ] A forge link that names a *file* inside a repository
+      (`…/blob/main/goblins.dinfinity.json`) imports whatever is at the
+      repository root instead, because the path after the ref is a dice set's
+      subfolder and a collection is found at the root. Decide whether such a
+      link should import the file it names
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] Move the container's emulator up when an automated-test image exists
       above API 36 — the same wait as the line above, for the same reason

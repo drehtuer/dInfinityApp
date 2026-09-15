@@ -51,7 +51,7 @@ core/
   glyphs/            The built-in font, typesetting, and outlines into a signed distance field (docs/physics-and-rendering.md)
 dicesets/
   format/            TOML schema, validator, table definitions (docs/dice-sets.md, docs/tables.md)
-  install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage, and reading back what is installed
+  install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage, and reading back what is installed. The fetching and the extraction are shared with saved-roll collections (docs/dice-notation.md)
   builtin/           The bundled standard set and default tables as a normal package (eats its own dog food)
 simulation/
   api/               DiceSimulator interface, table geometry + capacity check, settle/face-read logic, the frame clock
@@ -707,6 +707,54 @@ sound is offered to `CollectionImporter`, which writes it in one transaction.
 Every way an import can fail has therefore already happened before anything is
 at risk.
 
+A collection arrives three ways, and only the first stretch of the journey
+differs. Everything after "the bytes, as text" is one path, because a
+collection is a collection however it travelled.
+
+```mermaid
+flowchart TD
+  picked["A file the picker chose"] --> text
+  pasted["A pasted https link"] --> known{"a link the<br/>installer recognises?"}
+  known -- "no: the file itself" --> fetch
+  known -- "yes: a repository" --> source["InstallSource:<br/>which forge, which ref,<br/>which tarball"]
+  source --> fetch["PackageFetcher:<br/>https only, redirects by hand,<br/>1 MiB of bytes that arrive"]
+  fetch -- "the file" --> text
+  fetch -- "the tarball" --> extract["SafeExtractor:<br/>into a folder it cannot leave"]
+  extract --> which["CollectionInRepository:<br/>one .dinfinity.json at the root"]
+  which --> text["The bytes, as text"]
+  text --> reader["CollectionReader:<br/>writes nothing"]
+  reader -- "sound" --> importer["CollectionImporter:<br/>one transaction"]
+  reader -- "not sound" --> refused["Unreadable:<br/>every line wrong with it"]
+```
+
+The repository half is deliberately not a second path. `InstallSource` decides
+which repository a URL means — the same code, and the same forges, a dice set's
+link goes through (`docs/dice-sets.md`) — and what it names is fetched by the
+same `PackageFetcher` under the collection's own one-megabyte cap and unpacked
+by the same `SafeExtractor`. Two things about that extractor were parameters
+waiting to be named: `ArchiveLimits`, which is what may be written and how much
+of it, and `PackageRoot`, which is which folder inside the archive counts. A
+dice set asks for `diceset.toml` under 64 MiB and six extensions; a collection
+asks for one `*.dinfinity.json` at the repository's root, under the megabyte it
+is itself allowed, with `json` the only extension written at all. Everything
+hostile about an archive — a path that climbs out, a link, an entry count, a
+bomb — is refused by the same lines for both, which is the point: a second
+extractor would be a second answer to "is this path safe", and two answers to
+that is one too many.
+
+Nothing a repository carries is kept. The archive and everything unpacked from
+it live in a folder of that one fetch's own, deleted whether the import
+succeeded or not, and the database is written only after the reader has passed
+the collection — the same ordering as a file, one layer further out.
+
+`CollectionDownload` and `CollectionInRepository` are in `:app` for the reason
+everything else here is: a cache directory and an HTTP client are the
+platform's, and `feature/saved` takes a `suspend (String) -> Fetched` and never
+learns which kind of link it was. What a collection file is *called* is neither
+of theirs — it is `core/collection`'s `CollectionFiles`, because the name the
+app exports under and the name a repository is searched for have to be one
+rule.
+
 The importer's own rule is a refusal. A collection whose group name is already
 taken is turned away outright, naming the clash, with nothing merged and
 nothing deleted (decision 15). It is checked ignoring case, because two groups
@@ -722,6 +770,8 @@ one made here.
 | --- | --- |
 | `Waiting` | nothing chosen; what an import will and will not do is on screen |
 | `Reading` | brief, but not instant for five hundred rolls |
+| `Fetching` | a link is being followed, which is the one wait that is somebody else's speed |
+| `Unreachable` | no collection came back: the server refused, or the repository held none, or held two. Apart from `Unreadable` on purpose — there is no file here to go and fix a line of |
 | `Unopenable` | the file could not be opened at all — moved, or the permission withdrawn |
 | `Unreadable` | it is not a collection, and **every** line wrong with it is listed, each saying where in the file it is |
 | `Clash` | a group name is taken. Its own state, not another kind of problem: the file is fine and so is what is saved, and one of the two names has to change |
@@ -730,6 +780,7 @@ one made here.
 | Control | Calls | What changes |
 | --- | --- | --- |
 | **Choose a file** | the picker, in `:app` | a content URI arrives, is read bounded, and becomes text |
+| **Fetch** a link | `fetch`, then `CollectionDownload` in `:app` | a file or a repository is downloaded, and becomes text or a refusal |
 | *(not a control)* the file's text | `offer` | the state, to one of the four above |
 | **Choose another file** | `again`, then the picker | back to `Waiting` |
 | **See the rolls** | *(navigation)* | the saved-rolls list, with the import taken off the back stack |

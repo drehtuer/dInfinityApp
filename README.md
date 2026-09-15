@@ -68,7 +68,8 @@ a tumble; everything else is real.
   shown the moment the dice stop. No counting pips in the middle of a fight.
 - **Saved rolls** — name a formula, give it an icon ("Fireball", "Sneak
   Attack"), roll it with one tap. Group them per game, per character, however
-  you like; export and import them as files or from a URL.
+  you like; export and import them as files, from a URL, or from a git
+  repository holding one.
 - **Outcome graph** — see the exact probability distribution before you roll,
   for a typed formula or for a handful of dice picked by tapping, with mean
   and standard deviation.

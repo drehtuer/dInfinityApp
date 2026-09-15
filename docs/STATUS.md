@@ -86,7 +86,9 @@ is mostly polish, the export paths, and the things that need a phone.
   moulded die follows. A d4 prints three to a triangle, one at each corner.
 - **4.2 Graph, 4.3 Saved rolls, 4.4 Dice sets, 4.5 Tables, 4.7–4.9 Statistics,
   history and sessions, 4.10 Settings and Notation.** All built. Collections
-  travel as JSON and arrive from a file or a link; dice sets install from
+  travel as JSON and arrive from a file, a link or a git repository — one
+  `*.dinfinity.json` at its root, down the same downloader and the same
+  hardened extractor a dice set uses; dice sets install from
   either, can be checked for updates and re-installed through the same
   validator; tables are chosen where the tables are, and a throw lands on the
   saved roll's pinned table, then its group's, then the app's.
