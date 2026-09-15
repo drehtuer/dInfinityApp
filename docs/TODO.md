@@ -87,7 +87,7 @@ what it does not have yet.
 - [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
-- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now" and its way straight to the tray, and the saved-roll strip beneath it. Its other two offers — import a collection, add dice sets — are still missing: importing has a screen now and could be offered, and dice sets is still a placeholder (4.4). So is the rest of the count line: "0 saved rolls, 0 sessions" waits on sessions (4.9)
+- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now", its way straight to the tray, the count of installed sets, and the saved-roll strip beneath it. What it still does not offer is the other two ways in — **import a collection** and **add dice sets** — both of which now have screens to send somebody to. The count line is also still one number: "0 saved rolls, 0 sessions" wants the other two, and both of those are now built as well
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -252,10 +252,11 @@ and the app did not.
 A screen can no longer be built and left unplugged. `Presenters` holds a
 factory per screen with no optional fields, so adding a destination stops the
 activity compiling until it says how to build one; the same object is what the
-tests wire, and one of them walks every menu destination and fails on a
-placeholder that is not Table picker or Face designer. Both halves were checked
+tests wire, and one of them walks every menu destination and fails on **any**
+placeholder — the list of screens that had not been written is empty now, so
+the assertion is simply that none of them draws one. Both halves were checked
 by putting the original bug back: removing the sessions screen's dispatch turns
-the list into `[sessions, tables, designer]`.
+the list into `[sessions]`.
 
 Appearance, the accent, shake, the default rounding, power saving, the version
 and the repository link are all there, and each of them does something.

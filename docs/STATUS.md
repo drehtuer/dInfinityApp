@@ -18,9 +18,16 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #146 is merged and `main` is green; no
-  Dependabot PRs are open. The Pixel 10a is on the LAN and the device tier
-  runs against it, fairness harness included.
+- **Branch state:** everything up to #149 is merged. A stack of work sits on
+  top of it, and `main` is **red** until the first of it lands: Android Lint
+  treats `NewerVersionAvailable` as an error, and tomlj and Filament have both
+  released since — bumping them is its own branch, independent of the stack,
+  and it goes first.
+- **Which device the tier runs on.** The emulator in the devcontainer (API 36,
+  `x86_64`) answers most questions and is what the recent work was checked
+  against. Two things still want the Pixel 10a: whether Filament 1.76.1 looks
+  right on a real GPU, and whether the golden cases — re-recorded on the
+  emulator after the spawn streams were stirred — still match on `arm64-v8a`.
 
 ## Done
 
@@ -238,7 +245,9 @@ changelog.
   run somewhere else.
 - The container's emulator is an automated-test image with no real GPU and no
   display, so `screencap` returns black. It answers "does this run", never
-  "does this look right" — the phone is the only answer to the second.
+  "does this look right" — the phone is the only answer to the second, and a
+  stretch of work checked only against the emulator is a stretch of work whose
+  *look* nobody has seen.
 - **Branch coverage sits near 70 % against a floor of 62 and has drifted down
   as the screens landed.** Seven in ten of the missed branches are inside
   `@Composable` functions, where the compiler emits a skip branch a test can
