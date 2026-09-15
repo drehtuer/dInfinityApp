@@ -30,6 +30,7 @@ class ImportPresenter(
   private val catalog: DiceCatalog,
   private val scope: CoroutineScope,
   private val unfiledName: String,
+  private val download: suspend (String) -> Fetched = { Fetched.Failed(NO_NETWORK) },
 ) {
   /** What the screen draws. */
   var state: ImportState by mutableStateOf(ImportState.Waiting)
@@ -63,6 +64,30 @@ class ImportPresenter(
     }
   }
 
+  /**
+   * A link was given, and this fetches what is at the end of it
+   * (`docs/dice-notation.md`, "Export and import").
+   *
+   * **The first thing in the app that reaches the network**, and what comes
+   * back is treated as exactly what it is: bytes a stranger chose. They go
+   * through the same `CollectionReader` a file does, rule for rule, because
+   * there is one validator and no path around it (`.claude/CLAUDE.md`). A
+   * download that fails is a state of its own rather than a rejected file —
+   * "the server is not answering" and "this is not a collection" are different
+   * things to be told.
+   */
+  fun fetch(url: String) {
+    val link = url.trim()
+    if (link.isEmpty()) return
+    state = ImportState.Fetching(link)
+    scope.launch {
+      when (val got = download(link)) {
+        is Fetched.Failed -> state = ImportState.Unreachable(link, got.reason)
+        is Fetched.Text -> offer(got.text)
+      }
+    }
+  }
+
   /** The file could not be opened at all — it was moved, or permission was withdrawn. */
   fun unopenable(why: String) {
     state = ImportState.Unopenable(why)
@@ -72,6 +97,32 @@ class ImportPresenter(
   fun again() {
     state = ImportState.Waiting
   }
+
+  private companion object {
+    /**
+     * What a presenter with no downloader says.
+     *
+     * The download arrives as a function rather than as a dependency of this
+     * module, so that fetching stays where the platform is and `feature/saved`
+     * does not grow an HTTP client to draw a list with. A caller that supplies
+     * none has no way to reach the network, and saying so is better than a
+     * button that does nothing.
+     */
+    const val NO_NETWORK = "this build cannot reach the network"
+  }
+}
+
+/** What a download of a collection came to. */
+sealed interface Fetched {
+  /** The bytes, as text. Not yet known to be a collection — that is the reader's word. */
+  data class Text(
+    val text: String,
+  ) : Fetched
+
+  /** It did not arrive, and this is what to tell somebody. */
+  data class Failed(
+    val reason: String,
+  ) : Fetched
 }
 
 /**
@@ -87,6 +138,22 @@ sealed interface ImportState {
 
   /** A file is being read. Brief, but not instant for five hundred rolls. */
   data object Reading : ImportState
+
+  /** A link is being fetched, which is the one wait that is somebody else's speed. */
+  data class Fetching(
+    val url: String,
+  ) : ImportState
+
+  /**
+   * Nothing came back from the link.
+   *
+   * Apart from [Unreadable] on purpose: a refused download is not a bad
+   * collection, it is no collection, and the two want different things said.
+   */
+  data class Unreachable(
+    val url: String,
+    val why: String,
+  ) : ImportState
 
   /** The file could not be opened — moved, or the permission withdrawn. */
   data class Unopenable(

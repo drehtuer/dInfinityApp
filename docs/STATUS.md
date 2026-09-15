@@ -93,8 +93,10 @@ changelog.
   through `core/collection`: exported through the share sheet, imported from a
   file — read before anything is written, every line wrong with a bad file
   listed, and a duplicate group name refused outright with nothing merged.
-  Importing from a URL is not built yet — and is not waiting on the `INTERNET`
-  permission, which okhttp already puts in the merged manifest.
+  **A collection also imports from a pasted `https` link** — the app's first
+  and only outward request — through the same downloader a dice set uses, and
+  what comes back is read by exactly the rules a file is. From a git repository
+  is still to come.
 - **4.4 Dice sets.** The list is on screen. `InstalledSets` reads the
   `dicesets/` folder and validates every package again on each reading, so a
   set that stopped being valid shows its report instead of vanishing; database

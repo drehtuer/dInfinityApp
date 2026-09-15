@@ -12,9 +12,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -61,8 +66,29 @@ fun ImportScreen(
     }
 
     when (val state = presenter.state) {
-      is ImportState.Waiting -> Waiting(onChooseFile)
+      is ImportState.Waiting -> {
+        Waiting(onChooseFile)
+        // Beside `Waiting` rather than inside it, so that composable keeps the
+        // one parameter it had: a `@Composable` costs skip branches per
+        // parameter whether or not anything ever calls it twice.
+        FromLink(presenter)
+      }
+
       is ImportState.Reading -> Reading()
+      is ImportState.Fetching -> {
+        CircularProgressIndicator(modifier = Modifier.testTag(ImportTestTags.FETCHING))
+        Note(stringResource(R.string.import_fetching, state.url))
+      }
+      is ImportState.Unreachable -> {
+        // Said apart from an unreadable file on purpose: this is not a bad
+        // collection, it is no collection, and the thing to do about it is
+        // different. Inline for the reason `FromLink` is called beside
+        // `Waiting` — a composable costs skip branches per parameter.
+        Refusal(stringResource(R.string.import_unreachable), Modifier.testTag(ImportTestTags.UNREACHABLE))
+        Note(state.url)
+        Note(state.why)
+        Again(presenter, onChooseFile)
+      }
       is ImportState.Unopenable -> Unopenable(state, presenter, onChooseFile)
       is ImportState.Unreadable -> Unreadable(state, presenter, onChooseFile)
       is ImportState.Clash -> Clash(state, presenter, onChooseFile)
@@ -71,13 +97,44 @@ fun ImportScreen(
   }
 }
 
-/** Nothing chosen yet (design option 9f). */
+/**
+ * Nothing chosen yet (design option 9f).
+ *
+ * The file comes first of the two ways in: it is the one that always works,
+ * where a link depends on somebody else's server being up.
+ */
 @Composable
 private fun Waiting(onChooseFile: () -> Unit) {
   Note(stringResource(R.string.import_explain))
   Note(stringResource(R.string.import_never_merges))
   Button(onClick = onChooseFile, modifier = Modifier.testTag(ImportTestTags.CHOOSE)) {
     Text(stringResource(R.string.import_choose))
+  }
+}
+
+/**
+ * The link field.
+ *
+ * The button is dead until there is something to fetch, because a download of
+ * nothing is a spinner that stops for no reason.
+ */
+@Composable
+private fun FromLink(presenter: ImportPresenter) {
+  var url by rememberSaveable { mutableStateOf("") }
+  Note(stringResource(R.string.import_from_link))
+  OutlinedTextField(
+    value = url,
+    onValueChange = { typed -> url = typed },
+    singleLine = true,
+    label = { Text(stringResource(R.string.import_link_label)) },
+    modifier = Modifier.fillMaxWidth().testTag(ImportTestTags.LINK),
+  )
+  Button(
+    onClick = { presenter.fetch(url) },
+    enabled = url.isNotBlank(),
+    modifier = Modifier.testTag(ImportTestTags.FETCH),
+  ) {
+    Text(stringResource(R.string.import_fetch))
   }
 }
 
@@ -237,6 +294,10 @@ object ImportTestTags {
   const val SCREEN: String = "import:screen"
   const val CHOOSE: String = "import:choose"
   const val READING: String = "import:reading"
+  const val LINK: String = "import:link"
+  const val FETCH: String = "import:fetch"
+  const val FETCHING: String = "import:fetching"
+  const val UNREACHABLE: String = "import:unreachable"
   const val UNOPENABLE: String = "import:unopenable"
   const val UNREADABLE: String = "import:unreadable"
   const val PROBLEMS: String = "import:problems"

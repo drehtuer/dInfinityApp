@@ -279,13 +279,27 @@ rolls.
   The file is named after what is in it — `curse-of-strahd.dinfinity.json` —
   and is a copy in the cache, handed over through a content URI granted for
   one use. Nothing the app holds is made readable to do it.
-- **Import** from a file, from a pasted URL, or from a git repository (same
-  sources as dice sets, see `docs/dice-sets.md`). A community can keep a
-  repo of "stat blocks for monster manual X" this way. The file picker offers
-  every file rather than only `application/json`: a collection mailed through
-  three apps arrives as `text/plain` as often as not, and a picker that hides
-  the file somebody is looking at is worse than one that lets them choose the
-  wrong thing and be told so.
+- **Import** from a file or from a pasted link. A git repository is the same
+  sources as dice sets (see `docs/dice-sets.md`) and is not built yet. A
+  community can keep a repo of "stat blocks for monster manual X" this way.
+  The file picker offers every file rather than only `application/json`: a
+  collection mailed through three apps arrives as `text/plain` as often as
+  not, and a picker that hides the file somebody is looking at is worse than
+  one that lets them choose the wrong thing and be told so.
+- **A link is the app's one outward request**, and what comes back is treated
+  as exactly what it is: bytes a stranger chose. It goes through the same
+  downloader a dice set does — `https` only, a redirect that would leave
+  `https` refused, and the bytes that actually arrive counted rather than the
+  `Content-Length` believed — capped at the same megabyte a file is, so a
+  server cannot spend somebody's data allowance proving that it should not
+  have. What arrives is then read by exactly the rules below, because there is
+  one validator and no path around it. A download that does not arrive is said
+  differently from a collection that does not read: "nothing came back from
+  that link" and "this is not a collection" are different things to be told,
+  and only one of them is worth going and fixing the file over.
+  `android.permission.INTERNET` has been in the merged manifest all along,
+  contributed by okhttp's own manifest, so nothing about this asks the player
+  anything new.
 - Import **never merges and never deletes**. A collection whose group name
   already exists is refused outright, naming the clash; rename the group in
   the file (or the one in the app) and import again. Everything else is added
