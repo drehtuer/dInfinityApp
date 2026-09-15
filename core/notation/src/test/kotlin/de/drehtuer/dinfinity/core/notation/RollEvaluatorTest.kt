@@ -258,6 +258,79 @@ class RollEvaluatorTest {
    * on: a test about `4d6dl1` is about the 1 that was dropped, and having to
    * write `0` for it would make every case here a puzzle.
    */
+  @Test
+  fun `the numbers a formula adds are reported, so the sheet can itemise them`() {
+    // Before this the modifier was visible only in the formula line, so a
+    // breakdown of `3d6 + 4` showed rows adding to eleven under a total of
+    // fifteen (`docs/dice-notation.md`, "Evaluation", step 7).
+    val result = score("3d6 + 4", listOf(3, 4, 4))
+
+    assertEquals(listOf(4L), result.adjustments)
+    assertTrue(result.itemised, "the rows do not add up to the total")
+  }
+
+  @Test
+  fun `one that takes away is reported as taking away`() {
+    val result = score("3d6 - 2", listOf(3, 4, 4))
+
+    assertEquals(listOf(-2L), result.adjustments)
+    assertTrue(result.itemised)
+  }
+
+  @Test
+  fun `each of them, in the order they were written`() {
+    val result = score("1d6 + 4 - 2 + 1", listOf(3))
+
+    assertEquals(listOf(4L, -2L, 1L), result.adjustments)
+    assertTrue(result.itemised)
+  }
+
+  @Test
+  fun `a formula with only dice in it adds nothing`() {
+    val result = score("2d6 + 1d4", listOf(3, 4, 2))
+
+    assertEquals(emptyList<Long>(), result.adjustments)
+    assertTrue(result.itemised, "dice alone should still add up")
+  }
+
+  @Test
+  fun `a number that is multiplied is not a number added to the total`() {
+    // The one that matters. Three is multiplied along with the dice here, so
+    // listing it as "+ 3" would be adding up to the wrong number in front of
+    // the player — the sheet says so instead by having nothing to list.
+    val result = score("(2d6 + 3) * 2", listOf(3, 4))
+
+    assertEquals(emptyList<Long>(), result.adjustments)
+    assertFalse(result.itemised, "a product's rows cannot add up to its total")
+  }
+
+  @Test
+  fun `nor is one that is divided`() {
+    val result = score("(2d6 + 4) / 2", listOf(3, 5))
+
+    assertEquals(emptyList<Long>(), result.adjustments)
+    assertFalse(result.itemised)
+  }
+
+  @Test
+  fun `a negated number is the number it takes away`() {
+    val result = score("2d6 + -3", listOf(3, 4))
+
+    assertEquals(listOf(-3L), result.adjustments)
+    assertTrue(result.itemised)
+  }
+
+  @Test
+  fun `re-rounding a throw keeps what it added`() {
+    // The constants do not move when the rounding does. A formula with a `/`
+    // in it has no top-level sum anyway, which is what this pins.
+    val result = score("(2d6 + 4) / 2", listOf(3, 5), rounding = Rounding.Down)
+
+    val again = RollEvaluator.rescore(parsed("(2d6 + 4) / 2"), result, Rounding.Up)
+
+    assertEquals(result.adjustments, again.adjustments)
+  }
+
   private fun score(
     text: String,
     values: List<Int>,

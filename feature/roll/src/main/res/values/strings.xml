@@ -39,6 +39,9 @@
   <string name="roll_welcome_import">Import saved rolls from a file or a link</string>
   <string name="roll_welcome_sets_add">Add somebody else\'s dice</string>
   <!-- The hint on an empty tray, and on one with a throw ready (design option 9a). -->
+  <!-- A number the formula adds or takes away, itemised on the result sheet. -->
+  <string name="roll_sheet_plus">plus</string>
+  <string name="roll_sheet_minus">minus</string>
   <string name="roll_hint_empty">Type a formula, or tap a die below.</string>
   <string name="roll_hint_ready">Shake the phone, or press Roll.</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->

@@ -437,6 +437,8 @@ object RollTestTags {
   /** One group's subtotal, and one die as it landed. */
   fun subtotalOf(groupId: Int): String = "roll:sheet:subtotal:$groupId"
 
+  fun adjustmentOf(amount: Long): String = "roll:sheet:adjustment:$amount"
+
   fun fallbackOf(groupId: Int): String = "roll:sheet:fellback:$groupId"
 
   fun dieAt(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex"

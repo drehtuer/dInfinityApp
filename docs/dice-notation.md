@@ -107,6 +107,17 @@ capacity check happens before any body is created and the UI explains it
    large, then each group's subtotal and the individual dice, then the
    modifiers — the user never has to add anything up.
 
+   The modifiers are the plain numbers the formula adds or takes away, each on
+   a row of its own and in the order they were written. They are **the
+   top-level sum only**: the `3` in `(2d6 + 3) * 2` is multiplied along with
+   the dice, so listing it as "+ 3" would be adding up to the wrong number in
+   front of the player. A formula like that gets no such rows, and its total is
+   the formula's own arithmetic — `RollResult.itemised` is what says which of
+   the two a result is, and it is checked rather than assumed, because "the
+   rows add up" is the one claim on that screen a reader cannot verify at a
+   glance. It is the same rule the picker's badges follow (see "Picking dice
+   without typing"): edit or itemise only what can be read back.
+
 ### The order modifiers are applied in
 
 Modifiers take effect in this order whatever order they were written in, so
