@@ -255,9 +255,17 @@ placeholder that is not Table picker or Face designer. Both halves were checked
 by putting the original bug back: removing the sessions screen's dispatch turns
 the list into `[sessions, tables, designer]`.
 
-- [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
 and the repository link are all there, and each of them does something.
+
+All three defaults now behave the same way, which was the point of the item
+that used to be here: the default **set**, the default **table** and the active
+**session** are each chosen where the thing itself is, remembered with the
+settings, and fall back when what was chosen is not there. The set and the
+table fall back while leaving the setting alone, so re-installing the package
+restores the choice; the session falls back where a roll is *recorded*, because
+a session deleted while another screen was in front would otherwise strand
+every throw filed under it (`docs/statistics.md`, per session).
 
 - [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
 - [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)

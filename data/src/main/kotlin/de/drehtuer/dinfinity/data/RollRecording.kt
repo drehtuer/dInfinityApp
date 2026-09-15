@@ -20,12 +20,17 @@ import de.drehtuer.dinfinity.core.model.RollResult
  * @param sessionOf which session a roll belongs to. A function rather than a
  *   value because the active session changes while the app is running, and a
  *   recorder that captured it once would file every roll of an evening under
- *   whichever session was current when the screen opened. Sessions are Step
- *   4.9; until then it answers [NO_SESSION] and the column is still correct —
- *   every roll has one, and they are all the same one.
+ *   whichever session was current when the screen opened.
+ * @param sessions the sessions there are, to check that the one named is still
+ *   one of them. Null skips the check, which is what a test that is not about
+ *   sessions wants. It sits *before* [sessionOf] so that the lambda stays the
+ *   last parameter: `RollRecording(statistics) { activeSession }` is how every
+ *   caller writes it, and a parameter added after a trailing lambda silently
+ *   rebinds that lambda onto the new one.
  */
 class RollRecording(
   private val statistics: StatisticsRepository,
+  private val sessions: SessionRepository? = null,
   private val sessionOf: () -> String = { NO_SESSION },
 ) {
   /**
@@ -53,7 +58,7 @@ class RollRecording(
         dice = plan.dice.associate { it.index to RolledDieSource(setId = it.setId, die = it.die) },
         context =
           RollContext(
-            sessionId = sessionOf(),
+            sessionId = sessionStillThere(),
             savedRollId = savedRollId,
             groupId = groupId,
           ),
@@ -61,6 +66,28 @@ class RollRecording(
         replay = RollReplay(seed = seed),
       ),
     )
+
+  /**
+   * The active session if it is still there, and the first session if it is
+   * not (`docs/statistics.md`, per session).
+   *
+   * Which session is active is a preference, and a preference outlives the
+   * thing it names. Deleting the active session on the sessions screen puts
+   * the setting right, but a session deleted while another screen is in front
+   * — or one already gone when the app was last opened — would leave every
+   * throw filed under an id that is not there. Those rolls would then be in
+   * the history and in the face counts and visible in neither, because both
+   * are read through the list of sessions.
+   *
+   * Checked here rather than in [StatisticsRepository], which records what it
+   * is told and should go on doing so: this is the seam that knows the
+   * preference, so this is where a stale one is caught.
+   */
+  private suspend fun sessionStillThere(): String {
+    val asked = sessionOf()
+    val repository = sessions ?: return asked
+    return if (repository.exists(asked)) asked else SessionRepository.DEFAULT_ID
+  }
 
   companion object {
     /**

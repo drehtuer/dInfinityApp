@@ -67,9 +67,14 @@ class DInfinityApplication : Application() {
    * preference and a preference changes while the app is running: a recorder
    * that took it once would file an evening's rolls under whichever session
    * was current when the roll screen opened.
+   *
+   * And checked against the sessions there actually are, because a preference
+   * outlives the thing it names — a session deleted while some other screen
+   * was in front would otherwise leave every throw filed under an id that is
+   * not there.
    */
   val recording: RollRecording by lazy {
-    RollRecording(statistics) { activeSession }
+    RollRecording(statistics, sessions = sessions, sessionOf = { activeSession })
   }
 
   /**

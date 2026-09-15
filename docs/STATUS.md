@@ -129,6 +129,12 @@ changelog.
   screen was finished but never plugged in — `MainActivity` passed no presenter
   for it, so the app drew a placeholder and every roll was filed under the
   first session whatever the player picked. Both are fixed.
+- **Defaults all behave the same way.** The default set, the default table and
+  the active session are each chosen where the thing itself is and remembered
+  with the settings. The first two fall back when their package is gone while
+  leaving the setting alone, so re-installing restores the choice; the session
+  falls back where a roll is recorded, so one deleted while another screen was
+  in front cannot strand the throws filed under it.
 - **4.10 Settings, the menu and Notation.** The navigation graph is connected:
   every screen carries the same button and the menu reaches every screen —
   including **Notation**, the last row the prototype's menu had and the app did

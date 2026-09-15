@@ -124,6 +124,16 @@ in. The first session is called "First rolls" and cannot be deleted — it is
 where the rolls made before anybody thought about sessions belong, and where
 the rolls of a deleted session go.
 
+**And where a roll goes when the active session is not there any more.** Which
+session is active is a preference, and a preference outlives the thing it
+names: deleting the active session on the Sessions screen puts the setting
+right, but a session deleted while another screen is in front — or one already
+gone when the app was last opened — would otherwise leave every throw filed
+under an id nothing can find. Such a roll would be in the history and in the
+face counts and visible in neither, because both are read through the list of
+sessions. So the session is checked where the roll is recorded, against the
+sessions there actually are.
+
 **The history and the statistics can both be cut to a session.** On the
 statistics screen the chooser sits above the set chooser rather than in it,
 because the two cut across each other: "the brass d20, this campaign" is a
