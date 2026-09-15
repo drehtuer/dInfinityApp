@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.RollPlan
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.Rounding
@@ -91,16 +92,17 @@ class RollMachine(
   var text: String = ""
     private set
 
-  /**
-   * The dice the picker row offers, from the default set
-   * (`design/dInfinity.dc.html`, option 1h).
-   *
-   * Fixed for the life of the screen, because the catalogue is: choosing a
-   * different set is the set dropdown's job and the dropdown waits on the
-   * installed-set registry (`docs/TODO.md`, Step 4.4).
-   */
-  val pickable: List<PickableDie> =
-    catalog.set(catalog.defaultSetId)?.let { DicePicker.offeredBy(it) }.orEmpty()
+  /** Which set the picker row is offering, and what is on it ([Picker]). */
+  private val picker = Picker(catalog)
+
+  /** The dice the picker row offers (`design/dInfinity.dc.html`, option 1h). */
+  val pickable: List<PickableDie> get() = picker.dice
+
+  /** Which set they come from (`design/dInfinity.dc.html`, option 4a). */
+  val pickingFrom: String get() = picker.from
+
+  /** Every set that has dice to offer, for the chooser. */
+  val choosableSets: List<DiceSet> get() = picker.sets
 
   /**
    * How many of each of [pickable] the formula is asking for.
@@ -151,6 +153,21 @@ class RollMachine(
   /** A long press on the picker row: one fewer of [die], or none at all. */
   fun remove(die: PickableDie) {
     type(DicePicker.remove(text, die))
+  }
+
+  /**
+   * Offer the picker row a different set's dice (design option `4a`).
+   *
+   * The formula is left exactly as it is. What is already written was written
+   * on purpose, and a chooser that rewrote `3d6` into `brass:3d6` because
+   * somebody looked at another set would be editing a roll nobody asked it to
+   * edit. What changes is what the *next* tap writes.
+   *
+   * The counts are recomputed, because the badges belong to the dice on the
+   * row and the row has just changed.
+   */
+  fun pickFrom(setId: String) {
+    if (picker.choose(setId)) counts = DicePicker.counts(text, pickable)
   }
 
   /**
@@ -283,23 +300,29 @@ class RollMachine(
     }
   }
 
-  private fun planned(parsed: Formula): RollState =
-    when (val planned = RollPlanner.plan(parsed, catalog)) {
-      is PlanResult.Failed -> RollState.Invalid(planned.error)
-      is PlanResult.Planned -> checked(parsed, planned.plan)
-    }
-
-  private fun checked(
-    parsed: Formula,
-    planned: RollPlan,
-  ): RollState =
-    when (val room = TableCapacity.check(planned, geometry)) {
+  /**
+   * What a formula that parsed comes to: a plan the table can hold, a refusal
+   * because it cannot, or dice that no installed set defines.
+   *
+   * The two halves were two methods and are one, because they were never asked
+   * separately — and because a plan that fits leaves [prepared] behind, which
+   * is the assignment that has to happen in the same breath as the state it
+   * belongs to.
+   */
+  private fun planned(parsed: Formula): RollState {
+    val plan =
+      when (val planned = RollPlanner.plan(parsed, catalog)) {
+        is PlanResult.Failed -> return RollState.Invalid(planned.error)
+        is PlanResult.Planned -> planned.plan
+      }
+    return when (val room = TableCapacity.check(plan, geometry)) {
       is CapacityVerdict.Refused -> RollState.TooMany(room.diceCount, room.largestThatFits, room.reason)
       is CapacityVerdict.Fits -> {
-        prepared = Prepared(parsed, planned, room.scale, room.diceCount)
+        prepared = Prepared(parsed, plan, room.scale, room.diceCount)
         RollState.Ready(diceCount = room.diceCount, scale = room.scale)
       }
     }
+  }
 }
 
 /**

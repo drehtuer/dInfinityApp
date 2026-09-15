@@ -5,6 +5,7 @@ import android.os.Looper
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.render.filament.Tray
@@ -50,7 +51,15 @@ class RollPresenter(
     private set
 
   /** The dice the picker row offers (`design/dInfinity.dc.html`, option 1h). */
-  val pickable: List<PickableDie> get() = machine.pickable
+  var pickable: List<PickableDie> by mutableStateOf(machine.pickable)
+    private set
+
+  /** Which set those dice come from (`design/dInfinity.dc.html`, option 4a). */
+  var pickingFrom: String by mutableStateOf(machine.pickingFrom)
+    private set
+
+  /** Every set that has dice to offer, for the chooser. Fixed for the visit. */
+  val choosableSets: List<DiceSet> get() = machine.choosableSets
 
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
@@ -141,6 +150,12 @@ class RollPresenter(
     publish()
   }
 
+  /** Offer the picker row a different set's dice. The formula is left alone. */
+  fun pickFrom(setId: String) {
+    machine.pickFrom(setId)
+    publish()
+  }
+
   /** The same throw under a different rounding. The dice do not move. */
   fun round(rounding: Rounding) {
     machine.round(rounding)
@@ -157,6 +172,8 @@ class RollPresenter(
     state = machine.state
     text = machine.text
     counts = machine.counts
+    pickable = machine.pickable
+    pickingFrom = machine.pickingFrom
   }
 
   private companion object {

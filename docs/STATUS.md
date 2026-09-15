@@ -69,8 +69,9 @@ changelog.
   formula field with a squiggle under the part that is wrong and a one-tap fix,
   the dice picker row, the saved-roll strip, roll from the button or a shake, a
   refusal for a throw the table cannot hold, the total and its breakdown,
-  Down / Nearest / Up, pinch and pan, power-saving, first launch. Missing: the
-  set dropdown and numbers on the faces. Two things the phone found, both now
+  Down / Nearest / Up, pinch and pan, power-saving, first launch, and a set
+  chooser under the picker row that appears once a second set is installed.
+  Missing: numbers on the faces. Two things the phone found, both now
   fixed and both re-checked on it: a shake with the phone upside down pooled
   the dice at the wrong end, because the screen pinned the display to the
   rotation it opened at and the shake map reads that rotation — it now holds

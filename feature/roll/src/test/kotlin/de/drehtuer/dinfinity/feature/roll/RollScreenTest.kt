@@ -334,15 +334,43 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.TRAY).assertExists()
   }
 
+  @Test
+  fun `there is no set chooser until there is a second set to choose`() {
+    // A chooser with one entry is furniture, which is the rule every other
+    // chooser in the app follows.
+    show()
+
+    compose.onNodeWithTag(RollTestTags.SETS).assertDoesNotExist()
+  }
+
+  @Test
+  fun `with two sets installed the row says which one it is offering`() {
+    val presenter = show(catalog = twoSets())
+
+    compose.onNodeWithTag(RollTestTags.SETS).assertExists()
+    compose.onNodeWithTag(RollTestTags.setOf(BRASS)).performScrollTo().performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.pickingFrom == BRASS }
+    compose.onNodeWithTag(RollTestTags.pickerDie("d20")).performScrollTo().performClick()
+    assertEquals("$BRASS:1d20", presenter.text)
+  }
+
+  private fun twoSets(): DiceCatalog =
+    DiceCatalog.of(
+      listOf(BuiltinDiceSet.set, BuiltinDiceSet.set.copy(id = BRASS, name = "Brass")),
+      BuiltinDiceSet.set.id,
+    )
+
   private fun show(
     faces: Map<Int, Int> = mapOf(0 to 0),
     land: Boolean = true,
-  ) {
+    catalog: DiceCatalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+  ): RollPresenter {
     val presenter =
       RollPresenter(
         machine =
           RollMachine(
-            catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+            catalog = catalog,
             geometry = TableGeometry.referenceDevice(),
             table = TableLook(id = "plain", name = "Plain"),
             simulator =
@@ -356,6 +384,7 @@ class RollScreenTest {
         toTheScreen = { it() },
       )
     compose.setContent { RollScreen(presenter = presenter) }
+    return presenter
   }
 
   private fun showWith(modifier: Modifier) {
@@ -390,6 +419,10 @@ class RollScreenTest {
   /** Throws the dice where it stands, so a click and its total are one act. */
   private companion object {
     const val CALLER_TAG = "caller:modifier"
+
+    /** A second installed set, which is when the chooser is worth drawing. */
+    const val BRASS = "brass"
+    const val PATIENCE = 2_000L
   }
 
   /** A tray that throws the dice where it stands and says it draws nothing. */

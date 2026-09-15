@@ -200,6 +200,11 @@ private fun Controls(
       onAdd = presenter::add,
       onRemove = presenter::remove,
     )
+    SetChooser(
+      sets = presenter.choosableSets,
+      chosen = presenter.pickingFrom,
+      onChoose = presenter::pickFrom,
+    )
     FormulaField(
       text = presenter.text,
       onChange = presenter::type,
@@ -388,6 +393,11 @@ object RollTestTags {
   fun pickerDie(notation: String): String = "roll:picker:$notation"
 
   fun pickerCount(notation: String): String = "roll:picker:$notation:count"
+
+  /** The set chooser under the picker row, and one set on it (design option `4a`). */
+  const val SETS: String = "roll:sets"
+
+  fun setOf(setId: String): String = "roll:sets:$setId"
 
   /** The Down / Nearest / Up control, shown only for a formula that divides. */
   const val ROUNDING: String = "roll:sheet:rounding"

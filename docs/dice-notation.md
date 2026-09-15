@@ -162,6 +162,17 @@ comes out is a formula somebody could have typed — which is what makes the
 outcome graph, the breakdown and statistics identical either way. A picked
 roll can be turned into a saved roll with one tap.
 
+**Which set the row offers** is chosen under it, once there is a second set
+installed — one entry is furniture, so the chooser is not drawn until it has
+something to choose between. It is not the same question as the default set:
+which set a bare `d20` means is a preference chosen where the sets are
+(`docs/dice-sets.md`, design `6a`), and somebody whose default is their own set
+still reaches for a borrowed d20. A die taken from a set that is *not* the
+default is written with it in front — `brass:1d20` — so the row can only write
+a formula that rolls what it showed; taken from the default set it is written
+bare, because that is what a person would type. Changing the chooser leaves the
+formula exactly as it is: what is already written was written on purpose.
+
 The rules the picker follows, all of which fall out of "a tap writes a
 formula and never throws one away":
 

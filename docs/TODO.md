@@ -65,8 +65,11 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 
 The screen rolls. A formula is typed, validated on every keystroke, refused if
 the table cannot hold it, thrown from the Roll button or a shake, simulated and drawn on
-the Pixel 10a, and its total read off the faces. What is below is what it does
-not have yet.
+the Pixel 10a, and its total read off the faces. The picker row offers a chosen
+set's dice, with a chooser under it once there is a second set installed — and
+a die taken from a set that is not the default is written `brass:1d20`, so the
+row can only ever write a formula that rolls what it showed. What is below is
+what it does not have yet.
 
 - [ ] Revisit the capacity constants now that they bite much later. 30 % of the floor and a 40 % minimum scale no longer refuse anything the engine would take: it would take about 240 dice to reach the floor and the engine stops at 100 (`docs/tables.md`). Step 5.3 is where those numbers meet a device
 - [ ] **Freeze the dice that are down and let the player re-roll the ones that are not.** The user's proposal for unstacking, and worth taking seriously: a die that has landed cleanly is finished and could be lifted off the mat and shown as an overlay, leaving only the stuck ones in the tray to be thrown again. It keeps the honest rule — a settled die is never *moved*, only taken out of play once its face is read — and it turns the worst case from "the app fixes it invisibly" into "you roll again", which is what a person does at a table. Needs the design for how ninety-nine finished dice are shown; the mechanism can be decided first (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice")
@@ -78,7 +81,6 @@ not have yet.
 - [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
-- [ ] Set dropdown under the picker row (`4a`) — waits on the installed-set registry (4.4); until there is a second set to choose, a chooser with one entry is furniture
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
 - [ ] Formula editor (`2a`): the formula on the tray is not tappable — the field is always on screen instead of appearing when the formula is tapped, and Enter does not roll. The squiggle and the error line under it are done (`6f`, `9c`)
