@@ -15,6 +15,8 @@ import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -46,6 +48,8 @@ class GroupSheetTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
+  private lateinit var library: SavedRollLibrary
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   @Before
@@ -64,6 +68,8 @@ class GroupSheetTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database)
+    groupRepository = SavedRollGroupRepository(database)
+    library = SavedRollLibrary(repository, groupRepository)
   }
 
   @After
@@ -221,12 +227,12 @@ class GroupSheetTest {
     // half-written, making the group, and coming back.
     val presenter =
       EditorPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         ids = { "made-up" },
       )
-    val groups = GroupPresenter(repository, scope, "Unfiled", ids = { "new-group" })
+    val groups = GroupPresenter(library, scope, "Unfiled", ids = { "new-group" })
     compose.setContent { EditorScreen(presenter = presenter, groups = groups) }
 
     compose.onNodeWithTag(EditorTestTags.NEW_GROUP).performScrollTo().performClick()
@@ -241,23 +247,23 @@ class GroupSheetTest {
   private fun show() {
     val presenter =
       SavedPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         unfiledName = "Unfiled",
       )
-    val groups = GroupPresenter(repository, scope, "Unfiled", ids = { "made-up" })
+    val groups = GroupPresenter(library, scope, "Unfiled", ids = { "made-up" })
     compose.setContent { SavedScreen(presenter = presenter, groups = groups) }
   }
 
   private fun given(vararg groups: SavedRollGroup) {
     runBlocking {
-      repository.ensureUnfiled("Unfiled")
-      groups.forEach { repository.save(it) }
+      groupRepository.ensureUnfiled("Unfiled")
+      groups.forEach { groupRepository.save(it) }
     }
   }
 
-  private fun groups(): List<SavedRollGroup> = runBlocking { repository.groups.first() }
+  private fun groups(): List<SavedRollGroup> = runBlocking { groupRepository.all.first() }
 
   private fun names(): List<String> = groups().map { it.name }
 

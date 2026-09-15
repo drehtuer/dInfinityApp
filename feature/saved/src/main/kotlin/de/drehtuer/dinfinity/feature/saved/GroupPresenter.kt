@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
-import de.drehtuer.dinfinity.data.SavedRollRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
  *   deleting a group moves its rolls there.
  */
 class GroupPresenter(
-  private val repository: SavedRollRepository,
+  private val library: SavedRollLibrary,
   private val scope: CoroutineScope,
   private val unfiledName: String,
   private val ids: () -> String = {
@@ -55,7 +55,7 @@ class GroupPresenter(
     // would move if the group went — and two collectors would let the sheet
     // be drawn from half of each.
     scope.launch {
-      combine(repository.groups, repository.all) { groups, rolls -> groups to rolls }
+      combine(library.groups.all, library.rolls.all) { groups, rolls -> groups to rolls }
         .collect { (groups, rolls) ->
           known = groups
           counts = rolls.groupingBy { it.groupId }.eachCount()
@@ -107,7 +107,7 @@ class GroupPresenter(
     val group = open.group.copy(name = open.group.name.trim())
     draft = null
     scope.launch {
-      repository.save(group)
+      library.groups.save(group)
       onSaved(group.id)
     }
   }
@@ -124,7 +124,7 @@ class GroupPresenter(
     if (!open.deletable) return
     draft = null
     scope.launch {
-      repository.deleteGroup(open.id, unfiledName)
+      library.groups.delete(open.id, unfiledName)
       onDeleted()
     }
   }

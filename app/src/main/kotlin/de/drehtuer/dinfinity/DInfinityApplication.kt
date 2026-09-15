@@ -9,6 +9,8 @@ import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.RollRecording
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.SettingsRepository
@@ -45,8 +47,20 @@ class DInfinityApplication : Application() {
    */
   val database: DInfinityDatabase by lazy { DInfinityDatabase.open(this) }
 
-  /** Saved rolls and their groups (`docs/dice-notation.md`). */
+  /** The saved rolls (`docs/dice-notation.md`). */
   val savedRolls: SavedRollRepository by lazy { SavedRollRepository(database) }
+
+  /**
+   * The folders they live in.
+   *
+   * Apart from [savedRolls] rather than beside it: the two grew at different
+   * rates and one class had reached the size detekt allows (`docs/TODO.md`,
+   * 4.3). A screen that needs both takes both.
+   */
+  val savedRollGroups: SavedRollGroupRepository by lazy { SavedRollGroupRepository(database) }
+
+  /** The two of them together, which is what a screen about saved rolls takes. */
+  val savedRollLibrary: SavedRollLibrary by lazy { SavedRollLibrary(savedRolls, savedRollGroups) }
 
   /**
    * Taking a collection of saved rolls in.

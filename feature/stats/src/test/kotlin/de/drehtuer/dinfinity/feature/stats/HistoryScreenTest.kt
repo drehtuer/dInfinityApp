@@ -18,6 +18,7 @@ import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.data.Breakdown
 import de.drehtuer.dinfinity.data.HistoryRepository
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
@@ -260,7 +261,7 @@ class HistoryScreenTest {
       val repository = SavedRollRepository(database)
       // A roll needs a group to be in: the foreign key says so, and Unfiled is
       // the one every roll falls back to.
-      repository.ensureUnfiled("Unfiled")
+      SavedRollGroupRepository(database).ensureUnfiled("Unfiled")
       repository.save(SavedRoll(id = id, groupId = SavedRollGroup.UNFILED_ID, name = name, formula = "2d6"))
     }
   }

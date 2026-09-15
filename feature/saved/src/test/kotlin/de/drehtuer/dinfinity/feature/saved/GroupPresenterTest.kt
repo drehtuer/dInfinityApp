@@ -6,6 +6,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import kotlinx.coroutines.CoroutineScope
@@ -37,6 +39,8 @@ import org.robolectric.Shadows.shadowOf
 class GroupPresenterTest {
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
+  private lateinit var library: SavedRollLibrary
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   @Before
@@ -55,6 +59,8 @@ class GroupPresenterTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database)
+    groupRepository = SavedRollGroupRepository(database)
+    library = SavedRollLibrary(repository, groupRepository)
   }
 
   @After
@@ -276,7 +282,7 @@ class GroupPresenterTest {
 
   @Test
   fun `Unfiled cannot be deleted, because it is where rolls go`() {
-    runBlocking { repository.ensureUnfiled("Unfiled") }
+    runBlocking { groupRepository.ensureUnfiled("Unfiled") }
     val presenter = presenter()
 
     presenter.edit(SavedRollGroup.UNFILED_ID)
@@ -286,7 +292,7 @@ class GroupPresenterTest {
 
   @Test
   fun `a delete does nothing when the draft is not deletable`() {
-    runBlocking { repository.ensureUnfiled("Unfiled") }
+    runBlocking { groupRepository.ensureUnfiled("Unfiled") }
     val presenter = presenter()
     presenter.edit(SavedRollGroup.UNFILED_ID)
 
@@ -324,7 +330,7 @@ class GroupPresenterTest {
     val presenter = presenter()
     presenter.edit("dnd")
 
-    runBlocking { repository.deleteGroup("dnd", "Unfiled") }
+    runBlocking { groupRepository.delete("dnd", "Unfiled") }
 
     await("the sheet stayed open on a group that is gone") { presenter.draft == null }
   }
@@ -344,7 +350,7 @@ class GroupPresenterTest {
 
   private fun presenter() =
     GroupPresenter(
-      repository = repository,
+      library = library,
       scope = scope,
       unfiledName = "Unfiled",
       ids = { "made-up" },
@@ -372,13 +378,13 @@ class GroupPresenterTest {
   }
 
   private fun given(vararg groups: SavedRollGroup) {
-    runBlocking { groups.forEach { repository.save(it) } }
+    runBlocking { groups.forEach { groupRepository.save(it) } }
   }
 
-  private fun names(): List<String> = runBlocking { repository.groups.first() }.map { it.name }
+  private fun names(): List<String> = runBlocking { groupRepository.all.first() }.map { it.name }
 
   private fun group(name: String): SavedRollGroup? =
-    runBlocking { repository.groups.first() }.firstOrNull { it.name == name }
+    runBlocking { groupRepository.all.first() }.firstOrNull { it.name == name }
 
   private companion object {
     const val PATIENCE = 2_000L

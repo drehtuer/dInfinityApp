@@ -13,6 +13,8 @@ import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -43,6 +45,8 @@ class SavedScreenTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
+  private lateinit var library: SavedRollLibrary
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   @Before
@@ -61,6 +65,8 @@ class SavedScreenTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database) { NOW }
+    groupRepository = SavedRollGroupRepository(database)
+    library = SavedRollLibrary(repository, groupRepository)
   }
 
   @After
@@ -139,8 +145,8 @@ class SavedScreenTest {
   @Test
   fun `the switcher lists every group with how much is in it`() {
     runBlocking {
-      repository.save(SavedRollGroup(id = "dnd", name = "D&D"))
-      repository.save(SavedRollGroup(id = "thorin", name = "Thorin", parentId = "dnd"))
+      groupRepository.save(SavedRollGroup(id = "dnd", name = "D&D"))
+      groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin", parentId = "dnd"))
     }
     given(roll("axe", groupId = "thorin"))
     show()
@@ -155,7 +161,7 @@ class SavedScreenTest {
 
   @Test
   fun `choosing a group shows that group's rolls and nothing else`() {
-    runBlocking { repository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
     given(roll("axe", groupId = "thorin"), roll("loose"))
     val opened = mutableListOf<String>()
     show(onActiveGroup = opened::add)
@@ -185,7 +191,7 @@ class SavedScreenTest {
 
   private fun given(vararg rolls: SavedRoll) {
     runBlocking {
-      repository.ensureUnfiled("Unfiled")
+      groupRepository.ensureUnfiled("Unfiled")
       rolls.forEach { repository.save(it) }
     }
   }
@@ -197,13 +203,14 @@ class SavedScreenTest {
   ) {
     val presenter =
       SavedPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         unfiledName = "Unfiled",
         onActiveGroup = onActiveGroup,
       )
-    val groups = GroupPresenter(repository = repository, scope = scope, unfiledName = "Unfiled")
+    val groups =
+      GroupPresenter(library = library, scope = scope, unfiledName = "Unfiled")
     compose.setContent {
       SavedScreen(presenter = presenter, groups = groups, onRoll = onRoll, onEdit = onEdit)
     }

@@ -12,6 +12,8 @@ import de.drehtuer.dinfinity.core.collection.CollectionResult
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -44,6 +46,8 @@ class ExportSheetTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
+  private lateinit var library: SavedRollLibrary
   private val scope = CoroutineScope(Dispatchers.Unconfined)
   private val context: Context get() = ApplicationProvider.getApplicationContext()
 
@@ -61,6 +65,8 @@ class ExportSheetTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database)
+    groupRepository = SavedRollGroupRepository(database)
+    library = SavedRollLibrary(repository, groupRepository)
   }
 
   @After
@@ -167,14 +173,14 @@ class ExportSheetTest {
 
   private fun given(vararg groups: SavedRollGroup) {
     runBlocking {
-      repository.ensureUnfiled("Unfiled")
-      groups.forEach { repository.save(it) }
+      groupRepository.ensureUnfiled("Unfiled")
+      groups.forEach { groupRepository.save(it) }
     }
   }
 
   private fun given(vararg rolls: SavedRoll) {
     runBlocking {
-      repository.ensureUnfiled("Unfiled")
+      groupRepository.ensureUnfiled("Unfiled")
       rolls.forEach { repository.save(it) }
     }
   }
@@ -185,12 +191,12 @@ class ExportSheetTest {
   private fun show() {
     val presenter =
       SavedPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         unfiledName = "Unfiled",
       )
-    val groups = GroupPresenter(repository, scope, "Unfiled")
+    val groups = GroupPresenter(library, scope, "Unfiled")
     compose.setContent {
       SavedScreen(
         presenter = presenter,

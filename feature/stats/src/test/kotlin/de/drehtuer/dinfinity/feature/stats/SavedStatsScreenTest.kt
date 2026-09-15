@@ -13,6 +13,7 @@ import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.HistoryRepository
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.data.db.RollHistoryRow
@@ -73,7 +74,7 @@ class SavedStatsScreenTest {
         .build()
     saved = SavedRollRepository(database)
     history = HistoryRepository(database)
-    runBlocking { saved.save(SavedRollGroup(id = GROUP, name = "Thorin")) }
+    runBlocking { SavedRollGroupRepository(database).save(SavedRollGroup(id = GROUP, name = "Thorin")) }
   }
 
   @After

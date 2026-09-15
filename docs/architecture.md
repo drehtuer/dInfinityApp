@@ -508,7 +508,13 @@ the saved-rolls list and the editor open the same one, so a group made while
 writing a roll is made the same way and refused for the same reasons.
 
 It watches the same two flows the list does, which is what lets both of its
-rules be answered *while the player types* rather than when they press Save:
+rules be answered *while the player types* rather than when they press Save.
+The two flows come from two repositories: `SavedRollRepository` for the rolls
+and `SavedRollGroupRepository` for the folders, joined by `SavedRollLibrary` —
+the one place the two halves meet, in the sense `SetLibrary` is for dice sets.
+A screen takes the library rather than the pair, and a rule that spans both
+(deleting a group moves its rolls; a roll's table falls back to its group's)
+is written there once rather than in each screen that needs it.
 
 | Rule | Answered by | Why it is not only checked at import |
 | --- | --- | --- |
@@ -517,7 +523,7 @@ rules be answered *while the player types* rather than when they press Save:
 
 The second is the one that was wrong until this sheet existed. Checking only
 the parent lets a three-deep tree be built from the bottom: make the child,
-then move its parent. `SavedRollRepository.save` refuses both, because an
+then move its parent. `SavedRollGroupRepository.save` refuses both, because an
 import writes without ever passing through the sheet.
 
 | Control | Calls | What changes |
@@ -526,7 +532,7 @@ import writes without ever passing through the sheet.
 | a mark | `icon` | that mark, or none when the chosen one is tapped again |
 | **Inside** | `parent` | which group it sits in; the chooser is absent, with its reason, for a group that has children |
 | **Save group** | `save` | the group is written, the sheet closes, and whoever opened it is handed the id |
-| **Delete** | `deleteGroup` | the group goes, its rolls move to Unfiled and its child groups are lifted to the top level. Nothing a player wrote is deleted, and the sheet says how many rolls will move before it is pressed |
+| **Delete** | `delete` | the group goes, its rolls move to Unfiled and its child groups are lifted to the top level. Nothing a player wrote is deleted, and the sheet says how many rolls will move before it is pressed |
 | **Cancel** | `dismiss` | the draft is thrown away |
 
 Unfiled is the one group with no **Delete**: it is where a deleted group's

@@ -16,6 +16,7 @@ import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.NotationReference
 import de.drehtuer.dinfinity.data.InstalledSetRepository
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -70,6 +71,7 @@ class DInfinityScreensTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var saved: SavedRollRepository
+  private lateinit var savedGroups: SavedRollGroupRepository
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   /** A `dicesets/` folder of its own, so one test's packages are not another's. */
@@ -91,6 +93,7 @@ class DInfinityScreensTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     saved = SavedRollRepository(database)
+    savedGroups = SavedRollGroupRepository(database)
   }
 
   @After
@@ -111,7 +114,7 @@ class DInfinityScreensTest {
   @Test
   fun `the editor draws, on a roll that exists`() {
     runBlocking {
-      saved.ensureUnfiled("Unfiled")
+      savedGroups.ensureUnfiled("Unfiled")
       saved.save(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "8d6"))
     }
     val navigation = app()
@@ -230,7 +233,7 @@ class DInfinityScreensTest {
     // nothing and the saved-roll statistics screen could never have had
     // anything on it (`docs/statistics.md`, per saved roll and per group).
     runBlocking {
-      saved.ensureUnfiled("Unfiled")
+      savedGroups.ensureUnfiled("Unfiled")
       saved.save(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "1d20"))
     }
     val recorded = mutableListOf<FinishedThrow>()

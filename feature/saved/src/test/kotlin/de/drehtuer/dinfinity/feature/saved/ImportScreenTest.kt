@@ -22,6 +22,7 @@ import de.drehtuer.dinfinity.core.collection.CollectionLimits
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.CollectionImporter
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -57,6 +58,7 @@ class ImportScreenTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
   private lateinit var importer: CollectionImporter
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
@@ -76,6 +78,7 @@ class ImportScreenTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database)
+    groupRepository = SavedRollGroupRepository(database)
     importer = CollectionImporter(database)
   }
 
@@ -242,7 +245,7 @@ class ImportScreenTest {
   }
 
   private fun given(vararg groups: SavedRollGroup) {
-    runBlocking { groups.forEach { repository.save(it) } }
+    runBlocking { groups.forEach { groupRepository.save(it) } }
   }
 
   @Test

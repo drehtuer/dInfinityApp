@@ -36,7 +36,7 @@ class SavedWiring(
     onActiveGroup: (String) -> Unit,
   ): SavedPresenter =
     SavedPresenter(
-      repository = app.savedRolls,
+      library = app.savedRollLibrary,
       catalog = catalog,
       scope = scope,
       unfiledName = unfiledName,
@@ -45,7 +45,8 @@ class SavedWiring(
     )
 
   /** The group sheet, which the list and the editor both open. */
-  fun groups(): GroupPresenter = GroupPresenter(repository = app.savedRolls, scope = scope, unfiledName = unfiledName)
+  fun groups(): GroupPresenter =
+    GroupPresenter(library = app.savedRollLibrary, scope = scope, unfiledName = unfiledName)
 
   /** Taking a collection in. */
   fun importing(): ImportPresenter =
@@ -65,7 +66,7 @@ class SavedWiring(
     defaultGroupId: String,
   ): EditorPresenter =
     EditorPresenter(
-      repository = app.savedRolls,
+      library = app.savedRollLibrary,
       catalog = catalog,
       scope = scope,
       opening = opening,

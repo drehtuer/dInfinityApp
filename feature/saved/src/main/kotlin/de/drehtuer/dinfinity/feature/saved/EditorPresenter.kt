@@ -14,7 +14,7 @@ import de.drehtuer.dinfinity.core.notation.PlanResult
 import de.drehtuer.dinfinity.core.notation.RollPlanner
 import de.drehtuer.dinfinity.core.probability.DistributionResult
 import de.drehtuer.dinfinity.core.probability.OutcomeGraph
-import de.drehtuer.dinfinity.data.SavedRollRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -33,7 +33,7 @@ import kotlinx.coroutines.launch
  * arrive weeks later in the middle of somebody's game.
  */
 class EditorPresenter(
-  private val repository: SavedRollRepository,
+  private val library: SavedRollLibrary,
   private val catalog: DiceCatalog,
   private val scope: CoroutineScope,
   private val ids: () -> String = {
@@ -54,8 +54,8 @@ class EditorPresenter(
 
   init {
     scope.launch {
-      val groups = repository.groups.first()
-      val roll = opening.existingId?.let { repository.byId(it) }
+      val known = library.groups.all.first()
+      val roll = opening.existingId?.let { library.rolls.byId(it) }
       state =
         state.copy(
           name = roll?.name ?: state.name,
@@ -65,7 +65,7 @@ class EditorPresenter(
           groupId = roll?.groupId ?: state.groupId,
           favourite = roll?.favourite ?: false,
           tablePin = roll?.tablePin,
-          groups = groups,
+          groups = known,
           existing = roll != null,
           loaded = true,
         )
@@ -74,7 +74,7 @@ class EditorPresenter(
     // Kept watching rather than read once: a group made from the sheet on this
     // screen has to appear in the chooser that asked for it.
     scope.launch {
-      repository.groups.collect { groups -> state = state.copy(groups = groups) }
+      library.groups.all.collect { known -> state = state.copy(groups = known) }
     }
   }
 
@@ -111,7 +111,7 @@ class EditorPresenter(
     val saved = asRoll()
     id = saved.id
     scope.launch {
-      repository.save(saved)
+      library.rolls.save(saved)
       state = state.copy(existing = true, saved = true)
     }
   }
@@ -120,7 +120,7 @@ class EditorPresenter(
   fun delete() {
     val existing = id ?: return
     scope.launch {
-      repository.delete(existing)
+      library.rolls.delete(existing)
       state = state.copy(gone = true)
     }
   }

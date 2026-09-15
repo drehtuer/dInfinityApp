@@ -14,6 +14,8 @@ import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -45,6 +47,8 @@ class HomeStripTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
+  private lateinit var library: SavedRollLibrary
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   @Before
@@ -63,6 +67,8 @@ class HomeStripTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database)
+    groupRepository = SavedRollGroupRepository(database)
+    library = SavedRollLibrary(repository, groupRepository)
   }
 
   @After
@@ -98,7 +104,7 @@ class HomeStripTest {
     // Without it every throw is recorded as belonging to nothing, and the
     // saved-roll statistics screen can never have anything on it
     // (`docs/statistics.md`, per saved roll and per group).
-    runBlocking { repository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
     given(roll("fireball", groupId = "thorin", formula = "8d6"))
     val thrown = mutableListOf<Triple<String, String, String>>()
     show(
@@ -164,7 +170,7 @@ class HomeStripTest {
 
   @Test
   fun `only the active group is on the strip`() {
-    runBlocking { repository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
     given(roll("axe", groupId = "thorin"), roll("loose"))
     show()
 
@@ -194,7 +200,7 @@ class HomeStripTest {
     // opens, on the one screen where that is most visible.
     val presenter =
       SavedPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = CoroutineScope(Dispatchers.Unconfined),
         unfiledName = "Unfiled",
@@ -208,7 +214,7 @@ class HomeStripTest {
 
   private fun given(vararg rolls: SavedRoll) {
     runBlocking {
-      repository.ensureUnfiled("Unfiled")
+      groupRepository.ensureUnfiled("Unfiled")
       rolls.forEach { repository.save(it) }
     }
   }
@@ -221,7 +227,7 @@ class HomeStripTest {
   ) {
     val presenter =
       SavedPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         unfiledName = "Unfiled",

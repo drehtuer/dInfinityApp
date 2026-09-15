@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
-import de.drehtuer.dinfinity.data.SavedRollRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  *   words on a screen are the resources' (`docs/TODO.md`, Step 6).
  */
 class SavedPresenter(
-  private val repository: SavedRollRepository,
+  private val library: SavedRollLibrary,
   private val catalog: DiceCatalog,
   private val scope: CoroutineScope,
   private val unfiledName: String,
@@ -41,8 +41,8 @@ class SavedPresenter(
 
   init {
     scope.launch {
-      repository.ensureUnfiled(unfiledName)
-      combine(repository.groups, repository.all) { groups, rolls -> groups to rolls }
+      library.groups.ensureUnfiled(unfiledName)
+      combine(library.groups.all, library.rolls.all) { groups, rolls -> groups to rolls }
         .collect { (groups, rolls) -> publish(groups, rolls) }
     }
   }
@@ -62,12 +62,12 @@ class SavedPresenter(
 
   /** One more use of a roll, which moves it up the list. */
   fun used(rollId: String) {
-    scope.launch { repository.used(rollId) }
+    scope.launch { library.rolls.used(rollId) }
   }
 
   /** Takes a saved roll away. */
   fun delete(rollId: String) {
-    scope.launch { repository.delete(rollId) }
+    scope.launch { library.rolls.delete(rollId) }
   }
 
   private fun publish(

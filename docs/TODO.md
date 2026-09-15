@@ -125,9 +125,12 @@ order, the warning on a roll whose dice are gone, the empty state, and tapping
 a roll to send its formula to the tray. Groups can be made, renamed, moved and
 deleted, from the switcher or from the editor — the same sheet in both places.
 
+Rolls and groups are one repository each now, joined by `SavedRollLibrary` for
+the screens that need both — the split the class size had been asking for, and
+the place the table fallback below has to live.
+
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
 - [ ] Import from a **git repository**, which is the half of this the plain link does not cover — a repo of "stat blocks for monster manual X" resolved through `RefResolver` the way a dice set is (`docs/dice-sets.md`). Importing from a plain `https` link is built: it goes through the same downloader a dice set does, capped at the megabyte the reader refuses a file above, and what comes back goes through `CollectionReader` rule for rule
-- [ ] `SavedRollRepository` is at its function ceiling (detekt's `TooManyFunctions`, 11). Nothing needs to grow it yet — importing went into a class of its own, because it is a transaction rather than a repository operation — but the next thing that does needs the split first: groups one class, rolls another, rather than a raised threshold
 
 ### 4.4 Dice sets — `feature/sets`
 

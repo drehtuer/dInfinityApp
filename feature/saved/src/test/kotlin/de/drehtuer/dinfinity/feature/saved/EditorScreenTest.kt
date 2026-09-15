@@ -18,6 +18,8 @@ import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -52,6 +54,8 @@ class EditorScreenTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
+  private lateinit var library: SavedRollLibrary
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   @Before
@@ -70,7 +74,9 @@ class EditorScreenTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database) { NOW }
-    runBlocking { repository.ensureUnfiled("Unfiled") }
+    groupRepository = SavedRollGroupRepository(database)
+    library = SavedRollLibrary(repository, groupRepository)
+    runBlocking { groupRepository.ensureUnfiled("Unfiled") }
   }
 
   @After
@@ -319,7 +325,7 @@ class EditorScreenTest {
   /** An editor with the id generator the app ships with, rather than a fixed one. */
   private fun presenterWithRealIds() =
     EditorPresenter(
-      repository = repository,
+      library = library,
       catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
       scope = scope,
     )
@@ -332,13 +338,16 @@ class EditorScreenTest {
   ): EditorPresenter {
     val presenter =
       EditorPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         ids = { "made-up" },
         opening = editing?.let(Editing::Existing) ?: Editing.New(startingFormula),
       )
-    val groups = GroupPresenter(repository = repository, scope = scope, unfiledName = "Unfiled", ids = { "new-group" })
+    val groups =
+      GroupPresenter(library = library, scope = scope, unfiledName = "Unfiled", ids = {
+        "new-group"
+      })
     compose.setContent {
       EditorScreen(presenter = presenter, groups = groups, onDone = onDone, onRollNow = onRollNow)
     }

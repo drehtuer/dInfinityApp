@@ -7,6 +7,8 @@ import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -37,6 +39,8 @@ import org.robolectric.Shadows.shadowOf
 class SavedPresenterTest {
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
+  private lateinit var library: SavedRollLibrary
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   @Before
@@ -55,6 +59,8 @@ class SavedPresenterTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database) { 1_000L }
+    groupRepository = SavedRollGroupRepository(database)
+    library = SavedRollLibrary(repository, groupRepository)
   }
 
   @After
@@ -92,11 +98,11 @@ class SavedPresenterTest {
 
   @Test
   fun `a group deleted underneath the screen sends it back to Unfiled`() {
-    runBlocking { repository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
     val presenter = presenter()
     presenter.open("thorin")
 
-    runBlocking { repository.deleteGroup("thorin", unfiledName = "Unfiled") }
+    runBlocking { groupRepository.delete("thorin", unfiledName = "Unfiled") }
     presenter.await("the deleted group was still showing") {
       presenter.state.activeGroupId == SavedRollGroup.UNFILED_ID
     }
@@ -106,7 +112,7 @@ class SavedPresenterTest {
 
   @Test
   fun `the switcher opens and closes, and choosing a group closes it`() {
-    runBlocking { repository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
     val presenter = presenter()
 
     presenter.showGroups(true)
@@ -119,7 +125,7 @@ class SavedPresenterTest {
   @Test
   fun `a roll deleted is a roll gone from the list`() {
     runBlocking {
-      repository.ensureUnfiled("Unfiled")
+      groupRepository.ensureUnfiled("Unfiled")
       repository.save(
         SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "8d6"),
       )
@@ -135,7 +141,7 @@ class SavedPresenterTest {
   @Test
   fun `using a roll is recorded even though the list is what shows it`() {
     runBlocking {
-      repository.ensureUnfiled("Unfiled")
+      groupRepository.ensureUnfiled("Unfiled")
       repository.save(
         SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "8d6"),
       )
@@ -160,7 +166,7 @@ class SavedPresenterTest {
 
   private fun presenter(activeGroupId: String = SavedRollGroup.UNFILED_ID) =
     SavedPresenter(
-      repository = repository,
+      library = library,
       catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
       scope = scope,
       unfiledName = "Unfiled",

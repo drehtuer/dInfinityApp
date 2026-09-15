@@ -11,6 +11,8 @@ import de.drehtuer.dinfinity.data.CollectionImporter
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.InstalledSetRepository
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.StatisticsRepository
@@ -81,13 +83,13 @@ internal fun testPresenters(
   catalog: DiceCatalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
   recorder: ThrowRecorder = ThrowRecorder.NONE,
 ): Presenters {
-  val saved = SavedRollRepository(database)
+  val saved = SavedRollLibrary(SavedRollRepository(database), SavedRollGroupRepository(database))
   return Presenters(
     roll = { rollPresenter(catalog, recorder) },
     graph = { GraphMachine(catalog) },
-    savedRolls = { SavedPresenter(repository = saved, catalog = catalog, scope = scope, unfiledName = UNFILED) },
+    savedRolls = { SavedPresenter(library = saved, catalog = catalog, scope = scope, unfiledName = UNFILED) },
     savedRollEditor = { opening ->
-      EditorPresenter(repository = saved, catalog = catalog, scope = scope, opening = opening)
+      EditorPresenter(library = saved, catalog = catalog, scope = scope, opening = opening)
     },
     savedGroups = { GroupPresenter(saved, scope, UNFILED) },
     collectionImport = {
@@ -113,7 +115,7 @@ internal fun testPresenters(
     },
     savedStatistics = {
       SavedStatsPresenter(
-        saved = saved,
+        saved = saved.rolls,
         history = HistoryRepository(database),
         catalog = catalog,
         scope = scope,
