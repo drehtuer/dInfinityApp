@@ -58,7 +58,18 @@ fun RollScreen(
   presenter: RollPresenter,
   modifier: Modifier = Modifier,
   firstLaunch: Boolean = false,
+  /**
+   * What a fresh install already has, for the welcome's count line.
+   *
+   * The dice sets are the screen's own; saved rolls and sessions are handed
+   * in, because this module does not know what either of those is
+   * (`docs/architecture.md`, "Modules").
+   */
+  whatIsThere: WhatIsThere = WhatIsThere(),
   onWelcomeSeen: () -> Unit = {},
+  /** The welcome's other two ways in (`design/dInfinity.dc.html`, option 9a). */
+  onImportCollection: () -> Unit = {},
+  onAddSets: () -> Unit = {},
   onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
   menu: @Composable () -> Unit = {},
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit = {},
@@ -111,7 +122,7 @@ fun RollScreen(
       menu()
     }
 
-    if (firstLaunch) FirstLaunch(presenter, onWelcomeSeen)
+    if (firstLaunch) FirstLaunch(presenter, whatIsThere, onWelcomeSeen, onImportCollection, onAddSets)
   }
 }
 
@@ -131,12 +142,17 @@ fun RollScreen(
 @Composable
 private fun FirstLaunch(
   presenter: RollPresenter,
+  what: WhatIsThere,
   onWelcomeSeen: () -> Unit,
+  onImport: () -> Unit,
+  onAddSets: () -> Unit,
 ) {
   var welcomed by rememberSaveable { mutableStateOf(false) }
   if (welcomed) return
   Welcome(
-    sets = presenter.sets,
+    // The count of sets is the screen's own; the other two are handed in,
+    // because this module does not know what a saved roll or a session is.
+    what = what.copy(sets = presenter.sets),
     onRollNow = {
       welcomed = true
       onWelcomeSeen()
@@ -147,6 +163,11 @@ private fun FirstLaunch(
       welcomed = true
       onWelcomeSeen()
     },
+    // Neither of these dismisses it: somebody who goes to fetch something and
+    // comes back should find the welcome still there, with a count line that
+    // has something new to say.
+    onImport = onImport,
+    onAddSets = onAddSets,
   )
 }
 
@@ -389,6 +410,8 @@ object RollTestTags {
   const val WELCOME_SETS: String = "roll:welcome:sets"
   const val WELCOME_ROLL: String = "roll:welcome:roll"
   const val WELCOME_DISMISS: String = "roll:welcome:dismiss"
+  const val WELCOME_IMPORT: String = "roll:welcome:import"
+  const val WELCOME_SETS_ADD: String = "roll:welcome:sets-add"
 
   /** The dice picker row, and one die on it (design option 1h). */
   const val PICKER: String = "roll:picker"

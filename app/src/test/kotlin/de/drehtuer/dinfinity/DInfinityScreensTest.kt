@@ -24,6 +24,7 @@ import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.feature.designer.DesignerTestTags
 import de.drehtuer.dinfinity.feature.roll.FinishedThrow
+import de.drehtuer.dinfinity.feature.roll.RollTestTags
 import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
 import de.drehtuer.dinfinity.feature.saved.HomeStripTestTags
@@ -224,6 +225,52 @@ class DInfinityScreensTest {
           ?.getString(GraphArgument.FORMULA)
       },
     )
+  }
+
+  @Test
+  fun `the welcome's other two ways in reach the screens they name`() {
+    // The design has three ways in and the app had one. Both of these now have
+    // screens to send somebody to (`design/dInfinity.dc.html`, option 9a).
+    val navigation = app()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_IMPORT).performClick()
+
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.CollectionImport
+    }
+  }
+
+  @Test
+  fun `and going to fetch something does not dismiss the welcome`() {
+    val navigation = app()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_SETS_ADD).performClick()
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.DiceSets
+    }
+    compose.runOnIdle { navigation.popBackStack() }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertIsDisplayed()
+  }
+
+  @Test
+  fun `the welcome counts what is really there, not what a fresh install has`() {
+    // The line used to say "0 saved rolls" whatever was saved, because the
+    // sentence had the zero written into it (`docs/TODO.md`, 4.1).
+    runBlocking {
+      savedGroups.ensureUnfiled("Unfiled")
+      saved.save(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "8d6"))
+    }
+
+    app()
+
+    compose.waitUntil(PATIENCE) {
+      runCatching {
+        compose.onNodeWithTag(RollTestTags.WELCOME_SETS).assertTextContains("1 saved roll", substring = true)
+      }.isSuccess
+    }
   }
 
   @Test

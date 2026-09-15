@@ -302,11 +302,24 @@ the one input nobody would guess at — has nowhere else to be announced.
 **Over all of it, once**, a new install shows the first-launch screen
 (`design/dInfinity.dc.html`, option 9a). It is not a state of `RollState`: the
 machine underneath is `Empty` like any other new screen, and the welcome is a
-sheet on top with two ways out, both of them forward. Its "roll a d20 now"
+sheet on top with four ways out, all of them forward. Its "roll a d20 now"
 types `1d20` into the field and asks for a roll — there is no demonstration
 path and no canned number. That it has been seen is remembered on disk, and
 also in the composition, so the screen changes when the button is pressed
 rather than when a write comes back.
+
+Two of the four go and fetch something — saved rolls from a file or a link,
+dice sets from either — and **neither dismisses it**: coming back to a tray
+that had forgotten it ever said hello would leave somebody wondering what to do
+next, and the count line above the buttons has something new to say when they
+return. That line counts dice sets, saved rolls and sessions. The first is the
+roll screen's own; the other two arrive as a `WhatIsThere` from `:app`, because
+`feature/roll` does not know what a saved roll or a session is — the same rule
+the saved-roll strip follows, which is a slot rather than a screen. It is a
+flow, watched only while the welcome is up, and it is built from the
+repositories rather than from presenters: a sessions presenter would make the
+default session as a side effect, and saying hello is not a reason to write to
+a database.
 
 The picker row is not in that table because it is on screen, and live, in
 every state — for the same reason the formula field is, and in fact for

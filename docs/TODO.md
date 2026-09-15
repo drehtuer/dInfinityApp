@@ -68,8 +68,16 @@ the table cannot hold it, thrown from the Roll button or a shake, simulated and 
 the Pixel 10a, and its total read off the faces. The picker row offers a chosen
 set's dice, with a chooser under it once there is a second set installed — and
 a die taken from a set that is not the default is written `brass:1d20`, so the
-row can only ever write a formula that rolls what it showed. What is below is
-what it does not have yet.
+row can only ever write a formula that rolls what it showed.
+
+**First launch offers all three ways in** (`9a`): throw a d20 now, go straight
+to the tray, bring saved rolls in from a file or a link, or add somebody else's
+dice. The last two do not dismiss it — somebody who goes to fetch something
+comes back to a welcome whose count line has something new to say, and that
+line now counts the sets, the saved rolls and the sessions there really are
+rather than a sentence with a zero written into it.
+
+What is below is what it does not have yet.
 
 - [ ] Revisit the capacity constants now that they bite much later. 30 % of the floor and a 40 % minimum scale no longer refuse anything the engine would take: it would take about 240 dice to reach the floor and the engine stops at 100 (`docs/tables.md`). Step 5.3 is where those numbers meet a device
 - [ ] **Freeze the dice that are down and let the player re-roll the ones that are not.** The user's proposal for unstacking, and worth taking seriously: a die that has landed cleanly is finished and could be lifted off the mat and shown as an overlay, leaving only the stuck ones in the tray to be thrown again. It keeps the honest rule — a settled die is never *moved*, only taken out of play once its face is read — and it turns the worst case from "the app fixes it invisibly" into "you roll again", which is what a person does at a table. Needs the design for how ninety-nine finished dice are shown; the mechanism can be decided first (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice")
@@ -87,7 +95,6 @@ what it does not have yet.
 - [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
-- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now", its way straight to the tray, the count of installed sets, and the saved-roll strip beneath it. What it still does not offer is the other two ways in — **import a collection** and **add dice sets** — both of which now have screens to send somebody to. The count line is also still one number: "0 saved rolls, 0 sessions" wants the other two, and both of those are now built as well
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled

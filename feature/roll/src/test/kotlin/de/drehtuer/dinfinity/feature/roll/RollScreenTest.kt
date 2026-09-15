@@ -1,11 +1,16 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import android.view.Surface
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
@@ -13,6 +18,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -411,6 +417,47 @@ class RollScreenTest {
       listOf(BuiltinDiceSet.set, BuiltinDiceSet.set.copy(id = BRASS, name = "Brass")),
       BuiltinDiceSet.set.id,
     )
+
+  @Test
+  fun `a recomposition around it that changes nothing leaves the screen alone`() {
+    // Every parameter of a composable is a branch that says "nothing changed,
+    // skip it", and this screen has more parameters than any other. A test
+    // that draws once only ever takes one side of each; one that skipped
+    // wrongly would come back without its tray or its picker row, which a
+    // single pass would never see (`docs/TODO.md`, Coverage).
+    var tick by mutableStateOf(0)
+    val presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0)))
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        RollScreen(
+          presenter = presenter,
+          firstLaunch = true,
+          whatIsThere = WhatIsThere(sets = 1),
+        )
+      }
+    }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.WELCOME_SETS).assertIsDisplayed()
+  }
+
+  @Test
+  fun `the welcome's counts reach it from outside, because it cannot know them`() {
+    // `feature/roll` does not know what a saved roll or a session is, so the
+    // two counts arrive as a `WhatIsThere` the way the strip arrives as a slot
+    // (`docs/architecture.md`, "Modules").
+    val presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0)))
+    compose.setContent {
+      RollScreen(presenter = presenter, firstLaunch = true, whatIsThere = WhatIsThere(savedRolls = 5, sessions = 2))
+    }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_SETS).assertTextContains("5 saved rolls", substring = true)
+    compose.onNodeWithTag(RollTestTags.WELCOME_SETS).assertTextContains("2 sessions", substring = true)
+  }
 
   private fun show(
     faces: Map<Int, Int> = mapOf(0 to 0),

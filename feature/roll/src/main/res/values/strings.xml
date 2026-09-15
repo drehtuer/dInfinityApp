@@ -14,16 +14,30 @@
     (`docs/dice-notation.md`).
   -->
   <string name="roll_formula_hint" tools:ignore="TypographyDashes">3d6 + 1d20 - 4</string>
-  <!-- First launch (design option 9a). %1$d is how many dice sets are installed. -->
+  <!-- First launch (design option 9a). Each count is its own plural and they
+       are joined with a separator, so a language that pluralises differently
+       from English still reads. %1$d is the count in every one of them. -->
   <string name="roll_welcome_eyebrow">FIRST LAUNCH</string>
   <string name="roll_welcome_title">Nothing to set up.</string>
   <string name="roll_welcome_body">The dice are installed and the table is laid out. Shake the phone to roll, or press the button. Everything else — saved rolls, your own dice, statistics — waits in the menu until you want it.</string>
   <plurals name="roll_welcome_sets">
-    <item quantity="one">%1$d dice set · 0 saved rolls</item>
-    <item quantity="other">%1$d dice sets · 0 saved rolls</item>
+    <item quantity="one">%1$d dice set</item>
+    <item quantity="other">%1$d dice sets</item>
   </plurals>
+  <plurals name="roll_welcome_saved">
+    <item quantity="one">%1$d saved roll</item>
+    <item quantity="other">%1$d saved rolls</item>
+  </plurals>
+  <plurals name="roll_welcome_sessions">
+    <item quantity="one">%1$d session</item>
+    <item quantity="other">%1$d sessions</item>
+  </plurals>
+  <!-- Quoted: Android strips the spaces around it otherwise. -->
+  <string name="roll_welcome_counts_separator" translatable="false">" · "</string>
   <string name="roll_welcome_roll_now">Roll a d20 now</string>
   <string name="roll_welcome_dismiss">Just show me the tray</string>
+  <string name="roll_welcome_import">Import saved rolls from a file or a link</string>
+  <string name="roll_welcome_sets_add">Add somebody else\'s dice</string>
   <!-- The hint on an empty tray, and on one with a throw ready (design option 9a). -->
   <string name="roll_hint_empty">Type a formula, or tap a die below.</string>
   <string name="roll_hint_ready">Shake the phone, or press Roll.</string>

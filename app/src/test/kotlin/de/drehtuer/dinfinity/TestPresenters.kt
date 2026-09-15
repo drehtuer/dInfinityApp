@@ -27,6 +27,7 @@ import de.drehtuer.dinfinity.feature.roll.Outside
 import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
+import de.drehtuer.dinfinity.feature.roll.WhatIsThere
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportPresenter
@@ -58,6 +59,7 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.combine
 import java.io.File
 import java.nio.file.Files
 
@@ -126,6 +128,13 @@ internal fun testPresenters(
     diceSets = { SetsPresenter(library, scope) },
     tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}) },
     faceDesigner = { designerPresenter(catalog) },
+    // Nothing is saved and no session exists in a test until one is made, and
+    // the welcome's line is the one place that shows. Watched the same way the
+    // activity watches it, so a test that imports something sees it change.
+    whatIsThere =
+      combine(saved.rolls.all, SessionRepository(database).sessions) { rolls, sessions ->
+        WhatIsThere(savedRolls = rolls.size, sessions = sessions.size)
+      },
     diceSet = { id, onGone ->
       SetDetailPresenter(
         id = id.ifEmpty { BuiltinDiceSet.set.id },

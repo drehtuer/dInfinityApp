@@ -13,6 +13,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +39,7 @@ import de.drehtuer.dinfinity.feature.graph.GraphPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphScreen
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.RollScreen
+import de.drehtuer.dinfinity.feature.roll.WhatIsThere
 import de.drehtuer.dinfinity.feature.saved.Editing
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorScreen
@@ -67,6 +71,7 @@ import de.drehtuer.dinfinity.navigation.MenuGroup
 import de.drehtuer.dinfinity.navigation.SetArgument
 import de.drehtuer.dinfinity.theme.LocalModernistColors
 import de.drehtuer.dinfinity.theme.ModernistTokens
+import kotlinx.coroutines.flow.Flow
 import java.io.File
 
 /**
@@ -189,12 +194,22 @@ private fun MenuTo(navController: NavHostController) {
 private fun Roll(
   presenter: () -> RollPresenter,
   savedRolls: (() -> SavedPresenter)?,
+  whatIsThere: Flow<WhatIsThere>,
   entry: NavBackStackEntry,
   navController: NavHostController,
   settings: AppSettings,
   onWelcomeSeen: () -> Unit,
 ) {
   val saved = savedRolls?.let { make -> remember(entry) { make() } }
+  // Only while the welcome is up: after that nothing reads it, and a flow
+  // collected for a line nobody is looking at is a database watched for
+  // nothing.
+  val what by
+    if (settings.welcomeSeen) {
+      remember { mutableStateOf(WhatIsThere()) }
+    } else {
+      whatIsThere.collectAsState(WhatIsThere())
+    }
   RollScreen(
     // Keyed on the visit, like every other screen here, and emphatically not
     // on the lambda: that one is built afresh every time `settings` changes,
@@ -205,7 +220,13 @@ private fun Roll(
     // to the new one, so the dice rolled onto a tray nobody could see.
     presenter = remember(entry) { presenter() },
     firstLaunch = !settings.welcomeSeen,
+    whatIsThere = what,
     onWelcomeSeen = onWelcomeSeen,
+    // The welcome's other two ways in. Neither dismisses it: somebody who goes
+    // to fetch something comes back to a count line that says so
+    // (`design/dInfinity.dc.html`, option 9a).
+    onImportCollection = { navController.navigate(Destination.CollectionImport.route) },
+    onAddSets = { navController.navigate(Destination.DiceSets.route) },
     shakeToRoll = settings.shakeToRoll,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
     menu = { MenuTo(navController) },
@@ -272,7 +293,15 @@ private fun playing(
     // (`docs/architecture.md`, decision 49). The thread and the Filament engine
     // underneath outlive the visit (decision 50).
     Destination.Roll if screens != null -> {
-      Roll(screens.roll, screens.savedRolls, entry, navController, settings, onWelcomeSeen)
+      Roll(
+        screens.roll,
+        screens.savedRolls,
+        screens.whatIsThere,
+        entry,
+        navController,
+        settings,
+        onWelcomeSeen,
+      )
       true
     }
 

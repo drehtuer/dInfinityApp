@@ -3,8 +3,10 @@ package de.drehtuer.dinfinity
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.core.notation.DicePicker
+import de.drehtuer.dinfinity.data.Session
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setActiveGroup
 import de.drehtuer.dinfinity.data.setActiveSession
@@ -12,6 +14,7 @@ import de.drehtuer.dinfinity.data.setDefaultSet
 import de.drehtuer.dinfinity.data.setDefaultTable
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
+import de.drehtuer.dinfinity.feature.roll.WhatIsThere
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
@@ -20,6 +23,8 @@ import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import de.drehtuer.dinfinity.feature.stats.R as StatsR
 
@@ -84,6 +89,7 @@ internal class ScreenWiring(
       tables = { tables() },
       faceDesigner = { faceDesigner() },
       diceSet = { id, onGone -> diceSet(id, onGone) },
+      whatIsThere = whatIsThere(app.savedRolls.all, app.sessions.sessions),
     )
 
   /**
@@ -229,3 +235,26 @@ internal fun spellingOf(
     .firstOrNull { it.notation == die.id }
     ?.notation(1)
 }
+
+/**
+ * What a fresh install already has, for the first-launch count line
+ * (`design/dInfinity.dc.html`, option 9a).
+ *
+ * The two counts the welcome's own module cannot know. **Combined rather than
+ * collected apart**, so the line is never drawn from one new number and one
+ * old one — the same reason the saved-rolls list combines its two flows.
+ *
+ * It takes the flows rather than the repositories, which is what lets it be
+ * tested at all: `ScreenWiring` needs a real `Application` and so has never
+ * been under test, and a rule that lives only in there is a rule nobody
+ * checks. It is also why nothing here *creates* anything — a sessions
+ * presenter would make the default session as a side effect, and saying hello
+ * is not a reason to write to a database.
+ */
+internal fun whatIsThere(
+  savedRolls: Flow<List<SavedRoll>>,
+  sessions: Flow<List<Session>>,
+): Flow<WhatIsThere> =
+  combine(savedRolls, sessions) { rolls, all ->
+    WhatIsThere(savedRolls = rolls.size, sessions = all.size)
+  }
