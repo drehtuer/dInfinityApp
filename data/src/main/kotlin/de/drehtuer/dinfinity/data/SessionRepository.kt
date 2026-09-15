@@ -59,6 +59,9 @@ class SessionRepository(
     return DEFAULT_ID
   }
 
+  /** Whether there is still a session with this id. */
+  suspend fun exists(sessionId: String): Boolean = database.sessions().byId(sessionId) != null
+
   /**
    * Starts one, and returns its id.
    *

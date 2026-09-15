@@ -23,6 +23,7 @@ import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.Outside
 import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
+import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportPresenter
@@ -37,14 +38,20 @@ import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayView
+import de.drehtuer.dinfinity.render.headless.BodyTransform
+import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
+import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -72,10 +79,11 @@ internal fun testPresenters(
   scope: CoroutineScope,
   library: SetLibrary,
   catalog: DiceCatalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+  recorder: ThrowRecorder = ThrowRecorder.NONE,
 ): Presenters {
   val saved = SavedRollRepository(database)
   return Presenters(
-    roll = { rollPresenter(catalog) },
+    roll = { rollPresenter(catalog, recorder) },
     graph = { GraphMachine(catalog) },
     savedRolls = { SavedPresenter(repository = saved, catalog = catalog, scope = scope, unfiledName = UNFILED) },
     savedRollEditor = { opening ->
@@ -138,23 +146,26 @@ private const val UNFILED = "Unfiled"
  * screen to *draw*, which is all a test about wiring needs, and it is not a
  * pretence that any dice were rolled.
  */
-private fun rollPresenter(catalog: DiceCatalog) =
-  RollPresenter(
-    machine =
-      RollMachine(
-        catalog = catalog,
-        geometry = TableGeometry.referenceDevice(),
-        table = TableLook(id = "plain", name = "Plain"),
-        simulator =
-          object : DiceSimulator {
-            override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
-          },
-        outside = Outside(seeds = { 1L }, clock = { 0L }),
-      ),
-    driver = SilentTray(),
-    rolls = Rolls { _, _ -> error("this test never throws anything") },
-    toTheScreen = { it() },
-  )
+private fun rollPresenter(
+  catalog: DiceCatalog,
+  recorder: ThrowRecorder = ThrowRecorder.NONE,
+) = RollPresenter(
+  machine =
+    RollMachine(
+      catalog = catalog,
+      geometry = TableGeometry.referenceDevice(),
+      table = TableLook(id = "plain", name = "Plain"),
+      simulator =
+        object : DiceSimulator {
+          override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
+        },
+      outside = Outside(seeds = { 1L }, clock = { 0L }),
+    ),
+  driver = SilentTray(),
+  rolls = LandingRolls,
+  toTheScreen = { it() },
+  recorder = recorder,
+)
 
 /** A tray that is asked for nothing and answers nothing. */
 private class SilentTray : Tray {
@@ -166,10 +177,23 @@ private class SilentTray : Tray {
 
   override fun surfaceLost() = Unit
 
+  /**
+   * Runs the roll to its end where it stands.
+   *
+   * The app's own tests have no frame clock, so a tray that only accepted a
+   * roll would never finish one — and a throw that cannot finish is a throw
+   * whose *recording* cannot be tested, which is exactly the thing that was
+   * broken between two modules (`docs/statistics.md`).
+   */
   override fun roll(
     start: (Renderer) -> WatchedRoll,
     onSettled: (SimulationOutcome) -> Unit,
-  ) = Unit
+  ) {
+    val live = start(HeadlessRenderer())
+    while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
+    live.outcome?.let(onSettled)
+    live.close()
+  }
 
   override fun table(
     geometry: TableGeometry,
@@ -230,4 +254,39 @@ internal class TestApp : AutoCloseable {
     database.close()
     folder.deleteRecursively()
   }
+}
+
+/**
+ * A roll that lands the moment it is asked to advance, on face zero.
+ *
+ * The app's own tests have no physics engine and no renderer, but a throw that
+ * cannot finish is a throw whose *recording* cannot be tested either — and
+ * whether a throw is recorded as the saved roll it came from is exactly the
+ * kind of thing that goes wrong between two modules rather than inside one
+ * (`docs/statistics.md`).
+ */
+private object LandingRolls : Rolls {
+  override fun start(
+    spec: ThrowSpec,
+    watcher: Renderer,
+  ): WatchedRoll =
+    object : WatchedRoll {
+      private var landed = false
+
+      override val running: Boolean get() = !landed
+
+      override val outcome: SimulationOutcome? get() =
+        if (landed) SimulationOutcome(faces = spec.dice.indices.associateWith { 0 }) else null
+
+      override fun advance(elapsedSeconds: Double): RenderFrame {
+        landed = true
+        return RenderFrame.still(
+          spec.dice.indices.map { BodyTransform(it, Vector3(0.0, 0.0, 8.0), Quaternion.Identity) },
+        )
+      }
+
+      override fun shake(sample: ShakeSample) = Unit
+
+      override fun close() = Unit
+    }
 }

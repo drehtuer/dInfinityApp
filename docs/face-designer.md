@@ -50,8 +50,15 @@ the three corners that cell meets, so two cells sharing an edge draw the same
 value at each end of it because they are reading the same corner. There is no
 second copy to disagree with and so nothing to warn about.
 
-Still to come, in `docs/TODO.md` 4.6: picking a base die, the fill bucket and
-stamp, drafts on disk, "Roll it", and the export.
+**Changing the base die starts again.** A different die has different faces, a
+different number of them, and different values under the guide, so nothing
+carries over — which is why a drawing with anything on it is asked about before
+the die changes, and a blank one simply changes. The pen, its colour and
+whether the guide is showing all stay put: those are how somebody is working
+rather than what they are working on.
+
+Still to come, in `docs/TODO.md` 4.6: the fill bucket and stamp, drafts on
+disk, "Roll it", and the export.
 
 ## Drawing tools
 

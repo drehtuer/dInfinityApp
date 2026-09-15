@@ -60,7 +60,7 @@ fun RollScreen(
   onWelcomeSeen: () -> Unit = {},
   onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
   menu: @Composable () -> Unit = {},
-  strip: @Composable ((String) -> Unit) -> Unit = {},
+  strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit = {},
   shakeToRoll: Boolean = true,
   openWith: String = "",
 ) {
@@ -163,7 +163,7 @@ private const val FIRST_ROLL = "1d20"
 private fun Controls(
   presenter: RollPresenter,
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
-  strip: @Composable ((String) -> Unit) -> Unit,
+  strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state = presenter.state
@@ -190,8 +190,10 @@ private fun Controls(
     // named comes before a die they have to assemble. Handed in as a slot, so
     // this module does not have to know what a saved roll is
     // (`design/dInfinity.dc.html`, option 9a).
-    strip { formula ->
-      presenter.type(formula)
+    strip { formula, from ->
+      // A tap on the strip is a formula *and* which roll put it there, so the
+      // throw can be recorded as that roll's. Typed formulas come with none.
+      if (from == null) presenter.type(formula) else presenter.typeSaved(formula, from)
       presenter.roll()
     }
     PickerRow(
@@ -199,6 +201,11 @@ private fun Controls(
       counts = presenter.counts,
       onAdd = presenter::add,
       onRemove = presenter::remove,
+    )
+    SetChooser(
+      sets = presenter.choosableSets,
+      chosen = presenter.pickingFrom,
+      onChoose = presenter::pickFrom,
     )
     FormulaField(
       text = presenter.text,
@@ -388,6 +395,11 @@ object RollTestTags {
   fun pickerDie(notation: String): String = "roll:picker:$notation"
 
   fun pickerCount(notation: String): String = "roll:picker:$notation:count"
+
+  /** The set chooser under the picker row, and one set on it (design option `4a`). */
+  const val SETS: String = "roll:sets"
+
+  fun setOf(setId: String): String = "roll:sets:$setId"
 
   /** The Down / Nearest / Up control, shown only for a formula that divides. */
   const val ROUNDING: String = "roll:sheet:rounding"

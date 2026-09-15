@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -87,11 +88,95 @@ fun DesignerScreen(
       menu()
     }
 
+    BaseDice(state, presenter)
     FaceCanvas(state = state, onStroke = presenter::drew)
     Warning(state)
     Tools(state, presenter)
     Palette(state, presenter)
     FaceStrip(state, presenter)
+  }
+
+  // Inline rather than its own composable, for the reason `BaseDice` is not
+  // folded in and this is: a `@Composable` costs skip branches per parameter
+  // whether or not anything ever calls it twice, and a dialog that is drawn in
+  // one place is not worth a function.
+  //
+  // A different die is a different draft — different faces, a different number
+  // of them, different values under the guide — so nothing carries over.
+  // Losing an evening's work to a mis-tap on a row of dice is not a thing that
+  // should be possible, which is the rule the statistics screen's reset
+  // follows too.
+  state.changingTo?.let { die ->
+    AlertDialog(
+      onDismissRequest = { presenter.startOver(confirmed = false) },
+      modifier = Modifier.testTag(DesignerTestTags.START_OVER),
+      title = { Text(stringResource(R.string.designer_start_over_title)) },
+      text = { Text(stringResource(R.string.designer_start_over, die.id)) },
+      confirmButton = {
+        TextButton(
+          onClick = { presenter.startOver(confirmed = true) },
+          modifier = Modifier.testTag(DesignerTestTags.START_OVER_YES),
+        ) {
+          Text(stringResource(R.string.designer_start_over_yes), color = MaterialTheme.colorScheme.error)
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { presenter.startOver(confirmed = false) }) {
+          Text(stringResource(R.string.designer_keep_drawing))
+        }
+      },
+    )
+  }
+}
+
+/**
+ * Which die is being drawn on (`docs/face-designer.md`, "Flow").
+ *
+ * Every die of every usable set, so somebody else's d18 can be drawn on as
+ * readily as the bundled d6. Above the canvas rather than below it, because it
+ * is the first decision and everything under the canvas is about the drawing.
+ *
+ * Its own composable rather than inline, unlike the dialog below: folded in it
+ * takes `DesignerScreen` past detekt's length limit, and a screen that has to
+ * be read in one sitting is worth more than two skip branches.
+ *
+ * It scrolls: a set may define a dozen dice and a name is as long as its author
+ * made it.
+ */
+@Composable
+private fun BaseDice(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  if (!state.baseChoosable) return
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 8.dp)
+        .testTag(DesignerTestTags.BASES),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    state.choosable.forEach { die ->
+      TextButton(
+        onClick = { presenter.base(die) },
+        modifier = Modifier.testTag(DesignerTestTags.baseOf(die.id)),
+      ) {
+        Text(
+          text = die.id,
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = if (die.id == state.die.id) FontWeight.Bold else FontWeight.Normal,
+          color =
+            if (die.id == state.die.id) {
+              MaterialTheme.colorScheme.onBackground
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
+      }
+    }
   }
 }
 
@@ -382,6 +467,11 @@ object DesignerTestTags {
   const val CLEAR: String = "designer:clear"
   const val GUIDE: String = "designer:guide"
   const val WARNING: String = "designer:warning"
+  const val BASES: String = "designer:bases"
+  const val START_OVER: String = "designer:start-over"
+  const val START_OVER_YES: String = "designer:start-over:yes"
+
+  fun baseOf(dieId: String): String = "designer:base:$dieId"
 
   fun nibOf(nib: Nib): String = "designer:nib:${nib.name.lowercase()}"
 

@@ -54,6 +54,9 @@ class SavedWiring(
       catalog = catalog,
       scope = scope,
       unfiledName = unfiledName,
+      // The platform half of a link: a cache directory and an HTTP client,
+      // neither of which a screen that draws a list should have to carry.
+      download = CollectionDownload(app.cacheDir)::fetch,
     )
 
   /** Writing one saved roll down, or a new one when [editing] is null. */

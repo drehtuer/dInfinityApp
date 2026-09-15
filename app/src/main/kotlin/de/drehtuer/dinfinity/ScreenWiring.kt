@@ -143,13 +143,17 @@ internal class ScreenWiring(
    */
   private fun faceDesigner(): DesignerPresenter {
     val catalogue = app.setLibrary.catalogue
-    val dice =
-      catalogue
-        .set(catalogue.defaultSetId)
-        ?.dice
-        .orEmpty()
-        .ifEmpty { catalogue.installed.flatMap { it.dice } }
-    return DesignerPresenter(dice.firstOrNull { it.shape == DieShape.Cube } ?: dice.first())
+    // Every die of every usable set, so somebody else's d18 can be drawn on as
+    // readily as the bundled d6 (`docs/face-designer.md`, "Flow"). Two sets
+    // may both define a `d20`, so the chooser is built from distinct ids:
+    // a row with the same name on it twice is a row nobody can choose from.
+    val everything = catalogue.installed.flatMap { it.dice }.distinctBy { it.id }
+    val fromDefault = catalogue.set(catalogue.defaultSetId)?.dice.orEmpty()
+    val opening = fromDefault.ifEmpty { everything }
+    return DesignerPresenter(
+      die = opening.firstOrNull { it.shape == DieShape.Cube } ?: opening.first(),
+      choosable = everything,
+    )
   }
 
   /**
@@ -167,7 +171,15 @@ internal class ScreenWiring(
     )
 
   /** What is installed, and what may be done to it (`docs/dice-sets.md`). */
-  private fun diceSets() = SetsPresenter(app.setLibrary, scope)
+  private fun diceSets() =
+    SetsPresenter(
+      library = app.setLibrary,
+      scope = scope,
+      // The platform half of a link: a cache directory and an HTTP client,
+      // neither of which a screen that lists dice sets should have to carry.
+      download = PackageDownload(app.cacheDir)::fetch,
+      latestCommit = CommitLookup()::latest,
+    )
 
   /** One of them, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`). */
   private fun diceSet(

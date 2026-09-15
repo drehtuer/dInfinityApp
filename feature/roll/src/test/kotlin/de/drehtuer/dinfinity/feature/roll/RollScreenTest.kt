@@ -1,6 +1,9 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import android.view.Surface
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsEnabled
@@ -334,15 +337,90 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.TRAY).assertExists()
   }
 
+  @Test
+  fun `there is no set chooser until there is a second set to choose`() {
+    // A chooser with one entry is furniture, which is the rule every other
+    // chooser in the app follows.
+    show()
+
+    compose.onNodeWithTag(RollTestTags.SETS).assertDoesNotExist()
+  }
+
+  @Test
+  fun `with two sets installed the row says which one it is offering`() {
+    val presenter = show(catalog = twoSets())
+
+    compose.onNodeWithTag(RollTestTags.SETS).assertExists()
+    compose.onNodeWithTag(RollTestTags.setOf(BRASS)).performScrollTo().performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.pickingFrom == BRASS }
+    compose.onNodeWithTag(RollTestTags.pickerDie("d20")).performScrollTo().performClick()
+    assertEquals("$BRASS:1d20", presenter.text)
+  }
+
+  @Test
+  fun `a tap on the strip throws that saved roll, and says which one it was`() {
+    // The slot is how the roll screen is handed saved rolls without knowing
+    // what one is. What it hands back is the formula *and* which roll put it
+    // there, so the throw can be recorded as that roll's
+    // (`docs/statistics.md`, per saved roll and per group).
+    lateinit var presenter: RollPresenter
+    compose.setContent {
+      presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
+      RollScreen(
+        presenter = presenter,
+        strip = { rollIt ->
+          Button(
+            onClick = { rollIt("1d20", SavedRollSource(rollId = "fireball", groupId = "thorin")) },
+            modifier = Modifier.testTag(STRIP_TAG),
+          ) { Text("Fireball") }
+        },
+      )
+    }
+
+    compose.onNodeWithTag(STRIP_TAG).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
+    assertEquals("1d20", presenter.text)
+  }
+
+  @Test
+  fun `a typed formula thrown from the slot belongs to no saved roll`() {
+    // The other side of the slot: a caller with nothing to attribute passes
+    // none, and the screen takes the ordinary path.
+    lateinit var presenter: RollPresenter
+    compose.setContent {
+      presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
+      RollScreen(
+        presenter = presenter,
+        strip = { rollIt ->
+          Button(onClick = { rollIt("1d6", null) }, modifier = Modifier.testTag(STRIP_TAG)) { Text("Two") }
+        },
+      )
+    }
+
+    compose.onNodeWithTag(STRIP_TAG).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
+    assertEquals("1d6", presenter.text)
+  }
+
+  private fun twoSets(): DiceCatalog =
+    DiceCatalog.of(
+      listOf(BuiltinDiceSet.set, BuiltinDiceSet.set.copy(id = BRASS, name = "Brass")),
+      BuiltinDiceSet.set.id,
+    )
+
   private fun show(
     faces: Map<Int, Int> = mapOf(0 to 0),
     land: Boolean = true,
-  ) {
+    catalog: DiceCatalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+  ): RollPresenter {
     val presenter =
       RollPresenter(
         machine =
           RollMachine(
-            catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+            catalog = catalog,
             geometry = TableGeometry.referenceDevice(),
             table = TableLook(id = "plain", name = "Plain"),
             simulator =
@@ -356,6 +434,7 @@ class RollScreenTest {
         toTheScreen = { it() },
       )
     compose.setContent { RollScreen(presenter = presenter) }
+    return presenter
   }
 
   private fun showWith(modifier: Modifier) {
@@ -390,6 +469,11 @@ class RollScreenTest {
   /** Throws the dice where it stands, so a click and its total are one act. */
   private companion object {
     const val CALLER_TAG = "caller:modifier"
+
+    /** A second installed set, which is when the chooser is worth drawing. */
+    const val BRASS = "brass"
+    const val STRIP_TAG = "test:strip"
+    const val PATIENCE = 2_000L
   }
 
   /** A tray that throws the dice where it stands and says it draws nothing. */

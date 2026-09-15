@@ -116,6 +116,32 @@ class PackageFetcherTest {
   }
 
   @Test
+  fun `a caller can ask for a smaller cap than an archive gets`() {
+    // A saved-roll collection is a page of JSON the reader refuses above a
+    // megabyte anyway, so downloading sixty-four to refuse one would be a
+    // stranger deciding how much of somebody's data allowance to spend
+    // (`CollectionDownload`).
+    val small = 4L * KIB
+    server.enqueue(MockResponse.Builder().body(zeroes(small + KIB)).build())
+
+    val result = failed(fetcher.fetch(url(), into, maxBytes = small))
+
+    assertTrue(result.reason, result.reason.contains("larger than"))
+    assertTrue("a refused download was left on disk", into.listFiles().orEmpty().isEmpty())
+  }
+
+  @Test
+  fun `a download inside the smaller cap still arrives`() {
+    // The other side of it: the cap is a bound, not a rejection of everything.
+    val small = 4L * KIB
+    server.enqueue(MockResponse.Builder().body(zeroes(small - KIB)).build())
+
+    val result = fetcher.fetch(url(), into, maxBytes = small)
+
+    assertTrue(result.toString(), result is PackageFetcher.Result.Downloaded)
+  }
+
+  @Test
   fun `a server that never says how much it is sending is capped by what arrives`() {
     // The cap counts bytes read, which is the only number that is true. A
     // declared Content-Length is not: OkHttp stops at a *small* declared one,

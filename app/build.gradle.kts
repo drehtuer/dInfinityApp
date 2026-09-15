@@ -36,5 +36,10 @@ dependencies {
   // between two feature modules can show up, so its test builds a real
   // database and gives every destination a real presenter.
   testImplementation(project(":dicesets:builtin"))
+
+  // `CollectionDownload` is the app's one outward request, so its test serves
+  // the bytes itself rather than trusting a fake.
+  testImplementation(libs.okhttp.mockwebserver)
+  testImplementation(libs.okhttp.tls)
   testImplementation(libs.androidx.room.runtime)
 }

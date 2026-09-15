@@ -18,9 +18,16 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #146 is merged and `main` is green; no
-  Dependabot PRs are open. The Pixel 10a is on the LAN and the device tier
-  runs against it, fairness harness included.
+- **Branch state:** everything up to #149 is merged. A stack of work sits on
+  top of it, and `main` is **red** until the first of it lands: Android Lint
+  treats `NewerVersionAvailable` as an error, and tomlj and Filament have both
+  released since — bumping them is its own branch, independent of the stack,
+  and it goes first.
+- **Which device the tier runs on.** The emulator in the devcontainer (API 36,
+  `x86_64`) answers most questions and is what the recent work was checked
+  against. Two things still want the Pixel 10a: whether Filament 1.76.1 looks
+  right on a real GPU, and whether the golden cases — re-recorded on the
+  emulator after the spawn streams were stirred — still match on `arm64-v8a`.
 
 ## Done
 
@@ -69,8 +76,9 @@ changelog.
   formula field with a squiggle under the part that is wrong and a one-tap fix,
   the dice picker row, the saved-roll strip, roll from the button or a shake, a
   refusal for a throw the table cannot hold, the total and its breakdown,
-  Down / Nearest / Up, pinch and pan, power-saving, first launch. Missing: the
-  set dropdown and numbers on the faces. Two things the phone found, both now
+  Down / Nearest / Up, pinch and pan, power-saving, first launch, and a set
+  chooser under the picker row that appears once a second set is installed.
+  Missing: numbers on the faces. Two things the phone found, both now
   fixed and both re-checked on it: a shake with the phone upside down pooled
   the dice at the wrong end, because the screen pinned the display to the
   rotation it opened at and the shake map reads that rotation — it now holds
@@ -93,8 +101,10 @@ changelog.
   through `core/collection`: exported through the share sheet, imported from a
   file — read before anything is written, every line wrong with a bad file
   listed, and a duplicate group name refused outright with nothing merged.
-  Importing from a URL is not built yet — and is not waiting on the `INTERNET`
-  permission, which okhttp already puts in the merged manifest.
+  **A collection also imports from a pasted `https` link** — the app's first
+  and only outward request — through the same downloader a dice set uses, and
+  what comes back is read by exactly the rules a file is. From a git repository
+  is still to come.
 - **4.4 Dice sets.** The list is on screen. `InstalledSets` reads the
   `dicesets/` folder and validates every package again on each reading, so a
   set that stopped being valid shows its report instead of vanishing; database
@@ -103,13 +113,22 @@ changelog.
   set is offered neither. Tapping one opens its details: who wrote it, under
   what licence, the link it came from with its commit, and the dice it defines
   — or, for a package that stopped validating, the report standing where the
-  dice would. A set installs from a file: picked, copied bounded into the app's
+  dice would. A set installs from a file or from a pasted `https` link:
+  picked or fetched, copied bounded into the app's
   cache, extracted and validated before anything is written, and a refusal
   lists every error — and **its dice can then be rolled**: the catalogue a
   formula resolves against is rebuilt from what is on disk and switched on, so
   installing a set is the whole of what it sounds like, and one of them can be
-  made the set a plain `d20` comes from. Still to come:
-  installing from a URL, update checking, and "my dice".
+  made the set a plain `d20` comes from. **A set can be checked for updates** and updated: the forge is asked
+  what the ref it came from is at now, a set that has moved on is badged, and
+  updating it is a re-install from the recorded source. Still to come: progress
+  and cancel, checking plain archives by checksum, and "my dice".
+- **A throw from the strip is recorded as that saved roll's.** It was not:
+  every roll went down with no saved roll and no group against it, so the
+  history's saved-roll filter found nothing and the saved-roll statistics
+  screen could never have had anything on it. Any edit to the formula drops
+  the attribution, because a roll that was Fireball and has been typed over is
+  not Fireball's throw.
 - **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
   a history row, a face count per die and a running summary, in one transaction
   — which the tables had been waiting for since version 1. The history lists
@@ -129,6 +148,16 @@ changelog.
   screen was finished but never plugged in — `MainActivity` passed no presenter
   for it, so the app drew a placeholder and every roll was filed under the
   first session whatever the player picked. Both are fixed.
+- **Defaults all behave the same way.** The default set, the default table and
+  the active session are each chosen where the thing itself is and remembered
+  with the settings. The first two fall back when their package is gone while
+  leaving the setting alone, so re-installing restores the choice; the session
+  falls back where a roll is recorded, so one deleted while another screen was
+  in front cannot strand the throws filed under it.
+- **4.6 Face designer.** Draw on a face with a finger, undo and redo a whole
+  action at a time, and choose which die to draw on — every die of every usable
+  set, with a drawing that has anything on it asked about before it is thrown
+  away.
 - **4.10 Settings, the menu and Notation.** The navigation graph is connected:
   every screen carries the same button and the menu reaches every screen —
   including **Notation**, the last row the prototype's menu had and the app did
@@ -163,6 +192,10 @@ changelog.
 
 ## Decisions pending
 
+- **What the d18 should be held to.** It is fair to better than half a percent
+  per face and cannot pass chi-squared at a hundred thousand rolls, for a
+  reason that is now understood and cannot be engineered away in this engine.
+  Restate the bar, carry it as a known defect, or drop the shape.
 - Two smaller decisions from the prototype are not yet in `docs/` (designer
   3D preview, picker remembering the last set per group) — see `docs/TODO.md`.
 
@@ -186,10 +219,19 @@ changelog.
   device.** 100,000 rolls of each catalogue shape on the Pixel 10a: seven pass
   with their χ² summing to 55.33 against 55 degrees of freedom, and the
   enneagonal trapezohedron comes to 197.34 against a limit of 40.79. The shape
-  is isohedral and the throw starts evenly over all orientations, so the body
-  the engine collides cannot be the solid the arithmetic describes. The seeds,
-  Jolt's convex radius, a dropped corner and an off-centre mass are all ruled
-  out on the phone; Step 5.2 has what is left to look at.
+  is isohedral and the throw starts evenly over all orientations, so something
+  in that argument does not hold. The body, the solver, the reading, the seeds
+  and the throw were each measured and each holds. **It is the float32 hull.**
+  Moving every corner by a ten-thousandth of the die's radius takes the d18
+  from χ² 52 to 294 and the d10 from 9.6 to 19.8 — the same asymmetry, 5.6×
+  the cost for the narrower kites, and only the d18 over its threshold; at the
+  scale of the hull's own rounding the bias keeps its size and changes its
+  shape, which is what a bias made of the representation looks like. Jolt holds
+  hull points in single precision whatever else is configured, so this is as
+  fair as the engine can make that solid. No face is off by more than 0.455 %,
+  against the 1 % this project set itself. **Whether that is a defect, a bar to
+  restate or a shape to drop is a decision waiting for a person** — it is in
+  `docs/TODO.md` under Open questions.
 - **`100d4` does not reliably settle, and never did.** Twenty-four seeds run
   out of the twelve-second cap on five of them; the same twenty-four under the
   spawn streams that preceded stirring showed two, which is well inside noise
@@ -203,7 +245,9 @@ changelog.
   run somewhere else.
 - The container's emulator is an automated-test image with no real GPU and no
   display, so `screencap` returns black. It answers "does this run", never
-  "does this look right" — the phone is the only answer to the second.
+  "does this look right" — the phone is the only answer to the second, and a
+  stretch of work checked only against the emulator is a stretch of work whose
+  *look* nobody has seen.
 - **Branch coverage sits near 70 % against a floor of 62 and has drifted down
   as the screens landed.** Seven in ten of the missed branches are inside
   `@Composable` functions, where the compiler emits a skip branch a test can

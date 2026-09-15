@@ -12,4 +12,8 @@
   <string name="designer_guide_off">Hide guide</string>
   <string name="designer_face_nearly_full">This face is nearly full — a few strokes left.</string>
   <string name="designer_face_full">This face is full. Undo something, or clear it and start again.</string>
+  <string name="designer_start_over_title">Start over?</string>
+  <string name="designer_start_over">A %1$s has different faces, so nothing you have drawn carries over.</string>
+  <string name="designer_start_over_yes">Start over</string>
+  <string name="designer_keep_drawing">Keep drawing</string>
 </resources>

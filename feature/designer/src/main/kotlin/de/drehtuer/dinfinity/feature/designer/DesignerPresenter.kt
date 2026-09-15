@@ -52,7 +52,23 @@ data class DesignerState(
   val colorArgb: Int = INK,
   /** The faint number under the drawing, which can be turned off. */
   val guideShown: Boolean = true,
+  /** The dice a drawing can be started from. */
+  val choosable: List<Die> = emptyList(),
+  /**
+   * The die a change of base is waiting to be confirmed for, or null.
+   *
+   * Its own field rather than a boolean, because what is being confirmed is
+   * *which* die: a dialog that said "throw this away?" and then had to look up
+   * what somebody had tapped is a dialog that can answer the wrong question.
+   */
+  val changingTo: Die? = null,
 ) {
+  /** The die being drawn on. */
+  val die: Die get() = draft.die
+
+  /** True when there is more than one die to start from, so a chooser is worth drawing. */
+  val baseChoosable: Boolean get() = choosable.size > 1
+
   /** The drawing on the face in front of the player. */
   val face: FaceDrawing get() = draft.face(cell)
 
@@ -97,10 +113,48 @@ data class DesignerState(
  */
 class DesignerPresenter(
   die: Die,
+  /**
+   * The dice a drawing can be started from (`docs/face-designer.md`, "Flow":
+   * any catalogue shape or any installed die).
+   *
+   * Every die of every usable set, so a d18 from somebody else's package can
+   * be drawn on as readily as the bundled d6. Empty means there is nothing to
+   * choose between and no chooser is drawn — which is not a state a real
+   * install reaches, since the bundled set is always there.
+   */
+  choosable: List<Die> = emptyList(),
 ) {
   /** What the screen draws. */
-  var state: DesignerState by mutableStateOf(DesignerState(draft = Draft(die = die)))
+  var state: DesignerState by mutableStateOf(DesignerState(draft = Draft(die = die), choosable = choosable))
     private set
+
+  /**
+   * Start again on a different die (`docs/face-designer.md`, "Flow").
+   *
+   * A different die is a different draft: the faces are a different shape,
+   * there are a different number of them, and the values under the guide are
+   * that die's. Nothing carries over, so a drawing with anything on it is
+   * **asked about first** — losing an evening's work to a mis-tap on a row of
+   * dice is not a thing that should be possible.
+   */
+  fun base(die: Die) {
+    if (die.id == state.draft.die.id) return
+    state = if (state.draft.blank) state.startingOn(die) else state.copy(changingTo = die)
+  }
+
+  /**
+   * Answers the question [base] asked: start again on that die, or keep
+   * drawing.
+   *
+   * One function and not two, because it is one question with two answers —
+   * and because the die being confirmed is held in the state rather than
+   * passed back in, so there is no way for the answer to arrive about a
+   * different die than the one that was asked about.
+   */
+  fun startOver(confirmed: Boolean) {
+    val die = state.changingTo
+    state = if (confirmed && die != null) state.startingOn(die) else state.copy(changingTo = null)
+  }
 
   /** A face was chosen, from the strip or by swiping. */
   fun show(cell: Int) {
@@ -159,3 +213,22 @@ class DesignerPresenter(
     state = state.copy(draft = state.draft.onFace(state.cell) { it.clear() })
   }
 }
+
+/**
+ * A fresh drawing on [die], keeping the tools where they were.
+ *
+ * Out here rather than in the presenter because it is a mapping and not a
+ * decision — and because the presenter is at detekt's ceiling, which is a fair
+ * warning rather than an obstacle.
+ *
+ * The pen, its colour and whether the guide is showing all stay: they are how
+ * somebody is working, not what they are working on.
+ */
+private fun DesignerState.startingOn(die: Die): DesignerState =
+  DesignerState(
+    draft = Draft(die = die),
+    nib = nib,
+    colorArgb = colorArgb,
+    guideShown = guideShown,
+    choosable = choosable,
+  )

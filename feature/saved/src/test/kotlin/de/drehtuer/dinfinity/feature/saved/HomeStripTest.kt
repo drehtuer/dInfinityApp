@@ -85,12 +85,30 @@ class HomeStripTest {
     // Different from the saved-rolls list, which only fills the field: this is
     // the one place the tray is already on screen to roll it on.
     given(roll("fireball", formula = "8d6"))
-    val thrown = mutableListOf<String>()
-    show(onRoll = thrown::add)
+    val thrown = mutableListOf<Triple<String, String, String>>()
+    show(onRoll = { formula, id, group -> thrown += Triple(formula, id, group) })
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
-    assertEquals(listOf("8d6"), thrown)
+    assertEquals(listOf(Triple("8d6", "fireball", SavedRollGroup.UNFILED_ID)), thrown)
+  }
+
+  @Test
+  fun `a tap says which roll it was, not only what to throw`() {
+    // Without it every throw is recorded as belonging to nothing, and the
+    // saved-roll statistics screen can never have anything on it
+    // (`docs/statistics.md`, per saved roll and per group).
+    runBlocking { repository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    given(roll("fireball", groupId = "thorin", formula = "8d6"))
+    val thrown = mutableListOf<Triple<String, String, String>>()
+    show(
+      onRoll = { formula, id, group -> thrown += Triple(formula, id, group) },
+      activeGroupId = "thorin",
+    )
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    assertEquals(listOf(Triple("8d6", "fireball", "thorin")), thrown)
   }
 
   @Test
@@ -108,7 +126,7 @@ class HomeStripTest {
     given(roll("fireball"))
     val thrown = mutableListOf<String>()
     val edited = mutableListOf<String>()
-    show(onRoll = thrown::add, onEdit = edited::add)
+    show(onRoll = { formula, _, _ -> thrown += formula }, onEdit = edited::add)
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performTouchInput { longClick() }
 
@@ -196,9 +214,10 @@ class HomeStripTest {
   }
 
   private fun show(
-    onRoll: (String) -> Unit = {},
+    onRoll: (String, String, String) -> Unit = { _, _, _ -> },
     onEdit: (String) -> Unit = {},
     onNew: () -> Unit = {},
+    activeGroupId: String = SavedRollGroup.UNFILED_ID,
   ) {
     val presenter =
       SavedPresenter(
@@ -206,6 +225,7 @@ class HomeStripTest {
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         unfiledName = "Unfiled",
+        activeGroupId = activeGroupId,
       )
     compose.setContent {
       HomeStrip(presenter = presenter, onRoll = onRoll, onEdit = onEdit, onNew = onNew)

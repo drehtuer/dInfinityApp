@@ -53,10 +53,20 @@ class PackageFetcher(
     ) : Result
   }
 
-  /** Fetches [url] into a new file under [into]. */
+  /**
+   * Fetches [url] into a new file under [into], refusing it once more than
+   * [maxBytes] have arrived.
+   *
+   * The cap is a parameter because what is being downloaded decides it: a dice
+   * set is an archive of textures and meshes, and a saved-roll collection is a
+   * page of JSON that the reader will refuse above a megabyte anyway
+   * (`CollectionLimits.MAX_BYTES`). Downloading sixty-four megabytes to refuse
+   * one is a stranger deciding how much of somebody's data allowance to spend.
+   */
   fun fetch(
     url: String,
     into: File,
+    maxBytes: Long = InstallLimits.MAX_DOWNLOAD_BYTES,
   ): Result {
     var current = url
     var hops = 0
@@ -64,7 +74,7 @@ class PackageFetcher(
       if (!current.startsWith("${InstallLimits.SCHEME}://", ignoreCase = true)) {
         return Result.Failed("'$current' is not an ${InstallLimits.SCHEME} link")
       }
-      when (val step = step(current, into)) {
+      when (val step = step(current, into, maxBytes)) {
         is Step.Done -> return step.result
         is Step.Redirect -> {
           current = step.to
@@ -79,6 +89,7 @@ class PackageFetcher(
   private fun step(
     url: String,
     into: File,
+    maxBytes: Long,
   ): Step {
     val response =
       runCatching { call(url) }
@@ -92,7 +103,9 @@ class PackageFetcher(
             ?.toString()
         return resolved?.let(Step::Redirect) ?: Step.Done(Result.Failed("a redirect went nowhere"))
       }
-      return Step.Done(if (it.isSuccessful) save(it, into) else Result.Failed("the server answered ${it.code}"))
+      return Step.Done(
+        if (it.isSuccessful) save(it, into, maxBytes) else Result.Failed("the server answered ${it.code}"),
+      )
     }
   }
 
@@ -111,13 +124,14 @@ class PackageFetcher(
   private fun save(
     response: Response,
     into: File,
+    maxBytes: Long,
   ): Result {
     val target = File(into, "download-${System.nanoTime()}")
     val digest = MessageDigest.getInstance("SHA-256")
     val written =
       runCatching {
         response.body.byteStream().use { input ->
-          target.outputStream().use { output -> copyBounded(input, output, digest) }
+          target.outputStream().use { output -> copyBounded(input, output, digest, maxBytes) }
         }
       }.getOrElse {
         target.discard()
@@ -125,7 +139,7 @@ class PackageFetcher(
       }
     if (written == null) {
       target.discard()
-      return Result.Failed("the download is larger than ${InstallLimits.MAX_DOWNLOAD_BYTES shr MIB_SHIFT} MiB")
+      return Result.Failed("the download is larger than the ${maxBytes shr MIB_SHIFT} MiB allowed")
     }
     return Result.Downloaded(file = target, bytes = written, sha256 = digest.digest().toHex())
   }
@@ -155,6 +169,7 @@ class PackageFetcher(
     input: java.io.InputStream,
     output: java.io.OutputStream,
     digest: MessageDigest,
+    maxBytes: Long,
   ): Long? {
     val buffer = ByteArray(BUFFER_BYTES)
     var written = 0L
@@ -162,7 +177,7 @@ class PackageFetcher(
       val read = input.read(buffer)
       if (read <= 0) return written
       written += read
-      if (written > InstallLimits.MAX_DOWNLOAD_BYTES) return null
+      if (written > maxBytes) return null
       digest.update(buffer, 0, read)
       output.write(buffer, 0, read)
     }

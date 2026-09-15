@@ -14,9 +14,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -64,6 +69,8 @@ fun SetsScreen(
   ) {
     Header(menu)
     Installing(state, onInstall)
+    FromLink(state, presenter)
+    Updates(state, presenter)
     // The note goes *above* the list rather than instead of it. The bundled
     // set is a row like any other and is always there, so replacing the list
     // would hide the one set every fallback resolves against (`5a`).
@@ -94,6 +101,44 @@ private fun Installing(
     modifier = Modifier.padding(horizontal = 8.dp).testTag(SetsTestTags.INSTALL),
   ) {
     Text(stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install))
+  }
+}
+
+/**
+ * The other way in: a link to an archive (`docs/dice-sets.md`, "Installing
+ * from a URL or file").
+ *
+ * The file comes first of the two, because it is the one that always works
+ * where a link depends on somebody else's server being up. The button is dead
+ * while an install is running and while there is nothing to fetch — an archive
+ * extracted twice at once is two installs racing for one folder, and a
+ * download of nothing is a spinner that stops for no reason.
+ */
+@Composable
+private fun FromLink(
+  state: SetsState,
+  presenter: SetsPresenter,
+) {
+  var url by rememberSaveable { mutableStateOf("") }
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    OutlinedTextField(
+      value = url,
+      onValueChange = { typed -> url = typed },
+      singleLine = true,
+      label = { Text(stringResource(R.string.sets_link_label)) },
+      modifier = Modifier.weight(1f).testTag(SetsTestTags.LINK),
+    )
+    TextButton(
+      onClick = { presenter.installFrom(url) },
+      enabled = !state.installing && url.isNotBlank(),
+      modifier = Modifier.testTag(SetsTestTags.FETCH),
+    ) {
+      Text(stringResource(R.string.sets_fetch))
+    }
   }
 }
 
@@ -227,8 +272,61 @@ private fun Sets(
 ) {
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SetsTestTags.LIST)) {
     items(state.sets, key = SetRow::id) { row ->
-      SetLine(row, onOpen = { onOpen(row) }, onHold = { presenter.act(row) })
+      SetLine(
+        row = row,
+        outdated = row.id in state.outdated,
+        onOpen = { onOpen(row) },
+        onHold = { presenter.act(row) },
+      )
       HorizontalDivider()
+    }
+  }
+}
+
+/**
+ * Asking the forges whether they have moved on (design `9h`).
+ *
+ * Drawn only when something could be asked: a set installed from a file has no
+ * forge, and a plain archive has no commits to tell apart, so on an install
+ * with neither there is nothing this button could do.
+ *
+ * What it found is said in a line rather than only on the rows, because a check
+ * that found everything current and a check that could not reach anything look
+ * identical on the list — nothing is badged either way.
+ */
+@Composable
+private fun Updates(
+  state: SetsState,
+  presenter: SetsPresenter,
+) {
+  if (!state.checkable) return
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    TextButton(
+      onClick = { presenter.checkForUpdates() },
+      enabled = !state.checking && !state.installing,
+      modifier = Modifier.testTag(SetsTestTags.CHECK),
+    ) {
+      Text(stringResource(if (state.checking) R.string.sets_checking else R.string.sets_check))
+    }
+    state.checked?.let { checked ->
+      Text(
+        text =
+          when {
+            checked.outdated > 0 ->
+              pluralStringResource(R.plurals.sets_check_outdated, checked.outdated, checked.outdated)
+            checked.allCurrent ->
+              pluralStringResource(R.plurals.sets_check_current, checked.asked, checked.asked)
+            else ->
+              pluralStringResource(R.plurals.sets_check_unreachable, checked.unreachable, checked.unreachable)
+          },
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag(SetsTestTags.CHECKED),
+      )
     }
   }
 }
@@ -244,6 +342,7 @@ private fun Sets(
 @Composable
 private fun SetLine(
   row: SetRow,
+  outdated: Boolean,
   onOpen: () -> Unit,
   onHold: () -> Unit,
 ) {
@@ -282,6 +381,17 @@ private fun SetLine(
       style = MaterialTheme.typography.bodySmall,
       color = if (row.usable) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
     )
+    // Under the status rather than replacing it: whether a set is broken or
+    // switched off is what the player can do something about first, and
+    // "there is something newer" is true whatever else the row says.
+    if (outdated) {
+      Text(
+        text = stringResource(R.string.sets_outdated),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.testTag(SetsTestTags.outdatedOf(row.id)),
+      )
+    }
   }
 }
 
@@ -329,6 +439,17 @@ private fun ActionSheet(
     },
     dismissButton = {
       Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (row.checkable) {
+          TextButton(
+            // An update is a re-install from where the set came from, and
+            // saying so at the one call site beats a wrapper that has to be
+            // kept in step with it (`SetsPresenter.installFrom`).
+            onClick = { presenter.installFrom(row.meta.source.orEmpty()) },
+            modifier = Modifier.testTag(SetsTestTags.UPDATE),
+          ) {
+            Text(stringResource(R.string.sets_sheet_update))
+          }
+        }
         TextButton(
           onClick = { presenter.remove(row) },
           modifier = Modifier.testTag(SetsTestTags.REMOVE),
@@ -353,12 +474,20 @@ private fun ActionSheet(
 object SetsTestTags {
   const val SCREEN: String = "sets:screen"
   const val LIST: String = "sets:list"
+  const val CHECK: String = "sets:check"
+  const val CHECKED: String = "sets:checked"
+  const val UPDATE: String = "sets:update"
+
+  fun outdatedOf(setId: String): String = "sets:outdated:$setId"
+
   const val EMPTY: String = "sets:empty"
   const val SHEET: String = "sets:sheet"
   const val TOGGLE: String = "sets:toggle"
   const val REMOVE: String = "sets:remove"
   const val CANCEL: String = "sets:cancel"
   const val INSTALL: String = "sets:install"
+  const val LINK: String = "sets:link"
+  const val FETCH: String = "sets:fetch"
   const val OUTCOME: String = "sets:outcome"
   const val OUTCOME_REASON: String = "sets:outcome:reason"
   const val OUTCOME_LINE: String = "sets:outcome:line"
