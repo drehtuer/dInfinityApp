@@ -150,4 +150,15 @@ enum class DieNote {
    * die was thrown (`docs/dice-notation.md`, "Limits").
    */
   ExplosionLimitReached,
+
+  /**
+   * This die called for another and the tray had nowhere to put it, so no
+   * further die was thrown (`docs/dice-notation.md`, "Limits").
+   *
+   * The other way a chain stops. An added die is dropped into the floor the
+   * settled dice leave clear, and a tray with no clear floor left cannot take
+   * one — the alternative being a die dropped on the pile, which is the one
+   * thing this app does not do (`docs/physics-and-rendering.md`).
+   */
+  TrayFull,
 }

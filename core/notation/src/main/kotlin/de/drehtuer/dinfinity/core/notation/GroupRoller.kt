@@ -148,6 +148,14 @@ internal class GroupRoller(
     chains.forEach { chain ->
       val first = chain.first()
       if (first.value > modifier.threshold) return@forEach
+      // A reroll that the tray has no room for does not happen, and the die
+      // that would have been replaced stands. The alternative is a die dropped
+      // onto a settled pile, and there is no version of this app where that is
+      // the better answer.
+      if (!extra.roomForAnother(first.instances.first().die)) {
+        first.notes += DieNote.TrayFull
+        return@forEach
+      }
       first.notes += setOf(DieNote.Dropped, DieNote.Rerolled)
       chain.add(1, again(first).also { it.notes += DieNote.Rerolled })
     }
@@ -158,6 +166,19 @@ internal class GroupRoller(
     while (chain.last().value == unitMaximum) {
       if (depth == NotationLimits.MAX_EXPLOSION_DEPTH) {
         chain.last().notes += DieNote.ExplosionLimitReached
+        return
+      }
+      // The other end of the chain: the tray has run out of clear floor, so
+      // there is nowhere to drop the die this one called for.
+      if (!extra.roomForAnother(
+          chain
+            .last()
+            .instances
+            .first()
+            .die,
+        )
+      ) {
+        chain.last().notes += DieNote.TrayFull
         return
       }
       chain += again(chain.last()).also { it.notes += DieNote.FromExplosion }
@@ -227,6 +248,21 @@ private fun DieRole.note(): Set<DieNote> =
 fun interface ExtraThrow {
   /** The index of the face [die] landed on. */
   fun roll(die: Die): Int
+
+  /**
+   * Whether the tray could take one more [die] at all.
+   *
+   * Asked before [roll], because an added die is dropped into the floor the
+   * dice already down leave clear, and a tray with no clear floor left has
+   * nowhere to drop one. A chain that runs out of table stops there and says so
+   * in the breakdown, which is the same shape the depth limit has
+   * (`docs/dice-notation.md`, "Limits"; `docs/tables.md`, "Capacity rule").
+   *
+   * It defaults to yes for the callers that are not throwing anything into a
+   * real tray — the brute-force check behind the outcome graph, and the
+   * property tests — where the question has no meaning.
+   */
+  fun roomForAnother(die: Die): Boolean = true
 }
 
 /**
