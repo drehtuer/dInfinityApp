@@ -61,6 +61,7 @@ render/
   headless/          The Renderer contract, and the renderer that draws nothing (power-saving mode)
 input/
   shake/             Sensor fusion → throw impulses
+feedback/            Impacts → haptic ticks and impact sounds (docs/physics-and-rendering.md)
 designer/            Face drawing canvas, drafts on disk → dice set export (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
 ui/
@@ -114,6 +115,12 @@ needs it, and it needs no screen.** A control that navigates does not go in —
 the menu button lives in `feature/settings` and is handed to each screen as a
 slot, because where it goes is the navigation graph's business and the
 navigation graph is `:app`'s.
+
+`feedback` is the other end of the wire `input/shake` is one end of, and it is
+shaped the same way: the thresholds, the layout in time, the pitch, the tick and
+the five waveforms are plain Kotlin, and only `SystemBuzzer` and `PcmSpeaker`
+touch an Android API. It is not in `feature/roll` because it is not about a
+screen — the tray plays through it, and the tray belongs to `render/filament`.
 
 Rule: `core/*`, `dicesets/format`, `simulation/api`, `render/headless` and
 `test-fixtures` are plain Kotlin modules with no Android dependency, so they
@@ -940,17 +947,28 @@ offer a formula the app would refuse (`docs/dice-notation.md`).
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
 | the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
+| the haptics switch | `onHapticsChanged` | whether a die landing ticks in the hand, from the next visit to the roll screen. The system's own touch-feedback setting still governs it: the effects go out under `VibrationAttributes.USAGE_TOUCH` and the app never asks whether that is on |
+| the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
 | Down / Nearest / Up | `onRoundingSelected` | which way division rounds on the next throw, and on every outcome graph. The per-throw override on the result sheet is still not remembered |
 | the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
 | **Source code and issues** | `onRepository` | a browser. The app's only outward link |
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
 
-Three of those take effect **when the roll screen next opens** rather than
-where they are pressed — power saving, the shake, and the default rounding.
-A renderer appearing under a roll in progress, sensors registering mid-throw,
-or a total changing its arithmetic while the dice are in the air are not
-settings taking effect; they are bugs (decision 16).
+Five of those take effect **when the roll screen next opens** rather than where
+they are pressed — power saving, the shake, haptics, sound and the default
+rounding. A renderer appearing under a roll in progress, sensors registering
+mid-throw, a roll that starts buzzing half way down, or a total changing its
+arithmetic while the dice are in the air are not settings taking effect; they
+are bugs (decision 16).
+
+Haptics and sound are read there rather than per throw because **both ends of
+them are built with the screen**: the thing that listens is the roll, which is
+opened with `listening = haptics || sound`, and the thing that plays holds an
+actuator, a handful of audio buffers and a thread. Reading them later would mean
+a roll that recorded impacts nobody asked for, or a player rebuilt mid-throw.
+The pair is also what the saving is measured against: with both off nothing is
+measured, rather than measured and then thrown away.
 
 `SettingsRepository` has one write, not one setter per setting. The list of
 settings is still growing, and an interface with a method for each is an
@@ -983,6 +1001,7 @@ flowchart TD
     L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows"]
     L --> D["drivenBy<br/>the shake as it actually arrived"]
     L -.->|body transforms, optional| V[Renderer]
+    L -.->|"impacts, optional"| I["Impacts<br/>ticks and sounds, now or over ~1 s"]
     S -->|face index → value<br/>keep/drop/explode, modifier| O["RollResult<br/>total, per-die breakdown,<br/>formula, timestamp"]
     D -->|"spec.copy(shake = drivenBy)"| FT["FinishedThrow.thrown<br/>the ThrowSpec that replays this roll<br/>goes no further than this screen"]
     O --> FT
@@ -996,6 +1015,12 @@ mode it is stepped as fast as the CPU allows on a background thread and only
 the outcome is delivered. Same code path, same result for the same seed — and
 "same code path" is literal: both are a `LiveRoll`, and the difference is who
 calls it (decision 48).
+
+Both dotted lines are watchers and neither has a way back: `Renderer` has no
+method that returns anything and `Impacts` has none either, so drawing a roll
+and hearing one are alike in being unable to change it (decisions 48 and 51).
+The impacts are recorded only when something is going to play them, which is
+what the two feedback settings decide when the screen opens.
 
 The loop back into `LiveRoll` is a shake. The dice are spawned when the shake
 is confirmed, so most of one arrives while they are already in the air; each
@@ -1019,6 +1044,15 @@ to re-run (decision 13).
   two, which is a change from the original design (decision 49).
 - **Sensor thread:** `SensorManager` callbacks are batched and forwarded to the
   roll thread as impulse events.
+- **Feedback thread:** one `HandlerThread` per player, which holds a cue until
+  its moment and plays it there. It exists for two reasons. In normal mode every
+  cue is due *now* and the thread does nothing but keep `AudioTrack.play` and
+  `Vibrator.vibrate` off the roll thread, which is the thread stepping the
+  physics and drawing the frame. In power-saving mode it is what "played back
+  over about a second" is made of: the roll finished in eighty milliseconds and
+  the cues are posted forward across the second after it. Nothing on it can
+  reach the roll (`docs/physics-and-rendering.md`, "Impacts, haptics and
+  sound").
 - **IO dispatcher:** database, dice set installation, texture decoding.
 
 ## Storage layout
@@ -1094,5 +1128,6 @@ kept (they are keyed by set id and die id, not by file path).
 | 47 | `render/filament` draws through a `Stage` interface, and one file implements it | The same line decision 40 draws through the physics, for the same reason and with the same shape. Which meshes a throw needs, how big each die is at the capacity rule's scale, which numbers its material takes, when the camera stops framing the tray and starts framing the dice — all judgement, and none of it physics or GPU. Behind the seam a JVM test can say the dice were the right size, that the camera moved when they settled and that a second roll did not land on top of the first; in front of it a device can only say a frame was drawn. `FilamentStage` and `FilamentEngine` are the files that hold a context, and — with `RollThread`, the thread they are made on and the lifetime they are kept for (decision 50) — the ones excluded from the coverage figure. They are split along what a surface owns: a swap chain and a viewport die with the surface they were made from, while the engine and the material compiled on the device do not — rebuilding those for every rotation is a recompile the player watches as a black tray |
 | 48 | A roll in progress is a `LiveRoll`: the loop steps one step at a time, and a `FrameClock` decides when. Power-saving mode is the same object with nobody calling the clock | The loop used to run to completion in one call, which meant a rendered roll could only be a second implementation of it — and two implementations of "the physics result *is* the roll" is one too many (goal 1). Splitting the loop at the step it was already taking costs nothing and buys the claim outright: normal mode asks for the time since the last frame, power-saving asks for the lot, and underneath it is one loop over one world taking the same steps in the same order. The clock is the other half. Handing a frame time to a solver would make the roll depend on the panel, the thermal state and whether the app was backgrounded, so the frame time stops at the clock: it is cut into whole fixed steps and the remainder becomes the moment a renderer interpolates at. That is also why a slow frame drops simulated *time* and never a step — the roll is unchanged, it simply arrives later. The dependency runs `simulation/jolt` → `render/headless`, the direction the data-flow diagram already showed: a renderer is handed frames and has no way back |
 | 51 | A die's printed numbers are a signed distance field built on the phone, from outlines generated at build time from a real typeface | Three ways to get a number onto a face, and only one of them survives being looked at closely. **Live text** renders in whatever font the device happens to have, which makes a die a different die on a different phone. **A rasterised atlas** is a picture of a digit at one size, and the whole point of the pinch is that the player chooses the size — four times in, a 64-pixel cell is a blur. **A distance field** is the shape rather than a picture of it: one byte per pixel saying how far that pixel is from the edge of the ink, and a `smoothstep` across one fragment's worth of it recovers a crisp edge at any magnification. It costs one extra sampler and a build-time step that runs about once in the life of the project (`tools/generate-font.py`, the same generator the mark uses). The outlines are flattened to polygons there rather than kept as curves, because the field is built once per die and a cubic on the phone would buy arithmetic nobody can see. Which faces are printed, how big each number is on the face it is on, where it sits and which ones need a bar under them are all Kotlin over plain polygons, so all of it is tested on a JVM — the same line decisions 40 and 47 draw, in the same place and for the same reason. `DieNumbers` says what a die carries and `FaceRoom` says how much room a face has for it, and the test that matters is the one that says no number, on any solid in the catalogue, reaches past the edge of the face it is printed on |
+| 52 | Impacts are derived in Kotlin from the change in a die's speed, not reported by the bridge; and there is one player over them with the clock as a parameter | The same line decisions 40 and 47 draw, for the third time. What an impact *is* — how hard is worth feeling, what counts as a hit rather than a slide, how many of a hundred simultaneous ones a phone can play — is judgement, and none of it is physics. Deriving it from the scalar speed the bridge already reports also keeps the wire format still: a velocity vector per die per step is three more floats crossing JNI a hundred and forty thousand times a roll, for something the scalar says. The subtraction is what makes it honest — gravity can change a free die's speed by one step's worth of its own acceleration and no more, so what it does not explain is what something else did, and a die sliding or at rest therefore reports nothing without a rule saying so. The second half is the same argument as decision 48 one level up: normal mode and power-saving mode are one list of impacts with a different spread over it, not two players, so "the recorded impacts are played back over about a second" cannot drift from what a watched tray does. It costs one branch per die per step when nothing is listening, and nothing at all when something is |
 | 50 | The roll thread and the Filament engine on it outlive a visit to the roll screen; the physics world and the scene do not | `FilamentEngine` already keeps the engine and the compiled material across every surface made from it, because compiling the dice material happens on the device for the driver that is actually there (decision 46) and costs long enough that rebuilding it per rotation *was* the black tray. A driver per visit put that cost straight back: leaving the roll screen for the menu and returning compiled the material again, and the player watched it happen. So the line is drawn one level further out — what a *visit* owns is a roll, and a roll the player walked away from never landed, so the world and the scene still go. The thread is kept with the engine rather than instead of it, because Filament only takes calls from the thread that made the engine, and an engine outliving its thread is an engine nothing may touch. What it costs is an idle thread and one engine held while the player is on another screen, against a black tray every time they come back |
 | 49 | The physics and the Filament engine share one thread, driven by that thread's own `Choreographer` | The design started with a simulation thread publishing transforms to a render thread through a lock-free double-buffer. Written down, the render side turns out to have exactly one thing it can do with a transform, which is draw it — so the buffer would be eighty entries copied across a boundary neither side wanted, and a class of bug (torn reads, a frame drawn from two different steps, a stage closed while the other thread is mid-draw) bought in exchange for overlapping a copy with a draw. Filament also insists every engine call comes from the thread that made the engine, and the physics world is single-threaded for determinism, so both halves already wanted one owner each; giving them the same owner removes the hand-off rather than synchronising it. The thread is still not the main one — eighty convex bodies at 120 Hz does not belong where the UI is drawn. What it costs is that a long physics step delays that frame, which is the same trade the frame clock's four-step catch-up cap already makes visible |

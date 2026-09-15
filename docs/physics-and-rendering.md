@@ -317,9 +317,11 @@ enough.
   record indexed by step feeds the same steps in normal mode, where it is
   consumed as it arrives, and in power-saving mode, where the session is
   replayed as a batch afterwards.
-- Optional feedback: haptic ticks on wall/die impacts above an impulse
-  threshold (rate-limited), and impact sounds with pitch/volume scaled by
-  impulse and die size. Both default on, both individually switchable.
+- A shake raises the bar an impact has to clear before it is felt or heard,
+  and deliberately: the allowance a change in speed is forgiven is measured
+  against the gravity of the step, and under a hand that is throwing four
+  gravities at the dice only real slams get through ("Impacts, haptics and
+  sound").
 
 ## Settling and reading the result
 
@@ -636,6 +638,148 @@ Targets, verified on a device (`docs/TODO.md`, Step 5): zero dice at rest
 supported by another die, fewer than 0.5 % of dice needing any correction at
 all, and **zero** corrections applied after rest.
 
+## Impacts, haptics and sound
+
+A roll that lands in silence is a number appearing. What makes it read as dice
+is the two things a table gives back — the knock in the hand and the clatter —
+and both of them come from the same place: a list of **impacts** the roll
+reports as it goes.
+
+### What an impact is, and where it is decided
+
+`Impact` is one moment where a die hit something: which step, which die, what it
+struck, how hard, and how big the die was at the scale the capacity rule threw
+it. It is a *reading* of the roll and never an input to it. Nothing about an
+impact reaches the solver, the correction ladder does not consult it, and the
+same seed comes to the same faces with something listening and with nothing —
+which `ImpactRecorderTest` asserts rather than assumes, on a roll driven through
+the whole ladder.
+
+It is decided in Kotlin over the `PhysicsWorld` seam, like everything else about
+a roll that only looks like physics (`docs/architecture.md`, decision 40).
+Nothing was added to the JNI wire format for it: a velocity *vector* per die per
+step would be three more floats across the boundary a hundred and forty thousand
+times a roll, to say something the scalar speed already says.
+
+**The rule is subtraction.** Between one step and the next, gravity alone can
+change a free die's speed by `|g| × 1/120 s` and no more, and friction on a
+sliding die takes away less than that again. So the part of a change that
+gravity does *not* explain is the part something else did — and that is an
+impact. Two consequences fall straight out of it, and they are exactly what
+Step 5.6 asks for:
+
+- **a die sliding reports nothing**, because friction cannot take more out of it
+  in a step than the allowance covers; and
+- **a die at rest reports nothing**, because its speed does not change at all.
+
+The allowance is *twice* the step's gravity rather than once, because a shake
+can reverse which way the force points between one step and the next, and a die
+falling through that reversal changes speed by twice the allowance without
+touching anything. Under ordinary gravity that is 163 mm/s, which no landing
+comes near; under a four-gravity shake it rises to about 830 mm/s and only real
+slams are reported, which during a shake that hard is the right answer anyway.
+
+What a die struck is read off the contacts the bridge already reports: a wall,
+the floor, or — when it is touching nothing the tray owns and has just lost
+speed — another die.
+
+Three bounds keep it cheap and keep it honest. A die is left alone for six steps
+after an impact, so one landing is one event rather than the burst of contact
+steps it actually is. The record stops at 4,096 impacts, an order of magnitude
+above the worst case measured, so a physics bug cannot turn it into a leak. And
+when **neither** haptics nor sound is on, the roll records nothing at all rather
+than recording and then muting: that is the one thing those two settings save.
+
+### One list, two clocks
+
+The same list of impacts is played in both modes, and the only difference is the
+clock laid over it.
+
+- **On a watched tray** the frame callback is the clock. Each frame hands over
+  the impacts the steps it just took produced, with no time to spread them
+  across, because they have already happened.
+- **In power-saving mode there are no frames.** The throw finishes in under a
+  tenth of a second of wall time, so the whole list is handed over once the dice
+  have stopped and played across about a second — which is what the design has
+  always said this mode does.
+
+Both go through `ImpactTrack.cues`, which is one function with one parameter for
+the spread, so there is no second player to keep in step with the first. That is
+the same argument `LiveRoll` makes about the two modes one level down
+(`docs/architecture.md`, decision 48).
+
+It also thins. A hundred dice landing together are a hundred impacts inside a
+few steps, and a phone can neither tick nor speak a hundred times in that
+window — it would be one long buzz and one smeared noise. At most one cue
+survives per 45 ms, and the one that survives is the hardest of them: the sound
+of a roll is its loudest moments, not its average. A second of playback is
+therefore at most twenty-two cues however many dice were thrown.
+
+### Haptics
+
+A tick, never a buzz: 8 ms at the faintest impact worth feeling and 22 ms at the
+hardest, with the amplitude following the same curve. A die landing is an event
+rather than a state.
+
+- `VibratorManager` and `VibrationEffect`, through `SystemBuzzer`, which is the
+  only file in the app that names a vibration API.
+- **The system's own haptic setting governs them and the app does not check
+  it.** Effects go out under `VibrationAttributes.USAGE_TOUCH`, which is the
+  usage Android's touch-feedback switch applies to — so a player who has turned
+  haptic feedback off in their phone gets none from here without this app having
+  an opinion about it.
+- **It degrades rather than failing.** No vibrator at all and every tick is a
+  no-op; no amplitude control and the system's own `EFFECT_TICK` is used instead
+  of a one-shot the phone would round to "on" anyway.
+- `android.permission.VIBRATE` is declared by `feedback`'s own manifest rather
+  than the application's, because that is the module that calls the API. It is a
+  normal permission, granted at install, with nothing to ask the player at
+  runtime.
+
+### Sound
+
+A table names one of five presets — `felt`, `wood`, `glass`, `stone`,
+`plastic` — rather than shipping audio, because an audio file is large and every
+decoder is an attack surface (`docs/tables.md`). The app therefore has to have
+the five, and there are two ways to have them: ship them as assets and decode
+them, or generate them.
+
+**They are generated**, in plain Kotlin, and written straight into a static
+`AudioTrack` buffer as sixteen-bit mono PCM. So **no decoder takes part at
+all** — not on a stranger's file and not on ours. That is the format's own
+argument carried one step further than it had to be, and it is also what makes
+the five testable: a decoded asset would be a file to trust, and this is
+arithmetic with an answer.
+
+A die hitting a table is a short burst that dies away: some ringing at a pitch
+the surface decides, and some noise in a mix the surface also decides. Four
+numbers per preset say the whole of it — a base frequency, a decay time, a noise
+share and a second partial that is deliberately not a whole multiple, because a
+struck plate or block is not a tone generator. Felt is almost all noise and gone
+in a fiftieth of a second; glass is almost all ring and hangs on ten times as
+long. The noise comes from a `Seeds`-stirred stream keyed by the preset and the
+ringing from `Exact`, so a table sounds the same on every launch and on every
+phone.
+
+**Pitch tracks impulse and die size** (`docs/TODO.md`, Step 5.6), and both
+halves are physical rather than decorative. A small solid rings higher than a
+big one of the same stuff in inverse proportion to its size, so a die shrunk by
+the capacity rule comes up brighter and a 25 mm d20 comes down — which is what a
+handful of real dice sounds like. A harder knock excites more of the high
+partials of whatever it hits, so strength lifts the pitch a little as well as
+the volume. The whole range is clamped to an octave either way, which is as far
+as a short impact sound stays recognisable.
+
+**Dice hitting each other sound like dice**, whatever the table is made of, so
+they take the plastic preset — which is what a set of acrylic dice is. The table
+decides everything else, which is what a `sound` preset means.
+
+`PcmSpeaker` keeps a pool of three voices per sound in play — the table's, and
+the plastic that dice use on each other — and plays round-robin, cutting the
+oldest tail short to make room, which is what a real pile of dice does to
+itself. An audio device that will not give it a track is a phone that plays no
+impact sounds rather than a crash in the middle of a roll.
+
 ## Rendering (normal mode)
 
 - Filament scene: tray mesh, one renderable per die, a key directional light
@@ -833,8 +977,12 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
   breakdown as plain text/graphics.
 - Shake input still works: the shake session is recorded, then fed to the
   simulation as a batch.
-- Haptics and sounds can stay on; they are then triggered from recorded
-  impact events played back over ~1 s rather than in real time.
+- Haptics and sound stay on, and are the one thing this mode has to do
+  differently: there are no frames to pace them, so the impacts the dice
+  actually made are handed over once the throw has landed and played across
+  about a second rather than in real time. It is the same list and the same
+  player as a watched tray uses, with a different clock over it ("Impacts,
+  haptics and sound").
 - Power-saving is a setting the user turns on or off. It is never switched
   automatically — not on a low battery, not by the system's battery saver.
   A roll that silently stops being rendered because the battery dipped is a

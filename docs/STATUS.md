@@ -23,9 +23,11 @@ changelog.
 ### Branch state
 
 `main` has everything up to **#182** and is **green**: both test tiers, ktlint,
-detekt and Android Lint. In flight: `feature/shake-record` — a shake-driven
-throw's record now carries the shake that drove it, so a roll can be replayed
-from it (and stops there: nothing below the roll screen can hold one).
+detekt and Android Lint. In flight, stacked in this order:
+`feature/shake-record` — a shake-driven throw's record now carries the shake
+that drove it, so a roll can be replayed from it (and stops there: nothing below
+the roll screen can hold one); and `feature/haptics` on top of it — **the dice
+can be felt and heard.**
 
 ### Which device the tier runs on
 
@@ -46,7 +48,7 @@ different bug each time (`docs/build-setup.md`).
 - **The specification.** `README.md`, `docs/` and the clickable prototype in
   `design/`, cross-referenced both ways and published at
   <https://drehtuer.github.io/dInfinityApp/>. GPL-2.0-or-later.
-- **The skeleton and CI.** Devcontainer, convention plugins, 26 modules, the
+- **The skeleton and CI.** Devcontainer, convention plugins, 27 modules, the
   Modernist theme, the navigation graph. Every linter and both test tiers run
   on each pull request; SonarQube blocks on its gate and JaCoCo on a function
   *and* branch floor. Dependencies pinned by SHA-256; a `vX.Y.Z` tag cuts a
@@ -84,6 +86,10 @@ is mostly polish, the export paths, and the things that need a phone.
   outlines turned into a distance field per die, so a `6` stays a `6` at four
   times in, and barred when the same die also carries a `9` — the rule a
   moulded die follows. A d4 prints three to a triangle, one at each corner.
+  **And they are felt and heard as they land**: a roll reports the impacts it
+  made, one player lays them out in wall time — as they happen on a watched
+  tray, across about a second in power-saving mode — and the five table sounds
+  are generated in Kotlin rather than shipped, so no decoder is in the path.
 - **4.2 Graph, 4.3 Saved rolls, 4.4 Dice sets, 4.5 Tables, 4.7–4.9 Statistics,
   history and sessions, 4.10 Settings and Notation.** All built. Collections
   travel as JSON and arrive from a file, a link or a git repository — one
@@ -103,7 +109,8 @@ is mostly polish, the export paths, and the things that need a phone.
 - **Judgements that need a person and a phone**, all listed in `docs/TODO.md`:
   whether the dice have weight, whether 16 mm dice read too small, whether the
   empty table looks worth rolling on, whether four times in is the right pinch
-  limit. None of them blocks anything else. `screencap` on the phone returns a
+  limit, and now whether the haptics land and whether five generated waveforms
+  sound like felt, oak, glass, stone and plastic. None of them blocks anything else. `screencap` on the phone returns a
   real frame, so what a screen *contains* can be checked from here — that is
   how the menu's invisible header was found — but whether a thing feels right
   is still a person's call.
@@ -148,10 +155,10 @@ is mostly polish, the export paths, and the things that need a phone.
   *devices* of the same ABI and across time.
 - The container's emulator has no real GPU and no display, so `screencap`
   returns black. It answers "does this run", never "does this look right".
-- **Branch coverage is 69.2 % against a floor of 62**, and the drift that used
+- **Branch coverage is 69.6 % against a floor of 62**, and the drift that used
   to come with every screen has stopped: seven in ten of the missed branches
   are Compose skip branches a test can only take one side of, and the answer —
   lift decisions out of draw lambdas, give shared components their own tests,
   add recomposition tests that take the other side — has held the number flat
   or moved it up in each of the last six pull requests. Function coverage is
-  91.7 % against a floor of 85.
+  91.8 % against a floor of 85.

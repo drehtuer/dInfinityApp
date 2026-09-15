@@ -167,6 +167,19 @@ Rules:
 - Sound and light are names from built-in lists so a package cannot ship
   audio files or HDR environment maps (both are large and both are attack
   surface for decoders). More presets can be added to the app over time.
+- **The app does not ship the five sounds either; it makes them.** Each preset
+  is a short burst generated in plain Kotlin — a ring at a pitch the surface
+  decides, a share of noise, and a decay — written straight into an `AudioTrack`
+  as raw PCM. So no decoder takes part at all, on a stranger's file or on the
+  app's own, which is this rule carried one step further than it had to be. Felt
+  is almost all noise and gone in a fiftieth of a second; glass is almost all
+  ring and hangs on ten times as long
+  (`docs/physics-and-rendering.md`, "Impacts, haptics and sound").
+- **A `sound` names what the *table* sounds like, not what the roll sounds
+  like.** Dice hitting each other sound like dice whatever they are landing on,
+  so those impacts take the `plastic` preset — which is what a set of acrylic
+  dice is — and the table's preset covers the floor and the walls. A player who
+  wants none of it turns sound off in Settings.
 - Unknown keys are ignored with a warning.
 
 ### Built-in tables
@@ -228,4 +241,6 @@ be exported with the rest of `mine`.
   anything else typed.
 - Power-saving mode ignores the table look entirely; the physics values of
   the *selected* table are still used so the roll is identical to what
-  normal mode would produce.
+  normal mode would produce. Its `sound` is still used too — nothing is drawn
+  there, but the dice are still heard, from the impacts the throw actually made
+  (`docs/physics-and-rendering.md`, "Power-saving mode").

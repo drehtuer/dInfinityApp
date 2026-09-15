@@ -95,7 +95,6 @@ What is below is what it does not have yet.
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
-- [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -295,8 +294,12 @@ the assertion is simply that none of them draws one. Both halves were checked
 by putting the original bug back: removing the sessions screen's dispatch turns
 the list into `[sessions]`.
 
-Appearance, the accent, shake, the default rounding, power saving, the version
-and the repository link are all there, and each of them does something.
+Appearance, the accent, shake, haptics, sound, the default rounding, power
+saving, the version and the repository link are all there, and each of them does
+something. Haptics and sound are one section with two switches, because they are
+one answer to one question and because with both off a roll records no impacts
+at all — the pair is what the saving is measured against
+(`docs/physics-and-rendering.md`, "Impacts, haptics and sound").
 
 All three defaults now behave the same way, which was the point of the item
 that used to be here: the default **set**, the default **table** and the active
@@ -307,7 +310,6 @@ restores the choice; the session falls back where a roll is *recorded*, because
 a session deleted while another screen was in front would otherwise strand
 every throw filed under it (`docs/statistics.md`, per session).
 
-- [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone
@@ -391,7 +393,9 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - [ ] *Judge the formula editor on the phone:* whether a dashed rule under the formula reads as "you can type here", and whether a keyboard over the lower half of the tray is right or wants the tray to shift up while the editor is open (`design/dInfinity.dc.html`, option 2a)
 - [ ] The rim's shadow still looks wrong — the band across the top of the wall casts something that does not read as a rim. Lighting and the shadow map, not geometry, on present evidence
 - [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
-- [ ] Haptics fire on real impacts only, sound pitch tracks impulse and die size
+- [ ] **Do the haptics land?** They fire on real impacts only and the rule is asserted rather than tuned: a change in a die's speed that the step's own gravity explains is never reported, so a die sliding and a die at rest are silent by construction. What a phone has to answer is the *feel* — whether a die hitting the tray reads as a knock rather than a rattle, whether one die landing among twenty is still felt, and whether the 45 ms rate limit turns a hundred dice into a handful of distinct knocks or into one long buzz. Listen for: a single d20 landing, then `20d6`, then `100d6`
+- [ ] **Do the five tables sound like their materials?** The sounds are generated rather than recorded (`docs/physics-and-rendering.md`), so this is the first time anybody hears them. Roll the same `5d6` on `felt-green`, `oak`, `dark-glass` and `plain` and say whether each reads as its surface; then roll `2d20` and `20d6` on one table and say whether the pitch difference between a big die and a shrunk one reads as dice of different sizes or as an effect. If a preset is wrong, the four numbers behind it are in `ImpactWaveform`
+- [ ] **Does power-saving mode's second read as the roll?** There are no frames there, so the impacts are replayed across about a second after the dice have stopped. Whether that sounds like a throw that happened or like a sound effect played at you is the judgement — and whether a second is the right length
 - [ ] Settled faces are legible at arm's length without zooming. The *size* is settled — 16 mm reads fine on the Pixel 10a — and the numbers are drawn now. What is left to judge is one number: `DieNumbers.FACE_SHARE`, how much of the room a face has a numeral takes up. Everything else about the size is solved from the face itself, so this is the only knob and it moves every shape at once. The d4's three-to-a-triangle (`CORNER_HEIGHT`) is the second question, and the d18 is the third — its kites are long enough that its numbers are a third the size of a d6's, which is the shape question already open below
 - [ ] Power-saving feels instant and gives the same answer
 
@@ -461,6 +465,14 @@ The figures are reported in every PR description either way.
 
 ## Open questions
 
+- [ ] **Should a heavy die sound heavier?** An impact reports the change in a
+      die's speed, which is impulse per unit of mass, and the sound follows that
+      and the die's *size*. A die's `density` — which a set may put anywhere from
+      balsa to brass — reaches the physics and does not reach the sound, so a
+      brass d6 and a resin d6 of the same size land with the same noise. Adding
+      it means giving the impact a mass, which means a hull volume the shape
+      catalogue does not currently compute. Worth it or not is a judgement about
+      how much anybody would notice (`docs/dice-sets.md`, "Size")
 - [ ] `core/probability` hand-rolls its convolution and its FFT rather than
       taking a library, which `.claude/CLAUDE.md` names as a "complex part".
       The judgement was that the exact PMF *is* the domain logic and that
