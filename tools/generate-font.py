@@ -39,6 +39,24 @@ def parse_args(argv=None):
     return parser.parse_args(argv)
 
 
+def out_file(out, *parts):
+    """A path under `out`, with its directory made.
+
+    Both arguments come from the command line, so the destination is resolved
+    and checked to be inside `out` before anything is written. Nothing hostile
+    is expected — a developer runs this by hand, about once in the life of the
+    project — but a generator that can be talked into writing outside the tree
+    it was pointed at is worth a few lines to rule out. The same guard
+    `generate-logo.py` carries, for the same reason.
+    """
+    root = out.resolve(strict=True)
+    destination = root.joinpath(*parts).resolve()
+    if not destination.is_relative_to(root):
+        raise ValueError(f"refusing to write outside {root}: {destination}")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    return destination
+
+
 class FlattenPen(BasePen):
     """Outlines as closed polygons, in em units with the baseline at zero."""
 
@@ -125,10 +143,7 @@ def main(argv=None):
         glyph_set[name].draw(pen)
         glyphs[character] = (hmtx[name][0] / upem, pen.contours)
 
-    destination = args.out.resolve(strict=True) / (
-        "core/glyphs/src/main/resources/glyphs/builtin-font.txt"
-    )
-    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination = out_file(args.out, "core/glyphs/src/main/resources/glyphs/builtin-font.txt")
     destination.write_text(render(glyphs, args.weight), encoding="utf-8")
     print(f"wrote {destination} ({destination.stat().st_size} bytes)")
     for character, (advance, contours) in glyphs.items():

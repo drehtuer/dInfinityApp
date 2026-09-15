@@ -60,41 +60,13 @@ object Typesetter {
   ): List<DoubleArray> {
     val glyphs = glyphsOf(text, face)
     val pens = pensOf(glyphs)
-    val ink = inkOf(glyphs, pens) ?: return emptyList()
-    val scale = at.height / face.figureHeight
-    val angle = at.turns * FULL_TURN
-    val turn = cos(angle) to sin(angle)
-    // The bar goes below the baseline, so the whole block is taller than the
-    // text and sits low unless the text is lifted by half of what it added.
-    val lift = if (at.underlined) (RULE_GAP + RULE_THICKNESS) * face.figureHeight / 2 else 0.0
+    val line = Line.of(glyphs, pens, at, face) ?: return emptyList()
 
     val letters =
       glyphs.flatMapIndexed { index, glyph ->
-        glyph.contours.map { points -> place(points, pens[index], ink, face, scale, turn, at, lift) }
+        glyph.contours.map { points -> line.place(points, pens[index]) }
       }
-    return if (at.underlined) letters + rule(ink, face, scale, turn, at, lift) else letters
-  }
-
-  /**
-   * The bar under an underlined number.
-   *
-   * As wide as the ink above it rather than as wide as the advance, because a
-   * rule under `6` that ran the width of the character box would be wider than
-   * the digit and read as a fraction.
-   */
-  @Suppress("LongParameterList")
-  private fun rule(
-    ink: Glyph.Bounds,
-    face: Typeface,
-    scale: Double,
-    turn: Pair<Double, Double>,
-    at: Placement,
-    lift: Double,
-  ): DoubleArray {
-    val top = -RULE_GAP * face.figureHeight
-    val bottom = top - RULE_THICKNESS * face.figureHeight
-    val bar = doubleArrayOf(ink.minX, bottom, ink.maxX, bottom, ink.maxX, top, ink.minX, top)
-    return place(bar, pen = 0.0, ink = ink, face = face, scale = scale, turn = turn, at = at, lift = lift)
+    return if (at.underlined) letters + line.rule() else letters
   }
 
   /**
@@ -155,31 +127,74 @@ object Typesetter {
         glyph.inkBounds?.let { it.copy(minX = it.minX + pens[index], maxX = it.maxX + pens[index]) }
       }.reduceOrNull(Glyph.Bounds::plus)
 
-  @Suppress("LongParameterList")
-  private fun place(
-    points: DoubleArray,
-    pen: Double,
-    ink: Glyph.Bounds,
+  /**
+   * One line of text being laid out: everything about it that is the same for
+   * every contour of every glyph in it.
+   *
+   * A class rather than seven arguments handed down, because that is what the
+   * arguments were — a scale, a turn, where the middle of the ink sits, how far
+   * the whole line is lifted to make room for a bar, and where it all lands.
+   */
+  private class Line(
+    private val ink: Glyph.Bounds,
+    private val at: Placement,
     face: Typeface,
-    scale: Double,
-    turn: Pair<Double, Double>,
-    at: Placement,
-    lift: Double,
-  ): DoubleArray {
-    val (cosine, sine) = turn
-    val out = DoubleArray(points.size)
-    var index = 0
-    while (index < points.size) {
-      // Font space, with the line's middle brought to the origin.
-      val x = (points[index] + pen - ink.centreX) * scale
-      val y = (points[index + 1] - face.figureHeight / 2 + lift) * scale
-      // Turned anticlockwise as seen on the face, which is clockwise in image
-      // coordinates because they count downwards.
-      out[index] = at.centreX + x * cosine - y * sine
-      out[index + 1] = at.centreY - (x * sine + y * cosine)
-      index += 2
+  ) {
+    private val figureHeight = face.figureHeight
+    private val scale = at.height / figureHeight
+    private val cosine = cos(at.turns * FULL_TURN)
+    private val sine = sin(at.turns * FULL_TURN)
+
+    /**
+     * How far the whole line is lifted to make room for its bar.
+     *
+     * The bar goes below the baseline, so the block is taller than the text
+     * and sits low unless the text is lifted by half of what it added.
+     */
+    private val lift = if (at.underlined) (RULE_GAP + RULE_THICKNESS) * figureHeight / 2 else 0.0
+
+    /** [points], in font space, put where this line goes in the cell. */
+    fun place(
+      points: DoubleArray,
+      pen: Double,
+    ): DoubleArray {
+      val out = DoubleArray(points.size)
+      var index = 0
+      while (index < points.size) {
+        // Font space, with the line's middle brought to the origin.
+        val x = (points[index] + pen - ink.centreX) * scale
+        val y = (points[index + 1] - figureHeight / 2 + lift) * scale
+        // Turned anticlockwise as seen on the face, which is clockwise in
+        // image coordinates because they count downwards.
+        out[index] = at.centreX + x * cosine - y * sine
+        out[index + 1] = at.centreY - (x * sine + y * cosine)
+        index += 2
+      }
+      return out
     }
-    return out
+
+    /**
+     * The bar under an underlined number.
+     *
+     * As wide as the ink above it rather than as wide as the advance, because
+     * a rule under `6` that ran the width of the character box would be wider
+     * than the digit and read as a fraction.
+     */
+    fun rule(): DoubleArray {
+      val top = -RULE_GAP * figureHeight
+      val bottom = top - RULE_THICKNESS * figureHeight
+      return place(doubleArrayOf(ink.minX, bottom, ink.maxX, bottom, ink.maxX, top, ink.minX, top), pen = 0.0)
+    }
+
+    companion object {
+      /** The line these glyphs make at this placement, or null when they have no ink. */
+      fun of(
+        glyphs: List<Glyph>,
+        pens: List<Double>,
+        at: Placement,
+        face: Typeface,
+      ): Line? = inkOf(glyphs, pens)?.let { Line(ink = it, at = at, face = face) }
+    }
   }
 
   /** How thick an underline is, as a fraction of the figure height. */
