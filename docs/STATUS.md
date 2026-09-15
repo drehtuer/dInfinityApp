@@ -104,8 +104,9 @@ is mostly polish, the export paths, and the things that need a phone.
   tray the die being drawn. Most of the `4c` toolbar is there: a fill bucket
   that adds a region rather than flooding pixels, copy face → paste with a
   turn and a mirror, and a colour picker past the twelve presets. Still to
-  come: the stamp and "fill all faces with numbers", both of which place a
-  glyph and so both wait on the SDF font, and the export.
+  come: the stamp and "fill all faces with numbers" — both place a glyph, and
+  the font they would take it from exists now, so what is left there is wiring
+  rather than waiting — and the export.
 
 ## Blocked / waiting on
 

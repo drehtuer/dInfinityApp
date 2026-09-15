@@ -220,12 +220,17 @@ three-numbers-per-corner rule is **derived rather than checked** — a cell's
 numbers are read from the corners it meets, so two cells sharing an edge cannot
 be made to disagree along it.
 
-- [ ] Stamp a digit, letter or symbol from the built-in font, and the
-      "fill all faces with numbers" one-tap starting point that places the same
-      glyphs. Both wait on the **SDF font** in Step 3 — there is nothing yet to
-      take a glyph from. The rest of the `4c` toolbar is built: the fill
-      bucket, copy face → paste with a turn and a mirror, and the colour picker
-      past the twelve presets
+- [ ] Stamp a digit or a sign from the built-in font, and the "fill all faces
+      with numbers" one-tap starting point that places the same glyphs. The
+      font is there now — `core/glyphs` holds the outlines the tray prints
+      with, and `Typesetter.lay` already turns a label into contours in a unit
+      cell — so what is left is turning those contours into the designer's own
+      marks and deciding where "fill all faces" puts them. It is the same
+      placement the tray solves per face (`render/filament`'s `FaceRoom`), and
+      the two agreeing matters: a die drawn from the numbers and the same die
+      printed should not disagree about where a `6` sits. The rest of the `4c`
+      toolbar is built: the fill bucket, copy face → paste with a turn and a
+      mirror, and the colour picker past the twelve presets
 - [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
 - [ ] Export to a real dice set through the standard validator: atlas at 256 px per cell, transparent cells, generated `diceset.toml`, licence asked for before sharing
 - [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"
