@@ -172,7 +172,64 @@ class SafeExtractorTest {
   fun `an archive with no set file in it is refused`() {
     val archive = Archives.tarGz(workspace, mapOf("pkg/README.md" to "hi".encodeToByteArray()))
     val result = refused(extractor.extract(archive, workspace))
-    assertEquals(RejectionReason.NoDiceSet, result.reason)
+    assertEquals(RejectionReason.NotInTheArchive, result.reason)
+    assertNothingLeftBehind()
+  }
+
+  @Test
+  fun `what may be written is the limits' to say, not this class's`() {
+    // The lifted piece, exercised as a piece: the same archive, unpacked under
+    // an allowlist of one extension, writes one file and skips the other. It
+    // is what lets a saved-roll collection come down the same path as a dice
+    // set without either of them learning about the other
+    // (`docs/dice-notation.md`, "Export and import").
+    val archive =
+      Archives.tarGz(
+        workspace,
+        mapOf(
+          "pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray(),
+          "pkg/README.md" to "hi".encodeToByteArray(),
+        ),
+      )
+    val narrow = SafeExtractor(ArchiveLimits(allowedExtensions = setOf("toml")))
+
+    val result = extracted(narrow.extract(archive, workspace))
+
+    assertEquals(1, result.files)
+    assertEquals(1, result.skipped)
+    assertTrue("a file off the allowlist reached the disk", !File(result.root, "README.md").exists())
+  }
+
+  @Test
+  fun `what counts as the package is the root's to say, not this class's`() {
+    // A package marked by something other than a dice set file: the extractor
+    // does not know what it is unpacking, and does not need to.
+    val archive = Archives.tarGz(workspace, mapOf("repo-abc/rolls.txt" to "x".encodeToByteArray()))
+    val byTxt =
+      SafeExtractor(
+        limits = ArchiveLimits(allowedExtensions = setOf("txt")),
+        wanted = { destination, _ ->
+          destination
+            .walkTopDown()
+            .firstOrNull { it.isFile && it.name == "rolls.txt" }
+            ?.parentFile
+            ?.let(PackageRoot.Found::Folder)
+            ?: PackageRoot.Found.Missing(RejectionReason.NotInTheArchive, "no rolls.txt in the archive")
+        },
+      )
+
+    assertEquals("repo-abc", extracted(byTxt.extract(archive, workspace)).root.name)
+  }
+
+  @Test
+  fun `a root that finds nothing is a refusal that leaves nothing behind`() {
+    val archive = Archives.tarGz(workspace, mapOf("pkg/diceset.toml" to Archives.MINIMAL_TOML.encodeToByteArray()))
+    val never =
+      SafeExtractor(wanted = { _, _ -> PackageRoot.Found.Missing(RejectionReason.NotInTheArchive, "nothing here") })
+
+    val result = refused(never.extract(archive, workspace))
+
+    assertEquals("nothing here", result.detail)
     assertNothingLeftBehind()
   }
 
@@ -216,7 +273,7 @@ class SafeExtractorTest {
   @Test
   fun `a subfolder that is not in the archive is not found`() {
     val result = refused(extractor.extract(Archives.wellFormed(workspace), workspace, subfolder = "sets/nothing"))
-    assertEquals(RejectionReason.NoDiceSet, result.reason)
+    assertEquals(RejectionReason.NotInTheArchive, result.reason)
   }
 
   /** The result, insisting it was an extraction. */

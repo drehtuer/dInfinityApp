@@ -334,10 +334,15 @@ Install flow:
    - Reject total uncompressed size > 64 MiB or > 500 entries, counted **as the
      archive is read**. A thing that expands to a terabyte has to be refused at
      the megabyte where that becomes obvious.
-   - Only extract files whose extensions are on the allowlist
-     (`toml, png, webp, obj, md, txt`). Anything else is skipped rather than
-     refused: a repository is entitled to contain a `.gitignore`.
-4. Locate `diceset.toml` (at the root or at the given subfolder).
+   - Only extract files whose extensions are on the allowlist — for a dice set,
+     `toml, png, webp, obj, md, txt`. Anything else is skipped rather than
+     refused: a repository is entitled to contain a `.gitignore`. The
+     allowlist, the size cap and the entry count are the *caller's* to name, so
+     that a saved-roll collection can come down this same path under bounds of
+     its own (below).
+4. Locate `diceset.toml` (at the root or at the given subfolder). Which file
+   marks the package is the caller's to name as well; everything before this
+   step is identical whatever is being unpacked.
 5. Run the validator (below). On failure: delete the temp folder, show the
    report.
 6. On success: move the folder atomically to `dicesets/<set.id>/`. If a set
@@ -435,8 +440,24 @@ forty or sixty-four hex digits and nothing else in the reply is read; if it is
 not one, the set still installs and only the update check is poorer for it. A
 forge is a stranger like any other host (`SECURITY.md`).
 
-The same fetch and extraction path is used for saved-roll collections
+**The same fetch and extraction path is used for saved-roll collections**
 (`docs/dice-notation.md`), which are a single JSON file rather than a folder.
+A repository of them is recognised here, by the same table of forges above, and
+fetched and unpacked by the same code under the same refusals. Two things are
+named differently and nothing else is:
+
+| Named by the caller | Dice set | Saved-roll collection |
+| --- | --- | --- |
+| What marks it | `diceset.toml`, anywhere in the archive or at the named subfolder | one `*.dinfinity.json`, at the repository root |
+| What may be written | `toml, png, webp, obj, md, txt` | `json` |
+| What it may expand to | 64 MiB | 1 MiB, the size a collection may itself be |
+| What is kept afterwards | the folder, under `dicesets/<id>/` | nothing; the rolls go into the database and the unpacked folder is deleted |
+
+The marker file is the same idea in both: a package says what it is by a name
+everybody agrees on, at a place everybody can find. A collection's is at the
+root and there may be only one, because a link names a repository rather than a
+file — an import that quietly chose between two would be choosing for
+somebody.
 
 ## Validation
 
