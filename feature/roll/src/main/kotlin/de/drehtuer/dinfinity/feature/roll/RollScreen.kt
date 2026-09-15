@@ -82,6 +82,11 @@ fun RollScreen(
   // (`docs/architecture.md`, "Screens and the states behind them").
   LaunchedEffect(openWith) { if (openWith.isNotBlank()) presenter.type(openWith) }
 
+  // Whether the keyboard is up. Remembered across a rotation, because a phone
+  // turned mid-formula should come back to the formula being typed rather than
+  // to the tray (`design/dInfinity.dc.html`, option 2a).
+  var editing by rememberSaveable { mutableStateOf(false) }
+
   ShakeToRoll(presenter, enabled = shakeToRoll)
   KeepTheScreenAwake()
   LockTheOrientation()
@@ -104,6 +109,8 @@ fun RollScreen(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
       strip = strip,
+      editing = editing,
+      onEditing = { editing = it },
       modifier = Modifier.align(Alignment.BottomCenter),
     )
 
@@ -186,6 +193,8 @@ private fun Controls(
   presenter: RollPresenter,
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
+  editing: Boolean,
+  onEditing: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state = presenter.state
@@ -229,16 +238,33 @@ private fun Controls(
       chosen = presenter.pickingFrom,
       onChoose = presenter::pickFrom,
     )
-    FormulaField(
-      text = presenter.text,
-      onChange = presenter::type,
-      label = stringResource(R.string.roll_formula_label),
-      hint = stringResource(R.string.roll_formula_hint),
-      error = (state as? RollState.Invalid)?.error,
-      // A throw the table cannot hold is a formula that reads perfectly well.
-      // The field is marked, and what is wrong is said where the total goes.
-      wrong = state is RollState.Invalid || state is RollState.TooMany,
-    )
+    // The formula sits on the tray as text with a dashed rule under it, and a
+    // tap brings the keyboard up — a field is a thing to fill in, and this is
+    // a thing somebody has written (`design/dInfinity.dc.html`, option 2a).
+    //
+    // A throw the table cannot hold is a formula that reads perfectly well, so
+    // both states mark it; *what* is wrong is said in the editor, under the
+    // squiggle, and where the total goes.
+    val wrong = state is RollState.Invalid || state is RollState.TooMany
+    if (editing) {
+      FormulaField(
+        text = presenter.text,
+        onChange = presenter::type,
+        label = stringResource(R.string.roll_formula_label),
+        hint = stringResource(R.string.roll_formula_hint),
+        error = (state as? RollState.Invalid)?.error,
+        wrong = wrong,
+        // Enter rolls. It closes the editor first, so what the dice land on is
+        // not behind a keyboard.
+        onSubmit = {
+          onEditing(false)
+          presenter.roll()
+        },
+        takeFocus = true,
+      )
+    } else {
+      FormulaLine(text = presenter.text, onEdit = { onEditing(true) }, wrong = wrong)
+    }
     ThrowButton(
       enabled = state is RollState.Ready || state is RollState.Settled,
       settled = state is RollState.Settled,
@@ -390,6 +416,9 @@ object RollTestTags {
    * this screen reads as a test of this screen.
    */
   const val FORMULA: String = FormulaTestTags.FIELD
+
+  /** The formula as it sits on the tray, before anybody taps it (option 2a). */
+  const val FORMULA_LINE: String = "roll:formula-line"
   const val THROW: String = "roll:throw"
   const val TOTAL: String = "roll:total"
   const val ROLLING: String = "roll:rolling"

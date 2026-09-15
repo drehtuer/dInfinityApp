@@ -20,6 +20,7 @@ import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
@@ -44,6 +45,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -68,7 +70,7 @@ class RollScreenTest {
   fun `a formula that does not read is shown as an error, not swallowed`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6 +")
+    typeFormula("3d6 +")
 
     compose.onNodeWithTag(RollTestTags.INVALID).assertExists()
     compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
@@ -78,7 +80,7 @@ class RollScreenTest {
   fun `a throw the table cannot hold says how many would fit`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("500d6")
+    typeFormula("500d6")
 
     compose.onNodeWithTag(RollTestTags.REFUSED).assertExists()
     compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
@@ -95,7 +97,7 @@ class RollScreenTest {
   fun `a formula that reads can be thrown, and the total arrives`() {
     show(faces = mapOf(0 to 5, 1 to 5, 2 to 5))
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6 + 4")
+    typeFormula("3d6 + 4")
     compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
@@ -106,7 +108,7 @@ class RollScreenTest {
   fun `while the dice are in the air the screen says so and the button is dead`() {
     show(land = false)
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    typeFormula("3d6")
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
     compose.onNodeWithTag(RollTestTags.ROLLING).assertExists()
@@ -119,7 +121,7 @@ class RollScreenTest {
     // presses for one act, and a shake could never have expressed the first of
     // them anyway.
     show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    typeFormula("3d6")
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
 
@@ -140,7 +142,7 @@ class RollScreenTest {
     // not fit across a phone — which is why the row scrolls.
     compose.onNodeWithTag(RollTestTags.pickerDie("d20")).performScrollTo().performClick()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("1d20")
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("1d20")
     compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
   }
 
@@ -151,7 +153,7 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("2d6")
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("2d6")
     compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("2")
   }
 
@@ -170,7 +172,7 @@ class RollScreenTest {
   fun `typing puts the badge on the row, so both agree about the same roll`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("4d6 + 1d20")
+    typeFormula("4d6 + 1d20")
 
     compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("4")
     compose.onNodeWithTag(RollTestTags.pickerCount("d20"), useUnmergedTree = true).assertTextEquals("1")
@@ -193,7 +195,7 @@ class RollScreenTest {
       RollScreen(presenter = presenter(UndrawnTray(), LandingRolls(mapOf(0 to 0, 1 to 0, 2 to 0))))
     }
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    typeFormula("3d6")
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
@@ -231,7 +233,7 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.WELCOME_ROLL).performClick()
 
     compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.FORMULA).assertTextContains("1d20")
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("1d20")
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
     assertEquals(1, seen.size)
   }
@@ -266,7 +268,7 @@ class RollScreenTest {
     // Shaking is not discoverable. The button is right there and says Roll.
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("1d20")
+    typeFormula("1d20")
 
     compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Shake the phone, or press Roll.")
   }
@@ -274,7 +276,7 @@ class RollScreenTest {
   @Test
   fun `a hint gives way to whatever the screen has to say instead`() {
     show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    typeFormula("3d6")
 
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
@@ -291,7 +293,7 @@ class RollScreenTest {
         onSeeTheOdds = { formula, total -> asked += formula to total },
       )
     }
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6")
+    typeFormula("3d6")
     compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
     compose.onNodeWithTag(RollTestTags.ODDS).performClick()
@@ -310,7 +312,7 @@ class RollScreenTest {
         onSeeTheOdds = { formula, total -> asked += formula to total },
       )
     }
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("500d6")
+    typeFormula("500d6")
 
     compose.onNodeWithTag(RollTestTags.ODDS).performClick()
 
@@ -321,7 +323,7 @@ class RollScreenTest {
   fun `a formula that does not read is not offered odds on itself`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput("3d6 +")
+    typeFormula("3d6 +")
 
     compose.onNodeWithTag(RollTestTags.ODDS).assertDoesNotExist()
   }
@@ -457,6 +459,113 @@ class RollScreenTest {
 
     compose.onNodeWithTag(RollTestTags.WELCOME_SETS).assertTextContains("5 saved rolls", substring = true)
     compose.onNodeWithTag(RollTestTags.WELCOME_SETS).assertTextContains("2 sessions", substring = true)
+  }
+
+  @Test
+  fun `a screen wired to nothing still draws and still works`() {
+    // Every one of this screen's callbacks has a default that does nothing, so
+    // it can be put on screen by a preview or by a test of something around
+    // it. Pressing them is not an error — and the defaults are the branch a
+    // test of the wired screen never takes.
+    val presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0)))
+    compose.setContent { RollScreen(presenter = presenter, firstLaunch = true) }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_IMPORT).performClick()
+    compose.onNodeWithTag(RollTestTags.WELCOME_SETS_ADD).performClick()
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertIsDisplayed()
+  }
+
+  @Test
+  fun `and its odds button goes nowhere rather than failing`() {
+    val presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0)))
+    compose.setContent { RollScreen(presenter = presenter) }
+    typeFormula("1d20")
+
+    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+
+    compose.onNodeWithTag(RollTestTags.ODDS).assertIsDisplayed()
+  }
+
+  @Test
+  fun `the tray shows the formula rather than a field, until it is tapped`() {
+    // A field is a thing to fill in; the formula is a thing somebody has
+    // written (`design/dInfinity.dc.html`, option 2a).
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
+  }
+
+  @Test
+  fun `and there is always something to tap, even with nothing typed`() {
+    // Without the hint standing in, a fresh install shows a tray, a row of
+    // dice and a blank space where the formula goes.
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("3d6", substring = true)
+  }
+
+  @Test
+  fun `tapping it brings the field up`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
+  }
+
+  @Test
+  fun `Enter throws the dice and puts the keyboard away`() {
+    // The other half of 2a: the action key rolls. It closes the editor first,
+    // so what the dice land on is not behind a keyboard.
+    val presenter = show()
+    typeFormula("1d20")
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performImeAction()
+
+    compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertIsDisplayed()
+  }
+
+  @Test
+  fun `Enter on a formula that does not read throws nothing`() {
+    // `throwDice` refuses it, which is the machine's rule rather than the
+    // screen's — what is asserted here is that the screen does not pretend
+    // otherwise by closing the editor on a formula nobody can roll.
+    val presenter = show()
+    typeFormula("3d6 +")
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performImeAction()
+
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
+    assertTrue("a formula that does not read was thrown", presenter.state is RollState.Invalid)
+  }
+
+  @Test
+  fun `the line is marked when the formula does not read`() {
+    // The badge `9c` asks for. What exactly is wrong is said in the editor,
+    // under the squiggle, because that is where somebody can fix it.
+    show()
+    typeFormula("3d6 +")
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.INVALID).assertIsDisplayed()
+  }
+
+  /**
+   * Types a formula the way a player does: tap the line, then type.
+   *
+   * The field is not on the tray until somebody asks for it
+   * (`design/dInfinity.dc.html`, option 2a), so every test that types goes
+   * through the tap — which is also the only way the tap stays tested.
+   */
+  private fun typeFormula(text: String) {
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(text)
   }
 
   private fun show(

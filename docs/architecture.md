@@ -321,14 +321,25 @@ repositories rather than from presenters: a sessions presenter would make the
 default session as a side effect, and saying hello is not a reason to write to
 a database.
 
+**The formula sits on the tray as text, not as a field.** A dashed rule under
+it says it can be typed into; a tap brings the field and the keyboard up, and
+the keyboard's action key rolls (`design/dInfinity.dc.html`, option 2a). A
+field is a thing to fill in and this is a thing somebody has written. The hint
+stands in when nothing has been typed, so there is always something to tap, and
+the line is marked when the formula does not read — *what* is wrong is said in
+the editor, under the squiggle, because that is where somebody can fix it.
+Whether the editor is open is the screen's, remembered across a rotation, and
+`RollMachine` knows nothing about it.
+
 The picker row is not in that table because it is on screen, and live, in
-every state — for the same reason the formula field is, and in fact for
-exactly that reason: it is the formula field reached with a thumb.
+every state — for the same reason the formula is, and in fact for exactly that
+reason: it is the formula edited with a thumb.
 
 Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
-- **the formula field** calls `type`, on every keystroke;
+- **the formula line** opens the editor, and **the editor** calls `type` on
+  every keystroke and `roll` on the action key;
 - **the dice picker row** calls `add` on a tap and `remove` on a long press,
   and both are `type` underneath — a tap *is* an edit to the formula, so it
   re-validates, re-checks the table's capacity and abandons a throw in the air

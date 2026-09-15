@@ -1,12 +1,19 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
 import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.NotationErrorCode
@@ -146,11 +153,62 @@ class FormulaFieldTest {
 
   @Test
   fun `the field does not take focus by itself`() {
-    // It is on the roll screen from the moment it opens, and a keyboard that
-    // appears over the tray uninvited is a keyboard covering the dice.
+    // The editor and the graph put it on screen with everything else, and a
+    // keyboard that appears uninvited is a keyboard covering what somebody
+    // came to read.
     compose.setContent { FormulaField(text = "", onChange = {}, hint = "3d6") }
 
     compose.onNodeWithTag(FormulaTestTags.FIELD).assertIsNotFocused()
+  }
+
+  @Test
+  fun `and does when it has been asked for`() {
+    // The tray's editor appears because somebody tapped the formula, so the
+    // keyboard should be up without a second tap
+    // (`design/dInfinity.dc.html`, option 2a).
+    compose.setContent { FormulaField(text = "", onChange = {}, hint = "3d6", takeFocus = true) }
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).assertIsFocused()
+  }
+
+  @Test
+  fun `a field with somewhere to submit to says so on the keyboard`() {
+    val submitted = mutableListOf<Unit>()
+    compose.setContent { FormulaField(text = "3d6", onChange = {}, onSubmit = { submitted += Unit }) }
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performImeAction()
+
+    assertEquals(1, submitted.size)
+  }
+
+  @Test
+  fun `and one with nowhere just puts the keyboard away`() {
+    // The editor and the graph have nothing for an action key to do. Pressing
+    // it is not an error and does not change the text.
+    compose.setContent { FormulaField(text = "3d6", onChange = { error("the text changed") }) }
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performImeAction()
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).assertTextContains("3d6")
+  }
+
+  @Test
+  fun `a recomposition around it that changes nothing leaves it alone`() {
+    // Every parameter is a branch that says "nothing changed, skip it", and
+    // three screens share this one (`docs/TODO.md`, Coverage).
+    var tick by mutableStateOf(0)
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        FormulaField(text = "3d6", onChange = {}, hint = "3d6", error = noSuchDie())
+      }
+    }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag(FormulaTestTags.FIELD).assertIsDisplayed()
+    compose.onNodeWithTag(FormulaTestTags.ERROR, useUnmergedTree = true).assertIsDisplayed()
   }
 
   private fun noSuchDie() =

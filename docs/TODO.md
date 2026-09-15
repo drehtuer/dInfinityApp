@@ -70,6 +70,11 @@ set's dice, with a chooser under it once there is a second set installed — and
 a die taken from a set that is not the default is written `brass:1d20`, so the
 row can only ever write a formula that rolls what it showed.
 
+**The formula is tapped, not filled in** (`2a`): it sits on the tray as text
+with a dashed rule under it, a tap brings the field and the keyboard up, and
+Enter rolls. The squiggle and the error line are in the editor where they can
+be acted on; the line itself is marked in red (`6f`, `9c`).
+
 **First launch offers all three ways in** (`9a`): throw a d20 now, go straight
 to the tray, bring saved rolls in from a file or a link, or add somebody else's
 dice. The last two do not dismiss it — somebody who goes to fetch something
@@ -91,7 +96,6 @@ What is below is what it does not have yet.
 - [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
-- [ ] Formula editor (`2a`): the formula on the tray is not tappable — the field is always on screen instead of appearing when the formula is tapped, and Enter does not roll. The squiggle and the error line under it are done (`6f`, `9c`)
 - [ ] The *history* breakdown still itemises only the dice. The result sheet itemises the modifiers now, from `RollResult.adjustments`; the stored breakdown JSON does not carry them, so a past roll of `3d6 + 4` shows rows adding to eleven under a total of fifteen (`docs/statistics.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
@@ -357,6 +361,7 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 
 - [ ] Dice respond to a shake within ~100 ms, and they move the way the hand did — the tray itself never moves, because it is the screen (`docs/physics-and-rendering.md`). The direction and the dropped-force stutter are both fixed; what is left to judge is the *start*, which read as a lag on the Pixel 10a: the dice are already travelling fast when the shake begins to reach them, so the hand seems to be catching up with dice that left without it. The 100 ms start threshold and the spawn impulse are the two numbers in it
 - [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling. **Not yet:** on the Pixel 10a the dice do not travel far enough and the tumble does not read as dice being thrown. Throw energy and spawn spread are where that is tuned (5.5), and this is the judgement that says when it is right
+- [ ] *Judge the formula editor on the phone:* whether a dashed rule under the formula reads as "you can type here", and whether a keyboard over the lower half of the tray is right or wants the tray to shift up while the editor is open (`design/dInfinity.dc.html`, option 2a)
 - [ ] The rim's shadow still looks wrong — the band across the top of the wall casts something that does not read as a rim. Lighting and the shadow map, not geometry, on present evidence
 - [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
 - [ ] Haptics fire on real impacts only, sound pitch tracks impulse and die size
