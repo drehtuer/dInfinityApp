@@ -17,15 +17,18 @@ import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
 import de.drehtuer.dinfinity.feature.roll.WhatIsThere
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
+import de.drehtuer.dinfinity.feature.settings.DeveloperPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import de.drehtuer.dinfinity.feature.stats.R as StatsR
 
 /**
@@ -63,6 +66,7 @@ internal class ScreenWiring(
           rounding = settings.rounding,
           haptics = settings.haptics,
           sound = settings.sound,
+          developerTools = settings.developerTools,
           scope = scope,
         )
       },
@@ -90,6 +94,7 @@ internal class ScreenWiring(
       diceSets = { diceSets() },
       tables = { tables() },
       faceDesigner = { faceDesigner() },
+      developer = { developer() },
       diceSet = { id, onGone -> diceSet(id, onGone) },
       whatIsThere = whatIsThere(app.savedRolls.all, app.sessions.sessions),
     )
@@ -183,6 +188,22 @@ internal class ScreenWiring(
       sets = { app.setLibrary.catalogue.installed },
       chosen = settings.defaultTable,
       onChosen = { pin -> scope.launch { repository.setDefaultTable(pin) } },
+    )
+
+  /**
+   * The debugging tools (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The replay is handed in as a function rather than a simulator, so this
+   * screen cannot open a physics world and cannot run one on the thread
+   * Compose draws on. `Dispatchers.Default` because a replay is a solver
+   * running flat out for up to twelve simulated seconds, and that is not work
+   * for the main thread (`docs/architecture.md`, "Threading").
+   */
+  private fun developer() =
+    DeveloperPresenter(
+      log = app.developerLog,
+      throwAgain = { spec -> withContext(Dispatchers.Default) { app.rolls.replay(spec) } },
+      scope = scope,
     )
 
   /** What is installed, and what may be done to it (`docs/dice-sets.md`). */

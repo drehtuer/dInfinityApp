@@ -8,6 +8,7 @@ import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.RollRecording
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
+import de.drehtuer.dinfinity.feature.roll.DebugRelay
 import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
@@ -18,8 +19,12 @@ import de.drehtuer.dinfinity.render.filament.RollThread
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayDriver
 import de.drehtuer.dinfinity.render.headless.Rolls
+import de.drehtuer.dinfinity.simulation.api.DebugWatch
+import de.drehtuer.dinfinity.simulation.api.DeveloperLog
 import de.drehtuer.dinfinity.simulation.api.Impacts
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.jolt.JoltDiceSimulator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -53,6 +58,16 @@ class RollWiring(
    * rather than the one on the picker.
    */
   private val chosenTable: () -> TablePin? = { null },
+  /**
+   * What the developer toggle remembers, or [DeveloperLog.NONE] when it is off
+   * — which it is on every install (`docs/physics-and-rendering.md`, "Debug
+   * tooling").
+   *
+   * Held by the application rather than by a visit, because an anomaly is a
+   * bug report and the last throw is what replays it: both are wanted after
+   * the player has left the tray.
+   */
+  private val developer: DeveloperLog = DeveloperLog.NONE,
 ) {
   private val simulator = JoltDiceSimulator()
 
@@ -134,9 +149,14 @@ class RollWiring(
     rounding: Rounding = Rounding.Default,
     haptics: Boolean = true,
     sound: Boolean = true,
+    developerTools: Boolean = false,
     scope: CoroutineScope,
-  ): RollPresenter =
-    RollPresenter(
+  ): RollPresenter {
+    // One relay per visit, and none at all when the toggle is off: with no
+    // relay the tray is given `DebugWatch.NONE`, which is asked before a
+    // snapshot is built, so a roll nobody is debugging walks no dice for it.
+    val relay = if (developerTools) DebugRelay() else null
+    return RollPresenter(
       machine =
         RollMachine(
           catalog = catalog,
@@ -144,14 +164,24 @@ class RollWiring(
           look = ::table,
           defaultRounding = rounding,
         ),
-      driver = tray(powerSaving, feedback(haptics, sound)),
+      driver = tray(powerSaving, feedback(haptics, sound), relay ?: DebugWatch.NONE),
       // A roll records where the dice hit something only when something is
       // going to play it. Both settings off is the one thing those two
       // switches actually save: nothing is measured, rather than measured and
       // then muted (`docs/physics-and-rendering.md`, "Impacts").
-      rolls = Rolls { spec, watcher -> simulator.start(spec, watcher, listening = haptics || sound) },
+      //
+      // The overlay is the third listener: its contact dots are the same
+      // impacts, so a roll being debugged records them whatever the haptics
+      // and the sound say.
+      rolls =
+        Rolls { spec, watcher ->
+          simulator.start(spec, watcher, listening = haptics || sound || developerTools)
+        },
       recorder = recorder(scope),
+      debug = relay,
+      developer = developer,
     )
+  }
 
   /**
    * Writing a throw down, off the thread the result arrived on.
@@ -201,7 +231,16 @@ class RollWiring(
   private fun tray(
     powerSaving: Boolean,
     impacts: Impacts,
-  ): Tray = if (powerSaving) PowerSavingTray(impacts = impacts) else TrayDriver(shared = rollThread, impacts = impacts)
+    debug: DebugWatch,
+  ): Tray =
+    if (powerSaving) {
+      // No overlay in power-saving mode, because there is no tray to draw it
+      // over: the dice are thrown and never drawn, and a panel floating on a
+      // blank screen would be describing something nobody can see.
+      PowerSavingTray(impacts = impacts)
+    } else {
+      TrayDriver(shared = rollThread, impacts = impacts, debug = debug)
+    }
 
   /**
    * What plays this visit's impacts.
@@ -226,6 +265,20 @@ class RollWiring(
 
   private var playing: ImpactFeedback? = null
   private var playingFor: Pair<Boolean, Boolean>? = null
+
+  /**
+   * Throws a spec again and reports what the dice came to — the developer
+   * toggle's replay (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The same simulator every roll uses, run headlessly: no tray, no thread of
+   * its own and nothing drawn. There is no second path to a number here either
+   * — a replay is the same `DiceSimulator.run` a power-saving roll takes
+   * (`docs/architecture.md`, goal 1).
+   *
+   * Blocking, and called from a background dispatcher by whoever wants it
+   * ([ScreenWiring]).
+   */
+  fun replay(spec: ThrowSpec): SimulationOutcome = simulator.run(spec)
 
   /**
    * The outcome graph's state, for one visit to that screen.

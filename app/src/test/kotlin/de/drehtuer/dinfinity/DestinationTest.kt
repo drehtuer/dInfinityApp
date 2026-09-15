@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.MenuGroup
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,6 +19,21 @@ class DestinationTest {
     assertEquals(12, Destination.inTheMenu.size)
     assertTrue(Destination.SavedRollStats in Destination.inTheMenu)
     assertTrue(Destination.Notation in Destination.inTheMenu)
+  }
+
+  @Test
+  fun `the developer screen is listed only when the toggle is on`() {
+    // Off on every install, so it is not one of the twelve above — and the
+    // route exists either way, because a route that came and went would be a
+    // back stack that could not be restored
+    // (`docs/physics-and-rendering.md`, "Debug tooling").
+    assertTrue(Destination.Developer.developerOnly)
+    assertFalse(Destination.Developer in Destination.inTheMenu)
+    assertTrue(Destination.Developer in Destination.inTheMenu(developerTools = true))
+    assertEquals(Destination.inTheMenu.size + 1, Destination.inTheMenu(developerTools = true).size)
+    // And it is the only screen behind the toggle: the rest of the app is
+    // exactly what it was.
+    assertEquals(listOf(Destination.Developer), Destination.entries.filter { it.developerOnly })
   }
 
   @Test

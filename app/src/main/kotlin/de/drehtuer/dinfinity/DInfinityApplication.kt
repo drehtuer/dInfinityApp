@@ -27,6 +27,8 @@ import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.feature.sets.SetLibrary
+import de.drehtuer.dinfinity.simulation.api.DeveloperLog
+import de.drehtuer.dinfinity.simulation.api.DeveloperNotes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -127,6 +129,22 @@ class DInfinityApplication : Application() {
   /** The buckets statistics are filtered by (`docs/statistics.md`). */
   val sessions: SessionRepository by lazy { SessionRepository(database) }
 
+  /**
+   * What the developer toggle remembers while the app runs: the anomalies,
+   * which should never have any, and the last throw, which replays it
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Held here rather than per visit because both outlive the roll screen, and
+   * **in memory rather than in the database** because it carries seeds: a
+   * stored seed is a replay waiting to be written into a screen a player can
+   * reach, which decision 13 exists to prevent (`docs/architecture.md`).
+   *
+   * It is filled whatever the toggle says, because the toggle is read when the
+   * roll screen opens and an anomaly is worth having from the throw *before*
+   * somebody went looking. It is only ever read from the developer screen.
+   */
+  val developerLog: DeveloperLog by lazy { DeveloperNotes() }
+
   /** The roll screen's engine and catalogue, named in one place (`RollWiring`). */
   val rolls: RollWiring by lazy {
     // Both named, and the trailing lambda given up deliberately: `catalogue`
@@ -138,6 +156,7 @@ class DInfinityApplication : Application() {
       recording = recording,
       catalogue = { setLibrary.catalogue },
       chosenTable = { chosenTable },
+      developer = developerLog,
     )
   }
 

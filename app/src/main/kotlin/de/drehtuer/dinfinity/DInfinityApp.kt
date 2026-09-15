@@ -52,6 +52,8 @@ import de.drehtuer.dinfinity.feature.saved.SavedScreen
 import de.drehtuer.dinfinity.feature.sets.SetDetailScreen
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsScreen
+import de.drehtuer.dinfinity.feature.settings.DeveloperPresenter
+import de.drehtuer.dinfinity.feature.settings.DeveloperScreen
 import de.drehtuer.dinfinity.feature.settings.MenuButton
 import de.drehtuer.dinfinity.feature.settings.MenuEntry
 import de.drehtuer.dinfinity.feature.settings.MenuHeader
@@ -105,7 +107,17 @@ fun DInfinityApp(
   onHapticsChanged: (Boolean) -> Unit = {},
   onSoundChanged: (Boolean) -> Unit = {},
   onRoundingSelected: (Rounding) -> Unit = {},
+  onDeveloperToolsChanged: (Boolean) -> Unit = {},
   onRepository: () -> Unit = {},
+  /**
+   * How a piece of text leaves the app — the anomaly log, and nothing else
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Separate from the statistics export on purpose: that one is built from
+   * `HistoryEntry`, which has no seed on it, and this one carries seeds and is
+   * reachable only from the developer screen (`docs/statistics.md`).
+   */
+  onShareText: (String) -> Unit = {},
   version: String = "",
   /**
    * How to build every screen, or null to draw placeholders for all of them.
@@ -152,6 +164,7 @@ fun DInfinityApp(
             customising(destination, entry, navController, screens, onSource) ||
             chrome(
               destination = destination,
+              entry = entry,
               navController = navController,
               settings = settings,
               onAccentSelected = onAccentSelected,
@@ -161,9 +174,12 @@ fun DInfinityApp(
               onHapticsChanged = onHapticsChanged,
               onSoundChanged = onSoundChanged,
               onRoundingSelected = onRoundingSelected,
+              onDeveloperToolsChanged = onDeveloperToolsChanged,
               onRepository = onRepository,
               version = version,
               menuHeader = menuHeader,
+              developer = screens?.developer,
+              onShareText = onShareText,
             )
         // A destination whose screen is not built yet, or whose presenter was
         // not supplied — a Robolectric test of the graph has neither a GPU nor
@@ -511,8 +527,10 @@ private fun lookingBack(
  * `NotationReference` with a layout on it.
  */
 @Composable
+@Suppress("LongParameterList")
 private fun chrome(
   destination: Destination,
+  entry: NavBackStackEntry,
   navController: NavHostController,
   settings: AppSettings,
   onAccentSelected: (AccentColor) -> Unit,
@@ -522,14 +540,34 @@ private fun chrome(
   onHapticsChanged: (Boolean) -> Unit,
   onSoundChanged: (Boolean) -> Unit,
   onRoundingSelected: (Rounding) -> Unit,
+  onDeveloperToolsChanged: (Boolean) -> Unit,
   onRepository: () -> Unit,
   version: String,
   menuHeader: MenuHeader?,
+  developer: (() -> DeveloperPresenter)?,
+  onShareText: (String) -> Unit,
 ): Boolean =
   when (destination) {
     Destination.Menu -> {
-      MenuScreen(sections = menuSections(navController), header = menuHeader)
+      MenuScreen(
+        sections = menuSections(navController, developerTools = settings.developerTools),
+        header = menuHeader,
+      )
       true
+    }
+
+    Destination.Developer -> {
+      // A separate surface, and only while the toggle is on. Without a
+      // presenter it draws the placeholder every unbuilt screen draws, which
+      // is what a Robolectric test of the graph has.
+      developer?.let { make ->
+        DeveloperScreen(
+          presenter = remember(entry) { make() },
+          onShare = onShareText,
+          menu = { MenuTo(navController) },
+        )
+      }
+      developer != null
     }
 
     Destination.Notation -> {
@@ -554,6 +592,7 @@ private fun chrome(
         onHapticsChanged = onHapticsChanged,
         onSoundChanged = onSoundChanged,
         onRoundingSelected = onRoundingSelected,
+        onDeveloperToolsChanged = onDeveloperToolsChanged,
         onRepository = onRepository,
         version = version,
         menu = { MenuTo(navController) },
@@ -710,10 +749,17 @@ internal fun rollRoute(formula: String): String =
  * the menu again. A menu you have to press back through twice is a menu that
  * feels like a detour (`design/dInfinity.dc.html`, option 1q).
  */
-private fun menuSections(navController: NavHostController): List<MenuSection> =
+private fun menuSections(
+  navController: NavHostController,
+  developerTools: Boolean,
+): List<MenuSection> =
   MenuGroup.entries.mapNotNull { group ->
     val entries =
-      Destination.inTheMenu
+      // The developer screen is a row only while the toggle is on. With it off
+      // there is no way to it from anywhere a player can reach
+      // (`docs/physics-and-rendering.md`, "Debug tooling").
+      Destination
+        .inTheMenu(developerTools)
         .filter { it.group == group }
         .map { destination ->
           MenuEntry(

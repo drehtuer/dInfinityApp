@@ -33,6 +33,16 @@ enum class Destination(
    * would be a screen the menu could not open (`docs/TODO.md`, Step 4.10).
    */
   val arguments: List<String> = emptyList(),
+  /**
+   * Whether this screen is listed only while `AppSettings.developerTools` is
+   * on (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The *route* is always registered, because a route that came and went would
+   * be a back stack that could not be restored. What the toggle governs is
+   * whether the menu offers it — so with the toggle off the screen is
+   * unlisted, and the app a player uses has no way to it at all.
+   */
+  val developerOnly: Boolean = false,
 ) {
   Roll(
     "roll",
@@ -67,6 +77,24 @@ enum class Destination(
   // No haptics in the list: nothing plays anything yet, and a menu row is as
   // able to promise something that is not there as a settings row is.
   Settings("settings", "Settings", "Appearance, shake, rounding, power saving.", MenuGroup.App),
+
+  /**
+   * The debugging tools: the anomaly log and the two replays
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * In the App section beside Settings, and **listed only while the developer
+   * toggle is on** — which it is on no install until somebody turns it on. It
+   * is a surface of its own rather than a flag that unhides fields elsewhere:
+   * the history still has no replay and still never shows a seed with the
+   * toggle on (`docs/architecture.md`, decisions 13 and 53).
+   */
+  Developer(
+    "developer",
+    "Developer",
+    "Anomaly log, and the last roll thrown again.",
+    MenuGroup.App,
+    developerOnly = true,
+  ),
 
   /**
    * What the formula field understands (`docs/dice-notation.md`).
@@ -134,8 +162,25 @@ enum class Destination(
   companion object {
     val home: Destination = Roll
 
-    /** Every screen the menu lists, in the order it lists them. */
-    val inTheMenu: List<Destination> get() = entries.filter { it.group != null }
+    /**
+     * Every screen the menu lists for an ordinary install, in the order it
+     * lists them.
+     *
+     * The developer screen is not one of them, because the toggle behind it is
+     * off on every install — [inTheMenu] with an argument is what a menu
+     * actually builds from.
+     */
+    val inTheMenu: List<Destination> get() = inTheMenu(developerTools = false)
+
+    /**
+     * The same, for an install where the developer toggle is [developerTools].
+     *
+     * One list rather than a filter at each call site: which screens the menu
+     * offers is a property of the destinations, and a caller that forgot the
+     * filter would be a caller that offered a debugging tool to a player.
+     */
+    fun inTheMenu(developerTools: Boolean): List<Destination> =
+      entries.filter { it.group != null && (developerTools || !it.developerOnly) }
 
     /**
      * The destination [route] names, or `null` for a route nothing serves.

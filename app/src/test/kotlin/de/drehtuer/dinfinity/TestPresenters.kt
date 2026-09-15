@@ -35,6 +35,7 @@ import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetLibrary
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
+import de.drehtuer.dinfinity.feature.settings.DeveloperPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
@@ -48,6 +49,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.DeveloperNotes
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.SettleRule
@@ -104,15 +106,7 @@ internal fun testPresenters(
       )
     },
     history = { HistoryPresenter(history = HistoryRepository(database), scope = scope) },
-    statistics = {
-      StatsPresenter(
-        statistics = DieStatisticsRepository(database),
-        writer = StatisticsRepository(database),
-        catalog = catalog,
-        scope = scope,
-        sessions = SessionRepository(database),
-      )
-    },
+    statistics = { statsPresenter(database, catalog, scope) },
     sessions = {
       SessionsPresenter(repository = SessionRepository(database), scope = scope, defaultName = "First rolls")
     },
@@ -128,6 +122,7 @@ internal fun testPresenters(
     diceSets = { SetsPresenter(library, scope) },
     tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}) },
     faceDesigner = { designerPresenter(catalog) },
+    developer = { developerPresenter(scope) },
     // Nothing is saved and no session exists in a test until one is made, and
     // the welcome's line is the one place that shows. Watched the same way the
     // activity watches it, so a test that imports something sees it change.
@@ -317,3 +312,29 @@ private fun designerPresenter(catalog: DiceCatalog) =
     choosable = BuiltinDiceSet.set.dice,
     notationOf = { die -> spellingOf(die, catalog) },
   )
+
+/**
+ * The debugging tools (`docs/physics-and-rendering.md`, "Debug tooling").
+ *
+ * A log of its own per set of presenters, so a test that turns the toggle on
+ * gets an empty one rather than whatever the application has collected.
+ */
+private fun developerPresenter(scope: CoroutineScope) =
+  DeveloperPresenter(
+    log = DeveloperNotes(),
+    throwAgain = { spec -> SimulationOutcome(faces = spec.dice.indices.associateWith { 0 }) },
+    scope = scope,
+  )
+
+/** What every die has done, over an in-memory database. */
+private fun statsPresenter(
+  database: DInfinityDatabase,
+  catalog: DiceCatalog,
+  scope: CoroutineScope,
+) = StatsPresenter(
+  statistics = DieStatisticsRepository(database),
+  writer = StatisticsRepository(database),
+  catalog = catalog,
+  scope = scope,
+  sessions = SessionRepository(database),
+)

@@ -17,6 +17,7 @@ import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setAccentColor
 import de.drehtuer.dinfinity.data.setAppearance
+import de.drehtuer.dinfinity.data.setDeveloperTools
 import de.drehtuer.dinfinity.data.setHaptics
 import de.drehtuer.dinfinity.data.setPowerSaving
 import de.drehtuer.dinfinity.data.setRounding
@@ -26,6 +27,7 @@ import de.drehtuer.dinfinity.data.setWelcomeSeen
 import de.drehtuer.dinfinity.feature.saved.R
 import de.drehtuer.dinfinity.feature.settings.MenuHeader
 import de.drehtuer.dinfinity.navigation.Destination
+import de.drehtuer.dinfinity.simulation.api.AnomalyReport
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import kotlinx.coroutines.launch
 
@@ -156,6 +158,14 @@ class MainActivity : ComponentActivity() {
       },
       onRoundingSelected = { rounding ->
         lifecycleScope.launch { repository.setRounding(rounding) }
+      },
+      onDeveloperToolsChanged = { on ->
+        lifecycleScope.launch { repository.setDeveloperTools(on) }
+      },
+      // The anomaly log, and nothing else in the app, leaves this way
+      // (`TextSharing`).
+      onShareText = { text ->
+        TextSharing.share(this, text, title = AnomalyReport.FILE_NAME)
       },
       onRepository = { openRepository() },
       version = installedVersion(),
