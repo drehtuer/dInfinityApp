@@ -45,13 +45,20 @@ docker run --rm -it \
 Inside the container:
 
 ```sh
-./gradlew build test lint detekt ktlintCheck
+./gradlew build test lint detekt ktlintCheck assembleDebugAndroidTest
 ```
 
-That is the same command CI runs, and it is what "green" means. It compiles
-every module, runs the JVM and Robolectric suites, and fails on any lint,
-detekt, ktlint or compiler warning — warnings are errors here
-(`.claude/CLAUDE.md`).
+That is what "green" means. It compiles every module, runs the JVM and
+Robolectric suites, and fails on any lint, detekt, ktlint or compiler
+warning — warnings are errors here (`.claude/CLAUDE.md`).
+
+**`assembleDebugAndroidTest` is on that line for a reason.** It is not part of
+`build`, so the instrumented sources — the whole device tier — can stop
+compiling without any of the rest noticing, and they did: adding a parameter
+to `TrayDriver` moved its last one, and a trailing lambda in the device suite
+quietly started meaning the new parameter. CI has a job of its own for it
+(*Device tests compile*), which is what caught it; putting it in the local
+command means finding it before the push rather than after.
 
 The first run downloads Gradle's dependencies into the `dinfinity-gradle`
 volume and takes a few minutes; later runs are seconds.

@@ -138,7 +138,7 @@ the repository in a devcontainer-aware editor, or:
 ```sh
 docker build -t dinfinity-dev .devcontainer
 docker run --rm -it -v "$PWD":/workspace -w /workspace dinfinity-dev \
-  ./gradlew build test lint detekt ktlintCheck
+  ./gradlew build test lint detekt ktlintCheck assembleDebugAndroidTest
 ```
 
 Release and debug APKs land in `app/build/outputs/named-apk/` as
