@@ -162,7 +162,7 @@ left alone in case it comes back.
 
 - [ ] Thumbnails rendered on the real box mesh, with a "roll a d20 here" preview. The swatch stands in: it is two colours in a box and says so. This wants the renderer on a screen that is not the tray, which nothing has needed yet
 - [ ] "Use a photo" → downsize, write into the personal package, validate like any table
-- [ ] Precedence: saved roll pin > group pin > app default. The app default is this screen's and is done; `SavedRoll.tablePin` is in the model and the editor has the field, so what is left is the group's pin and the three-way fallback at roll time
+- [ ] Precedence: saved roll pin > group pin > app default. The app default is this screen's and is done; `SavedRoll.tablePin` is in the model and the editor has the field, and a throw from the strip now carries which roll and which group it came from (`SavedRollSource`), so what is left is the group's pin and the three-way fallback at roll time — most of the plumbing this needed is there
 
 ### 4.6 Face designer — `feature/designer`
 
@@ -271,7 +271,6 @@ a session deleted while another screen was in front would otherwise strand
 every throw filed under it (`docs/statistics.md`, per session).
 
 - [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
-- [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone

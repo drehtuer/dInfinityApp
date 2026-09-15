@@ -48,7 +48,7 @@ import androidx.compose.ui.unit.dp
 fun HomeStrip(
   presenter: SavedPresenter,
   modifier: Modifier = Modifier,
-  onRoll: (String) -> Unit = {},
+  onRoll: (String, String, String) -> Unit = { _, _, _ -> },
   onEdit: (String) -> Unit = {},
   onNew: () -> Unit = {},
 ) {
@@ -66,7 +66,10 @@ fun HomeStrip(
         entry = entry,
         onRoll = {
           presenter.used(entry.roll.id)
-          onRoll(entry.roll.formula)
+          // Which roll, and which group it is in, so the throw can be recorded
+          // as that roll's — a throw that belongs to nothing is one the
+          // saved-roll statistics can never count (`docs/statistics.md`).
+          onRoll(entry.roll.formula, entry.roll.id, entry.roll.groupId)
         },
         onEdit = { onEdit(entry.roll.id) },
       )

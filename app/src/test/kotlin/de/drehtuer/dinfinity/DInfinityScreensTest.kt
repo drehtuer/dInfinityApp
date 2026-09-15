@@ -21,7 +21,10 @@ import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.feature.roll.FinishedThrow
+import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
+import de.drehtuer.dinfinity.feature.saved.HomeStripTestTags
 import de.drehtuer.dinfinity.feature.saved.ImportTestTags
 import de.drehtuer.dinfinity.feature.saved.SavedTestTags
 import de.drehtuer.dinfinity.feature.sets.SetDetailTestTags
@@ -220,6 +223,28 @@ class DInfinityScreensTest {
   }
 
   @Test
+  fun `a throw from the strip is written down as that saved roll's`() {
+    // The chain this is about runs through four modules and two lambdas, and
+    // it was broken the whole time: every roll went down with no saved roll
+    // and no group against it, so the history's saved-roll filter found
+    // nothing and the saved-roll statistics screen could never have had
+    // anything on it (`docs/statistics.md`, per saved roll and per group).
+    runBlocking {
+      saved.ensureUnfiled("Unfiled")
+      saved.save(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "1d20"))
+    }
+    val recorded = mutableListOf<FinishedThrow>()
+    val navigation = app(recorder = { thrown -> recorded += thrown })
+    go(navigation, Destination.Roll)
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    compose.waitUntil(PATIENCE) { recorded.isNotEmpty() }
+    assertEquals("fireball", recorded.single().savedRollId)
+    assertEquals(SavedRollGroup.UNFILED_ID, recorded.single().groupId)
+  }
+
+  @Test
   fun `the statistics screen draws`() {
     val navigation = app()
 
@@ -314,14 +339,14 @@ class DInfinityScreensTest {
     )
 
   /** The app with every screen that takes a presenter actually given one. */
-  private fun app(): NavHostController {
+  private fun app(recorder: ThrowRecorder = ThrowRecorder.NONE): NavHostController {
     lateinit var navigation: NavHostController
     compose.setContent {
       navigation = rememberNavController()
       DInfinityTheme {
         DInfinityApp(
           navController = navigation,
-          screens = testPresenters(database, scope, setLibrary()),
+          screens = testPresenters(database, scope, setLibrary(), recorder = recorder),
         )
       }
     }

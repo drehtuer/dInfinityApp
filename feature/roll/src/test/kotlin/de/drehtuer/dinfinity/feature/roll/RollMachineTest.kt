@@ -394,6 +394,60 @@ class RollMachineTest {
     assertEquals("1d20", machine.pickable.first { it.notation == "d20" }.notation(1))
   }
 
+  @Test
+  fun `a throw from a saved roll is remembered as that roll's`() {
+    // Without it every throw is recorded as belonging to nothing, and the
+    // saved-roll statistics screen is one that can never have anything on it
+    // (`docs/statistics.md`, per saved roll and per group).
+    val machine = machine()
+    machine.type("8d6", SavedRollSource(rollId = "fireball", groupId = "thorin"))
+
+    machine.throwDice()
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+
+    assertEquals("fireball", thrown.savedRollId)
+    assertEquals("thorin", thrown.groupId)
+  }
+
+  @Test
+  fun `a formula somebody typed belongs to no saved roll`() {
+    val machine = machine()
+    machine.type("8d6")
+
+    machine.throwDice()
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+
+    assertNull("a typed formula was attributed to a saved roll", thrown.savedRollId)
+    assertNull(thrown.groupId)
+  }
+
+  @Test
+  fun `typing over a saved roll makes it somebody's own formula again`() {
+    // A roll that was Fireball and has been edited is not Fireball's throw.
+    val machine = machine()
+    machine.type("8d6", SavedRollSource(rollId = "fireball", groupId = "thorin"))
+
+    machine.type("8d6 + 1")
+    machine.throwDice()
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+
+    assertNull("an edited formula was still attributed to the saved roll", thrown.savedRollId)
+  }
+
+  @Test
+  fun `tapping a die onto a saved roll is an edit like any other`() {
+    // The picker goes through `type`, which is the point: a tap is an edit, so
+    // it drops the attribution the same way a keystroke does.
+    val machine = machine()
+    machine.type("8d6", SavedRollSource(rollId = "fireball", groupId = "thorin"))
+
+    machine.add(machine.pickable.first { it.notation == "d6" })
+    machine.throwDice()
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 9).associateWith { 0 })))
+
+    assertNull("a picked die left the throw attributed to the saved roll", thrown.savedRollId)
+  }
+
   /** The bundled set and one more, which is when the chooser is worth drawing. */
   private fun twoSets(): DiceCatalog =
     DiceCatalog.of(

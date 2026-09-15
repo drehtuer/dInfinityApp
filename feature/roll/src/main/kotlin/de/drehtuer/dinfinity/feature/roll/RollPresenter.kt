@@ -94,6 +94,21 @@ class RollPresenter(
   }
 
   /**
+   * A saved roll was tapped on the strip: its formula, and which roll it was.
+   *
+   * Which roll it was is carried so the throw can be recorded as that roll's.
+   * A throw that belongs to nothing is a throw the saved-roll statistics can
+   * never count (`docs/statistics.md`, per saved roll and per group).
+   */
+  fun typeSaved(
+    formula: String,
+    from: SavedRollSource,
+  ) {
+    machine.type(formula, from)
+    publish()
+  }
+
+  /**
    * Throws the dice, if there are any to throw.
    *
    * Everything after this happens on the roll thread: the world is opened

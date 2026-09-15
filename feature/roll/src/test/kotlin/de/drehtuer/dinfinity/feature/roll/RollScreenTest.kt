@@ -1,6 +1,9 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import android.view.Surface
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertIsEnabled
@@ -355,6 +358,53 @@ class RollScreenTest {
     assertEquals("$BRASS:1d20", presenter.text)
   }
 
+  @Test
+  fun `a tap on the strip throws that saved roll, and says which one it was`() {
+    // The slot is how the roll screen is handed saved rolls without knowing
+    // what one is. What it hands back is the formula *and* which roll put it
+    // there, so the throw can be recorded as that roll's
+    // (`docs/statistics.md`, per saved roll and per group).
+    lateinit var presenter: RollPresenter
+    compose.setContent {
+      presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
+      RollScreen(
+        presenter = presenter,
+        strip = { rollIt ->
+          Button(
+            onClick = { rollIt("1d20", SavedRollSource(rollId = "fireball", groupId = "thorin")) },
+            modifier = Modifier.testTag(STRIP_TAG),
+          ) { Text("Fireball") }
+        },
+      )
+    }
+
+    compose.onNodeWithTag(STRIP_TAG).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
+    assertEquals("1d20", presenter.text)
+  }
+
+  @Test
+  fun `a typed formula thrown from the slot belongs to no saved roll`() {
+    // The other side of the slot: a caller with nothing to attribute passes
+    // none, and the screen takes the ordinary path.
+    lateinit var presenter: RollPresenter
+    compose.setContent {
+      presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
+      RollScreen(
+        presenter = presenter,
+        strip = { rollIt ->
+          Button(onClick = { rollIt("1d6", null) }, modifier = Modifier.testTag(STRIP_TAG)) { Text("Two") }
+        },
+      )
+    }
+
+    compose.onNodeWithTag(STRIP_TAG).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
+    assertEquals("1d6", presenter.text)
+  }
+
   private fun twoSets(): DiceCatalog =
     DiceCatalog.of(
       listOf(BuiltinDiceSet.set, BuiltinDiceSet.set.copy(id = BRASS, name = "Brass")),
@@ -422,6 +472,7 @@ class RollScreenTest {
 
     /** A second installed set, which is when the chooser is worth drawing. */
     const val BRASS = "brass"
+    const val STRIP_TAG = "test:strip"
     const val PATIENCE = 2_000L
   }
 

@@ -147,7 +147,15 @@ class RollWiring(
   private fun recorder(scope: CoroutineScope): ThrowRecorder =
     recording?.let { recording ->
       ThrowRecorder { thrown ->
-        scope.launch { recording.record(result = thrown.result, plan = thrown.plan, seed = thrown.seed) }
+        scope.launch {
+          recording.record(
+            result = thrown.result,
+            plan = thrown.plan,
+            seed = thrown.seed,
+            savedRollId = thrown.savedRollId,
+            groupId = thrown.groupId,
+          )
+        }
       }
     } ?: ThrowRecorder.NONE
 

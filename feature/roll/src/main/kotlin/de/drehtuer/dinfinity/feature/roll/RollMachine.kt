@@ -92,6 +92,16 @@ class RollMachine(
   var text: String = ""
     private set
 
+  /**
+   * The saved roll [text] was put there by, or null when somebody typed it.
+   *
+   * Carried so a throw can be recorded as that roll's — otherwise every throw
+   * belongs to nothing, and the saved-roll statistics screen has nothing to
+   * show (`docs/statistics.md`, per saved roll and per group).
+   */
+  var cameFrom: SavedRollSource? = null
+    private set
+
   /** Which set the picker row is offering, and what is on it ([Picker]). */
   private val picker = Picker(catalog)
 
@@ -124,8 +134,15 @@ class RollMachine(
    * so the screen can put a squiggle under the part that is wrong rather than
    * under the whole field (`design/dInfinity.dc.html`, options 6f and 9c).
    */
-  fun type(typed: String) {
+  fun type(
+    typed: String,
+    from: SavedRollSource? = null,
+  ) {
     text = typed
+    // Any edit drops it, which is the point of the default: a formula that was
+    // Fireball and has since been typed over, or had a die tapped onto it, is
+    // not Fireball's throw any more (`docs/statistics.md`).
+    cameFrom = from
     prepared = null
     inFlight = null
     scored = null
@@ -238,7 +255,13 @@ class RollMachine(
     // came to, and nothing else. Re-rounding the same throw does not come
     // through here, which is why a roll is recorded once and not once per
     // rounding somebody tries.
-    return FinishedThrow(result = result, plan = flight.prepared.plan, seed = flight.seed)
+    return FinishedThrow(
+      result = result,
+      plan = flight.prepared.plan,
+      seed = flight.seed,
+      savedRollId = cameFrom?.rollId,
+      groupId = cameFrom?.groupId,
+    )
   }
 
   /**
@@ -324,6 +347,18 @@ class RollMachine(
     }
   }
 }
+
+/**
+ * Which saved roll a formula came from, and the group it lives in.
+ *
+ * The two travel together because they are recorded together, and because a
+ * roll's group is a fact about the roll rather than about which group the
+ * strip happened to be showing (`docs/statistics.md`).
+ */
+data class SavedRollSource(
+  val rollId: String,
+  val groupId: String,
+)
 
 /**
  * The four things the roll screen can be showing, and nothing in between.

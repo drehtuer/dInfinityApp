@@ -20,6 +20,18 @@ data class FinishedThrow(
   val result: RollResult,
   val plan: RollPlan,
   val seed: Long,
+  /**
+   * The saved roll this throw came from, and the group it is in, or null for a
+   * formula somebody typed (`docs/statistics.md`, per saved roll and per
+   * group).
+   *
+   * Without it every throw is recorded as belonging to nothing, and the
+   * saved-roll statistics screen is a screen that can never have anything on
+   * it. It is dropped the moment the formula is edited: a roll that was
+   * Fireball and has been typed over is not Fireball's throw.
+   */
+  val savedRollId: String? = null,
+  val groupId: String? = null,
 )
 
 /**

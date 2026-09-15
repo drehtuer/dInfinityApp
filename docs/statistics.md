@@ -86,6 +86,17 @@ numbers are, and the one number a session cannot have.
 
 ### Per saved roll and per group
 
+A throw carries the saved roll it came from and the group that roll is in,
+recorded with it. That is what makes "Thorin's attack rolls this campaign" a
+query rather than a guess — and without it every throw belongs to nothing and
+these screens have nothing to count.
+
+The attribution is **dropped by any edit**. A formula that arrived from the
+strip and has since been typed over, or had a die tapped onto it, is not that
+roll's throw: the picker goes through the same `type` a keystroke does, so it
+loses the attribution the same way. A saved roll's record is what was thrown
+*as* that saved roll, not what was thrown starting from it.
+
 - Times rolled, mean total, min/max total observed, last result
 - Histogram of totals, shown next to the theoretical distribution from
   `docs/probability.md` so the player can see how their Fireballs compare to

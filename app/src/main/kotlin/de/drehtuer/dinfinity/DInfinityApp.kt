@@ -36,6 +36,7 @@ import de.drehtuer.dinfinity.feature.graph.GraphPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphScreen
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.RollScreen
+import de.drehtuer.dinfinity.feature.roll.SavedRollSource
 import de.drehtuer.dinfinity.feature.saved.Editing
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.EditorScreen
@@ -216,7 +217,7 @@ private fun Roll(
       if (saved != null) {
         HomeStrip(
           presenter = saved,
-          onRoll = rollIt,
+          onRoll = { formula, rollId, groupId -> rollIt(formula, SavedRollSource(rollId, groupId)) },
           onEdit = { rollId -> navController.navigate(editorRoute(rollId)) },
           onNew = { navController.navigate(editorRoute(null)) },
         )

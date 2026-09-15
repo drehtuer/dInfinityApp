@@ -114,6 +114,12 @@ changelog.
   installing a set is the whole of what it sounds like, and one of them can be
   made the set a plain `d20` comes from. Still to come:
   update checking and "my dice".
+- **A throw from the strip is recorded as that saved roll's.** It was not:
+  every roll went down with no saved roll and no group against it, so the
+  history's saved-roll filter found nothing and the saved-roll statistics
+  screen could never have had anything on it. Any edit to the formula drops
+  the attribution, because a roll that was Fireball and has been typed over is
+  not Fireball's throw.
 - **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
   a history row, a face count per die and a running summary, in one transaction
   — which the tables had been waiting for since version 1. The history lists
