@@ -232,6 +232,35 @@ enough.
   a die that has come to rest, and a hand is not an exception. That is not in
   tension with the rule above: the dice only come to rest once the hand has
   stopped, so by then there is nothing left to drop.
+- **The roll keeps the shake that threw it, and hands it back with the
+  result.** A shake-driven throw's `ThrowSpec` goes into the world empty — the
+  dice are spawned the instant the shake is confirmed and the moments arrive
+  afterwards — so the spec a roll *started* as is not the spec that would
+  replay it. The moments are accumulated where they land, in `ShakeDriver`,
+  which is also where they are deduplicated by step and kept in step order; the
+  roll reports them as `drivenBy`, the tray hands them back beside the outcome,
+  and the roll screen writes them into the spec it kept: `spec.copy(shake =
+  drivenBy)`. What comes out is one object that rolls these dice again, rather
+  than a spec and a list of samples that somebody has to join up.
+  - Dropped samples are not in it. The record is what *drove* the roll, so a
+    moment the roll refused — after the dice had stopped, or past the cap below
+    — shaped nothing and would replay a different throw.
+  - It dies with the roll. A throw the player walked away from never reports an
+    outcome, so nothing asks for its record and nothing keeps it.
+  - **It stops at the roll screen.** A past roll is a record, not something to
+    re-run: `HistoryEntry` has no seed on it to show and the exports have no
+    column for one, so neither has anywhere to put a shake
+    (`docs/architecture.md`, decision 13, and `docs/statistics.md`). The record
+    is for a bug report about a roll that is still in front of you.
+- **The record is capped at 1,440 samples**, which is the twelve-second cap at
+  the simulation's own 120 Hz — every step a roll can possibly take, and a step
+  holds one sample. It is not a number picked to feel safe: a moment naming a
+  later step has no step to drive and never will, so keeping it would grow the
+  record of a thirty-second shake without adding anything a replay could use.
+  Both `ShakeRecorder` and `ShakeDriver` stop there.
+- **The cap is also the hand's limit on the roll.** A shake holds a roll open,
+  but not past twelve seconds: the safety valve is not something the hand gets
+  a vote on, and steps counted past it would be a roll nothing can describe.
 - A shake session starts when acceleration magnitude stays above 3,500 mm/s²
   (about 0.35 g) for more than 80 ms, and ends after 400 ms below 1,500 mm/s².
   Two thresholds rather than one, with a gap between them: a single threshold

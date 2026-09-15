@@ -22,8 +22,10 @@ changelog.
 
 ### Branch state
 
-`main` has everything up to **#173** and is **green**: both test tiers, ktlint,
-detekt and Android Lint. No branches are in flight.
+`main` has everything up to **#182** and is **green**: both test tiers, ktlint,
+detekt and Android Lint. In flight: `feature/shake-record` — a shake-driven
+throw's record now carries the shake that drove it, so a roll can be replayed
+from it (and stops there: nothing below the roll screen can hold one).
 
 ### Which device the tier runs on
 

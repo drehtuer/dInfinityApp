@@ -608,10 +608,20 @@ to them. This is the seam that does, and it has one shape rule: **the roll
 screen cannot see a database.**
 
 `RollMachine.settled` hands out a `FinishedThrow` — the result, the plan it
-came from, and the seed. `feature/roll` declares a `ThrowRecorder` interface
-and `:app` implements it over `data`'s `RollRecording`. A roll screen that
-could reach a database is a roll screen that will eventually query one
-mid-throw.
+came from, and the throw itself, which is the `ThrowSpec` the dice were spawned
+from with the shake that actually arrived written back into it. `feature/roll`
+declares a `ThrowRecorder` interface and `:app` implements it over `data`'s
+`RollRecording`. A roll screen that could reach a database is a roll screen
+that will eventually query one mid-throw.
+
+**The throw stops there.** What crosses the `ThrowRecorder` seam is the result,
+the plan, the seed and where the roll came from; `RollRecording.record` has no
+parameter a spec or a shake could be passed as, and nothing below it —
+`FinishedRoll`, `RollHistoryRow`, `HistoryEntry`, the exports — has a field
+that could hold one. That is asserted rather than remembered, in `:app`, which
+is the one module that can see both ends of the seam. Reproducing a roll is a
+developer action about a roll still on screen, not something a history row
+offers (decision 13, `docs/statistics.md`).
 
 The plan travels with the result because the two know different things: the
 result knows which face came up, and only the plan knows which *die* it was and
@@ -920,8 +930,11 @@ flowchart TD
     T -->|"DiceSimulator.start / run"| L["LiveRoll<br/>one fixed step at a time"]
     L -->|"every step, while shaking"| L
     L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows"]
+    L --> D["drivenBy<br/>the shake as it actually arrived"]
     L -.->|body transforms, optional| V[Renderer]
     S -->|face index → value<br/>keep/drop/explode, modifier| O["RollResult<br/>total, per-die breakdown,<br/>formula, timestamp"]
+    D -->|"spec.copy(shake = drivenBy)"| FT["FinishedThrow.thrown<br/>the ThrowSpec that replays this roll<br/>goes no further than this screen"]
+    O --> FT
     O --> UI[UI]
     O --> ST[stats.record]
 ```
@@ -938,6 +951,13 @@ is confirmed, so most of one arrives while they are already in the air; each
 sample names the step it belongs to, and the roll is reproducible from the
 record afterwards because the frame clock never runs the simulation faster
 than real time (`docs/physics-and-rendering.md`, "Shake input").
+
+The roll accumulates those samples as it takes them and reports them beside the
+outcome, so a throw that has landed can be described by the spec that would
+replay it rather than by the empty one it began with. That join happens once,
+on the roll screen's own thread, and it is where the record ends: nothing below
+`stats.record` has a field to put it in. A past roll is a record, not something
+to re-run (decision 13).
 
 ## Threading
 

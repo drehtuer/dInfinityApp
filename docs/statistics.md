@@ -285,11 +285,21 @@ would be the app putting a number in front of somebody that it guessed. A
 formula that added nothing writes no key at all, so a roll with no modifiers is
 byte for byte the row it has always been.
 
-`seed` and `input_blob` (the quantised shake samples, or the default throw
-parameters) are kept so a roll can be reproduced exactly when a bug report
-needs it. They are **internal**: no screen shows them, and the export leaves
-them out. Reproducing a stored roll is a developer action
-(`docs/physics-and-rendering.md`, Debug tooling), not a feature of the app.
+`seed` is kept so a roll can be reproduced when a bug report needs it. It is
+**internal**: no screen shows it, and the export leaves it out. Reproducing a
+stored roll is a developer action (`docs/physics-and-rendering.md`, Debug
+tooling), not a feature of the app.
+
+`input_blob` was meant for the shake that drove a roll, and **nothing writes
+it**. A shake-driven throw's record — the throw's spec with the samples that
+actually arrived written into it — is real and is handed out by the roll
+screen, and it stops there: `RollRecording.record` has no parameter it could be
+passed as, and `FinishedRoll`, `RollHistoryRow` and `HistoryEntry` have no
+field that could hold one. That is asserted in `:app`, which is the one module
+that can see both ends of the seam. A past roll is a record, not something to
+re-run (`docs/architecture.md`, decision 13;
+`docs/physics-and-rendering.md`, "Shake input"). The column stays because
+dropping it is a migration for nothing.
 
 ## Export and reset
 
