@@ -128,6 +128,19 @@ data class ShakeSample(
  *   This must always be zero. It is reported rather than assumed so that the
  *   device harness can assert it, and one occurrence is a bug, not a statistic
  *   (`docs/TODO.md`, Step 5.5).
+ * @param stackedAtRest dice that came to rest standing on another die. The
+ *   first failure the stacking ladder exists to prevent, and the target is
+ *   zero (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked
+ *   dice"). Counted at the end rather than judged during the roll, because a
+ *   die standing on another *while it is still moving* is an ordinary moment
+ *   of a throw and only the last one is a result.
+ * @param deepestDiePenetrationMm how far one die was ever inside another,
+ *   at any step of the roll. The solver resolves overlaps rather than
+ *   forbidding them, so this is never exactly zero; what matters is that it
+ *   stays small enough that nobody watching sees two solids share a corner
+ *   (`docs/TODO.md`, Step 5.4). It comes from the engine's own contact
+ *   manifolds, which is the only place it exists — nothing upstream can work
+ *   it out from positions.
  */
 data class SimulationOutcome(
   val faces: Map<Int, Int>,
@@ -136,6 +149,8 @@ data class SimulationOutcome(
   val rethrows: Int = 0,
   val forcedSettles: Int = 0,
   val postRestCorrections: Int = 0,
+  val stackedAtRest: Int = 0,
+  val deepestDiePenetrationMm: Double = 0.0,
 ) {
   /** How many dice were in the throw. */
   val diceCount: Int get() = faces.size
@@ -145,5 +160,7 @@ data class SimulationOutcome(
 
   init {
     require(steps <= SettleRule.HARD_CAP_STEPS) { "a roll cannot run past the ${SettleRule.HARD_CAP_SECONDS}s cap" }
+    require(stackedAtRest <= faces.size) { "$stackedAtRest of ${faces.size} dice cannot be stacked" }
+    require(deepestDiePenetrationMm >= 0.0) { "an overlap of $deepestDiePenetrationMm mm is not a depth" }
   }
 }

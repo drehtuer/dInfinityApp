@@ -194,6 +194,11 @@ class RollLoop(
         // simulation had to finish for, not two.
         forcedSettles = forced.count { it },
         postRestCorrections = postRestCorrections,
+        // Read here and not while the roll was running: a die standing on
+        // another one mid-throw is an ordinary moment of a throw, and only
+        // where it *ended* is a result (`docs/physics-and-rendering.md`).
+        stackedAtRest = states.count(DieState::supportedByDie),
+        deepestDiePenetrationMm = world.deepestDiePenetrationMm,
       )
     return false
   }

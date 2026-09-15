@@ -71,6 +71,33 @@ class ThrowSpecTest {
   }
 
   @Test
+  fun `an outcome carries the two numbers the device harness cannot work out for itself`() {
+    val outcome =
+      SimulationOutcome(
+        faces = mapOf(0 to 1, 1 to 4),
+        stackedAtRest = 1,
+        deepestDiePenetrationMm = 0.08,
+      )
+
+    assertEquals(1, outcome.stackedAtRest)
+    assertEquals(0.08, outcome.deepestDiePenetrationMm, 0.0)
+  }
+
+  @Test
+  fun `more dice cannot be stacked than were thrown`() {
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), stackedAtRest = 2)
+    }
+  }
+
+  @Test
+  fun `an overlap is a depth, so it cannot be negative`() {
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), deepestDiePenetrationMm = -0.1)
+    }
+  }
+
+  @Test
   fun `a simulator gives the same faces for the same throw`() {
     val simulator = FakeDiceSimulator()
     val spec = spec(count = 5, scale = 1.0)

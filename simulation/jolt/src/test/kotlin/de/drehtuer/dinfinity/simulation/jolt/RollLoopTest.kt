@@ -272,6 +272,38 @@ class RollLoopTest {
     assertEquals("the world was stepped past the cap", SettleRule.HARD_CAP_STEPS, world.steps)
   }
 
+  @Test
+  fun `the roll reports how deep dice ever got into each other, because only the engine knows`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    world.deepestDiePenetrationMm = 0.31
+
+    assertEquals(0.31, loop(listOf(StandardDice.d6), world).run().deepestDiePenetrationMm, 0.0)
+  }
+
+  @Test
+  fun `a die left standing on another is counted where it ended, not where it passed through`() {
+    // Standing on another die for the first stretch of the throw and clear of
+    // it by the end: an ordinary moment of a roll, and not a stacked die.
+    val world =
+      FakeWorld(2) { step, index, _ ->
+        val stacked = index == 1 && step < TROUBLE_STEPS
+        if (stacked) FakeWorld.settling(supportedByDie = true) else FakeWorld.settled()
+      }
+
+    assertEquals(0, loop(listOf(StandardDice.d6, StandardDice.d6), world).run().stackedAtRest)
+  }
+
+  @Test
+  fun `a die that ends standing on another is counted, whatever the ladder tried`() {
+    // It has had its three re-throws and comes down on another die every time,
+    // which is the failure Step 5.5 asks the harness to count.
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
+    val outcome = loop(listOf(StandardDice.d6), world).run()
+
+    assertEquals(1, outcome.stackedAtRest)
+    assertEquals(RollLoop.MAX_RETHROWS, outcome.rethrows)
+  }
+
   private fun loop(
     dice: List<Die>,
     world: FakeWorld,

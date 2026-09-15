@@ -51,6 +51,15 @@ class FakeWorld(
   /** The gravity the loop set, once per step. */
   val gravities: MutableList<Vector3> = mutableListOf()
 
+  /**
+   * What the engine would say the deepest die-into-die overlap was.
+   *
+   * Settable, because the loop's only job with it is to carry it into the
+   * outcome, and a test that cannot make the world report an overlap cannot
+   * check that it arrives (`docs/TODO.md`, Step 5.4).
+   */
+  override var deepestDiePenetrationMm: Double = 0.0
+
   /** How many steps were taken. */
   var steps: Int = 0
     private set

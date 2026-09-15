@@ -140,6 +140,16 @@ internal object JoltNative {
     out: FloatArray,
   )
 
+  /**
+   * The deepest die-into-die overlap the solver has reported since the world
+   * was created, in simulation units.
+   *
+   * Nothing in a roll calls this either. It exists because an overlap lives
+   * only in the contact manifold that reported it, and the Step 5 harness asks
+   * how deep dice ever got into each other (`docs/TODO.md`, Step 5.4).
+   */
+  external fun nativeDeepestPenetration(world: Long): Float
+
   external fun nativeApplyBias(
     world: Long,
     index: Int,
