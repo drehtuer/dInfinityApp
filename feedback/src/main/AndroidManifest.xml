@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+  <!--
+    Declared here rather than in the application's manifest, because this is
+    the module that uses it: `SystemBuzzer` is the one file in the app that
+    calls `Vibrator.vibrate`, and a permission that travels with the code that
+    needs it cannot be left behind when the code moves.
+
+    It is a normal permission, so it is granted at install and there is nothing
+    to ask the player at runtime. Whether the phone actually ticks is still the
+    player's: the effects go out under `VibrationAttributes.USAGE_TOUCH`, which
+    Android's own touch-feedback setting governs, and the app has a switch of
+    its own beside it (docs/physics-and-rendering.md).
+  -->
+  <uses-permission android:name="android.permission.VIBRATE" />
+
+</manifest>

@@ -53,6 +53,12 @@ include(":render:headless")
 include(":render:filament")
 
 include(":input:shake")
+
+// Impacts become haptic ticks and impact sounds here. Beside `input/shake`
+// rather than inside a screen: it is the other end of the same wire, and the
+// tray plays through it (docs/architecture.md, Modules).
+include(":feedback")
+
 include(":designer")
 include(":data")
 
