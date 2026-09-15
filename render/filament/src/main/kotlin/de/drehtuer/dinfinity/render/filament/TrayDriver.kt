@@ -5,6 +5,7 @@ import android.view.Surface
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -45,8 +46,9 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 class TrayDriver(
   shared: RollThread? = null,
   private val stages: ((Surface, Int, Int) -> Stage)? = null,
+  impacts: Impacts = Impacts.NONE,
 ) : Tray {
-  private val loop = TrayLoop()
+  private val loop = TrayLoop(impacts)
 
   /**
    * The thread and engine this driver made for itself, if it was not given

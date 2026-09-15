@@ -49,6 +49,7 @@ import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
@@ -291,6 +292,8 @@ private object LandingRolls : Rolls {
         if (landed) SimulationOutcome(faces = spec.dice.indices.associateWith { 0 }) else null
 
       override val drivenBy: List<ShakeSample> = emptyList()
+
+      override val impacts: List<Impact> = emptyList()
 
       override fun advance(elapsedSeconds: Double): RenderFrame {
         landed = true

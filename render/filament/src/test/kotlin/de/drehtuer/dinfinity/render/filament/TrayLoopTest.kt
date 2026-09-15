@@ -2,14 +2,18 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableSound
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.Impact
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.Struck
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -367,6 +371,106 @@ class TrayLoopTest {
     assertTrue("an engine was left open", stage.closed)
   }
 
+  @Test
+  fun `each frame's impacts are handed on as they happen`() {
+    val heard = FakeImpacts()
+    val loop = TrayLoop(heard)
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    roll.hits += impact(step = 1)
+    loop.frame(SOME_LATE_UPTIME)
+    roll.hits += impact(step = 2, die = 1)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(listOf(1, 1), heard.played.map { it.first.size })
+    assertTrue("a watched tray spread its impacts over time", heard.played.all { it.second == 0.0 })
+  }
+
+  @Test
+  fun `an impact is played once rather than once per frame after it`() {
+    val heard = FakeImpacts()
+    val loop = TrayLoop(heard)
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    roll.hits += impact(step = 1)
+    repeat(THREE_FRAMES) { frame -> loop.frame(SOME_LATE_UPTIME + frame * SIXTIETH_OF_A_SECOND_NANOS) }
+
+    assertEquals(1, heard.played.size)
+  }
+
+  @Test
+  fun `a second throw starts its impacts again from the beginning`() {
+    val heard = FakeImpacts()
+    val loop = TrayLoop(heard)
+    val first = FakeRoll(steps = 2)
+    loop.stage(FakeStage())
+    loop.roll(first.start())
+    first.hits += impact(step = 1)
+    loop.frame(SOME_LATE_UPTIME)
+
+    val second = FakeRoll(steps = 2)
+    loop.roll(second.start())
+    second.hits += impact(step = 1)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(listOf(1, 1), heard.played.map { it.first.size })
+  }
+
+  @Test
+  fun `a roll with nothing to play plays nothing`() {
+    val heard = FakeImpacts()
+    val loop = TrayLoop(heard)
+    val roll = FakeRoll(steps = 3)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    repeat(THREE_FRAMES) { frame -> loop.frame(SOME_LATE_UPTIME + frame * SIXTIETH_OF_A_SECOND_NANOS) }
+
+    assertTrue(heard.played.isEmpty())
+  }
+
+  @Test
+  fun `the table says which sounds these impacts will be`() {
+    val heard = FakeImpacts()
+
+    TrayLoop(heard).table(geometry, look.copy(sound = TableSound.Glass))
+
+    assertEquals(listOf(TableSound.Glass), heard.tables)
+  }
+
+  private fun impact(
+    step: Int,
+    die: Int = 0,
+  ): Impact =
+    Impact(
+      stepIndex = step,
+      dieIndex = die,
+      struck = Struck.Floor,
+      speedChangeMmPerSecond = 600.0,
+      dieSizeMm = 16.0,
+    )
+
+  /** Something that plays impacts and only remembers being asked to. */
+  private class FakeImpacts : Impacts {
+    val tables = mutableListOf<TableSound>()
+    val played = mutableListOf<Pair<List<Impact>, Double>>()
+
+    override fun on(sound: TableSound) {
+      tables += sound
+    }
+
+    override fun play(
+      impacts: List<Impact>,
+      overSeconds: Double,
+    ) {
+      played += impacts to overSeconds
+    }
+  }
+
   /**
    * A roll that finishes after a fixed number of frames and remembers what it
    * was handed. No physics: what this class decides is *when* a roll is
@@ -389,6 +493,11 @@ class TrayLoopTest {
       get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
 
     override val drivenBy: List<ShakeSample> get() = shaken.toList()
+
+    /** Impacts a test pushes in, as a real roll would accumulate them. */
+    val hits = mutableListOf<Impact>()
+
+    override val impacts: List<Impact> get() = hits
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds
@@ -448,6 +557,7 @@ class TrayLoopTest {
     const val SOME_LATE_UPTIME = 86_400_000_000_000L
     const val SIXTIETH_OF_A_SECOND_NANOS = 16_666_667L
     const val SPARE_FRAMES = 3
+    const val THREE_FRAMES = 3
 
     /** Enough frames for a short roll, and a bound so a stranded one fails rather than hangs. */
     const val PATIENCE_FRAMES = 50

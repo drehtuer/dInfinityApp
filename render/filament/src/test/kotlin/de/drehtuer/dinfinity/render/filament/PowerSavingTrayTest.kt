@@ -1,14 +1,18 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableSound
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.Impact
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.Struck
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
@@ -155,6 +159,75 @@ class PowerSavingTrayTest {
     tray.close()
   }
 
+  @Test
+  fun `a finished throw's impacts are played over about a second`() {
+    val heard = FakeImpacts()
+    val tray = PowerSavingTray(on = { it.run() }, impacts = heard)
+    val roll = FakeRoll(steps = 3)
+    roll.hits += impact(step = 4)
+    roll.hits += impact(step = 200)
+
+    tray.roll(start = roll.start(), onSettled = { _, _ -> })
+
+    assertEquals(1, heard.played.size)
+    assertEquals(
+      2,
+      heard.played
+        .single()
+        .first.size,
+    )
+    assertEquals(Impacts.REPLAY_SECONDS, heard.played.single().second, 0.0)
+  }
+
+  @Test
+  fun `a throw the player walked away from plays nothing`() {
+    val heard = FakeImpacts()
+    val tray = PowerSavingTray(on = { it.run() }, impacts = heard)
+    val roll = FakeRoll(steps = 3)
+    roll.hits += impact(step = 4)
+    tray.close()
+
+    tray.roll(start = roll.start(), onSettled = { _, _ -> })
+
+    assertTrue("a roll nobody waited for was still played", heard.played.isEmpty())
+  }
+
+  @Test
+  fun `the table still says what the dice sound like, with nothing drawn`() {
+    val heard = FakeImpacts()
+
+    PowerSavingTray(on = { it.run() }, impacts = heard)
+      .table(TableGeometry.referenceDevice(), TableLook(id = "oak", name = "Oak", sound = TableSound.Wood))
+
+    assertEquals(listOf(TableSound.Wood), heard.tables)
+  }
+
+  private fun impact(step: Int): Impact =
+    Impact(
+      stepIndex = step,
+      dieIndex = 0,
+      struck = Struck.Floor,
+      speedChangeMmPerSecond = 600.0,
+      dieSizeMm = 16.0,
+    )
+
+  /** Something that plays impacts and only remembers being asked to. */
+  private class FakeImpacts : Impacts {
+    val tables = mutableListOf<TableSound>()
+    val played = mutableListOf<Pair<List<Impact>, Double>>()
+
+    override fun on(sound: TableSound) {
+      tables += sound
+    }
+
+    override fun play(
+      impacts: List<Impact>,
+      overSeconds: Double,
+    ) {
+      played += impacts to overSeconds
+    }
+  }
+
   private fun sample(): ShakeSample =
     ShakeSample(stepIndex = 0, accelerationMmPerSecond2 = Vector3.Zero, gravity = Vector3.Zero)
 
@@ -176,6 +249,11 @@ class PowerSavingTrayTest {
       get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
 
     override val drivenBy: List<ShakeSample> get() = shaken.toList()
+
+    /** Impacts a test pushes in, as a real roll would accumulate them. */
+    val hits = mutableListOf<Impact>()
+
+    override val impacts: List<Impact> get() = hits
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds

@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.simulation.api.CorrectionLadder
 import de.drehtuer.dinfinity.simulation.api.FaceReader
+import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Reading
 import de.drehtuer.dinfinity.simulation.api.RestTracker
 import de.drehtuer.dinfinity.simulation.api.SettleRule
@@ -32,6 +33,16 @@ class RollLoop(
   private val world: PhysicsWorld,
   private val layout: SpawnLayout,
   private val shake: ShakeDriver,
+  /**
+   * What writes down where the dice hit something.
+   *
+   * A reading of the roll and never an input to it: it is handed the states
+   * this loop has already read and is asked for nothing back, so the same seed
+   * comes to the same faces with it listening and with it [ImpactRecorder.deaf]
+   * (`docs/physics-and-rendering.md`, "Impacts").
+   */
+  private val recorder: ImpactRecorder =
+    ImpactRecorder(spec.dice.map { it.die.material.sizeMm * spec.dieScale }),
 ) {
   private val diceCount = spec.dice.size
   private val tracker = RestTracker(diceCount)
@@ -69,6 +80,15 @@ class RollLoop(
    * the throw is ([ShakeDriver.recorded]).
    */
   val drivenBy: List<ShakeSample> get() = shake.recorded()
+
+  /**
+   * Everywhere the dice have hit something so far, in step order.
+   *
+   * The counterpart of [drivenBy]: that is what the hand did to the roll, this
+   * is what the roll did back. Like the dice themselves it is read-only, and
+   * whoever reads it can play it and nothing else.
+   */
+  val impacts: List<Impact> get() = recorder.recorded()
 
   /**
    * Takes one more moment of the shake that is throwing these dice.
@@ -121,6 +141,10 @@ class RollLoop(
     world.step(SettleRule.TIMESTEP_SECONDS)
 
     states = world.readStates()
+    // Listened to before anything is decided, and from the states that were
+    // already read: an impact is a reading of the step just taken, not a thing
+    // the step waits for.
+    recorder.step(step, states, shake.gravity.length)
     tracker.step(states.map(DieState::motion))
     correct(states, step)
     return true
@@ -239,6 +263,10 @@ class RollLoop(
       if (!cocked && !state.supportedByDie) return@forEachIndexed
       if (rethrowCount[index] >= MAX_RETHROWS) return@forEachIndexed
       world.respawn(index, layout.rethrowPlacement(index, rethrowCount[index]))
+      // The speed it has the moment after this is the re-throw rather than a
+      // contact, and a sound for the app's own hand is the one noise a player
+      // must never hear.
+      recorder.rethrown(index)
       // The tracker still has it down as settled from a moment ago, and a die
       // in mid-air is not settled.
       tracker.rethrown(index)

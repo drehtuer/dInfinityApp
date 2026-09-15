@@ -30,8 +30,9 @@ class JoltDiceSimulator(
     if (spec.dice.isEmpty()) return SimulationOutcome(faces = emptyMap())
     // Power-saving mode is not a second implementation, and this line is why:
     // it is the same roll the screen would have watched, stepped by nobody
-    // (`docs/physics-and-rendering.md`, "Power-saving mode").
-    return start(spec).use(LiveRoll::runToEnd)
+    // (`docs/physics-and-rendering.md`, "Power-saving mode"). Nothing is
+    // listening: a headless run has nowhere to play an impact.
+    return start(spec, listening = false).use(LiveRoll::runToEnd)
   }
 
   /**
@@ -43,10 +44,17 @@ class JoltDiceSimulator(
    *
    * @param renderer what watches the throw. The default watches nothing, which
    *   is what [run] uses.
+   * @param listening whether the roll writes down where the dice hit
+   *   something. Off when neither haptics nor sound is on, which is the one
+   *   thing those two settings save: nothing is measured rather than measured
+   *   and then muted. It changes nothing about the throw, which
+   *   `ImpactRecorderTest` asserts on the same seed both ways
+   *   (`docs/physics-and-rendering.md`, "Impacts").
    */
   fun start(
     spec: ThrowSpec,
     renderer: Renderer = HeadlessRenderer(),
+    listening: Boolean = true,
   ): LiveRoll {
     require(spec.dice.isNotEmpty()) { "a throw of no dice has nothing to simulate" }
 
@@ -71,7 +79,13 @@ class JoltDiceSimulator(
         )
       }
       world.finish()
-      LiveRoll(spec, world, RollLoop(spec, world, layout, ShakeDriver(spec.shake)), renderer)
+      val heard =
+        if (listening) {
+          ImpactRecorder(spec.dice.map { it.die.material.sizeMm * spec.dieScale })
+        } else {
+          ImpactRecorder.deaf(spec.dice.size)
+        }
+      LiveRoll(spec, world, RollLoop(spec, world, layout, ShakeDriver(spec.shake), heard), renderer)
     }.getOrElse { failure ->
       world.close()
       throw failure

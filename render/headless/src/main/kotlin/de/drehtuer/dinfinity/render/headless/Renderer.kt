@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.render.headless
 
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -147,6 +148,17 @@ interface WatchedRoll : AutoCloseable {
    * Like [outcome] it is something a watcher may read and cannot change.
    */
   val drivenBy: List<ShakeSample>
+
+  /**
+   * Everywhere the dice have hit something so far, in step order.
+   *
+   * The other half of [drivenBy]: that is what the hand did to the roll, this
+   * is what the roll did back, and both are things a watcher may read and
+   * cannot change. A tray plays the ones it has not played yet on every frame;
+   * a power-saving roll has none to play until the end and plays the lot over
+   * about a second (`docs/physics-and-rendering.md`, "Haptics and sound").
+   */
+  val impacts: List<Impact>
 
   /**
    * Moves the roll on by however much [elapsedSeconds] is worth and hands back

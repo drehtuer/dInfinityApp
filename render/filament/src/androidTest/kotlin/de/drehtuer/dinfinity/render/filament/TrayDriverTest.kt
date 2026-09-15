@@ -13,6 +13,7 @@ import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -311,6 +312,8 @@ class TrayDriverTest {
       get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
 
     override val drivenBy: List<ShakeSample> = emptyList()
+
+    override val impacts: List<Impact> = emptyList()
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds

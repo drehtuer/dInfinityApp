@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.FrameClock
+import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -71,6 +72,17 @@ class LiveRoll internal constructor(
    * samples with the world they drove.
    */
   override val drivenBy: List<ShakeSample> get() = loop.drivenBy
+
+  /**
+   * Everywhere the dice have hit something so far, in step order.
+   *
+   * Grows as the roll runs and is read by whoever is playing it — a watched
+   * tray takes the ones it has not played yet on every frame, and a
+   * power-saving roll takes the lot once the dice have stopped. It is the same
+   * list either way; only the clock over it differs
+   * (`docs/physics-and-rendering.md`, "Haptics and sound").
+   */
+  override val impacts: List<Impact> get() = loop.impacts
 
   /**
    * Steps that a frame was too late to pay for, in total
