@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.data.StoredDie
 import de.drehtuer.dinfinity.data.StoredGroup
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -148,6 +149,12 @@ object HistoryExport {
               put("naturalMax", entry.hasNaturalMax)
               entry.savedRollId?.let { put("savedRoll", it) }
               if (entry.groups.isNotEmpty()) put("groups", JsonArray(entry.groups.map(::groupOf)))
+              // What the formula added, so a file that "keeps the breakdown"
+              // keeps a breakdown that adds up. Absent when there is none, so
+              // a roll with no modifiers exports the object it always did.
+              if (entry.adjustments.isNotEmpty()) {
+                put("adjustments", JsonArray(entry.adjustments.map(::JsonPrimitive)))
+              }
             },
           )
         }

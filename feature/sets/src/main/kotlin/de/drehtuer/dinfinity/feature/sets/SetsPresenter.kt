@@ -71,7 +71,7 @@ data class SetRow(
    * commits to tell apart, so neither can be checked — which is a fact about
    * the source rather than a failure ([RefResolver]).
    */
-  val checkable: Boolean get() = meta.source != null && meta.commit != null
+  val checkable: Boolean get() = meta.source != null && (meta.commit != null || meta.stamped)
 
   /** How many things went wrong. The list itself belongs to the details screen (`6b`). */
   val problems: Int get() = report.size
@@ -200,14 +200,21 @@ class SetsPresenter(
   private val download: suspend (String, (PackageFetcher.Progress) -> Unit) -> FetchedPackage =
     { _, _ -> FetchedPackage.Failed(NO_NETWORK) },
   /**
-   * Asks a forge which commit the ref a set was installed from is at now
+   * Asks what the thing a set was installed from is at now
    * (`docs/dice-sets.md`, "Updates"; design `9h`).
+   *
+   * Given the source **and the commit the install recorded**, because those
+   * two decide which question there is to ask: a set with a commit came from a
+   * forge and is told apart by commits, and anything else is an archive and is
+   * told apart by what its server says about the file. Which is which is the
+   * caller's to work out — it is the same request either way as far as this
+   * screen is concerned.
    *
    * A function rather than something this module builds, for the reason the
    * download is one: it is an HTTP request, and a screen that lists dice sets
    * should not carry a client to make one.
    */
-  private val latestCommit: suspend (String) -> LatestCommit = { LatestCommit.Unknown },
+  private val latestCommit: suspend (String, String?) -> LatestCommit = { _, _ -> LatestCommit.Unknown },
 ) {
   /**
    * The install in flight, so a download can be stopped.
@@ -386,9 +393,10 @@ class SetsPresenter(
       val outdated = mutableSetOf<String>()
       var unreachable = 0
       checkable.forEach { row ->
-        when (val latest = latestCommit(requireNotNull(row.meta.source))) {
-          is LatestCommit.Unknown -> unreachable++
-          is LatestCommit.At -> if (latest.sha != row.meta.commit) outdated += row.id
+        when (row.moved(latestCommit(requireNotNull(row.meta.source), row.meta.commit))) {
+          Moved.Unknown -> unreachable++
+          Moved.Yes -> outdated += row.id
+          Moved.No -> Unit
         }
       }
       state =
@@ -418,12 +426,37 @@ class SetsPresenter(
   }
 }
 
-/** What a forge said about the ref a set was installed from. */
+/**
+ * What the other end said about the thing a set was installed from
+ * (`docs/dice-sets.md`, "Updates").
+ *
+ * Two answers because there are two kinds of source and they are told apart
+ * differently: a forge has commits, and a plain archive has only what its
+ * server says about the file. Which of the two was asked is decided by what
+ * the install recorded, not by reading the URL again.
+ */
 sealed interface LatestCommit {
   /** @param sha the commit that ref is at now, as the forge reported it. */
   data class At(
     val sha: String,
   ) : LatestCommit
+
+  /**
+   * What a server says about an archive: its `ETag`, and the `Last-Modified`
+   * beside it.
+   *
+   * Compared for equality with what was recorded and never parsed. An `ETag`
+   * is opaque by definition, and a `Last-Modified` here is a header rather
+   * than a time — a set re-uploaded a second later is a different archive, and
+   * a clock that went backwards is the server's business.
+   */
+  data class Stamped(
+    val etag: String?,
+    val lastModified: String?,
+  ) : LatestCommit {
+    /** True when the server said nothing that could be compared with anything. */
+    val silent: Boolean get() = etag == null && lastModified == null
+  }
 
   /**
    * There is no answer: not a forge, or the forge could not be reached.
@@ -494,3 +527,48 @@ internal suspend fun SetsState.installed(
           PackageInstaller.Result.Failed(cause.message ?: "the package could not be installed")
         },
   )
+
+/** Whether what a set was installed from has moved on. */
+internal enum class Moved {
+  Yes,
+  No,
+
+  /** Nothing could be said: no answer, or nothing comparable in it. */
+  Unknown,
+}
+
+/** True when the install recorded something a server said about the archive. */
+internal val PackageMeta.stamped: Boolean get() = etag != null || lastModified != null
+
+/**
+ * Whether [latest] is a different thing from the one this row was installed
+ * from (`docs/dice-sets.md`, "Updates").
+ *
+ * The comparison lives here rather than in whatever made the request, because
+ * it is the rule and not the transport — and because it has one shape that is
+ * easy to get subtly wrong: **compare like with like, and say nothing
+ * otherwise.** A set installed with an `ETag` against a server that has since
+ * stopped sending one is not outdated; it is unanswerable, and badging it
+ * would send somebody to re-download a set that has not changed.
+ *
+ * An extension rather than a method for the reason `SetsState.installed` is
+ * one: `SetsPresenter` is at the class size detekt allows, and this is a
+ * question about a row with nothing of the screen in it.
+ */
+internal fun SetRow.moved(latest: LatestCommit): Moved =
+  when (latest) {
+    LatestCommit.Unknown -> Moved.Unknown
+    is LatestCommit.At -> if (meta.commit == null) Moved.Unknown else movedTo(latest.sha == meta.commit)
+    is LatestCommit.Stamped ->
+      when {
+        // Neither end has anything to say, or they have different things to
+        // say. Either way there is nothing to compare.
+        latest.silent || !meta.stamped -> Moved.Unknown
+        latest.etag != null && meta.etag != null -> movedTo(latest.etag == meta.etag)
+        latest.lastModified != null && meta.lastModified != null ->
+          movedTo(latest.lastModified == meta.lastModified)
+        else -> Moved.Unknown
+      }
+  }
+
+private fun movedTo(same: Boolean): Moved = if (same) Moved.No else Moved.Yes

@@ -188,6 +188,57 @@ class HistoryScreenTest {
   }
 
   @Test
+  fun `a past roll shows what its formula added, so the rows add up`() {
+    // It used to show only the dice, so `2d6 + 4` was rows adding to nine
+    // under a total of thirteen (`docs/dice-notation.md`, "Evaluation").
+    given(formula = "2d6 + 4", total = 13) {
+      copy(breakdownJson = Breakdown.of(twoD6("2d6 + 4", 13).copy(adjustments = listOf(4L))))
+    }
+    val presenter = show()
+    val id =
+      presenter.state.rolls
+        .single()
+        .id
+
+    compose.onNodeWithTag(HistoryTestTags.rollOf(id)).performClick()
+
+    compose.onNodeWithTag(HistoryTestTags.adjustmentOf(id, 4), useUnmergedTree = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `one that took something away says so`() {
+    given(formula = "2d6 - 2", total = 7) {
+      copy(breakdownJson = Breakdown.of(twoD6("2d6 - 2", 7).copy(adjustments = listOf(-2L))))
+    }
+    val presenter = show()
+    val id =
+      presenter.state.rolls
+        .single()
+        .id
+
+    compose.onNodeWithTag(HistoryTestTags.rollOf(id)).performClick()
+
+    compose.onNodeWithTag(HistoryTestTags.adjustmentOf(id, -2), useUnmergedTree = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a roll recorded before these were written down shows the dice and nothing invented`() {
+    // Nobody knows what that roll added. Making the difference up would be the
+    // app putting a number in front of somebody that it guessed.
+    given(formula = "2d6 + 4", total = 13)
+    val presenter = show()
+    val id =
+      presenter.state.rolls
+        .single()
+        .id
+
+    compose.onNodeWithTag(HistoryTestTags.rollOf(id)).performClick()
+
+    compose.onNodeWithTag(HistoryTestTags.adjustmentOf(id, 4), useUnmergedTree = true).assertDoesNotExist()
+    compose.onNodeWithTag(HistoryTestTags.breakdownOf(id), useUnmergedTree = true).assertIsDisplayed()
+  }
+
+  @Test
   fun `a roll of nothing but arithmetic has nothing to open`() {
     given(formula = "4 + 4", total = 8) {
       copy(breakdownJson = Breakdown.of(RollResult(formula = "4 + 4", total = 8)))

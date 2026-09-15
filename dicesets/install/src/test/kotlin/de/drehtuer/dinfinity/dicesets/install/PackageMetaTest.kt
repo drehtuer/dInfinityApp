@@ -29,6 +29,35 @@ class PackageMetaTest {
   }
 
   @Test
+  fun `what a server said about the archive survives the round trip, quotes and all`() {
+    // The only thing an update check has to compare for a plain archive
+    // (`docs/dice-sets.md`, "Updates"). A real `ETag` is quoted, which is the
+    // reason this goes through a writer rather than into a string by hand.
+    val archive =
+      PackageMeta(
+        source = "https://example.invalid/brass.zip",
+        sha256 = "abc123",
+        etag = QUOTED_ETAG,
+        lastModified = "Mon, 01 Jan 2024 00:00:00 GMT",
+      )
+
+    val read = PackageMeta.read(archive.asJson())
+
+    assertEquals(QUOTED_ETAG, read.etag)
+    assertEquals("Mon, 01 Jan 2024 00:00:00 GMT", read.lastModified)
+  }
+
+  @Test
+  fun `a set installed before these were recorded has neither, rather than a guess`() {
+    val older = """{"source":"https://example.invalid/brass.zip","sha256":"abc123"}"""
+
+    val read = PackageMeta.read(older)
+
+    assertNull(read.etag)
+    assertNull(read.lastModified)
+  }
+
+  @Test
   fun `a source with a quote, a backslash and a newline survives`() {
     // The reason this goes through a parser in both directions. Assembling
     // the JSON by hand handled quotes and backslashes and nothing else, so a
@@ -79,5 +108,10 @@ class PackageMetaTest {
 
     assertNull(read.source)
     assertEquals("1.0.0", read.version)
+  }
+
+  private companion object {
+    /** A real `ETag`, quotes and all. */
+    const val QUOTED_ETAG = "\"v1\""
   }
 }

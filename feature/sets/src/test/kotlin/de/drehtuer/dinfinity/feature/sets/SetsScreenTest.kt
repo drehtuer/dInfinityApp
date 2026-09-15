@@ -31,6 +31,7 @@ import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageFetcher
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.dicesets.install.PackageMeta
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -408,7 +409,7 @@ class SetsScreenTest {
     onInstall: () -> Unit = {},
     download: suspend (String, (PackageFetcher.Progress) -> Unit) -> FetchedPackage =
       { _, _ -> FetchedPackage.Failed("no downloader in this test") },
-    latestCommit: suspend (String) -> LatestCommit = { LatestCommit.Unknown },
+    latestCommit: suspend (String, String?) -> LatestCommit = { _, _ -> LatestCommit.Unknown },
   ): SetsPresenter {
     val presenter =
       SetsPresenter(library(), scope, download, latestCommit)
@@ -484,11 +485,53 @@ class SetsScreenTest {
   }
 
   @Test
+  fun `a set from a plain archive is checked too, and badged when the file has changed`() {
+    // It could not be checked at all before: no commits to tell apart, so the
+    // button skipped it (`docs/dice-sets.md`, "Updates").
+    fromArchive("brass", etag = "\"v1\"")
+    val presenter = show(latestCommit = { _, _ -> LatestCommit.Stamped(etag = "\"v2\"", lastModified = null) })
+    compose.waitUntil(PATIENCE) { presenter.state.checkable }
+
+    compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.checked != null }
+    assertEquals(setOf("brass"), presenter.state.outdated)
+  }
+
+  @Test
+  fun `and left alone when it has not`() {
+    fromArchive("brass", etag = "\"v1\"")
+    val presenter = show(latestCommit = { _, _ -> LatestCommit.Stamped(etag = "\"v1\"", lastModified = null) })
+    compose.waitUntil(PATIENCE) { presenter.state.checkable }
+
+    compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.checked != null }
+    assertEquals(emptySet<String>(), presenter.state.outdated)
+    assertEquals(0, presenter.state.checked?.unreachable)
+  }
+
+  @Test
+  fun `a set installed before any of this was recorded is not asked about`() {
+    // Its `.meta.json` has a source and nothing to compare. Asking would be a
+    // request that can only answer "no idea".
+    write("brass", toml("brass", "Brass"))
+    java.io.File(root, "brass/${PackageMeta.FILE_NAME}").writeText(
+      PackageMeta(source = "https://example.test/brass.zip", sha256 = "deadbeef").asJson(),
+    )
+    val presenter = show(latestCommit = { _, _ -> error("a set with nothing to compare was asked about") })
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    assertEquals(false, presenter.state.checkable)
+  }
+
+  @Test
   fun `a set whose forge has moved on is badged, and the rest are not`() {
     fromForge("brass", commit = "aaaa")
     fromForge("bone", commit = "bbbb")
     val presenter =
-      show(latestCommit = { source -> if ("brass" in source) LatestCommit.At("cccc") else LatestCommit.At("bbbb") })
+      show(latestCommit = { source, _ -> if ("brass" in source) LatestCommit.At("cccc") else LatestCommit.At("bbbb") })
     compose.waitUntil(PATIENCE) { presenter.state.checkable }
 
     compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
@@ -509,7 +552,7 @@ class SetsScreenTest {
     // A check that found everything up to date and a check that could not
     // reach anything look identical on the list.
     fromForge("brass", commit = "aaaa")
-    val presenter = show(latestCommit = { LatestCommit.At("aaaa") })
+    val presenter = show(latestCommit = { _, _ -> LatestCommit.At("aaaa") })
     compose.waitUntil(PATIENCE) { presenter.state.checkable }
 
     compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
@@ -522,7 +565,7 @@ class SetsScreenTest {
   @Test
   fun `a forge that cannot be reached is counted, not treated as up to date`() {
     fromForge("brass", commit = "aaaa")
-    val presenter = show(latestCommit = { LatestCommit.Unknown })
+    val presenter = show(latestCommit = { _, _ -> LatestCommit.Unknown })
     compose.waitUntil(PATIENCE) { presenter.state.checkable }
 
     compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
@@ -567,7 +610,7 @@ class SetsScreenTest {
     val asked = mutableListOf<String>()
     val holding = CompletableDeferred<LatestCommit>()
     val presenter =
-      show(latestCommit = { source ->
+      show(latestCommit = { source, _ ->
         asked += source
         holding.await()
       })
@@ -591,7 +634,7 @@ class SetsScreenTest {
     // test would never see it.
     fromForge("brass", commit = "aaaa")
     var tick by mutableStateOf(0)
-    val presenter = SetsPresenter(library(), scope, { _, far -> held(far) }, { LatestCommit.Unknown })
+    val presenter = SetsPresenter(library(), scope, { _, far -> held(far) }, { _, _ -> LatestCommit.Unknown })
     compose.setContent {
       Column {
         Text("tick $tick")
@@ -610,6 +653,24 @@ class SetsScreenTest {
     compose.onNodeWithTag(SetsTestTags.LINK).assertIsDisplayed()
     compose.onNodeWithTag(SetsTestTags.PROGRESS).assertIsDisplayed()
     compose.onNodeWithTag(SetsTestTags.STOP).assertIsDisplayed()
+  }
+
+  /**
+   * A package that came from a plain archive: what the server said, and no
+   * commit to tell one build from another.
+   *
+   * The `ETag` goes in through the writer rather than into a string by hand,
+   * because a real one is quoted — `"v1"` — and hand-building the JSON around
+   * it is how you get a file the reader cannot read back.
+   */
+  private fun fromArchive(
+    id: String,
+    etag: String,
+  ) {
+    write(id, toml(id, id.replaceFirstChar(Char::uppercase)))
+    java.io.File(root, "$id/${PackageMeta.FILE_NAME}").writeText(
+      PackageMeta(source = "https://example.test/$id.zip", sha256 = "deadbeef", etag = etag).asJson(),
+    )
   }
 
   /** A package that records where it came from and which commit arrived. */

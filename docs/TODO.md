@@ -96,7 +96,6 @@ What is below is what it does not have yet.
 - [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
-- [ ] The *history* breakdown still itemises only the dice. The result sheet itemises the modifiers now, from `RollResult.adjustments`; the stored breakdown JSON does not carry them, so a past roll of `3d6 + 4` shows rows adding to eleven under a total of fifteen (`docs/statistics.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
 - [ ] *Device:* the whole of Step 5 hangs off this screen
@@ -147,6 +146,13 @@ the place the table fallback below has to live.
 
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
 
+**Every kind of source can be checked for updates.** A forge is asked which
+commit its ref is at; a plain archive is asked, with a `HEAD`, what its server
+says about the file. A set installed before the second was recorded, or against
+a server that has stopped sending what it once sent, is *unanswerable* rather
+than badged — re-downloading a set that has not changed is the one wrong answer
+here (`docs/dice-sets.md`, "Updates").
+
 A download shows how far it has got and can be stopped (`9i`): the bar is drawn
 from bytes that arrived rather than from what the server claimed, it is there
 only while something is on the wire, and Cancel stops the download and says
@@ -162,7 +168,6 @@ validator, where a rejection lists every error (`1t`) and a download that never
 arrives is refused the same way. Database version 4 holds which sets are
 switched on.
 
-- [ ] A check for **plain archives** — comparing headers and checksums, since those have no commits to tell apart. It needs `.meta.json` to record what the server said at install time (an `ETag` or a `Last-Modified`), so a set installed before that is unanswerable rather than wrong. Checking a *forge* is built: `RefResolver` is asked what the ref a set was installed from is at now, a set that has moved on is badged, and updating it is a re-install from the recorded source through the same validator (`docs/dice-sets.md`, "Updates")
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
 

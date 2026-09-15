@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.data.HistoryEntry
 import de.drehtuer.dinfinity.data.StoredDie
 import de.drehtuer.dinfinity.data.StoredGroup
+import kotlin.math.abs
 
 /**
  * Every roll, with what it was made of
@@ -323,6 +324,11 @@ private fun Groups(roll: HistoryEntry) {
     verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     roll.groups.forEach { group -> Group(group) }
+    // And what the formula added, so the rows add up to the total the way they
+    // do on the result sheet (`docs/dice-notation.md`, "Evaluation", step 7).
+    // A roll recorded before these were written down has none, and that is the
+    // truth about it: nobody knows what it added.
+    roll.adjustments.forEach { amount -> Adjustment(id = roll.id, amount = amount) }
     if (roll.anomalies > 0) {
       Text(
         text = pluralStringResource(R.plurals.history_anomalies, roll.anomalies, roll.anomalies),
@@ -331,6 +337,36 @@ private fun Groups(roll: HistoryEntry) {
         modifier = Modifier.testTag(HistoryTestTags.anomaliesOf(roll.id)),
       )
     }
+  }
+}
+
+/**
+ * One number the formula added or took away, on a row of its own.
+ *
+ * The same shape as a group's row, because it is the same claim: a thing
+ * somebody wrote, and what it contributed. Before it existed a past roll of
+ * `3d6 + 4` showed rows adding to eleven under a total of fifteen.
+ */
+@Composable
+private fun Adjustment(
+  id: Long,
+  amount: Long,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().testTag(HistoryTestTags.adjustmentOf(id, amount)),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Text(
+      text = stringResource(if (amount < 0) R.string.history_minus else R.string.history_plus),
+      style = MaterialTheme.typography.labelMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.weight(3f),
+    )
+    Text(
+      text = abs(amount).toString(),
+      style = MaterialTheme.typography.labelMedium,
+      color = MaterialTheme.colorScheme.onBackground,
+    )
   }
 }
 
@@ -519,6 +555,11 @@ object HistoryTestTags {
   fun breakdownOf(id: Long): String = "history:roll:$id:breakdown"
 
   fun anomaliesOf(id: Long): String = "history:roll:$id:anomalies"
+
+  fun adjustmentOf(
+    id: Long,
+    amount: Long,
+  ): String = "history:adjustment:$id:$amount"
 
   fun sessionOf(name: String): String = "history:session:$name"
 }

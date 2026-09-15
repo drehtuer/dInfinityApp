@@ -948,7 +948,7 @@ than real time (`docs/physics-and-rendering.md`, "Shake input").
     <set-id>/                 one folder per installed package (dice and/or tables), id is a sanitised slug
       diceset.toml
       textures/…
-      .meta.json              source URL, commit hash / archive checksum, install time, validation report
+      .meta.json              source URL, commit hash / archive checksum + ETag, install time, validation report
   designer/
     drafts/…                  in-progress face drawings
   savedrolls/

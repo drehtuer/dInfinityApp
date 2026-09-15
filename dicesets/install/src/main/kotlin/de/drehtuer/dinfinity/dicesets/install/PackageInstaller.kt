@@ -72,7 +72,8 @@ class PackageInstaller(
         // — so reaching it would mean the fetcher had stopped for a reason it
         // was never given. Said rather than swallowed.
         PackageFetcher.Result.Cancelled -> Result.Failed("the download was stopped")
-        is PackageFetcher.Result.Downloaded ->
+        is PackageFetcher.Result.Downloaded -> {
+          val commit = commits.of(source)
           install(
             archive = downloaded.file,
             workspace = workspace,
@@ -82,8 +83,19 @@ class PackageInstaller(
             // is what the update check in 4.4 needs to tell one HEAD from
             // another, and not having it costs that and nothing else
             // (`docs/dice-sets.md`, "Updates").
-            identity = Identity(from, downloaded.sha256, commits.of(source)),
+            identity =
+              PackageMeta(
+                source = from,
+                sha256 = downloaded.sha256,
+                commit = commit,
+                // Only kept for an archive: a set from a forge is told apart
+                // by its commit, and two answers to one question are two
+                // things to keep in step.
+                etag = downloaded.etag.takeIf { commit == null },
+                lastModified = downloaded.lastModified.takeIf { commit == null },
+              ),
           )
+        }
       }
     } finally {
       workspace.deleteRecursively()
@@ -97,7 +109,7 @@ class PackageInstaller(
   ): Result {
     val workspace = temporaryFolder()
     return try {
-      install(archive, workspace, subfolder = null, identity = Identity(from, sha256 = null))
+      install(archive, workspace, subfolder = null, identity = PackageMeta(source = from))
     } finally {
       workspace.deleteRecursively()
     }
@@ -107,7 +119,7 @@ class PackageInstaller(
     archive: File,
     workspace: File,
     subfolder: String?,
-    identity: Identity,
+    identity: PackageMeta,
   ): Result =
     when (val extracted = extractor.extract(archive, workspace, subfolder)) {
       is ExtractionResult.Refused -> Result.Failed("${extracted.reason}: ${extracted.detail}")
@@ -116,7 +128,7 @@ class PackageInstaller(
 
   private fun validateAndMove(
     folder: File,
-    identity: Identity,
+    identity: PackageMeta,
   ): Result =
     when (val validated = DiceSetValidator.validate(PackageFiles.of(folder))) {
       is ValidationResult.Rejected ->
@@ -199,7 +211,7 @@ class PackageInstaller(
   private fun move(
     folder: File,
     validated: ValidationResult.Valid,
-    identity: Identity,
+    identity: PackageMeta,
   ): Result {
     val destination = File(root, validated.set.id)
     root.mkdirs()
@@ -212,7 +224,7 @@ class PackageInstaller(
       return Result.Failed(restored(previous, destination))
     }
     previous?.deleteRecursively()
-    File(destination, META_FILE).writeText(identity.asJson(validated.set))
+    File(destination, META_FILE).writeText(identity.beside(validated.set))
     return Result.Installed(
       set = validated.set,
       folder = destination,
@@ -223,30 +235,6 @@ class PackageInstaller(
 
   private fun temporaryFolder(): File =
     File(root.parentFile ?: root, "install-${System.nanoTime()}").also { it.mkdirs() }
-
-  /**
-   * Where a package came from and what arrived, recorded beside it.
-   *
-   * Written through [PackageMeta] rather than assembled as text. The escaping
-   * is the reason: a source string is whatever the player pasted, and building
-   * the JSON by hand meant handling backslashes and quotes and nothing else —
-   * so a URL with a control character in it wrote a file that could not be
-   * read back.
-   */
-  private data class Identity(
-    val source: String,
-    val sha256: String?,
-    val commit: String? = null,
-  ) {
-    fun asJson(set: DiceSet): String =
-      PackageMeta(
-        source = source,
-        sha256 = sha256,
-        commit = commit,
-        version = set.version,
-        installedAtEpochMs = System.currentTimeMillis(),
-      ).asJson()
-  }
 
   private companion object {
     /** Where the source, the checksum and the install time live (`docs/architecture.md`). */
@@ -260,3 +248,19 @@ class PackageInstaller(
       runCatching { copyRecursively(destination, overwrite = true) }.getOrDefault(false)
   }
 }
+
+/**
+ * This note, finished off with what the package turned out to be.
+ *
+ * The version and the install time are the installer's to fill in rather than
+ * the caller's: one is read out of the package that just validated, and the
+ * other is *now* by definition.
+ *
+ * Written through [PackageMeta] rather than assembled as text, and the
+ * escaping is the reason: a source string is whatever the player pasted, and
+ * building the JSON by hand meant handling backslashes and quotes and nothing
+ * else — so a URL with a control character in it wrote a file that could not
+ * be read back.
+ */
+private fun PackageMeta.beside(set: DiceSet): String =
+  copy(version = set.version, installedAtEpochMs = System.currentTimeMillis()).asJson()

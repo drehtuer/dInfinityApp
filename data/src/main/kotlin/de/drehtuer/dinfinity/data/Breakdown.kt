@@ -42,6 +42,11 @@ object Breakdown {
           put("rounding", JsonPrimitive(result.rounding.name))
           result.label?.let { put("label", JsonPrimitive(it)) }
           put("groups", JsonArray(result.groups.map(::groupOf)))
+          // Only when there are any, so a roll with no modifiers is the same
+          // text it has always been.
+          result.adjustments
+            .takeIf { it.isNotEmpty() }
+            ?.let { put("adjustments", JsonArray(it.map(::JsonPrimitive))) }
         },
       ),
     )
@@ -52,19 +57,30 @@ object Breakdown {
    * Lenient on purpose: a breakdown written by an older version is still a
    * record of a roll somebody made, and a history screen that threw away
    * everything it could not parse perfectly would be a history screen that
-   * loses rolls when the app is updated. Anything unreadable comes back as an
-   * empty list, and the row's total — which is stored in its own column —
-   * still draws.
+   * loses rolls when the app is updated. Anything unreadable comes back empty,
+   * and the row's total — which is stored in its own column — still draws.
+   *
+   * **A roll written before the modifiers were recorded has none**, and that
+   * is the truth about it rather than a gap to paper over: nobody knows what
+   * `3d6 + 4` added, because at the time nothing wrote it down. Its rows will
+   * not add up to its total, exactly as they do not today.
    */
-  fun read(text: String): List<StoredGroup> =
+  fun read(text: String): StoredBreakdown =
     runCatching {
-      json
-        .parseToJsonElement(text)
-        .jsonObject["groups"]
-        ?.jsonArray
-        ?.map { group(it.jsonObject) }
-        .orEmpty()
-    }.getOrDefault(emptyList())
+      val root = json.parseToJsonElement(text).jsonObject
+      StoredBreakdown(
+        groups =
+          root["groups"]
+            ?.jsonArray
+            ?.map { group(it.jsonObject) }
+            .orEmpty(),
+        adjustments =
+          root["adjustments"]
+            ?.jsonArray
+            ?.mapNotNull { it.jsonPrimitive.content.toLongOrNull() }
+            .orEmpty(),
+      )
+    }.getOrDefault(StoredBreakdown())
 
   private fun groupOf(group: RolledGroup): JsonObject =
     JsonObject(
@@ -125,6 +141,25 @@ object Breakdown {
       ?.content
       ?.toBooleanStrictOrNull() ?: false
 }
+
+/**
+ * A roll's breakdown as it was written down.
+ *
+ * The groups and the numbers the formula added, which together are what the
+ * history screen draws under the total — the same two things the result sheet
+ * shows the moment a roll lands (`docs/dice-notation.md`, "Evaluation",
+ * step 7).
+ *
+ * [adjustments] is empty both for a formula that added nothing and for a roll
+ * recorded before they were written down. Those are not the same thing, and
+ * nothing here pretends to tell them apart: the second is a roll whose
+ * modifiers nobody knows, and the honest answer is the one the rows give — a
+ * breakdown that does not add up to its total.
+ */
+data class StoredBreakdown(
+  val groups: List<StoredGroup> = emptyList(),
+  val adjustments: List<Long> = emptyList(),
+)
 
 /**
  * One group of a stored breakdown.

@@ -31,6 +31,22 @@ data class PackageMeta(
   val source: String? = null,
   val sha256: String? = null,
   val commit: String? = null,
+  /**
+   * What the server said about the archive when it was fetched: its `ETag`,
+   * and the `Last-Modified` beside it (`docs/dice-sets.md`, "Updates").
+   *
+   * A plain archive has no commits to tell apart, so this is the only thing an
+   * update check has to compare against for one. Both are stored verbatim and
+   * only ever compared for equality — an `ETag` is an opaque string by
+   * definition and a date here is a header rather than a time, so parsing
+   * either would be inventing a meaning the standard does not give them.
+   *
+   * Absent for a set installed from a file, from a forge, or before these were
+   * recorded. A check has nothing to say about such a set, which is the
+   * honest answer rather than a guess.
+   */
+  val etag: String? = null,
+  val lastModified: String? = null,
   val version: String? = null,
   val installedAtEpochMs: Long? = null,
 ) {
@@ -42,6 +58,8 @@ data class PackageMeta(
         source?.let { put(SOURCE, JsonPrimitive(it)) }
         sha256?.let { put(SHA256, JsonPrimitive(it)) }
         commit?.let { put(COMMIT, JsonPrimitive(it)) }
+        etag?.let { put(ETAG, JsonPrimitive(it)) }
+        lastModified?.let { put(LAST_MODIFIED, JsonPrimitive(it)) }
         version?.let { put(VERSION, JsonPrimitive(it)) }
         installedAtEpochMs?.let { put(INSTALLED_AT, JsonPrimitive(it)) }
       },
@@ -57,6 +75,8 @@ data class PackageMeta(
     private const val SOURCE = "source"
     private const val SHA256 = "sha256"
     private const val COMMIT = "commit"
+    private const val ETAG = "etag"
+    private const val LAST_MODIFIED = "lastModified"
     private const val VERSION = "version"
     private const val INSTALLED_AT = "installedAt"
 
@@ -76,6 +96,8 @@ data class PackageMeta(
         source = root.text(SOURCE),
         sha256 = root.text(SHA256),
         commit = root.text(COMMIT),
+        etag = root.text(ETAG),
+        lastModified = root.text(LAST_MODIFIED),
         version = root.text(VERSION),
         installedAtEpochMs = root[INSTALLED_AT]?.asPrimitive()?.longOrNull,
       )
