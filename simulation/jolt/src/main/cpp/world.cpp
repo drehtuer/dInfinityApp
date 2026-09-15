@@ -7,6 +7,7 @@
 #include <Jolt/Core/TempAllocator.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Body/BodyLock.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
@@ -415,6 +416,67 @@ void World::Respawn(int index, const Placement& placement) {
       impl_->dice[static_cast<std::size_t>(index)], RVec3(ToVec3(placement.position)),
       ToQuat(placement.rotation), ToVec3(placement.linear_velocity),
       ToVec3(placement.angular_velocity));
+}
+
+void World::ReadBody(int index, float* out) const {
+  for (int i = 0; i < kBodyStride; ++i) out[i] = 0.0f;
+  if (index < 0 || static_cast<std::size_t>(index) >= impl_->dice.size()) return;
+
+  BodyLockRead lock(impl_->system.GetBodyLockInterface(),
+                    impl_->dice[static_cast<std::size_t>(index)]);
+  if (!lock.Succeeded()) return;
+  const Body& body = lock.GetBody();
+  const Shape* shape = body.GetShape();
+
+  // The shape's own frame, not the body's: what is being asked is whether the
+  // solid is the solid, and a die that has been thrown is at some orientation
+  // by now.
+  const Vec3 centre = shape->GetCenterOfMass();
+  out[0] = centre.GetX();
+  out[1] = centre.GetY();
+  out[2] = centre.GetZ();
+
+  const MassProperties mass = shape->GetMassProperties();
+  for (int row = 0; row < 3; ++row) {
+    for (int column = 0; column < 3; ++column) {
+      out[3 + row * 3 + column] = mass.mInertia(row, column);
+    }
+  }
+}
+
+int World::ReadFaces(int index, float* out, int capacity) const {
+  if (index < 0 || static_cast<std::size_t>(index) >= impl_->dice.size()) return 0;
+
+  BodyLockRead lock(impl_->system.GetBodyLockInterface(),
+                    impl_->dice[static_cast<std::size_t>(index)]);
+  if (!lock.Succeeded()) return 0;
+  const auto* hull = dynamic_cast<const ConvexHullShape*>(lock.GetBody().GetShape());
+  if (hull == nullptr) return 0;
+
+  const int faces = static_cast<int>(hull->GetNumFaces());
+  const int written = faces < capacity ? faces : capacity;
+  for (int face = 0; face < written; ++face) {
+    // Jolt keeps a face as indices into the hull's points; the plane is taken
+    // from three of them the same way the catalogue takes it, so the two are
+    // comparable.
+    uint indices[3] = {};
+    const uint count = hull->GetFaceVertices(static_cast<uint>(face), 3, indices);
+    if (count < 3) continue;
+    const Vec3 first = hull->GetPoint(indices[0]);
+    const Vec3 second = hull->GetPoint(indices[1]);
+    const Vec3 third = hull->GetPoint(indices[2]);
+    Vec3 normal = (second - first).Cross(third - first).Normalized();
+    float distance = normal.Dot(first);
+    if (distance < 0.0f) {
+      normal = -normal;
+      distance = -distance;
+    }
+    out[face * kPlaneStride + 0] = normal.GetX();
+    out[face * kPlaneStride + 1] = normal.GetY();
+    out[face * kPlaneStride + 2] = normal.GetZ();
+    out[face * kPlaneStride + 3] = distance;
+  }
+  return faces;
 }
 
 }  // namespace dinfinity

@@ -402,6 +402,26 @@ certain faces that are sticky. Nine axes, spread from −4.4 % to +6.5 %.
 The d10 is the same family of solid and is fair (χ² 5.29 against 27.88), so
 whatever this is, it bites when the kites get narrow. Finding it is Step 5.2.
 
+**The body is not it, and neither is the engine.** Two things were suspected
+first and both have been measured rather than argued:
+
+- `DieBodyTest` asks the solver what it built. Every catalogue shape comes back
+  with exactly the faces it should have — the d18 with eighteen — every face at
+  the same inradius to six decimal places, the centre of mass on the origin,
+  and an inertia tensor with the solid's own symmetry: isotropic for the
+  Platonic solids, two matching moments and one apart for the trapezohedra and
+  the coin. The die the engine collides *is* the die the arithmetic describes.
+- The engine is even-handed about it. Turning the d18 by one of its own
+  symmetries — the same solid, its faces relabelled — and throwing the same
+  twenty thousand seeds gives a histogram that is the **exact permutation** of
+  the untuned one, χ² 35.83 either way. Reversing the order the hull's corners
+  are handed over moves nothing but the last digits.
+
+So the solid is right and the solver treats it evenly, which leaves how the
+throw is *drawn*: a starting turn and the force it is thrown with come out of
+one stream, one after the other, and a symmetry argument that assumes they are
+independent is only as good as that stream.
+
 ## Avoiding stacked and cocked dice
 
 On a real table dice practically never stay stacked on top of each other or

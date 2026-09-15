@@ -119,6 +119,35 @@ JNIEXPORT void JNICALL Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nat
   AsWorld(handle)->Respawn(index, ReadPlacement(values));
 }
 
+JNIEXPORT void JNICALL
+Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeReadBody(JNIEnv* env, jobject,
+                                                                    jlong handle, jint index,
+                                                                    jfloatArray out) {
+  dinfinity::World* world = AsWorld(handle);
+  if (world == nullptr) return;
+
+  float values[dinfinity::kBodyStride] = {};
+  world->ReadBody(index, values);
+  env->SetFloatArrayRegion(out, 0, dinfinity::kBodyStride, values);
+}
+
+JNIEXPORT jint JNICALL
+Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeReadFaces(JNIEnv* env, jobject,
+                                                                     jlong handle, jint index,
+                                                                     jfloatArray out) {
+  dinfinity::World* world = AsWorld(handle);
+  if (world == nullptr) return 0;
+
+  const jsize length = env->GetArrayLength(out);
+  const int capacity = static_cast<int>(length) / dinfinity::kPlaneStride;
+  std::vector<float> values(static_cast<std::size_t>(capacity * dinfinity::kPlaneStride));
+  const int faces = world->ReadFaces(index, values.data(), capacity);
+  if (!values.empty()) {
+    env->SetFloatArrayRegion(out, 0, static_cast<jsize>(values.size()), values.data());
+  }
+  return faces;
+}
+
 JNIEXPORT jboolean JNICALL Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeOk(
     JNIEnv*, jobject, jlong handle) {
   return AsWorld(handle)->Ok() ? JNI_TRUE : JNI_FALSE;

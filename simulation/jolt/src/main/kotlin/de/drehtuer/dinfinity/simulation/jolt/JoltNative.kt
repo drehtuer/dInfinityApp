@@ -29,6 +29,12 @@ internal object JoltNative {
   /** How many floats [nativeReadStates] writes per die. */
   const val STATE_STRIDE: Int = 10
 
+  /** How many floats [nativeReadBody] writes: a centre of mass and a 3x3 inertia tensor. */
+  const val BODY_STRIDE: Int = 3 + 9
+
+  /** How many floats one face plane takes: a normal and a distance. */
+  const val PLANE_STRIDE: Int = 4
+
   /** How many floats a [Placement] is packed into. */
   const val PLACEMENT_STRIDE: Int = 13
 
@@ -147,6 +153,33 @@ internal object JoltNative {
     index: Int,
     placement: FloatArray,
   )
+
+  /**
+   * Writes [BODY_STRIDE] floats about the body Jolt built for a die: its
+   * centre of mass, then its inertia tensor row by row.
+   *
+   * Nothing in a roll calls this. A die is only fair if the solid the engine
+   * collides is the solid the arithmetic describes, and this is the only way
+   * to ask which one it got (`docs/TODO.md`, Step 5.2).
+   */
+  external fun nativeReadBody(
+    world: Long,
+    index: Int,
+    out: FloatArray,
+  )
+
+  /**
+   * Writes the hull's face planes as normal-xyz then distance, as many as
+   * [out] has room for, and returns how many faces the hull actually has.
+   *
+   * The count is the interesting half: a d18 whose hull came out with
+   * seventeen faces is not a d18, however close it looks.
+   */
+  external fun nativeReadFaces(
+    world: Long,
+    index: Int,
+    out: FloatArray,
+  ): Int
 
   external fun nativeOk(world: Long): Boolean
 

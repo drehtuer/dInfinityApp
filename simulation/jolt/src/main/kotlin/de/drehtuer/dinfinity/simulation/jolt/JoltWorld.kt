@@ -108,6 +108,36 @@ class JoltWorld private constructor(
     placement: Placement,
   ) = JoltNative.nativeRespawn(handle, index, pack(placement))
 
+  /**
+   * The body the solver actually built for die [index]
+   * (`docs/physics-and-rendering.md`, "Are the dice fair").
+   *
+   * Nothing in a roll reads this, and nothing should: it is not a fact about
+   * the throw, it is a fact about the die. A die is only fair if the solid the
+   * engine collides is the solid the arithmetic describes, and asking the
+   * engine is the only way to know which one it got.
+   */
+  fun bodyOf(index: Int): DieBody {
+    val values = FloatArray(JoltNative.BODY_STRIDE)
+    JoltNative.nativeReadBody(handle, index, values)
+    val planes = FloatArray(MAX_FACES * JoltNative.PLANE_STRIDE)
+    val faceCount = JoltNative.nativeReadFaces(handle, index, planes)
+    return DieBody(
+      centreOfMassMm = Vector3(Units.unitsToMm(values[0]), Units.unitsToMm(values[1]), Units.unitsToMm(values[2])),
+      inertia = (0 until INERTIA_CELLS).map { values[JoltNative.AXES + it].toDouble() },
+      faceCount = faceCount,
+      // A normal has no length in it to convert; the distance does.
+      faces =
+        (0 until minOf(faceCount, MAX_FACES)).map { face ->
+          val at = face * JoltNative.PLANE_STRIDE
+          FacePlane(
+            normal = Vector3(planes[at].toDouble(), planes[at + 1].toDouble(), planes[at + 2].toDouble()),
+            distanceMm = Units.unitsToMm(planes[at + JoltNative.AXES]),
+          )
+        },
+    )
+  }
+
   override fun close() {
     if (closed) return
     closed = true
@@ -129,6 +159,19 @@ class JoltWorld private constructor(
   }
 
   companion object {
+    /**
+     * How many face planes [bodyOf] will read back.
+     *
+     * The most any catalogue solid has is the coin's rim, at 24 sides plus its
+     * two ends. The *count* is reported whatever it is, so a hull with more
+     * faces than this is still visible as wrong — it is only the planes that
+     * stop at the cap.
+     */
+    const val MAX_FACES: Int = 64
+
+    /** A 3x3 tensor, flattened row by row. */
+    private const val INERTIA_CELLS = 9
+
     /**
      * The rounded edge a solid gets, as a share of its size.
      *
@@ -261,3 +304,33 @@ object JoltWorldFactory : WorldFactory {
       maxDice = spec.dice.size,
     )
 }
+
+/**
+ * What the solver made of a die (`docs/physics-and-rendering.md`, "Are the
+ * dice fair").
+ *
+ * Read from the engine rather than computed, which is the whole point: the
+ * catalogue's arithmetic already says what the solid should be, and what is
+ * worth knowing is whether the engine agrees.
+ *
+ * @param centreOfMassMm where the die's mass sits, in its own space. A die
+ *   whose mass is not at its centre is a loaded die.
+ * @param inertia the 3x3 inertia tensor, row by row, in the solver's own
+ *   units — grams and centimetres. Its *shape* is what matters rather than its
+ *   scale: a solid with a symmetry has a tensor with the same symmetry.
+ * @param faceCount how many faces the hull has, which is the first thing to
+ *   check: a d18 that came out with seventeen is not a d18.
+ * @param faces those faces' planes, up to [JoltWorld.MAX_FACES].
+ */
+data class DieBody(
+  val centreOfMassMm: Vector3,
+  val inertia: List<Double>,
+  val faceCount: Int,
+  val faces: List<FacePlane>,
+)
+
+/** One face of a hull: which way it points and how far out it sits. */
+data class FacePlane(
+  val normal: Vector3,
+  val distanceMm: Double,
+)
