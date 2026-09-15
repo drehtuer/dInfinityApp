@@ -16,9 +16,9 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.DiceSimulator
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RestingPlace
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -63,6 +63,79 @@ class RollPresenterTest {
     )
     val settled = presenter.state as RollState.Settled
     assertEquals("three sixes", 18L, settled.result.total)
+  }
+
+  @Test
+  fun `an exploding die is thrown into the tray the player is watching`() {
+    // It used to be simulated into a tray nobody was looking at: a real throw,
+    // in a world of its own, that the player never saw
+    // (`docs/dice-notation.md`, "Evaluation", step 5).
+    val rolls = RecordingRolls(faces = mapOf(0 to 5), then = listOf(mapOf(0 to 0)))
+    val presenter = presenter(rolls)
+
+    presenter.type("1d6!")
+    presenter.roll()
+
+    assertEquals("the die the six called for never reached the tray", 2, rolls.started.size)
+    val added = rolls.started.last()
+    assertEquals("an added throw is one die", 1, added.dice.size)
+    assertEquals("it was thrown into an empty tray", 1, added.among.size)
+    assertEquals("a six and then a one", 7L, (presenter.state as RollState.Settled).result.total)
+  }
+
+  @Test
+  fun `a roll that is still adding dice has not landed yet`() {
+    // The screen goes on saying "Rolling…" between the six and the die it
+    // called for, because that is one roll and it is not over.
+    val rolls = RecordingRolls(faces = mapOf(0 to 5), landImmediately = false)
+    val presenter = presenter(rolls)
+
+    presenter.type("1d6!")
+    presenter.roll()
+
+    assertTrue(presenter.state is RollState.Rolling)
+  }
+
+  @Test
+  fun `a roll that adds dice is written down once, when the last of them lands`() {
+    val written = mutableListOf<FinishedThrow>()
+    val rolls = RecordingRolls(faces = mapOf(0 to 5), then = listOf(mapOf(0 to 5), mapOf(0 to 0)))
+    val presenter = presenter(rolls, { written += it })
+
+    presenter.type("1d6!")
+    presenter.roll()
+
+    assertEquals("a roll was recorded once per throw it took", 1, written.size)
+    assertEquals("a six, a six and a one", 13L, written.single().result.total)
+    assertEquals("the record is the throw that started it", rolls.started.first(), written.single().thrown)
+  }
+
+  @Test
+  fun `the same seed gives the same total whether anybody is watching or not`() {
+    // Power-saving mode is not a second implementation. A renderer is a
+    // passive observer with no method that returns anything, so it cannot
+    // reach a die — and an exploding chain asks for its dice in the same order
+    // and throws them with the same seeds either way
+    // (`docs/architecture.md`, goal 1). The physics half of the claim is the
+    // golden suite's, on a device; this is the half above it, which is where
+    // an explosion is decided.
+    val eyes = CountingRenderer()
+    val watched = RecordingRolls(faces = mapOf(0 to 5, 1 to 0), then = listOf(mapOf(0 to 0)))
+    val watching = presenter(watched, tray = DirectTray(watcher = eyes))
+    watching.type("2d6!")
+    watching.roll()
+
+    val unwatched = RecordingRolls(faces = mapOf(0 to 5, 1 to 0), then = listOf(mapOf(0 to 0)))
+    val alone = presenter(unwatched, tray = DirectTray())
+    alone.type("2d6!")
+    alone.roll()
+
+    assertTrue("nobody drew the roll that was supposed to be watched", eyes.begun > 1)
+    assertEquals("the two rolls did not even make the same throws", watched.started, unwatched.started)
+    assertEquals(
+      (watching.state as RollState.Settled).result.total,
+      (alone.state as RollState.Settled).result.total,
+    )
   }
 
   @Test
@@ -243,10 +316,6 @@ class RollPresenterTest {
       catalog = catalog,
       geometry = geometry,
       look = { pin -> if (pin == TablePin("brass", "oak")) oak else table },
-      simulator =
-        object : DiceSimulator {
-          override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
-        },
       outside = Outside(seeds = { 1L }, clock = { 0L }),
     )
 
@@ -404,6 +473,12 @@ class RollPresenterTest {
    */
   private class DirectTray(
     /**
+     * What watches the roll. The default watches nothing, which is
+     * power-saving mode; a test that wants to know whether being watched
+     * changes a roll hands in something that looks.
+     */
+    private val watcher: Renderer = HeadlessRenderer(),
+    /**
      * What the hand does while the dice are in the air.
      *
      * Called with the roll open and not yet stepped, which is where a shake
@@ -435,7 +510,7 @@ class RollPresenterTest {
       start: (Renderer) -> WatchedRoll,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
-      val roll = start(HeadlessRenderer())
+      val roll = start(watcher)
       live = roll
       whileRolling()
       // Capped, because a fake roll that never lands is a test case here and
@@ -472,25 +547,54 @@ class RollPresenterTest {
     }
   }
 
-  /** Records the throws it is asked to open, and lands them on cue. */
+  /**
+   * Records the throws it is asked to open, and lands them on cue.
+   *
+   * A roll is not always one throw: an explosion adds a die and the tray is
+   * asked again, so [then] is what each throw after the first comes to.
+   */
   private class RecordingRolls(
     private val faces: Map<Int, Int>,
     private val landImmediately: Boolean = true,
+    private val then: List<Map<Int, Int>> = emptyList(),
   ) : Rolls {
     val started = mutableListOf<ThrowSpec>()
+
+    private var throwsMade = 0
 
     override fun start(
       spec: ThrowSpec,
       watcher: Renderer,
     ): WatchedRoll {
       started += spec
+      val showing = if (throwsMade == 0) faces else then.getOrElse(throwsMade - 1) { faces }
+      throwsMade++
+      watcher.begin(spec, spec.geometry, spec.table)
       return object : WatchedRoll {
         private var landed = false
         private val drove = mutableListOf<ShakeSample>()
 
         override val running: Boolean get() = !landed
 
-        override val outcome: SimulationOutcome? get() = if (landed) SimulationOutcome(faces = faces) else null
+        override val outcome: SimulationOutcome?
+          get() =
+            if (landed) {
+              SimulationOutcome(
+                faces = showing,
+                // Where they stopped, which the throw an explosion adds is
+                // aimed away from and drawn among. Counted on from the dice
+                // already in the tray, so no two land in the same place.
+                restingAt =
+                  spec.dice.indices.associateWith { index ->
+                    RestingPlace(
+                      Vector3((spec.among.size + index) * APART_MM - APART_MM, 0.0, 8.0),
+                      Quaternion.Identity,
+                    )
+                  },
+              )
+            } else {
+              null
+            }
 
         override val drivenBy: List<ShakeSample> get() = drove.toList()
 
@@ -498,9 +602,12 @@ class RollPresenterTest {
 
         override fun advance(elapsedSeconds: Double): RenderFrame {
           landed = landImmediately
-          return RenderFrame.still(
-            spec.dice.indices.map { BodyTransform(it, Vector3(0.0, 0.0, 8.0), Quaternion.Identity) },
-          )
+          val frame =
+            RenderFrame.still(
+              spec.dice.indices.map { BodyTransform(it, Vector3(0.0, 0.0, 8.0), Quaternion.Identity) },
+            )
+          if (landed) watcher.settled(frame) else watcher.show(frame)
+          return frame
         }
 
         override fun shake(sample: ShakeSample) {
@@ -510,5 +617,36 @@ class RollPresenterTest {
         override fun close() = Unit
       }
     }
+
+    private companion object {
+      /** Far enough apart that no test die is dropped on top of another. */
+      const val APART_MM = 40.0
+    }
+  }
+
+  /** A renderer that draws nothing and remembers being asked to. */
+  private class CountingRenderer : Renderer {
+    var begun = 0
+      private set
+    var frames = 0
+      private set
+
+    override fun begin(
+      spec: ThrowSpec,
+      geometry: TableGeometry,
+      look: TableLook,
+    ) {
+      begun++
+    }
+
+    override fun show(frame: RenderFrame) {
+      frames++
+    }
+
+    override fun settled(frame: RenderFrame) {
+      frames++
+    }
+
+    override fun end() = Unit
   }
 }

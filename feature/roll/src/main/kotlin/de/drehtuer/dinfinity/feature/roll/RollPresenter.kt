@@ -14,6 +14,7 @@ import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
 /**
  * The roll screen's state, as Compose reads it.
@@ -32,7 +33,14 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
  *   a repository, so this module cannot reach a database
  *   (`docs/architecture.md`, "Modules").
  * @param toTheScreen how work gets back to the thread Compose reads on.
+ *
+ * The class carries a function-count suppression for the same reason
+ * [RollMachine] does: ten of its methods are one thing a screen can do each,
+ * and the eleventh is the loop that hands the tray a throw and then the throw
+ * after it, which a roll that adds dice to itself needs and which nothing else
+ * can be folded into.
  */
+@Suppress("TooManyFunctions")
 class RollPresenter(
   private val machine: RollMachine,
   private val driver: Tray,
@@ -140,7 +148,25 @@ class RollPresenter(
 
     val spec = machine.throwDice(shake) ?: return
     publish()
+    throwIt(spec)
+  }
 
+  /**
+   * Hands one throw to the tray, and hands the tray the one after it.
+   *
+   * A roll is not always over when its dice stop: an explosion and a reroll
+   * each add a die, into the same tray, among the dice that set it off. How
+   * many they add is not knowable until the first ones land, so it is a loop
+   * rather than a list — the machine says what the throw came to or what has to
+   * be thrown next, and this throws it (`docs/dice-notation.md`, "Evaluation",
+   * step 5).
+   *
+   * It is the same call for the first throw and for every die after it. There
+   * is one way to throw dice in this app and one path to a number, and an added
+   * die that took a different one would be an added die that could come out
+   * differently (`docs/architecture.md`, goal 1).
+   */
+  private fun throwIt(spec: ThrowSpec) {
     driver.roll(
       start = { watcher -> rolls.start(spec, watcher) },
       onSettled = { outcome, drivenBy ->
@@ -156,8 +182,19 @@ class RollPresenter(
           // stops — the recorder is given a `FinishedThrow` and takes the
           // result, the plan and the seed off it, and nothing downstream has
           // anywhere to put a shake (`docs/architecture.md`, decision 13).
-          machine.settled(outcome, drivenBy)?.let(recorder::record)
+          val landed = machine.settled(outcome, drivenBy)
           publish()
+          when (landed) {
+            is Landed.Complete -> recorder.record(landed.thrown)
+            // Straight back round: the next die is thrown the moment the last
+            // one has stopped, which is what a player does with an exploding
+            // six.
+            is Landed.OneMore -> throwIt(landed.spec)
+            // Nobody is waiting for this throw any more — the formula was typed
+            // over while it was in the air. Nothing landed as far as the screen
+            // is concerned, and nothing follows it.
+            null -> Unit
+          }
         }
       },
     )

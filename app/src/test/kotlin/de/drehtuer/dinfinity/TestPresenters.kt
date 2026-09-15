@@ -48,7 +48,6 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.DiceSimulator
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.SettleRule
@@ -168,10 +167,6 @@ private fun rollPresenter(
       catalog = catalog,
       geometry = TableGeometry.referenceDevice(),
       look = { TableLook(id = "plain", name = "Plain") },
-      simulator =
-        object : DiceSimulator {
-          override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
-        },
       outside = Outside(seeds = { 1L }, clock = { 0L }),
     ),
   driver = SilentTray(),

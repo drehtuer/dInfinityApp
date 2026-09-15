@@ -142,7 +142,6 @@ class RollWiring(
           catalog = catalog,
           geometry = geometry,
           look = ::table,
-          simulator = simulator,
           defaultRounding = rounding,
         ),
       driver = tray(powerSaving, feedback(haptics, sound)),

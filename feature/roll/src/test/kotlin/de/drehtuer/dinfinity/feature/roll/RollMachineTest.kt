@@ -1,12 +1,17 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import de.drehtuer.dinfinity.core.model.DieNote
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RestingPlace
+import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
@@ -69,8 +74,7 @@ class RollMachineTest {
   fun `a throw the table cannot hold is refused before a single body is created`() {
     // The one case where "no roll happened" is the right answer, and the
     // simulator must never hear about it (`docs/tables.md`).
-    val simulator = CountingSimulator()
-    val machine = machine(simulator)
+    val machine = machine()
 
     machine.type("500d6")
 
@@ -78,8 +82,7 @@ class RollMachineTest {
     assertEquals(500, refused.diceCount)
     assertTrue("the refusal does not say what would fit", refused.largestThatFits in 1 until 500)
     assertTrue("the refusal reads as a number and nothing else", refused.reason.contains("500 dice"))
-    assertNull(machine.throwDice())
-    assertEquals("a refused roll reached the engine", 0, simulator.runs)
+    assertNull("a refused roll produced a throw to make", machine.throwDice())
   }
 
   @Test
@@ -152,11 +155,11 @@ class RollMachineTest {
     // follows it goes through the simulator like every other die — there is no
     // branch that picks a number for it (`docs/architecture.md`, goal 1).
     val simulator = CountingSimulator(face = 0)
-    val machine = machine(simulator)
+    val machine = machine()
     machine.type("1d6!")
     machine.throwDice()
 
-    machine.settled(SimulationOutcome(faces = mapOf(0 to 5)))
+    machine.play(settledAt(mapOf(0 to 5)), simulator)
 
     val settled = machine.state as RollState.Settled
     assertEquals("the exploded die was not simulated", 1, simulator.runs)
@@ -165,12 +168,104 @@ class RollMachineTest {
   }
 
   @Test
+  fun `an exploding die is thrown into the tray it set off, among the dice already down`() {
+    // The die an explosion adds lands where the player can see it, beside the
+    // die that set it off. The dice already down travel with the throw and no
+    // body is created for any of them: a die that has come to rest is finished
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    val machine = machine(seed = 77L)
+    machine.type("1d6!")
+    val first = requireNotNull(machine.throwDice())
+
+    val landed = machine.settled(settledAt(mapOf(0 to 5)))
+
+    val next = requireNotNull(landed as? Landed.OneMore).spec
+    assertEquals("an added throw is one die", 1, next.dice.size)
+    assertEquals("the die it set off was not on the table", 1, next.among.size)
+    assertEquals(
+      spot(0),
+      next.among
+        .single()
+        .at.position,
+    )
+    assertEquals(first.table, next.table)
+    assertEquals(first.geometry, next.geometry)
+    assertEquals("an added die was not given a stream of its own", Seeds.derived(first.seed, 1), next.seed)
+    assertTrue("nobody shakes the phone at a die the app threw", next.shake.isEmpty())
+    assertTrue("the screen stopped rolling while it was still rolling", machine.state is RollState.Rolling)
+  }
+
+  @Test
+  fun `an added die is the size of the dice it joins`() {
+    // It is dropped among dice the capacity rule shrank, and a full-size die
+    // landing among them would be a die from a different roll
+    // (`docs/tables.md`, "Capacity rule").
+    val machine = machine()
+    machine.type("40d6!")
+    val first = requireNotNull(machine.throwDice())
+
+    val landed = machine.settled(settledAt((0 until 40).associateWith { 5 }, across = 0.5))
+
+    assertTrue("forty dice were not shrunk at all", first.dieScale < 1.0)
+    assertEquals(first.dieScale, requireNotNull(landed as? Landed.OneMore).spec.dieScale, 0.0)
+  }
+
+  @Test
+  fun `a chain of explosions stops when the tray has no room for another die`() {
+    // The honest end of a chain the depth limit does not reach: forty dice
+    // spread over the tray leave no patch of floor wide enough to drop another
+    // onto. The alternative is a die dropped on the pile, which is the one
+    // thing this app does not do (`docs/tables.md`, "Capacity rule").
+    val machine = machine()
+    machine.type("40d6!")
+    machine.throwDice()
+
+    val thrown = requireNotNull(machine.play(settledAt((0 until 40).associateWith { 5 })))
+
+    assertEquals("a die was added to a tray with no room for one", 40, thrown.result.dice.size)
+    assertTrue(
+      "a chain that ran out of table did not say so",
+      thrown.result.dice.all { DieNote.TrayFull in it.notes },
+    )
+    assertEquals("forty sixes", 240L, thrown.result.total)
+  }
+
+  @Test
+  fun `typing while a die an explosion added is in the air abandons the roll`() {
+    val machine = machine()
+    machine.type("1d6!")
+    machine.throwDice()
+    machine.settled(settledAt(mapOf(0 to 5)))
+
+    machine.type("1d6")
+
+    assertNull("a roll nobody was waiting for went on", machine.settled(settledAt(mapOf(0 to 0))))
+    assertTrue(machine.state is RollState.Ready)
+  }
+
+  @Test
+  fun `a roll's re-throws are counted over every throw it took`() {
+    // They are all one roll, however many times the table was thrown onto.
+    val machine = machine()
+    machine.type("1d6!")
+    machine.throwDice()
+
+    machine.settled(settledAt(mapOf(0 to 5)).copy(rethrows = 1))
+    val landed = machine.settled(settledAt(mapOf(0 to 0)).copy(rethrows = 2, forcedSettles = 1))
+
+    val result = requireNotNull(landed as? Landed.Complete).thrown.result
+    assertEquals(3, result.rethrows)
+    assertEquals(1, result.forcedSettles)
+  }
+
+  @Test
   fun `rounding the result again does not throw the dice again`() {
     val simulator = CountingSimulator()
-    val machine = machine(simulator)
+    val machine = machine()
     machine.type("1d20 / 3")
     machine.throwDice()
-    machine.settled(SimulationOutcome(faces = mapOf(0 to 6)))
+    machine.play(SimulationOutcome(faces = mapOf(0 to 6)), simulator)
     val down = (machine.state as RollState.Settled).result.total
 
     machine.round(Rounding.Up)
@@ -246,7 +341,7 @@ class RollMachineTest {
     // The default. A seed that repeated would make two rolls the same roll,
     // which is the one thing determinism must not turn into
     // (`docs/architecture.md`, decision 13).
-    val machine = RollMachine(catalog, geometry, { table }, CountingSimulator())
+    val machine = RollMachine(catalog, geometry, { table })
 
     machine.type("1d20")
     val first = requireNotNull(machine.throwDice()).seed
@@ -406,7 +501,7 @@ class RollMachineTest {
     machine.type("8d6", SavedRollSource(rollId = "fireball", groupId = "thorin"))
 
     machine.throwDice()
-    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+    val thrown = requireNotNull(machine.play(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
 
     assertEquals("fireball", thrown.savedRollId)
     assertEquals("thorin", thrown.groupId)
@@ -418,7 +513,7 @@ class RollMachineTest {
     machine.type("8d6")
 
     machine.throwDice()
-    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+    val thrown = requireNotNull(machine.play(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
 
     assertNull("a typed formula was attributed to a saved roll", thrown.savedRollId)
     assertNull(thrown.groupId)
@@ -432,7 +527,7 @@ class RollMachineTest {
 
     machine.type("8d6 + 1")
     machine.throwDice()
-    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+    val thrown = requireNotNull(machine.play(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
 
     assertNull("an edited formula was still attributed to the saved roll", thrown.savedRollId)
   }
@@ -482,7 +577,7 @@ class RollMachineTest {
 
     machine.add(machine.pickable.first { it.notation == "d6" })
     machine.throwDice()
-    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 9).associateWith { 0 })))
+    val thrown = requireNotNull(machine.play(SimulationOutcome(faces = (0 until 9).associateWith { 0 })))
 
     assertNull("a picked die left the throw attributed to the saved roll", thrown.savedRollId)
   }
@@ -498,7 +593,7 @@ class RollMachineTest {
     val spec = requireNotNull(machine.throwDice())
     val hand = hand(3)
 
-    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = mapOf(0 to 0)), hand))
+    val thrown = requireNotNull(machine.play(SimulationOutcome(faces = mapOf(0 to 0)), hand = hand))
 
     assertTrue("the throw went out with a shake it could not have had", spec.shake.isEmpty())
     assertEquals(spec.copy(shake = hand), thrown.thrown)
@@ -511,7 +606,7 @@ class RollMachineTest {
     machine.type("1d6")
     val spec = requireNotNull(machine.throwDice())
 
-    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = mapOf(0 to 0))))
+    val thrown = requireNotNull(machine.play(SimulationOutcome(faces = mapOf(0 to 0))))
 
     assertEquals(spec, thrown.thrown)
     assertTrue(thrown.thrown.shake.isEmpty())
@@ -566,7 +661,6 @@ class RollMachineTest {
     )
 
   private fun machine(
-    simulator: DiceSimulator = CountingSimulator(),
     seed: Long = 1L,
     catalog: DiceCatalog = this.catalog,
   ) = RollMachine(
@@ -577,11 +671,69 @@ class RollMachineTest {
     // the installed sets: the one pin these tests use, and the app's own table
     // for everything else.
     look = { pin -> if (pin == TablePin("brass", "oak")) oak else table },
-    simulator = simulator,
     outside = Outside(seeds = { seed }, clock = { FIXED_TIME }),
   )
 
-  /** A simulator that counts what it was asked and always lands on one face. */
+  /**
+   * Plays a throw through to a total, throwing every die the roll adds to
+   * itself — which is what [RollPresenter] does with a tray in front of it.
+   *
+   * A roll is not over when its dice stop: `1d6!` asks for another die and only
+   * then for a total, so a test that called `settled` once and stopped would be
+   * testing half of one.
+   */
+  private fun RollMachine.play(
+    outcome: SimulationOutcome,
+    simulator: CountingSimulator = CountingSimulator(),
+    hand: List<ShakeSample> = emptyList(),
+  ): FinishedThrow? {
+    var landed = settled(outcome, hand)
+    while (landed is Landed.OneMore) {
+      landed = settled(simulator.run(landed.spec))
+    }
+    return (landed as? Landed.Complete)?.thrown
+  }
+
+  /**
+   * A throw that came to [faces], with every die resting somewhere real.
+   *
+   * Where the dice stopped matters the moment a formula explodes: the die that
+   * follows is dropped into the floor these left clear, so a throw reporting
+   * nowhere would be a throw an added die had no reason to avoid.
+   */
+  private fun settledAt(
+    faces: Map<Int, Int>,
+    across: Double = 1.0,
+  ): SimulationOutcome =
+    SimulationOutcome(
+      faces = faces,
+      restingAt = faces.keys.associateWith { index -> RestingPlace(spot(index, across), Quaternion.Identity) },
+    )
+
+  /**
+   * One cell of a coarse grid over [across] of the tray's length.
+   *
+   * Spread over the whole of it, dice this size leave no gap wide enough for
+   * another — which is what a chain of explosions running out of table looks
+   * like. Spread over half of it, the other half is clear.
+   */
+  private fun spot(
+    index: Int,
+    across: Double = 1.0,
+  ): Vector3 =
+    Vector3(
+      x = -geometry.longSideMm / 2 + (index % COLUMNS + HALF) * (geometry.longSideMm * across / COLUMNS),
+      y = -geometry.shortSideMm / 2 + (index / COLUMNS + HALF) * (geometry.shortSideMm / ROWS),
+      z = REST_HEIGHT_MM,
+    )
+
+  /**
+   * A simulator that counts what it was asked and always lands on one face.
+   *
+   * It puts each die down where the tray would have dropped it, so a chain of
+   * explosions fills the tray up the way a real one does and the question "is
+   * there still room" has something to be about.
+   */
   private class CountingSimulator(
     private val face: Int = 0,
   ) : DiceSimulator {
@@ -590,12 +742,30 @@ class RollMachineTest {
 
     override fun run(spec: ThrowSpec): SimulationOutcome {
       specs += spec
-      return SimulationOutcome(faces = spec.dice.indices.associateWith { face })
+      val dropped =
+        ClearSpace.clearestPoint(
+          geometry = spec.geometry,
+          dieRadiusMm = spec.largestDieRadiusMm,
+          taken = spec.among.map { it.at.position },
+        ) ?: Vector3.Zero
+      return SimulationOutcome(
+        faces = spec.dice.indices.associateWith { face },
+        restingAt =
+          spec.dice.indices.associateWith {
+            RestingPlace(dropped.copy(z = spec.largestDieRadiusMm), Quaternion.Identity)
+          },
+      )
     }
   }
 
   private companion object {
     const val FIXED_TIME = 1_757_000_000_000L
+
+    /** A coarse grid over the tray, so a test's settled dice are spread over it. */
+    const val COLUMNS = 10
+    const val ROWS = 4
+    const val HALF = 0.5
+    const val REST_HEIGHT_MM = 8.0
 
     /** A second installed set, which is when a chooser is worth drawing. */
     const val BRASS = "brass"
