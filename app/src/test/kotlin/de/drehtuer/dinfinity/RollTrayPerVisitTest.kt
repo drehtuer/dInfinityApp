@@ -126,7 +126,7 @@ class RollTrayPerVisitTest {
         RollMachine(
           catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
           geometry = TableGeometry.referenceDevice(),
-          table = TableLook(id = "plain", name = "Plain"),
+          look = { TableLook(id = "plain", name = "Plain") },
           simulator =
             object : DiceSimulator {
               override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })

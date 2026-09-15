@@ -196,7 +196,7 @@ class ExportSheetTest {
         scope = scope,
         unfiledName = "Unfiled",
       )
-    val groups = GroupPresenter(library, scope, "Unfiled")
+    val groups = GroupPresenter(library, DiceCatalog.of(listOf(BuiltinDiceSet.set)), scope, "Unfiled")
     compose.setContent {
       SavedScreen(
         presenter = presenter,

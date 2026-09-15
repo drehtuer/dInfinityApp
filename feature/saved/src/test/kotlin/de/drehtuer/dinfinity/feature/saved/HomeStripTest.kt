@@ -13,6 +13,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.core.model.SavedRollSource
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollLibrary
@@ -25,6 +27,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -91,12 +94,12 @@ class HomeStripTest {
     // Different from the saved-rolls list, which only fills the field: this is
     // the one place the tray is already on screen to roll it on.
     given(roll("fireball", formula = "8d6"))
-    val thrown = mutableListOf<Triple<String, String, String>>()
-    show(onRoll = { formula, id, group -> thrown += Triple(formula, id, group) })
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onRoll = { formula, source -> thrown += formula to source })
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
-    assertEquals(listOf(Triple("8d6", "fireball", SavedRollGroup.UNFILED_ID)), thrown)
+    assertEquals(listOf("8d6" to SavedRollSource("fireball", SavedRollGroup.UNFILED_ID)), thrown)
   }
 
   @Test
@@ -106,15 +109,56 @@ class HomeStripTest {
     // (`docs/statistics.md`, per saved roll and per group).
     runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
     given(roll("fireball", groupId = "thorin", formula = "8d6"))
-    val thrown = mutableListOf<Triple<String, String, String>>()
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
     show(
-      onRoll = { formula, id, group -> thrown += Triple(formula, id, group) },
+      onRoll = { formula, source -> thrown += formula to source },
       activeGroupId = "thorin",
     )
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
-    assertEquals(listOf(Triple("8d6", "fireball", "thorin")), thrown)
+    assertEquals(listOf("8d6" to SavedRollSource("fireball", "thorin")), thrown)
+  }
+
+  @Test
+  fun `a tap carries the table the roll is pinned to`() {
+    // The tray does not know what a saved roll is, so the pin that wins is
+    // decided here — where the roll and its group are both in hand — and the
+    // throw carries the answer (`docs/tables.md`, "Selecting a table").
+    given(roll("fireball", formula = "8d6").copy(tablePin = TablePin("builtin", "felt-black")))
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onRoll = { formula, source -> thrown += formula to source })
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    assertEquals(TablePin("builtin", "felt-black"), thrown.single().second.tablePin)
+  }
+
+  @Test
+  fun `a roll with no pin of its own takes its group's`() {
+    runBlocking {
+      groupRepository.save(SavedRollGroup(id = "strahd", name = "Curse of Strahd", tablePin = TablePin("brass", "oak")))
+    }
+    given(roll("fireball", groupId = "strahd", formula = "8d6"))
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onRoll = { formula, source -> thrown += formula to source }, activeGroupId = "strahd")
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    assertEquals(TablePin("brass", "oak"), thrown.single().second.tablePin)
+  }
+
+  @Test
+  fun `a roll pinned to nothing anywhere lands on the app's own table`() {
+    // `null` rather than a table nobody chose: which table the app is set to
+    // is the roll screen's to know (`RollWiring`).
+    given(roll("fireball", formula = "8d6"))
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onRoll = { formula, source -> thrown += formula to source })
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    assertNull(thrown.single().second.tablePin)
   }
 
   @Test
@@ -132,7 +176,7 @@ class HomeStripTest {
     given(roll("fireball"))
     val thrown = mutableListOf<String>()
     val edited = mutableListOf<String>()
-    show(onRoll = { formula, _, _ -> thrown += formula }, onEdit = edited::add)
+    show(onRoll = { formula, _ -> thrown += formula }, onEdit = edited::add)
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performTouchInput { longClick() }
 
@@ -220,7 +264,7 @@ class HomeStripTest {
   }
 
   private fun show(
-    onRoll: (String, String, String) -> Unit = { _, _, _ -> },
+    onRoll: (String, SavedRollSource) -> Unit = { _, _ -> },
     onEdit: (String) -> Unit = {},
     onNew: () -> Unit = {},
     activeGroupId: String = SavedRollGroup.UNFILED_ID,

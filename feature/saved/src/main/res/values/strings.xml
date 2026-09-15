@@ -47,6 +47,8 @@
   <string name="group_icon">Mark</string>
   <string name="group_parent">Inside</string>
   <string name="group_parent_none">Nothing — top level</string>
+  <string name="group_table">Table for this group</string>
+  <string name="group_table_note">“Default” follows the app’s table. A roll that pins its own wins over this.</string>
   <string name="group_parent_has_children">This group has groups inside it, so it cannot go inside another. Groups nest one level.</string>
   <string name="group_save">Save group</string>
   <string name="group_delete">Delete</string>

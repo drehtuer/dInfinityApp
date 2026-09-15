@@ -203,7 +203,29 @@ be exported with the rest of `mine`.
 - Saved-roll groups can pin a table ("the Strahd campaign is always played on
   black felt"), and so can an individual saved roll ("Fireball is thrown on
   black felt"). Precedence, most specific first: the saved roll's pin, then
-  the active group's pin, then the app default from Settings.
+  the pin of the group it lives in, then the app default from Settings. The
+  roll's pin is set in the roll editor and the group's on the group sheet;
+  "Default" in either means *follow the pin above this one*.
+
+  **The rule is answered where both halves are known.** A saved roll and the
+  group it lives in arrive together — the saved-rolls list and the strip both
+  watch the two flows as one — so the precedence is settled at the moment a
+  roll is tapped and the throw carries the answer with it (`SavedRollSource`).
+  Nothing downstream asks a database which table to use, and the roll screen
+  never learns what a saved roll is. `null` means the app default, and the
+  tray cannot tell whether that is because nothing was pinned or because the
+  default is what was pinned — which is the same thing to a player.
+
+  The tray is told again whenever the table changes, and only then: tapping a
+  roll pinned to black felt changes it, typing over that formula changes it
+  back — the pin travels with the attribution, because a roll that was
+  Fireball and has been edited is not Fireball's throw — and a keystroke that
+  changes neither leaves the scene alone.
+
+  A throw started from the saved-rolls **list** carries no pin, because it
+  carries no attribution either: that tap fills the formula field and the
+  player makes the throw themselves. It lands on the app default, like
+  anything else typed.
 - Power-saving mode ignores the table look entirely; the physics values of
   the *selected* table are still used so the roll is identical to what
   normal mode would produce.

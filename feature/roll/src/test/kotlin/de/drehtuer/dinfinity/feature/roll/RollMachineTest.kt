@@ -1,7 +1,9 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
@@ -30,6 +32,7 @@ import org.junit.Test
 class RollMachineTest {
   private val geometry = TableGeometry.referenceDevice()
   private val table = TableLook(id = "plain", name = "Plain")
+  private val oak = TableLook(id = "oak", name = "Oak")
   private val catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set))
 
   @Test
@@ -243,7 +246,7 @@ class RollMachineTest {
     // The default. A seed that repeated would make two rolls the same roll,
     // which is the one thing determinism must not turn into
     // (`docs/architecture.md`, decision 13).
-    val machine = RollMachine(catalog, geometry, table, CountingSimulator())
+    val machine = RollMachine(catalog, geometry, { table }, CountingSimulator())
 
     machine.type("1d20")
     val first = requireNotNull(machine.throwDice()).seed
@@ -435,6 +438,42 @@ class RollMachineTest {
   }
 
   @Test
+  fun `a throw from a saved roll lands on the table that roll pinned`() {
+    // The precedence itself is `tablePinFor`'s and is tested there; what is
+    // asserted here is that the machine asks with the *throw's* pin, so the
+    // table a saved roll pinned is the table the dice are actually thrown onto
+    // rather than only the one the tray happens to be drawing
+    // (`docs/tables.md`, "Selecting a table").
+    val machine = machine()
+    machine.type("8d6", SavedRollSource("fireball", "thorin", TablePin("brass", "oak")))
+
+    val spec = requireNotNull(machine.throwDice())
+
+    assertEquals(oak, spec.table)
+    assertEquals("the tray was left drawing a different table than the dice landed on", oak, machine.table)
+  }
+
+  @Test
+  fun `a formula somebody typed lands on the app's own table`() {
+    val machine = machine()
+    machine.type("8d6")
+
+    assertEquals(table, requireNotNull(machine.throwDice()).table)
+  }
+
+  @Test
+  fun `typing over a pinned saved roll puts the app's table back`() {
+    // The pin goes with the attribution, because it came with it: a roll that
+    // was Fireball and has been typed over is not thrown on Fireball's table.
+    val machine = machine()
+    machine.type("8d6", SavedRollSource("fireball", "thorin", TablePin("brass", "oak")))
+
+    machine.type("8d6 + 1")
+
+    assertEquals(table, machine.table)
+  }
+
+  @Test
   fun `tapping a die onto a saved roll is an edit like any other`() {
     // The picker goes through `type`, which is the point: a tap is an edit, so
     // it drops the attribution the same way a keystroke does.
@@ -462,7 +501,11 @@ class RollMachineTest {
   ) = RollMachine(
     catalog = catalog,
     geometry = geometry,
-    table = table,
+    // The look a pin resolves to is the app's to know, not the machine's, so
+    // the seam is a function and this is the smallest thing that stands in for
+    // the installed sets: the one pin these tests use, and the app's own table
+    // for everything else.
+    look = { pin -> if (pin == TablePin("brass", "oak")) oak else table },
     simulator = simulator,
     outside = Outside(seeds = { seed }, clock = { FIXED_TIME }),
   )

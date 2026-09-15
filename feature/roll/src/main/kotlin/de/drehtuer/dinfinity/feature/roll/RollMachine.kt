@@ -4,7 +4,9 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.RollPlan
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.core.notation.DicePicker
 import de.drehtuer.dinfinity.core.notation.ExtraThrow
@@ -44,8 +46,18 @@ class RollMachine(
   private val catalog: DiceCatalog,
   /** The table every throw from here lands on, and the one the tray draws. */
   val geometry: TableGeometry,
-  /** The look that table wears. The table picker changes it (Step 4.5). */
-  val table: TableLook,
+  /**
+   * What a pinned table looks like, and what the app's own default looks like
+   * when nothing is pinned (`docs/tables.md`, "Selecting a table").
+   *
+   * A function of the pin rather than one fixed look, because which table a
+   * throw lands on is a property of the *throw*: a saved roll can pin its own
+   * and so can the group it lives in, and tapping one has to put its table
+   * under the dice. Resolving a pin needs the installed sets, which is the
+   * caller's to know and not this module's — `null` in, and out comes whatever
+   * the app default resolves to.
+   */
+  private val look: (TablePin?) -> TableLook,
   private val simulator: DiceSimulator,
   /**
    * Which way division rounds when a throw lands
@@ -101,6 +113,16 @@ class RollMachine(
    */
   var cameFrom: SavedRollSource? = null
     private set
+
+  /**
+   * The look the dice land on, now.
+   *
+   * The pin the throw came with, and the app default when it came with none —
+   * which is every throw somebody typed. It changes when [type] changes where
+   * the formula came from, so the tray has to be told again rather than asked
+   * once (`RollPresenter`).
+   */
+  val table: TableLook get() = look(cameFrom?.tablePin)
 
   /** Which set the picker row is offering, and what is on it ([Picker]). */
   private val picker = Picker(catalog)
@@ -347,18 +369,6 @@ class RollMachine(
     }
   }
 }
-
-/**
- * Which saved roll a formula came from, and the group it lives in.
- *
- * The two travel together because they are recorded together, and because a
- * roll's group is a fact about the roll rather than about which group the
- * strip happened to be showing (`docs/statistics.md`).
- */
-data class SavedRollSource(
-  val rollId: String,
-  val groupId: String,
-)
 
 /**
  * The four things the roll screen can be showing, and nothing in between.

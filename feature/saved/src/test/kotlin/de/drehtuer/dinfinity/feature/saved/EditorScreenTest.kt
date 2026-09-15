@@ -345,9 +345,18 @@ class EditorScreenTest {
         opening = editing?.let(Editing::Existing) ?: Editing.New(startingFormula),
       )
     val groups =
-      GroupPresenter(library = library, scope = scope, unfiledName = "Unfiled", ids = {
-        "new-group"
-      })
+      GroupPresenter(
+        library = library,
+        catalog =
+          DiceCatalog.of(
+            listOf(BuiltinDiceSet.set),
+          ),
+        scope = scope,
+        unfiledName = "Unfiled",
+        ids = {
+          "new-group"
+        },
+      )
     compose.setContent {
       EditorScreen(presenter = presenter, groups = groups, onDone = onDone, onRollNow = onRollNow)
     }

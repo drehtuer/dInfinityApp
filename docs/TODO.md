@@ -154,6 +154,13 @@ switched on.
 
 Design `1u`, `9j`. Spec: `docs/tables.md`.
 
+Precedence is done: a saved roll's pin beats its group's, which beats the app
+default. The group sheet has the field the model and the schema had been
+waiting for, the rule is settled where the roll and its group are both in hand
+and travels with the throw, and the tray is retold whenever the table changes.
+A throw from the saved-rolls *list* carries no pin because it carries no
+attribution — that tap fills the field and the player throws it.
+
 The screen is built: every look from every installed package in one list —
 tables are global, so a set never brings its own along — with the chosen one
 marked, the package named beside a look only when more than one supplies
@@ -165,7 +172,6 @@ left alone in case it comes back.
 
 - [ ] Thumbnails rendered on the real box mesh, with a "roll a d20 here" preview. The swatch stands in: it is two colours in a box and says so. This wants the renderer on a screen that is not the tray, which nothing has needed yet
 - [ ] "Use a photo" → downsize, write into the personal package, validate like any table
-- [ ] Precedence: saved roll pin > group pin > app default. The app default is this screen's and is done; `SavedRoll.tablePin` is in the model and the editor has the field, and a throw from the strip now carries which roll and which group it came from (`SavedRollSource`), so what is left is the group's pin and the three-way fallback at roll time — most of the plumbing this needed is there
 
 ### 4.6 Face designer — `feature/designer`
 

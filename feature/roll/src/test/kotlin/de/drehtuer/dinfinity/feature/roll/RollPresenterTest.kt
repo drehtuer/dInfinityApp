@@ -3,7 +3,9 @@ package de.drehtuer.dinfinity.feature.roll
 import android.os.Looper
 import android.view.Surface
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.render.filament.Tray
@@ -40,6 +42,7 @@ import org.robolectric.Shadows.shadowOf
 class RollPresenterTest {
   private val geometry = TableGeometry.referenceDevice()
   private val table = TableLook(id = "plain", name = "Plain")
+  private val oak = TableLook(id = "oak", name = "Oak")
   private val catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set))
 
   @Test
@@ -186,13 +189,59 @@ class RollPresenterTest {
     assertEquals(listOf(geometry to table), tray.tabled)
   }
 
+  @Test
+  fun `tapping a saved roll that pins a table puts that table under the dice`() {
+    // The tray is built when the screen opens, so a pinned table has to reach
+    // it afterwards or the dice land on one table and are drawn on another
+    // (`docs/tables.md`, "Selecting a table").
+    val tray = DirectTray()
+    val presenter = presenterOn(tray)
+
+    presenter.typeSaved("8d6", SavedRollSource("fireball", "thorin", TablePin("brass", "oak")))
+
+    assertEquals(listOf(geometry to table, geometry to oak), tray.tabled)
+  }
+
+  @Test
+  fun `typing over it puts the app's table back`() {
+    val tray = DirectTray()
+    val presenter = presenterOn(tray)
+    presenter.typeSaved("8d6", SavedRollSource("fireball", "thorin", TablePin("brass", "oak")))
+
+    presenter.type("8d6 + 1")
+
+    assertEquals(listOf(geometry to table, geometry to oak, geometry to table), tray.tabled)
+  }
+
+  @Test
+  fun `a keystroke that changes nothing about the table does not rebuild the tray`() {
+    // A scene is rebuilt when the tray is told about a table, so telling it on
+    // every keystroke would rebuild one on every keystroke.
+    val tray = DirectTray()
+    val presenter = presenterOn(tray)
+
+    presenter.type("1d20")
+    presenter.type("1d20 + 1")
+    presenter.type("2d20 + 1")
+
+    assertEquals("the tray was rebuilt for a table that never changed", 1, tray.tabled.size)
+  }
+
+  private fun presenterOn(tray: DirectTray) =
+    RollPresenter(
+      machine = machine(),
+      driver = tray,
+      rolls = RecordingRolls(faces = emptyMap()),
+      toTheScreen = { it() },
+    )
+
   private fun RollState.Settled.rounding(): Rounding = result.rounding
 
   private fun machine() =
     RollMachine(
       catalog = catalog,
       geometry = geometry,
-      table = table,
+      look = { pin -> if (pin == TablePin("brass", "oak")) oak else table },
       simulator =
         object : DiceSimulator {
           override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })

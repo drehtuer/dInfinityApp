@@ -170,15 +170,25 @@ class EditorPresenter(
     }
   }
 
-  /** Every table any installed set offers, plus following whatever is pinned above. */
-  private fun tableChoices(): List<TableChoice> =
-    listOf(TableChoice(pin = null, name = null)) +
-      catalog.installed.flatMap { set ->
-        set.tables.map { table -> TableChoice(pin = TablePin(set.id, table.id), name = table.name) }
-      }
+  private fun tableChoices(): List<TableChoice> = tableChoicesOf(catalog)
 }
 
-/** A table a roll can be pinned to, or following the group's (`pin` null). */
+/**
+ * Every table any installed set offers, plus following whatever is pinned
+ * above (`docs/tables.md`, "Selecting a table").
+ *
+ * Shared by the roll editor and the group sheet, because the two offer the
+ * same list and the `null` at the front means the same thing in both: *follow
+ * the pin above this one*. For a roll that is its group's table and then the
+ * app's; for a group it is the app's.
+ */
+internal fun tableChoicesOf(catalog: DiceCatalog): List<TableChoice> =
+  listOf(TableChoice(pin = null, name = null)) +
+    catalog.installed.flatMap { set ->
+      set.tables.map { table -> TableChoice(pin = TablePin(set.id, table.id), name = table.name) }
+    }
+
+/** A table a roll or a group can be pinned to, or following the pin above (`pin` null). */
 data class TableChoice(
   val pin: TablePin?,
   val name: String?,

@@ -7,6 +7,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.SavedRollSource
+import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.headless.Rolls
@@ -79,12 +81,24 @@ class RollPresenter(
   /** How many dice sets are installed, which first launch counts. */
   val sets: Int get() = machine.sets
 
+  /**
+   * The look the tray was last told about.
+   *
+   * Kept so the tray is told again only when the table actually changes.
+   * Tapping a saved roll that pins black felt changes it; typing over that
+   * formula changes it back; every other keystroke does not, and rebuilding a
+   * scene on every keystroke is not a thing to do by accident
+   * (`docs/tables.md`, "Selecting a table").
+   */
+  private var showing: TableLook? = null
+
   init {
     // Before anything is thrown there is still a table, and it is what the
     // screen opens on. Said here rather than at the first roll because a
     // player arriving at the screen has not rolled yet, and a black rectangle
     // is not what a dice tray looks like (`docs/TODO.md`, Step 4.1).
     driver.table(machine.geometry, machine.table)
+    showing = machine.table
   }
 
   /** The formula field changed. Re-validated on every keystroke. */
@@ -184,6 +198,12 @@ class RollPresenter(
   }
 
   private fun publish() {
+    // The table comes first: a throw that is about to be made lands on it, and
+    // a tray told afterwards would draw one table and simulate another.
+    if (machine.table != showing) {
+      showing = machine.table
+      driver.table(machine.geometry, machine.table)
+    }
     state = machine.state
     text = machine.text
     counts = machine.counts

@@ -46,7 +46,12 @@ class SavedWiring(
 
   /** The group sheet, which the list and the editor both open. */
   fun groups(): GroupPresenter =
-    GroupPresenter(library = app.savedRollLibrary, scope = scope, unfiledName = unfiledName)
+    GroupPresenter(
+      library = app.savedRollLibrary,
+      catalog = catalog,
+      scope = scope,
+      unfiledName = unfiledName,
+    )
 
   /** Taking a collection in. */
   fun importing(): ImportPresenter =

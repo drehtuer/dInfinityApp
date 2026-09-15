@@ -78,3 +78,43 @@ data class TablePin(
   val setId: String,
   val tableId: String,
 )
+
+/**
+ * Which saved roll a throw came from, and the table it lands on
+ * (`docs/statistics.md`, per saved roll and per group; `docs/tables.md`).
+ *
+ * The group is carried beside the roll rather than looked up later, because
+ * which group a roll belongs to is a fact about the roll and not about which
+ * group a list happened to be showing when it was tapped.
+ *
+ * So is [tablePin]. It is the *answer* to the precedence rule rather than the
+ * roll's own pin: whoever taps a saved roll has the roll and its group in
+ * hand, which is the one moment both halves of the rule are known without
+ * asking a database, so the question is settled there and the throw carries
+ * its answer. `null` means the app default, and nothing downstream has to know
+ * whether that is because nothing was pinned or because the default *is* the
+ * pin.
+ */
+data class SavedRollSource(
+  val rollId: String,
+  val groupId: String,
+  val tablePin: TablePin? = null,
+)
+
+/**
+ * The table a throw of [roll] lands on, most specific pin first
+ * (`docs/tables.md`, "Selecting a table").
+ *
+ * The roll's own pin, then the pin of the group it lives in, then `null` for
+ * the app default. Written once, here, rather than at each of the two places a
+ * saved roll can be tapped — a precedence that two screens each implement is a
+ * precedence that will eventually disagree with itself.
+ *
+ * [group] is the group [roll] names. A group that is not there — deleted while
+ * another screen was in front — is `null` and simply does not get a say, which
+ * is the same fallback the default set and the default table already follow.
+ */
+fun tablePinFor(
+  roll: SavedRoll,
+  group: SavedRollGroup?,
+): TablePin? = roll.tablePin ?: group?.tablePin

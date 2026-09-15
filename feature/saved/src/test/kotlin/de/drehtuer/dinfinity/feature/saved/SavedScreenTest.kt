@@ -210,7 +210,12 @@ class SavedScreenTest {
         onActiveGroup = onActiveGroup,
       )
     val groups =
-      GroupPresenter(library = library, scope = scope, unfiledName = "Unfiled")
+      GroupPresenter(
+        library = library,
+        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+        scope = scope,
+        unfiledName = "Unfiled",
+      )
     compose.setContent {
       SavedScreen(presenter = presenter, groups = groups, onRoll = onRoll, onEdit = onEdit)
     }

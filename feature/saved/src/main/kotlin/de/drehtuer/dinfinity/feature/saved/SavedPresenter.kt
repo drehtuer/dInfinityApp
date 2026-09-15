@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.core.model.SavedRollSource
+import de.drehtuer.dinfinity.core.model.tablePinFor
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.SavedRollLibrary
 import kotlinx.coroutines.CoroutineScope
@@ -76,7 +78,20 @@ class SavedPresenter(
   ) {
     // A group that has been deleted under us is not a group to keep showing.
     if (groups.none { it.id == active }) active = SavedRollGroup.UNFILED_ID
-    val entries = rolls.map { roll -> SavedEntry(roll = roll, broken = !resolves(roll.formula)) }
+    val byId = groups.associateBy(SavedRollGroup::id)
+    val entries =
+      rolls.map { roll ->
+        SavedEntry(
+          roll = roll,
+          broken = !resolves(roll.formula),
+          source =
+            SavedRollSource(
+              rollId = roll.id,
+              groupId = roll.groupId,
+              tablePin = tablePinFor(roll, byId[roll.groupId]),
+            ),
+        )
+      }
     state =
       SavedState(
         groups = groups.map { group -> GroupEntry(group = group, rolls = rolls.count { it.groupId == group.id }) },
@@ -105,7 +120,16 @@ class SavedPresenter(
 data class SavedEntry(
   val roll: SavedRoll,
   /** True when its formula no longer names dice any installed set has. */
-  val broken: Boolean = false,
+  val broken: Boolean,
+  /**
+   * What a throw of it carries: which roll, which group, and the table it
+   * lands on (`docs/tables.md`, "Selecting a table").
+   *
+   * The table is settled here because here is where both halves of the rule
+   * are already known — the roll and the group it lives in arrive in the same
+   * emission, so nothing has to be asked for a second time when somebody taps.
+   */
+  val source: SavedRollSource,
 )
 
 /** One group in the switcher, with how many rolls are in it. */

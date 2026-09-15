@@ -91,7 +91,7 @@ internal fun testPresenters(
     savedRollEditor = { opening ->
       EditorPresenter(library = saved, catalog = catalog, scope = scope, opening = opening)
     },
-    savedGroups = { GroupPresenter(saved, scope, UNFILED) },
+    savedGroups = { GroupPresenter(saved, catalog, scope, UNFILED) },
     collectionImport = {
       ImportPresenter(
         importer = CollectionImporter(database),
@@ -156,7 +156,7 @@ private fun rollPresenter(
     RollMachine(
       catalog = catalog,
       geometry = TableGeometry.referenceDevice(),
-      table = TableLook(id = "plain", name = "Plain"),
+      look = { TableLook(id = "plain", name = "Plain") },
       simulator =
         object : DiceSimulator {
           override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })

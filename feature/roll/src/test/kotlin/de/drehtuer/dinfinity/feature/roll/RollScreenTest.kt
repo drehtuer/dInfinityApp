@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -422,7 +423,7 @@ class RollScreenTest {
           RollMachine(
             catalog = catalog,
             geometry = TableGeometry.referenceDevice(),
-            table = TableLook(id = "plain", name = "Plain"),
+            look = { TableLook(id = "plain", name = "Plain") },
             simulator =
               object : DiceSimulator {
                 override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
@@ -454,7 +455,7 @@ class RollScreenTest {
       RollMachine(
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         geometry = TableGeometry.referenceDevice(),
-        table = TableLook(id = "plain", name = "Plain"),
+        look = { TableLook(id = "plain", name = "Plain") },
         simulator =
           object : DiceSimulator {
             override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })

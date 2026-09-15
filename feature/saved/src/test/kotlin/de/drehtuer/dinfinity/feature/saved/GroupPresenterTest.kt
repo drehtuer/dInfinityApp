@@ -6,10 +6,12 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -225,7 +227,7 @@ class GroupPresenterTest {
     presenter.create()
     presenter.name("Thorin")
 
-    presenter.parent("dnd")
+    presenter.choose { copy(parentId = "dnd") }
     presenter.save()
 
     await("the group was never written") { group("Thorin") != null }
@@ -247,9 +249,9 @@ class GroupPresenterTest {
     val presenter = presenter()
     presenter.create()
 
-    presenter.icon("🐉")
+    presenter.choose { copy(icon = "🐉") }
     assertEquals("🐉", presenter.draft!!.icon)
-    presenter.icon("")
+    presenter.choose { copy(icon = "") }
     assertEquals("", presenter.draft!!.icon)
   }
 
@@ -351,6 +353,7 @@ class GroupPresenterTest {
   private fun presenter() =
     GroupPresenter(
       library = library,
+      catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
       scope = scope,
       unfiledName = "Unfiled",
       ids = { "made-up" },

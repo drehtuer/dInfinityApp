@@ -14,6 +14,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollLibrary
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -196,6 +198,41 @@ class GroupSheetTest {
   }
 
   @Test
+  fun `a table pinned on the sheet is written with the group`() {
+    // "The Strahd campaign is always played on black felt" — the group's half
+    // of the precedence, which had a column and a model field and nowhere to
+    // be typed (`docs/tables.md`, "Selecting a table").
+    show()
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+    compose.onNodeWithTag(GroupTestTags.NEW).performClick()
+    compose.onNodeWithTag(GroupTestTags.NAME).performTextInput("Curse of Strahd")
+
+    // The sheet scrolls, and the table row is under the fold on a test screen.
+    compose.onNodeWithTag(GroupTestTags.tableOf(TablePin("builtin", "felt-black"))).performScrollTo().performClick()
+    compose.onNodeWithTag(GroupTestTags.SAVE).performClick()
+
+    compose.waitUntil(PATIENCE) {
+      groups().any { it.name == "Curse of Strahd" && it.tablePin == TablePin("builtin", "felt-black") }
+    }
+  }
+
+  @Test
+  fun `a group pinned to nothing follows the app's table`() {
+    // The "Default" chip is the one that is chosen to begin with, and choosing
+    // it means *no pin* rather than a table of its own.
+    show()
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+    compose.onNodeWithTag(GroupTestTags.NEW).performClick()
+    compose.onNodeWithTag(GroupTestTags.NAME).performTextInput("Thorin")
+
+    compose.onNodeWithTag(GroupTestTags.tableOf(null)).performScrollTo().performClick()
+    compose.onNodeWithTag(GroupTestTags.SAVE).performClick()
+
+    compose.waitUntil(PATIENCE) { groups().any { it.name == "Thorin" } }
+    assertNull(groups().first { it.name == "Thorin" }.tablePin)
+  }
+
+  @Test
   fun `Cancel leaves the group list alone`() {
     show()
     compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
@@ -232,7 +269,8 @@ class GroupSheetTest {
         scope = scope,
         ids = { "made-up" },
       )
-    val groups = GroupPresenter(library, scope, "Unfiled", ids = { "new-group" })
+    val groups =
+      GroupPresenter(library, DiceCatalog.of(listOf(BuiltinDiceSet.set)), scope, "Unfiled", ids = { "new-group" })
     compose.setContent { EditorScreen(presenter = presenter, groups = groups) }
 
     compose.onNodeWithTag(EditorTestTags.NEW_GROUP).performScrollTo().performClick()
@@ -252,7 +290,8 @@ class GroupSheetTest {
         scope = scope,
         unfiledName = "Unfiled",
       )
-    val groups = GroupPresenter(library, scope, "Unfiled", ids = { "made-up" })
+    val groups =
+      GroupPresenter(library, DiceCatalog.of(listOf(BuiltinDiceSet.set)), scope, "Unfiled", ids = { "made-up" })
     compose.setContent { SavedScreen(presenter = presenter, groups = groups) }
   }
 

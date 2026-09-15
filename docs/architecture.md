@@ -501,7 +501,8 @@ favourites first, then by recent use — is SQL's, because it is what the list
 ### The group sheet
 
 `GroupDraft` is a machine of its own but not a screen: a group is a name, a
-mark and which group it sits in, and three fields do not deserve a destination
+mark, which group it sits in and the table its rolls land on, and four fields
+do not deserve a destination
 — nor a place in the navigation graph that the back button would then have to
 mean something on. It is a dialog over whichever screen opened it, and both
 the saved-rolls list and the editor open the same one, so a group made while
@@ -529,14 +530,42 @@ import writes without ever passing through the sheet.
 | Control | Calls | What changes |
 | --- | --- | --- |
 | the name field | `name` | the name, and whether another group already has it — named, not merely reported |
-| a mark | `icon` | that mark, or none when the chosen one is tapped again |
-| **Inside** | `parent` | which group it sits in; the chooser is absent, with its reason, for a group that has children |
+| a mark | `choose` | that mark, or none when the chosen one is tapped again |
+| **Inside** | `choose` | which group it sits in; the chooser is absent, with its reason, for a group that has children |
+| **Table for this group** | `choose` | the table every roll in it lands on, unless the roll pins its own. "Default" means the app's (`docs/tables.md`) |
 | **Save group** | `save` | the group is written, the sheet closes, and whoever opened it is handed the id |
 | **Delete** | `delete` | the group goes, its rolls move to Unfiled and its child groups are lifted to the top level. Nothing a player wrote is deleted, and the sheet says how many rolls will move before it is pressed |
 | **Cancel** | `dismiss` | the draft is thrown away |
 
 Unfiled is the one group with no **Delete**: it is where a deleted group's
 rolls go, so it has to be there to go to.
+
+### Which table a throw lands on
+
+The same shape rule as below, for the same reason: **the roll screen does not
+know what a saved roll is**, so it cannot ask which table one is pinned to.
+
+`RollMachine` takes a `(TablePin?) -> TableLook` rather than one fixed look,
+and asks it with the pin the *throw* came with. Resolving a pin needs the
+installed sets, which is `:app`'s to know: `RollWiring` turns a pin into a
+look, falls back to the app default when the throw pins nothing, and falls back
+again to the bundled package's first look when the chosen table's package is no
+longer installed — leaving the setting alone, because the package may come
+back.
+
+Where the pin comes from is the other half. Precedence is *most specific
+first*: the saved roll's pin, then the pin of the group it lives in
+(`tablePinFor` in `core/model`, one function so two screens cannot come to
+disagree). It is answered where both halves are already known — the saved-rolls
+list and the strip each watch rolls and groups as one flow — and the answer
+travels on `SavedRollSource` beside which roll and which group a throw was
+made from. So a tap costs no query, and the pin drops when the attribution
+does: typing over Fireball's formula puts the app's table back.
+
+The tray is built when the screen opens, so a pinned table reaches it
+afterwards. `RollPresenter` remembers the look it last announced and calls
+`Tray.table` again only when it actually changes — a scene is rebuilt on that
+call, and rebuilding one per keystroke is not a thing to do by accident.
 
 ### Writing a roll down
 
