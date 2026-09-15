@@ -124,8 +124,13 @@ changelog.
   screen was finished but never plugged in — `MainActivity` passed no presenter
   for it, so the app drew a placeholder and every roll was filed under the
   first session whatever the player picked. Both are fixed.
-- **4.10 Settings and the menu.** The navigation graph is connected: every
-  screen carries the same button and the menu reaches every screen. Settings
+- **4.10 Settings, the menu and Notation.** The navigation graph is connected:
+  every screen carries the same button and the menu reaches every screen —
+  including **Notation**, the last row the prototype's menu had and the app did
+  not: the grammar in sentences, with an example on every line that puts that
+  formula in the tray. It is built from `NotationReference` beside the parser,
+  and a test parses every example, so the screen cannot offer a formula the app
+  would refuse. Settings
   has appearance, the accent, shake, the default rounding, power saving, the
   version and a link to the source. Haptics and sound are deliberately absent —
   nothing plays anything yet, and a row that does nothing is a lie. The menu's

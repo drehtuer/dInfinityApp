@@ -12,10 +12,12 @@ class DestinationTest {
   fun `every screen in the plan has a destination`() {
     // Step 4 of docs/TODO.md lists ten screens and the menu lists all ten.
     // Saved-roll statistics is the eleventh row: it belongs to Step 4.7 rather
-    // than being a step of its own, and the prototype's menu has it
-    // (`docs/TODO.md`, Step 4.10).
-    assertEquals(11, Destination.inTheMenu.size)
+    // than being a step of its own, and the prototype's menu has it. Notation
+    // is the twelfth and the last of the prototype's rows the app had no
+    // screen for (`docs/TODO.md`, Step 4.10).
+    assertEquals(12, Destination.inTheMenu.size)
     assertTrue(Destination.SavedRollStats in Destination.inTheMenu)
+    assertTrue(Destination.Notation in Destination.inTheMenu)
   }
 
   @Test

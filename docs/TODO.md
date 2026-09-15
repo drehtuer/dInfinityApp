@@ -240,6 +240,13 @@ The menu is built and **the navigation graph is connected**: every screen
 carries the same menu button and the menu reaches every screen
 (`docs/architecture.md`, "Screens and the states behind them").
 
+Notation is a screen, in the App section beside Settings: the grammar in
+sentences, with an example on every line that puts that formula in the tray.
+It has no state — it is `NotationReference`, which lives beside the parser, with
+a layout on it — and a test parses every example it offers, so it cannot show a
+formula the app would refuse. That was the last row the prototype's menu had
+and the app did not.
+
 A screen can no longer be built and left unplugged. `Presenters` holds a
 factory per screen with no optional fields, so adding a destination stops the
 activity compiling until it says how to build one; the same object is what the
@@ -248,7 +255,6 @@ placeholder that is not Table picker or Face designer. Both halves were checked
 by putting the original bug back: removing the sessions screen's dispatch turns
 the list into `[sessions, tables, designer]`.
 
-- [ ] One row the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll). Decide whether it is a screen or belongs in the README. *Saved-roll statistics is built and in the menu (4.7).*
 - [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
 and the repository link are all there, and each of them does something.

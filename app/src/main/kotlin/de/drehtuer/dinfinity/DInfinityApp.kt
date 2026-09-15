@@ -53,6 +53,7 @@ import de.drehtuer.dinfinity.feature.settings.MenuEntry
 import de.drehtuer.dinfinity.feature.settings.MenuHeader
 import de.drehtuer.dinfinity.feature.settings.MenuScreen
 import de.drehtuer.dinfinity.feature.settings.MenuSection
+import de.drehtuer.dinfinity.feature.settings.NotationScreen
 import de.drehtuer.dinfinity.feature.settings.SettingsScreen
 import de.drehtuer.dinfinity.feature.stats.HistoryScreen
 import de.drehtuer.dinfinity.feature.stats.SavedStatsScreen
@@ -460,11 +461,14 @@ private fun lookingBack(
   }
 
 /**
- * The app's own two screens: the menu that reaches every other, and Settings.
+ * The app's own screens: the menu that reaches every other, Settings, and the
+ * notation reference.
  *
- * Neither takes a presenter. The menu *is* a list of destinations, and Settings
- * is driven from above the navigation graph because a preference outlives the
- * screen that changed it (`docs/architecture.md`, decision 49).
+ * None of them takes a presenter. The menu *is* a list of destinations,
+ * Settings is driven from above the navigation graph because a preference
+ * outlives the screen that changed it (`docs/architecture.md`, decision 49),
+ * and the notation reference has nothing to remember at all — it is
+ * `NotationReference` with a layout on it.
  */
 @Composable
 private fun chrome(
@@ -483,6 +487,18 @@ private fun chrome(
   when (destination) {
     Destination.Menu -> {
       MenuScreen(sections = menuSections(navController), header = menuHeader)
+      true
+    }
+
+    Destination.Notation -> {
+      NotationScreen(
+        // Straight to the tray with the example in the field, unrolled. The
+        // screen exists to answer "what does this do", and the answer is the
+        // throw the player makes next — not one the app makes for them
+        // (`docs/dice-notation.md`).
+        onRoll = { formula -> navController.navigate(rollRoute(formula)) },
+        menu = { MenuTo(navController) },
+      )
       true
     }
 

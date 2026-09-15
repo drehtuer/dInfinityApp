@@ -62,6 +62,8 @@ a tumble; everything else is real.
 - **Shake to roll** — accelerometer and gyroscope drive the throw.
 - **Power-saving mode** — same physics, no rendering; just the result.
 - **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on.
+  The whole grammar is in the app under **Notation**, with an example on every
+  line you can tap to try.
 - **Does the math** — the total, the modifiers and the per-die breakdown are
   shown the moment the dice stop. No counting pips in the middle of a fight.
 - **Saved rolls** — name a formula, give it an icon ("Fireball", "Sneak
