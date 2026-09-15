@@ -79,6 +79,19 @@ data class SetRow(
   /** How many dice it defines. A broken package defines nothing usable. */
   val dice: Int get() = set?.dice?.size ?: 0
 
+  /**
+   * True for "My dice", the package built from the drawings on this phone
+   * (`docs/face-designer.md`; design `8c`).
+   *
+   * The id and nothing else, because that *is* what makes it personal: the
+   * exporter writes the folder `mine`, and a folder called `mine` that came
+   * from somewhere else would be one the app overwrote at the next reading
+   * anyway. It is the only difference the details screen makes for it — the
+   * package is otherwise as ordinary as any other, and can be switched off and
+   * removed like one.
+   */
+  val personal: Boolean get() = !bundled && id == DiceSet.PERSONAL_ID
+
   /** The version it declares, where it is readable enough to declare one. */
   val version: String? get() = set?.version ?: meta.version
 

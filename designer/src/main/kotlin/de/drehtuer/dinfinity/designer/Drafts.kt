@@ -84,6 +84,24 @@ class DraftStore(
     fileFor(dieId).delete()
   }
 
+  /**
+   * A number that changes when the drawings do.
+   *
+   * Not a time, though a time is most of it. What [MineSets] needs before it
+   * rasterises anything is "have any of these moved on", and the personal
+   * package is built from all of them at once — so the answer is one number
+   * over the whole folder, and it costs a `stat` per file rather than a
+   * re-read of each.
+   *
+   * Each file contributes its name, its size and when it was last written, and
+   * the three are **added** so that the order the filesystem lists them in
+   * cannot change the answer. The last modification time alone would not do:
+   * two drafts written in the same millisecond have the same one, and adding a
+   * second drawing would then look like no change at all.
+   */
+  fun stamp(): Long =
+    files().fold(0L) { total, file -> total + file.name.hashCode() + file.lastModified() + file.length() }
+
   /** The ids of the dice that have a drawing, newest first. */
   fun known(): List<String> =
     files().mapNotNull { file ->

@@ -13,5 +13,5 @@ object FeatureSetsModule {
   const val PATH: String = ":feature:sets"
 
   /** The Gradle paths this module declares a dependency on. */
-  val DEPENDS_ON: List<String> = listOf(":dicesets:format", ":dicesets:install")
+  val DEPENDS_ON: List<String> = listOf(":dicesets:format", ":dicesets:install", ":designer")
 }
