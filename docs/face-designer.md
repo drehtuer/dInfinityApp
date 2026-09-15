@@ -48,6 +48,20 @@ face, the twelve presets, and the strip that moves between faces. Strokes are
 vectors in fractions of the canvas, so they survive a rotation and can be
 re-rendered at export resolution.
 
+**The body scrolls and the strip stays.** A square canvas and three rows of
+controls do not fit above the fold on a short phone, so everything from the
+base-die chooser down to the palette scrolls, and the face strip is pinned to
+the bottom — which face is in front of the player is where the screen is
+steered from. The tool, clipboard and colour rows **wrap** rather than scroll
+sideways: a tool hidden off the edge of a row is a tool nobody finds. Only the
+face strip scrolls sideways, because twenty faces have to go somewhere.
+
+The toolbar the design asks for is three-quarters there: the **fill bucket**,
+**copy face → paste with a turn and a mirror**, and a **colour picker past the
+twelve presets** (`4c`). Each of them is arithmetic over the stored vectors and
+lives in `designer/` where a plain test can reach it; what is left in the
+screen is a path and a mask.
+
 **The d4 rule is derived, not checked.** A cell's three numbers are read from
 the three corners that cell meets, so two cells sharing an edge draw the same
 value at each end of it because they are reading the same corner. There is no
@@ -84,8 +98,9 @@ has no answer to "which set is this one". A bare `1d20` when the set a plain
 `d20` already means has one, and `brass:1d18` when it does not and `brass`
 does.
 
-Still to come, in `docs/TODO.md` 4.6: the fill bucket and stamp, and the
-export.
+Still to come, in `docs/TODO.md` 4.6: the stamp and "fill all faces with
+numbers" — both of which place a glyph, and so both wait on the built-in SDF
+font (Step 3) — and the export.
 
 ## Drawing tools
 
@@ -94,16 +109,108 @@ Deliberately small:
 - Pen with three widths, eraser, fill bucket
 - Colour palette (the set's default colours + 12 presets + a picker)
 - Undo/redo (per face, unlimited within the session)
+- Copy face → paste onto another face, with optional turn/mirror (for making
+  all faces share a border, for example)
 - Stamp: place a digit/letter/symbol from the built-in font, scalable and
-  rotatable, so people who cannot draw a legible "8" still get an "8"
-- Copy face → paste onto another face, with optional rotate/mirror (for
-  making all faces share a border, for example)
-- "Fill all faces with numbers" one-tap starting point
+  rotatable, so people who cannot draw a legible "8" still get an "8" — not
+  built yet, and neither is the "fill all faces with numbers" one-tap starting
+  point it shares a font with
 
-Strokes are recorded as vector paths in a draft file so that the canvas can be
+### The fill bucket
+
+**A fill is a shape added to the drawing, not a flood of pixels.** There are no
+pixels here to flood: a face is a list of vectors in fractions of the canvas,
+so the bucket's whole job is to decide *which region* and add it as another
+mark. It picks the region a raster flood fill would have looked as though it
+picked — **the smallest closed stroke the tap landed inside**, and **the face
+itself** when it landed on bare paper. Shapes nest, and a tap in the eye of a
+drawn skull means the eye rather than the skull.
+
+A stroke counts as closed when its two ends come back within eight hundredths
+of the canvas of each other; a finger never lands on the pixel it started from,
+and demanding that it did would make the bucket useless. An eraser stroke is
+not a boundary — it takes ink away rather than drawing a line to fill against —
+and neither is an existing fill, because filling inside the paper is what
+filling the face already does.
+
+The whole-face region is stored as **the canvas square** rather than a copy of
+the cell's outline. Every renderer already clips the drawing to that outline —
+the screen and the exporter both do — so a fill of the square *is* a fill of
+the face, and a fill carrying its own copy of the polygon could come to
+disagree with the mask.
+
+**Fills sink under the ink.** The marks on a face are kept with every fill in
+front, oldest first, and every stroke behind them, so a later fill covers an
+earlier fill and never the drawing. A bucket colours the paper, not the line:
+a fill that landed on top would hide the drawing it was aimed at, and the way
+to cover ink is the eraser. A fill is one mark, so it is one press of undo, it
+counts against the two-hundred limit like a stroke, and it round-trips through
+the draft file with its region and its colour.
+
+### Copy and paste
+
+Copying takes what is on the face — the drawing, not its undo stack, which
+belongs to the face it was made on. Pasting **merges**: the copy lands on top
+of whatever is already there, which is what "make every face share this
+border" needs. A face that should be replaced is cleared first, two presses,
+both undoable — whereas a paste that replaced would take away work nobody
+asked it to. A paste is **one** step however many marks it carried, and a
+paste that would carry the face past the limit is refused whole, because half
+of what was copied is not what was copied.
+
+**The turn is the cell's own**: a third of a turn on a triangle, a quarter on a
+square, a fifth on a pentagon, and quarters on the d2's disc, which has every
+turn there is. A turn that did not carry the cell onto itself would carry the
+drawing off the face and under the mask. A kite — the d10's and the d18's cells
+— has no such turn at all, so those dice are offered the mirror and the turn is
+disabled rather than removed: a row whose buttons come and go as the base die
+changes is a row nobody learns.
+
+**There is one mirror, the vertical one**, left for right. It is the only axis
+every cell outline here shares; a triangle standing on its base does not
+survive being flipped top for bottom. The mirror goes on first and the turn
+after it, which is the order that makes "mirror, then turn twice" mean what it
+says.
+
+The clipboard outlives the face and the die. Marks are fractions of the canvas,
+so a border copied off a d6 lands on a d20's triangle as readily as on another
+square, and a dot the turn carries off the canvas is clipped by the mask like
+any other ink rather than squashed back inside — squashing would change the
+shape that was copied.
+
+### A colour beyond the twelve
+
+The twelve presets stay the fast path: twelve is what a finger can hit without
+a dialog, and the picker sits after them, which is where the design puts it
+(`4c`). It opens on the colour already in the pen and offers **hue, depth and
+brightness** — three numbers somebody can move one at a time and mean
+something by, which red-green-blue is not. The swatch and the hex are shown
+next to the row, so what is in the pen can be read off rather than guessed at,
+and the chosen colour is stored per stroke, so it round-trips through the draft
+file like any other ink.
+
+**Ink is always opaque.** Alpha is forced rather than offered: a
+half-transparent stroke is a stroke whose colour depends on what is behind it,
+and what is behind it is the die's own material, which the set decides and the
+designer never sees.
+
+**There is no contrast rule on ink, and that is deliberate.**
+`core/model/AccentColor` holds every accent to 3:1 against both grounds because
+those grounds are the app's own — it knows what the surface behind a button is.
+A die face is not the app's ground: the cell is transparent in the atlas and
+the colour under it comes from the dice set, so a ratio computed against the
+designer's white paper would be a promise about a surface that is not there.
+The rule that applies here is the other one — the drawing is shown at the size
+it will be drawn and the judgement is the player's, which is also why white is
+one of the twelve even though it is invisible on the canvas and perfect on a
+black die.
+
+### The draft file
+
+Marks are recorded as vector paths in a draft file so that the canvas can be
 re-rendered at export resolution and so drafts survive process death.
 
-**One file per die, under the app's own files.** The file holds the strokes and
+**One file per die, under the app's own files.** The file holds the marks and
 not the undo stack — undo is unlimited *within a session*, and a history
 restored from disk would rewind a drawing past the point somebody opened it.
 It is written after every stroke, undo and clear rather than when somebody
@@ -125,6 +232,13 @@ a stranger's, so the reason is the other one: a deserializer's idea of the file
 is the class shape of the day, and a drawing has to survive the class changing
 under it. Anything that does not read is simply not a draft, and the canvas
 opens blank.
+
+**The format number was not bumped for fills.** A fill is a new kind of entry
+in the list of marks that was already there, told apart by a field a stroke
+never carries, so every draft written before fills existed reads exactly as it
+did and a build that predates them drops a fill it cannot draw rather than
+losing the drawing around it. Bumping the number would blank every drawing on
+the device to spare an older build one shape, which is not a trade.
 
 ## Export details
 
@@ -150,11 +264,12 @@ on the 1 in ten seconds" path.
 
 ## Constraints
 
-- Drafts are limited to 50 per device and 200 strokes per face to keep
-  storage and export time bounded.
-- The stroke limit **warns and then refuses**: the face stops taking strokes
-  and says so twenty strokes before it does, because a canvas that silently
-  stops drawing reads as a broken screen.
+- Drafts are limited to 50 per device and 200 marks per face — strokes and
+  fills alike — to keep storage and export time bounded.
+- The mark limit **warns and then refuses**: the face stops taking marks and
+  says so twenty strokes before it does, because a canvas that silently stops
+  drawing reads as a broken screen. A paste that would not fit is refused
+  whole rather than in part.
 - The draft limit **makes room**: drawing on a fifty-first die drops the draft
   nobody has touched for longest. Refusing it would be a dead end — there is
   no screen yet on which to delete one ("My dice", `docs/TODO.md` 4.6) — and a

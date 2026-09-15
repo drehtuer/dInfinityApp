@@ -200,23 +200,41 @@ left alone in case it comes back.
 
 Design `1v`, `4c`, `8d`. Spec: `docs/face-designer.md`.
 
-Drawing is built: the canvas with the face's outline masked in, strokes stored
-as vectors in fractions of the canvas, the guide under them that can be turned
+Drawing is built: the canvas with the face's outline masked in, marks stored as
+vectors in fractions of the canvas, the guide under them that can be turned
 off, three pen widths and an eraser, undo/redo and clear per face, the twelve
-presets, and the face strip. **Drafts are on disk** — one file per die, written
-after every stroke and read back when the die is opened — so a drawing outlives
-the screen and each die keeps its own. That made the "start over?" question
-unnecessary and it is gone: changing die no longer loses anything. **Roll it**
-hands the tray the die being drawn — the die as its set defines it, since
-nothing puts an atlas on one yet, and absent rather than dead for a die plain
-notation cannot name (decision 31). The d4's three-numbers-per-corner rule is
-**derived rather than checked** — a cell's numbers are read from the corners it
-meets, so two cells sharing an edge cannot be made to disagree along it.
+presets, and the face strip. The **bucket** adds a region rather than flooding
+pixels — the smallest closed stroke the tap is inside, or the face — and fills
+sink under the ink; **copy and paste** merge a turned or mirrored copy onto
+another face in one undoable step, the turn being a whole step of the cell's
+own symmetry; the **colour picker** goes past the twelve presets in hue, depth
+and brightness, and the ink it makes is opaque and round-trips through the
+draft file (`docs/face-designer.md`). **Drafts are on disk** — one file per
+die, written after every stroke and read back when the die is opened — so a
+drawing outlives the screen and each die keeps its own. That made the "start
+over?" question unnecessary and it is gone: changing die no longer loses
+anything. **Roll it** hands the tray the die being drawn — the die as its set
+defines it, since nothing puts an atlas on one yet, and absent rather than dead
+for a die plain notation cannot name (decision 31). The d4's
+three-numbers-per-corner rule is **derived rather than checked** — a cell's
+numbers are read from the corners it meets, so two cells sharing an edge cannot
+be made to disagree along it.
 
-- [ ] Fill bucket, stamp from the built-in font, copy face → paste with rotate/mirror, "fill all faces with numbers", and a colour picker beyond the twelve presets (`4c`)
+- [ ] Stamp a digit, letter or symbol from the built-in font, and the
+      "fill all faces with numbers" one-tap starting point that places the same
+      glyphs. Both wait on the **SDF font** in Step 3 — there is nothing yet to
+      take a glyph from. The rest of the `4c` toolbar is built: the fill
+      bucket, copy face → paste with a turn and a mirror, and the colour picker
+      past the twelve presets
 - [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
 - [ ] Export to a real dice set through the standard validator: atlas at 256 px per cell, transparent cells, generated `diceset.toml`, licence asked for before sharing
 - [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"
+- [ ] *Judgement, with a finger:* the bucket calls a stroke closed when its
+      ends come back within 0.08 of the canvas of each other, and fills the
+      smallest shape the tap is inside. Both numbers are guesses about how
+      accurately somebody draws on glass; whether a loop somebody meant to
+      close is treated as closed, and whether the region that fills is the one
+      they meant, can only be told by drawing on a phone
 - [ ] *Confirm first:* the prototype has no 3D preview — see Open questions. Nothing here builds one
 
 ### 4.7 Statistics — `feature/stats`
