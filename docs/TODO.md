@@ -138,10 +138,11 @@ to disable or remove it (`5a`, bundled set protected); the details behind a tap
 (`6a`) with author, licence, source and commit, the dice the set defines, and
 set-as-default; the validation report standing where the dice grid would be for
 a package that stopped validating (`6b`), its folder kept so an update can fix
-it; and installing **from a file** through the validator, where a rejection
-lists every error (`1t`). Database version 4 holds which sets are switched on.
+it; and installing **from a file or from a pasted `https` link** through the
+validator, where a rejection lists every error (`1t`) and a download that never
+arrives is refused the same way. Database version 4 holds which sets are
+switched on.
 
-- [ ] Install from a **URL**, over `dicesets/install`'s fetcher. The screen, the bounded copy and the report are all built and shared with the file path — what is left is the fetch itself, which is the app's first code that reaches the network
 - [ ] Check for updates, update with progress and cancel (`9h`, `9i`)
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)
 - [ ] Tests: a malicious archive is refused at every layer, and a failed install leaves nothing behind

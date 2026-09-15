@@ -2,11 +2,14 @@ package de.drehtuer.dinfinity.feature.sets
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
@@ -24,6 +27,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -335,9 +340,10 @@ class SetsScreenTest {
   private fun show(
     onOpen: (SetRow) -> Unit = {},
     onInstall: () -> Unit = {},
+    download: suspend (String) -> FetchedPackage = { FetchedPackage.Failed("no downloader in this test") },
   ): SetsPresenter {
     val presenter =
-      SetsPresenter(library(), scope)
+      SetsPresenter(library(), scope, download)
     compose.setContent { SetsScreen(presenter, onOpen = onOpen, onInstall = onInstall) }
     // The first reading of the disk is asynchronous, and every one of these
     // tests is about what the screen shows once it has happened.
@@ -346,6 +352,60 @@ class SetsScreenTest {
   }
 
   /** The two halves joined, with the disk and the database both real. */
+  @Test
+  fun `a link is offered beside the file, and the button waits for one`() {
+    show()
+
+    compose.onNodeWithTag(SetsTestTags.LINK).assertIsDisplayed()
+    compose.onNodeWithTag(SetsTestTags.FETCH).assertIsNotEnabled()
+    compose.onNodeWithTag(SetsTestTags.LINK).performTextInput("https://example.test/brass.zip")
+    compose.onNodeWithTag(SetsTestTags.FETCH).assertIsEnabled()
+  }
+
+  @Test
+  fun `a fetched archive goes through the validator like any other`() {
+    // There is one validator and no path around it. This archive is not a dice
+    // set, so the install is refused exactly as a chosen file would be.
+    val notASet = File(root.apply { mkdirs() }, "not-a-set.zip").apply { writeText("this is not an archive") }
+    val presenter = show(download = { FetchedPackage.Archive(notASet) })
+
+    presenter.installFrom("  https://example.test/brass.zip  ")
+
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+    assertTrue(
+      "an archive that is not one was not refused: ${presenter.state.outcome}",
+      presenter.state.outcome is PackageInstaller.Result.Failed,
+    )
+    assertFalse("the downloaded copy was left in the cache", notASet.exists())
+  }
+
+  @Test
+  fun `a download that does not arrive is refused the way a bad file is`() {
+    val presenter = show(download = { FetchedPackage.Failed("'http://example.test' is not an https link") })
+
+    presenter.installFrom("http://example.test/brass.zip")
+
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+    val outcome = presenter.state.outcome as PackageInstaller.Result.Failed
+    assertTrue(outcome.reason, outcome.reason.contains("https"))
+    assertFalse("the screen was left saying it was still installing", presenter.state.installing)
+  }
+
+  @Test
+  fun `a blank link fetches nothing`() {
+    val asked = mutableListOf<String>()
+    val presenter =
+      show(download = { url ->
+        asked += url
+        FetchedPackage.Failed("no")
+      })
+
+    presenter.installFrom("   ")
+
+    assertEquals(emptyList<String>(), asked)
+    assertFalse("the screen said it was installing for a blank link", presenter.state.installing)
+  }
+
   private fun library() =
     SetLibrary(
       bundled = bundledSet(),

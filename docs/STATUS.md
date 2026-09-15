@@ -106,13 +106,14 @@ changelog.
   set is offered neither. Tapping one opens its details: who wrote it, under
   what licence, the link it came from with its commit, and the dice it defines
   — or, for a package that stopped validating, the report standing where the
-  dice would. A set installs from a file: picked, copied bounded into the app's
+  dice would. A set installs from a file or from a pasted `https` link:
+  picked or fetched, copied bounded into the app's
   cache, extracted and validated before anything is written, and a refusal
   lists every error — and **its dice can then be rolled**: the catalogue a
   formula resolves against is rebuilt from what is on disk and switched on, so
   installing a set is the whole of what it sounds like, and one of them can be
   made the set a plain `d20` comes from. Still to come:
-  installing from a URL, update checking, and "my dice".
+  update checking and "my dice".
 - **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
   a history row, a face count per die and a running summary, in one transaction
   — which the tables had been waiting for since version 1. The history lists

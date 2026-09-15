@@ -156,6 +156,7 @@ data class SetsState(
 class SetsPresenter(
   private val library: SetLibrary,
   private val scope: CoroutineScope,
+  private val download: suspend (String) -> FetchedPackage = { FetchedPackage.Failed(NO_NETWORK) },
 ) {
   /** What the screen draws. */
   var state: SetsState by mutableStateOf(SetsState())
@@ -224,20 +225,54 @@ class SetsPresenter(
   ) {
     if (state.installing) return
     state = state.copy(installing = true, outcome = null)
+    scope.launch { unpack(archive, onDone) }
+  }
+
+  /**
+   * Downloads the package at [url] and installs it (design `1t`;
+   * `docs/dice-sets.md`, "Installing from a URL or file").
+   *
+   * The same install, with a download in front of it. What arrives goes
+   * through the validator rule for rule — there is one validator and no path
+   * around it (`.claude/CLAUDE.md`) — and a download that does not arrive is
+   * reported the way a refused file is, because to the player it is the same
+   * sentence: nothing was installed, and here is why.
+   *
+   * The downloaded copy is deleted however it ends, including when the
+   * installer throws. It is a stranger's archive sitting in a cache nobody
+   * empties, and the set it held is on disk by the time anybody wants it again.
+   */
+  fun installFrom(url: String) {
+    val link = url.trim()
+    if (state.installing || link.isEmpty()) return
+    state = state.copy(installing = true, outcome = null)
     scope.launch {
-      // The installer answers Failed for everything it anticipates, so a throw
-      // here means the filesystem did something it was not asked about. It is
-      // still a refusal to the player, and saying so beats taking the screen
-      // down with them.
-      val result =
-        runCatching { library.install(archive) }
-          .getOrElse { cause ->
-            PackageInstaller.Result.Failed(cause.message ?: "the package could not be installed")
-          }
-      state = state.copy(installing = false, outcome = result)
-      onDone()
-      refresh()
+      when (val fetched = download(link)) {
+        is FetchedPackage.Failed ->
+          state = state.copy(installing = false, outcome = PackageInstaller.Result.Failed(fetched.reason))
+
+        is FetchedPackage.Archive -> unpack(fetched.file) { if (!fetched.file.delete()) fetched.file.deleteOnExit() }
+      }
     }
+  }
+
+  /** The install itself, which is the same whether the archive was chosen or fetched. */
+  private suspend fun unpack(
+    archive: File,
+    onDone: () -> Unit,
+  ) {
+    // The installer answers Failed for everything it anticipates, so a throw
+    // here means the filesystem did something it was not asked about. It is
+    // still a refusal to the player, and saying so beats taking the screen
+    // down with them.
+    val result =
+      runCatching { library.install(archive) }
+        .getOrElse { cause ->
+          PackageInstaller.Result.Failed(cause.message ?: "the package could not be installed")
+        }
+    state = state.copy(installing = false, outcome = result)
+    onDone()
+    refresh()
   }
 
   /**
@@ -255,4 +290,29 @@ class SetsPresenter(
   fun dismiss() {
     state = state.copy(outcome = null)
   }
+
+  private companion object {
+    /**
+     * What a screen with no downloader says.
+     *
+     * The download arrives as a function rather than as something this module
+     * builds, so that fetching stays where the platform is — a cache directory
+     * and an HTTP client. A caller that supplies none cannot reach the network,
+     * and saying so is better than a button that does nothing.
+     */
+    const val NO_NETWORK = "this build cannot reach the network"
+  }
+}
+
+/** What a download of a package came to. */
+sealed interface FetchedPackage {
+  /** The archive, on disk. Not yet known to be a dice set — that is the validator's word. */
+  data class Archive(
+    val file: File,
+  ) : FetchedPackage
+
+  /** It did not arrive, and this is what to tell somebody. */
+  data class Failed(
+    val reason: String,
+  ) : FetchedPackage
 }

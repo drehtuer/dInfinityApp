@@ -167,7 +167,14 @@ internal class ScreenWiring(
     )
 
   /** What is installed, and what may be done to it (`docs/dice-sets.md`). */
-  private fun diceSets() = SetsPresenter(app.setLibrary, scope)
+  private fun diceSets() =
+    SetsPresenter(
+      library = app.setLibrary,
+      scope = scope,
+      // The platform half of a link: a cache directory and an HTTP client,
+      // neither of which a screen that lists dice sets should have to carry.
+      download = PackageDownload(app.cacheDir)::fetch,
+    )
 
   /** One of them, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`). */
   private fun diceSet(

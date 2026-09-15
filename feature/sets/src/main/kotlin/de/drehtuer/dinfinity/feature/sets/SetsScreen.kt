@@ -14,9 +14,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -64,6 +69,7 @@ fun SetsScreen(
   ) {
     Header(menu)
     Installing(state, onInstall)
+    FromLink(state, presenter)
     // The note goes *above* the list rather than instead of it. The bundled
     // set is a row like any other and is always there, so replacing the list
     // would hide the one set every fallback resolves against (`5a`).
@@ -94,6 +100,44 @@ private fun Installing(
     modifier = Modifier.padding(horizontal = 8.dp).testTag(SetsTestTags.INSTALL),
   ) {
     Text(stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install))
+  }
+}
+
+/**
+ * The other way in: a link to an archive (`docs/dice-sets.md`, "Installing
+ * from a URL or file").
+ *
+ * The file comes first of the two, because it is the one that always works
+ * where a link depends on somebody else's server being up. The button is dead
+ * while an install is running and while there is nothing to fetch — an archive
+ * extracted twice at once is two installs racing for one folder, and a
+ * download of nothing is a spinner that stops for no reason.
+ */
+@Composable
+private fun FromLink(
+  state: SetsState,
+  presenter: SetsPresenter,
+) {
+  var url by rememberSaveable { mutableStateOf("") }
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    OutlinedTextField(
+      value = url,
+      onValueChange = { typed -> url = typed },
+      singleLine = true,
+      label = { Text(stringResource(R.string.sets_link_label)) },
+      modifier = Modifier.weight(1f).testTag(SetsTestTags.LINK),
+    )
+    TextButton(
+      onClick = { presenter.installFrom(url) },
+      enabled = !state.installing && url.isNotBlank(),
+      modifier = Modifier.testTag(SetsTestTags.FETCH),
+    ) {
+      Text(stringResource(R.string.sets_fetch))
+    }
   }
 }
 
@@ -359,6 +403,8 @@ object SetsTestTags {
   const val REMOVE: String = "sets:remove"
   const val CANCEL: String = "sets:cancel"
   const val INSTALL: String = "sets:install"
+  const val LINK: String = "sets:link"
+  const val FETCH: String = "sets:fetch"
   const val OUTCOME: String = "sets:outcome"
   const val OUTCOME_REASON: String = "sets:outcome:reason"
   const val OUTCOME_LINE: String = "sets:outcome:line"
