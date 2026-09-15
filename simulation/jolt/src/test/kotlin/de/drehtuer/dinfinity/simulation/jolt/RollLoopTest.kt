@@ -51,6 +51,24 @@ class RollLoopTest {
   }
 
   @Test
+  fun `the outcome says where each die stopped, not only what it says`() {
+    // A roll whose formula explodes is not over when its dice stop: the die
+    // that follows is dropped into the floor these left clear and drawn among
+    // them, and neither is something the screen could work out for itself
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    val world = FakeWorld(2) { _, _, _ -> FakeWorld.settled() }
+
+    val outcome = loop(listOf(StandardDice.d6, StandardDice.d20), world).run()
+
+    assertEquals(outcome.faces.keys, outcome.restingAt.keys)
+    outcome.restingAt.values.forEach { place ->
+      assertEquals(FakeWorld.settled().position, place.position)
+      assertEquals(FakeWorld.settled().orientation, place.orientation)
+    }
+  }
+
+  @Test
   fun `nothing touches a die that has come to rest, however wrong it looks`() {
     // Stopped dead and standing on another die: as much trouble as a die can
     // be in, and out of reach for exactly that reason.

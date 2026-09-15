@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
+import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.Exact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.Seeds
@@ -30,11 +31,15 @@ import kotlin.random.Random
  * @param dieRadiusMm the bounding radius of a die at the throw's scale, which
  *   is how much room each one needs.
  * @param seed the roll's seed.
+ * @param among where the dice already at rest in this tray are, for the throw
+ *   an explosion or a reroll adds. Empty for every other throw, which is what
+ *   the grid above is for.
  */
 class SpawnLayout(
   private val geometry: TableGeometry,
   private val dieRadiusMm: Double,
   private val seed: Long,
+  private val among: List<Vector3> = emptyList(),
 ) {
   /** Where die [index] of [count] starts, and how hard it is thrown. */
   fun placementOf(
@@ -42,6 +47,7 @@ class SpawnLayout(
     count: Int,
   ): Placement {
     require(index in 0 until count) { "die $index is not one of $count" }
+    if (among.isNotEmpty()) return addedPlacement(index)
     val random = randomFor(index, Seeds.SPAWN)
     val grid = Grid.covering(count, geometry, dieRadiusMm)
     val cell = grid.cellOf(index)
@@ -64,6 +70,34 @@ class SpawnLayout(
           z = -random.nextDouble(THROW_DOWN_MIN_MM_PER_SECOND, THROW_DOWN_MAX_MM_PER_SECOND),
         ),
       angularVelocity = randomSpin(random, SPAWN_SPIN_RADIANS_PER_SECOND),
+    )
+  }
+
+  /**
+   * Where the die an explosion or a reroll added is dropped
+   * (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
+   *
+   * Not the grid, because the grid deals the whole floor out to the throw and
+   * this throw is one die arriving in a tray somebody has already rolled in.
+   * It goes where [ClearSpace] says there is room — the point furthest from the
+   * dice already down, and as central as that allows — and it is *dropped*
+   * there rather than thrown across the tray, exactly as a re-thrown die is and
+   * for the same reason: a die that travels is a die that arrives somewhere
+   * nobody made room for. The dice already down are not in this throw's world
+   * and cannot be moved by it; the clear space is so the *picture* is honest
+   * too.
+   */
+  private fun addedPlacement(index: Int): Placement {
+    val random = randomFor(index, Seeds.SPAWN)
+    val point =
+      requireNotNull(ClearSpace.clearestPoint(geometry, dieRadiusMm, among)) {
+        "there is nowhere left in the tray to drop a die of ${dieRadiusMm * 2} mm"
+      }
+    return Placement(
+      position = point.copy(z = RETHROW_HEIGHT_MM + dieRadiusMm),
+      rotation = randomRotation(random),
+      linearVelocity = Vector3(0.0, 0.0, -RETHROW_DOWN_MM_PER_SECOND),
+      angularVelocity = randomSpin(random, RETHROW_SPIN_RADIANS_PER_SECOND),
     )
   }
 

@@ -70,7 +70,17 @@ class JoltDiceSimulator(
     // spawn that will not fit has to take the world down with it. A native
     // world nobody holds is native memory nobody frees.
     return runCatching {
-      val layout = SpawnLayout(spec.geometry, largestRadiusMm(spec), spec.seed)
+      val layout =
+        SpawnLayout(
+          geometry = spec.geometry,
+          dieRadiusMm = largestRadiusMm(spec),
+          seed = spec.seed,
+          // The dice already down are told to the *layout* and to nothing else.
+          // No body is created for them, so this throw has nothing it could
+          // shove; what they decide is where the new die is not dropped
+          // (`docs/physics-and-rendering.md`).
+          among = spec.among.map { it.at.position },
+        )
       spec.dice.forEachIndexed { index, instance ->
         world.addDie(
           hull = ShapeGeometry.hullOf(instance.die, spec.dieScale),
@@ -95,20 +105,13 @@ class JoltDiceSimulator(
 
 /**
  * The grid is laid out for the biggest die in the throw, not for each die's
- * own size.
- *
- * A throw can mix a d4 and a d20 from different sets, and cells sized for the
- * d4 would put the d20 through its neighbour's cell wall before anything had
- * been thrown.
+ * own size ([ThrowSpec.largestDieRadiusMm]).
  *
  * Not private, because the golden suite has to lay out the same grid to record
  * what the engine was handed, and a second copy of this line is a second copy
  * that can drift.
  */
-internal fun largestRadiusMm(spec: ThrowSpec): Double =
-  spec.dice.maxOf {
-    it.die.material.boundingRadiusMm * spec.dieScale
-  }
+internal fun largestRadiusMm(spec: ThrowSpec): Double = spec.largestDieRadiusMm
 
 /** Opens the world one throw runs in. The seam the tests come in through. */
 fun interface WorldFactory {

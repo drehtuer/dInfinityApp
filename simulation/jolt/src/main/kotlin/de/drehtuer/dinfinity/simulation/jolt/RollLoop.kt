@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.simulation.api.FaceReader
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Reading
 import de.drehtuer.dinfinity.simulation.api.RestTracker
+import de.drehtuer.dinfinity.simulation.api.RestingPlace
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -186,6 +187,12 @@ class RollLoop(
     result =
       SimulationOutcome(
         faces = readFaces(states),
+        // Where they stopped, for the throw an explosion or a reroll adds
+        // next: it is aimed at the floor this one left clear and drawn among
+        // the dice standing on the rest of it, and neither is something the
+        // screen could work out for itself
+        // (`docs/physics-and-rendering.md`).
+        restingAt = states.indices.associateWith { RestingPlace(states[it].position, states[it].orientation) },
         steps = tracker.stepsTaken,
         corrections = corrections,
         rethrows = rethrows,
