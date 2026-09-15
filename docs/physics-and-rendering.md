@@ -466,16 +466,55 @@ itself, so it maps the throw onto the same throw with its faces relabelled; with
 starting turns drawn evenly, the nine faces of an orbit have to come up equally
 often. They do not, by a margin of one in 10¹⁶.
 
-Every premise of that argument has now been measured and holds — to the
-precision the measurements have. What is left is precision itself: the hull the
-solver collides is exactly symmetric in double arithmetic, and reaches the
-engine as **float32**, where it is symmetric to about one part in 10⁷. The d18
-is the shape that would notice. Its adjacent faces are 28.4° apart where a
-d10's are 51.8°, so its resting basins are the narrowest in the catalogue and it
-spends its last moments rolling along a nearly equatorial belt of nine of them.
-The d10, the same family of solid with wider kites, is fair (χ² 8.35 against
-27.88). So the next measurement is whether the same throws come out fair on a
-hull the engine holds in double precision.
+Every premise of that argument holds to the precision it was measured at — and
+precision turns out to be the answer. The hull is exactly symmetric in double
+arithmetic and reaches the engine as **float32**, where it is symmetric to about
+one part in 10⁷; Jolt's `ConvexHullShape` stores its points as `Vec3`, which is
+single precision whatever `JPH_DOUBLE_PRECISION` does to body positions, so
+there is no double-precision hull to compare against.
+
+What can be done instead is to make the asymmetry *bigger* and watch what
+happens. Twenty thousand throws of each, with every corner of the hull moved by
+a random fraction of the die's radius:
+
+| hull | d18 | d10 |
+| --- | --- | --- |
+| exact | χ² **52.2** | χ² 9.6 |
+| every corner nudged by up to 10⁻⁶ | χ² 50.7 | — |
+| every corner nudged by up to 10⁻⁴ | χ² **293.7** | χ² 19.8 |
+| the limit at p = 0.001 | 40.8 | 27.9 |
+
+Three things fall out of that.
+
+**Hull asymmetry is what biases a trapezohedron.** A ten-thousandth of a radius
+takes the d18 from 52 to 294, and two different nudges of the same size give
+biases that are unrelated to each other (their deviation patterns correlate at
+−0.21) — so the *pattern* is an arbitrary consequence of the particular
+asymmetry, which is why the exact hull's pattern is stable: float32 rounding is
+deterministic, so it is the same asymmetry every time.
+
+**The d18 amplifies it about five times harder than the d10.** The same nudge
+costs the d18 5.6× its baseline and the d10 2.1×, and only the d18 crosses its
+threshold. That is the narrow-basin argument measured rather than asserted: the
+d18's adjacent faces are 28.4° apart where a d10's are 51.8°.
+
+**And a nudge at the float32 scale changes the pattern without changing the
+size.** At 10⁻⁶ — ten times the hull's own rounding — the magnitude is
+unmoved (50.7 against 52.2) while the pattern shifts (correlation falls from
+0.80 to 0.42). A bias that is regenerated, the same size but differently
+shaped, by a perturbation the size of the representation itself is a bias made
+of the representation.
+
+So the d18 is as fair as a single-precision rigid-body engine can make a solid
+with basins that narrow. In the terms that matter to a player it is very fair
+indeed — **no face is off its share by more than 0.455 %**, against the 1 % this
+project set itself and against the 1–2 % a moulded plastic d20 manages. What it
+cannot pass is a chi-squared test at one in a thousand over a hundred thousand
+throws, which detects a bias far below anything anybody could play with.
+
+Whether that is a defect to fix, a bar to restate, or a shape to drop is a
+judgement rather than a measurement, and it is in `docs/TODO.md` under Open
+questions.
 
 ## Avoiding stacked and cocked dice
 

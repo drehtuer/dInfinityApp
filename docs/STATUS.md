@@ -183,6 +183,10 @@ changelog.
 
 ## Decisions pending
 
+- **What the d18 should be held to.** It is fair to better than half a percent
+  per face and cannot pass chi-squared at a hundred thousand rolls, for a
+  reason that is now understood and cannot be engineered away in this engine.
+  Restate the bar, carry it as a known defect, or drop the shape.
 - Two smaller decisions from the prototype are not yet in `docs/` (designer
   3D preview, picker remembering the last set per group) — see `docs/TODO.md`.
 
@@ -208,11 +212,17 @@ changelog.
   enneagonal trapezohedron comes to 197.34 against a limit of 40.79. The shape
   is isohedral and the throw starts evenly over all orientations, so something
   in that argument does not hold. The body, the solver, the reading, the seeds
-  and the throw are all now measured and all hold; the bias sits **within** the
-  solid's own ninefold orbits, which is precisely what the symmetry forbids.
-  What is left untested is precision — the hull reaches the engine as float32 —
-  and the d18 has the narrowest resting basins in the catalogue. Step 5.2 has
-  the numbers.
+  and the throw were each measured and each holds. **It is the float32 hull.**
+  Moving every corner by a ten-thousandth of the die's radius takes the d18
+  from χ² 52 to 294 and the d10 from 9.6 to 19.8 — the same asymmetry, 5.6×
+  the cost for the narrower kites, and only the d18 over its threshold; at the
+  scale of the hull's own rounding the bias keeps its size and changes its
+  shape, which is what a bias made of the representation looks like. Jolt holds
+  hull points in single precision whatever else is configured, so this is as
+  fair as the engine can make that solid. No face is off by more than 0.455 %,
+  against the 1 % this project set itself. **Whether that is a defect, a bar to
+  restate or a shape to drop is a decision waiting for a person** — it is in
+  `docs/TODO.md` under Open questions.
 - **`100d4` does not reliably settle, and never did.** Twenty-four seeds run
   out of the twelve-second cap on five of them; the same twenty-four under the
   spawn streams that preceded stirring showed two, which is well inside noise
