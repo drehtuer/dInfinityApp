@@ -51,6 +51,7 @@ class DataStoreSettingsRepository(
       preferences[HAPTICS] = changed.haptics
       preferences[SOUND] = changed.sound
       preferences[ROUNDING] = changed.rounding.id
+      preferences[DEVELOPER_TOOLS] = changed.developerTools
       preferences[WELCOME_SEEN] = changed.welcomeSeen
       preferences[ACTIVE_GROUP] = changed.activeGroupId
       preferences[ACTIVE_SESSION] = changed.activeSessionId
@@ -83,6 +84,9 @@ class DataStoreSettingsRepository(
       haptics = preferences[HAPTICS] ?: true,
       sound = preferences[SOUND] ?: true,
       rounding = Rounding.ofId(preferences[ROUNDING]),
+      // Absent means off, which is what every install starts at and what a
+      // debugging tool should take a deliberate act to reach.
+      developerTools = preferences[DEVELOPER_TOOLS] == true,
       welcomeSeen = preferences[WELCOME_SEEN] == true,
       activeGroupId = preferences[ACTIVE_GROUP] ?: SavedRollGroup.UNFILED_ID,
       activeSessionId = preferences[ACTIVE_SESSION] ?: AppSettings.DEFAULT_SESSION_ID,
@@ -105,6 +109,7 @@ class DataStoreSettingsRepository(
     private val HAPTICS = booleanPreferencesKey("haptics")
     private val SOUND = booleanPreferencesKey("sound")
     private val ROUNDING = stringPreferencesKey("rounding")
+    private val DEVELOPER_TOOLS = booleanPreferencesKey("developer_tools")
     private val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
     private val ACTIVE_GROUP = stringPreferencesKey("active_group")
     private val ACTIVE_SESSION = stringPreferencesKey("active_session")

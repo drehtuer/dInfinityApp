@@ -53,6 +53,7 @@ fun SettingsScreen(
   onHapticsChanged: (Boolean) -> Unit = {},
   onSoundChanged: (Boolean) -> Unit = {},
   onRoundingSelected: (Rounding) -> Unit = {},
+  onDeveloperToolsChanged: (Boolean) -> Unit = {},
   onRepository: () -> Unit = {},
   version: String = "",
   menu: @Composable () -> Unit = {},
@@ -93,6 +94,9 @@ fun SettingsScreen(
     RoundingSection(chosen = settings.rounding, onChosen = onRoundingSelected)
     PowerSection(on = settings.powerSaving, onChanged = onPowerSavingChanged)
     AboutSection(version = version, onRepository = onRepository)
+    // Last, and off on every install: it is a debugging tool rather than a
+    // feature, and it belongs after the thing that says what the app is.
+    DeveloperSection(on = settings.developerTools, onChanged = onDeveloperToolsChanged)
   }
 }
 
@@ -231,6 +235,9 @@ object SettingsTestTags {
 
   /** Whether a die landing is felt, and whether it is heard. */
   const val HAPTICS: String = "settings:haptics"
+
+  /** The debugging tools, off on every install (design: none — it is a tool). */
+  const val DEVELOPER: String = "settings:developer"
 
   const val SOUND: String = "settings:sound"
 

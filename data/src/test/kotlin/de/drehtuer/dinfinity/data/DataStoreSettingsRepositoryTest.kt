@@ -128,6 +128,7 @@ class DataStoreSettingsRepositoryTest {
           "haptics" to true,
           "sound" to true,
           "rounding" to "down",
+          "developer_tools" to false,
           "welcome_seen" to false,
           "active_group" to "unfiled",
           "active_session" to "default",
@@ -202,6 +203,24 @@ class DataStoreSettingsRepositoryTest {
 
       repository.setSound(false)
       assertEquals(false, repository.settings.first().sound)
+    }
+
+  @Test
+  fun `the debugging tools are off until somebody turns them on`() =
+    runTest {
+      // Absent means off, which is the opposite of the shake, the haptics and
+      // the sound above — and right for the same reason those are on: it is
+      // what a fresh install should be (`docs/physics-and-rendering.md`,
+      // "Debug tooling").
+      val repository = DataStoreSettingsRepository(dataStore(this))
+
+      assertEquals(false, repository.settings.first().developerTools)
+
+      repository.setDeveloperTools(true)
+      assertEquals(true, repository.settings.first().developerTools)
+
+      repository.setDeveloperTools(false)
+      assertEquals(false, repository.settings.first().developerTools)
     }
 
   @Test

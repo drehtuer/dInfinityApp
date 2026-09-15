@@ -239,6 +239,31 @@ class SettingsScreenTest {
   }
 
   @Test
+  fun `the debugging tools are off, and the switch says so`() {
+    // Off on every install, and the default of the type rather than of the
+    // screen (`docs/physics-and-rendering.md`, "Debug tooling").
+    compose.setContent { SettingsScreen(settings = AppSettings(), onAccentSelected = {}) }
+
+    compose.onNodeWithTag(SettingsTestTags.DEVELOPER).performScrollTo().assertIsOff()
+  }
+
+  @Test
+  fun `turning the debugging tools on says so once`() {
+    val changed = mutableListOf<Boolean>()
+    compose.setContent {
+      SettingsScreen(
+        settings = AppSettings(),
+        onAccentSelected = {},
+        onDeveloperToolsChanged = { changed += it },
+      )
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.DEVELOPER).performScrollTo().performClick()
+
+    assertEquals(listOf(true), changed)
+  }
+
+  @Test
   fun `the three roundings are offered, and the chosen one is chosen`() {
     compose.setContent {
       SettingsScreen(settings = AppSettings(rounding = Rounding.Up), onAccentSelected = {})

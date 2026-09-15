@@ -191,6 +191,41 @@ internal fun RoundingSection(
 }
 
 /**
+ * The debugging tools (`docs/physics-and-rendering.md`, "Debug tooling").
+ *
+ * Off on every install, and last on the screen, because it is not a feature: a
+ * player has no use for a collision overlay and no use for a log of things
+ * that are supposed to be impossible.
+ *
+ * What it turns on is a **separate surface** — an overlay on the tray, and a
+ * screen in the menu — and never a field on a screen a player uses. The
+ * history still has no replay and still never shows a seed with this on,
+ * because `HistoryEntry` has no seed on it and the exports have no column for
+ * one (`docs/architecture.md`, decisions 13 and 53).
+ *
+ * The overlay takes effect the next time the roll screen opens, like power
+ * saving, the shake, the haptics and the sound, and for the same reason
+ * (decision 16). The menu row appears at once, because a menu is not a roll.
+ */
+@Composable
+internal fun DeveloperSection(
+  on: Boolean,
+  onChanged: (Boolean) -> Unit,
+) {
+  Section(
+    heading = stringResource(R.string.settings_developer_heading),
+    explanation = stringResource(R.string.settings_developer_explanation),
+  ) {
+    SwitchRow(
+      label = stringResource(R.string.settings_developer_label),
+      on = on,
+      onChanged = onChanged,
+      tag = SettingsTestTags.DEVELOPER,
+    )
+  }
+}
+
+/**
  * What this is and where it came from
  * (`design/dInfinity.dc.html`, option 2d).
  *

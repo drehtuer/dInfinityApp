@@ -46,6 +46,16 @@ suspend fun SettingsRepository.setShakeToRoll(on: Boolean) = update { it.copy(sh
 /** Which way division rounds unless a throw says otherwise (`docs/dice-notation.md`). */
 suspend fun SettingsRepository.setRounding(rounding: Rounding) = update { it.copy(rounding = rounding) }
 
+/**
+ * Turns the debugging tools on, or off
+ * (`docs/physics-and-rendering.md`, "Debug tooling").
+ *
+ * Off on every install. What it turns on is a separate surface — an overlay, a
+ * log and a replay — and never a seed or a replay anywhere the ordinary app
+ * can reach (`docs/architecture.md`, decision 13).
+ */
+suspend fun SettingsRepository.setDeveloperTools(on: Boolean) = update { it.copy(developerTools = on) }
+
 /** The player has been past the first-launch screen, and will not see it again. */
 suspend fun SettingsRepository.setWelcomeSeen() = update { it.copy(welcomeSeen = true) }
 
