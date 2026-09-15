@@ -654,17 +654,27 @@ Workflows live in `.github/workflows/`. They run the same commands this
 document gives a developer, so a green pull request means what a green
 terminal means.
 
+**Every pull request, not only the ones aimed at `main`.** `ci.yml` and
+`codeql.yml` take the `pull_request` event with no branch filter, because this
+repository stacks pull requests — each branch based on the one before it, so
+they merge in order (`.claude/CLAUDE.md`). A filter on `main` would mean every
+pull request in a stack but the first ran no checks at all, and a pull request
+that is green because nothing was asked of it is the worst kind of green. The
+*push* trigger stays on `main`, where it is what feeds the dependency graph and
+the caches. `dependabot-metadata.yml` keeps its filter: a Dependabot pull
+request is always aimed at `main`.
+
 | Workflow | Runs | Does |
 | --- | --- | --- |
-| `ci.yml` — Build, test and analyse | PR, push to `main` | `./gradlew build test coverageReport lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below, then the SonarQube scan and its quality gate |
-| `ci.yml` — Device tests compile | PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
-| `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
+| `ci.yml` — Build, test and analyse | every PR, push to `main` | `./gradlew build test coverageReport lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below, then the SonarQube scan and its quality gate |
+| `ci.yml` — Device tests compile | every PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
+| `ci.yml` — Dependency review | every PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
 | `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
-| `ci.yml` — Documentation | PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. These two need Node and a headless browser, which the devcontainer does not carry for one linter and one diagram, so unlike the invariants above they run only here |
+| `ci.yml` — Documentation | every PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. These two need Node and a headless browser, which the devcontainer does not carry for one linter and one diagram, so unlike the invariants above they run only here |
 | `release.yml` | tag `vX.Y.Z` | The full check suite, then a signed release APK attached to a GitHub Release with its SHA-256. Refuses to republish an existing release, refuses a tag that disagrees with `version.txt`, and refuses an APK not signed by the release key |
 | `pages.yml` | push to `main` touching docs, design or the site config | Publishes `docs/` and `design/` to GitHub Pages, so the prototype opens from a link instead of a clone |
 | `dependabot-metadata.yml` | PR opened by Dependabot | Regenerates `gradle/verification-metadata.xml` for the bumped dependency and commits it to the branch |
-| `codeql.yml` | PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
+| `codeql.yml` | every PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
 
 The JDK, the SDK packages and Gradle come from one composite action,
 `.github/actions/setup-android-build`, so CI and CodeQL cannot drift apart. It
