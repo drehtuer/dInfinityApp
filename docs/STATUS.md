@@ -129,6 +129,7 @@ is mostly polish and the things that need a phone.
   device only rolls, times and writes. It **fails** on three of ten targets on
   the Pixel 10a, which is what it is for. Frame times, soak mode and screen
   capture are what is left of 5.1.
+
 ## Blocked / waiting on
 
 - **Judgements that need a person and a phone**, all listed in `docs/TODO.md`:
