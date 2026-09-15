@@ -397,25 +397,35 @@ Written down so the format need not change later. Not v1 scope.
 
 ## Coverage
 
-Branch coverage sits around 70 % against a floor of 62, and roughly **seven in
-ten of the branches it is missing are inside `@Composable` functions**. That is
-not untested UI: the Compose compiler emits a skip branch for every parameter
-of every composable so that a recomposition can be avoided, and a test can only
-reach one side of each. A screen with twelve controls is a hundred branches no
-test will ever take.
+Branch coverage is **69.2 %** against a floor of 62, and roughly **seven in ten
+of the branches it is missing are inside `@Composable` functions**. That is not
+untested UI: the Compose compiler emits a skip branch for every parameter of
+every composable so that a recomposition can be avoided, and a single-pass test
+can only reach one side of each. A screen with twelve controls is a hundred
+branches no test will ever take.
 
-What that means in practice, and the rule the last few PRs have followed:
+The drift that used to come with every new screen has stopped. Three levers do
+it, and between them they have held the number flat or moved it up in each of
+the last six pull requests:
 
 - **Extract the decision, test the decision.** `FaceHistogram`, `Breakdown`,
   `CollectionExport`, `GraphBars`, `underlinesOf` and `crestPath` are all
   arithmetic that used to be inside a draw lambda. Each is now a plain object
   with plain tests, and a Canvas is the one place a test genuinely cannot go.
+  A composable that returns a value rather than drawing one is the same trick:
+  it is not skippable, so it costs no skip branch at all.
 - **A shared component gets its own test.** `ui/common`'s formula field had
   152 branches and none of them covered, because three screens each tested
-  *their use* of it and nobody tested the thing. That is a real gap and looks
-  exactly like the mechanical one in a report.
-- The number is worth watching for the second kind and not the first. It is
-  reported with the figures in every PR description either way.
+  *their use* of it and nobody tested the thing. It has its own tests now,
+  including the recomposition one, and sits at 62 of 98. That was a real gap
+  and it looked exactly like the mechanical one in a report — which is why the
+  number is worth reading rather than merely watching.
+- **A recomposition test takes the other side.** Drawing a screen once takes
+  the "something changed" side of every skip branch it has; recomposing around
+  it with nothing changed takes the other. The roll screen has the most
+  parameters of any and had no such test.
+
+The figures are reported in every PR description either way.
 
 - [ ] Decide whether the floor should track the drift or stay where it is. It
       has not been moved since it was set, and moving a floor to make a check

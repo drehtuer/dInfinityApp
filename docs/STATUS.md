@@ -22,14 +22,8 @@ changelog.
 
 ### Branch state
 
-`main` is at **#149**. Everything since is a stack of open pull requests, and
-the order they need merging in is:
-
-| | |
-| --- | --- |
-| **#161** | dependency bumps — independent of the stack, and **`main` is red until it lands**: Android Lint treats `NewerVersionAvailable` as an error, so every branch shows the same three failures |
-| **#151** → **#152** | the d18 investigation and the seed streams. #153–#164 were merged *into* #152's branch rather than into `main`, so all of that work rides on it |
-| **#166** → **#167** → **#168** → **#169** → **#170** | this session's stack |
+`main` has everything up to **#173** and is **green**: both test tiers, ktlint,
+detekt and Android Lint. No branches are in flight.
 
 ### Which device the tier runs on
 
@@ -73,12 +67,14 @@ still match on `arm64-v8a`.
 `docs/TODO.md`; the shape of it is that the *screens* are done and what remains
 is mostly polish, the export paths, and the things that need a phone.
 
-- **4.1 Roll.** The tray from the moment the screen opens, a live-validated
-  formula field, the dice picker row, the saved-roll strip, roll from the
-  button or a shake, the total and its breakdown, pinch and pan, power-saving,
-  and a first launch that offers all three ways in with a count line that
-  counts. **Missing: numbers on the faces**, which is the SDF item in Step 3 —
-  until it lands the tray shows a roll that cannot be read without the total.
+- **4.1 Roll.** The tray from the moment the screen opens, the formula on it as
+  text that a tap turns into a live-validated editor whose Enter rolls, the
+  dice picker row, the saved-roll strip, roll from the button or a shake, the
+  total and a breakdown that itemises the modifiers as well as the dice, pinch
+  and pan, power-saving, and a first launch that offers all three ways in with
+  a count line that counts. **Missing: numbers on the faces**, which is the SDF
+  item in Step 3 — until it lands the tray shows a roll that cannot be read
+  without the total.
 - **4.2 Graph, 4.3 Saved rolls, 4.4 Dice sets, 4.5 Tables, 4.7–4.9 Statistics,
   history and sessions, 4.10 Settings and Notation.** All built. Collections
   travel as JSON and arrive from a file or a link; dice sets install from
@@ -145,8 +141,10 @@ is mostly polish, the export paths, and the things that need a phone.
   *devices* of the same ABI and across time.
 - The container's emulator has no real GPU and no display, so `screencap`
   returns black. It answers "does this run", never "does this look right".
-- **Branch coverage sits near 69 % against a floor of 62** and drifts down as
-  screens land, because seven in ten of the missed branches are Compose skip
-  branches a test can only take one side of. The answer has been to lift
-  decisions out of draw lambdas and to add recomposition tests; both work, and
-  the last few PRs have held the number flat or moved it up.
+- **Branch coverage is 69.2 % against a floor of 62**, and the drift that used
+  to come with every screen has stopped: seven in ten of the missed branches
+  are Compose skip branches a test can only take one side of, and the answer —
+  lift decisions out of draw lambdas, give shared components their own tests,
+  add recomposition tests that take the other side — has held the number flat
+  or moved it up in each of the last six pull requests. Function coverage is
+  91.7 % against a floor of 85.
