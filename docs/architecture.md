@@ -280,6 +280,7 @@ stateDiagram-v2
     Ready --> TooMany: type
     Ready --> Rolling: Roll, or a shake
 
+    Rolling --> Rolling: an explosion or a reroll adds a die<br/>(thrown once the last has landed)
     Rolling --> Settled: the last die comes to rest
     Rolling --> Ready: type<br/>(abandons the throw)
     Rolling --> Invalid: type
@@ -293,6 +294,15 @@ stateDiagram-v2
     Settled --> TooMany: type
     Settled --> Empty: clear the field
 ```
+
+**The self-loop on `Rolling` is a roll adding dice to itself.** `8d6!` is not
+eight dice: it is eight dice and then, for each six, another — and how many
+that is cannot be known until the first eight have landed. So `settled` hands
+back either the finished throw or the *next* throw to make (`Landed`), and the
+screen goes on saying "Rolling…" while each added die is dropped into the tray
+among the dice that set it off (`docs/physics-and-rendering.md`, "The dice an
+explosion or a reroll adds"). Every one of those throws is an ordinary throw
+down the ordinary path; there is no second way to get a number.
 
 **Typing is the one input every state accepts**, which is why it reaches every
 state in the diagram: the field is live on every keystroke and is never
@@ -447,9 +457,16 @@ stateDiagram-v2
 
     Nothing --> Table: table(geometry, look)
     Table --> Throw: roll
-    Throw --> Throw: roll<br/>(a second throw replaces the first)
+    Throw --> Throw: roll<br/>(a second throw replaces the first,<br/>and so does a die an explosion adds)
     Throw --> Table: clear
 ```
+
+A die an explosion adds is a `roll` like any other, and it replaces the throw
+before it like any other. What keeps the tray from emptying is that the throw
+*carries* the dice already down (`ThrowSpec.among`): the scene is rebuilt with
+each of them back where the simulation left it, and only the new die moves
+after that. The tray has no state of its own for "a roll that is still adding
+to itself", and deliberately — that is the roll screen's question, one level up.
 
 A surface arriving or going is **not** on that diagram, and that is the point:
 it is not a state of the tray but of where the tray draws. The two are crossed,
@@ -1003,11 +1020,13 @@ flowchart TD
     C -->|fits| T["ThrowSpec<br/>dice, dieScale, seed, table,<br/>initial impulse (shake or default)"]
     T -->|"DiceSimulator.start / run"| L["LiveRoll<br/>one fixed step at a time"]
     L -->|"every step, while shaking"| L
-    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows"]
+    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows,<br/>where each die came to rest"]
     L --> D["drivenBy<br/>the shake as it actually arrived"]
     L -.->|body transforms, optional| V[Renderer]
     L -.->|"impacts, optional"| I["Impacts<br/>ticks and sounds, now or over ~1 s"]
     S -->|face index → value<br/>keep/drop/explode, modifier| O["RollResult<br/>total, per-die breakdown,<br/>formula, timestamp"]
+    S -->|"a 6 on an exploding die,<br/>or a reroll"| X["One more ThrowSpec<br/>one die, derived seed,<br/>among: the dice already at rest"]
+    X -->|"dropped into clear floor"| L
     D -->|"spec.copy(shake = drivenBy)"| FT["FinishedThrow.thrown<br/>the ThrowSpec that replays this roll<br/>goes no further than this screen"]
     O --> FT
     O --> UI[UI]
@@ -1023,9 +1042,18 @@ calls it (decision 48).
 
 Both dotted lines are watchers and neither has a way back: `Renderer` has no
 method that returns anything and `Impacts` has none either, so drawing a roll
-and hearing one are alike in being unable to change it (decisions 48 and 51).
+and hearing one are alike in being unable to change it (decisions 48 and 52).
 The impacts are recorded only when something is going to play them, which is
 what the two feedback settings decide when the screen opens.
+
+The loop through `One more ThrowSpec` is an explosion or a reroll. A roll is
+not always one throw, and how many it is cannot be known before the dice land,
+so scoring says either "here is the total" or "throw one more of these first".
+The added die goes round the same path — same simulator, same renderer, same
+tray — carrying the dice already at rest so that it can be dropped clear of
+them and drawn among them. No body is created for any of those: a die that has
+come to rest is finished (`docs/physics-and-rendering.md`, "The dice an
+explosion or a reroll adds").
 
 The loop back into `LiveRoll` is a shake. The dice are spawned when the shake
 is confirmed, so most of one arrives while they are already in the air; each
@@ -1137,3 +1165,4 @@ kept (they are keyed by set id and die id, not by file path).
 | 50 | The roll thread and the Filament engine on it outlive a visit to the roll screen; the physics world and the scene do not | `FilamentEngine` already keeps the engine and the compiled material across every surface made from it, because compiling the dice material happens on the device for the driver that is actually there (decision 46) and costs long enough that rebuilding it per rotation *was* the black tray. A driver per visit put that cost straight back: leaving the roll screen for the menu and returning compiled the material again, and the player watched it happen. So the line is drawn one level further out — what a *visit* owns is a roll, and a roll the player walked away from never landed, so the world and the scene still go. The thread is kept with the engine rather than instead of it, because Filament only takes calls from the thread that made the engine, and an engine outliving its thread is an engine nothing may touch. What it costs is an idle thread and one engine held while the player is on another screen, against a black tray every time they come back |
 | 49 | The physics and the Filament engine share one thread, driven by that thread's own `Choreographer` | The design started with a simulation thread publishing transforms to a render thread through a lock-free double-buffer. Written down, the render side turns out to have exactly one thing it can do with a transform, which is draw it — so the buffer would be eighty entries copied across a boundary neither side wanted, and a class of bug (torn reads, a frame drawn from two different steps, a stage closed while the other thread is mid-draw) bought in exchange for overlapping a copy with a draw. Filament also insists every engine call comes from the thread that made the engine, and the physics world is single-threaded for determinism, so both halves already wanted one owner each; giving them the same owner removes the hand-off rather than synchronising it. The thread is still not the main one — eighty convex bodies at 120 Hz does not belong where the UI is drawn. What it costs is that a long physics step delays that frame, which is the same trade the frame clock's four-step catch-up cap already makes visible |
 | 53 | The device harness's arithmetic — what a run was asked for, what its rolls added up to, and whether they met Step 5's targets — is a plain Kotlin module, and the instrumented test only rolls, times and writes | It is decision 40 applied to the thing that *judges* the physics rather than to the physics. A harness whose own percentile, whose own share of dice corrected and whose own pass/fail comparison can be checked only by running it on a phone is a harness nobody can trust: when it says a run failed, the first question is whether the run failed or the harness did, and there would be no way to answer it. Split here and the answer is a JVM test — including the boundary cases a phone would have to misbehave to produce, like a correction landing on a die at rest. The same split is what lets the shell script print a table it did not render: the device writes the table the Kotlin produced, and a second copy of the comparison written in awk cannot drift from the one the tests hold |
+| 54 | A die an explosion or a reroll adds is thrown into a world of its own, into the clear floor the settled dice leave, and drawn among them | Three rules meet here and only one arrangement keeps all three. The result must be the physics, so the added die is really simulated. Nothing may touch a die that has come to rest, so the settled dice cannot be bodies in that throw — a die dropped onto them would shove them, and a face the player has already read would change, which is the failure this project cares most about. And the player has to see it happen, so it cannot stay in the tray nobody is looking at. Putting the settled dice in as immovable furniture would need the native side to grow a second kind of body, untestable on the JVM and unverifiable without a phone; leaving them out entirely costs nothing and makes the rule true by construction rather than by tuning — there is no body in that world to shove. What is left is the picture, and `ClearSpace` answers it above the bridge, where a test can reach it: the point of the tray furthest from every die already down, on a fixed grid so the same roll replays to itself. The residue is honest and small — a die that rolls a long way could still be *drawn* crossing a settled one, which is why it is dropped rather than thrown, and why the drop needs eyes on a phone (`docs/TODO.md`, Step 5.6) |

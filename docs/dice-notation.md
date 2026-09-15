@@ -69,6 +69,7 @@ To keep the simulation and the probability graph tractable:
 | Dice per *roll* | table capacity (`docs/tables.md`), hard cap 100 | Roll button disabled with the reason; the graph still works |
 | Sides per die | must exist in a set | Parse error naming the missing die |
 | Explosion depth | 20 | Further explosions ignored, noted in breakdown |
+| Dice in the tray, including the ones explosions add | table capacity, hard cap 100 | The chain stops there, noted in the breakdown. An added die is dropped into clear floor, and a tray with none left cannot take one (`docs/tables.md`) |
 | Nested parentheses | 8 | Parse error |
 | Result magnitude | fits in 64-bit | Overflow is a parse-time error via the PMF bound |
 
@@ -97,9 +98,14 @@ capacity check happens before any body is created and the UI explains it
    that a first explosion could add). Refuse with a message if it fails.
 4. All dice from all groups go into **one** physics throw. The breakdown
    attributes each physical die back to its group.
-5. Exploding dice: extra dice are thrown in a *second* throw after the first
-   settles, and so on, up to the depth limit. In power-saving mode this is
-   invisible; in normal mode the extra dice drop into the tray.
+5. Exploding and re-rolled dice: each extra die is a throw of its own, made
+   once the last one has come to rest, into the same tray. It drops into the
+   clear floor the settled dice leave, among the dice that set it off, and the
+   player watches it land — the dice already down are drawn where they stopped
+   and nothing moves them, because nothing in the new throw can reach them
+   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
+   A chain stops at the depth limit, or sooner if the tray has no room left for
+   another die. In power-saving mode the same throws happen with nothing drawn.
 6. Apply the group's modifiers in the fixed order below, then the arithmetic.
    See Division rounding below.
 7. Produce a `RollResult` with the total and a per-die breakdown including
@@ -125,12 +131,15 @@ Modifiers take effect in this order whatever order they were written in, so
 
 1. **`r n`** — a die showing `n` or less is thrown once more. Once: the
    replacement stands however low it is. Both dice stay in the breakdown, the
-   first struck through.
+   first struck through. A reroll the tray has no room for does not happen and
+   the die stands as it fell, marked in the breakdown — the alternative being a
+   die dropped onto dice that have already been read.
 2. **`!`** — a die showing its highest face throws another of the same die.
    The new die joins *that die's* chain rather than the group at large, so
    `2d6!kh1` keeps the better of two chains, which is what a player means by
-   it. A chain stops after the explosion depth limit, and the die that would
-   have exploded again is marked in the breakdown.
+   it. A chain stops after the explosion depth limit, or when the tray has no
+   clear floor left for another die; either way the die that would have exploded
+   again is marked in the breakdown.
 3. **`min n`** — a die below `n` counts as `n`, per die. The face it actually
    landed on is still what the breakdown shows; only its contribution changes.
 4. **`kh` / `kl` / `dh` / `dl`** — whole chains are kept or dropped, ranked by

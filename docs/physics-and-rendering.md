@@ -620,7 +620,8 @@ see.
 
 4. **Never.** No impulse on a resting die. No tray tilt to slide a settled
    pile. No snapping a die to its nearest face — that fabricates a result
-   nobody rolled.
+   nobody rolled. And no die dropped onto a settled pile to make room for an
+   explosion: a chain that has nowhere to land stops (see below).
 
 The 12-second hard cap above is a safety valve for a simulation that has gone
 wrong, not part of this ladder. When it fires, every die still moving is
@@ -654,6 +655,53 @@ phone or the emulator, a JSON document of what they did, and a pass/fail table
 against every target above (`docs/build-setup.md`, "The physics harness"). It
 fails on the two that are not met yet, which is the plan being behind the check
 rather than the check being wrong.
+
+## The dice an explosion or a reroll adds
+
+`8d6!` does not know how many dice it is until the first eight have landed, and
+`4d6r1` does not know whether it is four dice or five. So a roll is not always
+one throw: every die an explosion or a reroll adds is a throw of its own, made
+once the last one has come to rest, into the same tray and in front of the
+player.
+
+It is a real simulation of one die. There is no branch anywhere that picks a
+number for the second die of an exploding six (`docs/architecture.md`, goal 1),
+and the throw is seeded from the roll's own seed through `Seeds.derived`, so a
+formula with explosions in it replays like any other.
+
+- **The dice already down are not in the added die's world.** Their faces are
+  read and they are finished; the world the added die is thrown in holds exactly
+  one body. That is how the rule above is kept here — not by tuning a spawn
+  until it usually misses the pile, but because there is nothing in that world
+  for a die to hit. A settled die cannot be shoved by an explosion for the same
+  reason it cannot be shoved by a nudge.
+- **It is dropped into the floor they leave clear.** The physics cannot put the
+  new die through a settled one, but the *picture* can, and a die drawn sliding
+  through a die that is lying there is a picture claiming the physics did
+  something it did not. `ClearSpace` picks the point of the tray furthest from
+  every die already down, and among the points that are as clear as each other,
+  the one nearest the middle — the clearest spot in a tray with one die in it is
+  a corner, and a corner is the worst place to tumble. It is a fixed grid of
+  points rather than a search, so the same tray always gives the same answer and
+  a roll replays to itself.
+- **And it is dropped, not thrown.** The same low, gentle, spinning drop rung 3
+  gives a re-thrown die, for the same reason: a die hurled across the tray is a
+  die that arrives somewhere nobody made room for.
+- **The tray is drawn with them still in it.** The added throw carries the
+  settled dice as `ThrowSpec.among`; the renderer puts one renderable per die
+  back exactly where the simulation left it and never moves it again. What the
+  player sees is the six they rolled, and then a die landing beside it.
+- **A chain stops when the tray runs out of floor.** There are two ends to a
+  chain of explosions: the depth limit (`docs/dice-notation.md`), and this one —
+  no clear floor left for another die, or a hundred dice in the tray, which is
+  the engine's cap (`docs/tables.md`). The die that would have exploded is
+  marked in the breakdown either way. A reroll with nowhere to land does not
+  happen either, and the die stands as it fell.
+
+In power-saving mode the added throws happen exactly as they do here, with
+nobody watching: the same loop over the same world, the same seeds, the same
+faces. The only difference is that the dice `among` are not drawn, because
+nothing is.
 
 ## Impacts, haptics and sound
 

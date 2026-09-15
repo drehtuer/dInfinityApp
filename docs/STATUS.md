@@ -23,11 +23,12 @@ changelog.
 ### Branch state
 
 `main` has everything up to **#182** and is **green**: both test tiers, ktlint,
-detekt and Android Lint. In flight, stacked in this order:
-`feature/shake-record` — a shake-driven throw's record now carries the shake
-that drove it, so a roll can be replayed from it (and stops there: nothing below
-the roll screen can hold one); and `feature/haptics` on top of it — **the dice
-can be felt and heard.**
+detekt and Android Lint. In flight, stacked in this order: `feature/shake-record`
+— a shake-driven throw's record now carries the shake that drove it, and stops
+there; `feature/haptics` — **the dice can be felt and heard**;
+`feature/designer-tools`; `feature/harness` — Step 5's physics harness, and what
+it said about the Pixel 10a; and `feature/explosion-dice` — the die an explosion
+or a reroll adds is now thrown into the tray the player is watching.
 
 ### Which device the tier runs on
 
@@ -90,6 +91,11 @@ is mostly polish, the export paths, and the things that need a phone.
   made, one player lays them out in wall time — as they happen on a watched
   tray, across about a second in power-saving mode — and the five table sounds
   are generated in Kotlin rather than shipped, so no decoder is in the path.
+  **An explosion is visible too**: each die it adds is a throw of its own, made
+  once the last has stopped, dropped into the clear floor the settled dice leave
+  and drawn among them. No body is created for a die that has come to rest, so
+  an added die cannot shove one; a chain stops when the tray runs out of floor,
+  and the breakdown says so.
 - **4.2 Graph, 4.3 Saved rolls, 4.4 Dice sets, 4.5 Tables, 4.7–4.9 Statistics,
   history and sessions, 4.10 Settings and Notation.** All built. Collections
   travel as JSON and arrive from a file, a link or a git repository — one
@@ -172,7 +178,7 @@ is mostly polish, the export paths, and the things that need a phone.
   *devices* of the same ABI and across time.
 - The container's emulator has no real GPU and no display, so `screencap`
   returns black. It answers "does this run", never "does this look right".
-- **Branch coverage is 69.6 % against a floor of 62**, and the drift that used
+- **Branch coverage is 70.1 % against a floor of 62**, and the drift that used
   to come with every screen has stopped: seven in ten of the missed branches
   are Compose skip branches a test can only take one side of, and the answer —
   lift decisions out of draw lambdas, give shared components their own tests,

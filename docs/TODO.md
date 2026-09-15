@@ -89,7 +89,6 @@ What is below is what it does not have yet.
 - [ ] *Confirm on the phone:* a roll stranded by losing its surface is fixed (a roll now asks for frames with nowhere to draw), but whether that was what left `100d4` on "Rolling…" for ever is unproven — the physics settles that throw headlessly on eight seeds, so the hang was never in the engine
 - [ ] **The surface outlives the screen going off.** After a lock and unlock the old rendering surface is still there. Found on the Pixel 10a; `DiceTray` gives the surface up on `onDestroyed` and the driver keeps the engine now (Step 4.1, done), so what is left is which of those two the lock screen actually triggers
 - [ ] **A shake during a roll is ignored.** Rolling is blocked until the dice have settled, so a second shake at dice still in the air does nothing. It should keep them moving instead — a hand that shakes again has not waited for the dice to stop, and `RollPresenter.shaking` already feeds a running roll. What a *new* shake means while one is in flight is the open half: more of the same roll, or a throw that replaces it
-- [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
@@ -443,6 +442,8 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - [ ] **Does power-saving mode's second read as the roll?** There are no frames there, so the impacts are replayed across about a second after the dice have stopped. Whether that sounds like a throw that happened or like a sound effect played at you is the judgement — and whether a second is the right length
 - [ ] Settled faces are legible at arm's length without zooming. The *size* is settled — 16 mm reads fine on the Pixel 10a — and the numbers are drawn now. What is left to judge is one number: `DieNumbers.FACE_SHARE`, how much of the room a face has a numeral takes up. Everything else about the size is solved from the face itself, so this is the only knob and it moves every shape at once. The d4's three-to-a-triangle (`CORNER_HEIGHT`) is the second question, and the d18 is the third — its kites are long enough that its numbers are a third the size of a d6's, which is the shape question already open below
 - [ ] Power-saving feels instant and gives the same answer
+- [ ] *Judge an exploding roll on the phone:* `8d6!` now throws each added die into the tray you are watching, one at a time, once the last has stopped. Three things need eyes. **Does the wait read as part of the roll** — a die lands, a beat, another die drops — or as the app having stalled? **Does the added die look thrown**, given that it is dropped from 25 mm straight down rather than hurled like the first eight? And **does it ever appear to pass through a die already lying there** on its way to a stop: it cannot touch one, because there is no body for the settled dice in its world, so if it *looks* as though it did, the drop point is too close and `ClearSpace` is the number to move (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds")
+- [ ] *Judge a chain that fills the tray:* roll enough exploding dice that the tray runs out of clear floor. The chain stops there and the die carries `DieNote.TrayFull`, but **the result sheet prints no note text at all yet** — neither this one nor the explosion depth limit — so on the phone it currently reads as an explosion that simply did not happen. Whether the stop reads as a rule or as a bug is a person's call; either way the sheet needs a line for the two ways a chain ends (`docs/dice-notation.md`, "Limits")
 
 ### 5.7 Performance on the Pixel 10a
 
@@ -473,7 +474,7 @@ Written down so the format need not change later. Not v1 scope.
 
 ## Coverage
 
-Branch coverage is **69.2 %** against a floor of 62, and roughly **seven in ten
+Branch coverage is **70.1 %** against a floor of 62, and roughly **seven in ten
 of the branches it is missing are inside `@Composable` functions**. That is not
 untested UI: the Compose compiler emits a skip branch for every parameter of
 every composable so that a recomposition can be avoided, and a single-pass test
@@ -524,6 +525,16 @@ The figures are reported in every PR description either way.
       pulling in a general maths library for ninety lines of transform is a
       worse trade than owning them — but it is a trade, and it is worth a
       second opinion
+- [ ] Whether a die an explosion adds should be able to *collide* with the dice
+      already down, as immovable furniture rather than as bodies that can move.
+      Today it is thrown in a world holding only itself, which is what makes
+      "nothing touches a die that has come to rest" true by construction — but
+      it also means the added die cannot bounce off the pile, which is what
+      would really happen on a table. Turning it on means the native bridge
+      growing a second kind of body (static, never stepped, never reported),
+      which cannot be tested on the JVM and cannot be verified without a phone.
+      Worth deciding deliberately rather than by default
+      (`docs/architecture.md`, decision 54)
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
 - [ ] A collection imported from a git repository records nothing about where
