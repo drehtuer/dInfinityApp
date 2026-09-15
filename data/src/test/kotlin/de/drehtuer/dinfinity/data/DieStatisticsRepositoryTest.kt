@@ -32,6 +32,9 @@ class DieStatisticsRepositoryTest {
   private lateinit var database: DInfinityDatabase
   private lateinit var reading: DieStatisticsRepository
 
+  /** The session [face] writes into, which [inSession] moves for a moment. */
+  private var session: String = SessionRepository.DEFAULT_ID
+
   @Before
   fun open() {
     database =
@@ -179,6 +182,63 @@ class DieStatisticsRepositoryTest {
     }
   }
 
+  @Test
+  fun `a session's counts are its own, and every session together is every throw`() =
+    runTest {
+      // The whole of what version 5 bought (`docs/statistics.md`, per
+      // session): the same die, two campaigns, and each answer available
+      // without recomputing the other from the history.
+      face(dieId = "d20", sides = 20, faceValue = 20, count = 4)
+      inSession(TUESDAY) { face(dieId = "d20", sides = 20, faceValue = 20, count = 3) }
+
+      assertEquals(listOf(3L), reading.facesIn("builtin", "d20", TUESDAY).first().map(FaceTally::count))
+      assertEquals(listOf(7L), reading.faces("builtin", "d20").first().map(FaceTally::count))
+    }
+
+  @Test
+  fun `a session's summary is added up from its face counts`() =
+    runTest {
+      // Throws, sum and sum of squares add, which is why a session needs no
+      // summary row of its own — and why `die_summary` could keep its streaks.
+      inSession(TUESDAY) {
+        face(dieId = "d6", faceValue = 6, count = 2)
+        face(dieId = "d6", faceValue = 1, count = 1)
+      }
+
+      val die = reading.diceIn(TUESDAY).first().single()
+      assertEquals(3L, die.throws)
+      assertEquals(13L, die.sum)
+      assertEquals("6² + 6² + 1²", 73L, die.sumOfSquares)
+    }
+
+  @Test
+  fun `a session nobody rolled in has no dice in it`() =
+    runTest {
+      face(dieId = "d6", faceValue = 6, count = 2)
+
+      assertEquals(emptyList<String>(), reading.diceIn(TUESDAY).first().map { it.dieId })
+    }
+
+  @Test
+  fun `all my d20s can be cut to one session too`() =
+    runTest {
+      face(setId = "builtin", dieId = "d20", sides = 20, faceValue = 20, count = 3)
+      inSession(TUESDAY) {
+        face(setId = "builtin", dieId = "d20", sides = 20, faceValue = 20, count = 1)
+        face(setId = "brass", dieId = "d20", sides = 20, faceValue = 20, count = 2)
+      }
+
+      assertEquals(listOf(3L), reading.facesForSidesIn(20, TUESDAY).first().map(FaceTally::count))
+      assertEquals(listOf(6L), reading.facesForSides(20).first().map(FaceTally::count))
+    }
+
+  /**
+   * One face count in the table.
+   *
+   * The session is given by [inSession] rather than by a sixth parameter: most
+   * of what this file checks has nothing to do with sessions, and a parameter
+   * would have to be defaulted at every one of those call sites.
+   */
   private fun face(
     setId: String = "builtin",
     dieId: String,
@@ -188,8 +248,32 @@ class DieStatisticsRepositoryTest {
   ) {
     runBlocking {
       database.dieStats().upsert(
-        DieStatsRow(setId = setId, dieId = dieId, sides = sides, faceValue = faceValue, count = count),
+        DieStatsRow(
+          setId = setId,
+          dieId = dieId,
+          sessionId = session,
+          sides = sides,
+          faceValue = faceValue,
+          count = count,
+        ),
       )
     }
+  }
+
+  /** The session the faces written inside [block] belong to. */
+  private fun inSession(
+    sessionId: String,
+    block: () -> Unit,
+  ) {
+    session = sessionId
+    try {
+      block()
+    } finally {
+      session = SessionRepository.DEFAULT_ID
+    }
+  }
+
+  private companion object {
+    const val TUESDAY = "tuesday"
   }
 }

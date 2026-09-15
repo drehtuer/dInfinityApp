@@ -125,7 +125,7 @@ class StatisticsRepositoryTest {
           notes = setOf(de.drehtuer.dinfinity.core.model.DieNote.Dropped),
         )
       repository.record(roll(total = 0, dice = listOf(dropped)))
-      val row = database.dieStats().find("builtin", "d20", 1)!!
+      val row = database.dieStats().find("builtin", "d20", TUESDAY, 1)!!
       assertEquals(1L, row.count)
       assertEquals(1L, row.droppedCount)
     }
@@ -186,7 +186,7 @@ class StatisticsRepositoryTest {
       (1..6).forEach { capped.record(roll(total = 20, values = listOf(20))) }
       assertEquals(2L, database.rollHistory().count())
       assertEquals(6, database.dieSummary().find("builtin", "d20")!!.throws)
-      assertEquals(6L, database.dieStats().find("builtin", "d20", 20)!!.count)
+      assertEquals(6L, database.dieStats().find("builtin", "d20", TUESDAY, 20)!!.count)
     }
 
   @Test
@@ -307,7 +307,7 @@ class StatisticsRepositoryTest {
     total: Long,
     values: List<Int> = emptyList(),
     dice: List<RolledDie> = values.mapIndexed(::die),
-  ): FinishedRoll = FinishedRoll(result(total, dice), sources(dice.size), RollContext("tuesday"))
+  ): FinishedRoll = FinishedRoll(result(total, dice), sources(dice.size), RollContext(TUESDAY))
 
   private fun die(
     index: Int,
@@ -329,4 +329,9 @@ class StatisticsRepositoryTest {
     count: Int,
     setId: String = "builtin",
   ): Map<Int, RolledDieSource> = (0 until count).associateWith { RolledDieSource(setId, StandardDice.d20) }
+
+  private companion object {
+    /** The session every roll in this file is made in, and so the one the counts are under. */
+    const val TUESDAY = "tuesday"
+  }
 }

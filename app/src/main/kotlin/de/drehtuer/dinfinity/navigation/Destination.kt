@@ -68,6 +68,15 @@ enum class Destination(
   // able to promise something that is not there as a settings row is.
   Settings("settings", "Settings", "Appearance, shake, rounding, power saving.", MenuGroup.App),
 
+  /**
+   * What the formula field understands (`docs/dice-notation.md`).
+   *
+   * In the App section rather than under Play, because it is a thing to look
+   * up rather than a thing to do — and because somebody reaching for it is
+   * usually in the middle of something else.
+   */
+  Notation("notation", "Notation", "What you can type, with examples you can roll.", MenuGroup.App),
+
   /** Everything above, in a list. Not in the menu, being the menu. */
   Menu("menu", "dInfinity", "", group = null),
 

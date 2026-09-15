@@ -72,6 +72,7 @@ internal class ScreenWiring(
           writer = app.statistics,
           catalog = app.setLibrary.catalogue,
           scope = scope,
+          sessions = app.sessions,
         )
       },
       sessions = { sessions() },

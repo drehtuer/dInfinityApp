@@ -24,6 +24,14 @@ is evaluated.
 | `1d6 + 1d4 [Fire]` | trailing label, ignored for math, shown in breakdown |
 | `brass:1d20` | use the d20 from the installed dice set with id `brass` |
 
+**The app carries this reference too.** Menu → **Notation** lists everything
+below in the same words, with an example on every line that you can tap to put
+in the tray's field — because somebody with a phone in their hand at a table is
+not reading a README. The screen is built from `NotationReference` in
+`core/notation`, beside the parser, and a test puts every one of its examples
+through that parser: an example the app would refuse fails the build rather
+than the player (`docs/architecture.md`).
+
 ## Grammar
 
 ```ebnf

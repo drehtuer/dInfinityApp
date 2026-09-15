@@ -72,11 +72,11 @@ feature/             One module per screen group; see docs/TODO.md Step 4
   tables/            Table picker
   designer/          Face designer screen over the designer/ engine
   stats/             Statistics, history and sessions — the "Look back" screens
-  settings/          Settings and the menu
+  settings/          Settings, the menu, and the notation reference
 test-fixtures/       Test data shared by every module: dice sets, collections, golden roll cases
 ```
 
-Eleven screens in the menu, eight `feature/` modules: statistics, history,
+Twelve screens in the menu, eight `feature/` modules: statistics, history,
 sessions and saved-roll statistics are one module because they are one screen
 group over one set of data (`design/dInfinity.dc.html`, options 1w, 1x, 6c, 8b)
 and splitting them would only split the queries.
@@ -163,7 +163,7 @@ stateDiagram-v2
     Roll: Roll (home)
     Menu: Menu
     Graph: Outcome graph
-    Screen: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer · Settings
+    Screen: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer · Settings · Notation
     Editor: Saved roll editor
 
     Roll --> Graph: See the odds
@@ -798,6 +798,12 @@ built the other way round: no presenter, no state of its own. It takes an
 graph, in the activity and backed by DataStore, because a preference outlives
 the screen that changed it — which is the opposite of what a roll does, and
 why the two are not built the same way (decision 49).
+
+`Notation` goes further and has no state at all: it is `NotationReference` —
+which lives in `core/notation`, beside the parser it describes — with a layout
+on it. Every example on it is a button that puts that formula in the tray's
+field, and `NotationReferenceTest` parses all of them, so the screen cannot
+offer a formula the app would refuse (`docs/dice-notation.md`).
 
 | Control | Calls | What changes |
 | --- | --- | --- |

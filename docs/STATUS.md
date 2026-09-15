@@ -5,7 +5,7 @@ moves, a decision is taken or something is blocked; prune anything that is no
 longer current. This is a snapshot, not a changelog — git history is the
 changelog.
 
-**Last updated:** 2026-09-14
+**Last updated:** 2026-09-15
 
 ## Where we are
 
@@ -18,9 +18,9 @@ changelog.
   their total appears. That is the first end of the app meeting the other.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #128 is merged and `main` is green; no
-  Dependabot PRs are open. The Pixel 10a is back on the LAN, so the device
-  tier has been run against it: 30 instrumented tests, no failures.
+- **Branch state:** everything up to #146 is merged and `main` is green; no
+  Dependabot PRs are open. The Pixel 10a is on the LAN and the device tier
+  runs against it, fairness harness included.
 
 ## Done
 
@@ -116,12 +116,21 @@ changelog.
   every saved roll's own totals sit against the exact distribution it was
   rolling against, with the drift judged against the standard error rather than
   shown bare; database version 3 adds sessions, and the
-  migration names the one the old rolls already belonged to. The sessions
+  migration names the one the old rolls already belonged to. Version 5 puts the
+  session on every face count, so the statistics cut to one campaign as well as
+  the history does — stored rather than recomputed, and only on the table whose
+  numbers add: `die_summary` keeps no session, because a streak that spanned a
+  session change would come out short. The sessions
   screen was finished but never plugged in — `MainActivity` passed no presenter
   for it, so the app drew a placeholder and every roll was filed under the
   first session whatever the player picked. Both are fixed.
-- **4.10 Settings and the menu.** The navigation graph is connected: every
-  screen carries the same button and the menu reaches every screen. Settings
+- **4.10 Settings, the menu and Notation.** The navigation graph is connected:
+  every screen carries the same button and the menu reaches every screen —
+  including **Notation**, the last row the prototype's menu had and the app did
+  not: the grammar in sentences, with an example on every line that puts that
+  formula in the tray. It is built from `NotationReference` beside the parser,
+  and a test parses every example, so the screen cannot offer a formula the app
+  would refuse. Settings
   has appearance, the accent, shake, the default rounding, power saving, the
   version and a link to the source. Haptics and sound are deliberately absent —
   nothing plays anything yet, and a row that does nothing is a lie. The menu's
@@ -168,6 +177,19 @@ changelog.
   40 % floor and the engine stops at 100 — so the refusal a player meets is
   the body cap, not the table. Whether 30 % and 40 % are still the right
   numbers is a Step 5.3 question, with a device.
+- **The d18 is not fair, and it is the first physics claim to fail on a
+  device.** 100,000 rolls of each catalogue shape on the Pixel 10a: seven pass
+  with their χ² summing to 55.33 against 55 degrees of freedom, and the
+  enneagonal trapezohedron comes to 197.34 against a limit of 40.79. The shape
+  is isohedral and the throw starts evenly over all orientations, so the body
+  the engine collides cannot be the solid the arithmetic describes. The seeds,
+  Jolt's convex radius, a dropped corner and an off-centre mass are all ruled
+  out on the phone; Step 5.2 has what is left to look at.
+- **Seeds next to each other are not independent throws**, and exploding dice
+  use them: `RollMachine` throws the extra dice at `seed + 1, seed + 2, …`.
+  Ordinary rolls come from `SecureRandom` and are fine. The fix is to stir the
+  seed where the streams are derived, which re-records every golden case and
+  changes what an old saved roll replays to (`docs/TODO.md`, Step 5.2).
 - Determinism holds across the two ABIs. What is unproven is determinism
   across *devices* of the same ABI and across time, which is the same suite
   run somewhere else.

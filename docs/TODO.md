@@ -226,17 +226,11 @@ natural-high counts, tap to activate, rename, create, and delete that moves the
 rolls to the first session rather than deleting them. The active session is a
 preference and every roll is filed under it; the history filters by it, and the
 menu's header names it once there is more than one session to be in (`1q`).
-
-- [ ] **Filtering the statistics by session needs a decision, not just a
-      chooser.** `die_stats` and `die_summary` are keyed by set and die and
-      carry no session (`docs/statistics.md`, "Storage"), so there is nothing
-      to filter. Either they grow a session column — which multiplies every
-      aggregate row by the number of sessions, for a number most players will
-      never ask for — or per-session face counts are computed from
-      `roll_history.breakdown_json` on demand, which is a scan rather than a
-      lookup and is the only option that costs nothing until it is used. The
-      second looks right; it is a schema decision either way and is not one to
-      take in passing
+Database version 5 puts the session on every face count, so the **statistics**
+filter by it too — stored rather than recomputed, because a scan of fifty
+thousand history rows on every draw is the thing a column is for.
+`die_summary` deliberately did not grow one: counts add and streaks do not
+(`docs/statistics.md`, per session).
 
 ### 4.10 Settings and menu — `feature/settings`
 
@@ -246,6 +240,13 @@ The menu is built and **the navigation graph is connected**: every screen
 carries the same menu button and the menu reaches every screen
 (`docs/architecture.md`, "Screens and the states behind them").
 
+Notation is a screen, in the App section beside Settings: the grammar in
+sentences, with an example on every line that puts that formula in the tray.
+It has no state — it is `NotationReference`, which lives beside the parser, with
+a layout on it — and a test parses every example it offers, so it cannot show a
+formula the app would refuse. That was the last row the prototype's menu had
+and the app did not.
+
 A screen can no longer be built and left unplugged. `Presenters` holds a
 factory per screen with no optional fields, so adding a destination stops the
 activity compiling until it says how to build one; the same object is what the
@@ -254,7 +255,6 @@ placeholder that is not Table picker or Face designer. Both halves were checked
 by putting the original bug back: removing the sessions screen's dispatch turns
 the list into `[sessions, tables, designer]`.
 
-- [ ] One row the prototype's menu has that the app has no screen for: "Notation" (the grammar, with examples you can roll). Decide whether it is a screen or belongs in the README. *Saved-roll statistics is built and in the menu (4.7).*
 - [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
 and the repository link are all there, and each of them does something.
@@ -272,14 +272,16 @@ after every physics change.
 
 ### 5.1 Harness
 
-- [ ] On-device instrumented runner: N rolls headless, dumps JSON — per-face histogram, settle times, correction and re-throw counts, contact depths, frame times
+- [ ] On-device instrumented runner: N rolls headless, dumps JSON — settle times, correction and re-throw counts, contact depths, frame times. **The per-face histogram half exists** as `FairnessTest`, which takes its roll count from an instrumentation argument and prints its table (`docs/physics-and-rendering.md`, "Are the dice fair"); the rest of the numbers, and JSON rather than a printed table, are what is left
 - [ ] Devcontainer script that installs, runs, pulls the JSON and prints a pass/fail table against the targets below
 - [ ] Soak mode (run for minutes, report worst case) and 60 fps screen capture for visual review
 - [ ] Same harness runs on the emulator, which is in the devcontainer (`docs/build-setup.md`), so a regression is caught before the phone
 
 ### 5.2 Fairness and determinism
 
-- [ ] Every catalogue shape, 100,000 headless rolls: chi-squared p > 0.001, no face off by more than 1 %
+- [ ] Every catalogue shape, 100,000 headless rolls: chi-squared p > 0.001, no face off by more than 1 %. **Run on the Pixel 10a, and seven of the eight pass** — their χ² sums to 55.33 against 55 degrees of freedom, which is as close to "exactly as fair as chance predicts" as a number gets (`docs/physics-and-rendering.md`, "Are the dice fair"). This item closes when the eighth does
+- [ ] **The d18 is not fair: χ² 197.34 against a limit of 40.79.** Reproducible — the same faces are heavy across three independent seed schemes, with the deviation patterns of separate runs correlating at +0.6 to +0.9 where independent samples of a fair die sit near ±0.24. No single face is off by more than 0.455 %, so the 1 % bound does not catch it; several are off by around 6 %. It is **not** the shape: an enneagonal trapezohedron is isohedral and the throw starts evenly over all orientations, which together make a fair die whatever the physics does — so the body the engine collides is not the solid the arithmetic describes. Ruled out on the phone: the seeds, Jolt's convex radius (rebuilt with shrinking off, same faces heavy), a corner dropped by the hull tolerance (every corner protrudes 35–70× it), and an off-centre mass (a dipole explains 12 % of the variance). The deviations pair up antipodally, so it is *axes* that finish vertical too often rather than faces that are sticky. The d10 is the same family of solid and is fair, so the place to look is what narrow kites do that wide ones do not — the contact manifold Jolt builds on a shallow face, and the mass properties it derives from the hull
+- [ ] **Two seeds next to each other are not two independent throws, and one of them is a real roll.** A roll's seed goes into `kotlin.random.Random` as-is (`SpawnLayout.randomFor`), and seeds differing only in their low bits give streams that are visibly related: 200,000 d18 throws seeded `0, 1, 2, …` start in orientations spread *more* evenly than chance allows — χ² of 0.73 against 17 degrees of freedom, where a fair sample sits near 17. Rolls the app starts are seeded from `SecureRandom` and are safe, but an **exploding die is not**: `RollMachine.extraThrows` throws the extra dice at `seed + 1, seed + 2, …`, so every explosion in a roll is correlated with the throw that caused it. The fix is to stir the seed where the streams are derived rather than at each call site, and it is not free: every seed then maps to a different stream, so the golden cases have to be re-recorded (`docs/build-setup.md`) and a saved roll from an older build replays to different faces
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker. The golden suite is the check and already holds for its ten cases on both ABIs; Step 5 is the same claim at ten thousand rolls and on a second phone
 - [ ] Power-saving and rendered mode agree on every seed in the golden suite
 

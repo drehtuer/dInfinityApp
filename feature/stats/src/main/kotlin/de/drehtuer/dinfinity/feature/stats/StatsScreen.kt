@@ -182,10 +182,56 @@ private fun labelFor(order: DieOrder): Int =
 private fun noteFor(state: StatsState): Int =
   when {
     state.acrossSets -> R.string.stats_across_sets_note
+    state.cutToSession -> R.string.stats_session_note
     state.order == DieOrder.Throws -> R.string.stats_order_throws
     state.order == DieOrder.Average -> R.string.stats_order_average
     else -> R.string.stats_order
   }
+
+/**
+ * Which session the statistics are cut to (`docs/statistics.md`, per session;
+ * design option `6c`).
+ *
+ * Its own row above the set chooser rather than another chip in it, because it
+ * cuts across the others: a session and a set are two different questions, and
+ * "the brass d20, this campaign" is a sentence a player would actually say.
+ * That is the opposite of the roll-up and the set filter, which cancel each
+ * other out and share a row for exactly that reason.
+ *
+ * Not drawn until there are two sessions to choose between — which is every
+ * install that has not made one.
+ */
+@Composable
+private fun Sessions(
+  state: StatsState,
+  presenter: StatsPresenter,
+) {
+  if (!state.sessionsChoosable) return
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Cut(
+      label = stringResource(R.string.stats_all_sessions),
+      chosen = state.sessionFilter == null,
+      tag = StatsTestTags.ALL_SESSIONS,
+      onChoose = { presenter.inSession(null) },
+    )
+    state.sessionChoices.forEach { session ->
+      Cut(
+        label = session.name,
+        chosen = state.sessionFilter == session.id,
+        tag = StatsTestTags.sessionOf(session.id),
+        onChoose = { presenter.inSession(session.id) },
+      )
+    }
+  }
+}
 
 /**
  * How the list is cut: by set, or not at all, or across all of them
@@ -256,6 +302,7 @@ private fun Dice(
   presenter: StatsPresenter,
 ) {
   val dice = state.dice
+  Sessions(state, presenter)
   Cuts(state, presenter)
   Orders(state, presenter)
   Text(
@@ -567,6 +614,10 @@ object StatsTestTags {
   const val THROWS: String = "stats:throws"
   const val GUESSED: String = "stats:guessed"
   const val ALL_SETS: String = "stats:allsets"
+  const val ALL_SESSIONS: String = "stats:allsessions"
+
+  fun sessionOf(sessionId: String): String = "stats:session:$sessionId"
+
   const val ACROSS_SETS: String = "stats:acrosssets"
   const val FILTERED_EMPTY: String = "stats:filtered-empty"
 

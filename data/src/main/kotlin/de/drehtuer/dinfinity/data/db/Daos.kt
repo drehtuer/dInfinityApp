@@ -124,10 +124,14 @@ interface DieStatsDao {
   @Upsert
   suspend fun upsert(row: DieStatsRow)
 
-  @Query("SELECT * FROM die_stats WHERE set_id = :setId AND die_id = :dieId AND face_value = :faceValue")
+  @Query(
+    "SELECT * FROM die_stats WHERE set_id = :setId AND die_id = :dieId " +
+      "AND session_id = :sessionId AND face_value = :faceValue",
+  )
   suspend fun find(
     setId: String,
     dieId: String,
+    sessionId: String,
     faceValue: Int,
   ): DieStatsRow?
 
@@ -135,17 +139,45 @@ interface DieStatsDao {
    * Every face of every die, for an export.
    *
    * One shot rather than a flow, and unfiltered: a file is a copy taken at a
-   * moment, and the thing being copied is the whole record. The table is one
-   * row per face per die, so it is bounded by the dice that have been thrown
-   * rather than by how often they were.
+   * moment, and the thing being copied is the whole record. One row per face
+   * per die, so it is bounded by the dice that have been thrown rather than by
+   * how often they were — the sessions are summed away, because a file of what
+   * every die has done is not the place a player would look for a campaign.
    */
-  @Query("SELECT * FROM die_stats ORDER BY set_id, die_id, face_value")
+  @Query(
+    "SELECT set_id, die_id, '' AS session_id, sides, face_value, " +
+      "SUM(count) AS count, SUM(dropped_count) AS dropped_count FROM die_stats " +
+      "GROUP BY set_id, die_id, face_value ORDER BY set_id, die_id, face_value",
+  )
   suspend fun everything(): List<DieStatsRow>
 
-  @Query("SELECT * FROM die_stats WHERE set_id = :setId AND die_id = :dieId ORDER BY face_value")
+  /**
+   * One die's face counts over every session, lowest value first.
+   *
+   * Summed rather than selected, because the rows are per session since
+   * version 5 and a die thrown in three campaigns has three rows per face.
+   * The session column is not in the result: what comes back stands for all of
+   * them, and a value there would have to be one session's or a lie.
+   */
+  @Query(
+    "SELECT set_id, die_id, '' AS session_id, sides, face_value, " +
+      "SUM(count) AS count, SUM(dropped_count) AS dropped_count FROM die_stats " +
+      "WHERE set_id = :setId AND die_id = :dieId GROUP BY face_value ORDER BY face_value",
+  )
   fun histogram(
     setId: String,
     dieId: String,
+  ): Flow<List<DieStatsRow>>
+
+  /** The same die, cut to the one session (`docs/statistics.md`, per session). */
+  @Query(
+    "SELECT * FROM die_stats WHERE set_id = :setId AND die_id = :dieId " +
+      "AND session_id = :sessionId ORDER BY face_value",
+  )
+  fun histogramInSession(
+    setId: String,
+    dieId: String,
+    sessionId: String,
   ): Flow<List<DieStatsRow>>
 
   /** "All my d20s", rolled up across every set that has one. */
@@ -154,6 +186,42 @@ interface DieStatsDao {
       "WHERE sides = :sides GROUP BY face_value ORDER BY face_value",
   )
   fun histogramForSides(sides: Int): Flow<List<FaceTotal>>
+
+  /** And the same roll-up in one session. */
+  @Query(
+    "SELECT face_value, SUM(count) AS total FROM die_stats " +
+      "WHERE sides = :sides AND session_id = :sessionId GROUP BY face_value ORDER BY face_value",
+  )
+  fun histogramForSidesInSession(
+    sides: Int,
+    sessionId: String,
+  ): Flow<List<FaceTotal>>
+
+  /**
+   * Every die that was thrown in one session, and what it did there.
+   *
+   * The list the statistics screen draws when it is cut to a session. It
+   * cannot come from `die_summary`, which has no session and never will
+   * ([DieSummaryRow]) — so it is added up from the face counts, where throws,
+   * sum and sum of squares are exactly what they would have been had they been
+   * counted separately all along.
+   *
+   * `die_summary` is joined anyway, for the one thing face counts cannot say:
+   * *when*. The order is the die's own last throw rather than its last throw in
+   * this session, because that is the only timestamp there is and because it is
+   * still the right answer to what the order is for — a player comes to this
+   * screen about a die they have just been rolling.
+   */
+  @Query(
+    "SELECT d.set_id AS set_id, d.die_id AS die_id, d.sides AS sides, " +
+      "SUM(d.count) AS throws, SUM(d.face_value * d.count) AS sum, " +
+      "SUM(d.face_value * d.face_value * d.count) AS sum_sq " +
+      "FROM die_stats d LEFT JOIN die_summary m " +
+      "ON m.set_id = d.set_id AND m.die_id = d.die_id " +
+      "WHERE d.session_id = :sessionId " +
+      "GROUP BY d.set_id, d.die_id ORDER BY m.last_rolled_at DESC",
+  )
+  fun diceInSession(sessionId: String): Flow<List<SessionTotal>>
 
   @Query("DELETE FROM die_stats WHERE set_id = :setId AND die_id = :dieId")
   suspend fun reset(
@@ -164,6 +232,24 @@ interface DieStatsDao {
   @Query("DELETE FROM die_stats")
   suspend fun deleteAll(): Int
 }
+
+/**
+ * What one die did in one session: added up from its face counts.
+ *
+ * The three numbers a [DieSummaryRow] carries that *add*, and deliberately not
+ * the streaks, which do not — see [DieSummaryRow].
+ */
+data class SessionTotal(
+  @androidx.room.ColumnInfo(name = "set_id")
+  val setId: String,
+  @androidx.room.ColumnInfo(name = "die_id")
+  val dieId: String,
+  val sides: Int,
+  val throws: Long,
+  val sum: Long,
+  @androidx.room.ColumnInfo(name = "sum_sq")
+  val sumOfSquares: Long,
+)
 
 /** One face value and how often it has come up, across sets. */
 data class FaceTotal(

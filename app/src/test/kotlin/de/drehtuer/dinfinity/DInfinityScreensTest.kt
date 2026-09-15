@@ -7,12 +7,14 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.core.notation.NotationReference
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
@@ -25,10 +27,12 @@ import de.drehtuer.dinfinity.feature.saved.SavedTestTags
 import de.drehtuer.dinfinity.feature.sets.SetDetailTestTags
 import de.drehtuer.dinfinity.feature.sets.SetLibrary
 import de.drehtuer.dinfinity.feature.sets.SetsTestTags
+import de.drehtuer.dinfinity.feature.settings.NotationTestTags
 import de.drehtuer.dinfinity.feature.stats.HistoryTestTags
 import de.drehtuer.dinfinity.feature.stats.SessionsTestTags
 import de.drehtuer.dinfinity.feature.stats.StatsTestTags
 import de.drehtuer.dinfinity.navigation.Destination
+import de.drehtuer.dinfinity.navigation.GraphArgument
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -187,6 +191,32 @@ class DInfinityScreensTest {
         Destination.SetDetail
     }
     compose.onNodeWithTag(SetDetailTestTags.SCREEN).assertIsDisplayed()
+  }
+
+  @Test
+  fun `an example on the notation screen opens the tray with that formula in it`() {
+    // The whole point of the screen being a screen: you find out what a
+    // modifier does by rolling it. The example has to arrive in the field, and
+    // it has to arrive *unrolled* — the app does not throw dice nobody asked
+    // it to (`docs/dice-notation.md`).
+    val navigation = app()
+    go(navigation, Destination.Notation)
+    val advantage = NotationReference.entries.first { it.syntax.startsWith("kh") }
+
+    compose.onNodeWithTag(NotationTestTags.entryOf(advantage.syntax)).performScrollTo().performClick()
+
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.Roll
+    }
+    assertEquals(
+      advantage.example,
+      compose.runOnIdle {
+        navigation.currentBackStackEntry
+          ?.arguments
+          ?.getString(GraphArgument.FORMULA)
+      },
+    )
   }
 
   @Test

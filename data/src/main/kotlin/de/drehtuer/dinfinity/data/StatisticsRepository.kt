@@ -48,7 +48,9 @@ class StatisticsRepository(
           ),
         )
       result.dice.forEach { rolled ->
-        roll.dice[rolled.instanceIndex]?.let { source -> count(source, rolled, result.rolledAtEpochMs) }
+        roll.dice[rolled.instanceIndex]?.let { source ->
+          count(source, rolled, roll.context.sessionId, result.rolledAtEpochMs)
+        }
       }
       prune()
       id
@@ -79,18 +81,26 @@ class StatisticsRepository(
       database.dieSummary().deleteAll()
     }
 
+  /**
+   * One thrown die, folded into the two aggregates it belongs to.
+   *
+   * The face count is per session and the summary is not, which is the whole
+   * of the difference between the two tables (`docs/statistics.md`, per
+   * session): counts add, and a streak does not.
+   */
   private suspend fun count(
     source: RolledDieSource,
     rolled: RolledDie,
+    sessionId: String,
     atEpochMs: Long,
   ) {
     val stats = database.dieStats()
-    val existingTally = stats.find(source.setId, source.die.id, rolled.value)?.toTally()
+    val existingTally = stats.find(source.setId, source.die.id, sessionId, rolled.value)?.toTally()
     stats.upsert(
       DieStatistics
         .record(existingTally, source.die, rolled)
         .copy(setId = source.setId, dieId = source.die.id, sides = source.die.shape.faceCount)
-        .toRow(),
+        .toRow(sessionId),
     )
     val summaries = database.dieSummary()
     val existingSummary = summaries.find(source.setId, source.die.id)?.toSummary()
@@ -175,10 +185,11 @@ private fun DieStatsRow.toTally(): FaceTally =
     droppedCount = droppedCount,
   )
 
-private fun FaceTally.toRow(): DieStatsRow =
+private fun FaceTally.toRow(sessionId: String): DieStatsRow =
   DieStatsRow(
     setId = setId,
     dieId = dieId,
+    sessionId = sessionId,
     sides = sides,
     faceValue = faceValue,
     count = count,

@@ -16,7 +16,8 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * Step 4.4) — which is the point of writing migrations from day one rather
  * than from the first release. A database that has only ever been created,
  * never migrated, is a database whose first migration is written under
- * pressure.
+ * pressure. Version 5 puts a session on every face count, and is the first
+ * one to reshape a table somebody already has rows in.
  *
  * Every version's schema is exported to `data/schemas/` and checked in.
  * `SchemaTest` walks them, so a version bump without a migration fails the
@@ -57,7 +58,7 @@ abstract class DInfinityDatabase : RoomDatabase() {
 
   companion object {
     /** Bumping this needs a migration and a checked-in schema. Both are enforced. */
-    const val VERSION: Int = 4
+    const val VERSION: Int = 5
 
     /** The file the app opens (`docs/architecture.md`, "Storage layout"). */
     const val NAME: String = "dinfinity.db"
@@ -68,7 +69,8 @@ abstract class DInfinityDatabase : RoomDatabase() {
      * The list was wired up while it was empty, which is why adding the first
      * entry was one line rather than a change to how the database opens.
      */
-    val MIGRATIONS: List<Migration> = listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    val MIGRATIONS: List<Migration> =
+      listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 
     /** Opens the database, migrating it if it is older. */
     fun open(
@@ -201,5 +203,59 @@ internal val MIGRATION_3_4: Migration =
         )
         """.trimIndent(),
       )
+    }
+  }
+
+/**
+ * Version 4 → 5: face counts grow a session (`docs/statistics.md`, per
+ * session).
+ *
+ * The first migration that changes a table rather than adding one, so it is
+ * the twelve-step dance SQLite requires for a new primary key: build the table
+ * beside the old one, copy the rows in, drop the old one, rename.
+ *
+ * **Every existing row becomes a row of the first session.** That is not a
+ * default standing in for an unknown — the rolls those counts came from are
+ * already filed under `SessionRepository.DEFAULT_ID` in `roll_history`
+ * (`MIGRATION_2_3` put them there), so this is the same answer written in a
+ * second place rather than a guess. Filing them under anything else, or under
+ * nothing, would make the sum of the sessions stop matching the all-time
+ * totals the moment a player opened the screen.
+ *
+ * `die_summary` is deliberately untouched — see [DieSummaryRow] for why a
+ * streak cannot be cut into sessions.
+ */
+internal val MIGRATION_4_5: Migration =
+  object : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `die_stats_new` (
+          `set_id` TEXT NOT NULL,
+          `die_id` TEXT NOT NULL,
+          `session_id` TEXT NOT NULL,
+          `sides` INTEGER NOT NULL,
+          `face_value` INTEGER NOT NULL,
+          `count` INTEGER NOT NULL,
+          `dropped_count` INTEGER NOT NULL,
+          PRIMARY KEY(`set_id`, `die_id`, `session_id`, `face_value`)
+        )
+        """.trimIndent(),
+      )
+      // 'default' is written out rather than taken from
+      // `SessionRepository.DEFAULT_ID`, for the same reason `MIGRATION_2_3`
+      // writes it out: a migration is a record of what was done to a database
+      // that has already been migrated, and it must not change its mind
+      // because a constant somewhere else was renamed.
+      db.execSQL(
+        "INSERT INTO `die_stats_new` " +
+          "(`set_id`, `die_id`, `session_id`, `sides`, `face_value`, `count`, `dropped_count`) " +
+          "SELECT `set_id`, `die_id`, 'default', `sides`, `face_value`, " +
+          "`count`, `dropped_count` FROM `die_stats`",
+      )
+      db.execSQL("DROP TABLE `die_stats`")
+      db.execSQL("ALTER TABLE `die_stats_new` RENAME TO `die_stats`")
+      db.execSQL("CREATE INDEX IF NOT EXISTS `index_die_stats_sides` ON `die_stats` (`sides`)")
+      db.execSQL("CREATE INDEX IF NOT EXISTS `index_die_stats_session_id` ON `die_stats` (`session_id`)")
     }
   }
