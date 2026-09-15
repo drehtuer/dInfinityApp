@@ -211,6 +211,10 @@ internal class ScreenWiring(
     onGone = onGone,
     defaultSetId = { app.defaultSet },
     onDefault = { setId -> scope.launch { repository.setDefaultSet(setId) } },
+    // The zip leaves the app the same way an exported collection does: the
+    // share sheet, over the FileProvider, out of a cache directory emptied
+    // first (`PackageSharing`).
+    onShare = { file -> PackageSharing.share(app, file) },
   )
 }
 

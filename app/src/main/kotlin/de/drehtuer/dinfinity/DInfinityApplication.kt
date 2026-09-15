@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity
 import android.app.Application
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.data.CollectionImporter
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
@@ -17,9 +18,12 @@ import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.designer.BitmapAtlas
 import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.Drafts
+import de.drehtuer.dinfinity.designer.MineSets
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.feature.sets.SetLibrary
@@ -174,8 +178,48 @@ class DInfinityApplication : Application() {
       io = Dispatchers.IO,
       installer = PackageInstaller(File(filesDir, DICE_SETS_FOLDER)),
       defaultSetId = { defaultSet },
+      personal = mineSets,
     )
   }
+
+  /**
+   * "My dice": the drawings on this phone, as an installed package
+   * (`docs/face-designer.md`; design `8c`).
+   *
+   * Built here because it is the one place that has all four of the things it
+   * needs — the drafts folder, the `dicesets/` folder, a device to rasterise on
+   * and the catalogue a draft's die id is resolved against — and because each
+   * of those is the Android-shaped half of something `designer/` should not
+   * have to carry.
+   *
+   * The dice are read by scanning the folder rather than off [setLibrary]'s
+   * catalogue, and that is deliberate: the catalogue is the bundled set alone
+   * until the first reading finishes, so a draft drawn on somebody else's d18
+   * would be dropped from the package exactly once and then never looked at
+   * again. The scan costs nothing in the usual case, because nothing asks for
+   * the dice unless a drawing has actually changed.
+   */
+  val mineSets: MineSets by lazy {
+    MineSets(
+      drafts = draftStore,
+      root = File(filesDir, DICE_SETS_FOLDER),
+      painter = BitmapAtlas(),
+      dice = { drawableDice() },
+    )
+  }
+
+  /**
+   * Every die a draft can have been drawn on: the installed packages first and
+   * the bundled set behind them.
+   *
+   * That order is the fallback rule (`docs/dice-notation.md`): a set that
+   * defines a `d20` is what `d20` means, and the bundled die stands in for
+   * anything nobody else defines.
+   */
+  private fun drawableDice(): List<Die> =
+    (packages.scan().filterIsInstance<InstalledPackage.Ready>().map(InstalledPackage.Ready::set) + BuiltinDiceSet.set)
+      .flatMap(DiceSet::dice)
+      .distinctBy(Die::id)
 
   /**
    * Reads what is installed, once, as the process starts.
@@ -204,7 +248,13 @@ class DInfinityApplication : Application() {
    * looking at it, and the writes go to [background] so a stroke is never
    * waiting on a disk.
    */
-  val drafts: Drafts by lazy { SavedDrafts(DraftStore(File(filesDir, DraftStore.DIRECTORY)), background) }
+  val drafts: Drafts by lazy { SavedDrafts(draftStore, background) }
+
+  /**
+   * The drafts on disk, which two things read: the designer, through [drafts],
+   * and the exporter, which builds the personal package out of all of them.
+   */
+  private val draftStore: DraftStore by lazy { DraftStore(File(filesDir, DraftStore.DIRECTORY)) }
 
   private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
