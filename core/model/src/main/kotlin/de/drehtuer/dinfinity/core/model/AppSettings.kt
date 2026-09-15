@@ -73,7 +73,7 @@ data class AppSettings(
    * screens a player uses. The history still has no replay and still never
    * shows a seed with this on — `HistoryEntry` has no seed to show and the
    * exports have no column for one, whatever this says
-   * (`docs/architecture.md`, decisions 13 and 53; `docs/statistics.md`).
+   * (`docs/architecture.md`, decisions 13 and 56; `docs/statistics.md`).
    */
   val developerTools: Boolean = false,
   /**

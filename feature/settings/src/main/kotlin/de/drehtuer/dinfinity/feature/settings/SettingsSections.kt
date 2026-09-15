@@ -201,7 +201,7 @@ internal fun RoundingSection(
  * screen in the menu — and never a field on a screen a player uses. The
  * history still has no replay and still never shows a seed with this on,
  * because `HistoryEntry` has no seed on it and the exports have no column for
- * one (`docs/architecture.md`, decisions 13 and 53).
+ * one (`docs/architecture.md`, decisions 13 and 56).
  *
  * The overlay takes effect the next time the roll screen opens, like power
  * saving, the shake, the haptics and the sound, and for the same reason

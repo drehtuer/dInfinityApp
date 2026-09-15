@@ -58,7 +58,7 @@ class AppSettingsTest {
     // Off on every install, and nothing about the app changes until it is on:
     // it is a tool rather than a feature, and turning it on never puts a seed
     // or a replay anywhere the ordinary app can reach
-    // (`docs/architecture.md`, decisions 13 and 53).
+    // (`docs/architecture.md`, decisions 13 and 56).
     assertFalse(AppSettings().developerTools)
     assertTrue(AppSettings(developerTools = true).developerTools)
   }

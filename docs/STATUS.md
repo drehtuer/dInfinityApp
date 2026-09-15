@@ -28,9 +28,11 @@ detekt and Android Lint. In flight, stacked in this order: `feature/shake-record
 there; `feature/haptics` — **the dice can be felt and heard**;
 `feature/designer-tools`; `feature/harness` — Step 5's physics harness, and what
 it said about the Pixel 10a; `feature/explosion-dice` — the die an explosion or
-a reroll adds is now thrown into the tray the player is watching; and
+a reroll adds is now thrown into the tray the player is watching;
 `feature/mine-export` — **a drawing is now a dice set anybody could install**,
-exported as a zip once a licence has been chosen.
+exported as a zip once a licence has been chosen; and `feature/dev-toggle` —
+**the developer toggle**, off on every install, adding a debug overlay, an
+anomaly log and a replay of the last throw, and changing nothing a player sees.
 
 ### Which device the tier runs on
 
@@ -99,7 +101,11 @@ is mostly polish and the things that need a phone.
   an added die cannot shove one; a chain stops when the tray runs out of floor,
   and the breakdown says so.
 - **4.2 Graph, 4.3 Saved rolls, 4.4 Dice sets, 4.5 Tables, 4.7–4.9 Statistics,
-  history and sessions, 4.10 Settings and Notation.** All built. Collections
+  history and sessions, 4.10 Settings and Notation.** All built, and 4.10 is
+  **finished**: the last thing on it was the developer toggle, which is off on
+  every install and adds a debug overlay on the tray, an anomaly log and a
+  replay of the last throw — a surface of its own, with decision 13 untouched
+  (`docs/physics-and-rendering.md`, "Debug tooling"). Collections
   travel as JSON and arrive from a file, a link or a git repository — one
   `*.dinfinity.json` at its root, down the same downloader and the same
   hardened extractor a dice set uses; dice sets install from
@@ -148,6 +154,11 @@ is mostly polish and the things that need a phone.
   to do, so this is a question rather than a change to make quietly.
 - Two smaller ones from the prototype (designer 3D preview, the picker
   remembering the last set per group) — see `docs/TODO.md`, Open questions.
+- Whether the anomaly log should survive a restart. It is in memory today
+  because an entry carries a seed and a stored seed is a replay waiting to be
+  written somewhere a player can reach it (decision 13) — against which, an
+  anomaly is rare enough that losing one to a restart may be losing the only
+  one anybody sees.
 
 ## Known risks
 

@@ -278,7 +278,7 @@ the device to spare an older build one shape, which is not a trade.
   has touched exports to the same file twice.
 
 **The decision and the pixels are separated**, the way the physics and the
-renderer are (`docs/architecture.md`, decisions 40, 47 and 53). `Atlas` says
+renderer are (`docs/architecture.md`, decisions 40, 47 and 55). `Atlas` says
 how big the image is, which cell each face occupies and where every point of
 every mark lands in it, in plain Kotlin a unit test asserts on; `AtlasPainter`
 puts the ink down, and one file behind it touches a `Bitmap`. A painter that

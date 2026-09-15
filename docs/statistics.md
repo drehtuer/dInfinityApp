@@ -176,8 +176,18 @@ has never rolled anything — the same rule the history follows.
 
 ### Anomalies (debug)
 
-Counts of in-flight corrections, re-thrown dice and forced settles (see
-`docs/physics-and-rendering.md`). Hidden behind a developer toggle.
+Forced settles and post-rest corrections — both of which should never happen —
+with the seed and the counters of the throw that produced them (see
+`docs/physics-and-rendering.md`, "Debug tooling"). Behind the developer toggle,
+which is off on every install.
+
+**It does not travel with the statistics export.** It is shared as plain text
+from the developer screen and from nowhere else. The exports here are built
+from `HistoryEntry`, which has no seed on it and cannot grow one; an anomaly
+carries a seed because reproducing the roll is the whole point of writing it
+down. One share path that could carry either would be the place the two got
+mixed up, so there are two, and only one of them is reachable with the toggle
+on (`docs/architecture.md`, decisions 13 and 56).
 
 ## Screens
 
@@ -197,7 +207,9 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
   sheet shows the moment a roll lands (`docs/dice-notation.md`, "Evaluation",
   step 7). A past roll is a record, not something to re-run: there is no replay
   action and the seed is never shown. Re-rolling a formula means rolling it
-  again.
+  again. **The developer toggle does not change this** — it is a surface of its
+  own, and `HistoryEntry` has no seed on it for any screen to unhide
+  (`docs/physics-and-rendering.md`, "Debug tooling").
 - **Sessions:** create/rename/delete. Deleting one moves its rolls to the
   first session rather than deleting them, so a session can be tidied away
   without losing what was rolled in it. ("Unfiled" is the saved-roll *group*

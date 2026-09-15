@@ -51,7 +51,7 @@ import java.nio.file.Files
  *   more row in the menu and one more screen behind that row;
  * - **turning it on changes nothing about the app a player uses.** The history
  *   still has no replay and still never shows a seed, and the exports still
- *   have no column for one (`docs/architecture.md`, decisions 13 and 53).
+ *   have no column for one (`docs/architecture.md`, decisions 13 and 56).
  */
 @RunWith(RobolectricTestRunner::class)
 class DeveloperToggleTest {

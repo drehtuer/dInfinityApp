@@ -348,7 +348,14 @@ restores the choice; the session falls back where a roll is *recorded*, because
 a session deleted while another screen was in front would otherwise strand
 every throw filed under it (`docs/statistics.md`, per session).
 
-- [ ] Developer toggle: debug overlay, anomaly log, replay from seed
+The **developer toggle** is the last thing on that screen, and it is the one
+setting that is off on every install. It adds a debug overlay over the tray, a
+Developer row in the menu, and behind that row an anomaly log and two ways of
+throwing the last roll again. What it does *not* do is the point: the history
+still has no replay and still never shows a seed, and the exports have no
+column for one, because neither type has a field the toggle could unhide
+(`docs/architecture.md`, decisions 13 and 56;
+`docs/physics-and-rendering.md`, "Debug tooling").
 
 ## Step 5 — Physics and rendering on a real phone
 
@@ -527,6 +534,16 @@ The figures are reported in every PR description either way.
 
 ## Open questions
 
+- [ ] **Should the anomaly log survive a restart?** It is in memory today,
+      bounded to fifty entries, and goes when the app does — because an entry
+      carries the seed that reproduces the roll, and a stored seed is a replay
+      waiting to be written into a screen a player can reach
+      (`docs/architecture.md`, decisions 13 and 56). Against that: an anomaly is
+      supposed to be so rare that losing one to a restart may be losing the only
+      one anybody ever sees. If it should persist, the question to answer first
+      is where — a file the developer toggle owns and the ordinary app cannot
+      read is a different thing from a table beside the history, and only the
+      first of those is consistent with decision 13
 - [ ] **Should a heavy die sound heavier?** An impact reports the change in a
       die's speed, which is impulse per unit of mass, and the sound follows that
       and the die's *size*. A die's `density` — which a set may put anywhere from

@@ -75,11 +75,12 @@ feature/             One module per screen group; see docs/TODO.md Step 4
   tables/            Table picker
   designer/          Face designer screen over the designer/ engine
   stats/             Statistics, history and sessions — the "Look back" screens
-  settings/          Settings, the menu, and the notation reference
+  settings/          Settings, the menu, the notation reference, and the developer screen (docs/physics-and-rendering.md)
 test-fixtures/       Test data shared by every module: dice sets, collections, golden roll cases
 ```
 
-Twelve screens in the menu, eight `feature/` modules: statistics, history,
+Twelve screens in the menu — thirteen with the developer toggle on — and eight
+`feature/` modules: statistics, history,
 sessions and saved-roll statistics are one module because they are one screen
 group over one set of data (`design/dInfinity.dc.html`, options 1w, 1x, 6c, 8b)
 and splitting them would only split the queries.
@@ -179,6 +180,13 @@ the start so that adding one is a change in a single place. `Roll` is home. The
 **menu** is a destination too: it lists the other eleven and is not in the
 list itself (`design/dInfinity.dc.html`, option `1q`).
 
+One destination is listed conditionally. **Developer** is in the App section
+beside Settings and appears only while `AppSettings.developerTools` is on,
+which it is on no install until somebody turns it on. The *route* exists
+either way — a route that came and went would be a back stack that could not be
+restored — so what the toggle governs is whether anything offers it
+(`docs/physics-and-rendering.md`, "Debug tooling").
+
 ```mermaid
 stateDiagram-v2
     [*] --> Roll
@@ -187,6 +195,7 @@ stateDiagram-v2
     Graph: Outcome graph
     Screen: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer · Settings · Notation
     Editor: Saved roll editor
+    Developer: Developer<br/>(only while the toggle is on)
 
     Roll --> Graph: See the odds
     Roll --> Menu: the menu button
@@ -195,11 +204,14 @@ stateDiagram-v2
     Editor --> Roll: Roll now
     Graph --> Menu: the menu button
     Screen --> Menu: the menu button
+    Developer --> Menu: the menu button
     Menu --> Roll: choose Roll
     Menu --> Graph: choose the graph
     Menu --> Screen: choose any of them
+    Menu --> Developer: choose Developer
     Graph --> Roll: system back
     Screen --> Roll: system back
+    Developer --> Roll: system back
     Menu --> Roll: system back
     Roll --> [*]: system back leaves the app
 ```
@@ -973,16 +985,19 @@ offer a formula the app would refuse (`docs/dice-notation.md`).
 | the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
 | Down / Nearest / Up | `onRoundingSelected` | which way division rounds on the next throw, and on every outcome graph. The per-throw override on the result sheet is still not remembered |
 | the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
+| the developer-tools switch | `onDeveloperToolsChanged` | whether the menu offers the **Developer** screen, at once, and whether the next visit to the roll screen draws the debug overlay. Off on every install, and it changes nothing else: the history still has no replay and still never shows a seed (decisions 13 and 53) |
 | **Source code and issues** | `onRepository` | a browser. The app's only outward link |
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
 
-Five of those take effect **when the roll screen next opens** rather than where
-they are pressed — power saving, the shake, haptics, sound and the default
-rounding. A renderer appearing under a roll in progress, sensors registering
-mid-throw, a roll that starts buzzing half way down, or a total changing its
-arithmetic while the dice are in the air are not settings taking effect; they
-are bugs (decision 16).
+Six of those take effect **when the roll screen next opens** rather than where
+they are pressed — power saving, the shake, haptics, sound, the default
+rounding and the debug overlay half of the developer toggle. A renderer
+appearing under a roll in progress, sensors registering mid-throw, a roll that
+starts buzzing half way down, an overlay appearing over a throw, or a total
+changing its arithmetic while the dice are in the air are not settings taking
+effect; they are bugs (decision 16). The developer toggle's *other* half — the
+menu row — appears at once, because a menu is not a roll.
 
 Haptics and sound are read there rather than per throw because **both ends of
 them are built with the screen**: the thing that listens is the roll, which is
@@ -1180,3 +1195,4 @@ the archives an install is working through, and those came from a stranger.
 | 53 | The device harness's arithmetic — what a run was asked for, what its rolls added up to, and whether they met Step 5's targets — is a plain Kotlin module, and the instrumented test only rolls, times and writes | It is decision 40 applied to the thing that *judges* the physics rather than to the physics. A harness whose own percentile, whose own share of dice corrected and whose own pass/fail comparison can be checked only by running it on a phone is a harness nobody can trust: when it says a run failed, the first question is whether the run failed or the harness did, and there would be no way to answer it. Split here and the answer is a JVM test — including the boundary cases a phone would have to misbehave to produce, like a correction landing on a die at rest. The same split is what lets the shell script print a table it did not render: the device writes the table the Kotlin produced, and a second copy of the comparison written in awk cannot drift from the one the tests hold |
 | 54 | A die an explosion or a reroll adds is thrown into a world of its own, into the clear floor the settled dice leave, and drawn among them | Three rules meet here and only one arrangement keeps all three. The result must be the physics, so the added die is really simulated. Nothing may touch a die that has come to rest, so the settled dice cannot be bodies in that throw — a die dropped onto them would shove them, and a face the player has already read would change, which is the failure this project cares most about. And the player has to see it happen, so it cannot stay in the tray nobody is looking at. Putting the settled dice in as immovable furniture would need the native side to grow a second kind of body, untestable on the JVM and unverifiable without a phone; leaving them out entirely costs nothing and makes the rule true by construction rather than by tuning — there is no body in that world to shove. What is left is the picture, and `ClearSpace` answers it above the bridge, where a test can reach it: the point of the tray furthest from every die already down, on a fixed grid so the same roll replays to itself. The residue is honest and small — a die that rolls a long way could still be *drawn* crossing a settled one, which is why it is dropped rather than thrown, and why the drop needs eyes on a phone (`docs/TODO.md`, Step 5.6) |
 | 55 | A drawn face becomes an atlas in two halves: plain Kotlin decides what goes where, and one file puts the pixels down | The same line decisions 40, 47 and 51 draw, in the same place and for the same reason. How big the image is, which cell a face occupies, where every point of every mark lands in it and which cells are left out so they stay transparent are all arithmetic, and all of it can be wrong; `Bitmap`, `Canvas` and the PNG encoder cannot be *wrong*, only unavailable. So `Atlas` is a plan a JVM test asserts on — including that no catalogue shape passes the 2048-pixel texture limit and that every cell comes out exactly square — and `AtlasPainter` is an interface with one file behind it, which Robolectric's native graphics still exercises a tier below a device. It buys the failure mode too: a painter that cannot allocate answers with nothing, the die loses its artwork and keeps its labels, and the package still installs. The other half of the decision is that **the package the app writes goes through `DiceSetValidator`** before it is put in `dicesets/` and again before its zip is offered to anybody. The app's own output is not a privileged path, exactly as the bundled set is not — and it means `dicesets/format` is tested against a second writer rather than only against its own fixtures |
+| 56 | The debug overlay is a Compose plan of the tray, not lines drawn behind `Stage`; and the anomaly log lives in memory and shares by itself | The overlay's whole job is to say what the rendered picture cannot — which die is standing on another, which is against a wall, which has not stopped — and none of that is a projection problem. Registering a wireframe to the dice would mean reproducing the perspective camera, the pinch and the pan on the far side of `Stage`, where no JVM test can reach, in order to draw outlines over pictures that already show where the dice are. Drawn as a plan in Compose it costs no GPU code at all, and the one piece of judgement in it — millimetres to a place on the plan — is `TrayPlan`, plain Kotlin with a unit test, the same line decisions 40, 47 and 52 draw. The log is the same argument about storage: an anomaly carries the seed that reproduces it, so a stored one is a replay waiting to be written into a screen a player can reach, which is exactly what decision 13 forbids. In memory it is bounded, it goes when the app does, and it is shared as text from the developer screen — never with the statistics export, whose files are built from `HistoryEntry` and have no seed to leak |

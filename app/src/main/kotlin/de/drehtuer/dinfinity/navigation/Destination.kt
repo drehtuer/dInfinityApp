@@ -86,7 +86,7 @@ enum class Destination(
    * toggle is on** — which it is on no install until somebody turns it on. It
    * is a surface of its own rather than a flag that unhides fields elsewhere:
    * the history still has no replay and still never shows a seed with the
-   * toggle on (`docs/architecture.md`, decisions 13 and 53).
+   * toggle on (`docs/architecture.md`, decisions 13 and 56).
    */
   Developer(
     "developer",

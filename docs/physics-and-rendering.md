@@ -1055,13 +1055,102 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
 
 ## Debug tooling
 
-- Overlay toggle showing collision shapes, contact points, rest timers,
-  correction and re-throw counts.
-- "Replay last roll" and "replay from seed" actions. These live behind the
-  developer toggle only: the app's history has no replay and never shows a
-  seed (`docs/statistics.md`).
-- Anomaly log (forced settles, post-rest corrections — which should never
-  occur) exported with statistics.
+Behind one setting — **Developer tools**, in Settings, **off on every
+install**. With it off nothing about the app is different: no snapshot is
+built, no menu row is drawn, and no seed exists anywhere a screen could show
+one. With it on there are three things, and they are a *separate surface*
+rather than fields unhidden on screens a player uses. The history still has no
+replay and still never shows a seed (`docs/architecture.md`, decisions 13
+and 56; `docs/statistics.md`).
+
+There is no screen for it in the prototype and there is not meant to be:
+`design/dInfinity.dc.html` is what a player sees, and this is a tool for
+whoever is debugging the physics.
+
+### The overlay
+
+A panel over the tray, drawn while the roll screen is open. It shows, per
+frame:
+
+- the step the roll is on, and how many dice have come to rest;
+- how many dice have been nudged (rung 2), how many thrown again (rung 3), and
+  how many contacts have been recorded;
+- a **plan of the tray** with one footprint per die — its collision size at the
+  scale the capacity rule threw it — filled in proportion to that die's **rest
+  timer**, coloured differently for a die standing on another, and dotted where
+  the dice have hit something recently;
+- and, only if one has happened, a line in the error colour naming the forced
+  settles and post-rest corrections. Either number above zero is a **bug**, and
+  the line says so.
+
+Two things about it are decisions rather than details.
+
+**It is a view and cannot change the roll.** The snapshot is a `RollDiagnostics`
+built from state the loop already keeps, handed over through a `DebugWatch`
+that returns nothing — the same promise `Renderer` makes and for the same
+reason (`docs/architecture.md`, decision 38). `RollDiagnosticsTest` in
+`simulation/jolt` runs one seed twice, taking a snapshot on every single step
+of one run and none of the other, and asserts not only the same faces but the
+same biases on the same steps. The snapshot is also built **on demand**:
+`DebugWatch.watching` is asked before one is made, so a tray with the toggle
+off walks no dice per frame.
+
+**It is a plan, not a wireframe over the dice.** The picture is drawn by
+Filament in perspective from a tilted camera; the overlay is Compose, from
+straight above. Registering a wireframe to the picture would mean reproducing
+the projection, the pinch and the pan on the far side of `Stage` — new code
+behind the line no JVM test can reach, in order to draw outlines over pictures
+that already show where the dice are. A plan says what the pictures cannot:
+which die is standing on another, which is against a wall, and which has not
+stopped yet. So nothing was added to `Stage`, and `TrayPlan` — the arithmetic
+that turns a position in millimetres into a place on the plan — is plain Kotlin
+with a JVM test (decision 56).
+
+The overlay is read when the roll screen opens and not watched, like power
+saving, the shake, the haptics and the sound, and for the same reason: an
+overlay appearing over a roll in progress is not a setting taking effect
+(decision 16). There is no overlay in power-saving mode, because there is no
+tray to draw it over.
+
+### Replay
+
+On the **Developer** screen in the menu, which is listed only while the toggle
+is on. Both actions replay the **last throw made this run**, and the only
+difference between them is whose seed it carries:
+
+- **Replay the last roll** runs its own `ThrowSpec` again — the dice, the
+  table, the scale, the seed *and* the shake that drove it — and says whether
+  it came to the same faces. It should, and a screen saying it did not is a
+  release blocker (`docs/architecture.md`, goal 4).
+- **Replay those dice from that seed** runs the same throw under a seed typed
+  into the box. It is not "the roll that seed produced somewhere else": a seed
+  on its own describes no throw, and the screen says so.
+
+What is replayed is `FinishedThrow.thrown` — the spec the roll actually ran,
+with the shake written back into it — rather than a spec rebuilt from the plan
+afterwards. A replay is run headlessly through the same `DiceSimulator` a
+power-saving roll takes; there is no second path to a number here either. It
+is not written to the history, the statistics or anywhere else.
+
+### The anomaly log
+
+Forced settles and post-rest corrections, with the seed and the counters of
+the throw that produced them. Both are supposed to be impossible, so the log is
+**evidence rather than a statistic**: there is no rate on it, no average and no
+chart, and the empty state reads *"No anomalies. This is what a working build
+looks like."* A line in it is a bug to report, and the screen says that too.
+
+It is kept **in memory**, bounded to the most recent fifty, and goes when the
+app does. It is not in the database, because it carries seeds and a stored seed
+is a replay waiting to be written into a screen a player can reach — which is
+what decision 13 exists to prevent. It is filled whatever the toggle says, so
+an anomaly from the throw *before* somebody went looking is still there; it is
+only ever read from the developer screen.
+
+It is shared as **plain text from that screen only**, and deliberately not with
+the statistics export: that file is built from `HistoryEntry`, which has no
+seed on it and cannot grow one, and a single share path that could carry either
+would be the place the two got mixed up (`docs/statistics.md`).
+
 - The Step 5 harness, which is the same numbers gathered over thousands of
   rolls rather than shown for one: `tools/harness.sh`
-  (`docs/build-setup.md`, "The physics harness").

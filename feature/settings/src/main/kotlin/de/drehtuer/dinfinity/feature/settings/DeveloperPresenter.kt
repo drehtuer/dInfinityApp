@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
  * reachable with the developer toggle off, and nothing here puts a seed or a
  * replay anywhere the ordinary app can: the history has neither and cannot
  * grow either from this screen existing (`docs/architecture.md`, decisions 13
- * and 53).
+ * and 56).
  *
  * The replay is a physics run and is therefore handed in as [throwAgain]
  * rather than reached for: a screen that could open a physics world is a

@@ -36,7 +36,7 @@ import de.drehtuer.dinfinity.simulation.api.AnomalyReport
  * Reached only from the menu, and only while `AppSettings.developerTools` is
  * on. **It is a separate surface**: no screen a player uses gains a field, a
  * seed or a replay because this exists, and the history still has none of the
- * three (`docs/architecture.md`, decisions 13 and 53).
+ * three (`docs/architecture.md`, decisions 13 and 56).
  *
  * Deliberately plain. It is a tool for whoever is debugging the physics, its
  * readers are developers, and the numbers on it are more useful than any
