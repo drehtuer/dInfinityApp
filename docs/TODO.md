@@ -175,7 +175,6 @@ presets, and the face strip. The d4's three-numbers-per-corner rule is
 **derived rather than checked** — a cell's numbers are read from the corners it
 meets, so two cells sharing an edge cannot be made to disagree along it.
 
-- [ ] Pick a base die: any catalogue shape or any installed die. It opens on the default set's first die for now
 - [ ] Fill bucket, stamp from the built-in font, copy face → paste with rotate/mirror, "fill all faces with numbers", and a colour picker beyond the twelve presets (`4c`)
 - [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
 - [ ] Drafts on disk — vectors survive a rotation today, not process death (`docs/face-designer.md`, "Drawing tools"), and the 50-draft limit comes with them

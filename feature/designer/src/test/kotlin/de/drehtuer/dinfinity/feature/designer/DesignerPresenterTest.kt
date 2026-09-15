@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -171,6 +172,90 @@ class DesignerPresenterTest {
 
     presenter.drew(line())
     assertEquals(FaceDrawing.MAX_STROKES, presenter.state.face.strokes.size)
+  }
+
+  @Test
+  fun `a blank drawing changes die without asking, because there is nothing to lose`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+
+    presenter.base(d4)
+
+    assertEquals(d4.id, presenter.state.die.id)
+    assertNull("a blank drawing asked before starting over", presenter.state.changingTo)
+  }
+
+  @Test
+  fun `a drawing with anything on it is asked about first`() {
+    // Losing an evening's work to a mis-tap on a row of dice is not a thing
+    // that should be possible (`docs/face-designer.md`).
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    presenter.drew(line())
+
+    presenter.base(d4)
+
+    assertEquals("the die changed without asking", d6.id, presenter.state.die.id)
+    assertEquals(d4, presenter.state.changingTo)
+    assertFalse("the drawing was thrown away before the answer", presenter.state.draft.blank)
+  }
+
+  @Test
+  fun `saying yes starts again on the die that was asked about`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    presenter.drew(line())
+    presenter.base(d4)
+
+    presenter.startOver(confirmed = true)
+
+    assertEquals(d4.id, presenter.state.die.id)
+    assertTrue("the new drawing came with the old one's strokes", presenter.state.draft.blank)
+    assertNull(presenter.state.changingTo)
+  }
+
+  @Test
+  fun `saying no keeps the drawing and the die`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    presenter.drew(line())
+    presenter.base(d4)
+
+    presenter.startOver(confirmed = false)
+
+    assertEquals(d6.id, presenter.state.die.id)
+    assertFalse("the drawing went anyway", presenter.state.draft.blank)
+    assertNull(presenter.state.changingTo)
+  }
+
+  @Test
+  fun `starting over keeps the pen where it was`() {
+    // The pen, its colour and the guide are how somebody is working, not what
+    // they are working on.
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    presenter.use(Nib.Broad)
+    presenter.ink(0xFF00FF00.toInt())
+    presenter.showGuide(false)
+
+    presenter.base(d4)
+
+    assertEquals(Nib.Broad, presenter.state.nib)
+    assertEquals(0xFF00FF00.toInt(), presenter.state.colorArgb)
+    assertFalse("the guide came back on", presenter.state.guideShown)
+  }
+
+  @Test
+  fun `choosing the die already being drawn on does nothing at all`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    presenter.drew(line())
+
+    presenter.base(d6)
+
+    assertNull("it asked about the die already open", presenter.state.changingTo)
+    assertFalse("it threw the drawing away", presenter.state.draft.blank)
+  }
+
+  @Test
+  fun `with one die there is nothing to choose between`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6))
+
+    assertFalse("a chooser was offered for one die", presenter.state.baseChoosable)
   }
 
   private fun line() = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))

@@ -145,6 +145,10 @@ changelog.
   leaving the setting alone, so re-installing restores the choice; the session
   falls back where a roll is recorded, so one deleted while another screen was
   in front cannot strand the throws filed under it.
+- **4.6 Face designer.** Draw on a face with a finger, undo and redo a whole
+  action at a time, and choose which die to draw on — every die of every usable
+  set, with a drawing that has anything on it asked about before it is thrown
+  away.
 - **4.10 Settings, the menu and Notation.** The navigation graph is connected:
   every screen carries the same button and the menu reaches every screen —
   including **Notation**, the last row the prototype's menu had and the app did

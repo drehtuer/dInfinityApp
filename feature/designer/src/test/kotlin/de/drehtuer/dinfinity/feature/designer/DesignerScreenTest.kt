@@ -1,10 +1,16 @@
 package de.drehtuer.dinfinity.feature.designer
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
@@ -14,6 +20,7 @@ import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -209,11 +216,82 @@ class DesignerScreenTest {
     )
   }
 
-  private fun show(die: Die): DesignerPresenter {
-    val presenter = DesignerPresenter(die)
+  @Test
+  fun `with one die to draw on there is no chooser`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.BASES).assertDoesNotExist()
+  }
+
+  @Test
+  fun `tapping another die on a blank drawing simply opens it`() {
+    val presenter = show(d6, choosable = listOf(d6, d4))
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+
+    assertEquals(d4.id, presenter.state.die.id)
+    compose.onNodeWithTag(DesignerTestTags.START_OVER).assertDoesNotExist()
+  }
+
+  @Test
+  fun `tapping another die on a drawing asks before throwing it away`() {
+    val presenter = show(d6, choosable = listOf(d6, d4))
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.START_OVER).assertIsDisplayed()
+    assertEquals("the die changed before the question was answered", d6.id, presenter.state.die.id)
+
+    compose.onNodeWithTag(DesignerTestTags.START_OVER_YES).performClick()
+
+    assertEquals(d4.id, presenter.state.die.id)
+  }
+
+  @Test
+  fun `keeping the drawing closes the question and changes nothing`() {
+    val presenter = show(d6, choosable = listOf(d6, d4))
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+
+    compose.onNodeWithText("Keep drawing").performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.START_OVER).assertDoesNotExist()
+    assertEquals(d6.id, presenter.state.die.id)
+    assertFalse("the drawing went anyway", presenter.state.draft.blank)
+  }
+
+  @Test
+  fun `a recomposition around it that changes nothing leaves it alone`() {
+    // The chooser and the canvas are drawn from one state, so an ordinary
+    // recomposition has to skip them. One that skipped wrongly would come back
+    // without its row of dice, which a single-pass test would never see.
+    var tick by mutableStateOf(0)
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        DesignerScreen(presenter = presenter)
+      }
+    }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.BASES).assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).assertIsDisplayed()
+  }
+
+  private fun show(
+    die: Die,
+    choosable: List<Die> = emptyList(),
+  ): DesignerPresenter {
+    val presenter = DesignerPresenter(die, choosable)
     compose.setContent { DesignerScreen(presenter = presenter) }
     return presenter
   }
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
+  private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
 }
