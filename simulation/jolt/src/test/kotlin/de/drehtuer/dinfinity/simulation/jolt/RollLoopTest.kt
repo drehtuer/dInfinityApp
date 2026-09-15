@@ -51,6 +51,24 @@ class RollLoopTest {
   }
 
   @Test
+  fun `the outcome says where each die stopped, not only what it says`() {
+    // A roll whose formula explodes is not over when its dice stop: the die
+    // that follows is dropped into the floor these left clear and drawn among
+    // them, and neither is something the screen could work out for itself
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    val world = FakeWorld(2) { _, _, _ -> FakeWorld.settled() }
+
+    val outcome = loop(listOf(StandardDice.d6, StandardDice.d20), world).run()
+
+    assertEquals(outcome.faces.keys, outcome.restingAt.keys)
+    outcome.restingAt.values.forEach { place ->
+      assertEquals(FakeWorld.settled().position, place.position)
+      assertEquals(FakeWorld.settled().orientation, place.orientation)
+    }
+  }
+
+  @Test
   fun `nothing touches a die that has come to rest, however wrong it looks`() {
     // Stopped dead and standing on another die: as much trouble as a die can
     // be in, and out of reach for exactly that reason.
@@ -231,6 +249,79 @@ class RollLoopTest {
     assertEquals(SettleRule.REST_STEPS.toLong(), outcome.steps.toLong())
   }
 
+  @Test
+  fun `the record of a throw is what the loop was handed, not what its spec held`() {
+    // A shake-driven throw is spawned the moment the shake is confirmed, so its
+    // spec goes into the world empty and the moments arrive afterwards. What
+    // the roll is reproducible from is this, and nothing above the loop is in a
+    // position to collect it (`docs/physics-and-rendering.md`, "Shake input").
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    val loop = loop(listOf(StandardDice.d6), world)
+    val hand = List(3) { ShakeSample(it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
+
+    hand.forEach(loop::shake)
+    loop.run()
+
+    assertEquals(hand, loop.drivenBy)
+  }
+
+  @Test
+  fun `a tapped throw has nothing to be reproduced from but its seed`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    val loop = loop(listOf(StandardDice.d6), world)
+
+    loop.run()
+
+    assertEquals(emptyList<ShakeSample>(), loop.drivenBy)
+  }
+
+  @Test
+  fun `a hand that never stops cannot push a roll past its own cap`() {
+    // Thirty seconds of shaking against a twelve-second cap. The hand holds a
+    // roll open, but the safety valve is not something it gets a vote on: the
+    // steps would go on being counted and the outcome would be one nothing can
+    // describe.
+    val forever = List(THIRTY_SECONDS_OF_STEPS) { ShakeSample(it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+
+    val outcome = loop(listOf(StandardDice.d6), world, shake = forever).run()
+
+    assertEquals(SettleRule.HARD_CAP_STEPS.toLong(), outcome.steps.toLong())
+    assertEquals("the world was stepped past the cap", SettleRule.HARD_CAP_STEPS, world.steps)
+  }
+
+  @Test
+  fun `the roll reports how deep dice ever got into each other, because only the engine knows`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    world.deepestDiePenetrationMm = 0.31
+
+    assertEquals(0.31, loop(listOf(StandardDice.d6), world).run().deepestDiePenetrationMm, 0.0)
+  }
+
+  @Test
+  fun `a die left standing on another is counted where it ended, not where it passed through`() {
+    // Standing on another die for the first stretch of the throw and clear of
+    // it by the end: an ordinary moment of a roll, and not a stacked die.
+    val world =
+      FakeWorld(2) { step, index, _ ->
+        val stacked = index == 1 && step < TROUBLE_STEPS
+        if (stacked) FakeWorld.settling(supportedByDie = true) else FakeWorld.settled()
+      }
+
+    assertEquals(0, loop(listOf(StandardDice.d6, StandardDice.d6), world).run().stackedAtRest)
+  }
+
+  @Test
+  fun `a die that ends standing on another is counted, whatever the ladder tried`() {
+    // It has had its three re-throws and comes down on another die every time,
+    // which is the failure Step 5.5 asks the harness to count.
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
+    val outcome = loop(listOf(StandardDice.d6), world).run()
+
+    assertEquals(1, outcome.stackedAtRest)
+    assertEquals(RollLoop.MAX_RETHROWS, outcome.rethrows)
+  }
+
   private fun loop(
     dice: List<Die>,
     world: FakeWorld,
@@ -271,6 +362,9 @@ class RollLoopTest {
 
     /** A shake that outlasts the settle rule several times over. */
     const val SHAKE_STEPS = 200
+
+    /** And one that outlasts the roll's own cap several times over. */
+    const val THIRTY_SECONDS_OF_STEPS = 3_600
 
     /** Straight down, as the gyroscope reports it: a direction, not a magnitude. */
     val DOWN = Vector3(0.0, 0.0, -1.0)

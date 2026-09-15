@@ -1,10 +1,15 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.simulation.api.ContactPoint
 import de.drehtuer.dinfinity.simulation.api.CorrectionLadder
+import de.drehtuer.dinfinity.simulation.api.DieDiagnostic
 import de.drehtuer.dinfinity.simulation.api.FaceReader
+import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Reading
 import de.drehtuer.dinfinity.simulation.api.RestTracker
+import de.drehtuer.dinfinity.simulation.api.RestingPlace
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -32,6 +37,16 @@ class RollLoop(
   private val world: PhysicsWorld,
   private val layout: SpawnLayout,
   private val shake: ShakeDriver,
+  /**
+   * What writes down where the dice hit something.
+   *
+   * A reading of the roll and never an input to it: it is handed the states
+   * this loop has already read and is asked for nothing back, so the same seed
+   * comes to the same faces with it listening and with it [ImpactRecorder.deaf]
+   * (`docs/physics-and-rendering.md`, "Impacts").
+   */
+  private val recorder: ImpactRecorder =
+    ImpactRecorder(spec.dice.map { it.die.material.sizeMm * spec.dieScale }),
 ) {
   private val diceCount = spec.dice.size
   private val tracker = RestTracker(diceCount)
@@ -43,6 +58,16 @@ class RollLoop(
   private var corrections = 0
   private var rethrows = 0
   private var postRestCorrections = 0
+
+  /**
+   * How wide each die is at the scale the capacity rule threw it
+   * (`docs/tables.md`).
+   *
+   * The footprint the debug overlay draws, and the same number the impact
+   * recorder is built with — computed once here rather than per snapshot,
+   * because it cannot change during a roll.
+   */
+  private val dieWidthsMm = spec.dice.map { it.die.material.sizeMm * spec.dieScale }
 
   private var states: List<DieState> = if (diceCount == 0) emptyList() else world.readStates()
   private var result: SimulationOutcome? = null
@@ -60,6 +85,26 @@ class RollLoop(
   val stepsTaken: Int get() = tracker.stepsTaken
 
   /**
+   * The shake that threw these dice, as the loop actually received it.
+   *
+   * Accumulated rather than taken from [spec] because for a shake-driven throw
+   * the spec has nothing in it: the dice are spawned the moment the shake is
+   * confirmed and every moment of it arrives afterwards, through [shake]. The
+   * driver is where those moments land, so the driver is where the record of
+   * the throw is ([ShakeDriver.recorded]).
+   */
+  val drivenBy: List<ShakeSample> get() = shake.recorded()
+
+  /**
+   * Everywhere the dice have hit something so far, in step order.
+   *
+   * The counterpart of [drivenBy]: that is what the hand did to the roll, this
+   * is what the roll did back. Like the dice themselves it is read-only, and
+   * whoever reads it can play it and nothing else.
+   */
+  val impacts: List<Impact> get() = recorder.recorded()
+
+  /**
    * Takes one more moment of the shake that is throwing these dice.
    *
    * The only thing that reaches a roll in progress from outside, and it is the
@@ -73,6 +118,72 @@ class RollLoop(
 
   /** What the throw came to, once [advance] has said there is nothing left. */
   fun outcome(): SimulationOutcome = requireNotNull(result) { "the roll has not finished yet" }
+
+  /**
+   * The roll as a developer sees it, right now
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Built when somebody asks rather than kept up to date, so a roll nobody is
+   * watching does none of this work — which is what lets the overlay be a
+   * setting that is off on every install and costs nothing there.
+   *
+   * Every field is read off state the loop already keeps. Nothing is recorded
+   * *for* this, nothing branches on whether it has been called, and it returns
+   * a snapshot rather than a view onto the arrays — so the same seed comes to
+   * the same faces with an overlay on it and with none
+   * ([RollDiagnostics], and `RollDiagnosticsTest` beside this file).
+   */
+  fun diagnostics(): RollDiagnostics =
+    RollDiagnostics(
+      steps = tracker.stepsTaken,
+      dice =
+        states.mapIndexed { index, state ->
+          DieDiagnostic(
+            index = index,
+            position = state.position,
+            acrossMm = dieWidthsMm[index],
+            stillForSteps = tracker.stillSteps(index),
+            atRest = tracker.isAtRest(index),
+            touchingFloor = state.touchingFloor,
+            touchingWall = state.touchingWall,
+            supportedByDie = state.supportedByDie,
+            corrected = biased[index],
+            rethrows = rethrowCount[index],
+          )
+        },
+      corrections = corrections,
+      rethrows = rethrows,
+      forcedSettles = forced.count { it },
+      postRestCorrections = postRestCorrections,
+      contacts = recentContacts,
+    )
+
+  /**
+   * The most recent contacts, marked at the die that made them.
+   *
+   * The solver's contact manifold never crosses the bridge — a point and a
+   * normal per contact per step is a wire format nobody needs for a roll
+   * (decision 52) — so what is drawn is the die's own position at the step it
+   * hit something, which is the mark a person hunting for stacking is looking
+   * for anyway. A die that has moved since is marked where it is now, and that
+   * is honest for the frame it is drawn on.
+   */
+  private val recentContacts: List<ContactPoint>
+    get() =
+      recorder
+        .recorded()
+        .takeLast(RollDiagnostics.MAX_CONTACTS)
+        .mapNotNull { impact ->
+          states.getOrNull(impact.dieIndex)?.let { state ->
+            ContactPoint(
+              stepIndex = impact.stepIndex,
+              dieIndex = impact.dieIndex,
+              position = state.position,
+              struck = impact.struck,
+              strength = impact.strength,
+            )
+          }
+        }
 
   /** Runs the throw to its end and reports what the dice did. */
   fun run(): SimulationOutcome {
@@ -102,13 +213,7 @@ class RollLoop(
    */
   fun advance(): Boolean {
     if (result != null) return false
-    // Dice that look still while the phone is still being shaken are not a
-    // roll that is over — they are a roll caught at the top of a swing. The
-    // hand decides when it has finished throwing, not the dice
-    // (`docs/physics-and-rendering.md`, "Shake input").
-    if (diceCount == 0 || (tracker.finished() && !shake.stillShaking(tracker.stepsTaken))) {
-      return closeOutOrRethrow()
-    }
+    if (diceCount == 0 || nothingLeftToStep()) return closeOutOrRethrow()
 
     val step = tracker.stepsTaken
     shake.advance(step)
@@ -116,10 +221,32 @@ class RollLoop(
     world.step(SettleRule.TIMESTEP_SECONDS)
 
     states = world.readStates()
+    // Listened to before anything is decided, and from the states that were
+    // already read: an impact is a reading of the step just taken, not a thing
+    // the step waits for.
+    recorder.step(step, states, shake.gravity.length)
     tracker.step(states.map(DieState::motion))
     correct(states, step)
     return true
   }
+
+  /**
+   * True when there is no step left to take.
+   *
+   * Two things have to agree and there is a third that overrules both. Dice
+   * that look still while the phone is still being shaken are not a roll that
+   * is over — they are a roll caught at the top of a swing — so the settle rule
+   * is the dice's answer and [ShakeDriver.stillShaking] is the hand's
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * The cap is asked first and on its own, because it is the safety valve
+   * rather than an opinion about the throw. A hand holds a roll open; it does
+   * not get to hold one open past twelve seconds, which is what a shake longer
+   * than the roll would otherwise do — the steps would go on being counted and
+   * the throw would end as an outcome `SimulationOutcome` refuses to describe.
+   */
+  private fun nothingLeftToStep(): Boolean =
+    tracker.capReached() || (tracker.finished() && !shake.stillShaking(tracker.stepsTaken))
 
   /**
    * The end of a settle phase: either the roll is over, or a die has to be
@@ -139,6 +266,12 @@ class RollLoop(
     result =
       SimulationOutcome(
         faces = readFaces(states),
+        // Where they stopped, for the throw an explosion or a reroll adds
+        // next: it is aimed at the floor this one left clear and drawn among
+        // the dice standing on the rest of it, and neither is something the
+        // screen could work out for itself
+        // (`docs/physics-and-rendering.md`).
+        restingAt = states.indices.associateWith { RestingPlace(states[it].position, states[it].orientation) },
         steps = tracker.stepsTaken,
         corrections = corrections,
         rethrows = rethrows,
@@ -147,6 +280,11 @@ class RollLoop(
         // simulation had to finish for, not two.
         forcedSettles = forced.count { it },
         postRestCorrections = postRestCorrections,
+        // Read here and not while the roll was running: a die standing on
+        // another one mid-throw is an ordinary moment of a throw, and only
+        // where it *ended* is a result (`docs/physics-and-rendering.md`).
+        stackedAtRest = states.count(DieState::supportedByDie),
+        deepestDiePenetrationMm = world.deepestDiePenetrationMm,
       )
     return false
   }
@@ -216,6 +354,10 @@ class RollLoop(
       if (!cocked && !state.supportedByDie) return@forEachIndexed
       if (rethrowCount[index] >= MAX_RETHROWS) return@forEachIndexed
       world.respawn(index, layout.rethrowPlacement(index, rethrowCount[index]))
+      // The speed it has the moment after this is the re-throw rather than a
+      // contact, and a sound for the app's own hand is the one noise a player
+      // must never hear.
+      recorder.rethrown(index)
       // The tracker still has it down as settled from a moment ago, and a die
       // in mid-air is not settled.
       tracker.rethrown(index)

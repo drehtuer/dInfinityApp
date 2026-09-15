@@ -3,8 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
+  # Every pull request, not only the ones aimed at main. This repository stacks
+  # them — each branch based on the one before it, so they merge in order
+  # (`.claude/CLAUDE.md`) — and a `branches: [main]` filter here means every
+  # pull request in a stack but the first runs no checks at all: green because
+  # nothing was asked, which is the worst kind of green. The push trigger stays
+  # on main, where it feeds the dependency graph and the caches.
   pull_request:
-    branches: [main]
 
 # A new push to a branch makes the run in flight pointless. main is exempt:
 # its runs feed the dependency graph and the caches.

@@ -1,6 +1,5 @@
 package de.drehtuer.dinfinity.dicesets.install
 
-import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.format.ReferencedFile
 import org.apache.commons.compress.archivers.ArchiveEntry
 import org.apache.commons.compress.archivers.ArchiveInputStream
@@ -49,16 +48,24 @@ import java.io.InputStream
  * **Written into a temporary folder.** Nothing is moved anywhere real until
  * the validator has passed it, and a refusal deletes what it wrote. There is
  * no partially installed state (`docs/dice-sets.md`, rule 2).
+ *
+ * **What it is unpacking is a parameter, and only that.** A saved-roll
+ * collection arrives in an archive too (`docs/dice-notation.md`), under
+ * smaller [ArchiveLimits] and looking for a different [PackageRoot]; every
+ * refusal above is the same refusal for both, which is the point of there
+ * being one extractor. A second one would be a second place for the answer to
+ * "is this path safe" to be given, and two answers to that is one too many.
  */
 class SafeExtractor(
-  private val limits: InstallLimits = InstallLimits,
+  private val limits: ArchiveLimits = ArchiveLimits(),
+  private val wanted: PackageRoot = PackageRoot.DiceSet,
 ) {
   /**
    * Extracts [archive] into a new folder under [into].
    *
    * @param subfolder the folder inside the archive to install from, for a URL
-   *   that pointed at one (`…/tree/main/sets/skulls`), or `null` to find the
-   *   `diceset.toml` wherever it is.
+   *   that pointed at one (`…/tree/main/sets/skulls`), or `null` to leave it
+   *   to [wanted] to find the package wherever it is.
    */
   fun extract(
     archive: File,
@@ -100,37 +107,31 @@ class SafeExtractor(
         entry = if (refusal == null) stream.nextEntry else null
       }
     }
-    val problem = refusal ?: emptyOrRootless(destination, files + skipped, subfolder)
-    if (problem != null) {
-      destination.deleteRecursively()
-      return ExtractionResult.Refused(problem.reason, problem.detail)
+    val found =
+      refusal?.let { PackageRoot.Found.Missing(it.reason, it.detail) }
+        ?: notAnArchive(files + skipped)
+        ?: wanted.of(destination, subfolder)
+    return when (found) {
+      is PackageRoot.Found.Missing -> {
+        destination.deleteRecursively()
+        ExtractionResult.Refused(found.reason, found.detail)
+      }
+      is PackageRoot.Found.Folder ->
+        ExtractionResult.Extracted(root = found.folder, files = files, bytes = bytes, skipped = skipped)
     }
-    val root = requireNotNull(rootOf(destination, subfolder))
-    return ExtractionResult.Extracted(root = root, files = files, bytes = bytes, skipped = skipped)
   }
 
   /**
-   * Whatever is wrong with an archive that was read to the end without a
-   * refusal: it was not an archive at all, or it holds no package.
+   * The refusal for bytes that were never an archive, or null when they were.
+   *
+   * A zip reader handed bytes that are not a zip reports no entries rather
+   * than failing, so "nothing at all in it" is how a file that is not an
+   * archive arrives here.
    */
-  private fun emptyOrRootless(
-    destination: File,
-    entries: Int,
-    subfolder: String?,
-  ): EntryVerdict.Refused? =
-    when {
-      // A zip reader handed bytes that are not a zip reports no entries rather
-      // than failing, so "nothing at all in it" is how a file that is not an
-      // archive arrives here.
-      entries == 0 ->
-        EntryVerdict.Refused(RejectionReason.Unreadable, "this is not an archive the app can read")
-      rootOf(destination, subfolder) == null ->
-        EntryVerdict.Refused(
-          RejectionReason.NoDiceSet,
-          "no ${DiceSetValidator.DICE_SET_FILE} in the archive",
-        )
-      else -> null
-    }
+  private fun notAnArchive(entries: Int): PackageRoot.Found.Missing? =
+    PackageRoot.Found
+      .Missing(RejectionReason.Unreadable, "this is not an archive the app can read")
+      .takeIf { entries == 0 }
 
   private fun write(
     stream: ArchiveInputStream<*>,
@@ -139,7 +140,7 @@ class SafeExtractor(
     bytesSoFar: Long,
     filesSoFar: Int,
   ): EntryVerdict {
-    val reference = ReferencedFile.parse(entry.name, limits.ALLOWED_EXTENSIONS)
+    val reference = ReferencedFile.parse(entry.name, limits.allowedExtensions)
     return when {
       entry.isDirectory -> EntryVerdict.Skipped
       linkRefusal(entry) != null -> requireNotNull(linkRefusal(entry))
@@ -148,8 +149,8 @@ class SafeExtractor(
       !ReferencedFile.staysInsidePackage(entry.name) ->
         EntryVerdict.Refused(RejectionReason.PathEscapesPackage, "'${entry.name}' is not a path inside the package")
       reference == null -> EntryVerdict.Skipped
-      filesSoFar + 1 > limits.MAX_ENTRIES ->
-        EntryVerdict.Refused(RejectionReason.TooManyEntries, "more than ${limits.MAX_ENTRIES} files")
+      filesSoFar + 1 > limits.maxEntries ->
+        EntryVerdict.Refused(RejectionReason.TooManyEntries, "more than ${limits.maxEntries} files")
       else -> copy(stream, reference.path, destination, bytesSoFar)
     }
   }
@@ -186,10 +187,10 @@ class SafeExtractor(
         if (read <= 0) break
         // Checked inside the copy, not after it: the whole point of a bomb is
         // that its size is only apparent once it is too late.
-        if (bytesSoFar + written + read > limits.MAX_EXTRACTED_BYTES) {
+        if (bytesSoFar + written + read > limits.maxExtractedBytes) {
           return EntryVerdict.Refused(
             RejectionReason.TooLarge,
-            "the archive expands to more than ${limits.MAX_EXTRACTED_BYTES shr MIB_SHIFT} MiB",
+            "the archive expands to more than ${limits.maxExtractedBytes shr MIB_SHIFT} MiB",
           )
         }
         out.write(buffer, 0, read)
@@ -197,19 +198,6 @@ class SafeExtractor(
       }
     }
     return EntryVerdict.Written(written)
-  }
-
-  /** The folder holding `diceset.toml`, which a forge tarball wraps one deep. */
-  private fun rootOf(
-    destination: File,
-    subfolder: String?,
-  ): File? {
-    val wanted = subfolder?.trim('/')
-    return destination
-      .walkTopDown()
-      .filter { it.isFile && it.name == DiceSetValidator.DICE_SET_FILE }
-      .mapNotNull { it.parentFile }
-      .firstOrNull { folder -> wanted == null || folder.invariantPath().endsWith(wanted) }
   }
 
   private sealed interface EntryVerdict {
@@ -228,8 +216,6 @@ class SafeExtractor(
   private companion object {
     const val BUFFER_BYTES = 8 * 1024
     const val MIB_SHIFT = 20
-
-    fun File.invariantPath(): String = path.replace(File.separatorChar, '/')
   }
 
   /**

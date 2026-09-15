@@ -103,9 +103,9 @@
   <string name="strip_first">Save a roll</string>
   <string name="strip_new">New</string>
   <string name="strip_broken">dice missing</string>
-  <string name="import_from_link">Or paste a link to one. It is fetched over https and read by exactly the same rules as a file.</string>
+  <string name="import_from_link">Or paste a link — to a collection, or to a git repository with one at its root. It is fetched over https and read by exactly the same rules as a file.</string>
   <string name="import_link_label">https://…</string>
   <string name="import_fetch">Fetch</string>
   <string name="import_fetching">Fetching %1$s…</string>
-  <string name="import_unreachable">Nothing came back from that link.</string>
+  <string name="import_unreachable">No collection came back from that link.</string>
 </resources>

@@ -33,7 +33,11 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
 class ShakeDriver(
   samples: List<ShakeSample>,
 ) {
-  private val byStep: MutableMap<Int, ShakeSample> = samples.associateByTo(mutableMapOf(), ShakeSample::stepIndex)
+  // Filtered on the way in for the same reason [add] filters: a sample naming
+  // a step past the twelve-second cap has no step to drive, so it is neither
+  // kept nor reported as part of what threw these dice.
+  private val byStep: MutableMap<Int, ShakeSample> =
+    samples.filter(ShakeSample::drivesAStep).associateByTo(mutableMapOf(), ShakeSample::stepIndex)
 
   /**
    * Which way down is on the table, which is always straight down.
@@ -71,6 +75,26 @@ class ShakeDriver(
   val isStill: Boolean get() = byStep.isEmpty()
 
   /**
+   * Every moment that drove this roll, in step order — the record of the
+   * throw, as opposed to the `ThrowSpec` it started as.
+   *
+   * This is the only place the whole of a live shake exists. A shake-driven
+   * throw is spawned the instant the shake is confirmed, so its spec goes into
+   * the world with an empty `shake` and the moments arrive afterwards, one at
+   * a time, through [add]. Reading them back off the driver that consumed them
+   * is what lets a finished roll be described as the spec that would replay it
+   * — `spec.copy(shake = recorded())` — rather than as a spec that is missing
+   * the half of itself that decided the answer
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * In step order because a step is the only clock a sample has, and the map
+   * it is held in has none. Deduplicated by step for free, because a step has
+   * one gravity: what comes out is what went in to the world, not what came
+   * off the sensors.
+   */
+  fun recorded(): List<ShakeSample> = byStep.values.sortedBy(ShakeSample::stepIndex)
+
+  /**
    * True while the hand is still throwing these dice.
    *
    * A roll may not be declared over while this holds, however still the dice
@@ -99,8 +123,15 @@ class ShakeDriver(
    *
    * A sample for a step already held replaces it: sensors deliver faster than
    * 120 Hz and a step has one gravity.
+   *
+   * A sample past [ShakeSample.MAX_RECORDED] is dropped rather than kept. The
+   * roll is force-settled at the twelve-second cap, so that sample names a
+   * step that will never be taken; keeping it would let a hand that goes on
+   * shaking grow this map — and the record handed out with the result — for as
+   * long as it liked.
    */
   fun add(sample: ShakeSample) {
+    if (!sample.drivesAStep) return
     byStep[sample.stepIndex] = sample
     lastSampleStep = maxOf(lastSampleStep, sample.stepIndex)
   }

@@ -42,6 +42,41 @@ data class AppSettings(
    */
   val powerSaving: Boolean = false,
   /**
+   * Whether the phone ticks when a die hits something
+   * (`docs/physics-and-rendering.md`, "Haptics and sound").
+   *
+   * On by default. Only real impacts fire one — never a die sliding and never
+   * a die at rest — and the ticks go out under Android's touch-feedback usage,
+   * so a player who has turned haptics off in their phone's own settings gets
+   * none from here whatever this says.
+   */
+  val haptics: Boolean = true,
+  /**
+   * Whether a die hitting something makes a noise
+   * (`docs/physics-and-rendering.md`, "Haptics and sound").
+   *
+   * On by default. The sound is the table's — one of five presets a package
+   * names rather than ships (`docs/tables.md`) — with its pitch following how
+   * hard the impact was and how big the die is.
+   */
+  val sound: Boolean = true,
+  /**
+   * Whether the debugging tools are on
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * **Off, on every install, and nothing about the app changes until it is
+   * on.** It is not a feature and it is not half of one: what it turns on is a
+   * debug overlay over the tray, a log of the anomalies that are supposed to
+   * be impossible, and a way to throw the last roll again from its own spec.
+   *
+   * It is a *separate surface* rather than a flag that unhides fields on the
+   * screens a player uses. The history still has no replay and still never
+   * shows a seed with this on — `HistoryEntry` has no seed to show and the
+   * exports have no column for one, whatever this says
+   * (`docs/architecture.md`, decisions 13 and 56; `docs/statistics.md`).
+   */
+  val developerTools: Boolean = false,
+  /**
    * Whether the player has been past the first-launch screen
    * (`design/dInfinity.dc.html`, option 9a).
    *

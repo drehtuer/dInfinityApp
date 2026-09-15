@@ -108,6 +108,16 @@ class World {
   /// spin, contact flags.
   void ReadStates(float* out) const;
 
+  /// How far one die has ever been inside another, in simulation units, over
+  /// the life of this world.
+  ///
+  /// It comes from the contact manifolds and nowhere else: a solver resolves
+  /// overlaps rather than forbidding them, so the depth exists only for the
+  /// instant the manifold is reported and cannot be recovered from positions
+  /// afterwards. Nothing in a roll reads it; the Step 5 harness does
+  /// (`docs/TODO.md`, Step 5.4).
+  float DeepestDiePenetration() const;
+
   /// Adds `v` to a die's velocity — rung 2 of the ladder. Whether this die may
   /// be touched at all was decided in Kotlin by `CorrectionLadder.mayTouch`.
   void ApplyBias(int index, float x, float y, float z);

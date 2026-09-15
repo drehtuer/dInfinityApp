@@ -129,6 +129,22 @@ fun RollScreen(
       menu()
     }
 
+    // Over the tray, under the welcome, and only behind the developer toggle
+    // (`docs/physics-and-rendering.md`, "Debug tooling"). It draws what the
+    // roll is doing and cannot change it, which is the same promise the
+    // renderer makes (`docs/architecture.md`, decision 38).
+    if (presenter.showsDebug) {
+      DebugOverlay(
+        diagnostics = presenter.diagnostics,
+        geometry = presenter.geometry,
+        modifier =
+          Modifier
+            .align(Alignment.TopStart)
+            .safeDrawingPadding()
+            .padding(8.dp),
+      )
+    }
+
     if (firstLaunch) FirstLaunch(presenter, whatIsThere, onWelcomeSeen, onImportCollection, onAddSets)
   }
 }

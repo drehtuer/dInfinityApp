@@ -1,7 +1,5 @@
-package de.drehtuer.dinfinity.feature.designer
+package de.drehtuer.dinfinity.designer
 
-import de.drehtuer.dinfinity.designer.FaceOutline
-import de.drehtuer.dinfinity.designer.GuideSpot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test

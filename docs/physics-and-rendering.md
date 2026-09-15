@@ -232,6 +232,35 @@ enough.
   a die that has come to rest, and a hand is not an exception. That is not in
   tension with the rule above: the dice only come to rest once the hand has
   stopped, so by then there is nothing left to drop.
+- **The roll keeps the shake that threw it, and hands it back with the
+  result.** A shake-driven throw's `ThrowSpec` goes into the world empty — the
+  dice are spawned the instant the shake is confirmed and the moments arrive
+  afterwards — so the spec a roll *started* as is not the spec that would
+  replay it. The moments are accumulated where they land, in `ShakeDriver`,
+  which is also where they are deduplicated by step and kept in step order; the
+  roll reports them as `drivenBy`, the tray hands them back beside the outcome,
+  and the roll screen writes them into the spec it kept: `spec.copy(shake =
+  drivenBy)`. What comes out is one object that rolls these dice again, rather
+  than a spec and a list of samples that somebody has to join up.
+  - Dropped samples are not in it. The record is what *drove* the roll, so a
+    moment the roll refused — after the dice had stopped, or past the cap below
+    — shaped nothing and would replay a different throw.
+  - It dies with the roll. A throw the player walked away from never reports an
+    outcome, so nothing asks for its record and nothing keeps it.
+  - **It stops at the roll screen.** A past roll is a record, not something to
+    re-run: `HistoryEntry` has no seed on it to show and the exports have no
+    column for one, so neither has anywhere to put a shake
+    (`docs/architecture.md`, decision 13, and `docs/statistics.md`). The record
+    is for a bug report about a roll that is still in front of you.
+- **The record is capped at 1,440 samples**, which is the twelve-second cap at
+  the simulation's own 120 Hz — every step a roll can possibly take, and a step
+  holds one sample. It is not a number picked to feel safe: a moment naming a
+  later step has no step to drive and never will, so keeping it would grow the
+  record of a thirty-second shake without adding anything a replay could use.
+  Both `ShakeRecorder` and `ShakeDriver` stop there.
+- **The cap is also the hand's limit on the roll.** A shake holds a roll open,
+  but not past twelve seconds: the safety valve is not something the hand gets
+  a vote on, and steps counted past it would be a roll nothing can describe.
 - A shake session starts when acceleration magnitude stays above 3,500 mm/s²
   (about 0.35 g) for more than 80 ms, and ends after 400 ms below 1,500 mm/s².
   Two thresholds rather than one, with a gap between them: a single threshold
@@ -288,9 +317,11 @@ enough.
   record indexed by step feeds the same steps in normal mode, where it is
   consumed as it arrives, and in power-saving mode, where the session is
   replayed as a batch afterwards.
-- Optional feedback: haptic ticks on wall/die impacts above an impulse
-  threshold (rate-limited), and impact sounds with pitch/volume scaled by
-  impulse and die size. Both default on, both individually switchable.
+- A shake raises the bar an impact has to clear before it is felt or heard,
+  and deliberately: the allowance a change in speed is forgiven is measured
+  against the gravity of the step, and under a hand that is throwing four
+  gravities at the dice only real slams get through ("Impacts, haptics and
+  sound").
 
 ## Settling and reading the result
 
@@ -589,7 +620,8 @@ see.
 
 4. **Never.** No impulse on a resting die. No tray tilt to slide a settled
    pile. No snapping a die to its nearest face — that fabricates a result
-   nobody rolled.
+   nobody rolled. And no die dropped onto a settled pile to make room for an
+   explosion: a chain that has nowhere to land stops (see below).
 
 The 12-second hard cap above is a safety valve for a simulation that has gone
 wrong, not part of this ladder. When it fires, every die still moving is
@@ -606,6 +638,212 @@ identically — including the re-throws, which simply do not get drawn.
 Targets, verified on a device (`docs/TODO.md`, Step 5): zero dice at rest
 supported by another die, fewer than 0.5 % of dice needing any correction at
 all, and **zero** corrections applied after rest.
+
+Every one of those is a number the outcome carries rather than a claim somebody
+checks by eye. A `SimulationOutcome` reports its corrections, its re-throws,
+its forced settles, the corrections that reached a die at rest — which is
+always zero — the dice that ended up **standing on another die**, and the
+**deepest one die ever got inside another**. The last two are there for this
+paragraph: the first is the stacking failure counted rather than described, and
+the second can only be read from the solver's own contact manifolds at the
+instant they are reported, so nothing upstream could work it out afterwards.
+The stacked count is taken where the dice *ended* and not while they were
+moving: a die on top of another mid-throw is an ordinary moment of a roll.
+
+`tools/harness.sh` is what asks the question at scale — N rolls headless on a
+phone or the emulator, a JSON document of what they did, and a pass/fail table
+against every target above (`docs/build-setup.md`, "The physics harness"). It
+fails on the two that are not met yet, which is the plan being behind the check
+rather than the check being wrong.
+
+## The dice an explosion or a reroll adds
+
+`8d6!` does not know how many dice it is until the first eight have landed, and
+`4d6r1` does not know whether it is four dice or five. So a roll is not always
+one throw: every die an explosion or a reroll adds is a throw of its own, made
+once the last one has come to rest, into the same tray and in front of the
+player.
+
+It is a real simulation of one die. There is no branch anywhere that picks a
+number for the second die of an exploding six (`docs/architecture.md`, goal 1),
+and the throw is seeded from the roll's own seed through `Seeds.derived`, so a
+formula with explosions in it replays like any other.
+
+- **The dice already down are not in the added die's world.** Their faces are
+  read and they are finished; the world the added die is thrown in holds exactly
+  one body. That is how the rule above is kept here — not by tuning a spawn
+  until it usually misses the pile, but because there is nothing in that world
+  for a die to hit. A settled die cannot be shoved by an explosion for the same
+  reason it cannot be shoved by a nudge.
+- **It is dropped into the floor they leave clear.** The physics cannot put the
+  new die through a settled one, but the *picture* can, and a die drawn sliding
+  through a die that is lying there is a picture claiming the physics did
+  something it did not. `ClearSpace` picks the point of the tray furthest from
+  every die already down, and among the points that are as clear as each other,
+  the one nearest the middle — the clearest spot in a tray with one die in it is
+  a corner, and a corner is the worst place to tumble. It is a fixed grid of
+  points rather than a search, so the same tray always gives the same answer and
+  a roll replays to itself.
+- **And it is dropped, not thrown.** The same low, gentle, spinning drop rung 3
+  gives a re-thrown die, for the same reason: a die hurled across the tray is a
+  die that arrives somewhere nobody made room for.
+- **The tray is drawn with them still in it.** The added throw carries the
+  settled dice as `ThrowSpec.among`; the renderer puts one renderable per die
+  back exactly where the simulation left it and never moves it again. What the
+  player sees is the six they rolled, and then a die landing beside it.
+- **A chain stops when the tray runs out of floor.** There are two ends to a
+  chain of explosions: the depth limit (`docs/dice-notation.md`), and this one —
+  no clear floor left for another die, or a hundred dice in the tray, which is
+  the engine's cap (`docs/tables.md`). The die that would have exploded is
+  marked in the breakdown either way. A reroll with nowhere to land does not
+  happen either, and the die stands as it fell.
+
+In power-saving mode the added throws happen exactly as they do here, with
+nobody watching: the same loop over the same world, the same seeds, the same
+faces. The only difference is that the dice `among` are not drawn, because
+nothing is.
+
+## Impacts, haptics and sound
+
+A roll that lands in silence is a number appearing. What makes it read as dice
+is the two things a table gives back — the knock in the hand and the clatter —
+and both of them come from the same place: a list of **impacts** the roll
+reports as it goes.
+
+### What an impact is, and where it is decided
+
+`Impact` is one moment where a die hit something: which step, which die, what it
+struck, how hard, and how big the die was at the scale the capacity rule threw
+it. It is a *reading* of the roll and never an input to it. Nothing about an
+impact reaches the solver, the correction ladder does not consult it, and the
+same seed comes to the same faces with something listening and with nothing —
+which `ImpactRecorderTest` asserts rather than assumes, on a roll driven through
+the whole ladder.
+
+It is decided in Kotlin over the `PhysicsWorld` seam, like everything else about
+a roll that only looks like physics (`docs/architecture.md`, decision 40).
+Nothing was added to the JNI wire format for it: a velocity *vector* per die per
+step would be three more floats across the boundary a hundred and forty thousand
+times a roll, to say something the scalar speed already says.
+
+**The rule is subtraction.** Between one step and the next, gravity alone can
+change a free die's speed by `|g| × 1/120 s` and no more, and friction on a
+sliding die takes away less than that again. So the part of a change that
+gravity does *not* explain is the part something else did — and that is an
+impact. Two consequences fall straight out of it, and they are exactly what
+Step 5.6 asks for:
+
+- **a die sliding reports nothing**, because friction cannot take more out of it
+  in a step than the allowance covers; and
+- **a die at rest reports nothing**, because its speed does not change at all.
+
+The allowance is *twice* the step's gravity rather than once, because a shake
+can reverse which way the force points between one step and the next, and a die
+falling through that reversal changes speed by twice the allowance without
+touching anything. Under ordinary gravity that is 163 mm/s, which no landing
+comes near; under a four-gravity shake it rises to about 830 mm/s and only real
+slams are reported, which during a shake that hard is the right answer anyway.
+
+What a die struck is read off the contacts the bridge already reports: a wall,
+the floor, or — when it is touching nothing the tray owns and has just lost
+speed — another die.
+
+Three bounds keep it cheap and keep it honest. A die is left alone for six steps
+after an impact, so one landing is one event rather than the burst of contact
+steps it actually is. The record stops at 4,096 impacts, an order of magnitude
+above the worst case measured, so a physics bug cannot turn it into a leak. And
+when **neither** haptics nor sound is on, the roll records nothing at all rather
+than recording and then muting: that is the one thing those two settings save.
+
+### One list, two clocks
+
+The same list of impacts is played in both modes, and the only difference is the
+clock laid over it.
+
+- **On a watched tray** the frame callback is the clock. Each frame hands over
+  the impacts the steps it just took produced, with no time to spread them
+  across, because they have already happened.
+- **In power-saving mode there are no frames.** The throw finishes in under a
+  tenth of a second of wall time, so the whole list is handed over once the dice
+  have stopped and played across about a second — which is what the design has
+  always said this mode does.
+
+Both go through `ImpactTrack.cues`, which is one function with one parameter for
+the spread, so there is no second player to keep in step with the first. That is
+the same argument `LiveRoll` makes about the two modes one level down
+(`docs/architecture.md`, decision 48).
+
+It also thins. A hundred dice landing together are a hundred impacts inside a
+few steps, and a phone can neither tick nor speak a hundred times in that
+window — it would be one long buzz and one smeared noise. At most one cue
+survives per 45 ms, and the one that survives is the hardest of them: the sound
+of a roll is its loudest moments, not its average. A second of playback is
+therefore at most twenty-two cues however many dice were thrown.
+
+### Haptics
+
+A tick, never a buzz: 8 ms at the faintest impact worth feeling and 22 ms at the
+hardest, with the amplitude following the same curve. A die landing is an event
+rather than a state.
+
+- `VibratorManager` and `VibrationEffect`, through `SystemBuzzer`, which is the
+  only file in the app that names a vibration API.
+- **The system's own haptic setting governs them and the app does not check
+  it.** Effects go out under `VibrationAttributes.USAGE_TOUCH`, which is the
+  usage Android's touch-feedback switch applies to — so a player who has turned
+  haptic feedback off in their phone gets none from here without this app having
+  an opinion about it.
+- **It degrades rather than failing.** No vibrator at all and every tick is a
+  no-op; no amplitude control and the system's own `EFFECT_TICK` is used instead
+  of a one-shot the phone would round to "on" anyway.
+- `android.permission.VIBRATE` is declared by `feedback`'s own manifest rather
+  than the application's, because that is the module that calls the API. It is a
+  normal permission, granted at install, with nothing to ask the player at
+  runtime.
+
+### Sound
+
+A table names one of five presets — `felt`, `wood`, `glass`, `stone`,
+`plastic` — rather than shipping audio, because an audio file is large and every
+decoder is an attack surface (`docs/tables.md`). The app therefore has to have
+the five, and there are two ways to have them: ship them as assets and decode
+them, or generate them.
+
+**They are generated**, in plain Kotlin, and written straight into a static
+`AudioTrack` buffer as sixteen-bit mono PCM. So **no decoder takes part at
+all** — not on a stranger's file and not on ours. That is the format's own
+argument carried one step further than it had to be, and it is also what makes
+the five testable: a decoded asset would be a file to trust, and this is
+arithmetic with an answer.
+
+A die hitting a table is a short burst that dies away: some ringing at a pitch
+the surface decides, and some noise in a mix the surface also decides. Four
+numbers per preset say the whole of it — a base frequency, a decay time, a noise
+share and a second partial that is deliberately not a whole multiple, because a
+struck plate or block is not a tone generator. Felt is almost all noise and gone
+in a fiftieth of a second; glass is almost all ring and hangs on ten times as
+long. The noise comes from a `Seeds`-stirred stream keyed by the preset and the
+ringing from `Exact`, so a table sounds the same on every launch and on every
+phone.
+
+**Pitch tracks impulse and die size** (`docs/TODO.md`, Step 5.6), and both
+halves are physical rather than decorative. A small solid rings higher than a
+big one of the same stuff in inverse proportion to its size, so a die shrunk by
+the capacity rule comes up brighter and a 25 mm d20 comes down — which is what a
+handful of real dice sounds like. A harder knock excites more of the high
+partials of whatever it hits, so strength lifts the pitch a little as well as
+the volume. The whole range is clamped to an octave either way, which is as far
+as a short impact sound stays recognisable.
+
+**Dice hitting each other sound like dice**, whatever the table is made of, so
+they take the plastic preset — which is what a set of acrylic dice is. The table
+decides everything else, which is what a `sound` preset means.
+
+`PcmSpeaker` keeps a pool of three voices per sound in play — the table's, and
+the plastic that dice use on each other — and plays round-robin, cutting the
+oldest tail short to make room, which is what a real pile of dice does to
+itself. An audio device that will not give it a track is a phone that plays no
+impact sounds rather than a crash in the middle of a roll.
 
 ## Rendering (normal mode)
 
@@ -737,12 +975,37 @@ all, and **zero** corrections applied after rest.
   collides, grouped onto the same face directions the reader reads, so face *i*
   of the picture is face *i* of the roll by construction
   (`docs/architecture.md`, decision 45). Face textures are applied via a
-  per-face UV atlas (see `docs/dice-sets.md`); dice without textures render
-  numbers with a built-in SDF font on a plain PBR material with the set's
-  colour — and a d4 draws three of them per triangle, one at each corner,
-  because its values belong to corners rather than to faces
-  (`docs/dice-sets.md`, "The d4"). A coin's rim belongs to neither face and
-  carries no cell: it is drawn in the die's own colour.
+  per-face UV atlas (see `docs/dice-sets.md`); a coin's rim belongs to neither
+  face and carries no cell: it is drawn in the die's own colour.
+- **A die with no artwork prints its labels**, in the set's `number_color` on
+  the set's body colour, laid out in that same per-face atlas grid — so a
+  printed die and a painted one are the same surface with the same coordinates
+  and the renderer samples them the same way. A d4 draws three numbers per
+  triangle, one at each corner, because its values belong to corners rather
+  than to faces (`docs/dice-sets.md`, "The d4").
+- **How big a number is, is solved rather than chosen.** A cell is the circle
+  drawn round a face, and how much of one a face fills depends on what polygon
+  it is: a dodecahedron's pentagon nearly all of it, a d20's triangle half, a
+  d18's kite a quarter — and a d18's kite is long enough that the middle of the
+  cell is not inside the face at all. So the label is the largest box of its
+  own proportions that fits inside *this* face, times one fraction that is the
+  same for every die. One straight-line condition per edge, three unknowns —
+  how big and where — and the answer is where three of them meet, the same
+  shape of arithmetic as the camera's standing distance. Ties, which are what a
+  narrow `1` on a square face produces, are averaged, so it comes out in the
+  middle rather than against an edge.
+- **The numbers are a distance field, not a picture of a number.** A rasterised
+  digit is a digit at one size and a die is looked at from wherever the player
+  pinches to, so what is uploaded is the *shape*: one byte per pixel saying how
+  far that pixel is from the edge of the ink and which side of it it is on. The
+  shader recovers a crisp edge from it at whatever size the die is drawn
+  (`core/glyphs`). It is built once per die rather than once per body, because
+  `20d20` is twenty of the same die.
+- The font is **real Archivo outlines**, converted by `tools/generate-font.py`
+  — the same source and the same licence note as the mark
+  (`docs/assets/README.md`). Live text would render in whatever font the device
+  happens to have, and a traced approximation would be somebody's guess at a
+  typeface.
 - Transforms are interpolated between the last two simulation states based on
   render time, so 120 Hz physics looks smooth at any display refresh rate. A
   renderer is handed both states and how far between them the moment falls,
@@ -779,8 +1042,12 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
   breakdown as plain text/graphics.
 - Shake input still works: the shake session is recorded, then fed to the
   simulation as a batch.
-- Haptics and sounds can stay on; they are then triggered from recorded
-  impact events played back over ~1 s rather than in real time.
+- Haptics and sound stay on, and are the one thing this mode has to do
+  differently: there are no frames to pace them, so the impacts the dice
+  actually made are handed over once the throw has landed and played across
+  about a second rather than in real time. It is the same list and the same
+  player as a watched tray uses, with a different clock over it ("Impacts,
+  haptics and sound").
 - Power-saving is a setting the user turns on or off. It is never switched
   automatically — not on a low battery, not by the system's battery saver.
   A roll that silently stops being rendered because the battery dipped is a
@@ -788,10 +1055,102 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
 
 ## Debug tooling
 
-- Overlay toggle showing collision shapes, contact points, rest timers,
-  correction and re-throw counts.
-- "Replay last roll" and "replay from seed" actions. These live behind the
-  developer toggle only: the app's history has no replay and never shows a
-  seed (`docs/statistics.md`).
-- Anomaly log (forced settles, post-rest corrections — which should never
-  occur) exported with statistics.
+Behind one setting — **Developer tools**, in Settings, **off on every
+install**. With it off nothing about the app is different: no snapshot is
+built, no menu row is drawn, and no seed exists anywhere a screen could show
+one. With it on there are three things, and they are a *separate surface*
+rather than fields unhidden on screens a player uses. The history still has no
+replay and still never shows a seed (`docs/architecture.md`, decisions 13
+and 56; `docs/statistics.md`).
+
+There is no screen for it in the prototype and there is not meant to be:
+`design/dInfinity.dc.html` is what a player sees, and this is a tool for
+whoever is debugging the physics.
+
+### The overlay
+
+A panel over the tray, drawn while the roll screen is open. It shows, per
+frame:
+
+- the step the roll is on, and how many dice have come to rest;
+- how many dice have been nudged (rung 2), how many thrown again (rung 3), and
+  how many contacts have been recorded;
+- a **plan of the tray** with one footprint per die — its collision size at the
+  scale the capacity rule threw it — filled in proportion to that die's **rest
+  timer**, coloured differently for a die standing on another, and dotted where
+  the dice have hit something recently;
+- and, only if one has happened, a line in the error colour naming the forced
+  settles and post-rest corrections. Either number above zero is a **bug**, and
+  the line says so.
+
+Two things about it are decisions rather than details.
+
+**It is a view and cannot change the roll.** The snapshot is a `RollDiagnostics`
+built from state the loop already keeps, handed over through a `DebugWatch`
+that returns nothing — the same promise `Renderer` makes and for the same
+reason (`docs/architecture.md`, decision 38). `RollDiagnosticsTest` in
+`simulation/jolt` runs one seed twice, taking a snapshot on every single step
+of one run and none of the other, and asserts not only the same faces but the
+same biases on the same steps. The snapshot is also built **on demand**:
+`DebugWatch.watching` is asked before one is made, so a tray with the toggle
+off walks no dice per frame.
+
+**It is a plan, not a wireframe over the dice.** The picture is drawn by
+Filament in perspective from a tilted camera; the overlay is Compose, from
+straight above. Registering a wireframe to the picture would mean reproducing
+the projection, the pinch and the pan on the far side of `Stage` — new code
+behind the line no JVM test can reach, in order to draw outlines over pictures
+that already show where the dice are. A plan says what the pictures cannot:
+which die is standing on another, which is against a wall, and which has not
+stopped yet. So nothing was added to `Stage`, and `TrayPlan` — the arithmetic
+that turns a position in millimetres into a place on the plan — is plain Kotlin
+with a JVM test (decision 56).
+
+The overlay is read when the roll screen opens and not watched, like power
+saving, the shake, the haptics and the sound, and for the same reason: an
+overlay appearing over a roll in progress is not a setting taking effect
+(decision 16). There is no overlay in power-saving mode, because there is no
+tray to draw it over.
+
+### Replay
+
+On the **Developer** screen in the menu, which is listed only while the toggle
+is on. Both actions replay the **last throw made this run**, and the only
+difference between them is whose seed it carries:
+
+- **Replay the last roll** runs its own `ThrowSpec` again — the dice, the
+  table, the scale, the seed *and* the shake that drove it — and says whether
+  it came to the same faces. It should, and a screen saying it did not is a
+  release blocker (`docs/architecture.md`, goal 4).
+- **Replay those dice from that seed** runs the same throw under a seed typed
+  into the box. It is not "the roll that seed produced somewhere else": a seed
+  on its own describes no throw, and the screen says so.
+
+What is replayed is `FinishedThrow.thrown` — the spec the roll actually ran,
+with the shake written back into it — rather than a spec rebuilt from the plan
+afterwards. A replay is run headlessly through the same `DiceSimulator` a
+power-saving roll takes; there is no second path to a number here either. It
+is not written to the history, the statistics or anywhere else.
+
+### The anomaly log
+
+Forced settles and post-rest corrections, with the seed and the counters of
+the throw that produced them. Both are supposed to be impossible, so the log is
+**evidence rather than a statistic**: there is no rate on it, no average and no
+chart, and the empty state reads *"No anomalies. This is what a working build
+looks like."* A line in it is a bug to report, and the screen says that too.
+
+It is kept **in memory**, bounded to the most recent fifty, and goes when the
+app does. It is not in the database, because it carries seeds and a stored seed
+is a replay waiting to be written into a screen a player can reach — which is
+what decision 13 exists to prevent. It is filled whatever the toggle says, so
+an anomaly from the throw *before* somebody went looking is still there; it is
+only ever read from the developer screen.
+
+It is shared as **plain text from that screen only**, and deliberately not with
+the statistics export: that file is built from `HistoryEntry`, which has no
+seed on it and cannot grow one, and a single share path that could carry either
+would be the place the two got mixed up (`docs/statistics.md`).
+
+- The Step 5 harness, which is the same numbers gathered over thousands of
+  rolls rather than shown for one: `tools/harness.sh`

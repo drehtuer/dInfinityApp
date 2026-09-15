@@ -2,14 +2,20 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableSound
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.DebugWatch
+import de.drehtuer.dinfinity.simulation.api.Impact
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.Struck
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -179,7 +185,7 @@ class TrayLoopTest {
     val loop = TrayLoop()
     val reported = mutableListOf<SimulationOutcome>()
     loop.stage(FakeStage())
-    loop.roll(FakeRoll(steps = 2).start(), reported::add)
+    loop.roll(FakeRoll(steps = 2).start()) { outcome, _ -> reported += outcome }
 
     loop.frame(SOME_LATE_UPTIME)
     assertTrue("a roll still in the air reported a result", reported.isEmpty())
@@ -190,13 +196,34 @@ class TrayLoopTest {
   }
 
   @Test
+  fun `the shake that drove the roll comes back with what the dice came to`() {
+    // Read off the roll before it is closed, which is the only moment it can
+    // be: a roll is given up the instant it is read, and the record of a throw
+    // belongs to the roll that collected it
+    // (`docs/physics-and-rendering.md`, "Shake input").
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 2)
+    val hand = List(2) { ShakeSample(it, Vector3(5_000.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0)) }
+    var drove: List<ShakeSample>? = null
+    loop.stage(FakeStage())
+    loop.roll(roll.start()) { _, shake -> drove = shake }
+
+    hand.forEach(loop::shake)
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(hand, drove)
+    assertTrue("the roll was read but never given up", roll.closed)
+  }
+
+  @Test
   fun `a roll abandoned before it landed reports nothing`() {
     // The player left the screen. Nothing landed, so there is nothing to
     // score — and a half-finished roll must never become a total.
     val loop = TrayLoop()
     val reported = mutableListOf<SimulationOutcome>()
     loop.stage(FakeStage())
-    loop.roll(FakeRoll(steps = 100).start(), reported::add)
+    loop.roll(FakeRoll(steps = 100).start()) { outcome, _ -> reported += outcome }
     loop.frame(SOME_LATE_UPTIME)
 
     loop.clear()
@@ -243,7 +270,7 @@ class TrayLoopTest {
     val roll = FakeRoll(steps = 4)
     val reported = mutableListOf<SimulationOutcome>()
     loop.stage(FakeStage())
-    loop.roll(roll.start(), reported::add)
+    loop.roll(roll.start()) { outcome, _ -> reported += outcome }
 
     loop.surfaceLost()
     var frames = 0
@@ -346,12 +373,173 @@ class TrayLoopTest {
     assertTrue("an engine was left open", stage.closed)
   }
 
+  @Test
+  fun `each frame's impacts are handed on as they happen`() {
+    val heard = FakeImpacts()
+    val loop = TrayLoop(heard)
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    roll.hits += impact(step = 1)
+    loop.frame(SOME_LATE_UPTIME)
+    roll.hits += impact(step = 2, die = 1)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(listOf(1, 1), heard.played.map { it.first.size })
+    assertTrue("a watched tray spread its impacts over time", heard.played.all { it.second == 0.0 })
+  }
+
+  @Test
+  fun `an impact is played once rather than once per frame after it`() {
+    val heard = FakeImpacts()
+    val loop = TrayLoop(heard)
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    roll.hits += impact(step = 1)
+    repeat(THREE_FRAMES) { frame -> loop.frame(SOME_LATE_UPTIME + frame * SIXTIETH_OF_A_SECOND_NANOS) }
+
+    assertEquals(1, heard.played.size)
+  }
+
+  @Test
+  fun `a second throw starts its impacts again from the beginning`() {
+    val heard = FakeImpacts()
+    val loop = TrayLoop(heard)
+    val first = FakeRoll(steps = 2)
+    loop.stage(FakeStage())
+    loop.roll(first.start())
+    first.hits += impact(step = 1)
+    loop.frame(SOME_LATE_UPTIME)
+
+    val second = FakeRoll(steps = 2)
+    loop.roll(second.start())
+    second.hits += impact(step = 1)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(listOf(1, 1), heard.played.map { it.first.size })
+  }
+
+  @Test
+  fun `a roll with nothing to play plays nothing`() {
+    val heard = FakeImpacts()
+    val loop = TrayLoop(heard)
+    val roll = FakeRoll(steps = 3)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    repeat(THREE_FRAMES) { frame -> loop.frame(SOME_LATE_UPTIME + frame * SIXTIETH_OF_A_SECOND_NANOS) }
+
+    assertTrue(heard.played.isEmpty())
+  }
+
+  @Test
+  fun `the table says which sounds these impacts will be`() {
+    val heard = FakeImpacts()
+
+    TrayLoop(heard).table(geometry, look.copy(sound = TableSound.Glass))
+
+    assertEquals(listOf(TableSound.Glass), heard.tables)
+  }
+
+  private fun impact(
+    step: Int,
+    die: Int = 0,
+  ): Impact =
+    Impact(
+      stepIndex = step,
+      dieIndex = die,
+      struck = Struck.Floor,
+      speedChangeMmPerSecond = 600.0,
+      dieSizeMm = 16.0,
+    )
+
+  /** Something that plays impacts and only remembers being asked to. */
+  private class FakeImpacts : Impacts {
+    val tables = mutableListOf<TableSound>()
+    val played = mutableListOf<Pair<List<Impact>, Double>>()
+
+    override fun on(sound: TableSound) {
+      tables += sound
+    }
+
+    override fun play(
+      impacts: List<Impact>,
+      overSeconds: Double,
+    ) {
+      played += impacts to overSeconds
+    }
+  }
+
   /**
    * A roll that finishes after a fixed number of frames and remembers what it
    * was handed. No physics: what this class decides is *when* a roll is
    * advanced and by how much, which is the same question whatever is
    * underneath.
    */
+  @Test
+  fun `a tray nobody is debugging never asks the roll for a snapshot`() {
+    // The whole reason the developer toggle costs nothing when it is off:
+    // `DebugWatch.NONE` says it is not watching, and the loop asks that before
+    // it asks the roll for anything.
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(0, roll.snapshotsAsked)
+  }
+
+  @Test
+  fun `a tray being debugged is shown the roll on every frame`() {
+    val seen = mutableListOf<RollDiagnostics>()
+    val loop = TrayLoop(debug = DebugWatch { seen += it })
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(2, seen.size)
+    assertEquals(listOf(1, 2), seen.map(RollDiagnostics::steps))
+  }
+
+  @Test
+  fun `the last frame of a roll is watched too, so the numbers it stopped on stay`() {
+    // The overlay is read after the dice have landed as much as during: what a
+    // roll came to is exactly what somebody debugging wants to look at.
+    val seen = mutableListOf<RollDiagnostics>()
+    val loop = TrayLoop(debug = DebugWatch { seen += it })
+    val roll = FakeRoll(steps = 1)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    loop.frame(SOME_LATE_UPTIME)
+
+    assertFalse("the roll should have finished on its only step", roll.running)
+    assertEquals(1, seen.size)
+  }
+
+  @Test
+  fun `a tray with nothing on it asks for no snapshot at all`() {
+    // No roll, nothing to describe. A watcher that was handed an empty
+    // snapshot every idle frame would be a watcher recomposing for nothing.
+    val seen = mutableListOf<RollDiagnostics>()
+    val loop = TrayLoop(debug = DebugWatch { seen += it })
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+
+    loop.frame(SOME_LATE_UPTIME)
+
+    assertTrue(seen.isEmpty())
+  }
+
   private inner class FakeRoll(
     private val steps: Int,
   ) : WatchedRoll {
@@ -366,6 +554,29 @@ class TrayLoopTest {
 
     override val outcome: SimulationOutcome?
       get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
+
+    override val drivenBy: List<ShakeSample> get() = shaken.toList()
+
+    /** Impacts a test pushes in, as a real roll would accumulate them. */
+    val hits = mutableListOf<Impact>()
+
+    override val impacts: List<Impact> get() = hits
+
+    /**
+     * How often a snapshot was asked for.
+     *
+     * Counted rather than returned blindly, because the promise the loop makes
+     * is that a tray nobody is debugging never asks — building one means
+     * walking every die (`docs/physics-and-rendering.md`, "Debug tooling").
+     */
+    var snapshotsAsked = 0
+      private set
+
+    override val diagnostics: RollDiagnostics
+      get() {
+        snapshotsAsked++
+        return RollDiagnostics(steps = advanced.size)
+      }
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds
@@ -425,6 +636,7 @@ class TrayLoopTest {
     const val SOME_LATE_UPTIME = 86_400_000_000_000L
     const val SIXTIETH_OF_A_SECOND_NANOS = 16_666_667L
     const val SPARE_FRAMES = 3
+    const val THREE_FRAMES = 3
 
     /** Enough frames for a short roll, and a bound so a stranded one fails rather than hangs. */
     const val PATIENCE_FRAMES = 50

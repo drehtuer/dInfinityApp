@@ -10,6 +10,12 @@ dependencies {
   api(project(":dicesets:format"))
   api(project(":dicesets:install"))
 
+  // "My dice" is a package like any other, and the thing that builds it from
+  // the drawings on the phone lives in `designer/` (`docs/face-designer.md`).
+  // The details screen offers the export and gates it on a licence (design
+  // `8c`); what it is gating is this.
+  api(project(":designer"))
+
   // The die outlines the details screen draws, shared with the roll screen's
   // picker so a d20 is the same shape in both.
   // What a formula resolves against: the library rebuilds the catalogue every

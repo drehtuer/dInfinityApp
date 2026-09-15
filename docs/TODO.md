@@ -14,7 +14,7 @@ on CI (see `.claude/CLAUDE.md`).
 Everything a machine can check, on every PR. Emulator and device suites are
 Step 5 and stay off CI.
 
-- [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready
+- [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready. **Checked against bundle 2.27.0 (2026-09-09): still not there.** The extractor ships one shim per Kotlin release and its newest is `v_2_4_0`, so the bound the error names is unchanged. The cheapest way to check again is to list `java/kotlin-extractor/src/main/kotlin/utils/versions` at the bundle's tag and look for a `v_2_4_20`
 - [ ] *Optional:* add a `DEPENDABOT_METADATA_TOKEN` Dependabot secret so the metadata commit starts the checks by itself. Without it the automation still works, and the pull request shows an *Approve workflows to run* banner to press (`docs/build-setup.md`)
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 
@@ -29,9 +29,9 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentDiceRenderer`; until something fills it, dice are drawn in their own colours. Belongs with 4.4, and brings the two texture checks below with it
-- [ ] Numbers for dice with no texture, drawn with the built-in SDF font (`docs/physics-and-rendering.md`). A d4 needs three per triangle, one at each corner, because its values belong to corners — the same rule the face designer follows (`docs/dice-sets.md`, "The d4")
-- [ ] *Device:* that a roll driven by a recorded shake replays to itself on hardware (`input/shake`). The thresholds half of this is answered: shaking rolls and ordinary handling does not, confirmed on the Pixel 10a. What is not yet shown is the replay, and it cannot be until a throw's record carries its shake (4.1)
+- [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentStage`, reached through `FilamentEngine.stage`; until something fills it, a die that has artwork is drawn in its own colour with its labels printed on it, which is what a die with *no* artwork is supposed to look like. Belongs with 4.4, and brings the two texture checks below with it
+- [ ] **A partly-transparent atlas should show the printed label through its empty cells**, which is what `docs/dice-sets.md` ("Textures") promises and what nothing does yet. The printed numbers are built for a die with no `texture` at all; making the two mix per face needs the artwork path in the material to be alpha-aware rather than a plain multiply, and it needs an atlas to have arrived — so it belongs with the item above rather than before it
+- [ ] *Device:* that a roll driven by a recorded shake replays to itself on hardware (`input/shake`). The thresholds half of this is answered: shaking rolls and ordinary handling does not, confirmed on the Pixel 10a. **The replay is now possible** — a finished throw carries the spec that reproduces it (`FinishedThrow.thrown`), so what is left is to shake the phone, take that spec and run it again on the device and assert the same faces
 - [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
 
 **Done when** a formula can be parsed, planned, simulated headless and scored
@@ -89,15 +89,11 @@ What is below is what it does not have yet.
 - [ ] *Confirm on the phone:* a roll stranded by losing its surface is fixed (a roll now asks for frames with nowhere to draw), but whether that was what left `100d4` on "Rolling…" for ever is unproven — the physics settles that throw headlessly on eight seeds, so the hang was never in the engine
 - [ ] **The surface outlives the screen going off.** After a lock and unlock the old rendering surface is still there. Found on the Pixel 10a; `DiceTray` gives the surface up on `onDestroyed` and the driver keeps the engine now (Step 4.1, done), so what is left is which of those two the lock screen actually triggers
 - [ ] **A shake during a roll is ignored.** Rolling is blocked until the dice have settled, so a second shake at dice still in the air does nothing. It should keep them moving instead — a hand that shakes again has not waited for the dice to stop, and `RollPresenter.shaking` already feeds a running roll. What a *new* shake means while one is in flight is the open half: more of the same roll, or a throw that replaces it
-- [ ] Numbers on the faces. Dice are blank cream solids on the phone right now, which is the SDF item in Step 3 above; until it lands, the tray shows a roll that cannot be read without the total
-- [ ] A shake-driven throw's `ThrowSpec` carries an empty `shake`: the dice are spawned the moment the shake is confirmed, and the samples arrive afterwards. The roll is driven by them and is reproducible from them, but the *record* of the throw does not yet hold them — which is what a replay and a bug report would need (`docs/physics-and-rendering.md`, "Shake input"). Attach the recorded session to the result when history arrives (4.8)
-- [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
-- [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -139,8 +135,13 @@ Rolls and groups are one repository each now, joined by `SavedRollLibrary` for
 the screens that need both — the split the class size had been asking for, and
 the place the table fallback below has to live.
 
+A collection comes in from a file, a link or a **git repository**, and the
+three are one path: `InstallSource` says which repository a URL means, the same
+downloader fetches it under the collection's own megabyte, the same hardened
+extractor unpacks it, and the one `*.dinfinity.json` at its root goes through
+`CollectionReader` like anything else.
+
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
-- [ ] Import from a **git repository**, which is the half of this the plain link does not cover — a repo of "stat blocks for monster manual X" resolved through `RefResolver` the way a dice set is (`docs/dice-sets.md`). Importing from a plain `https` link is built: it goes through the same downloader a dice set does, capped at the megabyte the reader refuses a file above, and what comes back goes through `CollectionReader` rule for rule
 
 ### 4.4 Dice sets — `feature/sets`
 
@@ -168,7 +169,15 @@ validator, where a rejection lists every error (`1t`) and a download that never
 arrives is refused the same way. Database version 4 holds which sets are
 switched on.
 
-- [ ] "My dice" details with export as zip gated on a license choice (`8c`)
+**"My dice" is an ordinary package** (`8c`). The drawings on the phone are
+built into `dicesets/mine/` whenever the folder is read and a drawing has
+changed, so the list, the details screen, the notation and the remove button
+all treat it like anything else. Its details screen is the one place that is
+different: it offers the package as a zip, **shut until a licence has been
+chosen**, and the choice is written into the file and into the installed folder
+alike. What goes out is validated first, by the same validator a download goes
+through.
+
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
 
 ### 4.5 Table picker — `feature/tables`
@@ -198,23 +207,54 @@ left alone in case it comes back.
 
 Design `1v`, `4c`, `8d`. Spec: `docs/face-designer.md`.
 
-Drawing is built: the canvas with the face's outline masked in, strokes stored
-as vectors in fractions of the canvas, the guide under them that can be turned
+Drawing is built: the canvas with the face's outline masked in, marks stored as
+vectors in fractions of the canvas, the guide under them that can be turned
 off, three pen widths and an eraser, undo/redo and clear per face, the twelve
-presets, and the face strip. **Drafts are on disk** — one file per die, written
-after every stroke and read back when the die is opened — so a drawing outlives
-the screen and each die keeps its own. That made the "start over?" question
-unnecessary and it is gone: changing die no longer loses anything. **Roll it**
-hands the tray the die being drawn — the die as its set defines it, since
-nothing puts an atlas on one yet, and absent rather than dead for a die plain
-notation cannot name (decision 31). The d4's three-numbers-per-corner rule is
-**derived rather than checked** — a cell's numbers are read from the corners it
-meets, so two cells sharing an edge cannot be made to disagree along it.
+presets, and the face strip. The **bucket** adds a region rather than flooding
+pixels — the smallest closed stroke the tap is inside, or the face — and fills
+sink under the ink; **copy and paste** merge a turned or mirrored copy onto
+another face in one undoable step, the turn being a whole step of the cell's
+own symmetry; the **colour picker** goes past the twelve presets in hue, depth
+and brightness, and the ink it makes is opaque and round-trips through the
+draft file (`docs/face-designer.md`). **Drafts are on disk** — one file per
+die, written after every stroke and read back when the die is opened — so a
+drawing outlives the screen and each die keeps its own. That made the "start
+over?" question unnecessary and it is gone: changing die no longer loses
+anything. **Roll it** hands the tray the die being drawn — the die as its set
+defines it, since nothing puts an atlas on one yet, and absent rather than dead
+for a die plain notation cannot name (decision 31). The d4's
+three-numbers-per-corner rule is **derived rather than checked** — a cell's
+numbers are read from the corners it meets, so two cells sharing an edge cannot
+be made to disagree along it.
 
-- [ ] Fill bucket, stamp from the built-in font, copy face → paste with rotate/mirror, "fill all faces with numbers", and a colour picker beyond the twelve presets (`4c`)
+**The export is built.** A drawing becomes an atlas at 256 px per cell in the
+shape catalogue's own grid, with the cells nobody drew on left out so they stay
+transparent, and a generated `diceset.toml` beside it; what decides where
+things go is plain Kotlin and only the painting touches a `Bitmap`
+(`docs/architecture.md`, decision 55). The package is validated before it is
+written and again before its zip is offered, the licence is asked for first
+(`8c`, in 4.4 above), and the file leaves through the share sheet the way an
+exported collection does.
+
+- [ ] Stamp a digit or a sign from the built-in font, and the "fill all faces
+      with numbers" one-tap starting point that places the same glyphs. The
+      font is there now — `core/glyphs` holds the outlines the tray prints
+      with, and `Typesetter.lay` already turns a label into contours in a unit
+      cell — so what is left is turning those contours into the designer's own
+      marks and deciding where "fill all faces" puts them. It is the same
+      placement the tray solves per face (`render/filament`'s `FaceRoom`), and
+      the two agreeing matters: a die drawn from the numbers and the same die
+      printed should not disagree about where a `6` sits. The rest of the `4c`
+      toolbar is built: the fill bucket, copy face → paste with a turn and a
+      mirror, and the colour picker past the twelve presets
 - [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
-- [ ] Export to a real dice set through the standard validator: atlas at 256 px per cell, transparent cells, generated `diceset.toml`, licence asked for before sharing
 - [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"
+- [ ] *Judgement, with a finger:* the bucket calls a stroke closed when its
+      ends come back within 0.08 of the canvas of each other, and fills the
+      smallest shape the tap is inside. Both numbers are guesses about how
+      accurately somebody draws on glass; whether a loop somebody meant to
+      close is treated as closed, and whether the region that fills is the one
+      they meant, can only be told by drawing on a phone
 - [ ] *Confirm first:* the prototype has no 3D preview — see Open questions. Nothing here builds one
 
 ### 4.7 Statistics — `feature/stats`
@@ -292,8 +332,12 @@ the assertion is simply that none of them draws one. Both halves were checked
 by putting the original bug back: removing the sessions screen's dispatch turns
 the list into `[sessions]`.
 
-Appearance, the accent, shake, the default rounding, power saving, the version
-and the repository link are all there, and each of them does something.
+Appearance, the accent, shake, haptics, sound, the default rounding, power
+saving, the version and the repository link are all there, and each of them does
+something. Haptics and sound are one section with two switches, because they are
+one answer to one question and because with both off a roll records no impacts
+at all — the pair is what the saving is measured against
+(`docs/physics-and-rendering.md`, "Impacts, haptics and sound").
 
 All three defaults now behave the same way, which was the point of the item
 that used to be here: the default **set**, the default **table** and the active
@@ -304,8 +348,14 @@ restores the choice; the session falls back where a roll is *recorded*, because
 a session deleted while another screen was in front would otherwise strand
 every throw filed under it (`docs/statistics.md`, per session).
 
-- [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
-- [ ] Developer toggle: debug overlay, anomaly log, replay from seed
+The **developer toggle** is the last thing on that screen, and it is the one
+setting that is off on every install. It adds a debug overlay over the tray, a
+Developer row in the menu, and behind that row an anomaly log and two ways of
+throwing the last roll again. What it does *not* do is the point: the history
+still has no replay and still never shows a seed, and the exports have no
+column for one, because neither type has a field the toggle could unhide
+(`docs/architecture.md`, decisions 13 and 56;
+`docs/physics-and-rendering.md`, "Debug tooling").
 
 ## Step 5 — Physics and rendering on a real phone
 
@@ -316,10 +366,31 @@ after every physics change.
 
 ### 5.1 Harness
 
-- [ ] On-device instrumented runner: N rolls headless, dumps JSON — settle times, correction and re-throw counts, contact depths, frame times. **The per-face histogram half exists** as `FairnessTest`, which takes its roll count from an instrumentation argument and prints its table (`docs/physics-and-rendering.md`, "Are the dice fair"); the rest of the numbers, and JSON rather than a printed table, are what is left
-- [ ] Devcontainer script that installs, runs, pulls the JSON and prints a pass/fail table against the targets below
-- [ ] Soak mode (run for minutes, report worst case) and 60 fps screen capture for visual review
-- [ ] Same harness runs on the emulator, which is in the devcontainer (`docs/build-setup.md`), so a regression is caught before the phone
+**Built, and it runs on either tier.** `tools/harness.sh` rolls N throws
+headlessly on the emulator or the phone, pulls back a JSON document — settle
+time in steps and in milliseconds with median, p99 and worst case, corrections,
+post-rest corrections, re-throws, forced settles, dice left standing on another
+die, the deepest die–die overlap and the per-step wall time — and prints a
+pass/fail table against the targets below (`docs/build-setup.md`, "The physics
+harness"). The emulator is a minute away, so a regression need never reach the
+phone.
+
+Everything it *decides* is plain Kotlin in `simulation/harness` and is tested on
+the JVM: what a run was asked for, the percentiles, the shares, the document and
+the comparison. The device only rolls, times and writes two files
+(`docs/architecture.md`, decision 53). It **fails** on the targets the engine
+misses today, which is the plan being behind the check rather than the check
+being wrong.
+
+- [ ] **Frame times, which a headless run cannot give.** The harness holds the
+      device to simulating a step in less time than the step covers (1/120 s);
+      Step 5.7's "p99 frame time under 16.6 ms" is about *drawing* and needs the
+      renderer on and a surface to draw to. The seam is `LiveRoll.advance` and
+      `FrameClock.droppedSteps`, which already counts the time a slow frame lost
+- [ ] Soak mode (run for minutes, report worst case) and 60 fps screen capture
+      for visual review. Neither is started, and each is small: a soak is the
+      same runner given a duration rather than a roll count, and the capture is
+      `screenrecord` around a rendered roll
 
 ### 5.2 Fairness and determinism
 
@@ -344,7 +415,7 @@ a die fairer than the plastic one in their hand, is not worth a warning
 
 ### 5.3 Capacity and corner cases
 
-- [ ] Counts 1, 2, 5, 8, 20, 40, 60 and the capacity limit (~80 on the Pixel 10a): all settle, no NaN, no tunnelling
+- [ ] Counts 1, 2, 5, 8, 20, 40, 60 and the capacity limit: all settle, no NaN, no tunnelling. `tools/harness.sh -c <n>` is the run; each count is one invocation
 - [ ] **`100d4` does not reliably settle, and never did.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. `JoltBridgeTest` used to try eight seeds and pass; twenty-four seeds show **five running out of the twelve-second cap**, and the same twenty-four under the correlated spawn streams that preceded them showed two — a difference well inside noise at that sample size. What changed is not the physics but the sample: the eight were the easy ones. Nothing is ever touched after it has come to rest, on any seed, which is the rule that matters; the cap firing at all is a prevention problem (5.5), and the bound in the test is today's worst case written down rather than a target
 - [ ] **Decide what a tilted phone should mean.** Deferred, not answered. The table is horizontal now and the gyroscope no longer turns the world, which is what stopped the dice pouring into a wall — but "tilt the phone and the dice slide" was a real idea and this is not a verdict on it. The direction is still recorded with every sample, so whichever way it goes the data is there. The three answers, unchanged: gravity always straight down and only the hand moves the dice; anchor to `TYPE_GRAVITY` and accept that a phone held upright pours everything to the bottom wall; or keep a tilt and clamp it so a tray can lean without becoming a chute
 - [ ] **A shake along the phone's long axis still drives the dice into one end.** Seen as dice stuck at the bottom after a vertical shake. The table being horizontal fixes the *pouring* — the tray no longer leans — but the hand's own force still points that way, and a hundred dice pushed at one wall have nowhere else to be. Whether that is right (it is what a hand does) or wants shaping is a Step 5.6 question with a phone in it
@@ -358,7 +429,7 @@ a die fairer than the plastic one in their hand, is not worth a warning
 
 ### 5.4 Collisions
 
-- [ ] No die–die interpenetration deeper than 0.2 mm at any step
+- [ ] **Dice go 9 mm into each other, and the bar is 0.2 mm.** Measured on the Pixel 10a the first time the harness ran: 200 throws of 20 d20s, deepest die–die overlap **9.019 mm** against a target of 0.2, on dice 16 mm across. More than half a die. It is the number the plan asked for and nobody had ever had, and it is almost certainly the same fault as the correction rate below rather than a second one: dice are spawned or corrected into each other and the solver pushes them apart afterwards, which is what a 45 % correction rate looks like from the collision side. Prevention (5.5) is where it is fixed; this is where it is measured
 - [ ] No tunnelling at maximum shake velocity — assert every body inside the box on every step, all roll long
 - [ ] Dice driven into a corner at speed neither wedge nor jitter
 - [ ] A settled pile is stable: no creep, no vibration, no slow slide
@@ -372,12 +443,13 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - **a die visibly moved after it stopped**, which is worse — it turns a roll
   into an arrangement in front of the player's eyes.
 
-- [ ] 10,000 headless rolls at 20 dice and 10,000 at 60: **zero** dice at rest supported by another die
+- [ ] 10,000 headless rolls at 20 dice and 10,000 at 60: **zero** dice at rest supported by another die. `tools/harness.sh -n 10000 -c 20` and `-c 60`; the count is in every run's JSON and its scorecard
 - [ ] Fewer than 0.5 % of dice need any correction; **100 %** of those corrections land while the die is still moving
 - [ ] **Zero** post-rest corrections. The harness asserts this; one occurrence is a bug, not a statistic
 - [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
 - [ ] Settle time at 20 dice: median under 2 s, p99 under 4 s; the 12 s cap never reached in 10,000 rolls
 - [ ] Tune prevention (spawn spread and stagger, dice-on-dice friction, throw energy, scale) until the numbers above hold without leaning on corrections. **Where it starts:** 20 d20s at the capacity rule's scale settle in 89–132 steps on the Pixel 10a, with 9 of the 20 corrected, 0–1 re-thrown and **zero** post-rest corrections. The last figure is the one that must stay at zero and does; the correction rate is 45 % against a 0.5 % budget, and bringing it down is what this task is
+- [ ] *Measured, on the Pixel 10a:* 200 throws of 20 d20s, base seed 1. **43.55 %** of dice corrected against a 0.5 % budget, **3.50 %** re-thrown against 0.05 %. What passes on the same run is every honesty bar and every timing one: **zero** dice at rest on another die, **zero** post-rest corrections, zero forced settles, no throw near the twelve-second cap, median settle 0.81 s and p99 1.83 s against 2 s and 4 s, and a p99 step of 1.00 ms against the 8.33 ms a 120 Hz step has. The engine is fast and honest and leans on corrections far too hard, which is what the rest of this section is about
 - [ ] **The corrections are visible at 100 dice, and they look like popcorn.** Seen on the Pixel 10a: dice stack against a wall and then *pop* apart to unstack, and individual dice jump to find a better spot. Every one of those lands while the die is still moving, so the honest rule holds and nothing touches a die at rest — but "it does not cheat" and "it does not look like it cheats" are different claims, and this is the second one failing. It is the 45 %-against-0.5 % correction rate above, seen rather than counted, and it is the argument for prevention over correction rather than a separate task
 - [ ] *With the user:* frame-by-frame review of 50 recorded 20-dice rolls — nobody can point at the moment a die was helped
 
@@ -388,9 +460,13 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - [ ] *Judge the formula editor on the phone:* whether a dashed rule under the formula reads as "you can type here", and whether a keyboard over the lower half of the tray is right or wants the tray to shift up while the editor is open (`design/dInfinity.dc.html`, option 2a)
 - [ ] The rim's shadow still looks wrong — the band across the top of the wall casts something that does not read as a rim. Lighting and the shadow map, not geometry, on present evidence
 - [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
-- [ ] Haptics fire on real impacts only, sound pitch tracks impulse and die size
-- [ ] Settled faces are legible at arm's length without zooming. The *size* is settled — 16 mm reads fine on the Pixel 10a — so this is now a question about the numbers, once they are drawn
+- [ ] **Do the haptics land?** They fire on real impacts only and the rule is asserted rather than tuned: a change in a die's speed that the step's own gravity explains is never reported, so a die sliding and a die at rest are silent by construction. What a phone has to answer is the *feel* — whether a die hitting the tray reads as a knock rather than a rattle, whether one die landing among twenty is still felt, and whether the 45 ms rate limit turns a hundred dice into a handful of distinct knocks or into one long buzz. Listen for: a single d20 landing, then `20d6`, then `100d6`
+- [ ] **Do the five tables sound like their materials?** The sounds are generated rather than recorded (`docs/physics-and-rendering.md`), so this is the first time anybody hears them. Roll the same `5d6` on `felt-green`, `oak`, `dark-glass` and `plain` and say whether each reads as its surface; then roll `2d20` and `20d6` on one table and say whether the pitch difference between a big die and a shrunk one reads as dice of different sizes or as an effect. If a preset is wrong, the four numbers behind it are in `ImpactWaveform`
+- [ ] **Does power-saving mode's second read as the roll?** There are no frames there, so the impacts are replayed across about a second after the dice have stopped. Whether that sounds like a throw that happened or like a sound effect played at you is the judgement — and whether a second is the right length
+- [ ] Settled faces are legible at arm's length without zooming. The *size* is settled — 16 mm reads fine on the Pixel 10a — and the numbers are drawn now. What is left to judge is one number: `DieNumbers.FACE_SHARE`, how much of the room a face has a numeral takes up. Everything else about the size is solved from the face itself, so this is the only knob and it moves every shape at once. The d4's three-to-a-triangle (`CORNER_HEIGHT`) is the second question, and the d18 is the third — its kites are long enough that its numbers are a third the size of a d6's, which is the shape question already open below
 - [ ] Power-saving feels instant and gives the same answer
+- [ ] *Judge an exploding roll on the phone:* `8d6!` now throws each added die into the tray you are watching, one at a time, once the last has stopped. **It works, and was seen working**: `4d6!` came up `6 6 1 1 3 5` on the Pixel 10a, six dice on the tray for a throw of four, none of them on top of another, total 22. What is left is not whether it happens but how it reads. Three things need eyes. **Does the wait read as part of the roll** — a die lands, a beat, another die drops — or as the app having stalled? **Does the added die look thrown**, given that it is dropped from 25 mm straight down rather than hurled like the first eight? And **does it ever appear to pass through a die already lying there** on its way to a stop: it cannot touch one, because there is no body for the settled dice in its world, so if it *looks* as though it did, the drop point is too close and `ClearSpace` is the number to move (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds")
+- [ ] *Judge a chain that fills the tray:* roll enough exploding dice that the tray runs out of clear floor. The chain stops there and the die carries `DieNote.TrayFull`, but **the result sheet prints no note text at all yet** — neither this one nor the explosion depth limit — so on the phone it currently reads as an explosion that simply did not happen. Whether the stop reads as a rule or as a bug is a person's call; either way the sheet needs a line for the two ways a chain ends (`docs/dice-notation.md`, "Limits")
 
 ### 5.7 Performance on the Pixel 10a
 
@@ -421,7 +497,7 @@ Written down so the format need not change later. Not v1 scope.
 
 ## Coverage
 
-Branch coverage is **69.2 %** against a floor of 62, and roughly **seven in ten
+Branch coverage is **70.1 %** against a floor of 62, and roughly **seven in ten
 of the branches it is missing are inside `@Composable` functions**. That is not
 untested UI: the Compose compiler emits a skip branch for every parameter of
 every composable so that a recomposition can be avoided, and a single-pass test
@@ -458,14 +534,63 @@ The figures are reported in every PR description either way.
 
 ## Open questions
 
+- [ ] **Should the anomaly log survive a restart?** It is in memory today,
+      bounded to fifty entries, and goes when the app does — because an entry
+      carries the seed that reproduces the roll, and a stored seed is a replay
+      waiting to be written into a screen a player can reach
+      (`docs/architecture.md`, decisions 13 and 56). Against that: an anomaly is
+      supposed to be so rare that losing one to a restart may be losing the only
+      one anybody ever sees. If it should persist, the question to answer first
+      is where — a file the developer toggle owns and the ordinary app cannot
+      read is a different thing from a table beside the history, and only the
+      first of those is consistent with decision 13
+- [ ] **Should a heavy die sound heavier?** An impact reports the change in a
+      die's speed, which is impulse per unit of mass, and the sound follows that
+      and the die's *size*. A die's `density` — which a set may put anywhere from
+      balsa to brass — reaches the physics and does not reach the sound, so a
+      brass d6 and a resin d6 of the same size land with the same noise. Adding
+      it means giving the impact a mass, which means a hull volume the shape
+      catalogue does not currently compute. Worth it or not is a judgement about
+      how much anybody would notice (`docs/dice-sets.md`, "Size")
 - [ ] `core/probability` hand-rolls its convolution and its FFT rather than
       taking a library, which `.claude/CLAUDE.md` names as a "complex part".
       The judgement was that the exact PMF *is* the domain logic and that
       pulling in a general maths library for ninety lines of transform is a
       worse trade than owning them — but it is a trade, and it is worth a
       second opinion
+- [ ] Whether a die an explosion adds should be able to *collide* with the dice
+      already down, as immovable furniture rather than as bodies that can move.
+      Today it is thrown in a world holding only itself, which is what makes
+      "nothing touches a die that has come to rest" true by construction — but
+      it also means the added die cannot bounce off the pile, which is what
+      would really happen on a table. Turning it on means the native bridge
+      growing a second kind of body (static, never stepped, never reported),
+      which cannot be tested on the JVM and cannot be verified without a phone.
+      Worth deciding deliberately rather than by default
+      (`docs/architecture.md`, decision 54)
+- [ ] **Should an exported package carry a name, and where would it come from?**
+      The `author` field is currently left out rather than filled: Android has
+      no device user name an app can read without asking for contacts, and a
+      field saying "You" would be a name on somebody else's phone. The
+      alternatives are a text field beside the licence chooser on the "My dice"
+      details screen, or a name kept in the settings and used by every export.
+      Both are small; which one is wanted is a judgement about how much the
+      export screen should ask for before it will share (`8c`,
+      `docs/face-designer.md`)
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
+- [ ] A collection imported from a git repository records nothing about where
+      it came from, so there is no "check for updates" for one the way there is
+      for a dice set: an import becomes rows in the database rather than a
+      folder with a `.meta.json` beside it, and `RefResolver` is therefore not
+      asked which commit the ref was at. If a collection should be updatable
+      from its repository later, the commit is the thing to start recording
+      (`docs/dice-notation.md`)
+- [ ] A forge link that names a *file* inside a repository
+      (`…/blob/main/goblins.dinfinity.json`) imports whatever is at the
+      repository root instead, because the path after the ref is a dice set's
+      subfolder and a collection is found at the root. Decide whether such a
+      link should import the file it names
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] Move the container's emulator up when an automated-test image exists
       above API 36 — the same wait as the line above, for the same reason
@@ -478,3 +603,11 @@ The figures are reported in every PR description either way.
 - [ ] d18 shape: the enneagonal trapezohedron is assumed; verify it reads well at phone size
 - [ ] Division rounding default is Down with a per-throw override — confirm Nearest is worth having
 - [ ] The design project's `.thumbnail` is not imported; decide whether a preview image belongs in the repo
+- [ ] The harness scores every run against the **same** settle bars — median
+      2 s, p99 4 s — but Step 5.5 states them at twenty dice. A `100d4` run is
+      therefore held to a twenty-dice bar, which is either exactly right (a
+      roll is a roll, and a player waiting four seconds does not care how many
+      dice they threw) or unfair to the worst case on purpose. The harness
+      takes the first reading, and the bars are data, so changing it is one
+      line in `HarnessTargets` — but which it should be is a decision
+      (`docs/build-setup.md`, "The physics harness")

@@ -11,6 +11,7 @@ import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
+import de.drehtuer.dinfinity.feature.settings.DeveloperPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
@@ -70,6 +71,16 @@ data class Presenters(
   val tables: () -> TablesPresenter,
   /** Drawing the faces of a die (`docs/face-designer.md`). */
   val faceDesigner: () -> DesignerPresenter,
+  /**
+   * The debugging tools (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * A field here like every other screen, because a screen that can be built
+   * and not plugged in is the thing this class exists to prevent — the
+   * developer screen is no more exempt from that than the sessions screen was.
+   * Whether it is *reachable* is the toggle's business and the menu's, not
+   * this list's (`Destination.developerOnly`).
+   */
+  val developer: () -> DeveloperPresenter,
   /**
    * One set's details.
    *

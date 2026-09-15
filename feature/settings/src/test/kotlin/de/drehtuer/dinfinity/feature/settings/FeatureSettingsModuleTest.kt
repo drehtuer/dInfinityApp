@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.feature.settings
 
+import de.drehtuer.dinfinity.core.notation.CoreNotationModule
 import de.drehtuer.dinfinity.data.DataModule
+import de.drehtuer.dinfinity.simulation.api.SimulationApiModule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -16,6 +18,10 @@ class FeatureSettingsModuleTest {
   @Test
   fun `reaches every module it depends on`() {
     assertTrue(DataModule.PATH in FeatureSettingsModule.DEPENDS_ON)
-    assertEquals(1, FeatureSettingsModule.DEPENDS_ON.size)
+    assertTrue(CoreNotationModule.PATH in FeatureSettingsModule.DEPENDS_ON)
+    // The developer screen's replay and anomaly log, which are a `ThrowSpec`
+    // and a `SimulationOutcome` (`docs/physics-and-rendering.md`).
+    assertTrue(SimulationApiModule.PATH in FeatureSettingsModule.DEPENDS_ON)
+    assertEquals(3, FeatureSettingsModule.DEPENDS_ON.size)
   }
 }

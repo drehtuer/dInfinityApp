@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.sets
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,11 +14,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -28,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.notation.Sides
+import de.drehtuer.dinfinity.designer.MinePackage
+import de.drehtuer.dinfinity.designer.SetLicense
 import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 import de.drehtuer.dinfinity.ui.common.DieSilhouette
 
@@ -127,6 +138,7 @@ private fun Body(
     item { Provenance(row, onSource) }
     item { Default(presenter) }
     item { Manage(row, presenter) }
+    item { Export(presenter) }
     item { HorizontalDivider() }
     if (row.broken) report(row.report) else dice(row.set?.dice.orEmpty())
   }
@@ -254,6 +266,109 @@ private fun Manage(
   }
 }
 
+/**
+ * The personal package on its way out, gated on a licence (design `8c`).
+ *
+ * Only "My dice" has one, because it is the only package this phone wrote —
+ * every other set on the list came from somewhere that already has a copy.
+ *
+ * **The licence comes before the button and the button will not work without
+ * it.** A dice set is something somebody else installs and draws with, and the
+ * `license` field is the only thing in the file that says what they may do with
+ * it (`docs/dice-sets.md`, "Fields"). Offering "share" first and asking
+ * afterwards would be asking about a file that had already gone.
+ */
+@Composable
+private fun Export(presenter: SetDetailPresenter) {
+  val state = presenter.state
+  if (!state.personal) return
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag(SetDetailTestTags.EXPORT),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Text(
+      text = stringResource(R.string.sets_detail_export),
+      style = MaterialTheme.typography.titleSmall,
+      fontWeight = FontWeight.Bold,
+    )
+    Text(
+      text = stringResource(R.string.sets_detail_export_note),
+      style = MaterialTheme.typography.bodySmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      LicenseChooser(state.license, presenter::choose, Modifier.weight(1f))
+      Button(
+        onClick = { presenter.export() },
+        enabled = state.canExport,
+        modifier = Modifier.testTag(SetDetailTestTags.EXPORT_DO),
+      ) {
+        Text(stringResource(R.string.sets_detail_export_do))
+      }
+    }
+    if (state.exported) {
+      Text(
+        text = stringResource(R.string.sets_detail_exported, MinePackage.FILE_NAME),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.testTag(SetDetailTestTags.EXPORTED),
+      )
+    }
+    state.exportProblem.forEach { message ->
+      Text(
+        text = message.toString(),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.fillMaxWidth().testTag(SetDetailTestTags.EXPORT_PROBLEM),
+      )
+    }
+  }
+}
+
+/**
+ * The short list of licences a package may go out under (design `8c`).
+ *
+ * A menu rather than a text field: the point of the field is that whoever
+ * installs the set *recognises* what it says, and a box somebody types into
+ * would fill up with sentences no reader can act on ([SetLicense]).
+ *
+ * There is no entry for "not chosen". Taking the choice back is not something
+ * anybody wants to do, and an entry offering it would be the one a finger hits
+ * by accident.
+ */
+@Composable
+private fun LicenseChooser(
+  chosen: SetLicense?,
+  onChoose: (SetLicense) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  var open by remember { mutableStateOf(false) }
+  Box(modifier = modifier) {
+    OutlinedButton(
+      onClick = { open = true },
+      modifier = Modifier.fillMaxWidth().testTag(SetDetailTestTags.LICENSE_CHOOSER),
+    ) {
+      Text(text = chosen?.label ?: stringResource(R.string.sets_detail_license_choose))
+    }
+    DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+      SetLicense.entries.forEach { license ->
+        DropdownMenuItem(
+          text = { Text(license.label) },
+          onClick = {
+            open = false
+            onChoose(license)
+          },
+          modifier = Modifier.testTag(SetDetailTestTags.licenseOf(license)),
+        )
+      }
+    }
+  }
+}
+
 /** Every die the set defines, drawn as the outline a player recognises. */
 private fun LazyListScope.dice(dice: List<Die>) {
   item {
@@ -369,6 +484,13 @@ object SetDetailTestTags {
   const val PROBLEM: String = "setdetail:problem"
   const val MAKE_DEFAULT: String = "setdetail:makedefault"
   const val IS_DEFAULT: String = "setdetail:isdefault"
+  const val EXPORT: String = "setdetail:export"
+  const val EXPORT_DO: String = "setdetail:export:do"
+  const val EXPORTED: String = "setdetail:export:done"
+  const val EXPORT_PROBLEM: String = "setdetail:export:problem"
+  const val LICENSE_CHOOSER: String = "setdetail:license"
 
   fun dieOf(id: String): String = "setdetail:die:$id"
+
+  fun licenseOf(license: SetLicense): String = "setdetail:license:${license.id}"
 }

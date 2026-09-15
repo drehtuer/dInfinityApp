@@ -5,14 +5,14 @@ moves, a decision is taken or something is blocked; prune anything that is no
 longer current. This is a snapshot, not a changelog — git history is the
 changelog.
 
-**Last updated:** 2026-09-15
+**Last updated:** 2026-09-16
 
 ## Where we are
 
 - **Phase:** implementation, **Step 4**. Steps 1 and 2 are done; Step 3 is done
-  but for the SDF numbers and the atlases, each of which now arrives with the
-  screen that needs it. Step 5 — physics and rendering on a real phone — is
-  where the remaining hard problems are.
+  but for the atlases, which arrive with the screen that needs them. Step 5 —
+  physics and rendering on a real phone — is where the remaining hard problems
+  are.
 - **The app rolls dice on a phone.** Type a formula, tap Roll or shake the
   Pixel 10a, and the dice tumble onto a felt tray, come to rest, and their
   total appears. Every screen in the menu is written, connected and does
@@ -22,8 +22,17 @@ changelog.
 
 ### Branch state
 
-`main` has everything up to **#173** and is **green**: both test tiers, ktlint,
-detekt and Android Lint. No branches are in flight.
+`main` has everything up to **#182** and is **green**: both test tiers, ktlint,
+detekt and Android Lint. In flight, stacked in this order: `feature/shake-record`
+— a shake-driven throw's record now carries the shake that drove it, and stops
+there; `feature/haptics` — **the dice can be felt and heard**;
+`feature/designer-tools`; `feature/harness` — Step 5's physics harness, and what
+it said about the Pixel 10a; `feature/explosion-dice` — the die an explosion or
+a reroll adds is now thrown into the tray the player is watching;
+`feature/mine-export` — **a drawing is now a dice set anybody could install**,
+exported as a zip once a licence has been chosen; and `feature/dev-toggle` —
+**the developer toggle**, off on every install, adding a debug overlay, an
+anomaly log and a replay of the last throw, and changing nothing a player sees.
 
 ### Which device the tier runs on
 
@@ -44,7 +53,7 @@ different bug each time (`docs/build-setup.md`).
 - **The specification.** `README.md`, `docs/` and the clickable prototype in
   `design/`, cross-referenced both ways and published at
   <https://drehtuer.github.io/dInfinityApp/>. GPL-2.0-or-later.
-- **The skeleton and CI.** Devcontainer, convention plugins, 26 modules, the
+- **The skeleton and CI.** Devcontainer, convention plugins, 27 modules, the
   Modernist theme, the navigation graph. Every linter and both test tiers run
   on each pull request; SonarQube blocks on its gate and JaCoCo on a function
   *and* branch floor. Dependencies pinned by SHA-256; a `vX.Y.Z` tag cuts a
@@ -71,34 +80,69 @@ different bug each time (`docs/build-setup.md`).
 
 **Step 4: every screen is written and connected.** What is left on each is in
 `docs/TODO.md`; the shape of it is that the *screens* are done and what remains
-is mostly polish, the export paths, and the things that need a phone.
+is mostly polish and the things that need a phone.
 
 - **4.1 Roll.** The tray from the moment the screen opens, the formula on it as
   text that a tap turns into a live-validated editor whose Enter rolls, the
   dice picker row, the saved-roll strip, roll from the button or a shake, the
   total and a breakdown that itemises the modifiers as well as the dice, pinch
   and pan, power-saving, and a first launch that offers all three ways in with
-  a count line that counts. **Missing: numbers on the faces**, which is the SDF
-  item in Step 3 — until it lands the tray shows a roll that cannot be read
-  without the total.
+  a count line that counts. **The dice carry numbers now**: real Archivo
+  outlines turned into a distance field per die, so a `6` stays a `6` at four
+  times in, and barred when the same die also carries a `9` — the rule a
+  moulded die follows. A d4 prints three to a triangle, one at each corner.
+  **And they are felt and heard as they land**: a roll reports the impacts it
+  made, one player lays them out in wall time — as they happen on a watched
+  tray, across about a second in power-saving mode — and the five table sounds
+  are generated in Kotlin rather than shipped, so no decoder is in the path.
+  **An explosion is visible too**: each die it adds is a throw of its own, made
+  once the last has stopped, dropped into the clear floor the settled dice leave
+  and drawn among them. No body is created for a die that has come to rest, so
+  an added die cannot shove one; a chain stops when the tray runs out of floor,
+  and the breakdown says so.
 - **4.2 Graph, 4.3 Saved rolls, 4.4 Dice sets, 4.5 Tables, 4.7–4.9 Statistics,
-  history and sessions, 4.10 Settings and Notation.** All built. Collections
-  travel as JSON and arrive from a file or a link; dice sets install from
+  history and sessions, 4.10 Settings and Notation.** All built, and 4.10 is
+  **finished**: the last thing on it was the developer toggle, which is off on
+  every install and adds a debug overlay on the tray, an anomaly log and a
+  replay of the last throw — a surface of its own, with decision 13 untouched
+  (`docs/physics-and-rendering.md`, "Debug tooling"). Collections
+  travel as JSON and arrive from a file, a link or a git repository — one
+  `*.dinfinity.json` at its root, down the same downloader and the same
+  hardened extractor a dice set uses; dice sets install from
   either, can be checked for updates and re-installed through the same
   validator; tables are chosen where the tables are, and a throw lands on the
   saved roll's pinned table, then its group's, then the app's.
 - **4.6 Face designer.** Draw on any die of any usable set, undo and redo an
   action at a time, and **each die keeps its own draft on disk** — written
   after every stroke, so a drawing outlives the screen. **Roll it** hands the
-  tray the die being drawn. Still to come: the fill bucket and stamp, and the
-  export.
+  tray the die being drawn. Most of the `4c` toolbar is there: a fill bucket
+  that adds a region rather than flooding pixels, copy face → paste with a
+  turn and a mirror, and a colour picker past the twelve presets. **What was
+  drawn is now a package anybody could install**: the drawings become
+  `dicesets/mine/` — "My dice", an ordinary installed set with an atlas at
+  256 px a cell — and its details screen exports it as a zip through the share
+  sheet, **shut until a licence has been chosen** (`8c`). It goes through the
+  standard validator before it is written and again before the file is offered.
+  Still to come: the stamp and "fill all faces with numbers" — both place a
+  glyph, and the font they would take it from exists now, so what is left
+  there is wiring rather than waiting.
+- **Step 5.1, the harness, is built.** `tools/harness.sh` rolls N throws
+  headlessly on the emulator or the phone, pulls back a JSON document of what
+  they did — settle times, corrections, post-rest corrections, re-throws,
+  forced settles, stacked dice, the deepest die–die overlap, per-step wall
+  time — and prints a pass/fail table against Step 5's targets. Everything it
+  decides is plain Kotlin in `simulation/harness` and tested on the JVM; the
+  device only rolls, times and writes. It **fails** on three of ten targets on
+  the Pixel 10a, which is what it is for. Frame times, soak mode and screen
+  capture are what is left of 5.1.
 
 ## Blocked / waiting on
 
 - **Judgements that need a person and a phone**, all listed in `docs/TODO.md`:
   whether the dice have weight, whether 16 mm dice read too small, whether the
   empty table looks worth rolling on, whether four times in is the right pinch
-  limit. None of them blocks anything else. `screencap` on the phone returns a
+  limit, and now whether the haptics land and whether five generated waveforms
+  sound like felt, oak, glass, stone and plastic. None of them blocks anything else. `screencap` on the phone returns a
   real frame, so what a screen *contains* can be checked from here — that is
   how the menu's invisible header was found — but whether a thing feels right
   is still a person's call.
@@ -110,6 +154,11 @@ is mostly polish, the export paths, and the things that need a phone.
   to do, so this is a question rather than a change to make quietly.
 - Two smaller ones from the prototype (designer 3D preview, the picker
   remembering the last set per group) — see `docs/TODO.md`, Open questions.
+- Whether the anomaly log should survive a restart. It is in memory today
+  because an entry carries a seed and a stored seed is a replay waiting to be
+  written somewhere a player can reach it (decision 13) — against which, an
+  anomaly is rare enough that losing one to a restart may be losing the only
+  one anybody sees.
 
 ## Known risks
 
@@ -117,12 +166,16 @@ is mostly polish, the export paths, and the things that need a phone.
   dice — is the hardest thing in the plan and can only be judged on a device.
   If prevention cannot get there, the fallback is a visible re-throw, which is
   honest but must not become common.
-- **The correction ladder leans on corrections far too hard.** Nine of twenty
-  dice get a nudge, against a budget of one in two hundred. Every one lands
-  while the die is still moving and post-rest corrections are zero, so the
-  honest rule holds — but at a hundred dice the corrections are *visible*, and
-  "it does not cheat" and "it does not look like it cheats" are different
-  claims. Step 5.5.
+- **The correction ladder leans on corrections far too hard, and now there is
+  a number for what that costs.** The Step 5 harness ran on the Pixel 10a for
+  the first time: 200 throws of 20 d20s. Every honesty bar passes — **zero**
+  dice at rest on another die, **zero** post-rest corrections, zero forced
+  settles — and so does every timing bar, with a median settle of 0.81 s and a
+  p99 step of 1.00 ms against the 8.33 ms a 120 Hz step has. Three fail:
+  **43.55 %** of dice corrected against a 0.5 % budget, **3.50 %** re-thrown
+  against 0.05 %, and dice reaching **9.0 mm** into each other against a bar of
+  0.2 mm, on dice 16 mm across. The last is new and is almost certainly the
+  same fault seen from the collision side rather than a second one. Step 5.5.
 - **The d18 is a known limitation, decided and written down.** It cannot pass
   chi-squared at a hundred thousand rolls, because its resting basins are
   narrow enough that the float32 hull's own rounding biases it and Jolt stores
@@ -143,10 +196,10 @@ is mostly polish, the export paths, and the things that need a phone.
   *devices* of the same ABI and across time.
 - The container's emulator has no real GPU and no display, so `screencap`
   returns black. It answers "does this run", never "does this look right".
-- **Branch coverage is 69.2 % against a floor of 62**, and the drift that used
+- **Branch coverage is 70.1 % against a floor of 62**, and the drift that used
   to come with every screen has stopped: seven in ten of the missed branches
   are Compose skip branches a test can only take one side of, and the answer —
   lift decisions out of draw lambdas, give shared components their own tests,
   add recomposition tests that take the other side — has held the number flat
   or moved it up in each of the last six pull requests. Function coverage is
-  91.7 % against a floor of 85.
+  91.8 % against a floor of 85.

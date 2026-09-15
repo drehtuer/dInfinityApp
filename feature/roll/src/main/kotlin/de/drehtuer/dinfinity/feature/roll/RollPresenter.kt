@@ -12,8 +12,11 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.headless.Rolls
+import de.drehtuer.dinfinity.simulation.api.DeveloperLog
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
 /**
  * The roll screen's state, as Compose reads it.
@@ -32,13 +35,40 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
  *   a repository, so this module cannot reach a database
  *   (`docs/architecture.md`, "Modules").
  * @param toTheScreen how work gets back to the thread Compose reads on.
+ *
+ * The class carries a function-count suppression for the same reason
+ * [RollMachine] does: ten of its methods are one thing a screen can do each,
+ * and the eleventh is the loop that hands the tray a throw and then the throw
+ * after it, which a roll that adds dice to itself needs and which nothing else
+ * can be folded into.
  */
+@Suppress("TooManyFunctions", "LongParameterList")
 class RollPresenter(
   private val machine: RollMachine,
   private val driver: Tray,
   private val rolls: Rolls,
   private val recorder: ThrowRecorder = ThrowRecorder.NONE,
   private val toTheScreen: (() -> Unit) -> Unit = { MAIN.post(it) },
+  /**
+   * What the debug overlay is reading, or null when the developer toggle is
+   * off — which is every install until somebody turns it on
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The same object the tray was built with. It is given to both because the
+   * tray is what the roll thread reaches and this is what Compose reads, and
+   * the relay is the one thing that crosses between them.
+   */
+  private val debug: DebugRelay? = null,
+  /**
+   * What the developer toggle remembers, or [DeveloperLog.NONE].
+   *
+   * Held above the visit rather than by this presenter, because it outlives
+   * the screen: an anomaly is a bug report and the last throw is what replays
+   * it, and both are wanted after the player has walked away from the tray.
+   * Every throw is offered; which part of it is worth keeping is the log's to
+   * decide.
+   */
+  private val developer: DeveloperLog = DeveloperLog.NONE,
 ) {
   /** What the screen draws. */
   var state: RollState by mutableStateOf(machine.state)
@@ -65,6 +95,27 @@ class RollPresenter(
 
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
+
+  /**
+   * Whether this visit draws the debug overlay at all
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Read when the screen opens and not watched, exactly like power saving, the
+   * shake, the haptics and the sound: an overlay appearing over a roll in
+   * progress is not a setting taking effect (`docs/architecture.md`,
+   * decision 16).
+   */
+  val showsDebug: Boolean get() = debug != null
+
+  /**
+   * What the overlay draws: the roll as it is this frame, or
+   * [RollDiagnostics.NONE] when nothing is being watched.
+   *
+   * A Compose read through the relay rather than a copy kept here, so a
+   * snapshot arriving on the screen's thread recomposes the overlay and
+   * nothing else.
+   */
+  val diagnostics: RollDiagnostics get() = debug?.latest ?: RollDiagnostics.NONE
 
   /**
    * Whether this screen puts a tray on the screen at all.
@@ -140,16 +191,60 @@ class RollPresenter(
 
     val spec = machine.throwDice(shake) ?: return
     publish()
+    throwIt(spec)
+  }
 
+  /**
+   * Hands one throw to the tray, and hands the tray the one after it.
+   *
+   * A roll is not always over when its dice stop: an explosion and a reroll
+   * each add a die, into the same tray, among the dice that set it off. How
+   * many they add is not knowable until the first ones land, so it is a loop
+   * rather than a list — the machine says what the throw came to or what has to
+   * be thrown next, and this throws it (`docs/dice-notation.md`, "Evaluation",
+   * step 5).
+   *
+   * It is the same call for the first throw and for every die after it. There
+   * is one way to throw dice in this app and one path to a number, and an added
+   * die that took a different one would be an added die that could come out
+   * differently (`docs/architecture.md`, goal 1).
+   */
+  private fun throwIt(spec: ThrowSpec) {
     driver.roll(
       start = { watcher -> rolls.start(spec, watcher) },
-      onSettled = { outcome ->
+      onSettled = { outcome, drivenBy ->
         toTheScreen {
           // Written down on the screen's thread, where the result exists, and
           // handed to something that takes it away — a roll is finished when
           // the dice stop, not when a database says so.
-          machine.settled(outcome)?.let(recorder::record)
+          //
+          // The shake comes back with the outcome because the roll is the only
+          // thing that knows it: a shake-driven throw goes into the world with
+          // an empty spec and is filled in as the hand moves. Here is where it
+          // is joined back onto the spec that started it, and here is where it
+          // stops — the recorder is given a `FinishedThrow` and takes the
+          // result, the plan and the seed off it, and nothing downstream has
+          // anywhere to put a shake (`docs/architecture.md`, decision 13).
+          val landed = machine.settled(outcome, drivenBy)
           publish()
+          when (landed) {
+            is Landed.Complete -> {
+              recorder.record(landed.thrown)
+              // And offered to the developer's log, which keeps the throw for
+              // a replay and the anomaly if there was one. It is the one place
+              // a seed reaches anywhere a person can read it, and it is behind
+              // the toggle for exactly that reason (`docs/statistics.md`).
+              developer.landed(landed.thrown.thrown, outcome, landed.thrown.result.rolledAtEpochMs)
+            }
+            // Straight back round: the next die is thrown the moment the last
+            // one has stopped, which is what a player does with an exploding
+            // six.
+            is Landed.OneMore -> throwIt(landed.spec)
+            // Nobody is waiting for this throw any more — the formula was typed
+            // over while it was in the air. Nothing landed as far as the screen
+            // is concerned, and nothing follows it.
+            null -> Unit
+          }
         }
       },
     )

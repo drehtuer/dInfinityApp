@@ -50,14 +50,32 @@ class FilamentEngine : AutoCloseable {
    * A single white pixel, for every surface that has no atlas.
    *
    * Filament will not draw a material whose sampler is unbound, and the
-   * material has one because most dice do carry artwork. A die that does not
-   * is drawn through this, which multiplies its colour by one.
+   * material has two of them because most dice carry artwork, printed numbers
+   * or both. A surface that has neither is drawn through this, which
+   * multiplies its colour by one and is never read for its numbers because the
+   * material is told there are none.
    */
   val blank: Texture = whitePixel(engine)
 
   /** How an atlas is sampled. Stateless, so one is enough. */
   val sampler: TextureSampler =
     TextureSampler(TextureSampler.MinFilter.LINEAR, TextureSampler.MagFilter.LINEAR, TextureSampler.WrapMode.REPEAT)
+
+  /**
+   * How a die's printed numbers are sampled.
+   *
+   * Clamped rather than repeated, because a distance field is a *measurement*
+   * and wrapping one puts the far edge of the atlas a pixel away from the near
+   * one — which draws a sliver of the `1` cell along the edge of the `20`. The
+   * table's textures do repeat, which is why this is a second sampler rather
+   * than a change to the first (`docs/tables.md`, "Table looks").
+   */
+  val glyphSampler: TextureSampler =
+    TextureSampler(
+      TextureSampler.MinFilter.LINEAR,
+      TextureSampler.MagFilter.LINEAR,
+      TextureSampler.WrapMode.CLAMP_TO_EDGE,
+    )
 
   /**
    * Somewhere to draw, this big, sharing everything above.
@@ -109,11 +127,18 @@ class FilamentEngine : AutoCloseable {
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughness")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "metallic")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")
+            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "numbered")
+            .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "inkColor")
             .samplerParameter(
               MaterialBuilder.SamplerType.SAMPLER_2D,
               MaterialBuilder.SamplerFormat.FLOAT,
               MaterialBuilder.ParameterPrecision.DEFAULT,
               "atlas",
+            ).samplerParameter(
+              MaterialBuilder.SamplerType.SAMPLER_2D,
+              MaterialBuilder.SamplerFormat.FLOAT,
+              MaterialBuilder.ParameterPrecision.DEFAULT,
+              "glyphs",
             ).platform(MaterialBuilder.Platform.MOBILE)
             // Every backend this app can meet: compiling on the device is only
             // worth its size if it answers for the driver that is actually

@@ -92,6 +92,9 @@ class JoltWorld private constructor(
     return states
   }
 
+  override val deepestDiePenetrationMm: Double
+    get() = Units.unitsToMm(JoltNative.nativeDeepestPenetration(handle))
+
   override fun applyBias(
     index: Int,
     velocity: Vector3,

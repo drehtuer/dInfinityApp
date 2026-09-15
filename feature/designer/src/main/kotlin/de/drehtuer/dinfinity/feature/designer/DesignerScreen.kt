@@ -5,20 +5,27 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,11 +44,18 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.FaceOutline
+import de.drehtuer.dinfinity.designer.FaceShapes
+import de.drehtuer.dinfinity.designer.FaceTransform
+import de.drehtuer.dinfinity.designer.Fill
 import de.drehtuer.dinfinity.designer.GuideMark
+import de.drehtuer.dinfinity.designer.Ink
+import de.drehtuer.dinfinity.designer.Mark
 import de.drehtuer.dinfinity.designer.Stroke
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 
@@ -74,38 +88,66 @@ fun DesignerScreen(
         .testTag(DesignerTestTags.SCREEN),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Text(
-        text = stringResource(R.string.designer_title),
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.weight(1f),
-      )
-      // Step 4 of the flow, and the only one the prototype has instead of a 3D
-      // preview: throw the die and watch it (`docs/face-designer.md`). Absent
-      // rather than dead for a die plain notation cannot name — a button that
-      // is there and does nothing is worse than one that is not.
-      presenter.rollable?.let { formula ->
-        TextButton(
-          onClick = { onRoll(formula) },
-          modifier = Modifier.testTag(DesignerTestTags.ROLL),
-        ) {
-          Text(stringResource(R.string.designer_roll))
-        }
-      }
-      menu()
-    }
+    Header(rollable = presenter.rollable, onRoll = onRoll, menu = menu)
 
-    BaseDice(state, presenter)
-    FaceCanvas(state = state, onStroke = presenter::drew)
-    Warning(state)
-    Tools(state, presenter)
-    Palette(state, presenter)
+    Column(
+      // Everything above the strip scrolls, as the body does in the prototype:
+      // a square canvas and three rows of controls do not fit on a short
+      // phone, and a control squeezed off the bottom is one nobody can reach.
+      modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      BaseDice(state, presenter)
+      FaceCanvas(state = state, onStroke = presenter::drew)
+      Warning(state)
+      Tools(state, presenter)
+      Clipboard(state, presenter)
+      Palette(state, presenter)
+    }
+    // The strip stays: which face is in front of the player is where the
+    // screen is steered from, and a steering wheel that scrolls away is not
+    // one.
     FaceStrip(state, presenter)
+  }
+}
+
+/**
+ * The title, the way out to the tray, and the menu.
+ *
+ * Its own composable for the reason `BaseDice` is: folded in, `DesignerScreen`
+ * runs past detekt's length limit, and a screen that can be read in one
+ * sitting is worth more than a skip branch.
+ */
+@Composable
+private fun Header(
+  rollable: String?,
+  onRoll: (String) -> Unit,
+  menu: @Composable () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+      text = stringResource(R.string.designer_title),
+      style = MaterialTheme.typography.titleLarge,
+      fontWeight = FontWeight.Bold,
+      color = MaterialTheme.colorScheme.onBackground,
+      modifier = Modifier.weight(1f),
+    )
+    // Step 4 of the flow, and the only one the prototype has instead of a 3D
+    // preview: throw the die and watch it (`docs/face-designer.md`). Absent
+    // rather than dead for a die plain notation cannot name — a button that is
+    // there and does nothing is worse than one that is not.
+    rollable?.let { formula ->
+      TextButton(
+        onClick = { onRoll(formula) },
+        modifier = Modifier.testTag(DesignerTestTags.ROLL),
+      ) {
+        Text(stringResource(R.string.designer_roll))
+      }
+    }
+    menu()
   }
 }
 
@@ -188,15 +230,22 @@ private fun FaceCanvas(
         .border(1.dp, edge)
         .testTag(DesignerTestTags.CANVAS)
         .pointerInput(state.cell, state.nib, state.colorArgb) {
-          detectDragGestures(
-            onDragStart = { at -> drawing = listOf(at.asDot(size.width.toFloat(), size.height.toFloat())) },
-            onDragEnd = {
-              onStroke(drawing)
-              drawing = emptyList()
-            },
-            onDragCancel = { drawing = emptyList() },
-          ) { change, _ ->
-            drawing = drawing + change.position.asDot(size.width.toFloat(), size.height.toFloat())
+          // One gesture or the other, never both: the pens answer a drag and
+          // the bucket answers a tap, and a detector that listened for both
+          // would make a slow tap with a pen into a dot of ink.
+          if (state.nib.fills) {
+            detectTapGestures { at -> onStroke(listOf(at.asDot(size.width.toFloat(), size.height.toFloat()))) }
+          } else {
+            detectDragGestures(
+              onDragStart = { at -> drawing = listOf(at.asDot(size.width.toFloat(), size.height.toFloat())) },
+              onDragEnd = {
+                onStroke(drawing)
+                drawing = emptyList()
+              },
+              onDragCancel = { drawing = emptyList() },
+            ) { change, _ ->
+              drawing = drawing + change.position.asDot(size.width.toFloat(), size.height.toFloat())
+            }
           }
         },
   ) {
@@ -204,7 +253,7 @@ private fun FaceCanvas(
     clipPath(face) {
       drawRect(color = Color.White)
       state.guide.forEach { mark -> drawGuide(mark, outline, guideColour) }
-      state.face.strokes.forEach { stroke -> drawStroke(stroke) }
+      state.face.marks.forEach { mark -> drawMark(mark) }
       if (drawing.size > 1) {
         drawStroke(Stroke(drawing, state.colorArgb, state.nib.width, state.nib.erases))
       }
@@ -240,15 +289,28 @@ private fun Path.follow(
   close()
 }
 
+/**
+ * One mark: a line of the pen, or a region the bucket coloured in.
+ *
+ * The fill is a closed path rather than a rectangle, because the region it was
+ * given is whatever shape enclosed the tap — the canvas square for the face
+ * itself, and the player's own outline for anything smaller (`FaceFill`).
+ */
+private fun DrawScope.drawMark(mark: Mark) {
+  when (mark) {
+    is Stroke -> drawStroke(mark)
+    is Fill -> drawFill(mark)
+  }
+}
+
+private fun DrawScope.drawFill(fill: Fill) {
+  val path = Path().apply { trace(fill.dots, size.width, size.height) }
+  path.close()
+  drawPath(path = path, color = Color(fill.colorArgb))
+}
+
 private fun DrawScope.drawStroke(stroke: Stroke) {
-  val path =
-    Path().apply {
-      stroke.dots.forEachIndexed { index, dot ->
-        val x = dot.x * size.width
-        val y = dot.y * size.height
-        if (index == 0) moveTo(x, y) else lineTo(x, y)
-      }
-    }
+  val path = Path().apply { trace(stroke.dots, size.width, size.height) }
   drawPath(
     path = path,
     // The eraser paints the canvas's own white rather than cutting a hole:
@@ -257,6 +319,19 @@ private fun DrawScope.drawStroke(stroke: Stroke) {
     color = if (stroke.erases) Color.White else Color(stroke.colorArgb),
     style = DrawStroke(width = stroke.width * size.width, cap = androidx.compose.ui.graphics.StrokeCap.Round),
   )
+}
+
+/** [dots] as a path across a canvas of [width] by [height]. */
+private fun Path.trace(
+  dots: List<Dot>,
+  width: Float,
+  height: Float,
+) {
+  dots.forEachIndexed { index, dot ->
+    val x = dot.x * width
+    val y = dot.y * height
+    if (index == 0) moveTo(x, y) else lineTo(x, y)
+  }
 }
 
 private fun DrawScope.drawGuide(
@@ -286,15 +361,18 @@ private fun Warning(state: DesignerState) {
   )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Tools(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
-  Row(
-    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
+  // Wrapping rather than scrolling sideways: a tool hidden off the edge of a
+  // row is a tool nobody finds, and there are nine of them.
+  FlowRow(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
     horizontalArrangement = Arrangement.spacedBy(4.dp),
-    verticalAlignment = Alignment.CenterVertically,
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     Nib.entries.forEach { nib ->
       Tool(
@@ -309,21 +387,21 @@ private fun Tools(
       chosen = false,
       tag = DesignerTestTags.UNDO,
       enabled = state.canUndo,
-      onChoose = presenter::undo,
+      onChoose = { presenter.take(Step.Back) },
     )
     Tool(
       label = stringResource(R.string.designer_redo),
       chosen = false,
       tag = DesignerTestTags.REDO,
       enabled = state.canRedo,
-      onChoose = presenter::redo,
+      onChoose = { presenter.take(Step.Forward) },
     )
     Tool(
       label = stringResource(R.string.designer_clear),
       chosen = false,
       tag = DesignerTestTags.CLEAR,
       enabled = !state.face.blank,
-      onChoose = presenter::clear,
+      onChoose = { presenter.take(Step.Clear) },
     )
     Tool(
       label = stringResource(if (state.guideShown) R.string.designer_guide_off else R.string.designer_guide_on),
@@ -352,33 +430,230 @@ private fun Tool(
 }
 
 /**
- * The twelve presets (`design/dInfinity.dc.html`, option `4c`).
+ * Copying a face and putting it down on another (`docs/face-designer.md`,
+ * "Copy and paste").
  *
- * A picker for anything else is still to come; twelve is what the design shows
- * and what a finger can hit without one.
+ * The turn and the mirror are the **screen's** state rather than the
+ * presenter's: they are how the next press of Paste will behave, like the pen
+ * width is how the next stroke will, and nothing on the die changes until
+ * something is pasted.
+ *
+ * The turn is a whole step of the cell's own symmetry, so a die whose cells
+ * have no turn — the d10 and the d18, whose faces are kites — is offered the
+ * mirror and no turn at all. It is *disabled* rather than absent, because a
+ * row whose buttons move about as the base die changes is a row nobody learns.
  */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Clipboard(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  var transform by remember { mutableStateOf(FaceTransform()) }
+  val steps = state.turnsOffered
+  FlowRow(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp)
+        .testTag(DesignerTestTags.CLIPBOARD),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    Tool(
+      label = stringResource(R.string.designer_copy),
+      chosen = false,
+      tag = DesignerTestTags.COPY,
+      enabled = state.canCopy,
+      onChoose = presenter::copyFace,
+    )
+    Tool(
+      label = stringResource(R.string.designer_turn, transform.turns + 1, steps),
+      chosen = transform.turns != 0,
+      tag = DesignerTestTags.TURN,
+      enabled = steps > 1,
+      onChoose = { transform = transform.copy(turns = (transform.turns + 1) % steps) },
+    )
+    Tool(
+      label = stringResource(R.string.designer_mirror),
+      chosen = transform.mirrored,
+      tag = DesignerTestTags.MIRROR,
+      onChoose = { transform = transform.copy(mirrored = !transform.mirrored) },
+    )
+    Tool(
+      label = stringResource(R.string.designer_paste),
+      chosen = false,
+      tag = DesignerTestTags.PASTE,
+      enabled = state.canPaste,
+      onChoose = { presenter.paste(transform) },
+    )
+  }
+}
+
+/**
+ * The twelve presets, and the way past them (`design/dInfinity.dc.html`,
+ * option `4c`).
+ *
+ * Twelve is what a finger can hit without a dialog, so they stay the fast
+ * path and the picker sits after them — which is where the design puts it.
+ * The swatch showing what is in the pen is the picker's own: it opens on the
+ * colour being drawn with rather than on a colour nobody chose.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Palette(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
-  Row(
-    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  var picking by remember { mutableStateOf(false) }
+  FlowRow(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     PRESETS.forEach { argb ->
-      Box(
-        modifier =
-          Modifier
-            .size(if (state.colorArgb == argb && !state.nib.erases) CHOSEN_SWATCH else SWATCH)
-            .clip(CircleShape)
-            .background(Color(argb))
-            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-            .clickable { presenter.ink(argb) }
-            .testTag(DesignerTestTags.colourOf(argb)),
+      Swatch(
+        argb = argb,
+        chosen = state.colorArgb == argb && !state.nib.erases,
+        label = stringResource(R.string.designer_ink, Ink.hex(argb)),
+        tag = DesignerTestTags.colourOf(argb),
+        onChoose = { presenter.ink(argb) },
       )
     }
+    Swatch(
+      argb = state.colorArgb,
+      chosen = state.colorArgb !in PRESETS && !state.nib.erases,
+      label = stringResource(R.string.designer_colour_more, Ink.hex(state.colorArgb)),
+      tag = DesignerTestTags.MORE_COLOURS,
+      onChoose = { picking = true },
+    )
+    Text(
+      text = Ink.hex(state.colorArgb),
+      style = MaterialTheme.typography.labelSmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.testTag(DesignerTestTags.INK_HEX),
+    )
   }
+  if (picking) {
+    ColourPicker(
+      start = state.colorArgb,
+      onDismiss = { picking = false },
+      onChosen = {
+        presenter.ink(it)
+        picking = false
+      },
+    )
+  }
+}
+
+/**
+ * One colour to draw with.
+ *
+ * The circle is as small as the design draws it and the thing a finger hits is
+ * not: the touch target is a full [TOUCH_TARGET] whatever the swatch inside it
+ * measures, which is the floor Android asks for and the reason the row is
+ * spaced rather than crowded.
+ */
+@Composable
+private fun Swatch(
+  argb: Int,
+  chosen: Boolean,
+  label: String,
+  tag: String,
+  onChoose: () -> Unit,
+) {
+  Box(
+    modifier =
+      Modifier
+        .size(TOUCH_TARGET)
+        .clickable(onClick = onChoose)
+        .semantics { contentDescription = label }
+        .testTag(tag),
+    contentAlignment = Alignment.Center,
+  ) {
+    Box(
+      modifier =
+        Modifier
+          .size(if (chosen) CHOSEN_SWATCH else SWATCH)
+          .clip(CircleShape)
+          .background(Color(argb))
+          .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+    )
+  }
+}
+
+/**
+ * A colour beyond the twelve (`docs/face-designer.md`, "A colour beyond the
+ * twelve").
+ *
+ * Hue, depth and brightness rather than red, green and blue: three sliders a
+ * finger can move one at a time and mean something by. The arithmetic behind
+ * them is `Ink`, which is where it can be tested — what is left here is three
+ * sliders and a patch of the colour they make.
+ */
+@Composable
+private fun ColourPicker(
+  start: Int,
+  onDismiss: () -> Unit,
+  onChosen: (Int) -> Unit,
+) {
+  var hsv by remember { mutableStateOf(Ink.hsv(start)) }
+  AlertDialog(
+    modifier = Modifier.testTag(DesignerTestTags.PICKER),
+    onDismissRequest = onDismiss,
+    title = { Text(stringResource(R.string.designer_colour_title)) },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+          modifier =
+            Modifier
+              .fillMaxWidth()
+              .height(TOUCH_TARGET)
+              .background(Color(hsv.argb))
+              .border(1.dp, MaterialTheme.colorScheme.outline)
+              .semantics { contentDescription = Ink.hex(hsv.argb) }
+              .testTag(DesignerTestTags.PICKER_PATCH),
+        )
+        Channel(R.string.designer_hue, hsv.hue, HUE_ROUND, DesignerTestTags.HUE) { hsv = hsv.copy(hue = it) }
+        Channel(R.string.designer_depth, hsv.saturation, 1f, DesignerTestTags.DEPTH) {
+          hsv = hsv.copy(saturation = it)
+        }
+        Channel(R.string.designer_brightness, hsv.value, 1f, DesignerTestTags.BRIGHTNESS) { hsv = hsv.copy(value = it) }
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { onChosen(hsv.argb) }, modifier = Modifier.testTag(DesignerTestTags.PICKER_USE)) {
+        Text(stringResource(R.string.designer_colour_use))
+      }
+    },
+    dismissButton = {
+      TextButton(onClick = onDismiss, modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL)) {
+        Text(stringResource(R.string.designer_colour_cancel))
+      }
+    },
+  )
+}
+
+/** One of the picker's three sliders, named so a screen reader can say which. */
+@Composable
+private fun Channel(
+  label: Int,
+  value: Float,
+  most: Float,
+  tag: String,
+  onChange: (Float) -> Unit,
+) {
+  val name = stringResource(label)
+  Text(text = name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+  Slider(
+    value = value,
+    onValueChange = onChange,
+    valueRange = 0f..most,
+    modifier =
+      Modifier
+        .semantics { contentDescription = name }
+        .testTag(tag),
+  )
 }
 
 /** Which face is in front of the player (`docs/face-designer.md`, "Flow"). */
@@ -414,12 +689,19 @@ private fun labelOf(nib: Nib): Int =
     Nib.Medium -> R.string.designer_nib_medium
     Nib.Broad -> R.string.designer_nib_broad
     Nib.Eraser -> R.string.designer_eraser
+    Nib.Bucket -> R.string.designer_bucket
   }
 
 private const val GUIDE_ALPHA = 0.35f
 private const val GUIDE_DOT = 0.05f
+
+/** All the way round the wheel, which is where hue starts again. */
+private const val HUE_ROUND = 360f
 private val SWATCH = 28.dp
 private val CHOSEN_SWATCH = 36.dp
+
+/** What a finger is owed, whatever is drawn inside it. */
+private val TOUCH_TARGET = 48.dp
 
 /** The twelve the design shows (`design/dInfinity.dc.html`, option `4c`). */
 private val PRESETS =
@@ -449,6 +731,20 @@ object DesignerTestTags {
   const val WARNING: String = "designer:warning"
   const val BASES: String = "designer:bases"
   const val ROLL: String = "designer:roll"
+  const val CLIPBOARD: String = "designer:clipboard"
+  const val COPY: String = "designer:copy"
+  const val PASTE: String = "designer:paste"
+  const val TURN: String = "designer:turn"
+  const val MIRROR: String = "designer:mirror"
+  const val MORE_COLOURS: String = "designer:colour:more"
+  const val INK_HEX: String = "designer:colour:hex"
+  const val PICKER: String = "designer:picker"
+  const val PICKER_PATCH: String = "designer:picker:patch"
+  const val PICKER_USE: String = "designer:picker:use"
+  const val PICKER_CANCEL: String = "designer:picker:cancel"
+  const val HUE: String = "designer:picker:hue"
+  const val DEPTH: String = "designer:picker:depth"
+  const val BRIGHTNESS: String = "designer:picker:brightness"
 
   fun baseOf(dieId: String): String = "designer:base:$dieId"
 

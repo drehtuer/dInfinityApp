@@ -6,6 +6,8 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.FrameClock
+import de.drehtuer.dinfinity.simulation.api.Impact
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -55,6 +57,45 @@ class LiveRoll internal constructor(
 
   /** How many fixed steps the roll has taken. Simulated time, never wall time. */
   val stepsTaken: Int get() = loop.stepsTaken
+
+  /**
+   * Every moment of the shake that has reached this roll, in step order.
+   *
+   * The record of the throw, and it lives here rather than beside the result
+   * because a throw's record is the throw: `spec.copy(shake = drivenBy)` is a
+   * [ThrowSpec] that replays this roll exactly, and a shake kept anywhere else
+   * would be a second half nobody joins back up. The dice are spawned when the
+   * shake is confirmed, so the spec this roll was opened with is missing all of
+   * it (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * It dies with the roll. A throw the player walked away from never reports
+   * an [outcome], so nothing asks for this, and closing the roll takes the
+   * samples with the world they drove.
+   */
+  override val drivenBy: List<ShakeSample> get() = loop.drivenBy
+
+  /**
+   * Everywhere the dice have hit something so far, in step order.
+   *
+   * Grows as the roll runs and is read by whoever is playing it — a watched
+   * tray takes the ones it has not played yet on every frame, and a
+   * power-saving roll takes the lot once the dice have stopped. It is the same
+   * list either way; only the clock over it differs
+   * (`docs/physics-and-rendering.md`, "Haptics and sound").
+   */
+  override val impacts: List<Impact> get() = loop.impacts
+
+  /**
+   * The roll as a developer sees it, right now
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Built when it is asked for and not before, so a roll nobody is debugging
+   * does none of the work — the overlay is off on every install and costs
+   * nothing there. Reading it cannot change the roll, which is the same
+   * promise [Renderer] makes and the reason both are allowed to exist
+   * (`RollLoop.diagnostics`).
+   */
+  override val diagnostics: RollDiagnostics get() = loop.diagnostics()
 
   /**
    * Steps that a frame was too late to pay for, in total

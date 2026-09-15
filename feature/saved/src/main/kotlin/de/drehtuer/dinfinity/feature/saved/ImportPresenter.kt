@@ -75,6 +75,12 @@ class ImportPresenter(
    * download that fails is a state of its own rather than a rejected file —
    * "the server is not answering" and "this is not a collection" are different
    * things to be told.
+   *
+   * A link to a **git repository** arrives here as text like any other: the
+   * unpacking happens on the other side of the seam, where the platform is,
+   * and this class is not told which kind of link it was. That is deliberate.
+   * A collection is a collection however it travelled, and a screen that knew
+   * the difference would be a second place for the difference to matter.
    */
   fun fetch(url: String) {
     val link = url.trim()
@@ -145,10 +151,13 @@ sealed interface ImportState {
   ) : ImportState
 
   /**
-   * Nothing came back from the link.
+   * No collection came back from the link.
    *
    * Apart from [Unreadable] on purpose: a refused download is not a bad
    * collection, it is no collection, and the two want different things said.
+   * A link to a git repository fails this way too — the repository arrived and
+   * held no collection, or held two — because that is the same kind of nothing:
+   * there is no file here to go and fix a line of.
    */
   data class Unreachable(
     val url: String,

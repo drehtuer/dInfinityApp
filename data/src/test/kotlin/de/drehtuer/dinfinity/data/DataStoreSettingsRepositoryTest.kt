@@ -125,7 +125,10 @@ class DataStoreSettingsRepositoryTest {
           "appearance" to "system",
           "power_saving" to false,
           "shake_to_roll" to true,
+          "haptics" to true,
+          "sound" to true,
           "rounding" to "down",
+          "developer_tools" to false,
           "welcome_seen" to false,
           "active_group" to "unfiled",
           "active_session" to "default",
@@ -181,6 +184,43 @@ class DataStoreSettingsRepositoryTest {
       assertEquals(true, repository.settings.first().shakeToRoll)
       repository.setShakeToRoll(false)
       assertEquals(false, repository.settings.first().shakeToRoll)
+    }
+
+  @Test
+  fun `haptics and sound are on until somebody turns them off`() =
+    runTest {
+      // Same rule as the shake above, and the same reason: a fresh install has
+      // neither key, and reading an absent boolean as false would ship a silent
+      // app to everybody who had never opened Settings.
+      val repository = DataStoreSettingsRepository(dataStore(this))
+
+      assertEquals(true, repository.settings.first().haptics)
+      assertEquals(true, repository.settings.first().sound)
+
+      repository.setHaptics(false)
+      assertEquals(false, repository.settings.first().haptics)
+      assertEquals("turning haptics off silenced the sound too", true, repository.settings.first().sound)
+
+      repository.setSound(false)
+      assertEquals(false, repository.settings.first().sound)
+    }
+
+  @Test
+  fun `the debugging tools are off until somebody turns them on`() =
+    runTest {
+      // Absent means off, which is the opposite of the shake, the haptics and
+      // the sound above — and right for the same reason those are on: it is
+      // what a fresh install should be (`docs/physics-and-rendering.md`,
+      // "Debug tooling").
+      val repository = DataStoreSettingsRepository(dataStore(this))
+
+      assertEquals(false, repository.settings.first().developerTools)
+
+      repository.setDeveloperTools(true)
+      assertEquals(true, repository.settings.first().developerTools)
+
+      repository.setDeveloperTools(false)
+      assertEquals(false, repository.settings.first().developerTools)
     }
 
   @Test

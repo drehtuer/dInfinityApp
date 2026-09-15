@@ -176,8 +176,18 @@ has never rolled anything — the same rule the history follows.
 
 ### Anomalies (debug)
 
-Counts of in-flight corrections, re-thrown dice and forced settles (see
-`docs/physics-and-rendering.md`). Hidden behind a developer toggle.
+Forced settles and post-rest corrections — both of which should never happen —
+with the seed and the counters of the throw that produced them (see
+`docs/physics-and-rendering.md`, "Debug tooling"). Behind the developer toggle,
+which is off on every install.
+
+**It does not travel with the statistics export.** It is shared as plain text
+from the developer screen and from nowhere else. The exports here are built
+from `HistoryEntry`, which has no seed on it and cannot grow one; an anomaly
+carries a seed because reproducing the roll is the whole point of writing it
+down. One share path that could carry either would be the place the two got
+mixed up, so there are two, and only one of them is reachable with the toggle
+on (`docs/architecture.md`, decisions 13 and 56).
 
 ## Screens
 
@@ -197,7 +207,9 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
   sheet shows the moment a roll lands (`docs/dice-notation.md`, "Evaluation",
   step 7). A past roll is a record, not something to re-run: there is no replay
   action and the seed is never shown. Re-rolling a formula means rolling it
-  again.
+  again. **The developer toggle does not change this** — it is a surface of its
+  own, and `HistoryEntry` has no seed on it for any screen to unhide
+  (`docs/physics-and-rendering.md`, "Debug tooling").
 - **Sessions:** create/rename/delete. Deleting one moves its rolls to the
   first session rather than deleting them, so a session can be tidied away
   without losing what was rolled in it. ("Unfiled" is the saved-roll *group*
@@ -285,11 +297,21 @@ would be the app putting a number in front of somebody that it guessed. A
 formula that added nothing writes no key at all, so a roll with no modifiers is
 byte for byte the row it has always been.
 
-`seed` and `input_blob` (the quantised shake samples, or the default throw
-parameters) are kept so a roll can be reproduced exactly when a bug report
-needs it. They are **internal**: no screen shows them, and the export leaves
-them out. Reproducing a stored roll is a developer action
-(`docs/physics-and-rendering.md`, Debug tooling), not a feature of the app.
+`seed` is kept so a roll can be reproduced when a bug report needs it. It is
+**internal**: no screen shows it, and the export leaves it out. Reproducing a
+stored roll is a developer action (`docs/physics-and-rendering.md`, Debug
+tooling), not a feature of the app.
+
+`input_blob` was meant for the shake that drove a roll, and **nothing writes
+it**. A shake-driven throw's record — the throw's spec with the samples that
+actually arrived written into it — is real and is handed out by the roll
+screen, and it stops there: `RollRecording.record` has no parameter it could be
+passed as, and `FinishedRoll`, `RollHistoryRow` and `HistoryEntry` have no
+field that could hold one. That is asserted in `:app`, which is the one module
+that can see both ends of the seam. A past roll is a record, not something to
+re-run (`docs/architecture.md`, decision 13;
+`docs/physics-and-rendering.md`, "Shake input"). The column stays because
+dropping it is a migration for nothing.
 
 ## Export and reset
 

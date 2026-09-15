@@ -3,6 +3,8 @@ package de.drehtuer.dinfinity.render.filament
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.DebugWatch
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -28,15 +30,51 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
  *
  * Not thread-safe: one thread owns a roll, and [TrayDriver] is the thread that
  * does (`docs/architecture.md`, "Threading").
+ *
+ * The function-count suppression is [TrayDriver]'s, for the same reason: seven
+ * of these are one per thing a screen can say to a tray, and folding two of
+ * them together would hide which is which rather than shorten anything.
  */
-class TrayLoop : AutoCloseable {
+@Suppress("TooManyFunctions")
+class TrayLoop(
+  /**
+   * What plays the roll's impacts, if anything does.
+   *
+   * A watcher like the renderer and with the same promise: it is handed what
+   * happened and returns nothing, so hearing a roll cannot change it. On a
+   * watched tray the clock is the frame callback, so each frame's impacts are
+   * played as they happen (`docs/physics-and-rendering.md`, "Haptics and
+   * sound").
+   */
+  private val impacts: Impacts = Impacts.NONE,
+  /**
+   * What watches the roll's diagnostics, if anything does — the debug overlay
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The third watcher, after the renderer and the player of impacts, and it
+   * makes the same promise as both: handed a snapshot, asked for nothing back.
+   * [DebugWatch.watching] is asked before a snapshot is built, so a tray with
+   * the developer toggle off — which is every install — walks no dice and
+   * allocates nothing per frame for it.
+   */
+  private val debug: DebugWatch = DebugWatch.NONE,
+) : AutoCloseable {
   private val renderer = TrayRenderer()
 
   private var stage: Stage? = null
   private var roll: WatchedRoll? = null
-  private var settling: ((SimulationOutcome) -> Unit)? = null
+  private var settling: ((SimulationOutcome, List<ShakeSample>) -> Unit)? = null
   private var lastFrameNanos: Long? = null
   private var owed = false
+
+  /**
+   * How many of the roll's impacts have been handed on already.
+   *
+   * The roll keeps the whole list and this keeps the place in it, rather than
+   * the roll handing out a batch and forgetting it: a watcher that could empty
+   * the roll's record would be a watcher changing it.
+   */
+  private var played = 0
 
   /**
    * True while another frame is worth asking for.
@@ -92,6 +130,9 @@ class TrayLoop : AutoCloseable {
     look: TableLook,
   ) {
     renderer.table(geometry, look)
+    // Which table's impacts these will be. A package names one of five sound
+    // sets rather than shipping audio (`docs/tables.md`).
+    impacts.on(look.sound)
     owed = true
   }
 
@@ -127,18 +168,20 @@ class TrayLoop : AutoCloseable {
    * step it. A roll already in progress is ended first — a second throw
    * replaces the first rather than landing on top of it.
    *
-   * [onSettled] is called once, on this thread, with what the dice came to —
-   * and only for a roll that actually finished. A roll abandoned because the
-   * player left the screen reports nothing, because nothing landed.
+   * [onSettled] is called once, on this thread, with what the dice came to and
+   * the shake that drove it — and only for a roll that actually finished. A
+   * roll abandoned because the player left the screen reports nothing, because
+   * nothing landed, and the samples it had collected go with it.
    */
   fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit = {},
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit = { _, _ -> },
   ) {
     endRoll()
     roll = start(renderer)
     settling = onSettled
     lastFrameNanos = null
+    played = 0
   }
 
   /** One more moment of the shake, if there is a roll for it to drive. */
@@ -187,21 +230,25 @@ class TrayLoop : AutoCloseable {
     // which the frame clock would refuse outright.
     val elapsed = if (previous == null) 0.0 else ((nanos - previous).coerceAtLeast(0)) / NANOS_PER_SECOND
     live.advance(elapsed)
+    hear(live)
+    watch(live)
 
     // A roll draws every frame of its own accord, so nothing is owed while one
     // is running.
     owed = false
 
     if (!live.running) {
-      // Read before closing: a roll that has been given up holds nothing.
+      // Read before closing: a roll that has been given up holds nothing —
+      // neither what the dice came to nor the shake that got them there.
       val reached = live.outcome
+      val drove = live.drivenBy
       val report = settling
       endRoll()
       // The last frame of a roll is the picture that stays on screen, and the
       // one frame with nothing after it to cover for a skip. Owed until it
       // lands, like any other still picture.
       owed = true
-      reached?.let { report?.invoke(it) }
+      reached?.let { report?.invoke(it, drove) }
     }
     return wantsFrames
   }
@@ -215,6 +262,35 @@ class TrayLoop : AutoCloseable {
     surfaceLost()
   }
 
+  /**
+   * Plays whatever the dice have hit since the last frame.
+   *
+   * Zero seconds, because a frame's worth of impacts *is* now: at most four
+   * steps of them, and the player thins them down to one tick anyway. The
+   * other clock — the whole roll over about a second — is power-saving mode,
+   * where there are no frames to pace anything
+   * (`docs/physics-and-rendering.md`, "Power-saving mode").
+   */
+  private fun hear(live: WatchedRoll) {
+    val heard = live.impacts
+    if (heard.size <= played) return
+    // Copied rather than handed as a view: the roll's list goes on growing,
+    // and a window onto it would change under whoever was playing it.
+    impacts.play(heard.subList(played, heard.size).toList(), NOW)
+    played = heard.size
+  }
+
+  /**
+   * Shows the overlay what the roll is doing, if anything is looking.
+   *
+   * The question comes first and the snapshot second: building one means
+   * walking every die, and a tray with nobody debugging it should not do that
+   * sixty times a second to hand the result to something that drops it.
+   */
+  private fun watch(live: WatchedRoll) {
+    if (debug.watching) debug.saw(live.diagnostics)
+  }
+
   private fun endRoll() {
     roll?.close()
     roll = null
@@ -224,5 +300,8 @@ class TrayLoop : AutoCloseable {
 
   private companion object {
     const val NANOS_PER_SECOND = 1_000_000_000.0
+
+    /** Impacts on a watched tray have already happened; there is nothing to spread. */
+    const val NOW = 0.0
   }
 }

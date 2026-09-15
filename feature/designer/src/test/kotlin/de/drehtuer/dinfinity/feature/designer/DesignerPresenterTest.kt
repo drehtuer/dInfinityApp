@@ -6,6 +6,10 @@ import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
+import de.drehtuer.dinfinity.designer.FaceFill
+import de.drehtuer.dinfinity.designer.FaceTransform
+import de.drehtuer.dinfinity.designer.Fill
+import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,7 +45,7 @@ class DesignerPresenterTest {
       1,
       presenter.state.draft
         .face(3)
-        .strokes.size,
+        .marks.size,
     )
     assertTrue(
       presenter.state.draft
@@ -70,8 +74,8 @@ class DesignerPresenterTest {
     presenter.drew(line())
 
     val stroke =
-      presenter.state.face.strokes
-        .single()
+      presenter.state.face.marks
+        .single() as Stroke
     assertEquals(Nib.Broad.width, stroke.width, 1e-6f)
     assertEquals(0xFFEC3013.toInt(), stroke.colorArgb)
     assertFalse(stroke.erases)
@@ -86,12 +90,13 @@ class DesignerPresenterTest {
     presenter.drew(line())
 
     assertTrue(
-      presenter.state.face.strokes
-        .last()
-        .erases,
+      (
+        presenter.state.face.marks
+          .last() as Stroke
+      ).erases,
     )
-    presenter.undo()
-    assertEquals(1, presenter.state.face.strokes.size)
+    presenter.take(Step.Back)
+    assertEquals(1, presenter.state.face.marks.size)
   }
 
   @Test
@@ -109,12 +114,12 @@ class DesignerPresenterTest {
   fun `redo puts back what undo took, and drawing again throws it away`() {
     val presenter = DesignerPresenter(d6)
     presenter.drew(line())
-    presenter.undo()
+    presenter.take(Step.Back)
 
-    presenter.redo()
-    assertEquals(1, presenter.state.face.strokes.size)
+    presenter.take(Step.Forward)
+    assertEquals(1, presenter.state.face.marks.size)
 
-    presenter.undo()
+    presenter.take(Step.Back)
     presenter.drew(line())
     assertFalse("the branch that was left was still waiting", presenter.state.canRedo)
   }
@@ -148,7 +153,7 @@ class DesignerPresenterTest {
     presenter.showGuide(false)
 
     assertTrue(presenter.state.guide.isEmpty())
-    assertEquals(1, presenter.state.face.strokes.size)
+    assertEquals(1, presenter.state.face.marks.size)
   }
 
   @Test
@@ -165,7 +170,7 @@ class DesignerPresenterTest {
   fun `the warning comes before the refusal`() {
     // A face that simply stops taking strokes reads as a broken screen.
     val presenter = DesignerPresenter(d6)
-    repeat(FaceDrawing.MAX_STROKES - DesignerState.ROOM_TO_WARN) { presenter.drew(line()) }
+    repeat(FaceDrawing.MAX_MARKS - DesignerState.ROOM_TO_WARN) { presenter.drew(line()) }
 
     assertTrue("no warning before the limit", presenter.state.nearlyFull)
     assertFalse("refused early", presenter.state.full)
@@ -174,7 +179,7 @@ class DesignerPresenterTest {
     assertTrue(presenter.state.full)
 
     presenter.drew(line())
-    assertEquals(FaceDrawing.MAX_STROKES, presenter.state.face.strokes.size)
+    assertEquals(FaceDrawing.MAX_MARKS, presenter.state.face.marks.size)
   }
 
   @Test
@@ -231,7 +236,7 @@ class DesignerPresenterTest {
     val presenter = DesignerPresenter(d6, choosable = listOf(d6), drafts = drafts)
     presenter.drew(line())
 
-    presenter.undo()
+    presenter.take(Step.Back)
 
     assertTrue("the drawing was taken back on screen but not on disk", drafts.load(d6).blank)
   }
@@ -268,6 +273,177 @@ class DesignerPresenterTest {
 
     assertFalse("a chooser was offered for one die", presenter.state.baseChoosable)
   }
+
+  @Test
+  fun `the bucket on bare paper colours the whole face`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.use(Nib.Bucket)
+    presenter.ink(RED)
+
+    presenter.drew(listOf(Dot(0.5f, 0.5f)))
+
+    val fill =
+      presenter.state.face.marks
+        .single() as Fill
+    assertEquals(FaceFill.FACE, fill.dots)
+    assertEquals(RED, fill.colorArgb)
+  }
+
+  @Test
+  fun `the bucket inside a drawn shape colours the shape`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.drew(box())
+    presenter.use(Nib.Bucket)
+
+    presenter.drew(listOf(Dot(0.5f, 0.5f)))
+
+    assertEquals(
+      box(),
+      (
+        presenter.state.face.marks
+          .first() as Fill
+      ).dots,
+    )
+  }
+
+  @Test
+  fun `a fill is one step to take back, and it is written down`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, drafts = drafts)
+    presenter.use(Nib.Bucket)
+
+    presenter.drew(listOf(Dot(0.5f, 0.5f)))
+
+    assertFalse("the fill was not written to the draft", drafts.load(d6).blank)
+    presenter.take(Step.Back)
+    assertTrue(presenter.state.face.blank)
+  }
+
+  @Test
+  fun `what a gesture leaves is the tool's business, not the gesture's`() {
+    // A tap with a pen is not a mark; the bucket takes the place it was put
+    // down whether the finger went on to move or not.
+    val presenter = DesignerPresenter(d6)
+
+    presenter.drew(listOf(Dot(0.5f, 0.5f)))
+    assertTrue("a pen that has not moved has drawn", presenter.state.face.blank)
+
+    presenter.use(Nib.Bucket)
+    presenter.drew(line())
+    assertTrue(
+      "the bucket drew a line",
+      presenter.state.face.marks
+        .single() is Fill,
+    )
+  }
+
+  @Test
+  fun `copying a face and pasting it puts the drawing on another face`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.drew(line())
+    presenter.copyFace()
+    presenter.show(3)
+
+    presenter.paste()
+
+    assertEquals(1, presenter.state.face.marks.size)
+    assertEquals(
+      presenter.state.draft
+        .face(0)
+        .marks,
+      presenter.state.face.marks,
+    )
+  }
+
+  @Test
+  fun `a paste lands on what is there rather than over it`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.drew(line())
+    presenter.copyFace()
+    presenter.show(1)
+    presenter.drew(box())
+
+    presenter.paste()
+
+    assertEquals(2, presenter.state.face.marks.size)
+  }
+
+  @Test
+  fun `a paste can be turned and mirrored on the way down`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.drew(listOf(Dot(0.2f, 0.3f), Dot(0.2f, 0.4f)))
+    presenter.copyFace()
+    presenter.show(2)
+
+    presenter.paste(FaceTransform(turns = 2, mirrored = true))
+
+    val landed =
+      presenter.state.face.marks
+        .single()
+    assertEquals(0.2f, landed.dots.first().x, 1e-5f)
+    assertEquals(0.7f, landed.dots.first().y, 1e-5f)
+  }
+
+  @Test
+  fun `a paste is one press of undo, however much it carried`() {
+    val presenter = DesignerPresenter(d6)
+    repeat(3) { presenter.drew(line()) }
+    presenter.copyFace()
+    presenter.show(4)
+
+    presenter.paste()
+    presenter.take(Step.Back)
+
+    assertTrue(presenter.state.face.blank)
+  }
+
+  @Test
+  fun `there is nothing to copy off a blank face and nothing to paste from an empty clipboard`() {
+    val presenter = DesignerPresenter(d6)
+
+    assertFalse(presenter.state.canCopy)
+    assertFalse(presenter.state.canPaste)
+
+    presenter.drew(line())
+    assertTrue(presenter.state.canCopy)
+    presenter.copyFace()
+    assertTrue(presenter.state.canPaste)
+  }
+
+  @Test
+  fun `a paste that would not fit is not offered`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.drew(line())
+    presenter.copyFace()
+    presenter.show(1)
+    repeat(FaceDrawing.MAX_MARKS) { presenter.drew(line()) }
+
+    assertFalse("a paste was offered onto a full face", presenter.state.canPaste)
+  }
+
+  @Test
+  fun `the clipboard outlives the die it was copied from`() {
+    // It is how somebody is working rather than what they are working on,
+    // which is the rule the pen and the colour already follow.
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    presenter.drew(line())
+    presenter.copyFace()
+
+    presenter.base(d4)
+
+    assertTrue(presenter.state.canPaste)
+    presenter.paste()
+    assertEquals(1, presenter.state.face.marks.size)
+  }
+
+  @Test
+  fun `each die offers the turn its cells have`() {
+    assertEquals(4, DesignerPresenter(d6).state.turnsOffered)
+    assertEquals(3, DesignerPresenter(d4).state.turnsOffered)
+    assertEquals(1, DesignerPresenter(d10).state.turnsOffered)
+  }
+
+  private fun box() = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.2f), Dot(0.8f, 0.8f), Dot(0.2f, 0.8f), Dot(0.2f, 0.2f))
 
   private fun line() = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))
 
@@ -312,4 +488,9 @@ class DesignerPresenterTest {
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
   private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
+  private val d10 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron }
+
+  private companion object {
+    const val RED = 0xFFEC3013.toInt()
+  }
 }

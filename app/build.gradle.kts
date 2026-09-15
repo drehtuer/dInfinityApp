@@ -23,6 +23,7 @@ dependencies {
 
   implementation(project(":dicesets:builtin"))
   implementation(project(":input:shake"))
+  implementation(project(":feedback"))
   implementation(project(":render:filament"))
   implementation(project(":render:headless"))
   implementation(project(":simulation:jolt"))
@@ -41,5 +42,10 @@ dependencies {
   // the bytes itself rather than trusting a fake.
   testImplementation(libs.okhttp.mockwebserver)
   testImplementation(libs.okhttp.tls)
+
+  // And a repository arrives as a tarball, so its test writes real ones —
+  // hostile ones included. Writing a tar by hand would be writing the archive
+  // format the extractor is being tested against.
+  testImplementation(libs.commons.compress)
   testImplementation(libs.androidx.room.runtime)
 }

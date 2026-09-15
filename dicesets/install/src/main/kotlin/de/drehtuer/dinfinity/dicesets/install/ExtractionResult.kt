@@ -17,8 +17,12 @@ enum class RejectionReason {
   /** The bytes are not an archive of a kind the app reads. */
   Unreadable,
 
-  /** An archive with no `diceset.toml` anywhere in it. */
-  NoDiceSet,
+  /**
+   * The archive holds nothing of the kind that was being looked for: no
+   * `diceset.toml` for a dice set, no collection at the root for a saved-roll
+   * collection ([PackageRoot]).
+   */
+  NotInTheArchive,
 }
 
 /** What an extraction came to. */

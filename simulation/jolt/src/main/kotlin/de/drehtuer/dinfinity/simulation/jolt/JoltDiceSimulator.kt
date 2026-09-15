@@ -30,8 +30,9 @@ class JoltDiceSimulator(
     if (spec.dice.isEmpty()) return SimulationOutcome(faces = emptyMap())
     // Power-saving mode is not a second implementation, and this line is why:
     // it is the same roll the screen would have watched, stepped by nobody
-    // (`docs/physics-and-rendering.md`, "Power-saving mode").
-    return start(spec).use(LiveRoll::runToEnd)
+    // (`docs/physics-and-rendering.md`, "Power-saving mode"). Nothing is
+    // listening: a headless run has nowhere to play an impact.
+    return start(spec, listening = false).use(LiveRoll::runToEnd)
   }
 
   /**
@@ -43,10 +44,17 @@ class JoltDiceSimulator(
    *
    * @param renderer what watches the throw. The default watches nothing, which
    *   is what [run] uses.
+   * @param listening whether the roll writes down where the dice hit
+   *   something. Off when neither haptics nor sound is on, which is the one
+   *   thing those two settings save: nothing is measured rather than measured
+   *   and then muted. It changes nothing about the throw, which
+   *   `ImpactRecorderTest` asserts on the same seed both ways
+   *   (`docs/physics-and-rendering.md`, "Impacts").
    */
   fun start(
     spec: ThrowSpec,
     renderer: Renderer = HeadlessRenderer(),
+    listening: Boolean = true,
   ): LiveRoll {
     require(spec.dice.isNotEmpty()) { "a throw of no dice has nothing to simulate" }
 
@@ -62,7 +70,17 @@ class JoltDiceSimulator(
     // spawn that will not fit has to take the world down with it. A native
     // world nobody holds is native memory nobody frees.
     return runCatching {
-      val layout = SpawnLayout(spec.geometry, largestRadiusMm(spec), spec.seed)
+      val layout =
+        SpawnLayout(
+          geometry = spec.geometry,
+          dieRadiusMm = largestRadiusMm(spec),
+          seed = spec.seed,
+          // The dice already down are told to the *layout* and to nothing else.
+          // No body is created for them, so this throw has nothing it could
+          // shove; what they decide is where the new die is not dropped
+          // (`docs/physics-and-rendering.md`).
+          among = spec.among.map { it.at.position },
+        )
       spec.dice.forEachIndexed { index, instance ->
         world.addDie(
           hull = ShapeGeometry.hullOf(instance.die, spec.dieScale),
@@ -71,7 +89,13 @@ class JoltDiceSimulator(
         )
       }
       world.finish()
-      LiveRoll(spec, world, RollLoop(spec, world, layout, ShakeDriver(spec.shake)), renderer)
+      val heard =
+        if (listening) {
+          ImpactRecorder(spec.dice.map { it.die.material.sizeMm * spec.dieScale })
+        } else {
+          ImpactRecorder.deaf(spec.dice.size)
+        }
+      LiveRoll(spec, world, RollLoop(spec, world, layout, ShakeDriver(spec.shake), heard), renderer)
     }.getOrElse { failure ->
       world.close()
       throw failure
@@ -81,20 +105,13 @@ class JoltDiceSimulator(
 
 /**
  * The grid is laid out for the biggest die in the throw, not for each die's
- * own size.
- *
- * A throw can mix a d4 and a d20 from different sets, and cells sized for the
- * d4 would put the d20 through its neighbour's cell wall before anything had
- * been thrown.
+ * own size ([ThrowSpec.largestDieRadiusMm]).
  *
  * Not private, because the golden suite has to lay out the same grid to record
  * what the engine was handed, and a second copy of this line is a second copy
  * that can drift.
  */
-internal fun largestRadiusMm(spec: ThrowSpec): Double =
-  spec.dice.maxOf {
-    it.die.material.boundingRadiusMm * spec.dieScale
-  }
+internal fun largestRadiusMm(spec: ThrowSpec): Double = spec.largestDieRadiusMm
 
 /** Opens the world one throw runs in. The seam the tests come in through. */
 fun interface WorldFactory {

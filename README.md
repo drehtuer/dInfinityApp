@@ -58,9 +58,12 @@ a tumble; everything else is real.
 
 - **Physics-based rolls** — dice are convex rigid bodies with correct mass
   distribution; results come from which face lands up, not from `random()`.
-- **3D rendering** of the tray and dice, with optional haptics and sound.
+- **3D rendering** of the tray and dice, with haptics and sound on every real
+  impact — never on a die sliding or a die at rest. The table decides what it
+  sounds like, the die's size decides the pitch, and both switch off.
 - **Shake to roll** — accelerometer and gyroscope drive the throw.
-- **Power-saving mode** — same physics, no rendering; just the result.
+- **Power-saving mode** — same physics, no rendering; just the result. The dice
+  are still heard: the impacts the throw made are played back over a second.
 - **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on.
   The whole grammar is in the app under **Notation**, with an example on every
   line you can tap to try.
@@ -68,7 +71,8 @@ a tumble; everything else is real.
   shown the moment the dice stop. No counting pips in the middle of a fight.
 - **Saved rolls** — name a formula, give it an icon ("Fireball", "Sneak
   Attack"), roll it with one tap. Group them per game, per character, however
-  you like; export and import them as files or from a URL.
+  you like; export and import them as files, from a URL, or from a git
+  repository holding one.
 - **Outcome graph** — see the exact probability distribution before you roll,
   for a typed formula or for a handful of dice picked by tapping, with mean
   and standard deviation.
@@ -114,7 +118,7 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/probability.md](docs/probability.md) | How the outcome graph is computed |
 | [docs/face-designer.md](docs/face-designer.md) | Finger-drawn face textures |
 | [docs/statistics.md](docs/statistics.md) | What is tracked, how it is stored, privacy |
-| [docs/assets/README.md](docs/assets/README.md) | The logo files, how they are generated from Archivo, and the font licence |
+| [docs/assets/README.md](docs/assets/README.md) | The logo files and the die font, how both are generated from Archivo, and the font licence |
 | [design/README.md](design/README.md) | The prototype: what each file is, how to open it offline, how to keep it in step with `docs/` |
 
 ## Status
@@ -134,7 +138,7 @@ the repository in a devcontainer-aware editor, or:
 ```sh
 docker build -t dinfinity-dev .devcontainer
 docker run --rm -it -v "$PWD":/workspace -w /workspace dinfinity-dev \
-  ./gradlew build test lint detekt ktlintCheck
+  ./gradlew build test lint detekt ktlintCheck assembleDebugAndroidTest
 ```
 
 Release and debug APKs land in `app/build/outputs/named-apk/` as

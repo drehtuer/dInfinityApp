@@ -126,6 +126,18 @@ so much later is a question for Step 5.3, with a device.
 The refusal message always says the largest count that *would* fit, and
 offers to open the outcome graph instead, which has no such limit.
 
+**An explosion that would take a roll past what the table holds stops; it is
+not refused.** The check above counts the dice a *first* explosion could add,
+because those are known before anything is thrown. A chain can go deeper than
+that, and nobody knows how deep until the dice land — by which time the roll is
+on the table and has been read, so there is nothing left to refuse. The limit
+is therefore asked again before each added die, as the physical question it
+really is: is there a patch of clear floor to drop one onto, and is the tray
+still under the hundred bodies the engine takes. When the answer is no the
+chain ends there and the breakdown says so. The one thing that never happens is
+a die dropped onto the pile to keep a chain going
+(`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
+
 Why refuse rather than batch or grow the table: a physics engine with
 hundreds of convex bodies packed into a small box tunnels, jitters and
 explodes. The result would not be a roll of the dice, it would be a bug. The
@@ -167,6 +179,19 @@ Rules:
 - Sound and light are names from built-in lists so a package cannot ship
   audio files or HDR environment maps (both are large and both are attack
   surface for decoders). More presets can be added to the app over time.
+- **The app does not ship the five sounds either; it makes them.** Each preset
+  is a short burst generated in plain Kotlin — a ring at a pitch the surface
+  decides, a share of noise, and a decay — written straight into an `AudioTrack`
+  as raw PCM. So no decoder takes part at all, on a stranger's file or on the
+  app's own, which is this rule carried one step further than it had to be. Felt
+  is almost all noise and gone in a fiftieth of a second; glass is almost all
+  ring and hangs on ten times as long
+  (`docs/physics-and-rendering.md`, "Impacts, haptics and sound").
+- **A `sound` names what the *table* sounds like, not what the roll sounds
+  like.** Dice hitting each other sound like dice whatever they are landing on,
+  so those impacts take the `plastic` preset — which is what a set of acrylic
+  dice is — and the table's preset covers the floor and the walls. A player who
+  wants none of it turns sound off in Settings.
 - Unknown keys are ignored with a warning.
 
 ### Built-in tables
@@ -228,4 +253,6 @@ be exported with the rest of `mine`.
   anything else typed.
 - Power-saving mode ignores the table look entirely; the physics values of
   the *selected* table are still used so the roll is identical to what
-  normal mode would produce.
+  normal mode would produce. Its `sound` is still used too — nothing is drawn
+  there, but the dice are still heard, from the impacts the throw actually made
+  (`docs/physics-and-rendering.md`, "Power-saving mode").

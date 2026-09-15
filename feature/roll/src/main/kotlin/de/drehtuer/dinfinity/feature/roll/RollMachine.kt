@@ -1,15 +1,17 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.RollPlan
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.core.notation.AddedDice
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.core.notation.DicePicker
-import de.drehtuer.dinfinity.core.notation.ExtraThrow
 import de.drehtuer.dinfinity.core.notation.Formula
 import de.drehtuer.dinfinity.core.notation.FormulaParser
 import de.drehtuer.dinfinity.core.notation.NotationError
@@ -18,15 +20,19 @@ import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.core.notation.PlanResult
 import de.drehtuer.dinfinity.core.notation.RollEvaluator
 import de.drehtuer.dinfinity.core.notation.RollPlanner
+import de.drehtuer.dinfinity.core.notation.RunningScore
+import de.drehtuer.dinfinity.core.notation.Scoring
 import de.drehtuer.dinfinity.core.notation.ThrowOutcome
 import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
-import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.ClearSpace
+import de.drehtuer.dinfinity.simulation.api.DieAtRest
 import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
  * What the roll screen is showing, and what typing or tapping does to it
@@ -41,7 +47,15 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * from faces the simulation reported; there is no branch that scores a roll
  * some other way, not for an invalid formula, not for a refused one, not when
  * the engine will not open (`.claude/CLAUDE.md`).
+ *
+ * The class carries a function-count suppression. Nine of its methods are the
+ * things a screen can do to a formula — type it, tap a die onto it, throw it,
+ * read it, round it again, put it away — and the other three are the one answer
+ * [settled] gives, which is either a total or the next die to throw
+ * ([Landed]). Folding any of them together would hide that split rather than
+ * remove it.
  */
+@Suppress("TooManyFunctions")
 class RollMachine(
   private val catalog: DiceCatalog,
   /** The table every throw from here lands on, and the one the tray draws. */
@@ -58,7 +72,6 @@ class RollMachine(
    * the app default resolves to.
    */
   private val look: (TablePin?) -> TableLook,
-  private val simulator: DiceSimulator,
   /**
    * Which way division rounds when a throw lands
    * (`docs/dice-notation.md`, "Division rounding").
@@ -86,11 +99,59 @@ class RollMachine(
     val diceCount: Int,
   )
 
-  /** The same, plus the seed it was thrown with. Non-null exactly while rolling. */
+  /**
+   * The same, plus the throw it was thrown as. Non-null exactly while rolling.
+   *
+   * The whole spec rather than its seed, because a throw that has landed is
+   * described by the spec that would replay it, and that spec is this one with
+   * the shake written back into it ([FinishedThrow.thrown]).
+   */
   private class InFlight(
     val prepared: Prepared,
-    val seed: Long,
-  )
+    val spec: ThrowSpec,
+  ) {
+    /**
+     * Every die at rest in the tray, in the order they stopped.
+     *
+     * It grows as the roll adds to itself. What it is for is the two things
+     * outside the solver that an added die needs: the clear floor to drop it
+     * onto, and the picture to drop it into. No throw ever puts a body in the
+     * world for one of these — a die that has come to rest is finished
+     * (`docs/physics-and-rendering.md`).
+     */
+    val down: MutableList<DieAtRest> = mutableListOf()
+
+    /** The faces of the dice the roll has added, in the order it asked for them. */
+    val added: MutableList<Int> = mutableListOf()
+
+    /** The die in the air now, or null while the first throw is the one in the air. */
+    var adding: DieInstance? = null
+
+    /** The faces of the first throw, which is the only throw the plan describes. */
+    var faces: Map<Int, Int> = emptyMap()
+
+    /** The shake that threw the first throw. An added die is thrown by nobody. */
+    var drivenBy: List<ShakeSample> = emptyList()
+
+    /** Counted over every throw the roll took, because they are all one roll. */
+    var rethrows: Int = 0
+    var forcedSettles: Int = 0
+
+    /** Where the dice of one throw stopped, added to [down] in throw order. */
+    fun cameToRest(
+      thrown: List<DieInstance>,
+      outcome: SimulationOutcome,
+    ) {
+      thrown.forEachIndexed { position, instance ->
+        outcome.restingAt[position]?.let { place -> down += DieAtRest(instance.die, place) }
+      }
+      rethrows += outcome.rethrows
+      forcedSettles += outcome.forcedSettles
+    }
+
+    /** Where everything already down is, which is all [ClearSpace] needs. */
+    fun taken(): List<Vector3> = down.map { it.at.position }
+  }
 
   private var prepared: Prepared? = null
   private var inFlight: InFlight? = null
@@ -233,14 +294,14 @@ class RollMachine(
         dieScale = ready.scale,
         shake = shake,
       )
-    inFlight = InFlight(ready, spec.seed)
+    inFlight = InFlight(ready, spec)
     state = RollState.Rolling(ready.diceCount)
     return spec
   }
 
   /**
    * The dice have stopped. [outcome] is what they came to, and this is where it
-   * becomes a total.
+   * becomes a total — or where the roll asks for one more die.
    *
    * Faces nobody asked for are ignored: only a throw that was made can land,
    * and a screen one stray callback away from a total with no roll behind it
@@ -249,41 +310,60 @@ class RollMachine(
    * The faces are the simulation's, unexamined and unadjusted. Scoring is
    * arithmetic over them — keep, drop, explode, modifiers, rounding — and
    * nothing in it can change what a die landed on.
+   *
+   * **A roll is not always over when its dice stop.** An explosion and a reroll
+   * each add a die, and how many they add is not knowable until the first ones
+   * land. So this hands back either the finished throw or the *next* throw to
+   * make, and whoever is throwing comes back here when it lands
+   * ([Landed], `docs/dice-notation.md`, "Evaluation", step 5).
+   *
+   * @param drivenBy every moment of the shake that reached the roll, in step
+   *   order. A tap-to-roll throw has none, and so has every added die: nobody
+   *   shakes the phone at a die the app threw for them. It is taken here rather
+   *   than remembered from [throwDice] because for a shake there is nothing to
+   *   remember at that point: the dice are spawned when the shake is confirmed
+   *   and the moments arrive afterwards, so only the roll itself knows what
+   *   actually threw them (`docs/physics-and-rendering.md`, "Shake input").
    */
   fun settled(
     outcome: SimulationOutcome,
+    drivenBy: List<ShakeSample> = emptyList(),
     rounding: Rounding = defaultRounding,
-  ): FinishedThrow? {
+  ): Landed? {
     val flight = inFlight ?: return null
-    inFlight = null
 
-    val result =
-      RollEvaluator.score(
+    when (val adding = flight.adding) {
+      null -> {
+        flight.faces = outcome.faces
+        flight.drivenBy = drivenBy
+        flight.cameToRest(flight.prepared.plan.dice, outcome)
+      }
+      else -> {
+        flight.added +=
+          requireNotNull(outcome.faces[0]) { "the added ${adding.die.id} was thrown and reported no face" }
+        flight.cameToRest(listOf(adding), outcome)
+      }
+    }
+    flight.adding = null
+
+    val scoring =
+      RunningScore.of(
         formula = flight.prepared.formula,
         plan = flight.prepared.plan,
         outcome =
           ThrowOutcome(
-            faces = outcome.faces,
-            rethrows = outcome.rethrows,
-            forcedSettles = outcome.forcedSettles,
+            faces = flight.faces,
+            rethrows = flight.rethrows,
+            forcedSettles = flight.forcedSettles,
             rolledAtEpochMs = clock(),
           ),
         rounding = rounding,
-        extra = extraThrows(flight),
+        added = AddedDice(faces = flight.added, room = { die -> roomForAnother(flight, die) }),
       )
-    scored = flight.prepared.formula to result
-    state = RollState.Settled(result, divides = flight.prepared.formula.divides)
-    // Handed out rather than written here: this module decides what a throw
-    // came to, and nothing else. Re-rounding the same throw does not come
-    // through here, which is why a roll is recorded once and not once per
-    // rounding somebody tries.
-    return FinishedThrow(
-      result = result,
-      plan = flight.prepared.plan,
-      seed = flight.seed,
-      savedRollId = cameFrom?.rollId,
-      groupId = cameFrom?.groupId,
-    )
+    return when (scoring) {
+      is Scoring.OneMoreDie -> Landed.OneMore(oneMore(flight, scoring))
+      is Scoring.Scored -> Landed.Complete(complete(flight, scoring.result))
+    }
   }
 
   /**
@@ -307,43 +387,95 @@ class RollMachine(
   }
 
   /**
-   * How a die that explodes or is rerolled is thrown.
+   * The throw that puts one more die on the table, for an explosion or a
+   * reroll.
    *
    * It is a real simulation of one die, not a number from somewhere else.
    * `docs/architecture.md`'s first goal has no exception for the second die of
    * an exploding six, and a shortcut here would be exactly the shortcut the
    * whole app exists not to take.
    *
-   * Seeded from the roll's own seed and the die's position after it, so a
-   * formula with explosions in it replays like any other
-   * (`docs/physics-and-rendering.md`).
+   * It carries the dice already down, which decide two things and no third: the
+   * clear floor it is dropped onto, and the picture it is drawn into. **No body
+   * is created for any of them.** A die that has come to rest is finished, its
+   * face is read, and the throw that follows it cannot reach it — not because
+   * the spawn was tuned to miss, but because there is nothing there to hit
+   * (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+   * adds").
    *
-   * These dice are not yet *drawn*: they are thrown once the tray has settled,
-   * and putting them into the tray the player is looking at is its own piece of
-   * work (`docs/TODO.md`, Step 4.1).
+   * Seeded from the roll's own seed and the die's position after it, and thrown
+   * at the roll's own scale, so a formula with explosions in it replays like
+   * any other and its added dice are the size of the dice they joined.
    */
-  private fun extraThrows(flight: InFlight): ExtraThrow {
-    var extra = 0
-    return ExtraThrow { die ->
-      // The die is one of the dice already in the throw, so which set it came
-      // from is a lookup rather than a guess and the statistics stay attributed
-      // to the right one.
-      val came =
-        flight.prepared.plan.dice
-          .first { it.die == die }
-      val one =
-        ThrowSpec(
-          dice = listOf(came.copy(index = 0)),
-          geometry = geometry,
-          table = table,
-          // Not `seed + n`: two seeds that differ by one are not two
-          // independent throws, so an exploding die used to be thrown by a
-          // stream related to the one that set it off (`Seeds`).
-          seed = Seeds.derived(flight.seed, ++extra),
-        )
-      simulator.run(one).faces.getValue(0)
-    }
+  private fun oneMore(
+    flight: InFlight,
+    needed: Scoring.OneMoreDie,
+  ): ThrowSpec {
+    // The die is one of the dice already in the throw, so which set it came
+    // from is a lookup rather than a guess and the statistics stay attributed
+    // to the right one.
+    val came =
+      flight.prepared.plan.dice
+        .first { it.die == needed.die }
+    val spec =
+      ThrowSpec(
+        dice = listOf(came.copy(index = 0)),
+        geometry = geometry,
+        table = table,
+        // Not `seed + n`: two seeds that differ by one are not two independent
+        // throws, so an exploding die used to be thrown by a stream related to
+        // the one that set it off (`Seeds`).
+        seed = Seeds.derived(flight.spec.seed, needed.ordinal + 1),
+        dieScale = flight.prepared.scale,
+        among = flight.down.toList(),
+      )
+    flight.adding = spec.dice.single()
+    return spec
   }
+
+  /** The roll is over: this is the total, and this is what is written down. */
+  private fun complete(
+    flight: InFlight,
+    result: RollResult,
+  ): FinishedThrow {
+    inFlight = null
+    scored = flight.prepared.formula to result
+    state = RollState.Settled(result, divides = flight.prepared.formula.divides)
+    // Handed out rather than written here: this module decides what a throw
+    // came to, and nothing else. Re-rounding the same throw does not come
+    // through here, which is why a roll is recorded once and not once per
+    // rounding somebody tries.
+    return FinishedThrow(
+      result = result,
+      plan = flight.prepared.plan,
+      // The throw as it happened, rather than as it started: a spec and a list
+      // of samples kept side by side are two halves somebody has to join up,
+      // and this is the join. What comes out replays this roll exactly, which
+      // is the only form of the record worth keeping. It is the *first* throw:
+      // the dice an explosion added follow from it, seed and all.
+      thrown = flight.spec.copy(shake = flight.drivenBy),
+      savedRollId = cameFrom?.rollId,
+      groupId = cameFrom?.groupId,
+    )
+  }
+
+  /**
+   * Whether the tray could take one more of [die].
+   *
+   * The end of a chain of explosions that the depth limit does not reach: an
+   * added die is dropped into clear floor, and a tray with none left cannot
+   * take one. The breakdown says which of the two stopped it
+   * (`docs/dice-notation.md`, "Limits").
+   */
+  private fun roomForAnother(
+    flight: InFlight,
+    die: Die,
+  ): Boolean =
+    ClearSpace.roomForAnother(
+      geometry = geometry,
+      dieRadiusMm = ClearSpace.radiusOf(die, flight.prepared.scale),
+      taken = flight.taken(),
+    )
 
   /**
    * What a formula that parsed comes to: a plan the table can hold, a refusal
@@ -368,6 +500,38 @@ class RollMachine(
       }
     }
   }
+}
+
+/**
+ * What a throw that has landed came to: the roll, or the next throw it calls
+ * for.
+ *
+ * A roll is not always over when its dice stop. `2d6!` throws two dice, and if
+ * one of them shows a six it throws a third — into the same tray, among the
+ * dice that set it off, and nobody knows there is a third until the first two
+ * have landed (`docs/dice-notation.md`, "Evaluation", step 5).
+ *
+ * A sealed pair rather than a nullable result and a nullable spec, for the
+ * reason [RollState] is sealed: "finished and also asking for another die" is a
+ * state to make unwritable rather than one to remember not to reach.
+ */
+sealed interface Landed {
+  /** Every die is down and read. [thrown] is what goes in the history. */
+  data class Complete(
+    val thrown: FinishedThrow,
+  ) : Landed
+
+  /**
+   * One more die has to be thrown before there is a total.
+   *
+   * [spec] is a throw of that one die into the same tray, carrying the dice
+   * already down so it can be dropped clear of them and drawn among them. It is
+   * thrown exactly like any other throw — there is one path to a number
+   * (`docs/architecture.md`, goal 1).
+   */
+  data class OneMore(
+    val spec: ThrowSpec,
+  ) : Landed
 }
 
 /**

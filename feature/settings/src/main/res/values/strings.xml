@@ -27,6 +27,10 @@
   <string name="appearance_light">Light</string>
   <string name="appearance_dark">Dark</string>
   <!-- Shake to roll (docs/physics-and-rendering.md). -->
+  <string name="settings_feel_heading">Haptics and sound</string>
+  <string name="settings_feel_explanation">Only a die actually hitting something ticks or makes a noise — never one sliding, never one that has stopped. The sound is the table\'s, and the pitch follows how hard the knock was and how big the die is. Both take effect the next time the roll screen opens.</string>
+  <string name="settings_haptics_label">Feel the dice land</string>
+  <string name="settings_sound_label">Hear the dice land</string>
   <string name="settings_shake_heading">Shake</string>
   <string name="settings_shake_explanation">Off means the motion sensors are never switched on at all, which is the one setting here that saves any power.</string>
   <string name="settings_shake_label">Shake the phone to throw</string>
@@ -42,6 +46,34 @@
   <!-- %1$s is the installed version, e.g. 1.2.0. -->
   <string name="settings_about_version">Version %1$s</string>
   <string name="settings_about_repository">Source code and issues</string>
+  <!--
+    The developer toggle (`docs/physics-and-rendering.md`, "Debug tooling").
+    Off on every install. It adds a surface of its own and changes nothing on
+    any screen a player uses.
+  -->
+  <string name="settings_developer_heading">Developer tools</string>
+  <string name="settings_developer_explanation">For debugging the physics. It adds an overlay on the tray and a Developer screen to the menu, and nothing else in the app changes — your history still has no replay and still never shows a seed. The overlay appears the next time the roll screen opens.</string>
+  <string name="settings_developer_label">Show the debugging tools</string>
+  <!-- The developer screen itself. Developer-facing English; not a player's screen. -->
+  <string name="developer_title">Developer</string>
+  <string name="developer_explanation">Debugging tools for the physics. Nothing here is reachable with the toggle off, and nothing here is written to your history or your exports.</string>
+  <string name="developer_replay_heading">Replay</string>
+  <string name="developer_replay_explanation">A throw is the dice, the table, their scale, the seed and the shake that drove it — not a seed on its own. Both buttons replay the last throw made this run: one under its own seed, one under the seed you type. Neither is written down and neither touches the tray.</string>
+  <string name="developer_replay_nothing">Nothing has been thrown yet this run.</string>
+  <!-- %1$d how many dice, %2$d the seed. Terse on purpose: a developer reads it. -->
+  <string name="developer_replay_ready">Last throw · dice %1$d · seed %2$d</string>
+  <string name="developer_replay_running">Throwing…</string>
+  <string name="developer_replay_last">Replay the last roll</string>
+  <string name="developer_seed_label">Seed</string>
+  <string name="developer_replay_from_seed">Replay those dice from that seed</string>
+  <!-- %1$d the seed, %2$s the faces in throw order, %3$d the steps it took. -->
+  <string name="developer_replay_result">seed %1$d · faces %2$s · steps %3$d</string>
+  <string name="developer_replay_same">Same faces. Determinism holds on this device.</string>
+  <string name="developer_replay_different">DIFFERENT FACES. The same seed came to a different roll — a release blocker.</string>
+  <string name="developer_anomalies_heading">Anomalies</string>
+  <string name="developer_anomalies_explanation">Forced settles and post-rest corrections. Both are supposed to be impossible, so this is evidence rather than a statistic: if there is a line below, that is a bug — report it with the seed on it. The list is kept in memory and goes when the app does.</string>
+  <string name="developer_anomalies_share">Share the log</string>
+  <string name="developer_anomalies_clear">Clear the log</string>
   <string name="notation_title">Notation</string>
   <string name="notation_blurb">Everything the formula field understands. Tap any line to put it in the tray.</string>
   <string name="notation_limits">Where it stops</string>

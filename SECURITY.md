@@ -41,7 +41,11 @@ The defences, all documented in `docs/dice-sets.md`:
   arbitrary types.
 - **Archives are extracted defensively**: absolute paths, `..`, symlinks, hard
   links and device files are refused; entry count, uncompressed size and file
-  extensions are capped.
+  extensions are capped. One extractor does this for everything unpacked, a
+  dice set and a git repository carrying a saved-roll collection alike — the
+  caps and the allowlist are named by the caller, and a collection's are the
+  tighter of the two: `json` only, and no more than the megabyte the collection
+  may itself be.
 - **Each set lives in its own folder** and file references are resolved against
   it; a canonicalised path that escapes the folder is an error.
 - **Validation is all-or-nothing.** A set that fails is not partially

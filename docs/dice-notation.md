@@ -69,6 +69,7 @@ To keep the simulation and the probability graph tractable:
 | Dice per *roll* | table capacity (`docs/tables.md`), hard cap 100 | Roll button disabled with the reason; the graph still works |
 | Sides per die | must exist in a set | Parse error naming the missing die |
 | Explosion depth | 20 | Further explosions ignored, noted in breakdown |
+| Dice in the tray, including the ones explosions add | table capacity, hard cap 100 | The chain stops there, noted in the breakdown. An added die is dropped into clear floor, and a tray with none left cannot take one (`docs/tables.md`) |
 | Nested parentheses | 8 | Parse error |
 | Result magnitude | fits in 64-bit | Overflow is a parse-time error via the PMF bound |
 
@@ -97,9 +98,14 @@ capacity check happens before any body is created and the UI explains it
    that a first explosion could add). Refuse with a message if it fails.
 4. All dice from all groups go into **one** physics throw. The breakdown
    attributes each physical die back to its group.
-5. Exploding dice: extra dice are thrown in a *second* throw after the first
-   settles, and so on, up to the depth limit. In power-saving mode this is
-   invisible; in normal mode the extra dice drop into the tray.
+5. Exploding and re-rolled dice: each extra die is a throw of its own, made
+   once the last one has come to rest, into the same tray. It drops into the
+   clear floor the settled dice leave, among the dice that set it off, and the
+   player watches it land — the dice already down are drawn where they stopped
+   and nothing moves them, because nothing in the new throw can reach them
+   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
+   A chain stops at the depth limit, or sooner if the tray has no room left for
+   another die. In power-saving mode the same throws happen with nothing drawn.
 6. Apply the group's modifiers in the fixed order below, then the arithmetic.
    See Division rounding below.
 7. Produce a `RollResult` with the total and a per-die breakdown including
@@ -125,12 +131,15 @@ Modifiers take effect in this order whatever order they were written in, so
 
 1. **`r n`** — a die showing `n` or less is thrown once more. Once: the
    replacement stands however low it is. Both dice stay in the breakdown, the
-   first struck through.
+   first struck through. A reroll the tray has no room for does not happen and
+   the die stands as it fell, marked in the breakdown — the alternative being a
+   die dropped onto dice that have already been read.
 2. **`!`** — a die showing its highest face throws another of the same die.
    The new die joins *that die's* chain rather than the group at large, so
    `2d6!kh1` keeps the better of two chains, which is what a player means by
-   it. A chain stops after the explosion depth limit, and the die that would
-   have exploded again is marked in the breakdown.
+   it. A chain stops after the explosion depth limit, or when the tray has no
+   clear floor left for another die; either way the die that would have exploded
+   again is marked in the breakdown.
 3. **`min n`** — a die below `n` counts as `n`, per die. The face it actually
    landed on is still what the breakdown shows; only its contribution changes.
 4. **`kh` / `kl` / `dh` / `dl`** — whole chains are kept or dropped, ranked by
@@ -301,13 +310,14 @@ rolls.
   The file is named after what is in it — `curse-of-strahd.dinfinity.json` —
   and is a copy in the cache, handed over through a content URI granted for
   one use. Nothing the app holds is made readable to do it.
-- **Import** from a file or from a pasted link. A git repository is the same
-  sources as dice sets (see `docs/dice-sets.md`) and is not built yet. A
-  community can keep a repo of "stat blocks for monster manual X" this way.
-  The file picker offers every file rather than only `application/json`: a
-  collection mailed through three apps arrives as `text/plain` as often as
-  not, and a picker that hides the file somebody is looking at is worse than
-  one that lets them choose the wrong thing and be told so.
+- **Import** from a file, from a pasted link, or from a **git repository** —
+  the same sources a dice set has (`docs/dice-sets.md`), recognised in the same
+  place, so a community can keep a repo of "stat blocks for monster manual X"
+  and a player can paste its URL. The file picker offers every file rather than
+  only `application/json`: a collection mailed through three apps arrives as
+  `text/plain` as often as not, and a picker that hides the file somebody is
+  looking at is worse than one that lets them choose the wrong thing and be
+  told so.
 - **A link is the app's one outward request**, and what comes back is treated
   as exactly what it is: bytes a stranger chose. It goes through the same
   downloader a dice set does — `https` only, a redirect that would leave
@@ -316,12 +326,56 @@ rolls.
   server cannot spend somebody's data allowance proving that it should not
   have. What arrives is then read by exactly the rules below, because there is
   one validator and no path around it. A download that does not arrive is said
-  differently from a collection that does not read: "nothing came back from
-  that link" and "this is not a collection" are different things to be told,
-  and only one of them is worth going and fixing the file over.
+  differently from a collection that does not read: "no collection came back
+  from that link" and "this is not a collection" are different things to be
+  told, and only one of them is worth going and fixing the file over. A
+  repository that arrives and holds no collection, or holds two, is said the
+  first way for the same reason: there is no file there to go and fix a line
+  of, and what is wrong is named in the line beneath.
   `android.permission.INTERNET` has been in the merged manifest all along,
   contributed by okhttp's own manifest, so nothing about this asks the player
   anything new.
+- **A repository holds one collection, at its root, named the way the app
+  names one.** A dice set is a folder and a collection is a single file, so
+  something has to say which file in a repository is meant: it is the one whose
+  name ends in `.dinfinity.json`, at the root. That is the same shape
+  `docs/dice-sets.md` gives a package — a well-known name marking the thing —
+  and it is a rule that can be followed without reading this: export from the
+  app, commit the file the app wrote, push.
+
+  | What is in the repository | What happens |
+  | --- | --- |
+  | one `*.dinfinity.json` at the root | it is imported |
+  | none at the root, one deeper | refused, naming where it found one |
+  | more than one at the root | refused, naming them all |
+  | none anywhere | refused, saying what a collection is called |
+
+  At the root rather than anywhere, because a repository of stat blocks is
+  full of JSON and "anywhere" would mean guessing; one rather than several,
+  because a link names a repository and not a file, and an import that quietly
+  picked one of two would be picking for somebody. A forge's tarball wraps
+  everything one folder deep in `repo-<sha>/`, and so does anybody who zips a
+  directory rather than its contents, so that one wrapper is seen through —
+  but only that one, because "the root" has to mean something definite.
+- **The repository takes the same road as the link, with an unpacking in the
+  middle.** Which repository a URL means is decided once, by the same code that
+  decides it for a dice set — GitHub, GitLab, Codeberg/Gitea, or any `https`
+  link to a `.zip` or `.tar.gz`, with the branch or tag the URL named. The
+  tarball is fetched by the same downloader under the **same one-megabyte cap**
+  as the collection itself, and unpacked by the same hardened extractor a dice
+  set goes through: absolute paths and `..` refused in either slash direction,
+  links and devices refused, the entry count and the expanded size counted as
+  the archive is read. Two things are narrowed for a collection: only `.json`
+  is written at all, and the whole archive may expand to no more than the
+  megabyte the collection itself is allowed. The app is here for one page of
+  JSON, and a repository that expands to more than the file it carries is
+  asking the phone to unpack a library to read a page.
+- **Nothing is kept from a repository but the collection.** The archive and
+  everything unpacked from it live in a folder of that fetch's own, deleted
+  whether the import succeeded or not; what is unpacked is read and never
+  installed. As with a file, the database is written only after the reader has
+  passed the collection, so a repository that turns out to be hostile costs
+  the download and nothing else.
 - Import **never merges and never deletes**. A collection whose group name
   already exists is refused outright, naming the clash; rename the group in
   the file (or the one in the app) and import again. Everything else is added

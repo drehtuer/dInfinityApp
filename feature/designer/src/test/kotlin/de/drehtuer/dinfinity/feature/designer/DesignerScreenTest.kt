@@ -5,21 +5,30 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
+import de.drehtuer.dinfinity.designer.Fill
+import de.drehtuer.dinfinity.designer.Ink
+import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -134,7 +143,7 @@ class DesignerScreenTest {
   fun `a face near the limit says so before it refuses`() {
     val presenter = show(d6)
 
-    repeat(FaceDrawing.MAX_STROKES - 1) { presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))) }
+    repeat(FaceDrawing.MAX_MARKS - 1) { presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))) }
 
     compose.onNodeWithTag(DesignerTestTags.WARNING).assertIsDisplayed()
   }
@@ -153,7 +162,7 @@ class DesignerScreenTest {
     }
 
     val stroke =
-      presenter.state.face.strokes
+      presenter.state.face.marks
         .single()
     assertTrue("a stroke of one point is not a line", stroke.dots.size >= 2)
     assertTrue("the stroke left the canvas", stroke.dots.all { it.x in 0f..1f && it.y in 0f..1f })
@@ -180,7 +189,7 @@ class DesignerScreenTest {
     }
 
     val dots =
-      presenter.state.face.strokes
+      presenter.state.face.marks
         .single()
         .dots
     assertTrue("not a fraction of the canvas: $dots", dots.all { it.x in 0f..1f && it.y in 0f..1f })
@@ -212,9 +221,10 @@ class DesignerScreenTest {
 
     assertTrue(
       "the eraser did not erase",
-      presenter.state.face.strokes
-        .single()
-        .erases,
+      (
+        presenter.state.face.marks
+          .single() as Stroke
+      ).erases,
     )
   }
 
@@ -298,6 +308,155 @@ class DesignerScreenTest {
     show(d6, choosable = listOf(d6, d4))
 
     compose.onNodeWithTag(DesignerTestTags.ROLL).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the bucket is a tool like the pens, and a tap with it fills the face`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Bucket)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+
+    assertTrue(
+      "the bucket left no fill",
+      presenter.state.face.marks
+        .single() is Fill,
+    )
+  }
+
+  @Test
+  fun `a tap on the canvas with a pen in hand leaves nothing`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+
+    assertTrue(presenter.state.face.blank)
+  }
+
+  @Test
+  fun `copy and paste are offered, and disabled until there is something to do`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.COPY).performScrollTo().assertIsNotEnabled()
+    compose.onNodeWithTag(DesignerTestTags.PASTE).performScrollTo().assertIsNotEnabled()
+
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+    compose.onNodeWithTag(DesignerTestTags.COPY).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.PASTE).performScrollTo().assertIsEnabled()
+  }
+
+  @Test
+  fun `a face copied from the screen lands on the face the strip moved to`() {
+    val presenter = show(d6)
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+
+    compose.onNodeWithTag(DesignerTestTags.COPY).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.faceOf(2)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.PASTE).performScrollTo().performClick()
+
+    assertEquals(1, presenter.state.face.marks.size)
+    assertEquals(2, presenter.state.cell)
+  }
+
+  @Test
+  fun `the turn and the mirror are what the next paste does`() {
+    val presenter = show(d6)
+    presenter.drew(listOf(Dot(0.2f, 0.3f), Dot(0.2f, 0.4f)))
+
+    compose.onNodeWithTag(DesignerTestTags.COPY).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.MIRROR).performScrollTo().performClick()
+    repeat(2) { compose.onNodeWithTag(DesignerTestTags.TURN).performScrollTo().performClick() }
+    compose.onNodeWithTag(DesignerTestTags.faceOf(1)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.PASTE).performScrollTo().performClick()
+
+    val landed =
+      presenter.state.face.marks
+        .single()
+    assertEquals(0.2f, landed.dots.first().x, 1e-4f)
+    assertEquals(0.7f, landed.dots.first().y, 1e-4f)
+  }
+
+  @Test
+  fun `a die whose cells have no turn is offered the mirror and not the turn`() {
+    // A kite's only symmetry is the mirror, and a turn would carry the drawing
+    // off the face (`docs/face-designer.md`, "Copy and paste").
+    show(BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron })
+
+    compose.onNodeWithTag(DesignerTestTags.TURN).performScrollTo().assertIsNotEnabled()
+    compose.onNodeWithTag(DesignerTestTags.MIRROR).performScrollTo().assertIsEnabled()
+  }
+
+  @Test
+  fun `every swatch says what colour it is and is big enough to hit`() {
+    show(d6)
+
+    compose
+      .onNodeWithTag(DesignerTestTags.colourOf(0xFFEC3013.toInt()))
+      .performScrollTo()
+      .assertWidthIsAtLeast(48.dp)
+      .assertHeightIsAtLeast(48.dp)
+    compose.onNodeWithContentDescription("Ink #EC3013").assertExists()
+    compose
+      .onNodeWithTag(DesignerTestTags.MORE_COLOURS)
+      .performScrollTo()
+      .assertWidthIsAtLeast(48.dp)
+      .assertHeightIsAtLeast(48.dp)
+  }
+
+  @Test
+  fun `the twelve presets are still the fast path`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.colourOf(0xFF4A90D9.toInt())).performScrollTo().performClick()
+
+    assertEquals(0xFF4A90D9.toInt(), presenter.state.colorArgb)
+    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the picker takes the pen past the twelve`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.PICKER).assertExists()
+    compose.onNodeWithTag(DesignerTestTags.HUE).performSemanticsAction(SemanticsActions.SetProgress) { it(150f) }
+    compose.onNodeWithTag(DesignerTestTags.DEPTH).performSemanticsAction(SemanticsActions.SetProgress) { it(0.6f) }
+    compose.onNodeWithTag(DesignerTestTags.BRIGHTNESS).performSemanticsAction(SemanticsActions.SetProgress) { it(0.8f) }
+    compose.onNodeWithTag(DesignerTestTags.PICKER_USE).performClick()
+
+    assertEquals(Ink.argb(150f, 0.6f, 0.8f), presenter.state.colorArgb)
+    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+  }
+
+  @Test
+  fun `each of the picker's three sliders says which one it is`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
+
+    listOf("Hue", "Depth", "Brightness").forEach { compose.onNodeWithContentDescription(it).assertExists() }
+  }
+
+  @Test
+  fun `a picker that is cancelled leaves the pen alone`() {
+    val presenter = show(d6)
+    val before = presenter.state.colorArgb
+
+    compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.HUE).performSemanticsAction(SemanticsActions.SetProgress) { it(300f) }
+    compose.onNodeWithTag(DesignerTestTags.PICKER_CANCEL).performClick()
+
+    assertEquals(before, presenter.state.colorArgb)
+    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the ink being drawn with is written where it can be read`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.INK_HEX).performScrollTo().assertIsDisplayed()
+    compose.onNodeWithText(Ink.hex(presenter.state.colorArgb)).assertExists()
   }
 
   private fun show(

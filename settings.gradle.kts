@@ -35,6 +35,13 @@ include(":core:stats")
 // than in the screen that opens it (docs/architecture.md, Modules).
 include(":core:collection")
 
+// The built-in font, and the numbers it prints on a die that has no artwork.
+// It is `core/` rather than part of the renderer because the face designer
+// stamps from the same font the tray draws with, and two fonts that were
+// meant to be one would disagree about what a `6` looks like
+// (docs/architecture.md, Modules).
+include(":core:glyphs")
+
 include(":dicesets:format")
 include(":dicesets:builtin")
 include(":dicesets:install")
@@ -42,10 +49,22 @@ include(":dicesets:install")
 include(":simulation:api")
 include(":simulation:jolt")
 
+// The Step 5 device harness: the shape of a run's JSON, and the targets it
+// is scored against. Plain Kotlin so the comparison is decided and tested on
+// the JVM rather than on the phone it is run from (docs/architecture.md,
+// decision 40).
+include(":simulation:harness")
+
 include(":render:headless")
 include(":render:filament")
 
 include(":input:shake")
+
+// Impacts become haptic ticks and impact sounds here. Beside `input/shake`
+// rather than inside a screen: it is the other end of the same wire, and the
+// tray plays through it (docs/architecture.md, Modules).
+include(":feedback")
+
 include(":designer")
 include(":data")
 

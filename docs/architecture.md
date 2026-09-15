@@ -48,19 +48,22 @@ core/
   probability/       Exact PMF computation (docs/probability.md)
   stats/             Statistics aggregation logic
   collection/        The saved-roll collection format: read, written, validated (docs/dice-notation.md)
+  glyphs/            The built-in font, typesetting, and outlines into a signed distance field (docs/physics-and-rendering.md)
 dicesets/
   format/            TOML schema, validator, table definitions (docs/dice-sets.md, docs/tables.md)
-  install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage, and reading back what is installed
+  install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage, and reading back what is installed. The fetching and the extraction are shared with saved-roll collections (docs/dice-notation.md)
   builtin/           The bundled standard set and default tables as a normal package (eats its own dog food)
 simulation/
   api/               DiceSimulator interface, table geometry + capacity check, settle/face-read logic, the frame clock
   jolt/              Jolt JNI bridge (C++), the roll loop and the roll in progress
+  harness/           The Step 5 device harness off the device: what a run is asked for, its JSON document, and the targets it is scored against (docs/TODO.md, Step 5.1)
 render/
   filament/          Scene setup, materials, camera, die meshes, tray
   headless/          The Renderer contract, and the renderer that draws nothing (power-saving mode)
 input/
   shake/             Sensor fusion → throw impulses
-designer/            Face drawing canvas, drafts on disk → dice set export (docs/face-designer.md)
+feedback/            Impacts → haptic ticks and impact sounds (docs/physics-and-rendering.md)
+designer/            The drawing model behind the face designer: marks, drafts on disk, cell outlines, and the export that turns them into an installable dice set (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
 ui/
   common/            Screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes
@@ -68,15 +71,16 @@ feature/             One module per screen group; see docs/TODO.md Step 4
   roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
   saved/             Saved rolls: groups, list, editor, import/export
-  sets/              Dice set browser, details, installer
+  sets/              Dice set browser, details, installer, and the "My dice" export behind a licence choice
   tables/            Table picker
   designer/          Face designer screen over the designer/ engine
   stats/             Statistics, history and sessions — the "Look back" screens
-  settings/          Settings, the menu, and the notation reference
+  settings/          Settings, the menu, the notation reference, and the developer screen (docs/physics-and-rendering.md)
 test-fixtures/       Test data shared by every module: dice sets, collections, golden roll cases
 ```
 
-Twelve screens in the menu, eight `feature/` modules: statistics, history,
+Twelve screens in the menu — thirteen with the developer toggle on — and eight
+`feature/` modules: statistics, history,
 sessions and saved-roll statistics are one module because they are one screen
 group over one set of data (`design/dInfinity.dc.html`, options 1w, 1x, 6c, 8b)
 and splitting them would only split the queries.
@@ -89,6 +93,15 @@ cannot write anything. Its shape is the import rule made structural —
 a list of reasons it is not, never something in between, so whatever imports it
 has no judgement left to make. That is how "an import can never damage what is
 already there" stops being something every screen must remember.
+
+`core/glyphs` is the font a die with no artwork is printed with, and it is
+`core/` for the same reason `ShapeAtlas` is: more than one thing has to agree
+about what a `6` looks like. The tray prints one, and the face designer stamps
+one from the same font (`docs/face-designer.md`); two fonts that were meant to
+be one would disagree, and the disagreement would be a die whose drawn faces do
+not match its printed ones. Nothing in it knows what a die is beyond a face and
+a label, and nothing in it draws — what comes out is a field of bytes, and the
+only thing that needs a GPU is uploading it.
 
 `ui/common` is **not** a feature and is not a place for anything that is
 merely shared. Nothing in it knows what screen it is on, and it depends on
@@ -105,11 +118,21 @@ the menu button lives in `feature/settings` and is handed to each screen as a
 slot, because where it goes is the navigation graph's business and the
 navigation graph is `:app`'s.
 
-Rule: `core/*`, `dicesets/format`, `simulation/api`, `render/headless` and
+`feedback` is the other end of the wire `input/shake` is one end of, and it is
+shaped the same way: the thresholds, the layout in time, the pitch, the tick and
+the five waveforms are plain Kotlin, and only `SystemBuzzer` and `PcmSpeaker`
+touch an Android API. It is not in `feature/roll` because it is not about a
+screen — the tray plays through it, and the tray belongs to `render/filament`.
+
+Rule: `core/*`, `dicesets/format`, `simulation/api`, `simulation/harness`,
+`render/headless` and
 `test-fixtures` are plain Kotlin modules with no Android dependency, so they
 run on the JVM and stay fast; everything else is an Android library.
 `simulation/jolt` and `render/filament` carry native code and are tested with
-instrumented tests on a device. The golden determinism suite spans both tiers
+instrumented tests on a device. `simulation/harness` ships in nothing: it is on
+the *test* classpath of `simulation/jolt` and nowhere else, and the arrow only
+goes that way — it knows about a `SimulationOutcome` and about no engine at all
+(decision 53). The golden determinism suite spans both tiers
 from a source set they share, `simulation/jolt/src/sharedTest`
 (decision 44). Most of `simulation/jolt` is *not* device-only,
 though, and that is deliberate: everything it decides about a roll is Kotlin
@@ -157,6 +180,13 @@ the start so that adding one is a change in a single place. `Roll` is home. The
 **menu** is a destination too: it lists the other eleven and is not in the
 list itself (`design/dInfinity.dc.html`, option `1q`).
 
+One destination is listed conditionally. **Developer** is in the App section
+beside Settings and appears only while `AppSettings.developerTools` is on,
+which it is on no install until somebody turns it on. The *route* exists
+either way — a route that came and went would be a back stack that could not be
+restored — so what the toggle governs is whether anything offers it
+(`docs/physics-and-rendering.md`, "Debug tooling").
+
 ```mermaid
 stateDiagram-v2
     [*] --> Roll
@@ -165,6 +195,7 @@ stateDiagram-v2
     Graph: Outcome graph
     Screen: Saved · Stats · History · Sessions<br/>Sets · Tables · Designer · Settings · Notation
     Editor: Saved roll editor
+    Developer: Developer<br/>(only while the toggle is on)
 
     Roll --> Graph: See the odds
     Roll --> Menu: the menu button
@@ -173,11 +204,14 @@ stateDiagram-v2
     Editor --> Roll: Roll now
     Graph --> Menu: the menu button
     Screen --> Menu: the menu button
+    Developer --> Menu: the menu button
     Menu --> Roll: choose Roll
     Menu --> Graph: choose the graph
     Menu --> Screen: choose any of them
+    Menu --> Developer: choose Developer
     Graph --> Roll: system back
     Screen --> Roll: system back
+    Developer --> Roll: system back
     Menu --> Roll: system back
     Roll --> [*]: system back leaves the app
 ```
@@ -258,6 +292,7 @@ stateDiagram-v2
     Ready --> TooMany: type
     Ready --> Rolling: Roll, or a shake
 
+    Rolling --> Rolling: an explosion or a reroll adds a die<br/>(thrown once the last has landed)
     Rolling --> Settled: the last die comes to rest
     Rolling --> Ready: type<br/>(abandons the throw)
     Rolling --> Invalid: type
@@ -271,6 +306,15 @@ stateDiagram-v2
     Settled --> TooMany: type
     Settled --> Empty: clear the field
 ```
+
+**The self-loop on `Rolling` is a roll adding dice to itself.** `8d6!` is not
+eight dice: it is eight dice and then, for each six, another — and how many
+that is cannot be known until the first eight have landed. So `settled` hands
+back either the finished throw or the *next* throw to make (`Landed`), and the
+screen goes on saying "Rolling…" while each added die is dropped into the tray
+among the dice that set it off (`docs/physics-and-rendering.md`, "The dice an
+explosion or a reroll adds"). Every one of those throws is an ordinary throw
+down the ordinary path; there is no second way to get a number.
 
 **Typing is the one input every state accepts**, which is why it reaches every
 state in the diagram: the field is live on every keystroke and is never
@@ -425,9 +469,16 @@ stateDiagram-v2
 
     Nothing --> Table: table(geometry, look)
     Table --> Throw: roll
-    Throw --> Throw: roll<br/>(a second throw replaces the first)
+    Throw --> Throw: roll<br/>(a second throw replaces the first,<br/>and so does a die an explosion adds)
     Throw --> Table: clear
 ```
+
+A die an explosion adds is a `roll` like any other, and it replaces the throw
+before it like any other. What keeps the tray from emptying is that the throw
+*carries* the dice already down (`ThrowSpec.among`): the scene is rebuilt with
+each of them back where the simulation left it, and only the new die moves
+after that. The tray has no state of its own for "a roll that is still adding
+to itself", and deliberately — that is the roll screen's question, one level up.
 
 A surface arriving or going is **not** on that diagram, and that is the point:
 it is not a state of the tray but of where the tray draws. The two are crossed,
@@ -598,10 +649,20 @@ to them. This is the seam that does, and it has one shape rule: **the roll
 screen cannot see a database.**
 
 `RollMachine.settled` hands out a `FinishedThrow` — the result, the plan it
-came from, and the seed. `feature/roll` declares a `ThrowRecorder` interface
-and `:app` implements it over `data`'s `RollRecording`. A roll screen that
-could reach a database is a roll screen that will eventually query one
-mid-throw.
+came from, and the throw itself, which is the `ThrowSpec` the dice were spawned
+from with the shake that actually arrived written back into it. `feature/roll`
+declares a `ThrowRecorder` interface and `:app` implements it over `data`'s
+`RollRecording`. A roll screen that could reach a database is a roll screen
+that will eventually query one mid-throw.
+
+**The throw stops there.** What crosses the `ThrowRecorder` seam is the result,
+the plan, the seed and where the roll came from; `RollRecording.record` has no
+parameter a spec or a shake could be passed as, and nothing below it —
+`FinishedRoll`, `RollHistoryRow`, `HistoryEntry`, the exports — has a field
+that could hold one. That is asserted rather than remembered, in `:app`, which
+is the one module that can see both ends of the seam. Reproducing a roll is a
+developer action about a roll still on screen, not something a history row
+offers (decision 13, `docs/statistics.md`).
 
 The plan travels with the result because the two know different things: the
 result knows which face came up, and only the plan knows which *die* it was and
@@ -687,6 +748,54 @@ sound is offered to `CollectionImporter`, which writes it in one transaction.
 Every way an import can fail has therefore already happened before anything is
 at risk.
 
+A collection arrives three ways, and only the first stretch of the journey
+differs. Everything after "the bytes, as text" is one path, because a
+collection is a collection however it travelled.
+
+```mermaid
+flowchart TD
+  picked["A file the picker chose"] --> text
+  pasted["A pasted https link"] --> known{"a link the<br/>installer recognises?"}
+  known -- "no: the file itself" --> fetch
+  known -- "yes: a repository" --> source["InstallSource:<br/>which forge, which ref,<br/>which tarball"]
+  source --> fetch["PackageFetcher:<br/>https only, redirects by hand,<br/>1 MiB of bytes that arrive"]
+  fetch -- "the file" --> text
+  fetch -- "the tarball" --> extract["SafeExtractor:<br/>into a folder it cannot leave"]
+  extract --> which["CollectionInRepository:<br/>one .dinfinity.json at the root"]
+  which --> text["The bytes, as text"]
+  text --> reader["CollectionReader:<br/>writes nothing"]
+  reader -- "sound" --> importer["CollectionImporter:<br/>one transaction"]
+  reader -- "not sound" --> refused["Unreadable:<br/>every line wrong with it"]
+```
+
+The repository half is deliberately not a second path. `InstallSource` decides
+which repository a URL means — the same code, and the same forges, a dice set's
+link goes through (`docs/dice-sets.md`) — and what it names is fetched by the
+same `PackageFetcher` under the collection's own one-megabyte cap and unpacked
+by the same `SafeExtractor`. Two things about that extractor were parameters
+waiting to be named: `ArchiveLimits`, which is what may be written and how much
+of it, and `PackageRoot`, which is which folder inside the archive counts. A
+dice set asks for `diceset.toml` under 64 MiB and six extensions; a collection
+asks for one `*.dinfinity.json` at the repository's root, under the megabyte it
+is itself allowed, with `json` the only extension written at all. Everything
+hostile about an archive — a path that climbs out, a link, an entry count, a
+bomb — is refused by the same lines for both, which is the point: a second
+extractor would be a second answer to "is this path safe", and two answers to
+that is one too many.
+
+Nothing a repository carries is kept. The archive and everything unpacked from
+it live in a folder of that one fetch's own, deleted whether the import
+succeeded or not, and the database is written only after the reader has passed
+the collection — the same ordering as a file, one layer further out.
+
+`CollectionDownload` and `CollectionInRepository` are in `:app` for the reason
+everything else here is: a cache directory and an HTTP client are the
+platform's, and `feature/saved` takes a `suspend (String) -> Fetched` and never
+learns which kind of link it was. What a collection file is *called* is neither
+of theirs — it is `core/collection`'s `CollectionFiles`, because the name the
+app exports under and the name a repository is searched for have to be one
+rule.
+
 The importer's own rule is a refusal. A collection whose group name is already
 taken is turned away outright, naming the clash, with nothing merged and
 nothing deleted (decision 15). It is checked ignoring case, because two groups
@@ -702,6 +811,8 @@ one made here.
 | --- | --- |
 | `Waiting` | nothing chosen; what an import will and will not do is on screen |
 | `Reading` | brief, but not instant for five hundred rolls |
+| `Fetching` | a link is being followed, which is the one wait that is somebody else's speed |
+| `Unreachable` | no collection came back: the server refused, or the repository held none, or held two. Apart from `Unreadable` on purpose — there is no file here to go and fix a line of |
 | `Unopenable` | the file could not be opened at all — moved, or the permission withdrawn |
 | `Unreadable` | it is not a collection, and **every** line wrong with it is listed, each saying where in the file it is |
 | `Clash` | a group name is taken. Its own state, not another kind of problem: the file is fine and so is what is saved, and one of the two names has to change |
@@ -710,6 +821,7 @@ one made here.
 | Control | Calls | What changes |
 | --- | --- | --- |
 | **Choose a file** | the picker, in `:app` | a content URI arrives, is read bounded, and becomes text |
+| **Fetch** a link | `fetch`, then `CollectionDownload` in `:app` | a file or a repository is downloaded, and becomes text or a refusal |
 | *(not a control)* the file's text | `offer` | the state, to one of the four above |
 | **Choose another file** | `again`, then the picker | back to `Waiting` |
 | **See the rolls** | *(navigation)* | the saved-rolls list, with the import taken off the back stack |
@@ -869,17 +981,31 @@ offer a formula the app would refuse (`docs/dice-notation.md`).
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
 | one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
 | the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
+| the haptics switch | `onHapticsChanged` | whether a die landing ticks in the hand, from the next visit to the roll screen. The system's own touch-feedback setting still governs it: the effects go out under `VibrationAttributes.USAGE_TOUCH` and the app never asks whether that is on |
+| the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
 | Down / Nearest / Up | `onRoundingSelected` | which way division rounds on the next throw, and on every outcome graph. The per-throw override on the result sheet is still not remembered |
 | the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
+| the developer-tools switch | `onDeveloperToolsChanged` | whether the menu offers the **Developer** screen, at once, and whether the next visit to the roll screen draws the debug overlay. Off on every install, and it changes nothing else: the history still has no replay and still never shows a seed (decisions 13 and 53) |
 | **Source code and issues** | `onRepository` | a browser. The app's only outward link |
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
 
-Three of those take effect **when the roll screen next opens** rather than
-where they are pressed — power saving, the shake, and the default rounding.
-A renderer appearing under a roll in progress, sensors registering mid-throw,
-or a total changing its arithmetic while the dice are in the air are not
-settings taking effect; they are bugs (decision 16).
+Six of those take effect **when the roll screen next opens** rather than where
+they are pressed — power saving, the shake, haptics, sound, the default
+rounding and the debug overlay half of the developer toggle. A renderer
+appearing under a roll in progress, sensors registering mid-throw, a roll that
+starts buzzing half way down, an overlay appearing over a throw, or a total
+changing its arithmetic while the dice are in the air are not settings taking
+effect; they are bugs (decision 16). The developer toggle's *other* half — the
+menu row — appears at once, because a menu is not a roll.
+
+Haptics and sound are read there rather than per throw because **both ends of
+them are built with the screen**: the thing that listens is the roll, which is
+opened with `listening = haptics || sound`, and the thing that plays holds an
+actuator, a handful of audio buffers and a thread. Reading them later would mean
+a roll that recorded impacts nobody asked for, or a player rebuilt mid-throw.
+The pair is also what the saving is measured against: with both off nothing is
+measured, rather than measured and then thrown away.
 
 `SettingsRepository` has one write, not one setter per setting. The list of
 settings is still growing, and an interface with a method for each is an
@@ -909,9 +1035,15 @@ flowchart TD
     C -->|fits| T["ThrowSpec<br/>dice, dieScale, seed, table,<br/>initial impulse (shake or default)"]
     T -->|"DiceSimulator.start / run"| L["LiveRoll<br/>one fixed step at a time"]
     L -->|"every step, while shaking"| L
-    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows"]
+    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows,<br/>where each die came to rest"]
+    L --> D["drivenBy<br/>the shake as it actually arrived"]
     L -.->|body transforms, optional| V[Renderer]
+    L -.->|"impacts, optional"| I["Impacts<br/>ticks and sounds, now or over ~1 s"]
     S -->|face index → value<br/>keep/drop/explode, modifier| O["RollResult<br/>total, per-die breakdown,<br/>formula, timestamp"]
+    S -->|"a 6 on an exploding die,<br/>or a reroll"| X["One more ThrowSpec<br/>one die, derived seed,<br/>among: the dice already at rest"]
+    X -->|"dropped into clear floor"| L
+    D -->|"spec.copy(shake = drivenBy)"| FT["FinishedThrow.thrown<br/>the ThrowSpec that replays this roll<br/>goes no further than this screen"]
+    O --> FT
     O --> UI[UI]
     O --> ST[stats.record]
 ```
@@ -923,11 +1055,33 @@ the outcome is delivered. Same code path, same result for the same seed — and
 "same code path" is literal: both are a `LiveRoll`, and the difference is who
 calls it (decision 48).
 
+Both dotted lines are watchers and neither has a way back: `Renderer` has no
+method that returns anything and `Impacts` has none either, so drawing a roll
+and hearing one are alike in being unable to change it (decisions 48 and 52).
+The impacts are recorded only when something is going to play them, which is
+what the two feedback settings decide when the screen opens.
+
+The loop through `One more ThrowSpec` is an explosion or a reroll. A roll is
+not always one throw, and how many it is cannot be known before the dice land,
+so scoring says either "here is the total" or "throw one more of these first".
+The added die goes round the same path — same simulator, same renderer, same
+tray — carrying the dice already at rest so that it can be dropped clear of
+them and drawn among them. No body is created for any of those: a die that has
+come to rest is finished (`docs/physics-and-rendering.md`, "The dice an
+explosion or a reroll adds").
+
 The loop back into `LiveRoll` is a shake. The dice are spawned when the shake
 is confirmed, so most of one arrives while they are already in the air; each
 sample names the step it belongs to, and the roll is reproducible from the
 record afterwards because the frame clock never runs the simulation faster
 than real time (`docs/physics-and-rendering.md`, "Shake input").
+
+The roll accumulates those samples as it takes them and reports them beside the
+outcome, so a throw that has landed can be described by the spec that would
+replay it rather than by the empty one it began with. That join happens once,
+on the roll screen's own thread, and it is where the record ends: nothing below
+`stats.record` has a field to put it in. A past roll is a record, not something
+to re-run (decision 13).
 
 ## Threading
 
@@ -938,6 +1092,15 @@ than real time (`docs/physics-and-rendering.md`, "Shake input").
   two, which is a change from the original design (decision 49).
 - **Sensor thread:** `SensorManager` callbacks are batched and forwarded to the
   roll thread as impulse events.
+- **Feedback thread:** one `HandlerThread` per player, which holds a cue until
+  its moment and plays it there. It exists for two reasons. In normal mode every
+  cue is due *now* and the thread does nothing but keep `AudioTrack.play` and
+  `Vibrator.vibrate` off the roll thread, which is the thread stepping the
+  physics and drawing the frame. In power-saving mode it is what "played back
+  over about a second" is made of: the roll finished in eighty milliseconds and
+  the cues are posted forward across the second after it. Nothing on it can
+  reach the roll (`docs/physics-and-rendering.md`, "Impacts, haptics and
+  sound").
 - **IO dispatcher:** database, dice set installation, texture decoding.
 
 ## Storage layout
@@ -949,16 +1112,29 @@ than real time (`docs/physics-and-rendering.md`, "Shake input").
       diceset.toml
       textures/…
       .meta.json              source URL, commit hash / archive checksum + ETag, install time, validation report
-  designer/
-    drafts/…                  in-progress face drawings
+    mine/                     the same again, generated from the drafts rather than downloaded (docs/face-designer.md)
+    .mine.writing/            it being rebuilt; renamed into place, and never a package because of the dot
+    .mine.previous/           the one it replaced, held until the swap is done
+  drafts/…                    in-progress face drawings, one file per die
   savedrolls/
     imports/…                 imported collections kept for "re-import / diff"
+<cacheDir>/
+  collections/                one exported saved-roll collection, emptied before each share
+  exports/                    one exported file of numbers, emptied before each share
+  packages/                   one exported dice-set zip, emptied before each share
 <databases>/dinfinity.db       Room: stats, saved rolls, roll history, set registry
 ```
 
-Dice set folders are treated as read-only after installation. Uninstall
+Dice set folders are treated as read-only after installation, with one
+exception the app owns end to end: `dicesets/mine/` is rewritten from the
+drafts whenever the folder is read and a drawing has changed. Uninstall
 deletes the folder and the registry row; statistics referencing that set are
 kept (they are keyed by set id and die id, not by file path).
+
+The three `<cacheDir>` directories are the only paths the app's `FileProvider`
+can see (`app/src/main/res/xml/collection_paths.xml`). Each kind of export gets
+one of its own rather than sharing a wider path, because the cache also holds
+the archives an install is working through, and those came from a stranger.
 
 ## Key decisions log
 
@@ -1012,5 +1188,11 @@ kept (they are keyed by set id and die id, not by file path).
 | 46 | Filament's materials are compiled on the device with `filamat-android`, not by `matc` at build time | Filament ships no default material: every surface needs one compiled from `.mat` source, and the two ways to get there are a host tool or the runtime compiler. `matc` would mean the devcontainer image and the CI action both gaining another pinned download, and the app build depending on a host binary — for a project whose whole build story is "it works in the container", that is a real cost. `filamat-android` is one dependency line, supports Vulkan as well as OpenGL ES and optimises what it compiles. It is paid for in APK size, because it bundles a shader compiler, and in some work at launch. If either turns out to matter on the Pixel 10a, the material source does not change — only who compiles it. It also leaves the door open to a dice set bringing its own material rather than only its own parameters, which `matc` at build time would have closed for good — but that door stays shut in v1, because a shader is code and `docs/dice-sets.md` says the app never runs anything from a package (`docs/TODO.md`, After v1) |
 | 47 | `render/filament` draws through a `Stage` interface, and one file implements it | The same line decision 40 draws through the physics, for the same reason and with the same shape. Which meshes a throw needs, how big each die is at the capacity rule's scale, which numbers its material takes, when the camera stops framing the tray and starts framing the dice — all judgement, and none of it physics or GPU. Behind the seam a JVM test can say the dice were the right size, that the camera moved when they settled and that a second roll did not land on top of the first; in front of it a device can only say a frame was drawn. `FilamentStage` and `FilamentEngine` are the files that hold a context, and — with `RollThread`, the thread they are made on and the lifetime they are kept for (decision 50) — the ones excluded from the coverage figure. They are split along what a surface owns: a swap chain and a viewport die with the surface they were made from, while the engine and the material compiled on the device do not — rebuilding those for every rotation is a recompile the player watches as a black tray |
 | 48 | A roll in progress is a `LiveRoll`: the loop steps one step at a time, and a `FrameClock` decides when. Power-saving mode is the same object with nobody calling the clock | The loop used to run to completion in one call, which meant a rendered roll could only be a second implementation of it — and two implementations of "the physics result *is* the roll" is one too many (goal 1). Splitting the loop at the step it was already taking costs nothing and buys the claim outright: normal mode asks for the time since the last frame, power-saving asks for the lot, and underneath it is one loop over one world taking the same steps in the same order. The clock is the other half. Handing a frame time to a solver would make the roll depend on the panel, the thermal state and whether the app was backgrounded, so the frame time stops at the clock: it is cut into whole fixed steps and the remainder becomes the moment a renderer interpolates at. That is also why a slow frame drops simulated *time* and never a step — the roll is unchanged, it simply arrives later. The dependency runs `simulation/jolt` → `render/headless`, the direction the data-flow diagram already showed: a renderer is handed frames and has no way back |
+| 51 | A die's printed numbers are a signed distance field built on the phone, from outlines generated at build time from a real typeface | Three ways to get a number onto a face, and only one of them survives being looked at closely. **Live text** renders in whatever font the device happens to have, which makes a die a different die on a different phone. **A rasterised atlas** is a picture of a digit at one size, and the whole point of the pinch is that the player chooses the size — four times in, a 64-pixel cell is a blur. **A distance field** is the shape rather than a picture of it: one byte per pixel saying how far that pixel is from the edge of the ink, and a `smoothstep` across one fragment's worth of it recovers a crisp edge at any magnification. It costs one extra sampler and a build-time step that runs about once in the life of the project (`tools/generate-font.py`, the same generator the mark uses). The outlines are flattened to polygons there rather than kept as curves, because the field is built once per die and a cubic on the phone would buy arithmetic nobody can see. Which faces are printed, how big each number is on the face it is on, where it sits and which ones need a bar under them are all Kotlin over plain polygons, so all of it is tested on a JVM — the same line decisions 40 and 47 draw, in the same place and for the same reason. `DieNumbers` says what a die carries and `FaceRoom` says how much room a face has for it, and the test that matters is the one that says no number, on any solid in the catalogue, reaches past the edge of the face it is printed on |
+| 52 | Impacts are derived in Kotlin from the change in a die's speed, not reported by the bridge; and there is one player over them with the clock as a parameter | The same line decisions 40 and 47 draw, for the third time. What an impact *is* — how hard is worth feeling, what counts as a hit rather than a slide, how many of a hundred simultaneous ones a phone can play — is judgement, and none of it is physics. Deriving it from the scalar speed the bridge already reports also keeps the wire format still: a velocity vector per die per step is three more floats crossing JNI a hundred and forty thousand times a roll, for something the scalar says. The subtraction is what makes it honest — gravity can change a free die's speed by one step's worth of its own acceleration and no more, so what it does not explain is what something else did, and a die sliding or at rest therefore reports nothing without a rule saying so. The second half is the same argument as decision 48 one level up: normal mode and power-saving mode are one list of impacts with a different spread over it, not two players, so "the recorded impacts are played back over about a second" cannot drift from what a watched tray does. It costs one branch per die per step when nothing is listening, and nothing at all when something is |
 | 50 | The roll thread and the Filament engine on it outlive a visit to the roll screen; the physics world and the scene do not | `FilamentEngine` already keeps the engine and the compiled material across every surface made from it, because compiling the dice material happens on the device for the driver that is actually there (decision 46) and costs long enough that rebuilding it per rotation *was* the black tray. A driver per visit put that cost straight back: leaving the roll screen for the menu and returning compiled the material again, and the player watched it happen. So the line is drawn one level further out — what a *visit* owns is a roll, and a roll the player walked away from never landed, so the world and the scene still go. The thread is kept with the engine rather than instead of it, because Filament only takes calls from the thread that made the engine, and an engine outliving its thread is an engine nothing may touch. What it costs is an idle thread and one engine held while the player is on another screen, against a black tray every time they come back |
 | 49 | The physics and the Filament engine share one thread, driven by that thread's own `Choreographer` | The design started with a simulation thread publishing transforms to a render thread through a lock-free double-buffer. Written down, the render side turns out to have exactly one thing it can do with a transform, which is draw it — so the buffer would be eighty entries copied across a boundary neither side wanted, and a class of bug (torn reads, a frame drawn from two different steps, a stage closed while the other thread is mid-draw) bought in exchange for overlapping a copy with a draw. Filament also insists every engine call comes from the thread that made the engine, and the physics world is single-threaded for determinism, so both halves already wanted one owner each; giving them the same owner removes the hand-off rather than synchronising it. The thread is still not the main one — eighty convex bodies at 120 Hz does not belong where the UI is drawn. What it costs is that a long physics step delays that frame, which is the same trade the frame clock's four-step catch-up cap already makes visible |
+| 53 | The device harness's arithmetic — what a run was asked for, what its rolls added up to, and whether they met Step 5's targets — is a plain Kotlin module, and the instrumented test only rolls, times and writes | It is decision 40 applied to the thing that *judges* the physics rather than to the physics. A harness whose own percentile, whose own share of dice corrected and whose own pass/fail comparison can be checked only by running it on a phone is a harness nobody can trust: when it says a run failed, the first question is whether the run failed or the harness did, and there would be no way to answer it. Split here and the answer is a JVM test — including the boundary cases a phone would have to misbehave to produce, like a correction landing on a die at rest. The same split is what lets the shell script print a table it did not render: the device writes the table the Kotlin produced, and a second copy of the comparison written in awk cannot drift from the one the tests hold |
+| 54 | A die an explosion or a reroll adds is thrown into a world of its own, into the clear floor the settled dice leave, and drawn among them | Three rules meet here and only one arrangement keeps all three. The result must be the physics, so the added die is really simulated. Nothing may touch a die that has come to rest, so the settled dice cannot be bodies in that throw — a die dropped onto them would shove them, and a face the player has already read would change, which is the failure this project cares most about. And the player has to see it happen, so it cannot stay in the tray nobody is looking at. Putting the settled dice in as immovable furniture would need the native side to grow a second kind of body, untestable on the JVM and unverifiable without a phone; leaving them out entirely costs nothing and makes the rule true by construction rather than by tuning — there is no body in that world to shove. What is left is the picture, and `ClearSpace` answers it above the bridge, where a test can reach it: the point of the tray furthest from every die already down, on a fixed grid so the same roll replays to itself. The residue is honest and small — a die that rolls a long way could still be *drawn* crossing a settled one, which is why it is dropped rather than thrown, and why the drop needs eyes on a phone (`docs/TODO.md`, Step 5.6) |
+| 55 | A drawn face becomes an atlas in two halves: plain Kotlin decides what goes where, and one file puts the pixels down | The same line decisions 40, 47 and 51 draw, in the same place and for the same reason. How big the image is, which cell a face occupies, where every point of every mark lands in it and which cells are left out so they stay transparent are all arithmetic, and all of it can be wrong; `Bitmap`, `Canvas` and the PNG encoder cannot be *wrong*, only unavailable. So `Atlas` is a plan a JVM test asserts on — including that no catalogue shape passes the 2048-pixel texture limit and that every cell comes out exactly square — and `AtlasPainter` is an interface with one file behind it, which Robolectric's native graphics still exercises a tier below a device. It buys the failure mode too: a painter that cannot allocate answers with nothing, the die loses its artwork and keeps its labels, and the package still installs. The other half of the decision is that **the package the app writes goes through `DiceSetValidator`** before it is put in `dicesets/` and again before its zip is offered to anybody. The app's own output is not a privileged path, exactly as the bundled set is not — and it means `dicesets/format` is tested against a second writer rather than only against its own fixtures |
+| 56 | The debug overlay is a Compose plan of the tray, not lines drawn behind `Stage`; and the anomaly log lives in memory and shares by itself | The overlay's whole job is to say what the rendered picture cannot — which die is standing on another, which is against a wall, which has not stopped — and none of that is a projection problem. Registering a wireframe to the dice would mean reproducing the perspective camera, the pinch and the pan on the far side of `Stage`, where no JVM test can reach, in order to draw outlines over pictures that already show where the dice are. Drawn as a plan in Compose it costs no GPU code at all, and the one piece of judgement in it — millimetres to a place on the plan — is `TrayPlan`, plain Kotlin with a unit test, the same line decisions 40, 47 and 52 draw. The log is the same argument about storage: an anomaly carries the seed that reproduces it, so a stored one is a replay waiting to be written into a screen a player can reach, which is exactly what decision 13 forbids. In memory it is bounded, it goes when the app does, and it is shared as text from the developer screen — never with the statistics export, whose files are built from `HistoryEntry` and have no seed to leak |

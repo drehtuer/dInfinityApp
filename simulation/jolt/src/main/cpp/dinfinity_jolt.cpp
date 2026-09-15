@@ -107,6 +107,13 @@ JNIEXPORT void JNICALL Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nat
   env->SetFloatArrayRegion(out, 0, length, states.data());
 }
 
+JNIEXPORT jfloat JNICALL
+Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeDeepestPenetration(JNIEnv*, jobject,
+                                                                              jlong handle) {
+  dinfinity::World* world = AsWorld(handle);
+  return world == nullptr ? 0.0f : world->DeepestDiePenetration();
+}
+
 JNIEXPORT void JNICALL Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeApplyBias(
     JNIEnv*, jobject, jlong handle, jint index, jfloat x, jfloat y, jfloat z) {
   AsWorld(handle)->ApplyBias(index, x, y, z);

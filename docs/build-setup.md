@@ -45,13 +45,20 @@ docker run --rm -it \
 Inside the container:
 
 ```sh
-./gradlew build test lint detekt ktlintCheck
+./gradlew build test lint detekt ktlintCheck assembleDebugAndroidTest
 ```
 
-That is the same command CI runs, and it is what "green" means. It compiles
-every module, runs the JVM and Robolectric suites, and fails on any lint,
-detekt, ktlint or compiler warning — warnings are errors here
-(`.claude/CLAUDE.md`).
+That is what "green" means. It compiles every module, runs the JVM and
+Robolectric suites, and fails on any lint, detekt, ktlint or compiler
+warning — warnings are errors here (`.claude/CLAUDE.md`).
+
+**`assembleDebugAndroidTest` is on that line for a reason.** It is not part of
+`build`, so the instrumented sources — the whole device tier — can stop
+compiling without any of the rest noticing, and they did: adding a parameter
+to `TrayDriver` moved its last one, and a trailing lambda in the device suite
+quietly started meaning the new parameter. CI has a job of its own for it
+(*Device tests compile*), which is what caught it; putting it in the local
+command means finding it before the push rather than after.
 
 The first run downloads Gradle's dependencies into the `dinfinity-gradle`
 volume and takes a few minutes; later runs are seconds.
@@ -469,6 +476,74 @@ correct — decides instead.
 Delete `VerifyDeviceTestResultsTask` and the `ignoreFailures` beside it once
 AGP compares like with like.
 
+### The physics harness
+
+Step 5 asks the same questions of the physics every time, and asking them by
+hand is how they stop being asked. `tools/harness.sh` rolls N throws
+headlessly on a device, pulls the numbers back and prints them against the
+targets in [TODO.md](TODO.md) (Steps 5.3 to 5.7).
+
+It runs against **either tier**, and that is the point: the emulator is a
+minute away and catches most of what breaks, so a regression should never
+reach the phone.
+
+```sh
+dinfinity-emulator &                     # the middle tier, in this container
+dinfinity-await-device
+tools/harness.sh -n 200                  # a quick look
+
+dinfinity-phone                          # the reference device
+tools/harness.sh -n 10000                # the run Step 5.5 asks for
+tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
+```
+
+It says which device it ran on before it rolls anything, and **the exit code is
+the verdict**: zero when every target was met. With both a phone and the
+emulator attached it refuses to guess — name one with `--device` or
+`ANDROID_SERIAL`, the same choice every other device task needs
+([below](#when-both-a-phone-and-the-emulator-are-attached)).
+
+| Option | What it is |
+| --- | --- |
+| `-n`, `--rolls` | how many throws (default 1000) |
+| `-c`, `--dice` | dice per throw (default 20, which is where Step 5.5 states its settle targets) |
+| `-s`, `--shape` | `d20`, `icosahedron` or `20` — all three are accepted (default `d20`) |
+| `--seed` | the run's base seed (default 1). One number replays the whole run |
+| `-l`, `--label` | what to call the run and its files |
+| `-o`, `--out` | where the pulled files land (default `build/harness`) |
+| `--no-build` | run what is already installed |
+
+Each run leaves two files, on the device under
+`/sdcard/Android/data/de.drehtuer.dinfinity.simulation.jolt.test/files` and
+pulled into `build/harness`:
+
+- `harness-<label>.json` — every roll, one record each, plus the run's
+  summary and its scorecard. This is what to open when a run fails.
+- `harness-<label>.txt` — the pass/fail table, rendered on the device by the
+  same Kotlin the unit tests hold, and printed by the script unchanged.
+
+The run itself is `HarnessTest` in `simulation/jolt`'s `androidTest`, and it
+does nothing at all without `harness.rolls` — so it sits in the ordinary device
+suite without adding minutes to it. By hand, without the script:
+
+```sh
+./gradlew :simulation:jolt:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.harness.rolls=1000
+```
+
+**The harness fails on targets the engine does not meet yet, and that is
+deliberate.** Two are missed today: the correction rate is about 45 % against a
+0.5 % budget, and `100d4` runs out of the twelve-second cap on some seeds
+(`docs/TODO.md`, Steps 5.3 and 5.5). The plan is behind the check rather than
+the other way round, so the check is not moved to meet it. Where today's worst
+case is worth writing down so that it cannot quietly get worse, that lives in
+`JoltBridgeTest`'s own bounds.
+
+Like `connectedDebugAndroidTest`, the script takes its verdict from what the
+run produced rather than from the tooling around it — here the table the device
+wrote, for the same reason the [JUnit XML](#the-verdict-on-an-instrumented-run)
+decides there.
+
 ## Connecting a phone over WiFi
 
 The container has `adb`, so on-device tests run from inside it — no need to
@@ -654,17 +729,27 @@ Workflows live in `.github/workflows/`. They run the same commands this
 document gives a developer, so a green pull request means what a green
 terminal means.
 
+**Every pull request, not only the ones aimed at `main`.** `ci.yml` and
+`codeql.yml` take the `pull_request` event with no branch filter, because this
+repository stacks pull requests — each branch based on the one before it, so
+they merge in order (`.claude/CLAUDE.md`). A filter on `main` would mean every
+pull request in a stack but the first ran no checks at all, and a pull request
+that is green because nothing was asked of it is the worst kind of green. The
+*push* trigger stays on `main`, where it is what feeds the dependency graph and
+the caches. `dependabot-metadata.yml` keeps its filter: a Dependabot pull
+request is always aimed at `main`.
+
 | Workflow | Runs | Does |
 | --- | --- | --- |
-| `ci.yml` — Build, test and analyse | PR, push to `main` | `./gradlew build test coverageReport lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below, then the SonarQube scan and its quality gate |
-| `ci.yml` — Device tests compile | PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
-| `ci.yml` — Dependency review | PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
+| `ci.yml` — Build, test and analyse | every PR, push to `main` | `./gradlew build test coverageReport lint detekt ktlintCheck`, the whole JVM and Robolectric suite plus every linter and the repository invariants below, then the SonarQube scan and its quality gate |
+| `ci.yml` — Device tests compile | every PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
+| `ci.yml` — Dependency review | every PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
 | `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
-| `ci.yml` — Documentation | PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. These two need Node and a headless browser, which the devcontainer does not carry for one linter and one diagram, so unlike the invariants above they run only here |
+| `ci.yml` — Documentation | every PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. These two need Node and a headless browser, which the devcontainer does not carry for one linter and one diagram, so unlike the invariants above they run only here |
 | `release.yml` | tag `vX.Y.Z` | The full check suite, then a signed release APK attached to a GitHub Release with its SHA-256. Refuses to republish an existing release, refuses a tag that disagrees with `version.txt`, and refuses an APK not signed by the release key |
 | `pages.yml` | push to `main` touching docs, design or the site config | Publishes `docs/` and `design/` to GitHub Pages, so the prototype opens from a link instead of a clone |
 | `dependabot-metadata.yml` | PR opened by Dependabot | Regenerates `gradle/verification-metadata.xml` for the bumped dependency and commits it to the branch |
-| `codeql.yml` | PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
+| `codeql.yml` | every PR, push to `main`, weekly | CodeQL over the workflow files. **Not** over the app's Kotlin: the extractor refuses Kotlin 2.4.20 and fails the build rather than degrading, so it is switched off until the bundle catches up — see the comment in the workflow. detekt, Android Lint and SonarQube cover Kotlin meanwhile |
 
 The JDK, the SDK packages and Gradle come from one composite action,
 `.github/actions/setup-android-build`, so CI and CodeQL cannot drift apart. It

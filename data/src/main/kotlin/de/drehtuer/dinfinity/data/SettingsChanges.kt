@@ -1,3 +1,8 @@
+// One function per setting is what this file *is*, so the count grows with the
+// settings and splitting it would be the same list behind two names — the same
+// argument `JoltNative` makes about its JNI surface.
+@file:Suppress("TooManyFunctions")
+
 package de.drehtuer.dinfinity.data
 
 import de.drehtuer.dinfinity.core.model.AccentColor
@@ -23,11 +28,33 @@ suspend fun SettingsRepository.setAppearance(appearance: Appearance) = update { 
 /** Turns drawing the dice off, or back on (`docs/physics-and-rendering.md`). */
 suspend fun SettingsRepository.setPowerSaving(on: Boolean) = update { it.copy(powerSaving = on) }
 
+/**
+ * Whether the phone ticks when a die hits something
+ * (`docs/physics-and-rendering.md`, "Haptics and sound").
+ *
+ * With sound, off means a roll records no impacts at all rather than recording
+ * them and throwing them away.
+ */
+suspend fun SettingsRepository.setHaptics(on: Boolean) = update { it.copy(haptics = on) }
+
+/** Whether a die hitting something makes a noise (`docs/physics-and-rendering.md`). */
+suspend fun SettingsRepository.setSound(on: Boolean) = update { it.copy(sound = on) }
+
 /** Whether shaking the phone throws the dice. Off means the sensors are never registered. */
 suspend fun SettingsRepository.setShakeToRoll(on: Boolean) = update { it.copy(shakeToRoll = on) }
 
 /** Which way division rounds unless a throw says otherwise (`docs/dice-notation.md`). */
 suspend fun SettingsRepository.setRounding(rounding: Rounding) = update { it.copy(rounding = rounding) }
+
+/**
+ * Turns the debugging tools on, or off
+ * (`docs/physics-and-rendering.md`, "Debug tooling").
+ *
+ * Off on every install. What it turns on is a separate surface — an overlay, a
+ * log and a replay — and never a seed or a replay anywhere the ordinary app
+ * can reach (`docs/architecture.md`, decision 13).
+ */
+suspend fun SettingsRepository.setDeveloperTools(on: Boolean) = update { it.copy(developerTools = on) }
 
 /** The player has been past the first-launch screen, and will not see it again. */
 suspend fun SettingsRepository.setWelcomeSeen() = update { it.copy(welcomeSeen = true) }

@@ -34,6 +34,17 @@ object DiceMaterial {
             if (materialParams.textured > 0.5) {
                 colour *= texture(materialParams_atlas, getUV0());
             }
+            if (materialParams.numbered > 0.5) {
+                // A signed distance field, not a picture of a number: the
+                // edge is wherever the field crosses a half, and how wide the
+                // crossing is on screen is what a derivative says. That is
+                // what keeps a 20 sharp when the player pinches all the way
+                // in (`core/glyphs`'s SignedDistanceField).
+                float ink = texture(materialParams_glyphs, getUV0()).r;
+                float soft = max(fwidth(ink), 0.0001);
+                colour.rgb = mix(colour.rgb, materialParams.inkColor.rgb,
+                                 smoothstep(0.5 - soft, 0.5 + soft, ink));
+            }
             material.baseColor = colour;
             material.roughness = materialParams.roughness;
             material.metallic = materialParams.metallic;
@@ -61,19 +72,24 @@ object DiceMaterial {
   /**
    * And a die.
    *
-   * A die with no atlas is drawn in its own colour and its numbers are put on
-   * afterwards; a die with one is drawn through it. Either way the surface is
-   * the same material with different numbers in it.
+   * A die with no atlas is drawn in its own colour with its labels printed
+   * over it in [DieMaterial.numberColorArgb]; a die with one is drawn through
+   * the artwork its author supplied, and prints nothing — an author who drew
+   * a face decided what is on it. Either way the surface is the same material
+   * with different numbers in it (`docs/physics-and-rendering.md`).
    */
   fun dieOf(
     material: DieMaterial,
     texturePath: String?,
+    numbers: NumberField? = null,
   ): Parameters =
     Parameters(
       colour = Colour.of(material.colorArgb),
       roughness = material.roughness,
       metallic = material.metallic,
       texturePath = texturePath,
+      numbers = numbers,
+      ink = Colour.of(material.numberColorArgb),
     )
 
   /**
@@ -81,15 +97,24 @@ object DiceMaterial {
    *
    * @param texturePath the atlas to sample, relative to the package folder, or
    *   null to use [colour] alone.
+   * @param numbers the die's labels as a distance field, or null for a surface
+   *   with nothing printed on it — which is every surface of the tray and every
+   *   die whose author supplied artwork.
+   * @param ink what [numbers] is printed in.
    */
   data class Parameters(
     val colour: Colour,
     val roughness: Double,
     val metallic: Double,
     val texturePath: String?,
+    val numbers: NumberField? = null,
+    val ink: Colour = Colour.of(DieMaterial.DEFAULT_NUMBER_COLOR_ARGB),
   ) {
     /** True when this surface samples an atlas rather than taking a flat colour. */
     val textured: Boolean get() = texturePath != null
+
+    /** True when this surface has the built-in font printed over it. */
+    val numbered: Boolean get() = numbers != null
   }
 }
 

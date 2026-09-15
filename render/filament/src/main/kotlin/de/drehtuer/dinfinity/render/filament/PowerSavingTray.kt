@@ -6,6 +6,8 @@ import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.FrameClock
+import de.drehtuer.dinfinity.simulation.api.Impact
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -38,9 +40,15 @@ import java.util.concurrent.Executors
  * @param on where a roll is stepped. Off the main thread by default, for the
  *   same reason a watched roll is: a hundred convex bodies settling is real
  *   work, and it being quick is not a reason to do it where the UI is drawn.
+ * @param impacts what plays where the dice hit something. The same player a
+ *   watched tray uses, with the other clock over it: there are no frames here
+ *   to pace the impacts as they happen, so the whole throw's are handed over
+ *   once it has landed and played across about a second
+ *   (`docs/physics-and-rendering.md`, "Power-saving mode").
  */
 class PowerSavingTray(
   private val on: Executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, THREAD_NAME) },
+  private val impacts: Impacts = Impacts.NONE,
 ) : Tray {
   /** Nothing is drawn, so nothing needs a surface. */
   override val draws: Boolean = false
@@ -53,7 +61,7 @@ class PowerSavingTray(
 
   override fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     on.execute {
       // A second throw replaces the first, exactly as it does on a tray being
@@ -62,11 +70,27 @@ class PowerSavingTray(
       if (closed) return@execute
       val roll = start(HeadlessRenderer())
       live = roll
-      val outcome = roll.use(::runOut)
+      // The shake is read out with the outcome and before the roll is closed,
+      // for the same reason it is on a watched tray: the record of a throw
+      // belongs to the roll that collected it, and the roll does not outlive
+      // being read.
+      // The shake and the impacts are both read out before the roll is closed
+      // and for the same reason: a roll does not outlive being read, and both
+      // are records it holds.
+      var heard: List<Impact> = emptyList()
+      val (outcome, drove) =
+        roll.use { throwing ->
+          val reached = runOut(throwing)
+          heard = throwing.impacts.toList()
+          reached to throwing.drivenBy
+        }
       live = null
       // A roll given up because the screen was left reports nothing, because
-      // nothing landed.
-      if (!closed && outcome != null) onSettled(outcome)
+      // nothing landed — and plays nothing either.
+      if (!closed && outcome != null) {
+        impacts.play(heard, Impacts.REPLAY_SECONDS)
+        onSettled(outcome, drove)
+      }
     }
   }
 
@@ -88,7 +112,8 @@ class PowerSavingTray(
   }
 
   // Nothing to draw on, nothing to draw, nowhere to look from. Each of these
-  // is a thing the screen says to a tray, and each of them is about a picture.
+  // is a thing the screen says to a tray, and each of them is about a picture
+  // — except the table, which is also a sound.
   override fun surfaceAvailable(
     surface: Surface,
     width: Int,
@@ -97,10 +122,15 @@ class PowerSavingTray(
 
   override fun surfaceLost() = Unit
 
+  /**
+   * Nothing is drawn, and the look is ignored — but the table still decides
+   * what the dice sound like, so that much of it is passed on
+   * (`docs/tables.md`, "Table looks").
+   */
   override fun table(
     geometry: TableGeometry,
     look: TableLook,
-  ) = Unit
+  ) = impacts.on(look.sound)
 
   override fun look(view: TrayView) = Unit
 

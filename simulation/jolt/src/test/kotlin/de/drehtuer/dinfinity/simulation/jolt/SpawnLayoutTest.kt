@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
+import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -146,6 +147,63 @@ class SpawnLayoutTest {
   }
 
   @Test
+  fun `a die an explosion adds is dropped into the floor the others left clear`() {
+    // The one rule that cannot bend: nothing touches a die that has come to
+    // rest. The added die is thrown in a world of its own, so it could not
+    // reach them whatever this did — and it is dropped clear of them so that
+    // the picture says the same thing
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    val down =
+      listOf(
+        Vector3(-80.0, 0.0, ADDED_RADIUS_MM),
+        Vector3(0.0, 0.0, ADDED_RADIUS_MM),
+        Vector3(80.0, 0.0, ADDED_RADIUS_MM),
+      )
+    val layout = SpawnLayout(geometry, ADDED_RADIUS_MM, seed = 9L, among = down)
+
+    val placement = layout.placementOf(index = 0, count = 1)
+
+    down.forEach { other ->
+      val gap = hypotenuse(placement.position.x - other.x, placement.position.y - other.y)
+      assertTrue(
+        "an added die was dropped $gap mm from one already down",
+        gap >= 2 * ADDED_RADIUS_MM + ClearSpace.CLEARANCE_MM,
+      )
+    }
+  }
+
+  @Test
+  fun `a die an explosion adds is dropped, not hurled across the tray`() {
+    // The same throw a re-thrown die gets, for the same reason: a die that
+    // travels is a die that arrives somewhere nobody made room for.
+    val layout = SpawnLayout(geometry, ADDED_RADIUS_MM, seed = 9L, among = listOf(Vector3(0.0, 0.0, ADDED_RADIUS_MM)))
+
+    val placement = layout.placementOf(index = 0, count = 1)
+
+    assertEquals("an added die was thrown sideways", 0.0, placement.linearVelocity.x, 0.0)
+    assertEquals(0.0, placement.linearVelocity.y, 0.0)
+    assertTrue("an added die was hurled", placement.linearVelocity.length < 400.0)
+    assertTrue("an added die was dropped from the clouds", placement.position.z < SpawnLayout.DROP_HEIGHT_MM)
+    assertTrue("an added die was placed rather than thrown", placement.angularVelocity.length > 0.0)
+  }
+
+  @Test
+  fun `the same tray and the same dice drop an added die in the same place twice`() {
+    val down = listOf(Vector3(30.0, -20.0, ADDED_RADIUS_MM))
+
+    val first = SpawnLayout(geometry, ADDED_RADIUS_MM, seed = 9L, among = down).placementOf(0, 1)
+    val second = SpawnLayout(geometry, ADDED_RADIUS_MM, seed = 9L, among = down).placementOf(0, 1)
+
+    assertEquals("a roll with an explosion in it did not replay to itself", first, second)
+  }
+
+  private fun hypotenuse(
+    x: Double,
+    y: Double,
+  ): Double = Vector3(x, y, 0.0).length
+
+  @Test
   fun `asking for a die that is not in the throw is a bug`() {
     val layout = SpawnLayout(geometry, RADIUS_MM, seed = 1L)
     try {
@@ -159,6 +217,9 @@ class SpawnLayoutTest {
   private companion object {
     /** A 16 mm d6's bounding radius, which is what the capacity table is built on. */
     const val RADIUS_MM = 13.86
+
+    /** A 16 mm d6's, which is what an exploding `8d6!` actually adds. */
+    const val ADDED_RADIUS_MM = 8.0
 
     val COUNTS = listOf(1, 2, 5, 8, 20, 40, 60, TableCapacity.MAX_DICE)
   }

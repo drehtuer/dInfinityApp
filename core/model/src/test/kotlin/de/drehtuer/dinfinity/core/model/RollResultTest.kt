@@ -115,6 +115,7 @@ class RollResultTest {
         "PercentileTens",
         "PercentileUnits",
         "ExplosionLimitReached",
+        "TrayFull",
       ),
       DieNote.entries.map(DieNote::name),
     )

@@ -56,6 +56,19 @@ interface PhysicsWorld : AutoCloseable {
   fun readStates(): List<DieState>
 
   /**
+   * How far one die has ever been inside another since the world was opened,
+   * in millimetres.
+   *
+   * A property rather than something carried on [DieState], because it is a
+   * fact about the *throw* rather than about a die at a moment — and because
+   * the deepest overlap of a roll is usually reported on a step nobody kept.
+   * A solver resolves overlaps rather than forbidding them, so this is never
+   * exactly zero; Step 5.4 asks that it stays under two tenths of a
+   * millimetre (`docs/TODO.md`).
+   */
+  val deepestDiePenetrationMm: Double
+
+  /**
    * Adds [velocity] to a die's motion — rung 2 of the correction ladder.
    *
    * Whether this die may be touched at all was decided by

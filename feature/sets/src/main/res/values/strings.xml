@@ -43,6 +43,11 @@
   <string name="sets_detail_default_note">“d20” with no set in front of it comes from here, falling back to the built-in dice for anything this set does not define.</string>
   <string name="sets_detail_dice">Dice</string>
   <string name="sets_detail_report">What is wrong with it</string>
+  <string name="sets_detail_export">Export as zip</string>
+  <string name="sets_detail_export_note">Pick a licence before sharing; it is written into diceset.toml. The zip can be uploaded to a git repository as-is.</string>
+  <string name="sets_detail_license_choose">Licence — choose one</string>
+  <string name="sets_detail_export_do">Export</string>
+  <string name="sets_detail_exported">%1$s shared — upload it to any git repository as-is.</string>
   <string name="sets_detail_report_note">The folder is kept, so an update can replace it. Nothing from this set is offered until it loads.</string>
   <!-- %1$d is how many faces the die has. -->
   <plurals name="sets_detail_faces">

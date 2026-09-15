@@ -286,6 +286,14 @@ struct World::Impl : public ContactListener {
       return;
     }
 
+    // Die on die. The overlap is worth keeping whichever way the normal
+    // points: "how far inside each other did two dice ever get" is one number
+    // about the whole throw, and it is the only moment it can be read
+    // (`docs/TODO.md`, Step 5.4).
+    if (manifold.mPenetrationDepth > deepest_die_penetration) {
+      deepest_die_penetration = manifold.mPenetrationDepth;
+    }
+
     if (up >= kVerticalNormal) {
       Flag(second_data, kSupportedByDie);
     } else if (up <= -kVerticalNormal) {
@@ -308,6 +316,8 @@ struct World::Impl : public ContactListener {
   BodyID tray_body;
   std::vector<BodyID> dice;
   std::vector<std::uint32_t> contacts;
+  /// The deepest die-into-die overlap seen since this world was created.
+  float deepest_die_penetration = 0.0f;
   bool failed = false;
 };
 
@@ -403,6 +413,8 @@ void World::ReadStates(float* out) const {
     slot[9] = static_cast<float>(impl_->contacts[i]);
   }
 }
+
+float World::DeepestDiePenetration() const { return impl_->deepest_die_penetration; }
 
 void World::ApplyBias(int index, float x, float y, float z) {
   if (index < 0 || static_cast<std::size_t>(index) >= impl_->dice.size()) return;

@@ -2,7 +2,9 @@ package de.drehtuer.dinfinity.feature.sets
 
 import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -18,6 +20,7 @@ import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.designer.SetLicense
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
@@ -288,6 +291,54 @@ class SetDetailScreenTest {
     compose.onNodeWithTag(SetDetailTestTags.LIST).assertIsNotDisplayed()
   }
 
+  @Test
+  fun `a package that came from somewhere else is offered no export`() {
+    write("brass", toml("brass", "Brass and Bone"))
+
+    show("brass")
+
+    // Every other set on the list already has a copy wherever it came from.
+    compose.onNodeWithTag(SetDetailTestTags.EXPORT).assertDoesNotExist()
+  }
+
+  @Test
+  fun `My dice offers the export, and it is shut until a licence is picked`() {
+    write(MINE, toml(MINE, "My dice"))
+
+    show(MINE)
+
+    compose.onNodeWithTag(SetDetailTestTags.EXPORT).assertIsDisplayed()
+    // The gate (design `8c`): the chooser says nothing has been chosen, and
+    // the button will not go.
+    compose.onNodeWithTag(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("choose one", substring = true)
+    compose.onNodeWithTag(SetDetailTestTags.EXPORT_DO).assertIsNotEnabled()
+  }
+
+  @Test
+  fun `picking a licence from the menu opens the button and says which`() {
+    write(MINE, toml(MINE, "My dice"))
+    val presenter = show(MINE)
+
+    compose.onNodeWithTag(SetDetailTestTags.LICENSE_CHOOSER).performClick()
+    compose.onNodeWithTag(SetDetailTestTags.licenseOf(SetLicense.Attribution)).performClick()
+    compose.waitForIdle()
+
+    assertEquals(SetLicense.Attribution, presenter.state.license)
+    compose.onNodeWithTag(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("CC BY 4.0")
+    compose.onNodeWithTag(SetDetailTestTags.EXPORT_DO).assertIsEnabled()
+  }
+
+  @Test
+  fun `a licence already in the package is what the chooser opens on`() {
+    // Somebody chose it last time, and the folder remembered.
+    write(MINE, toml(MINE, "My dice", extra = """license = "MIT""""))
+
+    show(MINE)
+
+    compose.onNodeWithTag(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("MIT")
+    compose.onNodeWithTag(SetDetailTestTags.EXPORT_DO).assertIsEnabled()
+  }
+
   private fun show(
     id: String,
     onSource: (String) -> Unit = {},
@@ -359,6 +410,9 @@ class SetDetailScreenTest {
       license = "CC-BY-4.0"
       description = "Turned brass and bone."
       """.trimIndent()
+
+    /** The personal package's id, which is the only thing the screen keys off. */
+    const val MINE = "mine"
 
     const val PATIENCE = 5_000L
   }

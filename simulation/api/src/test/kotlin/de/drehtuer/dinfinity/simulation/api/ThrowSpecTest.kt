@@ -36,6 +36,34 @@ class ThrowSpecTest {
   }
 
   @Test
+  fun `a throw into a tray that already holds dice is a throw of one die`() {
+    // An explosion and a reroll each add one die, after the last one landed.
+    // Two at once would be two dice dropped onto the same clear patch of floor,
+    // because neither can see the other coming
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    assertFailsWith<IllegalArgumentException> { spec(count = 2, scale = 1.0).copy(among = down()) }
+    assertEquals(1, spec(count = 1, scale = 1.0).copy(among = down()).among.size)
+  }
+
+  @Test
+  fun `the dice already down are not dice in the throw`() {
+    // The whole rule in one assertion: an added die's world holds one body, so
+    // there is nothing in it that a settled die could be shoved by.
+    val added = spec(count = 1, scale = 1.0).copy(among = down())
+
+    assertEquals(1, added.dice.size)
+  }
+
+  @Test
+  fun `a throw needs room for the biggest die in it`() {
+    // A throw can mix a d4 and a d20, and cells sized for the d4 would put the
+    // d20 through its neighbour's wall before anything had been thrown.
+    assertEquals(StandardDice.d20.material.boundingRadiusMm, spec(count = 3, scale = 1.0).largestDieRadiusMm)
+    assertEquals(StandardDice.d20.material.boundingRadiusMm / 2, spec(count = 3, scale = 0.5).largestDieRadiusMm)
+  }
+
+  @Test
   fun `a shake is a list of quantised moments, each tied to a step`() {
     val shake = listOf(ShakeSample(stepIndex = 4, accelerationMmPerSecond2 = Vector3.Up, gravity = -Vector3.Up))
     assertEquals(
@@ -71,6 +99,33 @@ class ThrowSpecTest {
   }
 
   @Test
+  fun `an outcome carries the two numbers the device harness cannot work out for itself`() {
+    val outcome =
+      SimulationOutcome(
+        faces = mapOf(0 to 1, 1 to 4),
+        stackedAtRest = 1,
+        deepestDiePenetrationMm = 0.08,
+      )
+
+    assertEquals(1, outcome.stackedAtRest)
+    assertEquals(0.08, outcome.deepestDiePenetrationMm, 0.0)
+  }
+
+  @Test
+  fun `more dice cannot be stacked than were thrown`() {
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), stackedAtRest = 2)
+    }
+  }
+
+  @Test
+  fun `an overlap is a depth, so it cannot be negative`() {
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), deepestDiePenetrationMm = -0.1)
+    }
+  }
+
+  @Test
   fun `a simulator gives the same faces for the same throw`() {
     val simulator = FakeDiceSimulator()
     val spec = spec(count = 5, scale = 1.0)
@@ -89,6 +144,35 @@ class ThrowSpecTest {
     assertEquals((0 until 10).toSet(), outcome.faces.keys)
     outcome.faces.values.forEach { face -> assertTrue(face in 0 until StandardDice.d20.faces.size) }
   }
+
+  @Test
+  fun `a moment names a step the roll will take, or it names nothing`() {
+    // The bound is the twelve-second cap at 120 Hz: every step a roll can take,
+    // and a step holds one sample. Past it there is no step to drive
+    // (`docs/physics-and-rendering.md`, "Shake input").
+    assertEquals(SettleRule.HARD_CAP_STEPS, ShakeSample.MAX_RECORDED)
+    assertTrue(moment(0).drivesAStep)
+    assertTrue(moment(ShakeSample.MAX_RECORDED - 1).drivesAStep)
+    assertFalse(moment(ShakeSample.MAX_RECORDED).drivesAStep, "a moment past the cap claimed a step")
+  }
+
+  @Test
+  fun `a moment before the shake began drives nothing either`() {
+    // There is no step before the dice were spawned, and a negative index is a
+    // clock that went backwards rather than a moment of a throw.
+    assertFalse(moment(-1).drivesAStep)
+  }
+
+  /** One die already at rest in the tray, in the middle of it. */
+  private fun down(): List<DieAtRest> =
+    listOf(DieAtRest(StandardDice.d20, RestingPlace(Vector3(0.0, 0.0, 8.0), Quaternion.Identity)))
+
+  private fun moment(step: Int): ShakeSample =
+    ShakeSample(
+      stepIndex = step,
+      accelerationMmPerSecond2 = Vector3.Zero,
+      gravity = Vector3.Zero,
+    )
 
   private fun spec(
     count: Int,

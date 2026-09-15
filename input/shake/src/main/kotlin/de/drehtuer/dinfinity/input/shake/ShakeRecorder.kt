@@ -52,6 +52,11 @@ class ShakeRecorder {
    * Hands back the sample it stored, so a roll already in progress can be
    * given the same moment the record keeps — one value, quantised once, driving
    * the live roll and any replay of it alike.
+   *
+   * A moment past [ShakeSample.MAX_RECORDED] is handed back but not kept. A
+   * shake session may run for thirty seconds and a roll may not run past
+   * twelve, so that moment names a step nothing will ever take; the record
+   * stops there rather than growing for as long as the hand does.
    */
   fun record(
     atMillis: Long,
@@ -67,8 +72,10 @@ class ShakeRecorder {
           quantise(accelerationMmPerSecond2, ShakeThresholds.ACCELERATION_QUANTUM_MM_PER_SECOND2),
         gravity = quantise(gravity, ShakeThresholds.DIRECTION_QUANTUM),
       )
-    val existing = samples.indexOfLast { it.stepIndex == step }
-    if (existing >= 0) samples[existing] = sample else samples += sample
+    if (sample.drivesAStep) {
+      val existing = samples.indexOfLast { it.stepIndex == step }
+      if (existing >= 0) samples[existing] = sample else samples += sample
+    }
     return sample
   }
 

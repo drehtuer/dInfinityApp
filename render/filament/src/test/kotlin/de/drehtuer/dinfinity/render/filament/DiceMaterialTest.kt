@@ -97,10 +97,21 @@ class DiceMaterialTest {
   }
 
   @Test
+  fun `a die with no atlas prints its labels, in its own ink`() {
+    val ink = DieMaterial(numberColorArgb = 0xFF102030.toInt())
+    val field = NumberField(width = 2, height = 2, pixels = ByteArray(4))
+    val printed = DiceMaterial.dieOf(ink, texturePath = null, numbers = field)
+
+    assertTrue(printed.numbered)
+    assertEquals(Colour.of(0xFF102030.toInt()), printed.ink)
+    assertFalse("a die given no field prints nothing", DiceMaterial.dieOf(ink, texturePath = null).numbered)
+  }
+
+  @Test
   fun `the material says what it does with the numbers it is given`() {
     // Not a test of the shader — that needs a GPU — but of the promise that
     // every parameter this file computes is one the source actually reads.
-    listOf("baseColor", "roughness", "metallic", "textured", "atlas").forEach {
+    listOf("baseColor", "roughness", "metallic", "textured", "atlas", "numbered", "inkColor", "glyphs").forEach {
       assertTrue("the material never reads $it", DiceMaterial.SOURCE.contains(it))
     }
   }

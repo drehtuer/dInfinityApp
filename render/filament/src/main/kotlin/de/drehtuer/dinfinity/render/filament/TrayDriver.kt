@@ -5,6 +5,8 @@ import android.view.Surface
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.DebugWatch
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -44,9 +46,25 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 @Suppress("TooManyFunctions")
 class TrayDriver(
   shared: RollThread? = null,
+  impacts: Impacts = Impacts.NONE,
+  /**
+   * What watches the roll's diagnostics, and draws nothing itself — the debug
+   * overlay behind the developer toggle
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Given here rather than switched on later, for the reason power saving,
+   * the haptics and the sound are all read when the screen opens: an overlay
+   * appearing under a roll in progress is not a setting taking effect
+   * (`docs/architecture.md`, decision 16).
+   */
+  debug: DebugWatch = DebugWatch.NONE,
+  // Last, so that a trailing lambda still means this one. A driver is built
+  // with a stage factory in exactly one place — the device suite — and it is
+  // written as a trailing lambda there; putting anything after it makes that
+  // lambda quietly bind to the wrong parameter, which is what happened.
   private val stages: ((Surface, Int, Int) -> Stage)? = null,
 ) : Tray {
-  private val loop = TrayLoop()
+  private val loop = TrayLoop(impacts, debug)
 
   /**
    * The thread and engine this driver made for itself, if it was not given
@@ -99,11 +117,12 @@ class TrayDriver(
    * renderer to watch with, so the world it opens is stepped where it is made.
    *
    * [onSettled] arrives on the roll thread too, once, with what the dice came
-   * to. Whoever wants it on the main thread posts it there.
+   * to and the shake that drove them. Whoever wants it on the main thread posts
+   * it there.
    */
   override fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     post {
       loop.roll(start, onSettled)

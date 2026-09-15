@@ -36,7 +36,7 @@ import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
@@ -580,10 +580,6 @@ class RollScreenTest {
             catalog = catalog,
             geometry = TableGeometry.referenceDevice(),
             look = { TableLook(id = "plain", name = "Plain") },
-            simulator =
-              object : DiceSimulator {
-                override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
-              },
             outside = Outside(seeds = { 1L }, clock = { 0L }),
           ),
         driver = if (land) DirectTray() else PendingTray(),
@@ -612,10 +608,6 @@ class RollScreenTest {
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         geometry = TableGeometry.referenceDevice(),
         look = { TableLook(id = "plain", name = "Plain") },
-        simulator =
-          object : DiceSimulator {
-            override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
-          },
         outside = Outside(seeds = { 1L }, clock = { 0L }),
       ),
     driver = tray,
@@ -657,11 +649,11 @@ class RollScreenTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
-      onSettled: (SimulationOutcome) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       val live = start(HeadlessRenderer())
       while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
-      live.outcome?.let(onSettled)
+      live.outcome?.let { onSettled(it, live.drivenBy) }
       live.close()
     }
 
@@ -705,7 +697,7 @@ class RollScreenTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
-      onSettled: (SimulationOutcome) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       start(HeadlessRenderer())
     }
@@ -744,6 +736,10 @@ class RollScreenTest {
         override val running: Boolean get() = !landed
 
         override val outcome: SimulationOutcome? get() = if (landed) SimulationOutcome(faces = faces) else null
+
+        override val drivenBy: List<ShakeSample> = emptyList()
+
+        override val impacts: List<Impact> = emptyList()
 
         override fun advance(elapsedSeconds: Double): RenderFrame {
           landed = true

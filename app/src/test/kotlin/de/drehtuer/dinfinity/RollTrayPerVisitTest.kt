@@ -18,11 +18,9 @@ import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.DiceSimulator
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
-import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.theme.DInfinityTheme
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -127,10 +125,6 @@ class RollTrayPerVisitTest {
           catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
           geometry = TableGeometry.referenceDevice(),
           look = { TableLook(id = "plain", name = "Plain") },
-          simulator =
-            object : DiceSimulator {
-              override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
-            },
           outside = Outside(seeds = { 1L }, clock = { 0L }),
         ),
       driver = SilentTray(),
@@ -150,7 +144,7 @@ class RollTrayPerVisitTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
-      onSettled: (SimulationOutcome) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) = Unit
 
     override fun table(

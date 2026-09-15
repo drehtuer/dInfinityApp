@@ -31,7 +31,7 @@ class DraftFileTest {
 
     val back = DraftFile.read(DraftFile.write(drawn), d6)
 
-    assertEquals(drawn.face(2).strokes, back?.face(2)?.strokes)
+    assertEquals(drawn.face(2).marks, back?.face(2)?.marks)
   }
 
   @Test
@@ -44,7 +44,7 @@ class DraftFileTest {
 
     val back = requireNotNull(DraftFile.read(DraftFile.write(drawn), d6))
 
-    assertEquals(2, back.face(0).strokes.size)
+    assertEquals(2, back.face(0).marks.size)
     assertTrue("an undo stack came back from disk", !back.face(0).canUndo && !back.face(0).canRedo)
   }
 
@@ -120,7 +120,55 @@ class DraftFileTest {
 
     val back = requireNotNull(DraftFile.read(mangled, d6))
 
-    assertEquals("the whole drawing was lost over one bad stroke", 1, back.face(0).strokes.size)
+    assertEquals("the whole drawing was lost over one bad stroke", 1, back.face(0).marks.size)
+  }
+
+  @Test
+  fun `a fill survives the round trip, region and all`() {
+    val region = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.2f), Dot(0.5f, 0.9f))
+    val drawn = Draft(die = d6).onFace(1) { it.draw(Fill(dots = region, colorArgb = RED)).draw(stroke()) }
+
+    val back = requireNotNull(DraftFile.read(DraftFile.write(drawn), d6))
+
+    assertEquals(drawn.face(1).marks, back.face(1).marks)
+    assertEquals(Fill(dots = region, colorArgb = RED), back.face(1).marks.first())
+  }
+
+  @Test
+  fun `a fill is told from a stroke by a field a stroke never carries`() {
+    val written = DraftFile.write(Draft(die = d6).onFace(0) { it.draw(Fill(dots = FaceFill.FACE, colorArgb = RED)) })
+
+    assertTrue("a fill went out looking like a stroke", written.contains(""""fill":true"""))
+    assertTrue("a fill went out with a nib width", !written.contains(""""width""""))
+  }
+
+  @Test
+  fun `a fill of fewer than three corners is not a region`() {
+    val mangled =
+      DraftFile
+        .write(Draft(die = d6).onFace(0) { it.draw(Fill(dots = FaceFill.FACE, colorArgb = RED)).draw(stroke()) })
+        .replace(""""dots":[0.0,0.0,1.0,0.0,1.0,1.0,0.0,1.0]""", """"dots":[0.0,0.0,1.0,1.0]""")
+
+    val back = requireNotNull(DraftFile.read(mangled, d6))
+
+    assertEquals("the drawing was lost over one bad fill", 1, back.face(0).marks.size)
+    assertTrue(back.face(0).marks.single() is Stroke)
+  }
+
+  @Test
+  fun `a drawing read back has its fills under its ink, whatever order the file had`() {
+    // The file is a list and the rule is the drawing's, so it is re-made on
+    // the way in rather than trusted from disk.
+    val text =
+      DraftFile.write(
+        Draft(die = d6).copy(
+          faces = mapOf(0 to FaceDrawing(marks = listOf(stroke(), Fill(dots = FaceFill.FACE, colorArgb = RED)))),
+        ),
+      )
+
+    val back = requireNotNull(DraftFile.read(text, d6))
+
+    assertTrue("a fill came back over the ink", back.face(0).marks.first() is Fill)
   }
 
   private fun stroke() = Stroke(dots = listOf(Dot(0.1f, 0.2f), Dot(0.3f, 0.4f)), colorArgb = INK, width = 0.02f)

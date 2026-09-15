@@ -27,7 +27,7 @@ class DraftTest {
   fun `a stroke lands on the face it was drawn on and nowhere else`() {
     val drawn = draft().onFace(2) { it.draw(stroke()) }
 
-    assertEquals(1, drawn.face(2).strokes.size)
+    assertEquals(1, drawn.face(2).marks.size)
     assertTrue(drawn.face(0).blank)
     assertFalse(drawn.blank)
   }
@@ -37,11 +37,11 @@ class DraftTest {
     val drawn = draft().onFace(0) { it.draw(stroke()).draw(stroke()) }
 
     val undone = drawn.onFace(0) { it.undo() }
-    assertEquals(1, undone.face(0).strokes.size)
+    assertEquals(1, undone.face(0).marks.size)
     assertTrue(undone.face(0).canRedo)
 
     val redone = undone.onFace(0) { it.redo() }
-    assertEquals(2, redone.face(0).strokes.size)
+    assertEquals(2, redone.face(0).marks.size)
     assertFalse(redone.face(0).canRedo)
   }
 
@@ -52,7 +52,7 @@ class DraftTest {
     val drawn = draft().onFace(0) { it.draw(stroke()).undo().draw(stroke()) }
 
     assertFalse(drawn.face(0).canRedo)
-    assertEquals(1, drawn.face(0).strokes.size)
+    assertEquals(1, drawn.face(0).marks.size)
   }
 
   @Test
@@ -70,7 +70,7 @@ class DraftTest {
 
     val undone = drawn.onFace(1) { it.undo() }
 
-    assertEquals(1, undone.face(0).strokes.size)
+    assertEquals(1, undone.face(0).marks.size)
     assertTrue(undone.face(1).blank)
   }
 
@@ -88,7 +88,7 @@ class DraftTest {
       drawn
         .onFace(0) { it.undo() }
         .face(0)
-        .strokes.size,
+        .marks.size,
     )
     // And forward again, to the cleared face.
     assertTrue(drawn.onFace(0) { it.undo().redo() }.face(0).blank)
@@ -98,15 +98,15 @@ class DraftTest {
   fun `a face stops taking strokes at the limit, and says so before it does`() {
     // The screen warns before this; the model refuses rather than throwing,
     // because a finger is already on the glass by then.
-    val full = (1..FaceDrawing.MAX_STROKES).fold(draft()) { d, _ -> d.onFace(0) { it.draw(stroke()) } }
+    val full = (1..FaceDrawing.MAX_MARKS).fold(draft()) { d, _ -> d.onFace(0) { it.draw(stroke()) } }
 
     assertTrue(full.face(0).full)
     assertEquals(
-      FaceDrawing.MAX_STROKES,
+      FaceDrawing.MAX_MARKS,
       full
         .onFace(0) { it.draw(stroke()) }
         .face(0)
-        .strokes.size,
+        .marks.size,
     )
   }
 
@@ -126,7 +126,7 @@ class DraftTest {
     // stores has to be what the pen had: the path, the ink and the width.
     val drawn = draft().onFace(0) { it.draw(stroke()) }
 
-    val kept = drawn.face(0).strokes.single()
+    val kept = drawn.face(0).marks.single() as Stroke
     assertEquals(listOf(Dot(0.1f, 0.1f), Dot(0.9f, 0.9f)), kept.dots)
     assertEquals(0xFF000000.toInt(), kept.colorArgb)
     assertEquals(0.02f, kept.width, 1e-6f)
@@ -150,20 +150,104 @@ class DraftTest {
     val drawn = draft().onFace(0) { it.draw(stroke()).draw(stroke(erases = true)) }
 
     assertTrue(
-      drawn
-        .face(0)
-        .strokes
-        .last()
-        .erases,
+      (
+        drawn
+          .face(0)
+          .marks
+          .last() as Stroke
+      ).erases,
     )
     assertEquals(
       1,
       drawn
         .onFace(0) { it.undo() }
         .face(0)
-        .strokes.size,
+        .marks.size,
     )
   }
+
+  @Test
+  fun `what was taken back waits to be put forward again`() {
+    // The redo stack is the drawing's, not the screen's: undo puts the face
+    // that was there on it, and drawing again drops it.
+    val undone = draft().onFace(0) { it.draw(stroke()).undo() }
+
+    assertEquals(1, undone.face(0).future.size)
+    assertEquals(emptyList<List<Mark>>(), undone.onFace(0) { it.draw(stroke()) }.face(0).future)
+  }
+
+  @Test
+  fun `a fill is a mark like any other, and one undo takes it back`() {
+    val drawn = draft().onFace(0) { it.draw(stroke()).draw(fill()) }
+
+    assertEquals(2, drawn.face(0).marks.size)
+    assertEquals(
+      1,
+      drawn
+        .onFace(0) { it.undo() }
+        .face(0)
+        .marks.size,
+    )
+  }
+
+  @Test
+  fun `fills sink under the ink, whenever they were made`() {
+    // A bucket colours the paper, not the line: a fill that landed on top
+    // would hide the drawing it was aimed at.
+    val drawn = draft().onFace(0) { it.draw(stroke()).draw(fill()).draw(stroke()) }
+
+    val marks = drawn.face(0).marks
+    assertTrue("a fill was left over the ink", marks.first() is Fill)
+    assertTrue("the ink sank too", marks.drop(1).all { it is Stroke })
+  }
+
+  @Test
+  fun `two fills keep the order they were made in`() {
+    val first = fill(0xFFEC3013.toInt())
+    val second = fill(0xFF1F92CC.toInt())
+
+    val drawn = draft().onFace(0) { it.draw(first).draw(stroke()).draw(second) }
+
+    assertEquals(listOf(first, second), drawn.face(0).marks.filterIsInstance<Fill>())
+  }
+
+  @Test
+  fun `a paste lands on what is already there, in one step`() {
+    val pasted = listOf(stroke(), fill())
+
+    val drawn = draft().onFace(0) { it.draw(stroke()).paste(pasted) }
+
+    assertEquals(3, drawn.face(0).marks.size)
+    assertTrue("the paste did not sink its fill", drawn.face(0).marks.first() is Fill)
+    assertEquals(
+      "a paste is one action, not one per mark",
+      1,
+      drawn
+        .onFace(0) { it.undo() }
+        .face(0)
+        .marks.size,
+    )
+  }
+
+  @Test
+  fun `pasting nothing is not a step`() {
+    val drawn = draft().onFace(0) { it.draw(stroke()).paste(emptyList()) }
+
+    assertEquals(1, drawn.face(0).marks.size)
+    assertEquals("an idle press left a step to undo", 1, drawn.face(0).past.size)
+  }
+
+  @Test
+  fun `a paste that would not fit is refused whole`() {
+    // Half of what was copied is not what was copied.
+    val nearly = (1..FaceDrawing.MAX_MARKS - 1).fold(draft()) { d, _ -> d.onFace(0) { it.draw(stroke()) } }
+
+    val pasted = nearly.onFace(0) { it.paste(listOf(stroke(), stroke())) }
+
+    assertEquals(FaceDrawing.MAX_MARKS - 1, pasted.face(0).marks.size)
+  }
+
+  private fun fill(colorArgb: Int = 0xFFEC3013.toInt()) = Fill(dots = FaceFill.FACE, colorArgb = colorArgb)
 
   private fun stroke(erases: Boolean = false) =
     Stroke(

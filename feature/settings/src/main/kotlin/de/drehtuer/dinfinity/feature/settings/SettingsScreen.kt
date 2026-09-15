@@ -50,7 +50,10 @@ fun SettingsScreen(
   onAppearanceSelected: (Appearance) -> Unit = {},
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onShakeChanged: (Boolean) -> Unit = {},
+  onHapticsChanged: (Boolean) -> Unit = {},
+  onSoundChanged: (Boolean) -> Unit = {},
   onRoundingSelected: (Rounding) -> Unit = {},
+  onDeveloperToolsChanged: (Boolean) -> Unit = {},
   onRepository: () -> Unit = {},
   version: String = "",
   menu: @Composable () -> Unit = {},
@@ -60,10 +63,8 @@ fun SettingsScreen(
       modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
-        // Scrolls, because the list only grows: haptics, sound, the default
-        // set, the table and the session are all still to come
-        // (`docs/TODO.md`, Step 4.10), and a setting below the fold on a short
-        // phone is a setting nobody can reach.
+        // Scrolls, because the list only grows, and a setting below the fold
+        // on a short phone is a setting nobody can reach.
         .verticalScroll(rememberScrollState())
         .padding(24.dp)
         .testTag(SettingsTestTags.SCREEN),
@@ -84,9 +85,18 @@ fun SettingsScreen(
     AppearanceSection(chosen = settings.appearance, onChosen = onAppearanceSelected)
     AccentSection(selected = settings.accentColor, onAccentSelected = onAccentSelected)
     ShakeSection(on = settings.shakeToRoll, onChanged = onShakeChanged)
+    FeelSection(
+      haptics = settings.haptics,
+      sound = settings.sound,
+      onHapticsChanged = onHapticsChanged,
+      onSoundChanged = onSoundChanged,
+    )
     RoundingSection(chosen = settings.rounding, onChosen = onRoundingSelected)
     PowerSection(on = settings.powerSaving, onChanged = onPowerSavingChanged)
     AboutSection(version = version, onRepository = onRepository)
+    // Last, and off on every install: it is a debugging tool rather than a
+    // feature, and it belongs after the thing that says what the app is.
+    DeveloperSection(on = settings.developerTools, onChanged = onDeveloperToolsChanged)
   }
 }
 
@@ -222,6 +232,14 @@ object SettingsTestTags {
 
   /** Whether shaking the phone throws the dice. */
   const val SHAKE: String = "settings:shake"
+
+  /** Whether a die landing is felt, and whether it is heard. */
+  const val HAPTICS: String = "settings:haptics"
+
+  /** The debugging tools, off on every install (design: none — it is a tool). */
+  const val DEVELOPER: String = "settings:developer"
+
+  const val SOUND: String = "settings:sound"
 
   /** What this is and where it came from (design option 2d). */
   const val VERSION: String = "settings:version"

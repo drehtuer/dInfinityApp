@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The two directories something on its way out of the app is copied into: a
-  saved-roll collection, and a file of numbers from the history or the
-  statistics. Nothing else in the app's storage is reachable through this
-  provider: a file-sharing provider that can see the database is a
-  file-sharing provider that will one day be asked for it.
+  The three directories something on its way out of the app is copied into: a
+  saved-roll collection, a file of numbers from the history or the statistics,
+  and the zip of the dice set somebody drew. Nothing else in the app's storage
+  is reachable through this provider: a file-sharing provider that can see the
+  database is a file-sharing provider that will one day be asked for it.
+
+  Each export gets a directory of its own, and a new kind of export gets a new
+  line here. Widening one of these to cover the cache would also cover the
+  half-downloaded archives an install is working through, which is the one
+  thing in there written by a stranger.
 -->
 <paths>
   <cache-path name="collections" path="collections/" />
   <cache-path name="exports" path="exports/" />
+  <cache-path name="packages" path="packages/" />
 </paths>

@@ -1,7 +1,9 @@
 package de.drehtuer.dinfinity.render.headless
 
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -133,6 +135,47 @@ interface WatchedRoll : AutoCloseable {
    * it still has no way to change it.
    */
   val outcome: SimulationOutcome?
+
+  /**
+   * Every moment of the shake that has reached this roll, in step order.
+   *
+   * What a throw *started* as is its `ThrowSpec`, and for a shake-driven throw
+   * that spec is empty of shake: the dice are spawned the instant the shake is
+   * confirmed and the moments arrive afterwards. This is those moments, so
+   * that a roll which has landed can be described by the spec that would
+   * replay it rather than by the spec it began with
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * Like [outcome] it is something a watcher may read and cannot change.
+   */
+  val drivenBy: List<ShakeSample>
+
+  /**
+   * Everywhere the dice have hit something so far, in step order.
+   *
+   * The other half of [drivenBy]: that is what the hand did to the roll, this
+   * is what the roll did back, and both are things a watcher may read and
+   * cannot change. A tray plays the ones it has not played yet on every frame;
+   * a power-saving roll has none to play until the end and plays the lot over
+   * about a second (`docs/physics-and-rendering.md`, "Haptics and sound").
+   */
+  val impacts: List<Impact>
+
+  /**
+   * The roll as a developer sees it, right now, or
+   * [RollDiagnostics.NONE] from a roll that keeps none
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The third thing a watcher may read and cannot change, beside [drivenBy]
+   * and [impacts]. It is a *snapshot built on demand*, so a roll nobody is
+   * debugging pays nothing for it — which is what lets the overlay be a
+   * setting that is off on every install.
+   *
+   * A default rather than a member every roll must implement, because the
+   * answer "none" is a perfectly good one and a fake in a test should not have
+   * to write it out.
+   */
+  val diagnostics: RollDiagnostics get() = RollDiagnostics.NONE
 
   /**
    * Moves the roll on by however much [elapsedSeconds] is worth and hands back

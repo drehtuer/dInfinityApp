@@ -240,6 +240,57 @@ class LiveRollTest {
   }
 
   @Test
+  fun `a roll that has landed knows the shake that threw it`() {
+    // The throw's `ThrowSpec` was empty of shake — the dice are spawned when
+    // the shake is confirmed — so this is the only place the record exists, and
+    // `spec.copy(shake = drivenBy)` is what would replay the roll.
+    val world = FakeWorld(DICE, tumblingThenSettling())
+    liveOver(world).use { live ->
+      val hand = mutableListOf<ShakeSample>()
+      while (live.running && hand.size < A_SHORT_SHAKE) {
+        val sample = ShakeSample(live.stepsTaken, Vector3(5_000.0, 0.0, 0.0), DOWN)
+        live.shake(sample)
+        hand += sample
+        live.advance(SettleRule.TIMESTEP_SECONDS)
+      }
+      while (live.running) live.advance(1.0 / FRAMES_PER_SECOND)
+
+      assertEquals(hand, live.drivenBy)
+    }
+  }
+
+  @Test
+  fun `a shake dropped after the dice stopped is not in the record either`() {
+    // The record is what drove the roll. A sample the roll refused to apply is
+    // a sample that shaped nothing, and a replay including it would be a replay
+    // of a different throw.
+    val world = FakeWorld(DICE, awkward())
+    liveOver(world).use { live ->
+      while (live.running) live.advance(1.0 / FRAMES_PER_SECOND)
+
+      live.shake(ShakeSample(live.stepsTaken, Vector3(9_000.0, 0.0, 0.0), DOWN))
+
+      assertEquals(emptyList<ShakeSample>(), live.drivenBy)
+    }
+  }
+
+  @Test
+  fun `a roll abandoned in the air takes its samples with it`() {
+    // Nothing landed, so there is nothing to record — and the record of a throw
+    // that was never made has nowhere to go. It dies with the roll rather than
+    // being held for whatever is thrown next.
+    val world = FakeWorld(DICE, tumblingThenSettling())
+    val live = liveOver(world)
+    live.advance(SettleRule.TIMESTEP_SECONDS)
+    live.shake(ShakeSample(live.stepsTaken, Vector3(5_000.0, 0.0, 0.0), DOWN))
+
+    live.close()
+
+    assertNull("a roll nobody waited for produced a result", live.outcome)
+    assertTrue("the world the samples drove was left open", world.closed)
+  }
+
+  @Test
   fun `a roll that has finished is not between two states`() {
     liveOver(FakeWorld(DICE, awkward())).use { live ->
       while (live.running) live.advance(1.0 / FRAMES_PER_SECOND)
@@ -334,6 +385,9 @@ class LiveRollTest {
     const val TUMBLE_STEPS = 40
     const val TROUBLE_STEPS = 12
     const val SPARE_FRAMES = 5
+
+    /** Long enough to be a shake and short enough to end inside the roll. */
+    const val A_SHORT_SHAKE = 10
     const val CATCH_UP_CAP = 4
     val DOWN = Vector3(0.0, 0.0, -1.0)
   }

@@ -1,14 +1,18 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableSound
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.Impact
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
+import de.drehtuer.dinfinity.simulation.api.Struck
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
@@ -41,7 +45,7 @@ class PowerSavingTrayTest {
     val roll = FakeRoll(steps = 12)
     val landed = mutableListOf<SimulationOutcome>()
 
-    PowerSavingTray(here).roll(start = roll.start(), onSettled = landed::add)
+    PowerSavingTray(here).roll(start = roll.start(), onSettled = { outcome, _ -> landed += outcome })
 
     assertEquals(1, landed.size)
     assertTrue("the roll was left open, and a world with it", roll.closed)
@@ -51,7 +55,7 @@ class PowerSavingTrayTest {
   fun `it steps the roll to the end rather than stopping part way`() {
     val roll = FakeRoll(steps = 30)
 
-    PowerSavingTray(here).roll(start = roll.start(), onSettled = {})
+    PowerSavingTray(here).roll(start = roll.start(), onSettled = { _, _ -> })
 
     assertFalse("the roll was abandoned before the dice stopped", roll.running)
   }
@@ -64,7 +68,7 @@ class PowerSavingTrayTest {
     // one rather than one that gets there a different way.
     val roll = FakeRoll(steps = 8)
 
-    PowerSavingTray(here).roll(start = roll.start(), onSettled = {})
+    PowerSavingTray(here).roll(start = roll.start(), onSettled = { _, _ -> })
 
     val asked = roll.advanced.distinct()
     assertEquals("the roll was paced, or asked for uneven helpings", 1, asked.size)
@@ -74,7 +78,7 @@ class PowerSavingTrayTest {
   fun `the renderer it watches with draws nothing`() {
     val roll = FakeRoll(steps = 4)
 
-    PowerSavingTray(here).roll(start = roll.start(), onSettled = {})
+    PowerSavingTray(here).roll(start = roll.start(), onSettled = { _, _ -> })
 
     assertTrue("something other than the headless renderer watched the roll", roll.watcher is HeadlessRenderer)
   }
@@ -85,8 +89,8 @@ class PowerSavingTrayTest {
     val second = FakeRoll(steps = 4)
     val tray = PowerSavingTray(here)
 
-    tray.roll(start = first.start(), onSettled = {})
-    tray.roll(start = second.start(), onSettled = {})
+    tray.roll(start = first.start(), onSettled = { _, _ -> })
+    tray.roll(start = second.start(), onSettled = { _, _ -> })
 
     assertTrue(first.closed)
     assertTrue(second.closed)
@@ -102,9 +106,25 @@ class PowerSavingTrayTest {
     lateinit var roll: FakeRoll
     roll = FakeRoll(steps = 4, onAdvance = { if (roll.advanced.size == 1) tray.shake(sample()) })
 
-    tray.roll(start = roll.start(), onSettled = {})
+    tray.roll(start = roll.start(), onSettled = { _, _ -> })
 
     assertEquals(listOf(sample()), roll.shaken)
+  }
+
+  @Test
+  fun `the shake that drove the roll comes back with what the dice came to`() {
+    // Power-saving reports the same two things a watched tray does, because it
+    // is the same roll. Read before the roll is closed, which is the only
+    // moment it can be (`docs/physics-and-rendering.md`, "Shake input").
+    val tray = PowerSavingTray(here)
+    lateinit var roll: FakeRoll
+    roll = FakeRoll(steps = 4, onAdvance = { if (roll.advanced.size == 1) tray.shake(sample()) })
+    var drove: List<ShakeSample>? = null
+
+    tray.roll(start = roll.start(), onSettled = { _, shake -> drove = shake })
+
+    assertEquals(listOf(sample()), drove)
+    assertTrue("the roll was read but never given up", roll.closed)
   }
 
   @Test
@@ -120,7 +140,7 @@ class PowerSavingTrayTest {
     val tray = PowerSavingTray(here)
     tray.close()
 
-    tray.roll(start = roll.start(), onSettled = { error("a roll nobody was waiting for was reported") })
+    tray.roll(start = roll.start(), onSettled = { _, _ -> error("a roll nobody was waiting for was reported") })
 
     assertNull("a roll was opened after the screen was left", roll.watcher)
   }
@@ -137,6 +157,75 @@ class PowerSavingTrayTest {
     tray.surfaceLost()
     tray.clear()
     tray.close()
+  }
+
+  @Test
+  fun `a finished throw's impacts are played over about a second`() {
+    val heard = FakeImpacts()
+    val tray = PowerSavingTray(on = { it.run() }, impacts = heard)
+    val roll = FakeRoll(steps = 3)
+    roll.hits += impact(step = 4)
+    roll.hits += impact(step = 200)
+
+    tray.roll(start = roll.start(), onSettled = { _, _ -> })
+
+    assertEquals(1, heard.played.size)
+    assertEquals(
+      2,
+      heard.played
+        .single()
+        .first.size,
+    )
+    assertEquals(Impacts.REPLAY_SECONDS, heard.played.single().second, 0.0)
+  }
+
+  @Test
+  fun `a throw the player walked away from plays nothing`() {
+    val heard = FakeImpacts()
+    val tray = PowerSavingTray(on = { it.run() }, impacts = heard)
+    val roll = FakeRoll(steps = 3)
+    roll.hits += impact(step = 4)
+    tray.close()
+
+    tray.roll(start = roll.start(), onSettled = { _, _ -> })
+
+    assertTrue("a roll nobody waited for was still played", heard.played.isEmpty())
+  }
+
+  @Test
+  fun `the table still says what the dice sound like, with nothing drawn`() {
+    val heard = FakeImpacts()
+
+    PowerSavingTray(on = { it.run() }, impacts = heard)
+      .table(TableGeometry.referenceDevice(), TableLook(id = "oak", name = "Oak", sound = TableSound.Wood))
+
+    assertEquals(listOf(TableSound.Wood), heard.tables)
+  }
+
+  private fun impact(step: Int): Impact =
+    Impact(
+      stepIndex = step,
+      dieIndex = 0,
+      struck = Struck.Floor,
+      speedChangeMmPerSecond = 600.0,
+      dieSizeMm = 16.0,
+    )
+
+  /** Something that plays impacts and only remembers being asked to. */
+  private class FakeImpacts : Impacts {
+    val tables = mutableListOf<TableSound>()
+    val played = mutableListOf<Pair<List<Impact>, Double>>()
+
+    override fun on(sound: TableSound) {
+      tables += sound
+    }
+
+    override fun play(
+      impacts: List<Impact>,
+      overSeconds: Double,
+    ) {
+      played += impacts to overSeconds
+    }
   }
 
   private fun sample(): ShakeSample =
@@ -158,6 +247,13 @@ class PowerSavingTrayTest {
 
     override val outcome: SimulationOutcome?
       get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
+
+    override val drivenBy: List<ShakeSample> get() = shaken.toList()
+
+    /** Impacts a test pushes in, as a real roll would accumulate them. */
+    val hits = mutableListOf<Impact>()
+
+    override val impacts: List<Impact> get() = hits
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds

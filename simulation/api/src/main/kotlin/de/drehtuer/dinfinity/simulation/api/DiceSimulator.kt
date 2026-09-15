@@ -46,6 +46,12 @@ interface DiceSimulator {
  *   identical to what normal mode would have produced.
  * @param shake the recorded and quantised motion of the phone, or empty for a
  *   tap-to-roll throw (`docs/physics-and-rendering.md`, "Shake input").
+ * @param among the dice already at rest in this tray, for a throw an explosion
+ *   or a reroll added. **None of them is in this throw's world**: their faces
+ *   are read and they are finished, so there is no body for them to be shoved
+ *   by. They are here for the two things outside the solver that still need
+ *   them — the clear floor the new die is dropped onto ([ClearSpace]) and the
+ *   picture it lands in.
  */
 data class ThrowSpec(
   val dice: List<DieInstance>,
@@ -54,13 +60,30 @@ data class ThrowSpec(
   val seed: Long,
   val dieScale: Double = 1.0,
   val shake: List<ShakeSample> = emptyList(),
+  val among: List<DieAtRest> = emptyList(),
 ) {
   init {
     require(dieScale in TableCapacity.MIN_SCALE..1.0) {
       "a die is thrown between ${TableCapacity.MIN_SCALE} and full size, not $dieScale"
     }
     require(dice.size <= TableCapacity.MAX_DICE) { "${dice.size} dice is past the engine's cap" }
+    // An explosion and a reroll each add exactly one die, and they add it after
+    // the last one landed. Two at once would be two dice dropped onto the same
+    // clear patch of floor, since neither can see the other coming.
+    require(among.isEmpty() || dice.size == 1) {
+      "a throw into a tray that already holds ${among.size} dice is a throw of one die, not ${dice.size}"
+    }
   }
+
+  /**
+   * How much room the biggest die in this throw needs, at this throw's scale.
+   *
+   * The grid is laid out for it rather than for each die's own size: a throw
+   * can mix a d4 and a d20 from different sets, and cells sized for the d4
+   * would put the d20 through its neighbour's cell wall before anything had
+   * been thrown.
+   */
+  val largestDieRadiusMm: Double get() = dice.maxOf { ClearSpace.radiusOf(it.die, dieScale) }
 }
 
 /**
@@ -81,7 +104,33 @@ data class ShakeSample(
   val stepIndex: Int,
   val accelerationMmPerSecond2: Vector3,
   val gravity: Vector3,
-)
+) {
+  /**
+   * True when this moment names a step a roll could actually take.
+   *
+   * A hand goes on shaking for as long as it likes and the record of it does
+   * not: the simulation takes fixed 1/120 s steps and is force-settled at
+   * [SettleRule.HARD_CAP_STEPS], so a sample naming a later step has no step
+   * to drive and never will. Keeping it would grow the record of a
+   * thirty-second shake without bound and without adding anything a replay
+   * could use.
+   */
+  val drivesAStep: Boolean get() = stepIndex in 0 until MAX_RECORDED
+
+  companion object {
+    /**
+     * How many moments a throw's record can hold, at most.
+     *
+     * Not a number picked to feel safe: it is the twelve-second cap at the
+     * simulation's own 120 Hz, which is every step a roll can possibly take,
+     * and a step holds one sample. So the bound is "every moment that could
+     * have shaped this throw, and nothing else" — 1,440 samples, about 50 kB,
+     * for a roll that cannot last longer than twelve seconds however long the
+     * hand does (`docs/physics-and-rendering.md`, "Shake input").
+     */
+    const val MAX_RECORDED: Int = SettleRule.HARD_CAP_STEPS
+  }
+}
 
 /**
  * What a throw came to.
@@ -102,6 +151,24 @@ data class ShakeSample(
  *   This must always be zero. It is reported rather than assumed so that the
  *   device harness can assert it, and one occurrence is a bug, not a statistic
  *   (`docs/TODO.md`, Step 5.5).
+ * @param stackedAtRest dice that came to rest standing on another die. The
+ *   first failure the stacking ladder exists to prevent, and the target is
+ *   zero (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked
+ *   dice"). Counted at the end rather than judged during the roll, because a
+ *   die standing on another *while it is still moving* is an ordinary moment
+ *   of a throw and only the last one is a result.
+ * @param deepestDiePenetrationMm how far one die was ever inside another,
+ *   at any step of the roll. The solver resolves overlaps rather than
+ *   forbidding them, so this is never exactly zero; what matters is that it
+ *   stays small enough that nobody watching sees two solids share a corner
+ *   (`docs/TODO.md`, Step 5.4). It comes from the engine's own contact
+ *   manifolds, which is the only place it exists — nothing upstream can work
+ *   it out from positions.
+ * @param restingAt where each die stopped, keyed like [faces]. A roll whose
+ *   formula explodes or rerolls is not over when its dice stop: the throw that
+ *   comes next has to be aimed at the floor this one left clear, and drawn
+ *   among the dice it left standing there
+ *   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
  */
 data class SimulationOutcome(
   val faces: Map<Int, Int>,
@@ -110,6 +177,9 @@ data class SimulationOutcome(
   val rethrows: Int = 0,
   val forcedSettles: Int = 0,
   val postRestCorrections: Int = 0,
+  val stackedAtRest: Int = 0,
+  val deepestDiePenetrationMm: Double = 0.0,
+  val restingAt: Map<Int, RestingPlace> = emptyMap(),
 ) {
   /** How many dice were in the throw. */
   val diceCount: Int get() = faces.size
@@ -119,5 +189,7 @@ data class SimulationOutcome(
 
   init {
     require(steps <= SettleRule.HARD_CAP_STEPS) { "a roll cannot run past the ${SettleRule.HARD_CAP_SECONDS}s cap" }
+    require(stackedAtRest <= faces.size) { "$stackedAtRest of ${faces.size} dice cannot be stacked" }
+    require(deepestDiePenetrationMm >= 0.0) { "an overlap of $deepestDiePenetrationMm mm is not a depth" }
   }
 }

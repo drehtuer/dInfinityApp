@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.feature.saved
 
+import de.drehtuer.dinfinity.core.collection.CollectionFiles
 import de.drehtuer.dinfinity.core.collection.CollectionWriter
 import de.drehtuer.dinfinity.core.collection.Slugs
 import de.drehtuer.dinfinity.core.model.SavedRoll
@@ -26,8 +27,15 @@ data class CollectionFile(
  * what name is this.
  */
 object CollectionExport {
-  /** What a collection file is called, so one can be recognised at a glance. */
-  const val EXTENSION: String = ".dinfinity.json"
+  /**
+   * What a collection file is called, so one can be recognised at a glance.
+   *
+   * The format's own, rather than this object's: the name a collection is
+   * exported under is the name importing from a git repository looks for at
+   * the repository's root, and one rule cannot be in two places
+   * ([CollectionFiles]).
+   */
+  const val EXTENSION: String = CollectionFiles.EXTENSION
 
   /** The media type a collection travels as. */
   const val MEDIA_TYPE: String = "application/json"
