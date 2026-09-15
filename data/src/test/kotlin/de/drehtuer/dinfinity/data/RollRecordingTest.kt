@@ -91,6 +91,7 @@ class RollRecordingTest {
         listOf(6, 3),
         Breakdown
           .read(row.breakdownJson)
+          .groups
           .single()
           .dice
           .map { it.value },
@@ -280,6 +281,30 @@ class RollRecordingTest {
           ),
         ),
     )
+
+  @Test
+  fun `and so do the numbers the formula added`() =
+    runTest {
+      // The whole chain, so the history's breakdown adds up to its total the
+      // way the result sheet's does (`docs/dice-notation.md`, "Evaluation").
+      val withFour = result().copy(formula = "2d6 + 4", total = 13, adjustments = listOf(4L))
+
+      recording.record(result = withFour, plan = plan())
+
+      val row =
+        database
+          .rollHistory()
+          .recent(10)
+          .first()
+          .single()
+      val read = Breakdown.read(row.breakdownJson)
+      assertEquals(listOf(4L), read.adjustments)
+      assertEquals(
+        "the rows in the history do not add up to the total beside them",
+        row.total,
+        read.groups.sumOf { it.subtotal } + read.adjustments.sum(),
+      )
+    }
 
   private fun result() =
     RollResult(

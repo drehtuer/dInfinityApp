@@ -5,6 +5,9 @@
   <string name="history_empty_title">No rolls yet.</string>
   <string name="history_empty_body">Every throw is written down here with what it was made of. Nothing leaves the phone.</string>
   <!-- %1$s is the set the formula asked for, %2$s the one that supplied the dice. -->
+  <!-- A number the formula added or took away, itemised under a past roll. -->
+  <string name="history_plus">plus</string>
+  <string name="history_minus">minus</string>
   <string name="history_fell_back">“%1$s” is not installed; the dice came from “%2$s”</string>
   <!-- %1$d is how many dice had to be thrown again or were forced to settle. -->
   <plurals name="history_anomalies">

@@ -191,9 +191,13 @@ Counts of in-flight corrections, re-thrown dice and forced settles (see
   the bottom of the same list. A die nobody has thrown sorts last by average
   rather than lowest — it has not come out low, it has not come out.
 - **Saved rolls:** per-formula history with expected vs. observed graph.
-- **History:** scrollable list of past rolls with breakdowns. A past roll is
-  a record, not something to re-run: there is no replay action and the seed
-  is never shown. Re-rolling a formula means rolling it again.
+- **History:** scrollable list of past rolls with breakdowns. A breakdown
+  shows each group's dice and subtotal *and* the numbers the formula added, so
+  its rows add up to the total beside them — the same two things the result
+  sheet shows the moment a roll lands (`docs/dice-notation.md`, "Evaluation",
+  step 7). A past roll is a record, not something to re-run: there is no replay
+  action and the seed is never shown. Re-rolling a formula means rolling it
+  again.
 - **Sessions:** create/rename/delete. Deleting one moves its rolls to the
   first session rather than deleting them, so a session can be tidied away
   without losing what was rolled in it. ("Unfiled" is the saved-roll *group*
@@ -272,6 +276,15 @@ Streaks and sums are updated in the same transaction as the history insert.
 `roll_history` is capped at 50,000 rows by default (oldest pruned); aggregates
 are never pruned. Uninstalling a dice set keeps its rows.
 
+`breakdown_json` carries the numbers the formula added as well as the dice.
+A roll **recorded before they were written down has none**, and that is the
+truth about it rather than a gap to paper over: nobody knows what an old
+`3d6 + 4` added, because at the time nothing wrote it down. Its rows will not
+add up to its total, exactly as they did not before — inventing the difference
+would be the app putting a number in front of somebody that it guessed. A
+formula that added nothing writes no key at all, so a roll with no modifiers is
+byte for byte the row it has always been.
+
 `seed` and `input_blob` (the quantised shake samples, or the default throw
 parameters) are kept so a roll can be reproduced exactly when a bug report
 needs it. They are **internal**: no screen shows them, and the export leaves
@@ -282,8 +295,9 @@ them out. Reproducing a stored roll is a developer action
 
 - **The history exports as JSON or CSV**, through the share sheet the way a
   collection does. Two formats because they answer different questions: JSON
-  keeps the breakdown and is the one to keep, CSV is one row per roll and is
-  the one a spreadsheet can draw.
+  keeps the breakdown — the dice *and* what the formula added, so the file's
+  rows reach its totals — and is the one to keep; CSV is one row per roll and
+  is the one a spreadsheet can draw.
 - **What is exported is what the list is filtered to** — one session, one saved
   roll, or everything — but not what is *paged* to. The screen asks for two
   hundred rolls because nobody scrolls further; the file carries every roll the

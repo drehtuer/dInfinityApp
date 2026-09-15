@@ -203,6 +203,30 @@ class HistoryExportTest {
     }
   }
 
+  @Test
+  fun `a file that keeps the breakdown keeps one that adds up`() {
+    // JSON is the format that keeps the breakdown, and a breakdown missing
+    // what the formula added is one whose rows do not reach its total
+    // (`docs/statistics.md`, "Export and reset"). Seven from the dice plus
+    // four is eleven, and all three numbers are in the file.
+    val withFour = roll(total = 11, formula = "2d6 + 4").copy(adjustments = listOf(4L))
+
+    val file = HistoryExport.of(listOf(withFour), ExportFormat.Json, called = "x")
+
+    assertTrue("what the formula added is missing: ${file.text}", file.text.contains("adjustments"))
+    assertTrue("the amount is missing: ${file.text}", file.text.contains("4"))
+    assertTrue("the total is missing: ${file.text}", file.text.contains("\"total\": 11"))
+  }
+
+  @Test
+  fun `a roll that added nothing exports the object it always did`() {
+    // Not an empty array: that would say the formula had modifiers which came
+    // to nothing, the same mistake an empty `groups` would make.
+    val file = HistoryExport.of(listOf(roll()), ExportFormat.Json, called = "x")
+
+    assertFalse("an empty list of modifiers was written: ${file.text}", file.text.contains("adjustments"))
+  }
+
   /**
    * One roll.
    *

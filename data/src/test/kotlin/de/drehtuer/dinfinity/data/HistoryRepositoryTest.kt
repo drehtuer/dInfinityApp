@@ -118,6 +118,39 @@ class HistoryRepositoryTest {
     }
 
   @Test
+  fun `and so do the numbers its formula added`() =
+    runTest {
+      // The history's breakdown adds up to the total beside it, the way the
+      // result sheet's does (`docs/dice-notation.md`, "Evaluation", step 7).
+      given(formula = "4d6dl1 + 4", breakdown = fourD6DropLowest().copy(total = 19, adjustments = listOf(4L)))
+
+      val entry = history.recent().first().single()
+
+      assertEquals(listOf(4L), entry.adjustments)
+      assertEquals(
+        "the rows do not add up to the total",
+        entry.total,
+        entry.groups.sumOf { it.subtotal } + entry.adjustments.sum(),
+      )
+    }
+
+  @Test
+  fun `a roll recorded before they were written down has none`() =
+    runTest {
+      // Nobody knows what it added, and nothing here invents it.
+      given(formula = "4d6dl1", breakdown = fourD6DropLowest())
+
+      assertEquals(
+        emptyList<Long>(),
+        history
+          .recent()
+          .first()
+          .single()
+          .adjustments,
+      )
+    }
+
+  @Test
   fun `a roll with no dice has no breakdown to open`() =
     runTest {
       given(formula = "4 + 4", breakdown = RollResult(formula = "4 + 4", total = 8))

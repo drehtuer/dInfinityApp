@@ -115,17 +115,33 @@ data class HistoryEntry(
   val formula: String,
   val total: Long,
   val groups: List<StoredGroup>,
+  /**
+   * The numbers the formula added or took away, signed, as they were written
+   * down (`docs/dice-notation.md`, "Evaluation", step 7).
+   *
+   * Empty both for a formula that added nothing and for a roll recorded before
+   * these were stored. Nothing tells those apart, and nothing should: the
+   * second is a roll whose modifiers nobody knows.
+   */
+  val adjustments: List<Long> = emptyList(),
   val anomalies: Int = 0,
 ) {
   /** True when some die that counted showed its highest face — painted in the accent. */
   val hasNaturalMax: Boolean get() = groups.any { group -> group.kept.any(StoredDie::naturalMax) }
 
-  /** True when there is a breakdown to open at all: `4 + 4` has none. */
+  /**
+   * True when there is a breakdown to open at all: `4 + 4` has none.
+   *
+   * The dice decide it, not the modifiers. A roll with no dice in it has
+   * nothing to break down, and listing the two numbers somebody typed is not
+   * a breakdown of anything.
+   */
   val hasBreakdown: Boolean get() = groups.isNotEmpty()
 }
 
-private fun RollHistoryRow.asEntry(): HistoryEntry =
-  HistoryEntry(
+private fun RollHistoryRow.asEntry(): HistoryEntry {
+  val breakdown = Breakdown.read(breakdownJson)
+  return HistoryEntry(
     id = id,
     atEpochMs = timestamp,
     sessionId = sessionId,
@@ -133,6 +149,8 @@ private fun RollHistoryRow.asEntry(): HistoryEntry =
     groupId = groupId,
     formula = formula,
     total = total,
-    groups = Breakdown.read(breakdownJson),
+    groups = breakdown.groups,
+    adjustments = breakdown.adjustments,
     anomalies = anomalies,
   )
+}
