@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.FaceOutline
+import de.drehtuer.dinfinity.designer.FaceShapes
 import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.Fill
 import de.drehtuer.dinfinity.designer.GuideMark

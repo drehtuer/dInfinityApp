@@ -1,8 +1,5 @@
-package de.drehtuer.dinfinity.feature.designer
+package de.drehtuer.dinfinity.designer
 
-import de.drehtuer.dinfinity.designer.Dot
-import de.drehtuer.dinfinity.designer.FaceOutline
-import de.drehtuer.dinfinity.designer.GuideSpot
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
