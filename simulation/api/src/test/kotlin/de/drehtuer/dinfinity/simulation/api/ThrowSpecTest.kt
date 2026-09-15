@@ -90,6 +90,31 @@ class ThrowSpecTest {
     outcome.faces.values.forEach { face -> assertTrue(face in 0 until StandardDice.d20.faces.size) }
   }
 
+  @Test
+  fun `a moment names a step the roll will take, or it names nothing`() {
+    // The bound is the twelve-second cap at 120 Hz: every step a roll can take,
+    // and a step holds one sample. Past it there is no step to drive
+    // (`docs/physics-and-rendering.md`, "Shake input").
+    assertEquals(SettleRule.HARD_CAP_STEPS, ShakeSample.MAX_RECORDED)
+    assertTrue(moment(0).drivesAStep)
+    assertTrue(moment(ShakeSample.MAX_RECORDED - 1).drivesAStep)
+    assertFalse(moment(ShakeSample.MAX_RECORDED).drivesAStep, "a moment past the cap claimed a step")
+  }
+
+  @Test
+  fun `a moment before the shake began drives nothing either`() {
+    // There is no step before the dice were spawned, and a negative index is a
+    // clock that went backwards rather than a moment of a throw.
+    assertFalse(moment(-1).drivesAStep)
+  }
+
+  private fun moment(step: Int): ShakeSample =
+    ShakeSample(
+      stepIndex = step,
+      accelerationMmPerSecond2 = Vector3.Zero,
+      gravity = Vector3.Zero,
+    )
+
   private fun spec(
     count: Int,
     scale: Double,

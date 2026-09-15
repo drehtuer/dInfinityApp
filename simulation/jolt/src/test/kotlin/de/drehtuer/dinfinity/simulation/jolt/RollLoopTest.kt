@@ -231,6 +231,47 @@ class RollLoopTest {
     assertEquals(SettleRule.REST_STEPS.toLong(), outcome.steps.toLong())
   }
 
+  @Test
+  fun `the record of a throw is what the loop was handed, not what its spec held`() {
+    // A shake-driven throw is spawned the moment the shake is confirmed, so its
+    // spec goes into the world empty and the moments arrive afterwards. What
+    // the roll is reproducible from is this, and nothing above the loop is in a
+    // position to collect it (`docs/physics-and-rendering.md`, "Shake input").
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    val loop = loop(listOf(StandardDice.d6), world)
+    val hand = List(3) { ShakeSample(it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
+
+    hand.forEach(loop::shake)
+    loop.run()
+
+    assertEquals(hand, loop.drivenBy)
+  }
+
+  @Test
+  fun `a tapped throw has nothing to be reproduced from but its seed`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    val loop = loop(listOf(StandardDice.d6), world)
+
+    loop.run()
+
+    assertEquals(emptyList<ShakeSample>(), loop.drivenBy)
+  }
+
+  @Test
+  fun `a hand that never stops cannot push a roll past its own cap`() {
+    // Thirty seconds of shaking against a twelve-second cap. The hand holds a
+    // roll open, but the safety valve is not something it gets a vote on: the
+    // steps would go on being counted and the outcome would be one nothing can
+    // describe.
+    val forever = List(THIRTY_SECONDS_OF_STEPS) { ShakeSample(it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+
+    val outcome = loop(listOf(StandardDice.d6), world, shake = forever).run()
+
+    assertEquals(SettleRule.HARD_CAP_STEPS.toLong(), outcome.steps.toLong())
+    assertEquals("the world was stepped past the cap", SettleRule.HARD_CAP_STEPS, world.steps)
+  }
+
   private fun loop(
     dice: List<Die>,
     world: FakeWorld,
@@ -271,6 +312,9 @@ class RollLoopTest {
 
     /** A shake that outlasts the settle rule several times over. */
     const val SHAKE_STEPS = 200
+
+    /** And one that outlasts the roll's own cap several times over. */
+    const val THIRTY_SECONDS_OF_STEPS = 3_600
 
     /** Straight down, as the gyroscope reports it: a direction, not a magnitude. */
     val DOWN = Vector3(0.0, 0.0, -1.0)

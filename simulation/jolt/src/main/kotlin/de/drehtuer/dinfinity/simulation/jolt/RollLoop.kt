@@ -60,6 +60,17 @@ class RollLoop(
   val stepsTaken: Int get() = tracker.stepsTaken
 
   /**
+   * The shake that threw these dice, as the loop actually received it.
+   *
+   * Accumulated rather than taken from [spec] because for a shake-driven throw
+   * the spec has nothing in it: the dice are spawned the moment the shake is
+   * confirmed and every moment of it arrives afterwards, through [shake]. The
+   * driver is where those moments land, so the driver is where the record of
+   * the throw is ([ShakeDriver.recorded]).
+   */
+  val drivenBy: List<ShakeSample> get() = shake.recorded()
+
+  /**
    * Takes one more moment of the shake that is throwing these dice.
    *
    * The only thing that reaches a roll in progress from outside, and it is the
@@ -102,13 +113,7 @@ class RollLoop(
    */
   fun advance(): Boolean {
     if (result != null) return false
-    // Dice that look still while the phone is still being shaken are not a
-    // roll that is over — they are a roll caught at the top of a swing. The
-    // hand decides when it has finished throwing, not the dice
-    // (`docs/physics-and-rendering.md`, "Shake input").
-    if (diceCount == 0 || (tracker.finished() && !shake.stillShaking(tracker.stepsTaken))) {
-      return closeOutOrRethrow()
-    }
+    if (diceCount == 0 || nothingLeftToStep()) return closeOutOrRethrow()
 
     val step = tracker.stepsTaken
     shake.advance(step)
@@ -120,6 +125,24 @@ class RollLoop(
     correct(states, step)
     return true
   }
+
+  /**
+   * True when there is no step left to take.
+   *
+   * Two things have to agree and there is a third that overrules both. Dice
+   * that look still while the phone is still being shaken are not a roll that
+   * is over — they are a roll caught at the top of a swing — so the settle rule
+   * is the dice's answer and [ShakeDriver.stillShaking] is the hand's
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * The cap is asked first and on its own, because it is the safety valve
+   * rather than an opinion about the throw. A hand holds a roll open; it does
+   * not get to hold one open past twelve seconds, which is what a shake longer
+   * than the roll would otherwise do — the steps would go on being counted and
+   * the throw would end as an outcome `SimulationOutcome` refuses to describe.
+   */
+  private fun nothingLeftToStep(): Boolean =
+    tracker.capReached() || (tracker.finished() && !shake.stillShaking(tracker.stepsTaken))
 
   /**
    * The end of a settle phase: either the roll is over, or a die has to be

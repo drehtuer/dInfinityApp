@@ -81,7 +81,33 @@ data class ShakeSample(
   val stepIndex: Int,
   val accelerationMmPerSecond2: Vector3,
   val gravity: Vector3,
-)
+) {
+  /**
+   * True when this moment names a step a roll could actually take.
+   *
+   * A hand goes on shaking for as long as it likes and the record of it does
+   * not: the simulation takes fixed 1/120 s steps and is force-settled at
+   * [SettleRule.HARD_CAP_STEPS], so a sample naming a later step has no step
+   * to drive and never will. Keeping it would grow the record of a
+   * thirty-second shake without bound and without adding anything a replay
+   * could use.
+   */
+  val drivesAStep: Boolean get() = stepIndex in 0 until MAX_RECORDED
+
+  companion object {
+    /**
+     * How many moments a throw's record can hold, at most.
+     *
+     * Not a number picked to feel safe: it is the twelve-second cap at the
+     * simulation's own 120 Hz, which is every step a roll can possibly take,
+     * and a step holds one sample. So the bound is "every moment that could
+     * have shaped this throw, and nothing else" — 1,440 samples, about 50 kB,
+     * for a roll that cannot last longer than twelve seconds however long the
+     * hand does (`docs/physics-and-rendering.md`, "Shake input").
+     */
+    const val MAX_RECORDED: Int = SettleRule.HARD_CAP_STEPS
+  }
+}
 
 /**
  * What a throw came to.
