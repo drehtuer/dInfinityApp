@@ -638,6 +638,23 @@ Targets, verified on a device (`docs/TODO.md`, Step 5): zero dice at rest
 supported by another die, fewer than 0.5 % of dice needing any correction at
 all, and **zero** corrections applied after rest.
 
+Every one of those is a number the outcome carries rather than a claim somebody
+checks by eye. A `SimulationOutcome` reports its corrections, its re-throws,
+its forced settles, the corrections that reached a die at rest — which is
+always zero — the dice that ended up **standing on another die**, and the
+**deepest one die ever got inside another**. The last two are there for this
+paragraph: the first is the stacking failure counted rather than described, and
+the second can only be read from the solver's own contact manifolds at the
+instant they are reported, so nothing upstream could work it out afterwards.
+The stacked count is taken where the dice *ended* and not while they were
+moving: a die on top of another mid-throw is an ordinary moment of a roll.
+
+`tools/harness.sh` is what asks the question at scale — N rolls headless on a
+phone or the emulator, a JSON document of what they did, and a pass/fail table
+against every target above (`docs/build-setup.md`, "The physics harness"). It
+fails on the two that are not met yet, which is the plan being behind the check
+rather than the check being wrong.
+
 ## Impacts, haptics and sound
 
 A roll that lands in silence is a number appearing. What makes it read as dice
@@ -997,3 +1014,6 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
   seed (`docs/statistics.md`).
 - Anomaly log (forced settles, post-rest corrections — which should never
   occur) exported with statistics.
+- The Step 5 harness, which is the same numbers gathered over thousands of
+  rolls rather than shown for one: `tools/harness.sh`
+  (`docs/build-setup.md`, "The physics harness").

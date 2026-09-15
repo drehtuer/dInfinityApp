@@ -107,6 +107,15 @@ is mostly polish, the export paths, and the things that need a phone.
   come: the stamp and "fill all faces with numbers" — both place a glyph, and
   the font they would take it from exists now, so what is left there is wiring
   rather than waiting — and the export.
+- **Step 5.1, the harness, is built.** `tools/harness.sh` rolls N throws
+  headlessly on the emulator or the phone, pulls back a JSON document of what
+  they did — settle times, corrections, post-rest corrections, re-throws,
+  forced settles, stacked dice, the deepest die–die overlap, per-step wall
+  time — and prints a pass/fail table against Step 5's targets. Everything it
+  decides is plain Kotlin in `simulation/harness` and tested on the JVM; the
+  device only rolls, times and writes. It **fails** on three of ten targets on
+  the Pixel 10a, which is what it is for. Frame times, soak mode and screen
+  capture are what is left of 5.1.
 
 ## Blocked / waiting on
 

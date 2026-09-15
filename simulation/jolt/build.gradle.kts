@@ -58,4 +58,10 @@ dependencies {
   testImplementation(project(":test-fixtures"))
   androidTestImplementation(project(":core:notation"))
   androidTestImplementation(project(":test-fixtures"))
+
+  // The Step 5 harness: the shape of a run's JSON, the arithmetic over it and
+  // the comparison against the targets. Test-only, and one direction only —
+  // nothing in this module's own code knows the harness exists, and the
+  // harness knows nothing about Jolt (`docs/TODO.md`, Step 5.1).
+  androidTestImplementation(project(":simulation:harness"))
 }

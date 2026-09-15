@@ -469,6 +469,74 @@ correct — decides instead.
 Delete `VerifyDeviceTestResultsTask` and the `ignoreFailures` beside it once
 AGP compares like with like.
 
+### The physics harness
+
+Step 5 asks the same questions of the physics every time, and asking them by
+hand is how they stop being asked. `tools/harness.sh` rolls N throws
+headlessly on a device, pulls the numbers back and prints them against the
+targets in [TODO.md](TODO.md) (Steps 5.3 to 5.7).
+
+It runs against **either tier**, and that is the point: the emulator is a
+minute away and catches most of what breaks, so a regression should never
+reach the phone.
+
+```sh
+dinfinity-emulator &                     # the middle tier, in this container
+dinfinity-await-device
+tools/harness.sh -n 200                  # a quick look
+
+dinfinity-phone                          # the reference device
+tools/harness.sh -n 10000                # the run Step 5.5 asks for
+tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
+```
+
+It says which device it ran on before it rolls anything, and **the exit code is
+the verdict**: zero when every target was met. With both a phone and the
+emulator attached it refuses to guess — name one with `--device` or
+`ANDROID_SERIAL`, the same choice every other device task needs
+([below](#when-both-a-phone-and-the-emulator-are-attached)).
+
+| Option | What it is |
+| --- | --- |
+| `-n`, `--rolls` | how many throws (default 1000) |
+| `-c`, `--dice` | dice per throw (default 20, which is where Step 5.5 states its settle targets) |
+| `-s`, `--shape` | `d20`, `icosahedron` or `20` — all three are accepted (default `d20`) |
+| `--seed` | the run's base seed (default 1). One number replays the whole run |
+| `-l`, `--label` | what to call the run and its files |
+| `-o`, `--out` | where the pulled files land (default `build/harness`) |
+| `--no-build` | run what is already installed |
+
+Each run leaves two files, on the device under
+`/sdcard/Android/data/de.drehtuer.dinfinity.simulation.jolt.test/files` and
+pulled into `build/harness`:
+
+- `harness-<label>.json` — every roll, one record each, plus the run's
+  summary and its scorecard. This is what to open when a run fails.
+- `harness-<label>.txt` — the pass/fail table, rendered on the device by the
+  same Kotlin the unit tests hold, and printed by the script unchanged.
+
+The run itself is `HarnessTest` in `simulation/jolt`'s `androidTest`, and it
+does nothing at all without `harness.rolls` — so it sits in the ordinary device
+suite without adding minutes to it. By hand, without the script:
+
+```sh
+./gradlew :simulation:jolt:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.harness.rolls=1000
+```
+
+**The harness fails on targets the engine does not meet yet, and that is
+deliberate.** Two are missed today: the correction rate is about 45 % against a
+0.5 % budget, and `100d4` runs out of the twelve-second cap on some seeds
+(`docs/TODO.md`, Steps 5.3 and 5.5). The plan is behind the check rather than
+the other way round, so the check is not moved to meet it. Where today's worst
+case is worth writing down so that it cannot quietly get worse, that lives in
+`JoltBridgeTest`'s own bounds.
+
+Like `connectedDebugAndroidTest`, the script takes its verdict from what the
+run produced rather than from the tooling around it — here the table the device
+wrote, for the same reason the [JUnit XML](#the-verdict-on-an-instrumented-run)
+decides there.
+
 ## Connecting a phone over WiFi
 
 The container has `adb`, so on-device tests run from inside it — no need to

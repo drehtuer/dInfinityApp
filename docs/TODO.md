@@ -344,10 +344,31 @@ after every physics change.
 
 ### 5.1 Harness
 
-- [ ] On-device instrumented runner: N rolls headless, dumps JSON — settle times, correction and re-throw counts, contact depths, frame times. **The per-face histogram half exists** as `FairnessTest`, which takes its roll count from an instrumentation argument and prints its table (`docs/physics-and-rendering.md`, "Are the dice fair"); the rest of the numbers, and JSON rather than a printed table, are what is left
-- [ ] Devcontainer script that installs, runs, pulls the JSON and prints a pass/fail table against the targets below
-- [ ] Soak mode (run for minutes, report worst case) and 60 fps screen capture for visual review
-- [ ] Same harness runs on the emulator, which is in the devcontainer (`docs/build-setup.md`), so a regression is caught before the phone
+**Built, and it runs on either tier.** `tools/harness.sh` rolls N throws
+headlessly on the emulator or the phone, pulls back a JSON document — settle
+time in steps and in milliseconds with median, p99 and worst case, corrections,
+post-rest corrections, re-throws, forced settles, dice left standing on another
+die, the deepest die–die overlap and the per-step wall time — and prints a
+pass/fail table against the targets below (`docs/build-setup.md`, "The physics
+harness"). The emulator is a minute away, so a regression need never reach the
+phone.
+
+Everything it *decides* is plain Kotlin in `simulation/harness` and is tested on
+the JVM: what a run was asked for, the percentiles, the shares, the document and
+the comparison. The device only rolls, times and writes two files
+(`docs/architecture.md`, decision 51). It **fails** on the targets the engine
+misses today, which is the plan being behind the check rather than the check
+being wrong.
+
+- [ ] **Frame times, which a headless run cannot give.** The harness holds the
+      device to simulating a step in less time than the step covers (1/120 s);
+      Step 5.7's "p99 frame time under 16.6 ms" is about *drawing* and needs the
+      renderer on and a surface to draw to. The seam is `LiveRoll.advance` and
+      `FrameClock.droppedSteps`, which already counts the time a slow frame lost
+- [ ] Soak mode (run for minutes, report worst case) and 60 fps screen capture
+      for visual review. Neither is started, and each is small: a soak is the
+      same runner given a duration rather than a roll count, and the capture is
+      `screenrecord` around a rendered roll
 
 ### 5.2 Fairness and determinism
 
@@ -372,7 +393,7 @@ a die fairer than the plastic one in their hand, is not worth a warning
 
 ### 5.3 Capacity and corner cases
 
-- [ ] Counts 1, 2, 5, 8, 20, 40, 60 and the capacity limit (~80 on the Pixel 10a): all settle, no NaN, no tunnelling
+- [ ] Counts 1, 2, 5, 8, 20, 40, 60 and the capacity limit: all settle, no NaN, no tunnelling. `tools/harness.sh -c <n>` is the run; each count is one invocation
 - [ ] **`100d4` does not reliably settle, and never did.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. `JoltBridgeTest` used to try eight seeds and pass; twenty-four seeds show **five running out of the twelve-second cap**, and the same twenty-four under the correlated spawn streams that preceded them showed two — a difference well inside noise at that sample size. What changed is not the physics but the sample: the eight were the easy ones. Nothing is ever touched after it has come to rest, on any seed, which is the rule that matters; the cap firing at all is a prevention problem (5.5), and the bound in the test is today's worst case written down rather than a target
 - [ ] **Decide what a tilted phone should mean.** Deferred, not answered. The table is horizontal now and the gyroscope no longer turns the world, which is what stopped the dice pouring into a wall — but "tilt the phone and the dice slide" was a real idea and this is not a verdict on it. The direction is still recorded with every sample, so whichever way it goes the data is there. The three answers, unchanged: gravity always straight down and only the hand moves the dice; anchor to `TYPE_GRAVITY` and accept that a phone held upright pours everything to the bottom wall; or keep a tilt and clamp it so a tray can lean without becoming a chute
 - [ ] **A shake along the phone's long axis still drives the dice into one end.** Seen as dice stuck at the bottom after a vertical shake. The table being horizontal fixes the *pouring* — the tray no longer leans — but the hand's own force still points that way, and a hundred dice pushed at one wall have nowhere else to be. Whether that is right (it is what a hand does) or wants shaping is a Step 5.6 question with a phone in it
@@ -386,7 +407,7 @@ a die fairer than the plastic one in their hand, is not worth a warning
 
 ### 5.4 Collisions
 
-- [ ] No die–die interpenetration deeper than 0.2 mm at any step
+- [ ] No die–die interpenetration deeper than 0.2 mm at any step. The number is measured now — the solver's contact manifolds report it and it reaches `SimulationOutcome.deepestDiePenetrationMm` — and the harness scores it; what is left is a run that meets it
 - [ ] No tunnelling at maximum shake velocity — assert every body inside the box on every step, all roll long
 - [ ] Dice driven into a corner at speed neither wedge nor jitter
 - [ ] A settled pile is stable: no creep, no vibration, no slow slide
@@ -400,7 +421,7 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - **a die visibly moved after it stopped**, which is worse — it turns a roll
   into an arrangement in front of the player's eyes.
 
-- [ ] 10,000 headless rolls at 20 dice and 10,000 at 60: **zero** dice at rest supported by another die
+- [ ] 10,000 headless rolls at 20 dice and 10,000 at 60: **zero** dice at rest supported by another die. `tools/harness.sh -n 10000 -c 20` and `-c 60`; the count is in every run's JSON and its scorecard
 - [ ] Fewer than 0.5 % of dice need any correction; **100 %** of those corrections land while the die is still moving
 - [ ] **Zero** post-rest corrections. The harness asserts this; one occurrence is a bug, not a statistic
 - [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
@@ -528,3 +549,11 @@ The figures are reported in every PR description either way.
 - [ ] d18 shape: the enneagonal trapezohedron is assumed; verify it reads well at phone size
 - [ ] Division rounding default is Down with a per-throw override — confirm Nearest is worth having
 - [ ] The design project's `.thumbnail` is not imported; decide whether a preview image belongs in the repo
+- [ ] The harness scores every run against the **same** settle bars — median
+      2 s, p99 4 s — but Step 5.5 states them at twenty dice. A `100d4` run is
+      therefore held to a twenty-dice bar, which is either exactly right (a
+      roll is a roll, and a player waiting four seconds does not care how many
+      dice they threw) or unfair to the worst case on purpose. The harness
+      takes the first reading, and the bars are data, so changing it is one
+      line in `HarnessTargets` — but which it should be is a decision
+      (`docs/build-setup.md`, "The physics harness")
