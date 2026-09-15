@@ -46,6 +46,12 @@ interface DiceSimulator {
  *   identical to what normal mode would have produced.
  * @param shake the recorded and quantised motion of the phone, or empty for a
  *   tap-to-roll throw (`docs/physics-and-rendering.md`, "Shake input").
+ * @param among the dice already at rest in this tray, for a throw an explosion
+ *   or a reroll added. **None of them is in this throw's world**: their faces
+ *   are read and they are finished, so there is no body for them to be shoved
+ *   by. They are here for the two things outside the solver that still need
+ *   them — the clear floor the new die is dropped onto ([ClearSpace]) and the
+ *   picture it lands in.
  */
 data class ThrowSpec(
   val dice: List<DieInstance>,
@@ -54,13 +60,30 @@ data class ThrowSpec(
   val seed: Long,
   val dieScale: Double = 1.0,
   val shake: List<ShakeSample> = emptyList(),
+  val among: List<DieAtRest> = emptyList(),
 ) {
   init {
     require(dieScale in TableCapacity.MIN_SCALE..1.0) {
       "a die is thrown between ${TableCapacity.MIN_SCALE} and full size, not $dieScale"
     }
     require(dice.size <= TableCapacity.MAX_DICE) { "${dice.size} dice is past the engine's cap" }
+    // An explosion and a reroll each add exactly one die, and they add it after
+    // the last one landed. Two at once would be two dice dropped onto the same
+    // clear patch of floor, since neither can see the other coming.
+    require(among.isEmpty() || dice.size == 1) {
+      "a throw into a tray that already holds ${among.size} dice is a throw of one die, not ${dice.size}"
+    }
   }
+
+  /**
+   * How much room the biggest die in this throw needs, at this throw's scale.
+   *
+   * The grid is laid out for it rather than for each die's own size: a throw
+   * can mix a d4 and a d20 from different sets, and cells sized for the d4
+   * would put the d20 through its neighbour's cell wall before anything had
+   * been thrown.
+   */
+  val largestDieRadiusMm: Double get() = dice.maxOf { ClearSpace.radiusOf(it.die, dieScale) }
 }
 
 /**
@@ -141,6 +164,11 @@ data class ShakeSample(
  *   (`docs/TODO.md`, Step 5.4). It comes from the engine's own contact
  *   manifolds, which is the only place it exists — nothing upstream can work
  *   it out from positions.
+ * @param restingAt where each die stopped, keyed like [faces]. A roll whose
+ *   formula explodes or rerolls is not over when its dice stop: the throw that
+ *   comes next has to be aimed at the floor this one left clear, and drawn
+ *   among the dice it left standing there
+ *   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
  */
 data class SimulationOutcome(
   val faces: Map<Int, Int>,
@@ -151,6 +179,7 @@ data class SimulationOutcome(
   val postRestCorrections: Int = 0,
   val stackedAtRest: Int = 0,
   val deepestDiePenetrationMm: Double = 0.0,
+  val restingAt: Map<Int, RestingPlace> = emptyMap(),
 ) {
   /** How many dice were in the throw. */
   val diceCount: Int get() = faces.size

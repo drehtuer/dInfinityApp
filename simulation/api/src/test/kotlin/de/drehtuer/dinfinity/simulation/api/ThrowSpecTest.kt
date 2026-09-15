@@ -36,6 +36,34 @@ class ThrowSpecTest {
   }
 
   @Test
+  fun `a throw into a tray that already holds dice is a throw of one die`() {
+    // An explosion and a reroll each add one die, after the last one landed.
+    // Two at once would be two dice dropped onto the same clear patch of floor,
+    // because neither can see the other coming
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    assertFailsWith<IllegalArgumentException> { spec(count = 2, scale = 1.0).copy(among = down()) }
+    assertEquals(1, spec(count = 1, scale = 1.0).copy(among = down()).among.size)
+  }
+
+  @Test
+  fun `the dice already down are not dice in the throw`() {
+    // The whole rule in one assertion: an added die's world holds one body, so
+    // there is nothing in it that a settled die could be shoved by.
+    val added = spec(count = 1, scale = 1.0).copy(among = down())
+
+    assertEquals(1, added.dice.size)
+  }
+
+  @Test
+  fun `a throw needs room for the biggest die in it`() {
+    // A throw can mix a d4 and a d20, and cells sized for the d4 would put the
+    // d20 through its neighbour's wall before anything had been thrown.
+    assertEquals(StandardDice.d20.material.boundingRadiusMm, spec(count = 3, scale = 1.0).largestDieRadiusMm)
+    assertEquals(StandardDice.d20.material.boundingRadiusMm / 2, spec(count = 3, scale = 0.5).largestDieRadiusMm)
+  }
+
+  @Test
   fun `a shake is a list of quantised moments, each tied to a step`() {
     val shake = listOf(ShakeSample(stepIndex = 4, accelerationMmPerSecond2 = Vector3.Up, gravity = -Vector3.Up))
     assertEquals(
@@ -134,6 +162,10 @@ class ThrowSpecTest {
     // clock that went backwards rather than a moment of a throw.
     assertFalse(moment(-1).drivesAStep)
   }
+
+  /** One die already at rest in the tray, in the middle of it. */
+  private fun down(): List<DieAtRest> =
+    listOf(DieAtRest(StandardDice.d20, RestingPlace(Vector3(0.0, 0.0, 8.0), Quaternion.Identity)))
 
   private fun moment(step: Int): ShakeSample =
     ShakeSample(
