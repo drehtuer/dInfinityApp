@@ -272,13 +272,43 @@ class DesignerScreenTest {
     compose.onNodeWithTag(DesignerTestTags.CANVAS).assertIsDisplayed()
   }
 
+  @Test
+  fun `Roll it hands up the formula for the die being drawn`() {
+    val thrown = mutableListOf<String>()
+    show(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" }, onRoll = thrown::add)
+
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+
+    assertEquals(listOf("1d6"), thrown)
+  }
+
+  @Test
+  fun `Roll it follows the die that is being drawn on`() {
+    val thrown = mutableListOf<String>()
+    show(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" }, onRoll = thrown::add)
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+
+    assertEquals(listOf("1d4"), thrown)
+  }
+
+  @Test
+  fun `a die no formula can name is not offered a Roll button`() {
+    show(d6, choosable = listOf(d6, d4))
+
+    compose.onNodeWithTag(DesignerTestTags.ROLL).assertDoesNotExist()
+  }
+
   private fun show(
     die: Die,
     choosable: List<Die> = emptyList(),
     drafts: Drafts = Drafts.NONE,
+    notationOf: (Die) -> String? = { null },
+    onRoll: (String) -> Unit = {},
   ): DesignerPresenter {
-    val presenter = DesignerPresenter(die, choosable, drafts)
-    compose.setContent { DesignerScreen(presenter = presenter) }
+    val presenter = DesignerPresenter(die, choosable, drafts, notationOf)
+    compose.setContent { DesignerScreen(presenter = presenter, onRoll = onRoll) }
     return presenter
   }
 

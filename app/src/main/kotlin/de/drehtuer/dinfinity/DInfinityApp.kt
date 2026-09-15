@@ -403,7 +403,14 @@ private fun customising(
     }
 
     Destination.FaceDesigner if screens != null -> {
-      DesignerScreen(presenter = remember(entry) { screens.faceDesigner() }, menu = { MenuTo(navController) })
+      DesignerScreen(
+        presenter = remember(entry) { screens.faceDesigner() },
+        // Straight to the tray with the die in the field, unrolled — the same
+        // answer the notation screen's examples give, and for the same reason:
+        // the throw is the player's to make.
+        onRoll = { formula -> navController.navigate(rollRoute(formula)) },
+        menu = { MenuTo(navController) },
+      )
       true
     }
 

@@ -31,7 +31,10 @@ installed by other users like any other set.
 3. **Preview.** A 3D preview of the die with the drawn atlas applied, rotatable
    by drag, updated live.
 4. **Roll it.** The Roll button throws the die into the tray to see how it
-   looks in motion (`docs/physics-and-rendering.md`, "Starting a roll").
+   looks in motion (`docs/physics-and-rendering.md`, "Starting a roll"). It
+   opens the tray with the die in the formula field and **does not throw it**:
+   the throw is the player's to make, which is the same answer every other way
+   into the tray gives.
 5. **Save.** The die is added to the user's personal set ("My dice", id
    `mine`), or to a new set the user names. The set folder is written with a
    generated `diceset.toml` and one atlas PNG per die, and then run through
@@ -64,8 +67,24 @@ to ask before changing die, because changing die threw the drawing away; a
 dialog that warns about a loss that cannot happen is worse than no dialog, so
 it is gone.
 
-Still to come, in `docs/TODO.md` 4.6: the fill bucket and stamp, "Roll it",
-and the export.
+**Roll it** is there: the button hands the tray the die being drawn and follows
+the chooser, so it throws the die in front of the player rather than the one
+the screen opened on. Two things about it are worth knowing. It throws the
+**die, not the drawing** — the strokes are not on it, because nothing puts an
+atlas on a die yet (`docs/TODO.md`, Step 3) — so what it answers today is how
+the solid looks in motion, which is the preview this designer has instead of a
+3D one. And it is **absent rather than dead** for a die plain notation cannot
+name: a set's own `skull-d6` has no spelling a formula could carry
+(`docs/architecture.md`, decision 31).
+
+Which set the formula names is decided by what would resolve, not by where the
+die came from — the chooser lists dice by id across every installed set and so
+has no answer to "which set is this one". A bare `1d20` when the set a plain
+`d20` already means has one, and `brass:1d18` when it does not and `brass`
+does.
+
+Still to come, in `docs/TODO.md` 4.6: the fill bucket and stamp, and the
+export.
 
 ## Drawing tools
 

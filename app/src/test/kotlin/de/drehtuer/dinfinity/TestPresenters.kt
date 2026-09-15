@@ -4,6 +4,7 @@ import android.content.Context
 import android.view.Surface
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
@@ -124,7 +125,7 @@ internal fun testPresenters(
     },
     diceSets = { SetsPresenter(library, scope) },
     tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}) },
-    faceDesigner = { DesignerPresenter(BuiltinDiceSet.set.dice.first()) },
+    faceDesigner = { designerPresenter(catalog) },
     diceSet = { id, onGone ->
       SetDetailPresenter(
         id = id.ifEmpty { BuiltinDiceSet.set.id },
@@ -292,3 +293,18 @@ private object LandingRolls : Rolls {
       override fun close() = Unit
     }
 }
+
+/**
+ * The face designer, as the activity's own wiring builds it.
+ *
+ * Out here because [testPresenters] is at detekt's length limit — and because
+ * the one thing worth saying about it is the spelling: it is the *real*
+ * `spellingOf`, so a test that walks the graph to **Roll it** walks the answer
+ * the app gives rather than a stand-in that agrees with it by luck.
+ */
+private fun designerPresenter(catalog: DiceCatalog) =
+  DesignerPresenter(
+    die = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube },
+    choosable = BuiltinDiceSet.set.dice,
+    notationOf = { die -> spellingOf(die, catalog) },
+  )

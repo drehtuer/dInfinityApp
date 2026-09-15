@@ -22,6 +22,7 @@ import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.feature.designer.DesignerTestTags
 import de.drehtuer.dinfinity.feature.roll.FinishedThrow
 import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
@@ -217,6 +218,31 @@ class DInfinityScreensTest {
     }
     assertEquals(
       advantage.example,
+      compose.runOnIdle {
+        navigation.currentBackStackEntry
+          ?.arguments
+          ?.getString(GraphArgument.FORMULA)
+      },
+    )
+  }
+
+  @Test
+  fun `Roll it on the designer opens the tray with that die in the field`() {
+    // Step 4 of the designer's flow, through the real graph: the button knows
+    // which die is being drawn, the wiring knows how that die is spelled, and
+    // the tray opens on it — unrolled, like every other way into the tray
+    // (`docs/face-designer.md`).
+    val navigation = app()
+    go(navigation, Destination.FaceDesigner)
+
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.Roll
+    }
+    assertEquals(
+      "1d6",
       compose.runOnIdle {
         navigation.currentBackStackEntry
           ?.arguments

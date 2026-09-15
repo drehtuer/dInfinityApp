@@ -1,7 +1,10 @@
 package de.drehtuer.dinfinity
 
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.core.notation.DicePicker
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setActiveGroup
 import de.drehtuer.dinfinity.data.setActiveSession
@@ -156,6 +159,7 @@ internal class ScreenWiring(
       // So a drawing outlives the screen it was made on, and each die keeps
       // its own (`docs/face-designer.md`, "Drawing tools").
       drafts = app.drafts,
+      notationOf = { die -> spellingOf(die, catalogue) },
     )
   }
 
@@ -196,4 +200,32 @@ internal class ScreenWiring(
     defaultSetId = { app.defaultSet },
     onDefault = { setId -> scope.launch { repository.setDefaultSet(setId) } },
   )
+}
+
+/**
+ * How [die] is written in a formula, or null when notation cannot name it.
+ *
+ * Through the same picker the roll screen's row uses, so **Roll it** and a tap
+ * on the row write the same thing. A set's own `skull-d6` has no spelling a
+ * formula could carry and comes back null (`docs/architecture.md`,
+ * decision 31).
+ *
+ * **Which set to name is decided by what would resolve**, not by where the die
+ * came from — because the designer's row has no answer to "where from": it
+ * lists dice by id across every installed set, and two sets may both define a
+ * `d20`. So: a bare `1d20` when the set a plain `d20` already means has one,
+ * and `brass:1d18` when it does not and `brass` does. A bare `1d18` in the
+ * second case would be a formula that refuses to resolve, which is a worse
+ * answer to "roll this" than no button at all.
+ */
+internal fun spellingOf(
+  die: Die,
+  catalogue: DiceCatalog,
+): String? {
+  val default = catalogue.set(catalogue.defaultSetId)?.takeIf { it.die(die.id) != null }
+  val set = default ?: catalogue.installed.firstOrNull { it.die(die.id) != null } ?: return null
+  return DicePicker
+    .offeredBy(set, setRef = set.id.takeIf { default == null })
+    .firstOrNull { it.notation == die.id }
+    ?.notation(1)
 }

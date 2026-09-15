@@ -9,6 +9,7 @@ import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -269,6 +270,34 @@ class DesignerPresenterTest {
   }
 
   private fun line() = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))
+
+  @Test
+  fun `the die being drawn has a formula that throws it`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" })
+
+    assertEquals("1d6", presenter.rollable)
+  }
+
+  @Test
+  fun `and it follows the die, not the screen`() {
+    // The formula has to be the die in front of the player, not the one the
+    // screen opened on.
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" })
+
+    presenter.base(d4)
+
+    assertEquals("1d4", presenter.rollable)
+  }
+
+  @Test
+  fun `a die plain notation cannot name has no formula and no button`() {
+    // A set's own `skull-d6` has no spelling a formula could carry
+    // (`docs/architecture.md`, decision 31), and Roll it is not offered for it
+    // rather than offered and broken.
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6))
+
+    assertNull(presenter.rollable)
+  }
 
   /** Drafts that outlive a presenter but not the test: a disk without the disk. */
   private class Remembered : Drafts {

@@ -124,12 +124,38 @@ class DesignerPresenter(
    * nothing gave it a folder.
    */
   private val drafts: Drafts = Drafts.NONE,
+  /**
+   * How the die being drawn is written in a formula, or `null` when notation
+   * cannot name it (`docs/dice-notation.md`; `docs/architecture.md`,
+   * decision 31).
+   *
+   * A function rather than a string, because the die changes while the screen
+   * is open. It comes from outside for the reason the dice themselves do: it
+   * needs the installed sets and which of them a bare `d20` means, and neither
+   * is this module's to know.
+   *
+   * Plain notation names `dN`, `d%` and `dF` and nothing else, so a set's own
+   * `skull-d6` has no spelling a formula could carry — and **Roll it** is not
+   * offered for one rather than offered and broken.
+   */
+  private val notationOf: (Die) -> String? = { null },
 ) {
   /** What the screen draws. */
   var state: DesignerState by mutableStateOf(
     DesignerState(draft = drafts.load(die), choosable = choosable),
   )
     private set
+
+  /**
+   * The formula that throws the die being drawn, or null when there is none.
+   *
+   * **The die, not the drawing.** The tray throws the base die as its set
+   * defines it; the strokes on the canvas are not on it, because nothing puts
+   * an atlas on a die yet (`docs/TODO.md`, Step 3). What it answers today is
+   * what the prototype asks it to — how the solid looks in motion, which is
+   * the preview the designer has instead of a 3D one.
+   */
+  val rollable: String? get() = notationOf(state.draft.die)
 
   /**
    * Draw on a different die (`docs/face-designer.md`, "Flow").

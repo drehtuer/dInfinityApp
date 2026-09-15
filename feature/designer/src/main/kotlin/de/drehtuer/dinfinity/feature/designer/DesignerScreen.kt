@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 fun DesignerScreen(
   presenter: DesignerPresenter,
   modifier: Modifier = Modifier,
+  onRoll: (String) -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
@@ -84,6 +85,18 @@ fun DesignerScreen(
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.weight(1f),
       )
+      // Step 4 of the flow, and the only one the prototype has instead of a 3D
+      // preview: throw the die and watch it (`docs/face-designer.md`). Absent
+      // rather than dead for a die plain notation cannot name — a button that
+      // is there and does nothing is worse than one that is not.
+      presenter.rollable?.let { formula ->
+        TextButton(
+          onClick = { onRoll(formula) },
+          modifier = Modifier.testTag(DesignerTestTags.ROLL),
+        ) {
+          Text(stringResource(R.string.designer_roll))
+        }
+      }
       menu()
     }
 
@@ -435,6 +448,7 @@ object DesignerTestTags {
   const val GUIDE: String = "designer:guide"
   const val WARNING: String = "designer:warning"
   const val BASES: String = "designer:bases"
+  const val ROLL: String = "designer:roll"
 
   fun baseOf(dieId: String): String = "designer:base:$dieId"
 
