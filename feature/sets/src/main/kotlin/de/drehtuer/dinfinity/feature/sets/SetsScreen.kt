@@ -70,6 +70,7 @@ fun SetsScreen(
     Header(menu)
     Installing(state, onInstall)
     FromLink(state, presenter)
+    Updates(state, presenter)
     // The note goes *above* the list rather than instead of it. The bundled
     // set is a row like any other and is always there, so replacing the list
     // would hide the one set every fallback resolves against (`5a`).
@@ -271,8 +272,61 @@ private fun Sets(
 ) {
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SetsTestTags.LIST)) {
     items(state.sets, key = SetRow::id) { row ->
-      SetLine(row, onOpen = { onOpen(row) }, onHold = { presenter.act(row) })
+      SetLine(
+        row = row,
+        outdated = row.id in state.outdated,
+        onOpen = { onOpen(row) },
+        onHold = { presenter.act(row) },
+      )
       HorizontalDivider()
+    }
+  }
+}
+
+/**
+ * Asking the forges whether they have moved on (design `9h`).
+ *
+ * Drawn only when something could be asked: a set installed from a file has no
+ * forge, and a plain archive has no commits to tell apart, so on an install
+ * with neither there is nothing this button could do.
+ *
+ * What it found is said in a line rather than only on the rows, because a check
+ * that found everything current and a check that could not reach anything look
+ * identical on the list — nothing is badged either way.
+ */
+@Composable
+private fun Updates(
+  state: SetsState,
+  presenter: SetsPresenter,
+) {
+  if (!state.checkable) return
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    TextButton(
+      onClick = { presenter.checkForUpdates() },
+      enabled = !state.checking && !state.installing,
+      modifier = Modifier.testTag(SetsTestTags.CHECK),
+    ) {
+      Text(stringResource(if (state.checking) R.string.sets_checking else R.string.sets_check))
+    }
+    state.checked?.let { checked ->
+      Text(
+        text =
+          when {
+            checked.outdated > 0 ->
+              pluralStringResource(R.plurals.sets_check_outdated, checked.outdated, checked.outdated)
+            checked.allCurrent ->
+              pluralStringResource(R.plurals.sets_check_current, checked.asked, checked.asked)
+            else ->
+              pluralStringResource(R.plurals.sets_check_unreachable, checked.unreachable, checked.unreachable)
+          },
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.testTag(SetsTestTags.CHECKED),
+      )
     }
   }
 }
@@ -288,6 +342,7 @@ private fun Sets(
 @Composable
 private fun SetLine(
   row: SetRow,
+  outdated: Boolean,
   onOpen: () -> Unit,
   onHold: () -> Unit,
 ) {
@@ -326,6 +381,17 @@ private fun SetLine(
       style = MaterialTheme.typography.bodySmall,
       color = if (row.usable) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
     )
+    // Under the status rather than replacing it: whether a set is broken or
+    // switched off is what the player can do something about first, and
+    // "there is something newer" is true whatever else the row says.
+    if (outdated) {
+      Text(
+        text = stringResource(R.string.sets_outdated),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.testTag(SetsTestTags.outdatedOf(row.id)),
+      )
+    }
   }
 }
 
@@ -373,6 +439,17 @@ private fun ActionSheet(
     },
     dismissButton = {
       Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (row.checkable) {
+          TextButton(
+            // An update is a re-install from where the set came from, and
+            // saying so at the one call site beats a wrapper that has to be
+            // kept in step with it (`SetsPresenter.installFrom`).
+            onClick = { presenter.installFrom(row.meta.source.orEmpty()) },
+            modifier = Modifier.testTag(SetsTestTags.UPDATE),
+          ) {
+            Text(stringResource(R.string.sets_sheet_update))
+          }
+        }
         TextButton(
           onClick = { presenter.remove(row) },
           modifier = Modifier.testTag(SetsTestTags.REMOVE),
@@ -397,6 +474,12 @@ private fun ActionSheet(
 object SetsTestTags {
   const val SCREEN: String = "sets:screen"
   const val LIST: String = "sets:list"
+  const val CHECK: String = "sets:check"
+  const val CHECKED: String = "sets:checked"
+  const val UPDATE: String = "sets:update"
+
+  fun outdatedOf(setId: String): String = "sets:outdated:$setId"
+
   const val EMPTY: String = "sets:empty"
   const val SHEET: String = "sets:sheet"
   const val TOGGLE: String = "sets:toggle"

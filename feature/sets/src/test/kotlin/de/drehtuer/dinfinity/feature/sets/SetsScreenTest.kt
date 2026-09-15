@@ -1,14 +1,22 @@
 package de.drehtuer.dinfinity.feature.sets
 
 import android.content.Context
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.room.Room
@@ -22,6 +30,7 @@ import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -341,9 +350,10 @@ class SetsScreenTest {
     onOpen: (SetRow) -> Unit = {},
     onInstall: () -> Unit = {},
     download: suspend (String) -> FetchedPackage = { FetchedPackage.Failed("no downloader in this test") },
+    latestCommit: suspend (String) -> LatestCommit = { LatestCommit.Unknown },
   ): SetsPresenter {
     val presenter =
-      SetsPresenter(library(), scope, download)
+      SetsPresenter(library(), scope, download, latestCommit)
     compose.setContent { SetsScreen(presenter, onOpen = onOpen, onInstall = onInstall) }
     // The first reading of the disk is asynchronous, and every one of these
     // tests is about what the screen shows once it has happened.
@@ -404,6 +414,148 @@ class SetsScreenTest {
 
     assertEquals(emptyList<String>(), asked)
     assertFalse("the screen said it was installing for a blank link", presenter.state.installing)
+  }
+
+  @Test
+  fun `there is nothing to check when nothing came from a forge`() {
+    // A set installed from a file has no forge to ask, and a plain archive has
+    // no commits to tell apart.
+    show()
+
+    compose.onNodeWithTag(SetsTestTags.CHECK).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a set whose forge has moved on is badged, and the rest are not`() {
+    fromForge("brass", commit = "aaaa")
+    fromForge("bone", commit = "bbbb")
+    val presenter =
+      show(latestCommit = { source -> if ("brass" in source) LatestCommit.At("cccc") else LatestCommit.At("bbbb") })
+    compose.waitUntil(PATIENCE) { presenter.state.checkable }
+
+    compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.checked != null }
+    assertEquals(setOf("brass"), presenter.state.outdated)
+    // The list is below the fold on a test-sized screen once the check button
+    // is there, and a `LazyColumn` composes only what it shows. The row also
+    // merges its descendants for accessibility, so the badge is a node of its
+    // own only in the unmerged tree.
+    compose.onNodeWithTag(SetsTestTags.LIST).performScrollToNode(hasTestTag(SetsTestTags.setOf("brass")))
+    compose.onNodeWithTag(SetsTestTags.outdatedOf("brass"), useUnmergedTree = true).assertExists()
+    compose.onNodeWithTag(SetsTestTags.outdatedOf("bone"), useUnmergedTree = true).assertDoesNotExist()
+  }
+
+  @Test
+  fun `everything current says so, because an empty list says nothing`() {
+    // A check that found everything up to date and a check that could not
+    // reach anything look identical on the list.
+    fromForge("brass", commit = "aaaa")
+    val presenter = show(latestCommit = { LatestCommit.At("aaaa") })
+    compose.waitUntil(PATIENCE) { presenter.state.checkable }
+
+    compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.checked != null }
+    assertEquals(UpdateCheck(asked = 1, outdated = 0, unreachable = 0), presenter.state.checked)
+    compose.onNodeWithTag(SetsTestTags.CHECKED).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a forge that cannot be reached is counted, not treated as up to date`() {
+    fromForge("brass", commit = "aaaa")
+    val presenter = show(latestCommit = { LatestCommit.Unknown })
+    compose.waitUntil(PATIENCE) { presenter.state.checkable }
+
+    compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
+
+    compose.waitUntil(PATIENCE) { presenter.state.checked != null }
+    assertEquals(UpdateCheck(asked = 1, outdated = 0, unreachable = 1), presenter.state.checked)
+    assertEquals("an unreachable forge was read as up to date", emptySet<String>(), presenter.state.outdated)
+    // And the screen says so rather than leaving a list with nothing badged,
+    // which is what "up to date" looks like too.
+    compose.onNodeWithTag(SetsTestTags.CHECKED).assertTextContains("could not be checked", substring = true)
+  }
+
+  @Test
+  fun `updating a set fetches it again from where it came from`() {
+    val notASet = File(root.apply { mkdirs() }, "again.zip").apply { writeText("not an archive") }
+    fromForge("brass", commit = "aaaa")
+    val asked = mutableListOf<String>()
+    val presenter =
+      show(download = { url ->
+        asked += url
+        FetchedPackage.Archive(notASet)
+      })
+    compose.waitUntil(PATIENCE) { presenter.state.sets.any { it.id == "brass" } }
+
+    presenter.installFrom(
+      requireNotNull(
+        presenter.state.sets
+          .first { it.id == "brass" }
+          .meta.source,
+      ),
+    )
+
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+    assertEquals(listOf("https://codeberg.org/ada/brass"), asked)
+  }
+
+  @Test
+  fun `a second check while one is running is not a second check`() {
+    // Two checks at once would be two sets of answers racing to say what the
+    // list shows.
+    fromForge("brass", commit = "aaaa")
+    val asked = mutableListOf<String>()
+    val holding = CompletableDeferred<LatestCommit>()
+    val presenter =
+      show(latestCommit = { source ->
+        asked += source
+        holding.await()
+      })
+    compose.waitUntil(PATIENCE) { presenter.state.checkable }
+
+    compose.onNodeWithTag(SetsTestTags.CHECK).performClick()
+    compose.waitUntil(PATIENCE) { presenter.state.checking }
+    presenter.checkForUpdates()
+
+    assertEquals("the forge was asked twice", 1, asked.size)
+    holding.complete(LatestCommit.At("aaaa"))
+    compose.waitUntil(PATIENCE) { presenter.state.checked != null }
+  }
+
+  @Test
+  fun `a recomposition around the screen that changes nothing leaves it alone`() {
+    // The controls above the list are drawn from one state, so an ordinary
+    // recomposition has to skip them. One that skipped wrongly would come back
+    // without its check button, which a single-pass test would never see.
+    fromForge("brass", commit = "aaaa")
+    var tick by mutableStateOf(0)
+    val presenter = SetsPresenter(library(), scope, { FetchedPackage.Failed("no") }, { LatestCommit.Unknown })
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        SetsScreen(presenter)
+      }
+    }
+    compose.waitUntil(PATIENCE) { presenter.state.checkable }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag(SetsTestTags.CHECK).assertIsDisplayed()
+    compose.onNodeWithTag(SetsTestTags.LINK).assertIsDisplayed()
+  }
+
+  /** A package that records where it came from and which commit arrived. */
+  private fun fromForge(
+    id: String,
+    commit: String,
+  ) {
+    write(id, toml(id, id.replaceFirstChar(Char::uppercase)))
+    File(root, "$id/.meta.json").writeText(
+      """{"source":"https://codeberg.org/ada/$id","commit":"$commit","sha256":"deadbeef"}""",
+    )
   }
 
   private fun library() =

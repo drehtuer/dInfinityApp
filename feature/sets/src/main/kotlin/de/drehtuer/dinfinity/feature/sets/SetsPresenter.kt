@@ -61,6 +61,16 @@ data class SetRow(
   /** True when the package did not pass validation on this reading (`6b`). */
   val broken: Boolean get() = set == null
 
+  /**
+   * True when there is a forge to ask about this set.
+   *
+   * Both halves are needed: where it came from, and which commit arrived. A
+   * package installed from a file has neither and a plain archive has no
+   * commits to tell apart, so neither can be checked — which is a fact about
+   * the source rather than a failure ([RefResolver]).
+   */
+  val checkable: Boolean get() = meta.source != null && meta.commit != null
+
   /** How many things went wrong. The list itself belongs to the details screen (`6b`). */
   val problems: Int get() = report.size
 
@@ -131,7 +141,27 @@ data class SetsState(
   val loaded: Boolean = false,
   val installing: Boolean = false,
   val outcome: PackageInstaller.Result? = null,
+  /** True while the forges are being asked what their sets are at (`9h`). */
+  val checking: Boolean = false,
+  /**
+   * The sets whose forge is at a different commit than the one installed.
+   *
+   * Ids rather than rows, because the rows are rebuilt every time the disk is
+   * read and a row held here would go stale the moment anything else happened.
+   */
+  val outdated: Set<String> = emptySet(),
+  /**
+   * What the last check said, when it has nothing to show on a row.
+   *
+   * A check that found everything up to date and a check that could not reach
+   * anything look identical on the list — nothing is badged either way — so the
+   * screen says which it was.
+   */
+  val checked: UpdateCheck? = null,
 ) {
+  /** Whether asking is worth offering: something has to have come from somewhere. */
+  val checkable: Boolean get() = sets.any { it.checkable }
+
   /**
    * True once the disk has been read and found to hold nothing.
    *
@@ -157,6 +187,15 @@ class SetsPresenter(
   private val library: SetLibrary,
   private val scope: CoroutineScope,
   private val download: suspend (String) -> FetchedPackage = { FetchedPackage.Failed(NO_NETWORK) },
+  /**
+   * Asks a forge which commit the ref a set was installed from is at now
+   * (`docs/dice-sets.md`, "Updates"; design `9h`).
+   *
+   * A function rather than something this module builds, for the reason the
+   * download is one: it is an HTTP request, and a screen that lists dice sets
+   * should not carry a client to make one.
+   */
+  private val latestCommit: suspend (String) -> LatestCommit = { LatestCommit.Unknown },
 ) {
   /** What the screen draws. */
   var state: SetsState by mutableStateOf(SetsState())
@@ -241,6 +280,13 @@ class SetsPresenter(
    * The downloaded copy is deleted however it ends, including when the
    * installer throws. It is a stranger's archive sitting in a cache nobody
    * empties, and the set it held is on disk by the time anybody wants it again.
+   *
+   * **An update is this and nothing else** (`docs/dice-sets.md`, "Updates"):
+   * the same fetch from the source the install recorded, through the same
+   * validator, over the top of the folder that is there. `PackageInstaller`
+   * replaces a package it recognises and leaves the existing one alone if the
+   * new one is refused, so an update that fails costs nothing — which is why
+   * there is no separate "update" here to keep in step with this one.
    */
   fun installFrom(url: String) {
     val link = url.trim()
@@ -286,9 +332,40 @@ class SetsPresenter(
     state = state.copy(installing = false, outcome = PackageInstaller.Result.Failed(why))
   }
 
+  /**
+   * Asks every forge whether it has moved on (`9h`).
+   *
+   * Only sets that came from one and recorded the commit that arrived: a
+   * package installed from a file has nothing to compare, and a plain archive
+   * has no commits to tell apart. A forge that cannot be reached is not an
+   * error to put in front of somebody — it is one set that could not be
+   * checked, and the count of those is what the screen says.
+   */
+  fun checkForUpdates() {
+    if (state.checking || state.installing) return
+    state = state.copy(checking = true, checked = null)
+    scope.launch {
+      val checkable = state.sets.filter(SetRow::checkable)
+      val outdated = mutableSetOf<String>()
+      var unreachable = 0
+      checkable.forEach { row ->
+        when (val latest = latestCommit(requireNotNull(row.meta.source))) {
+          is LatestCommit.Unknown -> unreachable++
+          is LatestCommit.At -> if (latest.sha != row.meta.commit) outdated += row.id
+        }
+      }
+      state =
+        state.copy(
+          checking = false,
+          outdated = outdated,
+          checked = UpdateCheck(asked = checkable.size, outdated = outdated.size, unreachable = unreachable),
+        )
+    }
+  }
+
   /** Puts away whatever the last install said. */
   fun dismiss() {
-    state = state.copy(outcome = null)
+    state = state.copy(outcome = null, checked = null)
   }
 
   private companion object {
@@ -302,6 +379,34 @@ class SetsPresenter(
      */
     const val NO_NETWORK = "this build cannot reach the network"
   }
+}
+
+/** What a forge said about the ref a set was installed from. */
+sealed interface LatestCommit {
+  /** @param sha the commit that ref is at now, as the forge reported it. */
+  data class At(
+    val sha: String,
+  ) : LatestCommit
+
+  /**
+   * There is no answer: not a forge, or the forge could not be reached.
+   *
+   * One thing and not two on purpose. To somebody looking at a list of sets,
+   * "this one has no commits to compare" and "this one's server did not answer"
+   * are the same sentence — *nothing can be said about this set* — and the
+   * screen says how many of those there were rather than why each one was.
+   */
+  data object Unknown : LatestCommit
+}
+
+/** What a run of [SetsPresenter.checkForUpdates] came to. */
+data class UpdateCheck(
+  val asked: Int,
+  val outdated: Int,
+  val unreachable: Int,
+) {
+  /** True when every set that could be asked answered, and none had moved on. */
+  val allCurrent: Boolean get() = outdated == 0 && unreachable == 0
 }
 
 /** What a download of a package came to. */

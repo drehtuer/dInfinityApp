@@ -59,4 +59,23 @@
   <string name="sets_sheet_cancel">Cancel</string>
   <string name="sets_link_label">https://… a .zip or .tar.gz</string>
   <string name="sets_fetch">Fetch</string>
+  <string name="sets_check">Check for updates</string>
+  <string name="sets_checking">Checking…</string>
+  <!-- %1$d is how many installed sets could be asked about. -->
+  <plurals name="sets_check_current">
+    <item quantity="one">1 set checked; it is up to date.</item>
+    <item quantity="other">%1$d sets checked; all up to date.</item>
+  </plurals>
+  <!-- %1$d is how many installed sets have something newer at their forge. -->
+  <plurals name="sets_check_outdated">
+    <item quantity="one">1 set has something newer.</item>
+    <item quantity="other">%1$d sets have something newer.</item>
+  </plurals>
+  <!-- %1$d is how many forges did not answer. -->
+  <plurals name="sets_check_unreachable">
+    <item quantity="one">1 set could not be checked.</item>
+    <item quantity="other">%1$d sets could not be checked.</item>
+  </plurals>
+  <string name="sets_sheet_update">Update</string>
+  <string name="sets_outdated">Update available</string>
 </resources>

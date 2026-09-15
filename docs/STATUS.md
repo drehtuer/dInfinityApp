@@ -112,8 +112,10 @@ changelog.
   lists every error — and **its dice can then be rolled**: the catalogue a
   formula resolves against is rebuilt from what is on disk and switched on, so
   installing a set is the whole of what it sounds like, and one of them can be
-  made the set a plain `d20` comes from. Still to come:
-  update checking and "my dice".
+  made the set a plain `d20` comes from. **A set can be checked for updates** and updated: the forge is asked
+  what the ref it came from is at now, a set that has moved on is badged, and
+  updating it is a re-install from the recorded source. Still to come: progress
+  and cancel, checking plain archives by checksum, and "my dice".
 - **A throw from the strip is recorded as that saved roll's.** It was not:
   every roll went down with no saved roll and no group against it, so the
   history's saved-roll filter found nothing and the saved-roll statistics

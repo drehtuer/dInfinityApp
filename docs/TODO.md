@@ -143,7 +143,7 @@ validator, where a rejection lists every error (`1t`) and a download that never
 arrives is refused the same way. Database version 4 holds which sets are
 switched on.
 
-- [ ] Check for updates, update with progress and cancel (`9h`, `9i`)
+- [ ] Update with **progress and cancel** (`9i`), and a check for **plain archives** — comparing headers and checksums, since those have no commits to tell apart. Checking a forge is built: `RefResolver` is asked what the ref a set was installed from is at now, a set that has moved on is badged, and updating it is a re-install from the recorded source through the same validator (`docs/dice-sets.md`, "Updates")
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
 

@@ -178,6 +178,7 @@ internal class ScreenWiring(
       // The platform half of a link: a cache directory and an HTTP client,
       // neither of which a screen that lists dice sets should have to carry.
       download = PackageDownload(app.cacheDir)::fetch,
+      latestCommit = CommitLookup()::latest,
     )
 
   /** One of them, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`). */
