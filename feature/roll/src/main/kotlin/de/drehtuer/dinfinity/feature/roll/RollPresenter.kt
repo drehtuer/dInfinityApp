@@ -12,6 +12,8 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.headless.Rolls
+import de.drehtuer.dinfinity.simulation.api.DeveloperLog
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -40,13 +42,33 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * after it, which a roll that adds dice to itself needs and which nothing else
  * can be folded into.
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LongParameterList")
 class RollPresenter(
   private val machine: RollMachine,
   private val driver: Tray,
   private val rolls: Rolls,
   private val recorder: ThrowRecorder = ThrowRecorder.NONE,
   private val toTheScreen: (() -> Unit) -> Unit = { MAIN.post(it) },
+  /**
+   * What the debug overlay is reading, or null when the developer toggle is
+   * off — which is every install until somebody turns it on
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The same object the tray was built with. It is given to both because the
+   * tray is what the roll thread reaches and this is what Compose reads, and
+   * the relay is the one thing that crosses between them.
+   */
+  private val debug: DebugRelay? = null,
+  /**
+   * What the developer toggle remembers, or [DeveloperLog.NONE].
+   *
+   * Held above the visit rather than by this presenter, because it outlives
+   * the screen: an anomaly is a bug report and the last throw is what replays
+   * it, and both are wanted after the player has walked away from the tray.
+   * Every throw is offered; which part of it is worth keeping is the log's to
+   * decide.
+   */
+  private val developer: DeveloperLog = DeveloperLog.NONE,
 ) {
   /** What the screen draws. */
   var state: RollState by mutableStateOf(machine.state)
@@ -73,6 +95,27 @@ class RollPresenter(
 
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
+
+  /**
+   * Whether this visit draws the debug overlay at all
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Read when the screen opens and not watched, exactly like power saving, the
+   * shake, the haptics and the sound: an overlay appearing over a roll in
+   * progress is not a setting taking effect (`docs/architecture.md`,
+   * decision 16).
+   */
+  val showsDebug: Boolean get() = debug != null
+
+  /**
+   * What the overlay draws: the roll as it is this frame, or
+   * [RollDiagnostics.NONE] when nothing is being watched.
+   *
+   * A Compose read through the relay rather than a copy kept here, so a
+   * snapshot arriving on the screen's thread recomposes the overlay and
+   * nothing else.
+   */
+  val diagnostics: RollDiagnostics get() = debug?.latest ?: RollDiagnostics.NONE
 
   /**
    * Whether this screen puts a tray on the screen at all.
@@ -185,7 +228,14 @@ class RollPresenter(
           val landed = machine.settled(outcome, drivenBy)
           publish()
           when (landed) {
-            is Landed.Complete -> recorder.record(landed.thrown)
+            is Landed.Complete -> {
+              recorder.record(landed.thrown)
+              // And offered to the developer's log, which keeps the throw for
+              // a replay and the anomaly if there was one. It is the one place
+              // a seed reaches anywhere a person can read it, and it is behind
+              // the toggle for exactly that reason (`docs/statistics.md`).
+              developer.landed(landed.thrown.thrown, outcome, landed.thrown.result.rolledAtEpochMs)
+            }
             // Straight back round: the next die is thrown the moment the last
             // one has stopped, which is what a player does with an exploding
             // six.
