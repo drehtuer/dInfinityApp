@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.simulation.api.Exact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlin.math.PI
@@ -41,7 +42,7 @@ class SpawnLayout(
     count: Int,
   ): Placement {
     require(index in 0 until count) { "die $index is not one of $count" }
-    val random = randomFor(index, SPAWN_SALT)
+    val random = randomFor(index, Seeds.SPAWN)
     val grid = Grid.covering(count, geometry, dieRadiusMm)
     val cell = grid.cellOf(index)
 
@@ -78,7 +79,7 @@ class SpawnLayout(
     index: Int,
     attempt: Int,
   ): Placement {
-    val random = randomFor(index, RETHROW_SALT + attempt)
+    val random = randomFor(index, Seeds.RETHROW + attempt)
     val halfLong = geometry.longSideMm / 2 - marginMm()
     val halfShort = geometry.shortSideMm / 2 - marginMm()
     return Placement(
@@ -119,14 +120,16 @@ class SpawnLayout(
 
   /**
    * A stream of its own per die and per purpose, so one die's numbers never
-   * depend on how many dice were drawn before it. The shift is the same one
-   * [de.drehtuer.dinfinity.simulation.api.CorrectionLadder] uses, for the same
-   * reason.
+   * depend on how many dice were drawn before it.
+   *
+   * Through [Seeds], which is where every random number in a roll comes from
+   * and which stirs the seed before it becomes a generator — two rolls whose
+   * seeds differ by one are otherwise not two independent throws.
    */
   private fun randomFor(
     index: Int,
     salt: Long,
-  ): Random = Random(seed xor (index.toLong() shl SEED_DIE_SHIFT) xor salt)
+  ): Random = Seeds.stream(seed, index, salt)
 
   private fun randomRotation(random: Random): Quaternion {
     // Shoemake's method: three uniform numbers to a quaternion that is uniform
@@ -277,13 +280,6 @@ class SpawnLayout(
     /** Still enough spin to be a throw rather than a placement. */
     const val RETHROW_SPIN_RADIANS_PER_SECOND: Double = 18.0
 
-    private const val SEED_DIE_SHIFT = 32
-
-    // "SPAWN" and "RETHRO" in ASCII: any two distinct numbers would do, and
-    // ones that read as words are ones nobody later mistakes for a tuning
-    // constant.
-    private const val SPAWN_SALT: Long = 0x53_50_41_57_4E
-    private const val RETHROW_SALT: Long = 0x52_45_54_48_52_4F
     private const val HALF = 0.5
   }
 }

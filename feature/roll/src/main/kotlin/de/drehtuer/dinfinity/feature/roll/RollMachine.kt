@@ -18,6 +18,7 @@ import de.drehtuer.dinfinity.core.notation.RollPlanner
 import de.drehtuer.dinfinity.core.notation.ThrowOutcome
 import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
@@ -273,7 +274,10 @@ class RollMachine(
           dice = listOf(came.copy(index = 0)),
           geometry = geometry,
           table = table,
-          seed = flight.seed + ++extra,
+          // Not `seed + n`: two seeds that differ by one are not two
+          // independent throws, so an exploding die used to be thrown by a
+          // stream related to the one that set it off (`Seeds`).
+          seed = Seeds.derived(flight.seed, ++extra),
         )
       simulator.run(one).faces.getValue(0)
     }

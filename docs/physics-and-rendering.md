@@ -80,6 +80,20 @@ Every die is a **convex** rigid body:
   when a die stopped would disagree about the roll.
 - The simulation is seeded per roll. The seed and every input impulse are
   recorded in the `RollResult` so a roll can be replayed exactly.
+- **Every random number in a roll comes from `Seeds`, and the seed is stirred
+  before it becomes a generator.** A seed handed straight to
+  `kotlin.random.Random` becomes an xorwow state by way of sixty-four warm-up
+  steps, and sixty-four is not enough to separate two seeds that differ only in
+  their low bits: 200,000 d18 throws seeded `0, 1, 2, …` start in orientations
+  spread *more* evenly than chance allows, χ² of 0.73 against 17 degrees of
+  freedom. Too even is a correlation like any other, and a die is only fair
+  because its starting turn is drawn evenly and independently of everything
+  else about the throw. Rolls the app starts are seeded from `SecureRandom` and
+  were never affected; an **exploding die was** — its extra throws used to be
+  seeded one, two, three more than the throw that set them off. SplitMix64's
+  finaliser fixes it in three lines: a bijection, so two seeds are still two
+  streams, and pure arithmetic, so a roll still replays to itself on every
+  device.
 - The engine is configured in deterministic mode — Jolt built with
   `CROSS_PLATFORM_DETERMINISTIC=ON` (`docs/build-setup.md`) — stepped by a
   single-threaded job system, and no `System.nanoTime()` takes part in any
@@ -420,7 +434,10 @@ first and both have been measured rather than argued:
 So the solid is right and the solver treats it evenly, which leaves how the
 throw is *drawn*: a starting turn and the force it is thrown with come out of
 one stream, one after the other, and a symmetry argument that assumes they are
-independent is only as good as that stream.
+independent is only as good as that stream. Those streams are now stirred
+(`Seeds`, below), and re-running the harness on top of that is the next
+measurement rather than a claim — the numbers in the table above were taken
+before it.
 
 ## Avoiding stacked and cocked dice
 

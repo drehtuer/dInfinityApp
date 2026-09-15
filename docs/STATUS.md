@@ -42,6 +42,11 @@ changelog.
   a shake, and written down in one transaction. A package from a stranger is
   validated rule by rule and installed without leaving anything behind if it
   fails; the bundled dice go through that same validator on every launch.
+- **Every random number in a roll comes from one place, stirred.** `Seeds`
+  turns a roll's seed into a stream per die and per purpose, through
+  SplitMix64's finaliser — because two seeds that differ by one are otherwise
+  not two independent throws, and an exploding die used to be thrown by a
+  stream related to the one that set it off. A roll still replays to itself.
 - **The physics.** Jolt 5.3.0, chosen by building both candidates against this
   project's own toolchain. Every *decision* about a roll is Kotlin over an
   interface, so the rule that matters most — nothing touches a die that has
@@ -185,11 +190,14 @@ changelog.
   the engine collides cannot be the solid the arithmetic describes. The seeds,
   Jolt's convex radius, a dropped corner and an off-centre mass are all ruled
   out on the phone; Step 5.2 has what is left to look at.
-- **Seeds next to each other are not independent throws**, and exploding dice
-  use them: `RollMachine` throws the extra dice at `seed + 1, seed + 2, …`.
-  Ordinary rolls come from `SecureRandom` and are fine. The fix is to stir the
-  seed where the streams are derived, which re-records every golden case and
-  changes what an old saved roll replays to (`docs/TODO.md`, Step 5.2).
+- **`100d4` does not reliably settle, and never did.** Twenty-four seeds run
+  out of the twelve-second cap on five of them; the same twenty-four under the
+  spawn streams that preceded stirring showed two, which is well inside noise
+  at that size. The eight seeds the test used to try were the easy ones.
+  Nothing is ever touched after coming to rest, on any seed — the rule that
+  matters holds — but the cap firing at all is prevention work (Step 5.5). The
+  same is true of a shaken `20d6`: two seeds in sixteen end in a heap, before
+  and after, where the four it used to try did not.
 - Determinism holds across the two ABIs. What is unproven is determinism
   across *devices* of the same ABI and across time, which is the same suite
   run somewhere else.
