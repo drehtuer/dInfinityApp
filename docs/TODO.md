@@ -180,13 +180,15 @@ Design `1v`, `4c`, `8d`. Spec: `docs/face-designer.md`.
 Drawing is built: the canvas with the face's outline masked in, strokes stored
 as vectors in fractions of the canvas, the guide under them that can be turned
 off, three pen widths and an eraser, undo/redo and clear per face, the twelve
-presets, and the face strip. The d4's three-numbers-per-corner rule is
+presets, and the face strip. **Drafts are on disk** — one file per die, written
+after every stroke and read back when the die is opened — so a drawing outlives
+the screen and each die keeps its own. That made the "start over?" question
+unnecessary and it is gone: changing die no longer loses anything. The d4's three-numbers-per-corner rule is
 **derived rather than checked** — a cell's numbers are read from the corners it
 meets, so two cells sharing an edge cannot be made to disagree along it.
 
 - [ ] Fill bucket, stamp from the built-in font, copy face → paste with rotate/mirror, "fill all faces with numbers", and a colour picker beyond the twelve presets (`4c`)
 - [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
-- [ ] Drafts on disk — vectors survive a rotation today, not process death (`docs/face-designer.md`, "Drawing tools"), and the 50-draft limit comes with them
 - [ ] "Roll it" throws the die being drawn
 - [ ] Export to a real dice set through the standard validator: atlas at 256 px per cell, transparent cells, generated `diceset.toml`, licence asked for before sharing
 - [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"

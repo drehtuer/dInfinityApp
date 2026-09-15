@@ -60,7 +60,7 @@ render/
   headless/          The Renderer contract, and the renderer that draws nothing (power-saving mode)
 input/
   shake/             Sensor fusion → throw impulses
-designer/            Face drawing canvas → dice set export (docs/face-designer.md)
+designer/            Face drawing canvas, drafts on disk → dice set export (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
 ui/
   common/            Screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes

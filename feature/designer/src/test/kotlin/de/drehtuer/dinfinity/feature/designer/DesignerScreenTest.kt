@@ -17,6 +17,8 @@ import androidx.compose.ui.test.performTouchInput
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
+import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
@@ -224,41 +226,28 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `tapping another die on a blank drawing simply opens it`() {
+  fun `tapping another die opens it`() {
     val presenter = show(d6, choosable = listOf(d6, d4))
 
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
 
     assertEquals(d4.id, presenter.state.die.id)
-    compose.onNodeWithTag(DesignerTestTags.START_OVER).assertDoesNotExist()
   }
 
   @Test
-  fun `tapping another die on a drawing asks before throwing it away`() {
-    val presenter = show(d6, choosable = listOf(d6, d4))
+  fun `the drawing on the die you left is there when you come back to it`() {
+    // It used to ask before throwing the drawing away, and now there is
+    // nothing to throw away: each die keeps its own (`docs/face-designer.md`,
+    // "Drawing tools").
+    val presenter = show(d6, choosable = listOf(d6, d4), drafts = Remembered())
     presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
 
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+    assertTrue("the other die opened on somebody else's drawing", presenter.state.draft.blank)
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d6.id)).performClick()
 
-    compose.onNodeWithTag(DesignerTestTags.START_OVER).assertIsDisplayed()
-    assertEquals("the die changed before the question was answered", d6.id, presenter.state.die.id)
-
-    compose.onNodeWithTag(DesignerTestTags.START_OVER_YES).performClick()
-
-    assertEquals(d4.id, presenter.state.die.id)
-  }
-
-  @Test
-  fun `keeping the drawing closes the question and changes nothing`() {
-    val presenter = show(d6, choosable = listOf(d6, d4))
-    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
-    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
-
-    compose.onNodeWithText("Keep drawing").performClick()
-
-    compose.onNodeWithTag(DesignerTestTags.START_OVER).assertDoesNotExist()
     assertEquals(d6.id, presenter.state.die.id)
-    assertFalse("the drawing went anyway", presenter.state.draft.blank)
+    assertFalse("the drawing was lost on the way there and back", presenter.state.draft.blank)
   }
 
   @Test
@@ -286,10 +275,22 @@ class DesignerScreenTest {
   private fun show(
     die: Die,
     choosable: List<Die> = emptyList(),
+    drafts: Drafts = Drafts.NONE,
   ): DesignerPresenter {
-    val presenter = DesignerPresenter(die, choosable)
+    val presenter = DesignerPresenter(die, choosable, drafts)
     compose.setContent { DesignerScreen(presenter = presenter) }
     return presenter
+  }
+
+  /** Drafts that outlive a swap but not the test: a disk without the disk. */
+  private class Remembered : Drafts {
+    private val kept = mutableMapOf<String, Draft>()
+
+    override fun load(die: Die): Draft = kept[die.id] ?: Draft(die = die)
+
+    override fun save(draft: Draft) {
+      kept[draft.die.id] = draft
+    }
   }
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }

@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Stroke
@@ -54,14 +55,6 @@ data class DesignerState(
   val guideShown: Boolean = true,
   /** The dice a drawing can be started from. */
   val choosable: List<Die> = emptyList(),
-  /**
-   * The die a change of base is waiting to be confirmed for, or null.
-   *
-   * Its own field rather than a boolean, because what is being confirmed is
-   * *which* die: a dialog that said "throw this away?" and then had to look up
-   * what somebody had tapped is a dialog that can answer the wrong question.
-   */
-  val changingTo: Die? = null,
 ) {
   /** The die being drawn on. */
   val die: Die get() = draft.die
@@ -123,37 +116,47 @@ class DesignerPresenter(
    * install reaches, since the bundled set is always there.
    */
   choosable: List<Die> = emptyList(),
+  /**
+   * Where the drawings are kept between sittings.
+   *
+   * [Drafts.NONE] by default, which is a designer whose work lasts as long as
+   * the screen does — what the tests use, and what the screen would do if
+   * nothing gave it a folder.
+   */
+  private val drafts: Drafts = Drafts.NONE,
 ) {
   /** What the screen draws. */
-  var state: DesignerState by mutableStateOf(DesignerState(draft = Draft(die = die), choosable = choosable))
+  var state: DesignerState by mutableStateOf(
+    DesignerState(draft = drafts.load(die), choosable = choosable),
+  )
     private set
 
   /**
-   * Start again on a different die (`docs/face-designer.md`, "Flow").
+   * Draw on a different die (`docs/face-designer.md`, "Flow").
    *
-   * A different die is a different draft: the faces are a different shape,
+   * A different die is a different draft — the faces are a different shape,
    * there are a different number of them, and the values under the guide are
-   * that die's. Nothing carries over, so a drawing with anything on it is
-   * **asked about first** — losing an evening's work to a mis-tap on a row of
-   * dice is not a thing that should be possible.
+   * that die's — but it is no longer a drawing *thrown away*: what is on the
+   * canvas is written down before the swap and the new die's own drawing is
+   * read back, so switching between two dice is switching between two
+   * drawings. That is what made the confirmation this used to ask
+   * unnecessary, and a dialog that warns about a loss that cannot happen is
+   * worse than no dialog at all.
+   *
+   * The pen, its colour and whether the guide is showing all stay: they are
+   * how somebody is working, not what they are working on.
    */
   fun base(die: Die) {
     if (die.id == state.draft.die.id) return
-    state = if (state.draft.blank) state.startingOn(die) else state.copy(changingTo = die)
-  }
-
-  /**
-   * Answers the question [base] asked: start again on that die, or keep
-   * drawing.
-   *
-   * One function and not two, because it is one question with two answers —
-   * and because the die being confirmed is held in the state rather than
-   * passed back in, so there is no way for the answer to arrive about a
-   * different die than the one that was asked about.
-   */
-  fun startOver(confirmed: Boolean) {
-    val die = state.changingTo
-    state = if (confirmed && die != null) state.startingOn(die) else state.copy(changingTo = null)
+    drafts.save(state.draft)
+    state =
+      DesignerState(
+        draft = drafts.load(die),
+        nib = state.nib,
+        colorArgb = state.colorArgb,
+        guideShown = state.guideShown,
+        choosable = state.choosable,
+      )
   }
 
   /** A face was chosen, from the strip or by swiping. */
@@ -196,39 +199,24 @@ class DesignerPresenter(
         erases = state.nib.erases,
       )
     state = state.copy(draft = state.draft.onFace(state.cell) { it.draw(stroke) })
+    drafts.save(state.draft)
   }
 
   /** Back one step on this face. */
   fun undo() {
     state = state.copy(draft = state.draft.onFace(state.cell) { it.undo() })
+    drafts.save(state.draft)
   }
 
   /** Forward one step on this face. */
   fun redo() {
     state = state.copy(draft = state.draft.onFace(state.cell) { it.redo() })
+    drafts.save(state.draft)
   }
 
   /** Takes this face back to blank, in one step that can be undone. */
   fun clear() {
     state = state.copy(draft = state.draft.onFace(state.cell) { it.clear() })
+    drafts.save(state.draft)
   }
 }
-
-/**
- * A fresh drawing on [die], keeping the tools where they were.
- *
- * Out here rather than in the presenter because it is a mapping and not a
- * decision — and because the presenter is at detekt's ceiling, which is a fair
- * warning rather than an obstacle.
- *
- * The pen, its colour and whether the guide is showing all stay: they are how
- * somebody is working, not what they are working on.
- */
-private fun DesignerState.startingOn(die: Die): DesignerState =
-  DesignerState(
-    draft = Draft(die = die),
-    nib = nib,
-    colorArgb = colorArgb,
-    guideShown = guideShown,
-    choosable = choosable,
-  )

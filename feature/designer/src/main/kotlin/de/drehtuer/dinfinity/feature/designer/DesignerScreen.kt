@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -94,38 +93,6 @@ fun DesignerScreen(
     Tools(state, presenter)
     Palette(state, presenter)
     FaceStrip(state, presenter)
-  }
-
-  // Inline rather than its own composable, for the reason `BaseDice` is not
-  // folded in and this is: a `@Composable` costs skip branches per parameter
-  // whether or not anything ever calls it twice, and a dialog that is drawn in
-  // one place is not worth a function.
-  //
-  // A different die is a different draft — different faces, a different number
-  // of them, different values under the guide — so nothing carries over.
-  // Losing an evening's work to a mis-tap on a row of dice is not a thing that
-  // should be possible, which is the rule the statistics screen's reset
-  // follows too.
-  state.changingTo?.let { die ->
-    AlertDialog(
-      onDismissRequest = { presenter.startOver(confirmed = false) },
-      modifier = Modifier.testTag(DesignerTestTags.START_OVER),
-      title = { Text(stringResource(R.string.designer_start_over_title)) },
-      text = { Text(stringResource(R.string.designer_start_over, die.id)) },
-      confirmButton = {
-        TextButton(
-          onClick = { presenter.startOver(confirmed = true) },
-          modifier = Modifier.testTag(DesignerTestTags.START_OVER_YES),
-        ) {
-          Text(stringResource(R.string.designer_start_over_yes), color = MaterialTheme.colorScheme.error)
-        }
-      },
-      dismissButton = {
-        TextButton(onClick = { presenter.startOver(confirmed = false) }) {
-          Text(stringResource(R.string.designer_keep_drawing))
-        }
-      },
-    )
   }
 }
 
@@ -468,8 +435,6 @@ object DesignerTestTags {
   const val GUIDE: String = "designer:guide"
   const val WARNING: String = "designer:warning"
   const val BASES: String = "designer:bases"
-  const val START_OVER: String = "designer:start-over"
-  const val START_OVER_YES: String = "designer:start-over:yes"
 
   fun baseOf(dieId: String): String = "designer:base:$dieId"
 

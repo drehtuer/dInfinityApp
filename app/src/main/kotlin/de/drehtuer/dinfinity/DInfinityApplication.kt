@@ -17,6 +17,8 @@ import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.designer.DraftStore
+import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
@@ -193,6 +195,16 @@ class DInfinityApplication : Application() {
     super.onCreate()
     background.launch { runCatching { setLibrary.all() } }
   }
+
+  /**
+   * The designer's drafts, kept under the app's own files
+   * (`docs/face-designer.md`, "Drawing tools").
+   *
+   * On the application because the folder is one thing whichever screen is
+   * looking at it, and the writes go to [background] so a stroke is never
+   * waiting on a disk.
+   */
+  val drafts: Drafts by lazy { SavedDrafts(DraftStore(File(filesDir, DraftStore.DIRECTORY)), background) }
 
   private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 

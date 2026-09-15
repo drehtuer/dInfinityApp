@@ -1,12 +1,14 @@
 package de.drehtuer.dinfinity.feature.designer
 
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
+import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -175,57 +177,66 @@ class DesignerPresenterTest {
   }
 
   @Test
-  fun `a blank drawing changes die without asking, because there is nothing to lose`() {
+  fun `a die with no drawing on it opens blank`() {
     val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
 
     presenter.base(d4)
 
     assertEquals(d4.id, presenter.state.die.id)
-    assertNull("a blank drawing asked before starting over", presenter.state.changingTo)
+    assertTrue("the new die came with the old one's strokes", presenter.state.draft.blank)
   }
 
   @Test
-  fun `a drawing with anything on it is asked about first`() {
-    // Losing an evening's work to a mis-tap on a row of dice is not a thing
-    // that should be possible (`docs/face-designer.md`).
-    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+  fun `changing die writes down what was on the canvas`() {
+    // What made the confirmation this used to ask unnecessary: the drawing is
+    // not thrown away, it is put down (`docs/face-designer.md`).
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), drafts = drafts)
     presenter.drew(line())
 
     presenter.base(d4)
-
-    assertEquals("the die changed without asking", d6.id, presenter.state.die.id)
-    assertEquals(d4, presenter.state.changingTo)
-    assertFalse("the drawing was thrown away before the answer", presenter.state.draft.blank)
-  }
-
-  @Test
-  fun `saying yes starts again on the die that was asked about`() {
-    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
-    presenter.drew(line())
-    presenter.base(d4)
-
-    presenter.startOver(confirmed = true)
 
     assertEquals(d4.id, presenter.state.die.id)
-    assertTrue("the new drawing came with the old one's strokes", presenter.state.draft.blank)
-    assertNull(presenter.state.changingTo)
+    assertFalse("the drawing on the die that was left is gone", drafts.load(d6).blank)
   }
 
   @Test
-  fun `saying no keeps the drawing and the die`() {
-    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+  fun `coming back to a die brings its drawing back`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), drafts = Remembered())
     presenter.drew(line())
     presenter.base(d4)
 
-    presenter.startOver(confirmed = false)
+    presenter.base(d6)
 
     assertEquals(d6.id, presenter.state.die.id)
-    assertFalse("the drawing went anyway", presenter.state.draft.blank)
-    assertNull(presenter.state.changingTo)
+    assertFalse("the drawing was lost on the way there and back", presenter.state.draft.blank)
   }
 
   @Test
-  fun `starting over keeps the pen where it was`() {
+  fun `the designer opens on the drawing that was left there`() {
+    // The whole of "drafts survive process death", from this end: a presenter
+    // built afresh is a screen opened afresh.
+    val drafts = Remembered()
+    DesignerPresenter(d6, choosable = listOf(d6), drafts = drafts).drew(line())
+
+    val again = DesignerPresenter(d6, choosable = listOf(d6), drafts = drafts)
+
+    assertFalse("the screen opened blank on a die that had been drawn on", again.state.draft.blank)
+  }
+
+  @Test
+  fun `undo is written down too, so what is on disk is what is on screen`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6), drafts = drafts)
+    presenter.drew(line())
+
+    presenter.undo()
+
+    assertTrue("the drawing was taken back on screen but not on disk", drafts.load(d6).blank)
+  }
+
+  @Test
+  fun `changing die keeps the pen where it was`() {
     // The pen, its colour and the guide are how somebody is working, not what
     // they are working on.
     val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
@@ -247,7 +258,6 @@ class DesignerPresenterTest {
 
     presenter.base(d6)
 
-    assertNull("it asked about the die already open", presenter.state.changingTo)
     assertFalse("it threw the drawing away", presenter.state.draft.blank)
   }
 
@@ -259,6 +269,17 @@ class DesignerPresenterTest {
   }
 
   private fun line() = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))
+
+  /** Drafts that outlive a presenter but not the test: a disk without the disk. */
+  private class Remembered : Drafts {
+    private val kept = mutableMapOf<String, Draft>()
+
+    override fun load(die: Die): Draft = kept[die.id] ?: Draft(die = die)
+
+    override fun save(draft: Draft) {
+      kept[draft.die.id] = draft
+    }
+  }
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
   private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }

@@ -136,10 +136,10 @@ internal class ScreenWiring(
    *
    * Opened on the default set's **d6**, or its first die if it has none.
    *
-   * Picking a base die — any catalogue shape or any installed die — is the
-   * next piece of 4.6. Until it lands the designer has to start somewhere, and
-   * the d6 is what somebody means by "a die": the set's *first* die is the d2,
-   * and opening a drawing app on a coin is a poor answer to "draw a die".
+   * The d6 rather than the set's first die, which is the d2: opening a drawing
+   * app on a coin is a poor answer to "draw a die". Whichever die it opens on,
+   * it opens on that die's own draft — so somebody who was drawing a d20
+   * yesterday is one tap from it rather than back at a blank d6.
    */
   private fun faceDesigner(): DesignerPresenter {
     val catalogue = app.setLibrary.catalogue
@@ -153,6 +153,9 @@ internal class ScreenWiring(
     return DesignerPresenter(
       die = opening.firstOrNull { it.shape == DieShape.Cube } ?: opening.first(),
       choosable = everything,
+      // So a drawing outlives the screen it was made on, and each die keeps
+      // its own (`docs/face-designer.md`, "Drawing tools").
+      drafts = app.drafts,
     )
   }
 

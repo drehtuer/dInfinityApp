@@ -57,8 +57,15 @@ the die changes, and a blank one simply changes. The pen, its colour and
 whether the guide is showing all stay put: those are how somebody is working
 rather than what they are working on.
 
-Still to come, in `docs/TODO.md` 4.6: the fill bucket and stamp, drafts on
-disk, "Roll it", and the export.
+Switching die keeps both drawings. Each die has a draft of its own, written
+down as the canvas is left and read back when it is opened, so a row of dice is
+a row of drawings rather than one canvas that the next tap overwrites. It used
+to ask before changing die, because changing die threw the drawing away; a
+dialog that warns about a loss that cannot happen is worse than no dialog, so
+it is gone.
+
+Still to come, in `docs/TODO.md` 4.6: the fill bucket and stamp, "Roll it",
+and the export.
 
 ## Drawing tools
 
@@ -75,6 +82,29 @@ Deliberately small:
 
 Strokes are recorded as vector paths in a draft file so that the canvas can be
 re-rendered at export resolution and so drafts survive process death.
+
+**One file per die, under the app's own files.** The file holds the strokes and
+not the undo stack — undo is unlimited *within a session*, and a history
+restored from disk would rewind a drawing past the point somebody opened it.
+It is written after every stroke, undo and clear rather than when somebody
+remembers to save, because the moment a draft is most likely to be lost is the
+one where nobody is thinking about it; the write is launched off the drawing
+thread, so a line never waits on a disk.
+
+The file names its die by **id** rather than carrying a copy of it: a draft is
+a drawing *on* a die, and the die belongs to a dice set that can be updated
+under it. A draft whose die is not installed is not offered, and its file is
+kept rather than deleted — re-installing the package brings the drawing back,
+which is the rule the default set and the default table already follow. A cell
+the die no longer has is dropped and the rest of the drawing is kept; losing
+six faces over one is not a trade worth making.
+
+It is read through the JSON DOM with every field taken by hand, the way
+`core/collection` reads a collection. A draft is the app's own file rather than
+a stranger's, so the reason is the other one: a deserializer's idea of the file
+is the class shape of the day, and a drawing has to survive the class changing
+under it. Anything that does not read is simply not a draft, and the canvas
+opens blank.
 
 ## Export details
 
@@ -101,6 +131,17 @@ on the 1 in ten seconds" path.
 ## Constraints
 
 - Drafts are limited to 50 per device and 200 strokes per face to keep
-  storage and export time bounded; the UI warns before the limit.
+  storage and export time bounded.
+- The stroke limit **warns and then refuses**: the face stops taking strokes
+  and says so twenty strokes before it does, because a canvas that silently
+  stops drawing reads as a broken screen.
+- The draft limit **makes room**: drawing on a fifty-first die drops the draft
+  nobody has touched for longest. Refusing it would be a dead end — there is
+  no screen yet on which to delete one ("My dice", `docs/TODO.md` 4.6) — and a
+  cap that cannot be reached is not a cap. It is the same answer the history's
+  fifty thousand rows already take. The draft being worked on is never the one
+  dropped, whatever the filesystem's clock says.
+- A drawing with nothing on it is not a draft and is not kept, so opening the
+  designer and leaving it cannot push a real drawing over the limit.
 - Everything is on-device; nothing leaves the phone unless the user shares
   the zip.
