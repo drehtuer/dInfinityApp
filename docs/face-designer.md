@@ -337,6 +337,11 @@ the app never wrote. **The choice is written into the installed folder as well
 as into the zip**, so the details screen goes on saying it after the share
 sheet has closed and the next stroke somebody draws does not un-answer it.
 
+**No name is written.** `author` is left out rather than filled in: there is no
+device user name an app can read without asking for the contacts permission,
+and a field saying "You" would be a name on somebody else's phone. Whether the
+export should ask for one is an open question (`docs/TODO.md`).
+
 **The package goes through `DiceSetValidator` before the file is offered.** The
 app's own output is not a privileged path, exactly as the bundled set is not: a
 package that does not validate is a bug caught on this phone rather than an

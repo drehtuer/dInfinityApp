@@ -551,6 +551,15 @@ The figures are reported in every PR description either way.
       which cannot be tested on the JVM and cannot be verified without a phone.
       Worth deciding deliberately rather than by default
       (`docs/architecture.md`, decision 54)
+- [ ] **Should an exported package carry a name, and where would it come from?**
+      The `author` field is currently left out rather than filled: Android has
+      no device user name an app can read without asking for contacts, and a
+      field saying "You" would be a name on somebody else's phone. The
+      alternatives are a text field beside the licence chooser on the "My dice"
+      details screen, or a name kept in the settings and used by every export.
+      Both are small; which one is wanted is a judgement about how much the
+      export screen should ask for before it will share (`8c`,
+      `docs/face-designer.md`)
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
 - [ ] A collection imported from a git repository records nothing about where
