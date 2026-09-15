@@ -48,6 +48,7 @@ object RollEvaluator {
       rethrows = outcome.rethrows,
       forcedSettles = outcome.forcedSettles,
       rolledAtEpochMs = outcome.rolledAtEpochMs,
+      adjustments = adjustmentsIn(formula.root),
     )
   }
 
@@ -65,6 +66,9 @@ object RollEvaluator {
     result.copy(
       total = Arithmetic(result.groups.subtotals(), rounding).of(formula.root),
       rounding = rounding,
+      // The constants do not move when the rounding does — but a `/` in the
+      // formula means the root is not a sum, so there were none anyway.
+      adjustments = adjustmentsIn(formula.root),
     )
 }
 
@@ -118,3 +122,31 @@ private class Arithmetic(
 
 /** The subtotal of every group in this result, keyed by group id. */
 internal fun List<RolledGroup>.subtotals(): Map<Int, Long> = associate { it.id to it.subtotal }
+
+/**
+ * The plain numbers [root] adds to or takes from the total, signed and in the
+ * order they were written (`docs/dice-notation.md`, "Evaluation", step 7).
+ *
+ * **The top-level sum only.** A number anywhere else is not a number added to
+ * the total: the `3` in `(2d6 + 3) * 2` is multiplied along with the dice, and
+ * a sheet that listed it as `+ 3` would be adding up to the wrong answer in
+ * front of the player. So a formula whose root is a product or a division has
+ * no adjustments at all, and [RollResult.itemised] says so.
+ *
+ * It is the same rule the picker's badges follow, for the same reason: edit or
+ * itemise only what can be read back (`DicePicker.counts`).
+ */
+internal fun adjustmentsIn(root: FormulaNode): List<Long> =
+  when (root) {
+    is NumberNode -> listOf(root.value)
+    is NegateNode -> adjustmentsIn(root.operand).map { -it }
+    is DiceNode -> emptyList()
+    is BinaryNode ->
+      when (root.operator) {
+        BinaryOperator.Plus -> adjustmentsIn(root.left) + adjustmentsIn(root.right)
+        BinaryOperator.Minus -> adjustmentsIn(root.left) + adjustmentsIn(root.right).map { -it }
+        // A product or a quotient is not a sum, so nothing under it is
+        // something added to the total.
+        BinaryOperator.Times, BinaryOperator.Divide -> emptyList()
+      }
+  }

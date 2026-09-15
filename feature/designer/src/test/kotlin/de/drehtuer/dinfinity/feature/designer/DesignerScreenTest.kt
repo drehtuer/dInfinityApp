@@ -1,19 +1,28 @@
 package de.drehtuer.dinfinity.feature.designer
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
+import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -209,11 +218,111 @@ class DesignerScreenTest {
     )
   }
 
-  private fun show(die: Die): DesignerPresenter {
-    val presenter = DesignerPresenter(die)
-    compose.setContent { DesignerScreen(presenter = presenter) }
+  @Test
+  fun `with one die to draw on there is no chooser`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.BASES).assertDoesNotExist()
+  }
+
+  @Test
+  fun `tapping another die opens it`() {
+    val presenter = show(d6, choosable = listOf(d6, d4))
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+
+    assertEquals(d4.id, presenter.state.die.id)
+  }
+
+  @Test
+  fun `the drawing on the die you left is there when you come back to it`() {
+    // It used to ask before throwing the drawing away, and now there is
+    // nothing to throw away: each die keeps its own (`docs/face-designer.md`,
+    // "Drawing tools").
+    val presenter = show(d6, choosable = listOf(d6, d4), drafts = Remembered())
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+    assertTrue("the other die opened on somebody else's drawing", presenter.state.draft.blank)
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d6.id)).performClick()
+
+    assertEquals(d6.id, presenter.state.die.id)
+    assertFalse("the drawing was lost on the way there and back", presenter.state.draft.blank)
+  }
+
+  @Test
+  fun `a recomposition around it that changes nothing leaves it alone`() {
+    // The chooser and the canvas are drawn from one state, so an ordinary
+    // recomposition has to skip them. One that skipped wrongly would come back
+    // without its row of dice, which a single-pass test would never see.
+    var tick by mutableStateOf(0)
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        DesignerScreen(presenter = presenter)
+      }
+    }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.BASES).assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).assertIsDisplayed()
+  }
+
+  @Test
+  fun `Roll it hands up the formula for the die being drawn`() {
+    val thrown = mutableListOf<String>()
+    show(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" }, onRoll = thrown::add)
+
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+
+    assertEquals(listOf("1d6"), thrown)
+  }
+
+  @Test
+  fun `Roll it follows the die that is being drawn on`() {
+    val thrown = mutableListOf<String>()
+    show(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" }, onRoll = thrown::add)
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+
+    assertEquals(listOf("1d4"), thrown)
+  }
+
+  @Test
+  fun `a die no formula can name is not offered a Roll button`() {
+    show(d6, choosable = listOf(d6, d4))
+
+    compose.onNodeWithTag(DesignerTestTags.ROLL).assertDoesNotExist()
+  }
+
+  private fun show(
+    die: Die,
+    choosable: List<Die> = emptyList(),
+    drafts: Drafts = Drafts.NONE,
+    notationOf: (Die) -> String? = { null },
+    onRoll: (String) -> Unit = {},
+  ): DesignerPresenter {
+    val presenter = DesignerPresenter(die, choosable, drafts, notationOf)
+    compose.setContent { DesignerScreen(presenter = presenter, onRoll = onRoll) }
     return presenter
   }
 
+  /** Drafts that outlive a swap but not the test: a disk without the disk. */
+  private class Remembered : Drafts {
+    private val kept = mutableMapOf<String, Draft>()
+
+    override fun load(die: Die): Draft = kept[die.id] ?: Draft(die = die)
+
+    override fun save(draft: Draft) {
+      kept[draft.die.id] = draft
+    }
+  }
+
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
+  private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
 }

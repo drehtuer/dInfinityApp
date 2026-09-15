@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity
 import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
+import de.drehtuer.dinfinity.feature.roll.WhatIsThere
 import de.drehtuer.dinfinity.feature.saved.Editing
 import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import de.drehtuer.dinfinity.feature.saved.GroupPresenter
@@ -15,6 +16,7 @@ import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesPresenter
+import kotlinx.coroutines.flow.Flow
 
 /**
  * How to build every screen's state — all of them, in one place
@@ -75,4 +77,19 @@ data class Presenters(
    * set can be removed from the screen that is showing it.
    */
   val diceSet: (String, () -> Unit) -> SetDetailPresenter,
+  /**
+   * What a fresh install already has, for the first-launch count line
+   * (`design/dInfinity.dc.html`, option 9a).
+   *
+   * The one entry here that is not a factory, and a flow rather than a number
+   * because two of the three counts change while the welcome is still up:
+   * importing saved rolls is one of the ways out of it, and coming back to a
+   * line that still says none would be the app forgetting what it had just
+   * been given.
+   *
+   * It is watched rather than asked, and nothing here *creates* anything —
+   * building a sessions presenter for the number would make the default
+   * session as a side effect of saying hello.
+   */
+  val whatIsThere: Flow<WhatIsThere>,
 )

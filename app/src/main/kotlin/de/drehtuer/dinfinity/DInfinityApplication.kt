@@ -9,12 +9,16 @@ import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.HistoryRepository
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.RollRecording
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.SettingsStorage
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.designer.DraftStore
+import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
@@ -45,8 +49,20 @@ class DInfinityApplication : Application() {
    */
   val database: DInfinityDatabase by lazy { DInfinityDatabase.open(this) }
 
-  /** Saved rolls and their groups (`docs/dice-notation.md`). */
+  /** The saved rolls (`docs/dice-notation.md`). */
   val savedRolls: SavedRollRepository by lazy { SavedRollRepository(database) }
+
+  /**
+   * The folders they live in.
+   *
+   * Apart from [savedRolls] rather than beside it: the two grew at different
+   * rates and one class had reached the size detekt allows (`docs/TODO.md`,
+   * 4.3). A screen that needs both takes both.
+   */
+  val savedRollGroups: SavedRollGroupRepository by lazy { SavedRollGroupRepository(database) }
+
+  /** The two of them together, which is what a screen about saved rolls takes. */
+  val savedRollLibrary: SavedRollLibrary by lazy { SavedRollLibrary(savedRolls, savedRollGroups) }
 
   /**
    * Taking a collection of saved rolls in.
@@ -67,9 +83,14 @@ class DInfinityApplication : Application() {
    * preference and a preference changes while the app is running: a recorder
    * that took it once would file an evening's rolls under whichever session
    * was current when the roll screen opened.
+   *
+   * And checked against the sessions there actually are, because a preference
+   * outlives the thing it names — a session deleted while some other screen
+   * was in front would otherwise leave every throw filed under an id that is
+   * not there.
    */
   val recording: RollRecording by lazy {
-    RollRecording(statistics) { activeSession }
+    RollRecording(statistics, sessions = sessions, sessionOf = { activeSession })
   }
 
   /**
@@ -174,6 +195,16 @@ class DInfinityApplication : Application() {
     super.onCreate()
     background.launch { runCatching { setLibrary.all() } }
   }
+
+  /**
+   * The designer's drafts, kept under the app's own files
+   * (`docs/face-designer.md`, "Drawing tools").
+   *
+   * On the application because the folder is one thing whichever screen is
+   * looking at it, and the writes go to [background] so a stroke is never
+   * waiting on a disk.
+   */
+  val drafts: Drafts by lazy { SavedDrafts(DraftStore(File(filesDir, DraftStore.DIRECTORY)), background) }
 
   private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 

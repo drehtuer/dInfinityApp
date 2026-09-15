@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.ui.common.DieSilhouette
 
@@ -66,6 +68,57 @@ internal fun PickerRow(
         onAdd = { onAdd(die) },
         onRemove = { onRemove(die) },
       )
+    }
+  }
+}
+
+/**
+ * Which set the row above is offering (`design/dInfinity.dc.html`, option 4a).
+ *
+ * Not drawn until there is a second set to choose between: a chooser with one
+ * entry is furniture, and until somebody installs a set there is exactly one.
+ * That is the same rule the session and set choosers on the statistics screen
+ * follow.
+ *
+ * It scrolls beside the dice for the same reason they do — a name is as long
+ * as its author made it — and it does **not** change which set a bare `d20`
+ * means. That is a preference and it is chosen where the sets are
+ * (`docs/dice-sets.md`, design `6a`).
+ */
+@Composable
+internal fun SetChooser(
+  sets: List<DiceSet>,
+  chosen: String,
+  onChoose: (String) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  if (sets.size < 2) return
+  Row(
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .testTag(RollTestTags.SETS),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    sets.forEach { set ->
+      TextButton(
+        onClick = { onChoose(set.id) },
+        modifier = Modifier.testTag(RollTestTags.setOf(set.id)),
+      ) {
+        Text(
+          text = set.name,
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = if (set.id == chosen) FontWeight.Bold else FontWeight.Normal,
+          color =
+            if (set.id == chosen) {
+              MaterialTheme.colorScheme.onBackground
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
+      }
     }
   }
 }

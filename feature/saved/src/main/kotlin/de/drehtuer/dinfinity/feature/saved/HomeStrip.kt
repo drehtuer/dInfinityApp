@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.SavedRollSource
 
 /**
  * The active group's saved rolls, on the tray
@@ -48,7 +49,7 @@ import androidx.compose.ui.unit.dp
 fun HomeStrip(
   presenter: SavedPresenter,
   modifier: Modifier = Modifier,
-  onRoll: (String) -> Unit = {},
+  onRoll: (String, SavedRollSource) -> Unit = { _, _ -> },
   onEdit: (String) -> Unit = {},
   onNew: () -> Unit = {},
 ) {
@@ -66,7 +67,13 @@ fun HomeStrip(
         entry = entry,
         onRoll = {
           presenter.used(entry.roll.id)
-          onRoll(entry.roll.formula)
+          // Which roll, which group it is in and the table it lands on. The
+          // first two so the throw can be recorded as that roll's — a throw
+          // that belongs to nothing is one the saved-roll statistics can never
+          // count (`docs/statistics.md`) — and the third because the pin that
+          // wins was decided where the roll and its group were both in hand
+          // (`docs/tables.md`).
+          onRoll(entry.roll.formula, entry.source)
         },
         onEdit = { onEdit(entry.roll.id) },
       )

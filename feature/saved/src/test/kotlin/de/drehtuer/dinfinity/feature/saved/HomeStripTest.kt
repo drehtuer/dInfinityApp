@@ -13,7 +13,11 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.core.model.SavedRollSource
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -23,6 +27,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -45,6 +50,8 @@ class HomeStripTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
+  private lateinit var library: SavedRollLibrary
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   @Before
@@ -63,6 +70,8 @@ class HomeStripTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database)
+    groupRepository = SavedRollGroupRepository(database)
+    library = SavedRollLibrary(repository, groupRepository)
   }
 
   @After
@@ -85,12 +94,71 @@ class HomeStripTest {
     // Different from the saved-rolls list, which only fills the field: this is
     // the one place the tray is already on screen to roll it on.
     given(roll("fireball", formula = "8d6"))
-    val thrown = mutableListOf<String>()
-    show(onRoll = thrown::add)
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onRoll = { formula, source -> thrown += formula to source })
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
-    assertEquals(listOf("8d6"), thrown)
+    assertEquals(listOf("8d6" to SavedRollSource("fireball", SavedRollGroup.UNFILED_ID)), thrown)
+  }
+
+  @Test
+  fun `a tap says which roll it was, not only what to throw`() {
+    // Without it every throw is recorded as belonging to nothing, and the
+    // saved-roll statistics screen can never have anything on it
+    // (`docs/statistics.md`, per saved roll and per group).
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    given(roll("fireball", groupId = "thorin", formula = "8d6"))
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(
+      onRoll = { formula, source -> thrown += formula to source },
+      activeGroupId = "thorin",
+    )
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    assertEquals(listOf("8d6" to SavedRollSource("fireball", "thorin")), thrown)
+  }
+
+  @Test
+  fun `a tap carries the table the roll is pinned to`() {
+    // The tray does not know what a saved roll is, so the pin that wins is
+    // decided here — where the roll and its group are both in hand — and the
+    // throw carries the answer (`docs/tables.md`, "Selecting a table").
+    given(roll("fireball", formula = "8d6").copy(tablePin = TablePin("builtin", "felt-black")))
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onRoll = { formula, source -> thrown += formula to source })
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    assertEquals(TablePin("builtin", "felt-black"), thrown.single().second.tablePin)
+  }
+
+  @Test
+  fun `a roll with no pin of its own takes its group's`() {
+    runBlocking {
+      groupRepository.save(SavedRollGroup(id = "strahd", name = "Curse of Strahd", tablePin = TablePin("brass", "oak")))
+    }
+    given(roll("fireball", groupId = "strahd", formula = "8d6"))
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onRoll = { formula, source -> thrown += formula to source }, activeGroupId = "strahd")
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    assertEquals(TablePin("brass", "oak"), thrown.single().second.tablePin)
+  }
+
+  @Test
+  fun `a roll pinned to nothing anywhere lands on the app's own table`() {
+    // `null` rather than a table nobody chose: which table the app is set to
+    // is the roll screen's to know (`RollWiring`).
+    given(roll("fireball", formula = "8d6"))
+    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onRoll = { formula, source -> thrown += formula to source })
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    assertNull(thrown.single().second.tablePin)
   }
 
   @Test
@@ -108,7 +176,7 @@ class HomeStripTest {
     given(roll("fireball"))
     val thrown = mutableListOf<String>()
     val edited = mutableListOf<String>()
-    show(onRoll = thrown::add, onEdit = edited::add)
+    show(onRoll = { formula, _ -> thrown += formula }, onEdit = edited::add)
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performTouchInput { longClick() }
 
@@ -146,7 +214,7 @@ class HomeStripTest {
 
   @Test
   fun `only the active group is on the strip`() {
-    runBlocking { repository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
     given(roll("axe", groupId = "thorin"), roll("loose"))
     show()
 
@@ -176,7 +244,7 @@ class HomeStripTest {
     // opens, on the one screen where that is most visible.
     val presenter =
       SavedPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = CoroutineScope(Dispatchers.Unconfined),
         unfiledName = "Unfiled",
@@ -190,22 +258,24 @@ class HomeStripTest {
 
   private fun given(vararg rolls: SavedRoll) {
     runBlocking {
-      repository.ensureUnfiled("Unfiled")
+      groupRepository.ensureUnfiled("Unfiled")
       rolls.forEach { repository.save(it) }
     }
   }
 
   private fun show(
-    onRoll: (String) -> Unit = {},
+    onRoll: (String, SavedRollSource) -> Unit = { _, _ -> },
     onEdit: (String) -> Unit = {},
     onNew: () -> Unit = {},
+    activeGroupId: String = SavedRollGroup.UNFILED_ID,
   ) {
     val presenter =
       SavedPresenter(
-        repository = repository,
+        library = library,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         unfiledName = "Unfiled",
+        activeGroupId = activeGroupId,
       )
     compose.setContent {
       HomeStrip(presenter = presenter, onRoll = onRoll, onEdit = onEdit, onNew = onNew)

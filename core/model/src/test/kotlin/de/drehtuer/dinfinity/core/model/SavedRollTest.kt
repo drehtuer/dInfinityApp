@@ -67,4 +67,60 @@ class SavedRollTest {
       SavedRollGroup(id = "strahd", name = "Curse of Strahd", tablePin = TablePin("builtin", "felt-black"))
     assertEquals("felt-black", strahd.tablePin?.tableId)
   }
+
+  @Test
+  fun `the roll's own pin wins over its group's`() {
+    // Most specific first (`docs/tables.md`, "Selecting a table"). Fireball is
+    // thrown on black felt even in a campaign played on oak.
+    val pin = tablePinFor(roll(pin = TablePin("builtin", "felt-black")), group(pin = TablePin("brass", "oak")))
+
+    assertEquals(TablePin("builtin", "felt-black"), pin)
+  }
+
+  @Test
+  fun `a roll with no pin of its own takes its group's`() {
+    val pin = tablePinFor(roll(pin = null), group(pin = TablePin("brass", "oak")))
+
+    assertEquals(TablePin("brass", "oak"), pin)
+  }
+
+  @Test
+  fun `nothing pinned anywhere is the app default`() {
+    // `null` is not "no table" — it is "whatever the app is set to", which is
+    // the one thing this function deliberately does not know about.
+    assertNull(tablePinFor(roll(pin = null), group(pin = null)))
+  }
+
+  @Test
+  fun `a group that is not there does not get a say`() {
+    // A group deleted while another screen was in front. The roll's own pin
+    // still stands, and a roll with none falls through to the app default
+    // rather than to nothing at all.
+    assertEquals(TablePin("builtin", "felt-black"), tablePinFor(roll(pin = TablePin("builtin", "felt-black")), null))
+    assertNull(tablePinFor(roll(pin = null), null))
+  }
+
+  @Test
+  fun `a throw from a saved roll carries the roll, its group and its table`() {
+    // All three together, because all three are decided at the same moment —
+    // when somebody taps — and a throw that carried only some of them would
+    // have to go back and ask for the rest (`docs/tables.md`).
+    val source = SavedRollSource(rollId = "fireball", groupId = "thorin", tablePin = TablePin("brass", "oak"))
+
+    assertEquals("fireball", source.rollId)
+    assertEquals("thorin", source.groupId)
+    assertEquals(TablePin("brass", "oak"), source.tablePin)
+  }
+
+  @Test
+  fun `a throw pinned to nothing says so rather than naming a table`() {
+    // `null` is the app default, and it is the default here because most
+    // throws pin nothing.
+    assertNull(SavedRollSource(rollId = "fireball", groupId = "thorin").tablePin)
+  }
+
+  private fun roll(pin: TablePin?) =
+    SavedRoll(id = "fireball", groupId = "thorin", name = "Fireball", formula = "8d6", tablePin = pin)
+
+  private fun group(pin: TablePin?) = SavedRollGroup(id = "thorin", name = "Thorin", tablePin = pin)
 }

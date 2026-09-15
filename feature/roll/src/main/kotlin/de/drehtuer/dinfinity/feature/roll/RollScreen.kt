@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
 
@@ -57,10 +58,21 @@ fun RollScreen(
   presenter: RollPresenter,
   modifier: Modifier = Modifier,
   firstLaunch: Boolean = false,
+  /**
+   * What a fresh install already has, for the welcome's count line.
+   *
+   * The dice sets are the screen's own; saved rolls and sessions are handed
+   * in, because this module does not know what either of those is
+   * (`docs/architecture.md`, "Modules").
+   */
+  whatIsThere: WhatIsThere = WhatIsThere(),
   onWelcomeSeen: () -> Unit = {},
+  /** The welcome's other two ways in (`design/dInfinity.dc.html`, option 9a). */
+  onImportCollection: () -> Unit = {},
+  onAddSets: () -> Unit = {},
   onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
   menu: @Composable () -> Unit = {},
-  strip: @Composable ((String) -> Unit) -> Unit = {},
+  strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit = {},
   shakeToRoll: Boolean = true,
   openWith: String = "",
 ) {
@@ -69,6 +81,11 @@ fun RollScreen(
   // it is validated, checked against the table and shown identically
   // (`docs/architecture.md`, "Screens and the states behind them").
   LaunchedEffect(openWith) { if (openWith.isNotBlank()) presenter.type(openWith) }
+
+  // Whether the keyboard is up. Remembered across a rotation, because a phone
+  // turned mid-formula should come back to the formula being typed rather than
+  // to the tray (`design/dInfinity.dc.html`, option 2a).
+  var editing by rememberSaveable { mutableStateOf(false) }
 
   ShakeToRoll(presenter, enabled = shakeToRoll)
   KeepTheScreenAwake()
@@ -92,6 +109,8 @@ fun RollScreen(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
       strip = strip,
+      editing = editing,
+      onEditing = { editing = it },
       modifier = Modifier.align(Alignment.BottomCenter),
     )
 
@@ -110,7 +129,7 @@ fun RollScreen(
       menu()
     }
 
-    if (firstLaunch) FirstLaunch(presenter, onWelcomeSeen)
+    if (firstLaunch) FirstLaunch(presenter, whatIsThere, onWelcomeSeen, onImportCollection, onAddSets)
   }
 }
 
@@ -130,12 +149,17 @@ fun RollScreen(
 @Composable
 private fun FirstLaunch(
   presenter: RollPresenter,
+  what: WhatIsThere,
   onWelcomeSeen: () -> Unit,
+  onImport: () -> Unit,
+  onAddSets: () -> Unit,
 ) {
   var welcomed by rememberSaveable { mutableStateOf(false) }
   if (welcomed) return
   Welcome(
-    sets = presenter.sets,
+    // The count of sets is the screen's own; the other two are handed in,
+    // because this module does not know what a saved roll or a session is.
+    what = what.copy(sets = presenter.sets),
     onRollNow = {
       welcomed = true
       onWelcomeSeen()
@@ -146,6 +170,11 @@ private fun FirstLaunch(
       welcomed = true
       onWelcomeSeen()
     },
+    // Neither of these dismisses it: somebody who goes to fetch something and
+    // comes back should find the welcome still there, with a count line that
+    // has something new to say.
+    onImport = onImport,
+    onAddSets = onAddSets,
   )
 }
 
@@ -163,7 +192,9 @@ private const val FIRST_ROLL = "1d20"
 private fun Controls(
   presenter: RollPresenter,
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
-  strip: @Composable ((String) -> Unit) -> Unit,
+  strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
+  editing: Boolean,
+  onEditing: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state = presenter.state
@@ -190,8 +221,10 @@ private fun Controls(
     // named comes before a die they have to assemble. Handed in as a slot, so
     // this module does not have to know what a saved roll is
     // (`design/dInfinity.dc.html`, option 9a).
-    strip { formula ->
-      presenter.type(formula)
+    strip { formula, from ->
+      // A tap on the strip is a formula *and* which roll put it there, so the
+      // throw can be recorded as that roll's. Typed formulas come with none.
+      if (from == null) presenter.type(formula) else presenter.typeSaved(formula, from)
       presenter.roll()
     }
     PickerRow(
@@ -200,16 +233,38 @@ private fun Controls(
       onAdd = presenter::add,
       onRemove = presenter::remove,
     )
-    FormulaField(
-      text = presenter.text,
-      onChange = presenter::type,
-      label = stringResource(R.string.roll_formula_label),
-      hint = stringResource(R.string.roll_formula_hint),
-      error = (state as? RollState.Invalid)?.error,
-      // A throw the table cannot hold is a formula that reads perfectly well.
-      // The field is marked, and what is wrong is said where the total goes.
-      wrong = state is RollState.Invalid || state is RollState.TooMany,
+    SetChooser(
+      sets = presenter.choosableSets,
+      chosen = presenter.pickingFrom,
+      onChoose = presenter::pickFrom,
     )
+    // The formula sits on the tray as text with a dashed rule under it, and a
+    // tap brings the keyboard up — a field is a thing to fill in, and this is
+    // a thing somebody has written (`design/dInfinity.dc.html`, option 2a).
+    //
+    // A throw the table cannot hold is a formula that reads perfectly well, so
+    // both states mark it; *what* is wrong is said in the editor, under the
+    // squiggle, and where the total goes.
+    val wrong = state is RollState.Invalid || state is RollState.TooMany
+    if (editing) {
+      FormulaField(
+        text = presenter.text,
+        onChange = presenter::type,
+        label = stringResource(R.string.roll_formula_label),
+        hint = stringResource(R.string.roll_formula_hint),
+        error = (state as? RollState.Invalid)?.error,
+        wrong = wrong,
+        // Enter rolls. It closes the editor first, so what the dice land on is
+        // not behind a keyboard.
+        onSubmit = {
+          onEditing(false)
+          presenter.roll()
+        },
+        takeFocus = true,
+      )
+    } else {
+      FormulaLine(text = presenter.text, onEdit = { onEditing(true) }, wrong = wrong)
+    }
     ThrowButton(
       enabled = state is RollState.Ready || state is RollState.Settled,
       settled = state is RollState.Settled,
@@ -361,6 +416,9 @@ object RollTestTags {
    * this screen reads as a test of this screen.
    */
   const val FORMULA: String = FormulaTestTags.FIELD
+
+  /** The formula as it sits on the tray, before anybody taps it (option 2a). */
+  const val FORMULA_LINE: String = "roll:formula-line"
   const val THROW: String = "roll:throw"
   const val TOTAL: String = "roll:total"
   const val ROLLING: String = "roll:rolling"
@@ -381,6 +439,8 @@ object RollTestTags {
   const val WELCOME_SETS: String = "roll:welcome:sets"
   const val WELCOME_ROLL: String = "roll:welcome:roll"
   const val WELCOME_DISMISS: String = "roll:welcome:dismiss"
+  const val WELCOME_IMPORT: String = "roll:welcome:import"
+  const val WELCOME_SETS_ADD: String = "roll:welcome:sets-add"
 
   /** The dice picker row, and one die on it (design option 1h). */
   const val PICKER: String = "roll:picker"
@@ -388,6 +448,11 @@ object RollTestTags {
   fun pickerDie(notation: String): String = "roll:picker:$notation"
 
   fun pickerCount(notation: String): String = "roll:picker:$notation:count"
+
+  /** The set chooser under the picker row, and one set on it (design option `4a`). */
+  const val SETS: String = "roll:sets"
+
+  fun setOf(setId: String): String = "roll:sets:$setId"
 
   /** The Down / Nearest / Up control, shown only for a formula that divides. */
   const val ROUNDING: String = "roll:sheet:rounding"
@@ -400,6 +465,8 @@ object RollTestTags {
 
   /** One group's subtotal, and one die as it landed. */
   fun subtotalOf(groupId: Int): String = "roll:sheet:subtotal:$groupId"
+
+  fun adjustmentOf(amount: Long): String = "roll:sheet:adjustment:$amount"
 
   fun fallbackOf(groupId: Int): String = "roll:sheet:fellback:$groupId"
 

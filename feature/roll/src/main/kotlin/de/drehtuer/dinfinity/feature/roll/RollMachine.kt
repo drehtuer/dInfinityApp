@@ -1,9 +1,12 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.RollPlan
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.core.notation.DicePicker
 import de.drehtuer.dinfinity.core.notation.ExtraThrow
@@ -18,6 +21,7 @@ import de.drehtuer.dinfinity.core.notation.RollPlanner
 import de.drehtuer.dinfinity.core.notation.ThrowOutcome
 import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
@@ -42,8 +46,18 @@ class RollMachine(
   private val catalog: DiceCatalog,
   /** The table every throw from here lands on, and the one the tray draws. */
   val geometry: TableGeometry,
-  /** The look that table wears. The table picker changes it (Step 4.5). */
-  val table: TableLook,
+  /**
+   * What a pinned table looks like, and what the app's own default looks like
+   * when nothing is pinned (`docs/tables.md`, "Selecting a table").
+   *
+   * A function of the pin rather than one fixed look, because which table a
+   * throw lands on is a property of the *throw*: a saved roll can pin its own
+   * and so can the group it lives in, and tapping one has to put its table
+   * under the dice. Resolving a pin needs the installed sets, which is the
+   * caller's to know and not this module's — `null` in, and out comes whatever
+   * the app default resolves to.
+   */
+  private val look: (TablePin?) -> TableLook,
   private val simulator: DiceSimulator,
   /**
    * Which way division rounds when a throw lands
@@ -91,15 +105,36 @@ class RollMachine(
     private set
 
   /**
-   * The dice the picker row offers, from the default set
-   * (`design/dInfinity.dc.html`, option 1h).
+   * The saved roll [text] was put there by, or null when somebody typed it.
    *
-   * Fixed for the life of the screen, because the catalogue is: choosing a
-   * different set is the set dropdown's job and the dropdown waits on the
-   * installed-set registry (`docs/TODO.md`, Step 4.4).
+   * Carried so a throw can be recorded as that roll's — otherwise every throw
+   * belongs to nothing, and the saved-roll statistics screen has nothing to
+   * show (`docs/statistics.md`, per saved roll and per group).
    */
-  val pickable: List<PickableDie> =
-    catalog.set(catalog.defaultSetId)?.let { DicePicker.offeredBy(it) }.orEmpty()
+  var cameFrom: SavedRollSource? = null
+    private set
+
+  /**
+   * The look the dice land on, now.
+   *
+   * The pin the throw came with, and the app default when it came with none —
+   * which is every throw somebody typed. It changes when [type] changes where
+   * the formula came from, so the tray has to be told again rather than asked
+   * once (`RollPresenter`).
+   */
+  val table: TableLook get() = look(cameFrom?.tablePin)
+
+  /** Which set the picker row is offering, and what is on it ([Picker]). */
+  private val picker = Picker(catalog)
+
+  /** The dice the picker row offers (`design/dInfinity.dc.html`, option 1h). */
+  val pickable: List<PickableDie> get() = picker.dice
+
+  /** Which set they come from (`design/dInfinity.dc.html`, option 4a). */
+  val pickingFrom: String get() = picker.from
+
+  /** Every set that has dice to offer, for the chooser. */
+  val choosableSets: List<DiceSet> get() = picker.sets
 
   /**
    * How many of each of [pickable] the formula is asking for.
@@ -121,8 +156,15 @@ class RollMachine(
    * so the screen can put a squiggle under the part that is wrong rather than
    * under the whole field (`design/dInfinity.dc.html`, options 6f and 9c).
    */
-  fun type(typed: String) {
+  fun type(
+    typed: String,
+    from: SavedRollSource? = null,
+  ) {
     text = typed
+    // Any edit drops it, which is the point of the default: a formula that was
+    // Fireball and has since been typed over, or had a die tapped onto it, is
+    // not Fireball's throw any more (`docs/statistics.md`).
+    cameFrom = from
     prepared = null
     inFlight = null
     scored = null
@@ -150,6 +192,21 @@ class RollMachine(
   /** A long press on the picker row: one fewer of [die], or none at all. */
   fun remove(die: PickableDie) {
     type(DicePicker.remove(text, die))
+  }
+
+  /**
+   * Offer the picker row a different set's dice (design option `4a`).
+   *
+   * The formula is left exactly as it is. What is already written was written
+   * on purpose, and a chooser that rewrote `3d6` into `brass:3d6` because
+   * somebody looked at another set would be editing a roll nobody asked it to
+   * edit. What changes is what the *next* tap writes.
+   *
+   * The counts are recomputed, because the badges belong to the dice on the
+   * row and the row has just changed.
+   */
+  fun pickFrom(setId: String) {
+    if (picker.choose(setId)) counts = DicePicker.counts(text, pickable)
   }
 
   /**
@@ -220,7 +277,13 @@ class RollMachine(
     // came to, and nothing else. Re-rounding the same throw does not come
     // through here, which is why a roll is recorded once and not once per
     // rounding somebody tries.
-    return FinishedThrow(result = result, plan = flight.prepared.plan, seed = flight.seed)
+    return FinishedThrow(
+      result = result,
+      plan = flight.prepared.plan,
+      seed = flight.seed,
+      savedRollId = cameFrom?.rollId,
+      groupId = cameFrom?.groupId,
+    )
   }
 
   /**
@@ -273,29 +336,38 @@ class RollMachine(
           dice = listOf(came.copy(index = 0)),
           geometry = geometry,
           table = table,
-          seed = flight.seed + ++extra,
+          // Not `seed + n`: two seeds that differ by one are not two
+          // independent throws, so an exploding die used to be thrown by a
+          // stream related to the one that set it off (`Seeds`).
+          seed = Seeds.derived(flight.seed, ++extra),
         )
       simulator.run(one).faces.getValue(0)
     }
   }
 
-  private fun planned(parsed: Formula): RollState =
-    when (val planned = RollPlanner.plan(parsed, catalog)) {
-      is PlanResult.Failed -> RollState.Invalid(planned.error)
-      is PlanResult.Planned -> checked(parsed, planned.plan)
-    }
-
-  private fun checked(
-    parsed: Formula,
-    planned: RollPlan,
-  ): RollState =
-    when (val room = TableCapacity.check(planned, geometry)) {
+  /**
+   * What a formula that parsed comes to: a plan the table can hold, a refusal
+   * because it cannot, or dice that no installed set defines.
+   *
+   * The two halves were two methods and are one, because they were never asked
+   * separately — and because a plan that fits leaves [prepared] behind, which
+   * is the assignment that has to happen in the same breath as the state it
+   * belongs to.
+   */
+  private fun planned(parsed: Formula): RollState {
+    val plan =
+      when (val planned = RollPlanner.plan(parsed, catalog)) {
+        is PlanResult.Failed -> return RollState.Invalid(planned.error)
+        is PlanResult.Planned -> planned.plan
+      }
+    return when (val room = TableCapacity.check(plan, geometry)) {
       is CapacityVerdict.Refused -> RollState.TooMany(room.diceCount, room.largestThatFits, room.reason)
       is CapacityVerdict.Fits -> {
-        prepared = Prepared(parsed, planned, room.scale, room.diceCount)
+        prepared = Prepared(parsed, plan, room.scale, room.diceCount)
         RollState.Ready(diceCount = room.diceCount, scale = room.scale)
       }
     }
+  }
 }
 
 /**

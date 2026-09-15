@@ -36,7 +36,7 @@ class SavedWiring(
     onActiveGroup: (String) -> Unit,
   ): SavedPresenter =
     SavedPresenter(
-      repository = app.savedRolls,
+      library = app.savedRollLibrary,
       catalog = catalog,
       scope = scope,
       unfiledName = unfiledName,
@@ -45,7 +45,13 @@ class SavedWiring(
     )
 
   /** The group sheet, which the list and the editor both open. */
-  fun groups(): GroupPresenter = GroupPresenter(repository = app.savedRolls, scope = scope, unfiledName = unfiledName)
+  fun groups(): GroupPresenter =
+    GroupPresenter(
+      library = app.savedRollLibrary,
+      catalog = catalog,
+      scope = scope,
+      unfiledName = unfiledName,
+    )
 
   /** Taking a collection in. */
   fun importing(): ImportPresenter =
@@ -54,6 +60,9 @@ class SavedWiring(
       catalog = catalog,
       scope = scope,
       unfiledName = unfiledName,
+      // The platform half of a link: a cache directory and an HTTP client,
+      // neither of which a screen that draws a list should have to carry.
+      download = CollectionDownload(app.cacheDir)::fetch,
     )
 
   /** Writing one saved roll down, or a new one when [editing] is null. */
@@ -62,7 +71,7 @@ class SavedWiring(
     defaultGroupId: String,
   ): EditorPresenter =
     EditorPresenter(
-      repository = app.savedRolls,
+      library = app.savedRollLibrary,
       catalog = catalog,
       scope = scope,
       opening = opening,

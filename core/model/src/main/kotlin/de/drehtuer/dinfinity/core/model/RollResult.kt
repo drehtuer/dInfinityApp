@@ -35,12 +35,41 @@ data class RollResult(
   val rethrows: Int = 0,
   val forcedSettles: Int = 0,
   val rolledAtEpochMs: Long = 0L,
+  /**
+   * The plain numbers the formula added or subtracted, signed, in the order
+   * they were written (`docs/dice-notation.md`, "Evaluation", step 7).
+   *
+   * Signed longs rather than text, because a model that carried `"+ 4"` would
+   * be a model that had decided how a screen writes a plus.
+   *
+   * **Empty for a formula that is not a sum at the top.** `(2d6 + 3) * 2` has
+   * no `+ 3` to add to the total — three is multiplied along with the dice —
+   * and a sheet that listed one would be adding up to the wrong number in
+   * front of the player. See [itemised].
+   */
+  val adjustments: List<Long> = emptyList(),
 ) {
   /** Every die that landed, in throw order, dropped ones included. */
   val dice: List<RolledDie> get() = groups.flatMap(RolledGroup::dice)
 
   /** True when any die showed its highest face — what the sheet paints in the accent. */
   val hasNaturalMax: Boolean get() = dice.any { it.kept && it.naturalMax }
+
+  /**
+   * True when the subtotals and [adjustments] on screen add up to [total].
+   *
+   * The sheet's whole promise is that **nobody has to add anything up and
+   * nothing is taken on trust** — which only holds if what it shows is all
+   * there is. A formula with a product or a division in it is scored the same
+   * way and is just as correct, but its total cannot be read off the rows, so
+   * the sheet says the arithmetic is the formula rather than pretending
+   * otherwise.
+   *
+   * Checked rather than assumed, because it is the one claim the breakdown
+   * makes that a reader cannot verify at a glance.
+   */
+  val itemised: Boolean
+    get() = groups.sumOf(RolledGroup::subtotal) + adjustments.sum() == total
 }
 
 /**

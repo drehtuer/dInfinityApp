@@ -65,8 +65,24 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 
 The screen rolls. A formula is typed, validated on every keystroke, refused if
 the table cannot hold it, thrown from the Roll button or a shake, simulated and drawn on
-the Pixel 10a, and its total read off the faces. What is below is what it does
-not have yet.
+the Pixel 10a, and its total read off the faces. The picker row offers a chosen
+set's dice, with a chooser under it once there is a second set installed — and
+a die taken from a set that is not the default is written `brass:1d20`, so the
+row can only ever write a formula that rolls what it showed.
+
+**The formula is tapped, not filled in** (`2a`): it sits on the tray as text
+with a dashed rule under it, a tap brings the field and the keyboard up, and
+Enter rolls. The squiggle and the error line are in the editor where they can
+be acted on; the line itself is marked in red (`6f`, `9c`).
+
+**First launch offers all three ways in** (`9a`): throw a d20 now, go straight
+to the tray, bring saved rolls in from a file or a link, or add somebody else's
+dice. The last two do not dismiss it — somebody who goes to fetch something
+comes back to a welcome whose count line has something new to say, and that
+line now counts the sets, the saved rolls and the sessions there really are
+rather than a sentence with a zero written into it.
+
+What is below is what it does not have yet.
 
 - [ ] Revisit the capacity constants now that they bite much later. 30 % of the floor and a 40 % minimum scale no longer refuse anything the engine would take: it would take about 240 dice to reach the floor and the engine stops at 100 (`docs/tables.md`). Step 5.3 is where those numbers meet a device
 - [ ] **Freeze the dice that are down and let the player re-roll the ones that are not.** The user's proposal for unstacking, and worth taking seriously: a die that has landed cleanly is finished and could be lifted off the mat and shown as an overlay, leaving only the stuck ones in the tray to be thrown again. It keeps the honest rule — a settled die is never *moved*, only taken out of play once its face is read — and it turns the worst case from "the app fixes it invisibly" into "you roll again", which is what a person does at a table. Needs the design for how ninety-nine finished dice are shown; the mechanism can be decided first (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice")
@@ -78,14 +94,11 @@ not have yet.
 - [ ] Draw the dice an explosion or a reroll adds. They are simulated for real, one throw each, but into a tray nobody is looking at; they belong in the tray on screen, landing among the dice that set them off (`docs/dice-notation.md`)
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
-- [ ] Set dropdown under the picker row (`4a`) — waits on the installed-set registry (4.4); until there is a second set to choose, a chooser with one entry is furniture
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
-- [ ] Formula editor (`2a`): the formula on the tray is not tappable — the field is always on screen instead of appearing when the formula is tapped, and Enter does not roll. The squiggle and the error line under it are done (`6f`, `9c`)
-- [ ] The sheet itemises the *dice*; the modifiers are only visible in the formula line it prints. Itemising them — `+ 4` on a row of its own — needs the evaluator to report what it added, which it does not yet (`docs/dice-notation.md`)
+- [ ] The *history* breakdown still itemises only the dice. The result sheet itemises the modifiers now, from `RollResult.adjustments`; the stored breakdown JSON does not carry them, so a past roll of `3d6 + 4` shows rows adding to eleven under a total of fifteen (`docs/statistics.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] Haptics and sound in power-saving mode: the design plays recorded impacts back over about a second rather than in real time (`docs/physics-and-rendering.md`). Nothing plays anything yet, in either mode
-- [ ] First launch (`9a`): the welcome is there, with its "roll a d20 now" and its way straight to the tray, and the saved-roll strip beneath it. Its other two offers — import a collection, add dice sets — are still missing: importing has a screen now and could be offered, and dice sets is still a placeholder (4.4). So is the rest of the count line: "0 saved rolls, 0 sessions" waits on sessions (4.9)
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -123,9 +136,12 @@ order, the warning on a roll whose dice are gone, the empty state, and tapping
 a roll to send its formula to the tray. Groups can be made, renamed, moved and
 deleted, from the switcher or from the editor — the same sheet in both places.
 
+Rolls and groups are one repository each now, joined by `SavedRollLibrary` for
+the screens that need both — the split the class size had been asking for, and
+the place the table fallback below has to live.
+
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
-- [ ] Import from a **URL or a git repository**, over the same reader and `dicesets/install`'s fetcher. Kept separate from importing a file because it is the first code path that would actually reach the network, and that deserves its own review. **Not because of the permission:** `android.permission.INTERNET` is already in the merged manifest of both the debug and the release build, contributed by `okhttp-android`'s own manifest by way of `dicesets:install`. So the app can already talk to the network and nothing yet does — which is worth knowing before somebody plans a review around a permission prompt that will never appear
-- [ ] `SavedRollRepository` is at its function ceiling (detekt's `TooManyFunctions`, 11). Nothing needs to grow it yet — importing went into a class of its own, because it is a transaction rather than a repository operation — but the next thing that does needs the split first: groups one class, rolls another, rather than a raised threshold
+- [ ] Import from a **git repository**, which is the half of this the plain link does not cover — a repo of "stat blocks for monster manual X" resolved through `RefResolver` the way a dice set is (`docs/dice-sets.md`). Importing from a plain `https` link is built: it goes through the same downloader a dice set does, capped at the megabyte the reader refuses a file above, and what comes back goes through `CollectionReader` rule for rule
 
 ### 4.4 Dice sets — `feature/sets`
 
@@ -136,17 +152,25 @@ to disable or remove it (`5a`, bundled set protected); the details behind a tap
 (`6a`) with author, licence, source and commit, the dice the set defines, and
 set-as-default; the validation report standing where the dice grid would be for
 a package that stopped validating (`6b`), its folder kept so an update can fix
-it; and installing **from a file** through the validator, where a rejection
-lists every error (`1t`). Database version 4 holds which sets are switched on.
+it; and installing **from a file or from a pasted `https` link** through the
+validator, where a rejection lists every error (`1t`) and a download that never
+arrives is refused the same way. Database version 4 holds which sets are
+switched on.
 
-- [ ] Install from a **URL**, over `dicesets/install`'s fetcher. The screen, the bounded copy and the report are all built and shared with the file path — what is left is the fetch itself, which is the app's first code that reaches the network
-- [ ] Check for updates, update with progress and cancel (`9h`, `9i`)
+- [ ] Update with **progress and cancel** (`9i`), and a check for **plain archives** — comparing headers and checksums, since those have no commits to tell apart. Checking a forge is built: `RefResolver` is asked what the ref a set was installed from is at now, a set that has moved on is badged, and updating it is a re-install from the recorded source through the same validator (`docs/dice-sets.md`, "Updates")
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)
-- [ ] Tests: a malicious archive is refused at every layer, and a failed install leaves nothing behind
+- [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
 
 ### 4.5 Table picker — `feature/tables`
 
 Design `1u`, `9j`. Spec: `docs/tables.md`.
+
+Precedence is done: a saved roll's pin beats its group's, which beats the app
+default. The group sheet has the field the model and the schema had been
+waiting for, the rule is settled where the roll and its group are both in hand
+and travels with the throw, and the tray is retold whenever the table changes.
+A throw from the saved-rolls *list* carries no pin because it carries no
+attribution — that tap fills the field and the player throws it.
 
 The screen is built: every look from every installed package in one list —
 tables are global, so a set never brings its own along — with the chosen one
@@ -159,7 +183,6 @@ left alone in case it comes back.
 
 - [ ] Thumbnails rendered on the real box mesh, with a "roll a d20 here" preview. The swatch stands in: it is two colours in a box and says so. This wants the renderer on a screen that is not the tray, which nothing has needed yet
 - [ ] "Use a photo" → downsize, write into the personal package, validate like any table
-- [ ] Precedence: saved roll pin > group pin > app default. The app default is this screen's and is done; `SavedRoll.tablePin` is in the model and the editor has the field, so what is left is the group's pin and the three-way fallback at roll time
 
 ### 4.6 Face designer — `feature/designer`
 
@@ -168,15 +191,18 @@ Design `1v`, `4c`, `8d`. Spec: `docs/face-designer.md`.
 Drawing is built: the canvas with the face's outline masked in, strokes stored
 as vectors in fractions of the canvas, the guide under them that can be turned
 off, three pen widths and an eraser, undo/redo and clear per face, the twelve
-presets, and the face strip. The d4's three-numbers-per-corner rule is
+presets, and the face strip. **Drafts are on disk** — one file per die, written
+after every stroke and read back when the die is opened — so a drawing outlives
+the screen and each die keeps its own. That made the "start over?" question
+unnecessary and it is gone: changing die no longer loses anything. **Roll it**
+hands the tray the die being drawn — the die as its set defines it, since
+nothing puts an atlas on one yet, and absent rather than dead for a die plain
+notation cannot name (decision 31). The d4's three-numbers-per-corner rule is
 **derived rather than checked** — a cell's numbers are read from the corners it
 meets, so two cells sharing an edge cannot be made to disagree along it.
 
-- [ ] Pick a base die: any catalogue shape or any installed die. It opens on the default set's first die for now
 - [ ] Fill bucket, stamp from the built-in font, copy face → paste with rotate/mirror, "fill all faces with numbers", and a colour picker beyond the twelve presets (`4c`)
 - [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
-- [ ] Drafts on disk — vectors survive a rotation today, not process death (`docs/face-designer.md`, "Drawing tools"), and the 50-draft limit comes with them
-- [ ] "Roll it" throws the die being drawn
 - [ ] Export to a real dice set through the standard validator: atlas at 256 px per cell, transparent cells, generated `diceset.toml`, licence asked for before sharing
 - [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"
 - [ ] *Confirm first:* the prototype has no 3D preview — see Open questions. Nothing here builds one
@@ -250,17 +276,25 @@ and the app did not.
 A screen can no longer be built and left unplugged. `Presenters` holds a
 factory per screen with no optional fields, so adding a destination stops the
 activity compiling until it says how to build one; the same object is what the
-tests wire, and one of them walks every menu destination and fails on a
-placeholder that is not Table picker or Face designer. Both halves were checked
+tests wire, and one of them walks every menu destination and fails on **any**
+placeholder — the list of screens that had not been written is empty now, so
+the assertion is simply that none of them draws one. Both halves were checked
 by putting the original bug back: removing the sessions screen's dispatch turns
-the list into `[sessions, tables, designer]`.
+the list into `[sessions]`.
 
-- [ ] A **default table** and a **default session**, the way the default set now works: chosen where the thing itself is, remembered with the settings, and falling back when what was chosen is not there any more
 Appearance, the accent, shake, the default rounding, power saving, the version
 and the repository link are all there, and each of them does something.
 
+All three defaults now behave the same way, which was the point of the item
+that used to be here: the default **set**, the default **table** and the active
+**session** are each chosen where the thing itself is, remembered with the
+settings, and fall back when what was chosen is not there. The set and the
+table fall back while leaving the setting alone, so re-installing the package
+restores the choice; the session falls back where a roll is *recorded*, because
+a session deleted while another screen was in front would otherwise strand
+every throw filed under it (`docs/statistics.md`, per session).
+
 - [ ] Haptics and sound. Left out deliberately: nothing plays anything yet, in either mode, and a settings row that does nothing is a lie (Step 4.1 has the item)
-- [ ] Default set, table and session, each of which waits on its own screen (4.4, 4.5, 4.9)
 - [ ] Developer toggle: debug overlay, anomaly log, replay from seed
 
 ## Step 5 — Physics and rendering on a real phone
@@ -280,15 +314,14 @@ after every physics change.
 ### 5.2 Fairness and determinism
 
 - [ ] Every catalogue shape, 100,000 headless rolls: chi-squared p > 0.001, no face off by more than 1 %. **Run on the Pixel 10a, and seven of the eight pass** — their χ² sums to 55.33 against 55 degrees of freedom, which is as close to "exactly as fair as chance predicts" as a number gets (`docs/physics-and-rendering.md`, "Are the dice fair"). This item closes when the eighth does
-- [ ] **The d18 is not fair: χ² 197.34 against a limit of 40.79.** Reproducible — the same faces are heavy across three independent seed schemes, with the deviation patterns of separate runs correlating at +0.6 to +0.9 where independent samples of a fair die sit near ±0.24. No single face is off by more than 0.455 %, so the 1 % bound does not catch it; several are off by around 6 %. It is **not** the shape: an enneagonal trapezohedron is isohedral and the throw starts evenly over all orientations, which together make a fair die whatever the physics does — so the body the engine collides is not the solid the arithmetic describes. Ruled out on the phone: the seeds, Jolt's convex radius (rebuilt with shrinking off, same faces heavy), a corner dropped by the hull tolerance (every corner protrudes 35–70× it), and an off-centre mass (a dipole explains 12 % of the variance). The deviations pair up antipodally, so it is *axes* that finish vertical too often rather than faces that are sticky. The d10 is the same family of solid and is fair, so the place to look is what narrow kites do that wide ones do not — the contact manifold Jolt builds on a shallow face, and the mass properties it derives from the hull
-- [ ] **Two seeds next to each other are not two independent throws, and one of them is a real roll.** A roll's seed goes into `kotlin.random.Random` as-is (`SpawnLayout.randomFor`), and seeds differing only in their low bits give streams that are visibly related: 200,000 d18 throws seeded `0, 1, 2, …` start in orientations spread *more* evenly than chance allows — χ² of 0.73 against 17 degrees of freedom, where a fair sample sits near 17. Rolls the app starts are seeded from `SecureRandom` and are safe, but an **exploding die is not**: `RollMachine.extraThrows` throws the extra dice at `seed + 1, seed + 2, …`, so every explosion in a roll is correlated with the throw that caused it. The fix is to stir the seed where the streams are derived rather than at each call site, and it is not free: every seed then maps to a different stream, so the golden cases have to be re-recorded (`docs/build-setup.md`) and a saved roll from an older build replays to different faces
+- [ ] **The d18 cannot pass the chi-squared bar, and the reason is now known: the hull is float32.** χ² 135.9 against a limit of 40.79 at a hundred thousand rolls, reproducible across two ABIs and three seed schemes. The body, the solver, the reading, the seeds and the throw were each measured and each holds (`docs/physics-and-rendering.md`, "Are the dice fair"); what is left is the representation. Moving every corner of the hull by up to a ten-thousandth of the die's radius takes the d18 from χ² 52 to 294 at twenty thousand rolls and the d10 from 9.6 to 19.8 — the same asymmetry, 5.6× the cost for the d18 against 2.1× for the d10, and only the d18 over its threshold. At 10⁻⁶, the scale of the hull's own rounding, the magnitude does not move (50.7 against 52.2) while the pattern does (0.80 to 0.42), which is what a bias made of the representation looks like. There is no double-precision hull to compare with: Jolt's `ConvexHullShape` holds `Vec3`, single precision whatever `JPH_DOUBLE_PRECISION` does to positions. **This is now a judgement rather than a measurement** — see Open questions
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker. The golden suite is the check and already holds for its ten cases on both ABIs; Step 5 is the same claim at ten thousand rolls and on a second phone
 - [ ] Power-saving and rendered mode agree on every seed in the golden suite
 
 ### 5.3 Capacity and corner cases
 
 - [ ] Counts 1, 2, 5, 8, 20, 40, 60 and the capacity limit (~80 on the Pixel 10a): all settle, no NaN, no tunnelling
-- [ ] **`100d4` on the phone: the dice pile into one corner and some wedge between floor and wall.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. Eight seeds of `100d4` settle headlessly inside the cap with nothing forced (`JoltBridgeTest`), so the *engine* copes; what the phone shows is the pile, which is a prevention problem (5.5) rather than a settling one
+- [ ] **`100d4` does not reliably settle, and never did.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. `JoltBridgeTest` used to try eight seeds and pass; twenty-four seeds show **five running out of the twelve-second cap**, and the same twenty-four under the correlated spawn streams that preceded them showed two — a difference well inside noise at that sample size. What changed is not the physics but the sample: the eight were the easy ones. Nothing is ever touched after it has come to rest, on any seed, which is the rule that matters; the cap firing at all is a prevention problem (5.5), and the bound in the test is today's worst case written down rather than a target
 - [ ] **Decide what a tilted phone should mean.** Deferred, not answered. The table is horizontal now and the gyroscope no longer turns the world, which is what stopped the dice pouring into a wall — but "tilt the phone and the dice slide" was a real idea and this is not a verdict on it. The direction is still recorded with every sample, so whichever way it goes the data is there. The three answers, unchanged: gravity always straight down and only the hand moves the dice; anchor to `TYPE_GRAVITY` and accept that a phone held upright pours everything to the bottom wall; or keep a tilt and clamp it so a tray can lean without becoming a chute
 - [ ] **A shake along the phone's long axis still drives the dice into one end.** Seen as dice stuck at the bottom after a vertical shake. The table being horizontal fixes the *pouring* — the tray no longer leans — but the hand's own force still points that way, and a hundred dice pushed at one wall have nowhere else to be. Whether that is right (it is what a hand does) or wants shaping is a Step 5.6 question with a phone in it
 - [ ] Exactly at the limit, and one over — the one over is refused before a single body is created
@@ -328,6 +361,7 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 
 - [ ] Dice respond to a shake within ~100 ms, and they move the way the hand did — the tray itself never moves, because it is the screen (`docs/physics-and-rendering.md`). The direction and the dropped-force stutter are both fixed; what is left to judge is the *start*, which read as a lag on the Pixel 10a: the dice are already travelling fast when the shake begins to reach them, so the hand seems to be catching up with dice that left without it. The 100 ms start threshold and the spawn impulse are the two numbers in it
 - [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling. **Not yet:** on the Pixel 10a the dice do not travel far enough and the tumble does not read as dice being thrown. Throw energy and spawn spread are where that is tuned (5.5), and this is the judgement that says when it is right
+- [ ] *Judge the formula editor on the phone:* whether a dashed rule under the formula reads as "you can type here", and whether a keyboard over the lower half of the tray is right or wants the tray to shift up while the editor is open (`design/dInfinity.dc.html`, option 2a)
 - [ ] The rim's shadow still looks wrong — the band across the top of the wall casts something that does not read as a rim. Lighting and the shadow map, not geometry, on present evidence
 - [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
 - [ ] Haptics fire on real impacts only, sound pitch tracks impulse and die size
@@ -410,3 +444,4 @@ What that means in practice, and the rule the last few PRs have followed:
 - [ ] d18 shape: the enneagonal trapezohedron is assumed; verify it reads well at phone size
 - [ ] Division rounding default is Down with a per-throw override — confirm Nearest is worth having
 - [ ] The design project's `.thumbnail` is not imported; decide whether a preview image belongs in the repo
+- [ ] **What should the d18 be held to?** It is fair to better than half a percent per face — its worst is 0.455 % against the 1 % this project set itself, and against the 1–2 % a moulded plastic d20 manages — and it cannot pass a chi-squared test at one in a thousand over a hundred thousand throws, because its resting basins are narrow enough that the float32 hull's own rounding biases it (Step 5.2). A single-precision rigid-body engine cannot do better for this shape. Three answers, and the choice is a product one: **restate the bar** so a shape whose basins are near the engine's precision is held to the per-face bound it passes rather than to chi-squared; **keep the bar** and carry the d18 as a known defect that says so where somebody can read it; or **drop the d18** from the catalogue, which is the only one of the three that is a loss to a player

@@ -1,21 +1,32 @@
 package de.drehtuer.dinfinity.feature.saved
 
 import android.content.Context
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.collection.CollectionLimits
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.CollectionImporter
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -23,6 +34,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -46,6 +58,7 @@ class ImportScreenTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
   private lateinit var importer: CollectionImporter
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
@@ -65,6 +78,7 @@ class ImportScreenTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database)
+    groupRepository = SavedRollGroupRepository(database)
     importer = CollectionImporter(database)
   }
 
@@ -214,20 +228,163 @@ class ImportScreenTest {
     assertEquals(true, done)
   }
 
-  private fun show(onDone: () -> Unit = {}): ImportPresenter {
+  private fun show(
+    onDone: () -> Unit = {},
+    download: suspend (String) -> Fetched = { Fetched.Failed("no downloader in this test") },
+  ): ImportPresenter {
     val presenter =
       ImportPresenter(
         importer = importer,
         catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
         scope = scope,
         unfiledName = "Unfiled",
+        download = download,
       )
     compose.setContent { ImportScreen(presenter = presenter, onDone = onDone) }
     return presenter
   }
 
   private fun given(vararg groups: SavedRollGroup) {
-    runBlocking { groups.forEach { repository.save(it) } }
+    runBlocking { groups.forEach { groupRepository.save(it) } }
+  }
+
+  @Test
+  fun `a collection fetched from a link is imported exactly as a file is`() {
+    val asked = mutableListOf<String>()
+    val presenter =
+      show(download = { url ->
+        asked += url
+        Fetched.Text(thorin())
+      })
+
+    presenter.fetch("  https://example.test/thorin.json  ")
+
+    compose.waitUntil(PATIENCE) { presenter.state is ImportState.Imported }
+    assertEquals("the link was not trimmed before it was fetched", listOf("https://example.test/thorin.json"), asked)
+    assertEquals(listOf("Fireball", "Longsword"), rollNames())
+  }
+
+  @Test
+  fun `bytes from a link go through the reader, and a bad one is refused the same way`() {
+    // The rule that matters more than the feature: there is one validator and
+    // no path around it. A link is not a shortcut past the rules a file obeys.
+    val presenter = show(download = { Fetched.Text("this is not a collection") })
+
+    presenter.fetch("https://example.test/rubbish")
+
+    compose.waitUntil(PATIENCE) { presenter.state is ImportState.Unreadable }
+    compose.onNodeWithTag(ImportTestTags.UNREADABLE).assertIsDisplayed()
+    assertEquals("something was written from an unreadable download", emptyList<String>(), rollNames())
+  }
+
+  @Test
+  fun `a download that does not arrive is not a bad collection`() {
+    val presenter = show(download = { Fetched.Failed("'http://example.test' is not an https link") })
+
+    presenter.fetch("http://example.test/thorin.json")
+
+    compose.waitUntil(PATIENCE) { presenter.state is ImportState.Unreachable }
+    compose.onNodeWithTag(ImportTestTags.UNREACHABLE).assertIsDisplayed()
+    compose.onNodeWithTag(ImportTestTags.UNREADABLE).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the fetch button does nothing until there is a link to fetch`() {
+    val asked = mutableListOf<String>()
+    val presenter =
+      show(download = { url ->
+        asked += url
+        Fetched.Failed("no")
+      })
+
+    presenter.fetch("   ")
+
+    assertEquals("a blank link was fetched", emptyList<String>(), asked)
+    assertTrue("the screen left its opening state for a blank link", presenter.state is ImportState.Waiting)
+  }
+
+  @Test
+  fun `a presenter given no downloader says so rather than doing nothing`() {
+    val presenter = show()
+
+    presenter.fetch("https://example.test/thorin.json")
+
+    compose.waitUntil(PATIENCE) { presenter.state is ImportState.Unreachable }
+  }
+
+  @Test
+  fun `the link is typed on the screen and the button is dead until it is`() {
+    // The field and the button are the whole of the feature on screen, and a
+    // download of nothing is a spinner that stops for no reason.
+    val asked = mutableListOf<String>()
+    show(download = { url ->
+      asked += url
+      Fetched.Text(thorin())
+    })
+
+    compose.onNodeWithTag(ImportTestTags.FETCH).assertIsNotEnabled()
+    compose.onNodeWithTag(ImportTestTags.LINK).performTextInput("https://example.test/thorin.json")
+    compose.onNodeWithTag(ImportTestTags.FETCH).assertIsEnabled().performClick()
+
+    compose.waitUntil(PATIENCE) { asked.isNotEmpty() }
+    assertEquals(listOf("https://example.test/thorin.json"), asked)
+  }
+
+  @Test
+  fun `while a link is being fetched the screen says whose link it is waiting on`() {
+    // The one wait in the app that is somebody else's speed, so it is named
+    // rather than left as a bare spinner.
+    val holding = CompletableDeferred<Fetched>()
+    val presenter = show(download = { holding.await() })
+
+    presenter.fetch("https://example.test/thorin.json")
+
+    compose.waitUntil(PATIENCE) { presenter.state is ImportState.Fetching }
+    compose.onNodeWithTag(ImportTestTags.FETCHING).assertIsDisplayed()
+    compose.onNodeWithText("https://example.test/thorin.json", substring = true).assertIsDisplayed()
+    holding.complete(Fetched.Text(thorin()))
+    compose.waitUntil(PATIENCE) { presenter.state is ImportState.Imported }
+  }
+
+  @Test
+  fun `a refused download shows the link and the reason, and offers another go`() {
+    val presenter = show(download = { Fetched.Failed("the server answered 404") })
+
+    presenter.fetch("https://example.test/gone.json")
+
+    compose.waitUntil(PATIENCE) { presenter.state is ImportState.Unreachable }
+    compose.onNodeWithText("https://example.test/gone.json", substring = true).assertIsDisplayed()
+    compose.onNodeWithText("404", substring = true).assertIsDisplayed()
+    compose.onNodeWithTag(ImportTestTags.AGAIN).performScrollTo().performClick()
+    compose.onNodeWithTag(ImportTestTags.LINK).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a recomposition around the screen that changes nothing leaves it alone`() {
+    // The screen is a `when` over one state, so an ordinary recomposition has
+    // to skip every branch of it. One that skipped wrongly would come back
+    // without its field, which a single-pass test would never see.
+    var tick by mutableStateOf(0)
+    val presenter =
+      ImportPresenter(
+        importer = importer,
+        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+        scope = scope,
+        unfiledName = "Unfiled",
+        download = { Fetched.Text(thorin()) },
+      )
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        ImportScreen(presenter = presenter)
+      }
+    }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag(ImportTestTags.LINK).assertIsDisplayed()
+    compose.onNodeWithTag(ImportTestTags.CHOOSE).assertIsDisplayed()
   }
 
   private fun rollNames(): List<String> = runBlocking { repository.all.first() }.map { it.name }.sorted()

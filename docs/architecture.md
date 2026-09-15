@@ -60,7 +60,7 @@ render/
   headless/          The Renderer contract, and the renderer that draws nothing (power-saving mode)
 input/
   shake/             Sensor fusion → throw impulses
-designer/            Face drawing canvas → dice set export (docs/face-designer.md)
+designer/            Face drawing canvas, drafts on disk → dice set export (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
 ui/
   common/            Screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes
@@ -302,20 +302,44 @@ the one input nobody would guess at — has nowhere else to be announced.
 **Over all of it, once**, a new install shows the first-launch screen
 (`design/dInfinity.dc.html`, option 9a). It is not a state of `RollState`: the
 machine underneath is `Empty` like any other new screen, and the welcome is a
-sheet on top with two ways out, both of them forward. Its "roll a d20 now"
+sheet on top with four ways out, all of them forward. Its "roll a d20 now"
 types `1d20` into the field and asks for a roll — there is no demonstration
 path and no canned number. That it has been seen is remembered on disk, and
 also in the composition, so the screen changes when the button is pressed
 rather than when a write comes back.
 
+Two of the four go and fetch something — saved rolls from a file or a link,
+dice sets from either — and **neither dismisses it**: coming back to a tray
+that had forgotten it ever said hello would leave somebody wondering what to do
+next, and the count line above the buttons has something new to say when they
+return. That line counts dice sets, saved rolls and sessions. The first is the
+roll screen's own; the other two arrive as a `WhatIsThere` from `:app`, because
+`feature/roll` does not know what a saved roll or a session is — the same rule
+the saved-roll strip follows, which is a slot rather than a screen. It is a
+flow, watched only while the welcome is up, and it is built from the
+repositories rather than from presenters: a sessions presenter would make the
+default session as a side effect, and saying hello is not a reason to write to
+a database.
+
+**The formula sits on the tray as text, not as a field.** A dashed rule under
+it says it can be typed into; a tap brings the field and the keyboard up, and
+the keyboard's action key rolls (`design/dInfinity.dc.html`, option 2a). A
+field is a thing to fill in and this is a thing somebody has written. The hint
+stands in when nothing has been typed, so there is always something to tap, and
+the line is marked when the formula does not read — *what* is wrong is said in
+the editor, under the squiggle, because that is where somebody can fix it.
+Whether the editor is open is the screen's, remembered across a rotation, and
+`RollMachine` knows nothing about it.
+
 The picker row is not in that table because it is on screen, and live, in
-every state — for the same reason the formula field is, and in fact for
-exactly that reason: it is the formula field reached with a thumb.
+every state — for the same reason the formula is, and in fact for exactly that
+reason: it is the formula edited with a thumb.
 
 Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
-- **the formula field** calls `type`, on every keystroke;
+- **the formula line** opens the editor, and **the editor** calls `type` on
+  every keystroke and `roll` on the action key;
 - **the dice picker row** calls `add` on a tap and `remove` on a long press,
   and both are `type` underneath — a tap *is* an edit to the formula, so it
   re-validates, re-checks the table's capacity and abandons a throw in the air
@@ -501,14 +525,21 @@ favourites first, then by recent use — is SQL's, because it is what the list
 ### The group sheet
 
 `GroupDraft` is a machine of its own but not a screen: a group is a name, a
-mark and which group it sits in, and three fields do not deserve a destination
+mark, which group it sits in and the table its rolls land on, and four fields
+do not deserve a destination
 — nor a place in the navigation graph that the back button would then have to
 mean something on. It is a dialog over whichever screen opened it, and both
 the saved-rolls list and the editor open the same one, so a group made while
 writing a roll is made the same way and refused for the same reasons.
 
 It watches the same two flows the list does, which is what lets both of its
-rules be answered *while the player types* rather than when they press Save:
+rules be answered *while the player types* rather than when they press Save.
+The two flows come from two repositories: `SavedRollRepository` for the rolls
+and `SavedRollGroupRepository` for the folders, joined by `SavedRollLibrary` —
+the one place the two halves meet, in the sense `SetLibrary` is for dice sets.
+A screen takes the library rather than the pair, and a rule that spans both
+(deleting a group moves its rolls; a roll's table falls back to its group's)
+is written there once rather than in each screen that needs it.
 
 | Rule | Answered by | Why it is not only checked at import |
 | --- | --- | --- |
@@ -517,20 +548,48 @@ rules be answered *while the player types* rather than when they press Save:
 
 The second is the one that was wrong until this sheet existed. Checking only
 the parent lets a three-deep tree be built from the bottom: make the child,
-then move its parent. `SavedRollRepository.save` refuses both, because an
+then move its parent. `SavedRollGroupRepository.save` refuses both, because an
 import writes without ever passing through the sheet.
 
 | Control | Calls | What changes |
 | --- | --- | --- |
 | the name field | `name` | the name, and whether another group already has it — named, not merely reported |
-| a mark | `icon` | that mark, or none when the chosen one is tapped again |
-| **Inside** | `parent` | which group it sits in; the chooser is absent, with its reason, for a group that has children |
+| a mark | `choose` | that mark, or none when the chosen one is tapped again |
+| **Inside** | `choose` | which group it sits in; the chooser is absent, with its reason, for a group that has children |
+| **Table for this group** | `choose` | the table every roll in it lands on, unless the roll pins its own. "Default" means the app's (`docs/tables.md`) |
 | **Save group** | `save` | the group is written, the sheet closes, and whoever opened it is handed the id |
-| **Delete** | `deleteGroup` | the group goes, its rolls move to Unfiled and its child groups are lifted to the top level. Nothing a player wrote is deleted, and the sheet says how many rolls will move before it is pressed |
+| **Delete** | `delete` | the group goes, its rolls move to Unfiled and its child groups are lifted to the top level. Nothing a player wrote is deleted, and the sheet says how many rolls will move before it is pressed |
 | **Cancel** | `dismiss` | the draft is thrown away |
 
 Unfiled is the one group with no **Delete**: it is where a deleted group's
 rolls go, so it has to be there to go to.
+
+### Which table a throw lands on
+
+The same shape rule as below, for the same reason: **the roll screen does not
+know what a saved roll is**, so it cannot ask which table one is pinned to.
+
+`RollMachine` takes a `(TablePin?) -> TableLook` rather than one fixed look,
+and asks it with the pin the *throw* came with. Resolving a pin needs the
+installed sets, which is `:app`'s to know: `RollWiring` turns a pin into a
+look, falls back to the app default when the throw pins nothing, and falls back
+again to the bundled package's first look when the chosen table's package is no
+longer installed — leaving the setting alone, because the package may come
+back.
+
+Where the pin comes from is the other half. Precedence is *most specific
+first*: the saved roll's pin, then the pin of the group it lives in
+(`tablePinFor` in `core/model`, one function so two screens cannot come to
+disagree). It is answered where both halves are already known — the saved-rolls
+list and the strip each watch rolls and groups as one flow — and the answer
+travels on `SavedRollSource` beside which roll and which group a throw was
+made from. So a tap costs no query, and the pin drops when the attribution
+does: typing over Fireball's formula puts the app's table back.
+
+The tray is built when the screen opens, so a pinned table reaches it
+afterwards. `RollPresenter` remembers the look it last announced and calls
+`Tray.table` again only when it actually changes — a scene is rebuilt on that
+call, and rebuilding one per keystroke is not a thing to do by accident.
 
 ### Writing a roll down
 

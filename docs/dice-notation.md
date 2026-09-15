@@ -107,6 +107,17 @@ capacity check happens before any body is created and the UI explains it
    large, then each group's subtotal and the individual dice, then the
    modifiers — the user never has to add anything up.
 
+   The modifiers are the plain numbers the formula adds or takes away, each on
+   a row of its own and in the order they were written. They are **the
+   top-level sum only**: the `3` in `(2d6 + 3) * 2` is multiplied along with
+   the dice, so listing it as "+ 3" would be adding up to the wrong number in
+   front of the player. A formula like that gets no such rows, and its total is
+   the formula's own arithmetic — `RollResult.itemised` is what says which of
+   the two a result is, and it is checked rather than assumed, because "the
+   rows add up" is the one claim on that screen a reader cannot verify at a
+   glance. It is the same rule the picker's badges follow (see "Picking dice
+   without typing"): edit or itemise only what can be read back.
+
 ### The order modifiers are applied in
 
 Modifiers take effect in this order whatever order they were written in, so
@@ -161,6 +172,17 @@ once and you have `3d6 + 1d20`. A tap writes into the formula field, so what
 comes out is a formula somebody could have typed — which is what makes the
 outcome graph, the breakdown and statistics identical either way. A picked
 roll can be turned into a saved roll with one tap.
+
+**Which set the row offers** is chosen under it, once there is a second set
+installed — one entry is furniture, so the chooser is not drawn until it has
+something to choose between. It is not the same question as the default set:
+which set a bare `d20` means is a preference chosen where the sets are
+(`docs/dice-sets.md`, design `6a`), and somebody whose default is their own set
+still reaches for a borrowed d20. A die taken from a set that is *not* the
+default is written with it in front — `brass:1d20` — so the row can only write
+a formula that rolls what it showed; taken from the default set it is written
+bare, because that is what a person would type. Changing the chooser leaves the
+formula exactly as it is: what is already written was written on purpose.
 
 The rules the picker follows, all of which fall out of "a tap writes a
 formula and never throws one away":
@@ -279,13 +301,27 @@ rolls.
   The file is named after what is in it — `curse-of-strahd.dinfinity.json` —
   and is a copy in the cache, handed over through a content URI granted for
   one use. Nothing the app holds is made readable to do it.
-- **Import** from a file, from a pasted URL, or from a git repository (same
-  sources as dice sets, see `docs/dice-sets.md`). A community can keep a
-  repo of "stat blocks for monster manual X" this way. The file picker offers
-  every file rather than only `application/json`: a collection mailed through
-  three apps arrives as `text/plain` as often as not, and a picker that hides
-  the file somebody is looking at is worse than one that lets them choose the
-  wrong thing and be told so.
+- **Import** from a file or from a pasted link. A git repository is the same
+  sources as dice sets (see `docs/dice-sets.md`) and is not built yet. A
+  community can keep a repo of "stat blocks for monster manual X" this way.
+  The file picker offers every file rather than only `application/json`: a
+  collection mailed through three apps arrives as `text/plain` as often as
+  not, and a picker that hides the file somebody is looking at is worse than
+  one that lets them choose the wrong thing and be told so.
+- **A link is the app's one outward request**, and what comes back is treated
+  as exactly what it is: bytes a stranger chose. It goes through the same
+  downloader a dice set does — `https` only, a redirect that would leave
+  `https` refused, and the bytes that actually arrive counted rather than the
+  `Content-Length` believed — capped at the same megabyte a file is, so a
+  server cannot spend somebody's data allowance proving that it should not
+  have. What arrives is then read by exactly the rules below, because there is
+  one validator and no path around it. A download that does not arrive is said
+  differently from a collection that does not read: "nothing came back from
+  that link" and "this is not a collection" are different things to be told,
+  and only one of them is worth going and fixing the file over.
+  `android.permission.INTERNET` has been in the merged manifest all along,
+  contributed by okhttp's own manifest, so nothing about this asks the player
+  anything new.
 - Import **never merges and never deletes**. A collection whose group name
   already exists is refused outright, naming the clash; rename the group in
   the file (or the one in the app) and import again. Everything else is added

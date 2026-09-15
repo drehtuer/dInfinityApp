@@ -61,6 +61,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 fun DesignerScreen(
   presenter: DesignerPresenter,
   modifier: Modifier = Modifier,
+  onRoll: (String) -> Unit = {},
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
@@ -84,14 +85,78 @@ fun DesignerScreen(
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.weight(1f),
       )
+      // Step 4 of the flow, and the only one the prototype has instead of a 3D
+      // preview: throw the die and watch it (`docs/face-designer.md`). Absent
+      // rather than dead for a die plain notation cannot name — a button that
+      // is there and does nothing is worse than one that is not.
+      presenter.rollable?.let { formula ->
+        TextButton(
+          onClick = { onRoll(formula) },
+          modifier = Modifier.testTag(DesignerTestTags.ROLL),
+        ) {
+          Text(stringResource(R.string.designer_roll))
+        }
+      }
       menu()
     }
 
+    BaseDice(state, presenter)
     FaceCanvas(state = state, onStroke = presenter::drew)
     Warning(state)
     Tools(state, presenter)
     Palette(state, presenter)
     FaceStrip(state, presenter)
+  }
+}
+
+/**
+ * Which die is being drawn on (`docs/face-designer.md`, "Flow").
+ *
+ * Every die of every usable set, so somebody else's d18 can be drawn on as
+ * readily as the bundled d6. Above the canvas rather than below it, because it
+ * is the first decision and everything under the canvas is about the drawing.
+ *
+ * Its own composable rather than inline, unlike the dialog below: folded in it
+ * takes `DesignerScreen` past detekt's length limit, and a screen that has to
+ * be read in one sitting is worth more than two skip branches.
+ *
+ * It scrolls: a set may define a dozen dice and a name is as long as its author
+ * made it.
+ */
+@Composable
+private fun BaseDice(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  if (!state.baseChoosable) return
+  Row(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .horizontalScroll(rememberScrollState())
+        .padding(horizontal = 8.dp)
+        .testTag(DesignerTestTags.BASES),
+    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    state.choosable.forEach { die ->
+      TextButton(
+        onClick = { presenter.base(die) },
+        modifier = Modifier.testTag(DesignerTestTags.baseOf(die.id)),
+      ) {
+        Text(
+          text = die.id,
+          style = MaterialTheme.typography.labelMedium,
+          fontWeight = if (die.id == state.die.id) FontWeight.Bold else FontWeight.Normal,
+          color =
+            if (die.id == state.die.id) {
+              MaterialTheme.colorScheme.onBackground
+            } else {
+              MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        )
+      }
+    }
   }
 }
 
@@ -382,6 +447,10 @@ object DesignerTestTags {
   const val CLEAR: String = "designer:clear"
   const val GUIDE: String = "designer:guide"
   const val WARNING: String = "designer:warning"
+  const val BASES: String = "designer:bases"
+  const val ROLL: String = "designer:roll"
+
+  fun baseOf(dieId: String): String = "designer:base:$dieId"
 
   fun nibOf(nib: Nib): String = "designer:nib:${nib.name.lowercase()}"
 

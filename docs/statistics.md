@@ -86,6 +86,17 @@ numbers are, and the one number a session cannot have.
 
 ### Per saved roll and per group
 
+A throw carries the saved roll it came from and the group that roll is in,
+recorded with it. That is what makes "Thorin's attack rolls this campaign" a
+query rather than a guess — and without it every throw belongs to nothing and
+these screens have nothing to count.
+
+The attribution is **dropped by any edit**. A formula that arrived from the
+strip and has since been typed over, or had a die tapped onto it, is not that
+roll's throw: the picker goes through the same `type` a keystroke does, so it
+loses the attribution the same way. A saved roll's record is what was thrown
+*as* that saved roll, not what was thrown starting from it.
+
 - Times rolled, mean total, min/max total observed, last result
 - Histogram of totals, shown next to the theoretical distribution from
   `docs/probability.md` so the player can see how their Fireballs compare to
@@ -123,6 +134,16 @@ with the settings; the menu's header names it once there is more than one to be
 in. The first session is called "First rolls" and cannot be deleted — it is
 where the rolls made before anybody thought about sessions belong, and where
 the rolls of a deleted session go.
+
+**And where a roll goes when the active session is not there any more.** Which
+session is active is a preference, and a preference outlives the thing it
+names: deleting the active session on the Sessions screen puts the setting
+right, but a session deleted while another screen is in front — or one already
+gone when the app was last opened — would otherwise leave every throw filed
+under an id nothing can find. Such a roll would be in the history and in the
+face counts and visible in neither, because both are read through the list of
+sessions. So the session is checked where the roll is recorded, against the
+sessions there actually are.
 
 **The history and the statistics can both be cut to a session.** On the
 statistics screen the chooser sits above the set chooser rather than in it,

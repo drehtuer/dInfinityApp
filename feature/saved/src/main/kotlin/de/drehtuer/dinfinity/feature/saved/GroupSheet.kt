@@ -23,6 +23,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.TablePin
 
 /**
  * Naming a group (`docs/dice-notation.md`, "Saved rolls").
@@ -114,8 +115,9 @@ private fun Body(
       )
     }
 
-    Marks(chosen = draft.icon, onPick = presenter::icon)
-    Parents(draft = draft, onPick = presenter::parent)
+    Marks(chosen = draft.icon, onPick = { emoji -> presenter.choose { copy(icon = emoji) } })
+    Parents(draft = draft, onPick = { id -> presenter.choose { copy(parentId = id) } })
+    Tables(draft = draft, onPick = { pin -> presenter.choose { copy(tablePin = pin) } })
 
     if (draft.deletable && draft.rolls > 0) {
       Text(
@@ -194,6 +196,40 @@ private fun Parents(
   }
 }
 
+/**
+ * The table every roll in this group lands on (`docs/tables.md`).
+ *
+ * "Default" is first and means *follow the app's table*. A roll that pins its
+ * own wins over this one — most specific first — which is what the note under
+ * the row says, because a precedence nobody is told about is a precedence
+ * somebody will read as a bug.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun Tables(
+  draft: GroupDraft,
+  onPick: (TablePin?) -> Unit,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Label(stringResource(R.string.group_table))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+      draft.tables.forEach { choice ->
+        FilterChip(
+          selected = choice.pin == draft.tablePin,
+          onClick = { onPick(choice.pin) },
+          label = { Text(choice.name ?: stringResource(R.string.editor_table_default)) },
+          modifier = Modifier.testTag(GroupTestTags.tableOf(choice.pin)),
+        )
+      }
+    }
+    Text(
+      text = stringResource(R.string.group_table_note),
+      style = MaterialTheme.typography.labelSmall,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+  }
+}
+
 @Composable
 private fun Label(text: String) {
   Text(
@@ -221,6 +257,8 @@ object GroupTestTags {
   fun iconOf(icon: String): String = "group:icon:$icon"
 
   fun parentOf(id: String?): String = "group:parent:${id ?: "none"}"
+
+  fun tableOf(pin: TablePin?): String = "group:table:${pin?.let { "${it.setId}/${it.tableId}" } ?: "default"}"
 
   fun editOf(id: String): String = "group:edit:$id"
 }

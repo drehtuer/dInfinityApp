@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Stroke
@@ -52,7 +53,15 @@ data class DesignerState(
   val colorArgb: Int = INK,
   /** The faint number under the drawing, which can be turned off. */
   val guideShown: Boolean = true,
+  /** The dice a drawing can be started from. */
+  val choosable: List<Die> = emptyList(),
 ) {
+  /** The die being drawn on. */
+  val die: Die get() = draft.die
+
+  /** True when there is more than one die to start from, so a chooser is worth drawing. */
+  val baseChoosable: Boolean get() = choosable.size > 1
+
   /** The drawing on the face in front of the player. */
   val face: FaceDrawing get() = draft.face(cell)
 
@@ -97,10 +106,84 @@ data class DesignerState(
  */
 class DesignerPresenter(
   die: Die,
+  /**
+   * The dice a drawing can be started from (`docs/face-designer.md`, "Flow":
+   * any catalogue shape or any installed die).
+   *
+   * Every die of every usable set, so a d18 from somebody else's package can
+   * be drawn on as readily as the bundled d6. Empty means there is nothing to
+   * choose between and no chooser is drawn — which is not a state a real
+   * install reaches, since the bundled set is always there.
+   */
+  choosable: List<Die> = emptyList(),
+  /**
+   * Where the drawings are kept between sittings.
+   *
+   * [Drafts.NONE] by default, which is a designer whose work lasts as long as
+   * the screen does — what the tests use, and what the screen would do if
+   * nothing gave it a folder.
+   */
+  private val drafts: Drafts = Drafts.NONE,
+  /**
+   * How the die being drawn is written in a formula, or `null` when notation
+   * cannot name it (`docs/dice-notation.md`; `docs/architecture.md`,
+   * decision 31).
+   *
+   * A function rather than a string, because the die changes while the screen
+   * is open. It comes from outside for the reason the dice themselves do: it
+   * needs the installed sets and which of them a bare `d20` means, and neither
+   * is this module's to know.
+   *
+   * Plain notation names `dN`, `d%` and `dF` and nothing else, so a set's own
+   * `skull-d6` has no spelling a formula could carry — and **Roll it** is not
+   * offered for one rather than offered and broken.
+   */
+  private val notationOf: (Die) -> String? = { null },
 ) {
   /** What the screen draws. */
-  var state: DesignerState by mutableStateOf(DesignerState(draft = Draft(die = die)))
+  var state: DesignerState by mutableStateOf(
+    DesignerState(draft = drafts.load(die), choosable = choosable),
+  )
     private set
+
+  /**
+   * The formula that throws the die being drawn, or null when there is none.
+   *
+   * **The die, not the drawing.** The tray throws the base die as its set
+   * defines it; the strokes on the canvas are not on it, because nothing puts
+   * an atlas on a die yet (`docs/TODO.md`, Step 3). What it answers today is
+   * what the prototype asks it to — how the solid looks in motion, which is
+   * the preview the designer has instead of a 3D one.
+   */
+  val rollable: String? get() = notationOf(state.draft.die)
+
+  /**
+   * Draw on a different die (`docs/face-designer.md`, "Flow").
+   *
+   * A different die is a different draft — the faces are a different shape,
+   * there are a different number of them, and the values under the guide are
+   * that die's — but it is no longer a drawing *thrown away*: what is on the
+   * canvas is written down before the swap and the new die's own drawing is
+   * read back, so switching between two dice is switching between two
+   * drawings. That is what made the confirmation this used to ask
+   * unnecessary, and a dialog that warns about a loss that cannot happen is
+   * worse than no dialog at all.
+   *
+   * The pen, its colour and whether the guide is showing all stay: they are
+   * how somebody is working, not what they are working on.
+   */
+  fun base(die: Die) {
+    if (die.id == state.draft.die.id) return
+    drafts.save(state.draft)
+    state =
+      DesignerState(
+        draft = drafts.load(die),
+        nib = state.nib,
+        colorArgb = state.colorArgb,
+        guideShown = state.guideShown,
+        choosable = state.choosable,
+      )
+  }
 
   /** A face was chosen, from the strip or by swiping. */
   fun show(cell: Int) {
@@ -142,20 +225,24 @@ class DesignerPresenter(
         erases = state.nib.erases,
       )
     state = state.copy(draft = state.draft.onFace(state.cell) { it.draw(stroke) })
+    drafts.save(state.draft)
   }
 
   /** Back one step on this face. */
   fun undo() {
     state = state.copy(draft = state.draft.onFace(state.cell) { it.undo() })
+    drafts.save(state.draft)
   }
 
   /** Forward one step on this face. */
   fun redo() {
     state = state.copy(draft = state.draft.onFace(state.cell) { it.redo() })
+    drafts.save(state.draft)
   }
 
   /** Takes this face back to blank, in one step that can be undone. */
   fun clear() {
     state = state.copy(draft = state.draft.onFace(state.cell) { it.clear() })
+    drafts.save(state.draft)
   }
 }

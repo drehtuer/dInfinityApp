@@ -1,7 +1,9 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
@@ -30,6 +32,7 @@ import org.junit.Test
 class RollMachineTest {
   private val geometry = TableGeometry.referenceDevice()
   private val table = TableLook(id = "plain", name = "Plain")
+  private val oak = TableLook(id = "oak", name = "Oak")
   private val catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set))
 
   @Test
@@ -243,7 +246,7 @@ class RollMachineTest {
     // The default. A seed that repeated would make two rolls the same roll,
     // which is the one thing determinism must not turn into
     // (`docs/architecture.md`, decision 13).
-    val machine = RollMachine(catalog, geometry, table, CountingSimulator())
+    val machine = RollMachine(catalog, geometry, { table }, CountingSimulator())
 
     machine.type("1d20")
     val first = requireNotNull(machine.throwDice()).seed
@@ -324,13 +327,185 @@ class RollMachineTest {
     assertEquals(2, machine.counts[d6])
   }
 
+  @Test
+  fun `the picker offers the default set until another is chosen`() {
+    val machine = machine(catalog = twoSets())
+
+    assertEquals(BuiltinDiceSet.set.id, machine.pickingFrom)
+    assertEquals(
+      "a bare d20 is the default set's d20",
+      "1d20",
+      machine.pickable.first { it.notation == "d20" }.notation(1),
+    )
+  }
+
+  @Test
+  fun `a die picked from another set is written with that set in front of it`() {
+    // Otherwise the tap would write `1d20`, which means the *default* set's
+    // d20, and the row would be offering dice it cannot actually roll.
+    val machine = machine(catalog = twoSets())
+
+    machine.pickFrom(BRASS)
+    machine.add(machine.pickable.first { it.notation == "d20" })
+
+    assertEquals("$BRASS:1d20", machine.text)
+  }
+
+  @Test
+  fun `choosing a set leaves the formula exactly as it was`() {
+    // What is already written was written on purpose. A chooser that rewrote
+    // `3d6` because somebody looked at another set would be editing a roll
+    // nobody asked it to edit.
+    val machine = machine(catalog = twoSets())
+    machine.type("3d6 + 2")
+
+    machine.pickFrom(BRASS)
+
+    assertEquals("3d6 + 2", machine.text)
+  }
+
+  @Test
+  fun `the badges follow the row when the row changes`() {
+    val machine = machine(catalog = twoSets())
+    machine.type("$BRASS:2d20")
+
+    // Against the default set's dice, `brass:2d20` is a group the picker
+    // cannot spell, so nothing is badged.
+    assertEquals(emptyMap<Any, Int>(), machine.counts.filterValues { it > 0 })
+
+    machine.pickFrom(BRASS)
+
+    assertEquals(2, machine.counts[machine.pickable.first { it.notation == "d20" }])
+  }
+
+  @Test
+  fun `a set that is not installed is not a set to pick from`() {
+    val machine = machine(catalog = twoSets())
+
+    machine.pickFrom("nothing-by-that-name")
+
+    assertEquals(BuiltinDiceSet.set.id, machine.pickingFrom)
+  }
+
+  @Test
+  fun `going back to the default set writes bare notation again`() {
+    val machine = machine(catalog = twoSets())
+    machine.pickFrom(BRASS)
+
+    machine.pickFrom(BuiltinDiceSet.set.id)
+
+    assertEquals("1d20", machine.pickable.first { it.notation == "d20" }.notation(1))
+  }
+
+  @Test
+  fun `a throw from a saved roll is remembered as that roll's`() {
+    // Without it every throw is recorded as belonging to nothing, and the
+    // saved-roll statistics screen is one that can never have anything on it
+    // (`docs/statistics.md`, per saved roll and per group).
+    val machine = machine()
+    machine.type("8d6", SavedRollSource(rollId = "fireball", groupId = "thorin"))
+
+    machine.throwDice()
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+
+    assertEquals("fireball", thrown.savedRollId)
+    assertEquals("thorin", thrown.groupId)
+  }
+
+  @Test
+  fun `a formula somebody typed belongs to no saved roll`() {
+    val machine = machine()
+    machine.type("8d6")
+
+    machine.throwDice()
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+
+    assertNull("a typed formula was attributed to a saved roll", thrown.savedRollId)
+    assertNull(thrown.groupId)
+  }
+
+  @Test
+  fun `typing over a saved roll makes it somebody's own formula again`() {
+    // A roll that was Fireball and has been edited is not Fireball's throw.
+    val machine = machine()
+    machine.type("8d6", SavedRollSource(rollId = "fireball", groupId = "thorin"))
+
+    machine.type("8d6 + 1")
+    machine.throwDice()
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 8).associateWith { 0 })))
+
+    assertNull("an edited formula was still attributed to the saved roll", thrown.savedRollId)
+  }
+
+  @Test
+  fun `a throw from a saved roll lands on the table that roll pinned`() {
+    // The precedence itself is `tablePinFor`'s and is tested there; what is
+    // asserted here is that the machine asks with the *throw's* pin, so the
+    // table a saved roll pinned is the table the dice are actually thrown onto
+    // rather than only the one the tray happens to be drawing
+    // (`docs/tables.md`, "Selecting a table").
+    val machine = machine()
+    machine.type("8d6", SavedRollSource("fireball", "thorin", TablePin("brass", "oak")))
+
+    val spec = requireNotNull(machine.throwDice())
+
+    assertEquals(oak, spec.table)
+    assertEquals("the tray was left drawing a different table than the dice landed on", oak, machine.table)
+  }
+
+  @Test
+  fun `a formula somebody typed lands on the app's own table`() {
+    val machine = machine()
+    machine.type("8d6")
+
+    assertEquals(table, requireNotNull(machine.throwDice()).table)
+  }
+
+  @Test
+  fun `typing over a pinned saved roll puts the app's table back`() {
+    // The pin goes with the attribution, because it came with it: a roll that
+    // was Fireball and has been typed over is not thrown on Fireball's table.
+    val machine = machine()
+    machine.type("8d6", SavedRollSource("fireball", "thorin", TablePin("brass", "oak")))
+
+    machine.type("8d6 + 1")
+
+    assertEquals(table, machine.table)
+  }
+
+  @Test
+  fun `tapping a die onto a saved roll is an edit like any other`() {
+    // The picker goes through `type`, which is the point: a tap is an edit, so
+    // it drops the attribution the same way a keystroke does.
+    val machine = machine()
+    machine.type("8d6", SavedRollSource(rollId = "fireball", groupId = "thorin"))
+
+    machine.add(machine.pickable.first { it.notation == "d6" })
+    machine.throwDice()
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = (0 until 9).associateWith { 0 })))
+
+    assertNull("a picked die left the throw attributed to the saved roll", thrown.savedRollId)
+  }
+
+  /** The bundled set and one more, which is when the chooser is worth drawing. */
+  private fun twoSets(): DiceCatalog =
+    DiceCatalog.of(
+      listOf(BuiltinDiceSet.set, BuiltinDiceSet.set.copy(id = BRASS, name = "Brass")),
+      BuiltinDiceSet.set.id,
+    )
+
   private fun machine(
     simulator: DiceSimulator = CountingSimulator(),
     seed: Long = 1L,
+    catalog: DiceCatalog = this.catalog,
   ) = RollMachine(
     catalog = catalog,
     geometry = geometry,
-    table = table,
+    // The look a pin resolves to is the app's to know, not the machine's, so
+    // the seam is a function and this is the smallest thing that stands in for
+    // the installed sets: the one pin these tests use, and the app's own table
+    // for everything else.
+    look = { pin -> if (pin == TablePin("brass", "oak")) oak else table },
     simulator = simulator,
     outside = Outside(seeds = { seed }, clock = { FIXED_TIME }),
   )
@@ -350,6 +525,9 @@ class RollMachineTest {
 
   private companion object {
     const val FIXED_TIME = 1_757_000_000_000L
+
+    /** A second installed set, which is when a chooser is worth drawing. */
+    const val BRASS = "brass"
     val DOWN = Vector3(0.0, 0.0, -9_806.65)
   }
 }

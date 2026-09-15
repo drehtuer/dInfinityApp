@@ -9,18 +9,35 @@ changelog.
 
 ## Where we are
 
-- **Phase:** implementation. Steps 1 and 2 of `docs/TODO.md` are done. Step 3
-  is done but for the SDF numbers, the atlases and the database migrations,
-  each of which now arrives with the screen that needs it. **Step 4.1, the
-  roll screen, is where the work is.**
+- **Phase:** implementation, **Step 4**. Steps 1 and 2 are done; Step 3 is done
+  but for the SDF numbers and the atlases, each of which now arrives with the
+  screen that needs it. Step 5 — physics and rendering on a real phone — is
+  where the remaining hard problems are.
 - **The app rolls dice on a phone.** Type a formula, tap Roll or shake the
-  Pixel 10a, and the dice tumble onto a green felt tray, come to rest, and
-  their total appears. That is the first end of the app meeting the other.
+  Pixel 10a, and the dice tumble onto a felt tray, come to rest, and their
+  total appears. Every screen in the menu is written, connected and does
+  something.
 - **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
   pipeline. Signed, fingerprint-checked, published with its SHA-256.
-- **Branch state:** everything up to #146 is merged and `main` is green; no
-  Dependabot PRs are open. The Pixel 10a is on the LAN and the device tier
-  runs against it, fairness harness included.
+
+### Branch state
+
+`main` is at **#149**. Everything since is a stack of open pull requests, and
+the order they need merging in is:
+
+| | |
+| --- | --- |
+| **#161** | dependency bumps — independent of the stack, and **`main` is red until it lands**: Android Lint treats `NewerVersionAvailable` as an error, so every branch shows the same three failures |
+| **#151** → **#152** | the d18 investigation and the seed streams. #153–#164 were merged *into* #152's branch rather than into `main`, so all of that work rides on it |
+| **#166** → **#167** → **#168** → **#169** → **#170** | this session's stack |
+
+### Which device the tier runs on
+
+The emulator in the devcontainer (API 36, `x86_64`) answers most questions and
+is what the recent work was checked against. Two things still want the Pixel
+10a: whether Filament 1.76.1 looks right on a real GPU, and whether the golden
+cases — re-recorded on the emulator after the spawn streams were stirred —
+still match on `arm64-v8a`.
 
 ## Done
 
@@ -32,173 +49,104 @@ changelog.
   on each pull request; SonarQube blocks on its gate and JaCoCo on a function
   *and* branch floor. Dependencies pinned by SHA-256; a `vX.Y.Z` tag cuts a
   signed, immutable release.
-- **All three testing tiers are reachable and each is run every time.** JVM
-  and Robolectric on CI; the devcontainer's emulator (API 36, `x86_64`); the
-  Pixel 10a over wireless debugging (API 37, `arm64-v8a`). Between them they
-  cover the API the app targets and the ABI it ships.
-- **Step 3's foundations.** A formula parsed and resolved against the
-  installed sets, graphed exactly, planned against the capacity rule, settled
-  and read face by face, watched by a renderer that cannot touch it, thrown by
-  a shake, and written down in one transaction. A package from a stranger is
-  validated rule by rule and installed without leaving anything behind if it
-  fails; the bundled dice go through that same validator on every launch.
-- **The physics.** Jolt 5.3.0, chosen by building both candidates against this
-  project's own toolchain. Every *decision* about a roll is Kotlin over an
+- **All three testing tiers are reachable and each is run every time.** JVM and
+  Robolectric on CI; the devcontainer's emulator; the Pixel 10a over wireless
+  debugging (API 37, `arm64-v8a`).
+- **Step 3's foundations.** A formula parsed and resolved against the installed
+  sets, graphed exactly, planned against the capacity rule, settled and read
+  face by face, watched by a renderer that cannot touch it, thrown by a shake,
+  and written down in one transaction. A package from a stranger is validated
+  rule by rule and installed without leaving anything behind if it fails.
+- **The physics.** Jolt 5.3.0. Every *decision* about a roll is Kotlin over an
   interface, so the rule that matters most — nothing touches a die that has
-  come to rest — is proved by JVM tests rather than sampled on a phone.
-- **Determinism is asserted, not assumed.** Ten (seed, formula, input) cases
-  carry what they came to; the emulator and the Pixel 10a agree bit for bit,
-  spawn digest included. The trigonometry upstream of the engine went to
-  `StrictMath` first, so that agreement rests on a guarantee rather than on
-  two libms happening to match.
+  come to rest — is proved by JVM tests rather than sampled on a phone. Every
+  random number comes from one place, stirred through SplitMix64's finaliser.
+- **Determinism is asserted, not assumed.** Ten (seed, formula, input) cases;
+  the emulator and the Pixel 10a agree bit for bit, spawn digest included.
 - **The renderer draws a roll.** Filament opens on the device's own driver and
-  compiles its material there; the tray, the dice, the lights and the camera
-  are all built from the same geometry the solver collides. One thread owns
-  the physics world, the engine and the frame callback.
+  compiles its material there. One thread owns the physics world, the engine
+  and the frame callback.
 
 ## In progress
 
-**Step 4 is where the work is: nine of the eleven screens do something.**
+**Step 4: every screen is written and connected.** What is left on each is in
+`docs/TODO.md`; the shape of it is that the *screens* are done and what remains
+is mostly polish, the export paths, and the things that need a phone.
 
 - **4.1 Roll.** The tray from the moment the screen opens, a live-validated
-  formula field with a squiggle under the part that is wrong and a one-tap fix,
-  the dice picker row, the saved-roll strip, roll from the button or a shake, a
-  refusal for a throw the table cannot hold, the total and its breakdown,
-  Down / Nearest / Up, pinch and pan, power-saving, first launch. Missing: the
-  set dropdown and numbers on the faces. Two things the phone found, both now
-  fixed and both re-checked on it: a shake with the phone upside down pooled
-  the dice at the wrong end, because the screen pinned the display to the
-  rotation it opened at and the shake map reads that rotation — it now holds
-  its *shape* either way up, and the app stays foreground at `ROTATION_180`
-  where before it was pushed to the home screen; and coming back from the menu
-  showed a black tray, because the Filament engine was rebuilt per visit — the
-  roll thread and the engine now outlive one, and the tray comes back drawn.
-  A third, which the phone found on its own and no report had named: on a cold
-  launch the tray was black and stayed black — the dice rolled, settled, scored
-  and were written down on a surface nobody was drawing to. The presenter was
-  remembered against the lambda that builds it rather than against the visit,
-  so every preference arriving built a new tray, and the surface stayed with
-  the first. A cold launch always reads preferences, so it happened every time.
-- **4.2 Outcome graph.** The exact distribution as bars with its mean line and
-  ±1σ band, `P(= k)` / `P(≥ k)`, a tap for the numbers, the roll that opened it
-  marked. Reached from "See the odds" — the first navigation carrying an
-  argument.
-- **4.3 Saved rolls.** Database version 2, the list, the editor, and groups
-  made, renamed, moved and deleted from one sheet. Collections travel as JSON
-  through `core/collection`: exported through the share sheet, imported from a
-  file — read before anything is written, every line wrong with a bad file
-  listed, and a duplicate group name refused outright with nothing merged.
-  Importing from a URL is not built yet — and is not waiting on the `INTERNET`
-  permission, which okhttp already puts in the merged manifest.
-- **4.4 Dice sets.** The list is on screen. `InstalledSets` reads the
-  `dicesets/` folder and validates every package again on each reading, so a
-  set that stopped being valid shows its report instead of vanishing; database
-  version 4 adds the registry that says whether a set is switched on, and a set
-  with no row is on. Long-press switches one off or removes it, and the bundled
-  set is offered neither. Tapping one opens its details: who wrote it, under
-  what licence, the link it came from with its commit, and the dice it defines
-  — or, for a package that stopped validating, the report standing where the
-  dice would. A set installs from a file: picked, copied bounded into the app's
-  cache, extracted and validated before anything is written, and a refusal
-  lists every error — and **its dice can then be rolled**: the catalogue a
-  formula resolves against is rebuilt from what is on disk and switched on, so
-  installing a set is the whole of what it sounds like, and one of them can be
-  made the set a plain `d20` comes from. Still to come:
-  installing from a URL, update checking, and "my dice".
-- **4.7 Statistics, 4.8 History, 4.9 Sessions.** Every throw is written down —
-  a history row, a face count per die and a running summary, in one transaction
-  — which the tables had been waiting for since version 1. The history lists
-  every roll with the breakdown it was made of, and can be cut to one session
-  or one saved roll, and the menu's header says which session the rolls are
-  going into once there is more than one; the statistics show each die
-  against what a fair one would do — by set, or every set's dice of a kind
-  pooled together with the fair line weighted by how often each was thrown;
-  every saved roll's own totals sit against the exact distribution it was
-  rolling against, with the drift judged against the standard error rather than
-  shown bare; database version 3 adds sessions, and the
-  migration names the one the old rolls already belonged to. Version 5 puts the
-  session on every face count, so the statistics cut to one campaign as well as
-  the history does — stored rather than recomputed, and only on the table whose
-  numbers add: `die_summary` keeps no session, because a streak that spanned a
-  session change would come out short. The sessions
-  screen was finished but never plugged in — `MainActivity` passed no presenter
-  for it, so the app drew a placeholder and every roll was filed under the
-  first session whatever the player picked. Both are fixed.
-- **4.10 Settings, the menu and Notation.** The navigation graph is connected:
-  every screen carries the same button and the menu reaches every screen —
-  including **Notation**, the last row the prototype's menu had and the app did
-  not: the grammar in sentences, with an example on every line that puts that
-  formula in the tray. It is built from `NotationReference` beside the parser,
-  and a test parses every example, so the screen cannot offer a formula the app
-  would refuse. Settings
-  has appearance, the accent, shake, the default rounding, power saving, the
-  version and a link to the source. Haptics and sound are deliberately absent —
-  nothing plays anything yet, and a row that does nothing is a lie. The menu's
-  header was drawn in the default content colour — black on the dark
-  background, invisible on the phone and invisible to every assertion about
-  text — because the screen was a bare `Column` that set no content colour. It
-  is a `Surface` now, and a pixel test holds the app name to WCAG's 3:1.
-- **The screens' state machines are written down.** `docs/architecture.md`
-  carries every one as a diagram and a control table, so a transition nobody
-  thought about is visible rather than latent.
-- **`ui/common`** holds the furniture more than one screen needs: the
-  live-validated formula field and the die silhouettes. Three screens agreeing
-  about a mistake is the whole reason it exists.
+  formula field, the dice picker row, the saved-roll strip, roll from the
+  button or a shake, the total and its breakdown, pinch and pan, power-saving,
+  and a first launch that offers all three ways in with a count line that
+  counts. **Missing: numbers on the faces**, which is the SDF item in Step 3 —
+  until it lands the tray shows a roll that cannot be read without the total.
+- **4.2 Graph, 4.3 Saved rolls, 4.4 Dice sets, 4.5 Tables, 4.7–4.9 Statistics,
+  history and sessions, 4.10 Settings and Notation.** All built. Collections
+  travel as JSON and arrive from a file or a link; dice sets install from
+  either, can be checked for updates and re-installed through the same
+  validator; tables are chosen where the tables are, and a throw lands on the
+  saved roll's pinned table, then its group's, then the app's.
+- **4.6 Face designer.** Draw on any die of any usable set, undo and redo an
+  action at a time, and **each die keeps its own draft on disk** — written
+  after every stroke, so a drawing outlives the screen. **Roll it** hands the
+  tray the die being drawn. Still to come: the fill bucket and stamp, and the
+  export.
 
 ## Blocked / waiting on
 
-- **Judgements that need a person and a phone**, all in `docs/TODO.md`: whether
-  the dice now have weight; whether 16 mm dice read too small on a screen;
-  whether the empty table looks like a table worth rolling on; whether turning
-  the phone is now seamless; and whether four times in is the right limit on
-  the pinch. None of them blocks anything else. `screencap` on the phone does
-  return a real frame, so what a screen *contains* can now be checked from
-  here — that is how the menu's invisible header was found — but whether a
-  thing feels right is still a person's call.
+- **Judgements that need a person and a phone**, all listed in `docs/TODO.md`:
+  whether the dice have weight, whether 16 mm dice read too small, whether the
+  empty table looks worth rolling on, whether four times in is the right pinch
+  limit. None of them blocks anything else. `screencap` on the phone returns a
+  real frame, so what a screen *contains* can be checked from here — that is
+  how the menu's invisible header was found — but whether a thing feels right
+  is still a person's call.
 
 ## Decisions pending
 
-- Two smaller decisions from the prototype are not yet in `docs/` (designer
-  3D preview, picker remembering the last set per group) — see `docs/TODO.md`.
+- **What the d18 should be held to.** It is fair to better than half a percent
+  per face and cannot pass chi-squared at a hundred thousand rolls, for a
+  reason that is understood and cannot be engineered away in this engine.
+  Restate the bar, carry it as a known defect, or drop the shape.
+- Whether the branch-coverage floor should follow the drift, or stay where it
+  is. Moving a floor to make a check pass is what `.claude/CLAUDE.md` says not
+  to do, so this is a question rather than a change to make quietly.
+- Two smaller ones from the prototype (designer 3D preview, the picker
+  remembering the last set per group) — see `docs/TODO.md`, Open questions.
 
 ## Known risks
 
-- The **"no invisible hand"** bar — zero post-rest corrections, zero stacked
+- **The "no invisible hand" bar** — zero post-rest corrections, zero stacked
   dice — is the hardest thing in the plan and can only be judged on a device.
   If prevention cannot get there, the fallback is a visible re-throw, which is
   honest but must not become common.
 - **The correction ladder leans on corrections far too hard.** Nine of twenty
   dice get a nudge, against a budget of one in two hundred. Every one lands
   while the die is still moving and post-rest corrections are zero, so the
-  honest rule holds — but Step 5.5 is where prevention has to get good enough
-  that the ladder is rarely reached.
-- **The capacity constants now barely bite.** Since a die is sized by its
-  width rather than by its edge, it would take about 240 dice to reach the
-  40 % floor and the engine stops at 100 — so the refusal a player meets is
-  the body cap, not the table. Whether 30 % and 40 % are still the right
-  numbers is a Step 5.3 question, with a device.
+  honest rule holds — but at a hundred dice the corrections are *visible*, and
+  "it does not cheat" and "it does not look like it cheats" are different
+  claims. Step 5.5.
 - **The d18 is not fair, and it is the first physics claim to fail on a
   device.** 100,000 rolls of each catalogue shape on the Pixel 10a: seven pass
   with their χ² summing to 55.33 against 55 degrees of freedom, and the
-  enneagonal trapezohedron comes to 197.34 against a limit of 40.79. The shape
-  is isohedral and the throw starts evenly over all orientations, so the body
-  the engine collides cannot be the solid the arithmetic describes. The seeds,
-  Jolt's convex radius, a dropped corner and an off-centre mass are all ruled
-  out on the phone; Step 5.2 has what is left to look at.
-- **Seeds next to each other are not independent throws**, and exploding dice
-  use them: `RollMachine` throws the extra dice at `seed + 1, seed + 2, …`.
-  Ordinary rolls come from `SecureRandom` and are fine. The fix is to stir the
-  seed where the streams are derived, which re-records every golden case and
-  changes what an old saved roll replays to (`docs/TODO.md`, Step 5.2).
-- Determinism holds across the two ABIs. What is unproven is determinism
-  across *devices* of the same ABI and across time, which is the same suite
-  run somewhere else.
-- The container's emulator is an automated-test image with no real GPU and no
-  display, so `screencap` returns black. It answers "does this run", never
-  "does this look right" — the phone is the only answer to the second.
-- **Branch coverage sits near 70 % against a floor of 62 and has drifted down
-  as the screens landed.** Seven in ten of the missed branches are inside
-  `@Composable` functions, where the compiler emits a skip branch a test can
-  only take one side of. The answer has been to lift decisions out of draw
-  lambdas and test those; whether the floor should follow the drift is a
-  question in `docs/TODO.md` for a person.
+  enneagonal trapezohedron comes to 197.34 against a limit of 40.79. The body,
+  the solver, the reading, the seeds and the throw were each measured and each
+  holds. **It is the float32 hull** — Jolt holds hull points in single
+  precision whatever else is configured, so this is as fair as the engine can
+  make that solid. No face is off by more than 0.455 %, against the 1 % this
+  project set itself.
+- **`100d4` does not reliably settle, and never did.** Five seeds in
+  twenty-four run out of the twelve-second cap. Nothing is ever touched after
+  coming to rest, on any seed — the rule that matters holds — but the cap
+  firing at all is prevention work (Step 5.5).
+- **The capacity constants barely bite.** It would take about 240 dice to reach
+  the 40 % floor and the engine stops at 100, so the refusal a player meets is
+  the body cap rather than the table. A Step 5.3 question, with a device.
+- Determinism holds across the two ABIs. What is unproven is determinism across
+  *devices* of the same ABI and across time.
+- The container's emulator has no real GPU and no display, so `screencap`
+  returns black. It answers "does this run", never "does this look right".
+- **Branch coverage sits near 69 % against a floor of 62** and drifts down as
+  screens land, because seven in ten of the missed branches are Compose skip
+  branches a test can only take one side of. The answer has been to lift
+  decisions out of draw lambdas and to add recomposition tests; both work, and
+  the last few PRs have held the number flat or moved it up.

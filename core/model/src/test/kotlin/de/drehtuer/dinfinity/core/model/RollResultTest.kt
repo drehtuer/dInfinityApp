@@ -120,6 +120,56 @@ class RollResultTest {
     )
   }
 
+  @Test
+  fun `a result that adds nothing adds up on its own`() {
+    // The plain case, and the one the sheet showed correctly all along: the
+    // group subtotals are the total.
+    val plain = scored(subtotal = 11, total = 11)
+
+    assertEquals(emptyList<Long>(), plain.adjustments)
+    assertTrue(plain.itemised, "dice alone did not add up")
+  }
+
+  @Test
+  fun `a result with a modifier adds up once the modifier is counted`() {
+    // What the sheet's promise comes to in code: the rows on screen — the
+    // subtotals and these numbers — are all there is (`docs/dice-notation.md`,
+    // "Evaluation", step 7).
+    val withFour = scored(subtotal = 11, total = 15, adjustments = listOf(4L))
+
+    assertTrue(withFour.itemised, "the rows did not add up to the total")
+  }
+
+  @Test
+  fun `a total the rows cannot reach says so rather than pretending`() {
+    // A product or a division is scored the same way and is just as correct,
+    // but its total cannot be read off the rows. The sheet has to know which
+    // of the two it is holding.
+    val doubled = scored(subtotal = 11, total = 22)
+
+    assertFalse(doubled.itemised, "a product's rows claimed to add up to its total")
+  }
+
+  @Test
+  fun `taking away counts as adding a negative`() {
+    val lessTwo = scored(subtotal = 11, total = 9, adjustments = listOf(-2L))
+
+    assertTrue(lessTwo.itemised)
+    assertEquals(listOf(-2L), lessTwo.adjustments)
+  }
+
+  private fun scored(
+    subtotal: Long,
+    total: Long,
+    adjustments: List<Long> = emptyList(),
+  ): RollResult =
+    RollResult(
+      formula = "3d6",
+      total = total,
+      groups = listOf(RolledGroup(0, "3d6", "builtin", "builtin", emptyList(), subtotal)),
+      adjustments = adjustments,
+    )
+
   private fun result(vararg dice: RolledDie): RollResult =
     RollResult(
       formula = "1d20",

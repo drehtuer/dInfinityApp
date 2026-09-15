@@ -21,6 +21,13 @@ namespace dinfinity {
 /// How many floats `World::ReadStates` writes per die.
 inline constexpr int kStateStride = 10;
 
+/// How many floats `World::ReadBody` writes: a centre of mass and a 3x3
+/// inertia tensor.
+inline constexpr int kBodyStride = 3 + 9;
+
+/// How many floats a face plane takes: a normal and a distance.
+inline constexpr int kPlaneStride = 4;
+
 /// Bits of the contact word in a die's state.
 enum ContactFlags : std::uint32_t {
   kTouchingFloor = 1u << 0,
@@ -108,6 +115,21 @@ class World {
   /// Picks one die up and throws it again, leaving every other die where it
   /// is. The visible last resort, not a nudge (`docs/physics-and-rendering.md`).
   void Respawn(int index, const Placement& placement);
+
+  /// Writes `kBodyStride` floats describing the body Jolt actually built for
+  /// die `index`: its centre of mass, then its inertia tensor row by row.
+  ///
+  /// Nothing in a roll reads this. It exists because a die is only fair if the
+  /// solid the engine collides is the solid the arithmetic describes, and
+  /// there is no other way to ask which one it got (`docs/TODO.md`, Step 5.2).
+  void ReadBody(int index, float* out) const;
+
+  /// Writes up to `capacity` of the hull's face planes as normal-xyz then
+  /// distance, and returns how many faces the hull has.
+  ///
+  /// The count is the interesting half: a d18 whose hull came out with
+  /// seventeen faces is not a d18, however close it looks.
+  int ReadFaces(int index, float* out, int capacity) const;
 
  private:
   struct Impl;

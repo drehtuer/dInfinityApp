@@ -16,12 +16,18 @@ import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.notation.NotationReference
 import de.drehtuer.dinfinity.data.InstalledSetRepository
+import de.drehtuer.dinfinity.data.SavedRollGroupRepository
 import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.feature.designer.DesignerTestTags
+import de.drehtuer.dinfinity.feature.roll.FinishedThrow
+import de.drehtuer.dinfinity.feature.roll.RollTestTags
+import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
+import de.drehtuer.dinfinity.feature.saved.HomeStripTestTags
 import de.drehtuer.dinfinity.feature.saved.ImportTestTags
 import de.drehtuer.dinfinity.feature.saved.SavedTestTags
 import de.drehtuer.dinfinity.feature.sets.SetDetailTestTags
@@ -67,6 +73,7 @@ class DInfinityScreensTest {
 
   private lateinit var database: DInfinityDatabase
   private lateinit var saved: SavedRollRepository
+  private lateinit var savedGroups: SavedRollGroupRepository
   private val scope = CoroutineScope(Dispatchers.Unconfined)
 
   /** A `dicesets/` folder of its own, so one test's packages are not another's. */
@@ -88,6 +95,7 @@ class DInfinityScreensTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     saved = SavedRollRepository(database)
+    savedGroups = SavedRollGroupRepository(database)
   }
 
   @After
@@ -108,7 +116,7 @@ class DInfinityScreensTest {
   @Test
   fun `the editor draws, on a roll that exists`() {
     runBlocking {
-      saved.ensureUnfiled("Unfiled")
+      savedGroups.ensureUnfiled("Unfiled")
       saved.save(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "8d6"))
     }
     val navigation = app()
@@ -220,6 +228,99 @@ class DInfinityScreensTest {
   }
 
   @Test
+  fun `the welcome's other two ways in reach the screens they name`() {
+    // The design has three ways in and the app had one. Both of these now have
+    // screens to send somebody to (`design/dInfinity.dc.html`, option 9a).
+    val navigation = app()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_IMPORT).performClick()
+
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.CollectionImport
+    }
+  }
+
+  @Test
+  fun `and going to fetch something does not dismiss the welcome`() {
+    val navigation = app()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_SETS_ADD).performClick()
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.DiceSets
+    }
+    compose.runOnIdle { navigation.popBackStack() }
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertIsDisplayed()
+  }
+
+  @Test
+  fun `the welcome counts what is really there, not what a fresh install has`() {
+    // The line used to say "0 saved rolls" whatever was saved, because the
+    // sentence had the zero written into it (`docs/TODO.md`, 4.1).
+    runBlocking {
+      savedGroups.ensureUnfiled("Unfiled")
+      saved.save(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "8d6"))
+    }
+
+    app()
+
+    compose.waitUntil(PATIENCE) {
+      runCatching {
+        compose.onNodeWithTag(RollTestTags.WELCOME_SETS).assertTextContains("1 saved roll", substring = true)
+      }.isSuccess
+    }
+  }
+
+  @Test
+  fun `Roll it on the designer opens the tray with that die in the field`() {
+    // Step 4 of the designer's flow, through the real graph: the button knows
+    // which die is being drawn, the wiring knows how that die is spelled, and
+    // the tray opens on it — unrolled, like every other way into the tray
+    // (`docs/face-designer.md`).
+    val navigation = app()
+    go(navigation, Destination.FaceDesigner)
+
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.Roll
+    }
+    assertEquals(
+      "1d6",
+      compose.runOnIdle {
+        navigation.currentBackStackEntry
+          ?.arguments
+          ?.getString(GraphArgument.FORMULA)
+      },
+    )
+  }
+
+  @Test
+  fun `a throw from the strip is written down as that saved roll's`() {
+    // The chain this is about runs through four modules and two lambdas, and
+    // it was broken the whole time: every roll went down with no saved roll
+    // and no group against it, so the history's saved-roll filter found
+    // nothing and the saved-roll statistics screen could never have had
+    // anything on it (`docs/statistics.md`, per saved roll and per group).
+    runBlocking {
+      savedGroups.ensureUnfiled("Unfiled")
+      saved.save(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "1d20"))
+    }
+    val recorded = mutableListOf<FinishedThrow>()
+    val navigation = app(recorder = { thrown -> recorded += thrown })
+    go(navigation, Destination.Roll)
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+
+    compose.waitUntil(PATIENCE) { recorded.isNotEmpty() }
+    assertEquals("fireball", recorded.single().savedRollId)
+    assertEquals(SavedRollGroup.UNFILED_ID, recorded.single().groupId)
+  }
+
+  @Test
   fun `the statistics screen draws`() {
     val navigation = app()
 
@@ -314,14 +415,14 @@ class DInfinityScreensTest {
     )
 
   /** The app with every screen that takes a presenter actually given one. */
-  private fun app(): NavHostController {
+  private fun app(recorder: ThrowRecorder = ThrowRecorder.NONE): NavHostController {
     lateinit var navigation: NavHostController
     compose.setContent {
       navigation = rememberNavController()
       DInfinityTheme {
         DInfinityApp(
           navController = navigation,
-          screens = testPresenters(database, scope, setLibrary()),
+          screens = testPresenters(database, scope, setLibrary(), recorder = recorder),
         )
       }
     }

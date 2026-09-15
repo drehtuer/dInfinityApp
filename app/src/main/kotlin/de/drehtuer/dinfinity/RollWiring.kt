@@ -81,8 +81,11 @@ class RollWiring(
   /**
    * The look the dice are thrown onto (`docs/tables.md`, "Selecting a table").
    *
-   * The one chosen in the table picker, and the bundled package's first look
-   * when nothing has been chosen — which is where a new install starts.
+   * [pinned] is the throw's own table — a saved roll's pin, or the pin of the
+   * group it lives in, whichever the precedence rule already settled — and
+   * `null` for a throw that pins nothing, which is every throw somebody typed.
+   * Then the one chosen in the table picker, and the bundled package's first
+   * look when nothing has been chosen — which is where a new install starts.
    *
    * A pin naming a package that is no longer installed falls back the same
    * way, rather than leaving the tray with no look at all. The *setting* is
@@ -93,14 +96,13 @@ class RollWiring(
    * preference changes while the app is running — choosing a table and going
    * back to the tray should land on it.
    */
-  private val table: TableLook
-    get() {
-      val pinned = chosenTable()
-      val fromPin = pinned?.let { catalog.set(it.setId)?.tables?.firstOrNull { table -> table.id == it.tableId } }
-      return fromPin
-        ?: catalog.set(DiceSet.BUILTIN_ID)?.tables?.firstOrNull()
-        ?: TableLook(id = "default", name = "Default")
-    }
+  private fun table(pinned: TablePin?): TableLook {
+    val wanted = pinned ?: chosenTable()
+    val fromPin = wanted?.let { catalog.set(it.setId)?.tables?.firstOrNull { table -> table.id == it.tableId } }
+    return fromPin
+      ?: catalog.set(DiceSet.BUILTIN_ID)?.tables?.firstOrNull()
+      ?: TableLook(id = "default", name = "Default")
+  }
 
   /**
    * A presenter for one visit to the roll screen.
@@ -127,7 +129,7 @@ class RollWiring(
         RollMachine(
           catalog = catalog,
           geometry = geometry,
-          table = table,
+          look = ::table,
           simulator = simulator,
           defaultRounding = rounding,
         ),
@@ -147,7 +149,15 @@ class RollWiring(
   private fun recorder(scope: CoroutineScope): ThrowRecorder =
     recording?.let { recording ->
       ThrowRecorder { thrown ->
-        scope.launch { recording.record(result = thrown.result, plan = thrown.plan, seed = thrown.seed) }
+        scope.launch {
+          recording.record(
+            result = thrown.result,
+            plan = thrown.plan,
+            seed = thrown.seed,
+            savedRollId = thrown.savedRollId,
+            groupId = thrown.groupId,
+          )
+        }
       }
     } ?: ThrowRecorder.NONE
 

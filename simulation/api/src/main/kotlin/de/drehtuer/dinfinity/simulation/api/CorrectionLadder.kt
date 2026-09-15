@@ -1,7 +1,5 @@
 package de.drehtuer.dinfinity.simulation.api
 
-import kotlin.random.Random
-
 /**
  * The rule that nothing touches a die which has come to rest, expressed as
  * something a physics bridge can ask rather than as a paragraph it might
@@ -59,6 +57,10 @@ object CorrectionLadder {
    * The nudge for a die that is settling into trouble, derived from the roll's
    * own seed so the same roll always produces the same one.
    *
+   * Through [Seeds] rather than straight into `Random`, for the reason that
+   * object exists: a step later is a seed one larger, and two seeds that
+   * differ by one are not two independent streams.
+   *
    * Its size is a share of the speed the die still has, so a die that has
    * nearly stopped gets nearly nothing — which is the difference between a
    * tumble finishing and a kick.
@@ -69,7 +71,7 @@ object CorrectionLadder {
     step: Int,
     motion: DieMotion,
   ): Vector3 {
-    val random = Random(seed xor (dieIndex.toLong() shl SEED_DIE_SHIFT) xor step.toLong())
+    val random = Seeds.stream(seed, dieIndex, Seeds.BIAS + step)
     val size = motion.speedMmPerSecond * BIAS_SHARE_OF_SPEED
     val direction =
       Vector3(
@@ -87,6 +89,4 @@ object CorrectionLadder {
     val rethrown = outcome.rethrows.toDouble() / outcome.diceCount
     return corrected <= CORRECTION_BUDGET && rethrown <= RETHROW_BUDGET
   }
-
-  private const val SEED_DIE_SHIFT = 32
 }

@@ -21,6 +21,7 @@ import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
 import de.drehtuer.dinfinity.core.model.Rounding
+import kotlin.math.abs
 
 /**
  * What the dice came to, in full (`design/dInfinity.dc.html`, option 1f).
@@ -60,9 +61,46 @@ internal fun ResultSheet(
     // player asked for, and the dice under each are how it came out.
     result.groups.forEach { group -> GroupRow(group) }
 
+    // And a row per number the formula adds, so the rows on screen add up to
+    // the total. Absent for a formula whose total cannot be read off them —
+    // `(2d6 + 3) * 2` multiplies its three along with the dice, and listing it
+    // as "+ 3" would be adding up to the wrong number (`RollResult.itemised`).
+    result.adjustments.forEach { amount -> AdjustmentRow(amount) }
+
     // Offered only for a throw it could change. `Down`, `Nearest` and `Up` all
     // give the same answer to `3d6 + 4`.
     if (divides) RoundingControl(chosen = result.rounding, onRound = onRound)
+  }
+}
+
+/**
+ * One number the formula adds or takes away
+ * (`docs/dice-notation.md`, "Evaluation", step 7).
+ *
+ * Its own row beside the groups because it is a thing the player wrote and a
+ * thing that changed the total, which is the same claim every other row on
+ * this sheet makes. Before it existed the modifier was visible only in the
+ * formula line at the top, so a breakdown of `3d6 + 4` showed rows adding to
+ * eleven under a total of fifteen.
+ */
+@Composable
+private fun AdjustmentRow(amount: Long) {
+  Row(
+    modifier = Modifier.fillMaxWidth().testTag(RollTestTags.adjustmentOf(amount)),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(
+      text = stringResource(if (amount < 0) R.string.roll_sheet_minus else R.string.roll_sheet_plus),
+      style = MaterialTheme.typography.labelMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.weight(1f),
+    )
+    Text(
+      text = abs(amount).toString(),
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.Bold,
+      color = MaterialTheme.colorScheme.onBackground,
+    )
   }
 }
 

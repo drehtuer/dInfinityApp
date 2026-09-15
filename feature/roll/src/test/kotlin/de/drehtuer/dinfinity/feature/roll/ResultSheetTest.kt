@@ -162,6 +162,41 @@ class ResultSheetTest {
     )
 
   /** `4d6dl1`: three kept, one dropped, and the 6 is a natural maximum. */
+  @Test
+  fun `a number the formula adds is a row of its own, so the rows add up`() {
+    // It used to be visible only in the formula line at the top, so a
+    // breakdown of `4d6dl1 + 4` showed rows adding to fifteen under a total of
+    // nineteen (`docs/dice-notation.md`, "Evaluation", step 7).
+    compose.setContent { ResultSheet(fourD6DropLowest().plus(4)) }
+
+    compose.onNodeWithTag(RollTestTags.adjustmentOf(4)).assertIsDisplayed()
+    compose.onNodeWithText("plus").assertIsDisplayed()
+  }
+
+  @Test
+  fun `one that takes away says so`() {
+    compose.setContent { ResultSheet(fourD6DropLowest().plus(-2)) }
+
+    compose.onNodeWithTag(RollTestTags.adjustmentOf(-2)).assertIsDisplayed()
+    compose.onNodeWithText("minus").assertIsDisplayed()
+    // The sign is the word, so the number beside it is not written twice.
+    compose.onNodeWithText("2").assertIsDisplayed()
+  }
+
+  @Test
+  fun `a formula that adds nothing has no such row`() {
+    compose.setContent { ResultSheet(fourD6DropLowest()) }
+
+    compose.onNodeWithTag(RollTestTags.adjustmentOf(0)).assertDoesNotExist()
+  }
+
+  private fun RollResult.plus(amount: Long): RollResult =
+    copy(
+      formula = "$formula ${if (amount < 0) "-" else "+"} ${kotlin.math.abs(amount)}",
+      total = total + amount,
+      adjustments = listOf(amount),
+    )
+
   private fun fourD6DropLowest(): RollResult =
     RollResult(
       formula = "4d6dl1",

@@ -32,6 +32,7 @@ import org.robolectric.RobolectricTestRunner
 class CollectionImporterTest {
   private lateinit var database: DInfinityDatabase
   private lateinit var repository: SavedRollRepository
+  private lateinit var groupRepository: SavedRollGroupRepository
   private lateinit var importer: CollectionImporter
   private var next = 0
 
@@ -51,6 +52,7 @@ class CollectionImporterTest {
         .setTransactionExecutor(Runnable::run)
         .build()
     repository = SavedRollRepository(database) { NOW }
+    groupRepository = SavedRollGroupRepository(database)
     importer = CollectionImporter(database, clock = { NOW }, ids = { "id-${next++}" })
   }
 
@@ -93,7 +95,7 @@ class CollectionImporterTest {
         UNFILED,
       )
 
-      val beta = repository.groups.first().first { it.name == "Beta" }
+      val beta = groupRepository.all.first().first { it.name == "Beta" }
       assertEquals(listOf("Only"), repository.inGroup(beta.id).first().map { it.name })
     }
 
@@ -109,7 +111,7 @@ class CollectionImporterTest {
         UNFILED,
       )
 
-      val groups = repository.groups.first()
+      val groups = groupRepository.all.first()
       val parent = groups.first { it.name == "D&D" }
       assertEquals(parent.id, groups.first { it.name == "Thorin" }.parentId)
     }
@@ -119,7 +121,7 @@ class CollectionImporterTest {
     runTest {
       // The whole rule, in one test: no merge, nothing deleted, and the name
       // said out loud so somebody can go and change it.
-      repository.save(SavedRollGroup(id = "mine", name = "Thorin"))
+      groupRepository.save(SavedRollGroup(id = "mine", name = "Thorin"))
 
       val result = importer.import(thorin(), UNFILED)
 
@@ -129,7 +131,7 @@ class CollectionImporterTest {
   @Test
   fun `a refused import writes nothing at all`() =
     runTest {
-      repository.save(SavedRollGroup(id = "mine", name = "Thorin"))
+      groupRepository.save(SavedRollGroup(id = "mine", name = "Thorin"))
       repository.save(SavedRoll(id = "mine-roll", groupId = "mine", name = "Mine", formula = "1d4"))
 
       importer.import(thorin(), UNFILED)
@@ -141,7 +143,7 @@ class CollectionImporterTest {
   @Test
   fun `the clash ignores case, because two groups a capital apart are one group`() =
     runTest {
-      repository.save(SavedRollGroup(id = "mine", name = "THORIN"))
+      groupRepository.save(SavedRollGroup(id = "mine", name = "THORIN"))
 
       assertEquals(ImportResult.Refused("Thorin"), importer.import(thorin(), UNFILED))
     }
@@ -149,7 +151,7 @@ class CollectionImporterTest {
   @Test
   fun `the clash is named as the file spells it, which is the one to go and change`() =
     runTest {
-      repository.save(SavedRollGroup(id = "mine", name = "thorin"))
+      groupRepository.save(SavedRollGroup(id = "mine", name = "thorin"))
 
       assertEquals(ImportResult.Refused("Thorin"), importer.import(thorin(), UNFILED))
     }
@@ -157,7 +159,7 @@ class CollectionImporterTest {
   @Test
   fun `a collection whose groups are all new imports beside what is here`() =
     runTest {
-      repository.save(SavedRollGroup(id = "mine", name = "Pathfinder"))
+      groupRepository.save(SavedRollGroup(id = "mine", name = "Pathfinder"))
       repository.save(SavedRoll(id = "mine-roll", groupId = "mine", name = "Mine", formula = "1d4"))
 
       importer.import(thorin(), UNFILED)
@@ -169,11 +171,11 @@ class CollectionImporterTest {
   @Test
   fun `imported groups land after what is already in the switcher`() =
     runTest {
-      repository.save(SavedRollGroup(id = "mine", name = "Pathfinder", sortOrder = 7))
+      groupRepository.save(SavedRollGroup(id = "mine", name = "Pathfinder", sortOrder = 7))
 
       importer.import(thorin(), UNFILED)
 
-      val thorin = repository.groups.first().first { it.name == "Thorin" }
+      val thorin = groupRepository.all.first().first { it.name == "Thorin" }
       assertTrue("it sorted above what was already there", thorin.sortOrder > 7)
     }
 
@@ -182,13 +184,13 @@ class CollectionImporterTest {
     runTest {
       // A slug is stable inside the file, which is what lets a person edit one
       // by hand. It says nothing about what this database already uses.
-      repository.save(SavedRollGroup(id = "thorin", name = "Somebody else's"))
+      groupRepository.save(SavedRollGroup(id = "thorin", name = "Somebody else's"))
 
       importer.import(thorin(), UNFILED)
 
       assertEquals(
         "Somebody else's",
-        repository.groups
+        groupRepository.all
           .first()
           .first { it.id == "thorin" }
           .name,
@@ -202,19 +204,19 @@ class CollectionImporterTest {
       // A collection may be the first thing anybody ever does with the app.
       importer.import(thorin(), UNFILED)
 
-      assertNotNull(repository.groups.first().firstOrNull { it.id == SavedRollGroup.UNFILED_ID })
+      assertNotNull(groupRepository.all.first().firstOrNull { it.id == SavedRollGroup.UNFILED_ID })
     }
 
   @Test
   fun `an Unfiled that is already there is left as it is`() =
     runTest {
-      repository.ensureUnfiled("Loose ends")
+      groupRepository.ensureUnfiled("Loose ends")
 
       importer.import(thorin(), UNFILED)
 
       assertEquals(
         "Loose ends",
-        repository.groups
+        groupRepository.all
           .first()
           .first { it.id == SavedRollGroup.UNFILED_ID }
           .name,
@@ -234,7 +236,7 @@ class CollectionImporterTest {
     }
 
   private suspend fun groupNames(): List<String> =
-    repository.groups
+    groupRepository.all
       .first()
       .filterNot { it.id == SavedRollGroup.UNFILED_ID }
       .map { it.name }

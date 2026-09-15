@@ -4,7 +4,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
-import de.drehtuer.dinfinity.data.SavedRollRepository
+import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.data.SavedRollLibrary
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -29,7 +31,8 @@ import kotlinx.coroutines.launch
  *   deleting a group moves its rolls there.
  */
 class GroupPresenter(
-  private val repository: SavedRollRepository,
+  private val library: SavedRollLibrary,
+  private val catalog: DiceCatalog,
   private val scope: CoroutineScope,
   private val unfiledName: String,
   private val ids: () -> String = {
@@ -55,7 +58,7 @@ class GroupPresenter(
     // would move if the group went — and two collectors would let the sheet
     // be drawn from half of each.
     scope.launch {
-      combine(repository.groups, repository.all) { groups, rolls -> groups to rolls }
+      combine(library.groups.all, library.rolls.all) { groups, rolls -> groups to rolls }
         .collect { (groups, rolls) ->
           known = groups
           counts = rolls.groupingBy { it.groupId }.eachCount()
@@ -90,14 +93,17 @@ class GroupPresenter(
     draft = draft?.let { open -> drafted(open.group.copy(name = typed), open.fresh) }
   }
 
-  /** A mark was chosen, or the chosen one was tapped again to take it off. */
-  fun icon(emoji: String) {
-    draft = draft?.let { open -> drafted(open.group.copy(icon = emoji), open.fresh) }
-  }
-
-  /** The group it lives in was chosen, or `null` for the top level. */
-  fun parent(groupId: String?) {
-    draft = draft?.let { open -> drafted(open.group.copy(parentId = groupId), open.fresh) }
+  /**
+   * Everything about the group that is a choice rather than a keystroke: its
+   * mark, the group it lives in, and the table its rolls land on.
+   *
+   * One function rather than three, for the reason `EditorPresenter.choose`
+   * gives — none of them needs the name re-checked, a name does, and it has
+   * its own. Three identical one-line setters would be three places for the
+   * fourth to be written slightly differently.
+   */
+  fun choose(change: SavedRollGroup.() -> SavedRollGroup) {
+    draft = draft?.let { open -> drafted(open.group.change(), open.fresh) }
   }
 
   /** Writes the group. Does nothing while the draft is not savable. */
@@ -107,7 +113,7 @@ class GroupPresenter(
     val group = open.group.copy(name = open.group.name.trim())
     draft = null
     scope.launch {
-      repository.save(group)
+      library.groups.save(group)
       onSaved(group.id)
     }
   }
@@ -124,7 +130,7 @@ class GroupPresenter(
     if (!open.deletable) return
     draft = null
     scope.launch {
-      repository.deleteGroup(open.id, unfiledName)
+      library.groups.delete(open.id, unfiledName)
       onDeleted()
     }
   }
@@ -153,6 +159,7 @@ class GroupPresenter(
       // inside anything, because that would make its children two deep.
       nestable = known.none { it.parentId == group.id },
       parents = known.filter { it.parentId == null && it.id != group.id },
+      tables = tableChoicesOf(catalog),
       rolls = counts[group.id] ?: 0,
     )
   }
@@ -171,21 +178,25 @@ class GroupPresenter(
  *   be put inside another without making them two levels deep.
  * @param parents the groups it could be put inside: top-level ones, never
  *   itself.
+ * @param tables every table a group can be pinned to, with "Default" at the
+ *   front meaning *follow the app's* (`docs/tables.md`).
  * @param rolls how many saved rolls are in it, so deleting can say what will
  *   move rather than asking for a leap of faith.
  */
 data class GroupDraft(
   val group: SavedRollGroup,
   val fresh: Boolean,
-  val clash: String? = null,
-  val nestable: Boolean = true,
-  val parents: List<SavedRollGroup> = emptyList(),
-  val rolls: Int = 0,
+  val clash: String?,
+  val nestable: Boolean,
+  val parents: List<SavedRollGroup>,
+  val tables: List<TableChoice>,
+  val rolls: Int,
 ) {
   val id: String get() = group.id
   val name: String get() = group.name
   val icon: String get() = group.icon
   val parentId: String? get() = group.parentId
+  val tablePin: TablePin? get() = group.tablePin
 
   /** A group needs a name of its own, and no other group may have it. */
   val savable: Boolean get() = group.name.isBlank().not() && clash == null

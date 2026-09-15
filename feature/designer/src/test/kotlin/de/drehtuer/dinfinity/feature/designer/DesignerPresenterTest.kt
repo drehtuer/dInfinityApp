@@ -1,11 +1,15 @@
 package de.drehtuer.dinfinity.feature.designer
 
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
+import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -173,7 +177,138 @@ class DesignerPresenterTest {
     assertEquals(FaceDrawing.MAX_STROKES, presenter.state.face.strokes.size)
   }
 
+  @Test
+  fun `a die with no drawing on it opens blank`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+
+    presenter.base(d4)
+
+    assertEquals(d4.id, presenter.state.die.id)
+    assertTrue("the new die came with the old one's strokes", presenter.state.draft.blank)
+  }
+
+  @Test
+  fun `changing die writes down what was on the canvas`() {
+    // What made the confirmation this used to ask unnecessary: the drawing is
+    // not thrown away, it is put down (`docs/face-designer.md`).
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), drafts = drafts)
+    presenter.drew(line())
+
+    presenter.base(d4)
+
+    assertEquals(d4.id, presenter.state.die.id)
+    assertFalse("the drawing on the die that was left is gone", drafts.load(d6).blank)
+  }
+
+  @Test
+  fun `coming back to a die brings its drawing back`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), drafts = Remembered())
+    presenter.drew(line())
+    presenter.base(d4)
+
+    presenter.base(d6)
+
+    assertEquals(d6.id, presenter.state.die.id)
+    assertFalse("the drawing was lost on the way there and back", presenter.state.draft.blank)
+  }
+
+  @Test
+  fun `the designer opens on the drawing that was left there`() {
+    // The whole of "drafts survive process death", from this end: a presenter
+    // built afresh is a screen opened afresh.
+    val drafts = Remembered()
+    DesignerPresenter(d6, choosable = listOf(d6), drafts = drafts).drew(line())
+
+    val again = DesignerPresenter(d6, choosable = listOf(d6), drafts = drafts)
+
+    assertFalse("the screen opened blank on a die that had been drawn on", again.state.draft.blank)
+  }
+
+  @Test
+  fun `undo is written down too, so what is on disk is what is on screen`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6), drafts = drafts)
+    presenter.drew(line())
+
+    presenter.undo()
+
+    assertTrue("the drawing was taken back on screen but not on disk", drafts.load(d6).blank)
+  }
+
+  @Test
+  fun `changing die keeps the pen where it was`() {
+    // The pen, its colour and the guide are how somebody is working, not what
+    // they are working on.
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    presenter.use(Nib.Broad)
+    presenter.ink(0xFF00FF00.toInt())
+    presenter.showGuide(false)
+
+    presenter.base(d4)
+
+    assertEquals(Nib.Broad, presenter.state.nib)
+    assertEquals(0xFF00FF00.toInt(), presenter.state.colorArgb)
+    assertFalse("the guide came back on", presenter.state.guideShown)
+  }
+
+  @Test
+  fun `choosing the die already being drawn on does nothing at all`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    presenter.drew(line())
+
+    presenter.base(d6)
+
+    assertFalse("it threw the drawing away", presenter.state.draft.blank)
+  }
+
+  @Test
+  fun `with one die there is nothing to choose between`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6))
+
+    assertFalse("a chooser was offered for one die", presenter.state.baseChoosable)
+  }
+
   private fun line() = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))
+
+  @Test
+  fun `the die being drawn has a formula that throws it`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" })
+
+    assertEquals("1d6", presenter.rollable)
+  }
+
+  @Test
+  fun `and it follows the die, not the screen`() {
+    // The formula has to be the die in front of the player, not the one the
+    // screen opened on.
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" })
+
+    presenter.base(d4)
+
+    assertEquals("1d4", presenter.rollable)
+  }
+
+  @Test
+  fun `a die plain notation cannot name has no formula and no button`() {
+    // A set's own `skull-d6` has no spelling a formula could carry
+    // (`docs/architecture.md`, decision 31), and Roll it is not offered for it
+    // rather than offered and broken.
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6))
+
+    assertNull(presenter.rollable)
+  }
+
+  /** Drafts that outlive a presenter but not the test: a disk without the disk. */
+  private class Remembered : Drafts {
+    private val kept = mutableMapOf<String, Draft>()
+
+    override fun load(die: Die): Draft = kept[die.id] ?: Draft(die = die)
+
+    override fun save(draft: Draft) {
+      kept[draft.die.id] = draft
+    }
+  }
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
   private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }

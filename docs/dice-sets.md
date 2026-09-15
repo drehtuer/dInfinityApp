@@ -331,9 +331,24 @@ Install flow:
 
 The app never runs anything from the repository. No scripts, no build steps.
 
-Updates: "Check for updates" re-resolves the ref (forges) or re-downloads
-the archive headers and compares checksums (plain URLs); if the identity
-differs and the new `set.version` is higher, offer to reinstall.
+Updates: **"Check for updates" re-resolves the ref** and compares the commit
+with the one recorded at install. A set whose forge has moved on is badged on
+the list, and updating it is a re-install from the source the install recorded
+— through the same validator, over the top of the folder that is there. An
+update that is refused costs nothing, because a package that fails validation
+leaves the one already installed alone.
+
+Only sets that came from a forge *and* recorded the commit that arrived can be
+checked. A set installed from a file has no forge to ask, and a plain archive
+has no commits to tell apart — comparing archive headers and checksums for
+those is still to come (`docs/TODO.md`, 4.4), as is showing progress and
+allowing a cancel.
+
+The button is not drawn at all when nothing could be asked, and what a check
+*found* is said in a line rather than only on the rows: a check that found
+everything current and a check that could not reach anything look identical on
+a list where nothing is badged either way. A forge that cannot be reached is
+counted as unreachable rather than quietly read as up to date.
 
 Resolving a ref means asking the forge which commit it is at now — GitHub and
 Gitea call that hash `sha`, GitLab calls it `id`, and Gitea answers with a list

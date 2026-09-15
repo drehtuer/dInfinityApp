@@ -80,6 +80,20 @@ Every die is a **convex** rigid body:
   when a die stopped would disagree about the roll.
 - The simulation is seeded per roll. The seed and every input impulse are
   recorded in the `RollResult` so a roll can be replayed exactly.
+- **Every random number in a roll comes from `Seeds`, and the seed is stirred
+  before it becomes a generator.** A seed handed straight to
+  `kotlin.random.Random` becomes an xorwow state by way of sixty-four warm-up
+  steps, and sixty-four is not enough to separate two seeds that differ only in
+  their low bits: 200,000 d18 throws seeded `0, 1, 2, …` start in orientations
+  spread *more* evenly than chance allows, χ² of 0.73 against 17 degrees of
+  freedom. Too even is a correlation like any other, and a die is only fair
+  because its starting turn is drawn evenly and independently of everything
+  else about the throw. Rolls the app starts are seeded from `SecureRandom` and
+  were never affected; an **exploding die was** — its extra throws used to be
+  seeded one, two, three more than the throw that set them off. SplitMix64's
+  finaliser fixes it in three lines: a bijection, so two seeds are still two
+  streams, and pure arithmetic, so a roll still replays to itself on every
+  device.
 - The engine is configured in deterministic mode — Jolt built with
   `CROSS_PLATFORM_DETERMINISTIC=ON` (`docs/build-setup.md`) — stepped by a
   single-threaded job system, and no `System.nanoTime()` takes part in any
@@ -401,6 +415,106 @@ certain faces that are sticky. Nine axes, spread from −4.4 % to +6.5 %.
 
 The d10 is the same family of solid and is fair (χ² 5.29 against 27.88), so
 whatever this is, it bites when the kites get narrow. Finding it is Step 5.2.
+
+**The body is not it, and neither is the engine.** Two things were suspected
+first and both have been measured rather than argued:
+
+- `DieBodyTest` asks the solver what it built. Every catalogue shape comes back
+  with exactly the faces it should have — the d18 with eighteen — every face at
+  the same inradius to six decimal places, the centre of mass on the origin,
+  and an inertia tensor with the solid's own symmetry: isotropic for the
+  Platonic solids, two matching moments and one apart for the trapezohedra and
+  the coin. The die the engine collides *is* the die the arithmetic describes.
+- The engine is even-handed about it. Turning the d18 by one of its own
+  symmetries — the same solid, its faces relabelled — and throwing the same
+  twenty thousand seeds gives a histogram that is the **exact permutation** of
+  the untuned one, χ² 35.83 either way. Reversing the order the hull's corners
+  are handed over moves nothing but the last digits.
+
+So the solid is right and the solver treats it evenly. The throw was suspected
+next — a starting turn and the force it is thrown with come out of one stream,
+one after the other, and the symmetry argument assumes they are independent —
+and that is now measured rather than assumed:
+
+- the streams are stirred (`Seeds`, above), and the harness re-run on top of
+  that still gives the d18 **χ² 135.86**, against 197.34 before. The other
+  seven still pass, summing to 57.63 against 55 degrees of freedom;
+- the starting turn is independent of the force: over 400,000 throws, which
+  face is up at the moment of release against the sign of each other draw —
+  the lateral throw, the drop speed, the spin, the height — gives χ² between
+  12 and 27 against 17 degrees of freedom, which is what independence looks
+  like;
+- and the turns themselves are evenly spread: two million of them land on the
+  d18's eighteen faces with χ² 5.9 to 23.9 against 17, whether they come from
+  a fresh xorwow stream per roll, one long xorwow stream, or SplitMix64.
+
+Three runs of a hundred thousand — two ABIs, three seed schemes — put the same
+faces on top: their deviation patterns correlate at 0.86 to 0.90, where
+independent samples of a fair die would sit near ±0.24. It is one fixed bias,
+not three unlucky samples.
+
+### Where the d18's bias actually sits
+
+The sharpest clue, and the one to start from next. A d18's eighteen faces fall
+into **two orbits of nine** under the solid's own ninefold turn, and the bias is
+almost entirely *within* those orbits rather than between them: χ² 94.2 and
+40.5 against 8 degrees of freedom each, and only 1.34 against 1 between the two
+rings.
+
+That is the combination symmetry forbids. A ninefold turn maps the solid onto
+itself, so it maps the throw onto the same throw with its faces relabelled; with
+starting turns drawn evenly, the nine faces of an orbit have to come up equally
+often. They do not, by a margin of one in 10¹⁶.
+
+Every premise of that argument holds to the precision it was measured at — and
+precision turns out to be the answer. The hull is exactly symmetric in double
+arithmetic and reaches the engine as **float32**, where it is symmetric to about
+one part in 10⁷; Jolt's `ConvexHullShape` stores its points as `Vec3`, which is
+single precision whatever `JPH_DOUBLE_PRECISION` does to body positions, so
+there is no double-precision hull to compare against.
+
+What can be done instead is to make the asymmetry *bigger* and watch what
+happens. Twenty thousand throws of each, with every corner of the hull moved by
+a random fraction of the die's radius:
+
+| hull | d18 | d10 |
+| --- | --- | --- |
+| exact | χ² **52.2** | χ² 9.6 |
+| every corner nudged by up to 10⁻⁶ | χ² 50.7 | — |
+| every corner nudged by up to 10⁻⁴ | χ² **293.7** | χ² 19.8 |
+| the limit at p = 0.001 | 40.8 | 27.9 |
+
+Three things fall out of that.
+
+**Hull asymmetry is what biases a trapezohedron.** A ten-thousandth of a radius
+takes the d18 from 52 to 294, and two different nudges of the same size give
+biases that are unrelated to each other (their deviation patterns correlate at
+−0.21) — so the *pattern* is an arbitrary consequence of the particular
+asymmetry, which is why the exact hull's pattern is stable: float32 rounding is
+deterministic, so it is the same asymmetry every time.
+
+**The d18 amplifies it about five times harder than the d10.** The same nudge
+costs the d18 5.6× its baseline and the d10 2.1×, and only the d18 crosses its
+threshold. That is the narrow-basin argument measured rather than asserted: the
+d18's adjacent faces are 28.4° apart where a d10's are 51.8°.
+
+**And a nudge at the float32 scale changes the pattern without changing the
+size.** At 10⁻⁶ — ten times the hull's own rounding — the magnitude is
+unmoved (50.7 against 52.2) while the pattern shifts (correlation falls from
+0.80 to 0.42). A bias that is regenerated, the same size but differently
+shaped, by a perturbation the size of the representation itself is a bias made
+of the representation.
+
+So the d18 is as fair as a single-precision rigid-body engine can make a solid
+with basins that narrow. In the terms that matter to a player it is very fair
+indeed — **no face is off its share by more than 0.455 %**, against the 1 % this
+project set itself and against the 1–2 % a moulded plastic d20 manages. What it
+cannot pass is a chi-squared test at one in a thousand over a hundred thousand
+throws, which detects a bias far below anything anybody could play with.
+
+Whether that is a defect to fix, a bar to restate, or a shape to drop is a
+judgement rather than a measurement, and it is in `docs/TODO.md` under Open
+questions.
 
 ## Avoiding stacked and cocked dice
 

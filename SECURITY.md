@@ -50,8 +50,11 @@ The defences, all documented in `docs/dice-sets.md`:
 - **Images are bounds-checked before decoding**, so an oversized or malformed
   image is rejected without allocating for it.
 - **Only `https` is accepted** for installs, redirects are limited and followed
-  only to `https`, and downloads are size- and time-capped. Nothing else in the
-  app touches the network.
+  only to `https`, and downloads are size- and time-capped — at the size that
+  suits what is being fetched, so a saved-roll collection is capped at the
+  megabyte its reader would refuse a file above rather than at an archive's
+  sixty-four. A dice set and a collection are the only two things downloaded,
+  and both go through the same downloader.
 - **Physics values from a set are clamped** at validation and again at load, so
   a set cannot drive the simulation into `NaN`.
 

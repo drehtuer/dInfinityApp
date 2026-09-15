@@ -1,7 +1,12 @@
 package de.drehtuer.dinfinity
 
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.SavedRoll
+import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.core.notation.DicePicker
+import de.drehtuer.dinfinity.data.Session
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setActiveGroup
 import de.drehtuer.dinfinity.data.setActiveSession
@@ -9,6 +14,7 @@ import de.drehtuer.dinfinity.data.setDefaultSet
 import de.drehtuer.dinfinity.data.setDefaultTable
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
+import de.drehtuer.dinfinity.feature.roll.WhatIsThere
 import de.drehtuer.dinfinity.feature.sets.SetDetailPresenter
 import de.drehtuer.dinfinity.feature.sets.SetsPresenter
 import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
@@ -17,6 +23,8 @@ import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import de.drehtuer.dinfinity.feature.stats.R as StatsR
 
@@ -81,6 +89,7 @@ internal class ScreenWiring(
       tables = { tables() },
       faceDesigner = { faceDesigner() },
       diceSet = { id, onGone -> diceSet(id, onGone) },
+      whatIsThere = whatIsThere(app.savedRolls.all, app.sessions.sessions),
     )
 
   /**
@@ -136,20 +145,28 @@ internal class ScreenWiring(
    *
    * Opened on the default set's **d6**, or its first die if it has none.
    *
-   * Picking a base die — any catalogue shape or any installed die — is the
-   * next piece of 4.6. Until it lands the designer has to start somewhere, and
-   * the d6 is what somebody means by "a die": the set's *first* die is the d2,
-   * and opening a drawing app on a coin is a poor answer to "draw a die".
+   * The d6 rather than the set's first die, which is the d2: opening a drawing
+   * app on a coin is a poor answer to "draw a die". Whichever die it opens on,
+   * it opens on that die's own draft — so somebody who was drawing a d20
+   * yesterday is one tap from it rather than back at a blank d6.
    */
   private fun faceDesigner(): DesignerPresenter {
     val catalogue = app.setLibrary.catalogue
-    val dice =
-      catalogue
-        .set(catalogue.defaultSetId)
-        ?.dice
-        .orEmpty()
-        .ifEmpty { catalogue.installed.flatMap { it.dice } }
-    return DesignerPresenter(dice.firstOrNull { it.shape == DieShape.Cube } ?: dice.first())
+    // Every die of every usable set, so somebody else's d18 can be drawn on as
+    // readily as the bundled d6 (`docs/face-designer.md`, "Flow"). Two sets
+    // may both define a `d20`, so the chooser is built from distinct ids:
+    // a row with the same name on it twice is a row nobody can choose from.
+    val everything = catalogue.installed.flatMap { it.dice }.distinctBy { it.id }
+    val fromDefault = catalogue.set(catalogue.defaultSetId)?.dice.orEmpty()
+    val opening = fromDefault.ifEmpty { everything }
+    return DesignerPresenter(
+      die = opening.firstOrNull { it.shape == DieShape.Cube } ?: opening.first(),
+      choosable = everything,
+      // So a drawing outlives the screen it was made on, and each die keeps
+      // its own (`docs/face-designer.md`, "Drawing tools").
+      drafts = app.drafts,
+      notationOf = { die -> spellingOf(die, catalogue) },
+    )
   }
 
   /**
@@ -167,7 +184,15 @@ internal class ScreenWiring(
     )
 
   /** What is installed, and what may be done to it (`docs/dice-sets.md`). */
-  private fun diceSets() = SetsPresenter(app.setLibrary, scope)
+  private fun diceSets() =
+    SetsPresenter(
+      library = app.setLibrary,
+      scope = scope,
+      // The platform half of a link: a cache directory and an HTTP client,
+      // neither of which a screen that lists dice sets should have to carry.
+      download = PackageDownload(app.cacheDir)::fetch,
+      latestCommit = CommitLookup()::latest,
+    )
 
   /** One of them, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`). */
   private fun diceSet(
@@ -182,3 +207,54 @@ internal class ScreenWiring(
     onDefault = { setId -> scope.launch { repository.setDefaultSet(setId) } },
   )
 }
+
+/**
+ * How [die] is written in a formula, or null when notation cannot name it.
+ *
+ * Through the same picker the roll screen's row uses, so **Roll it** and a tap
+ * on the row write the same thing. A set's own `skull-d6` has no spelling a
+ * formula could carry and comes back null (`docs/architecture.md`,
+ * decision 31).
+ *
+ * **Which set to name is decided by what would resolve**, not by where the die
+ * came from — because the designer's row has no answer to "where from": it
+ * lists dice by id across every installed set, and two sets may both define a
+ * `d20`. So: a bare `1d20` when the set a plain `d20` already means has one,
+ * and `brass:1d18` when it does not and `brass` does. A bare `1d18` in the
+ * second case would be a formula that refuses to resolve, which is a worse
+ * answer to "roll this" than no button at all.
+ */
+internal fun spellingOf(
+  die: Die,
+  catalogue: DiceCatalog,
+): String? {
+  val default = catalogue.set(catalogue.defaultSetId)?.takeIf { it.die(die.id) != null }
+  val set = default ?: catalogue.installed.firstOrNull { it.die(die.id) != null } ?: return null
+  return DicePicker
+    .offeredBy(set, setRef = set.id.takeIf { default == null })
+    .firstOrNull { it.notation == die.id }
+    ?.notation(1)
+}
+
+/**
+ * What a fresh install already has, for the first-launch count line
+ * (`design/dInfinity.dc.html`, option 9a).
+ *
+ * The two counts the welcome's own module cannot know. **Combined rather than
+ * collected apart**, so the line is never drawn from one new number and one
+ * old one — the same reason the saved-rolls list combines its two flows.
+ *
+ * It takes the flows rather than the repositories, which is what lets it be
+ * tested at all: `ScreenWiring` needs a real `Application` and so has never
+ * been under test, and a rule that lives only in there is a rule nobody
+ * checks. It is also why nothing here *creates* anything — a sessions
+ * presenter would make the default session as a side effect, and saying hello
+ * is not a reason to write to a database.
+ */
+internal fun whatIsThere(
+  savedRolls: Flow<List<SavedRoll>>,
+  sessions: Flow<List<Session>>,
+): Flow<WhatIsThere> =
+  combine(savedRolls, sessions) { rolls, all ->
+    WhatIsThere(savedRolls = rolls.size, sessions = all.size)
+  }

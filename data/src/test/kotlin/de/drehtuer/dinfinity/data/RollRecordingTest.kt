@@ -303,6 +303,81 @@ class RollRecordingTest {
         ),
     )
 
+  @Test
+  fun `a roll is not filed under a session that is not there any more`() =
+    runTest {
+      // Which session is active is a preference, and a preference outlives the
+      // thing it names. Delete the active session while another screen is in
+      // front — or open the app with one already gone — and every throw would
+      // otherwise be filed under an id nothing can find, which puts the roll in
+      // the history and in the face counts and shows it in neither.
+      val sessions = SessionRepository(database)
+      sessions.ensureDefault("First rolls")
+      val friday = sessions.create("Friday")
+      var active = friday
+      val recorder = RollRecording(StatisticsRepository(database), sessionOf = { active }, sessions = sessions)
+
+      recorder.record(result = result(), plan = plan())
+      sessions.delete(friday, "First rolls")
+      recorder.record(result = result(), plan = plan())
+
+      val filed =
+        database
+          .rollHistory()
+          .recent(10)
+          .first()
+          .map { it.sessionId }
+      assertEquals(
+        "the throw after the session went should have gone to the first session",
+        listOf(SessionRepository.DEFAULT_ID, SessionRepository.DEFAULT_ID),
+        filed,
+      )
+    }
+
+  @Test
+  fun `a session that is still there keeps its rolls`() =
+    runTest {
+      // The other half: the check must not quietly move everything to the
+      // first session.
+      val sessions = SessionRepository(database)
+      sessions.ensureDefault("First rolls")
+      val friday = sessions.create("Friday")
+      val recorder = RollRecording(StatisticsRepository(database), sessionOf = { friday }, sessions = sessions)
+
+      recorder.record(result = result(), plan = plan())
+
+      assertEquals(
+        friday,
+        database
+          .rollHistory()
+          .recent(10)
+          .first()
+          .single()
+          .sessionId,
+      )
+    }
+
+  @Test
+  fun `a recorder with no sessions to check against files what it is told`() =
+    runTest {
+      // The null case is a real one: a caller that has no session table to ask
+      // — a test, or any screen recording before sessions exist — still gets a
+      // row, and the column is still correct.
+      val recorder = RollRecording(StatisticsRepository(database), sessionOf = { "tuesday" }, sessions = null)
+
+      recorder.record(result = result(), plan = plan())
+
+      assertEquals(
+        "tuesday",
+        database
+          .rollHistory()
+          .recent(10)
+          .first()
+          .single()
+          .sessionId,
+      )
+    }
+
   private fun d6() =
     Die(
       id = "d6",
