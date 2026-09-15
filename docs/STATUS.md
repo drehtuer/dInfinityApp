@@ -142,12 +142,16 @@ is mostly polish, the export paths, and the things that need a phone.
   dice — is the hardest thing in the plan and can only be judged on a device.
   If prevention cannot get there, the fallback is a visible re-throw, which is
   honest but must not become common.
-- **The correction ladder leans on corrections far too hard.** Nine of twenty
-  dice get a nudge, against a budget of one in two hundred. Every one lands
-  while the die is still moving and post-rest corrections are zero, so the
-  honest rule holds — but at a hundred dice the corrections are *visible*, and
-  "it does not cheat" and "it does not look like it cheats" are different
-  claims. Step 5.5.
+- **The correction ladder leans on corrections far too hard, and now there is
+  a number for what that costs.** The Step 5 harness ran on the Pixel 10a for
+  the first time: 200 throws of 20 d20s. Every honesty bar passes — **zero**
+  dice at rest on another die, **zero** post-rest corrections, zero forced
+  settles — and so does every timing bar, with a median settle of 0.81 s and a
+  p99 step of 1.00 ms against the 8.33 ms a 120 Hz step has. Three fail:
+  **43.55 %** of dice corrected against a 0.5 % budget, **3.50 %** re-thrown
+  against 0.05 %, and dice reaching **9.0 mm** into each other against a bar of
+  0.2 mm, on dice 16 mm across. The last is new and is almost certainly the
+  same fault seen from the collision side rather than a second one. Step 5.5.
 - **The d18 is a known limitation, decided and written down.** It cannot pass
   chi-squared at a hundred thousand rolls, because its resting basins are
   narrow enough that the float32 hull's own rounding biases it and Jolt stores

@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.harness
 
 import de.drehtuer.dinfinity.simulation.api.CorrectionLadder
 import de.drehtuer.dinfinity.simulation.api.SettleRule
+import java.util.Locale
 
 /**
  * The bars Step 5 sets, written down as data so that a run can be scored
@@ -97,8 +98,8 @@ data class HarnessTargets(
   ): TargetResult =
     TargetResult(
       name,
-      "%.3f %%".format(bar * PERCENT),
-      "%.3f %%".format(measured * PERCENT),
+      written("%.3f %%", bar * PERCENT),
+      written("%.3f %%", measured * PERCENT),
       measured <= bar,
     )
 
@@ -106,19 +107,35 @@ data class HarnessTargets(
     name: String,
     measured: Double,
     bar: Double,
-  ): TargetResult = TargetResult(name, "%.2f s".format(bar), "%.2f s".format(measured), measured <= bar)
+  ): TargetResult = TargetResult(name, written("%.2f s", bar), written("%.2f s", measured), measured <= bar)
 
   private fun millis(
     name: String,
     measured: Double,
     bar: Double,
-  ): TargetResult = TargetResult(name, "%.2f ms".format(bar), "%.2f ms".format(measured), measured <= bar)
+  ): TargetResult = TargetResult(name, written("%.2f ms", bar), written("%.2f ms", measured), measured <= bar)
 
   private fun millimetres(
     name: String,
     measured: Double,
     bar: Double,
-  ): TargetResult = TargetResult(name, "%.3f mm".format(bar), "%.3f mm".format(measured), measured <= bar)
+  ): TargetResult = TargetResult(name, written("%.3f mm", bar), written("%.3f mm", measured), measured <= bar)
+
+  /**
+   * A number written the way the report writes every number.
+   *
+   * [Locale.ROOT] rather than the device's own, and this is not a nicety: the
+   * phone this is run against is set to German, so the first table it printed
+   * read `0,500 %` against `43,550 %`. A run is a *measurement*, compared with
+   * the run before it, pasted into a pull request and read by whoever is not
+   * holding the phone — and a decimal point that depends on whose phone it was
+   * is a measurement that cannot be compared with anything
+   * (`docs/build-setup.md`).
+   */
+  private fun written(
+    how: String,
+    value: Double,
+  ): String = String.format(Locale.ROOT, how, value)
 
   companion object {
     /** Where the middle roll of twenty dice has to have settled by (Step 5.5). */
@@ -224,7 +241,15 @@ data class Scorecard(
     bar: String,
     measured: String,
     result: String,
-  ): String = "%-${widths.name}s  %${widths.bar}s  %${widths.measured}s  %s".format(name, bar, measured, result)
+  ): String =
+    String.format(
+      Locale.ROOT,
+      "%-${widths.name}s  %${widths.bar}s  %${widths.measured}s  %s",
+      name,
+      bar,
+      measured,
+      result,
+    )
 
   companion object {
     /** The prefix the script greps for. */

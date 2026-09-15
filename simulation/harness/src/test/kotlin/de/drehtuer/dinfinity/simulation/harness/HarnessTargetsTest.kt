@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.harness
 
 import de.drehtuer.dinfinity.simulation.api.CorrectionLadder
 import de.drehtuer.dinfinity.simulation.api.SettleRule
+import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -169,6 +170,25 @@ class HarnessTargetsTest {
       capsReached = 0,
       deepestDiePenetrationMm = 0.01,
     )
+
+  @Test
+  fun `writes its numbers the same way whatever the phone's language is`() {
+    // The Pixel 10a this is run against is set to German, and the first table
+    // it ever printed read `0,500 %` against `43,550 %`. A run is a
+    // measurement — compared with the run before it, pasted into a pull
+    // request, read by whoever is not holding the phone — and a decimal point
+    // that depends on whose phone it was is a measurement that compares with
+    // nothing.
+    val was = Locale.getDefault()
+    try {
+      Locale.setDefault(Locale.GERMANY)
+      val table = HarnessTargets().score(perfect()).table()
+      assertFalse(table.contains(","), "a comma got into: $table")
+      assertTrue(table.contains("0.500 %"))
+    } finally {
+      Locale.setDefault(was)
+    }
+  }
 
   private companion object {
     /** How many bars Step 5 sets. A row that disappears is a target nobody is checking. */
