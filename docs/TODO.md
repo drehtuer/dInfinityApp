@@ -356,7 +356,7 @@ phone.
 Everything it *decides* is plain Kotlin in `simulation/harness` and is tested on
 the JVM: what a run was asked for, the percentiles, the shares, the document and
 the comparison. The device only rolls, times and writes two files
-(`docs/architecture.md`, decision 51). It **fails** on the targets the engine
+(`docs/architecture.md`, decision 53). It **fails** on the targets the engine
 misses today, which is the plan being behind the check rather than the check
 being wrong.
 
