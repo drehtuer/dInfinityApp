@@ -2,7 +2,9 @@
 
 > **Design:** the designer is options 1v (d6 with a skull on the 1), 4c
 > (colour picker) and 8d (d20, triangular face mask) of the
-> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)).
+> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)); the
+> export is 8c, on the "My dice" details screen reached like any other
+> package's (6a).
 
 The face designer lets a user draw the faces of a die with a finger and roll
 the result immediately. Its output is a normal dice set (see
@@ -35,10 +37,11 @@ installed by other users like any other set.
    opens the tray with the die in the formula field and **does not throw it**:
    the throw is the player's to make, which is the same answer every other way
    into the tray gives.
-5. **Save.** The die is added to the user's personal set ("My dice", id
-   `mine`), or to a new set the user names. The set folder is written with a
-   generated `diceset.toml` and one atlas PNG per die, and then run through
-   the standard validator like any import.
+5. **It is already saved.** Every drawing is a draft on disk, and the drafts
+   together *are* the personal set ("My dice", id `mine`): the folder is
+   written with a generated `diceset.toml` and one atlas PNG per drawn die,
+   and run through the standard validator like any import. There is no Save
+   button because there is nothing a Save button would do.
 
 ## What is built
 
@@ -98,9 +101,13 @@ has no answer to "which set is this one". A bare `1d20` when the set a plain
 `d20` already means has one, and `brass:1d18` when it does not and `brass`
 does.
 
+The export is built: "My dice" is a real installed package, and the details
+screen behind it offers it as a zip once a licence has been chosen ("Export
+details" below).
+
 Still to come, in `docs/TODO.md` 4.6: the stamp and "fill all faces with
 numbers" — both of which place a glyph, and so both wait on the built-in SDF
-font (Step 3) — and the export.
+font (Step 3).
 
 ## Drawing tools
 
@@ -242,17 +249,98 @@ the device to spare an older build one shape, which is not a trade.
 
 ## Export details
 
-- Atlas resolution: 256 px per face cell; a d20 atlas is therefore
-  1280×1024 (5×4 cells). Well within the set limits.
+> **Design:** the export is option `8c` of the
+> [clickable design](../design/dInfinity.dc.html) — the "My dice" details
+> screen, reached like any other package's (`6a`).
+
+- Atlas resolution: **256 px per face cell**; a d20 atlas is therefore
+  1280×1024 (5×4 cells) and a d6's is 768×512. Every catalogue shape stays
+  well inside the 2048-pixel texture limit, and every cell comes out exactly
+  square, so the validator's "does not divide into square cells" warning can
+  never fire on the app's own output (`docs/dice-sets.md`, "Textures").
+- The grid is the shape catalogue's, not the designer's: face *i* is cell *i*
+  of `ShapeAtlas`'s grid, which is the same grid the renderer samples and the
+  validator checks. Two answers to "where is face 7" would be a die whose
+  faces are in the wrong places on somebody else's phone.
 - Background of each cell is transparent; the die colour and material come
   from the set defaults, so the same drawing works on a black or a white die.
-- Strokes are rasterised with anti-aliasing at export time from the vector
-  draft.
-- The generated `diceset.toml` for a personal set marks
-  `author = "<device user name>"` and `license = "unspecified"`; the export
-  screen asks the user to pick a license before sharing.
-- "Share" produces a zip of the set folder, which can be uploaded to a git
-  repository as-is.
+  **A cell nobody drew on is not written at all**, which is what lets the
+  printed label show through it.
+- Strokes are rasterised with anti-aliasing from the vector draft, clipped to
+  the **face outline** rather than to the cell — a turned paste puts marks
+  outside the outline on purpose, and what falls outside belongs to no face.
+- **The eraser clears rather than paints.** On the canvas the paper is white
+  and the eraser is a white pen; in the atlas the paper is nothing at all, and
+  a white stroke there would be a mark on a black die that nobody drew.
+- "Share" produces a **zip of the set folder**, handed to another application
+  through the share sheet, which can be uploaded to a git repository as-is.
+  The entries are in name order with a fixed timestamp, so a drawing nobody
+  has touched exports to the same file twice.
+
+**The decision and the pixels are separated**, the way the physics and the
+renderer are (`docs/architecture.md`, decisions 40, 47 and 53). `Atlas` says
+how big the image is, which cell each face occupies and where every point of
+every mark lands in it, in plain Kotlin a unit test asserts on; `AtlasPainter`
+puts the ink down, and one file behind it touches a `Bitmap`. A painter that
+cannot allocate answers with nothing, and a die with no atlas prints its labels
+— one unlucky allocation does not cost somebody the other nineteen dice.
+
+## "My dice"
+
+The drawings on the phone **are** a dice set, id `mine`, in `dicesets/mine/`
+like any other installed package. Nothing that reads dice sets knows it is
+special: it is on the sets list, its details screen shows what is in it,
+notation resolves `mine:d20`, and it can be switched off or removed with the
+same tap as anybody else's package.
+
+It is **built, not accumulated**. The drafts are the record and the folder is a
+view of them, so there is nothing to keep in step by hand: a drawing deleted is
+a die gone from the package at the next reading. Rasterising every drawn face
+is far too much to do after every stroke, so it is rebuilt when the sets folder
+is read and only when a drawing has actually changed — once per sitting at
+worst, and not at all while nobody is looking at the list.
+
+A draft whose die is not installed is not in the package, and its file is kept:
+re-installing the package that defines the die brings the drawing back.
+
+## The licence, and why it is a gate
+
+The export is **shut until the author picks a licence** (design `8c`). A dice
+set is something a stranger installs and rolls, and `license` is the only field
+in the file that says what they may do with it (`docs/dice-sets.md`, "What a
+licence means"). Offering "share" first and asking afterwards would be asking
+about a file that had already gone.
+
+What is offered is a short closed list rather than a text box — the point of
+the field is that the reader *recognises* what it says, and a box fills up with
+sentences nobody can act on:
+
+| Shown | Written into `diceset.toml` |
+| --- | --- |
+| CC0 1.0 (public domain) | `CC0-1.0` |
+| CC BY 4.0 | `CC-BY-4.0` |
+| CC BY-SA 4.0 | `CC-BY-SA-4.0` |
+| MIT | `MIT` |
+| GPL-2.0-or-later | `GPL-2.0-or-later` |
+| All rights reserved | `LicenseRef-All-Rights-Reserved` |
+
+The first five are the prototype's, in its order. The sixth is the honest
+answer for a drawing somebody wants to hand to one friend rather than to the
+world; it is written in the `LicenseRef-` form SPDX reserves for everything it
+has no identifier for, because "All rights reserved" spelled out in a field of
+identifiers is a sentence pretending to be a name. The names are not
+translated: a translated `CC BY 4.0` would be a licence nobody could look up.
+
+Until somebody chooses, the field says `unspecified` — written down rather than
+left out, because a missing field cannot be told from one an older version of
+the app never wrote. **The choice is written into the installed folder as well
+as into the zip**, so the details screen goes on saying it after the share
+sheet has closed and the next stroke somebody draws does not un-answer it.
+
+**The package goes through `DiceSetValidator` before the file is offered.** The
+app's own output is not a privileged path, exactly as the bundled set is not: a
+package that does not validate is a bug caught on this phone rather than an
+install failure on somebody else's.
 
 ## Quick mode
 
@@ -271,12 +359,11 @@ on the 1 in ten seconds" path.
   drawing reads as a broken screen. A paste that would not fit is refused
   whole rather than in part.
 - The draft limit **makes room**: drawing on a fifty-first die drops the draft
-  nobody has touched for longest. Refusing it would be a dead end — there is
-  no screen yet on which to delete one ("My dice", `docs/TODO.md` 4.6) — and a
-  cap that cannot be reached is not a cap. It is the same answer the history's
+  nobody has touched for longest. Refusing it would be a dead end — a cap that
+  cannot be reached is not a cap — and it is the same answer the history's
   fifty thousand rows already take. The draft being worked on is never the one
   dropped, whatever the filesystem's clock says.
 - A drawing with nothing on it is not a draft and is not kept, so opening the
   designer and leaving it cannot push a real drawing over the limit.
 - Everything is on-device; nothing leaves the phone unless the user shares
-  the zip.
+  the zip, and nothing can be shared until a licence has been chosen for it.

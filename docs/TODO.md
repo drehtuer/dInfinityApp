@@ -169,7 +169,15 @@ validator, where a rejection lists every error (`1t`) and a download that never
 arrives is refused the same way. Database version 4 holds which sets are
 switched on.
 
-- [ ] "My dice" details with export as zip gated on a license choice (`8c`)
+**"My dice" is an ordinary package** (`8c`). The drawings on the phone are
+built into `dicesets/mine/` whenever the folder is read and a drawing has
+changed, so the list, the details screen, the notation and the remove button
+all treat it like anything else. Its details screen is the one place that is
+different: it offers the package as a zip, **shut until a licence has been
+chosen**, and the choice is written into the file and into the installed folder
+alike. What goes out is validated first, by the same validator a download goes
+through.
+
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
 
 ### 4.5 Table picker — `feature/tables`
@@ -219,6 +227,15 @@ three-numbers-per-corner rule is **derived rather than checked** — a cell's
 numbers are read from the corners it meets, so two cells sharing an edge cannot
 be made to disagree along it.
 
+**The export is built.** A drawing becomes an atlas at 256 px per cell in the
+shape catalogue's own grid, with the cells nobody drew on left out so they stay
+transparent, and a generated `diceset.toml` beside it; what decides where
+things go is plain Kotlin and only the painting touches a `Bitmap`
+(`docs/architecture.md`, decision 55). The package is validated before it is
+written and again before its zip is offered, the licence is asked for first
+(`8c`, in 4.4 above), and the file leaves through the share sheet the way an
+exported collection does.
+
 - [ ] Stamp a digit or a sign from the built-in font, and the "fill all faces
       with numbers" one-tap starting point that places the same glyphs. The
       font is there now — `core/glyphs` holds the outlines the tray prints
@@ -231,7 +248,6 @@ be made to disagree along it.
       toolbar is built: the fill bucket, copy face → paste with a turn and a
       mirror, and the colour picker past the twelve presets
 - [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
-- [ ] Export to a real dice set through the standard validator: atlas at 256 px per cell, transparent cells, generated `diceset.toml`, licence asked for before sharing
 - [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"
 - [ ] *Judgement, with a finger:* the bucket calls a stroke closed when its
       ends come back within 0.08 of the canvas of each other, and fills the

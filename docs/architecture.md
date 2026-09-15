@@ -63,7 +63,7 @@ render/
 input/
   shake/             Sensor fusion → throw impulses
 feedback/            Impacts → haptic ticks and impact sounds (docs/physics-and-rendering.md)
-designer/            Face drawing canvas, drafts on disk → dice set export (docs/face-designer.md)
+designer/            The drawing model behind the face designer: marks, drafts on disk, cell outlines, and the export that turns them into an installable dice set (docs/face-designer.md)
 data/                Room database, DAOs, DataStore
 ui/
   common/            Screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes
@@ -71,7 +71,7 @@ feature/             One module per screen group; see docs/TODO.md Step 4
   roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
   saved/             Saved rolls: groups, list, editor, import/export
-  sets/              Dice set browser, details, installer
+  sets/              Dice set browser, details, installer, and the "My dice" export behind a licence choice
   tables/            Table picker
   designer/          Face designer screen over the designer/ engine
   stats/             Statistics, history and sessions — the "Look back" screens
@@ -1097,16 +1097,29 @@ to re-run (decision 13).
       diceset.toml
       textures/…
       .meta.json              source URL, commit hash / archive checksum + ETag, install time, validation report
-  designer/
-    drafts/…                  in-progress face drawings
+    mine/                     the same again, generated from the drafts rather than downloaded (docs/face-designer.md)
+    .mine.writing/            it being rebuilt; renamed into place, and never a package because of the dot
+    .mine.previous/           the one it replaced, held until the swap is done
+  drafts/…                    in-progress face drawings, one file per die
   savedrolls/
     imports/…                 imported collections kept for "re-import / diff"
+<cacheDir>/
+  collections/                one exported saved-roll collection, emptied before each share
+  exports/                    one exported file of numbers, emptied before each share
+  packages/                   one exported dice-set zip, emptied before each share
 <databases>/dinfinity.db       Room: stats, saved rolls, roll history, set registry
 ```
 
-Dice set folders are treated as read-only after installation. Uninstall
+Dice set folders are treated as read-only after installation, with one
+exception the app owns end to end: `dicesets/mine/` is rewritten from the
+drafts whenever the folder is read and a drawing has changed. Uninstall
 deletes the folder and the registry row; statistics referencing that set are
 kept (they are keyed by set id and die id, not by file path).
+
+The three `<cacheDir>` directories are the only paths the app's `FileProvider`
+can see (`app/src/main/res/xml/collection_paths.xml`). Each kind of export gets
+one of its own rather than sharing a wider path, because the cache also holds
+the archives an install is working through, and those came from a stranger.
 
 ## Key decisions log
 
@@ -1166,3 +1179,4 @@ kept (they are keyed by set id and die id, not by file path).
 | 49 | The physics and the Filament engine share one thread, driven by that thread's own `Choreographer` | The design started with a simulation thread publishing transforms to a render thread through a lock-free double-buffer. Written down, the render side turns out to have exactly one thing it can do with a transform, which is draw it — so the buffer would be eighty entries copied across a boundary neither side wanted, and a class of bug (torn reads, a frame drawn from two different steps, a stage closed while the other thread is mid-draw) bought in exchange for overlapping a copy with a draw. Filament also insists every engine call comes from the thread that made the engine, and the physics world is single-threaded for determinism, so both halves already wanted one owner each; giving them the same owner removes the hand-off rather than synchronising it. The thread is still not the main one — eighty convex bodies at 120 Hz does not belong where the UI is drawn. What it costs is that a long physics step delays that frame, which is the same trade the frame clock's four-step catch-up cap already makes visible |
 | 53 | The device harness's arithmetic — what a run was asked for, what its rolls added up to, and whether they met Step 5's targets — is a plain Kotlin module, and the instrumented test only rolls, times and writes | It is decision 40 applied to the thing that *judges* the physics rather than to the physics. A harness whose own percentile, whose own share of dice corrected and whose own pass/fail comparison can be checked only by running it on a phone is a harness nobody can trust: when it says a run failed, the first question is whether the run failed or the harness did, and there would be no way to answer it. Split here and the answer is a JVM test — including the boundary cases a phone would have to misbehave to produce, like a correction landing on a die at rest. The same split is what lets the shell script print a table it did not render: the device writes the table the Kotlin produced, and a second copy of the comparison written in awk cannot drift from the one the tests hold |
 | 54 | A die an explosion or a reroll adds is thrown into a world of its own, into the clear floor the settled dice leave, and drawn among them | Three rules meet here and only one arrangement keeps all three. The result must be the physics, so the added die is really simulated. Nothing may touch a die that has come to rest, so the settled dice cannot be bodies in that throw — a die dropped onto them would shove them, and a face the player has already read would change, which is the failure this project cares most about. And the player has to see it happen, so it cannot stay in the tray nobody is looking at. Putting the settled dice in as immovable furniture would need the native side to grow a second kind of body, untestable on the JVM and unverifiable without a phone; leaving them out entirely costs nothing and makes the rule true by construction rather than by tuning — there is no body in that world to shove. What is left is the picture, and `ClearSpace` answers it above the bridge, where a test can reach it: the point of the tray furthest from every die already down, on a fixed grid so the same roll replays to itself. The residue is honest and small — a die that rolls a long way could still be *drawn* crossing a settled one, which is why it is dropped rather than thrown, and why the drop needs eyes on a phone (`docs/TODO.md`, Step 5.6) |
+| 55 | A drawn face becomes an atlas in two halves: plain Kotlin decides what goes where, and one file puts the pixels down | The same line decisions 40, 47 and 51 draw, in the same place and for the same reason. How big the image is, which cell a face occupies, where every point of every mark lands in it and which cells are left out so they stay transparent are all arithmetic, and all of it can be wrong; `Bitmap`, `Canvas` and the PNG encoder cannot be *wrong*, only unavailable. So `Atlas` is a plan a JVM test asserts on — including that no catalogue shape passes the 2048-pixel texture limit and that every cell comes out exactly square — and `AtlasPainter` is an interface with one file behind it, which Robolectric's native graphics still exercises a tier below a device. It buys the failure mode too: a painter that cannot allocate answers with nothing, the die loses its artwork and keeps its labels, and the package still installs. The other half of the decision is that **the package the app writes goes through `DiceSetValidator`** before it is put in `dicesets/` and again before its zip is offered to anybody. The app's own output is not a privileged path, exactly as the bundled set is not — and it means `dicesets/format` is tested against a second writer rather than only against its own fixtures |

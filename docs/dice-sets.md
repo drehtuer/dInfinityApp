@@ -1,9 +1,9 @@
 # Dice sets
 
 > **Design:** the installed-set list (options 1s and 1t), the set details
-> (6a, and 6b for a failed validation), the disable/remove dialog (5a) and the
-> update flow (9h–9i) are in the [clickable design](../design/dInfinity.dc.html)
-> ([design/](../design/)).
+> (6a, and 6b for a failed validation), the "My dice" details with its export
+> (8c), the disable/remove dialog (5a) and the update flow (9h–9i) are in the
+> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)).
 
 A **dice set** is a folder containing a `diceset.toml` file and, optionally,
 textures. The built-in dice are a dice set too; there is no privileged code
@@ -121,7 +121,7 @@ sound = "felt"
 | `format` | yes | Integer. The app refuses formats newer than it knows. |
 | `set.id` | yes | Slug of 3–40 characters (`[a-z0-9-]`, starting and ending with a letter or digit). Used as the `setref` in notation and as the folder name, which is why it has a floor. |
 | `set.name`, `set.version` | yes | |
-| `set.author`, `license`, `description`, `homepage` | no | Displayed only. `homepage` is shown as text, opened only on explicit tap, `https` only. |
+| `set.author`, `license`, `description`, `homepage` | no | Displayed only; nothing in the app enforces a licence. `license` is an SPDX identifier by convention — see "What a licence means". `homepage` is shown as text, opened only on explicit tap, `https` only. |
 | `defaults.*` | no | Material and physics defaults, all clamped. |
 | `die.id` | yes | Slug of 1–40 characters, unique within the set — shorter than a set id, because `d2`, `d4` and `d6` are the ids plain notation resolves. Standard names (`d2`…`d100`, `d10-tens`, `df`) are what typed notation resolves, optionally set-qualified as `brass:2d20`. A die with any other id is rolled by tapping it in the dice picker — the grammar in `docs/dice-notation.md` has no unambiguous way to write `skull-d6kh1`, since a slug and a modifier are made of the same characters. |
 | `die.shape` | yes | A name from the shape catalogue below. v1 has no other option. |
@@ -131,6 +131,50 @@ sound = "felt"
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
 | `die.color`, `number_color`, `roughness`, `metallic`, `size_mm`, `density`, `restitution`, `friction` | no | Per-die overrides of `defaults`. |
 | `table.*` | no | Table looks; fields and limits in `docs/tables.md`. |
+
+## What a licence means
+
+`license` is **displayed and nothing else**. The app does not read it, does not
+enforce it and does not refuse a package that has none: it is a statement by
+the author to whoever installs the package, and the app's job is to carry that
+statement faithfully and show it where it will be seen (design `6a`).
+
+It should be an **SPDX identifier** — `CC-BY-4.0`, `MIT`, `GPL-2.0-or-later` —
+because the point of the field is that the reader recognises what it says.
+Where SPDX has no identifier for what the author means, its `LicenseRef-` form
+is the way to say so; the face designer writes
+`LicenseRef-All-Rights-Reserved` for a set somebody is keeping.
+
+A package written by the app itself uses the word `unspecified` while nobody
+has chosen, which is written down rather than left out — a missing field cannot
+be told from one an older version never wrote. Nothing the app *shares* is ever
+left at `unspecified`: the face designer's export is shut until a licence has
+been picked (`docs/face-designer.md`, "The licence, and why it is a gate").
+
+## Packages the app writes
+
+One package is generated on the device rather than downloaded: **"My dice"**,
+id `mine`, built from the drawings in the face designer
+(`docs/face-designer.md`). It is a folder in `dicesets/` like any other, and
+there is no privileged path for it:
+
+- It is written through the same layout as any package — a `diceset.toml` and
+  one `textures/<die-id>.png` per drawn die, at 256 px per atlas cell, with
+  cells nobody drew on left out so they stay transparent.
+- It goes through **the validator** before it is written to `dicesets/` and
+  again before its zip is offered to anybody. A package the app built and could
+  not install is a bug caught on this phone rather than an install failure on
+  somebody else's.
+- It is swapped into place through a staging folder, the way an install is, so
+  a reading that catches it halfway sees the package it had before. The staging
+  and holding folders begin with a dot and are therefore not packages.
+- It is read back off the disk and validated again like everything else, it can
+  be switched off and removed like everything else, and `mine:d20` resolves
+  like any other `setref`.
+- Exporting it produces a **zip of the folder**, handed to another application
+  through the share sheet — the same file an install accepts from a URL or the
+  file picker, so a set drawn on one phone installs on the next one down the
+  ordinary path.
 
 ## Shape catalogue
 
@@ -594,6 +638,9 @@ are ignored with a warning to allow future extensions.
   folder and edit it. (The built-in set cannot be exported from the app —
   `examples/` is what it would have given you, kept where it can be reviewed
   and versioned.)
+- Or draw one. The face designer's export is a complete package with its
+  atlases already in the right grid, which is a working starting point for a
+  set meant to be finished on a computer (`docs/face-designer.md`).
 - Keep textures at 1024×1024 for a d20; nobody will see more on a phone.
 - Use `labels` for symbol dice (a d6 with a skull on the 1) so the set works
   even before you draw textures.

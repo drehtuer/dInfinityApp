@@ -27,8 +27,10 @@ detekt and Android Lint. In flight, stacked in this order: `feature/shake-record
 — a shake-driven throw's record now carries the shake that drove it, and stops
 there; `feature/haptics` — **the dice can be felt and heard**;
 `feature/designer-tools`; `feature/harness` — Step 5's physics harness, and what
-it said about the Pixel 10a; and `feature/explosion-dice` — the die an explosion
-or a reroll adds is now thrown into the tray the player is watching.
+it said about the Pixel 10a; `feature/explosion-dice` — the die an explosion or
+a reroll adds is now thrown into the tray the player is watching; and
+`feature/mine-export` — **a drawing is now a dice set anybody could install**,
+exported as a zip once a licence has been chosen.
 
 ### Which device the tier runs on
 
@@ -76,7 +78,7 @@ different bug each time (`docs/build-setup.md`).
 
 **Step 4: every screen is written and connected.** What is left on each is in
 `docs/TODO.md`; the shape of it is that the *screens* are done and what remains
-is mostly polish, the export paths, and the things that need a phone.
+is mostly polish and the things that need a phone.
 
 - **4.1 Roll.** The tray from the moment the screen opens, the formula on it as
   text that a tap turns into a live-validated editor whose Enter rolls, the
@@ -109,10 +111,15 @@ is mostly polish, the export paths, and the things that need a phone.
   after every stroke, so a drawing outlives the screen. **Roll it** hands the
   tray the die being drawn. Most of the `4c` toolbar is there: a fill bucket
   that adds a region rather than flooding pixels, copy face → paste with a
-  turn and a mirror, and a colour picker past the twelve presets. Still to
-  come: the stamp and "fill all faces with numbers" — both place a glyph, and
-  the font they would take it from exists now, so what is left there is wiring
-  rather than waiting — and the export.
+  turn and a mirror, and a colour picker past the twelve presets. **What was
+  drawn is now a package anybody could install**: the drawings become
+  `dicesets/mine/` — "My dice", an ordinary installed set with an atlas at
+  256 px a cell — and its details screen exports it as a zip through the share
+  sheet, **shut until a licence has been chosen** (`8c`). It goes through the
+  standard validator before it is written and again before the file is offered.
+  Still to come: the stamp and "fill all faces with numbers" — both place a
+  glyph, and the font they would take it from exists now, so what is left
+  there is wiring rather than waiting.
 - **Step 5.1, the harness, is built.** `tools/harness.sh` rolls N throws
   headlessly on the emulator or the phone, pulls back a JSON document of what
   they did — settle times, corrections, post-rest corrections, re-throws,
@@ -122,7 +129,6 @@ is mostly polish, the export paths, and the things that need a phone.
   device only rolls, times and writes. It **fails** on three of ten targets on
   the Pixel 10a, which is what it is for. Frame times, soak mode and screen
   capture are what is left of 5.1.
-
 ## Blocked / waiting on
 
 - **Judgements that need a person and a phone**, all listed in `docs/TODO.md`:
