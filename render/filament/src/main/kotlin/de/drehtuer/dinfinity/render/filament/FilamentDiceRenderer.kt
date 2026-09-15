@@ -76,6 +76,13 @@ class FilamentDiceRenderer(
    * The view is not carried over from before it. The dice can land anywhere in
    * the tray, and a camera left closed in on one corner would hide most of what
    * was just rolled (`docs/physics-and-rendering.md`).
+   *
+   * A throw an explosion or a reroll added arrives in a tray that already has
+   * dice in it, and those dice are put back exactly where the simulation left
+   * them ([ThrowSpec.among]). They are placed once and never again: they have
+   * stopped, their faces are read, and nothing in this throw can reach them —
+   * there is no body for them in its world. What the player sees is the die
+   * they set off landing among them, which is what happened.
    */
   override fun begin(
     spec: ThrowSpec,
@@ -83,6 +90,12 @@ class FilamentDiceRenderer(
     look: TableLook,
   ) {
     table(geometry, look, TrayView.Whole)
+    spec.among.forEach { resting ->
+      val entity = addDie(resting.die, spec.dieScale)
+      if (entity != Stage.NOTHING) {
+        stage.place(entity, Transform.of(resting.at.position, resting.at.orientation))
+      }
+    }
     dice = spec.dice.map { instance -> addDie(instance.die, spec.dieScale) }
   }
 

@@ -5,7 +5,9 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
+import de.drehtuer.dinfinity.simulation.api.DieAtRest
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RestingPlace
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -218,6 +220,51 @@ class FilamentDiceRendererTest {
     )
 
   private fun radiusOf(die: de.drehtuer.dinfinity.core.model.Die): Double = die.material.boundingRadiusMm
+
+  @Test
+  fun `a die an explosion adds is drawn among the dice that set it off`() {
+    // They are not in the throw's world — their faces are read and they are
+    // finished — but they are still on the table, and a tray that showed only
+    // the new die would be a tray that had swept the roll away
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    val down = listOf(at(Vector3(-40.0, 0.0, 8.0)), at(Vector3(40.0, 0.0, 8.0)))
+
+    renderer.begin(added(down), geometry, look)
+
+    assertEquals("the dice already down were swept off the table", TRAY_PARTS + 3, stage.added.size)
+    assertEquals("a settled die was not put back where it stopped", 2, stage.placed.size)
+    assertEquals(-40.0f, stage.placed.getValue(TRAY_PARTS + 1)[TRANSLATION_X], FLOAT_TOLERANCE)
+    assertEquals(40.0f, stage.placed.getValue(TRAY_PARTS + 2)[TRANSLATION_X], FLOAT_TOLERANCE)
+  }
+
+  @Test
+  fun `a settled die is placed once and never moved again`() {
+    // Nothing touches a die that has come to rest, and that includes the
+    // picture of one (`.claude/CLAUDE.md`).
+    val down = listOf(at(Vector3(-40.0, 0.0, 8.0)))
+    renderer.begin(added(down), geometry, look)
+    val where = stage.placed.getValue(TRAY_PARTS + 1)
+
+    renderer.show(RenderFrame.still(listOf(BodyTransform(0, Vector3(90.0, 0.0, 8.0), Quaternion.Identity))))
+
+    assertTrue("a settled die was drawn somewhere else", where === stage.placed.getValue(TRAY_PARTS + 1))
+  }
+
+  /** A throw of one die into a tray that already holds [down]. */
+  private fun added(down: List<DieAtRest>): ThrowSpec =
+    ThrowSpec(
+      dice =
+        listOf(
+          DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = StandardDice.d6),
+        ),
+      geometry = geometry,
+      table = look,
+      seed = 2L,
+      among = down,
+    )
+
+  private fun at(position: Vector3): DieAtRest = DieAtRest(StandardDice.d6, RestingPlace(position, Quaternion.Identity))
 
   private fun spec(scale: Double = 1.0): ThrowSpec =
     ThrowSpec(
