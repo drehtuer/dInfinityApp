@@ -194,10 +194,13 @@ changelog.
   device.** 100,000 rolls of each catalogue shape on the Pixel 10a: seven pass
   with their χ² summing to 55.33 against 55 degrees of freedom, and the
   enneagonal trapezohedron comes to 197.34 against a limit of 40.79. The shape
-  is isohedral and the throw starts evenly over all orientations, so the body
-  the engine collides cannot be the solid the arithmetic describes. The seeds,
-  Jolt's convex radius, a dropped corner and an off-centre mass are all ruled
-  out on the phone; Step 5.2 has what is left to look at.
+  is isohedral and the throw starts evenly over all orientations, so something
+  in that argument does not hold. The body, the solver, the reading, the seeds
+  and the throw are all now measured and all hold; the bias sits **within** the
+  solid's own ninefold orbits, which is precisely what the symmetry forbids.
+  What is left untested is precision — the hull reaches the engine as float32 —
+  and the d18 has the narrowest resting basins in the catalogue. Step 5.2 has
+  the numbers.
 - **`100d4` does not reliably settle, and never did.** Twenty-four seeds run
   out of the twelve-second cap on five of them; the same twenty-four under the
   spawn streams that preceded stirring showed two, which is well inside noise

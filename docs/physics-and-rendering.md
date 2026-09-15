@@ -431,13 +431,51 @@ first and both have been measured rather than argued:
   the untuned one, χ² 35.83 either way. Reversing the order the hull's corners
   are handed over moves nothing but the last digits.
 
-So the solid is right and the solver treats it evenly, which leaves how the
-throw is *drawn*: a starting turn and the force it is thrown with come out of
-one stream, one after the other, and a symmetry argument that assumes they are
-independent is only as good as that stream. Those streams are now stirred
-(`Seeds`, below), and re-running the harness on top of that is the next
-measurement rather than a claim — the numbers in the table above were taken
-before it.
+So the solid is right and the solver treats it evenly. The throw was suspected
+next — a starting turn and the force it is thrown with come out of one stream,
+one after the other, and the symmetry argument assumes they are independent —
+and that is now measured rather than assumed:
+
+- the streams are stirred (`Seeds`, above), and the harness re-run on top of
+  that still gives the d18 **χ² 135.86**, against 197.34 before. The other
+  seven still pass, summing to 57.63 against 55 degrees of freedom;
+- the starting turn is independent of the force: over 400,000 throws, which
+  face is up at the moment of release against the sign of each other draw —
+  the lateral throw, the drop speed, the spin, the height — gives χ² between
+  12 and 27 against 17 degrees of freedom, which is what independence looks
+  like;
+- and the turns themselves are evenly spread: two million of them land on the
+  d18's eighteen faces with χ² 5.9 to 23.9 against 17, whether they come from
+  a fresh xorwow stream per roll, one long xorwow stream, or SplitMix64.
+
+Three runs of a hundred thousand — two ABIs, three seed schemes — put the same
+faces on top: their deviation patterns correlate at 0.86 to 0.90, where
+independent samples of a fair die would sit near ±0.24. It is one fixed bias,
+not three unlucky samples.
+
+### Where the d18's bias actually sits
+
+The sharpest clue, and the one to start from next. A d18's eighteen faces fall
+into **two orbits of nine** under the solid's own ninefold turn, and the bias is
+almost entirely *within* those orbits rather than between them: χ² 94.2 and
+40.5 against 8 degrees of freedom each, and only 1.34 against 1 between the two
+rings.
+
+That is the combination symmetry forbids. A ninefold turn maps the solid onto
+itself, so it maps the throw onto the same throw with its faces relabelled; with
+starting turns drawn evenly, the nine faces of an orbit have to come up equally
+often. They do not, by a margin of one in 10¹⁶.
+
+Every premise of that argument has now been measured and holds — to the
+precision the measurements have. What is left is precision itself: the hull the
+solver collides is exactly symmetric in double arithmetic, and reaches the
+engine as **float32**, where it is symmetric to about one part in 10⁷. The d18
+is the shape that would notice. Its adjacent faces are 28.4° apart where a
+d10's are 51.8°, so its resting basins are the narrowest in the catalogue and it
+spends its last moments rolling along a nearly equatorial belt of nine of them.
+The d10, the same family of solid with wider kites, is fair (χ² 8.35 against
+27.88). So the next measurement is whether the same throws come out fair on a
+hull the engine holds in double precision.
 
 ## Avoiding stacked and cocked dice
 
