@@ -68,6 +68,10 @@ class PackageInstaller(
     return try {
       when (val downloaded = fetcher.fetch(source.archiveUrl, workspace)) {
         is PackageFetcher.Result.Failed -> Result.Failed(downloaded.reason)
+        // Nothing here asks to be cancelled — this path takes no `cancelled`
+        // — so reaching it would mean the fetcher had stopped for a reason it
+        // was never given. Said rather than swallowed.
+        PackageFetcher.Result.Cancelled -> Result.Failed("the download was stopped")
         is PackageFetcher.Result.Downloaded ->
           install(
             archive = downloaded.file,

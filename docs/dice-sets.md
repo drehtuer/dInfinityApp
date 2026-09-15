@@ -341,8 +341,27 @@ leaves the one already installed alone.
 Only sets that came from a forge *and* recorded the commit that arrived can be
 checked. A set installed from a file has no forge to ask, and a plain archive
 has no commits to tell apart — comparing archive headers and checksums for
-those is still to come (`docs/TODO.md`, 4.4), as is showing progress and
-allowing a cancel.
+those is still to come (`docs/TODO.md`, 4.4).
+
+**A download says how far it has got and can be stopped** (design `9i`). The
+bar is drawn from bytes that have actually arrived; the `Content-Length` beside
+them is what the *server* said and is only ever used to decide how full to draw
+it, so a server that sends none gets an indeterminate bar rather than a wrong
+one, and one that lies cannot push it past full. The cap is applied to what
+arrives, never to the claim.
+
+The bar is there only while something is coming down the wire. An install from
+a file on the phone has nothing to show, and neither has the validation after a
+download — a bar that reached full and sat there would say the app had hung at
+the moment it was working hardest.
+
+**Cancel stops the download and nothing else.** Once the archive is on disk the
+install is a validator over a folder and finishes in a moment, and a
+half-installed package is exactly what the install order above exists to make
+impossible — so there is nothing left to interrupt that would be safe to. A
+stopped download throws its half-written file away where it was being written,
+and the screen says nothing about it: the person who pressed Cancel knows what
+happened, and answering them with an error message is arguing with them.
 
 The button is not drawn at all when nothing could be asked, and what a check
 *found* is said in a line rather than only on the rows: a check that found

@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.dicesets.install.InstallSource
 import de.drehtuer.dinfinity.dicesets.install.PackageFetcher
 import de.drehtuer.dinfinity.feature.sets.FetchedPackage
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.File
 
@@ -39,13 +40,35 @@ class PackageDownload(
   private val cacheDir: File,
   private val fetcher: PackageFetcher = PackageFetcher(),
 ) {
-  /** The archive at [url] on disk, or why it did not arrive. */
-  suspend fun fetch(url: String): FetchedPackage {
+  /**
+   * The archive at [url] on disk, or why it did not arrive.
+   *
+   * [onProgress] is told how far it has got, from the thread doing the
+   * downloading — so whatever draws a bar with it has to get itself back to
+   * the screen's thread, which is the caller's business and not this one's.
+   *
+   * **Cancelling the coroutine stops the download.** A blocking read does not
+   * notice a cancelled job on its own, so the fetcher is given `isActive` to
+   * ask between buffers; the half-written file is thrown away where it was
+   * being written, which is the only place that knows about it.
+   */
+  suspend fun fetch(
+    url: String,
+    onProgress: (PackageFetcher.Progress) -> Unit = {},
+  ): FetchedPackage {
     val source = InstallSource.of(url) ?: return FetchedPackage.Failed(notASource(url))
     return withContext(Dispatchers.IO) {
       val into = File(cacheDir, DIRECTORY).apply { mkdirs() }
-      when (val result = fetcher.fetch(source.archiveUrl, into)) {
+      val result =
+        fetcher.fetch(
+          url = source.archiveUrl,
+          into = into,
+          onProgress = onProgress,
+          cancelled = { !isActive },
+        )
+      when (result) {
         is PackageFetcher.Result.Failed -> FetchedPackage.Failed(result.reason)
+        PackageFetcher.Result.Cancelled -> FetchedPackage.Cancelled
         is PackageFetcher.Result.Downloaded -> FetchedPackage.Archive(result.file)
       }
     }

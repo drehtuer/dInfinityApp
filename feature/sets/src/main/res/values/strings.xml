@@ -58,6 +58,7 @@
   <string name="sets_sheet_remove_note">Deletes the folder. Statistics for its dice are kept.</string>
   <string name="sets_sheet_cancel">Cancel</string>
   <string name="sets_link_label">https://… a .zip or .tar.gz</string>
+  <string name="sets_cancel">Cancel</string>
   <string name="sets_fetch">Fetch</string>
   <string name="sets_check">Check for updates</string>
   <string name="sets_checking">Checking…</string>

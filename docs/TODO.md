@@ -147,6 +147,11 @@ the place the table fallback below has to live.
 
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
 
+A download shows how far it has got and can be stopped (`9i`): the bar is drawn
+from bytes that arrived rather than from what the server claimed, it is there
+only while something is on the wire, and Cancel stops the download and says
+nothing about it.
+
 The screen is built: the installed list with each set's status and a long-press
 to disable or remove it (`5a`, bundled set protected); the details behind a tap
 (`6a`) with author, licence, source and commit, the dice the set defines, and
@@ -157,7 +162,7 @@ validator, where a rejection lists every error (`1t`) and a download that never
 arrives is refused the same way. Database version 4 holds which sets are
 switched on.
 
-- [ ] Update with **progress and cancel** (`9i`), and a check for **plain archives** — comparing headers and checksums, since those have no commits to tell apart. Checking a forge is built: `RefResolver` is asked what the ref a set was installed from is at now, a set that has moved on is badged, and updating it is a re-install from the recorded source through the same validator (`docs/dice-sets.md`, "Updates")
+- [ ] A check for **plain archives** — comparing headers and checksums, since those have no commits to tell apart. It needs `.meta.json` to record what the server said at install time (an `ETag` or a `Last-Modified`), so a set installed before that is unanswerable rather than wrong. Checking a *forge* is built: `RefResolver` is asked what the ref a set was installed from is at now, a set that has moved on is badged, and updating it is a re-install from the recorded source through the same validator (`docs/dice-sets.md`, "Updates")
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
 
@@ -397,25 +402,35 @@ Written down so the format need not change later. Not v1 scope.
 
 ## Coverage
 
-Branch coverage sits around 70 % against a floor of 62, and roughly **seven in
-ten of the branches it is missing are inside `@Composable` functions**. That is
-not untested UI: the Compose compiler emits a skip branch for every parameter
-of every composable so that a recomposition can be avoided, and a test can only
-reach one side of each. A screen with twelve controls is a hundred branches no
-test will ever take.
+Branch coverage is **69.2 %** against a floor of 62, and roughly **seven in ten
+of the branches it is missing are inside `@Composable` functions**. That is not
+untested UI: the Compose compiler emits a skip branch for every parameter of
+every composable so that a recomposition can be avoided, and a single-pass test
+can only reach one side of each. A screen with twelve controls is a hundred
+branches no test will ever take.
 
-What that means in practice, and the rule the last few PRs have followed:
+The drift that used to come with every new screen has stopped. Three levers do
+it, and between them they have held the number flat or moved it up in each of
+the last six pull requests:
 
 - **Extract the decision, test the decision.** `FaceHistogram`, `Breakdown`,
   `CollectionExport`, `GraphBars`, `underlinesOf` and `crestPath` are all
   arithmetic that used to be inside a draw lambda. Each is now a plain object
   with plain tests, and a Canvas is the one place a test genuinely cannot go.
+  A composable that returns a value rather than drawing one is the same trick:
+  it is not skippable, so it costs no skip branch at all.
 - **A shared component gets its own test.** `ui/common`'s formula field had
   152 branches and none of them covered, because three screens each tested
-  *their use* of it and nobody tested the thing. That is a real gap and looks
-  exactly like the mechanical one in a report.
-- The number is worth watching for the second kind and not the first. It is
-  reported with the figures in every PR description either way.
+  *their use* of it and nobody tested the thing. It has its own tests now,
+  including the recomposition one, and sits at 62 of 98. That was a real gap
+  and it looked exactly like the mechanical one in a report — which is why the
+  number is worth reading rather than merely watching.
+- **A recomposition test takes the other side.** Drawing a screen once takes
+  the "something changed" side of every skip branch it has; recomposing around
+  it with nothing changed takes the other. The roll screen has the most
+  parameters of any and had no such test.
+
+The figures are reported in every PR description either way.
 
 - [ ] Decide whether the floor should track the drift or stay where it is. It
       has not been moved since it was set, and moving a floor to make a check

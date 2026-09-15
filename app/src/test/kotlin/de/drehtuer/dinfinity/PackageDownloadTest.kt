@@ -2,6 +2,10 @@ package de.drehtuer.dinfinity
 
 import de.drehtuer.dinfinity.dicesets.install.PackageFetcher
 import de.drehtuer.dinfinity.feature.sets.FetchedPackage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -10,6 +14,7 @@ import okhttp3.tls.HandshakeCertificates
 import okhttp3.tls.HeldCertificate
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -146,6 +151,44 @@ class PackageDownloadTest {
 
       assertEquals(ARCHIVE, (fetched as FetchedPackage.Archive).file.readText())
     }
+
+  @Test
+  fun `cancelling the coroutine stops the download and leaves nothing behind`() =
+    runTest {
+      // A blocking read does not notice a cancelled job on its own, so the
+      // fetcher is given `isActive` to ask between buffers
+      // (`docs/dice-sets.md`, "Updates"). What must hold whatever the timing
+      // is: no half-written archive is left in the cache for the next install
+      // to trip over, and nothing is reported as having arrived.
+      server.enqueue(MockResponse.Builder().body(ARCHIVE).build())
+      val scope = CoroutineScope(Dispatchers.IO)
+      val fetching = scope.async { download.fetch(url()) { scope.cancel() } }
+
+      val fetched = runCatching { fetching.await() }
+
+      assertFalse(
+        "a stopped download reported an archive: ${fetched.getOrNull()}",
+        fetched.getOrNull() is FetchedPackage.Archive,
+      )
+      assertEquals("a stopped download left something behind", emptyList<File>(), files())
+    }
+
+  @Test
+  fun `a download that is not stopped reports how far it has got`() {
+    // The other side of the same seam: progress arrives from the downloading
+    // thread, and whatever draws a bar with it gets itself back to the
+    // screen's thread — which is the caller's business, not this one's.
+    runTest {
+      server.enqueue(MockResponse.Builder().body(ARCHIVE).build())
+      val seen = mutableListOf<Long>()
+
+      val fetched = download.fetch(url()) { far -> seen += far.bytes }
+
+      assertTrue("nothing was reported", seen.isNotEmpty())
+      assertEquals(ARCHIVE.length.toLong(), seen.last())
+      assertTrue("the archive did not arrive", fetched is FetchedPackage.Archive)
+    }
+  }
 
   private fun files(): List<File> = cache.walkTopDown().filter { it.isFile }.toList()
 

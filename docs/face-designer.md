@@ -53,19 +53,20 @@ the three corners that cell meets, so two cells sharing an edge draw the same
 value at each end of it because they are reading the same corner. There is no
 second copy to disagree with and so nothing to warn about.
 
-**Changing the base die starts again.** A different die has different faces, a
-different number of them, and different values under the guide, so nothing
-carries over — which is why a drawing with anything on it is asked about before
-the die changes, and a blank one simply changes. The pen, its colour and
-whether the guide is showing all stay put: those are how somebody is working
-rather than what they are working on.
+**Changing the base die changes the drawing, and keeps both.** A different die
+has different faces, a different number of them, and different values under the
+guide, so nothing carries over from one canvas to the other — but nothing is
+lost either. Each die has a draft of its own, written down as its canvas is
+left and read back when it is opened, so a row of dice is a row of drawings
+rather than one canvas the next tap overwrites.
 
-Switching die keeps both drawings. Each die has a draft of its own, written
-down as the canvas is left and read back when it is opened, so a row of dice is
-a row of drawings rather than one canvas that the next tap overwrites. It used
-to ask before changing die, because changing die threw the drawing away; a
-dialog that warns about a loss that cannot happen is worse than no dialog, so
-it is gone.
+It used to ask before changing die, because changing die threw the drawing
+away. A dialog that warns about a loss that cannot happen is worse than no
+dialog, so it is gone.
+
+The pen, its colour and whether the guide is showing all stay put across the
+change: those are how somebody is working rather than what they are working
+on.
 
 **Roll it** is there: the button hands the tray the die being drawn and follows
 the chooser, so it throws the die in front of the player rather than the one

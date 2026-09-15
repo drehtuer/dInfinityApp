@@ -191,6 +191,77 @@ class PackageFetcherTest {
       }
     }
 
+  @Test
+  fun `it says how far it has got as the bytes arrive`() {
+    // What a bar is drawn from (`design/dInfinity.dc.html`, option `9i`).
+    server.enqueue(MockResponse.Builder().body(zeroes(BIG)).build())
+    val seen = mutableListOf<PackageFetcher.Progress>()
+
+    val result = fetcher.fetch(url(), into, onProgress = seen::add)
+
+    assertEquals(BIG, downloaded(result).bytes)
+    assertTrue("nothing was reported for a $BIG byte download", seen.size > 1)
+    assertEquals("the last report was not the whole file", BIG, seen.last().bytes)
+    assertEquals("the reports went backwards", seen.map { it.bytes }.sorted(), seen.map { it.bytes })
+  }
+
+  @Test
+  fun `and how far there is to go, when the server says`() {
+    server.enqueue(MockResponse.Builder().body(zeroes(BIG)).build())
+    val seen = mutableListOf<PackageFetcher.Progress>()
+
+    fetcher.fetch(url(), into, onProgress = seen::add)
+
+    assertEquals(BIG, seen.last().total)
+    assertEquals(1f, seen.last().fraction)
+  }
+
+  @Test
+  fun `a download nobody can size has no fraction rather than a wrong one`() {
+    // A `Content-Length` is a claim, and a bar drawn from a missing one would
+    // be a bar that jumps. The count of bytes is still true.
+    val far = PackageFetcher.Progress(bytes = 512, total = null)
+
+    assertEquals(null, far.fraction)
+    assertEquals(512L, far.bytes)
+  }
+
+  @Test
+  fun `a server that lies about the size cannot push the bar past full`() {
+    val far = PackageFetcher.Progress(bytes = 900, total = 100)
+
+    assertEquals(1f, far.fraction)
+  }
+
+  @Test
+  fun `and one that says nothing is coming has no fraction either`() {
+    // Zero is a `Content-Length` a server really does send, and dividing by it
+    // is the one arithmetic mistake a progress bar can make.
+    assertEquals(null, PackageFetcher.Progress(bytes = 0, total = 0).fraction)
+    assertEquals(0f, PackageFetcher.Progress(bytes = 0, total = 100).fraction)
+  }
+
+  @Test
+  fun `stopping it part-way leaves nothing behind`() {
+    // The one that matters: a cancelled download must not leave a half-written
+    // archive in the cache for the next install to trip over.
+    server.enqueue(MockResponse.Builder().body(zeroes(BIG)).build())
+
+    val result = fetcher.fetch(url(), into, cancelled = { true })
+
+    assertTrue("expected a cancellation, got $result", result is PackageFetcher.Result.Cancelled)
+    assertEquals("a stopped download left a file behind", emptyList<File>(), into.listFiles().orEmpty().toList())
+  }
+
+  @Test
+  fun `a download stopped before it starts never opens a socket`() {
+    // Nothing is enqueued, so a request that was made would hang rather than
+    // fail: the refusal has to happen before the call.
+    val result = fetcher.fetch(url(), into, cancelled = { true })
+
+    assertTrue("expected a cancellation, got $result", result is PackageFetcher.Result.Cancelled)
+  }
+
   /** A body of the given size that costs nothing to hold. */
   private fun zeroes(length: Long): MockResponseBody =
     object : MockResponseBody {
@@ -221,5 +292,8 @@ class PackageFetcherTest {
     const val FOUND = 302
     const val KIB = 1024L
     const val CHUNK = 64 * 1024
+
+    /** Bigger than one buffer, so there is more than one report to make. */
+    const val BIG = 200L * 1024
   }
 }

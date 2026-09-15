@@ -29,14 +29,17 @@ import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.dicesets.install.PackageFetcher
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -346,10 +349,65 @@ class SetsScreenTest {
     assertEquals(null, presenter.state.acting)
   }
 
+  @Test
+  fun `a download in flight shows how far it has got, and a way to stop it`() {
+    // `design/dInfinity.dc.html`, option `9i`. Neither is drawn when nothing
+    // is coming down the wire.
+    val presenter = show(download = { _, far -> held(far) })
+    compose.onNodeWithTag(SetsTestTags.PROGRESS).assertDoesNotExist()
+
+    presenter.installFrom("https://example.test/brass.zip")
+
+    compose.waitUntil(PATIENCE) { presenter.state.progress != null }
+    compose.onNodeWithTag(SetsTestTags.PROGRESS).assertIsDisplayed()
+    compose.onNodeWithTag(SetsTestTags.STOP).assertIsDisplayed()
+  }
+
+  @Test
+  fun `stopping it says nothing, because the person who stopped it knows`() {
+    // A screen that answered a Cancel button with an error message would be a
+    // screen arguing with somebody.
+    val presenter = show(download = { _, far -> held(far) })
+    presenter.installFrom("https://example.test/brass.zip")
+    compose.waitUntil(PATIENCE) { presenter.state.progress != null }
+
+    compose.onNodeWithTag(SetsTestTags.STOP).performClick()
+
+    compose.waitUntil(PATIENCE) { !presenter.state.installing }
+    assertNull("a cancelled download left a message behind", presenter.state.outcome)
+    compose.onNodeWithTag(SetsTestTags.PROGRESS).assertDoesNotExist()
+  }
+
+  @Test
+  fun `an install from a file has no bar, because nothing is coming down a wire`() {
+    // A bar that reached full and sat there would say the app had hung at the
+    // exact moment it was working hardest.
+    val notASet = File(root.apply { mkdirs() }, "from-disk.zip").apply { writeText("not an archive") }
+    val presenter = show()
+
+    presenter.install(notASet)
+
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+    compose.onNodeWithTag(SetsTestTags.PROGRESS).assertDoesNotExist()
+  }
+
+  /**
+   * A download that reports one step and then never finishes.
+   *
+   * The state a bar exists for, and the only one a Cancel button can be
+   * pressed in. It has to actually suspend: a download that returned would
+   * take the bar down again before the test could look at it.
+   */
+  private suspend fun held(onProgress: (PackageFetcher.Progress) -> Unit): FetchedPackage {
+    onProgress(PackageFetcher.Progress(bytes = 512, total = 2048))
+    awaitCancellation()
+  }
+
   private fun show(
     onOpen: (SetRow) -> Unit = {},
     onInstall: () -> Unit = {},
-    download: suspend (String) -> FetchedPackage = { FetchedPackage.Failed("no downloader in this test") },
+    download: suspend (String, (PackageFetcher.Progress) -> Unit) -> FetchedPackage =
+      { _, _ -> FetchedPackage.Failed("no downloader in this test") },
     latestCommit: suspend (String) -> LatestCommit = { LatestCommit.Unknown },
   ): SetsPresenter {
     val presenter =
@@ -377,7 +435,7 @@ class SetsScreenTest {
     // There is one validator and no path around it. This archive is not a dice
     // set, so the install is refused exactly as a chosen file would be.
     val notASet = File(root.apply { mkdirs() }, "not-a-set.zip").apply { writeText("this is not an archive") }
-    val presenter = show(download = { FetchedPackage.Archive(notASet) })
+    val presenter = show(download = { _, _ -> FetchedPackage.Archive(notASet) })
 
     presenter.installFrom("  https://example.test/brass.zip  ")
 
@@ -391,7 +449,7 @@ class SetsScreenTest {
 
   @Test
   fun `a download that does not arrive is refused the way a bad file is`() {
-    val presenter = show(download = { FetchedPackage.Failed("'http://example.test' is not an https link") })
+    val presenter = show(download = { _, _ -> FetchedPackage.Failed("'http://example.test' is not an https link") })
 
     presenter.installFrom("http://example.test/brass.zip")
 
@@ -405,7 +463,7 @@ class SetsScreenTest {
   fun `a blank link fetches nothing`() {
     val asked = mutableListOf<String>()
     val presenter =
-      show(download = { url ->
+      show(download = { url, _ ->
         asked += url
         FetchedPackage.Failed("no")
       })
@@ -483,7 +541,7 @@ class SetsScreenTest {
     fromForge("brass", commit = "aaaa")
     val asked = mutableListOf<String>()
     val presenter =
-      show(download = { url ->
+      show(download = { url, _ ->
         asked += url
         FetchedPackage.Archive(notASet)
       })
@@ -528,16 +586,21 @@ class SetsScreenTest {
   fun `a recomposition around the screen that changes nothing leaves it alone`() {
     // The controls above the list are drawn from one state, so an ordinary
     // recomposition has to skip them. One that skipped wrongly would come back
-    // without its check button, which a single-pass test would never see.
+    // without its check button — or without the bar and the Cancel button,
+    // which is why this runs with a download in flight — and a single-pass
+    // test would never see it.
     fromForge("brass", commit = "aaaa")
     var tick by mutableStateOf(0)
-    val presenter = SetsPresenter(library(), scope, { FetchedPackage.Failed("no") }, { LatestCommit.Unknown })
+    val presenter = SetsPresenter(library(), scope, { _, far -> held(far) }, { LatestCommit.Unknown })
     compose.setContent {
       Column {
         Text("tick $tick")
         SetsScreen(presenter)
       }
     }
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+    presenter.installFrom("https://example.test/brass.zip")
+    compose.waitUntil(PATIENCE) { presenter.state.progress != null }
     compose.waitUntil(PATIENCE) { presenter.state.checkable }
 
     compose.runOnIdle { tick++ }
@@ -545,6 +608,8 @@ class SetsScreenTest {
     compose.onNodeWithText("tick 1").assertIsDisplayed()
     compose.onNodeWithTag(SetsTestTags.CHECK).assertIsDisplayed()
     compose.onNodeWithTag(SetsTestTags.LINK).assertIsDisplayed()
+    compose.onNodeWithTag(SetsTestTags.PROGRESS).assertIsDisplayed()
+    compose.onNodeWithTag(SetsTestTags.STOP).assertIsDisplayed()
   }
 
   /** A package that records where it came from and which commit arrived. */
