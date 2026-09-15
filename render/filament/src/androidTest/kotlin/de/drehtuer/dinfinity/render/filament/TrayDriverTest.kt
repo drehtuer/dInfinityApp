@@ -64,7 +64,7 @@ class TrayDriverTest {
         Counted(FilamentStage(width, height, surface)).also { counted += it }
       }.use { driver ->
         driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
-        driver.roll(roll.start()) { settled.countDown() }
+        driver.roll(roll.start()) { _, _ -> settled.countDown() }
 
         assertTrue(
           "the roll thread was never given a frame callback",
@@ -232,7 +232,7 @@ class TrayDriverTest {
     try {
       TrayDriver().use { driver ->
         driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
-        driver.roll(roll.start()) {}
+        driver.roll(roll.start()) { _, _ -> }
         driver.surfaceLost()
       }
     } finally {
@@ -251,7 +251,7 @@ class TrayDriverTest {
     try {
       TrayDriver().use { driver ->
         driver.surfaceAvailable(first.surface, WIDTH, HEIGHT)
-        driver.roll(roll.start()) {}
+        driver.roll(roll.start()) { _, _ -> }
         driver.surfaceAvailable(second.surface, HEIGHT, WIDTH)
 
         assertTrue(
@@ -309,6 +309,8 @@ class TrayDriverTest {
 
     override val outcome: SimulationOutcome?
       get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
+
+    override val drivenBy: List<ShakeSample> = emptyList()
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds

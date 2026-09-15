@@ -179,7 +179,7 @@ class TrayLoopTest {
     val loop = TrayLoop()
     val reported = mutableListOf<SimulationOutcome>()
     loop.stage(FakeStage())
-    loop.roll(FakeRoll(steps = 2).start(), reported::add)
+    loop.roll(FakeRoll(steps = 2).start()) { outcome, _ -> reported += outcome }
 
     loop.frame(SOME_LATE_UPTIME)
     assertTrue("a roll still in the air reported a result", reported.isEmpty())
@@ -190,13 +190,34 @@ class TrayLoopTest {
   }
 
   @Test
+  fun `the shake that drove the roll comes back with what the dice came to`() {
+    // Read off the roll before it is closed, which is the only moment it can
+    // be: a roll is given up the instant it is read, and the record of a throw
+    // belongs to the roll that collected it
+    // (`docs/physics-and-rendering.md`, "Shake input").
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 2)
+    val hand = List(2) { ShakeSample(it, Vector3(5_000.0, 0.0, 0.0), Vector3(0.0, 0.0, -1.0)) }
+    var drove: List<ShakeSample>? = null
+    loop.stage(FakeStage())
+    loop.roll(roll.start()) { _, shake -> drove = shake }
+
+    hand.forEach(loop::shake)
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(hand, drove)
+    assertTrue("the roll was read but never given up", roll.closed)
+  }
+
+  @Test
   fun `a roll abandoned before it landed reports nothing`() {
     // The player left the screen. Nothing landed, so there is nothing to
     // score — and a half-finished roll must never become a total.
     val loop = TrayLoop()
     val reported = mutableListOf<SimulationOutcome>()
     loop.stage(FakeStage())
-    loop.roll(FakeRoll(steps = 100).start(), reported::add)
+    loop.roll(FakeRoll(steps = 100).start()) { outcome, _ -> reported += outcome }
     loop.frame(SOME_LATE_UPTIME)
 
     loop.clear()
@@ -243,7 +264,7 @@ class TrayLoopTest {
     val roll = FakeRoll(steps = 4)
     val reported = mutableListOf<SimulationOutcome>()
     loop.stage(FakeStage())
-    loop.roll(roll.start(), reported::add)
+    loop.roll(roll.start()) { outcome, _ -> reported += outcome }
 
     loop.surfaceLost()
     var frames = 0
@@ -366,6 +387,8 @@ class TrayLoopTest {
 
     override val outcome: SimulationOutcome?
       get() = if (running) null else SimulationOutcome(faces = mapOf(0 to 0))
+
+    override val drivenBy: List<ShakeSample> get() = shaken.toList()
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds

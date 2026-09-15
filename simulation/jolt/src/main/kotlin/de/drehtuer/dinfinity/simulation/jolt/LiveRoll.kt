@@ -57,6 +57,22 @@ class LiveRoll internal constructor(
   val stepsTaken: Int get() = loop.stepsTaken
 
   /**
+   * Every moment of the shake that has reached this roll, in step order.
+   *
+   * The record of the throw, and it lives here rather than beside the result
+   * because a throw's record is the throw: `spec.copy(shake = drivenBy)` is a
+   * [ThrowSpec] that replays this roll exactly, and a shake kept anywhere else
+   * would be a second half nobody joins back up. The dice are spawned when the
+   * shake is confirmed, so the spec this roll was opened with is missing all of
+   * it (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * It dies with the roll. A throw the player walked away from never reports
+   * an [outcome], so nothing asks for this, and closing the roll takes the
+   * samples with the world they drove.
+   */
+  override val drivenBy: List<ShakeSample> get() = loop.drivenBy
+
+  /**
    * Steps that a frame was too late to pay for, in total
    * ([FrameClock.droppedSteps]). Always zero for a roll run with [runToEnd].
    */

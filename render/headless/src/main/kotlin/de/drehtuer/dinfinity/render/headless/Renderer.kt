@@ -135,6 +135,20 @@ interface WatchedRoll : AutoCloseable {
   val outcome: SimulationOutcome?
 
   /**
+   * Every moment of the shake that has reached this roll, in step order.
+   *
+   * What a throw *started* as is its `ThrowSpec`, and for a shake-driven throw
+   * that spec is empty of shake: the dice are spawned the instant the shake is
+   * confirmed and the moments arrive afterwards. This is those moments, so
+   * that a roll which has landed can be described by the spec that would
+   * replay it rather than by the spec it began with
+   * (`docs/physics-and-rendering.md`, "Shake input").
+   *
+   * Like [outcome] it is something a watcher may read and cannot change.
+   */
+  val drivenBy: List<ShakeSample>
+
+  /**
    * Moves the roll on by however much [elapsedSeconds] is worth and hands back
    * where the dice are. The renderer watching has already been shown the same
    * frame.

@@ -34,7 +34,7 @@ class TrayLoop : AutoCloseable {
 
   private var stage: Stage? = null
   private var roll: WatchedRoll? = null
-  private var settling: ((SimulationOutcome) -> Unit)? = null
+  private var settling: ((SimulationOutcome, List<ShakeSample>) -> Unit)? = null
   private var lastFrameNanos: Long? = null
   private var owed = false
 
@@ -127,13 +127,14 @@ class TrayLoop : AutoCloseable {
    * step it. A roll already in progress is ended first — a second throw
    * replaces the first rather than landing on top of it.
    *
-   * [onSettled] is called once, on this thread, with what the dice came to —
-   * and only for a roll that actually finished. A roll abandoned because the
-   * player left the screen reports nothing, because nothing landed.
+   * [onSettled] is called once, on this thread, with what the dice came to and
+   * the shake that drove it — and only for a roll that actually finished. A
+   * roll abandoned because the player left the screen reports nothing, because
+   * nothing landed, and the samples it had collected go with it.
    */
   fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit = {},
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit = { _, _ -> },
   ) {
     endRoll()
     roll = start(renderer)
@@ -193,15 +194,17 @@ class TrayLoop : AutoCloseable {
     owed = false
 
     if (!live.running) {
-      // Read before closing: a roll that has been given up holds nothing.
+      // Read before closing: a roll that has been given up holds nothing —
+      // neither what the dice came to nor the shake that got them there.
       val reached = live.outcome
+      val drove = live.drivenBy
       val report = settling
       endRoll()
       // The last frame of a roll is the picture that stays on screen, and the
       // one frame with nothing after it to cover for a skip. Owed until it
       // lands, like any other still picture.
       owed = true
-      reached?.let { report?.invoke(it) }
+      reached?.let { report?.invoke(it, drove) }
     }
     return wantsFrames
   }

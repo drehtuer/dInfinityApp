@@ -150,7 +150,7 @@ class RollTrayPerVisitTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
-      onSettled: (SimulationOutcome) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) = Unit
 
     override fun table(

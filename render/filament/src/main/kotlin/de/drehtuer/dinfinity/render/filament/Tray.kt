@@ -53,13 +53,17 @@ interface Tray : AutoCloseable {
    *
    * [start] is run wherever the roll is going to be stepped and is handed the
    * renderer to watch with. [onSettled] is called once, there, with what the
-   * dice came to — and only for a roll that actually finished: a roll
-   * abandoned because the player left the screen reports nothing, because
-   * nothing landed.
+   * dice came to and the shake that drove it — and only for a roll that
+   * actually finished: a roll abandoned because the player left the screen
+   * reports nothing, because nothing landed, and its samples go with it.
+   *
+   * The shake comes back with the outcome rather than being asked for
+   * afterwards because by then there is no roll left to ask: the roll is
+   * closed the moment it is read (`WatchedRoll.drivenBy`).
    */
   fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   )
 
   /**

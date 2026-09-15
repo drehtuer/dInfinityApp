@@ -53,7 +53,7 @@ class PowerSavingTray(
 
   override fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     on.execute {
       // A second throw replaces the first, exactly as it does on a tray being
@@ -62,11 +62,15 @@ class PowerSavingTray(
       if (closed) return@execute
       val roll = start(HeadlessRenderer())
       live = roll
-      val outcome = roll.use(::runOut)
+      // The shake is read out with the outcome and before the roll is closed,
+      // for the same reason it is on a watched tray: the record of a throw
+      // belongs to the roll that collected it, and the roll does not outlive
+      // being read.
+      val (outcome, drove) = roll.use { throwing -> runOut(throwing) to throwing.drivenBy }
       live = null
       // A roll given up because the screen was left reports nothing, because
       // nothing landed.
-      if (!closed && outcome != null) onSettled(outcome)
+      if (!closed && outcome != null) onSettled(outcome, drove)
     }
   }
 

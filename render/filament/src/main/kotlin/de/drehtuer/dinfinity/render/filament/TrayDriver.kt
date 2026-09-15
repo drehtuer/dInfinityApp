@@ -99,11 +99,12 @@ class TrayDriver(
    * renderer to watch with, so the world it opens is stepped where it is made.
    *
    * [onSettled] arrives on the roll thread too, once, with what the dice came
-   * to. Whoever wants it on the main thread posts it there.
+   * to and the shake that drove them. Whoever wants it on the main thread posts
+   * it there.
    */
   override fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     post {
       loop.roll(start, onSettled)

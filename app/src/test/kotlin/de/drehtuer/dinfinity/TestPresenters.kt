@@ -199,11 +199,11 @@ private class SilentTray : Tray {
    */
   override fun roll(
     start: (Renderer) -> WatchedRoll,
-    onSettled: (SimulationOutcome) -> Unit,
+    onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     val live = start(HeadlessRenderer())
     while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
-    live.outcome?.let(onSettled)
+    live.outcome?.let { onSettled(it, live.drivenBy) }
     live.close()
   }
 
@@ -289,6 +289,8 @@ private object LandingRolls : Rolls {
 
       override val outcome: SimulationOutcome? get() =
         if (landed) SimulationOutcome(faces = spec.dice.indices.associateWith { 0 }) else null
+
+      override val drivenBy: List<ShakeSample> = emptyList()
 
       override fun advance(elapsedSeconds: Double): RenderFrame {
         landed = true
