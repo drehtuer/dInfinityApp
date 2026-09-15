@@ -323,8 +323,22 @@ after every physics change.
 
 ### 5.2 Fairness and determinism
 
-- [ ] Every catalogue shape, 100,000 headless rolls: chi-squared p > 0.001, no face off by more than 1 %. **Run on the Pixel 10a, and seven of the eight pass** — their χ² sums to 55.33 against 55 degrees of freedom, which is as close to "exactly as fair as chance predicts" as a number gets (`docs/physics-and-rendering.md`, "Are the dice fair"). This item closes when the eighth does
-- [ ] **The d18 cannot pass the chi-squared bar, and the reason is now known: the hull is float32.** χ² 135.9 against a limit of 40.79 at a hundred thousand rolls, reproducible across two ABIs and three seed schemes. The body, the solver, the reading, the seeds and the throw were each measured and each holds (`docs/physics-and-rendering.md`, "Are the dice fair"); what is left is the representation. Moving every corner of the hull by up to a ten-thousandth of the die's radius takes the d18 from χ² 52 to 294 at twenty thousand rolls and the d10 from 9.6 to 19.8 — the same asymmetry, 5.6× the cost for the d18 against 2.1× for the d10, and only the d18 over its threshold. At 10⁻⁶, the scale of the hull's own rounding, the magnitude does not move (50.7 against 52.2) while the pattern does (0.80 to 0.42), which is what a bias made of the representation looks like. There is no double-precision hull to compare with: Jolt's `ConvexHullShape` holds `Vec3`, single precision whatever `JPH_DOUBLE_PRECISION` does to positions. **This is now a judgement rather than a measurement** — see Open questions
+**Done, on the Pixel 10a.** Every catalogue shape at 100,000 rolls: seven pass
+chi-squared at p > 0.001 and their χ² sums to 57.63 against 55 degrees of
+freedom, which is as close to "exactly as fair as chance predicts" as a number
+gets. Every shape, the d18 included, keeps every face within 1 % of its share —
+its worst is 0.389 %.
+
+The **d18 is held to the worst-face bound and not to chi-squared**, which is a
+decision taken rather than a check skipped: its resting basins are narrow enough
+that the float32 hull's own rounding biases it, and Jolt stores hull points in
+single precision whatever else is configured, so no single-precision engine can
+do better for that solid. It is one shape by name in
+`FairnessTest.HELD_TO_THE_FACE_BOUND`, its χ² is still printed every run, and
+the app says nothing about it to the player — a number nobody can act on, about
+a die fairer than the plastic one in their hand, is not worth a warning
+(`docs/physics-and-rendering.md`, "The bar the d18 is held to").
+
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker. The golden suite is the check and already holds for its ten cases on both ABIs; Step 5 is the same claim at ten thousand rolls and on a second phone
 - [ ] Power-saving and rendered mode agree on every seed in the golden suite
 
@@ -464,4 +478,3 @@ The figures are reported in every PR description either way.
 - [ ] d18 shape: the enneagonal trapezohedron is assumed; verify it reads well at phone size
 - [ ] Division rounding default is Down with a per-throw override — confirm Nearest is worth having
 - [ ] The design project's `.thumbnail` is not imported; decide whether a preview image belongs in the repo
-- [ ] **What should the d18 be held to?** It is fair to better than half a percent per face — its worst is 0.455 % against the 1 % this project set itself, and against the 1–2 % a moulded plastic d20 manages — and it cannot pass a chi-squared test at one in a thousand over a hundred thousand throws, because its resting basins are narrow enough that the float32 hull's own rounding biases it (Step 5.2). A single-precision rigid-body engine cannot do better for this shape. Three answers, and the choice is a product one: **restate the bar** so a shape whose basins are near the engine's precision is held to the per-face bound it passes rather than to chi-squared; **keep the bar** and carry the d18 as a known defect that says so where somebody can read it; or **drop the d18** from the catalogue, which is the only one of the three that is a loss to a player

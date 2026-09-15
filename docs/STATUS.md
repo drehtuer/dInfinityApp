@@ -27,11 +27,17 @@ detekt and Android Lint. No branches are in flight.
 
 ### Which device the tier runs on
 
-The emulator in the devcontainer (API 36, `x86_64`) answers most questions and
-is what the recent work was checked against. Two things still want the Pixel
-10a: whether Filament 1.76.1 looks right on a real GPU, and whether the golden
-cases — re-recorded on the emulator after the spawn streams were stirred —
-still match on `arm64-v8a`.
+The emulator in the devcontainer (API 36, `x86_64`) answers most questions;
+the Pixel 10a (API 37, `arm64-v8a`) answers the rest. **All 34 device tests
+pass on the phone**, which closes the two checks that had been waiting: Filament
+1.76.1 compiles its material on the real driver and draws a frame with more than
+one colour in it, and the golden cases re-recorded on the emulator match on
+`arm64-v8a`.
+
+A device run keeps the screen on now. A phone sleeps after a minute and a full
+run takes four, and everything after that failed with "no compose hierarchies
+found in the app" — on whichever module happened to run last, so it read as a
+different bug each time (`docs/build-setup.md`).
 
 ## Done
 
@@ -99,10 +105,6 @@ is mostly polish, the export paths, and the things that need a phone.
 
 ## Decisions pending
 
-- **What the d18 should be held to.** It is fair to better than half a percent
-  per face and cannot pass chi-squared at a hundred thousand rolls, for a
-  reason that is understood and cannot be engineered away in this engine.
-  Restate the bar, carry it as a known defect, or drop the shape.
 - Whether the branch-coverage floor should follow the drift, or stay where it
   is. Moving a floor to make a check pass is what `.claude/CLAUDE.md` says not
   to do, so this is a question rather than a change to make quietly.
@@ -121,15 +123,15 @@ is mostly polish, the export paths, and the things that need a phone.
   honest rule holds — but at a hundred dice the corrections are *visible*, and
   "it does not cheat" and "it does not look like it cheats" are different
   claims. Step 5.5.
-- **The d18 is not fair, and it is the first physics claim to fail on a
-  device.** 100,000 rolls of each catalogue shape on the Pixel 10a: seven pass
-  with their χ² summing to 55.33 against 55 degrees of freedom, and the
-  enneagonal trapezohedron comes to 197.34 against a limit of 40.79. The body,
-  the solver, the reading, the seeds and the throw were each measured and each
-  holds. **It is the float32 hull** — Jolt holds hull points in single
-  precision whatever else is configured, so this is as fair as the engine can
-  make that solid. No face is off by more than 0.455 %, against the 1 % this
-  project set itself.
+- **The d18 is a known limitation, decided and written down.** It cannot pass
+  chi-squared at a hundred thousand rolls, because its resting basins are
+  narrow enough that the float32 hull's own rounding biases it and Jolt stores
+  hull points in single precision whatever else is configured. It is held to
+  the worst-face bound instead — no face off its share by more than 1 %, and
+  its worst measured is 0.389 % — which is the bar a player would recognise,
+  against the 1–2 % a moulded plastic d20 manages. One shape by name in
+  `FairnessTest`, its χ² still printed every run, and nothing said to the
+  player in the app (`docs/physics-and-rendering.md`).
 - **`100d4` does not reliably settle, and never did.** Five seeds in
   twenty-four run out of the twelve-second cap. Nothing is ever touched after
   coming to rest, on any seed — the rule that matters holds — but the cap

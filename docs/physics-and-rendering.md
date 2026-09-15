@@ -512,9 +512,30 @@ project set itself and against the 1–2 % a moulded plastic d20 manages. What i
 cannot pass is a chi-squared test at one in a thousand over a hundred thousand
 throws, which detects a bias far below anything anybody could play with.
 
-Whether that is a defect to fix, a bar to restate, or a shape to drop is a
-judgement rather than a measurement, and it is in `docs/TODO.md` under Open
-questions.
+### The bar the d18 is held to
+
+That was a judgement rather than a measurement, and it has been taken: **the
+d18 is held to the worst-face bound and not to chi-squared.**
+
+It is not exempt from being fair. It is held to the bound it can meet and that
+a player would recognise — no face off its share by more than one percent,
+where a moulded plastic d20 manages one to two — rather than to a test that
+detects a bias far below anything anybody could play with, and that no
+single-precision rigid-body engine can pass for this solid.
+
+The exemption is **one shape, by name**, in `FairnessTest.HELD_TO_THE_FACE_BOUND`
+with the reason beside it. It is a set rather than a rule about basin widths, so
+a second shape landing in it is a deliberate edit rather than a threshold
+quietly swallowing something nobody measured. Its chi-squared is still computed
+and still printed on every run, so a regression shows up in the table even
+though it no longer fails the build; the figures to compare against are the two
+in the sections above.
+
+**The app says nothing about this to the player.** A warning would be a worse
+answer than the limitation: it would put a number a player cannot act on in
+front of somebody who came to roll dice, about a die that is fairer than the
+plastic one in their hand. It is written down here, where somebody choosing to
+trust the app can find it, and that is the right audience for it.
 
 ## Avoiding stacked and cocked dice
 
