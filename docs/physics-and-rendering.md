@@ -745,6 +745,17 @@ all, and **zero** corrections applied after rest.
   and the renderer samples them the same way. A d4 draws three numbers per
   triangle, one at each corner, because its values belong to corners rather
   than to faces (`docs/dice-sets.md`, "The d4").
+- **How big a number is, is solved rather than chosen.** A cell is the circle
+  drawn round a face, and how much of one a face fills depends on what polygon
+  it is: a dodecahedron's pentagon nearly all of it, a d20's triangle half, a
+  d18's kite a quarter — and a d18's kite is long enough that the middle of the
+  cell is not inside the face at all. So the label is the largest box of its
+  own proportions that fits inside *this* face, times one fraction that is the
+  same for every die. One straight-line condition per edge, three unknowns —
+  how big and where — and the answer is where three of them meet, the same
+  shape of arithmetic as the camera's standing distance. Ties, which are what a
+  narrow `1` on a square face produces, are averaged, so it comes out in the
+  middle rather than against an edge.
 - **The numbers are a distance field, not a picture of a number.** A rasterised
   digit is a digit at one size and a die is looked at from wherever the player
   pinches to, so what is uploaded is the *shape*: one byte per pixel saying how

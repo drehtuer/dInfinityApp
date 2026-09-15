@@ -388,7 +388,7 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - [ ] The rim's shadow still looks wrong — the band across the top of the wall casts something that does not read as a rim. Lighting and the shadow map, not geometry, on present evidence
 - [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
 - [ ] Haptics fire on real impacts only, sound pitch tracks impulse and die size
-- [ ] Settled faces are legible at arm's length without zooming. The *size* is settled — 16 mm reads fine on the Pixel 10a — and the numbers are drawn now, so what is left to judge is how big they are on the face (`DieNumbers.FACE_HEIGHT`, two fifths of a cell) and whether a d4's three-to-a-triangle are readable at all at that size (`CORNER_HEIGHT`, a fifth)
+- [ ] Settled faces are legible at arm's length without zooming. The *size* is settled — 16 mm reads fine on the Pixel 10a — and the numbers are drawn now. What is left to judge is one number: `DieNumbers.FACE_SHARE`, how much of the room a face has a numeral takes up. Everything else about the size is solved from the face itself, so this is the only knob and it moves every shape at once. The d4's three-to-a-triangle (`CORNER_HEIGHT`) is the second question, and the d18 is the third — its kites are long enough that its numbers are a third the size of a d6's, which is the shape question already open below
 - [ ] Power-saving feels instant and gives the same answer
 
 ### 5.7 Performance on the Pixel 10a

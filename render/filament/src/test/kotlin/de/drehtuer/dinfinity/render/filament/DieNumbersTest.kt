@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.glyphs.SignedDistanceField
+import de.drehtuer.dinfinity.core.glyphs.Typesetter
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
@@ -13,6 +14,9 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.sin
 
 /**
  * What a die with no artwork has printed on it.
@@ -97,6 +101,110 @@ class DieNumbersTest {
         assertTrue(mark.placement.centreY in 0.0..1.0)
       }
     }
+  }
+
+  @Test
+  fun `no number ever leaves the face it is printed on`() {
+    // The one thing that must hold for every shape in the catalogue, printed
+    // or drawn: a number over the edge of its face is drawn on the face next
+    // to it, and the die then reads as two numbers at once.
+    everyMark { shape, index, face, mark ->
+      boxOf(mark).forEach { corner ->
+        assertTrue(
+          "${shape.id} face $index: '${mark.text}' reaches $corner, outside $face",
+          inside(face, corner),
+        )
+      }
+    }
+  }
+
+  /** Every mark of every catalogue solid, with the face it is printed on. */
+  private fun everyMark(check: (DieShape, Int, List<Pair<Double, Double>>, Mark) -> Unit) {
+    DieShape.entries.forEach { shape ->
+      val mesh = DieMesh.of(shape)
+      val grid = ShapeAtlas.gridFor(shape)
+      DieNumbers.plan(Die.standard(shape.id, shape), mesh).forEach { cell ->
+        val face = polygonOf(mesh, grid, cell.index)
+        cell.marks.forEach { mark -> check(shape, cell.index, face, mark) }
+      }
+    }
+  }
+
+  @Test
+  fun `a number fills the face it is on, whatever shape that face is`() {
+    // Not merely "fits": a number at a fiftieth of its face is inside it too,
+    // and unreadable. Every catalogue solid gets a number of at least an
+    // eighth of its face's longest span — which is what says the size was
+    // solved from the face rather than picked once for a cube.
+    //
+    // **The d18 is what sets that eighth**, and it is the shape the plan
+    // already has a question mark over: its faces are kites long enough that
+    // the middle of the cell is not inside one, and its resting basins are
+    // narrow enough that it is the one solid held to the worst-face bound
+    // rather than to chi-squared (`docs/TODO.md`, Open questions). Every other
+    // solid clears a sixth.
+    everyMark { shape, index, face, mark ->
+      val across = face.maxOf { corner -> face.maxOf { span(it, corner) } }
+      val height = mark.placement.height
+      assertTrue("${shape.id} face $index prints a $height number on a face $across across", height > across / 8)
+    }
+  }
+
+  private fun span(
+    from: Pair<Double, Double>,
+    to: Pair<Double, Double>,
+  ): Double = hypot(to.first - from.first, to.second - from.second)
+
+  @Test
+  fun `puts a single digit in the middle of a square face`() {
+    // A d6's `1` can sit anywhere across its face and be just as big, so the
+    // arithmetic has a choice to make and the only right answer is the middle.
+    DieNumbers.plan(d6).forEach { cell ->
+      val placement = cell.marks.single().placement
+      assertEquals(0.5, placement.centreX, 0.001)
+      assertEquals(0.5, placement.centreY, 0.001)
+    }
+  }
+
+  @Test
+  fun `brings a wider label down rather than letting it run over the edge`() {
+    val narrow = die(List(6) { "1" }, DieShape.Cube)
+    val wide = die(List(6) { "8888" }, DieShape.Cube)
+
+    val one =
+      DieNumbers
+        .plan(narrow)
+        .first()
+        .marks
+        .single()
+        .placement.height
+    val four =
+      DieNumbers
+        .plan(wide)
+        .first()
+        .marks
+        .single()
+        .placement.height
+
+    assertTrue("a four-character label was not brought down: $four against $one", four < one)
+    assertTrue(four > 0)
+  }
+
+  @Test
+  fun `prints smaller on a face that has less room`() {
+    // A d18's faces are long thin kites and a d6's are squares. A number sized
+    // against the cell would come out the same on both; sized against the face
+    // it cannot.
+    val kite = DieNumbers.plan(Die.standard("d18", DieShape.EnneagonalTrapezohedron)).first()
+    val square = DieNumbers.plan(d6).first()
+
+    assertTrue(
+      kite.marks
+        .single()
+        .placement.height < square.marks
+        .single()
+        .placement.height / 2,
+    )
   }
 
   @Test
@@ -222,6 +330,46 @@ class DieNumbersTest {
       }
     }
 
+  /** The face's own outline, in the cell's coordinates, taken from the mesh rather than from the code under test. */
+  private fun polygonOf(
+    mesh: DieMesh,
+    grid: ShapeAtlas.Grid,
+    index: Int,
+  ): List<Pair<Double, Double>> {
+    val (column, row) = ShapeAtlas.cellOf(mesh.shape, index)
+    return mesh.faces
+      .first { it.index == index }
+      .uvs
+      .map { it.u * grid.columns - column to it.v * grid.rows - row }
+  }
+
+  /** The four corners of the box a mark's glyphs sit in, turned as the mark is. */
+  private fun boxOf(mark: Mark): List<Pair<Double, Double>> {
+    val height = mark.placement.height
+    val width = Typesetter.inkWidth(mark.text, height)
+    val angle = mark.placement.turns * 2 * Math.PI
+    return listOf(-1 to -1, 1 to -1, 1 to 1, -1 to 1).map { (acrossBy, downBy) ->
+      val x = acrossBy * width / 2
+      val y = downBy * height / 2
+      mark.placement.centreX + x * cos(angle) + y * sin(angle) to
+        mark.placement.centreY - x * sin(angle) + y * cos(angle)
+    }
+  }
+
+  /** Whether a point is inside a convex ring, whichever way it is wound. */
+  private fun inside(
+    ring: List<Pair<Double, Double>>,
+    at: Pair<Double, Double>,
+  ): Boolean {
+    val sides =
+      ring.indices.map { corner ->
+        val (fromX, fromY) = ring[corner]
+        val (toX, toY) = ring[(corner + 1) % ring.size]
+        (toX - fromX) * (at.second - fromY) - (at.first - fromX) * (toY - fromY)
+      }
+    return sides.all { it >= -TOLERANCE } || sides.all { it <= TOLERANCE }
+  }
+
   private fun die(
     labels: List<String>,
     shape: DieShape,
@@ -259,5 +407,10 @@ class DieNumbersTest {
 
     assertNull(printed.of(d6.copy(texturePath = "textures/d6.png")))
     assertEquals("an atlas was written over", 0, printed.built)
+  }
+
+  private companion object {
+    /** A corner exactly on an edge is on the face, and doubles do not land exactly. */
+    const val TOLERANCE = 1e-6
   }
 }

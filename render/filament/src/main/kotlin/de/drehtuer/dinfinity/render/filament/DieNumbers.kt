@@ -31,16 +31,30 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
  */
 object DieNumbers {
   /**
-   * How tall a digit is on a face-read solid, as a fraction of its cell.
+   * How much of the room a face has, a number takes up.
    *
-   * A cell is the face's own circumscribed circle, so a number at two fifths
-   * of it is about the proportion a moulded die uses — big enough to read at
-   * arm's length, small enough that a pentagon's corners are still visibly
-   * corners (`docs/TODO.md`, Step 5.6).
+   * *Of the room the face actually has*, not of its cell. A cell is the circle
+   * drawn round a face, and how much of one a face fills depends entirely on
+   * what polygon it is — a dodecahedron's pentagon fills most of it, a d20's
+   * triangle half of it, and a d18's kite a quarter. A number sized against
+   * the cell therefore comes out right on a d6 and crowding the edges on a
+   * d20, which is what it did on the Pixel 10a.
+   *
+   * So the size is solved rather than chosen: the largest box of this label's
+   * own proportions that fits inside this face, times this fraction. What is
+   * left to judge is the fraction — how much smaller than the room a numeral
+   * should be — and that needs a phone (`docs/TODO.md`, Step 5.6).
    */
-  const val FACE_HEIGHT: Double = 0.40
+  const val FACE_SHARE: Double = 0.78
 
-  /** The same for a d4, which has to fit three of them round one triangle. */
+  /**
+   * How tall a d4's numbers are, as a fraction of the cell.
+   *
+   * Of the cell rather than solved against the edges the way [FACE_SHARE] is,
+   * because these do not sit in the middle of the face: three of them share
+   * one triangle, each near its own corner, and what bounds them is each other
+   * rather than the edges.
+   */
   const val CORNER_HEIGHT: Double = 0.20
 
   /**
@@ -51,9 +65,6 @@ object DieNumbers {
    * triangle, and a real d4 prints them just inside it.
    */
   const val CORNER_REACH: Double = 0.62
-
-  /** How wide a label may be before it is brought down to fit, as a fraction of the cell. */
-  const val WIDEST: Double = 0.68
 
   /**
    * What is printed in each cell of [die]'s atlas.
@@ -77,7 +88,8 @@ object DieNumbers {
         row = row,
         marks =
           when (die.shape.naturalRead) {
-            FaceRead.FaceUp -> centred(die, die.faces[index], face)
+            FaceRead.FaceUp ->
+              centred(die, die.faces[index], mesh.faces.first { it.index == index }, grid, column to row, face)
             FaceRead.VertexUp -> corners(die, mesh, index, grid, face)
           },
       )
@@ -130,20 +142,25 @@ object DieNumbers {
   }
 
   /** A face-read solid prints one thing, in the middle of its cell. */
+  @Suppress("LongParameterList")
   private fun centred(
     die: Die,
     at: Face,
+    surface: MeshFace,
+    grid: ShapeAtlas.Grid,
+    cell: Pair<Int, Int>,
     face: Typeface,
   ): List<Mark> {
     val text = textOf(at)
     if (text.isEmpty()) return emptyList()
+    val room = FaceRoom.on(surface, grid, cell, Typesetter.inkWidth(text, 1.0, face), FACE_SHARE)
     return listOf(
       Mark(
         text,
         Placement(
-          centreX = HALF,
-          centreY = HALF,
-          height = fitted(text, FACE_HEIGHT, face),
+          centreX = room.centreX,
+          centreY = room.centreY,
+          height = FACE_SHARE * room.height,
           underlined = isAmbiguous(text, die),
         ),
       ),
@@ -199,7 +216,9 @@ object DieNumbers {
   ): List<Mark> {
     val surface = mesh.faces.first { it.index == index }
     val directions = ShapeGeometry.directionsOf(die.shape).map(Vector3::normalised)
-    val (column, row) = ShapeAtlas.cellOf(die.shape, index)
+    val cell = ShapeAtlas.cellOf(die.shape, index)
+    val (column, row) = cell
+    val corners = FaceRoom.cornersOf(surface, grid, cell)
     return surface.positions.mapIndexedNotNull { corner, position ->
       val at = nearest(directions, position.normalised())
       val uv = surface.uvs[corner]
@@ -217,7 +236,15 @@ object DieNumbers {
             Placement(
               centreX = outX,
               centreY = outY,
-              height = fitted(text, CORNER_HEIGHT, face),
+              // Held to what the triangle has at that corner. A number placed
+              // at a corner is nearer two edges than anything in the middle
+              // is, and a d4 whose numbers ran over its own edges would be the
+              // one die in the set that could not be read.
+              height =
+                minOf(
+                  CORNER_HEIGHT,
+                  FaceRoom.heightAt(corners, Typesetter.inkWidth(text, 1.0, face), outX, outY),
+                ),
               // Up, for this number, is the way its own corner lies.
               turns = Exact.atan2(-(outX - HALF), -(outY - HALF)) / FULL_TURN,
               underlined = isAmbiguous(text, die),
@@ -256,16 +283,6 @@ object DieNumbers {
       BuiltinFont.canDraw(at.label) -> at.label
       else -> at.value.toString()
     }
-
-  /** [nominal] brought down, if it has to be, so that [text] fits inside its cell. */
-  private fun fitted(
-    text: String,
-    nominal: Double,
-    face: Typeface,
-  ): Double {
-    val width = Typesetter.inkWidth(text, nominal, face)
-    return if (width <= WIDEST) nominal else nominal * WIDEST / width
-  }
 
   /**
    * What each character becomes when the die is turned about.
