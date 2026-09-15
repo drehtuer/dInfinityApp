@@ -145,7 +145,7 @@ switched on.
 
 - [ ] Check for updates, update with progress and cancel (`9h`, `9i`)
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)
-- [ ] Tests: a malicious archive is refused at every layer, and a failed install leaves nothing behind
+- [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
 
 ### 4.5 Table picker — `feature/tables`
 
