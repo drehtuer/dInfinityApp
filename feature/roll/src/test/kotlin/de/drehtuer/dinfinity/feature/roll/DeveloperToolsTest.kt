@@ -18,7 +18,6 @@ import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
 import de.drehtuer.dinfinity.simulation.api.DeveloperNotes
-import de.drehtuer.dinfinity.simulation.api.DiceSimulator
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
@@ -166,10 +165,6 @@ class DeveloperToolsTest {
           catalog = catalog,
           geometry = geometry,
           look = { table },
-          simulator =
-            object : DiceSimulator {
-              override fun run(spec: ThrowSpec) = SimulationOutcome(faces = spec.dice.indices.associateWith { 0 })
-            },
           outside = Outside(seeds = { SEED }, clock = { AT }),
         ),
       driver = DirectTray(),
