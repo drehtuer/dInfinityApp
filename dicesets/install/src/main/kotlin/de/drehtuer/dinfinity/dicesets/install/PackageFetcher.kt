@@ -68,6 +68,16 @@ class PackageFetcher(
       val file: File,
       val bytes: Long,
       val sha256: String,
+      /**
+       * What the server said about the file, for an archive that has no
+       * commits to tell apart (`docs/dice-sets.md`, "Updates").
+       *
+       * Passed on verbatim and never parsed: an `ETag` is opaque by
+       * definition, and a `Last-Modified` here is a header to compare rather
+       * than a time to reason about.
+       */
+      val etag: String?,
+      val lastModified: String?,
     ) : Result
 
     data class Failed(
@@ -204,7 +214,13 @@ class PackageFetcher(
         Result.Failed("the download is larger than the ${maxBytes shr MIB_SHIFT} MiB allowed")
       }
       is Copied.Whole ->
-        Result.Downloaded(file = target, bytes = written.bytes, sha256 = digest.digest().toHex())
+        Result.Downloaded(
+          file = target,
+          bytes = written.bytes,
+          sha256 = digest.digest().toHex(),
+          etag = response.header("ETag"),
+          lastModified = response.header("Last-Modified"),
+        )
     }
   }
 

@@ -338,10 +338,33 @@ the list, and updating it is a re-install from the source the install recorded
 update that is refused costs nothing, because a package that fails validation
 leaves the one already installed alone.
 
-Only sets that came from a forge *and* recorded the commit that arrived can be
-checked. A set installed from a file has no forge to ask, and a plain archive
-has no commits to tell apart — comparing archive headers and checksums for
-those is still to come (`docs/TODO.md`, 4.4).
+**A plain archive is checked too, by asking its server about the file.** It has
+no commits to tell apart, so the install records what the server said — its
+`ETag`, and the `Last-Modified` beside it — and the check is a `HEAD` request
+comparing the two. A `HEAD`, because the whole point is to avoid pulling sixty
+megabytes to find out that nothing changed.
+
+Neither header is parsed. An `ETag` is an opaque string by definition, and the
+date beside it is a header to compare rather than a time to reason about:
+deciding that one date is *later* than another would read a meaning into a
+server's clock that nobody promised. The `ETag` is preferred where both ends
+have one, because it is the server's own statement about the bytes, where a
+date changes when a file is rebuilt without changing.
+
+**Like is compared with like, and nothing is said otherwise.** A set installed
+with an `ETag`, against a server that has since stopped sending one, is
+*unanswerable* rather than outdated — badging it would send somebody to
+re-download a set that has not changed. The same is true of a set installed
+before any of this was recorded: its note has a source and nothing to compare,
+and re-installing it is the only honest way to give it one.
+
+Which of the two questions a set gets is decided by **what its install
+recorded**, not by reading the link again: a set with a commit against it came
+from a forge, and anything else is an archive. Re-parsing the URL would be a
+second place for "is this a forge" to be answered, and two answers to that is
+one too many.
+
+A set installed from a file has no source at all and is never asked.
 
 **A download says how far it has got and can be stopped** (design `9i`). The
 bar is drawn from bytes that have actually arrived; the `Content-Length` beside
@@ -368,6 +391,10 @@ The button is not drawn at all when nothing could be asked, and what a check
 everything current and a check that could not reach anything look identical on
 a list where nothing is badged either way. A forge that cannot be reached is
 counted as unreachable rather than quietly read as up to date.
+
+The button is still not drawn when nothing could be asked, and a set with
+nothing to compare is skipped rather than asked a question whose only possible
+answer is "no idea".
 
 Resolving a ref means asking the forge which commit it is at now — GitHub and
 Gitea call that hash `sha`, GitLab calls it `id`, and Gitea answers with a list
