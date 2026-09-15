@@ -657,11 +657,11 @@ class RollScreenTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
-      onSettled: (SimulationOutcome) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       val live = start(HeadlessRenderer())
       while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
-      live.outcome?.let(onSettled)
+      live.outcome?.let { onSettled(it, live.drivenBy) }
       live.close()
     }
 
@@ -705,7 +705,7 @@ class RollScreenTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
-      onSettled: (SimulationOutcome) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       start(HeadlessRenderer())
     }
@@ -744,6 +744,8 @@ class RollScreenTest {
         override val running: Boolean get() = !landed
 
         override val outcome: SimulationOutcome? get() = if (landed) SimulationOutcome(faces = faces) else null
+
+        override val drivenBy: List<ShakeSample> = emptyList()
 
         override fun advance(elapsedSeconds: Double): RenderFrame {
           landed = true

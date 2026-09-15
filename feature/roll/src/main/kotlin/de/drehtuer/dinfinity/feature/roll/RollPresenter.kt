@@ -143,12 +143,20 @@ class RollPresenter(
 
     driver.roll(
       start = { watcher -> rolls.start(spec, watcher) },
-      onSettled = { outcome ->
+      onSettled = { outcome, drivenBy ->
         toTheScreen {
           // Written down on the screen's thread, where the result exists, and
           // handed to something that takes it away — a roll is finished when
           // the dice stop, not when a database says so.
-          machine.settled(outcome)?.let(recorder::record)
+          //
+          // The shake comes back with the outcome because the roll is the only
+          // thing that knows it: a shake-driven throw goes into the world with
+          // an empty spec and is filled in as the hand moves. Here is where it
+          // is joined back onto the spec that started it, and here is where it
+          // stops — the recorder is given a `FinishedThrow` and takes the
+          // result, the plan and the seed off it, and nothing downstream has
+          // anywhere to put a shake (`docs/architecture.md`, decision 13).
+          machine.settled(outcome, drivenBy)?.let(recorder::record)
           publish()
         }
       },

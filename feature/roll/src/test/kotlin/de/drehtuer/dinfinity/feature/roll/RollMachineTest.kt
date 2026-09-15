@@ -487,6 +487,77 @@ class RollMachineTest {
     assertNull("a picked die left the throw attributed to the saved roll", thrown.savedRollId)
   }
 
+  @Test
+  fun `a throw that has landed is described by the spec that would replay it`() {
+    // The spec a shake-driven throw *starts* as has no shake in it: the dice
+    // are spawned the moment the shake is confirmed and the samples arrive
+    // afterwards. What the record has to be is the spec with those samples
+    // written back into it (`docs/physics-and-rendering.md`, "Shake input").
+    val machine = machine()
+    machine.type("1d6")
+    val spec = requireNotNull(machine.throwDice())
+    val hand = hand(3)
+
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = mapOf(0 to 0)), hand))
+
+    assertTrue("the throw went out with a shake it could not have had", spec.shake.isEmpty())
+    assertEquals(spec.copy(shake = hand), thrown.thrown)
+    assertEquals("the seed no longer belongs to the spec it would replay", spec.seed, thrown.seed)
+  }
+
+  @Test
+  fun `a tapped throw is replayable from its seed alone`() {
+    val machine = machine()
+    machine.type("1d6")
+    val spec = requireNotNull(machine.throwDice())
+
+    val thrown = requireNotNull(machine.settled(SimulationOutcome(faces = mapOf(0 to 0))))
+
+    assertEquals(spec, thrown.thrown)
+    assertTrue(thrown.thrown.shake.isEmpty())
+  }
+
+  @Test
+  fun `a throw abandoned in the air takes its shake with it`() {
+    // Editing the formula abandons whatever is in the air. Nothing landed, so
+    // there is no record to keep and the samples that reached the roll go
+    // nowhere.
+    val machine = machine()
+    machine.type("1d6")
+    machine.throwDice()
+
+    machine.type("2d6")
+
+    assertNull(
+      "a roll nobody waited for was written down",
+      machine.settled(SimulationOutcome(faces = mapOf(0 to 0)), hand(3)),
+    )
+  }
+
+  @Test
+  fun `re-rounding a throw does not hand the record out a second time`() {
+    // The dice do not move, so it is the same roll — and the same record, given
+    // out once.
+    val machine = machine()
+    machine.type("1d6 / 2")
+    machine.throwDice()
+    machine.settled(SimulationOutcome(faces = mapOf(0 to 4)), hand(2))
+
+    machine.round(Rounding.Up)
+
+    assertNull(machine.settled(SimulationOutcome(faces = mapOf(0 to 4)), hand(2)))
+  }
+
+  /** A hand moving sideways for [moments] simulation steps. */
+  private fun hand(moments: Int): List<ShakeSample> =
+    List(moments) { step ->
+      ShakeSample(
+        stepIndex = step,
+        accelerationMmPerSecond2 = Vector3(5_000.0, 0.0, 0.0),
+        gravity = Vector3(0.0, 0.0, -1.0),
+      )
+    }
+
   /** The bundled set and one more, which is when the chooser is worth drawing. */
   private fun twoSets(): DiceCatalog =
     DiceCatalog.of(

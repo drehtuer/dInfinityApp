@@ -86,10 +86,16 @@ class RollMachine(
     val diceCount: Int,
   )
 
-  /** The same, plus the seed it was thrown with. Non-null exactly while rolling. */
+  /**
+   * The same, plus the throw it was thrown as. Non-null exactly while rolling.
+   *
+   * The whole spec rather than its seed, because a throw that has landed is
+   * described by the spec that would replay it, and that spec is this one with
+   * the shake written back into it ([FinishedThrow.thrown]).
+   */
   private class InFlight(
     val prepared: Prepared,
-    val seed: Long,
+    val spec: ThrowSpec,
   )
 
   private var prepared: Prepared? = null
@@ -233,7 +239,7 @@ class RollMachine(
         dieScale = ready.scale,
         shake = shake,
       )
-    inFlight = InFlight(ready, spec.seed)
+    inFlight = InFlight(ready, spec)
     state = RollState.Rolling(ready.diceCount)
     return spec
   }
@@ -249,9 +255,17 @@ class RollMachine(
    * The faces are the simulation's, unexamined and unadjusted. Scoring is
    * arithmetic over them — keep, drop, explode, modifiers, rounding — and
    * nothing in it can change what a die landed on.
+   *
+   * @param drivenBy every moment of the shake that reached the roll, in step
+   *   order. A tap-to-roll throw has none. It is taken here rather than
+   *   remembered from [throwDice] because for a shake there is nothing to
+   *   remember at that point: the dice are spawned when the shake is confirmed
+   *   and the moments arrive afterwards, so only the roll itself knows what
+   *   actually threw them (`docs/physics-and-rendering.md`, "Shake input").
    */
   fun settled(
     outcome: SimulationOutcome,
+    drivenBy: List<ShakeSample> = emptyList(),
     rounding: Rounding = defaultRounding,
   ): FinishedThrow? {
     val flight = inFlight ?: return null
@@ -280,7 +294,11 @@ class RollMachine(
     return FinishedThrow(
       result = result,
       plan = flight.prepared.plan,
-      seed = flight.seed,
+      // The throw as it happened, rather than as it started: a spec and a list
+      // of samples kept side by side are two halves somebody has to join up,
+      // and this is the join. What comes out replays this roll exactly, which
+      // is the only form of the record worth keeping.
+      thrown = flight.spec.copy(shake = drivenBy),
       savedRollId = cameFrom?.rollId,
       groupId = cameFrom?.groupId,
     )
@@ -339,7 +357,7 @@ class RollMachine(
           // Not `seed + n`: two seeds that differ by one are not two
           // independent throws, so an exploding die used to be thrown by a
           // stream related to the one that set it off (`Seeds`).
-          seed = Seeds.derived(flight.seed, ++extra),
+          seed = Seeds.derived(flight.spec.seed, ++extra),
         )
       simulator.run(one).faces.getValue(0)
     }

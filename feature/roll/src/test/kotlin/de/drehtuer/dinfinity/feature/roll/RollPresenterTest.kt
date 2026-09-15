@@ -310,12 +310,82 @@ class RollPresenterTest {
     assertEquals(2, written.size)
   }
 
+  @Test
+  fun `the shake that threw the dice goes with the throw, ready to replay it`() {
+    // The throw went out with an empty shake — the dice are spawned when the
+    // shake is confirmed — and the sensors reported into it while it ran. What
+    // is handed over has to be the two joined back together, because only that
+    // rolls these dice again (`docs/physics-and-rendering.md`, "Shake input").
+    val written = mutableListOf<FinishedThrow>()
+    val rolls = RecordingRolls(faces = mapOf(0 to 5))
+    val hand = hand(3)
+    lateinit var presenter: RollPresenter
+    presenter = presenter(rolls, { written += it }, DirectTray { hand.forEach(presenter::shaking) })
+
+    presenter.type("1d6")
+    presenter.roll()
+
+    assertTrue(
+      "the throw went out already knowing its shake",
+      rolls.started
+        .single()
+        .shake
+        .isEmpty(),
+    )
+    assertEquals(hand, written.single().thrown.shake)
+    assertEquals(rolls.started.single().copy(shake = hand), written.single().thrown)
+  }
+
+  @Test
+  fun `a tapped throw is written down with no shake at all`() {
+    val written = mutableListOf<FinishedThrow>()
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)), { written += it })
+
+    presenter.type("1d6")
+    presenter.roll()
+
+    assertTrue(
+      written
+        .single()
+        .thrown.shake
+        .isEmpty(),
+    )
+  }
+
+  @Test
+  fun `a roll that never lands is never written down, and nor is its shake`() {
+    // The player left the screen with the dice in the air. Nothing landed, so
+    // there is nothing to score and nothing to record — and the samples that
+    // reached the roll go with the roll.
+    val written = mutableListOf<FinishedThrow>()
+    val rolls = RecordingRolls(faces = mapOf(0 to 5), landImmediately = false)
+    val hand = hand(3)
+    lateinit var presenter: RollPresenter
+    presenter = presenter(rolls, { written += it }, DirectTray { hand.forEach(presenter::shaking) })
+
+    presenter.type("1d6")
+    presenter.roll()
+
+    assertTrue("a roll that never landed was written down", written.isEmpty())
+  }
+
+  /** A hand moving sideways for [moments] simulation steps. */
+  private fun hand(moments: Int): List<ShakeSample> =
+    List(moments) { step ->
+      ShakeSample(
+        stepIndex = step,
+        accelerationMmPerSecond2 = Vector3(5_000.0, 0.0, 0.0),
+        gravity = Vector3(0.0, 0.0, -1.0),
+      )
+    }
+
   private fun presenter(
     rolls: RecordingRolls,
     recorder: ThrowRecorder = ThrowRecorder.NONE,
+    tray: Tray = DirectTray(),
   ) = RollPresenter(
     machine = machine(),
-    driver = DirectTray(),
+    driver = tray,
     rolls = rolls,
     recorder = recorder,
     // Straight through, so the test sees what the screen would see without
@@ -331,8 +401,20 @@ class RollPresenterTest {
    * the thread would only make the answer arrive later
    * (`docs/architecture.md`, decision 40).
    */
-  private class DirectTray : Tray {
+  private class DirectTray(
+    /**
+     * What the hand does while the dice are in the air.
+     *
+     * Called with the roll open and not yet stepped, which is where a shake
+     * actually arrives: the dice are spawned when the shake is confirmed and
+     * the sensors go on reporting into a throw that is already running
+     * (`docs/physics-and-rendering.md`, "Shake input").
+     */
+    private val whileRolling: () -> Unit = {},
+  ) : Tray {
     val shaken = mutableListOf<ShakeSample>()
+
+    private var live: WatchedRoll? = null
 
     /** Every table this tray has been told about, in order. */
     val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
@@ -350,19 +432,23 @@ class RollPresenterTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
-      onSettled: (SimulationOutcome) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
-      val live = start(HeadlessRenderer())
+      val roll = start(HeadlessRenderer())
+      live = roll
+      whileRolling()
       // Capped, because a fake roll that never lands is a test case here and
       // an unbounded loop is not a useful way to fail it.
       var frames = 0
-      while (live.running && frames++ < MOST_FRAMES) live.advance(SettleRule.TIMESTEP_SECONDS)
-      live.outcome?.let(onSettled)
-      live.close()
+      while (roll.running && frames++ < MOST_FRAMES) roll.advance(SettleRule.TIMESTEP_SECONDS)
+      roll.outcome?.let { onSettled(it, roll.drivenBy) }
+      live = null
+      roll.close()
     }
 
     override fun shake(sample: ShakeSample) {
       shaken += sample
+      live?.shake(sample)
     }
 
     override fun table(
@@ -399,10 +485,13 @@ class RollPresenterTest {
       started += spec
       return object : WatchedRoll {
         private var landed = false
+        private val drove = mutableListOf<ShakeSample>()
 
         override val running: Boolean get() = !landed
 
         override val outcome: SimulationOutcome? get() = if (landed) SimulationOutcome(faces = faces) else null
+
+        override val drivenBy: List<ShakeSample> get() = drove.toList()
 
         override fun advance(elapsedSeconds: Double): RenderFrame {
           landed = landImmediately
@@ -411,7 +500,9 @@ class RollPresenterTest {
           )
         }
 
-        override fun shake(sample: ShakeSample) = Unit
+        override fun shake(sample: ShakeSample) {
+          drove += sample
+        }
 
         override fun close() = Unit
       }
