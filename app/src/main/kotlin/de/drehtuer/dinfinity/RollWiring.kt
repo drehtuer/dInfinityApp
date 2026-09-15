@@ -11,11 +11,14 @@ import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.RollMachine
 import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
+import de.drehtuer.dinfinity.feedback.AndroidFeedback
+import de.drehtuer.dinfinity.feedback.ImpactFeedback
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.RollThread
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayDriver
 import de.drehtuer.dinfinity.render.headless.Rolls
+import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.jolt.JoltDiceSimulator
 import kotlinx.coroutines.CoroutineScope
@@ -118,10 +121,19 @@ class RollWiring(
    *   appearing or vanishing under a roll in progress is not a setting taking
    *   effect, it is a bug. Turning it on takes effect the next time the screen
    *   is opened (`design/dInfinity.dc.html`, option 1z).
+   * @param haptics whether a die landing is felt, and [sound] whether it is
+   *   heard. Read here for the same reason and with the same effect: both the
+   *   thing that listens — the roll — and the thing that plays are made when
+   *   the screen opens, and a roll that started buzzing half way through is
+   *   not a setting taking effect (`docs/physics-and-rendering.md`, "Haptics
+   *   and sound").
    */
+  @Suppress("LongParameterList")
   fun presenter(
     powerSaving: Boolean = false,
     rounding: Rounding = Rounding.Default,
+    haptics: Boolean = true,
+    sound: Boolean = true,
     scope: CoroutineScope,
   ): RollPresenter =
     RollPresenter(
@@ -133,8 +145,12 @@ class RollWiring(
           simulator = simulator,
           defaultRounding = rounding,
         ),
-      driver = tray(powerSaving),
-      rolls = Rolls(simulator::start),
+      driver = tray(powerSaving, feedback(haptics, sound)),
+      // A roll records where the dice hit something only when something is
+      // going to play it. Both settings off is the one thing those two
+      // switches actually save: nothing is measured, rather than measured and
+      // then muted (`docs/physics-and-rendering.md`, "Impacts").
+      rolls = Rolls { spec, watcher -> simulator.start(spec, watcher, listening = haptics || sound) },
       recorder = recorder(scope),
     )
 
@@ -183,7 +199,34 @@ class RollWiring(
    * A driver per visit still, because a driver owns a roll — but handed the
    * thread and the engine rather than making its own.
    */
-  private fun tray(powerSaving: Boolean): Tray = if (powerSaving) PowerSavingTray() else TrayDriver(shared = rollThread)
+  private fun tray(
+    powerSaving: Boolean,
+    impacts: Impacts,
+  ): Tray = if (powerSaving) PowerSavingTray(impacts = impacts) else TrayDriver(shared = rollThread, impacts = impacts)
+
+  /**
+   * What plays this visit's impacts.
+   *
+   * Held by the application rather than made per visit, for the reason
+   * [rollThread] is: it owns an actuator, a handful of audio buffers and a
+   * thread, and making those again every time somebody comes back from the
+   * menu is a cost with nothing to show for it. It is rebuilt only when the two
+   * settings behind it actually change, which is what "takes effect the next
+   * time the roll screen opens" means here.
+   */
+  private fun feedback(
+    haptics: Boolean,
+    sound: Boolean,
+  ): ImpactFeedback {
+    val wanted = haptics to sound
+    playing?.takeIf { playingFor == wanted }?.let { return it }
+    playing?.close()
+    playingFor = wanted
+    return AndroidFeedback.create(context, haptics = haptics, sound = sound).also { playing = it }
+  }
+
+  private var playing: ImpactFeedback? = null
+  private var playingFor: Pair<Boolean, Boolean>? = null
 
   /**
    * The outcome graph's state, for one visit to that screen.

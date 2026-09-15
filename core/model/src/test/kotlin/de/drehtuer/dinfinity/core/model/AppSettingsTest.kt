@@ -38,6 +38,20 @@ class AppSettingsTest {
     assertEquals(AccentColor.Amber, before.accentColor)
   }
 
+  @Test
+  fun `a fresh install feels and hears the dice land`() {
+    // Both default to on, because they are what makes a throw read as dice
+    // rather than as a number appearing (`docs/physics-and-rendering.md`).
+    assertTrue(AppSettings().haptics)
+    assertTrue(AppSettings().sound)
+  }
+
+  @Test
+  fun `haptics and sound are two settings rather than one`() {
+    assertNotEquals(AppSettings(haptics = false), AppSettings(sound = false))
+    assertEquals(true, AppSettings(haptics = false).sound)
+  }
+
   /** Only so a log line or a test failure names the accent rather than an address. */
   @Test
   fun `toString names the accent`() {

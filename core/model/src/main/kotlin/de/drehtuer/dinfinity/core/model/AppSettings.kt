@@ -42,6 +42,25 @@ data class AppSettings(
    */
   val powerSaving: Boolean = false,
   /**
+   * Whether the phone ticks when a die hits something
+   * (`docs/physics-and-rendering.md`, "Haptics and sound").
+   *
+   * On by default. Only real impacts fire one — never a die sliding and never
+   * a die at rest — and the ticks go out under Android's touch-feedback usage,
+   * so a player who has turned haptics off in their phone's own settings gets
+   * none from here whatever this says.
+   */
+  val haptics: Boolean = true,
+  /**
+   * Whether a die hitting something makes a noise
+   * (`docs/physics-and-rendering.md`, "Haptics and sound").
+   *
+   * On by default. The sound is the table's — one of five presets a package
+   * names rather than ships (`docs/tables.md`) — with its pitch following how
+   * hard the impact was and how big the die is.
+   */
+  val sound: Boolean = true,
+  /**
    * Whether the player has been past the first-launch screen
    * (`design/dInfinity.dc.html`, option 9a).
    *

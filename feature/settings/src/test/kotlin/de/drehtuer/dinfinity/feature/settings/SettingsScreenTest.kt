@@ -1,5 +1,10 @@
 package de.drehtuer.dinfinity.feature.settings
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
@@ -9,6 +14,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import de.drehtuer.dinfinity.core.model.AccentColor
@@ -162,6 +168,74 @@ class SettingsScreenTest {
     compose.onNodeWithTag(SettingsTestTags.SHAKE).performScrollTo().performClick()
 
     assertEquals(listOf(false), changed)
+  }
+
+  @Test
+  fun `haptics and sound are two switches, each saying which way it was moved`() {
+    val haptics = mutableListOf<Boolean>()
+    val sound = mutableListOf<Boolean>()
+    compose.setContent {
+      SettingsScreen(
+        settings = AppSettings(haptics = true, sound = false),
+        onAccentSelected = {},
+        onHapticsChanged = haptics::add,
+        onSoundChanged = sound::add,
+      )
+    }
+
+    compose
+      .onNodeWithTag(SettingsTestTags.HAPTICS)
+      .performScrollTo()
+      .assertIsOn()
+      .performClick()
+    compose
+      .onNodeWithTag(SettingsTestTags.SOUND)
+      .performScrollTo()
+      .assertIsOff()
+      .performClick()
+
+    assertEquals(listOf(false), haptics)
+    assertEquals(listOf(true), sound)
+  }
+
+  @Test
+  fun `moving one of the two leaves the other alone`() {
+    val haptics = mutableListOf<Boolean>()
+    val sound = mutableListOf<Boolean>()
+    compose.setContent {
+      SettingsScreen(
+        settings = AppSettings(haptics = true, sound = true),
+        onAccentSelected = {},
+        onHapticsChanged = haptics::add,
+        onSoundChanged = sound::add,
+      )
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.SOUND).performScrollTo().performClick()
+
+    assertTrue("moving sound moved the haptics too", haptics.isEmpty())
+    assertEquals(listOf(false), sound)
+  }
+
+  @Test
+  fun `a recomposition around the screen that changes nothing leaves the switches where they were`() {
+    // The other side of every skip branch the screen's parameters carry: drawn
+    // once, something beside it changes, and the rows have to come back saying
+    // the same thing rather than vanishing or flipping.
+    var tick by mutableStateOf(0)
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        SettingsScreen(settings = AppSettings(haptics = true, sound = false), onAccentSelected = {})
+      }
+    }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag(SettingsTestTags.HAPTICS).performScrollTo().assertIsOn()
+    compose.onNodeWithTag(SettingsTestTags.SOUND).performScrollTo().assertIsOff()
+    compose.onNodeWithTag(SettingsTestTags.SHAKE).performScrollTo().assertIsOn()
   }
 
   @Test

@@ -27,6 +27,10 @@
   <string name="appearance_light">Light</string>
   <string name="appearance_dark">Dark</string>
   <!-- Shake to roll (docs/physics-and-rendering.md). -->
+  <string name="settings_feel_heading">Haptics and sound</string>
+  <string name="settings_feel_explanation">Only a die actually hitting something ticks or makes a noise — never one sliding, never one that has stopped. The sound is the table\'s, and the pitch follows how hard the knock was and how big the die is. Both take effect the next time the roll screen opens.</string>
+  <string name="settings_haptics_label">Feel the dice land</string>
+  <string name="settings_sound_label">Hear the dice land</string>
   <string name="settings_shake_heading">Shake</string>
   <string name="settings_shake_explanation">Off means the motion sensors are never switched on at all, which is the one setting here that saves any power.</string>
   <string name="settings_shake_label">Shake the phone to throw</string>

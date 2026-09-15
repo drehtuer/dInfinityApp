@@ -17,9 +17,11 @@ import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.data.SettingsRepository
 import de.drehtuer.dinfinity.data.setAccentColor
 import de.drehtuer.dinfinity.data.setAppearance
+import de.drehtuer.dinfinity.data.setHaptics
 import de.drehtuer.dinfinity.data.setPowerSaving
 import de.drehtuer.dinfinity.data.setRounding
 import de.drehtuer.dinfinity.data.setShakeToRoll
+import de.drehtuer.dinfinity.data.setSound
 import de.drehtuer.dinfinity.data.setWelcomeSeen
 import de.drehtuer.dinfinity.feature.saved.R
 import de.drehtuer.dinfinity.feature.settings.MenuHeader
@@ -145,6 +147,12 @@ class MainActivity : ComponentActivity() {
       },
       onShakeChanged = { on ->
         lifecycleScope.launch { repository.setShakeToRoll(on) }
+      },
+      onHapticsChanged = { on ->
+        lifecycleScope.launch { repository.setHaptics(on) }
+      },
+      onSoundChanged = { on ->
+        lifecycleScope.launch { repository.setSound(on) }
       },
       onRoundingSelected = { rounding ->
         lifecycleScope.launch { repository.setRounding(rounding) }

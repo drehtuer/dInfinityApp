@@ -125,6 +125,8 @@ class DataStoreSettingsRepositoryTest {
           "appearance" to "system",
           "power_saving" to false,
           "shake_to_roll" to true,
+          "haptics" to true,
+          "sound" to true,
           "rounding" to "down",
           "welcome_seen" to false,
           "active_group" to "unfiled",
@@ -181,6 +183,25 @@ class DataStoreSettingsRepositoryTest {
       assertEquals(true, repository.settings.first().shakeToRoll)
       repository.setShakeToRoll(false)
       assertEquals(false, repository.settings.first().shakeToRoll)
+    }
+
+  @Test
+  fun `haptics and sound are on until somebody turns them off`() =
+    runTest {
+      // Same rule as the shake above, and the same reason: a fresh install has
+      // neither key, and reading an absent boolean as false would ship a silent
+      // app to everybody who had never opened Settings.
+      val repository = DataStoreSettingsRepository(dataStore(this))
+
+      assertEquals(true, repository.settings.first().haptics)
+      assertEquals(true, repository.settings.first().sound)
+
+      repository.setHaptics(false)
+      assertEquals(false, repository.settings.first().haptics)
+      assertEquals("turning haptics off silenced the sound too", true, repository.settings.first().sound)
+
+      repository.setSound(false)
+      assertEquals(false, repository.settings.first().sound)
     }
 
   @Test

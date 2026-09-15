@@ -118,6 +118,45 @@ internal fun ShakeSection(
 }
 
 /**
+ * Whether a die landing is felt and heard
+ * (`docs/physics-and-rendering.md`, "Haptics and sound").
+ *
+ * One section with two switches rather than two sections, because they are one
+ * answer to one question — *should the dice make themselves felt* — and a
+ * player who wants neither turns both off in one place. It matters underneath
+ * too: with both off a roll records no impacts at all, so the pair is what the
+ * saving is measured against rather than either switch on its own.
+ *
+ * Both take effect the next time the roll screen opens, like power saving and
+ * the shake, and for the same reason (`docs/architecture.md`, decision 16).
+ */
+@Composable
+internal fun FeelSection(
+  haptics: Boolean,
+  sound: Boolean,
+  onHapticsChanged: (Boolean) -> Unit,
+  onSoundChanged: (Boolean) -> Unit,
+) {
+  Section(
+    heading = stringResource(R.string.settings_feel_heading),
+    explanation = stringResource(R.string.settings_feel_explanation),
+  ) {
+    SwitchRow(
+      label = stringResource(R.string.settings_haptics_label),
+      on = haptics,
+      onChanged = onHapticsChanged,
+      tag = SettingsTestTags.HAPTICS,
+    )
+    SwitchRow(
+      label = stringResource(R.string.settings_sound_label),
+      on = sound,
+      onChanged = onSoundChanged,
+      tag = SettingsTestTags.SOUND,
+    )
+  }
+}
+
+/**
  * Which way division rounds unless a throw says otherwise
  * (`docs/dice-notation.md`, "Division rounding").
  *

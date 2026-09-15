@@ -23,6 +23,7 @@ dependencies {
 
   implementation(project(":dicesets:builtin"))
   implementation(project(":input:shake"))
+  implementation(project(":feedback"))
   implementation(project(":render:filament"))
   implementation(project(":render:headless"))
   implementation(project(":simulation:jolt"))
