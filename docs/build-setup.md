@@ -492,6 +492,15 @@ session is the bare command. An address is only typed again when the phone has
 rebooted or wireless debugging has been switched off and on, because the port
 changes then.
 
+**It also keeps the screen on**, which is not a convenience. A phone sleeps
+after a minute and a full device run takes four, so everything that runs after
+the screen goes dark fails the same way — *no compose hierarchies found in the
+app*, because an activity launched onto a sleeping display never composes. That
+is worse than an ordinary flake: it lands on whichever module happens to run
+last, so it reads as a different bug each time, and it is not a bug in the code
+under test at all. It is the same switch as **Developer options → Stay awake**,
+and unplugging the phone undoes it.
+
 Pairing is separate, and needed once per machine:
 
 ```sh

@@ -128,6 +128,21 @@ fi
 export ANDROID_SERIAL="${serial}"
 dinfinity-await-device "${DINFINITY_PHONE_READY_TIMEOUT:-60}"
 
+# Keep the screen on while the phone is attached.
+#
+# A phone sleeps after a minute; a full device run takes four. Everything that
+# runs after the screen goes dark reports the same thing — "no compose
+# hierarchies found in the app" — because an activity launched onto a sleeping
+# display never composes. That is not a failure of the code under test, and it
+# is worse than one: it lands on whichever module happens to run last, so it
+# reads as a different bug every time.
+#
+# `stayon true` is undone by unplugging the phone and by `stayon false`, and it
+# is the same switch as Developer options -> Stay awake. A wake-up beside it,
+# because the setting keeps a screen on rather than turning one on.
+adb shell svc power stayon true > /dev/null 2>&1 || true
+adb shell input keyevent KEYCODE_WAKEUP > /dev/null 2>&1 || true
+
 if adb devices | grep -q '^emulator-'; then
   cat >&2 <<HELP
 
