@@ -49,6 +49,12 @@ include(":dicesets:install")
 include(":simulation:api")
 include(":simulation:jolt")
 
+// The Step 5 device harness: the shape of a run's JSON, and the targets it
+// is scored against. Plain Kotlin so the comparison is decided and tested on
+// the JVM rather than on the phone it is run from (docs/architecture.md,
+// decision 40).
+include(":simulation:harness")
+
 include(":render:headless")
 include(":render:filament")
 
