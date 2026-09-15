@@ -34,7 +34,7 @@ class DraftStoreTest {
 
     store.save(drawn)
 
-    assertEquals(drawn.face(1).strokes, store.load(d6).face(1).strokes)
+    assertEquals(drawn.face(1).marks, store.load(d6).face(1).marks)
   }
 
   @Test

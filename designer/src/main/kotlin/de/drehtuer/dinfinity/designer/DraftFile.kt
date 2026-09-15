@@ -33,7 +33,16 @@ import kotlinx.serialization.json.JsonPrimitive
  * (`docs/dice-sets.md`).
  */
 object DraftFile {
-  /** What [FORMAT] a reader can make sense of. Bumped when the shape changes. */
+  /**
+   * What [FORMAT] a reader can make sense of.
+   *
+   * Bumped when the shape changes — and **not** when it is merely extended. A
+   * fill is a new kind of entry in the list that was already there, so every
+   * draft written before fills existed reads exactly as it did, and a build
+   * that predates them drops a fill it cannot draw rather than losing the
+   * drawing around it. Bumping the number instead would blank every drawing on
+   * the device to spare an older build one shape, which is not a trade.
+   */
   const val FORMAT: Int = 1
 
   private val json = Json { ignoreUnknownKeys = true }
@@ -42,13 +51,13 @@ object DraftFile {
   fun write(draft: Draft): String {
     val faces =
       draft.faces
-        .filterValues { it.strokes.isNotEmpty() }
+        .filterValues { it.marks.isNotEmpty() }
         .toSortedMap()
         .map { (cell, drawing) ->
           JsonObject(
             mapOf(
               CELL to JsonPrimitive(cell),
-              STROKES to JsonArray(drawing.strokes.map(::strokeOf)),
+              STROKES to JsonArray(drawing.marks.map(::markOf)),
             ),
           )
         }
@@ -84,8 +93,8 @@ object DraftFile {
     val faces =
       (root[FACES] as? JsonArray).orEmpty().mapNotNull { face ->
         val cell = (face as? JsonObject)?.int(CELL)?.takeIf { it in die.faces.indices }
-        val strokes = cell?.let { (face[STROKES] as? JsonArray).orEmpty().mapNotNull(::strokeFrom) }
-        if (cell == null || strokes.isNullOrEmpty()) null else cell to FaceDrawing(strokes = strokes)
+        val marks = cell?.let { (face[STROKES] as? JsonArray).orEmpty().mapNotNull(::markFrom) }
+        if (cell == null || marks.isNullOrEmpty()) null else cell to FaceDrawing(marks = FaceDrawing.sunk(marks))
       }
     return Draft(die = die, faces = faces.toMap())
   }
@@ -93,37 +102,72 @@ object DraftFile {
   private fun root(text: String): JsonObject? = runCatching { json.parseToJsonElement(text) }.getOrNull() as? JsonObject
 
   /**
-   * One stroke.
+   * One mark.
    *
    * The dots are a flat list of numbers rather than a list of pairs: it is
    * half the file for the same drawing, and a stroke is a path rather than a
-   * collection of objects.
+   * collection of objects. A fill is the same list standing for the boundary
+   * of its region, told apart by [FILLS] — the one field a stroke never
+   * carries, so a reader that does not know about fills drops them and keeps
+   * the rest.
    */
-  private fun strokeOf(stroke: Stroke): JsonObject =
+  private fun markOf(mark: Mark): JsonObject =
     JsonObject(
-      mapOf(
-        COLOUR to JsonPrimitive(stroke.colorArgb),
-        WIDTH to JsonPrimitive(stroke.width),
-        ERASES to JsonPrimitive(stroke.erases),
-        DOTS to JsonArray(stroke.dots.flatMap { listOf(JsonPrimitive(it.x), JsonPrimitive(it.y)) }),
-      ),
+      buildMap {
+        put(COLOUR, JsonPrimitive(mark.colorArgb))
+        when (mark) {
+          is Stroke -> {
+            put(WIDTH, JsonPrimitive(mark.width))
+            put(ERASES, JsonPrimitive(mark.erases))
+          }
+
+          is Fill -> put(FILLS, JsonPrimitive(true))
+        }
+        put(DOTS, JsonArray(mark.dots.flatMap { listOf(JsonPrimitive(it.x), JsonPrimitive(it.y)) }))
+      },
     )
 
-  private fun strokeFrom(element: JsonElement): Stroke? {
-    val stroke = element as? JsonObject ?: return null
-    val numbers = (stroke[DOTS] as? JsonArray).orEmpty().map { (it as? JsonPrimitive)?.content?.toFloatOrNull() }
-    // An odd count is half a point, and a `null` is something that was not a
-    // number. Either way the path is not the path that was drawn.
-    val path = numbers.size >= DOTS_PER_STROKE && numbers.size % 2 == 0 && numbers.none { it == null }
-    val colour = (stroke[COLOUR] as? JsonPrimitive)?.content?.toIntOrNull()
-    val width = (stroke[WIDTH] as? JsonPrimitive)?.content?.toFloatOrNull()
-    if (!path || colour == null || width == null) return null
-    return Stroke(
-      dots = numbers.filterNotNull().chunked(2) { Dot(x = it[0], y = it[1]) },
-      colorArgb = colour,
-      width = width,
-      erases = (stroke[ERASES] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false,
-    )
+  /**
+   * One mark back, or null when it is not one.
+   *
+   * Everything is read first and judged afterwards, in one `when`, rather than
+   * abandoned field by field: what makes a stroke and what makes a fill differ
+   * by two fields, and the difference is easier to see written out than spread
+   * across five early exits.
+   */
+  private fun markFrom(element: JsonElement): Mark? {
+    val mark = element as? JsonObject ?: return null
+    val colour = (mark[COLOUR] as? JsonPrimitive)?.content?.toIntOrNull()
+    val fills = (mark[FILLS] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false
+    val dots = dotsOf(mark, least = if (fills) DOTS_OF_A_REGION else DOTS_OF_A_STROKE)
+    val width = (mark[WIDTH] as? JsonPrimitive)?.content?.toFloatOrNull()
+    return when {
+      colour == null || dots == null -> null
+      fills -> Fill(dots = dots, colorArgb = colour)
+      width == null -> null
+      else ->
+        Stroke(
+          dots = dots,
+          colorArgb = colour,
+          width = width,
+          erases = (mark[ERASES] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false,
+        )
+    }
+  }
+
+  /**
+   * The dots of one mark, or null when they are not dots.
+   *
+   * An odd count is half a point, and a `null` is something that was not a
+   * number. Either way the path is not the path that was drawn.
+   */
+  private fun dotsOf(
+    mark: JsonObject,
+    least: Int,
+  ): List<Dot>? {
+    val numbers = (mark[DOTS] as? JsonArray).orEmpty().map { (it as? JsonPrimitive)?.content?.toFloatOrNull() }
+    if (numbers.size < least || numbers.size % 2 != 0 || numbers.any { it == null }) return null
+    return numbers.filterNotNull().chunked(2) { Dot(x = it[0], y = it[1]) }
   }
 
   private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.content?.toIntOrNull()
@@ -132,8 +176,11 @@ object DraftFile {
 
   private fun JsonArray?.orEmpty(): List<JsonElement> = this ?: emptyList()
 
-  /** Two numbers to a dot, and a stroke of one dot is a tap rather than a mark. */
-  private const val DOTS_PER_STROKE = 4
+  /** Two numbers to a dot, and a stroke of one dot is a tap rather than a line. */
+  private const val DOTS_OF_A_STROKE = 4
+
+  /** A region needs three corners before it is a region. */
+  private const val DOTS_OF_A_REGION = 6
 
   private const val FORMAT_KEY = "format"
   private const val DIE = "die"
@@ -143,5 +190,6 @@ object DraftFile {
   private const val COLOUR = "color"
   private const val WIDTH = "width"
   private const val ERASES = "erases"
+  private const val FILLS = "fill"
   private const val DOTS = "dots"
 }

@@ -8,7 +8,10 @@ import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
+import de.drehtuer.dinfinity.designer.FaceFill
+import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.GuideMark
+import de.drehtuer.dinfinity.designer.Mark
 import de.drehtuer.dinfinity.designer.Stroke
 
 /**
@@ -22,6 +25,9 @@ private const val BROAD = 0.05f
 
 /** Wider than the broad pen, because an eraser people have to be accurate with is a bad eraser. */
 private const val ERASER = 0.06f
+
+/** The bucket draws no line, so it has no width. */
+private const val NO_NIB = 0f
 
 /** What the pen is doing (`docs/face-designer.md`, "Drawing tools"). */
 enum class Nib(
@@ -40,9 +46,37 @@ enum class Nib(
    * has to redraw around.
    */
   Eraser(ERASER),
+
+  /**
+   * The fill bucket.
+   *
+   * In the row with the pens because that is where the design puts it
+   * (`design/dInfinity.dc.html`, option `1v`) and because it is the same kind
+   * of decision — what the next touch does. It is the one that answers a
+   * **tap** rather than a drag: there is no line to draw, only a region to
+   * colour (`FaceFill`).
+   */
+  Bucket(NO_NIB),
   ;
 
   val erases: Boolean get() = this == Eraser
+
+  /** True for the bucket, which colours a region instead of drawing a line. */
+  val fills: Boolean get() = this == Bucket
+}
+
+/**
+ * A step of the taking-back (`docs/face-designer.md`, "Drawing tools").
+ *
+ * Clear is one of them rather than a thing apart, because it *is* one: a face
+ * taken back to blank in a single step, which one press of undo returns.
+ */
+enum class Step {
+  Back,
+  Forward,
+
+  /** Everything off the face, in one step. */
+  Clear,
 }
 
 /** What the designer is showing. */
@@ -55,6 +89,17 @@ data class DesignerState(
   val guideShown: Boolean = true,
   /** The dice a drawing can be started from. */
   val choosable: List<Die> = emptyList(),
+  /**
+   * What was copied off a face, and what a paste puts down
+   * (`docs/face-designer.md`, "Copy and paste").
+   *
+   * It outlives the face it came from and the die: the marks are fractions of
+   * the canvas, so a border copied off a d6 lands on a d20's triangle as
+   * readily as on another square — masked to the cell like anything else. It
+   * is how somebody is working rather than what they are working on, which is
+   * the rule the pen and the colour already follow.
+   */
+  val clipboard: List<Mark> = emptyList(),
 ) {
   /** The die being drawn on. */
   val die: Die get() = draft.die
@@ -71,6 +116,41 @@ data class DesignerState(
   val canUndo: Boolean get() = face.canUndo
   val canRedo: Boolean get() = face.canRedo
 
+  /** True when there is something on this face to copy. */
+  val canCopy: Boolean get() = !face.blank
+
+  /**
+   * True when a paste would land.
+   *
+   * Something copied, and room for all of it: a paste is refused whole rather
+   * than in part (`FaceDrawing.paste`), so the control says so before the
+   * press rather than after it.
+   */
+  val canPaste: Boolean get() = clipboard.isNotEmpty() && face.marks.size + clipboard.size <= FaceDrawing.MAX_MARKS
+
+  /**
+   * How many turns of its own this die's cells have — 1 when the only thing on
+   * offer is the mirror (`FaceTransform`).
+   */
+  val turnsOffered: Int get() = FaceTransform.stepsOf(draft.outline)
+
+  /**
+   * What a finger that left [dots] behind puts on the face, or null when it
+   * put nothing there.
+   *
+   * What a gesture leaves depends on the tool in hand, which is why the
+   * decision is here rather than in the screen or in a draw lambda: a pen
+   * leaves a line and needs at least two dots to have drawn one, and the
+   * bucket leaves a region from the single place it was put down. A tap with a
+   * pen is not a mark, and a drag with the bucket is not a line.
+   */
+  fun markOf(dots: List<Dot>): Mark? =
+    when {
+      nib.fills -> dots.firstOrNull()?.let { FaceFill.at(point = it, marks = face.marks, colorArgb = colorArgb) }
+      dots.size < 2 -> null
+      else -> Stroke(dots = dots, colorArgb = colorArgb, width = nib.width, erases = nib.erases)
+    }
+
   /**
    * True when this face is close enough to the limit to say so.
    *
@@ -78,7 +158,7 @@ data class DesignerState(
    * taking strokes reads as a broken screen (`docs/face-designer.md`,
    * "Constraints").
    */
-  val nearlyFull: Boolean get() = face.strokes.size >= FaceDrawing.MAX_STROKES - ROOM_TO_WARN
+  val nearlyFull: Boolean get() = face.marks.size >= FaceDrawing.MAX_MARKS - ROOM_TO_WARN
 
   val full: Boolean get() = face.full
 
@@ -182,6 +262,7 @@ class DesignerPresenter(
         colorArgb = state.colorArgb,
         guideShown = state.guideShown,
         choosable = state.choosable,
+        clipboard = state.clipboard,
       )
   }
 
@@ -207,42 +288,65 @@ class DesignerPresenter(
   }
 
   /**
-   * A finger finished a stroke.
+   * A finger finished, and left [dots] behind.
    *
    * Taken whole rather than point by point: a half-drawn line is the screen's
    * business until the finger lifts, and a model that recorded every sample
    * would have an undo step per pixel.
    *
-   * A stroke of fewer than two dots is a tap, and a tap is not a mark.
+   * One way in for every tool, because what a gesture leaves is the tool's
+   * business rather than the screen's ([DesignerState.markOf]): a pen leaves a
+   * line, the bucket leaves a region from the one dot it was put down on, and
+   * a gesture that leaves nothing is not a step to undo.
    */
   fun drew(dots: List<Dot>) {
-    if (dots.size < 2) return
-    val stroke =
-      Stroke(
-        dots = dots,
-        colorArgb = state.colorArgb,
-        width = state.nib.width,
-        erases = state.nib.erases,
+    val mark = state.markOf(dots) ?: return
+    state = state.copy(draft = state.draft.onFace(state.cell) { it.draw(mark) })
+    drafts.save(state.draft)
+  }
+
+  /**
+   * Takes [step] on the face in front of the player.
+   *
+   * One way in rather than three: undo, redo and clear differ only in which of
+   * `FaceDrawing`'s steps they take, and each of them is the same "change the
+   * face, write the draft down" either side of that. The screen names the step
+   * it means, so nothing is lost at the call.
+   */
+  fun take(step: Step) {
+    state =
+      state.copy(
+        draft =
+          state.draft.onFace(state.cell) { face ->
+            when (step) {
+              Step.Back -> face.undo()
+              Step.Forward -> face.redo()
+              Step.Clear -> face.clear()
+            }
+          },
       )
-    state = state.copy(draft = state.draft.onFace(state.cell) { it.draw(stroke) })
     drafts.save(state.draft)
   }
 
-  /** Back one step on this face. */
-  fun undo() {
-    state = state.copy(draft = state.draft.onFace(state.cell) { it.undo() })
-    drafts.save(state.draft)
+  /**
+   * Takes a copy of the face in front of the player.
+   *
+   * The drawing rather than its history: what is copied is what is on the
+   * face, and the undo stack belongs to the face it was made on.
+   */
+  fun copyFace() {
+    state = state.copy(clipboard = state.face.marks)
   }
 
-  /** Forward one step on this face. */
-  fun redo() {
-    state = state.copy(draft = state.draft.onFace(state.cell) { it.redo() })
-    drafts.save(state.draft)
-  }
-
-  /** Takes this face back to blank, in one step that can be undone. */
-  fun clear() {
-    state = state.copy(draft = state.draft.onFace(state.cell) { it.clear() })
+  /**
+   * Puts the copy down on this face, turned and mirrored by [transform].
+   *
+   * One step, which one press of undo takes back — a paste is an action, not
+   * however many marks it happened to carry (`FaceDrawing.paste`).
+   */
+  fun paste(transform: FaceTransform = FaceTransform()) {
+    val pasted = transform.applyTo(state.clipboard, state.draft.outline)
+    state = state.copy(draft = state.draft.onFace(state.cell) { it.paste(pasted) })
     drafts.save(state.draft)
   }
 }
