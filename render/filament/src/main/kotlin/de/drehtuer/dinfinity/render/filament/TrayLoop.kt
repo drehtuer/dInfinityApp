@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.render.filament
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.DebugWatch
 import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -46,6 +47,17 @@ class TrayLoop(
    * sound").
    */
   private val impacts: Impacts = Impacts.NONE,
+  /**
+   * What watches the roll's diagnostics, if anything does — the debug overlay
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The third watcher, after the renderer and the player of impacts, and it
+   * makes the same promise as both: handed a snapshot, asked for nothing back.
+   * [DebugWatch.watching] is asked before a snapshot is built, so a tray with
+   * the developer toggle off — which is every install — walks no dice and
+   * allocates nothing per frame for it.
+   */
+  private val debug: DebugWatch = DebugWatch.NONE,
 ) : AutoCloseable {
   private val renderer = TrayRenderer()
 
@@ -219,6 +231,7 @@ class TrayLoop(
     val elapsed = if (previous == null) 0.0 else ((nanos - previous).coerceAtLeast(0)) / NANOS_PER_SECOND
     live.advance(elapsed)
     hear(live)
+    watch(live)
 
     // A roll draws every frame of its own accord, so nothing is owed while one
     // is running.
@@ -265,6 +278,17 @@ class TrayLoop(
     // and a window onto it would change under whoever was playing it.
     impacts.play(heard.subList(played, heard.size).toList(), NOW)
     played = heard.size
+  }
+
+  /**
+   * Shows the overlay what the roll is doing, if anything is looking.
+   *
+   * The question comes first and the snapshot second: building one means
+   * walking every die, and a tray with nobody debugging it should not do that
+   * sixty times a second to hand the result to something that drops it.
+   */
+  private fun watch(live: WatchedRoll) {
+    if (debug.watching) debug.saw(live.diagnostics)
   }
 
   private fun endRoll() {

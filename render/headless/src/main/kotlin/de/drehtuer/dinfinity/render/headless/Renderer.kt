@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.render.headless
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -159,6 +160,22 @@ interface WatchedRoll : AutoCloseable {
    * about a second (`docs/physics-and-rendering.md`, "Haptics and sound").
    */
   val impacts: List<Impact>
+
+  /**
+   * The roll as a developer sees it, right now, or
+   * [RollDiagnostics.NONE] from a roll that keeps none
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * The third thing a watcher may read and cannot change, beside [drivenBy]
+   * and [impacts]. It is a *snapshot built on demand*, so a roll nobody is
+   * debugging pays nothing for it — which is what lets the overlay be a
+   * setting that is off on every install.
+   *
+   * A default rather than a member every roll must implement, because the
+   * answer "none" is a perfectly good one and a fake in a test should not have
+   * to write it out.
+   */
+  val diagnostics: RollDiagnostics get() = RollDiagnostics.NONE
 
   /**
    * Moves the roll on by however much [elapsedSeconds] is worth and hands back

@@ -8,9 +8,11 @@ import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.DebugWatch
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.Struck
@@ -477,6 +479,67 @@ class TrayLoopTest {
    * advanced and by how much, which is the same question whatever is
    * underneath.
    */
+  @Test
+  fun `a tray nobody is debugging never asks the roll for a snapshot`() {
+    // The whole reason the developer toggle costs nothing when it is off:
+    // `DebugWatch.NONE` says it is not watching, and the loop asks that before
+    // it asks the roll for anything.
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(0, roll.snapshotsAsked)
+  }
+
+  @Test
+  fun `a tray being debugged is shown the roll on every frame`() {
+    val seen = mutableListOf<RollDiagnostics>()
+    val loop = TrayLoop(debug = DebugWatch { seen += it })
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(2, seen.size)
+    assertEquals(listOf(1, 2), seen.map(RollDiagnostics::steps))
+  }
+
+  @Test
+  fun `the last frame of a roll is watched too, so the numbers it stopped on stay`() {
+    // The overlay is read after the dice have landed as much as during: what a
+    // roll came to is exactly what somebody debugging wants to look at.
+    val seen = mutableListOf<RollDiagnostics>()
+    val loop = TrayLoop(debug = DebugWatch { seen += it })
+    val roll = FakeRoll(steps = 1)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    loop.frame(SOME_LATE_UPTIME)
+
+    assertFalse("the roll should have finished on its only step", roll.running)
+    assertEquals(1, seen.size)
+  }
+
+  @Test
+  fun `a tray with nothing on it asks for no snapshot at all`() {
+    // No roll, nothing to describe. A watcher that was handed an empty
+    // snapshot every idle frame would be a watcher recomposing for nothing.
+    val seen = mutableListOf<RollDiagnostics>()
+    val loop = TrayLoop(debug = DebugWatch { seen += it })
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+
+    loop.frame(SOME_LATE_UPTIME)
+
+    assertTrue(seen.isEmpty())
+  }
+
   private inner class FakeRoll(
     private val steps: Int,
   ) : WatchedRoll {
@@ -498,6 +561,22 @@ class TrayLoopTest {
     val hits = mutableListOf<Impact>()
 
     override val impacts: List<Impact> get() = hits
+
+    /**
+     * How often a snapshot was asked for.
+     *
+     * Counted rather than returned blindly, because the promise the loop makes
+     * is that a tray nobody is debugging never asks — building one means
+     * walking every die (`docs/physics-and-rendering.md`, "Debug tooling").
+     */
+    var snapshotsAsked = 0
+      private set
+
+    override val diagnostics: RollDiagnostics
+      get() {
+        snapshotsAsked++
+        return RollDiagnostics(steps = advanced.size)
+      }
 
     override fun advance(elapsedSeconds: Double): RenderFrame {
       advanced += elapsedSeconds

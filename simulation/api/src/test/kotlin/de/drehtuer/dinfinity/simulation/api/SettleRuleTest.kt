@@ -114,7 +114,35 @@ class SettleRuleTest {
   }
 
   @Test
+  fun `the rest timer is readable, which is what the debug overlay draws`() {
+    // Reading it cannot change it, which is the whole of why an overlay is
+    // allowed to exist (`docs/physics-and-rendering.md`, "Debug tooling").
+    val tracker = RestTracker(2)
+
+    repeat(HALF_A_REST) { tracker.step(listOf(DieMotion.Stopped, DieMotion(500.0, 9.0))) }
+
+    assertEquals(HALF_A_REST, tracker.stillSteps(0))
+    assertEquals(0, tracker.stillSteps(1))
+    assertFalse(tracker.isAtRest(0))
+  }
+
+  @Test
+  fun `a die thrown again has its rest timer put back to nothing`() {
+    val tracker = RestTracker(1)
+    repeat(HALF_A_REST) { tracker.step(listOf(DieMotion.Stopped)) }
+
+    tracker.rethrown(0)
+
+    assertEquals(0, tracker.stillSteps(0))
+  }
+
+  @Test
   fun `a step for the wrong number of dice is a bug`() {
     assertFailsWith<IllegalArgumentException> { RestTracker(2).step(listOf(DieMotion.Stopped)) }
+  }
+
+  private companion object {
+    /** Half of what a die needs to be at rest — a timer mid-fill. */
+    const val HALF_A_REST = SettleRule.REST_STEPS / 2
   }
 }

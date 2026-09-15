@@ -100,6 +100,15 @@ class RestTracker(
   fun isAtRest(index: Int): Boolean = stillFor[index] >= SettleRule.REST_STEPS
 
   /**
+   * How many steps the die at [index] has been still for — its rest timer.
+   *
+   * Read by the debug overlay, which draws the timer filling
+   * (`docs/physics-and-rendering.md`, "Debug tooling"). Reading it cannot
+   * change it, which is the whole of why the overlay is allowed to exist.
+   */
+  fun stillSteps(index: Int): Int = stillFor[index]
+
+  /**
    * Forgets that the die at [index] was ever still.
    *
    * A die that has been picked up and thrown again is not at rest, whatever it

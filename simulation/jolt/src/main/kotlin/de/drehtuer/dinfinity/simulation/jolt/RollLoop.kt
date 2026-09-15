@@ -1,12 +1,15 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.simulation.api.ContactPoint
 import de.drehtuer.dinfinity.simulation.api.CorrectionLadder
+import de.drehtuer.dinfinity.simulation.api.DieDiagnostic
 import de.drehtuer.dinfinity.simulation.api.FaceReader
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Reading
 import de.drehtuer.dinfinity.simulation.api.RestTracker
 import de.drehtuer.dinfinity.simulation.api.RestingPlace
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -55,6 +58,16 @@ class RollLoop(
   private var corrections = 0
   private var rethrows = 0
   private var postRestCorrections = 0
+
+  /**
+   * How wide each die is at the scale the capacity rule threw it
+   * (`docs/tables.md`).
+   *
+   * The footprint the debug overlay draws, and the same number the impact
+   * recorder is built with — computed once here rather than per snapshot,
+   * because it cannot change during a roll.
+   */
+  private val dieWidthsMm = spec.dice.map { it.die.material.sizeMm * spec.dieScale }
 
   private var states: List<DieState> = if (diceCount == 0) emptyList() else world.readStates()
   private var result: SimulationOutcome? = null
@@ -105,6 +118,72 @@ class RollLoop(
 
   /** What the throw came to, once [advance] has said there is nothing left. */
   fun outcome(): SimulationOutcome = requireNotNull(result) { "the roll has not finished yet" }
+
+  /**
+   * The roll as a developer sees it, right now
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Built when somebody asks rather than kept up to date, so a roll nobody is
+   * watching does none of this work — which is what lets the overlay be a
+   * setting that is off on every install and costs nothing there.
+   *
+   * Every field is read off state the loop already keeps. Nothing is recorded
+   * *for* this, nothing branches on whether it has been called, and it returns
+   * a snapshot rather than a view onto the arrays — so the same seed comes to
+   * the same faces with an overlay on it and with none
+   * ([RollDiagnostics], and `RollDiagnosticsTest` beside this file).
+   */
+  fun diagnostics(): RollDiagnostics =
+    RollDiagnostics(
+      steps = tracker.stepsTaken,
+      dice =
+        states.mapIndexed { index, state ->
+          DieDiagnostic(
+            index = index,
+            position = state.position,
+            acrossMm = dieWidthsMm[index],
+            stillForSteps = tracker.stillSteps(index),
+            atRest = tracker.isAtRest(index),
+            touchingFloor = state.touchingFloor,
+            touchingWall = state.touchingWall,
+            supportedByDie = state.supportedByDie,
+            corrected = biased[index],
+            rethrows = rethrowCount[index],
+          )
+        },
+      corrections = corrections,
+      rethrows = rethrows,
+      forcedSettles = forced.count { it },
+      postRestCorrections = postRestCorrections,
+      contacts = recentContacts,
+    )
+
+  /**
+   * The most recent contacts, marked at the die that made them.
+   *
+   * The solver's contact manifold never crosses the bridge — a point and a
+   * normal per contact per step is a wire format nobody needs for a roll
+   * (decision 52) — so what is drawn is the die's own position at the step it
+   * hit something, which is the mark a person hunting for stacking is looking
+   * for anyway. A die that has moved since is marked where it is now, and that
+   * is honest for the frame it is drawn on.
+   */
+  private val recentContacts: List<ContactPoint>
+    get() =
+      recorder
+        .recorded()
+        .takeLast(RollDiagnostics.MAX_CONTACTS)
+        .mapNotNull { impact ->
+          states.getOrNull(impact.dieIndex)?.let { state ->
+            ContactPoint(
+              stepIndex = impact.stepIndex,
+              dieIndex = impact.dieIndex,
+              position = state.position,
+              struck = impact.struck,
+              strength = impact.strength,
+            )
+          }
+        }
 
   /** Runs the throw to its end and reports what the dice did. */
   fun run(): SimulationOutcome {

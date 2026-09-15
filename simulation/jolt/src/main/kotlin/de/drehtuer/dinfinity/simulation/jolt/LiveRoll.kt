@@ -7,6 +7,7 @@ import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.FrameClock
 import de.drehtuer.dinfinity.simulation.api.Impact
+import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -83,6 +84,18 @@ class LiveRoll internal constructor(
    * (`docs/physics-and-rendering.md`, "Haptics and sound").
    */
   override val impacts: List<Impact> get() = loop.impacts
+
+  /**
+   * The roll as a developer sees it, right now
+   * (`docs/physics-and-rendering.md`, "Debug tooling").
+   *
+   * Built when it is asked for and not before, so a roll nobody is debugging
+   * does none of the work — the overlay is off on every install and costs
+   * nothing there. Reading it cannot change the roll, which is the same
+   * promise [Renderer] makes and the reason both are allowed to exist
+   * (`RollLoop.diagnostics`).
+   */
+  override val diagnostics: RollDiagnostics get() = loop.diagnostics()
 
   /**
    * Steps that a frame was too late to pay for, in total
