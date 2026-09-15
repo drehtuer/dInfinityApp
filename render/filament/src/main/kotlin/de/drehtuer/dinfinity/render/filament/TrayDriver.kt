@@ -45,8 +45,12 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 @Suppress("TooManyFunctions")
 class TrayDriver(
   shared: RollThread? = null,
-  private val stages: ((Surface, Int, Int) -> Stage)? = null,
   impacts: Impacts = Impacts.NONE,
+  // Last, so that a trailing lambda still means this one. A driver is built
+  // with a stage factory in exactly one place — the device suite — and it is
+  // written as a trailing lambda there; putting anything after it makes that
+  // lambda quietly bind to the wrong parameter, which is what happened.
+  private val stages: ((Surface, Int, Int) -> Stage)? = null,
 ) : Tray {
   private val loop = TrayLoop(impacts)
 
