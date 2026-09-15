@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -70,6 +71,7 @@ fun SetsScreen(
     Header(menu)
     Installing(state, onInstall)
     FromLink(state, presenter)
+    Downloading(state, onCancel = presenter::cancel)
     Updates(state, presenter)
     // The note goes *above* the list rather than instead of it. The bundled
     // set is a row like any other and is always there, so replacing the list
@@ -101,6 +103,42 @@ private fun Installing(
     modifier = Modifier.padding(horizontal = 8.dp).testTag(SetsTestTags.INSTALL),
   ) {
     Text(stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install))
+  }
+}
+
+/**
+ * How far the download has got, and a way to stop it
+ * (`design/dInfinity.dc.html`, option `9i`).
+ *
+ * Only while something is actually coming down the wire. An install from a
+ * file on the phone has nothing to show, and neither has the validation that
+ * follows a download — a bar that reached full and sat there would say the app
+ * had hung at the exact moment it was working hardest.
+ *
+ * Indeterminate when the server did not say how big the archive is. A
+ * `Content-Length` is a claim rather than a fact, and a bar drawn from a
+ * missing one would be a bar that jumps.
+ */
+@Composable
+private fun Downloading(
+  state: SetsState,
+  onCancel: () -> Unit,
+) {
+  val far = state.progress ?: return
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp).testTag(SetsTestTags.PROGRESS),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    val fraction = far.fraction
+    if (fraction == null) {
+      LinearProgressIndicator(modifier = Modifier.weight(1f))
+    } else {
+      LinearProgressIndicator(progress = { fraction }, modifier = Modifier.weight(1f))
+    }
+    TextButton(onClick = onCancel, modifier = Modifier.testTag(SetsTestTags.STOP)) {
+      Text(stringResource(R.string.sets_cancel))
+    }
   }
 }
 
@@ -488,6 +526,10 @@ object SetsTestTags {
   const val INSTALL: String = "sets:install"
   const val LINK: String = "sets:link"
   const val FETCH: String = "sets:fetch"
+
+  /** The download bar, and the button that stops it (option `9i`). */
+  const val PROGRESS: String = "sets:progress"
+  const val STOP: String = "sets:stop"
   const val OUTCOME: String = "sets:outcome"
   const val OUTCOME_REASON: String = "sets:outcome:reason"
   const val OUTCOME_LINE: String = "sets:outcome:line"

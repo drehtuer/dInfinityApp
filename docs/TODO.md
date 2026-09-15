@@ -147,6 +147,11 @@ the place the table fallback below has to live.
 
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
 
+A download shows how far it has got and can be stopped (`9i`): the bar is drawn
+from bytes that arrived rather than from what the server claimed, it is there
+only while something is on the wire, and Cancel stops the download and says
+nothing about it.
+
 The screen is built: the installed list with each set's status and a long-press
 to disable or remove it (`5a`, bundled set protected); the details behind a tap
 (`6a`) with author, licence, source and commit, the dice the set defines, and
@@ -157,7 +162,7 @@ validator, where a rejection lists every error (`1t`) and a download that never
 arrives is refused the same way. Database version 4 holds which sets are
 switched on.
 
-- [ ] Update with **progress and cancel** (`9i`), and a check for **plain archives** — comparing headers and checksums, since those have no commits to tell apart. Checking a forge is built: `RefResolver` is asked what the ref a set was installed from is at now, a set that has moved on is badged, and updating it is a re-install from the recorded source through the same validator (`docs/dice-sets.md`, "Updates")
+- [ ] A check for **plain archives** — comparing headers and checksums, since those have no commits to tell apart. It needs `.meta.json` to record what the server said at install time (an `ETag` or a `Last-Modified`), so a set installed before that is unanswerable rather than wrong. Checking a *forge* is built: `RefResolver` is asked what the ref a set was installed from is at now, a set that has moved on is badged, and updating it is a re-install from the recorded source through the same validator (`docs/dice-sets.md`, "Updates")
 - [ ] "My dice" details with export as zip gated on a license choice (`8c`)
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
 

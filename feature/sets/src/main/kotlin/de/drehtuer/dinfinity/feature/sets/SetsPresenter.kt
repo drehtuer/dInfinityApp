@@ -6,9 +6,11 @@ import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
+import de.drehtuer.dinfinity.dicesets.install.PackageFetcher
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.dicesets.install.PackageMeta
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -140,6 +142,15 @@ data class SetsState(
   val acting: SetRow? = null,
   val loaded: Boolean = false,
   val installing: Boolean = false,
+  /**
+   * How far the download in front of an install has got, or null when there is
+   * no download — a file chosen from the phone, or the validation that follows
+   * one (`design/dInfinity.dc.html`, option `9i`).
+   *
+   * Absent rather than zero while the archive is being unpacked and validated,
+   * because a bar that stops at full and sits there says the app has hung.
+   */
+  val progress: PackageFetcher.Progress? = null,
   val outcome: PackageInstaller.Result? = null,
   /** True while the forges are being asked what their sets are at (`9h`). */
   val checking: Boolean = false,
@@ -186,7 +197,8 @@ data class SetsState(
 class SetsPresenter(
   private val library: SetLibrary,
   private val scope: CoroutineScope,
-  private val download: suspend (String) -> FetchedPackage = { FetchedPackage.Failed(NO_NETWORK) },
+  private val download: suspend (String, (PackageFetcher.Progress) -> Unit) -> FetchedPackage =
+    { _, _ -> FetchedPackage.Failed(NO_NETWORK) },
   /**
    * Asks a forge which commit the ref a set was installed from is at now
    * (`docs/dice-sets.md`, "Updates"; design `9h`).
@@ -197,6 +209,15 @@ class SetsPresenter(
    */
   private val latestCommit: suspend (String) -> LatestCommit = { LatestCommit.Unknown },
 ) {
+  /**
+   * The install in flight, so a download can be stopped.
+   *
+   * Held rather than launched and forgotten, and cleared when it finishes:
+   * a reference to a job that has already ended is a thing somebody will
+   * eventually cancel and wonder why nothing happened.
+   */
+  private var started: Job? = null
+
   /** What the screen draws. */
   var state: SetsState by mutableStateOf(SetsState())
     private set
@@ -263,8 +284,13 @@ class SetsPresenter(
     onDone: () -> Unit = {},
   ) {
     if (state.installing) return
-    state = state.copy(installing = true, outcome = null)
-    scope.launch { unpack(archive, onDone) }
+    state = state.copy(installing = true, progress = null, outcome = null)
+    started =
+      scope.launch {
+        state = state.installed(library, archive)
+        onDone()
+        refresh()
+      }
   }
 
   /**
@@ -291,34 +317,45 @@ class SetsPresenter(
   fun installFrom(url: String) {
     val link = url.trim()
     if (state.installing || link.isEmpty()) return
-    state = state.copy(installing = true, outcome = null)
-    scope.launch {
-      when (val fetched = download(link)) {
-        is FetchedPackage.Failed ->
-          state = state.copy(installing = false, outcome = PackageInstaller.Result.Failed(fetched.reason))
+    state = state.copy(installing = true, progress = null, outcome = null)
+    started =
+      scope.launch {
+        // The bar arrives from the downloading thread. Assigning to `state` is
+        // the only thing done with it, which Compose's snapshot state is safe
+        // for from anywhere — and it is the reason nothing heavier is done
+        // here (`docs/architecture.md`, "Threading").
+        when (val fetched = download(link) { far -> state = state.copy(progress = far) }) {
+          is FetchedPackage.Failed ->
+            state =
+              state.copy(installing = false, progress = null, outcome = PackageInstaller.Result.Failed(fetched.reason))
 
-        is FetchedPackage.Archive -> unpack(fetched.file) { if (!fetched.file.delete()) fetched.file.deleteOnExit() }
+          // Nothing is said about a download somebody stopped. They know.
+          FetchedPackage.Cancelled -> state = state.copy(installing = false, progress = null, outcome = null)
+
+          is FetchedPackage.Archive -> {
+            state = state.installed(library, fetched.file)
+            // A stranger's archive in a cache nobody empties, and the set it
+            // held is on disk by the time anybody wants it again.
+            if (!fetched.file.delete()) fetched.file.deleteOnExit()
+            refresh()
+          }
+        }
       }
-    }
   }
 
-  /** The install itself, which is the same whether the archive was chosen or fetched. */
-  private suspend fun unpack(
-    archive: File,
-    onDone: () -> Unit,
-  ) {
-    // The installer answers Failed for everything it anticipates, so a throw
-    // here means the filesystem did something it was not asked about. It is
-    // still a refusal to the player, and saying so beats taking the screen
-    // down with them.
-    val result =
-      runCatching { library.install(archive) }
-        .getOrElse { cause ->
-          PackageInstaller.Result.Failed(cause.message ?: "the package could not be installed")
-        }
-    state = state.copy(installing = false, outcome = result)
-    onDone()
-    refresh()
+  /**
+   * Stops a download part-way (`design/dInfinity.dc.html`, option `9i`).
+   *
+   * Only a download. Once the archive is on disk the install is a validator
+   * over a folder and finishes in a moment, and a half-installed package is
+   * exactly what `PackageInstaller` exists to make impossible — so there is
+   * nothing to interrupt and nothing that would be safe to.
+   */
+  fun cancel() {
+    if (state.progress == null) return
+    started?.cancel()
+    started = null
+    state = state.copy(installing = false, progress = null, outcome = null)
   }
 
   /**
@@ -420,4 +457,40 @@ sealed interface FetchedPackage {
   data class Failed(
     val reason: String,
   ) : FetchedPackage
+
+  /**
+   * Somebody stopped it.
+   *
+   * Apart from [Failed] because nothing should be said about it: the person
+   * who pressed Cancel knows what happened, and a screen that answers them
+   * with an error message is a screen arguing with them.
+   */
+  data object Cancelled : FetchedPackage
 }
+
+/**
+ * This state, after [archive] has been through the validator.
+ *
+ * An extension rather than a method because `SetsPresenter` is at the class
+ * size detekt allows, which was a fair warning rather than an obstacle — and
+ * because it is a mapping from one state to the next with nothing of the
+ * screen in it.
+ *
+ * The installer answers `Failed` for everything it anticipates, so a throw
+ * here means the filesystem did something it was not asked about. That is
+ * still a refusal to the player, and saying so beats taking the screen down
+ * with them.
+ */
+internal suspend fun SetsState.installed(
+  library: SetLibrary,
+  archive: File,
+): SetsState =
+  copy(
+    installing = false,
+    progress = null,
+    outcome =
+      runCatching { library.install(archive) }
+        .getOrElse { cause ->
+          PackageInstaller.Result.Failed(cause.message ?: "the package could not be installed")
+        },
+  )

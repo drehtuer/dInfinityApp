@@ -40,6 +40,11 @@ class CollectionDownload(
       val into = File(cacheDir, DIRECTORY).apply { mkdirs() }
       when (val result = fetcher.fetch(url, into, CollectionLimits.MAX_BYTES.toLong())) {
         is PackageFetcher.Result.Failed -> Fetched.Failed(result.reason)
+        // A collection is a megabyte at most and arrives in one breath, so
+        // nothing offers to stop it and nothing here asks to be stopped.
+        // Reaching this would mean the fetcher gave up for a reason it was
+        // never given, which is worth saying rather than swallowing.
+        PackageFetcher.Result.Cancelled -> Fetched.Failed("the download was stopped")
         is PackageFetcher.Result.Downloaded -> read(result.file)
       }
     }

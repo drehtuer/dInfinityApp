@@ -22,6 +22,11 @@ import java.util.concurrent.TimeUnit
  *   server says; the count of bytes actually read is what is true.
  * - **Identified by what arrived.** The SHA-256 of the bytes is what goes into
  *   `.meta.json`, so an update is diffable and an install is reproducible.
+ *
+ * It reports how far it has got and can be stopped part-way
+ * (`docs/dice-sets.md`, "Updates"). Both are the same loop that counts the
+ * bytes: nothing is polled and no thread is interrupted, so a download that
+ * stops leaves no half-written file behind.
  */
 class PackageFetcher(
   client: OkHttpClient? = null,
@@ -35,6 +40,23 @@ class PackageFetcher(
       .followSslRedirects(false)
       .callTimeout(InstallLimits.TIMEOUT.inWholeSeconds, TimeUnit.SECONDS)
       .build()
+
+  /**
+   * How far a download has got (`docs/dice-sets.md`, "Updates").
+   *
+   * [bytes] is what has actually arrived and is counted here. [total] is what
+   * the server *said* the whole thing is, and may be absent, wrong or a lie —
+   * it is for drawing a bar with and for nothing else. The cap is applied to
+   * [bytes], never to this.
+   */
+  data class Progress(
+    val bytes: Long,
+    val total: Long?,
+  ) {
+    /** How far along, or null when the server did not say how far there is to go. */
+    val fraction: Float?
+      get() = total?.takeIf { it > 0L }?.let { (bytes.toFloat() / it).coerceIn(0f, 1f) }
+  }
 
   /** What a download came to. */
   sealed interface Result {
@@ -51,6 +73,16 @@ class PackageFetcher(
     data class Failed(
       val reason: String,
     ) : Result
+
+    /**
+     * Somebody stopped it.
+     *
+     * Not a [Failed] with a polite message, because it is not a failure and
+     * nothing should be said about it: the person who cancelled knows what
+     * happened, and a screen that answers a Cancel button with an error is a
+     * screen arguing with them.
+     */
+    data object Cancelled : Result
   }
 
   /**
@@ -67,14 +99,23 @@ class PackageFetcher(
     url: String,
     into: File,
     maxBytes: Long = InstallLimits.MAX_DOWNLOAD_BYTES,
+    onProgress: (Progress) -> Unit = {},
+    cancelled: () -> Boolean = { false },
   ): Result {
     var current = url
     var hops = 0
     while (hops <= InstallLimits.MAX_REDIRECTS) {
-      if (!current.startsWith("${InstallLimits.SCHEME}://", ignoreCase = true)) {
-        return Result.Failed("'$current' is not an ${InstallLimits.SCHEME} link")
-      }
-      when (val step = step(current, into, maxBytes)) {
+      // Checked before every hop as well as during the copy: a redirect chain
+      // is the one part of a download where nothing is arriving to check.
+      val refusal =
+        when {
+          cancelled() -> Result.Cancelled
+          !current.startsWith("${InstallLimits.SCHEME}://", ignoreCase = true) ->
+            Result.Failed("'$current' is not an ${InstallLimits.SCHEME} link")
+          else -> null
+        }
+      if (refusal != null) return refusal
+      when (val step = step(current, into, maxBytes, onProgress, cancelled)) {
         is Step.Done -> return step.result
         is Step.Redirect -> {
           current = step.to
@@ -90,6 +131,8 @@ class PackageFetcher(
     url: String,
     into: File,
     maxBytes: Long,
+    onProgress: (Progress) -> Unit,
+    cancelled: () -> Boolean,
   ): Step {
     val response =
       runCatching { call(url) }
@@ -104,7 +147,11 @@ class PackageFetcher(
         return resolved?.let(Step::Redirect) ?: Step.Done(Result.Failed("a redirect went nowhere"))
       }
       return Step.Done(
-        if (it.isSuccessful) save(it, into, maxBytes) else Result.Failed("the server answered ${it.code}"),
+        if (it.isSuccessful) {
+          save(it, into, maxBytes, onProgress, cancelled)
+        } else {
+          Result.Failed("the server answered ${it.code}")
+        },
       )
     }
   }
@@ -125,23 +172,51 @@ class PackageFetcher(
     response: Response,
     into: File,
     maxBytes: Long,
+    onProgress: (Progress) -> Unit,
+    cancelled: () -> Boolean,
   ): Result {
     val target = File(into, "download-${System.nanoTime()}")
     val digest = MessageDigest.getInstance("SHA-256")
+    // What the server says the whole thing is. Only ever used to draw a bar:
+    // a `Content-Length` is a claim, and the cap is applied to what arrives.
+    val total = response.header("Content-Length")?.toLongOrNull()?.takeIf { it > 0L }
     val written =
       runCatching {
         response.body.byteStream().use { input ->
-          target.outputStream().use { output -> copyBounded(input, output, digest, maxBytes) }
+          target.outputStream().use { output ->
+            copyBounded(input, output, digest, maxBytes) { bytes ->
+              onProgress(Progress(bytes = bytes, total = total))
+              cancelled()
+            }
+          }
         }
       }.getOrElse {
         target.discard()
         return Result.Failed((it as? IOException)?.message ?: "the download failed")
       }
-    if (written == null) {
-      target.discard()
-      return Result.Failed("the download is larger than the ${maxBytes shr MIB_SHIFT} MiB allowed")
+    return when (written) {
+      is Copied.Stopped -> {
+        target.discard()
+        Result.Cancelled
+      }
+      is Copied.TooBig -> {
+        target.discard()
+        Result.Failed("the download is larger than the ${maxBytes shr MIB_SHIFT} MiB allowed")
+      }
+      is Copied.Whole ->
+        Result.Downloaded(file = target, bytes = written.bytes, sha256 = digest.digest().toHex())
     }
-    return Result.Downloaded(file = target, bytes = written, sha256 = digest.digest().toHex())
+  }
+
+  /** How a copy ended. */
+  private sealed interface Copied {
+    data class Whole(
+      val bytes: Long,
+    ) : Copied
+
+    data object TooBig : Copied
+
+    data object Stopped : Copied
   }
 
   /**
@@ -159,27 +234,37 @@ class PackageFetcher(
   }
 
   /**
-   * Copies until the stream ends, or gives up and returns `null` once more
-   * bytes have arrived than are allowed.
+   * Copies until the stream ends, the cap is passed or [reached] says to stop.
    *
    * The count of bytes actually read, never the `Content-Length`: one of those
    * is true and the other is what the server said.
+   *
+   * [reached] is told how much has arrived after every buffer and answers
+   * whether to give up. One callback rather than two because they happen at
+   * the same moment and for the same reason — somebody watching a bar is
+   * somebody who may press Cancel — and because a loop with two hooks in it is
+   * a loop with two places to get the order wrong.
+   *
+   * A buffer at a time, not a byte: a check per byte would cost more than the
+   * copy, and sixteen kilobytes is a few milliseconds of even a slow link.
    */
   private fun copyBounded(
     input: java.io.InputStream,
     output: java.io.OutputStream,
     digest: MessageDigest,
     maxBytes: Long,
-  ): Long? {
+    reached: (Long) -> Boolean,
+  ): Copied {
     val buffer = ByteArray(BUFFER_BYTES)
     var written = 0L
     while (true) {
       val read = input.read(buffer)
-      if (read <= 0) return written
+      if (read <= 0) return Copied.Whole(written)
       written += read
-      if (written > maxBytes) return null
+      if (written > maxBytes) return Copied.TooBig
       digest.update(buffer, 0, read)
       output.write(buffer, 0, read)
+      if (reached(written)) return Copied.Stopped
     }
   }
 
