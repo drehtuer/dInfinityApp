@@ -989,10 +989,24 @@ impact sounds rather than a crash in the middle of a roll.
   there is destroyed in reverse; a roll's own entities go at the end of the
   roll, and the engine and the compiled material stay.
 - **One material** draws every surface of a roll: a lit, opaque, physically
-  based one with a base colour, a roughness and a metalness, optionally
-  multiplied by an atlas. Dice are dice and a tray is a tray. Everything a
-  package may vary is a number going into it rather than a line of it changing
-  (`docs/tables.md`, "Table looks"; `docs/TODO.md`, After v1).
+  based one with a base colour, a roughness and a metalness, with an atlas laid
+  over it. Dice are dice and a tray is a tray. Everything a package may vary is
+  a number going into it rather than a line of it changing (`docs/tables.md`,
+  "Table looks"; `docs/TODO.md`, After v1).
+- **The artwork is composited, not multiplied.** The body colour is worked out
+  first, with the die's printed label mixed into it, and the atlas is then laid
+  over that by its own alpha. Where the artwork is opaque the result is
+  `baseColor × atlas`, which is what it always was and what keeps a table's
+  floor tinted by its floor colour; where the author left the cell clear the
+  label shows through. A multiply could not do the second half — multiplying by
+  a transparent pixel gives black, not the die (`docs/dice-sets.md`,
+  "Textures").
+- **A die's artwork is decoded once per package and destroyed with the
+  engine**, not with a surface or a throw. Filament hands out native handles,
+  so an atlas re-uploaded on every rotation is a leak the JVM cannot see. Which
+  atlas a die wants is a key — the package and the path — and what fills it is
+  on the far side of `Stage`, in `:app` over `dicesets/install`
+  (`docs/dice-sets.md`, "How an atlas reaches the tray").
 - **Colours are converted out of sRGB before the renderer sees them.** A
   package writes `#1f5e3a`, which is the space a screen shows and a person
   picks colours in; light adds up in linear space. Handing a renderer sRGB
@@ -1030,12 +1044,14 @@ impact sounds rather than a crash in the middle of a roll.
   (`docs/architecture.md`, decision 45). Face textures are applied via a
   per-face UV atlas (see `docs/dice-sets.md`); a coin's rim belongs to neither
   face and carries no cell: it is drawn in the die's own colour.
-- **A die with no artwork prints its labels**, in the set's `number_color` on
-  the set's body colour, laid out in that same per-face atlas grid — so a
-  printed die and a painted one are the same surface with the same coordinates
-  and the renderer samples them the same way. A d4 draws three numbers per
-  triangle, one at each corner, because its values belong to corners rather
-  than to faces (`docs/dice-sets.md`, "The d4").
+- **Every die prints its labels**, in the set's `number_color` on the set's
+  body colour, laid out in that same per-face atlas grid — so a printed die and
+  a painted one are the same surface with the same coordinates and the renderer
+  samples them the same way. A die with artwork is printed too, and the artwork
+  covers the printing wherever it is opaque: which of the two a face shows is
+  the alpha's to say, per pixel, and nothing above the material decides it. A
+  d4 draws three numbers per triangle, one at each corner, because its values
+  belong to corners rather than to faces (`docs/dice-sets.md`, "The d4").
 - **How big a number is, is solved rather than chosen.** A cell is the circle
   drawn round a face, and how much of one a face fills depends on what polygon
   it is: a dodecahedron's pentagon nearly all of it, a d20's triangle half, a

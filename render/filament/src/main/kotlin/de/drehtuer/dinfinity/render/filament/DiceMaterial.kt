@@ -22,18 +22,28 @@ object DiceMaterial {
    * The material, in Filament's own language.
    *
    * Deliberately dull: one lit, opaque, physically-based surface with a base
-   * colour, a roughness and a metalness, optionally multiplied by a texture.
-   * Dice are dice. The tray is a tray. Nothing here is trying to be clever,
-   * and everything a package is allowed to vary is a number going in rather
-   * than a line of this changing (`docs/TODO.md`, After v1).
+   * colour, a roughness and a metalness, with artwork laid over it. Dice are
+   * dice. The tray is a tray. Nothing here is trying to be clever, and
+   * everything a package is allowed to vary is a number going in rather than a
+   * line of this changing (`docs/TODO.md`, After v1).
+   *
+   * **The artwork is composited, not multiplied.** The body is worked out
+   * first — the die's colour with its label printed into it — and the atlas is
+   * then laid over it *by its own alpha*. Where an author drew something, that
+   * is what the face carries; where they left the cell clear, the label shows
+   * through, which is what `docs/dice-sets.md` ("Textures") has always
+   * promised and what a plain multiply could not do: multiplying by a
+   * transparent pixel gives black, not the die.
+   *
+   * Where the artwork *is* opaque the result is the old one exactly —
+   * `baseColor * atlas` — which is what keeps a table's floor texture tinted
+   * by its floor colour (`docs/tables.md`, "Table looks").
    */
   const val SOURCE: String = """
         void material(inout MaterialInputs material) {
             prepareMaterial(material);
-            vec4 colour = materialParams.baseColor;
-            if (materialParams.textured > 0.5) {
-                colour *= texture(materialParams_atlas, getUV0());
-            }
+            vec4 base = materialParams.baseColor;
+            vec3 body = base.rgb;
             if (materialParams.numbered > 0.5) {
                 // A signed distance field, not a picture of a number: the
                 // edge is wherever the field crosses a half, and how wide the
@@ -42,10 +52,17 @@ object DiceMaterial {
                 // in (`core/glyphs`'s SignedDistanceField).
                 float ink = texture(materialParams_glyphs, getUV0()).r;
                 float soft = max(fwidth(ink), 0.0001);
-                colour.rgb = mix(colour.rgb, materialParams.inkColor.rgb,
-                                 smoothstep(0.5 - soft, 0.5 + soft, ink));
+                body = mix(body, materialParams.inkColor.rgb,
+                           smoothstep(0.5 - soft, 0.5 + soft, ink));
             }
-            material.baseColor = colour;
+            vec3 colour = body;
+            if (materialParams.textured > 0.5) {
+                // Straight alpha, uploaded unpremultiplied on purpose: a cell
+                // an author left clear is a cell the label shows through.
+                vec4 art = texture(materialParams_atlas, getUV0());
+                colour = mix(body, base.rgb * art.rgb, art.a);
+            }
+            material.baseColor = vec4(colour, base.a);
             material.roughness = materialParams.roughness;
             material.metallic = materialParams.metallic;
         }
@@ -72,11 +89,16 @@ object DiceMaterial {
   /**
    * And a die.
    *
-   * A die with no atlas is drawn in its own colour with its labels printed
-   * over it in [DieMaterial.numberColorArgb]; a die with one is drawn through
-   * the artwork its author supplied, and prints nothing — an author who drew
-   * a face decided what is on it. Either way the surface is the same material
-   * with different numbers in it (`docs/physics-and-rendering.md`).
+   * A die is drawn in its own colour with its labels printed over it in
+   * [DieMaterial.numberColorArgb], and its author's artwork laid on top of
+   * that where the author drew any. The two are not alternatives: an atlas may
+   * leave a face's cell clear, and that face is then printed exactly as a die
+   * with no atlas at all would be (`docs/dice-sets.md`, "Textures"). So
+   * [numbers] is supplied for a textured die too, and which of the two a face
+   * ends up showing is the artwork's alpha's to say, per pixel, in [SOURCE].
+   *
+   * @param texturePath the atlas, as an [AtlasKey] — the package and the path
+   *   inside it — or null for a die whose author supplied none.
    */
   fun dieOf(
     material: DieMaterial,
@@ -95,11 +117,12 @@ object DiceMaterial {
   /**
    * What one surface's material instance is set to.
    *
-   * @param texturePath the atlas to sample, relative to the package folder, or
-   *   null to use [colour] alone.
+   * @param texturePath the atlas to sample, as an [AtlasKey] for a die and as
+   *   a bare path for a table look — which is why a table's floor is still
+   *   drawn in its colour alone (`docs/TODO.md`, "Open questions"). Null for a
+   *   surface that takes [colour] alone.
    * @param numbers the die's labels as a distance field, or null for a surface
-   *   with nothing printed on it — which is every surface of the tray and every
-   *   die whose author supplied artwork.
+   *   with nothing printed on it — which is every surface of the tray.
    * @param ink what [numbers] is printed in.
    */
   data class Parameters(

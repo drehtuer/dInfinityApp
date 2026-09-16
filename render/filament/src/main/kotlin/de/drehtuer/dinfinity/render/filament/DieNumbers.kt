@@ -358,15 +358,19 @@ class PrintedDice(
   /**
    * What [die] has printed on it, or null for one that prints nothing.
    *
-   * A die whose author supplied an atlas prints nothing: the artwork is what is
-   * on that face, and the app has no business writing over it
-   * (`docs/dice-sets.md`).
+   * **A die with artwork is printed too.** An atlas may leave a face's cell
+   * clear, and `docs/dice-sets.md` ("Textures") says that face carries its
+   * label — so the field is built whatever the die's `texture` says, and which
+   * of the two a face actually shows is settled in the material, by the
+   * artwork's alpha, per pixel ([DiceMaterial.SOURCE]). Deciding it here
+   * instead would mean deciding it per *cell*, from pixels this side of the
+   * renderer has never seen.
+   *
+   * Null is still an answer: a die every one of whose labels is empty has
+   * nothing to print, which is what [DieNumbers.fieldOf] says about it.
    */
   fun of(
     die: Die,
     mesh: DieMesh = DieMesh.of(die.shape),
-  ): NumberField? {
-    if (die.texturePath != null) return null
-    return known.getOrPut(die) { DieNumbers.fieldOf(die, mesh, cellPixels) }
-  }
+  ): NumberField? = known.getOrPut(die) { DieNumbers.fieldOf(die, mesh, cellPixels) }
 }

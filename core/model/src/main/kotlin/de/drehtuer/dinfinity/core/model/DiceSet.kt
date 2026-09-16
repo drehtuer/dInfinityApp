@@ -39,6 +39,20 @@ data class DiceSet(
   /** The table look [tableId] names, or `null` when this set does not define it. */
   fun table(tableId: String): TableLook? = tables.firstOrNull { it.id == tableId }
 
+  /**
+   * How many cells the atlas at [texturePath] is cut into, or `null` when no
+   * die in this set wears it.
+   *
+   * An atlas is a grid of cells and the grid is the *die's* — the same picture
+   * on a d6 and on a d20 is cut two different ways — so whoever decodes one
+   * has to ask the set which die it belongs to before it can say anything
+   * about the cells (`docs/dice-sets.md`, "Textures"). The first die that
+   * names it answers, which is the only answer there is: two dice of different
+   * shapes sharing one file is an authoring mistake the grid cannot resolve,
+   * and the cell check is a warning either way.
+   */
+  fun facesForTexture(texturePath: String): Int? = dice.firstOrNull { it.texturePath == texturePath }?.shape?.faceCount
+
   companion object {
     /** The slug rule for a set id (`docs/dice-sets.md`). */
     val IdPattern: Regex = Regex("[a-z0-9][a-z0-9-]{1,38}[a-z0-9]")
