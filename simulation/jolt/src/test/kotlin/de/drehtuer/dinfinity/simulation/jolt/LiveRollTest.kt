@@ -52,12 +52,12 @@ class LiveRollTest {
 
     assertEquals(straight, fromAClock)
     assertEquals("the two worlds were not even stepped the same number of times", world.steps, watched.steps)
-    assertEquals(world.biases, watched.biases)
     assertEquals(world.respawns, watched.respawns)
+    assertEquals(world.removed, watched.removed)
     // And the throw has to be worth comparing: a roll where nothing awkward
     // happened would agree with itself no matter what this class did.
-    assertTrue("the throw never reached rung 2", world.biases.isNotEmpty())
     assertTrue("no die was ever thrown again", world.respawns.isNotEmpty())
+    assertTrue("no die was ever counted and taken off the table", world.removed.isNotEmpty())
   }
 
   @Test

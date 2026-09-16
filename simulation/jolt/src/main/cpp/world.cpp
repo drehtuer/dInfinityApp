@@ -315,6 +315,8 @@ struct World::Impl : public ContactListener {
 
   BodyID tray_body;
   std::vector<BodyID> dice;
+  /// Which dice have been counted and taken off the table.
+  std::vector<bool> removed;
   std::vector<std::uint32_t> contacts;
   /// The deepest die-into-die overlap seen since this world was created.
   float deepest_die_penetration = 0.0f;
@@ -377,6 +379,7 @@ void World::AddDie(const DieSpec& die, const Placement& placement) {
   impl_->dice.push_back(
       impl_->system.GetBodyInterface().CreateAndAddBody(body, EActivation::Activate));
   impl_->contacts.push_back(0u);
+  impl_->removed.push_back(false);
 }
 
 void World::Finish() { impl_->system.OptimizeBroadPhase(); }
@@ -418,12 +421,38 @@ float World::DeepestDiePenetration() const { return impl_->deepest_die_penetrati
 
 void World::ApplyBias(int index, float x, float y, float z) {
   if (index < 0 || static_cast<std::size_t>(index) >= impl_->dice.size()) return;
+  if (impl_->removed[static_cast<std::size_t>(index)]) return;
   impl_->system.GetBodyInterface().AddLinearVelocity(impl_->dice[static_cast<std::size_t>(index)],
                                                      Vec3(x, y, z));
 }
 
+bool World::Removed(int index) const {
+  if (index < 0 || static_cast<std::size_t>(index) >= impl_->dice.size()) return false;
+  return impl_->removed[static_cast<std::size_t>(index)];
+}
+
+void World::Remove(int index) {
+  if (index < 0 || static_cast<std::size_t>(index) >= impl_->dice.size()) return;
+  const std::size_t at = static_cast<std::size_t>(index);
+  if (impl_->removed[at]) return;
+  impl_->removed[at] = true;
+
+  BodyInterface& bodies = impl_->system.GetBodyInterface();
+  const BodyID id = impl_->dice[at];
+  // Stopped before it is lifted, so that where it rests is where it stays. A
+  // body keeps whatever velocity it had, and nothing else here would take it
+  // away once it is out of the simulation.
+  bodies.SetLinearVelocity(id, Vec3::sZero());
+  bodies.SetAngularVelocity(id, Vec3::sZero());
+  // Removed from the simulation rather than destroyed: the body stays
+  // allocated, so its index stays valid and its resting place stays readable.
+  bodies.RemoveBody(id);
+}
+
 void World::Respawn(int index, const Placement& placement) {
   if (index < 0 || static_cast<std::size_t>(index) >= impl_->dice.size()) return;
+  // A die that has been counted is out of play and does not come back.
+  if (impl_->removed[static_cast<std::size_t>(index)]) return;
   impl_->system.GetBodyInterface().SetPositionRotationAndVelocity(
       impl_->dice[static_cast<std::size_t>(index)], RVec3(ToVec3(placement.position)),
       ToQuat(placement.rotation), ToVec3(placement.linear_velocity),

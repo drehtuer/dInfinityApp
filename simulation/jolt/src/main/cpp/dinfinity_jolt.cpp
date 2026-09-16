@@ -119,6 +119,12 @@ JNIEXPORT void JNICALL Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nat
   AsWorld(handle)->ApplyBias(index, x, y, z);
 }
 
+JNIEXPORT void JNICALL Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeRemove(
+    JNIEnv*, jobject, jlong handle, jint index) {
+  dinfinity::World* world = AsWorld(handle);
+  if (world != nullptr) world->Remove(index);
+}
+
 JNIEXPORT void JNICALL Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeRespawn(
     JNIEnv* env, jobject, jlong handle, jint index, jfloatArray placement) {
   jfloat values[13] = {};

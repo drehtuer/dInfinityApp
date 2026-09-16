@@ -89,6 +89,21 @@ interface PhysicsWorld : AutoCloseable {
     index: Int,
     placement: Placement,
   )
+
+  /**
+   * Takes a die off the table, for good.
+   *
+   * Its face has been read, so it is out of play and the floor it stood on is
+   * free for the dice still to be thrown. This is how a roll clears a heap
+   * without touching anything: the dice that can be counted are counted and
+   * lifted off, and the rest are thrown again onto a table with more room on
+   * it than it had (`docs/physics-and-rendering.md`).
+   *
+   * Taking a counted die out of play is not *moving* it. Where it came to rest
+   * stays readable afterwards, because that reading is part of the result, and
+   * nothing puts it back.
+   */
+  fun remove(index: Int)
 }
 
 /**

@@ -635,13 +635,22 @@ throws rather than a twelve-second fight with the solver.
       already has some** — it is what an explosion does — so the throwing half
       exists; what is new is the reading-and-removing half and the loop around
       it
-- [ ] **Open: how removed dice are shown.** A die counted and taken off the
-      board has to go somewhere the player can see, or the tray empties and the
-      total arrives from nowhere. The prototype has no screen for it. Options
-      worth drawing before choosing: a row along the bottom edge growing as
-      dice are counted; the dice staying where they landed but visibly lifted
-      and dimmed; or the result sheet filling in die by die as each is read.
-      The mechanism above does not depend on which
+- [ ] **Open, and it turns out to be load-bearing: how removed dice are shown.**
+      Not a cosmetic question. A counted die leaves the simulation, so the floor
+      it was standing on stops being solid — and **measured on the Pixel 10a,
+      dice thrown afterwards land in that space: 33 pairs of dice sharing a
+      spot across 8 seeds of 20 dice, worst overlap 10.9 mm of a 16 mm die.**
+      If the tray goes on drawing a counted die where it landed, that is two
+      dice in one place, which is a worse thing to watch than the stacking this
+      replaced.
+
+      So "the dice stay where they landed, lifted and dimmed" is not one of the
+      options — it is the one answer the mechanism forbids. What is left: a row
+      along the bottom edge that grows as dice are counted; the result sheet
+      filling in die by die; or the die simply leaving the tray as it is read.
+      The last is the least work and the most honest about what happened, and
+      it is also the biggest change to how a roll looks, which is why it is a
+      decision and not a default
 - [ ] **Open: does a re-throw count as a throw for the history?** Decided for
       the *hand* re-throw — the die's history keeps every throw, the roll's
       keeps the sum — and the same answer looks right here, but this re-throw

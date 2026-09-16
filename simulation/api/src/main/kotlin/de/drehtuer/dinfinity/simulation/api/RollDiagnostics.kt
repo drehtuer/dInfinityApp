@@ -103,7 +103,16 @@ data class DieDiagnostic(
   val touchingFloor: Boolean = false,
   val touchingWall: Boolean = false,
   val supportedByDie: Boolean = false,
-  val corrected: Boolean = false,
+  /**
+   * True once this die has been read and taken off the table.
+   *
+   * What used to be here was whether the die had been *corrected*, and there
+   * is no correction left in a roll to report: a die is read and lifted off or
+   * thrown again where the player can watch. This is the state that replaced
+   * it, and it is the one the overlay wants — a die drawn as counted is a die
+   * that is out of play and no longer in anyone's way.
+   */
+  val countedOut: Boolean = false,
   val rethrows: Int = 0,
 ) {
   init {
@@ -122,8 +131,9 @@ data class DieDiagnostic(
   val restProgress: Double get() = (stillForSteps.toDouble() / SettleRule.REST_STEPS).coerceIn(0.0, 1.0)
 
   /**
-   * True when this die is in the state rung 2 exists for: standing on another
-   * die, and therefore with no face to read.
+   * True when this die is standing on another one, and therefore has no face
+   * worth reading: it is resting on something that is about to be taken away.
+   * A die in this state is thrown again rather than counted.
    */
   val stacked: Boolean get() = supportedByDie
 }

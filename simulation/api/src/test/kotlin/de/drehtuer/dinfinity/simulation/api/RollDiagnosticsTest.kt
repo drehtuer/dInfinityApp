@@ -112,7 +112,7 @@ class RollDiagnosticsTest {
     assertFalse(die.touchingFloor)
     assertFalse(die.touchingWall)
     assertTrue(die.supportedByDie)
-    assertFalse(die.corrected)
+    assertFalse(die.countedOut)
     assertEquals(0, die.rethrows)
 
     val hit = diagnostics.contacts.single()
@@ -124,7 +124,7 @@ class RollDiagnosticsTest {
   }
 
   @Test
-  fun `a die that was helped says so, which is what the overlay counts`() {
+  fun `a die that has been counted and lifted off says so, which is what the overlay draws`() {
     val helped =
       DieDiagnostic(
         index = 1,
@@ -134,11 +134,11 @@ class RollDiagnosticsTest {
         atRest = false,
         touchingFloor = true,
         touchingWall = true,
-        corrected = true,
+        countedOut = true,
         rethrows = 2,
       )
 
-    assertTrue(helped.corrected)
+    assertTrue(helped.countedOut)
     assertTrue(helped.touchingFloor)
     assertTrue(helped.touchingWall)
     assertEquals(2, helped.rethrows)

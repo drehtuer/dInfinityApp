@@ -81,25 +81,66 @@ class RollLoopTest {
   }
 
   @Test
-  fun `a die settling onto another is biased once, while it still has speed`() {
+  fun `a die that passes through trouble and then settles is simply counted`() {
+    // What used to happen here was a nudge, a third of a second into the
+    // throw, at a die that was going to be fine anyway. Nothing acts mid-flight
+    // any more: the roll waits until the dice have stopped and then asks what
+    // can be read.
     val world = FakeWorld(1, inTroubleFor(TROUBLE_STEPS))
     val outcome = loop(listOf(StandardDice.d6), world).run()
 
-    assertEquals("one die needed correcting, so the count is one", 1, outcome.corrections)
-    assertEquals("and it was one nudge, not a hand on the die", 1, world.biases.size)
-    assertEquals("a bias that worked needs no re-throw", 0, outcome.rethrows)
+    assertTrue("something reached into the roll", world.biases.isEmpty())
+    assertEquals("nothing was corrected, because there is nothing left that could be", 0, outcome.corrections)
     assertEquals(0, outcome.postRestCorrections)
+    assertEquals("a die that settled perfectly well was thrown again", 0, outcome.rethrows)
+    assertEquals("and it was counted and lifted off", listOf(0), world.removed)
   }
 
   @Test
-  fun `a die merely tumbling through an awkward angle is left alone`() {
-    // In trouble, but only for a moment — which is what a tumbling die looks
-    // like from one step to the next, and is not what rung 2 is for.
-    val world = FakeWorld(1, inTroubleFor(RollLoop.TROUBLE_STEPS_BEFORE_BIAS - 1))
+  fun `a die that cannot be read is thrown again until it can`() {
+    val world = FakeWorld(1, unreadableUntilThrownAgain())
     val outcome = loop(listOf(StandardDice.d6), world).run()
 
-    assertTrue("a passing angle is not trouble", world.biases.isEmpty())
+    assertTrue("something reached into the roll", world.biases.isEmpty())
     assertEquals(0, outcome.corrections)
+    assertEquals("the die nobody could read was not thrown again", 1, outcome.rethrows)
+    assertEquals("and once it could be read it was counted", listOf(0), world.removed)
+    assertEquals(0, outcome.stackedAtRest)
+  }
+
+  @Test
+  fun `a die that can be read is counted and taken off the table`() {
+    // The whole mechanism in one throw: two dice, one readable and one standing
+    // on it. The readable one is counted and lifted off — which is what frees
+    // the floor — and the other is thrown again onto the room that made.
+    val world =
+      FakeWorld(2) { _, index, rethrows ->
+        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
+      }
+
+    val outcome = loop(listOf(StandardDice.d6, StandardDice.d6), world).run()
+
+    assertEquals("the die that could be read was not taken off the table", listOf(0), world.removed.take(1))
+    assertTrue("the die standing on another was not thrown again", world.respawns.any { it.second == 1 })
+    assertEquals("a die was left standing on another", 0, outcome.stackedAtRest)
+    assertEquals(2, outcome.faces.size)
+  }
+
+  @Test
+  fun `a die counted in an early pass keeps the face it was counted on`() {
+    // The reading is taken when the die is lifted off, not at the end of the
+    // roll — by then its body has been out of the simulation for several
+    // passes, and a result read from a die nobody is simulating any more would
+    // be reading whatever the last pass happened to leave behind.
+    val world =
+      FakeWorld(2) { _, index, rethrows ->
+        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
+      }
+
+    val outcome = loop(listOf(StandardDice.d6, StandardDice.d6), world).run()
+
+    assertEquals("a counted die lost the place it was counted at", 2, outcome.restingAt.size)
+    assertTrue("a counted die has no face", outcome.faces.values.all { it >= 0 })
   }
 
   @Test
@@ -167,18 +208,19 @@ class RollLoopTest {
   }
 
   @Test
-  fun `the same seed biases the same die the same way, and another seed does not`() {
-    val trouble = inTroubleFor(TROUBLE_STEPS)
+  fun `the same seed throws a die again the same way, and another seed does not`() {
+    val trouble = unreadableUntilThrownAgain()
 
     val first = FakeWorld(1, trouble).also { loop(listOf(StandardDice.d6), it, seed = 7L).run() }
     val again = FakeWorld(1, trouble).also { loop(listOf(StandardDice.d6), it, seed = 7L).run() }
     val other = FakeWorld(1, trouble).also { loop(listOf(StandardDice.d6), it, seed = 8L).run() }
 
-    assertEquals("a roll has to replay to itself", first.biasVelocities, again.biasVelocities)
+    assertTrue("nothing was thrown again, so there is nothing to compare", first.respawnPlacements.isNotEmpty())
+    assertEquals("a roll has to replay to itself", first.respawnPlacements, again.respawnPlacements)
     assertNotEquals(
-      "two seeds that correct identically are one seed",
-      first.biasVelocities,
-      other.biasVelocities,
+      "two seeds that throw a die again identically are one seed",
+      first.respawnPlacements,
+      other.respawnPlacements,
     )
   }
 
@@ -211,7 +253,14 @@ class RollLoopTest {
     assertEquals(0, world.steps)
   }
 
+  /** A die nobody can read until it has been picked up and thrown again. */
+  private fun unreadableUntilThrownAgain(): FakeWorld.States =
+    FakeWorld.States { _, _, rethrows ->
+      if (rethrows == 0) FakeWorld.settled(supportedByDie = true) else FakeWorld.settled()
+    }
+
   /** A die stuck on another for [steps] steps, then down and clean. */
+
   private fun inTroubleFor(steps: Int): FakeWorld.States =
     FakeWorld.States { step, _, rethrows ->
       if (rethrows == 0 && step < steps) {
