@@ -600,7 +600,31 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
       with a worst of 450 ms.
 
       The correction rate is unchanged at 44.9 %, which is the rest of this
-      section. 10,000 at 60 dice is still to run
+      section.
+- [ ] **And at 60 dice the bar fails — 29 dice in 600,000.** Ten thousand rolls
+      of sixty, and twenty-nine of them left one die standing on another. It is
+      the first time this has failed for ordinary dice rather than for a hundred
+      coins, and the per-roll records say what it is made of:
+
+      | | rolls | dice left standing |
+      | --- | --- | --- |
+      | ran out of the twelve-second cap | 29 | — |
+      | had any forced settle | 97 | — |
+      | left a die standing **and** were force-settled | 20 | 20 |
+      | left a die standing having **finished cleanly** | **9** | **9** |
+
+      So two thirds of it is the cap rather than prevention: a roll that runs
+      out of time is frozen where it is, and rung 3 never gets to throw the
+      stacked die again. That is a timing problem, and the same one as the
+      twenty-nine caps.
+
+      **The other nine are prevention failing outright** — rolls that settled
+      properly, inside their time, with a die on a die at the end. Nine in ten
+      thousand is small and it is not zero, and zero is the bar.
+
+      What holds, at 600,000 dice: **not one post-rest correction.** Nothing
+      touched a die after it had stopped, which is the rule that matters most
+      and the only one of these that is inviolable rather than a target
 - [ ] Fewer than 0.5 % of dice need any correction; **100 %** of those corrections land while the die is still moving
 - [ ] **Zero** post-rest corrections. The harness asserts this; one occurrence is a bug, not a statistic
 - [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
