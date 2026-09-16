@@ -21,18 +21,9 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything up to **#191** and is green. In flight, stacked in this
-order, each based on the one before it:
-
-| PR | What |
-| --- | --- |
-| #193 | The breakdown says **why an exploding chain stopped** — depth limit or a full tray |
-| #194 | **A second shake reaches the dice it is shaken at**; its moments were numbered on a clock the running roll had passed |
-| #195 | The harness **rolls for minutes** (`--soak`), paces frames, and scores "not measured" rather than passing on a figure nobody took |
-| #196 | Proof on the phone that a **shake-driven roll replays to itself** — the last device box in Step 3 |
-| #197 | **A die's artwork reaches the tray**, composited over its printed labels rather than instead of them |
-| #198 | The designer **stamps the tray's own numbers, from the tray's own solve** — one placement, so a drawn die and a printed one agree |
-| #199 | **A photograph becomes a table**, the long way round: downsized, written into the personal package, validated like any other |
+`main` has everything through **#245**: all of Step 3, every screen of Step 4,
+the harness, and the ten-thousand-roll measurements below. Nothing is in
+flight.
 
 ## Done
 

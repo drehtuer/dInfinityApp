@@ -59,7 +59,11 @@ object PackageFileReading {
         if (stream == null) return Result.Failed("nothing answered at that file")
         val written = file.outputStream().use { out -> stream.copyBoundedTo(out) }
         if (written > InstallLimits.MAX_DOWNLOAD_BYTES) {
-          file.delete()
+          // Whatever came over the limit is dropped here rather than left for
+          // the caller, which is only told the file was refused and has no
+          // name to delete. `delete` answering false is a cache directory that
+          // would not let go, so it is asked once more on the way out.
+          if (!file.delete()) file.deleteOnExit()
           Result.Failed("that file is larger than ${InstallLimits.MAX_DOWNLOAD_BYTES} bytes")
         } else {
           Result.Copied(file)

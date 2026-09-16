@@ -107,9 +107,39 @@ class DraftStoreTest {
   fun `a draft can be taken away`() {
     store.save(Draft(die = d6).onFace(0) { it.draw(stroke()) })
 
-    store.forget("d6")
-
+    assertTrue("taking the drawing away said it was still there", store.forget("d6"))
     assertTrue(store.load(d6).blank)
+  }
+
+  @Test
+  fun `a die that never had a drawing is already forgotten`() {
+    // `delete` answers false for a file it could not remove and for one that
+    // was never there, and only the first of those is a failure.
+    assertTrue("a die with no drawing was reported as still having one", store.forget("d6"))
+  }
+
+  @Test
+  fun `a drawing that will not go is not called gone`() {
+    // A file the filesystem refuses to remove. Saying it was forgotten would be
+    // a lie the very next `load` exposes, so the answer is whether it is there
+    // now rather than whether this call is what removed it.
+    stuck("d6.json")
+
+    assertFalse("a drawing that is still on disk was reported gone", store.forget("d6"))
+  }
+
+  @Test
+  fun `a write that cannot be made leaves the last drawing where it was`() {
+    // The half-written file goes to a neighbour and is renamed over the real
+    // one, so a write that throws must take the neighbour with it and leave
+    // the real one alone — even when the neighbour will not delete either.
+    store.save(Draft(die = d6).onFace(0) { it.draw(stroke()) })
+    val kept = store.load(d6).face(0).marks
+    stuck("d6.json.part")
+
+    store.save(Draft(die = d6).onFace(0) { it.draw(stroke()).draw(stroke()) })
+
+    assertEquals("the drawing that was there was lost to a write that failed", kept, store.load(d6).face(0).marks)
   }
 
   @Test
@@ -143,6 +173,19 @@ class DraftStoreTest {
     Drafts.NONE.save(drawn)
 
     assertTrue("something was kept by the drafts that keep nothing", Drafts.NONE.load(d6).blank)
+  }
+
+  /**
+   * Puts something at [name] that the filesystem will not delete or write over.
+   *
+   * A non-empty directory, which `delete` refuses for anybody — a read-only
+   * folder would not do: these run as root in the container, and root removes
+   * what it likes.
+   */
+  private fun stuck(name: String) {
+    val blocked = File(directory, name)
+    blocked.mkdirs()
+    File(blocked, "in-the-way").writeText("x")
   }
 
   private fun stroke() = Stroke(dots = listOf(Dot(0.1f, 0.2f), Dot(0.3f, 0.4f)), colorArgb = INK, width = 0.02f)
