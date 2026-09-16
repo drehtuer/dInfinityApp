@@ -223,7 +223,11 @@ RUN BUILD_TOOLS_VERSION="$(cat "${ANDROID_HOME}/.build-tools-version")" \
  && rm /tmp/node.tar.xz \
 # `npm` is a script whose shebang is `env node`, and node is not on PATH until
 # the ENV below — which is a later layer. So it is put there for this command.
- && PATH="/opt/node/bin:${PATH}" npm install -g --no-fund --no-audit \
+# `--ignore-scripts` because a package's lifecycle scripts are arbitrary code
+# from a stranger, run as root while the image is built. A linter has no need
+# of them, and this image pins everything else it fetches by checksum for the
+# same reason.
+ && PATH="/opt/node/bin:${PATH}" npm install -g --no-fund --no-audit --ignore-scripts \
       "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}" \
 # ── SonarQube scanner ────────────────────────────────────────────────────
  && curl --proto '=https' --proto-redir '=https' -fsSL -o /tmp/sonar.zip \
