@@ -402,7 +402,15 @@ a die fairer than the plastic one in their hand, is not worth a warning
 (`docs/physics-and-rendering.md`, "The bar the d18 is held to").
 
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker. The golden suite is the check and already holds for its ten cases on both ABIs; Step 5 is the same claim at ten thousand rolls and on a second phone
-- [ ] Power-saving and rendered mode agree on every seed in the golden suite
+- [ ] **Done, on the Pixel 10a.** `ModesAgreeTest` runs every golden case both
+      ways — `runToEnd`, which is power-saving mode stepping as fast as the
+      processor allows, and `advance` once per displayed frame, which is the
+      drawn tray — and they agree on the faces, the step count and the number of
+      dice corrected. A second case runs the drawn side at a frame rate that
+      keeps changing (a dropped frame, a long one, two quick ones), because that
+      is what `FrameClock` exists to absorb and what would show if any of it
+      reached the solver. Both were checked by making them fail, so the
+      comparison discriminates rather than comparing a thing to itself
 
 ### 5.3 Capacity and corner cases
 
