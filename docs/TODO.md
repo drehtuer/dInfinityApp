@@ -14,7 +14,23 @@ on CI (see `.claude/CLAUDE.md`).
 Everything a machine can check, on every PR. Emulator and device suites are
 Step 5 and stay off CI.
 
-- [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin 2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml` with the build steps kept ready. **Checked against bundle 2.27.0 (2026-09-09): still not there.** The extractor ships one shim per Kotlin release and its newest is `v_2_4_0`, so the bound the error names is unchanged. The cheapest way to check again is to list `java/kotlin-extractor/src/main/kotlin/utils/versions` at the bundle's tag and look for a `v_2_4_20`
+- [ ] Re-enable CodeQL's `java-kotlin` analysis once the bundle supports Kotlin
+      2.4.20 — the matrix entry is commented out in `.github/workflows/codeql.yml`
+      with the build steps kept ready. **Tried for real against bundle 2.27.0
+      (2026-09-16): still refused**, with the same
+      `Kotlin version 2.4.20 is too recent` on `:core:model:compileKotlin`.
+
+      **And the check this used to prescribe now lies.** A `v_2_4_20` *does*
+      exist in `java/kotlin-extractor/src/main/kotlin/utils/versions` on
+      `github/codeql`'s default branch, so listing that directory says yes while
+      the shipped bundle says no — the shim is written but has not reached a
+      release the action downloads. The repository's own tags are the query
+      packs' (`v1.x`) rather than the bundle's, so there is no cheap way to list
+      that directory *at the version the action uses*.
+
+      So the check is now: put the matrix entry back on a branch, open a pull
+      request, and read the **Analyse java-kotlin** job. It costs one CI run and
+      it cannot give a false positive, which the file listing can
 - [ ] *Optional:* add a `DEPENDABOT_METADATA_TOKEN` Dependabot secret so the metadata commit starts the checks by itself. Without it the automation still works, and the pull request shows an *Approve workflows to run* banner to press (`docs/build-setup.md`)
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
 
