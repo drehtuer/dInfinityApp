@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
+import de.drehtuer.dinfinity.core.notation.RollRange
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
@@ -197,6 +198,118 @@ class RollMachineTest {
     // hand that will throw it, and that hand has not moved.
     assertTrue("a throw nobody has made yet was already driven by something", next.shake.isEmpty())
     assertTrue("the screen did not ask for the shake it is waiting on", machine.state is RollState.ShakeAgain)
+  }
+
+  @Test
+  fun `the readout narrows as the dice are counted off`() {
+    // The dice leave the table as they are read, so the range is what a player
+    // follows instead of them (`docs/TODO.md`, Step 5.5).
+    val machine = machine()
+    machine.type("4d6")
+    machine.throwDice()
+
+    val cold = requireNotNull(machine.progress(emptyMap()))
+    val halfway = requireNotNull(machine.progress(mapOf(0 to 5, 1 to 5)))
+
+    assertEquals(0, cold.read)
+    assertEquals(4, cold.of)
+    assertEquals(RollRange(4L, 24L), cold.range)
+    assertEquals(2, halfway.read)
+    assertEquals("two sixes are on the table", 12L, halfway.onTheTable)
+    assertEquals("two sixes down leaves two dice to come", RollRange(14L, 24L), halfway.range)
+  }
+
+  @Test
+  fun `a roll read to the last die has a range of one number`() {
+    val machine = machine()
+    machine.type("4d6")
+    machine.throwDice()
+
+    val done = requireNotNull(machine.progress(mapOf(0 to 5, 1 to 5, 2 to 5, 3 to 5)))
+
+    assertEquals(RollRange(24L, 24L), done.range)
+    assertTrue("a roll with every die read is not complete", done.complete)
+  }
+
+  @Test
+  fun `what is on the table is not the roll's total when dice are dropped`() {
+    // `4d6dl1` drops one of them, so the sum of the faces is not the answer —
+    // which is exactly why the range is there and why this is not called a
+    // total.
+    val machine = machine()
+    machine.type("4d6dl1")
+    machine.throwDice()
+
+    val all = requireNotNull(machine.progress(mapOf(0 to 5, 1 to 5, 2 to 5, 3 to 0)))
+
+    assertEquals("the faces on the table add up to nineteen", 19L, all.onTheTable)
+    assertEquals("but the roll drops the one, so it is eighteen", RollRange(18L, 18L), all.range)
+  }
+
+  @Test
+  fun `there is nothing to report when nothing is in the air`() {
+    val machine = machine()
+    machine.type("4d6")
+
+    assertNull(machine.progress(emptyMap()))
+  }
+
+  @Test
+  fun `a formula that reads puts its dice on the board`() {
+    // Tapping a saved roll clears the board and puts the dice down; it does not
+    // throw them. What the player looks at before shaking is what they are
+    // about to throw (`docs/TODO.md`, Step 4.1).
+    val machine = machine()
+
+    machine.type("4d6")
+
+    val board = requireNotNull(machine.waiting)
+    assertEquals(4, board.dice.size)
+    assertEquals("the board was given a seed, as though it were a throw", 0L, board.seed)
+  }
+
+  @Test
+  fun `the board follows the formula as it is edited`() {
+    val machine = machine()
+    machine.type("2d6")
+    val two = requireNotNull(machine.waiting).dice.size
+
+    machine.type("2d6 + 1d20")
+
+    assertEquals(2, two)
+    assertEquals(3, requireNotNull(machine.waiting).dice.size)
+  }
+
+  @Test
+  fun `a formula that does not read leaves nothing on the board`() {
+    val machine = machine()
+
+    machine.type("4d")
+
+    assertNull(machine.waiting)
+  }
+
+  @Test
+  fun `a throw in the air owns the board`() {
+    // The board is what a player arranges between throws. A formula edited
+    // while the dice are still moving is for the throw after this one.
+    val machine = machine()
+    machine.type("1d6")
+    machine.throwDice()
+
+    assertNull("the board was redrawn under a roll in progress", machine.waiting)
+  }
+
+  @Test
+  fun `clearing the board keeps the table and drops the dice`() {
+    val machine = machine()
+    machine.type("4d6")
+
+    val cleared = machine.clearedBoard()
+
+    assertTrue("dice were left on a cleared board", cleared.dice.isEmpty())
+    assertEquals(machine.table, cleared.table)
+    assertEquals(machine.geometry, cleared.geometry)
   }
 
   @Test

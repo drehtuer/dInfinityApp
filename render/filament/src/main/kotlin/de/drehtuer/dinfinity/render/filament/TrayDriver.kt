@@ -10,6 +10,7 @@ import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
 /**
  * The thread a roll happens on, and the surface it is drawn to
@@ -122,10 +123,11 @@ class TrayDriver(
    */
   override fun roll(
     start: (Renderer) -> WatchedRoll,
+    onCounted: (Map<Int, Int>) -> Unit,
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     post {
-      loop.roll(start, onSettled)
+      loop.roll(start, onCounted, onSettled)
       schedule()
     }
   }
@@ -138,6 +140,12 @@ class TrayDriver(
    * world that is mid-step is a race with a physics engine on the other end
    * of it.
    */
+  override fun waiting(spec: ThrowSpec) =
+    post {
+      loop.waiting(spec)
+      schedule()
+    }
+
   override fun shake(sample: ShakeSample) {
     post { loop.shake(sample) }
   }

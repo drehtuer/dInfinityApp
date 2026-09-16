@@ -65,6 +65,10 @@
   <string name="roll_throw">Roll</string>
   <string name="roll_again">Roll again</string>
   <string name="roll_rolling">Rolling…</string>
+  <plurals name="roll_counting">
+    <item quantity="one">%1$d of %2$d die read · %3$d to %4$d</item>
+    <item quantity="other">%1$d of %2$d dice read · %3$d to %4$d</item>
+  </plurals>
   <string name="roll_shake_again">Shake again to throw the die it earned</string>
   <!--
     The debug overlay, behind the developer toggle

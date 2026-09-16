@@ -18,8 +18,10 @@ import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.ParseResult
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.core.notation.PlanResult
+import de.drehtuer.dinfinity.core.notation.RollBounds
 import de.drehtuer.dinfinity.core.notation.RollEvaluator
 import de.drehtuer.dinfinity.core.notation.RollPlanner
+import de.drehtuer.dinfinity.core.notation.RollRange
 import de.drehtuer.dinfinity.core.notation.RunningScore
 import de.drehtuer.dinfinity.core.notation.Scoring
 import de.drehtuer.dinfinity.core.notation.ThrowOutcome
@@ -432,6 +434,93 @@ class RollMachine(
     return next.copy(shake = shake)
   }
 
+  /**
+   * The dice waiting on the table, as a throw that nobody has made.
+   *
+   * What the board shows between throws: tap a saved roll and its dice are put
+   * down rather than thrown, and the board follows the formula as it is edited
+   * and as the picker adds to it (`docs/TODO.md`, Step 4.1).
+   *
+   * It is a [ThrowSpec] because that is what says "these dice, this size, on
+   * this table" and the tray already knows how to build bodies for one. It is
+   * never simulated: the seed is nought and nothing steps it. Null when there
+   * is nothing to put down — a formula that does not read, one the table
+   * cannot hold, or a roll already in the air, which owns the board until it
+   * lands.
+   */
+  val waiting: ThrowSpec?
+    get() {
+      val ready = prepared ?: return null
+      if (inFlight != null) return null
+      return ThrowSpec(
+        dice = ready.plan.dice,
+        geometry = geometry,
+        table = table,
+        seed = 0L,
+        dieScale = ready.scale,
+      )
+    }
+
+  /**
+   * How far the roll in the air has got, for the readout on the screen.
+   *
+   * **The dice stop being the thing to watch.** A die is read and taken off
+   * the table the moment it can be, so by the time the last one lands most of
+   * the answer has been known for a while and the dice that carried it are
+   * gone. This is what takes their place: how many have been read, what is on
+   * the table, and how high and low the finished roll can still come out
+   * (`docs/TODO.md`, Step 5.5).
+   *
+   * Null when there is no roll in the air, or when the throw in the air is an
+   * added round rather than the first — a round of two dice reports "two of
+   * two" of its own throw, which says nothing about the roll.
+   */
+  fun progress(counted: Map<Int, Int>): RollProgress? {
+    val flight = inFlight ?: return null
+    if (flight.adding.isNotEmpty()) return null
+    val dice = flight.prepared.plan.dice
+    return RollProgress(
+      read = counted.size,
+      of = dice.size,
+      // The face *values* of the dice read so far. What is on the table, and
+      // deliberately not called the roll's total: a formula that drops the
+      // lowest of four has a total this is not, which is what the range is for.
+      onTheTable =
+        counted.entries.sumOf { (index, face) ->
+          dice
+            .getOrNull(index)
+            ?.die
+            ?.faces
+            ?.getOrNull(face)
+            ?.value
+            ?.toLong() ?: 0L
+        },
+      range =
+        RollBounds.of(
+          formula = flight.prepared.formula,
+          plan = flight.prepared.plan,
+          outcome = ThrowOutcome(faces = counted, rolledAtEpochMs = clock()),
+          rounding = defaultRounding,
+          added = AddedDice(faces = flight.added, room = roomForRound(flight)),
+        ),
+    )
+  }
+
+  /**
+   * An empty board: the same table, with no dice on it.
+   *
+   * What the tray is given when there is nothing waiting — a formula that does
+   * not read, or one the table cannot hold. Clearing the board is saying "no
+   * dice", not "no table".
+   */
+  fun clearedBoard(): ThrowSpec =
+    ThrowSpec(
+      dice = emptyList(),
+      geometry = geometry,
+      table = table,
+      seed = 0L,
+    )
+
   /** Whether a throw has been earned and not yet thrown. */
   val awaitingShake: Boolean get() = earned != null
 
@@ -704,4 +793,30 @@ sealed interface RollState {
     val result: RollResult,
     val divides: Boolean = false,
   ) : RollState
+}
+
+/**
+ * How far a roll has got, while it is still going.
+ *
+ * What the roll screen shows once the dice start leaving the table. It is a
+ * reading and never an input: nothing here reaches the roll, and the numbers
+ * come out of faces the simulation has already read.
+ *
+ * @param read how many dice have been counted and taken off the table.
+ * @param of how many were thrown.
+ * @param onTheTable the face values counted so far, added up. **Not the roll's
+ *   total** — `4d6dl1` drops one of them — which is what [range] is for.
+ * @param range the lowest and highest the finished roll can still come to. The
+ *   floor is exact; the ceiling counts dice an explosion has not earned yet,
+ *   so an exploding formula's is honest but very high
+ *   (`RollBounds`, and `docs/TODO.md`, Step 4.1).
+ */
+data class RollProgress(
+  val read: Int,
+  val of: Int,
+  val onTheTable: Long,
+  val range: RollRange,
+) {
+  /** True once every die is read, when the range has collapsed onto the total. */
+  val complete: Boolean get() = read >= of && range.lowest == range.highest
 }

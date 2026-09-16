@@ -147,6 +147,8 @@ class LiveRoll internal constructor(
    * applied: nothing touches a die that has come to rest, and the hand is not
    * an exception (`.claude/CLAUDE.md`).
    */
+  override val countedSoFar: Map<Int, Int> get() = loop.countedSoFar
+
   override fun shake(sample: ShakeSample) {
     if (running) loop.shake(sample)
   }

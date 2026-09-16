@@ -24,6 +24,7 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
@@ -187,6 +188,30 @@ class RollScreenTest {
 
     compose.onNodeWithTag(RollTestTags.SCREEN).assertExists()
     compose.onNodeWithTag(RollTestTags.TRAY).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a formula puts its dice on the board before anybody throws them`() {
+    val tray = DirectTray()
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+
+    typeFormula("3d6")
+
+    assertEquals("the dice were not put on the table", 3, tray.boards.last().size)
+  }
+
+  @Test
+  fun `the board is not rebuilt for every keystroke`() {
+    // It runs on every one of them, and building the bodies each time is a tray
+    // that flickers while somebody types.
+    val tray = DirectTray()
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+
+    typeFormula("3d6")
+    val afterTyping = tray.boards.size
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(" ")
+
+    assertEquals("the board was redrawn for a keystroke that changed no dice", afterTyping, tray.boards.size)
   }
 
   @Test
@@ -671,6 +696,9 @@ class RollScreenTest {
     var closes = 0
       private set
 
+    /** Every board this tray has been asked to show, in order. */
+    val boards = mutableListOf<List<DieInstance>>()
+
     /** Every table this tray has been told about, in order. */
     val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
 
@@ -687,12 +715,17 @@ class RollScreenTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
+      onCounted: (Map<Int, Int>) -> Unit,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       val live = start(HeadlessRenderer())
       while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
       live.outcome?.let { onSettled(it, live.drivenBy) }
       live.close()
+    }
+
+    override fun waiting(spec: ThrowSpec) {
+      boards += spec.dice
     }
 
     override fun shake(sample: ShakeSample) {
@@ -737,6 +770,7 @@ class RollScreenTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
+      onCounted: (Map<Int, Int>) -> Unit,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       start(HeadlessRenderer())

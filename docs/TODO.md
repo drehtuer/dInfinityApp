@@ -664,6 +664,21 @@ throws rather than a twelve-second fight with the solver.
       already has some** — it is what an explosion does — so the throwing half
       exists; what is new is the reading-and-removing half and the loop around
       it
+- [ ] **Decide what the range should say for an exploding formula.** The
+      readout is `RollBounds`, and its ceiling is *achievable* rather than
+      likely: a forced maximum face explodes, and the die it earns is forced to
+      a maximum too, so a chain runs to the explosion depth limit. `8d6!`
+      therefore reads **8 to 1008** — twenty-one sixes in each of eight chains.
+      That is a total the roll could reach and the bound is not lying, but it
+      is a number nobody can use, and the readout will never go near it.
+
+      The alternatives, none of them free: bound at the dice the chains have
+      actually *earned* so far, which is tight and useful but is no longer an
+      upper bound on the finished roll; show no ceiling at all for a formula
+      that can explode; or show the range only while it is narrow enough to
+      mean something. Everything else — `4d6dl1`, `2d20kh1`, arithmetic,
+      percentiles — is exact at both ends, so this is a question about `!` and
+      nothing else
 - [ ] **Open, and it turns out to be load-bearing: how removed dice are shown.**
       Not a cosmetic question. A counted die leaves the simulation, so the floor
       it was standing on stops being solid — and **measured on the Pixel 10a,

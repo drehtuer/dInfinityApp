@@ -178,6 +178,27 @@ Modifiers take effect in this order whatever order they were written in, so
    what each chain came to together. A percentile pair counts as one unit, so
    `2d%kh1` keeps the better of two 1–100 results.
 
+### What the screen says while the dice are still landing
+
+A roll counts each die and takes it off the table the moment it can be read, so
+by the time the last one lands most of the answer has been known for a while and
+the dice that carried it are gone (`docs/physics-and-rendering.md`). What the
+screen follows instead is how many dice have been read and **how high and low
+the finished roll can still come out**, which is one line whether the throw was
+four dice or a hundred.
+
+The floor is exact: the lowest faces set off no explosion, so it is a total the
+roll could really come to. `kh`, `kl`, `dh`, `dl`, `min`, arithmetic and
+percentile pairs are exact at both ends — forcing the dice that have not landed
+to their lowest or highest faces is a real assignment, and a group's subtotal
+only goes up as its dice do. Subtraction turns a group's range over rather than
+carrying it through, so `20 - 1d6` reads 14 to 19 and not the other way about.
+
+**The ceiling of an exploding formula is honest and very high.** A maximum face
+earns another die, which can itself be a maximum, so the highest `8d6!` can
+reach is eight chains of twenty-one sixes — 1008. It is attainable, so the range
+is never wrong; whether it is *useful* is `docs/TODO.md`, Step 4.1.
+
 A group may carry each modifier at most once, and may keep **or** drop, not
 both: `4d6dl1dl1` and `4d6kh1dl1` are refused rather than quietly meaning
 something. Keeping or dropping more dice than the group rolls is refused too.

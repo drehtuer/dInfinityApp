@@ -131,6 +131,16 @@ class RollLoop(
    */
   val countedOut: List<Boolean> get() = counted.toList()
 
+  /**
+   * The faces read so far, by die index.
+   *
+   * What the screen follows while a roll is going: dice leave the table as
+   * they are counted, so the running total is the only thing left to watch
+   * (`docs/TODO.md`, Step 5.5). A die that has not been counted is not in it.
+   */
+  val countedSoFar: Map<Int, Int>
+    get() = counted.indices.filter { counted[it] }.associateWith { countedFace[it] }
+
   /** What the throw came to, once [advance] has said there is nothing left. */
   fun outcome(): SimulationOutcome = requireNotNull(result) { "the roll has not finished yet" }
 
