@@ -74,14 +74,23 @@ class PhotoStore(
     return written
   }
 
-  /** Takes a photo table off the phone, picture and name together. */
-  fun forget(id: String) {
-    listOf(IMAGE, LABEL).forEach { suffix ->
-      val file = fileFor(id, suffix)
-      file.delete()
-      File(directory, file.name + PARTIAL).delete()
-    }
-  }
+  /**
+   * Takes a photo table off the phone, picture and name together.
+   *
+   * Hands back whatever is still there afterwards, which is empty for a photo
+   * that is gone. Nothing here can make a filesystem let go of a file it will
+   * not let go of; what it must not do is treat a file that is still there as
+   * gone, because the next read of this folder will offer that photo again.
+   */
+  fun forget(id: String): List<File> =
+    listOf(IMAGE, LABEL)
+      .flatMap { suffix ->
+        val file = fileFor(id, suffix)
+        listOf(file, File(directory, file.name + PARTIAL))
+      }
+      // A file that was not there is already forgotten, which is the outcome
+      // this wants — and is the other thing `delete` answers false for.
+      .filterNot { file -> file.delete() || !file.exists() }
 
   /** The photo under [id], or null when its picture will not read back. */
   private fun read(id: String): TablePhoto? {
@@ -101,8 +110,11 @@ class PhotoStore(
     val partial = File(directory, file.name + PARTIAL)
     partial.writeBytes(bytes)
     if (!partial.renameTo(file)) {
-      partial.delete()
-      error("could not write ${file.name}")
+      // What is left behind is worth saying: a half-written picture still on
+      // disk is a different thing to go and look at from one that cleaned up
+      // after itself.
+      val leftover = if (partial.delete()) "" else "; '${partial.name}' is still there"
+      error("could not write ${file.name}$leftover")
     }
   }
 

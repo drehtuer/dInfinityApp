@@ -62,7 +62,14 @@ internal class PackageFolder(
       previous.deleteRecursively()
       return true
     }
-    previous.renameTo(installed)
+    // Put the player's package back, and copy it if it will not move — the
+    // same belt and braces `PackageInstaller` uses, and here for a sharper
+    // reason. [install] clears `previous` before it writes anything, so a
+    // package that a failed rollback left only in there is a package the next
+    // install destroys. It is the only copy of what they had.
+    if (!previous.renameTo(installed) && previous.copyRecursively(installed, overwrite = true)) {
+      previous.deleteRecursively()
+    }
     staging.deleteRecursively()
     return false
   }
