@@ -123,6 +123,30 @@ enum class ValidationCode {
   /** A texture whose bytes are not a picture of the kind its name claims. */
   TextureUnreadable,
 
+  /**
+   * A texture whose header reads but whose pixels will not decode.
+   *
+   * The header check ([TextureUnreadable]) is plain arithmetic over the first
+   * few bytes and cannot say this: a PNG with a sound `IHDR` and a truncated
+   * or corrupt image behind it passes it and still has no picture in it. Only
+   * a decoder knows, so this is raised where one runs — at load time, and
+   * never during the header-only validation (`docs/dice-sets.md`,
+   * "Validation").
+   */
+  TextureWillNotDecode,
+
+  /**
+   * An atlas that leaves one of a die's faces undrawn, so that face is printed
+   * instead. Always a warning.
+   *
+   * Legal, and sometimes exactly what an author meant — a set that draws four
+   * of a d6's faces and lets the app print the other two is a set
+   * (`docs/dice-sets.md`, "Textures"). It is worth saying because the other
+   * way to arrive here is an atlas saved at the wrong size or in the wrong
+   * grid, which looks identical from outside and is not what anybody meant.
+   */
+  AtlasCellsEmpty,
+
   /** A physics or material number that is not finite, which the solver must never see. */
   NotFinite,
 

@@ -143,7 +143,7 @@ class RollMachine(
       outcome: SimulationOutcome,
     ) {
       thrown.forEachIndexed { position, instance ->
-        outcome.restingAt[position]?.let { place -> down += DieAtRest(instance.die, place) }
+        outcome.restingAt[position]?.let { place -> down += DieAtRest(instance.die, instance.setId, place) }
       }
       rethrows += outcome.rethrows
       forcedSettles += outcome.forcedSettles

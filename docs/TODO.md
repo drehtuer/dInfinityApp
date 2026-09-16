@@ -29,13 +29,13 @@ The shared layer every screen sits on. Built bottom-up, each piece tested to
 completion before the screens start, because a bug here is a bug in every
 screen.
 
-- [ ] Atlases: decode a die's texture where its package is installed and hand it to the renderer. The seam is the `atlases` argument of `FilamentStage`, reached through `FilamentEngine.stage`; until something fills it, a die that has artwork is drawn in its own colour with its labels printed on it, which is what a die with *no* artwork is supposed to look like. Belongs with 4.4, and brings the two texture checks below with it
-- [ ] **A partly-transparent atlas should show the printed label through its empty cells**, which is what `docs/dice-sets.md` ("Textures") promises and what nothing does yet. The printed numbers are built for a die with no `texture` at all; making the two mix per face needs the artwork path in the material to be alpha-aware rather than a plain multiply, and it needs an atlas to have arrived — so it belongs with the item above rather than before it
-- [ ] The two texture checks that need a decoder, which `dicesets/format` cannot do from bytes alone: a file that passes the header check but will not actually decode, and an atlas with empty cells. Both belong wherever textures are first decoded (`docs/dice-sets.md`, "Validation")
-
-**Done when** a formula can be parsed, planned, simulated headless and scored
-from a unit test, with no UI in the picture, and Sonar reports ≥ 80 % on these
-modules.
+**Done.** A formula is parsed, planned, simulated headless and scored from a
+unit test with no UI in the picture. The last two boxes closed together: a die's
+artwork now reaches the tray and is composited over its printed labels rather
+than instead of them, with the two decoder-only texture checks that came with it
+(`docs/dice-sets.md`, "How an atlas reaches the tray"); and a roll driven by a
+recorded shake was shown on the Pixel 10a to replay to itself from
+`FinishedThrow.thrown` — same faces, same step count.
 
 ## Step 4 — Screens
 
@@ -177,7 +177,7 @@ chosen**, and the choice is written into the file and into the installed folder
 alike. What goes out is validated first, by the same validator a download goes
 through.
 
-- [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. What is *not* covered is a malicious **texture**, which needs a decoder (Step 3)
+- [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. A malicious **texture** is covered too, now that there is a decoder: `InstalledArtworkTest` has the paths that climb out of a package and the file over the cap, each refused before a decoder sees it, `AtlasDecoderTest` has the image refused from its bounds with nothing decoded, and `AtlasDecoderDeviceTest` has the file that passes the header check and will not decode — on a device, because Robolectric hands back a fake bitmap for bytes it cannot identify
 
 ### 4.5 Table picker — `feature/tables`
 
@@ -538,6 +538,27 @@ The figures are reported in every PR description either way.
       is reached, or worth leaving to the eye and the systrace — a decision for
       a person
 
+- [ ] **Where does a table look's texture say which package it came from?** A
+      die's artwork now reaches the tray by a key of package and path
+      (`docs/dice-sets.md`, "How an atlas reaches the tray"), and a
+      `TableLook`'s `floor_texture` and `wall_texture` carry a path and nothing
+      else — so they resolve to nothing and a table is drawn in its own
+      colours, exactly as it was before. Chosen because the alternatives both
+      reach a long way for a case nothing ships: the bundled package has no
+      table textures and "My dice" has dice atlases only. The two ways out are
+      putting the package id on `TableLook` itself, which makes every table a
+      little wider for one field, and threading it through `Tray.table` and
+      `Renderer.begin`, which puts it on the seam that is deliberately narrow.
+      Worth deciding when a package that actually ships one exists
+- [ ] **Where should a load-time texture report be shown?** `AtlasDecoder`
+      produces the same `ValidationMessage` lines the validator does — a file
+      that will not decode, an atlas with empty cells — and today nothing reads
+      them: the die falls back to its labels and the lines are dropped. The
+      obvious home is the set's details screen beside the validation report
+      (design `6b`), which would mean the decode happening somewhere a screen
+      can reach rather than only on the roll thread. Chosen to leave it for now
+      because the fall-back is the behaviour either way and a report nobody
+      asked for is not worth a second decode
 - [ ] **Should the anomaly log survive a restart?** It is in memory today,
       bounded to fifty entries, and goes when the app does — because an entry
       carries the seed that reproduces the roll, and a stored seed is a replay
