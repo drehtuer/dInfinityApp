@@ -116,12 +116,21 @@ Worked example on a Pixel 10a table (240 × 108 mm ≈ 259 cm²):
 | `500d6` | — | refused |
 
 Note what the first column no longer does: **the floor rule stops refusing
-anything.** Dice of the right size are small enough that it would take about
-240 of them to shrink past the 40 % floor, and the engine stops at 100 long
-before that. The rule still does its real job — it shrinks a crowded tray so
-the dice have room to tumble — but the refusal a player actually meets is the
-body cap. Whether 30 % and 40 % are still the right numbers now that they bite
-so much later is a question for Step 5.3, with a device.
+anything.** The two constants do different jobs — 30 % *shrinks* and 40 %
+*refuses* — and 16 mm dice are small enough that a hundred of them shrink only
+to 0.62, nowhere near the floor. It would take **241** before the floor refused
+one, and the engine stops at 100. The rule still does its real job, which is to
+shrink a crowded tray so the dice have room to tumble; the refusal a player
+actually meets is the body cap.
+
+Both numbers were revisited on the Pixel 10a and **left alone**. At the cap the
+shrink they apply produces a roll where everything settles but one throw in
+sixty, nothing is stacked at rest, nothing leaves the tray, and a step costs
+3.09 ms against the 8.33 ms it has. There is no evidence for moving either, and
+moving a tuned constant on no evidence is how it stops meaning anything. The 241
+is asserted in `TableCapacityTest`, so raising the body cap past it is noticed —
+that is the point at which the scale floor would become live for the first
+time.
 
 The refusal message always says the largest count that *would* fit, and
 offers to open the outcome graph instead, which has no such limit.
