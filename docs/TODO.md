@@ -402,7 +402,15 @@ a die fairer than the plastic one in their hand, is not worth a warning
 (`docs/physics-and-rendering.md`, "The bar the d18 is held to").
 
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker. The golden suite is the check and already holds for its ten cases on both ABIs; Step 5 is the same claim at ten thousand rolls and on a second phone
-- [ ] Power-saving and rendered mode agree on every seed in the golden suite
+- [ ] **Done, on the Pixel 10a.** `ModesAgreeTest` runs every golden case both
+      ways — `runToEnd`, which is power-saving mode stepping as fast as the
+      processor allows, and `advance` once per displayed frame, which is the
+      drawn tray — and they agree on the faces, the step count and the number of
+      dice corrected. A second case runs the drawn side at a frame rate that
+      keeps changing (a dropped frame, a long one, two quick ones), because that
+      is what `FrameClock` exists to absorb and what would show if any of it
+      reached the solver. Both were checked by making them fail, so the
+      comparison discriminates rather than comparing a thing to itself
 
 ### 5.3 Capacity and corner cases
 
@@ -445,21 +453,49 @@ a die fairer than the plastic one in their hand, is not worth a warning
 - [ ] **`100d4` does not reliably settle, and never did.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. `JoltBridgeTest` used to try eight seeds and pass; twenty-four seeds show **five running out of the twelve-second cap**, and the same twenty-four under the correlated spawn streams that preceded them showed two — a difference well inside noise at that sample size. What changed is not the physics but the sample: the eight were the easy ones. Nothing is ever touched after it has come to rest, on any seed, which is the rule that matters; the cap firing at all is a prevention problem (5.5), and the bound in the test is today's worst case written down rather than a target
 - [ ] **Decide what a tilted phone should mean.** Deferred, not answered. The table is horizontal now and the gyroscope no longer turns the world, which is what stopped the dice pouring into a wall — but "tilt the phone and the dice slide" was a real idea and this is not a verdict on it. The direction is still recorded with every sample, so whichever way it goes the data is there. The three answers, unchanged: gravity always straight down and only the hand moves the dice; anchor to `TYPE_GRAVITY` and accept that a phone held upright pours everything to the bottom wall; or keep a tilt and clamp it so a tray can lean without becoming a chute
 - [ ] **A shake along the phone's long axis still drives the dice into one end.** Seen as dice stuck at the bottom after a vertical shake. The table being horizontal fixes the *pouring* — the tray no longer leans — but the hand's own force still points that way, and a hundred dice pushed at one wall have nowhere else to be. Whether that is right (it is what a hand does) or wants shaping is a Step 5.6 question with a phone in it
-- [ ] Exactly at the limit, and one over — the one over is refused before a single body is created
-- [ ] Worst shapes at the limit: d4 (sharpest corners) and the coin (flattest), which wedge and stack most easily
-- [ ] Smallest scale (0.40) with the largest nominal die
-- [ ] Mixed shapes and mixed sets in one throw
 - [ ] Extreme input: sensor maxima, 30 s of shaking, rotation through all axes, shake-then-drop, phone vertical and upside down. **Upside down is done and was broken:** the roll screen pinned the display to the rotation it opened at, so `PhoneAxes` was told the phone was upright while it was being shaken the other way up and the dice pooled at the end away from the hand. The screen now holds its shape rather than its rotation (`docs/tables.md`); a quarter turn is still refused
 - [ ] Interruptions mid-roll: call, backgrounding, rotation, low memory — the roll finishes or is discarded cleanly, never half-resolved
-- [ ] Thermal: 100 consecutive 40-dice rolls with no frame-time cliff and no drift in outcomes
+
+- [ ] **The corner cases are asked on the phone now, and one of them fails.**
+      `CornerCasesTest` throws exactly at the cap and one over (refused before a
+      body exists, which is the point of doing it in arithmetic), a hundred d4s,
+      a hundred coins, the largest die a set may declare at the smallest scale
+      the rule allows, every catalogue shape at once, and the same forty-dice
+      throw a hundred times over to watch for drift as the phone warms. All of
+      them keep every die on the table; all but one put no die on top of another.
+
+      **A hundred coins do: four to ten of them, on every seed tried.** It is
+      the shape's own doing — a coin that lands on a coin is *stable* there,
+      where a cube or an icosahedron rolls off, which is what makes prevention
+      work everywhere else — and at that density rung 3 cannot find the stacked
+      ones clear floor to be re-thrown onto. Bounded at today's worst case so
+      the next change to the spawn or the ladder improves it or is noticed, in
+      the same way `100d4`'s timeouts are. Nothing is touched after coming to
+      rest on any seed, which is the rule that does hold.
+
+      The thermal run is the *outcome* half only: a hundred identical throws
+      come to identical faces, so nothing drifts as the phone heats. Frame times
+      need a renderer and a surface, which is Step 5.7's and the open question
+      about who measures a drawn frame
 
 ### 5.4 Collisions
 
 - [ ] **Dice go 9 mm into each other, and the bar is 0.2 mm.** Measured on the Pixel 10a the first time the harness ran: 200 throws of 20 d20s, deepest die–die overlap **9.019 mm** against a target of 0.2, on dice 16 mm across. More than half a die. It is the number the plan asked for and nobody had ever had, and it is almost certainly the same fault as the correction rate below rather than a second one: dice are spawned or corrected into each other and the solver pushes them apart afterwards, which is what a 45 % correction rate looks like from the collision side. Prevention (5.5) is where it is fixed; this is where it is measured
-- [ ] No tunnelling at maximum shake velocity — assert every body inside the box on every step, all roll long
-- [ ] Dice driven into a corner at speed neither wedge nor jitter
-- [ ] A settled pile is stable: no creep, no vibration, no slow slide
-- [ ] Assert containment on *every step* rather than only at rest, at the capacity limit: the at-rest check is in `JoltBridgeTest` now, but a die that leaves the tray mid-roll and comes back would still pass it
+- [ ] **Done, on the Pixel 10a, and the old check was too kind twice over.**
+      `ContainmentTest` asks the tray's own bounds — half a side, not a whole
+      one, which is what `JoltBridgeTest` allowed and is twice as far out as the
+      wall — of every die on every step. Four things hold: a **full tray** of a
+      hundred dice never puts a centre outside the walls; **nothing tunnels out
+      at the hardest shake the cap allows**, driven at four gravities in a
+      direction that changes every tenth of a second; dice **driven into a
+      corner and held there** all stop, which is what the rounded corners are
+      for; and a **settled pile stays put** — measured creep over two undriven
+      seconds is 3.4 × 10⁻⁵ mm, and the test holds it to a hundredth of a
+      millimetre.
+
+      Each assertion was checked by making it fail: dice really do reach within
+      about six millimetres of the walls, so the bound is exercised rather than
+      merely satisfied by dice that stayed in the middle
 
 ### 5.5 Stacking and cocking — and no invisible hand
 
@@ -539,7 +575,15 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 ### 5.7 Performance on the Pixel 10a
 
 - [ ] 60 fps sustained at 20 dice, frame time p99 under 16.6 ms; at least 30 fps at the capacity limit
-- [ ] No memory growth over 500 rolls
+- [ ] **Done, on the Pixel 10a: 500 rolls leave 1,440 bytes behind.** Under
+      three bytes a roll, which is allocator noise rather than anything anybody
+      allocated. `MemoryTest` measures the **native** heap, which is the half
+      that matters — a physics world is a handle into a solver the collector
+      knows nothing about, so a world nobody closed would show there and nowhere
+      else — and holds it to a quarter of a megabyte, a hundred and eighty times
+      the measurement and still tight enough to catch ten leaked worlds, let
+      alone five hundred. The JVM heap is held looser on purpose, against a
+      collector that decides for itself when to shrink
 - [ ] Battery cost of 100 rolls measured, then written into `docs/physics-and-rendering.md` as the budget
 
 **Done when** every target above is met on the Pixel 10a and the user agrees
