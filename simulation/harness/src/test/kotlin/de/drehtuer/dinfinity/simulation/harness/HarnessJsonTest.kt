@@ -5,6 +5,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -45,6 +46,72 @@ class HarnessJsonTest {
 
     assertTrue(text.contains("correctedShare"), text)
     assertTrue(text.contains("rethrownShare"), text)
+  }
+
+  @Test
+  fun `a soak survives the trip, and says it was one rather than a count of rolls`() {
+    val report =
+      HarnessReport.of(
+        facts().copy(label = "20d20-soak", length = RunLength.Soak(300.0), rolls = 143, framePaced = true),
+        emptyList(),
+        FrameTimes(millis = listOf(3.0, 12.0), droppedSteps = 2, drawn = false),
+      )
+    val text = HarnessJson.encode(report)
+
+    assertEquals(report, HarnessJson.decode(text))
+    assertTrue(text.contains("\"kind\": \"soak\""), text)
+    assertTrue(text.contains("\"seconds\": 300.0"), text)
+  }
+
+  @Test
+  fun `a run's frames are in the document when there were any, and absent when there were none`() {
+    val paced =
+      HarnessJson.encode(
+        HarnessReport.of(facts(), emptyList(), FrameTimes(millis = listOf(9.5), droppedSteps = 0, drawn = true)),
+      )
+
+    assertTrue(paced.contains("\"drawn\": true"), paced)
+    // A headless run measured no frame times, so there is no field for one to
+    // be misread out of.
+    assertFalse(HarnessJson.encode(report()).contains("\"drawn\""))
+  }
+
+  @Test
+  fun `a target nothing was measured for is written as that rather than as a pass`() {
+    val text = HarnessJson.encode(report())
+
+    assertTrue(text.contains("\"result\": \"not-measured\""), text)
+    assertTrue(text.contains("\"result\": \"pass\"") || text.contains("\"result\": \"fail\""), text)
+  }
+
+  @Test
+  fun `a verdict token the document does not use is refused rather than guessed`() {
+    val failure = assertFailsWith<IllegalArgumentException> { TargetOutcome.ofToken("maybe") }
+
+    assertTrue(failure.message.orEmpty().contains("not-measured"), failure.message.orEmpty())
+  }
+
+  @Test
+  fun `a kind of run the document does not know is refused where it is read`() {
+    val json = HarnessJson.toJson(report())
+    val facts = json["facts"] as JsonObject
+    val length = facts["length"] as JsonObject
+    val broken =
+      JsonObject(
+        json.toMutableMap().apply {
+          put(
+            "facts",
+            JsonObject(
+              facts.toMutableMap().apply {
+                put("length", JsonObject(length.toMutableMap().apply { put("kind", JsonPrimitive("forever")) }))
+              },
+            ),
+          )
+        },
+      )
+
+    val failure = assertFailsWith<IllegalArgumentException> { HarnessJson.fromJson(broken) }
+    assertTrue(failure.message.orEmpty().contains("forever"), failure.message.orEmpty())
   }
 
   @Test
@@ -150,7 +217,9 @@ class HarnessJsonTest {
       shapeId = "d20",
       diceCount = 20,
       dieScale = 0.75,
+      length = RunLength.Rolls(2),
       rolls = 2,
+      framePaced = false,
       seed = 1L,
       device = DeviceFacts(model = "Pixel 10a", abi = "arm64-v8a", androidApi = 37, emulator = false),
       startedAtEpochMs = 1_700_000_000_000L,

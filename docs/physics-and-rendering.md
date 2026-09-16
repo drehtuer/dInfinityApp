@@ -672,11 +672,42 @@ instant they are reported, so nothing upstream could work it out afterwards.
 The stacked count is taken where the dice *ended* and not while they were
 moving: a die on top of another mid-throw is an ordinary moment of a roll.
 
-`tools/harness.sh` is what asks the question at scale — N rolls headless on a
+`tools/harness.sh` is what asks the question at scale — rolls headless on a
 phone or the emulator, a JSON document of what they did, and a pass/fail table
 against every target above (`docs/build-setup.md`, "The physics harness"). It
 fails on the two that are not met yet, which is the plan being behind the check
 rather than the check being wrong.
+
+A run is asked for either as a number of throws or as a **length of time** —
+soak mode is the same runner given a duration, and the throw under way when the
+time runs out is finished rather than cut short, because a settle time that was
+interrupted is the longest one in the sample and is a fact about the stopwatch
+rather than about the dice.
+
+### What the harness may say about frames
+
+A harness run has no surface, so what it can honestly report about a frame is
+only part of one. Two halves, and they are measured in two different places:
+
+| The half | What measures it | Where the bar is |
+| --- | --- | --- |
+| simulating the steps a frame owes | `LiveRoll.advance`, timed by the harness in its paced mode, and `FrameClock.droppedSteps` for the steps a late frame never paid for | the step itself, 1/120 s, plus zero dropped steps |
+| drawing them | a renderer with a surface, which the harness does not have | Step 5.7's p99 under 16.6 ms at twenty dice |
+
+A paced run steps each roll exactly the way the screen does — one `advance` per
+60 Hz frame, at a frame's cadence — and times each call. The roll is the same
+roll either way: the clock decides *when* steps are taken and never how big
+they are or in what order, so a paced run and a flat-out one come to the same
+faces from the same seed.
+
+What such a run may **not** do is report that as a frame rate. Its frames were
+handed to the renderer that draws nothing, so the scorecard prints the figure
+it measured, marks it "simulation only", and scores Step 5.7's row as **not
+measured** — neither pass nor fail. A headless run has no frames at all and the
+figure is *absent* from the document rather than zero, because zero would score
+as the fastest run ever made. The frame rate on screen is answered by watching
+one: `tools/harness.sh --capture` records the app rolling, at whatever rate the
+panel runs (`docs/build-setup.md`).
 
 ## The dice an explosion or a reroll adds
 

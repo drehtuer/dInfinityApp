@@ -495,6 +495,9 @@ tools/harness.sh -n 200                  # a quick look
 dinfinity-phone                          # the reference device
 tools/harness.sh -n 10000                # the run Step 5.5 asks for
 tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
+tools/harness.sh --soak 5m               # soak mode: roll for five minutes
+tools/harness.sh --frames -n 50          # what a frame's simulation costs
+tools/harness.sh --capture 20            # twenty seconds of video to watch
 ```
 
 It says which device it ran on before it rolls anything, and **the exit code is
@@ -506,6 +509,9 @@ emulator attached it refuses to guess — name one with `--device` or
 | Option | What it is |
 | --- | --- |
 | `-n`, `--rolls` | how many throws (default 1000) |
+| `--soak` | roll for this long instead: `90`, `90s`, `5m`, `1h`. Soak mode |
+| `--frames` | step each roll at a frame's cadence and report what the frames cost. A paced run takes as long as the dice really take |
+| `--capture` | record the screen for this many seconds instead of scoring a run |
 | `-c`, `--dice` | dice per throw (default 20, which is where Step 5.5 states its settle targets) |
 | `-s`, `--shape` | `d20`, `icosahedron` or `20` — all three are accepted (default `d20`) |
 | `--seed` | the run's base seed (default 1). One number replays the whole run |
@@ -522,14 +528,83 @@ pulled into `build/harness`:
 - `harness-<label>.txt` — the pass/fail table, rendered on the device by the
   same Kotlin the unit tests hold, and printed by the script unchanged.
 
+**A run is printed and scored from the files it wrote itself.** The device's
+folder is cleared before the run and only what came back from it is read, so a
+run that fails cannot exit zero because an older, passing scorecard is still
+lying about in `build/harness`. That mattered little while every run used the
+same name and overwrote the last one; `-l` and `--soak`, which names itself,
+make the folder accumulate — which is the point of keeping them, and the reason
+the verdict may not go looking in there.
+
+### Soak mode
+
+`--soak 5m` is the same runner given a duration rather than a roll count, and
+that is all it is: the loop asks `RunLength.keepGoing` after each throw instead
+of counting to a number, and everything downstream — the percentiles, the worst
+case, the document, the scorecard — is what it always was. The throw under way
+when the time runs out is **finished** rather than cut short, because a settle
+time that was interrupted is the longest one in the sample and is a fact about
+the stopwatch. The document records both what was asked for and how far it got,
+so a soak reads as "five minutes, 143 throws". Its files are labelled
+`20d20-soak` unless `-l` says otherwise, so a soak does not overwrite the
+counted run beside it.
+
+### Frame times, and what a headless run may not claim
+
+`--frames` steps each roll the way the screen steps one — a `LiveRoll.advance`
+per 60 Hz frame, at a frame's cadence — and times each call. It is a real-time
+run: fifty paced rolls take about as long as fifty rolls take, which is why it
+is off by default.
+
+What it measures is the **simulation half of a frame**, plus
+`FrameClock.droppedSteps`, the steps a frame that ran long never paid for. It
+is not Step 5.7's 16.6 ms, which is about *drawing* and needs a renderer and a
+surface this module has neither of. So the scorecard grows two rows and they
+behave differently:
+
+| Row | A headless run | A paced run |
+| --- | --- | --- |
+| `p99 frame time` | `-`, **not measured** | the figure, marked `simulation only`, still **not measured** |
+| `steps a late frame dropped` | `-`, **not measured** | scored against zero, pass or fail |
+
+A target nothing was measured for is neither a pass nor a failure
+(`docs/architecture.md`, decision 57): it does not fail the run, and the verdict
+line says how many there were — `HARNESS VERDICT: PASS, 2 not measured`. In the
+JSON the frame figures are **absent** rather than zero, because a zero frame
+time would score as the fastest run ever made.
+
+### Recording a roll to look at
+
+`--capture 20` answers the half of Step 5 no scorecard can: whether the dice
+look like dice. It builds and installs the **app** rather than the test APK,
+starts it, runs `screenrecord` for the seconds asked for while you roll, pulls
+the video back and says where it landed:
+
+```sh
+tools/harness.sh --capture 20 -l shake     # build/harness/harness-shake.mp4
+```
+
+Nothing is scored — the exit code is zero when the video came back. The frame
+rate is whatever the panel was running at, which is 60 on the Pixel 10a unless
+something has throttled it, and `screenrecord` stops at 180 seconds, so a
+longer look is several captures rather than one.
+
 The run itself is `HarnessTest` in `simulation/jolt`'s `androidTest`, and it
-does nothing at all without `harness.rolls` — so it sits in the ordinary device
-suite without adding minutes to it. By hand, without the script:
+does nothing at all without `harness.rolls` or `harness.soak` — so it sits in
+the ordinary device suite without adding minutes to it. By hand, without the
+script:
 
 ```sh
 ./gradlew :simulation:jolt:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.harness.rolls=1000
 ```
+
+The other arguments are `harness.soak` (a duration), `harness.frames` (`1` to
+pace them), `harness.dice`, `harness.shape`, `harness.seed` and
+`harness.label`. What each one *means* — including which wins when both a roll
+count and a soak are given — is `HarnessRequest.from` and `RunLength.from` in
+`:simulation:harness`, tested on the JVM, so the script and a hand-typed run
+cannot come to disagree (`docs/architecture.md`, decision 53).
 
 **The harness fails on targets the engine does not meet yet, and that is
 deliberate.** Two are missed today: the correction rate is about 45 % against a

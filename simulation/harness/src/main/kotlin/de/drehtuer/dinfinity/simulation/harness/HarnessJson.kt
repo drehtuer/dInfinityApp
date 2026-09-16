@@ -76,7 +76,9 @@ object HarnessJson {
       put("shape", facts.shapeId)
       put("diceCount", facts.diceCount)
       put("dieScale", facts.dieScale)
+      put("length", length(facts.length))
       put("rolls", facts.rolls)
+      put("framePaced", facts.framePaced)
       put("seed", facts.seed)
       put("startedAtEpochMs", facts.startedAtEpochMs)
       put("device", device(facts.device))
@@ -88,11 +90,43 @@ object HarnessJson {
       shapeId = json.text("shape"),
       diceCount = json.wholeNumber("diceCount").toInt(),
       dieScale = json.number("dieScale"),
+      length = readLength(json.obj("length")),
       rolls = json.wholeNumber("rolls").toInt(),
+      framePaced = json.flag("framePaced"),
       seed = json.wholeNumber("seed"),
       device = readDevice(json.obj("device")),
       startedAtEpochMs = json.wholeNumber("startedAtEpochMs"),
     )
+
+  /**
+   * What the run was asked for, written so that a reader can tell a soak from
+   * a thousand rolls without counting the records.
+   *
+   * Tagged by `kind` rather than by which field happens to be there: a
+   * document read by name is a document whose failures name the field, and
+   * "one of these two keys is present" is not a name.
+   */
+  private fun length(length: RunLength): JsonObject =
+    buildJsonObject {
+      when (length) {
+        is RunLength.Rolls -> {
+          put("kind", ROLLS_KIND)
+          put("rolls", length.rolls)
+        }
+
+        is RunLength.Soak -> {
+          put("kind", SOAK_KIND)
+          put("seconds", length.seconds)
+        }
+      }
+    }
+
+  private fun readLength(json: JsonObject): RunLength =
+    when (val kind = json.text("kind")) {
+      ROLLS_KIND -> RunLength.Rolls(json.wholeNumber("rolls").toInt())
+      SOAK_KIND -> RunLength.Soak(json.number("seconds"))
+      else -> throw IllegalArgumentException("the harness document's \"kind\" is $kind, which is no kind of run")
+    }
 
   private fun device(device: DeviceFacts): JsonObject =
     buildJsonObject {
@@ -152,6 +186,9 @@ object HarnessJson {
       put("stackedAtRest", summary.stackedAtRest)
       put("capsReached", summary.capsReached)
       put("deepestDiePenetrationMm", summary.deepestDiePenetrationMm)
+      // Absent, not zero, for a run that measured no frames. A reader of the
+      // file sees the same thing the scorecard says: nothing was measured.
+      summary.frames?.let { put("frames", frames(it)) }
       // Derived, and written anyway: these two are the figures the targets are
       // stated in, and a reader of the file should not have to divide.
       put("correctedShare", summary.correctedShare)
@@ -172,6 +209,23 @@ object HarnessJson {
       stackedAtRest = json.wholeNumber("stackedAtRest"),
       capsReached = json.wholeNumber("capsReached").toInt(),
       deepestDiePenetrationMm = json.number("deepestDiePenetrationMm"),
+      frames = json["frames"]?.let { readFrames(json.obj("frames")) },
+    )
+
+  private fun frames(frames: FrameSummary): JsonObject =
+    buildJsonObject {
+      put("frames", frames.frames)
+      put("droppedSteps", frames.droppedSteps)
+      put("millis", distribution(frames.millis))
+      put("drawn", frames.drawn)
+    }
+
+  private fun readFrames(json: JsonObject): FrameSummary =
+    FrameSummary(
+      frames = json.wholeNumber("frames"),
+      droppedSteps = json.wholeNumber("droppedSteps"),
+      millis = readDistribution(json.obj("millis")),
+      drawn = json.flag("drawn"),
     )
 
   private fun distribution(distribution: Distribution): JsonObject =
@@ -200,13 +254,18 @@ object HarnessJson {
                 put("name", result.name)
                 put("bar", result.bar)
                 put("measured", result.measured)
-                put("passed", result.passed)
+                put("result", result.outcome.token)
               },
             )
           }
         },
       )
     }
+
+  /** The two kinds of run, as they are written into the document. */
+  private const val ROLLS_KIND = "rolls"
+
+  private const val SOAK_KIND = "soak"
 
   private fun readScorecard(json: JsonObject): Scorecard =
     Scorecard(
@@ -216,7 +275,7 @@ object HarnessJson {
           name = row.text("name"),
           bar = row.text("bar"),
           measured = row.text("measured"),
-          passed = row.flag("passed"),
+          outcome = TargetOutcome.ofToken(row.text("result")),
         )
       },
     )
