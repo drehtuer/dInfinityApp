@@ -300,11 +300,9 @@ package and the path into it; what is left is one seam, shared with the dice.
   nothing. Choosing one is remembered with the settings, and the tray is built
   on it the next time it is opened. A choice whose package is no longer
   installed shows the look the tray would really use instead; the setting is
-  left as it was, because the package may be re-installed tomorrow.
-  Thumbnails rendered on the actual box mesh, with a "roll a d20 here"
-  preview, are still to come (`docs/TODO.md`, 4.5) — until then each row
-  carries a swatch of the two colours the look is made of, which is what
-  separates the bundled five.
+  left as it was, because the package may be re-installed tomorrow. Each row
+  carries a **thumbnail** of the look — the real tray, with a d20 standing on
+  it — and its swatch of colours until one arrives ("Thumbnails", below).
 - Saved-roll groups can pin a table ("the Strahd campaign is always played on
   black felt"), and so can an individual saved roll ("Fireball is thrown on
   black felt"). Precedence, most specific first: the saved roll's pin, then
@@ -336,3 +334,86 @@ package and the path into it; what is left is one seam, shared with the dice.
   normal mode would produce. Its `sound` is still used too — nothing is drawn
   there, but the dice are still heard, from the impacts the throw actually made
   (`docs/physics-and-rendering.md`, "Power-saving mode").
+
+## Thumbnails
+
+Every row of the picker is a **picture of its own tray**: the real box mesh
+built from that look, lit the way the roll screen lights it, with a d20
+standing on the floor (`design/dInfinity.dc.html`, option `1u`). It is drawn by
+the renderer that draws the tray — `FilamentDiceRenderer` over `Stage`, the
+same scene a throw builds — because a second way of building it would be a
+second thing to keep in step, and the first time the two drifted the picker
+would be advertising a table the tray does not draw.
+
+It is the first thing in the app to want the renderer on a screen that is not
+the tray, and that is the whole of what is new here
+(`docs/architecture.md`, decision 60).
+
+```mermaid
+flowchart TD
+  row["A row comes on screen<br/>(TablesScreen)"] --> wants["TablesPresenter.wants(pin),<br/>asked once per look"]
+  wants --> seam["TableThumbnails — an interface;<br/>:app joins the two ends"]
+  seam --> post["Posted to the roll thread,<br/>where the engine is (decision 49)"]
+  post --> cache{"Drawn before?"}
+  cache -- "yes" --> give
+  cache -- "no" --> scene["ThumbnailPlan: the tray, the camera,<br/>the die and how it stands"]
+  scene --> draw["A readable swap chain, one frame,<br/>read back, given back"]
+  draw --> check{"All one colour?"}
+  check -- "yes" --> none["Nothing. The swatch stays"]
+  check -- "no" --> give["A Snapshot, kept<br/>(ThumbnailCache)"]
+  give --> main["Onto the main thread,<br/>as a bitmap"]
+```
+
+**What the picture is of.** The tray is built for the *thumbnail's* shape
+rather than for the phone's — a table is its screen, and a thumbnail is a very
+small screen, so the same rule gives it a table of its own proportions. The
+camera is the tray's own, at the far corner and as close as a pinch may ever
+take it (`TrayView.CLOSEST`): framing the whole 240 mm would put a 16 mm die
+across a twentieth of a picture 44 dp wide, which is true and is a picture of
+nothing. Close in, the die is a quarter of the frame, two walls and the rounded
+corner between them are in shot, and a floor texture is at a size somebody can
+see repeat. The die shows its **best** face — the highest value, read from the
+die's own faces rather than from its face count, so a d20 numbered 0–19 shows
+its `19` — and it is the bundled package's d20, or another package's when the
+bundled one is not there. A package with no twenty-sided die at all gets the
+tray by itself, which is still a true picture of the look.
+
+**Nothing about a thumbnail is a roll.** No physics world is opened, no step is
+taken, and the die is placed where the arithmetic says rather than where a
+solver left it. A thumbnail decides nothing, because nobody reads a face off
+one (`docs/architecture.md`, goal 1).
+
+**The swatch is still there, and it is the fallback.** Two colours in a box —
+the floor inside, the wall around it — drawn at exactly the size the picture
+will be, so the list does not jump about as pictures land in it. It is what
+every row shows for the first moment of a visit, and what every row shows for
+ever on:
+
+- a device where the engine will not open or the material will not compile,
+  which is asked once and never again;
+- a device whose driver renders correctly to a screen and hands back an empty
+  buffer when asked to read one. A frame that comes back all one colour is
+  thrown away rather than shown, because a black rectangle in a list of tables
+  is worse than the swatch it replaced;
+- **power-saving mode**, where no Filament engine is created at all. That
+  promise is about the app rather than only about the roll screen, and a
+  picture of a table is not worth breaking it for
+  (`docs/physics-and-rendering.md`, "Power-saving mode").
+
+**What it costs.** A picture is asked for by the row that is on screen rather
+than for the whole list at once, so somebody with thirty installed looks pays
+for the six they can see and for the next six when they scroll to them. Each
+one is a swap chain, a scene and one wait on the GPU, and each is given back
+the moment the frame has been read. The answers are kept — a look's colours
+cannot change without its package being reinstalled — bounded at sixteen, the
+least recently asked-for dropped first, and they outlive a visit to the screen
+because the engine does (`docs/architecture.md`, decision 50). A picture is
+filed under which table it is *and what that table is*, so a photograph removed
+and another made under the same id is drawn afresh rather than shown the first
+one's picture.
+
+**A photo table's thumbnail is its colours, like every other table's.** Nothing
+fills the seam that turns a package's texture into a `Texture` on the GPU yet,
+so a thumbnail shows exactly what the tray shows: `floor_color` and
+`wall_color` (`docs/TODO.md`, Step 3). When that seam is filled, both change
+together, because both go through the same renderer.

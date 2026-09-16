@@ -999,6 +999,24 @@ impact sounds rather than a crash in the middle of a roll.
   `Choreographer` (`docs/architecture.md`, decision 49). `TrayDriver` is that
   thread and the surface it draws to; `TrayLoop` is what it does each frame,
   and is tested on a JVM.
+- **The renderer also draws for a screen that is not the tray.** The table
+  picker shows each look as a picture of the tray it makes, and it is drawn by
+  this renderer, on this thread, with this engine — `TrayThumbnails` posts to
+  `RollThread`, opens a readable swap chain with no surface behind it, builds
+  the scene with `FilamentDiceRenderer` exactly as a throw does, reads one
+  frame back and gives the stage up again. Nothing about it is a roll: no
+  physics world, no step, and the die placed where the arithmetic says. A frame
+  that comes back all one colour is discarded rather than shown, because some
+  drivers render correctly to a screen and hand back an empty buffer when asked
+  to read one — and the picker's swatch is a better answer than a black
+  rectangle (`docs/tables.md`, "Thumbnails"; `docs/architecture.md`,
+  decision 60).
+- `Stage.capture` is the only thing on that seam that waits for the GPU, and no
+  frame of a roll ever calls it. Reading a frame back means blocking until the
+  driver has finished; a still picture drawn once, off screen, can afford it
+  and a tray at 120 Hz cannot. The rows come back the way a driver counts them,
+  from the bottom, and are turned over in plain Kotlin — "is the picture upside
+  down" is not a question worth a phone.
 - `FilamentStage` and `TrayDriver` are the two files excluded from the coverage
   figure — a GPU context and a thread. Neither is excluded from static
   analysis (`.claude/CLAUDE.md`).
@@ -1113,7 +1131,12 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
 
 ## Power-saving mode
 
-- No Filament engine is created at all; the `headless` renderer is used. The
+- No Filament engine is created at all — **on any screen**, not only on this
+  one. The table picker draws its thumbnails on a Filament engine, so in this
+  mode it is given none and falls back to its swatch: the promise is about the
+  app rather than about the tray, and a picture of a table is not worth
+  breaking it for (`docs/tables.md`, "Thumbnails").
+- The `headless` renderer is used. The
   screen goes further and puts **no surface on the screen**, rather than a
   surface nothing draws to: a surface is a buffer the compositor keeps, and
   what this mode claims is that none of it exists. `PowerSavingTray` is the

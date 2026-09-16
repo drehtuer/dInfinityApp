@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.feature.tables
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,10 +23,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.selected
@@ -41,13 +45,14 @@ import de.drehtuer.dinfinity.designer.PhotoTable
  * Which table the dice are thrown onto
  * (`design/dInfinity.dc.html`, option `1u`; `docs/tables.md`).
  *
- * **The swatch is the floor and the wall, in their own colours.** The design
- * asks for a thumbnail rendered on the real box mesh with a "roll a d20 here"
- * preview, and that wants the renderer on a screen that is not the tray —
- * which is Step 4.5's remaining work. Until then the two colours a look is
- * actually made of are drawn directly: for the five bundled looks that is the
- * whole difference between them, and it is honest about being a swatch rather
- * than a picture of a table.
+ * **Each row is a picture of its own tray.** The real box mesh, lit the way the
+ * roll screen lights it, with a d20 standing in the corner of it — drawn by the
+ * renderer that draws the tray, on the thread that owns it, and asked for as
+ * the row comes on screen (`docs/tables.md`, "Thumbnails"). A look whose
+ * picture has not arrived, and every look at all on a device that cannot draw
+ * one, shows the swatch instead: the two colours a look is made of, which is
+ * the whole difference between the bundled five and is honest about being a
+ * swatch rather than a picture of a table.
  *
  * At the foot of the list is **Use a photo**, which is the one row that makes a
  * table rather than choosing one (`docs/tables.md`, "Your own photo"). It is
@@ -116,10 +121,15 @@ private fun Looks(
 ) {
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(TablesTestTags.LIST)) {
     items(state.tables, key = { "${it.pin.setId}/${it.pin.tableId}" }) { choice ->
+      // A picture is asked for when the row it belongs to is composed, which
+      // in a `LazyColumn` is when the player can see it. Asking again costs
+      // nothing (`TablesPresenter.wants`).
+      LaunchedEffect(choice.pin) { presenter.wants(choice.pin) }
       HorizontalDivider()
       TableRow(
         choice = choice,
         chosen = choice.pin == state.chosen,
+        picture = state.thumbnails[choice.pin],
         // Only once there is more than one package with a table. Repeating
         // "Built-in dice" down a list of five says nothing.
         showSet = state.manyPackages,
@@ -140,6 +150,7 @@ private fun Looks(
 private fun TableRow(
   choice: TableChoice,
   chosen: Boolean,
+  picture: ImageBitmap?,
   showSet: Boolean,
   onChoose: () -> Unit,
   onRemove: () -> Unit,
@@ -159,7 +170,7 @@ private fun TableRow(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    Swatch(choice.look)
+    Thumbnail(choice, picture)
     Column(modifier = Modifier.weight(1f)) {
       Text(
         text = choice.look.name,
@@ -219,7 +230,7 @@ private fun UsePhotoRow(
     Box(
       modifier =
         Modifier
-          .size(SWATCH)
+          .size(width = TableThumbnailBox.WIDTH, height = TableThumbnailBox.HEIGHT)
           .clip(RoundedCornerShape(6.dp))
           .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp)),
     )
@@ -343,33 +354,70 @@ private fun Refusal(reasons: List<String>) {
 }
 
 /**
+ * The look, as a picture of the tray it makes — or as its colours until one
+ * arrives (`docs/tables.md`, "Thumbnails").
+ *
+ * The picture is the real box mesh with a d20 standing in the corner of it,
+ * drawn by the renderer that draws the tray. It is not always there: it is
+ * drawn on a graphics engine, off the main thread, and a device that has none
+ * never gets one. So the swatch is not dead code waiting to be deleted — it is
+ * the fallback, and it is drawn at exactly the size the picture will be so the
+ * list does not jump as pictures land in it.
+ *
+ * No content description on either. The row is one node for a screen reader
+ * and already announces the look's name and whether it is chosen; a picture
+ * that repeats the name is a second thing to listen to for no information
+ * (`docs/architecture.md`, "Accessibility").
+ */
+@Composable
+private fun Thumbnail(
+  choice: TableChoice,
+  picture: ImageBitmap?,
+) {
+  val shape = RoundedCornerShape(6.dp)
+  val box = Modifier.size(width = TableThumbnailBox.WIDTH, height = TableThumbnailBox.HEIGHT).clip(shape)
+  if (picture == null) {
+    Swatch(choice.look, box)
+    return
+  }
+  Image(
+    bitmap = picture,
+    contentDescription = null,
+    contentScale = ContentScale.Crop,
+    modifier = box.testTag(TablesTestTags.thumbnailOf(choice.pin)),
+  )
+}
+
+/**
  * The floor in the middle, the wall around it — a tray seen from above.
  *
  * Two colours rather than one, because a look is two: `oak` and `dark-glass`
  * differ in the wall as much as the floor, and a single square would make
- * several of the bundled five look alike.
+ * several of the bundled five look alike. It is honest about being a swatch
+ * rather than a picture of a table, which is why it is what a device that
+ * cannot draw the picture is left with.
  */
 @Composable
-private fun Swatch(look: TableLook) {
+private fun Swatch(
+  look: TableLook,
+  modifier: Modifier = Modifier,
+) {
   Box(
-    modifier =
-      Modifier
-        .size(SWATCH)
-        .clip(RoundedCornerShape(6.dp))
-        .background(Color(look.wallColorArgb)),
+    modifier = modifier.background(Color(look.wallColorArgb)),
     contentAlignment = Alignment.Center,
   ) {
     Box(
       modifier =
         Modifier
-          .size(SWATCH - WALL * 2)
-          .clip(RoundedCornerShape(3.dp))
+          .size(
+            width = TableThumbnailBox.WIDTH - WALL * 2,
+            height = TableThumbnailBox.HEIGHT - WALL * 2,
+          ).clip(RoundedCornerShape(3.dp))
           .background(Color(look.floorColorArgb)),
     )
   }
 }
 
-private val SWATCH = 44.dp
 private val WALL = 7.dp
 
 /** What the tests reach for. */
@@ -392,4 +440,6 @@ object TablesTestTags {
   fun chosenOf(pin: TablePin): String = "tables:chosen:${pin.setId}/${pin.tableId}"
 
   fun removeOf(pin: TablePin): String = "tables:remove:${pin.setId}/${pin.tableId}"
+
+  fun thumbnailOf(pin: TablePin): String = "tables:thumbnail:${pin.setId}/${pin.tableId}"
 }

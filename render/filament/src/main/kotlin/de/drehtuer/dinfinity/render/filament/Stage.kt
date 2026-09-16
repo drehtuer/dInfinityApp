@@ -49,6 +49,22 @@ interface Stage : AutoCloseable {
   /** Draws one frame. False when the renderer asked to skip it. */
   fun draw(): Boolean
 
+  /**
+   * Draws one frame and hands back its pixels, or null where this stage cannot
+   * give them.
+   *
+   * Reading a frame back means waiting for the GPU, which nothing watching a
+   * roll may ever do — it is how a still picture drawn off screen becomes
+   * something a screen that is not the tray can show ([TrayThumbnails],
+   * `docs/tables.md`, "Thumbnails"), and how a device test can ask whether
+   * anything was drawn at all.
+   *
+   * Null rather than an exception for a stage that has none: a driver that
+   * renders correctly and returns an empty buffer is a thing that exists, and
+   * what a caller does about it is show something else.
+   */
+  fun capture(): Snapshot? = null
+
   /** Throws away everything one roll put in the scene, and nothing else. */
   fun clear()
 
