@@ -122,7 +122,43 @@ What is below is what it does not have yet.
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] **Wire the one-finger touch to a hand re-throw.** The two decisions underneath it are built and tested: `TrayPick` (`render/filament`) says which die a finger is on, and `PickUp` (`core/notation`) says which dice a hand may go near — a group carrying `!` or `r n` offers none, because a die another die was thrown because of cannot be thrown again without the roll holding a die nothing asks for. The throw itself is the one an explosion already makes (`ThrowSpec.among`), so there is no second path to a number to build. What is missing is not code: it is **what the history says about a roll a die was thrown again in**, under "Open questions" below. Until that is answered the gesture stays unspent (`docs/physics-and-rendering.md`, "Picking a die up and throwing it again")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
-- [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
+- [ ] **A set's own dice cannot be picked**, and the two ways out are now costed
+      rather than named. Plain notation spells `dN`, `d%` and `dF`, so
+      `skull-d6` has nothing a formula could carry, and `DicePicker.offeredBy`
+      filters the row down to `StandardDieIds` for exactly that reason — a row
+      that added a die the formula cannot name would be a row whose taps
+      disappear.
+
+      **Give notation a spelling for it.** Decision 31 refused this because
+      `brass:skull-d6kh1` has no unambiguous reading — a die id and a modifier
+      are made of the same characters. A *delimited* form does not have that
+      problem: `3{skull-d6}kh1` closes the id before the modifiers start, and
+      braces are the one bracket the grammar does not already use (`[` and `]`
+      are the label). It also survives decision 31's second objection, which is
+      the real one: the parser may not consult installed sets, because the field
+      re-validates on every keystroke on a thread that has never seen storage —
+      and a braced id is *lexed* without knowing whether it exists, with
+      resolution left to `DieResolver`, which already asks the catalogue.
+
+      What it costs is that notation grows a second way to name a die, and
+      notation is the specification: the grammar, `FormulaParser`,
+      `NotationReference` (whose every example is parsed by a test), the
+      breakdown, the history, saved rolls and every collection file anybody has
+      already written. A formula is the roll everywhere downstream, so the new
+      spelling appears in all of them for ever.
+
+      **Or stop picked dice going through the text.** This is what decision 31
+      says is already true — "picked dice build the same `RollPlan` as typed
+      ones" — and it is not: `RollMachine.add` is `type(DicePicker.add(text,
+      die))`, so every tap is an edit to the formula. Making a pick a thing of
+      its own means a roll has two sources of truth, the text and the picks,
+      which is the arrangement the current design exists to avoid — and it has
+      to answer what happens when somebody types over a formula that has picks
+      attached to it.
+
+      Neither is small and neither is obviously right, so this is a decision
+      before it is a change. The first is contained but permanent; the second is
+      invisible to the player but reaches everything that reads a formula
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
