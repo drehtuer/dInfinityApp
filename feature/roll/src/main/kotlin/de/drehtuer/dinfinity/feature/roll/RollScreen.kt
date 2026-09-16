@@ -30,7 +30,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
-import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
 
@@ -103,7 +102,21 @@ fun RollScreen(
   ShakeToRoll(presenter, enabled = shakeToRoll)
   KeepTheScreenAwake()
   LockTheOrientation()
-  GiveTheTrayUpOnTheWayOut(presenter.tray)
+
+  // Leaving the screen gives up the physics world and the scene. The roll does
+  // not survive it and is not meant to: a throw the player walked away from
+  // never landed, so there is nothing to score. The thread and the Filament
+  // engine underneath are not given up with them — rebuilding those is a black
+  // tray on the way back (`docs/architecture.md`, decision 50).
+  //
+  // Here rather than in [DiceTray], which is where it used to be. That
+  // composable is on the screen only when there is something to draw, and a
+  // power-saving tray draws nothing — so in that mode nothing closed the tray
+  // at all, and a roll the player walked out on ran to the end and was written
+  // into the history for a screen nobody was on (`docs/TODO.md`, Step 5.3).
+  DisposableEffect(presenter.tray) {
+    onDispose { presenter.tray.close() }
+  }
 
   Box(
     modifier =
@@ -331,29 +344,6 @@ private fun KeepTheScreenAwake() {
   DisposableEffect(view) {
     view.keepScreenOn = true
     onDispose { view.keepScreenOn = false }
-  }
-}
-
-/**
- * Leaving the screen gives up the physics world and the scene.
- *
- * The roll does not survive it and is not meant to: a throw the player walked
- * away from never landed, so there is nothing to score. The thread and the
- * Filament engine underneath are not given up with them — rebuilding those is a
- * black tray on the way back (`docs/architecture.md`, decision 50).
- *
- * **Here rather than in [DiceTray], which is where it used to be.** That
- * composable is on the screen only when there is something to draw, and a
- * power-saving tray draws nothing — so in that mode nothing closed the tray at
- * all. A roll the player walked out on ran to the end on its worker thread,
- * reported, and was written into the history for a screen nobody was on, which
- * is the one thing `docs/physics-and-rendering.md` says a walked-away-from
- * throw must not do (`docs/TODO.md`, Step 5.3).
- */
-@Composable
-private fun GiveTheTrayUpOnTheWayOut(tray: Tray) {
-  DisposableEffect(tray) {
-    onDispose { tray.close() }
   }
 }
 
