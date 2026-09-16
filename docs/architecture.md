@@ -657,6 +657,15 @@ afterwards. `RollPresenter` remembers the look it last announced and calls
 `Tray.table` again only when it actually changes — a scene is rebuilt on that
 call, and rebuilding one per keystroke is not a thing to do by accident.
 
+The picker itself now draws, which nothing but the roll screen used to.
+`TablesPresenter` takes a `TableThumbnails`, an interface with no graphics type
+in it; `:app`'s `RenderedTableThumbnails` joins it to `render/filament`'s
+`TrayThumbnails`, which posts onto the roll thread and draws with the roll
+screen's engine. A row asks as it comes on screen, so a `LazyColumn` pays for
+what fits rather than for everything installed, and a look that has no picture
+— not yet, or not on this device, or not in power-saving mode — keeps the
+swatch (decision 60).
+
 ### Making a table out of a photograph
 
 The one screen that *adds* to a package rather than reading one
@@ -1075,6 +1084,212 @@ renderer appearing or vanishing under a roll in progress is not a setting
 taking effect — it is a bug (`docs/physics-and-rendering.md`, "Power-saving
 mode").
 
+## Accessibility
+
+The rule the whole interface follows: **nothing is said by a colour alone, and
+nothing that is drawn is silent.** It is the same rule the result sheet already
+made about dice — "anything else a die has to say about itself is a note in the
+breakdown, not a colour nobody can decode" — applied to every screen.
+
+### The decision, then the drawing
+
+What a screen reader says is worked out in plain Kotlin and only then looked
+up, for the same reason the bar heights are: a `Canvas` draw lambda and a
+semantics block are places a test cannot read, and the part that can be *wrong*
+is the words, not the call that attaches them.
+
+| What it decides | Where |
+| --- | --- |
+| which of three a landed die is — kept, highest face, dropped | `feature/roll`'s `DieReading` |
+| what the tray has on it, per `RollState` | `feature/roll`'s `TrayReading` |
+| how many dice are in each state on the debug plan | `feature/roll`'s `TrayPlan.tally` |
+| the shape of the distribution: how many totals, their range, the likeliest, what is marked | `feature/graph`'s `ChartReading` |
+| what the observed-against-expected chart claims | `feature/stats`' `TotalsReading` |
+| whether two colours can be told apart, in WCAG's arithmetic | `core/model`'s `Contrast` |
+
+The colour and the words then come from *one* answer rather than from two
+`when`s that could drift: `ResultSheet` asks `DieReading` for both the tint and
+the label, so a die cannot be painted as a natural maximum and announced as an
+ordinary one.
+
+### What was carrying meaning in colour alone, and what it says now
+
+| Where | The colour | The second channel |
+| --- | --- | --- |
+| the result sheet | a natural maximum in the accent, a dropped die struck through | "18, highest face", "1, dropped" |
+| the outcome graph | the rolled total marked in the accent | the chart's own description, and the line under it that names the total |
+| the statistics histogram | the observed bar over the fair line | "Face 2 came up 3 times, 75.0 %; a fair die, 50.0 %" |
+| the saved-roll chart | the exact distribution in the error colour across the ink bars | how many totals, their range, and how many ran ahead of the distribution |
+| the history | a total with a natural maximum in the accent | "20, with a natural maximum"; the dropped line says it is dropped |
+| the cuts, orders and table rows | the chosen one in the accent and in bold | `selected` in the semantics tree |
+| the set details | a source you can open printed in the accent | a click label, "Open in a browser" |
+| the menu | section names small, capitalised and in the accent | `heading()`, so the menu is jumped through by section |
+| the debug overlay's tray plan | three tints, two of them red | "Tray plan: 3 dice, 1 at rest, 1 moving, 1 stacked" |
+
+### Things that are drawn
+
+Four surfaces have nothing under them for a screen reader to find, and each
+says what it contains rather than nothing:
+
+- **the tray** (`AndroidExternalSurface`) — how many dice, and what they came
+  to. Never *which faces*: those are on the result sheet, die by die, and
+  saying them twice makes every throw two announcements of the same thing;
+- **the outcome graph** — the worst case of the lot, because the shape of the
+  distribution is the whole purpose of that screen. Not every bar: a `d100` has
+  a hundred, and a hundred spoken percentages is a minute nobody sits through;
+- **the face histogram** — a row per value, each saying its own share and the
+  fair one, because "is this die cursed" is a comparison and a count on its own
+  is not one;
+- **the download bar** — a bar is a picture of a number, and "downloading" with
+  no idea how far is the state people give up in.
+
+A control drawn as one glyph is labelled and given a target: the menu button,
+the export mark, a group's **…**, the back arrow out of a die. Rows that are
+one fact are merged with `mergeDescendants` so they arrive as one
+announcement rather than three.
+
+### Touch targets
+
+48 dp, which is Android's own figure and WCAG 2.2's success criterion 2.5.8 at
+level AA. The dice picker row was built to it from the start (`PickerRow`'s
+`TARGET`); the controls that needed saying so afterwards are the ones whose
+label is a single character, because a button sized to its text is a button the
+size of one glyph.
+
+### Contrast
+
+Measured rather than looked at. `Contrast` is WCAG 2.2's arithmetic — relative
+luminance, the ratio between two colours, and compositing a translucent one
+over its ground — and it is `core/model`'s because it is arithmetic and nothing
+else: no Android type, no composition, no screen. `AccentColorTest` and
+`ModernistContrastTest` both measure with it, so the palette's two halves
+cannot come to disagree about the same colour.
+
+The bars are 4.5:1 for body copy, 3:1 for large text and for a control's own
+boundary.
+
+| Pair | Light | Dark |
+| --- | --- | --- |
+| text on background | 14.86:1 | 14.86:1 |
+| text on surface | 13.70:1 | 12.60:1 |
+| the accent on background | 3.76:1 | 3.95:1 |
+| the accent on surface | 3.47:1 | 3.35:1 |
+| accent body copy (`accentOnLightText`) on background | 6.41:1 | — |
+| a filled button's label on its own accent | **3.76:1** | **3.95:1** |
+| the divider at 40 % of the text colour | **2.41:1** | 3.51:1 |
+
+The two in bold are short of their bar, and both would need the palette itself
+to change — which is a design decision and not a test's to make. They are
+written down in `docs/TODO.md` under "Open questions" with these numbers, and
+`ModernistContrastTest` holds them at the measured value so a palette edit
+cannot deepen the shortfall without failing.
+
+Every accent in the palette clears 3:1 against both grounds, and every pressed
+step clears 4.5:1 on the light one, because that step is what body copy in the
+accent uses — that is what `AccentColorTest` has always said and now says with
+the shared arithmetic.
+
+### What a test cannot answer
+
+The labels, the sizes and the ratios are asserted in Robolectric and on the
+JVM. What is left is a person with a phone: whether the reading *order* through
+a screen is sensible, whether the announcements are the right length arriving
+one after another, and whether the tray is comprehensible with the screen
+curtain on. That is the one line left in `docs/TODO.md`, Step 6, and it is left
+there honestly rather than ticked.
+
+## Text a person reads
+
+Every word the app says is a **string resource**, in the `res/values/strings.xml`
+of the module that says it. v1 ships English and only English, and that is a
+decision about what is *in the APK* rather than about what the app could speak:
+nothing in the code stands between here and a `values-de/` that somebody writes.
+A caption typed into Kotlin is exactly such a thing, so there is a check that
+stops the next one.
+
+### Where the line is drawn
+
+Not every string is text. The rule is **words a person reads**, and the three
+questions that settle it are: does it reach the screen or TalkBack, does it have
+words in it, and are those words the app's own?
+
+| A resource | Stays in the code |
+| --- | --- |
+| a caption, a heading, a button's label | a test tag — `"saved:new"` is a handle, and no one reads it |
+| a `contentDescription` or `stateDescription` — TalkBack reads it out loud | a `require`/`check`/`error` message, which reaches a crash report and never a screen |
+| a menu row's name and the line under it | a TOML or JSON key, a file name, an extension, a MIME type, a URL |
+| a sentence saying why something was refused, where the app wrote that sentence | a navigation route or a query argument: `"savedstats"` is an address |
+| a count followed by a noun, as `<plurals>` — never as a string with a number in it | a formula, a die id, `"d20"`: dice notation is the same in every language |
+| | a glyph with no words in it — `"←"`, `"…"`, `"★"`, `"●"`, an emoji somebody picked as an icon. Where a mark carries meaning it is given a spoken label, and *that* is a resource |
+| | the shape a number is printed in — `"%.1f"`, `"%.2f"`, `"0 %"`, the `"—"` that stands for no value. `String.format` already follows the device's locale for the decimal point |
+
+A string that borrows its words rather than saying them is not text either:
+`"$groupName ▾"` is a marker after a name the player typed.
+
+### What holds it
+
+Android Lint has the rule already — `HardcodedText` — and it cannot help here.
+It reads layout XML, and this app has no layouts: every screen is Compose, so
+`Text("Roll")` is an ordinary function call no resource-aware check ever sees.
+It is switched on all the same, by name in both convention plugins, for the
+XML there is.
+
+The check that covers Kotlin is **`verifyTextIsAResource`**, registered by
+`dinfinity.quality` and so applied to every module, wired into `check`. It
+scans each module's `src/main/kotlin` for a string literal handed to `Text(`,
+`text =`, `contentDescription =`, `stateDescription =`, `placeholder =`,
+`label =`, `supportingText =` or `title =`, and fails the build when that
+literal has words of its own in it. Its scan is `TextIsAResource` in
+`build-logic`, and it has unit tests of its own — a check nobody tested is a
+check that passes everything.
+
+```mermaid
+flowchart LR
+  subgraph resources["Modules that can hold resources"]
+    app["app/"]
+    ui["ui/common"]
+    feature["feature/*"]
+  end
+  subgraph plain["Plain Kotlin: no res/, by design"]
+    notation["core/notation<br/>NotationReference"]
+    install["dicesets/install<br/>ValidationMessage"]
+  end
+  strings[("res/values/strings.xml<br/>tools:locale=en")]
+  app --> strings
+  ui --> strings
+  feature --> strings
+  notation -. "English in code,<br/>exempted by name" .-> screen
+  install -. "English in code,<br/>exempted by name" .-> screen
+  strings --> screen["What the player reads"]
+```
+
+The two dotted arrows are the gap, and it is named rather than hidden. Both
+modules are plain Kotlin on purpose — the notation reference sits beside the
+parser so one can be tested against the other, and a validator that reads a
+stranger's file may not depend on Android — so neither can hold a resource, and
+both write English that ends up on a screen. Their files are listed in their own
+build scripts with the reason beside them, the same way the coverage exclusions
+are, so the gap is a line in a diff. Closing it means giving each message a
+typed reason the screen phrases, which is a design change rather than a string
+move; it is recorded in `docs/TODO.md` under "Open questions".
+
+The same is true of the sentences `app/`'s download and file-reading helpers
+write — `PackageFileReading`, `CollectionFileReading`, `PackageDownload`,
+`CollectionDownload`, `CollectionInRepository`, `TablePhotoLibrary` — and of the
+two presenters that say a build cannot reach the network. They are halves of the
+same pipeline: the other half of every one of those sentences comes from
+`dicesets/install` or `core/collection`, and half a translated message reads
+worse than none.
+
+### The default locale
+
+`values/` is English and says so: every `strings.xml` carries
+`tools:locale="en"` on its `<resources>`, which is what tells Lint and any
+translation tool what they would be translating *from*. The application module
+sets `localeFilters += "en"`, so the seventy-odd languages AndroidX and Material
+ship translations for do not travel in an APK that speaks one. Adding a language
+is the same line as adding the folder.
+
 ## Data flow of a roll
 
 ```mermaid
@@ -1152,6 +1367,12 @@ to re-run (decision 13).
   reach the roll (`docs/physics-and-rendering.md`, "Impacts, haptics and
   sound").
 - **IO dispatcher:** database, dice set installation.
+- **The table picker's thumbnails are drawn on the roll thread too**, for the
+  same reason and with the same engine: one picture per installed look, each in
+  a swap chain made and given back inside a single post, with the frame read
+  back off the GPU. It is the one place in the app that *waits* for a draw, and
+  it is a screen that is not the tray (decision 60, `docs/tables.md`,
+  "Thumbnails").
 - **Texture decoding happens on the roll thread**, the first time a die asks
   for an atlas the engine has not uploaded yet, because a Filament texture may
   only be made on the thread that made the engine. It is bounded — one decode
@@ -1258,3 +1479,6 @@ the archives an install is working through, and those came from a stranger.
 | 57 | A harness target that nothing was measured for is a third outcome — not measured — rather than a pass, and the figure behind it is absent from the document rather than zero | Step 5.7's bar is about *drawing*, and a headless run draws nothing. The two ways to score it with two outcomes are both wrong: "pass" is the harness claiming a frame rate nobody saw, and "FAIL" stops every run that was never about frames. The third outcome is also what makes the *partial* measurement sayable — a paced run times the simulation half of a frame, prints it, and says it is a half — and it keeps the verdict line honest, because a run that passed with a gap in it says how big the gap was. Zero would be worse than either: it is not a missing measurement but the best one there could be, and it would score as such |
 | 58 | A die's artwork is addressed by a key of package and path, decoded outside the renderer, and cached on the Filament engine | Three separate things forced the shape. A `texture` is relative to *its own* set's folder, so the path alone names nothing — two packages may both ship `textures/d20.png` — and the renderer therefore needs the set id, which is why `DieAtRest` now carries one and why it is not defaulted: a die drawn against the wrong package wears somebody else's picture, and that is not a thing to get by forgetting an argument. `render/filament` may not read a disk, so the key crosses `(String) -> Texture?` and `:app` joins it to `dicesets/install` — the same seam, and the same reason, as decisions 40 and 47. And a `Texture` is a native handle, so *where it is cached* is the whole of whether it leaks: a decoded atlas belongs to a package, which outlives every surface and every visit, so it is held beside the material compiled on the device (decision 50) and given back with it. The key's separator is `::` rather than `/` so that a path arriving with no package in front of it — which is what a table look's floor texture is today — is refused instead of being read as a package called `textures` |
 | 59 | Every die is printed, and its artwork is composited over the printing by alpha | `docs/dice-sets.md` has always promised that an atlas may leave a cell transparent and the label shows through, and the old material could not keep it: `baseColor *= atlas` over a transparent pixel is black, not the die, and the printed field was suppressed for any die with a `texture` at all. Deciding it per *cell* instead would mean the renderer knowing which cells came out empty, which is a fact about pixels that live on the far side of `Stage` — so it is decided per *pixel*, in the material, where the alpha already is. The cost is a distance field built for dice that may not need one, which is cached per die and is eighty kilobytes; what it buys is that a die with no artwork and a die whose artwork covers every face are the same code path with different alpha, rather than two. Where the artwork is opaque the result is the old multiply exactly, which is what keeps a table's floor tinted by its floor colour |
+| 60 | The table picker's thumbnails are drawn by the roll screen's renderer, on the roll screen's thread and engine; everything that decides what one is a picture of is plain Kotlin | It is the first thing in the app to want the renderer somewhere that is not the tray, and there were three ways to get it and only one that keeps the promises already made. A private engine on the main thread is simply wrong — Filament takes calls only from the thread that made the engine (decision 49). A second engine on a second thread works and pays, again, the cost decision 50 exists to avoid: the dice material is compiled on the device for the driver that is actually there (decision 46) and takes long enough to watch, so a second one is that compile twice over and two graphics contexts held for one app. `RollThread` already outlives every visit to every screen and already has one engine on it, and a handler serialises what reaches it, so the picker posts. What a thumbnail owns is a swap chain and a scene, and both are given back before the post returns. The other half is decision 40 and 47 applied again: how big a picture is, what tray it is a tray of, where the camera stands, which face of the die is up, how high that leaves the die sitting, which looks are kept and which are dropped are all arithmetic and judgement, and all of them fail as *a slightly odd picture* rather than as an error — so all of them are `ThumbnailPlan` and `ThumbnailCache`, with JVM tests, and only the draw call and the buffer of pixels are behind `Stage`. The seam back out is the same one `TablePhotos` uses: `feature/tables` asks for a picture of a look and cannot name an engine, `render/filament` draws a frame and cannot name a bitmap, and `:app` joins them. The fallback is the screen's existing swatch, kept for exactly that — an engine that will not open, a driver that will not read a frame back, and power-saving mode, which promises that no engine is created *at all* |
+| 61 | Every word a screen says is a string resource, and a check of the project's own — not Android Lint's — is what keeps it that way | Lint has the rule and cannot apply it: `HardcodedText` reads layout XML, and there is no layout in this app to read. Left at that, "nothing prevents a translation" would be a claim maintained by whoever last remembered it, which is the kind of rule that decays quietly — a caption typed into a `Text(` is invisible in review and invisible in CI. So the rule is enforced by `verifyTextIsAResource`, which reads what a composable is *handed*. It is a heuristic over source text rather than a type-resolved analysis, and that shapes what it asks: only the handful of call sites that put words on a screen, and only literals with words of their own in them, so that a test tag, a route, a `require` message and `"%.1f"` are all left alone. The gaps are the two plain-Kotlin modules that write English on purpose — the notation reference beside its parser, and the validator that may not depend on Android — and they are exempted by file name in their own build scripts rather than by a directory nothing looks in, so the hole stays visible and small |
+| 62 | Which die a finger is on is arithmetic in `render/filament`, the inverse of the camera; whether that die may be thrown again is arithmetic in `core/notation`, over the breakdown | The same line decisions 40 and 47 draw, applied to the only gesture the tray had left. A touch point becomes a die by a ray through the frustum `TrayCamera` framed, against the ball around each die at the scale the capacity rule threw it — so it belongs beside that camera, where a JVM test can project a die through the picture it was drawn in and ask for it back, and not inside a `pointerInput` lambda where the only test is a person tapping a phone and the only symptom is a die they did not touch. The second half is a different question and deliberately not in the same place: *may* a die be thrown again is about the **formula**, not about the physics or the picture. A die that another die was thrown because of is spent — `8d6!` threw a seventh die because the sixth came up six — and throwing it again would leave the roll holding a die nothing asks for, which can only be resolved by taking a die off the table or keeping one whose reason has gone. Both are the app moving dice behind the player, which is what the whole stacking ladder exists to avoid. So the rule sits beside `GroupRoller`, which is what builds the chains, and it is coarse on purpose: a group carrying `!` or `r n` offers nothing at all rather than a per-die guess reconstructed from a flat list the chains were flattened out of. A die it refuses is a die the player throws again by pressing **Roll**; a die it wrongly allowed would be a roll the app had rearranged |

@@ -848,6 +848,7 @@ and all of these run as part of `check`:
 ./gradlew verifyDocsLinks       # every relative Markdown link resolves
 ./gradlew verifySourcesTracked  # git ignores no Kotlin source file
 ./gradlew verifyCoverage        # function and branch coverage are above the floor
+./gradlew verifyTextIsAResource # no Kotlin literal reaches a screen as words
 ```
 
 `verifySourcesTracked` exists because `build/` in `.gitignore` matches any
@@ -858,6 +859,13 @@ while every machine that already had them kept building fine.
 `verifyDocsLinks` checks relative links only. External URLs need the network,
 and a link checker that fails without it turns an offline build into a broken
 one.
+
+`verifyTextIsAResource` is registered per module by `dinfinity.quality`, so it
+runs where the sources are and no module can forget it. It stands in for Android
+Lint's `HardcodedText`, which is enabled but can only read layout XML — and every
+screen here is Compose (`docs/architecture.md`, "Text a person reads"). The scan
+behind it is `TextIsAResource` in `build-logic`, and it has unit tests there,
+which `check` runs along with the convention plugins' linter.
 
 `verifyCoverage` reads the JaCoCo reports and holds **function** and **branch**
 coverage to the floors in `gradle.properties`:
@@ -970,10 +978,12 @@ even if it would help.
 ## Linting the convention plugins
 
 `build-logic` is linted by the ktlint **CLI**, not its Gradle plugin, and
-`check` reaches into that build to run it:
+`check` reaches into that build to run it — along with its own unit tests, which
+cover the one piece of real logic the convention plugins carry:
 
 ```sh
 ./gradlew -p build-logic ktlintCheckConventions   # or ktlintFormatConventions
+./gradlew -p build-logic test                     # the scan behind verifyTextIsAResource
 ```
 
 The Gradle plugin lints whole source sets, and Gradle generates its plugin

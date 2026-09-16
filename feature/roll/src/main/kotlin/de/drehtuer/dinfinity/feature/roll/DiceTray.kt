@@ -8,6 +8,8 @@ import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -28,12 +30,18 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
  * somewhere to draw, this big" and, later, "there is not" — the roll thread
  * does the rest, and carries on rolling through both
  * (`docs/physics-and-rendering.md`).
+ *
+ * @param describing what is on the tray, for a screen reader. There is nothing
+ *   in the view hierarchy under a `Surface`, so without this the app's home
+ *   screen is a rectangle with nothing in it at all. What the words are is
+ *   [TrayReading]'s (`docs/architecture.md`, "Accessibility").
  */
 @Composable
 fun DiceTray(
   driver: Tray,
   geometry: TableGeometry,
   modifier: Modifier = Modifier,
+  describing: String = "",
 ) {
   // Keyed on the driver so that a new one gets a surface of its own. `onSurface`
   // fires when the surface is *created*, not when this composable's arguments
@@ -42,7 +50,13 @@ fun DiceTray(
   // it. Swapping one mid-visit is a bug in the caller, and this is what stops
   // that bug being invisible.
   key(driver) {
-    AndroidExternalSurface(modifier = modifier.testTag(RollTestTags.TRAY).lookAround(driver, geometry)) {
+    AndroidExternalSurface(
+      modifier =
+        modifier
+          .testTag(RollTestTags.TRAY)
+          .semantics { contentDescription = describing }
+          .lookAround(driver, geometry),
+    ) {
       onSurface { surface, width, height ->
         driver.surfaceAvailable(surface, width, height)
 
@@ -89,6 +103,13 @@ fun DiceTray(
  *
  * One finger is left alone. It is reserved for picking a die up, and a tap on
  * the tray deliberately does not roll (`docs/physics-and-rendering.md`).
+ *
+ * The arithmetic under that gesture is built and tested — `TrayPick` says
+ * which die a finger is on and `PickUp` says which dice a hand may go near —
+ * and it is still unspent here, because what a re-throw does to the *record*
+ * of a roll is a decision nobody has taken (`docs/TODO.md`, "Open questions").
+ * Wiring it to something else in the meantime would spend the only gesture the
+ * tray has left on whatever came along first.
  */
 private fun Modifier.lookAround(
   driver: Tray,

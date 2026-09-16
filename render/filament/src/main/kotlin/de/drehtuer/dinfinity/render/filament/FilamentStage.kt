@@ -240,6 +240,23 @@ class FilamentStage(
   /** A buffer the right size for [draw] to copy a frame into. */
   fun pixelBuffer(): ByteBuffer = ByteBuffer.allocateDirect(width * height * PIXEL_BYTES).order(ByteOrder.nativeOrder())
 
+  /**
+   * One frame, drawn and read back off the GPU.
+   *
+   * The rows arrive the way a graphics driver counts them — from the bottom —
+   * and are turned over by [Snapshot.fromBottomUp], which is plain Kotlin
+   * because "is the picture upside down" is not a question worth needing a
+   * phone for.
+   */
+  override fun capture(): Snapshot? {
+    val buffer = pixelBuffer()
+    if (!draw(buffer)) return null
+    val bytes = ByteArray(buffer.capacity())
+    buffer.rewind()
+    buffer.get(bytes)
+    return Snapshot.fromBottomUp(width, height, bytes)
+  }
+
   /** The engine, for the two callers that have to reach it: textures and transforms. */
   fun engine(): Engine = engine
 

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
@@ -27,6 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -291,19 +294,25 @@ private fun Entry(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
+      // A roll with a natural maximum in it prints in the accent, which is the
+      // one thing a player scanning their history is looking for — and a
+      // colour is the one thing a screen reader never gets. So it is said
+      // (`docs/architecture.md`, "Accessibility").
+      val natural = stringResource(R.string.history_natural_max, roll.total)
       Text(
         text = roll.total.toString(),
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        // A roll with a natural maximum in it prints in the accent, which is
-        // the one thing a player scanning their history is looking for.
         color =
           if (roll.hasNaturalMax) {
             MaterialTheme.colorScheme.primary
           } else {
             MaterialTheme.colorScheme.onBackground
           },
-        modifier = Modifier.testTag(HistoryTestTags.totalOf(roll.id)),
+        modifier =
+          Modifier
+            .then(if (roll.hasNaturalMax) Modifier.semantics { contentDescription = natural } else Modifier)
+            .testTag(HistoryTestTags.totalOf(roll.id)),
       )
     }
     if (open) Groups(roll)
@@ -398,11 +407,16 @@ private fun Group(group: StoredGroup) {
   // to see the 1 that `4d6dl1` threw away (`docs/dice-notation.md`).
   val dropped = group.dice.filterNot(StoredDie::kept)
   if (dropped.isNotEmpty()) {
+    val labels = dropped.joinToString(" ") { it.label }
+    // A strike is drawn, not spoken. Without this the line reads as a second
+    // handful of dice that counted.
+    val said = stringResource(R.string.history_dropped, labels)
     Text(
-      text = dropped.joinToString(" ") { it.label },
+      text = labels,
       style = MaterialTheme.typography.bodySmall,
       textDecoration = TextDecoration.LineThrough,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.semantics { contentDescription = said },
     )
   }
   // Which set actually supplied the dice, when it was not the one asked for.
@@ -490,7 +504,16 @@ private fun Choice(
   tag: String,
   onChoose: () -> Unit,
 ) {
-  TextButton(onClick = onChoose, modifier = Modifier.testTag(tag)) {
+  TextButton(
+    onClick = onChoose,
+    modifier =
+      Modifier
+        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
+        // The accent and the bold are marks only an eye reads; this is the
+        // same fact in the semantics tree.
+        .semantics { selected = chosen }
+        .testTag(tag),
+  ) {
     Text(
       text = label,
       style = MaterialTheme.typography.labelLarge,

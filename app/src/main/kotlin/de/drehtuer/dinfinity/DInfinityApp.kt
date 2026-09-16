@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
@@ -818,6 +819,7 @@ internal fun rollRoute(formula: String): String =
  * the menu again. A menu you have to press back through twice is a menu that
  * feels like a detour (`design/dInfinity.dc.html`, option 1q).
  */
+@Composable
 private fun menuSections(
   navController: NavHostController,
   developerTools: Boolean,
@@ -833,8 +835,11 @@ private fun menuSections(
         .map { destination ->
           MenuEntry(
             id = destination.route,
-            title = destination.title,
-            description = destination.description,
+            title = stringResource(destination.title),
+            // Every screen the menu lists has a line; the ones that do not are
+            // exactly the ones `inTheMenu` leaves out, and `DestinationTest`
+            // holds both halves of that to each other.
+            description = destination.description?.let { stringResource(it) }.orEmpty(),
             open = {
               navController.navigate(destination.route) {
                 popUpTo(Destination.Menu.route) { inclusive = true }
@@ -845,7 +850,7 @@ private fun menuSections(
             },
           )
         }
-    if (entries.isEmpty()) null else MenuSection(name = group.title, entries = entries)
+    if (entries.isEmpty()) null else MenuSection(name = stringResource(group.title), entries = entries)
   }
 
 /**
@@ -899,12 +904,12 @@ internal fun PlaceholderScreen(
       modifier = Modifier.padding(ModernistTokens.Space.x6),
     ) {
       Text(
-        text = destination.title,
+        text = stringResource(destination.title),
         style = MaterialTheme.typography.headlineMedium,
         color = colors.text,
       )
       Text(
-        text = "Not built yet — see docs/TODO.md",
+        text = stringResource(R.string.screen_not_built),
         style = MaterialTheme.typography.labelSmall,
         color = colors.accent,
         modifier = Modifier.testTag(notBuiltTag(destination)),

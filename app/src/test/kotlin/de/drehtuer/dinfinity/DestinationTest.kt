@@ -1,14 +1,27 @@
 package de.drehtuer.dinfinity
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.MenuGroup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+/**
+ * Robolectric because a destination's name and line are now resources rather
+ * than literals: what has to be true is that each one *resolves*, and only a
+ * real `Resources` can say so (`docs/architecture.md`, "Text a person reads").
+ */
+@RunWith(RobolectricTestRunner::class)
 class DestinationTest {
+  private val context: Context get() = ApplicationProvider.getApplicationContext()
+
   @Test
   fun `every screen in the plan has a destination`() {
     // Step 4 of docs/TODO.md lists ten screens and the menu lists all ten.
@@ -52,7 +65,36 @@ class DestinationTest {
   fun `every screen the menu lists says what it is for`() {
     // A menu of ten names is a quiz. "Sessions" means nothing until it does.
     Destination.inTheMenu.forEach { destination ->
-      assertTrue("${destination.route} has no description", destination.description.isNotBlank())
+      val description = destination.description
+      assertNotNull("${destination.route} has no description", description)
+      assertTrue(
+        "${destination.route}'s description resolves to nothing",
+        context.getString(description!!).isNotBlank(),
+      )
+    }
+  }
+
+  @Test
+  fun `a screen the menu does not list has no line under its name`() {
+    // Null rather than a blank resource: a translator asked to translate an
+    // empty string is a translator asked a question with no answer.
+    Destination.entries.filter { it.group == null }.forEach { destination ->
+      assertNull("${destination.route} has a description nothing draws", destination.description)
+    }
+  }
+
+  @Test
+  fun `every screen is named by a resource that resolves`() {
+    // The point of the whole extraction: a name that is a resource id nothing
+    // answers to is a screen that draws a crash instead of a heading.
+    Destination.entries.forEach { destination ->
+      assertTrue(
+        "${destination.route} has no title",
+        context.getString(destination.title).isNotBlank(),
+      )
+    }
+    MenuGroup.entries.forEach { group ->
+      assertTrue("$group has no heading", context.getString(group.title).isNotBlank())
     }
   }
 

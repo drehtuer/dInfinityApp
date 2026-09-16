@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <!-- Offered when a mistake has an obvious reading. %1$s is a formula. -->
   <string name="formula_suggestion">Did you mean %1$s?</string>
 </resources>

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -35,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -114,7 +117,17 @@ private fun Header(
     horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     if (open != null) {
-      TextButton(onClick = onClose, modifier = Modifier.testTag(StatsTestTags.BACK)) { Text("←") }
+      // An arrow is a picture. What TalkBack reads is the label, because "left
+      // arrow" is not a thing anybody wants done to their screen.
+      val back = stringResource(R.string.stats_back)
+      TextButton(
+        onClick = onClose,
+        modifier =
+          Modifier
+            .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
+            .semantics { contentDescription = back }
+            .testTag(StatsTestTags.BACK),
+      ) { Text("←") }
     }
     Text(
       text = open?.row?.name ?: stringResource(R.string.stats_title),
@@ -279,6 +292,14 @@ private fun Cuts(
   }
 }
 
+/**
+ * One cut of the list, chosen or not.
+ *
+ * Which one is on is drawn in the accent and in bold — both of which are marks
+ * only an eye can read. `selected` is the same fact said in the semantics tree,
+ * so TalkBack announces "selected" rather than leaving the state of the whole
+ * row a guess (`docs/architecture.md`, "Accessibility").
+ */
 @Composable
 private fun Cut(
   label: String,
@@ -286,7 +307,14 @@ private fun Cut(
   tag: String,
   onChoose: () -> Unit,
 ) {
-  TextButton(onClick = onChoose, modifier = Modifier.testTag(tag)) {
+  TextButton(
+    onClick = onChoose,
+    modifier =
+      Modifier
+        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
+        .semantics { selected = chosen }
+        .testTag(tag),
+  ) {
     Text(
       text = label,
       style = MaterialTheme.typography.labelLarge,
@@ -496,8 +524,25 @@ private fun Histogram(bars: List<FaceBar>) {
     verticalArrangement = Arrangement.spacedBy(2.dp),
   ) {
     bars.forEach { bar ->
+      // The fair line and the bar over it are told apart by colour and by
+      // nothing else, and the fair share is not written anywhere on the row. So
+      // the row says both numbers, as one node rather than three
+      // (`docs/architecture.md`, "Accessibility").
+      val said =
+        pluralStringResource(
+          R.plurals.stats_bar_against_fair,
+          bar.count.toInt(),
+          bar.value,
+          bar.count,
+          percent(bar.share),
+          percent(bar.fairShare),
+        )
       Row(
-        modifier = Modifier.fillMaxWidth().testTag(StatsTestTags.barOf(bar.value)),
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .semantics(mergeDescendants = true) { contentDescription = said }
+            .testTag(StatsTestTags.barOf(bar.value)),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
       ) {

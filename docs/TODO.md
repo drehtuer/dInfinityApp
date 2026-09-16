@@ -99,15 +99,66 @@ rather than a sentence with a zero written into it.
 
 What is below is what it does not have yet.
 
-- [ ] Revisit the capacity constants now that they bite much later. 30 % of the floor and a 40 % minimum scale no longer refuse anything the engine would take: it would take about 240 dice to reach the floor and the engine stops at 100 (`docs/tables.md`). Step 5.3 is where those numbers meet a device
+- [ ] **Revisited against the device data, and left alone deliberately.** The
+      two constants do different jobs: `FLOOR_SHARE` *shrinks* and `MIN_SCALE`
+      *refuses*. At the engine's cap of a hundred 16 mm d6 the shrink is 0.62,
+      which is nowhere near the 0.40 floor, so the refusal a player meets is
+      always the body count — exactly as this bullet suspected. `MIN_SCALE`
+      would not begin refusing until **241 dice**, two and a half times the cap.
+
+      What the Step 5.3 sweep says about the shrink it does apply: at a hundred
+      dice everything settles but one roll in sixty, nothing is stacked at rest,
+      nothing leaves the tray and the p99 step is 3.09 ms against 8.33. So there
+      is no evidence for changing either number, and changing one on no evidence
+      is how a tuned constant stops meaning anything.
+
+      Both figures are now `TableCapacityTest` assertions rather than a
+      suspicion in a plan, so raising `MAX_DICE` past 241 is noticed — it would
+      make the scale floor live for the first time
 - [ ] **Freeze the dice that are down and let the player re-roll the ones that are not.** The user's proposal for unstacking, and worth taking seriously: a die that has landed cleanly is finished and could be lifted off the mat and shown as an overlay, leaving only the stuck ones in the tray to be thrown again. It keeps the honest rule — a settled die is never *moved*, only taken out of play once its face is read — and it turns the worst case from "the app fixes it invisibly" into "you roll again", which is what a person does at a table. Needs the design for how ninety-nine finished dice are shown; the mechanism can be decided first (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice")
 - [ ] *Confirm on the phone:* a roll stranded by losing its surface is fixed (a roll now asks for frames with nowhere to draw), but whether that was what left `100d4` on "Rolling…" for ever is unproven — the physics settles that throw headlessly on eight seeds, so the hang was never in the engine
 - [ ] **The surface outlives the screen going off.** After a lock and unlock the old rendering surface is still there. Found on the Pixel 10a; `DiceTray` gives the surface up on `onDestroyed` and the driver keeps the engine now (Step 4.1, done), so what is left is which of those two the lock screen actually triggers
 - [ ] *Judge a second shake on the phone:* a shake at dice still in the air now keeps them moving rather than doing nothing — it starts no throw, and its moments are numbered on the running roll's clock so they reach it at all, which is what was actually broken (`docs/physics-and-rendering.md`, "Shake input"). Decided along the way: a second shake is **more of the same roll**, not a throw that replaces it, because the dice are the ones already tumbling. Whether that reads as the dice answering the hand, and whether a roll can now be kept going longer than anybody wants, needs a phone
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
-- [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
+- [ ] **Wire the one-finger touch to a hand re-throw.** The two decisions underneath it are built and tested: `TrayPick` (`render/filament`) says which die a finger is on, and `PickUp` (`core/notation`) says which dice a hand may go near — a group carrying `!` or `r n` offers none, because a die another die was thrown because of cannot be thrown again without the roll holding a die nothing asks for. The throw itself is the one an explosion already makes (`ThrowSpec.among`), so there is no second path to a number to build. What is missing is not code: it is **what the history says about a roll a die was thrown again in**, under "Open questions" below. Until that is answered the gesture stays unspent (`docs/physics-and-rendering.md`, "Picking a die up and throwing it again")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
-- [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
+- [ ] **A set's own dice cannot be picked**, and the two ways out are now costed
+      rather than named. Plain notation spells `dN`, `d%` and `dF`, so
+      `skull-d6` has nothing a formula could carry, and `DicePicker.offeredBy`
+      filters the row down to `StandardDieIds` for exactly that reason — a row
+      that added a die the formula cannot name would be a row whose taps
+      disappear.
+
+      **Give notation a spelling for it.** Decision 31 refused this because
+      `brass:skull-d6kh1` has no unambiguous reading — a die id and a modifier
+      are made of the same characters. A *delimited* form does not have that
+      problem: `3{skull-d6}kh1` closes the id before the modifiers start, and
+      braces are the one bracket the grammar does not already use (`[` and `]`
+      are the label). It also survives decision 31's second objection, which is
+      the real one: the parser may not consult installed sets, because the field
+      re-validates on every keystroke on a thread that has never seen storage —
+      and a braced id is *lexed* without knowing whether it exists, with
+      resolution left to `DieResolver`, which already asks the catalogue.
+
+      What it costs is that notation grows a second way to name a die, and
+      notation is the specification: the grammar, `FormulaParser`,
+      `NotationReference` (whose every example is parsed by a test), the
+      breakdown, the history, saved rolls and every collection file anybody has
+      already written. A formula is the roll everywhere downstream, so the new
+      spelling appears in all of them for ever.
+
+      **Or stop picked dice going through the text.** This is what decision 31
+      says is already true — "picked dice build the same `RollPlan` as typed
+      ones" — and it is not: `RollMachine.add` is `type(DicePicker.add(text,
+      die))`, so every tap is an edit to the formula. Making a pick a thing of
+      its own means a roll has two sources of truth, the text and the picks,
+      which is the arrangement the current design exists to avoid — and it has
+      to answer what happens when somebody types over a formula that has picks
+      attached to it.
+
+      Neither is small and neither is obviously right, so this is a decision
+      before it is a change. The first is contained but permanent; the second is
+      invisible to the player but reaches everything that reads a formula
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
@@ -209,13 +260,23 @@ attribution — that tap fills the field and the player throws it.
 The screen is built: every look from every installed package in one list —
 tables are global, so a set never brings its own along — with the chosen one
 marked, the package named beside a look only when more than one supplies
-tables, and a swatch of the two colours a look is actually made of. Choosing
-one writes it to the settings and the tray is built on it the next time it is
-opened, which is immediately in the only sense that matters. A pin whose
-package is gone shows the look the tray would really use, and the setting is
-left alone in case it comes back.
+tables, and a thumbnail of the tray that look makes. Choosing one writes it to
+the settings and the tray is built on it the next time it is opened, which is
+immediately in the only sense that matters. A pin whose package is gone shows
+the look the tray would really use, and the setting is left alone in case it
+comes back.
 
-- [ ] Thumbnails rendered on the real box mesh, with a "roll a d20 here" preview. The swatch stands in: it is two colours in a box and says so. This wants the renderer on a screen that is not the tray, which nothing has needed yet
+**The thumbnails are built.** Each row is a picture of its own tray — the real
+box mesh, lit the way the roll screen lights it, with a d20 standing in the
+corner of it — drawn by `FilamentDiceRenderer` over `Stage`, on the roll
+thread, with the engine that already outlives every visit (decision 60). What
+decides *what a picture is of* is plain Kotlin with JVM tests, and what a
+device answers is only whether there is a picture at all. The swatch stays as
+the fallback, for a look whose picture has not arrived, for a driver that will
+not read a frame back, and for power-saving mode, which creates no engine on
+any screen.
+
+- [ ] *Judgement, on a phone:* whether the thumbnail reads as a table at 44 × 64 dp. The camera is as close as a pinch may go, in the far corner, which is what makes a 16 mm die big enough to recognise — but whether two walls, a rounded corner and a d20 in a box that size is a *picture* or a smudge is not something a test can say (`docs/tables.md`, "Thumbnails")
 
 ### 4.6 Face designer — `feature/designer`
 
@@ -402,7 +463,15 @@ a die fairer than the plastic one in their hand, is not worth a warning
 (`docs/physics-and-rendering.md`, "The bar the d18 is held to").
 
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device — any divergence is a release blocker. The golden suite is the check and already holds for its ten cases on both ABIs; Step 5 is the same claim at ten thousand rolls and on a second phone
-- [ ] Power-saving and rendered mode agree on every seed in the golden suite
+- [ ] **Done, on the Pixel 10a.** `ModesAgreeTest` runs every golden case both
+      ways — `runToEnd`, which is power-saving mode stepping as fast as the
+      processor allows, and `advance` once per displayed frame, which is the
+      drawn tray — and they agree on the faces, the step count and the number of
+      dice corrected. A second case runs the drawn side at a frame rate that
+      keeps changing (a dropped frame, a long one, two quick ones), because that
+      is what `FrameClock` exists to absorb and what would show if any of it
+      reached the solver. Both were checked by making them fail, so the
+      comparison discriminates rather than comparing a thing to itself
 
 ### 5.3 Capacity and corner cases
 
@@ -445,21 +514,68 @@ a die fairer than the plastic one in their hand, is not worth a warning
 - [ ] **`100d4` does not reliably settle, and never did.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. `JoltBridgeTest` used to try eight seeds and pass; twenty-four seeds show **five running out of the twelve-second cap**, and the same twenty-four under the correlated spawn streams that preceded them showed two — a difference well inside noise at that sample size. What changed is not the physics but the sample: the eight were the easy ones. Nothing is ever touched after it has come to rest, on any seed, which is the rule that matters; the cap firing at all is a prevention problem (5.5), and the bound in the test is today's worst case written down rather than a target
 - [ ] **Decide what a tilted phone should mean.** Deferred, not answered. The table is horizontal now and the gyroscope no longer turns the world, which is what stopped the dice pouring into a wall — but "tilt the phone and the dice slide" was a real idea and this is not a verdict on it. The direction is still recorded with every sample, so whichever way it goes the data is there. The three answers, unchanged: gravity always straight down and only the hand moves the dice; anchor to `TYPE_GRAVITY` and accept that a phone held upright pours everything to the bottom wall; or keep a tilt and clamp it so a tray can lean without becoming a chute
 - [ ] **A shake along the phone's long axis still drives the dice into one end.** Seen as dice stuck at the bottom after a vertical shake. The table being horizontal fixes the *pouring* — the tray no longer leans — but the hand's own force still points that way, and a hundred dice pushed at one wall have nowhere else to be. Whether that is right (it is what a hand does) or wants shaping is a Step 5.6 question with a phone in it
-- [ ] Exactly at the limit, and one over — the one over is refused before a single body is created
-- [ ] Worst shapes at the limit: d4 (sharpest corners) and the coin (flattest), which wedge and stack most easily
-- [ ] Smallest scale (0.40) with the largest nominal die
-- [ ] Mixed shapes and mixed sets in one throw
-- [ ] Extreme input: sensor maxima, 30 s of shaking, rotation through all axes, shake-then-drop, phone vertical and upside down. **Upside down is done and was broken:** the roll screen pinned the display to the rotation it opened at, so `PhoneAxes` was told the phone was upright while it was being shaken the other way up and the dice pooled at the end away from the hand. The screen now holds its shape rather than its rotation (`docs/tables.md`); a quarter turn is still refused
+- [ ] **Done, on the Pixel 10a, bar the two that need a person holding the
+      phone.** `ExtremeInputTest` drives twenty dice with a sensor pinned at its
+      maximum (every axis at `Double.MAX_VALUE / 2`, which is a broken
+      accelerometer rather than a hand, and what `ShakeDriver`'s clamp exists
+      for), thirty seconds of shaking, a phone turned through all three axes
+      while the dice are in the air, and a shake that ends in free fall. Each
+      one still reads a face for every die, leaves every die on the table,
+      produces no position that is not a number, and gives the same answer
+      twice.
+
+      The thirty-second case also asserts the bound that makes it safe: a roll
+      is force-settled at twelve seconds, so the record keeps 1,440 moments and
+      refuses the rest rather than growing for as long as an arm does.
+
+      **Upside down was done earlier and was broken** — the roll screen pinned
+      the display to the rotation it opened at, so `PhoneAxes` was told the
+      phone was upright while it was shaken the other way up. The screen holds
+      its shape rather than its rotation now (`docs/tables.md`); a quarter turn
+      is still refused. What is left is *vertical* and *upside down* with a real
+      hand, which no test can hold
 - [ ] Interruptions mid-roll: call, backgrounding, rotation, low memory — the roll finishes or is discarded cleanly, never half-resolved
-- [ ] Thermal: 100 consecutive 40-dice rolls with no frame-time cliff and no drift in outcomes
+
+- [ ] **The corner cases are asked on the phone now, and one of them fails.**
+      `CornerCasesTest` throws exactly at the cap and one over (refused before a
+      body exists, which is the point of doing it in arithmetic), a hundred d4s,
+      a hundred coins, the largest die a set may declare at the smallest scale
+      the rule allows, every catalogue shape at once, and the same forty-dice
+      throw a hundred times over to watch for drift as the phone warms. All of
+      them keep every die on the table; all but one put no die on top of another.
+
+      **A hundred coins do: four to ten of them, on every seed tried.** It is
+      the shape's own doing — a coin that lands on a coin is *stable* there,
+      where a cube or an icosahedron rolls off, which is what makes prevention
+      work everywhere else — and at that density rung 3 cannot find the stacked
+      ones clear floor to be re-thrown onto. Bounded at today's worst case so
+      the next change to the spawn or the ladder improves it or is noticed, in
+      the same way `100d4`'s timeouts are. Nothing is touched after coming to
+      rest on any seed, which is the rule that does hold.
+
+      The thermal run is the *outcome* half only: a hundred identical throws
+      come to identical faces, so nothing drifts as the phone heats. Frame times
+      need a renderer and a surface, which is Step 5.7's and the open question
+      about who measures a drawn frame
 
 ### 5.4 Collisions
 
 - [ ] **Dice go 9 mm into each other, and the bar is 0.2 mm.** Measured on the Pixel 10a the first time the harness ran: 200 throws of 20 d20s, deepest die–die overlap **9.019 mm** against a target of 0.2, on dice 16 mm across. More than half a die. It is the number the plan asked for and nobody had ever had, and it is almost certainly the same fault as the correction rate below rather than a second one: dice are spawned or corrected into each other and the solver pushes them apart afterwards, which is what a 45 % correction rate looks like from the collision side. Prevention (5.5) is where it is fixed; this is where it is measured
-- [ ] No tunnelling at maximum shake velocity — assert every body inside the box on every step, all roll long
-- [ ] Dice driven into a corner at speed neither wedge nor jitter
-- [ ] A settled pile is stable: no creep, no vibration, no slow slide
-- [ ] Assert containment on *every step* rather than only at rest, at the capacity limit: the at-rest check is in `JoltBridgeTest` now, but a die that leaves the tray mid-roll and comes back would still pass it
+- [ ] **Done, on the Pixel 10a, and the old check was too kind twice over.**
+      `ContainmentTest` asks the tray's own bounds — half a side, not a whole
+      one, which is what `JoltBridgeTest` allowed and is twice as far out as the
+      wall — of every die on every step. Four things hold: a **full tray** of a
+      hundred dice never puts a centre outside the walls; **nothing tunnels out
+      at the hardest shake the cap allows**, driven at four gravities in a
+      direction that changes every tenth of a second; dice **driven into a
+      corner and held there** all stop, which is what the rounded corners are
+      for; and a **settled pile stays put** — measured creep over two undriven
+      seconds is 3.4 × 10⁻⁵ mm, and the test holds it to a hundredth of a
+      millimetre.
+
+      Each assertion was checked by making it fail: dice really do reach within
+      about six millimetres of the walls, so the bound is exercised rather than
+      merely satisfied by dice that stayed in the middle
 
 ### 5.5 Stacking and cocking — and no invisible hand
 
@@ -469,11 +585,113 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - **a die visibly moved after it stopped**, which is worse — it turns a roll
   into an arrangement in front of the player's eyes.
 
-- [ ] 10,000 headless rolls at 20 dice and 10,000 at 60: **zero** dice at rest supported by another die. `tools/harness.sh -n 10000 -c 20` and `-c 60`; the count is in every run's JSON and its scorecard
-- [ ] Fewer than 0.5 % of dice need any correction; **100 %** of those corrections land while the die is still moving
-- [ ] **Zero** post-rest corrections. The harness asserts this; one occurrence is a bug, not a statistic
-- [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
-- [ ] Settle time at 20 dice: median under 2 s, p99 under 4 s; the 12 s cap never reached in 10,000 rolls
+- [ ] **Run at 20 dice on the Pixel 10a, and the bar holds: zero.** Ten thousand
+      rolls, **200,000 dice**, and not one of them came to rest standing on
+      another — nor was one touched after it had stopped. Those are the two bars
+      this whole section exists for and they hold at a sample fifty times larger
+      than anything that had been run before.
+
+      Three things only appear at this size, and all three are worth having:
+      **three rolls in ten thousand run out of the twelve-second cap** (0.03 %,
+      where two hundred rolls showed none), the deepest die-into-die overlap
+      grows to **11.6 mm** from the 9.0 mm two hundred rolls found — an extreme
+      value climbs with the sample, so the earlier figure was optimism rather
+      than a better engine — and the median roll costs 28.6 ms of wall time,
+      with a worst of 450 ms.
+
+      The correction rate is unchanged at 44.9 %, which is the rest of this
+      section.
+- [ ] **And at 60 dice the bar fails — 29 dice in 600,000.** Ten thousand rolls
+      of sixty, and twenty-nine of them left one die standing on another. It is
+      the first time this has failed for ordinary dice rather than for a hundred
+      coins, and the per-roll records say what it is made of:
+
+      | | rolls | dice left standing |
+      | --- | --- | --- |
+      | ran out of the twelve-second cap | 29 | — |
+      | had any forced settle | 97 | — |
+      | left a die standing **and** were force-settled | 20 | 20 |
+      | left a die standing having **finished cleanly** | **9** | **9** |
+
+      So two thirds of it is the cap rather than prevention: a roll that runs
+      out of time is frozen where it is, and rung 3 never gets to throw the
+      stacked die again. That is a timing problem, and the same one as the
+      twenty-nine caps.
+
+      **The other nine are prevention failing outright** — rolls that settled
+      properly, inside their time, with a die on a die at the end. Nine in ten
+      thousand is small and it is not zero, and zero is the bar.
+
+      What holds, at 600,000 dice: **not one post-rest correction.** Nothing
+      touched a die after it had stopped, which is the rule that matters most
+      and the only one of these that is inviolable rather than a target
+- [ ] Fewer than 0.5 % of dice need any correction — **measured 44.9 % at
+      twenty dice and 47.1 % at sixty**, over 800,000 dice, which is the number
+      the rest of this section is about. The second half of the claim does hold:
+      **100 % of those corrections landed while the die was still moving**,
+      because not one landed after it had stopped
+- [ ] **Zero post-rest corrections, and it is measured rather than asserted
+      now: none in 800,000 dice.** Ten thousand rolls at twenty and ten thousand
+      at sixty, on the Pixel 10a. One occurrence is a bug rather than a
+      statistic, and the harness fails on it — this is the run that says the gate
+      has never had to
+- [ ] Re-throws (the last resort) under 0.05 % of dice — **measured 2.9 % at
+      twenty and 6.1 % at sixty**, so it is sixty to a hundred and twenty times
+      the budget and it grows with the count. Whether each one *looks* like a
+      die being picked up and thrown again is the separate half, and needs eyes
+      (5.6)
+- [ ] **Two of these three are met.** At twenty dice over ten thousand rolls:
+      median settle **0.78 s** against 2 s, p99 **1.81 s** against 4 s — both
+      comfortable. The third is not: **three rolls in ten thousand ran out of
+      the twelve-second cap**, where the bar is never. At sixty it is
+      twenty-nine, and twenty of those are where the stacked dice come from,
+      which is what makes the cap a stacking problem rather than a patience one
+- [ ] **The nine clean stacked rolls have a signature, and it is not the cause.**
+      Of the sixty-dice rolls that finished properly and still left a die
+      standing, every one had **five or more re-throws** — and of 6,819 clean
+      rolls with four or fewer, not one stacked:
+
+      | re-throws | rolls | ended stacked |
+      | --- | --- | --- |
+      | 0–4 | 6,819 | **0** |
+      | 5 | 1,187 | 3 |
+      | 6 | 831 | 2 |
+      | 7 | 503 | 2 |
+      | 9 | 155 | 2 |
+
+      They also take twice as long (294 steps against a median of 159) and have
+      twice the re-throws (6 against 3) — but **the same number of corrections**
+      (29 against 28). So it tracks rung 3 and not rung 2.
+
+      The obvious reading was that `SpawnLayout.rethrowPlacement` drops a
+      re-thrown die at a **uniformly random point**, where `addedPlacement` asks
+      `ClearSpace` for floor nothing is on — the same question answered two
+      ways. Both repairs were tried on the phone and **both are worse**:
+
+      | | rolls stacking | rolls at the cap | p99 step |
+      | --- | --- | --- | --- |
+      | today (random point) | 0.29 % | 0.29 % | 1.69 ms |
+      | the clearest point | **7.4 %** | **12.8 %** | 5.31 ms |
+      | a random point, redrawn until clear | 0.2 % | **2.2 %** | 1.49 ms |
+
+      The first fails for a reason worth keeping: rung 3 can throw **several**
+      dice again in the same step, and one deterministic clearest point drops
+      all of them on the same patch. An explosion may ask for it because it adds
+      exactly one die. The draw is what keeps simultaneous re-throws apart.
+
+      A fourth thing was tried on the strength of that — **more height bands at
+      spawn**, five rather than three, which is rung 1 and adds separation
+      instead of removing energy. It is **neutral**: 47.4 % corrected against
+      47.1 %, one stacked roll in five hundred against an expected one and a
+      half, re-throws a shade worse at 6.7 %. The obvious stagger lever does not
+      move this, which is worth knowing before somebody spends an evening on it.
+
+      The second keeps the draw and still makes the cap seven times worse, which
+      is what says the placement was never the cause. **The re-throw count and
+      the stacking are both symptoms of the same crowded roll**, not one causing
+      the other — so the thing to attack is why a sixty-dice roll needs six
+      re-throws at all, which is rung 1 and this section's real subject. Nothing
+      in the code changed
 - [ ] **Measured, on the Pixel 10a: both obvious levers work, and both pay for
       it in the same coin.** Two experiments, 200 throws of 20 d20s each, base
       seeds 1 and 7, against the sixteen-seed shaken-spread check in
@@ -539,7 +757,15 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 ### 5.7 Performance on the Pixel 10a
 
 - [ ] 60 fps sustained at 20 dice, frame time p99 under 16.6 ms; at least 30 fps at the capacity limit
-- [ ] No memory growth over 500 rolls
+- [ ] **Done, on the Pixel 10a: 500 rolls leave 1,440 bytes behind.** Under
+      three bytes a roll, which is allocator noise rather than anything anybody
+      allocated. `MemoryTest` measures the **native** heap, which is the half
+      that matters — a physics world is a handle into a solver the collector
+      knows nothing about, so a world nobody closed would show there and nowhere
+      else — and holds it to a quarter of a megabyte, a hundred and eighty times
+      the measurement and still tight enough to catch ten leaked worlds, let
+      alone five hundred. The JVM heap is held looser on purpose, against a
+      collector that decides for itself when to shrink
 - [ ] Battery cost of 100 rolls measured, then written into `docs/physics-and-rendering.md` as the budget
 
 **Done when** every target above is met on the Pixel 10a and the user agrees
@@ -549,8 +775,27 @@ device, not the other way round.
 
 ## Step 6 — v1 release
 
-- [ ] Accessibility pass: TalkBack through every screen, contrast, touch targets, no colour-only meaning
-- [ ] Localisation scaffolding (strings extracted) even if only English ships
+- [ ] Accessibility: **walk every screen with TalkBack on a real phone.** The
+      rules, the labels and the measured contrast are done and tested
+      (`docs/architecture.md`, "Accessibility"); what a test cannot answer is
+      whether the reading *order* is sensible, whether the announcements are
+      the right length when they arrive one after another, and whether the tray
+      is comprehensible with the screen curtain on. A person with the phone and
+      TalkBack switched on, once
+- [ ] Localisation: **the failure-reason pipeline.** Every word a screen says
+      is now a string resource and `verifyTextIsAResource` keeps it that way
+      (`docs/architecture.md`, "Text a person reads"). What is left is one
+      thing: the sentences that say why something was refused. They are
+      assembled across module boundaries — `dicesets/format`'s and
+      `dicesets/install`'s `ValidationMessage`, `core/collection`'s reader, and
+      the `app/` helpers that read a file or fetch a URL — and half of every
+      such sentence is written in a plain-Kotlin module that may not depend on
+      Android. Translating it means giving each refusal a typed reason the
+      screen phrases, which is a design change rather than a string move; the
+      same is true of `core/notation`'s `NotationReference`, which is the
+      notation screen's whole content and sits beside the parser on purpose.
+      Both are exempted by file name, with the reason, in their own build
+      scripts. Nothing is wrong today: v1 ships English
 - [ ] Play Store metadata, screenshots taken from the real app, privacy statement (no analytics, nothing leaves the phone)
 - [ ] Tag `v1.0.0`
 
@@ -600,6 +845,60 @@ The figures are reported in every PR description either way.
       question for a person, not a change to make quietly
 
 ## Open questions
+
+- [ ] **Does a refusal keep its words, or become a reason?** The sentences a
+      validator and a downloader write end up on screen, and they are written
+      in modules that have no resources — which is deliberate, because nothing
+      that reads a stranger's file may depend on Android
+      (`docs/architecture.md`, "Text a person reads"). Two ways out. Give every
+      `ValidationMessage` a typed reason with its arguments, and let the screen
+      phrase it: correct, translatable, and a change to every producer and
+      every test that asserts on a message's words. Or leave the sentences
+      where they are and accept that a refusal speaks English in a translated
+      app, which for a rare screen a player hopes never to see is not obviously
+      wrong. Worth deciding before a second language exists, not after
+- [ ] **Is percent typography text?** `"0 %"`, `"< 0.1 %"` and `"%.1f %%"` are
+      format patterns in `feature/graph` and `feature/stats`, and
+      `verifyTextIsAResource` leaves them alone because they contain no words —
+      `String.format` already follows the device's locale for the decimal
+      point. But the space before the `%` is a typographic convention that
+      differs by language, as is the `"—"` that stands for a value there is
+      none of. Moving them into resources means `percent()` taking a
+      `Resources`, which costs its JVM tests a context. Cheap either way, and
+      only worth paying once a second language exists
+
+- [ ] **A filled button's label is 3.76:1 on its own accent, and wants 4.5:1.**
+      `onPrimary` is the ground colour by design, so the label on **Roll**,
+      **Save group** and every other filled button is the pale ink on the
+      accent. Measured against the light ground: vermilion 3.76:1, coral
+      3.25:1, sky 3.11:1, moss 3.63:1, amber 3.79:1, violet 4.05:1 — all past
+      3:1, none at the 4.5:1 that 13 sp semi-bold text asks for. On the dark
+      ground three of the six pass. Every fix is a palette change and therefore
+      a design decision: fill with the ramp's 700 step and keep the pale label,
+      keep the fill and darken the label, or make the primary action an
+      outlined button in the accent with ink text. `ModernistContrastTest`
+      holds the floor at the measured ratios so it cannot quietly get worse
+- [ ] **The divider is 2.41:1 on the light ground, and Material uses the same
+      token for a control's border.** `--color-divider` is the text colour at
+      40 %, which is 2.41:1 on the light ground and 3.51:1 on the dark one. As
+      a rule between rows that is decoration and 3:1 does not apply; as
+      `outline` it is also an `OutlinedButton`'s border, which is a control
+      boundary and does. Raising the alpha to about 55 % on the light ground
+      would clear it, at the cost of heavier rules everywhere — the design
+      system says 40 %, so this is the design's to answer, not a test's
+
+- [ ] **The picker is a list of rows; the prototype's `1u` is a grid of cards.**
+      The thumbnails landed in the list that was already there — one 44 × 64 dp
+      picture at the head of each row, in the place the swatch held — rather
+      than in the two-column grid of 150 px cards the prototype draws. That was
+      the smaller change and it keeps the row's other half working (the package
+      name, the "Chosen" mark, **Remove** on a photo table, all of it one node
+      for TalkBack), but it is not what the design shows, and a card gives a
+      picture about five times the area. The alternatives are to rebuild the
+      picker as the grid and find somewhere else for the four things a row
+      carries, or to change `1u` to a list and keep the two halves true that
+      way. Either is a design decision rather than a rendering one
+      (`design/README.md`)
 
 - [ ] **Who measures a drawn frame?** The harness now paces a roll the way the
       screen does (`tools/harness.sh --frames`) and times `LiveRoll.advance`,
@@ -767,3 +1066,38 @@ The figures are reported in every PR description either way.
       takes the first reading, and the bars are data, so changing it is one
       line in `HarnessTargets` — but which it should be is a decision
       (`docs/build-setup.md`, "The physics harness")
+- [ ] **What does the history say about a roll a die was thrown again in?**
+      A player picking a die up out of a finished roll is the player's own act
+      and the app should allow it (`docs/physics-and-rendering.md`, "Picking a
+      die up and throwing it again"); every other question it raises has an
+      answer already. The face the die showed stands and is counted, because it
+      was genuinely thrown. The new face is the physics' and is scored by
+      re-running the scoring, which is what an explosion already does. Which
+      dice a hand may go near is `PickUp`. What is left is that **a roll is
+      written down the moment its dice stop** — one `RollHistory` row and a
+      face count per die (`docs/statistics.md`) — and a hand re-throw happens
+      afterwards and changes the total. Three ways out, and they are three
+      different products rather than three spellings of one:
+
+      *Amend the row.* The roll keeps one history entry and it holds the total
+      the player actually used; the re-thrown die adds one throw to its own
+      face counts and nothing else changes. Costs a new operation on
+      `StatisticsRepository` and a second method on `ThrowRecorder`, and it
+      makes a history row mutable for the first time — which is a claim
+      `docs/statistics.md` currently does not make.
+
+      *Write a second row.* Honest about what happened and needs no schema
+      change, but the per-die counters would count the dice **nobody touched**
+      twice, which contradicts "the die was thrown and landed on that face" in
+      the plainest possible way. Only workable if a row can say which of its
+      dice are new, which is the first option wearing a hat.
+
+      *Write the roll down when it is put away, not when it lands.* No schema
+      change and no new seam: `RollPresenter` holds the finished throw and
+      records it on the next roll, on **Clear**, or when the screen goes. It
+      changes what happens to *every* roll, not just this one, and it loses a
+      roll if the process is killed while the result sheet is up — which today
+      it does not.
+
+      None is wrong. Which one it is decides what the history *means*, so it is
+      a decision for a person and not one to make inside a gesture
