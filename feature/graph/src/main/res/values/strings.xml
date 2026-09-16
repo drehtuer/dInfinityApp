@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <string name="graph_no_formula">No formula</string>
   <string name="graph_formula_label">Formula</string>
   <string name="graph_formula_hint" >3d6 + 1d20</string>
@@ -22,4 +22,17 @@
   <!-- %1$d is the lowest or highest total the formula can give. -->
   <string name="graph_stat_chance_of">Chance of %1$d</string>
   <string name="graph_stat_dice">Dice</string>
+  <!--
+    The chart itself, for a screen reader: a `Canvas` is an empty rectangle to
+    one, and the shape of the distribution is what this screen is for
+    (`docs/architecture.md`, "Accessibility").
+  -->
+  <plurals name="graph_chart_shape">
+    <item quantity="one">Bar chart of %1$d total.</item>
+    <item quantity="other">Bar chart of %1$d totals.</item>
+  </plurals>
+  <string name="graph_chart_range">They run from %1$d to %2$d.</string>
+  <string name="graph_chart_likeliest">The likeliest is %1$d.</string>
+  <string name="graph_chart_rolled">Your roll, %1$d, is marked.</string>
+  <string name="graph_chart_picked">%1$d is selected.</string>
 </resources>

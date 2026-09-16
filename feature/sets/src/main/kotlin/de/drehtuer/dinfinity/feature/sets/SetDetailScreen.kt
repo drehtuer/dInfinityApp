@@ -181,11 +181,15 @@ private fun Source(
     return
   }
   val linkable = source.startsWith("https://")
+  val openIt = stringResource(R.string.sets_detail_source_open)
   Column(
     modifier =
       Modifier
         .fillMaxWidth()
-        .let { if (linkable) it.clickable { onSource(source) } else it }
+        // The one difference between a source you can open and one you cannot
+        // is that it prints in the accent. The click label is the same fact
+        // said out loud (`docs/architecture.md`, "Accessibility").
+        .let { if (linkable) it.clickable(onClickLabel = openIt) { onSource(source) } else it }
         .semantics(mergeDescendants = true) { }
         .testTag(SetDetailTestTags.SOURCE),
   ) {

@@ -17,8 +17,10 @@ import de.drehtuer.dinfinity.feedback.AndroidFeedback
 import de.drehtuer.dinfinity.feedback.ImpactFeedback
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.RollThread
+import de.drehtuer.dinfinity.render.filament.ThumbnailPlan
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayDriver
+import de.drehtuer.dinfinity.render.filament.TrayThumbnails
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.DebugWatch
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
@@ -130,7 +132,7 @@ class RollWiring(
     val fromPin = wanted?.let { catalog.set(it.setId)?.tables?.firstOrNull { table -> table.id == it.tableId } }
     return fromPin
       ?: catalog.set(DiceSet.BUILTIN_ID)?.tables?.firstOrNull()
-      ?: TableLook(id = "default", name = "Default")
+      ?: TableLook(id = "default", name = context.getString(R.string.table_look_fallback))
   }
 
   /**
@@ -227,6 +229,42 @@ class RollWiring(
    * (`RollThread`).
    */
   private val rollThread: RollThread by lazy { RollThread(artwork) }
+
+  /** Made once, because the pictures it has already drawn are worth keeping. */
+  private var pictures: TrayThumbnails? = null
+
+  /**
+   * Pictures of tables for the table picker, or null where none can be drawn
+   * (`docs/architecture.md`, decision 60).
+   *
+   * Drawn on [rollThread] with the same engine the tray uses, because Filament
+   * takes calls only from the thread that made the engine and because
+   * compiling the dice material a second time is the cost decision 50 exists
+   * to avoid. The table picker is not the roll screen, so this is the first
+   * thing to want the renderer somewhere that is not the tray.
+   *
+   * **Null in power-saving mode.** That mode's promise is that no Filament
+   * engine is created at all, and a thumbnail would create one on the way to a
+   * screen that is not even about rolling. The picker falls back to its
+   * swatch, which is exactly what it falls back to on a device with no working
+   * engine (`docs/physics-and-rendering.md`, "Power-saving mode").
+   *
+   * Held rather than rebuilt per visit, for the reason the thread is: the
+   * pictures it has drawn are of looks that cannot change, and drawing them
+   * again on the way back from the menu is work with nothing to show for it.
+   *
+   * @param widthPx how big a picture the screen wants. Asked for rather than
+   *   worked out here: how much room a row gives a thumbnail is the table
+   *   picker's to say, and this module draws what it is asked for.
+   */
+  fun thumbnails(
+    powerSaving: Boolean,
+    widthPx: Int,
+    heightPx: Int,
+  ): TrayThumbnails? {
+    if (powerSaving) return null
+    return pictures ?: TrayThumbnails.on(rollThread, ThumbnailPlan.of(widthPx, heightPx)).also { pictures = it }
+  }
 
   /**
    * The tray this visit gets.

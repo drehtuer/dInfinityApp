@@ -1,8 +1,10 @@
 package de.drehtuer.dinfinity.feature.settings
 
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -35,6 +37,19 @@ class MenuScreenTest {
     compose.onNodeWithText("PLAY").assertIsDisplayed()
     compose.onNodeWithTag(MenuTestTags.entryOf("roll")).assertIsDisplayed()
     compose.onNodeWithTag(MenuTestTags.entryOf("settings")).performScrollTo().assertIsDisplayed()
+  }
+
+  /**
+   * A section name is small, capitalised and in the accent — three ways of
+   * saying "heading" that a screen reader gets none of. Marked as one, the
+   * menu can be jumped through by section instead of swiped through row by row
+   * (`docs/architecture.md`, "Accessibility").
+   */
+  @Test
+  fun `a section name is a heading, not a small red row`() {
+    show()
+
+    compose.onNodeWithText("PLAY").assert(isHeading())
   }
 
   @Test

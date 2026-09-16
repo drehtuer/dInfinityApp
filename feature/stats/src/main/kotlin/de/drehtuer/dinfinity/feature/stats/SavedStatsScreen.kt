@@ -25,6 +25,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -267,7 +268,25 @@ private fun Chart(bars: List<TotalBar>) {
   if (bars.isEmpty()) return
   val ink = MaterialTheme.colorScheme.onSurface
   val mark = MaterialTheme.colorScheme.error
-  Canvas(modifier = Modifier.fillMaxWidth().height(CHART_HEIGHT).testTag(SavedStatsTestTags.CHART)) {
+  // Which rectangle is the bar and which the distribution's mark is carried by
+  // colour alone, on a `Canvas` that hands a screen reader an empty rectangle.
+  // What the picture claims is a count, and a count can be said out loud
+  // (`docs/architecture.md`, "Accessibility").
+  val reading = TotalsReading.of(bars)
+  val said =
+    listOfNotNull(
+      reading?.let { pluralStringResource(R.plurals.savedstats_chart_shape, it.bars, it.bars) },
+      reading?.let { stringResource(R.string.savedstats_chart_range, it.lowest, it.highest) },
+      reading?.let { pluralStringResource(R.plurals.savedstats_chart_above, it.above, it.above) },
+    ).joinToString(separator = " ")
+  Canvas(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .height(CHART_HEIGHT)
+        .semantics { contentDescription = said }
+        .testTag(SavedStatsTestTags.CHART),
+  ) {
     // Where every rectangle goes is arithmetic and lives in `ChartShapes`,
     // which a test can read. What is left here is `drawRect`, which is the one
     // thing a test cannot (`docs/statistics.md`).

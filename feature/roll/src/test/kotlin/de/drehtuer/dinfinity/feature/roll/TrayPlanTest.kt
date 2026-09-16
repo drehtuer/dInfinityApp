@@ -137,6 +137,39 @@ class TrayPlanTest {
     assertFalse(TrayPlan.markOf(contact(struck = Struck.Wall), geometry).onADie)
   }
 
+  /**
+   * The plan tints a die's box by its state, and a tint is the one thing a
+   * `Canvas` cannot hand to a screen reader — or to anybody who cannot tell
+   * the accent from the error colour, which on this overlay is red against red
+   * (`docs/architecture.md`, "Accessibility").
+   */
+  @Test
+  fun `the tally counts the dice in each of the three states`() {
+    val marks =
+      listOf(
+        TrayPlan.markOf(die(still = SettleRule.REST_STEPS), geometry),
+        TrayPlan.markOf(die(still = SettleRule.REST_STEPS), geometry),
+        TrayPlan.markOf(die(still = 0), geometry),
+        TrayPlan.markOf(die(still = 0, stacked = true), geometry),
+      )
+
+    val tally = TrayPlan.tally(marks)
+
+    assertEquals(2, tally.getValue(PlanTint.Still))
+    assertEquals(1, tally.getValue(PlanTint.Moving))
+    assertEquals(1, tally.getValue(PlanTint.Trouble))
+  }
+
+  @Test
+  fun `every state has an entry even when nothing is in it`() {
+    // A caller reading the tally should not have to decide whether a missing
+    // key means none or means a bug.
+    val tally = TrayPlan.tally(emptyList())
+
+    assertEquals(PlanTint.entries.toSet(), tally.keys)
+    assertEquals(listOf(0, 0, 0), PlanTint.entries.map(tally::getValue))
+  }
+
   private fun die(
     position: Vector3 = Vector3(0.0, 0.0, 8.0),
     still: Int = 0,

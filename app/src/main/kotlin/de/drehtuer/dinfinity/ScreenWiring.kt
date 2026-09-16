@@ -22,7 +22,10 @@ import de.drehtuer.dinfinity.feature.stats.HistoryPresenter
 import de.drehtuer.dinfinity.feature.stats.SavedStatsPresenter
 import de.drehtuer.dinfinity.feature.stats.SessionsPresenter
 import de.drehtuer.dinfinity.feature.stats.StatsPresenter
+import de.drehtuer.dinfinity.feature.tables.TableThumbnailBox
+import de.drehtuer.dinfinity.feature.tables.TableThumbnails
 import de.drehtuer.dinfinity.feature.tables.TablesPresenter
+import de.drehtuer.dinfinity.render.filament.ThumbnailDie
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -196,7 +199,32 @@ internal class ScreenWiring(
       // The Android half of "use a photo": a decoder, the personal package and
       // the catalogue that has to be re-read once one lands (`TablePhotoLibrary`).
       photos = app.tablePhotos,
+      thumbnails = tableThumbnails(),
     )
+
+  /**
+   * Pictures of the tables, or null where none can be drawn
+   * (`docs/tables.md`, "Thumbnails").
+   *
+   * The renderer is the roll screen's — one engine on one thread serves every
+   * screen that wants a picture (`docs/architecture.md`, decision 60) — and it
+   * is handed the size a row actually gives a thumbnail, because how much room
+   * that is belongs to the screen rather than to the renderer.
+   *
+   * Null in power-saving mode, which is where "no Filament engine is created
+   * at all" is kept for a screen that is not the tray. The picker then shows
+   * the swatch, which is what it shows on any device that cannot draw one.
+   */
+  private fun tableThumbnails(): TableThumbnails? {
+    val density = app.resources.displayMetrics.density
+    val pictures =
+      app.rolls.thumbnails(
+        powerSaving = settings.powerSaving,
+        widthPx = TableThumbnailBox.widthPx(density),
+        heightPx = TableThumbnailBox.heightPx(density),
+      ) ?: return null
+    return RenderedTableThumbnails(pictures, die = { ThumbnailDie.from(app.setLibrary.catalogue.installed) })
+  }
 
   /**
    * The debugging tools (`docs/physics-and-rendering.md`, "Debug tooling").

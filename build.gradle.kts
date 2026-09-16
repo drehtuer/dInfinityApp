@@ -319,6 +319,9 @@ subprojects {
 tasks.named("check") {
   dependsOn(verifyModuleGraph, verifyDocsIndex, verifyDocsLinks, verifySourcesTracked, verifyCoverage)
   // build-logic is a separate, included build: nothing here reaches its tasks
-  // unless it is asked for by name, so its linter would never run.
+  // unless it is asked for by name, so its linter and its own unit tests would
+  // never run. `verifyTextIsAResource`'s scan lives there, and a check nobody
+  // tested is a check that passes everything.
   dependsOn(gradle.includedBuild("build-logic").task(":ktlintCheckConventions"))
+  dependsOn(gradle.includedBuild("build-logic").task(":test"))
 }

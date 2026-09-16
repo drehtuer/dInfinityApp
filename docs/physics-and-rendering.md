@@ -179,6 +179,147 @@ accident — it replaces a result somebody may still be reading. Two deliberate
 gestures, one of them a button and the other a shake of the whole phone, are
 enough.
 
+## Picking a die up and throwing it again
+
+A player who does not like how a die landed picks it up and throws it again.
+That is the third way a die can be thrown, and it is the only one that is not
+the app's idea. The tray's **one-finger touch is being kept for it** — which is
+what the paragraph above is about, and why a tap on the biggest target on the
+screen deliberately does nothing.
+
+**It is not the invisible hand.** The rule further down — *nothing touches a
+die that has come to rest* — is about the **app** reaching into a finished roll,
+and what makes that intolerable is that nobody sees it happen: the player is
+shown a number that was arranged rather than rolled. A hand is the opposite in
+every particular. The player chooses the die, watches it go, watches it land,
+and the face that comes back is the physics' exactly as the first one was. The
+die is still never shoved, never tilted and never snapped to a face. It is
+thrown, in front of everybody, which is what a person does at a table.
+
+That is the easy half. The hard half is that a feature like this can *become*
+the invisible hand by accident, and the rest of this section is what stops it.
+
+### It is the throw an explosion already makes
+
+There is one way to throw dice in this app and one path to a number
+(`docs/architecture.md`, goal 1), and the throw a hand asks for already exists:
+it is the one `8d6!` makes when a six comes up. One die, into a tray that
+already has dice at rest in it, seeded from the roll's own seed through
+`Seeds.derived`, dropped rather than hurled into the floor `ClearSpace` picks
+out — and **with none of the settled dice in its world**. That is how the rule
+is kept here, exactly as it is kept there: not by tuning a spawn until it
+usually misses the pile, but because there is nothing in that world for a die
+to hit (see "The dice an explosion or a reroll adds"). The settled dice travel
+as `ThrowSpec.among` so the picture is honest too, and the renderer puts them
+back where the simulation left them and never moves them again.
+
+```mermaid
+flowchart LR
+  button["Roll button"] --> spec["ThrowSpec"]
+  shake["Shake"] --> spec
+  chain["An explosion or a reroll<br/>(ThrowSpec.among)"] --> spec
+  hand["A hand picking a die up<br/>(ThrowSpec.among)"] --> spec
+  spec --> sim["DiceSimulator"]
+  sim --> faces["The faces, and where each die stopped"]
+  faces --> score["Scoring, which decides no number"]
+  faces -.-> chain
+  faces -.-> hand
+```
+
+So there is nothing to invent, and nothing new to keep in step with
+power-saving mode: a hand re-throw is a throw, and it settles, is read and is
+scored the way every other throw is.
+
+### What happens to the face the die already showed
+
+**It stands, and it counts.** The die is not picked up in the literal sense —
+nothing moves it — so it stays where it fell, and its face stays in the
+breakdown, struck through, with the new die listed beside it. That is not a
+special presentation invented for this: it is exactly what `r n` already does
+(`docs/dice-notation.md`, "The order modifiers are applied in"), and a player
+who has seen `4d6r1` has seen it.
+
+It also stays in the statistics. `docs/statistics.md`'s rule for a dropped die
+is that it is still counted, "the die was thrown and landed on that face", and
+a die thrown again is the same case: **two throws happened, so two throws are
+counted**. A die that was counted once would be a histogram quietly missing the
+rolls somebody did not like, which is the exact shape of a lie about fairness.
+
+The roll itself is **rescored, not re-rolled**. Scoring is pure — the same
+faces always give the same total — so it is run again from the beginning with
+the new face in hand, which is what the tray already does every time an
+explosion lands (`RunningScore`). Nothing about the other dice changes, because
+nothing about the other dice happened.
+
+### Which die, and whether it may be thrown again at all
+
+Two decisions, and neither of them belongs inside a gesture.
+
+**Which die the finger is on** is arithmetic over the camera and the places the
+dice stopped: a ray through the touch point, against the ball around each die
+at the scale the capacity rule threw it, nearest to the camera first. It is the
+inverse of `TrayCamera` and it lives beside it, as `TrayPick`, with JVM tests
+that project a die through the frustum it was drawn in and ask for it back
+(`docs/architecture.md`, decision 62). Where two dice lie against each other,
+the answer is the one the player can see, and the answer to *that* ambiguity is
+the pinch: looking closer separates them on screen.
+
+**Whether that die may be thrown again** is a question about the formula, and
+it is the one that keeps this from becoming the invisible hand. `8d6!` threw a
+seventh die because the sixth came up six; `4d6r1` threw a fifth because the
+second came up one. Those dice are lying in the tray, their faces have been
+read, and they are in the statistics. Throwing the die that called for them
+again would leave the roll holding a die the formula no longer asks for — and
+the only two ways out of that are to take a die off a table nobody threw it
+off, or to keep a die whose reason has gone. Both are the app moving dice
+behind the player's back.
+
+So the offer stops at the **group**: a group carrying `!` or `r n` offers
+nothing, and every other group offers all of its dice, including the ones
+`kh`/`dl` struck through — which are the dice a player most wants to throw
+again, and which cost nothing, because which die a keep/drop leaves out is
+arithmetic over the faces and is redone from whatever faces there are. That is
+`PickUp`, beside `GroupRoller`, which is what built the chains it refuses to
+guess at. It is conservative on purpose: a die it refuses is a die the player
+throws again by pressing **Roll**, and a die it wrongly allowed would be a roll
+the app had rearranged.
+
+### Can this be used to roll until you like the answer
+
+Yes, and **it is deliberately the player's business**, exactly as it is at a
+table. The app is not a referee and has no way to be one: it cannot see who is
+at the table, what was agreed, or whether the die went off the mat. What it can
+do — and what makes a hand at a table tolerable in the first place — is make
+sure the throw is *visible* and that the record does not flatter it:
+
+- every face is in the breakdown, the replaced one struck through beside its
+  replacement, so the sheet in front of the player says how the total was
+  reached;
+- every face is in the statistics, counted once per time it was actually
+  thrown, so "are my dice fair" is answered from every roll and not from the
+  ones somebody kept;
+- and no number anywhere comes from anything but the simulation. A player who
+  throws a die five times has rolled five times. There is no version of this
+  where the app decides the fifth.
+
+What the app must never do is let a re-throw *cost* nothing to the record. That
+is the part that is not decided yet.
+
+### What is built, and what is waiting on a decision
+
+`TrayPick` and `PickUp` are built and tested: the app can say which die a
+finger is on and which dice a hand may go near. **The gesture is not wired up
+yet**, and the reason is one question with no obvious answer — *what the
+history says about a roll a die was thrown again in* (`docs/TODO.md`, "Open
+questions").
+
+A roll is written down the moment its dice stop, one `RollHistory` row and a
+face count for every die (`docs/statistics.md`). A hand re-throw happens after
+that, and it changes the total. Amending the row, writing a second one, and
+moving when a roll is written down are three different products, not three
+spellings of one, and each of them changes what the history *means*. Until that
+is answered the gesture stays unspent — which is what it has been all along.
+
 ## What a shake's spread currently rests on
 
 Measured on the Pixel 10a and worth knowing before anything here is tuned: the
@@ -633,6 +774,11 @@ below happens either before the dice are thrown or while they are still
 moving, except the last resort, which is an honest re-throw the player can
 see.
 
+It is a rule about the **app**, and a player's own hand is not an exception to
+it but the other side of it: a die a player throws again is chosen, watched and
+recorded, and it is still thrown rather than moved (see "Picking a die up and
+throwing it again").
+
 1. **Prevention — where the work goes.** Dice-on-dice friction is lower than
    dice-on-floor friction. Dice are scaled down so the table always keeps
    free floor area (capacity rule in `docs/tables.md`). Spawn positions are
@@ -955,7 +1101,9 @@ impact sounds rather than a crash in the middle of a roll.
   void beside the tray. A new throw goes back to the whole table, because the
   dice can land anywhere in it. A rotation does not: where the player was
   looking is part of the picture that is rebuilt. One finger is left alone, for
-  picking a die up and for the tap that deliberately does not roll.
+  picking a die up and for the tap that deliberately does not roll — and
+  which die a finger is on is `TrayPick`, the inverse of this camera
+  ("Picking a die up and throwing it again").
 - **The table is drawn before anything is thrown onto it, and after.** A tray
   is a table, not a roll: the screen says *there is a table* as soon as it
   opens, and the floor, the walls and the rim are built and drawn with nothing
@@ -999,6 +1147,24 @@ impact sounds rather than a crash in the middle of a roll.
   `Choreographer` (`docs/architecture.md`, decision 49). `TrayDriver` is that
   thread and the surface it draws to; `TrayLoop` is what it does each frame,
   and is tested on a JVM.
+- **The renderer also draws for a screen that is not the tray.** The table
+  picker shows each look as a picture of the tray it makes, and it is drawn by
+  this renderer, on this thread, with this engine — `TrayThumbnails` posts to
+  `RollThread`, opens a readable swap chain with no surface behind it, builds
+  the scene with `FilamentDiceRenderer` exactly as a throw does, reads one
+  frame back and gives the stage up again. Nothing about it is a roll: no
+  physics world, no step, and the die placed where the arithmetic says. A frame
+  that comes back all one colour is discarded rather than shown, because some
+  drivers render correctly to a screen and hand back an empty buffer when asked
+  to read one — and the picker's swatch is a better answer than a black
+  rectangle (`docs/tables.md`, "Thumbnails"; `docs/architecture.md`,
+  decision 60).
+- `Stage.capture` is the only thing on that seam that waits for the GPU, and no
+  frame of a roll ever calls it. Reading a frame back means blocking until the
+  driver has finished; a still picture drawn once, off screen, can afford it
+  and a tray at 120 Hz cannot. The rows come back the way a driver counts them,
+  from the bottom, and are turned over in plain Kotlin — "is the picture upside
+  down" is not a question worth a phone.
 - `FilamentStage` and `TrayDriver` are the two files excluded from the coverage
   figure — a GPU context and a thread. Neither is excluded from static
   analysis (`.claude/CLAUDE.md`).
@@ -1113,7 +1279,12 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
 
 ## Power-saving mode
 
-- No Filament engine is created at all; the `headless` renderer is used. The
+- No Filament engine is created at all — **on any screen**, not only on this
+  one. The table picker draws its thumbnails on a Filament engine, so in this
+  mode it is given none and falls back to its swatch: the promise is about the
+  app rather than about the tray, and a picture of a table is not worth
+  breaking it for (`docs/tables.md`, "Thumbnails").
+- The `headless` renderer is used. The
   screen goes further and puts **no surface on the screen**, rather than a
   surface nothing draws to: a surface is a buffer the compositor keeps, and
   what this mode claims is that none of it exists. `PowerSavingTray` is the

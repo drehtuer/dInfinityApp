@@ -136,6 +136,22 @@ object TrayPlan {
    * and a dot of zero size is a contact that did not happen.
    */
   const val SMALLEST_DOT: Double = 0.4
+
+  /**
+   * How many dice are in each of the three states
+   * (`docs/architecture.md`, "Accessibility").
+   *
+   * The plan says which die is which by tinting its box, and a tint is the one
+   * thing a `Canvas` cannot hand to a screen reader — or to anybody who cannot
+   * tell the accent from the error colour, which on this overlay is red against
+   * red. The counts are the whole of what the picture claims, so they are what
+   * the overlay says out loud.
+   *
+   * Every tint gets an entry, zero included: a caller reading the tally should
+   * not have to decide whether a missing key means none or means a bug.
+   */
+  fun tally(marks: List<DieMark>): Map<PlanTint, Int> =
+    PlanTint.entries.associateWith { tint -> marks.count { it.tint == tint } }
 }
 
 /**

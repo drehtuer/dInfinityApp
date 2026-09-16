@@ -1,8 +1,11 @@
 package de.drehtuer.dinfinity.feature.saved
 
 import android.content.Context
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
@@ -157,6 +160,28 @@ class SavedScreenTest {
     // A child is drawn under its parent's name rather than indented: an indent
     // is a tree control waiting to happen, and there is no tree.
     compose.onNodeWithTag(SavedTestTags.groupOf("thorin")).assertTextContains("D&D", substring = true)
+  }
+
+  /**
+   * The export mark and the group's **…** are single glyphs: a picture to a
+   * screen reader, and a target the size of one character to a thumb
+   * (`docs/architecture.md`, "Accessibility").
+   */
+  @Test
+  fun `the controls drawn as one character are labelled and big enough to press`() {
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    given(roll("axe", groupId = "thorin"))
+    show()
+
+    compose.onNodeWithTag(ExportTestTags.OPEN).assertContentDescriptionEquals("Collections: export or import")
+    compose.onNodeWithTag(ExportTestTags.OPEN).assertWidthIsAtLeast(TOUCH_TARGET)
+    compose.onNodeWithTag(ExportTestTags.OPEN).assertHeightIsAtLeast(TOUCH_TARGET)
+
+    compose.onNodeWithTag(SavedTestTags.SWITCHER).performClick()
+
+    compose.onNodeWithTag(GroupTestTags.editOf("thorin")).assertContentDescriptionEquals("Edit the group Thorin")
+    compose.onNodeWithTag(GroupTestTags.editOf("thorin")).assertWidthIsAtLeast(TOUCH_TARGET)
+    compose.onNodeWithTag(GroupTestTags.editOf("thorin")).assertHeightIsAtLeast(TOUCH_TARGET)
   }
 
   @Test

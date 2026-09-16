@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity
 
+import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.feature.graph.GraphTestTags
@@ -49,7 +51,11 @@ class DInfinityAppTest {
       }
     }
     compose.onNodeWithTag("screen:${Destination.Roll.route}").assertIsDisplayed()
-    compose.onNodeWithText(Destination.Roll.title).assertIsDisplayed()
+    // Read from the resource rather than repeated here: a test that spells
+    // the heading out again is a test that asserts the same typo twice.
+    compose
+      .onNodeWithText(ApplicationProvider.getApplicationContext<Context>().getString(Destination.Roll.title))
+      .assertIsDisplayed()
   }
 
   @Test

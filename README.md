@@ -89,6 +89,12 @@ a tumble; everything else is real.
   cannot crash the app or affect other sets.
 - **Your accent** — the one colour the interface spends is yours to choose,
   from a palette checked for legibility on both the light and the dark ground.
+- **Readable out loud** — every screen is labelled for TalkBack, including the
+  tray and the charts, which are drawings and would otherwise be silent.
+  Nothing is said by a colour alone: a natural 20, a dropped die, the chosen
+  filter and the line a fair die would draw all say so in words as well. Touch
+  targets are 48 dp and the palette's contrast is measured in a test rather
+  than eyeballed.
 - **Face designer** — draw die faces with your finger and roll them.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
@@ -163,6 +169,16 @@ the tracking files are kept tidy — are in
   [docs/TODO.md](docs/TODO.md), "Open questions"
 - Reference device: Google Pixel 10a; that is where it is tested first
 - Kotlin, Jetpack Compose
+- Accessibility: TalkBack labels on every screen, 48 dp touch targets, no
+  meaning carried by colour alone, and WCAG 2.2 AA contrast measured rather
+  than assumed — the rules, the measurements and the two ratios that fall
+  short are in
+  [docs/architecture.md](docs/architecture.md#accessibility)
+- Language: English, and only English ships. Every word a screen says is a
+  string resource, so nothing in the app stands between here and a translation
+  somebody writes — the rule, where the line between text and a test tag is
+  drawn, and the check that enforces it are in
+  [docs/architecture.md](docs/architecture.md#text-a-person-reads)
 - 3D rendering and physics run on-device; the app works fully offline.
   Network access is only used when you explicitly install a dice set, a
   table or a saved-roll collection from a URL.

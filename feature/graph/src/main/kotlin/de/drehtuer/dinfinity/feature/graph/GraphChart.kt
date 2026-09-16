@@ -12,6 +12,10 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
@@ -43,10 +47,16 @@ internal fun GraphChart(
   val band = MaterialTheme.colorScheme.surfaceVariant
   val mark = MaterialTheme.colorScheme.primary
 
+  // A `Canvas` hands a screen reader an empty rectangle, and this one is the
+  // whole point of the screen. What shape the distribution is is said in words
+  // (`docs/architecture.md`, "Accessibility").
+  val reading = ChartReading.of(bars, picked, rolled)?.spoken()
+
   Canvas(
     modifier =
       modifier
         .testTag(GraphTestTags.CHART)
+        .then(reading?.let { said -> Modifier.semantics { contentDescription = said } } ?: Modifier)
         .pointerInput(bars) {
           detectTapGestures { at ->
             if (size.width > 0) barAt(bars, at.x / size.width)?.let { onPick(it.from) }
@@ -86,6 +96,23 @@ internal fun GraphChart(
     )
   }
 }
+
+/**
+ * The chart's shape as a sentence or three.
+ *
+ * Built from parts rather than from one format string with optional halves: a
+ * mark is there or it is not, and a translator should not have to guess what a
+ * trailing fragment attaches to.
+ */
+@Composable
+private fun ChartReading.spoken(): String =
+  listOfNotNull(
+    pluralStringResource(R.plurals.graph_chart_shape, bars, bars),
+    stringResource(R.string.graph_chart_range, lowest, highest),
+    stringResource(R.string.graph_chart_likeliest, likeliest),
+    rolled?.let { stringResource(R.string.graph_chart_rolled, it) },
+    picked?.let { stringResource(R.string.graph_chart_picked, it) },
+  ).joinToString(separator = " ")
 
 /** A line straight up the chart at [share] of the way along it. */
 private fun DrawScope.upright(

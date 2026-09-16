@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -34,6 +35,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.SavedRollGroup
 
 /**
  * Named formulas, rolled with one tap
@@ -213,6 +215,7 @@ private fun TopBar(
       onClick = onExport,
       modifier =
         Modifier
+          .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
           .semantics { contentDescription = exportLabel }
           .testTag(ExportTestTags.OPEN),
     ) {
@@ -222,6 +225,32 @@ private fun TopBar(
       Text(stringResource(R.string.saved_new))
     }
     menu()
+  }
+}
+
+/**
+ * A second way into the group sheet, because a long press is not discoverable
+ * and the switcher is the only place a group is ever seen.
+ *
+ * An ellipsis is a picture, so the label is what TalkBack reads; and a button
+ * the size of one glyph is not a target, so it is given one
+ * (`docs/architecture.md`, "Accessibility").
+ */
+@Composable
+private fun EditGroup(
+  group: SavedRollGroup,
+  onEdit: () -> Unit,
+) {
+  val label = stringResource(R.string.group_edit_it, group.name)
+  TextButton(
+    onClick = onEdit,
+    modifier =
+      Modifier
+        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
+        .semantics { contentDescription = label }
+        .testTag(GroupTestTags.editOf(group.id)),
+  ) {
+    Text("…")
   }
 }
 
@@ -277,14 +306,7 @@ private fun GroupSwitcher(
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        // A second way in, because a long press is not discoverable and the
-        // switcher is the only place a group is ever seen.
-        TextButton(
-          onClick = { onEdit(entry.group.id) },
-          modifier = Modifier.testTag(GroupTestTags.editOf(entry.group.id)),
-        ) {
-          Text("…")
-        }
+        EditGroup(group = entry.group, onEdit = { onEdit(entry.group.id) })
       }
     }
     HorizontalDivider()

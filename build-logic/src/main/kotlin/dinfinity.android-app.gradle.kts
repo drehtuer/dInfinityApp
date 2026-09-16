@@ -88,6 +88,19 @@ android {
     compose = true
   }
 
+  androidResources {
+    // v1 ships English, and only English reaches the APK.
+    //
+    // Not a decision about what the app *could* speak — every string a screen
+    // says is a resource, so a `values-de/` would work the day somebody writes
+    // one (`docs/architecture.md`, "Text a person reads"). This is about what
+    // is shipped: AndroidX and Material carry translations into seventy-odd
+    // languages, and packing all of them beside one English app is weight
+    // nobody reads. Adding a language here is the same line as adding the
+    // folder.
+    localeFilters += "en"
+  }
+
   signingConfigs {
     keystoreEntry("debug")?.let { entry ->
       getByName("debug") {
@@ -143,6 +156,12 @@ android {
   lint {
     warningsAsErrors = true
     abortOnError = true
+    // Named rather than left to `warningsAsErrors`, so that turning that off
+    // one day does not quietly turn this off with it. `HardcodedText` only
+    // reads layout XML, though, and every screen here is Compose — the check
+    // that covers Kotlin is `verifyTextIsAResource` in `dinfinity.quality`
+    // (`docs/architecture.md`, "Text a person reads").
+    error += setOf("HardcodedText", "MissingTranslation", "ExtraTranslation")
   }
 }
 
