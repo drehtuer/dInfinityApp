@@ -1046,6 +1046,16 @@ The figures are reported in every PR description either way.
       repository root instead, because the path after the ref is a dice set's
       subfolder and a collection is found at the root. Decide whether such a
       link should import the file it names
+- [ ] **Android Lint's `NewerVersionAvailable` breaks the build on somebody
+      else's release schedule.** It asks Maven Central on every run, so a
+      dependency publishing a new version turns CI red on a commit that changed
+      nothing — tomlj 1.3.0 did exactly that on 2026-09-16, with the previous
+      green run hours earlier. Worse, it is **invisible locally**: the
+      devcontainer runs Gradle `--offline`, so the detector has no network and
+      says nothing, and `./gradlew check` passes on a tree CI will reject.
+      Either that check should not gate the build (leaving Dependabot to raise
+      the bumps, which it already does), or the local run needs a way to ask
+      the same question. A decision, not a bump
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] Move the container's emulator up when an automated-test image exists
       above API 36 — the same wait as the line above, for the same reason
