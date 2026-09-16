@@ -2,7 +2,6 @@ package de.drehtuer.dinfinity
 
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Die
-import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.core.notation.DicePicker
@@ -12,6 +11,7 @@ import de.drehtuer.dinfinity.data.setActiveGroup
 import de.drehtuer.dinfinity.data.setActiveSession
 import de.drehtuer.dinfinity.data.setDefaultSet
 import de.drehtuer.dinfinity.data.setDefaultTable
+import de.drehtuer.dinfinity.designer.OpeningDie
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
 import de.drehtuer.dinfinity.feature.roll.WhatIsThere
@@ -93,7 +93,7 @@ internal class ScreenWiring(
       savedStatistics = { savedStatistics() },
       diceSets = { diceSets() },
       tables = { tables() },
-      faceDesigner = { faceDesigner() },
+      faceDesigner = { die -> faceDesigner(die) },
       developer = { developer() },
       diceSet = { id, onGone -> diceSet(id, onGone) },
       whatIsThere = whatIsThere(app.savedRolls.all, app.sessions.sessions),
@@ -150,14 +150,17 @@ internal class ScreenWiring(
   /**
    * Drawing the faces of a die (`docs/face-designer.md`).
    *
-   * Opened on the default set's **d6**, or its first die if it has none.
+   * Opened on [wanted] when quick mode named a die — "Doodle this die", off a
+   * long press in the breakdown — and otherwise on the default set's **d6**.
+   * Which die that comes to is `designer`'s [OpeningDie], not a rule written
+   * out here: it has cases in it, and a case in a wiring function is a case no
+   * unit test reaches.
    *
-   * The d6 rather than the set's first die, which is the d2: opening a drawing
-   * app on a coin is a poor answer to "draw a die". Whichever die it opens on,
-   * it opens on that die's own draft — so somebody who was drawing a d20
-   * yesterday is one tap from it rather than back at a blank d6.
+   * Whichever die it opens on, it opens on that die's own draft — so somebody
+   * who was drawing a d20 yesterday is one tap from it rather than back at a
+   * blank d6.
    */
-  private fun faceDesigner(): DesignerPresenter {
+  private fun faceDesigner(wanted: String): DesignerPresenter {
     val catalogue = app.setLibrary.catalogue
     // Every die of every usable set, so somebody else's d18 can be drawn on as
     // readily as the bundled d6 (`docs/face-designer.md`, "Flow"). Two sets
@@ -165,9 +168,10 @@ internal class ScreenWiring(
     // a row with the same name on it twice is a row nobody can choose from.
     val everything = catalogue.installed.flatMap { it.dice }.distinctBy { it.id }
     val fromDefault = catalogue.set(catalogue.defaultSetId)?.dice.orEmpty()
-    val opening = fromDefault.ifEmpty { everything }
     return DesignerPresenter(
-      die = opening.firstOrNull { it.shape == DieShape.Cube } ?: opening.first(),
+      // Null only when nothing at all is installed, which no install is: the
+      // bundled set cannot be removed (`docs/dice-sets.md`).
+      die = OpeningDie.of(choosable = everything, fromDefaultSet = fromDefault, wanted = wanted) ?: everything.first(),
       choosable = everything,
       // So a drawing outlives the screen it was made on, and each die keeps
       // its own (`docs/face-designer.md`, "Drawing tools").

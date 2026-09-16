@@ -37,11 +37,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
@@ -51,17 +48,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.designer.Dot
-import de.drehtuer.dinfinity.designer.FaceOutline
-import de.drehtuer.dinfinity.designer.FaceShapes
 import de.drehtuer.dinfinity.designer.FaceTransform
-import de.drehtuer.dinfinity.designer.Fill
-import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Ink
-import de.drehtuer.dinfinity.designer.Mark
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
-import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 
 /**
  * Drawing the faces of a die (`design/dInfinity.dc.html`, options `1v`, `4c`
@@ -258,122 +249,13 @@ private fun FaceCanvas(
     val face = Path().apply { follow(outline, size.width, size.height) }
     clipPath(face) {
       drawRect(color = Color.White)
-      state.guide.forEach { mark -> drawGuide(mark, outline, guideColour) }
+      state.guide.forEach { mark -> drawGuide(mark, guideColour) }
       state.face.marks.forEach { mark -> drawMark(mark) }
       if (drawing.size > 1) {
         drawStroke(Stroke(drawing, state.colorArgb, state.nib.width, state.nib.erases))
       }
     }
   }
-}
-
-private fun Offset.asDot(
-  width: Float,
-  height: Float,
-): Dot = Dot(x = (x / width).coerceIn(0f, 1f), y = (y / height).coerceIn(0f, 1f))
-
-/** The outline as a path across a canvas of [width] by [height]. */
-private fun Path.follow(
-  outline: FaceOutline,
-  width: Float,
-  height: Float,
-) {
-  val corners = FaceShapes.corners(outline)
-  if (corners.isEmpty()) {
-    // The coin, which is the one outline that is not a polygon.
-    addOval(
-      androidx.compose.ui.geometry
-        .Rect(0f, 0f, width, height),
-    )
-    return
-  }
-  corners.forEachIndexed { index, dot ->
-    val x = dot.x * width
-    val y = dot.y * height
-    if (index == 0) moveTo(x, y) else lineTo(x, y)
-  }
-  close()
-}
-
-/**
- * One mark: a line of the pen, or a region the bucket coloured in.
- *
- * The fill is a closed path rather than a rectangle, because the region it was
- * given is whatever shape enclosed the tap — the canvas square for the face
- * itself, and the player's own outline for anything smaller (`FaceFill`).
- */
-private fun DrawScope.drawMark(mark: Mark) {
-  when (mark) {
-    is Stroke -> drawStroke(mark)
-    is Fill -> drawFill(mark)
-    is Stamp -> drawStamp(mark)
-  }
-}
-
-/**
- * A stamped glyph: every ring of it as one shape, under the even-odd rule.
- *
- * Even-odd is what leaves the hole in a `0` open — the rings of a glyph are
- * wound against each other, and a counter drawn as a shape of its own would be
- * a blob where the hole is (`designer`'s `Stamp`).
- */
-private fun DrawScope.drawStamp(stamp: Stamp) {
-  val path =
-    Path().apply {
-      fillType = PathFillType.EvenOdd
-      stamp.rings.forEach { ring ->
-        trace(ring, size.width, size.height)
-        close()
-      }
-    }
-  drawPath(path = path, color = Color(stamp.colorArgb))
-}
-
-private fun DrawScope.drawFill(fill: Fill) {
-  val path = Path().apply { trace(fill.dots, size.width, size.height) }
-  path.close()
-  drawPath(path = path, color = Color(fill.colorArgb))
-}
-
-private fun DrawScope.drawStroke(stroke: Stroke) {
-  val path = Path().apply { trace(stroke.dots, size.width, size.height) }
-  drawPath(
-    path = path,
-    // The eraser paints the canvas's own white rather than cutting a hole:
-    // the drawing is a list of strokes and a hole would be a fourth kind of
-    // thing to store, to undo and to rasterise.
-    color = if (stroke.erases) Color.White else Color(stroke.colorArgb),
-    style = DrawStroke(width = stroke.width * size.width, cap = androidx.compose.ui.graphics.StrokeCap.Round),
-  )
-}
-
-/** [dots] as a path across a canvas of [width] by [height]. */
-private fun Path.trace(
-  dots: List<Dot>,
-  width: Float,
-  height: Float,
-) {
-  dots.forEachIndexed { index, dot ->
-    val x = dot.x * width
-    val y = dot.y * height
-    if (index == 0) moveTo(x, y) else lineTo(x, y)
-  }
-}
-
-private fun DrawScope.drawGuide(
-  mark: GuideMark,
-  outline: FaceOutline,
-  colour: Color,
-) {
-  val at = FaceShapes.spot(outline, mark.spot)
-  // A circle where the number goes rather than the number itself: text on a
-  // `DrawScope` needs a measurer this file has no reason to hold, and what the
-  // guide is *for* is the place. The value is read from the strip below.
-  drawCircle(
-    color = colour,
-    radius = size.width * GUIDE_DOT,
-    center = Offset(at.x * size.width, at.y * size.height),
-  )
 }
 
 @Composable
@@ -808,7 +690,6 @@ private fun labelOf(size: StampSize): Int =
   }
 
 private const val GUIDE_ALPHA = 0.35f
-private const val GUIDE_DOT = 0.05f
 
 /** All the way round the wheel, which is where hue starts again. */
 private const val HUE_ROUND = 360f

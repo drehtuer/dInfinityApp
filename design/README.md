@@ -59,7 +59,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 | Saved rolls, editor, import — 1n–1p, 1r, 7b, 9b, 9f–9g, 6e | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Dice sets, set details, install and update — 1s–1t, 5a, 6a–6b, 8c, 9h–9i | [../docs/dice-sets.md](../docs/dice-sets.md) |
 | Table picker — 1u, 8a, 9j | [../docs/tables.md](../docs/tables.md) |
-| Face designer — 1v, 4c, 8d; its export on the "My dice" details, 8c | [../docs/face-designer.md](../docs/face-designer.md) |
+| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; its export on the "My dice" details, 8c | [../docs/face-designer.md](../docs/face-designer.md) |
 | Statistics, history, sessions — 1w, 1x, 5b–5c, 6c, 8b, 9e | [../docs/statistics.md](../docs/statistics.md) |
 | Menu, Settings — 1q, 1y, 2d | [../README.md](../README.md), [../docs/architecture.md](../docs/architecture.md) |
 

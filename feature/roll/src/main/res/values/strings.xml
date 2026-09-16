@@ -53,6 +53,8 @@
   <!-- A number the formula adds or takes away, itemised on the result sheet. -->
   <string name="roll_sheet_plus">plus</string>
   <string name="roll_sheet_minus">minus</string>
+  <!-- Quick mode: what a long press on a die in the breakdown offers (docs/face-designer.md). -->
+  <string name="roll_die_doodle">Doodle this die</string>
   <string name="roll_hint_empty">Type a formula, or tap a die below.</string>
   <string name="roll_hint_ready">Shake the phone, or press Roll.</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->
