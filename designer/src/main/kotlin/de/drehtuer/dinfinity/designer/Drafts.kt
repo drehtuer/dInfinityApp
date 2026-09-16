@@ -74,15 +74,19 @@ class DraftStore(
       partial.writeText(DraftFile.write(draft))
       // `renameTo` rather than a copy: on one filesystem it is the one step
       // that either happened or did not.
-      if (!partial.renameTo(file)) partial.delete()
-    }.onFailure { partial.delete() }
+      if (!partial.renameTo(file)) partial.discard()
+    }.onFailure { partial.discard() }
     makeRoom(keeping = file)
   }
 
-  /** Takes one die's drawing away. */
-  fun forget(dieId: String) {
-    fileFor(dieId).delete()
-  }
+  /**
+   * Takes one die's drawing away, and says whether it is gone.
+   *
+   * Hands back false only for a drawing that is still there afterwards. What
+   * this must not do is call a file it could not remove forgotten, because the
+   * next [load] of that die will hand the drawing straight back.
+   */
+  fun forget(dieId: String): Boolean = fileFor(dieId).deleted()
 
   /**
    * A number that changes when the drawings do.
@@ -123,7 +127,32 @@ class DraftStore(
       .sortedByDescending(File::lastModified)
       .drop(limit)
       .filterNot { it.name == keeping.name }
-      .forEach { it.delete() }
+      .forEach { it.discard() }
+  }
+
+  /**
+   * Whether this file is off the disk, having just been asked to go.
+   *
+   * `delete` answers false twice over: for a file it could not remove, and for
+   * one that was not there to begin with. Only the first is a failure — the
+   * second is already the outcome every caller here wanted — so the answer is
+   * whether the file is there now, not whether this call is what removed it.
+   */
+  private fun File.deleted(): Boolean = delete() || !exists()
+
+  /**
+   * Gets rid of a file that has no business being there, and asks again on the
+   * way out when it will not go.
+   *
+   * For the half-written [PARTIAL] files and for drafts dropped to make room —
+   * neither of which anybody is waiting on, so a filesystem that refuses is
+   * worth a second attempt rather than an error nobody can act on. A leftover
+   * partial is invisible to the rest of this class (it does not end in
+   * [SUFFIX]) and the next save of that die writes over it; a draft that would
+   * not drop simply goes on counting against [limit] until it does.
+   */
+  private fun File.discard() {
+    if (!deleted()) deleteOnExit()
   }
 
   private fun files(): List<File> = directory.listFiles().orEmpty().filter { it.isFile && it.name.endsWith(SUFFIX) }

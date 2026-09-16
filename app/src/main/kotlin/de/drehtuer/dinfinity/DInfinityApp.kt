@@ -390,7 +390,11 @@ private fun Sets(
       // has nothing to say.
       if (uri == null) return@rememberLauncherForActivityResult
       when (val copied = PackageFileReading.copy(context.contentResolver, uri, File(context.cacheDir, CHOSEN))) {
-        is PackageFileReading.Result.Copied -> presenter.install(copied.file) { copied.file.delete() }
+        is PackageFileReading.Result.Copied ->
+          // A stranger's archive in a cache nobody empties, and the set it
+          // held is on disk by the time anybody wants it again. A filesystem
+          // that will not let go of it gets asked once more on the way out.
+          presenter.install(copied.file) { if (!copied.file.delete()) copied.file.deleteOnExit() }
         is PackageFileReading.Result.Failed -> presenter.refused(copied.why)
       }
     }
