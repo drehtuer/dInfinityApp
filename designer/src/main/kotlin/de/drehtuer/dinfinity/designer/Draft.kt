@@ -16,14 +16,15 @@ data class Dot(
 )
 
 /**
- * One thing on a face: a line of the pen, or a region the bucket coloured in.
+ * One thing on a face: a line of the pen, a region the bucket coloured in, or
+ * a glyph the stamp put down.
  *
- * A sealed pair rather than one class with a flag, because the two carry
- * different things — a stroke has a nib width and can be the eraser, a fill has
- * neither — and a combination that cannot be drawn is better made impossible
- * than documented. Both are lists of dots in fractions of the canvas, which is
- * what lets a paste turn or mirror either of them with the same arithmetic
- * (`FaceTransform`).
+ * A sealed set rather than one class with flags, because the three carry
+ * different things — a stroke has a nib width and can be the eraser, a fill
+ * has neither, a stamp is closed rings with holes in them — and a combination
+ * that cannot be drawn is better made impossible than documented. All three
+ * are dots in fractions of the canvas, which is what lets a paste turn or
+ * mirror any of them with the same arithmetic (`FaceTransform`).
  */
 sealed interface Mark {
   /** The ink. */
@@ -76,6 +77,90 @@ data class Fill(
   override val colorArgb: Int,
 ) : Mark {
   override fun at(dots: List<Dot>): Fill = copy(dots = dots)
+}
+
+/**
+ * A glyph of the built-in font, put down whole (`docs/face-designer.md`, "The
+ * stamp").
+ *
+ * **Rings rather than one path, because a `0` has a hole in it.** A glyph is
+ * closed outlines — the outside of the ink, and a counter for every hole in it
+ * — and a hole drawn as a [Fill] of its own would be a blob where the hole is.
+ * They are drawn as one shape with the even-odd rule, which is what leaves the
+ * hole open however the contours are wound.
+ *
+ * **One glyph-string is one mark**, not one per contour: `10` on a d20 is four
+ * rings and a stamp of `10` is one press of undo, one mark against the face's
+ * two hundred, and one thing a turn or a mirror carries whole.
+ *
+ * @param rings the outlines, each closing itself, in fractions of the canvas.
+ * @param colorArgb the ink. A stamp is ink and sits over the paper like a
+ *   stroke does ([FaceDrawing.sunk]).
+ */
+data class Stamp(
+  val rings: List<List<Dot>>,
+  override val colorArgb: Int,
+) : Mark {
+  init {
+    require(rings.isNotEmpty() && rings.all { it.size >= CORNERS_OF_A_RING }) {
+      "a stamp is closed rings of at least $CORNERS_OF_A_RING dots, not ${rings.map { it.size }}"
+    }
+  }
+
+  /**
+   * Every ring's dots, end to end.
+   *
+   * What lets a stamp be turned, mirrored and scaled into an atlas by the same
+   * arithmetic as every other mark: none of it cares which ring a dot is in,
+   * because none of it moves a dot past its neighbours ([at]).
+   */
+  override val dots: List<Dot> = rings.flatten()
+
+  /**
+   * The same glyph with its dots somewhere else.
+   *
+   * The rings are cut back out of the flat list by the lengths they had, which
+   * is sound because every transform is one dot in and one dot out, in order.
+   * A list of another length is not this mark moved, so it is refused rather
+   * than cut up wrongly.
+   */
+  override fun at(dots: List<Dot>): Stamp =
+    if (dots.size != this.dots.size) this else copy(rings = cut(rings.map { it.size }, dots))
+
+  companion object {
+    /**
+     * The glyph [dots] make when they are cut into rings of these [lengths],
+     * or null when they are not those rings.
+     *
+     * What reads a stamp back off a draft file: the file keeps the dots of
+     * every mark the one way, flat, with a stamp's ring lengths beside them.
+     * Lengths that do not add up to the dots they were written with are not a
+     * glyph this wrote, and the mark is dropped rather than read as some
+     * other shape (`DraftFile`).
+     */
+    fun of(
+      lengths: List<Int>,
+      dots: List<Dot>,
+      colorArgb: Int,
+    ): Stamp? =
+      if (lengths.isEmpty() || lengths.any { it < CORNERS_OF_A_RING } || lengths.sum() != dots.size) {
+        null
+      } else {
+        Stamp(rings = cut(lengths, dots), colorArgb = colorArgb)
+      }
+
+    /** [dots] in runs of these [lengths], which is what a stamp's rings are. */
+    private fun cut(
+      lengths: List<Int>,
+      dots: List<Dot>,
+    ): List<List<Dot>> {
+      val starts = lengths.runningFold(0) { at, ring -> at + ring }
+      return lengths.mapIndexed { ring, length -> dots.subList(starts[ring], starts[ring] + length).toList() }
+    }
+
+    /** Three corners is the fewest that can enclose anything. */
+    private const val CORNERS_OF_A_RING = 3
+  }
 }
 
 /**

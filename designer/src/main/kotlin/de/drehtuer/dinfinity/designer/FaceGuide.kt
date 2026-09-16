@@ -84,21 +84,37 @@ object FaceGuide {
 
   /**
    * The three numbers cell [cell] carries, in corner order.
-   *
-   * Cell `i` is the triangle *opposite* corner `i`, so its corners are the
-   * three that are not `i`, and each carries that corner's own value —
-   * `faces[c].value`, because a vertex-read die indexes its faces by vertex.
-   *
-   * Two cells sharing an edge share two corners, and both read those corners'
-   * values from the same place. There is no second copy to disagree with.
    */
   private fun corners(
     die: Die,
     cell: Int,
-  ): List<GuideMark> =
-    die.faces.indices
-      .filter { it != cell }
-      .mapIndexed { position, corner -> GuideMark(die.faces[corner].value, SPOTS[position]) }
+  ): List<GuideMark> = cornersOf(die, cell).map { (corner, spot) -> GuideMark(die.faces[corner].value, spot) }
+
+  /**
+   * Which catalogue face each corner of cell [cell] reads, in corner order.
+   *
+   * Cell `i` is the triangle *opposite* corner `i`, so its corners are the
+   * three that are not `i`, and each carries that corner's own face —
+   * `faces[c]`, because a vertex-read die indexes its faces by vertex.
+   *
+   * Two cells sharing an edge share two corners, and both read those corners'
+   * values from the same place. There is no second copy to disagree with.
+   *
+   * The faces rather than their values, because what is *printed* at a corner
+   * is the face's label and only the guide reduces it to a number
+   * (`FaceStamp.numbers`).
+   */
+  fun cornersOf(
+    die: Die,
+    cell: Int,
+  ): List<Pair<Int, GuideSpot>> =
+    if (!isCornerRead(die) || cell !in die.faces.indices) {
+      emptyList()
+    } else {
+      die.faces.indices
+        .filter { it != cell }
+        .mapIndexed { position, corner -> corner to SPOTS[position] }
+    }
 
   private val SPOTS = listOf(GuideSpot.FirstCorner, GuideSpot.SecondCorner, GuideSpot.ThirdCorner)
 }

@@ -59,11 +59,12 @@ steered from. The tool, clipboard and colour rows **wrap** rather than scroll
 sideways: a tool hidden off the edge of a row is a tool nobody finds. Only the
 face strip scrolls sideways, because twenty faces have to go somewhere.
 
-The toolbar the design asks for is three-quarters there: the **fill bucket**,
-**copy face → paste with a turn and a mirror**, and a **colour picker past the
-twelve presets** (`4c`). Each of them is arithmetic over the stored vectors and
-lives in `designer/` where a plain test can reach it; what is left in the
-screen is a path and a mask.
+The toolbar the design asks for is there: the **fill bucket**, **copy face →
+paste with a turn and a mirror**, a **colour picker past the twelve presets**
+(`4c`), and the **stamp** with the "fill all with numbers" beside the face
+strip. Each of them is arithmetic over the stored vectors and lives in
+`designer/` where a plain test can reach it; what is left in the screen is a
+path and a mask.
 
 **The d4 rule is derived, not checked.** A cell's three numbers are read from
 the three corners that cell meets, so two cells sharing an edge draw the same
@@ -105,10 +106,6 @@ The export is built: "My dice" is a real installed package, and the details
 screen behind it offers it as a zip once a licence has been chosen ("Export
 details" below).
 
-Still to come, in `docs/TODO.md` 4.6: the stamp and "fill all faces with
-numbers" — both of which place a glyph, and so both wait on the built-in SDF
-font (Step 3).
-
 ## Drawing tools
 
 Deliberately small:
@@ -118,10 +115,9 @@ Deliberately small:
 - Undo/redo (per face, unlimited within the session)
 - Copy face → paste onto another face, with optional turn/mirror (for making
   all faces share a border, for example)
-- Stamp: place a digit/letter/symbol from the built-in font, scalable and
-  rotatable, so people who cannot draw a legible "8" still get an "8" — not
-  built yet, and neither is the "fill all faces with numbers" one-tap starting
-  point it shares a font with
+- Stamp: place a digit or a sign from the built-in font, in three sizes, so
+  people who cannot draw a legible "8" still get an "8" — and "fill all with
+  numbers", the one tap that puts every face's own number on it ("The stamp")
 
 ### The fill bucket
 
@@ -153,6 +149,90 @@ a fill that landed on top would hide the drawing it was aimed at, and the way
 to cover ink is the eraser. A fill is one mark, so it is one press of undo, it
 counts against the two-hundred limit like a stroke, and it round-trips through
 the draft file with its region and its colour.
+
+### The stamp
+
+> **Design:** the stamp is in the tool row of option `1v` and "fill all with
+> numbers" sits beside the face strip, which is where the prototype puts them.
+
+**The font is the tray's, and so is the placement.** `core/glyphs` holds the
+outlines a die with no artwork is printed with, and `LabelRoom` solves how big
+a label may be on a face and where on that face it goes. The tray asks it about
+the polygon its mesh draws; the designer asks the same object about the polygon
+the canvas is masked into. A die drawn from its own numbers and the same die
+printed therefore agree about where a `6` sits, which two solves could not be
+relied on to do (`docs/architecture.md`, decision 45 and decision 51).
+
+```mermaid
+flowchart LR
+  font["core/glyphs<br/>BuiltinFont + Typesetter"] --> room["LabelRoom<br/>how big, and where"]
+  room --> tray["render/filament<br/>DieNumbers: the mesh's face"]
+  room --> designer["designer<br/>FaceStamp: the canvas's outline"]
+  tray --> field["a distance field the tray samples"]
+  designer --> marks["marks on a face, like any other"]
+```
+
+**A stamp is a mark like a stroke, and one mark however many rings it has.**
+What the typesetter hands back is closed outlines — the outside of the ink, and
+a counter for every hole in it — and they are kept together and drawn as one
+shape under the **even-odd rule**, which is what leaves the hole in a `0` open.
+Each ring as a fill of its own would paint that hole in. `10` is one press of
+undo, one mark against the face's two hundred, and one thing a turn or a mirror
+carries whole.
+
+**Three sizes, measured against the face rather than the canvas.** Small,
+medium and large are 0.6, 1 and 1.4 times what *this die's own* number would be
+printed at, because a number that fills a d6's square runs off a d20's
+triangle. The middle one is therefore the printed size exactly, and the largest
+still fits inside the face when it is stamped in its middle. Where it goes is
+where the finger went; a stamp put down near an edge is clipped by the mask
+like a turned paste, because what falls outside the outline belongs to no face.
+
+The stamp is **loaded with the face's own number** and follows the face until
+somebody types something, and then it is theirs — the commonest stamp of all is
+the number that belongs there, and the second commonest is a small edit of it
+that moving to the next face should not undo. What the font cannot draw is
+**said before the tap rather than swallowed by it**: it draws `0`–`9`, the two
+signs, a times, a per cent and a full stop, and a word is refused whole rather
+than stamped as the half of it the font happens to have.
+
+**A stamp does not move once it is down.** There is no dragging it about and no
+handle to turn it by: it is a mark like every other mark, and the way to change
+one is undo and stamp again. A drawing where one kind of mark can be picked up
+again and the others cannot is two drawings. The prototype does let one be
+dragged, and whether that is worth the difference is a question for a phone
+(`docs/TODO.md`, "Open questions").
+
+### Fill all with numbers
+
+One tap puts every face's own number on it, in the ink in the pen: the number
+the tray would print, where the tray would print it, underlined where the tray
+would underline it — a `6` on a die that also has a `9` gets its bar, and a d6's
+`6` does not (`docs/physics-and-rendering.md`, "Rendering"). It is the starting
+point for somebody who wants a numbered die to decorate rather than a blank one
+to letter.
+
+**It leaves a stamped face alone**, so pressing it twice changes nothing and a
+face somebody has already lettered by hand is not written over. A face that was
+*drawn* on but not stamped is filled, and the number lands over the drawing the
+way a paste does.
+
+**It is one undoable step per face, not one for the die.** Undo belongs to the
+face it was made on, so the number comes off the face in front of the player
+with one press and off the others as they are reached. A single step spanning
+twenty faces would be an undo stack that reached across faces, which is not
+what the button on this screen has ever meant.
+
+**A d4 gets three, one at each corner**, each turned to face its own corner,
+because its values belong to corners rather than to faces (`docs/dice-sets.md`,
+"The d4"). They land exactly where the guide already showed them: how far in
+from the corner a number sits is one number in `core/glyphs`, and the guide and
+the stamp both read it, so tracing the guide and stamping the number cannot
+come out in two places.
+
+A face an author left blank stays blank, and a face whose label the font cannot
+draw gets its **value** — the one thing about a face the app can always write
+down, which is the rule the tray already follows.
 
 ### Copy and paste
 
@@ -240,12 +320,17 @@ is the class shape of the day, and a drawing has to survive the class changing
 under it. Anything that does not read is simply not a draft, and the canvas
 opens blank.
 
-**The format number was not bumped for fills.** A fill is a new kind of entry
-in the list of marks that was already there, told apart by a field a stroke
-never carries, so every draft written before fills existed reads exactly as it
-did and a build that predates them drops a fill it cannot draw rather than
-losing the drawing around it. Bumping the number would blank every drawing on
-the device to spare an older build one shape, which is not a trade.
+**The format number was not bumped for fills, nor for stamps.** Each is a new
+kind of entry in the list of marks that was already there, told apart by a
+field a stroke never carries — `fill` for one, the ring lengths for the other —
+so every draft written before them reads exactly as it did and a build that
+predates them drops what it cannot draw rather than losing the drawing around
+it. Bumping the number would blank every drawing on the device to spare an
+older build one shape, which is not a trade.
+
+A stamp's dots are written the way every other mark's are, every ring end to
+end, with the lengths beside them; a stamp whose lengths do not add up to the
+dots it carries is not a stamp this wrote and is dropped.
 
 ## Export details
 
@@ -357,8 +442,9 @@ on the 1 in ten seconds" path.
 
 ## Constraints
 
-- Drafts are limited to 50 per device and 200 marks per face — strokes and
-  fills alike — to keep storage and export time bounded.
+- Drafts are limited to 50 per device and 200 marks per face — strokes, fills
+  and stamps alike — to keep storage and export time bounded. A stamped `10` is
+  one mark, not one per ring.
 - The mark limit **warns and then refuses**: the face stops taking marks and
   says so twenty strokes before it does, because a canvas that silently stops
   drawing reads as a broken screen. A paste that would not fit is refused

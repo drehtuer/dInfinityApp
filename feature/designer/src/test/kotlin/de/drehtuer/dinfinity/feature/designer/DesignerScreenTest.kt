@@ -18,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Die
@@ -28,6 +29,8 @@ import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.Fill
 import de.drehtuer.dinfinity.designer.Ink
+import de.drehtuer.dinfinity.designer.Stamp
+import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
@@ -457,6 +460,103 @@ class DesignerScreenTest {
 
     compose.onNodeWithTag(DesignerTestTags.INK_HEX).performScrollTo().assertIsDisplayed()
     compose.onNodeWithText(Ink.hex(presenter.state.colorArgb)).assertExists()
+  }
+
+  @Test
+  fun `the stamp is a tool like the pens, and a tap with it puts a glyph down`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Stamp)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+
+    assertTrue(
+      "the stamp left nothing",
+      presenter.state.face.marks
+        .single() is Stamp,
+    )
+  }
+
+  @Test
+  fun `what to stamp is asked for only while the stamp is in hand`() {
+    // Two more rows on a screen that already scrolls, and they mean nothing to
+    // a pen (`design/dInfinity.dc.html`, option `1v`).
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.STAMP_BAR).assertDoesNotExist()
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Stamp)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.STAMP_BAR).performScrollTo().assertIsDisplayed()
+    StampSize.entries.forEach {
+      compose.onNodeWithTag(DesignerTestTags.stampSizeOf(it)).performScrollTo().assertIsDisplayed()
+    }
+  }
+
+  @Test
+  fun `typing a glyph the font cannot draw says so rather than swallowing the tap`() {
+    val presenter = show(d6)
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Stamp)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.STAMP_TEXT).performScrollTo().performTextReplacement("crit")
+
+    compose.onNodeWithTag(DesignerTestTags.STAMP_REFUSED).performScrollTo().assertIsDisplayed()
+    assertEquals("crit", presenter.state.stamping)
+  }
+
+  @Test
+  fun `a bigger stamp is a bigger glyph`() {
+    val presenter = show(d6)
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Stamp)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.stampSizeOf(StampSize.Small)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+    compose.onNodeWithTag(DesignerTestTags.faceOf(1)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.stampSizeOf(StampSize.Large)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+
+    assertEquals(StampSize.Large, presenter.state.stampSize)
+    assertTrue("the large stamp is no larger than the small one", tall(presenter, 1) > tall(presenter, 0))
+  }
+
+  @Test
+  fun `the stamp row and the fill survive a recomposition around them`() {
+    // Everything under the canvas is drawn from one state, so an ordinary
+    // recomposition has to skip it — and one that skipped wrongly would come
+    // back without the row it was typing in.
+    var tick by mutableStateOf(0)
+    val presenter = DesignerPresenter(d6)
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        DesignerScreen(presenter = presenter)
+      }
+    }
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Stamp)).performScrollTo().performClick()
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.STAMP_BAR).performScrollTo().assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).assertIsDisplayed()
+  }
+
+  /** How tall the glyph stamped on [cell] came out. */
+  private fun tall(
+    presenter: DesignerPresenter,
+    cell: Int,
+  ): Float {
+    val drawing = presenter.state.draft.face(cell)
+    val dots = (drawing.marks.single() as Stamp).dots
+    return dots.maxOf { it.y } - dots.minOf { it.y }
+  }
+
+  @Test
+  fun `fill all with numbers is beside the strip, and numbers every face`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).assertIsDisplayed().performClick()
+
+    val draft = presenter.state.draft
+    assertEquals(6, (0 until 6).count { cell -> draft.face(cell).marks.any { it is Stamp } })
   }
 
   private fun show(

@@ -120,4 +120,24 @@ class FaceGuideTest {
 
   private val d4 = die(DieShape.Tetrahedron, listOf(1, 2, 3, 4))
   private val d6 = die(DieShape.Cube, listOf(1, 2, 3, 4, 5, 6))
+
+  @Test
+  fun `says which face each corner of a cell reads, so a stamp can print its label`() {
+    // The guide reduces a corner to a number; what is *printed* there is the
+    // face's label, so the faces themselves are what is offered
+    // (`FaceStamp.numbers`).
+    val corners = FaceGuide.cornersOf(d4, cell = 0)
+
+    assertEquals(listOf(1, 2, 3), corners.map { (face, _) -> face })
+    assertEquals(
+      listOf(GuideSpot.FirstCorner, GuideSpot.SecondCorner, GuideSpot.ThirdCorner),
+      corners.map { (_, spot) -> spot },
+    )
+  }
+
+  @Test
+  fun `has no corners for a die read face-up, or for a cell it does not have`() {
+    assertTrue(FaceGuide.cornersOf(d6, cell = 0).isEmpty())
+    assertTrue(FaceGuide.cornersOf(d4, cell = 4).isEmpty())
+  }
 }
