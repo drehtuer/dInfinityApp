@@ -209,13 +209,23 @@ attribution — that tap fills the field and the player throws it.
 The screen is built: every look from every installed package in one list —
 tables are global, so a set never brings its own along — with the chosen one
 marked, the package named beside a look only when more than one supplies
-tables, and a swatch of the two colours a look is actually made of. Choosing
-one writes it to the settings and the tray is built on it the next time it is
-opened, which is immediately in the only sense that matters. A pin whose
-package is gone shows the look the tray would really use, and the setting is
-left alone in case it comes back.
+tables, and a thumbnail of the tray that look makes. Choosing one writes it to
+the settings and the tray is built on it the next time it is opened, which is
+immediately in the only sense that matters. A pin whose package is gone shows
+the look the tray would really use, and the setting is left alone in case it
+comes back.
 
-- [ ] Thumbnails rendered on the real box mesh, with a "roll a d20 here" preview. The swatch stands in: it is two colours in a box and says so. This wants the renderer on a screen that is not the tray, which nothing has needed yet
+**The thumbnails are built.** Each row is a picture of its own tray — the real
+box mesh, lit the way the roll screen lights it, with a d20 standing in the
+corner of it — drawn by `FilamentDiceRenderer` over `Stage`, on the roll
+thread, with the engine that already outlives every visit (decision 60). What
+decides *what a picture is of* is plain Kotlin with JVM tests, and what a
+device answers is only whether there is a picture at all. The swatch stays as
+the fallback, for a look whose picture has not arrived, for a driver that will
+not read a frame back, and for power-saving mode, which creates no engine on
+any screen.
+
+- [ ] *Judgement, on a phone:* whether the thumbnail reads as a table at 44 × 64 dp. The camera is as close as a pinch may go, in the far corner, which is what makes a 16 mm die big enough to recognise — but whether two walls, a rounded corner and a d20 in a box that size is a *picture* or a smudge is not something a test can say (`docs/tables.md`, "Thumbnails")
 
 ### 4.6 Face designer — `feature/designer`
 
@@ -670,6 +680,19 @@ The figures are reported in every PR description either way.
       boundary and does. Raising the alpha to about 55 % on the light ground
       would clear it, at the cost of heavier rules everywhere — the design
       system says 40 %, so this is the design's to answer, not a test's
+
+- [ ] **The picker is a list of rows; the prototype's `1u` is a grid of cards.**
+      The thumbnails landed in the list that was already there — one 44 × 64 dp
+      picture at the head of each row, in the place the swatch held — rather
+      than in the two-column grid of 150 px cards the prototype draws. That was
+      the smaller change and it keeps the row's other half working (the package
+      name, the "Chosen" mark, **Remove** on a photo table, all of it one node
+      for TalkBack), but it is not what the design shows, and a card gives a
+      picture about five times the area. The alternatives are to rebuild the
+      picker as the grid and find somewhere else for the four things a row
+      carries, or to change `1u` to a list and keep the two halves true that
+      way. Either is a design decision rather than a rendering one
+      (`design/README.md`)
 
 - [ ] **Who measures a drawn frame?** The harness now paces a roll the way the
       screen does (`tools/harness.sh --frames`) and times `LiveRoll.advance`,

@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.tables
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.ImageBitmap
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
@@ -62,6 +63,16 @@ data class PhotoDraft(
 data class TablesState(
   val tables: List<TableChoice> = emptyList(),
   val chosen: TablePin? = null,
+  /**
+   * The looks that have a picture of themselves yet, by pin.
+   *
+   * Absent is the ordinary case rather than the failure: a row is drawn the
+   * moment it is on screen and its picture arrives afterwards, if it arrives —
+   * a device that cannot draw one keeps its swatch and nobody is told
+   * (`docs/tables.md`, "Thumbnails"). Keyed by the pin rather than the look's
+   * id, because two packages may each ship a `green-felt`.
+   */
+  val thumbnails: Map<TablePin, ImageBitmap> = emptyMap(),
   /**
    * Whether this screen can make a table out of a photograph.
    *
@@ -129,6 +140,10 @@ data class TablesState(
  * @param photos how a photograph becomes a table, or null where nothing can.
  * @param scope where the disk work is launched. A photo is decoded, written
  *   and validated, and none of that belongs on the thread Compose draws on.
+ * @param thumbnails where a picture of a table comes from, or null where none
+ *   can be drawn — power-saving mode, and a test of this screen that has no
+ *   business opening a graphics engine. The swatch is then what every row
+ *   shows, which is what it was built to be (`docs/tables.md`).
  */
 class TablesPresenter(
   private val sets: () -> List<DiceSet>,
@@ -136,7 +151,19 @@ class TablesPresenter(
   private val onChosen: (TablePin) -> Unit,
   private val scope: CoroutineScope,
   private val photos: TablePhotos? = null,
+  private val thumbnails: TableThumbnails? = null,
 ) {
+  /**
+   * The looks a picture has already been asked for, drawn or not.
+   *
+   * A row asks as it comes on screen and asks again on every recomposition,
+   * which is a great many times; this is what makes the second ask free. It is
+   * not the cache — that is behind [TableThumbnails], where the pictures are
+   * and where they outlive this screen — it is only the memory that the
+   * question has been put.
+   */
+  private val asked = mutableSetOf<TablePin>()
+
   /** What the screen draws. */
   var state: TablesState by mutableStateOf(TablesState())
     private set
@@ -154,6 +181,27 @@ class TablesPresenter(
         chosen = settled(tables, chosen),
         photosOffered = photos != null,
       )
+  }
+
+  /**
+   * A row is on screen: draw its table, if anything can.
+   *
+   * Asked by the row rather than for the whole list at once, because a
+   * `LazyColumn` composes what fits and a picture costs a scene and a wait on
+   * the GPU. Somebody with thirty installed looks pays for the six they can
+   * see, and for the next six when they scroll to them
+   * (`docs/tables.md`, "Thumbnails").
+   *
+   * Safe to call from a composition and safe to call again: the second ask for
+   * a pin does nothing at all, so a recomposition costs a set lookup.
+   */
+  fun wants(pin: TablePin) {
+    val source = thumbnails ?: return
+    val look = state.tables.firstOrNull { it.pin == pin }?.look ?: return
+    if (!asked.add(pin)) return
+    source.of(pin, look) { picture ->
+      state = state.copy(thumbnails = state.thumbnails + (pin to picture))
+    }
   }
 
   /** A look was tapped. */
@@ -241,15 +289,31 @@ class TablesPresenter(
 
   /** The photo is in the package; re-read the list and play on it. */
   private fun landed(pin: TablePin) {
-    val tables = tablesOf(sets())
-    state = state.copy(tables = tables, chosen = settled(tables, pin), adding = null)
+    refreshed(keeping = pin, shutTheSheet = true)
     onChosen(pin)
   }
 
-  /** The list again, with [keeping] still chosen if it is still there. */
-  private fun refreshed(keeping: TablePin?) {
+  /**
+   * The list again, with [keeping] still chosen if it is still there.
+   *
+   * A look that has gone takes its picture with it, and takes the memory that
+   * it was ever asked for — so a table made from a second photograph under the
+   * same id is drawn afresh rather than shown the first one's picture.
+   */
+  private fun refreshed(
+    keeping: TablePin?,
+    shutTheSheet: Boolean = false,
+  ) {
     val tables = tablesOf(sets())
-    state = state.copy(tables = tables, chosen = settled(tables, keeping))
+    val there = tables.map(TableChoice::pin).toSet()
+    asked.retainAll(there)
+    state =
+      state.copy(
+        tables = tables,
+        chosen = settled(tables, keeping),
+        thumbnails = state.thumbnails.filterKeys(there::contains),
+        adding = if (shutTheSheet) null else state.adding,
+      )
   }
 }
 

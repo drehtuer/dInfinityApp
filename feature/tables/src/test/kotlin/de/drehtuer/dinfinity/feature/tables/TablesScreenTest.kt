@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.tables
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
@@ -118,7 +119,7 @@ class TablesScreenTest {
   fun `use a photo is the last row, and only when something can make one`() {
     show(photos = FakePhotos())
 
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).assertIsDisplayed()
+    scrolledToUsePhoto().assertIsDisplayed()
   }
 
   @Test
@@ -133,7 +134,7 @@ class TablesScreenTest {
     var asked = 0
     show(photos = FakePhotos(), onPickPhoto = { asked++ })
 
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).performClick()
+    usePhoto()
     compose.onNodeWithTag(TablesTestTags.PHOTO_SHEET).assertIsDisplayed()
     compose.onNodeWithTag(TablesTestTags.PHOTO_CHOOSE).performClick()
 
@@ -145,7 +146,7 @@ class TablesScreenTest {
     val photos = FakePhotos()
     val presenter = show(photos = photos)
 
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).performClick()
+    usePhoto()
     // A name no bundled look has, so what is found is the new row.
     presenter.picked(pickedPhoto(label = "meadow.jpg"))
     compose.onNodeWithTag(TablesTestTags.PHOTO_CONFIRM).performClick()
@@ -162,7 +163,7 @@ class TablesScreenTest {
   fun `a refusal is shown where the photo and the name still are`() {
     val presenter = show(photos = FakePhotos(refuse = listOf("diceset.toml:11: error: it is 4096 wide")))
 
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).performClick()
+    usePhoto()
     presenter.picked(pickedPhoto(label = "huge.jpg"))
     compose.onNodeWithTag(TablesTestTags.PHOTO_CONFIRM).performClick()
 
@@ -175,7 +176,7 @@ class TablesScreenTest {
   fun `the file that has been chosen is named, and nothing stands in for one that has not`() {
     val presenter = show(photos = FakePhotos())
 
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).performClick()
+    usePhoto()
     compose.onNodeWithTag(TablesTestTags.PHOTO_FILE, useUnmergedTree = true).assertIsDisplayed()
 
     presenter.picked(pickedPhoto(label = "oak.jpg"))
@@ -186,7 +187,7 @@ class TablesScreenTest {
   fun `only the player's own tables offer to be removed`() {
     val photos = FakePhotos()
     val presenter = show(photos = photos)
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).performClick()
+    usePhoto()
     presenter.picked(pickedPhoto(label = "oak.jpg"))
     compose.onNodeWithTag(TablesTestTags.PHOTO_CONFIRM).performClick()
     val own = TablePin(DiceSet.PERSONAL_ID, "photo-oak")
@@ -208,7 +209,7 @@ class TablesScreenTest {
     val photos = FakePhotos()
     show(photos = photos)
 
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).performClick()
+    usePhoto()
     compose.onNodeWithTag(TablesTestTags.PHOTO_CANCEL).performClick()
 
     compose.onNodeWithTag(TablesTestTags.PHOTO_SHEET).assertDoesNotExist()
@@ -239,13 +240,27 @@ class TablesScreenTest {
     compose.runOnIdle { draws++ }
 
     compose.onNodeWithTag(TablesTestTags.LIST).assertIsDisplayed()
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).assertIsDisplayed()
+    scrolledToUsePhoto().assertIsDisplayed()
 
     // With no `onPickPhoto` given, choosing does nothing at all — which is
     // what a screen drawn without the application behind it has to survive.
-    compose.onNodeWithTag(TablesTestTags.USE_PHOTO).performClick()
+    usePhoto()
     compose.onNodeWithTag(TablesTestTags.PHOTO_CHOOSE).performClick()
     compose.onNodeWithTag(TablesTestTags.PHOTO_SHEET).assertIsDisplayed()
+  }
+
+  /**
+   * **Use a photo**, scrolled to first.
+   *
+   * Each row is now a picture of its own tray rather than a swatch, so the
+   * last row of five is below the fold on a short screen — the same reason the
+   * personal package's own row is already scrolled to further up.
+   */
+  private fun usePhoto() = scrolledToUsePhoto().performClick()
+
+  private fun scrolledToUsePhoto(): SemanticsNodeInteraction {
+    compose.onNodeWithTag(TablesTestTags.LIST).performScrollToNode(hasTestTag(TablesTestTags.USE_PHOTO))
+    return compose.onNodeWithTag(TablesTestTags.USE_PHOTO)
   }
 
   private fun show(

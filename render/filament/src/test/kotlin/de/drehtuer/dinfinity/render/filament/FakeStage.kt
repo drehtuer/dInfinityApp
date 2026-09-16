@@ -77,6 +77,34 @@ class FakeStage(
     return true
   }
 
+  /**
+   * What [capture] hands back once a frame has been drawn, or null for a stage
+   * that draws to a screen perfectly well and cannot be read back — which is
+   * what some drivers are, and what a thumbnail has to survive.
+   */
+  var picture: Snapshot? = null
+
+  /**
+   * What was in the scene the moment a picture was taken of it.
+   *
+   * [clear] empties [added], and whoever asked for a picture is usually done
+   * with the scene straight afterwards — so a test of what was *drawn* has to
+   * read it at the moment it was drawn rather than at the end.
+   */
+  var whenCaptured: List<Pair<GpuMesh, DiceMaterial.Parameters>> = emptyList()
+    private set
+
+  /** And whether the lights were in it. */
+  var litWhenCaptured: Boolean = false
+    private set
+
+  override fun capture(): Snapshot? {
+    whenCaptured = added.toList()
+    litWhenCaptured = lit
+    if (!draw()) return null
+    return picture
+  }
+
   override fun clear() {
     clears++
     added.clear()
