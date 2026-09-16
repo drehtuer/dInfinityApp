@@ -26,6 +26,11 @@ keystore/*
 *.jks
 keystore.properties
 
+# Python — `tools/` is run by hand from the repository root, and the bytecode
+# cache it leaves behind is output, not tooling.
+__pycache__/
+*.pyc
+
 # IDE
 .idea/
 *.iml
