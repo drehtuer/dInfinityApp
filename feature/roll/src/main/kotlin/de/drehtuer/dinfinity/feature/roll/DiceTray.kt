@@ -103,6 +103,13 @@ fun DiceTray(
  *
  * One finger is left alone. It is reserved for picking a die up, and a tap on
  * the tray deliberately does not roll (`docs/physics-and-rendering.md`).
+ *
+ * The arithmetic under that gesture is built and tested — `TrayPick` says
+ * which die a finger is on and `PickUp` says which dice a hand may go near —
+ * and it is still unspent here, because what a re-throw does to the *record*
+ * of a roll is a decision nobody has taken (`docs/TODO.md`, "Open questions").
+ * Wiring it to something else in the meantime would spend the only gesture the
+ * tray has left on whatever came along first.
  */
 private fun Modifier.lookAround(
   driver: Tray,
