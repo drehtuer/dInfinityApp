@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.designer
 
+import de.drehtuer.dinfinity.core.glyphs.LabelRoom
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -38,29 +39,43 @@ object FaceShapes {
     }
 
   /**
-   * Where a guide number sits on [outline].
+   * Where a guide number sits on [outline], and where a stamp of it lands.
    *
    * [GuideSpot.Middle] is the middle of the face. The three corner spots are
    * a triangle's corners, pulled in towards the centre so a number sits
    * *inside* the shape rather than on its edge — which is where a moulded d4
    * has them (`docs/dice-sets.md`, "The d4").
    *
-   * A corner spot on an outline that is not a triangle has nowhere sensible to
-   * go, and gets the middle: it cannot happen from a real die — only a
-   * tetrahedron reads from its corners, and a tetrahedron's cells are
-   * triangles — and a guide in the middle is better than one off the canvas.
+   * **How far in is `core/glyphs`' answer** ([LabelRoom.inside]) rather than
+   * one of this object's own, because the same pull-in decides where the tray
+   * prints a d4's numbers and where "fill all faces with numbers" puts them.
+   * A guide somebody traces and the number a stamp then drops in its place
+   * have to be the same place (`docs/face-designer.md`, "The stamp").
    */
   fun spot(
     outline: FaceOutline,
     spot: GuideSpot,
   ): Dot {
+    val corner = corner(outline, spot)
+    val (x, y) = LabelRoom.inside(corner.x.toDouble() to corner.y.toDouble())
+    return Dot(x = x.toFloat(), y = y.toFloat())
+  }
+
+  /**
+   * The corner of [outline] a spot belongs to, before it is pulled inwards.
+   *
+   * A corner spot on an outline that is not a triangle has nowhere sensible to
+   * go, and gets the middle: it cannot happen from a real die — only a
+   * tetrahedron reads from its corners, and a tetrahedron's cells are
+   * triangles — and a guide in the middle is better than one off the canvas.
+   */
+  fun corner(
+    outline: FaceOutline,
+    spot: GuideSpot,
+  ): Dot {
     if (spot == GuideSpot.Middle) return CENTRE
     val corners = corners(outline).takeIf { outline == FaceOutline.Triangle } ?: return CENTRE
-    val corner = corners[CORNER_ORDER.getValue(spot)]
-    return Dot(
-      x = corner.x + (CENTRE.x - corner.x) * INSET,
-      y = corner.y + (CENTRE.y - corner.y) * INSET,
-    )
+    return corners[CORNER_ORDER.getValue(spot)]
   }
 
   /**
@@ -86,9 +101,6 @@ object FaceShapes {
   private val CENTRE = Dot(0.5f, 0.5f)
   private const val RADIUS = 0.48
   private const val TURN = 2 * PI
-
-  /** How far a guide number is pulled in from its corner, as a fraction of the way to the centre. */
-  private const val INSET = 0.28f
 
   private const val HALF = 0.5f
   private const val TOP = 0.04f

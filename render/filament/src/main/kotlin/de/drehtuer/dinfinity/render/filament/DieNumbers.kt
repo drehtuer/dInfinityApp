@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.glyphs.BuiltinFont
+import de.drehtuer.dinfinity.core.glyphs.FaceLabel
+import de.drehtuer.dinfinity.core.glyphs.LabelRoom
 import de.drehtuer.dinfinity.core.glyphs.Placement
 import de.drehtuer.dinfinity.core.glyphs.SignedDistanceField
 import de.drehtuer.dinfinity.core.glyphs.Typeface
@@ -9,7 +11,6 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.FaceRead
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
-import de.drehtuer.dinfinity.simulation.api.Exact
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 
@@ -33,38 +34,16 @@ object DieNumbers {
   /**
    * How much of the room a face has, a number takes up.
    *
-   * *Of the room the face actually has*, not of its cell. A cell is the circle
-   * drawn round a face, and how much of one a face fills depends entirely on
-   * what polygon it is — a dodecahedron's pentagon fills most of it, a d20's
-   * triangle half of it, and a d18's kite a quarter. A number sized against
-   * the cell therefore comes out right on a d6 and crowding the edges on a
-   * d20, which is what it did on the Pixel 10a.
-   *
-   * So the size is solved rather than chosen: the largest box of this label's
-   * own proportions that fits inside this face, times this fraction. What is
-   * left to judge is the fraction — how much smaller than the room a numeral
-   * should be — and that needs a phone (`docs/TODO.md`, Step 5.6).
+   * Named here because this is where the judgement is made — it is the one
+   * knob left in how big a printed numeral is, and the phone is what settles
+   * it (`docs/TODO.md`, Step 5.6). The number itself lives with the solve it
+   * belongs to, in `core/glyphs`, because the face designer prints at the same
+   * size (`docs/face-designer.md`, "The stamp").
    */
-  const val FACE_SHARE: Double = 0.78
+  const val FACE_SHARE: Double = LabelRoom.FACE_SHARE
 
-  /**
-   * How tall a d4's numbers are, as a fraction of the cell.
-   *
-   * Of the cell rather than solved against the edges the way [FACE_SHARE] is,
-   * because these do not sit in the middle of the face: three of them share
-   * one triangle, each near its own corner, and what bounds them is each other
-   * rather than the edges.
-   */
-  const val CORNER_HEIGHT: Double = 0.20
-
-  /**
-   * How far out from the middle of the cell a d4's numbers sit, as a fraction
-   * of the way to the corner they belong to.
-   *
-   * Not all the way: a number printed *at* a corner runs off the edge of the
-   * triangle, and a real d4 prints them just inside it.
-   */
-  const val CORNER_REACH: Double = 0.62
+  /** How tall a d4's numbers are, as a fraction of the cell ([LabelRoom.CORNER_HEIGHT]). */
+  const val CORNER_HEIGHT: Double = LabelRoom.CORNER_HEIGHT
 
   /**
    * What is printed in each cell of [die]'s atlas.
@@ -152,50 +131,27 @@ object DieNumbers {
     face: Typeface,
   ): List<Mark> {
     val text = textOf(at)
-    if (text.isEmpty()) return emptyList()
-    val room = FaceRoom.on(surface, grid, cell, Typesetter.inkWidth(text, 1.0, face), FACE_SHARE)
-    return listOf(
-      Mark(
-        text,
-        Placement(
-          centreX = room.centreX,
-          centreY = room.centreY,
-          height = FACE_SHARE * room.height,
-          underlined = isAmbiguous(text, die),
-        ),
-      ),
-    )
+    val placement =
+      LabelRoom.centred(
+        corners = FaceRoom.cornersOf(surface, grid, cell),
+        text = text,
+        face = face,
+        underlined = isAmbiguous(text, die),
+      ) ?: return emptyList()
+    return listOf(Mark(text, placement))
   }
 
   /**
    * Whether [text] has to be underlined to be told from what it becomes when
-   * the die is the other way up.
+   * the die is the other way up — a `6` on a die that also has a `9`.
    *
-   * The rule a real die follows, written down rather than hard-coded to `6`
-   * and `9`: turn the label about, and if what comes out is a *different*
-   * label that this same die also carries, a player cannot tell the two apart
-   * and both get a bar. A d6 has no `9`, so its `6` needs no underline — which
-   * is exactly what a moulded d6 does, and why the rule is worth stating this
-   * way rather than as two characters by name.
-   *
-   * An `8` turns into itself and a `2` turns into nothing readable, so neither
-   * is ever underlined.
+   * The rule is `core/glyphs`' ([FaceLabel.isAmbiguous]), because the face
+   * designer draws the same bar under the same numbers.
    */
   fun isAmbiguous(
     text: String,
     die: Die,
-  ): Boolean {
-    val turned = turnedAbout(text) ?: return false
-    if (turned == text) return false
-    return die.faces.any { textOf(it) == turned }
-  }
-
-  /** [text] read upside down, or null when it does not read as anything. */
-  private fun turnedAbout(text: String): String? {
-    val turned = StringBuilder()
-    text.reversed().forEach { turned.append(TURNS_INTO[it] ?: return null) }
-    return turned.toString()
-  }
+  ): Boolean = FaceLabel.isAmbiguous(text, die)
 
   /**
    * A d4 prints three, one at each corner, each turned to face its own corner.
@@ -222,35 +178,17 @@ object DieNumbers {
     return surface.positions.mapIndexedNotNull { corner, position ->
       val at = nearest(directions, position.normalised())
       val uv = surface.uvs[corner]
+      val text = textOf(die.faces[at])
       // The corner in this cell's own coordinates, which is what a placement
       // is measured in: the atlas runs over the whole grid, a cell runs 0..1.
-      val outX = HALF + (uv.u * grid.columns - column - HALF) * CORNER_REACH
-      val outY = HALF + (uv.v * grid.rows - row - HALF) * CORNER_REACH
-      val text = textOf(die.faces[at])
-      if (text.isEmpty()) {
-        null
-      } else {
-        Mark(
+      LabelRoom
+        .cornered(
+          corners = corners,
+          corner = uv.u * grid.columns - column to uv.v * grid.rows - row,
           text = text,
-          placement =
-            Placement(
-              centreX = outX,
-              centreY = outY,
-              // Held to what the triangle has at that corner. A number placed
-              // at a corner is nearer two edges than anything in the middle
-              // is, and a d4 whose numbers ran over its own edges would be the
-              // one die in the set that could not be read.
-              height =
-                minOf(
-                  CORNER_HEIGHT,
-                  FaceRoom.heightAt(corners, Typesetter.inkWidth(text, 1.0, face), outX, outY),
-                ),
-              // Up, for this number, is the way its own corner lies.
-              turns = Exact.atan2(-(outX - HALF), -(outY - HALF)) / FULL_TURN,
-              underlined = isAmbiguous(text, die),
-            ),
-        )
-      }
+          face = face,
+          underlined = isAmbiguous(text, die),
+        )?.let { Mark(text = text, placement = it) }
     }
   }
 
@@ -262,38 +200,9 @@ object DieNumbers {
 
   /**
    * What a face is printed with: its label, or its value when the built-in
-   * font cannot draw the label.
-   *
-   * A set may label a face `💀`, and the font has no skull. Printing a row of
-   * blanks would make the die unreadable and printing a box would be a lie
-   * about what the author wrote, so the *value* is printed — the one thing
-   * about that face the app can always write down, and the thing the player is
-   * about to read off it anyway (`docs/dice-sets.md`).
-   *
-   * An **empty** label is different and is left empty: a face with nothing on
-   * it is a face an author asked for, and a blank side is what half a Fudge
-   * die is.
+   * font cannot draw the label ([FaceLabel.textOf]).
    */
-  fun textOf(at: Face): String =
-    when {
-      // A face an author deliberately left blank stays blank. A Fudge die's
-      // nought is a real face of a real die and printing a `0` on it would be
-      // the app arguing with the set file.
-      at.label.isEmpty() -> ""
-      BuiltinFont.canDraw(at.label) -> at.label
-      else -> at.value.toString()
-    }
-
-  /**
-   * What each character becomes when the die is turned about.
-   *
-   * Only the characters that still read as something: a `2` upside down is a
-   * squiggle, and a label containing one can never be mistaken for another.
-   */
-  private val TURNS_INTO: Map<Char, Char> = mapOf('0' to '0', '1' to '1', '6' to '9', '8' to '8', '9' to '6')
-
-  private const val HALF = 0.5
-  private const val FULL_TURN = 2 * Math.PI
+  fun textOf(at: Face): String = FaceLabel.textOf(at)
 }
 
 /**

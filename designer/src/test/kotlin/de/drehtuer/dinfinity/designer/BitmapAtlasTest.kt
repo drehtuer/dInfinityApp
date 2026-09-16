@@ -94,6 +94,23 @@ class BitmapAtlasTest {
   }
 
   @Test
+  fun `a stamped zero is painted with its hole left open`() {
+    // The rings of a glyph are wound against each other and are drawn as one
+    // shape under the even-odd rule; a counter painted as a shape of its own
+    // would be a blob where the hole is (`designer`'s `Stamp`).
+    val zero =
+      FaceStamp.at("0", Dot(0.5f, 0.5f), FaceOutline.Square, StampSize.Large, Drawings.RED)
+        ?: error("the font has no zero")
+    val drawn = Draft(die = Drawings.die(DieShape.Cube)).onFace(0) { it.draw(zero) }
+
+    val bitmap = paint(Atlas.plan(drawn) ?: error("nothing to paint"))
+
+    val onTheInk = ((zero.rings[0].minOf { it.x } + zero.rings[1].minOf { it.x }) / 2 * Atlas.CELL_PIXELS).toInt()
+    assertEquals("the stroke of the zero", Drawings.RED, bitmap.getPixel(onTheInk, HALF_CELL))
+    assertEquals("the hole in the zero", TRANSPARENT, bitmap.getPixel(HALF_CELL, HALF_CELL))
+  }
+
+  @Test
   fun `every catalogue shape paints`() {
     DieShape.entries.forEach { shape -> assertNotNull(shape.id, painter.png(planFor(shape))) }
   }

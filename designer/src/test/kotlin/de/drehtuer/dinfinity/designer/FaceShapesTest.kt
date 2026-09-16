@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.designer
 
+import de.drehtuer.dinfinity.core.glyphs.LabelRoom
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -110,5 +111,25 @@ class FaceShapesTest {
 
     assertEquals(0.5f, spot.x, 1e-3f)
     assertEquals(0.5f, spot.y, 1e-3f)
+  }
+
+  @Test
+  fun `a guide sits exactly where a stamp of the same number lands`() {
+    // One answer to "how far in from the corner", in `core/glyphs`, because
+    // the tray prints a d4's numbers there too (`FaceStamp.numbers`).
+    val corner = FaceShapes.corner(FaceOutline.Triangle, GuideSpot.SecondCorner)
+    val (x, y) = LabelRoom.inside(corner.x.toDouble() to corner.y.toDouble())
+
+    val spot = FaceShapes.spot(FaceOutline.Triangle, GuideSpot.SecondCorner)
+    assertEquals(x.toFloat(), spot.x, 1e-6f)
+    assertEquals(y.toFloat(), spot.y, 1e-6f)
+  }
+
+  @Test
+  fun `the middle is a corner nothing pulls on`() {
+    val middle = FaceShapes.corner(FaceOutline.Square, GuideSpot.Middle)
+
+    assertEquals(0.5f, middle.x, 1e-6f)
+    assertEquals(0.5f, middle.y, 1e-6f)
   }
 }
