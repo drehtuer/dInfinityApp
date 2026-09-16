@@ -445,13 +445,30 @@ a die fairer than the plastic one in their hand, is not worth a warning
 - [ ] **`100d4` does not reliably settle, and never did.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. `JoltBridgeTest` used to try eight seeds and pass; twenty-four seeds show **five running out of the twelve-second cap**, and the same twenty-four under the correlated spawn streams that preceded them showed two — a difference well inside noise at that sample size. What changed is not the physics but the sample: the eight were the easy ones. Nothing is ever touched after it has come to rest, on any seed, which is the rule that matters; the cap firing at all is a prevention problem (5.5), and the bound in the test is today's worst case written down rather than a target
 - [ ] **Decide what a tilted phone should mean.** Deferred, not answered. The table is horizontal now and the gyroscope no longer turns the world, which is what stopped the dice pouring into a wall — but "tilt the phone and the dice slide" was a real idea and this is not a verdict on it. The direction is still recorded with every sample, so whichever way it goes the data is there. The three answers, unchanged: gravity always straight down and only the hand moves the dice; anchor to `TYPE_GRAVITY` and accept that a phone held upright pours everything to the bottom wall; or keep a tilt and clamp it so a tray can lean without becoming a chute
 - [ ] **A shake along the phone's long axis still drives the dice into one end.** Seen as dice stuck at the bottom after a vertical shake. The table being horizontal fixes the *pouring* — the tray no longer leans — but the hand's own force still points that way, and a hundred dice pushed at one wall have nowhere else to be. Whether that is right (it is what a hand does) or wants shaping is a Step 5.6 question with a phone in it
-- [ ] Exactly at the limit, and one over — the one over is refused before a single body is created
-- [ ] Worst shapes at the limit: d4 (sharpest corners) and the coin (flattest), which wedge and stack most easily
-- [ ] Smallest scale (0.40) with the largest nominal die
-- [ ] Mixed shapes and mixed sets in one throw
 - [ ] Extreme input: sensor maxima, 30 s of shaking, rotation through all axes, shake-then-drop, phone vertical and upside down. **Upside down is done and was broken:** the roll screen pinned the display to the rotation it opened at, so `PhoneAxes` was told the phone was upright while it was being shaken the other way up and the dice pooled at the end away from the hand. The screen now holds its shape rather than its rotation (`docs/tables.md`); a quarter turn is still refused
 - [ ] Interruptions mid-roll: call, backgrounding, rotation, low memory — the roll finishes or is discarded cleanly, never half-resolved
-- [ ] Thermal: 100 consecutive 40-dice rolls with no frame-time cliff and no drift in outcomes
+
+- [ ] **The corner cases are asked on the phone now, and one of them fails.**
+      `CornerCasesTest` throws exactly at the cap and one over (refused before a
+      body exists, which is the point of doing it in arithmetic), a hundred d4s,
+      a hundred coins, the largest die a set may declare at the smallest scale
+      the rule allows, every catalogue shape at once, and the same forty-dice
+      throw a hundred times over to watch for drift as the phone warms. All of
+      them keep every die on the table; all but one put no die on top of another.
+
+      **A hundred coins do: four to ten of them, on every seed tried.** It is
+      the shape's own doing — a coin that lands on a coin is *stable* there,
+      where a cube or an icosahedron rolls off, which is what makes prevention
+      work everywhere else — and at that density rung 3 cannot find the stacked
+      ones clear floor to be re-thrown onto. Bounded at today's worst case so
+      the next change to the spawn or the ladder improves it or is noticed, in
+      the same way `100d4`'s timeouts are. Nothing is touched after coming to
+      rest on any seed, which is the rule that does hold.
+
+      The thermal run is the *outcome* half only: a hundred identical throws
+      come to identical faces, so nothing drifts as the phone heats. Frame times
+      need a renderer and a surface, which is Step 5.7's and the open question
+      about who measures a drawn frame
 
 ### 5.4 Collisions
 
