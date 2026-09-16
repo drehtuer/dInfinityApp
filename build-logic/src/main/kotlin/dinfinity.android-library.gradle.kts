@@ -52,6 +52,12 @@ android {
   lint {
     warningsAsErrors = true
     abortOnError = true
+    // Named rather than left to `warningsAsErrors`, so that turning that off
+    // one day does not quietly turn this off with it. `HardcodedText` only
+    // reads layout XML, though, and every screen here is Compose — the check
+    // that covers Kotlin is `verifyTextIsAResource` in `dinfinity.quality`
+    // (`docs/architecture.md`, "Text a person reads").
+    error += setOf("HardcodedText", "MissingTranslation", "ExtraTranslation")
   }
 }
 

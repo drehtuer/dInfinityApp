@@ -16,6 +16,21 @@ kotlin {
   jvmToolchain(21)
 }
 
+// The convention plugins carry one piece of real logic — the scan behind
+// `verifyTextIsAResource` — and a check nobody tested is a check that passes
+// everything. `check` here runs these, and the root build's `check` runs
+// `ktlintCheckConventions` and `test` in this build for the same reason.
+dependencies {
+  testImplementation(libs.junit4)
+}
+
+tasks.withType<Test>().configureEach {
+  useJUnit()
+  testLogging {
+    events("failed")
+  }
+}
+
 // The convention plugins are linted by the ktlint *CLI* rather than its Gradle
 // plugin. The plugin lints whole source sets, and Gradle generates its plugin
 // accessors into this build's main source set — tens of thousands of
