@@ -113,6 +113,20 @@ capacity check happens before any body is created and the UI explains it
    large, then each group's subtotal and the individual dice, then the
    modifiers — the user never has to add anything up.
 
+   **A chain that stopped says so, under its group.** Everything else a die
+   has to say about itself is already legible on the row above — a dropped die
+   is struck through, a rerolled one stands beside its replacement, an exploded
+   one is simply another die in the row. The two ways a chain *ends* are the
+   exception, because what they describe is a die that is **not there**: an
+   `8d6!` that reached the depth limit and an `8d6!` that ran out of table look
+   identical on the sheet, and both read as an explosion that never happened.
+   So the group carries a line saying which it was — "Exploding stopped at 20
+   dice." or "The tray had no room for another die." A reroll the tray had no
+   room for reaches the second line too, because it is the same fact about the
+   tray. Each line appears at most once per group, whatever the number of dice
+   that hit the limit, and in a fixed order rather than the order they happened
+   in.
+
    The modifiers are the plain numbers the formula adds or takes away, each on
    a row of its own and in the order they were written. They are **the
    top-level sum only**: the `3` in `(2d6 + 3) * 2` is multiplied along with

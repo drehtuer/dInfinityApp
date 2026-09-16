@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -21,6 +22,7 @@ import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.notation.NotationLimits
 import kotlin.math.abs
 
 /**
@@ -186,7 +188,45 @@ private fun GroupRow(group: RolledGroup) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
       group.dice.forEach { die -> DieChip(die) }
     }
+
+    // And why there are not more of them. Everything else a die has to say is
+    // already on the row above; these two are about a die that never arrived.
+    ChainLimit.of(group).forEach { limit -> ChainLimitLine(group.id, limit) }
   }
+}
+
+/**
+ * Why this group stopped throwing dice (`docs/dice-notation.md`, "Limits").
+ *
+ * The sheet's promise is that nothing has to be taken on trust, and an
+ * explosion that stopped is the one thing the dice themselves cannot show: a
+ * chain that ran out of depth and a chain that ran out of table both look, on
+ * the row above, like an explosion that never happened. So they get a line.
+ *
+ * It sits with the fell-back line rather than on a chip, because the question
+ * a player is asking is about the group they wrote and not about which of the
+ * eight dice happened to be the one that hit the limit.
+ */
+@Composable
+private fun ChainLimitLine(
+  groupId: Int,
+  limit: ChainLimit,
+) {
+  Text(
+    text =
+      when (limit) {
+        ChainLimit.ExplosionDepth ->
+          pluralStringResource(
+            R.plurals.roll_group_explosion_limit,
+            NotationLimits.MAX_EXPLOSION_DEPTH,
+            NotationLimits.MAX_EXPLOSION_DEPTH,
+          )
+        ChainLimit.TrayFull -> stringResource(R.string.roll_group_tray_full)
+      },
+    style = MaterialTheme.typography.labelSmall,
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier = Modifier.testTag(RollTestTags.chainLimitOf(groupId, limit.name)),
+  )
 }
 
 /**

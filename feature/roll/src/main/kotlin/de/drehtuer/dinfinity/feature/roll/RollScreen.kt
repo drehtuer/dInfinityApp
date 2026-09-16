@@ -486,5 +486,11 @@ object RollTestTags {
 
   fun fallbackOf(groupId: Int): String = "roll:sheet:fellback:$groupId"
 
+  /** Why a group stopped throwing dice: the depth limit, or a full tray. */
+  fun chainLimitOf(
+    groupId: Int,
+    limit: String,
+  ): String = "roll:sheet:limit:$groupId:$limit"
+
   fun dieAt(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex"
 }

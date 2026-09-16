@@ -13,6 +13,7 @@ import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.notation.NotationLimits
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -182,6 +183,84 @@ class ResultSheetTest {
     // The sign is the word, so the number beside it is not written twice.
     compose.onNodeWithText("2").assertIsDisplayed()
   }
+
+  @Test
+  fun `a chain that stopped at the depth limit says so on the sheet`() {
+    // Without the line this reads as an explosion that simply did not happen
+    // (`docs/dice-notation.md`, "Limits").
+    compose.setContent { ResultSheet(exploded(DieNote.ExplosionLimitReached)) }
+
+    compose
+      .onNodeWithTag(RollTestTags.chainLimitOf(0, ChainLimit.ExplosionDepth.name))
+      .assertIsDisplayed()
+  }
+
+  @Test
+  fun `a chain the tray had no room for says so too`() {
+    compose.setContent { ResultSheet(exploded(DieNote.TrayFull)) }
+
+    compose
+      .onNodeWithTag(RollTestTags.chainLimitOf(0, ChainLimit.TrayFull.name))
+      .assertIsDisplayed()
+  }
+
+  @Test
+  fun `the depth limit line names the limit rather than leaving it a mystery`() {
+    compose.setContent { ResultSheet(exploded(DieNote.ExplosionLimitReached)) }
+
+    compose
+      .onNodeWithTag(RollTestTags.chainLimitOf(0, ChainLimit.ExplosionDepth.name))
+      .assertTextEquals("Exploding stopped at ${NotationLimits.MAX_EXPLOSION_DEPTH} dice.")
+  }
+
+  @Test
+  fun `an ordinary throw says nothing about limits`() {
+    compose.setContent { ResultSheet(fourD6DropLowest()) }
+
+    ChainLimit.entries.forEach { limit ->
+      compose.onNodeWithTag(RollTestTags.chainLimitOf(0, limit.name)).assertDoesNotExist()
+    }
+  }
+
+  @Test
+  fun `only the group that stopped says so`() {
+    val two =
+      fourD6DropLowest().copy(
+        formula = "4d6dl1 + 8d6!",
+        groups =
+          listOf(
+            group(),
+            exploded(DieNote.TrayFull).groups.first().copy(id = 1),
+          ),
+      )
+
+    compose.setContent { ResultSheet(two) }
+
+    compose.onNodeWithTag(RollTestTags.chainLimitOf(0, ChainLimit.TrayFull.name)).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.chainLimitOf(1, ChainLimit.TrayFull.name)).assertIsDisplayed()
+  }
+
+  /** `8d6!` whose chain stopped, for [note]'s reason. */
+  private fun exploded(note: DieNote): RollResult =
+    RollResult(
+      formula = "8d6!",
+      total = 12,
+      groups =
+        listOf(
+          RolledGroup(
+            id = 0,
+            notation = "8d6!",
+            setId = "builtin",
+            requestedSetId = "builtin",
+            subtotal = 12,
+            dice =
+              listOf(
+                die(0, 6, notes = setOf(DieNote.FromExplosion)),
+                die(1, 6, naturalMax = true, notes = setOf(DieNote.FromExplosion, note)),
+              ),
+          ),
+        ),
+    )
 
   @Test
   fun `a formula that adds nothing has no such row`() {
