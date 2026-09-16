@@ -937,6 +937,23 @@ The task list matters for the same reason. It has to resolve every configuration
 the build uses, `assembleDebugAndroidTest` included, or the device suite fails on
 its own dependencies.
 
+**Keeping up to date is Dependabot's job, and only Dependabot's.** Android
+Lint ships two detectors that ask Maven Central whether anything newer exists —
+`NewerVersionAvailable` and `GradleDependency` — and both are switched off in
+the convention plugins. A build should succeed or fail on what is in the tree,
+not on what somebody else published this morning: tomlj 1.3.0 turned `main` red
+on a commit that changed no dependency, hours after the same code went green.
+
+The second reason is worse than the first. Those detectors need the network, and
+the devcontainer runs Gradle `--offline`, so they say nothing locally and fire
+on CI — `./gradlew check` passes on a tree CI will reject, which is exactly how
+that failure reached `main`. A check that only fires on one of the two machines
+is worse than no check. Turning off `NewerVersionAvailable` alone is not enough,
+either: `GradleDependency` asks the same question and simply takes over.
+
+So a new version arrives as a pull request to review, with the verification
+metadata regenerated beside it, rather than as a broken build.
+
 A Dependabot pull request changes which artifacts the build resolves, so it
 would fail until someone regenerated the file by hand. That is the check
 working — a changed artifact is supposed to stop the build — but it is not work

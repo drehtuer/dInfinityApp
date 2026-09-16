@@ -121,43 +121,41 @@ What is below is what it does not have yet.
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] **Wire the one-finger touch to a hand re-throw.** The two decisions underneath it are built and tested: `TrayPick` (`render/filament`) says which die a finger is on, and `PickUp` (`core/notation`) says which dice a hand may go near — a group carrying `!` or `r n` offers none, because a die another die was thrown because of cannot be thrown again without the roll holding a die nothing asks for. The throw itself is the one an explosion already makes (`ThrowSpec.among`), so there is no second path to a number to build. What is missing is not code: it is **what the history says about a roll a die was thrown again in**, under "Open questions" below. Until that is answered the gesture stays unspent (`docs/physics-and-rendering.md`, "Picking a die up and throwing it again")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
-- [ ] **A set's own dice cannot be picked**, and the two ways out are now costed
-      rather than named. Plain notation spells `dN`, `d%` and `dF`, so
-      `skull-d6` has nothing a formula could carry, and `DicePicker.offeredBy`
-      filters the row down to `StandardDieIds` for exactly that reason — a row
-      that added a die the formula cannot name would be a row whose taps
-      disappear.
-
-      **Give notation a spelling for it.** Decision 31 refused this because
-      `brass:skull-d6kh1` has no unambiguous reading — a die id and a modifier
-      are made of the same characters. A *delimited* form does not have that
-      problem: `3{skull-d6}kh1` closes the id before the modifiers start, and
+- [ ] **Decided: braced notation, so a set's own dice can be typed and picked.**
+      Plain notation spells `dN`, `d%` and `dF`, so `skull-d6` has nothing a
+      formula could carry and `DicePicker.offeredBy` filters the row down to
+      `StandardDieIds` for exactly that reason. Decision 31 refused
+      `brass:skull-d6kh1` because a die id and a modifier are made of the same
+      characters; **braces close the id before the modifiers start**, and
       braces are the one bracket the grammar does not already use (`[` and `]`
-      are the label). It also survives decision 31's second objection, which is
-      the real one: the parser may not consult installed sets, because the field
-      re-validates on every keystroke on a thread that has never seen storage —
-      and a braced id is *lexed* without knowing whether it exists, with
-      resolution left to `DieResolver`, which already asks the catalogue.
+      are the label).
+
+      The form is `{` then an optionally set-qualified die id then `}`:
+
+      | written | means |
+      | --- | --- |
+      | `3{skull-d6}kh1` | three of the die whose own id is `skull-d6`, keep highest |
+      | `3{brass:skull-d6}kh1` | the same, said to come from the set `brass` |
+      | `3{skull:d6}kh1` | the `d6` **of the set `skull`** — valid, and a different thing |
+
+      The colon inside the braces is the set separator the grammar already has
+      (`brass:1d20`), so the third row is not a special case; it is what that
+      spelling has always meant. Worth knowing because the die in
+      `docs/dice-sets.md` is `skull-d6` — an id with a hyphen in it, in a set
+      called `brass-and-bone` — so the first two rows are the ones that reach it.
+
+      It survives decision 31's real objection, which is that the parser may not
+      consult installed sets: the field re-validates on every keystroke on a
+      thread that has never seen storage. A braced id is **lexed** without
+      knowing whether it exists, and resolution is left to `DieResolver`, which
+      already asks the catalogue.
 
       What it costs is that notation grows a second way to name a die, and
       notation is the specification: the grammar, `FormulaParser`,
       `NotationReference` (whose every example is parsed by a test), the
       breakdown, the history, saved rolls and every collection file anybody has
-      already written. A formula is the roll everywhere downstream, so the new
-      spelling appears in all of them for ever.
+      already written
 
-      **Or stop picked dice going through the text.** This is what decision 31
-      says is already true — "picked dice build the same `RollPlan` as typed
-      ones" — and it is not: `RollMachine.add` is `type(DicePicker.add(text,
-      die))`, so every tap is an edit to the formula. Making a pick a thing of
-      its own means a roll has two sources of truth, the text and the picks,
-      which is the arrangement the current design exists to avoid — and it has
-      to answer what happens when somebody types over a formula that has picks
-      attached to it.
-
-      Neither is small and neither is obviously right, so this is a decision
-      before it is a change. The first is contained but permanent; the second is
-      invisible to the player but reaches everything that reads a formula
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
@@ -608,6 +606,50 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - **a die visibly moved after it stopped**, which is worse — it turns a roll
   into an arrangement in front of the player's eyes.
 
+**Decided, and it changes the shape of this section: there is no spreading
+force, because there is no invisible hand at all.** Every lever tried so far —
+more collision sub-steps, a longer bias wait, clearer floor for a re-throw,
+more spawn bands — is a way of making corrections work better, and a correction
+is the thing this section is named after not wanting. The answer is what a
+person does at a table when the dice land in a heap:
+
+> **Count the dice that can be read, take them off the board, and throw the
+> rest again. Repeat until every die has been counted.**
+
+A die is either read or thrown again. Nothing is nudged, biased, popped apart
+or re-placed, so the correction rate stops being a number to tune and becomes
+zero by construction — and "it does not look like it cheats" stops being a
+separate claim from "it does not cheat", because there is nothing left to see.
+A die taken off the board after its face is read is not *moved*: it is out of
+play, which is the one thing the honest rule allows (`docs/physics-and-rendering.md`).
+
+It should also terminate quickly. Each pass reads most of the dice, so what is
+left shrinks fast, and a heap of a hundred becomes a handful within a few
+throws rather than a twelve-second fight with the solver.
+
+- [ ] **Build it.** The mechanism, on the simulation side. Each pass: settle,
+      read every die that has a face, remove those bodies from the world, throw
+      what is left. The outcome accumulates across passes and the seed stream
+      has to carry through them, because the whole of it is still one roll with
+      one seed. **`ThrowSpec.among` already throws dice into a tray that
+      already has some** — it is what an explosion does — so the throwing half
+      exists; what is new is the reading-and-removing half and the loop around
+      it
+- [ ] **Open: how removed dice are shown.** A die counted and taken off the
+      board has to go somewhere the player can see, or the tray empties and the
+      total arrives from nowhere. The prototype has no screen for it. Options
+      worth drawing before choosing: a row along the bottom edge growing as
+      dice are counted; the dice staying where they landed but visibly lifted
+      and dimmed; or the result sheet filling in die by die as each is read.
+      The mechanism above does not depend on which
+- [ ] **Open: does a re-throw count as a throw for the history?** Decided for
+      the *hand* re-throw — the die's history keeps every throw, the roll's
+      keeps the sum — and the same answer looks right here, but this re-throw
+      is the app's doing rather than the player's, and a `d6` that took four
+      passes to be read would contribute four faces to its own fairness figure.
+      That is either exactly right (it landed four times) or a bias worth
+      naming (it landed four times *because it was hard to read*)
+
 - [ ] **Run at 20 dice on the Pixel 10a, and the bar holds: zero.** Ten thousand
       rolls, **200,000 dice**, and not one of them came to rest standing on
       another — nor was one touched after it had stopped. Those are the two bars
@@ -923,20 +965,16 @@ The figures are reported in every PR description either way.
       way. Either is a design decision rather than a rendering one
       (`design/README.md`)
 
-- [ ] **Who measures a drawn frame?** The harness now paces a roll the way the
-      screen does (`tools/harness.sh --frames`) and times `LiveRoll.advance`,
-      but it has no surface, so what it measures is the simulation half of a
-      frame; Step 5.7's "p99 under 16.6 ms" is about drawing. The harness
-      therefore scores that row as **not measured** rather than as a pass, and
-      the eye gets `--capture` instead (`docs/architecture.md`, decision 57).
-      The alternative is a second, rendered harness — an instrumented test in
-      `app/` or `render/filament` that opens a real surface, rolls twenty dice
-      and reports its own frame times — which would answer Step 5.7 with a
-      number rather than with a video. It is not small: it needs an activity, a
-      Filament engine and a device, and none of its arithmetic could be reused
-      without moving it into `:simulation:harness` first. Worth doing when 5.7
-      is reached, or worth leaving to the eye and the systrace — a decision for
-      a person
+- [ ] **Decided: a rendered harness measures a drawn frame, and the phone can
+      show its own frame rate.** The headless harness times `LiveRoll.advance`
+      and has no surface, so what it scores is the simulation half of a frame
+      and Step 5.7's "p99 under 16.6 ms" is about drawing. So there is to be a
+      second harness — an instrumented test that opens a real surface, rolls
+      twenty dice and reports its own frame times — and a **setting that puts
+      the frame rate on the screen**, so the number is available to a person
+      holding the phone and not only to a test. Not small: the rendered one
+      needs an activity, a Filament engine and a device, and its arithmetic
+      wants moving into `:simulation:harness` to be shared. Step 5.7
 
 - [ ] **Where does a table look's texture say which package it came from?** A
       die's artwork now reaches the tray by a key of package and path
@@ -1069,16 +1107,6 @@ The figures are reported in every PR description either way.
       repository root instead, because the path after the ref is a dice set's
       subfolder and a collection is found at the root. Decide whether such a
       link should import the file it names
-- [ ] **Android Lint's `NewerVersionAvailable` breaks the build on somebody
-      else's release schedule.** It asks Maven Central on every run, so a
-      dependency publishing a new version turns CI red on a commit that changed
-      nothing — tomlj 1.3.0 did exactly that on 2026-09-16, with the previous
-      green run hours earlier. Worse, it is **invisible locally**: the
-      devcontainer runs Gradle `--offline`, so the detector has no network and
-      says nothing, and `./gradlew check` passes on a tree CI will reject.
-      Either that check should not gate the build (leaving Dependabot to raise
-      the bumps, which it already does), or the local run needs a way to ask
-      the same question. A decision, not a bump
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] Move the container's emulator up when an automated-test image exists
       above API 36 — the same wait as the line above, for the same reason
@@ -1099,38 +1127,23 @@ The figures are reported in every PR description either way.
       takes the first reading, and the bars are data, so changing it is one
       line in `HarnessTargets` — but which it should be is a decision
       (`docs/build-setup.md`, "The physics harness")
-- [ ] **What does the history say about a roll a die was thrown again in?**
-      A player picking a die up out of a finished roll is the player's own act
-      and the app should allow it (`docs/physics-and-rendering.md`, "Picking a
-      die up and throwing it again"); every other question it raises has an
-      answer already. The face the die showed stands and is counted, because it
-      was genuinely thrown. The new face is the physics' and is scored by
-      re-running the scoring, which is what an explosion already does. Which
-      dice a hand may go near is `PickUp`. What is left is that **a roll is
-      written down the moment its dice stop** — one `RollHistory` row and a
-      face count per die (`docs/statistics.md`) — and a hand re-throw happens
-      afterwards and changes the total. Three ways out, and they are three
-      different products rather than three spellings of one:
+- [ ] **Decided: the die's history keeps every throw, the roll's keeps the
+      sum.** A die thrown again is two facts, not one, and they belong to
+      different records. The *die* is a record of faces that came up, so every
+      throw of it counts — a `d6` that went `6, 6, 6, 4` contributes `6: 3` and
+      `4: 1`, four readings, because the die really did land on those faces
+      four times and a fairness figure that dropped three of them would be a
+      lie about the die. The *roll* is a record of what the player got, which
+      is one number: **22**.
 
-      *Amend the row.* The roll keeps one history entry and it holds the total
-      the player actually used; the re-thrown die adds one throw to its own
-      face counts and nothing else changes. Costs a new operation on
-      `StatisticsRepository` and a second method on `ThrowRecorder`, and it
-      makes a history row mutable for the first time — which is a claim
-      `docs/statistics.md` currently does not make.
+      That is already how an exploding chain is counted, which is the point —
+      `6, 6, 6, 4` is what `1d6!` looks like — so a hand re-throw is not a new
+      rule in the history, it is the existing one applied to a throw the player
+      asked for rather than one the notation did. Whatever the mechanism, a die
+      contributes one reading per time it came to rest and a roll contributes
+      one total.
 
-      *Write a second row.* Honest about what happened and needs no schema
-      change, but the per-die counters would count the dice **nobody touched**
-      twice, which contradicts "the die was thrown and landed on that face" in
-      the plainest possible way. Only workable if a row can say which of its
-      dice are new, which is the first option wearing a hat.
+      Unblocks the one-finger pick-up-and-throw (4.1), whose two decisions —
+      `TrayPick` for which die a finger is on, `PickUp` for which dice a hand
+      may go near — are built and tested and were waiting only on this
 
-      *Write the roll down when it is put away, not when it lands.* No schema
-      change and no new seam: `RollPresenter` holds the finished throw and
-      records it on the next roll, on **Clear**, or when the screen goes. It
-      changes what happens to *every* roll, not just this one, and it loses a
-      roll if the process is killed while the result sheet is up — which today
-      it does not.
-
-      None is wrong. Which one it is decides what the history *means*, so it is
-      a decision for a person and not one to make inside a gesture
