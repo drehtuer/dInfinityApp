@@ -44,6 +44,34 @@ internal object Drawings {
       bigEndian(width) +
       bigEndian(height)
 
+  /**
+   * The first 25 bytes of a lossless WebP that is [width] by [height].
+   *
+   * The same trick [png] plays, for the other format the validator reads: a
+   * `RIFF`/`WEBP`/`VP8L` container with the two fourteen-bit dimensions packed
+   * where `ImageHeader` looks for them. It is what a photo table's texture is
+   * checked as, so a package built with one goes through the real validator.
+   */
+  fun webp(
+    width: Int,
+    height: Int,
+  ): ByteArray =
+    "RIFF".toByteArray(Charsets.US_ASCII) +
+      littleEndian(0) +
+      "WEBP".toByteArray(Charsets.US_ASCII) +
+      "VP8L".toByteArray(Charsets.US_ASCII) +
+      littleEndian(0) +
+      byteArrayOf(0x2F) +
+      littleEndian((width - 1) or ((height - 1) shl 14))
+
+  private fun littleEndian(value: Int): ByteArray =
+    byteArrayOf(
+      value.toByte(),
+      (value ushr 8).toByte(),
+      (value ushr 16).toByte(),
+      (value ushr 24).toByte(),
+    )
+
   private fun bigEndian(value: Int): ByteArray =
     byteArrayOf(
       (value ushr 24).toByte(),

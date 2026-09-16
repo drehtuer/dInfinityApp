@@ -13,5 +13,5 @@ object FeatureTablesModule {
   const val PATH: String = ":feature:tables"
 
   /** The Gradle paths this module declares a dependency on. */
-  val DEPENDS_ON: List<String> = listOf(":dicesets:format", ":data")
+  val DEPENDS_ON: List<String> = listOf(":dicesets:format", ":data", ":designer")
 }

@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.designer
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.Face
+import de.drehtuer.dinfinity.core.model.TableLook
 import java.util.Locale
 
 /**
@@ -45,7 +46,71 @@ object DiceSetToml {
         appendLine()
         appendDie(die)
       }
+      set.tables.forEach { look ->
+        appendLine()
+        appendTable(look)
+      }
     }
+
+  /**
+   * One `[[table]]` entry (`docs/tables.md`, "Table looks").
+   *
+   * Written the way [appendDie] is: **only what differs from what the reader
+   * would have used anyway.** A photo table sets four things — its texture,
+   * that the texture does not repeat, that the floor is not tinted, and its
+   * name — and the file says exactly those. Every key that would merely repeat
+   * `TableLook`'s own default is a key somebody would later have to keep in
+   * step with it.
+   */
+  private fun StringBuilder.appendTable(look: TableLook) {
+    val default = TableLook(id = look.id, name = look.name)
+    appendLine("[[table]]")
+    appendLine("id = ${quoted(look.id)}")
+    appendLine("name = ${quoted(look.name)}")
+    look.floorTexturePath?.let { appendLine("floor_texture = ${quoted(it)}") }
+    look.wallTexturePath?.let { appendLine("wall_texture = ${quoted(it)}") }
+    tiling("floor_tiling", look.floorTiling, default.floorTiling)
+    tiling("wall_tiling", look.wallTiling, default.wallTiling)
+    colour("floor_color", look.floorColorArgb, default.floorColorArgb)
+    colour("wall_color", look.wallColorArgb, default.wallColorArgb)
+    number("roughness", look.roughness, default.roughness)
+    number("metallic", look.metallic, default.metallic)
+    number("friction", look.friction, default.friction)
+    number("restitution", look.restitution, default.restitution)
+    if (look.sound != default.sound) appendLine("sound = ${quoted(look.sound.id)}")
+    if (look.light != default.light) appendLine("light = ${quoted(look.light.id)}")
+  }
+
+  private fun StringBuilder.tiling(
+    key: String,
+    value: TableLook.Tiling,
+    default: TableLook.Tiling,
+  ) {
+    if (value == default) return
+    appendLine("$key = [${value.acrossShortSide}, ${value.acrossLongSide}]")
+  }
+
+  /** `#aarrggbb`, always eight digits: a colour with a hidden alpha is a surprise. */
+  private fun StringBuilder.colour(
+    key: String,
+    value: Int,
+    default: Int,
+  ) {
+    if (value == default) return
+    appendLine("$key = ${quoted("#" + String.format(Locale.ROOT, "%08x", value))}")
+  }
+
+  private fun StringBuilder.number(
+    key: String,
+    value: Double,
+    default: Double,
+  ) {
+    if (value == default) return
+    // `Double.toString` rather than a formatter: it always writes a `.`, where
+    // a formatter on a phone set to German would write a decimal comma, and a
+    // decimal comma is not TOML.
+    appendLine("$key = $value")
+  }
 
   private fun StringBuilder.appendDie(die: Die) {
     appendLine("[[die]]")

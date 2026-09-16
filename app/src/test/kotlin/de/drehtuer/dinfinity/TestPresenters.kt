@@ -120,7 +120,9 @@ internal fun testPresenters(
       )
     },
     diceSets = { SetsPresenter(library, scope) },
-    tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}) },
+    // No photo library: a navigation test has no decoder and no personal
+    // package, and "use a photo" is then absent rather than present and dead.
+    tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}, scope = scope) },
     faceDesigner = { designerPresenter(catalog) },
     developer = { developerPresenter(scope) },
     // Nothing is saved and no session exists in a test until one is made, and

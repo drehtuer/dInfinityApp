@@ -19,9 +19,11 @@ import de.drehtuer.dinfinity.data.SettingsStorage
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.designer.BitmapAtlas
+import de.drehtuer.dinfinity.designer.BitmapPhoto
 import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.MineSets
+import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledArtwork
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
@@ -237,7 +239,31 @@ class DInfinityApplication : Application() {
       root = File(filesDir, DICE_SETS_FOLDER),
       painter = BitmapAtlas(),
       dice = { drawableDice() },
+      photos = photoStore,
     )
+  }
+
+  /**
+   * The photographs somebody has made tables of (`docs/tables.md`, "Your own
+   * photo").
+   *
+   * Under the app's own files beside the drafts, and deliberately **not**
+   * inside `dicesets/`: everything in that folder is scanned as a package, so
+   * a folder of loose pictures in it would be listed as a dice set that does
+   * not validate.
+   */
+  private val photoStore: PhotoStore by lazy { PhotoStore(File(filesDir, PhotoStore.DIRECTORY)) }
+
+  /**
+   * Turning a chosen photograph into a table, joined up (`TablePhotoLibrary`).
+   *
+   * Here rather than in `ScreenWiring` because it outlives a visit in exactly
+   * the way [mineSets] does — it is the personal package with a decoder beside
+   * it — and because this is the one place that has all three of the things it
+   * needs.
+   */
+  val tablePhotos: TablePhotoLibrary by lazy {
+    TablePhotoLibrary(mine = mineSets, refresh = { setLibrary.all() }, scaler = BitmapPhoto(), io = Dispatchers.IO)
   }
 
   /**

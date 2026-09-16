@@ -200,7 +200,6 @@ package is gone shows the look the tray would really use, and the setting is
 left alone in case it comes back.
 
 - [ ] Thumbnails rendered on the real box mesh, with a "roll a d20 here" preview. The swatch stands in: it is two colours in a box and says so. This wants the renderer on a screen that is not the tray, which nothing has needed yet
-- [ ] "Use a photo" → downsize, write into the personal package, validate like any table
 
 ### 4.6 Face designer — `feature/designer`
 
@@ -613,6 +612,25 @@ The figures are reported in every PR description either way.
       Both are small; which one is wanted is a judgement about how much the
       export screen should ask for before it will share (`8c`,
       `docs/face-designer.md`)
+- [ ] **A photo table is in the package before the tray can draw it.** "Use a
+      photo" writes a valid, exportable `[[table]]` with its picture, and the
+      tray shows it as its colours until something fills the `atlases` seam
+      (Step 3, above) — which is the same state a *drawn* die's artwork is in,
+      so the alternative was holding the feature until the renderer loads
+      textures. I chose to ship it: the package, the validator path and the
+      export are the hard parts and they are done, and the picture appearing is
+      one seam away for dice and tables alike. Worth confirming that is the
+      right order (`docs/tables.md`, "Your own photo")
+- [ ] **How should a photo sit on the tray?** The prototype's upload sheet
+      offers three fits — centre, fit width, fit height (`1u`) — and none is
+      implemented: a photo table is written with `floor_tiling = [1, 1]`, which
+      means the picture covers the floor once. A *fit* is a question about UV
+      mapping and cropping, and nothing draws a table texture yet, so there is
+      nothing to be right or wrong against. I chose the one answer that needs
+      no renderer. Deciding it properly means choosing between cropping the
+      photo at import (which loses pixels somebody chose) and mapping it at
+      draw time (which needs the tray's aspect, and the tray's aspect changes
+      with the phone's rotation)
 - [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
 - [ ] A collection imported from a git repository records nothing about where
