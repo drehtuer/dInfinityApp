@@ -26,6 +26,8 @@ runner="androidx.test.runner.AndroidJUnitRunner"
 harness_class="de.drehtuer.dinfinity.simulation.jolt.HarnessTest"
 
 rolls=1000
+soak=""
+frames=0
 dice=20
 shape="d20"
 seed=1
@@ -33,6 +35,17 @@ label=""
 out="${root}/build/harness"
 device="${ANDROID_SERIAL:-}"
 build=1
+capture=""
+
+# What a capture records: the app itself, because the harness is headless and
+# a video of a headless run is a video of the home screen. The application id
+# is the namespace in app/build.gradle.kts, with no suffix.
+app_package="de.drehtuer.dinfinity"
+app_activity="de.drehtuer.dinfinity.MainActivity"
+
+# screenrecord's own ceiling on --time-limit, and the reason a longer capture
+# has to be asked for as several.
+capture_max=180
 
 usage() {
   cat >&2 <<'USAGE'
@@ -41,6 +54,12 @@ tools/harness.sh — run the physics harness on a device and score it.
   -d, --device <serial>  which device; default $ANDROID_SERIAL, or the only
                          one attached
   -n, --rolls <n>        how many throws (default 1000)
+      --soak <duration>  roll for this long instead of a fixed number of
+                         throws: 90, 90s, 5m or 1h. The throw under way when
+                         the time runs out is finished, not cut short
+      --frames           step each roll the way the screen does — one advance
+                         per 60 Hz frame — and report what the frames cost.
+                         A paced run takes as long as the dice really take
   -c, --dice <n>         dice per throw (default 20)
   -s, --shape <name>     d20, icosahedron or 20 (default d20)
       --seed <n>         the run's base seed (default 1); one number replays
@@ -50,6 +69,10 @@ tools/harness.sh — run the physics harness on a device and score it.
                          (default build/harness)
       --no-build         skip assembling and installing, and run what is
                          already on the device
+      --capture <secs>   record the screen instead of scoring a run: install
+                         and launch the app, record for this many seconds
+                         (at most 180) while you roll, and pull the video
+                         back. Nothing is scored — a video is for your eyes
 
 Examples:
 
@@ -60,6 +83,9 @@ Examples:
   dinfinity-phone                          # the reference device
   tools/harness.sh -n 10000                # the run Step 5.5 asks for
   tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
+  tools/harness.sh --soak 5m               # soak mode: roll for five minutes
+  tools/harness.sh --frames -n 50          # what a frame's simulation costs
+  tools/harness.sh --capture 20            # twenty seconds of video to watch
 
 The exit code is the verdict: zero when every target was met.
 USAGE
@@ -75,6 +101,9 @@ while [ "$#" -gt 0 ]; do
     -h | --help) usage; exit 0 ;;
     -d | --device) device="${2:?--device needs a serial}"; shift 2 ;;
     -n | --rolls) rolls="${2:?--rolls needs a number}"; shift 2 ;;
+    --soak) soak="${2:?--soak needs a duration, such as 5m}"; shift 2 ;;
+    --frames) frames=1; shift ;;
+    --capture) capture="${2:?--capture needs a number of seconds}"; shift 2 ;;
     -c | --dice) dice="${2:?--dice needs a number}"; shift 2 ;;
     -s | --shape) shape="${2:?--shape needs a die}"; shift 2 ;;
     --seed) seed="${2:?--seed needs a number}"; shift 2 ;;
@@ -113,7 +142,59 @@ abi="$(property ro.product.cpu.abi)"
 [ -n "${model}" ] || fail "${device} did not answer; is it still attached?"
 
 echo "Device:  ${model} (${device}), API ${api}, ${abi}"
-echo "Run:     ${rolls} rolls of ${dice}${shape}, seed ${seed}"
+
+# A capture is not a run: it installs the app, starts it, records the screen
+# while somebody rolls, and pulls the video back. It scores nothing, because
+# what it is for is the half of Step 5 no scorecard can answer — whether the
+# dice look like dice (`.claude/CLAUDE.md`, "Testing").
+if [ -n "${capture}" ]; then
+  case "${capture}" in
+    '' | *[!0-9]*) fail "--capture takes a number of seconds, not '${capture}'" ;;
+  esac
+  [ "${capture}" -gt 0 ] || fail "--capture needs a number of seconds greater than zero"
+  [ "${capture}" -le "${capture_max}" ] ||
+    fail "screenrecord stops at ${capture_max} s; ask for that or run it again for the rest"
+
+  if [ "${build}" -eq 1 ]; then
+    echo "Building the app…"
+    "${root}/gradlew" --console=plain -p "${root}" :app:assembleDebug
+
+    app_apk="$(find "${root}/app/build/outputs/apk/debug" -name '*.apk' -print -quit 2> /dev/null || true)"
+    [ -n "${app_apk}" ] || fail "no debug APK was built; look above for why"
+
+    echo "Installing $(basename "${app_apk}")…"
+    adb -s "${device}" install -r -g "${app_apk}" > /dev/null
+  fi
+
+  capture_name="harness-${label:-capture}.mp4"
+  remote_capture="/sdcard/${capture_name}"
+  adb -s "${device}" shell "rm -f ${remote_capture}" > /dev/null 2>&1 || true
+  adb -s "${device}" shell am start -n "${app_package}/${app_activity}" > /dev/null
+
+  echo
+  echo "Recording ${capture} s — roll now. The video runs at whatever the panel does,"
+  echo "which is 60 fps on the Pixel 10a unless something has throttled it."
+  # --bit-rate rather than the 4 Mbps default: dice at 60 fps are exactly the
+  # thing a low bit rate smears, and the video is for looking at.
+  adb -s "${device}" shell screenrecord --bit-rate 16M --time-limit "${capture}" "${remote_capture}"
+
+  mkdir -p "${out}"
+  adb -s "${device}" pull "${remote_capture}" "${out}/" > /dev/null ||
+    fail "the recording could not be pulled back; is ${remote_capture} there?"
+  adb -s "${device}" shell "rm -f ${remote_capture}" > /dev/null 2>&1 || true
+
+  echo
+  echo "Video:   ${out}/${capture_name}"
+  echo "Nothing was scored: a capture is for the eye, not for the scorecard."
+  exit 0
+fi
+
+if [ -n "${soak}" ]; then
+  echo "Run:     ${soak} of rolling ${dice}${shape}, seed ${seed}"
+else
+  echo "Run:     ${rolls} rolls of ${dice}${shape}, seed ${seed}"
+fi
+[ "${frames}" -eq 1 ] && echo "Frames:  each roll stepped at 60 fps and timed; this runs in real time"
 
 if [ "${build}" -eq 1 ]; then
   echo "Building the test APK…"
@@ -145,6 +226,11 @@ arguments=(
   -e harness.shape "${shape}"
   -e harness.seed "${seed}"
 )
+# The roll count goes along either way and the device ignores it when a soak is
+# asked for, which is `RunLength.from`'s rule rather than this script's: one
+# place decides what a run was asked for (docs/architecture.md, decision 53).
+[ -n "${soak}" ] && arguments+=(-e harness.soak "${soak}")
+[ "${frames}" -eq 1 ] && arguments+=(-e harness.frames 1)
 [ -n "${label}" ] && arguments+=(-e harness.label "${label}")
 
 echo "Rolling…"

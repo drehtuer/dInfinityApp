@@ -26,6 +26,54 @@ class HarnessTargetsTest {
   }
 
   @Test
+  fun `a headless run is not scored on frames at all, in either direction`() {
+    val scorecard = HarnessTargets().score(perfect())
+
+    assertEquals(
+      listOf(HarnessTargets.FRAME_TIME, HarnessTargets.DROPPED_STEPS),
+      scorecard.notMeasured.map(TargetResult::name),
+      scorecard.table(),
+    )
+    // Not a failure, so a headless run still passes...
+    assertTrue(scorecard.passed)
+    // ...and not a pass either, so it cannot claim a frame rate it never saw.
+    assertFalse(scorecard.rows.single { it.name == HarnessTargets.FRAME_TIME }.passed)
+    assertEquals(
+      HarnessTargets.NOT_MEASURED,
+      scorecard.rows.single { it.name == HarnessTargets.FRAME_TIME }.measured,
+    )
+  }
+
+  @Test
+  fun `a run that paced frames but drew none reports the half it measured, unscored`() {
+    val scorecard = HarnessTargets().score(perfect().copy(frames = frames(p99 = 3.0, drawn = false)))
+    val row = scorecard.rows.single { it.name == HarnessTargets.FRAME_TIME }
+
+    assertEquals(TargetOutcome.NotMeasured, row.outcome)
+    assertTrue(row.measured.contains("3.00 ms"), row.measured)
+    assertTrue(row.measured.contains("simulation only"), row.measured)
+    // The dropped steps *are* measured by a paced run, drawn or not: keeping up
+    // with the clock is the simulation's half of a frame.
+    assertEquals(TargetOutcome.Pass, scorecard.rows.single { it.name == HarnessTargets.DROPPED_STEPS }.outcome)
+  }
+
+  @Test
+  fun `a frame drawn exactly on Step 5 point 7's budget passes, and a slower one does not`() {
+    val onTheBar = perfect().copy(frames = frames(p99 = HarnessTargets.P99_FRAME_MILLIS, drawn = true))
+    assertTrue(HarnessTargets().score(onTheBar).passed, HarnessTargets().score(onTheBar).table())
+
+    assertMisses(
+      HarnessTargets.FRAME_TIME,
+      perfect().copy(frames = frames(p99 = HarnessTargets.P99_FRAME_MILLIS + 0.1, drawn = true)),
+    )
+  }
+
+  @Test
+  fun `a step a late frame never paid for fails, however green the rest of the run is`() {
+    assertMisses(HarnessTargets.DROPPED_STEPS, perfect().copy(frames = frames(p99 = 2.0, dropped = 1)))
+  }
+
+  @Test
   fun `one die left standing on another fails the run`() {
     assertMisses("dice at rest on another die", perfect().copy(stackedAtRest = 1))
   }
@@ -111,12 +159,28 @@ class HarnessTargetsTest {
     assertTrue(table.contains("dice at rest on another die"), table)
     assertTrue(table.contains("FAIL"), table)
     assertTrue(table.lines().last().startsWith(Scorecard.VERDICT), table)
-    assertEquals("${Scorecard.VERDICT} FAIL (1 of $TARGET_COUNT)", table.lines().last())
+    assertEquals("${Scorecard.VERDICT} FAIL (1 of $TARGET_COUNT, 2 not measured)", table.lines().last())
   }
 
   @Test
   fun `a passing run's last line is the one word a script needs`() {
-    assertEquals("${Scorecard.VERDICT} PASS", HarnessTargets().score(perfect()).verdict())
+    val drawn = perfect().copy(frames = frames(p99 = 8.0, drawn = true))
+
+    assertEquals("${Scorecard.VERDICT} PASS", HarnessTargets().score(drawn).verdict())
+  }
+
+  @Test
+  fun `a run that measured everything and missed one says only that`() {
+    val measured = perfect().copy(frames = frames(p99 = 8.0, drawn = true), stackedAtRest = 1)
+
+    assertEquals("${Scorecard.VERDICT} FAIL (1 of $TARGET_COUNT)", HarnessTargets().score(measured).verdict())
+  }
+
+  @Test
+  fun `a run that passed with a gap in it says so on the line a script reads`() {
+    // Still a PASS, so the script's exit code is zero — but a green line that
+    // hid two unanswered targets would be the harness lying by omission.
+    assertEquals("${Scorecard.VERDICT} PASS, 2 not measured", HarnessTargets().score(perfect()).verdict())
   }
 
   @Test
@@ -124,8 +188,8 @@ class HarnessTargetsTest {
     val scorecard =
       Scorecard(
         listOf(
-          TargetResult("a", "1", "0", passed = true),
-          TargetResult("a considerably longer target name", "1000", "0", passed = true),
+          TargetResult("a", "1", "0", TargetOutcome.Pass),
+          TargetResult("a considerably longer target name", "1000", "0", TargetOutcome.Pass),
         ),
       )
     val table = scorecard.table()
@@ -171,6 +235,19 @@ class HarnessTargetsTest {
       deepestDiePenetrationMm = 0.01,
     )
 
+  /** What a paced run measured, with everything else about it already perfect. */
+  private fun frames(
+    p99: Double,
+    dropped: Long = 0,
+    drawn: Boolean = false,
+  ): FrameSummary =
+    FrameSummary(
+      frames = 500,
+      droppedSteps = dropped,
+      millis = Distribution(median = p99 / 2, p99 = p99, worst = p99 * 2),
+      drawn = drawn,
+    )
+
   @Test
   fun `writes its numbers the same way whatever the phone's language is`() {
     // The Pixel 10a this is run against is set to German, and the first table
@@ -182,7 +259,9 @@ class HarnessTargetsTest {
     val was = Locale.getDefault()
     try {
       Locale.setDefault(Locale.GERMANY)
-      val table = HarnessTargets().score(perfect()).table()
+      // A run that measured everything, so the only commas a German locale
+      // could put in the table would be decimal ones.
+      val table = HarnessTargets().score(perfect().copy(frames = frames(p99 = 8.0, drawn = true))).table()
       assertFalse(table.contains(","), "a comma got into: $table")
       assertTrue(table.contains("0.500 %"))
     } finally {
@@ -192,6 +271,6 @@ class HarnessTargetsTest {
 
   private companion object {
     /** How many bars Step 5 sets. A row that disappears is a target nobody is checking. */
-    const val TARGET_COUNT = 10
+    const val TARGET_COUNT = 12
   }
 }

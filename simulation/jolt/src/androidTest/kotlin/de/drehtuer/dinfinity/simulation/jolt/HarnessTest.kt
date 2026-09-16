@@ -3,7 +3,9 @@ package de.drehtuer.dinfinity.simulation.jolt
 import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.harness.DeviceFacts
+import de.drehtuer.dinfinity.simulation.harness.FrameTimes
 import de.drehtuer.dinfinity.simulation.harness.HarnessJson
 import de.drehtuer.dinfinity.simulation.harness.HarnessPlan
 import de.drehtuer.dinfinity.simulation.harness.HarnessReport
@@ -15,6 +17,7 @@ import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.util.concurrent.locks.LockSupport
 
 /**
  * The Step 5 harness: N rolls, headless, and a JSON document of what they did
@@ -34,9 +37,9 @@ import java.io.File
  *
  * ### Running it
  *
- * It does nothing without `harness.rolls`, so it can sit in the ordinary device
- * suite without adding minutes to it. `tools/harness.sh` is the way in; by
- * hand it is:
+ * It does nothing without `harness.rolls` or `harness.soak`, so it can sit in
+ * the ordinary device suite without adding minutes to it. `tools/harness.sh` is
+ * the way in; by hand it is:
  *
  * ```sh
  * ./gradlew :simulation:jolt:connectedDebugAndroidTest \
@@ -44,6 +47,21 @@ import java.io.File
  *   -Pandroid.testInstrumentationRunnerArguments.harness.dice=20 \
  *   -Pandroid.testInstrumentationRunnerArguments.harness.shape=d20
  * ```
+ *
+ * ### The three shapes a run comes in
+ *
+ * | | What the loop does |
+ * | --- | --- |
+ * | `harness.rolls` | throws that many times |
+ * | `harness.soak` | goes on throwing until the time is up, and finishes the throw it is on |
+ * | `harness.frames` | steps each throw the way the screen does — one `advance` per frame — and times the frames |
+ *
+ * The first two are the *same* loop asking `RunLength.keepGoing` a different
+ * question, which is the whole of what soak mode is. The third changes how a
+ * roll is stepped and nothing about what it comes to: the same seed comes to
+ * the same faces paced or flat out, because `FrameClock` decides when steps are
+ * taken and never how big they are (`docs/physics-and-rendering.md`, "The
+ * simulation clock").
  *
  * ### What it asserts
  *
@@ -67,7 +85,9 @@ class HarnessTest {
     val request = requireNotNull(asked)
 
     val plan = request.plan()
-    val report = HarnessReport.of(facts(request, plan), run(request, plan))
+    val frames = Frames()
+    val records = run(request, plan, frames)
+    val report = HarnessReport.of(facts(request, plan, records.size), records, frames.measured(request))
     val table = report.scorecard.table()
 
     write(request.label, HarnessJson.encode(report), table)
@@ -80,9 +100,16 @@ class HarnessTest {
   }
 
   /**
-   * Every roll of the run, timed.
+   * Every roll of the run, timed, until the run has had enough.
    *
-   * `System.nanoTime` rather than the wall clock, because this is an interval
+   * One loop for both kinds of run: what a roll count and a soak differ in is
+   * the answer to `RunLength.keepGoing`, which is asked after each throw and is
+   * the only thing here that knows there are two kinds
+   * (`docs/architecture.md`, decision 53). The throw under way when a soak's
+   * time runs out is finished rather than cut short — a settle time that was
+   * interrupted is the longest one in the sample and is not a fact about dice.
+   *
+   * `System.nanoTime` rather than the wall clock, because these are intervals
    * and the wall clock can step sideways; and around the whole roll rather
    * than around each step, because a stopwatch per step would be measuring
    * itself as much as the solver.
@@ -90,32 +117,112 @@ class HarnessTest {
   private fun run(
     request: HarnessRequest,
     plan: HarnessPlan,
+    frames: Frames,
   ): List<RollRecord> {
     val simulator = JoltDiceSimulator()
-    return (0 until request.rolls).map { index ->
-      val spec = plan.specFor(index)
-      val before = System.nanoTime()
-      val outcome = simulator.run(spec)
-      val elapsed = System.nanoTime() - before
-      RollRecord.of(
-        index = index,
-        seed = spec.seed,
-        outcome = outcome,
-        wallMillis = elapsed.toDouble() / NANOS_PER_MILLISECOND,
-      )
+    val records = mutableListOf<RollRecord>()
+    val started = System.nanoTime()
+    do {
+      val spec = plan.specFor(records.size)
+      records +=
+        if (request.framePaced) {
+          paced(simulator, spec, records.size, frames)
+        } else {
+          flatOut(simulator, spec, records.size)
+        }
+    } while (request.length.keepGoing(records.size, secondsSince(started)))
+    return records
+  }
+
+  /** One roll stepped as fast as the processor allows — power-saving mode, and the default. */
+  private fun flatOut(
+    simulator: JoltDiceSimulator,
+    spec: ThrowSpec,
+    index: Int,
+  ): RollRecord {
+    val before = System.nanoTime()
+    val outcome = simulator.run(spec)
+    val elapsed = System.nanoTime() - before
+    return RollRecord.of(index, spec.seed, outcome, elapsed.toDouble() / NANOS_PER_MILLISECOND)
+  }
+
+  /**
+   * One roll stepped the way the screen steps one: an `advance` per frame, at
+   * a frame's cadence, with each call timed.
+   *
+   * **The wall time recorded is the work, not the wait.** A paced roll takes as
+   * long as the dice really take, and counting the sleeping between frames as
+   * time the device spent simulating would put every paced run exactly on the
+   * step-time bar whatever the phone was doing. What is timed is therefore the
+   * inside of `advance`, which is the frame's own half of the simulation
+   * (`FrameTimes`).
+   *
+   * Nothing is drawn: the renderer is the one that draws nothing, because this
+   * module has no surface and no Filament. That is why the frame figures are
+   * marked as not drawn and why the scorecard scores Step 5.7's bar as not
+   * measured rather than as a pass.
+   */
+  private fun paced(
+    simulator: JoltDiceSimulator,
+    spec: ThrowSpec,
+    index: Int,
+    frames: Frames,
+  ): RollRecord =
+    simulator.start(spec, listening = false).use { roll ->
+      // A frame's worth behind, so the first frame advances the roll rather
+      // than measuring the moment the loop started.
+      var last = System.nanoTime() - FrameTimes.FRAME_NANOS
+      var workNanos = 0L
+      while (roll.running) {
+        val begin = System.nanoTime()
+        roll.advance((begin - last).toDouble() / NANOS_PER_SECOND)
+        last = begin
+        val work = System.nanoTime() - begin
+        workNanos += work
+        frames.millis += work.toDouble() / NANOS_PER_MILLISECOND
+        LockSupport.parkNanos(FrameTimes.waitNanos(work))
+      }
+      frames.droppedSteps += roll.droppedSteps
+      RollRecord.of(index, spec.seed, requireNotNull(roll.outcome), workNanos.toDouble() / NANOS_PER_MILLISECOND)
     }
+
+  private fun secondsSince(nanos: Long): Double = (System.nanoTime() - nanos).toDouble() / NANOS_PER_SECOND
+
+  /**
+   * What the run's frames cost, gathered as they happen.
+   *
+   * A mutable heap of numbers and nothing else: every judgement about them —
+   * the percentiles, whether they are worth scoring, what a run with none of
+   * them reports — is `FrameTimes` in `:simulation:harness`, on the JVM.
+   */
+  private class Frames {
+    val millis = mutableListOf<Double>()
+    var droppedSteps = 0L
+
+    /** The measurement, or [FrameTimes.Nothing] for a run that never paced a frame. */
+    fun measured(request: HarnessRequest): FrameTimes =
+      if (!request.framePaced) {
+        FrameTimes.Nothing
+      } else {
+        // Never drawn: see `paced`. A phone that measured its own drawing
+        // would need a surface, which is Step 5.7's job and not this one's.
+        FrameTimes(millis = millis.toList(), droppedSteps = droppedSteps, drawn = false)
+      }
   }
 
   private fun facts(
     request: HarnessRequest,
     plan: HarnessPlan,
+    rolls: Int,
   ): RunFacts =
     RunFacts(
       label = request.label,
       shapeId = request.shape.id,
       diceCount = request.diceCount,
       dieScale = plan.dieScale,
-      rolls = request.rolls,
+      length = request.length,
+      rolls = rolls,
+      framePaced = request.framePaced,
       seed = request.seed,
       device =
         DeviceFacts.of(
@@ -156,5 +263,6 @@ class HarnessTest {
 
   private companion object {
     const val NANOS_PER_MILLISECOND = 1_000_000.0
+    const val NANOS_PER_SECOND = 1_000_000_000.0
   }
 }

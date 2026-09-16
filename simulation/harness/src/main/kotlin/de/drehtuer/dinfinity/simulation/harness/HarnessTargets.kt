@@ -48,6 +48,15 @@ import java.util.Locale
  *   time while the machine can simulate a step in less time than the step
  *   covers. It is **not** Step 5.7's 16.6 ms frame budget: that is a figure
  *   about drawing, and this harness is headless and draws nothing.
+ * @param p99FrameMillis Step 5.7's frame budget, which *is* about drawing:
+ *   60 fps sustained at twenty dice. A run that drew nothing is scored
+ *   [TargetOutcome.NotMeasured] against it rather than passing it — the one
+ *   rule that keeps a headless run from quietly claiming a frame rate
+ *   ([FrameTimes]).
+ * @param droppedSteps steps a late frame never paid for, over a paced run.
+ *   Zero: the roll comes to the same faces either way, so what this catches is
+ *   a frame that could not keep up, which is what Step 5.7 is about
+ *   ([de.drehtuer.dinfinity.simulation.api.FrameClock.droppedSteps]).
  */
 data class HarnessTargets(
   val stackedAtRest: Long = 0,
@@ -60,6 +69,8 @@ data class HarnessTargets(
   val forcedSettles: Long = 0,
   val deepestDiePenetrationMm: Double = DEEPEST_PENETRATION_MM,
   val p99StepWallMillis: Double = SettleRule.TIMESTEP_SECONDS * MILLIS_PER_SECOND,
+  val p99FrameMillis: Double = P99_FRAME_MILLIS,
+  val droppedSteps: Long = 0,
 ) {
   /**
    * [summary] against every bar above, in the order Step 5 states them.
@@ -82,14 +93,52 @@ data class HarnessTargets(
         atMost("forced settles", summary.forcedSettles, forcedSettles),
         millimetres("deepest die-die overlap", summary.deepestDiePenetrationMm, deepestDiePenetrationMm),
         millis("p99 step time", summary.stepWallMillis.p99, p99StepWallMillis),
+        frameTime(summary.frames),
+        dropped(summary.frames),
       ),
     )
+
+  /**
+   * Step 5.7's frame budget, scored only against frames somebody drew.
+   *
+   * Three outcomes and not two, and the third is the important one. A headless
+   * run has no frames at all, and a paced run in this harness has frames whose
+   * cost is the simulation half of one — neither is the figure this bar is
+   * about, and neither may be reported as meeting it. What is printed instead
+   * is what there is: nothing, or the half that was measured, said to be a
+   * half (`docs/build-setup.md`, "The physics harness").
+   */
+  private fun frameTime(frames: FrameSummary?): TargetResult =
+    when {
+      frames == null ->
+        TargetResult(FRAME_TIME, written("%.2f ms", p99FrameMillis), NOT_MEASURED, TargetOutcome.NotMeasured)
+      !frames.drawn ->
+        TargetResult(
+          FRAME_TIME,
+          written("%.2f ms", p99FrameMillis),
+          written("%.2f ms", frames.millis.p99) + " (simulation only)",
+          TargetOutcome.NotMeasured,
+        )
+      else -> millis(FRAME_TIME, frames.millis.p99, p99FrameMillis)
+    }
+
+  /**
+   * Steps a late frame dropped, which a paced run measures whether or not it
+   * drew anything: keeping up with the clock is the simulation's half of a
+   * frame, and that half is exactly what this harness runs.
+   */
+  private fun dropped(frames: FrameSummary?): TargetResult =
+    if (frames == null) {
+      TargetResult(DROPPED_STEPS, droppedSteps.toString(), NOT_MEASURED, TargetOutcome.NotMeasured)
+    } else {
+      atMost(DROPPED_STEPS, frames.droppedSteps, droppedSteps)
+    }
 
   private fun atMost(
     name: String,
     measured: Long,
     bar: Long,
-  ): TargetResult = TargetResult(name, bar.toString(), measured.toString(), measured <= bar)
+  ): TargetResult = TargetResult(name, bar.toString(), measured.toString(), TargetOutcome.of(measured <= bar))
 
   private fun share(
     name: String,
@@ -100,26 +149,29 @@ data class HarnessTargets(
       name,
       written("%.3f %%", bar * PERCENT),
       written("%.3f %%", measured * PERCENT),
-      measured <= bar,
+      TargetOutcome.of(measured <= bar),
     )
 
   private fun seconds(
     name: String,
     measured: Double,
     bar: Double,
-  ): TargetResult = TargetResult(name, written("%.2f s", bar), written("%.2f s", measured), measured <= bar)
+  ): TargetResult =
+    TargetResult(name, written("%.2f s", bar), written("%.2f s", measured), TargetOutcome.of(measured <= bar))
 
   private fun millis(
     name: String,
     measured: Double,
     bar: Double,
-  ): TargetResult = TargetResult(name, written("%.2f ms", bar), written("%.2f ms", measured), measured <= bar)
+  ): TargetResult =
+    TargetResult(name, written("%.2f ms", bar), written("%.2f ms", measured), TargetOutcome.of(measured <= bar))
 
   private fun millimetres(
     name: String,
     measured: Double,
     bar: Double,
-  ): TargetResult = TargetResult(name, written("%.3f mm", bar), written("%.3f mm", measured), measured <= bar)
+  ): TargetResult =
+    TargetResult(name, written("%.3f mm", bar), written("%.3f mm", measured), TargetOutcome.of(measured <= bar))
 
   /**
    * A number written the way the report writes every number.
@@ -147,6 +199,18 @@ data class HarnessTargets(
     /** How far one die may ever be inside another (Step 5.4). */
     const val DEEPEST_PENETRATION_MM: Double = 0.2
 
+    /** A sixtieth of a second, which is Step 5.7's frame budget at twenty dice. */
+    const val P99_FRAME_MILLIS: Double = 16.6
+
+    /** What the frame rows are called, in one place so the table and its tests agree. */
+    const val FRAME_TIME: String = "p99 frame time"
+
+    /** And the steps a frame that ran long never paid for. */
+    const val DROPPED_STEPS: String = "steps a late frame dropped"
+
+    /** What a row says when there was nothing to measure it from. */
+    const val NOT_MEASURED: String = "-"
+
     /** Shares are read as percentages, because that is how the targets are written. */
     const val PERCENT: Double = 100.0
 
@@ -155,7 +219,46 @@ data class HarnessTargets(
 }
 
 /**
- * One target, and whether the run met it.
+ * How a run came out against one target.
+ *
+ * **Three, not two.** A target nothing was measured for is neither met nor
+ * missed, and calling it either is a lie in one direction or the other: a
+ * headless run that reported "pass" on a frame-rate target would be a harness
+ * claiming a frame rate it never saw, and one that reported "FAIL" would stop
+ * every run that is not about frames (`docs/TODO.md`, Step 5.1).
+ */
+enum class TargetOutcome(
+  /** The word the table prints in the result column. */
+  val word: String,
+  /** And the token the JSON document carries, which is read back by name. */
+  val token: String,
+) {
+  Pass("pass", "pass"),
+  Fail("FAIL", "fail"),
+  NotMeasured("not measured", "not-measured"),
+  ;
+
+  companion object {
+    /** [met] as an outcome, for the bars that are a plain comparison. */
+    fun of(met: Boolean): TargetOutcome = if (met) Pass else Fail
+
+    /**
+     * The outcome [token] names.
+     *
+     * Refused rather than guessed, for the same reason every other field of
+     * the document is: a verdict that could not be read is worth saying so
+     * about ([HarnessJson]).
+     */
+    fun ofToken(token: String): TargetOutcome =
+      entries.firstOrNull { it.token == token }
+        ?: throw IllegalArgumentException(
+          "the harness document's \"result\" is $token, which is none of " + entries.joinToString { it.token },
+        )
+  }
+}
+
+/**
+ * One target, and how the run came out against it.
  *
  * The bar and the measurement are strings rather than numbers because they are
  * read rather than computed with — a share in percent, a time in seconds, a
@@ -167,8 +270,11 @@ data class TargetResult(
   val name: String,
   val bar: String,
   val measured: String,
-  val passed: Boolean,
-)
+  val outcome: TargetOutcome,
+) {
+  /** True only when the target was met. A target nothing was measured for was not. */
+  val passed: Boolean get() = outcome == TargetOutcome.Pass
+}
 
 /**
  * A whole run against every target.
@@ -180,11 +286,22 @@ data class TargetResult(
 data class Scorecard(
   val rows: List<TargetResult>,
 ) {
-  /** True when every target was met. An empty scorecard has met nothing and no bar, so it passes. */
-  val passed: Boolean get() = rows.all(TargetResult::passed)
+  /**
+   * True when nothing was missed.
+   *
+   * A row nothing was measured for does not fail the run — a headless run is
+   * not a broken one — but it does not pass silently either: [verdict] says how
+   * many there were, so a green line with a gap in it reads as a green line
+   * with a gap in it. An empty scorecard has met nothing and no bar, so it
+   * passes.
+   */
+  val passed: Boolean get() = failures.isEmpty()
 
   /** The targets that were missed, which is what a failing run is about. */
-  val failures: List<TargetResult> get() = rows.filterNot(TargetResult::passed)
+  val failures: List<TargetResult> get() = rows.filter { it.outcome == TargetOutcome.Fail }
+
+  /** And the ones this run could not answer for at all. */
+  val notMeasured: List<TargetResult> get() = rows.filter { it.outcome == TargetOutcome.NotMeasured }
 
   /**
    * The scorecard as a plain-text table, ending in the verdict line.
@@ -205,7 +322,7 @@ data class Scorecard(
       buildList {
         add(row(widths, TARGET_HEADING, BAR_HEADING, MEASURED_HEADING, RESULT_HEADING))
         add(row(widths, rule(widths.name), rule(widths.bar), rule(widths.measured), rule(RESULT_HEADING.length)))
-        rows.forEach { add(row(widths, it.name, it.bar, it.measured, if (it.passed) PASSED else FAILED)) }
+        rows.forEach { add(row(widths, it.name, it.bar, it.measured, it.outcome.word)) }
         add(verdict())
       }
     return lines.joinToString("\n")
@@ -219,7 +336,14 @@ data class Scorecard(
    * phone fails in the terminal too rather than printing a red row that
    * scrolls past.
    */
-  fun verdict(): String = if (passed) "$VERDICT PASS" else "$VERDICT FAIL (${failures.size} of ${rows.size})"
+  fun verdict(): String {
+    val gap = if (notMeasured.isEmpty()) "" else ", ${notMeasured.size} not measured"
+    return if (passed) {
+      "$VERDICT PASS$gap"
+    } else {
+      "$VERDICT FAIL (${failures.size} of ${rows.size}$gap)"
+    }
+  }
 
   /** How wide each column has to be to hold its heading and every cell under it. */
   private data class Widths(
@@ -259,7 +383,5 @@ data class Scorecard(
     private const val BAR_HEADING = "bar"
     private const val MEASURED_HEADING = "measured"
     private const val RESULT_HEADING = "result"
-    private const val PASSED = "pass"
-    private const val FAILED = "FAIL"
   }
 }

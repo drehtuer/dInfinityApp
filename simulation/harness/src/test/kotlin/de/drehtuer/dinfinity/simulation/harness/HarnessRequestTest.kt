@@ -7,6 +7,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -32,10 +33,43 @@ class HarnessRequestTest {
   }
 
   @Test
+  fun `a duration asks for a soak, which is the same run given a length of time`() {
+    val request = requireNotNull(HarnessRequest.from(arguments(rolls = null, soak = "5m")))
+
+    assertEquals(RunLength.Soak(300.0), request.length)
+    // Named after what it is, so a soak does not overwrite the counted run
+    // beside it.
+    assertEquals("20d20-soak", request.label)
+  }
+
+  @Test
+  fun `a soak wins over a roll count, because nobody passes one by accident`() {
+    val request = requireNotNull(HarnessRequest.from(arguments(rolls = "1000", soak = "90s")))
+
+    assertEquals(RunLength.Soak(90.0), request.length)
+  }
+
+  @Test
+  fun `a soak that is not a duration falls back to the roll count rather than stopping the run`() {
+    assertEquals(RunLength.Rolls(10), requireNotNull(HarnessRequest.from(arguments("10", soak = "soon"))).length)
+    assertNull(HarnessRequest.from(arguments(rolls = null, soak = "soon")))
+  }
+
+  @Test
+  fun `frames are paced only when somebody asks, and no is spelt three ways`() {
+    assertFalse(requireNotNull(HarnessRequest.from(arguments("10"))).framePaced)
+    assertTrue(requireNotNull(HarnessRequest.from(arguments("10", frames = "1"))).framePaced)
+    assertTrue(requireNotNull(HarnessRequest.from(arguments("10", frames = "true"))).framePaced)
+    assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = "0"))).framePaced)
+    assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = "false"))).framePaced)
+    assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = " "))).framePaced)
+  }
+
+  @Test
   fun `a roll count on its own is twenty d20s, which is where Step 5 states its targets`() {
     val request = requireNotNull(HarnessRequest.from(arguments(rolls = "1000")))
 
-    assertEquals(1_000, request.rolls)
+    assertEquals(RunLength.Rolls(1_000), request.length)
     assertEquals(HarnessRequest.DEFAULT_DICE, request.diceCount)
     assertEquals(DieShape.Icosahedron, request.shape)
     assertEquals(HarnessRequest.DEFAULT_SEED, request.seed)
@@ -54,7 +88,7 @@ class HarnessRequestTest {
   fun `arguments arrive with whatever spacing a shell left on them`() {
     val request = requireNotNull(HarnessRequest.from(arguments(rolls = " 12 ", dice = " 5 ", seed = " 99 ")))
 
-    assertEquals(12, request.rolls)
+    assertEquals(RunLength.Rolls(12), request.length)
     assertEquals(5, request.diceCount)
     assertEquals(99L, request.seed)
   }
@@ -106,7 +140,14 @@ class HarnessRequestTest {
   @Test
   fun `a throw the table refuses is refused before a body is created`() {
     // A table too narrow to hold them even shrunk to the floor of the scale.
-    val request = HarnessRequest(label = "x", shape = DieShape.Icosahedron, diceCount = 100, rolls = 1, seed = 1L)
+    val request =
+      HarnessRequest(
+        label = "x",
+        shape = DieShape.Icosahedron,
+        diceCount = 100,
+        length = RunLength.Rolls(1),
+        seed = 1L,
+      )
 
     val failure = assertFailsWith<IllegalArgumentException> { request.plan(geometry = TableGeometry(NARROW_MM)) }
     assertTrue(failure.message.orEmpty().contains("don't fit on the table"), failure.message.orEmpty())
@@ -141,11 +182,13 @@ class HarnessRequestTest {
 
   @Suppress("LongParameterList")
   private fun arguments(
-    rolls: String,
+    rolls: String? = null,
     dice: String? = null,
     shape: String? = null,
     seed: String? = null,
     label: String? = null,
+    soak: String? = null,
+    frames: String? = null,
   ): (String) -> String? =
     { name ->
       when (name) {
@@ -154,6 +197,8 @@ class HarnessRequestTest {
         HarnessRequest.SHAPE -> shape
         HarnessRequest.SEED -> seed
         HarnessRequest.LABEL -> label
+        HarnessRequest.SOAK -> soak
+        HarnessRequest.FRAMES -> frames
         else -> null
       }
     }

@@ -38,15 +38,22 @@ data class HarnessReport(
      * loads — nothing but this module ever reads it — so it may move freely;
      * what it may not do is move silently.
      */
-    const val SCHEMA: Int = 1
+    const val SCHEMA: Int = 2
 
-    /** A report over [records], summarised and scored in one go. */
+    /**
+     * A report over [records], summarised and scored in one go.
+     *
+     * [frames] is what a paced run measured at the frame clock and is
+     * [FrameTimes.Nothing] for the headless run the harness makes by default —
+     * which is how a frame-time figure comes to be absent rather than zero.
+     */
     fun of(
       facts: RunFacts,
       records: List<RollRecord>,
+      frames: FrameTimes = FrameTimes.Nothing,
       targets: HarnessTargets = HarnessTargets(),
     ): HarnessReport {
-      val summary = HarnessSummary.of(facts.diceCount, records)
+      val summary = HarnessSummary.of(facts.diceCount, records, frames)
       return HarnessReport(facts, records, summary, targets.score(summary))
     }
   }
@@ -65,7 +72,15 @@ data class HarnessReport(
  * @param dieScale how far down the capacity rule shrank them
  *   (`docs/tables.md`), recorded because the settle time of twenty dice at
  *   full size and twenty at 0.4 are not the same measurement.
- * @param rolls how many throws were made.
+ * @param length what was asked for: a number of throws, or a length of time
+ *   (soak mode). Recorded beside [rolls] rather than instead of it, because
+ *   "roll for five minutes" and "it managed 143 throws" are two different facts
+ *   and a soak is only readable with both.
+ * @param rolls how many throws were actually made. The same as the roll count
+ *   for a counted run, and the answer to "how far did it get" for a soak.
+ * @param framePaced whether each roll was stepped on a frame's cadence rather
+ *   than run flat out. A paced run's wall times are the work a frame did, with
+ *   the waiting between frames left out ([FrameTimes]).
  * @param seed the run's base seed; roll *n* is thrown with a seed derived from
  *   it, so a whole run replays from this one number.
  * @param device what it ran on. A settle time in milliseconds is a fact about
@@ -77,7 +92,9 @@ data class RunFacts(
   val shapeId: String,
   val diceCount: Int,
   val dieScale: Double,
+  val length: RunLength,
   val rolls: Int,
+  val framePaced: Boolean,
   val seed: Long,
   val device: DeviceFacts,
   val startedAtEpochMs: Long,
@@ -222,6 +239,10 @@ data class RollRecord(
  * @param stackedAtRest dice left standing on another die.
  * @param capsReached rolls that ran out of their twelve seconds.
  * @param deepestDiePenetrationMm the deepest overlap seen anywhere in the run.
+ * @param frames what the run's frames cost, or **null** when it had none.
+ *   Null rather than an empty distribution: a headless run did not measure a
+ *   frame time of zero, it measured no frame times, and the scorecard says
+ *   "not measured" rather than "pass" ([FrameTimes]).
  */
 data class HarnessSummary(
   val rolls: Int,
@@ -236,6 +257,7 @@ data class HarnessSummary(
   val stackedAtRest: Long,
   val capsReached: Int,
   val deepestDiePenetrationMm: Double,
+  val frames: FrameSummary? = null,
 ) {
   /** The share of dice that needed any correction at all. */
   val correctedShare: Double get() = share(corrections)
@@ -246,10 +268,14 @@ data class HarnessSummary(
   private fun share(count: Long): Double = if (dice == 0L) 0.0 else count.toDouble() / dice
 
   companion object {
-    /** [records] added up, for a run that threw [diceCount] dice each time. */
+    /**
+     * [records] added up, for a run that threw [diceCount] dice each time,
+     * with whatever [frames] the run measured.
+     */
     fun of(
       diceCount: Int,
       records: List<RollRecord>,
+      frames: FrameTimes = FrameTimes.Nothing,
     ): HarnessSummary =
       HarnessSummary(
         rolls = records.size,
@@ -264,6 +290,7 @@ data class HarnessSummary(
         stackedAtRest = records.sumOf { it.stackedAtRest.toLong() },
         capsReached = records.count(RollRecord::capReached),
         deepestDiePenetrationMm = records.maxOfOrNull { it.deepestDiePenetrationMm } ?: 0.0,
+        frames = frames.summary(),
       )
   }
 }
