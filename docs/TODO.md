@@ -235,17 +235,6 @@ written and again before its zip is offered, the licence is asked for first
 (`8c`, in 4.4 above), and the file leaves through the share sheet the way an
 exported collection does.
 
-- [ ] Stamp a digit or a sign from the built-in font, and the "fill all faces
-      with numbers" one-tap starting point that places the same glyphs. The
-      font is there now — `core/glyphs` holds the outlines the tray prints
-      with, and `Typesetter.lay` already turns a label into contours in a unit
-      cell — so what is left is turning those contours into the designer's own
-      marks and deciding where "fill all faces" puts them. It is the same
-      placement the tray solves per face (`render/filament`'s `FaceRoom`), and
-      the two agreeing matters: a die drawn from the numbers and the same die
-      printed should not disagree about where a `6` sits. The rest of the `4c`
-      toolbar is built: the fill bucket, copy face → paste with a turn and a
-      mirror, and the colour picker past the twelve presets
 - [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
 - [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"
 - [ ] *Judgement, with a finger:* the bucket calls a stroke closed when its
@@ -559,6 +548,28 @@ The figures are reported in every PR description either way.
       can reach rather than only on the roll thread. Chosen to leave it for now
       because the fall-back is the behaviour either way and a report nobody
       asked for is not worth a second decode
+- [ ] **Is a printed numeral meant to be 0.78 of its face, or 0.78 squared of
+      it?** `FACE_SHARE` is applied twice on the way to a printed height: once
+      to the box whose centre is solved clear of the edges, and once again to
+      what is printed inside that box, so a numeral comes out at about 0.61 of
+      the room its face has (`core/glyphs`' `LabelRoom.centred`). The stamp and
+      "fill all with numbers" were built to match it exactly rather than to
+      correct it, because the size on the Pixel 10a was judged with it in place
+      and applying the share once would make every number on every die 28 %
+      bigger overnight. The alternative is to apply it once and re-judge the
+      fraction on the phone, which is Step 5.6's question anyway — the two
+      should be answered together, and whichever way it goes the tray and the
+      designer move together because they read the same number
+- [ ] **Should a stamp be draggable after it is put down?** The prototype lets
+      one be picked up and moved (`design/dInfinity.dc.html`, option `1v`); the
+      app does not, because a stamp is a mark like a stroke and no other mark
+      can be picked up — a drawing where one kind of mark moves and the others
+      do not is two drawings, and the way to move one is undo and stamp again.
+      The case for the prototype's answer is that a glyph is the one mark
+      somebody places rather than draws, so landing it a finger's width off is
+      a miss rather than a wrong drawing. It needs a phone to judge: whether
+      re-stamping feels like correcting a typo or like losing work
+      (`docs/face-designer.md`, "The stamp")
 - [ ] **Should the anomaly log survive a restart?** It is in memory today,
       bounded to fifty entries, and goes when the app does — because an entry
       carries the seed that reproduces the roll, and a stored seed is a replay

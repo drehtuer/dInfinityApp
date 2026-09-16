@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
@@ -56,6 +58,8 @@ import de.drehtuer.dinfinity.designer.Fill
 import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.designer.Mark
+import de.drehtuer.dinfinity.designer.Stamp
+import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 
@@ -101,6 +105,7 @@ fun DesignerScreen(
       FaceCanvas(state = state, onStroke = presenter::drew)
       Warning(state)
       Tools(state, presenter)
+      StampBar(state, presenter)
       Clipboard(state, presenter)
       Palette(state, presenter)
     }
@@ -229,11 +234,12 @@ private fun FaceCanvas(
         .aspectRatio(1f)
         .border(1.dp, edge)
         .testTag(DesignerTestTags.CANVAS)
-        .pointerInput(state.cell, state.nib, state.colorArgb) {
+        .pointerInput(state.cell, state.nib, state.colorArgb, state.stamping) {
           // One gesture or the other, never both: the pens answer a drag and
-          // the bucket answers a tap, and a detector that listened for both
-          // would make a slow tap with a pen into a dot of ink.
-          if (state.nib.fills) {
+          // the bucket and the stamp answer a tap, and a detector that
+          // listened for both would make a slow tap with a pen into a dot of
+          // ink.
+          if (state.nib.taps) {
             detectTapGestures { at -> onStroke(listOf(at.asDot(size.width.toFloat(), size.height.toFloat()))) }
           } else {
             detectDragGestures(
@@ -300,7 +306,27 @@ private fun DrawScope.drawMark(mark: Mark) {
   when (mark) {
     is Stroke -> drawStroke(mark)
     is Fill -> drawFill(mark)
+    is Stamp -> drawStamp(mark)
   }
+}
+
+/**
+ * A stamped glyph: every ring of it as one shape, under the even-odd rule.
+ *
+ * Even-odd is what leaves the hole in a `0` open — the rings of a glyph are
+ * wound against each other, and a counter drawn as a shape of its own would be
+ * a blob where the hole is (`designer`'s `Stamp`).
+ */
+private fun DrawScope.drawStamp(stamp: Stamp) {
+  val path =
+    Path().apply {
+      fillType = PathFillType.EvenOdd
+      stamp.rings.forEach { ring ->
+        trace(ring, size.width, size.height)
+        close()
+      }
+    }
+  drawPath(path = path, color = Color(stamp.colorArgb))
 }
 
 private fun DrawScope.drawFill(fill: Fill) {
@@ -426,6 +452,72 @@ private fun Tool(
       fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
       color = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
     )
+  }
+}
+
+/**
+ * What the stamp will put down, and how big (`docs/face-designer.md`, "The
+ * stamp"; `design/dInfinity.dc.html`, option `1v`).
+ *
+ * Only while the stamp is in hand, which is what the prototype does: it is two
+ * more rows on a screen that already scrolls, and they mean nothing to a pen.
+ *
+ * The field opens on the face's own number and follows the face until somebody
+ * types — so the commonest stamp of all is one tap, and an edit of it survives
+ * moving to the next face.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StampBar(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  if (!state.nib.stamps) return
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 16.dp)
+        .testTag(DesignerTestTags.STAMP_BAR),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    val name = stringResource(R.string.designer_stamp_text)
+    OutlinedTextField(
+      value = state.stamping,
+      onValueChange = { presenter.stamp(text = it) },
+      label = { Text(name) },
+      singleLine = true,
+      isError = !state.canStamp,
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .semantics { contentDescription = name }
+          .testTag(DesignerTestTags.STAMP_TEXT),
+    )
+    FlowRow(
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+      StampSize.entries.forEach { size ->
+        Tool(
+          label = stringResource(labelOf(size)),
+          chosen = state.stampSize == size,
+          tag = DesignerTestTags.stampSizeOf(size),
+          onChoose = { presenter.stamp(size = size) },
+        )
+      }
+    }
+    // Said before the tap rather than after it: the font draws digits and a
+    // few signs, and a tap that quietly left nothing behind would read as a
+    // canvas that had stopped working.
+    if (!state.canStamp) {
+      Text(
+        text = stringResource(R.string.designer_stamp_refused),
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.testTag(DesignerTestTags.STAMP_REFUSED),
+      )
+    }
   }
 }
 
@@ -656,30 +748,45 @@ private fun Channel(
   )
 }
 
-/** Which face is in front of the player (`docs/face-designer.md`, "Flow"). */
+/**
+ * Which face is in front of the player, and the one tap that numbers them all
+ * (`docs/face-designer.md`, "Flow" and "The stamp").
+ *
+ * The button sits beside the strip rather than in it, and outside the scroll:
+ * "fill all with numbers" is about every face, which is what the strip is
+ * about, and a control that scrolls away with the twentieth face is one nobody
+ * finds (`design/dInfinity.dc.html`, option `1v`).
+ */
 @Composable
 private fun FaceStrip(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
   Row(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 16.dp, vertical = 8.dp),
-    horizontalArrangement = Arrangement.spacedBy(6.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    verticalAlignment = Alignment.CenterVertically,
   ) {
-    state.draft.die.faces.forEach { face ->
-      Tool(
-        // The label rather than the value: a set may label a face `crit`, and
-        // the strip is how somebody finds the face they mean.
-        label = face.label,
-        chosen = face.index == state.cell,
-        tag = DesignerTestTags.faceOf(face.index),
-        onChoose = { presenter.show(face.index) },
-      )
+    Row(
+      modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+      horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+      state.draft.die.faces.forEach { face ->
+        Tool(
+          // The label rather than the value: a set may label a face `crit`, and
+          // the strip is how somebody finds the face they mean.
+          label = face.label,
+          chosen = face.index == state.cell,
+          tag = DesignerTestTags.faceOf(face.index),
+          onChoose = { presenter.show(face.index) },
+        )
+      }
     }
+    Tool(
+      label = stringResource(R.string.designer_fill_numbers),
+      chosen = false,
+      tag = DesignerTestTags.FILL_NUMBERS,
+      onChoose = presenter::fillNumbers,
+    )
   }
 }
 
@@ -690,6 +797,14 @@ private fun labelOf(nib: Nib): Int =
     Nib.Broad -> R.string.designer_nib_broad
     Nib.Eraser -> R.string.designer_eraser
     Nib.Bucket -> R.string.designer_bucket
+    Nib.Stamp -> R.string.designer_stamp
+  }
+
+private fun labelOf(size: StampSize): Int =
+  when (size) {
+    StampSize.Small -> R.string.designer_stamp_small
+    StampSize.Medium -> R.string.designer_stamp_medium
+    StampSize.Large -> R.string.designer_stamp_large
   }
 
 private const val GUIDE_ALPHA = 0.35f
@@ -736,6 +851,10 @@ object DesignerTestTags {
   const val PASTE: String = "designer:paste"
   const val TURN: String = "designer:turn"
   const val MIRROR: String = "designer:mirror"
+  const val STAMP_BAR: String = "designer:stamp"
+  const val STAMP_TEXT: String = "designer:stamp:text"
+  const val STAMP_REFUSED: String = "designer:stamp:refused"
+  const val FILL_NUMBERS: String = "designer:stamp:fill"
   const val MORE_COLOURS: String = "designer:colour:more"
   const val INK_HEX: String = "designer:colour:hex"
   const val PICKER: String = "designer:picker"
@@ -749,6 +868,8 @@ object DesignerTestTags {
   fun baseOf(dieId: String): String = "designer:base:$dieId"
 
   fun nibOf(nib: Nib): String = "designer:nib:${nib.name.lowercase()}"
+
+  fun stampSizeOf(size: StampSize): String = "designer:stamp:${size.name.lowercase()}"
 
   fun colourOf(argb: Int): String = "designer:colour:$argb"
 

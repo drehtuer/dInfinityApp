@@ -98,16 +98,40 @@ class BitmapAtlas : AtlasPainter {
     canvas: Canvas,
     cell: AtlasCell,
   ) {
-    val path = Path().apply { trace(mark.dots) }
     when (mark) {
-      is Fill -> {
-        path.close()
-        canvas.drawPath(path, fillPaint(mark.colorArgb))
-      }
+      is Fill ->
+        canvas.drawPath(
+          Path().apply {
+            trace(mark.dots)
+            close()
+          },
+          fillPaint(mark.colorArgb),
+        )
 
-      is Stroke -> canvas.drawPath(path, strokePaint(mark, cell))
+      is Stroke -> canvas.drawPath(Path().apply { trace(mark.dots) }, strokePaint(mark, cell))
+
+      is Stamp -> canvas.drawPath(glyph(mark), fillPaint(mark.colorArgb))
     }
   }
+
+  /**
+   * A stamped glyph: every ring of it, closed, as one shape.
+   *
+   * **Even-odd, which is what leaves the hole in a `0` open.** The rings of a
+   * glyph are wound against each other — a counter runs the other way round
+   * from the ink it is inside — and drawing each ring as a shape of its own
+   * would paint the counter in as a blob. One path under the even-odd rule
+   * fills what an odd number of rings enclose and nothing else, whichever way
+   * round they were wound.
+   */
+  private fun glyph(stamp: Stamp): Path =
+    Path().apply {
+      fillType = Path.FillType.EVEN_ODD
+      stamp.rings.forEach { ring ->
+        trace(ring)
+        close()
+      }
+    }
 
   private fun fillPaint(colorArgb: Int): Paint =
     Paint(Paint.ANTI_ALIAS_FLAG).apply {

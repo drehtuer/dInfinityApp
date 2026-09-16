@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.Face
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Test
 
 /**
@@ -265,5 +266,69 @@ class DraftTest {
           shape = DieShape.Cube,
           faces = (1..6).map { Face(index = it - 1, value = it, label = it.toString()) },
         ),
+    )
+
+  @Test
+  fun `a stamp is one mark however many rings it has`() {
+    val glyph = stamp()
+
+    val drawing = FaceDrawing().draw(glyph)
+
+    assertEquals(1, drawing.marks.size)
+    assertEquals(glyph.rings.sumOf { it.size }, glyph.dots.size)
+  }
+
+  @Test
+  fun `a stamp moves ring by ring, so its hole moves with it`() {
+    val glyph = stamp()
+
+    val moved = glyph.at(glyph.dots.map { Dot(it.x + 0.1f, it.y) })
+
+    assertEquals(glyph.rings.map { it.size }, moved.rings.map { it.size })
+    assertEquals(glyph.rings[1].first().x + 0.1f, moved.rings[1].first().x, 1e-6f)
+  }
+
+  @Test
+  fun `a stamp handed the wrong number of dots is left where it is`() {
+    // Every transform is one dot in and one dot out, in order; a list of
+    // another length is not this mark moved.
+    val glyph = stamp()
+
+    assertEquals(glyph, glyph.at(listOf(Dot(0f, 0f))))
+  }
+
+  @Test
+  fun `a stamp sits with the ink rather than with the paper`() {
+    val sunk = FaceDrawing.sunk(listOf(stamp(), Fill(dots = FaceFill.FACE, colorArgb = 0)))
+
+    assertTrue("a fill came out over the ink", sunk.first() is Fill)
+    assertTrue("a stamp sank under the paper", sunk.last() is Stamp)
+  }
+
+  @Test
+  fun `a stamp with a ring of fewer than three dots cannot be made`() {
+    refuses { Stamp(rings = listOf(listOf(Dot(0f, 0f))), colorArgb = 0) }
+    refuses { Stamp(rings = emptyList(), colorArgb = 0) }
+  }
+
+  /** A shape that cannot be drawn is better made impossible than documented. */
+  private fun refuses(make: () -> Stamp) {
+    try {
+      make()
+      fail("a stamp was made out of rings that enclose nothing")
+    } catch (refused: IllegalArgumentException) {
+      assertTrue(refused.message.orEmpty().contains("closed rings"))
+    }
+  }
+
+  /** A glyph with a hole in it: an outer ring and a counter. */
+  private fun stamp() =
+    Stamp(
+      rings =
+        listOf(
+          listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.2f), Dot(0.8f, 0.8f), Dot(0.2f, 0.8f)),
+          listOf(Dot(0.4f, 0.4f), Dot(0.6f, 0.4f), Dot(0.6f, 0.6f), Dot(0.4f, 0.6f)),
+        ),
+      colorArgb = 0xFF000000.toInt(),
     )
 }
