@@ -190,6 +190,40 @@ class RollScreenTest {
   }
 
   @Test
+  fun `leaving the screen gives the tray back`() {
+    val tray = DirectTray()
+    var open by mutableStateOf(true)
+    compose.setContent {
+      if (open) RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0))))
+    }
+
+    assertEquals("a tray was given back before anybody left", 0, tray.closes)
+    open = false
+    compose.waitForIdle()
+
+    assertEquals(1, tray.closes)
+  }
+
+  @Test
+  fun `leaving the screen gives a power-saving tray back too`() {
+    // The one that was missed. Closing used to live in `DiceTray`, which is on
+    // the screen only when there is something to draw — so in this mode nothing
+    // closed the tray at all, and a roll the player walked out on ran to the
+    // end and was written into the history for a screen nobody was on
+    // (`docs/TODO.md`, Step 5.3).
+    val tray = UndrawnTray()
+    var open by mutableStateOf(true)
+    compose.setContent {
+      if (open) RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0))))
+    }
+
+    open = false
+    compose.waitForIdle()
+
+    assertEquals("a power-saving tray was left running", 1, tray.closes)
+  }
+
+  @Test
   fun `power-saving still throws the dice, and the total arrives`() {
     compose.setContent {
       RollScreen(presenter = presenter(UndrawnTray(), LandingRolls(mapOf(0 to 0, 1 to 0, 2 to 0))))
@@ -633,6 +667,10 @@ class RollScreenTest {
   private open class DirectTray : Tray {
     val shaken = mutableListOf<ShakeSample>()
 
+    /** How many times the screen has given this tray back. */
+    var closes = 0
+      private set
+
     /** Every table this tray has been told about, in order. */
     val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
 
@@ -674,7 +712,9 @@ class RollScreenTest {
 
     override fun clear() = Unit
 
-    override fun close() = Unit
+    override fun close() {
+      closes++
+    }
   }
 
   /** A tray that takes the throw and leaves the dice in the air. */

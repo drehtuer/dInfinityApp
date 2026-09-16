@@ -3,16 +3,19 @@ package de.drehtuer.dinfinity.feature.roll
 import androidx.compose.foundation.AndroidExternalSurface
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import kotlinx.coroutines.awaitCancellation
 
 /**
  * The tray, drawn by the roll thread onto a surface of its own
@@ -43,6 +46,8 @@ fun DiceTray(
   modifier: Modifier = Modifier,
   describing: String = "",
 ) {
+  val lifecycle = LocalLifecycleOwner.current.lifecycle
+
   // Keyed on the driver so that a new one gets a surface of its own. `onSurface`
   // fires when the surface is *created*, not when this composable's arguments
   // change, so a driver swapped in afterwards would otherwise never be told
@@ -58,13 +63,16 @@ fun DiceTray(
           .lookAround(driver, geometry),
     ) {
       onSurface { surface, width, height ->
-        driver.surfaceAvailable(surface, width, height)
+        // The size as it stands, because the stage is handed over again every
+        // time the screen comes back and a resize may have happened in between.
+        var size = width to height
 
         // A resize is a new stage, because Filament fixes its swap chain and
         // viewport when one is made. The roll being drawn does not notice: the
         // scene is rebuilt from what the simulation has already said
         // (`docs/architecture.md`, decision 49).
         surface.onChanged { changedWidth, changedHeight ->
+          size = changedWidth to changedHeight
           driver.surfaceAvailable(surface, changedWidth, changedHeight)
         }
 
@@ -72,18 +80,47 @@ fun DiceTray(
         // after the callback that withdrew it has returned, and the roll thread
         // is drawing to this one.
         surface.onDestroyed { driver.surfaceLost() }
+
+        // And the stage is held only while the screen is one somebody could be
+        // looking at.
+        //
+        // `onDestroyed` is not enough on its own, which is what the lock screen
+        // showed: locking the Pixel 10a stops the screen without always taking
+        // the surface away, so nothing fired, the old stage stayed, and the
+        // roll thread went on drawing frames at a display that was off
+        // (`docs/TODO.md`, Step 4.1). Nothing above this composable was
+        // watching — the whole app had one lifecycle observer and it was the
+        // accelerometer's.
+        //
+        // STARTED rather than RESUMED: a dialog over the tray pauses without
+        // hiding it, and giving the surface up for that would black the tray
+        // behind the sheet the player just opened. STARTED is "not on screen at
+        // all", which is the question being asked.
+        //
+        // The roll is not stopped with it. A roll asks for frames whether or
+        // not there is anywhere to draw, because the frame callback is what
+        // steps it and a roll that stops being asked is a roll that never lands
+        // (`docs/physics-and-rendering.md`).
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+          val (wide, high) = size
+          // Not after the surface has been withdrawn: `onDestroyed` may have
+          // fired on the way down, and a `Surface` is not to be touched again
+          // once it has.
+          if (surface.isValid) driver.surfaceAvailable(surface, wide, high)
+          try {
+            awaitCancellation()
+          } finally {
+            driver.surfaceLost()
+          }
+        }
       }
     }
   }
 
-  // Leaving the screen gives up the physics world and the scene. The roll does
-  // not survive it and is not meant to: a throw the player walked away from
-  // never landed, so there is nothing to score. The thread and the engine
-  // underneath are not given up with them — rebuilding those is a black tray
-  // on the way back (`docs/architecture.md`, decision 50).
-  DisposableEffect(driver) {
-    onDispose { driver.close() }
-  }
+  // Giving the tray up on the way out is deliberately *not* here: this
+  // composable is only on the screen when there is something to draw, and a
+  // power-saving tray draws nothing, so a tray closed from here is a tray
+  // closed only some of the time. [RollScreen] does it for every tray it has.
 }
 
 /**

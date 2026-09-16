@@ -1143,6 +1143,32 @@ impact sounds rather than a crash in the middle of a roll.
   is the right thing to be while the app is in the background — the roll goes
   on and the dice are where they should be the moment there is somewhere to put
   them.
+- **An interrupted roll finishes or is given up, and never stops half way.** A
+  call, the home button and the lock screen all reach the app as the screen
+  stopping, and the roll runs on through all three: the frame callback that
+  steps it is on the roll thread's own `Choreographer`, which goes on
+  delivering to a backgrounded process. That was an assumption the whole design
+  rested on and nothing had checked; `InterruptedRollTest` checks it on the
+  phone, including that the dice land *while* the app is away rather than only
+  once somebody looks again. A rotation is not an interruption at all — the
+  activity declares the config changes and the roll screen pins its shape — and
+  an activity that is recreated loses the roll on purpose, which is the same
+  rule as walking away. **Low memory is the process being killed**, which
+  nothing survives to handle: what makes it safe is that a roll is written in
+  one transaction or not at all, so the worst it can cost is a statistic that
+  is missing rather than a history that disagrees with itself
+  (`docs/statistics.md`).
+- **The screen going off is what takes the surface away, and it has to be
+  watched for.** A withdrawn surface announces itself, and for a rotation or a
+  resize that announcement is the whole story. The lock screen is not so
+  reliable: on the Pixel 10a it stops the screen without always taking the
+  surface with it, so nothing was announced, the old stage stayed, and the roll
+  thread went on drawing frames at a display nobody could see. `DiceTray`
+  therefore holds its stage only while the screen is **started** — not while it
+  is *resumed*, because a sheet over the tray pauses without hiding it and
+  blacking the tray behind the sheet somebody just opened is the wrong answer —
+  and hands the surface over again on the way back in. The roll is not stopped
+  with it, for the reason above: it asks for frames either way.
 - The thread that steps the roll is the thread that draws it, off its own
   `Choreographer` (`docs/architecture.md`, decision 49). `TrayDriver` is that
   thread and the surface it draws to; `TrayLoop` is what it does each frame,
@@ -1296,6 +1322,14 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
   renderer appearing or vanishing under a roll in progress is not a setting
   taking effect, it is a bug; turning it on takes effect the next time the
   screen is opened.
+- **The screen gives the tray back on the way out, in this mode as in the
+  other.** It used to be the tray *view* that did it, which meant it happened
+  only where there was something to draw — so a power-saving roll the player
+  walked out on ran to the end on its worker thread, reported, and was written
+  into the history for a screen nobody was on. A throw the player walked away
+  from never landed, and that goes for the mode with no pictures in it too. The
+  worker thread goes with it: one per visit, given back at the end of the visit
+  rather than kept for the life of the app.
 - It is the *same* roll, not an equivalent one: the same loop over the same
   world, with nobody calling the clock. The difference between the two modes
   is one call — a frame callback asking for the time since the last frame, or

@@ -35,6 +35,16 @@ class PowerSavingTrayTest {
   /** Runs the roll where the test stands, so a throw and its result are one act. */
   private val here = Executor(Runnable::run)
 
+  /**
+   * Whether [tray]'s own thread has been shut down.
+   *
+   * Asked by offering it work: an executor that has been shut down refuses,
+   * and there is no other way in from out here — the thread is the tray's own
+   * and is deliberately not exposed.
+   */
+  private fun stopped(tray: PowerSavingTray): Boolean =
+    runCatching { tray.roll(start = FakeRoll(steps = 1).start(), onSettled = { _, _ -> }) }.isFailure
+
   @Test
   fun `it says it draws nothing, so the screen puts up no surface`() {
     assertFalse("a tray that draws nothing asked for somewhere to draw", PowerSavingTray(here).draws)
@@ -143,6 +153,32 @@ class PowerSavingTrayTest {
     tray.roll(start = roll.start(), onSettled = { _, _ -> error("a roll nobody was waiting for was reported") })
 
     assertNull("a roll was opened after the screen was left", roll.watcher)
+  }
+
+  @Test
+  fun `a tray that made its own thread gives it back`() {
+    // One tray per visit to the roll screen, and its thread outlives the visit
+    // unless somebody ends it. Nothing here is waiting on that thread, so the
+    // leak is quiet: a phone that has been to the roll screen forty times is
+    // carrying forty threads (`docs/TODO.md`, Step 5.3).
+    val tray = PowerSavingTray()
+
+    tray.close()
+
+    assertTrue("the thread a power-saving tray made for itself was left running", stopped(tray))
+  }
+
+  @Test
+  fun `a tray given a thread does not shut it down`() {
+    // The other half: a tray that ended an executor somebody else handed it
+    // would take their next roll with it.
+    var ran = false
+    val shared = Executor { work -> work.run() }
+
+    PowerSavingTray(shared).close()
+    shared.execute { ran = true }
+
+    assertTrue("a tray shut down a thread it was only lent", ran)
   }
 
   @Test

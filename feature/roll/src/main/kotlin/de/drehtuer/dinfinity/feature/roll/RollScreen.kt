@@ -103,6 +103,21 @@ fun RollScreen(
   KeepTheScreenAwake()
   LockTheOrientation()
 
+  // Leaving the screen gives up the physics world and the scene. The roll does
+  // not survive it and is not meant to: a throw the player walked away from
+  // never landed, so there is nothing to score. The thread and the Filament
+  // engine underneath are not given up with them — rebuilding those is a black
+  // tray on the way back (`docs/architecture.md`, decision 50).
+  //
+  // Here rather than in [DiceTray], which is where it used to be. That
+  // composable is on the screen only when there is something to draw, and a
+  // power-saving tray draws nothing — so in that mode nothing closed the tray
+  // at all, and a roll the player walked out on ran to the end and was written
+  // into the history for a screen nobody was on (`docs/TODO.md`, Step 5.3).
+  DisposableEffect(presenter.tray) {
+    onDispose { presenter.tray.close() }
+  }
+
   Box(
     modifier =
       modifier

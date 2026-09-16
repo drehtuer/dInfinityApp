@@ -117,7 +117,6 @@ What is below is what it does not have yet.
       make the scale floor live for the first time
 - [ ] **Freeze the dice that are down and let the player re-roll the ones that are not.** The user's proposal for unstacking, and worth taking seriously: a die that has landed cleanly is finished and could be lifted off the mat and shown as an overlay, leaving only the stuck ones in the tray to be thrown again. It keeps the honest rule — a settled die is never *moved*, only taken out of play once its face is read — and it turns the worst case from "the app fixes it invisibly" into "you roll again", which is what a person does at a table. Needs the design for how ninety-nine finished dice are shown; the mechanism can be decided first (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice")
 - [ ] *Confirm on the phone:* a roll stranded by losing its surface is fixed (a roll now asks for frames with nowhere to draw), but whether that was what left `100d4` on "Rolling…" for ever is unproven — the physics settles that throw headlessly on eight seeds, so the hang was never in the engine
-- [ ] **The surface outlives the screen going off.** After a lock and unlock the old rendering surface is still there. Found on the Pixel 10a; `DiceTray` gives the surface up on `onDestroyed` and the driver keeps the engine now (Step 4.1, done), so what is left is which of those two the lock screen actually triggers
 - [ ] *Judge a second shake on the phone:* a shake at dice still in the air now keeps them moving rather than doing nothing — it starts no throw, and its moments are numbered on the running roll's clock so they reach it at all, which is what was actually broken (`docs/physics-and-rendering.md`, "Shake input"). Decided along the way: a second shake is **more of the same roll**, not a throw that replaces it, because the dice are the ones already tumbling. Whether that reads as the dice answering the hand, and whether a roll can now be kept going longer than anybody wants, needs a phone
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] **Wire the one-finger touch to a hand re-throw.** The two decisions underneath it are built and tested: `TrayPick` (`render/filament`) says which die a finger is on, and `PickUp` (`core/notation`) says which dice a hand may go near — a group carrying `!` or `r n` offers none, because a die another die was thrown because of cannot be thrown again without the roll holding a die nothing asks for. The throw itself is the one an explosion already makes (`ThrowSpec.among`), so there is no second path to a number to build. What is missing is not code: it is **what the history says about a roll a die was thrown again in**, under "Open questions" below. Until that is answered the gesture stays unspent (`docs/physics-and-rendering.md`, "Picking a die up and throwing it again")
@@ -534,7 +533,31 @@ a die fairer than the plastic one in their hand, is not worth a warning
       its shape rather than its rotation now (`docs/tables.md`); a quarter turn
       is still refused. What is left is *vertical* and *upside down* with a real
       hand, which no test can hold
-- [ ] Interruptions mid-roll: call, backgrounding, rotation, low memory — the roll finishes or is discarded cleanly, never half-resolved
+- [ ] **Done, on the Pixel 10a, and it found a roll nobody could stop.** A
+      call, the home button and the lock screen all reach the app as the screen
+      stopping, and `InterruptedRollTest` drives all three at a throw in the
+      air: the dice land, and they land *while the app is away* rather than
+      when somebody looks again. That last one is the assumption the design
+      rests on — the frame callback is what steps the roll, so a backgrounded
+      process that stopped getting vsync would be a roll frozen on "Rolling…"
+      for good — and nothing had ever checked it.
+
+      **What it turned up:** the tray was given back by the tray *view*, which
+      is on screen only when there is something to draw. In power-saving mode
+      there is not, so nothing closed the tray at all: a roll the player walked
+      out on ran to the end on its worker thread, reported, and was written
+      into the history for a screen nobody was on. The roll screen gives the
+      tray back now, whichever kind it is, and a power-saving tray hands back
+      the thread it made for itself rather than leaving one behind per visit.
+
+      A rotation is not an interruption — the activity declares the config
+      changes and the screen pins its shape — and a recreated activity loses
+      the roll on purpose, which is the same rule as walking away.
+
+      **Low memory is the process being killed** and nothing survives it to be
+      tested. What makes that safe is already true: a roll is written in one
+      transaction or not at all, so the worst it costs is a statistic that is
+      missing, never a history that disagrees with itself
 
 - [ ] **The corner cases are asked on the phone now, and one of them fails.**
       `CornerCasesTest` throws exactly at the cap and one over (refused before a
@@ -1046,6 +1069,16 @@ The figures are reported in every PR description either way.
       repository root instead, because the path after the ref is a dice set's
       subfolder and a collection is found at the root. Decide whether such a
       link should import the file it names
+- [ ] **Android Lint's `NewerVersionAvailable` breaks the build on somebody
+      else's release schedule.** It asks Maven Central on every run, so a
+      dependency publishing a new version turns CI red on a commit that changed
+      nothing — tomlj 1.3.0 did exactly that on 2026-09-16, with the previous
+      green run hours earlier. Worse, it is **invisible locally**: the
+      devcontainer runs Gradle `--offline`, so the detector has no network and
+      says nothing, and `./gradlew check` passes on a tree CI will reject.
+      Either that check should not gate the build (leaving Dependabot to raise
+      the bumps, which it already does), or the local run needs a way to ask
+      the same question. A decision, not a bump
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] Move the container's emulator up when an automated-test image exists
       above API 36 — the same wait as the line above, for the same reason
