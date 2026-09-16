@@ -3,6 +3,17 @@
   <string name="roll_formula_label">Formula</string>
   <!-- The set a group's dice actually came from, when it is not the one asked for. -->
   <string name="roll_group_fell_back">from %1$s</string>
+  <!--
+    Why a group stopped throwing dice, printed under its row. Both describe a
+    die that is *not* on the sheet, which is the only thing a breakdown cannot
+    show by showing the dice (`docs/dice-notation.md`, "Limits").
+    %1$d is the explosion depth limit.
+  -->
+  <plurals name="roll_group_explosion_limit">
+    <item quantity="one">Exploding stopped at %1$d die.</item>
+    <item quantity="other">Exploding stopped at %1$d dice.</item>
+  </plurals>
+  <string name="roll_group_tray_full">The tray had no room for another die.</string>
   <!-- Division rounding, offered for this throw only (design option 6d). -->
   <string name="roll_rounding_label">Rounding</string>
   <string name="roll_rounding_down">Down</string>
