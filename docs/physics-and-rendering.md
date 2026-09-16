@@ -1143,6 +1143,17 @@ impact sounds rather than a crash in the middle of a roll.
   is the right thing to be while the app is in the background — the roll goes
   on and the dice are where they should be the moment there is somewhere to put
   them.
+- **The screen going off is what takes the surface away, and it has to be
+  watched for.** A withdrawn surface announces itself, and for a rotation or a
+  resize that announcement is the whole story. The lock screen is not so
+  reliable: on the Pixel 10a it stops the screen without always taking the
+  surface with it, so nothing was announced, the old stage stayed, and the roll
+  thread went on drawing frames at a display nobody could see. `DiceTray`
+  therefore holds its stage only while the screen is **started** — not while it
+  is *resumed*, because a sheet over the tray pauses without hiding it and
+  blacking the tray behind the sheet somebody just opened is the wrong answer —
+  and hands the surface over again on the way back in. The roll is not stopped
+  with it, for the reason above: it asks for frames either way.
 - The thread that steps the roll is the thread that draws it, off its own
   `Choreographer` (`docs/architecture.md`, decision 49). `TrayDriver` is that
   thread and the surface it draws to; `TrayLoop` is what it does each frame,
