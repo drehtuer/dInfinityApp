@@ -56,13 +56,27 @@ class ShakeSession {
    * Recording begins the moment a shake is confirmed and not before: the dice
    * are spawned then, and a record of the seconds before they existed would
    * drive steps that never ran.
+   *
+   * @param threw called when a shake is confirmed, and answers whether dice
+   *   were actually thrown for it. **That answer is what starts the clock
+   *   over**, because a sample's step index is counted from the first moment
+   *   the recorder saw and that moment is when the dice were spawned — so the
+   *   recorder's clock *is* the roll's clock.
+   *
+   *   A second shake at dice still tumbling throws nothing and answers false.
+   *   Numbered from zero its moments would name steps the running roll took a
+   *   second ago, `ShakeDriver` would never reach them, and shaking a phone at
+   *   moving dice would do nothing at all — which is what it used to do
+   *   (`docs/physics-and-rendering.md`, "Shake input"). Answering false keeps
+   *   the numbering on the running roll's clock, so the hand reaches it.
    */
   fun acceleration(
     atMillis: Long,
     accelerationMmPerSecond2: Vector3,
+    threw: () -> Boolean = { true },
   ): ShakeDetector.Event {
     val event = detector.sample(atMillis, accelerationMmPerSecond2.length)
-    if (event == ShakeDetector.Event.Started) {
+    if (event == ShakeDetector.Event.Started && threw()) {
       recorder.reset()
       gravity.reset()
     }

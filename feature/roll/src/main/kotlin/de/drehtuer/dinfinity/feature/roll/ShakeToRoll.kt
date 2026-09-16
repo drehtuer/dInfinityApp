@@ -27,6 +27,12 @@ import de.drehtuer.dinfinity.input.shake.SensorShakeSource
  * A shake with no valid formula behind it throws nothing; the presenter
  * refuses it for the same reason the button is disabled.
  *
+ * **A second shake at dice still in the air keeps them moving.** It starts no
+ * throw — those dice are thrown already — so nothing is spawned and nothing
+ * replaces the roll in progress; its moments simply join the ones driving it.
+ * That is what a hand does at a table, and it is why the shake source is told
+ * whether a roll is running (`docs/physics-and-rendering.md`, "Shake input").
+ *
  * The display's rotation is read per sample rather than captured once. The
  * tray is the screen however the screen is held, so which device axis runs up
  * the tray changes when the phone is turned — and it can be turned in the
@@ -53,6 +59,10 @@ internal fun ShakeToRoll(
         SensorShakeSource(
           sensors = it,
           onStarted = {
+            // The edges are claimed either way: a hand is on the phone whether
+            // or not this shake had anything to throw. What the presenter
+            // answers is whether it did — and a shake at dice still in the air
+            // did not, which is what keeps its moments on their clock.
             shaking = true
             presenter.roll()
           },

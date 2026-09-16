@@ -28,6 +28,12 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
  * "Coordinates").
  *
  * @param onStarted called when a shake is confirmed: the dice are spawned now.
+ *   **Answers whether dice were actually thrown.** A shake that begins while a
+ *   roll is still in the air throws none — those dice are already thrown — and
+ *   says so, which keeps its moments numbered on the running roll's clock so
+ *   that they reach it (`docs/physics-and-rendering.md`, "Shake input"). The
+ *   default is true: a source nobody wired to an app is a source whose every
+ *   shake is its own throw.
  * @param onEnded called when it is over.
  * @param onSample every moment recorded while the shake lasts, in order. The
  *   dice are already in the air by then, so these reach the roll as they come
@@ -39,7 +45,7 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
 class SensorShakeSource(
   private val sensors: SensorManager,
   private val session: ShakeSession = ShakeSession(),
-  private val onStarted: () -> Unit = {},
+  private val onStarted: () -> Boolean = { true },
   private val onEnded: (ShakeSession) -> Unit = {},
   private val onSample: (ShakeSample) -> Unit = {},
   private val rotationDegrees: () -> Int = { 0 },
@@ -75,14 +81,14 @@ class SensorShakeSource(
 
   private fun acceleration(event: SensorEvent) {
     val atMillis = event.timestamp / NANOS_PER_MILLI
-    val change = session.acceleration(atMillis, trayVectorOf(event, MM_PER_METRE))
-    // The spawn happens first, so the sample that confirmed the shake drives
-    // the roll it started rather than being the one moment that is thrown away.
-    when (change) {
-      ShakeDetector.Event.Started -> onStarted()
-      ShakeDetector.Event.Ended -> onEnded(session)
-      ShakeDetector.Event.None -> Unit
-    }
+    // [onStarted] is called from inside, before this sample is recorded, and
+    // its answer decides whether the clock starts over. The spawn happening
+    // first is what lets the sample that confirmed the shake drive the roll it
+    // started, rather than being the one moment that is thrown away; and a
+    // shake that threw nothing — because a roll is already in the air — goes on
+    // numbering on that roll's clock so the hand reaches it.
+    val change = session.acceleration(atMillis, trayVectorOf(event, MM_PER_METRE), onStarted)
+    if (change == ShakeDetector.Event.Ended) onEnded(session)
     session.latest?.let(onSample)
   }
 

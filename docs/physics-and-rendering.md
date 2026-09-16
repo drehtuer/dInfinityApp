@@ -210,6 +210,28 @@ enough.
   world is on: every sample is in place before it is needed, and replaying the
   record afterwards drives exactly the same steps. No gate, no waiting, and the
   live roll and its replay are the same roll.
+- **A second shake at dice still in the air keeps them moving.** A hand that
+  shakes again has not waited for the dice to stop, so that shake starts no
+  throw: nothing is spawned, nothing replaces the roll in progress, and its
+  moments simply join the ones already driving it. The roll also cannot end
+  while it lasts, because the settle rule waits on the last sample and there is
+  now a later one.
+
+  The mechanism is one thing, and it is the thing that was wrong. A sample's
+  step index is counted from the first moment its recorder saw, and that moment
+  is when the dice were spawned — so **the recorder's clock is the roll's
+  clock**. A second shake that restarted that clock numbered its moments from
+  zero, naming steps the running roll had taken a second earlier, and
+  `ShakeDriver` never reached them: shaking the phone at moving dice did
+  nothing at all. So a shake that begins while a roll is running goes on
+  numbering from where the first one left off, and only a shake that actually
+  throws dice starts the clock over. `SensorShakeSource` is told which it is —
+  whether a roll is in the air is the app's question, asked per sample because
+  a roll may settle between two readings.
+
+  What it deliberately does **not** do is replace the roll. The dice are the
+  ones already tumbling; a second shake is more of the same throw, which is
+  what it is at a table.
 - **The hand's force is held between readings.** `SENSOR_DELAY_GAME` is about
   50 Hz and the simulation runs at 120, so most steps have no reading of their
   own. A step with no reading keeps the last one rather than falling back to

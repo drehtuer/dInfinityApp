@@ -144,6 +144,70 @@ class ShakeSessionTest {
     assertEquals(Vector3(0.0, 0.0, -1.0), session.gravity())
   }
 
+  @Test
+  fun `a second shake at dice already in the air goes on numbering from the first`() {
+    // The bug this is about: the recorder's clock is the roll's clock, so a
+    // second shake that restarted it numbered its moments from zero — naming
+    // steps the running roll took a second ago, which `ShakeDriver` can never
+    // reach. Shaking the phone at moving dice did nothing at all
+    // (`docs/physics-and-rendering.md`, "Shake input").
+    start()
+    end()
+    val before = session.recorded().last().stepIndex
+
+    startAgain(atMillis = 2_000)
+
+    assertTrue(
+      "a continuing shake drives steps after the ones already driven",
+      session.recorded().last().stepIndex > before,
+    )
+  }
+
+  @Test
+  fun `a continuing shake's moments land on the steps its wall time says`() {
+    start()
+    end()
+
+    // Two seconds after the dice were spawned, at 120 steps a second.
+    startAgain(atMillis = 2_000)
+
+    assertEquals(240, session.recorded().last().stepIndex)
+  }
+
+  @Test
+  fun `a shake with no roll in the air starts the clock over, as it always did`() {
+    start()
+    end()
+
+    session.acceleration(2_000, hard)
+    session.acceleration(2_000 + ShakeThresholds.START_MILLIS, hard)
+
+    // A throw of its own: its first moment is step zero, because that is when
+    // its dice are spawned.
+    assertEquals(0, session.recorded().first().stepIndex)
+  }
+
+  @Test
+  fun `a continuing shake keeps the gravity the roll was already being driven by`() {
+    start()
+    // A quarter turn about the tray's long axis, integrated into `down`.
+    session.rotation(atNanos = 0, rateRadiansPerSecond = Vector3.Zero)
+    session.rotation(atNanos = 500_000_000, rateRadiansPerSecond = Vector3(PI, 0.0, 0.0))
+    val turned = session.gravity()
+    end()
+
+    startAgain(atMillis = 2_000)
+
+    // Not re-anchored to straight down: it is the same roll, in the same frame.
+    assertEquals(turned, session.gravity())
+  }
+
+  /** A shake that begins while a roll is already running, so it throws nothing. */
+  private fun startAgain(atMillis: Long) {
+    session.acceleration(atMillis, hard) { false }
+    session.acceleration(atMillis + ShakeThresholds.START_MILLIS, hard) { false }
+  }
+
   private fun start(): ShakeDetector.Event {
     session.acceleration(0, hard)
     return session.acceleration(ShakeThresholds.START_MILLIS, hard)
