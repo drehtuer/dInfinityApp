@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <string name="tables_title">Table</string>
   <string name="tables_note">Every look from every installed set. A roll that mixes two sets happens on the one table you pick here.</string>
   <string name="tables_chosen">Chosen</string>
   <string name="tables_empty">No table looks are installed. The bundled set ships five, so something has gone wrong with it — the dice-set screen says what.</string>
+  <string name="tables_photo_use">Use a photo</string>
+  <string name="tables_photo_use_hint">Saved into “My dice”</string>
+  <string name="tables_photo_title">Use a photo as table</string>
+  <string name="tables_photo_body">A photo from this phone becomes a table look, saved into “My dice”. It is scaled down first, so its long side is no longer than a texture may be — %1$s px. The dice, their size and the physics do not change.</string>
+  <string name="tables_photo_choose">Choose a photo…</string>
+  <string name="tables_photo_none">No photo chosen yet</string>
+  <string name="tables_photo_name">Name</string>
+  <string name="tables_photo_confirm">Use this photo</string>
+  <string name="tables_photo_cancel">Cancel</string>
+  <string name="tables_photo_working">Scaling it and checking the package…</string>
+  <string name="tables_photo_refused">That photo did not become a table:</string>
+  <string name="tables_photo_full">You are keeping %1$s photo tables, which is as many as fit. Remove one before adding another.</string>
+  <string name="tables_photo_remove">Remove</string>
 </resources>

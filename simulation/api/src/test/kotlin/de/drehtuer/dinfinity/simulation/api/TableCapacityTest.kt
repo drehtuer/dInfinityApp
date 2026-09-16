@@ -142,6 +142,42 @@ class TableCapacityTest {
     assertEquals(0.40..0.75, TableGeometry.ASPECT_RANGE)
   }
 
+  @Test
+  fun `the scale floor cannot refuse anything the engine would take`() {
+    // Which constant actually stops a throw, measured rather than assumed
+    // (`docs/TODO.md`, Step 4.1 and 5.3). `FLOOR_SHARE` shrinks and `MIN_SCALE`
+    // refuses — and at the engine's cap the shrink is nowhere near the floor,
+    // so the refusal a player meets is always the body count.
+    val atTheCap = scaleFor(StandardDice.d6, TableCapacity.MAX_DICE)
+
+    assertTrue(
+      atTheCap > TableCapacity.MIN_SCALE,
+      "a hundred d6 shrink to $atTheCap, which is past the ${TableCapacity.MIN_SCALE} floor",
+    )
+  }
+
+  @Test
+  fun `the scale floor would start refusing at about two hundred and forty dice`() {
+    // The number itself, so that raising `MAX_DICE` is noticed rather than
+    // quietly making `MIN_SCALE` live for the first time. It is the count at
+    // which the dice's own circles need more than `FLOOR_SHARE` of the floor
+    // even after shrinking as far as they are allowed to.
+    val d6 = StandardDice.d6
+    val floor = table.floorAreaMm2 * TableCapacity.FLOOR_SHARE
+    val shrunk = TableCapacity.footprintMm2(d6) * TableCapacity.MIN_SCALE * TableCapacity.MIN_SCALE
+    val wouldRefuseAbove = floor / shrunk
+
+    assertEquals(
+      EXPECTED_FLOOR_BITES_ABOVE,
+      wouldRefuseAbove.toInt(),
+      "the scale floor starts refusing at a different count than the plan records",
+    )
+    assertTrue(
+      wouldRefuseAbove > TableCapacity.MAX_DICE,
+      "the scale floor now bites below the engine's cap, so it is doing work the cap used to do",
+    )
+  }
+
   private fun footprintCm2(die: Die): Double = TableCapacity.footprintMm2(die) / 100.0
 
   private fun scaleFor(
@@ -151,6 +187,19 @@ class TableCapacityTest {
     val verdict = TableCapacity.check(List(count) { die }, table)
     return (verdict as? CapacityVerdict.Fits)?.scale
       ?: error("$count of ${die.id} was refused: $verdict")
+  }
+
+  private companion object {
+    /**
+     * The count above which `MIN_SCALE` starts refusing 16 mm d6, on the
+     * reference table.
+     *
+     * Written down because it is more than twice the engine's cap of a
+     * hundred, which is what makes the scale floor unreachable today — a
+     * safety net for a larger table or a higher cap rather than a rule a
+     * player ever meets.
+     */
+    const val EXPECTED_FLOOR_BITES_ABOVE = 241
   }
 
   private fun planOf(

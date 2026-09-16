@@ -18,6 +18,7 @@ import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.StatisticsRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.designer.OpeningDie
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
@@ -120,8 +121,10 @@ internal fun testPresenters(
       )
     },
     diceSets = { SetsPresenter(library, scope) },
-    tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}) },
-    faceDesigner = { designerPresenter(catalog) },
+    // No photo library: a navigation test has no decoder and no personal
+    // package, and "use a photo" is then absent rather than present and dead.
+    tables = { TablesPresenter(sets = { catalog.installed }, chosen = null, onChosen = {}, scope = scope) },
+    faceDesigner = { die -> designerPresenter(catalog, die) },
     developer = { developerPresenter(scope) },
     // Nothing is saved and no session exists in a test until one is made, and
     // the welcome's line is the one place that shows. Watched the same way the
@@ -306,12 +309,18 @@ private object LandingRolls : Rolls {
  * `spellingOf`, so a test that walks the graph to **Roll it** walks the answer
  * the app gives rather than a stand-in that agrees with it by luck.
  */
-private fun designerPresenter(catalog: DiceCatalog) =
-  DesignerPresenter(
-    die = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube },
-    choosable = BuiltinDiceSet.set.dice,
-    notationOf = { die -> spellingOf(die, catalog) },
-  )
+private fun designerPresenter(
+  catalog: DiceCatalog,
+  wanted: String = "",
+) = DesignerPresenter(
+  // The same rule the application's wiring follows, so a navigation test asks
+  // the question the app asks (`designer`'s `OpeningDie`).
+  die =
+    OpeningDie.of(choosable = BuiltinDiceSet.set.dice, fromDefaultSet = BuiltinDiceSet.set.dice, wanted = wanted)
+      ?: BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube },
+  choosable = BuiltinDiceSet.set.dice,
+  notationOf = { die -> spellingOf(die, catalog) },
+)
 
 /**
  * The debugging tools (`docs/physics-and-rendering.md`, "Debug tooling").

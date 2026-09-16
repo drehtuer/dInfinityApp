@@ -29,10 +29,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import kotlin.math.roundToInt
 
 /**
  * What is installed (`design/dInfinity.dc.html`, option `5a`;
@@ -131,10 +133,22 @@ private fun Downloading(
     horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     val fraction = far.fraction
+    // A bar is a picture of a number. Which number it is is the one thing a
+    // screen reader cannot see, and "downloading" with no idea how far is the
+    // state people give up in (`docs/architecture.md`, "Accessibility").
+    val farAlong =
+      if (fraction == null) {
+        stringResource(R.string.sets_downloading)
+      } else {
+        stringResource(R.string.sets_downloading_far, (fraction * PER_CENT).roundToInt())
+      }
     if (fraction == null) {
-      LinearProgressIndicator(modifier = Modifier.weight(1f))
+      LinearProgressIndicator(modifier = Modifier.weight(1f).semantics { contentDescription = farAlong })
     } else {
-      LinearProgressIndicator(progress = { fraction }, modifier = Modifier.weight(1f))
+      LinearProgressIndicator(
+        progress = { fraction },
+        modifier = Modifier.weight(1f).semantics { contentDescription = farAlong },
+      )
     }
     TextButton(onClick = onCancel, modifier = Modifier.testTag(SetsTestTags.STOP)) {
       Text(stringResource(R.string.sets_cancel))
@@ -507,6 +521,9 @@ private fun ActionSheet(
     },
   )
 }
+
+/** A fraction is spoken as a percentage; nobody says "nought point four one". */
+private const val PER_CENT = 100.0
 
 /** What the tests reach for. */
 object SetsTestTags {

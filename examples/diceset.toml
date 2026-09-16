@@ -1,0 +1,300 @@
+# =====================================================================
+#  A dice set, explained in the file itself.
+# =====================================================================
+#
+# This is a real, installable package — not a snippet. It uses every solid in
+# the v1 catalogue, so whatever you are making, the die you want is already in
+# here with the right number of faces and an atlas cut to the right grid.
+#
+# To make your own set: copy this folder, rename it, change `[set]`, throw away
+# the dice you do not want, and draw on the PNGs in `textures/`.
+#
+# Everything below is checked by the same validator a download goes through
+# (docs/dice-sets.md, "Validation"), and a test in `dicesets/format` installs
+# this very folder on every build — so if a comment here disagrees with the
+# app, the build says so.
+#
+# Two kinds of complaint come out of that validator:
+#
+#   error    the package is rejected, whole. Nothing is half-installed.
+#   warning  the package installs and you are told. A value outside its range
+#            is moved to the nearest end of it rather than refused.
+#
+# This file is written to produce neither.
+
+# The schema version. Required, and an integer rather than a string. The app
+# refuses a package written for a format newer than the one it knows, because
+# the alternative is reading half of it and guessing at the rest.
+format = 1
+
+# --- who made this, and what it is called ----------------------------
+
+[set]
+
+# Required. Lower-case letters, digits and hyphens, 3 to 40 characters,
+# starting and ending with a letter or digit.
+#
+# It has three jobs, which is why the rule is this narrow: it is the folder the
+# package is installed into, it is the `setref` in notation — `examples:d20`
+# rolls this set's d20 — and it is what an update matches against. Pick
+# something nobody else will pick.
+id = "examples"
+
+# Required. What the set is called on screen. Any text; this one is not a slug.
+name = "Example dice"
+
+# Required. Semantic versioning, compared when the app checks for updates.
+version = "1.0.0"
+
+# Optional, all four. Shown on the set's details screen and nowhere else.
+author = "dInfinity"
+
+# An SPDX identifier by convention, because the point of the field is that the
+# reader recognises what it says. The app does not read it, does not enforce it
+# and does not refuse a package without one — it carries your statement to
+# whoever installs the package. CC0 here so you can lift this file freely.
+license = "CC0-1.0"
+
+description = "One die on every catalogue shape, with blank atlases to draw on."
+
+# Must start with https://. Shown as text and handed to the browser only when
+# somebody taps it; plain http is a validation error rather than a warning.
+homepage = "https://github.com/drehtuer/dInfinityApp"
+
+# --- defaults --------------------------------------------------------
+#
+# Optional, and so is every key in it. What a die does not say for itself it
+# takes from here; what neither says it takes from the app's own defaults.
+#
+# Every number is **clamped**, not refused: a value outside its range installs
+# as the nearest end of the range and you get a warning saying so. A value that
+# is not finite at all is an error — a NaN reaching the solver is not a bouncy
+# die, it is a die that disappears.
+
+[defaults]
+
+# The body colour, "#rrggbb" or "#aarrggbb". Anything else is an error.
+color = "#e8dcc0"
+
+# What printed numbers are drawn in. See "labels and artwork" below for what
+# "printed" means when a die also has a texture.
+number_color = "#2b2b2b"
+
+roughness = 0.35            # 0.0 (mirror) .. 1.0 (chalk)
+metallic = 0.0              # 0.0 (dielectric) .. 1.0 (metal)
+
+# How wide the die is: the diameter of the sphere its corners sit on, whatever
+# solid it is. 8 .. 40 mm. Not the edge length a dice maker quotes — a 16 mm
+# d6, d12 and d20 are all 16 mm across at their widest.
+size_mm = 16
+
+density = 1.2               # g/cm³, 0.5 .. 8.0. 1.2 is about acrylic
+restitution = 0.3           # bounce, 0.0 .. 0.8
+friction = 0.5              # 0.1 .. 1.0
+
+# --- dice ------------------------------------------------------------
+#
+# One `[[die]]` block per die. Order does not matter; ids must be unique.
+#
+# Required in every block: `id`, `shape`, `faces`.
+# Optional: `labels`, `read`, `texture`, and any of the `[defaults]` keys as a
+# per-die override.
+#
+# `id` is a slug of 1 to 40 characters — the same alphabet as a set id, but it
+# may be a single character, because it names something inside a package rather
+# than a folder on disk.
+#
+# The ten ids plain notation resolves are `d2`, `d4`, `d6`, `d8`, `d10`,
+# `d10-tens`, `d12`, `d18`, `d20` and `df`. A set that leaves one out is
+# installed with a warning and notation falls back to the bundled set for that
+# one die. This set defines all ten, and one more that only the dice picker can
+# reach (see `rune-d6`).
+#
+# `faces` is one whole number per face, in the catalogue's face order: from the
+# top of the shape's reference orientation downwards, anticlockwise around each
+# ring from the +x side. The list has to be exactly as long as the shape has
+# faces, and every value has to be between -9999 and 9999. Duplicates are fine
+# — that is how a d2-as-a-d6 is written.
+#
+# `texture` is an atlas: one picture holding every face of this die, in a grid
+# the app chooses from the face count — as square as it can be, widest first,
+# face *i* in cell *i* reading left to right and top to bottom. The grid for
+# each shape is written above each die below. The path is relative to this
+# folder and cannot leave it; `..`, an absolute path or a backslash is an
+# error. PNG or WebP only, at most 2048x2048 and 4 MiB each, and at most 24 MiB
+# of textures in the whole package.
+#
+# The atlases in `textures/` are fully transparent and exactly the right size.
+# Draw on them.
+
+# The d2. A coin, not a cube pretending to be one: landing on the rim counts as
+# cocked and is re-thrown where you can see it.
+# Atlas: 2 cells, 2x1.
+[[die]]
+id = "d2"
+shape = "coin"
+faces = [1, 2]
+texture = "textures/coin.png"
+
+# The d4. A tetrahedron resting on a face never has a face pointing up, so it
+# is read from the corner at the top — which is what `read = "vertex-up"`
+# means, and what this shape does anyway if you leave `read` out. The only
+# other value is "face-up"; anything else is an error.
+#
+# For a vertex-up die, `faces` is a value per *corner*, and a cell of the atlas
+# is still a *face*: cell *i* is the triangle opposite corner *i*, and it
+# carries the numbers of the three other corners, one at each of its own
+# corners. That is what a moulded d4 does — when a corner points up, all three
+# faces you can see carry that corner's number at their apex.
+# Atlas: 4 cells, 2x2.
+[[die]]
+id = "d4"
+shape = "tetrahedron"
+read = "vertex-up"
+faces = [1, 2, 3, 4]
+texture = "textures/tetrahedron.png"
+
+# Atlas: 6 cells, 3x2.
+[[die]]
+id = "d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5, 6]
+texture = "textures/cube.png"
+
+# Atlas: 8 cells, 3x3 — nine cells for eight faces. The spare cell is never
+# sampled; leave it transparent.
+[[die]]
+id = "d8"
+shape = "octahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8]
+texture = "textures/octahedron.png"
+
+# `labels` is optional: strings printed on the faces, one per face, at most 4
+# characters each (a longer one installs, truncated, with a warning). Leave it
+# out and each face prints its own value.
+#
+# This die scores 1 to 10 but is printed the way a real one is moulded — 1 to 9
+# and then 0 — so that as the units half of a percentile pair the 10 reads as
+# the 0 the player can see.
+# Atlas: 10 cells, 4x3.
+[[die]]
+id = "d10"
+shape = "pentagonal-trapezohedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+labels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+texture = "textures/pentagonal-trapezohedron.png"
+
+# The tens die of a percentile pair. Two dice may share one shape and — as
+# here — one atlas file: give them different artwork by copying the PNG and
+# pointing each at its own copy.
+# Atlas: 10 cells, 4x3.
+[[die]]
+id = "d10-tens"
+shape = "pentagonal-trapezohedron"
+faces = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
+labels = ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"]
+texture = "textures/pentagonal-trapezohedron.png"
+
+# Atlas: 12 cells, 4x3.
+[[die]]
+id = "d12"
+shape = "dodecahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+texture = "textures/dodecahedron.png"
+
+# Atlas: 18 cells, 5x4.
+[[die]]
+id = "d18"
+shape = "enneagonal-trapezohedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+texture = "textures/enneagonal-trapezohedron.png"
+
+# Every `[defaults]` key can be overridden here, on one die, without touching
+# the others. This one is ink-coloured with bone numerals — the set's defaults
+# swapped round — and a shade heavier and bouncier than the rest.
+# Atlas: 20 cells, 5x4.
+[[die]]
+id = "d20"
+shape = "icosahedron"
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+texture = "textures/icosahedron.png"
+color = "#2b2b2b"
+number_color = "#e8dcc0"
+roughness = 0.25
+metallic = 0.0
+size_mm = 18
+density = 1.4
+restitution = 0.35
+friction = 0.45
+
+# The fudge die: two minuses, two blanks, two pluses, on a cube.
+#
+# No `texture`, which is perfectly ordinary — a die without one is printed in
+# `number_color` on `color` and nothing else. The two empty labels are a blank
+# side on purpose: an empty label prints nothing at all, which is exactly half
+# of what a fudge die is.
+[[die]]
+id = "df"
+shape = "cube"
+faces = [-1, -1, 0, 0, 1, 1]
+labels = ["−", "−", "", "", "+", "+"]
+
+# A die whose id is not one of the standard ten. It cannot be typed — the
+# notation grammar has no unambiguous way to write `rune-d6kh1`, since a slug
+# and a modifier are made of the same characters — so it is rolled by tapping
+# it in the dice picker.
+#
+# It is also the font rule in one line. A label the built-in font can draw is
+# printed as written; one it cannot, such as the skull, is printed as the
+# face's *value* instead, because a blank side would make the die unreadable
+# and a box would be a lie about what you wrote. If you want a skull on the
+# face, draw one in the atlas.
+[[die]]
+id = "rune-d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5, 6]
+labels = ["💀", "2", "3", "4", "5", "6"]
+color = "#3a2a18"
+number_color = "#d9cbb0"
+
+# --- tables ----------------------------------------------------------
+#
+# A package may ship dice, table looks, or both: a set of nothing but tables is
+# as ordinary as a set of nothing but dice. A table look is the *surface* of
+# the tray — its colours, how it sounds, how it is lit and how dice behave on
+# it. It is never its shape: the tray is the phone's screen with walls at the
+# edges, and that is what keeps the capacity rule meaningful (docs/tables.md).
+#
+# Required: `id` (a slug of 1 to 40 characters, unique in the package) and
+# `name`. Everything else is optional and falls back to the app's default
+# table.
+#
+# `sound` is one of felt, wood, glass, stone, plastic.
+# `light` is one of neutral, warm, cool, dim.
+# Both name something the app has rather than a file you ship, so a package can
+# change how the tray looks without shipping an audio decoder's worth of attack
+# surface. A name the app does not have is an error.
+#
+# `floor_texture` and `wall_texture` exist and are validated exactly like a
+# die's `texture`, but nothing draws them yet — a table look is rendered in its
+# own colours for now (docs/tables.md, "Table looks"). They are left out here
+# rather than shipped as files that would go unused.
+
+# Every field a table look has, with the ranges named.
+[[table]]
+id = "example-felt"
+name = "Example felt"
+floor_color = "#2f5d46"
+wall_color = "#241a10"
+roughness = 0.9             # 0.0 .. 1.0
+metallic = 0.0              # 0.0 .. 1.0
+friction = 0.6              # 0.2 .. 1.0 — narrower than a die's
+restitution = 0.2           # 0.0 .. 0.6 — a tray bounces less than a die
+sound = "felt"
+light = "warm"
+
+# And the other end of it: the two required fields and nothing else. This is a
+# complete, valid table look — everything unsaid is the app's default.
+[[table]]
+id = "example-slate"
+name = "Example slate"

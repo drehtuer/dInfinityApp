@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
@@ -65,7 +66,10 @@ import de.drehtuer.dinfinity.feature.stats.HistoryScreen
 import de.drehtuer.dinfinity.feature.stats.SavedStatsScreen
 import de.drehtuer.dinfinity.feature.stats.SessionsScreen
 import de.drehtuer.dinfinity.feature.stats.StatsScreen
+import de.drehtuer.dinfinity.feature.tables.PickedPhoto
+import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesScreen
+import de.drehtuer.dinfinity.navigation.DesignerArgument
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
@@ -249,6 +253,11 @@ private fun Roll(
     onAddSets = { navController.navigate(Destination.DiceSets.route) },
     shakeToRoll = settings.shakeToRoll,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
+    // Quick mode: a long press on a die that landed opens the designer on that
+    // die (`docs/face-designer.md`, "Quick mode"). The tray is left behind
+    // like any other way off this screen, and back comes to it again — which
+    // is why the drawing is a draft on disk rather than something to save.
+    onDoodle = { dieId -> navController.navigate(designerRoute(dieId)) },
     menu = { MenuTo(navController) },
     // The active group's saved rolls, handed to the tray as a slot: the roll
     // screen does not know what a saved roll is, and does not have to
@@ -401,6 +410,53 @@ private fun Sets(
 private const val CHOSEN = "chosen-packages"
 
 /**
+ * The table picker, with the photo picker that makes a look out of a
+ * photograph (`docs/tables.md`, "Your own photo").
+ *
+ * The launcher is here rather than in `feature/tables` for the reason [Sets]'s
+ * is: a content URI is the application's business. What crosses into the
+ * feature module is a *way of opening a stream* and the file's display name —
+ * never a `Uri`, and never bytes, because the photo is opened twice and the
+ * second open must not have to rewind the first.
+ *
+ * Read permission is taken for the length of the pick and no longer. The photo
+ * is scaled and written into the personal package while the sheet is up; after
+ * that the app has its own copy and has no business holding a handle to
+ * somebody's photo library.
+ */
+@Composable
+private fun Tables(
+  presenter: TablesPresenter,
+  navController: NavHostController,
+) {
+  val context = LocalContext.current
+  val choose =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      // A null uri is the picker being dismissed, which is not a failure and
+      // has nothing to say.
+      if (uri == null) return@rememberLauncherForActivityResult
+      presenter.picked(
+        PickedPhoto(
+          label = PhotoNames.of(context.contentResolver, uri),
+          open = { context.contentResolver.openInputStream(uri) },
+        ),
+      )
+    }
+  TablesScreen(
+    presenter = presenter,
+    menu = { MenuTo(navController) },
+    // Pictures only. Unlike a dice set — which arrives as
+    // `application/octet-stream` as often as not and so may not be filtered —
+    // a photo picker that offered every file on the phone would be offering
+    // files that cannot possibly work.
+    onPickPhoto = { choose.launch(arrayOf(IMAGES)) },
+  )
+}
+
+/** What the photo picker is allowed to offer. */
+private const val IMAGES = "image/*"
+
+/**
  * What the saved rolls have come to, against what they should.
  *
  * Its own branch rather than one more parameter on [lookingBack], which is
@@ -447,13 +503,17 @@ private fun customising(
     }
 
     Destination.Tables if screens != null -> {
-      TablesScreen(presenter = remember(entry) { screens.tables() }, menu = { MenuTo(navController) })
+      Tables(remember(entry) { screens.tables() }, navController)
       true
     }
 
     Destination.FaceDesigner if screens != null -> {
+      // On the die the route names — "Doodle this die" off a long press in the
+      // breakdown — and on the usual one when it names none
+      // (`docs/face-designer.md`, "Quick mode").
+      val die = entry.arguments?.getString(DesignerArgument.DIE).orEmpty()
       DesignerScreen(
-        presenter = remember(entry) { screens.faceDesigner() },
+        presenter = remember(entry) { screens.faceDesigner(die) },
         // Straight to the tray with the die in the field, unrolled — the same
         // answer the notation screen's examples give, and for the same reason:
         // the throw is the player's to make.
@@ -733,6 +793,16 @@ internal fun editorRoute(
   }
 
 /**
+ * The route that opens the face designer on the die with this id.
+ *
+ * Encoded like every other argument, although a die id is tamer than a
+ * formula: an id comes out of a dice set file, and what a stranger may put in
+ * one is not this function's to assume (`docs/dice-sets.md`).
+ */
+internal fun designerRoute(dieId: String): String =
+  "${Destination.FaceDesigner.route}?${DesignerArgument.DIE}=${Uri.encode(dieId)}"
+
+/**
  * The route that opens the tray with [formula] already in the field.
  *
  * Encoded like the graph's, and for the same reason: a formula is made of the
@@ -749,6 +819,7 @@ internal fun rollRoute(formula: String): String =
  * the menu again. A menu you have to press back through twice is a menu that
  * feels like a detour (`design/dInfinity.dc.html`, option 1q).
  */
+@Composable
 private fun menuSections(
   navController: NavHostController,
   developerTools: Boolean,
@@ -764,8 +835,11 @@ private fun menuSections(
         .map { destination ->
           MenuEntry(
             id = destination.route,
-            title = destination.title,
-            description = destination.description,
+            title = stringResource(destination.title),
+            // Every screen the menu lists has a line; the ones that do not are
+            // exactly the ones `inTheMenu` leaves out, and `DestinationTest`
+            // holds both halves of that to each other.
+            description = destination.description?.let { stringResource(it) }.orEmpty(),
             open = {
               navController.navigate(destination.route) {
                 popUpTo(Destination.Menu.route) { inclusive = true }
@@ -776,7 +850,7 @@ private fun menuSections(
             },
           )
         }
-    if (entries.isEmpty()) null else MenuSection(name = group.title, entries = entries)
+    if (entries.isEmpty()) null else MenuSection(name = stringResource(group.title), entries = entries)
   }
 
 /**
@@ -830,12 +904,12 @@ internal fun PlaceholderScreen(
       modifier = Modifier.padding(ModernistTokens.Space.x6),
     ) {
       Text(
-        text = destination.title,
+        text = stringResource(destination.title),
         style = MaterialTheme.typography.headlineMedium,
         color = colors.text,
       )
       Text(
-        text = "Not built yet — see docs/TODO.md",
+        text = stringResource(R.string.screen_not_built),
         style = MaterialTheme.typography.labelSmall,
         color = colors.accent,
         modifier = Modifier.testTag(notBuiltTag(destination)),

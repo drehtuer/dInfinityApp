@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <!-- The history screen (design option 1x). -->
   <string name="history_title">History</string>
   <string name="history_empty_title">No rolls yet.</string>
@@ -115,5 +115,37 @@
   <plurals name="sessions_naturals">
     <item quantity="one">%1$d with a natural high</item>
     <item quantity="other">%1$d with a natural high</item>
+  </plurals>
+  <!--
+    What a screen reader is told where the drawing says it with a colour or a
+    mark only an eye can read (`docs/architecture.md`, "Accessibility").
+  -->
+  <string name="stats_back">Back to the list of dice</string>
+  <!--
+    One row of the face histogram. The bar and the fair line behind it are told
+    apart by colour alone, and the fair share is written nowhere on the row.
+    %1$d is the face, %2$d how many times it came up, %3$s its share and %4$s
+    what a fair die would give.
+  -->
+  <plurals name="stats_bar_against_fair">
+    <item quantity="one">Face %1$d came up %2$d time, %3$s; a fair die, %4$s</item>
+    <item quantity="other">Face %1$d came up %2$d times, %3$s; a fair die, %4$s</item>
+  </plurals>
+  <!-- A roll in the history whose breakdown holds a natural maximum. -->
+  <string name="history_natural_max">%1$d, with a natural maximum</string>
+  <!-- The struck-through line under a group: the dice that did not count. -->
+  <string name="history_dropped">Dropped: %1$s</string>
+  <!--
+    The observed-against-expected chart, which is a canvas whose two kinds of
+    rectangle differ only in colour.
+  -->
+  <plurals name="savedstats_chart_shape">
+    <item quantity="one">Bar chart of %1$d total rolled against the exact distribution.</item>
+    <item quantity="other">Bar chart of %1$d totals rolled against the exact distribution.</item>
+  </plurals>
+  <string name="savedstats_chart_range">They run from %1$d to %2$d.</string>
+  <plurals name="savedstats_chart_above">
+    <item quantity="one">%1$d came up more often than the distribution says.</item>
+    <item quantity="other">%1$d came up more often than the distribution says.</item>
   </plurals>
 </resources>

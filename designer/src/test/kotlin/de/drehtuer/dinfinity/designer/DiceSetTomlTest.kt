@@ -5,6 +5,9 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.FaceRead
+import de.drehtuer.dinfinity.core.model.TableLight
+import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableSound
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.format.PackageFiles
 import de.drehtuer.dinfinity.dicesets.format.ValidationResult
@@ -12,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 /**
  * The set file the app writes (`docs/dice-sets.md`, "`diceset.toml`").
@@ -140,10 +144,97 @@ class DiceSetTomlTest {
     assertEquals("one\ntwo\tthree", read(set).name)
   }
 
+  @Test
+  fun `a table is the look it was written from, once it has been read back`() {
+    // A photo table, which is what puts `[[table]]` in a file the app writes.
+    val look = PhotoTable.lookOf("photo-oak", "Oak table")
+    val set = DiceSet(id = "mine", name = "My dice", version = "1.0.0", tables = listOf(look))
+
+    val back = readWhole(set, "tables/photo-oak.webp" to Drawings.webp(64, 48)).tables.single()
+
+    assertEquals("photo-oak", back.id)
+    assertEquals("Oak table", back.name)
+    assertEquals("tables/photo-oak.webp", back.floorTexturePath)
+    assertEquals(look.floorColorArgb, back.floorColorArgb)
+    assertEquals(TableLook.Tiling(1, 1), back.floorTiling)
+  }
+
+  @Test
+  fun `only what differs from the reader's own defaults is written`() {
+    // A key nobody wrote is a key nobody has to keep in step with `TableLook`.
+    val plain = TableLook(id = "plain", name = "Plain")
+    val text = DiceSetToml.write(DiceSet(id = "mine", name = "My dice", version = "1.0.0", tables = listOf(plain)))
+
+    assertTrue("[[table]]" in text)
+    assertFalse("a default colour was written out", "floor_color" in text)
+    assertFalse("a default tiling was written out", "floor_tiling" in text)
+    assertFalse("a default sound was written out", "sound =" in text)
+    assertFalse("a default friction was written out", "friction" in text)
+  }
+
+  @Test
+  fun `everything a look can say survives the trip`() {
+    val loud =
+      TableLook(
+        id = "loud",
+        name = "Loud",
+        floorTexturePath = "tables/floor.png",
+        floorTiling = TableLook.Tiling(3, 6),
+        wallTexturePath = "tables/wall.png",
+        wallTiling = TableLook.Tiling(8, 1),
+        floorColorArgb = 0xFF1F5E3A.toInt(),
+        wallColorArgb = 0xFF5A3A1E.toInt(),
+        roughness = 0.25,
+        metallic = 0.75,
+        friction = 0.85,
+        restitution = 0.45,
+        sound = TableSound.Glass,
+        light = TableLight.Cool,
+      )
+
+    // The two textures have to exist for the file checker to accept them, so
+    // the package is written out whole rather than as a lone set file.
+    val back =
+      readWhole(
+        DiceSet(id = "mine", name = "My dice", version = "1.0.0", tables = listOf(loud)),
+        "tables/floor.png" to Drawings.png(64, 64),
+        "tables/wall.png" to Drawings.png(64, 64),
+      )
+
+    assertEquals(loud, back.tables.single())
+  }
+
+  @Test
+  fun `a decimal is written with a point, whatever the phone's language is`() {
+    // A decimal comma is not TOML, and a formatter on a German phone writes one.
+    val default = Locale.getDefault()
+    try {
+      Locale.setDefault(Locale.GERMANY)
+      val look = TableLook(id = "grip", name = "Grip", friction = 0.85)
+      val text = DiceSetToml.write(DiceSet(id = "mine", name = "My dice", version = "1.0.0", tables = listOf(look)))
+
+      assertTrue("a decimal comma reached the file: $text", "friction = 0.85" in text)
+    } finally {
+      Locale.setDefault(default)
+    }
+  }
+
   /** `0` → `"00"`, `1` → `"10"`: a tens die's labels, which its values cannot say. */
   private fun tens(index: Int): String {
     val value = index * 10
     return if (value < 10) "00" else value.toString()
+  }
+
+  /** The same, for a set whose tables point at textures that have to be there. */
+  private fun readWhole(
+    set: DiceSet,
+    vararg textures: Pair<String, ByteArray>,
+  ): DiceSet {
+    val files =
+      mapOf(DiceSetValidator.DICE_SET_FILE to DiceSetToml.write(set).encodeToByteArray()) + textures.toMap()
+    val result = DiceSetValidator.validate(PackageFiles.of(files))
+    assertTrue("$result", result is ValidationResult.Valid)
+    return (result as ValidationResult.Valid).set
   }
 
   /** The written file, through the real validator, as the set it describes. */

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <string name="designer_roll">Roll it</string>
   <string name="designer_title">Face designer</string>
   <string name="designer_nib_fine">Fine</string>
@@ -7,6 +7,15 @@
   <string name="designer_nib_broad">Broad</string>
   <string name="designer_eraser">Eraser</string>
   <string name="designer_bucket">Fill</string>
+  <string name="designer_stamp">Stamp</string>
+  <!-- The field holding what the stamp will put on the face: a digit, a sign. -->
+  <string name="designer_stamp_text">What to stamp</string>
+  <string name="designer_stamp_small">Small</string>
+  <string name="designer_stamp_medium">Medium</string>
+  <string name="designer_stamp_large">Large</string>
+  <string name="designer_stamp_refused">The built-in font draws 0–9 and a few signs. Anything else has to be drawn by hand.</string>
+  <!-- One tap that puts every face's own number on it, as a starting point. -->
+  <string name="designer_fill_numbers">Fill all with numbers</string>
   <string name="designer_undo">Undo</string>
   <string name="designer_redo">Redo</string>
   <string name="designer_clear">Clear</string>

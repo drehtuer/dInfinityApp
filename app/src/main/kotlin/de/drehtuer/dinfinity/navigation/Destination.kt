@@ -1,5 +1,8 @@
 package de.drehtuer.dinfinity.navigation
 
+import androidx.annotation.StringRes
+import de.drehtuer.dinfinity.R
+
 /**
  * Every screen the app has. One entry per screen in the plan's Step 4, so the
  * navigation graph is complete before any screen is built and adding a screen
@@ -11,14 +14,19 @@ package de.drehtuer.dinfinity.navigation
  */
 enum class Destination(
   val route: String,
-  val title: String,
+  /** What the screen is called, as a resource — never as a literal. */
+  @field:StringRes val title: Int,
   /**
-   * One line saying what the screen is for, shown under its name in the menu.
+   * One line saying what the screen is for, shown under its name in the menu,
+   * or `null` for a screen the menu does not list.
    *
-   * English here beside [title], which is where the English already was.
-   * Extracting both is Step 6's localisation pass (`docs/TODO.md`).
+   * Nullable rather than an empty string: "this screen has no line" and "this
+   * screen's line is blank" are different things, and only the first is true
+   * of the four screens reached from a row rather than from the list. A blank
+   * string resource would also be a blank string for a translator to wonder
+   * about (`docs/architecture.md`, "Text a person reads").
    */
-  val description: String,
+  @field:StringRes val description: Int? = null,
   /**
    * The section of the menu this screen sits in, or `null` for one that is
    * not in the menu — which is the menu.
@@ -46,37 +54,43 @@ enum class Destination(
 ) {
   Roll(
     "roll",
-    "Roll",
-    "The tray. Shake it, or pick dice and press Roll.",
+    R.string.screen_roll,
+    R.string.screen_roll_description,
     MenuGroup.Play,
     arguments = listOf(GraphArgument.FORMULA),
   ),
   Graph(
     "graph",
-    "Outcome graph",
-    "Exact odds before you roll, with the mean and σ.",
+    R.string.screen_graph,
+    R.string.screen_graph_description,
     MenuGroup.Play,
     arguments = listOf(GraphArgument.FORMULA, GraphArgument.TOTAL),
   ),
-  SavedRolls("saved", "Saved rolls", "Groups per game and per character.", MenuGroup.Play),
+  SavedRolls("saved", R.string.screen_saved, R.string.screen_saved_description, MenuGroup.Play),
 
-  Statistics("stats", "Statistics", "Natural highs and lows, averages — per die and per set.", MenuGroup.LookBack),
-  History("history", "History", "Every roll with its breakdown. No replays: a roll is a roll.", MenuGroup.LookBack),
-  Sessions("sessions", "Sessions", "Buckets for statistics, and where collections are imported.", MenuGroup.LookBack),
+  Statistics("stats", R.string.screen_stats, R.string.screen_stats_description, MenuGroup.LookBack),
+  History("history", R.string.screen_history, R.string.screen_history_description, MenuGroup.LookBack),
+  Sessions("sessions", R.string.screen_sessions, R.string.screen_sessions_description, MenuGroup.LookBack),
   SavedRollStats(
     "savedstats",
-    "Saved-roll statistics",
-    "What each saved roll has come to, against what it should.",
+    R.string.screen_savedstats,
+    R.string.screen_savedstats_description,
     MenuGroup.LookBack,
   ),
 
-  DiceSets("sets", "Dice sets", "What is installed, and how to install more.", MenuGroup.Customise),
-  Tables("tables", "Table", "Felt, wood, glass or your own photo. Same tray.", MenuGroup.Customise),
-  FaceDesigner("designer", "Face designer", "Draw die faces with a finger, then roll them.", MenuGroup.Customise),
+  DiceSets("sets", R.string.screen_sets, R.string.screen_sets_description, MenuGroup.Customise),
+  Tables("tables", R.string.screen_tables, R.string.screen_tables_description, MenuGroup.Customise),
+  FaceDesigner(
+    "designer",
+    R.string.screen_designer,
+    R.string.screen_designer_description,
+    MenuGroup.Customise,
+    arguments = listOf(DesignerArgument.DIE),
+  ),
 
   // No haptics in the list: nothing plays anything yet, and a menu row is as
   // able to promise something that is not there as a settings row is.
-  Settings("settings", "Settings", "Appearance, shake, rounding, power saving.", MenuGroup.App),
+  Settings("settings", R.string.screen_settings, R.string.screen_settings_description, MenuGroup.App),
 
   /**
    * The debugging tools: the anomaly log and the two replays
@@ -90,8 +104,8 @@ enum class Destination(
    */
   Developer(
     "developer",
-    "Developer",
-    "Anomaly log, and the last roll thrown again.",
+    R.string.screen_developer,
+    R.string.screen_developer_description,
     MenuGroup.App,
     developerOnly = true,
   ),
@@ -103,10 +117,10 @@ enum class Destination(
    * up rather than a thing to do — and because somebody reaching for it is
    * usually in the middle of something else.
    */
-  Notation("notation", "Notation", "What you can type, with examples you can roll.", MenuGroup.App),
+  Notation("notation", R.string.screen_notation, R.string.screen_notation_description, MenuGroup.App),
 
   /** Everything above, in a list. Not in the menu, being the menu. */
-  Menu("menu", "dInfinity", "", group = null),
+  Menu("menu", R.string.app_name, group = null),
 
   /**
    * Writing down one saved roll.
@@ -117,8 +131,7 @@ enum class Destination(
    */
   SavedRollEditor(
     "editor",
-    "Saved roll",
-    "",
+    R.string.screen_editor,
     group = null,
     arguments = listOf(EditorArgument.ROLL, EditorArgument.FORMULA),
   ),
@@ -131,7 +144,7 @@ enum class Destination(
    * rolls, and the way to it is the saved-rolls screen's own control. A menu
    * row for it would be a row that means nothing until somebody has a file.
    */
-  CollectionImport("import", "Import a collection", "", group = null),
+  CollectionImport("import", R.string.screen_import, group = null),
 
   /**
    * One dice set, in detail (`design/dInfinity.dc.html`, options `6a`
@@ -142,7 +155,7 @@ enum class Destination(
    * is the one set that is always installed — so the route is still a route
    * rather than a screen that can fail to open.
    */
-  SetDetail("setdetail", "Dice set", "", group = null, arguments = listOf(SetArgument.SET)),
+  SetDetail("setdetail", R.string.screen_setdetail, group = null, arguments = listOf(SetArgument.SET)),
   ;
 
   /**
@@ -213,6 +226,26 @@ object GraphArgument {
   const val TOTAL: String = "total"
 }
 
+/**
+ * What the face designer is opened with.
+ *
+ * Its own object rather than constants on [Destination], for the reason
+ * [GraphArgument] gives: an enum's companion is not initialised when its
+ * entries are.
+ */
+object DesignerArgument {
+  /**
+   * The die to draw on, by id. Empty opens on the usual one.
+   *
+   * What "Doodle this die" carries from the roll screen
+   * (`docs/face-designer.md`, "Quick mode"). Empty is the menu's way in, and
+   * an id nothing answers to opens on the usual die rather than on nothing —
+   * a package can be removed while its result is still on the tray
+   * (`designer`'s `OpeningDie`).
+   */
+  const val DIE: String = "die"
+}
+
 /** What the saved-roll editor is opened with. */
 object EditorArgument {
   /** The roll being edited, or empty for a new one. */
@@ -245,10 +278,10 @@ object SetArgument {
 
 /** The menu's four groups (`design/dInfinity.dc.html`, option 1q). */
 enum class MenuGroup(
-  val title: String,
+  @field:StringRes val title: Int,
 ) {
-  Play("Play"),
-  LookBack("Look back"),
-  Customise("Customise"),
-  App("App"),
+  Play(R.string.menu_group_play),
+  LookBack(R.string.menu_group_look_back),
+  Customise(R.string.menu_group_customise),
+  App(R.string.menu_group_app),
 }

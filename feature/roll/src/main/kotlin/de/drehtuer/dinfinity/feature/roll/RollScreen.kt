@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +72,17 @@ fun RollScreen(
   onImportCollection: () -> Unit = {},
   onAddSets: () -> Unit = {},
   onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
+  /**
+   * Quick mode: draw on the die a long press picked out of the breakdown
+   * (`docs/face-designer.md`, "Quick mode").
+   *
+   * The die's id and nothing else. Which die that names, and what the face
+   * designer opens on when it names nothing any more, is `:app`'s to decide
+   * with the catalogue in hand (`designer`'s `OpeningDie`) — a screen that
+   * knew about another screen would be one feature module depending on
+   * another (`docs/architecture.md`, "Modules").
+   */
+  onDoodle: (String) -> Unit = {},
   menu: @Composable () -> Unit = {},
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit = {},
   shakeToRoll: Boolean = true,
@@ -102,12 +114,21 @@ fun RollScreen(
     // to: a surface is a buffer the compositor keeps, and the claim that mode
     // makes is that none of it exists (`docs/architecture.md`, decision 38).
     if (presenter.draws) {
-      DiceTray(driver = presenter.tray, geometry = presenter.geometry, modifier = Modifier.fillMaxSize())
+      DiceTray(
+        driver = presenter.tray,
+        geometry = presenter.geometry,
+        modifier = Modifier.fillMaxSize(),
+        // A surface has nothing under it for a screen reader to find, so what
+        // is on the table is said here or nowhere at all
+        // (`docs/architecture.md`, "Accessibility").
+        describing = TrayReading.of(presenter.state).spoken(),
+      )
     }
 
     Controls(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
+      onDoodle = onDoodle,
       strip = strip,
       editing = editing,
       onEditing = { editing = it },
@@ -208,6 +229,7 @@ private const val FIRST_ROLL = "1d20"
 private fun Controls(
   presenter: RollPresenter,
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
+  onDoodle: (String) -> Unit,
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
   editing: Boolean,
   onEditing: (Boolean) -> Unit,
@@ -223,7 +245,7 @@ private fun Controls(
     verticalArrangement = Arrangement.spacedBy(12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Outcome(state, onRound = presenter::round)
+    Outcome(state, onRound = presenter::round, onDoodle = onDoodle)
     // The odds for the formula in the field, with the throw that just landed
     // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
     // throw the table refuses too: that is exactly when "what would it have
@@ -315,6 +337,7 @@ private fun KeepTheScreenAwake() {
 private fun Outcome(
   state: RollState,
   onRound: (Rounding) -> Unit,
+  onDoodle: (String) -> Unit,
 ) {
   when (state) {
     is RollState.Settled ->
@@ -329,7 +352,7 @@ private fun Outcome(
           color = MaterialTheme.colorScheme.onBackground,
           modifier = Modifier.testTag(RollTestTags.TOTAL),
         )
-        ResultSheet(result = state.result, divides = state.divides, onRound = onRound)
+        ResultSheet(result = state.result, divides = state.divides, onRound = onRound, onDoodle = onDoodle)
       }
 
     is RollState.Rolling ->
@@ -370,6 +393,21 @@ private fun Outcome(
       )
   }
 }
+
+/**
+ * What the tray holds, in the words a screen reader says.
+ *
+ * Which reading a state is is [TrayReading]'s and is tested on the JVM; all
+ * that happens here is looking the words up.
+ */
+@Composable
+private fun TrayReading.spoken(): String =
+  when (this) {
+    TrayReading.Empty -> stringResource(R.string.roll_tray_empty)
+    is TrayReading.Ready -> pluralStringResource(R.plurals.roll_tray_ready, dice, dice)
+    is TrayReading.Rolling -> pluralStringResource(R.plurals.roll_tray_rolling, dice, dice)
+    is TrayReading.Settled -> stringResource(R.string.roll_tray_settled, total)
+  }
 
 @Composable
 private fun Message(
@@ -493,4 +531,7 @@ object RollTestTags {
   ): String = "roll:sheet:limit:$groupId:$limit"
 
   fun dieAt(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex"
+
+  /** "Doodle this die", offered by a long press on one (`docs/face-designer.md`, "Quick mode"). */
+  fun doodleOf(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex:doodle"
 }

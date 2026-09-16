@@ -9,6 +9,8 @@ import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.FaceFill
 import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.Fill
+import de.drehtuer.dinfinity.designer.Stamp
+import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
@@ -473,6 +475,104 @@ class DesignerPresenterTest {
     val presenter = DesignerPresenter(d6, choosable = listOf(d6))
 
     assertNull(presenter.rollable)
+  }
+
+  @Test
+  fun `the stamp is loaded with the face's own number, and follows the face`() {
+    val presenter = DesignerPresenter(d6)
+
+    assertEquals("1", presenter.state.stamping)
+    presenter.show(4)
+    assertEquals("5", presenter.state.stamping)
+  }
+
+  @Test
+  fun `a stamp somebody typed stays put across faces, and goes with the die`() {
+    // What the stamp is loaded with is what somebody is working on; how big it
+    // is, is how they are working.
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), drafts = Remembered())
+    presenter.stamp(text = "8")
+    presenter.stamp(size = StampSize.Large)
+
+    presenter.show(2)
+    assertEquals("8", presenter.state.stamping)
+
+    presenter.base(d4)
+    assertEquals("1", presenter.state.stamping)
+    assertEquals(StampSize.Large, presenter.state.stampSize)
+  }
+
+  @Test
+  fun `a tap with the stamp puts a glyph on the face`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.use(Nib.Stamp)
+
+    presenter.drew(listOf(Dot(0.5f, 0.5f)))
+
+    assertTrue(
+      "the stamp left nothing",
+      presenter.state.face.marks
+        .single() is Stamp,
+    )
+  }
+
+  @Test
+  fun `a drag with the stamp is still one glyph, where the finger went down`() {
+    // The stamp answers a tap, so a drag is read as the tap it started with
+    // rather than as a row of glyphs.
+    val presenter = DesignerPresenter(d6)
+    presenter.use(Nib.Stamp)
+
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+
+    val marks = presenter.state.face.marks
+    val dots = (marks.single() as Stamp).dots
+    assertEquals(0.2f, (dots.minOf { it.x } + dots.maxOf { it.x }) / 2f, 0.02f)
+  }
+
+  @Test
+  fun `nothing the font cannot draw is stamped, and it is said before the tap`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.use(Nib.Stamp)
+    presenter.stamp(text = "crit")
+
+    assertFalse("a word the font cannot draw was offered", presenter.state.canStamp)
+    presenter.drew(listOf(Dot(0.5f, 0.5f)))
+    assertTrue("something was stamped anyway", presenter.state.face.blank)
+  }
+
+  @Test
+  fun `the stamp draws in the ink the pen is holding`() {
+    val presenter = DesignerPresenter(d6)
+    presenter.use(Nib.Stamp)
+    presenter.ink(RED)
+
+    presenter.drew(listOf(Dot(0.5f, 0.5f)))
+
+    val marks = presenter.state.face.marks
+    assertEquals(RED, marks.single().colorArgb)
+  }
+
+  @Test
+  fun `filling with numbers writes every face down`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, drafts = drafts)
+
+    presenter.fillNumbers()
+
+    val draft = presenter.state.draft
+    assertEquals(6, (0 until 6).count { cell -> draft.face(cell).marks.any { it is Stamp } })
+    assertEquals(draft, drafts.load(d6))
+  }
+
+  @Test
+  fun `a filled number comes off the face with one press of undo`() {
+    val presenter = DesignerPresenter(d6)
+
+    presenter.fillNumbers()
+    presenter.take(Step.Back)
+
+    assertTrue("the number would not come off", presenter.state.face.blank)
   }
 
   /** Drafts that outlive a presenter but not the test: a disk without the disk. */

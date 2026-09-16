@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources xmlns:tools="http://schemas.android.com/tools">
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <string name="roll_formula_label">Formula</string>
   <!-- The set a group's dice actually came from, when it is not the one asked for. -->
   <string name="roll_group_fell_back">from %1$s</string>
@@ -53,6 +53,8 @@
   <!-- A number the formula adds or takes away, itemised on the result sheet. -->
   <string name="roll_sheet_plus">plus</string>
   <string name="roll_sheet_minus">minus</string>
+  <!-- Quick mode: what a long press on a die in the breakdown offers (docs/face-designer.md). -->
+  <string name="roll_die_doodle">Doodle this die</string>
   <string name="roll_hint_empty">Type a formula, or tap a die below.</string>
   <string name="roll_hint_ready">Shake the phone, or press Roll.</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->
@@ -73,4 +75,30 @@
   <string name="roll_debug_ladder">corr %1$d · rethrow %2$d · hits %3$d</string>
   <!-- Shown only when one has happened. Either number above zero is a bug. -->
   <string name="roll_debug_anomaly">BUG: forced %1$d · post-rest %2$d</string>
+  <!--
+    What a screen reader says where the drawing says it with a mark only an eye
+    can read (`docs/architecture.md`, "Accessibility"). %1$s is the die's label.
+  -->
+  <string name="roll_die_natural_max">%1$s, highest face</string>
+  <string name="roll_die_dropped">%1$s, dropped</string>
+  <!--
+    The tray itself. It is a drawing surface with nothing under it, so without
+    these a screen reader finds an empty rectangle the size of the screen.
+  -->
+  <string name="roll_tray_empty">Dice tray, empty</string>
+  <plurals name="roll_tray_ready">
+    <item quantity="one">Dice tray, %1$d die ready to throw</item>
+    <item quantity="other">Dice tray, %1$d dice ready to throw</item>
+  </plurals>
+  <plurals name="roll_tray_rolling">
+    <item quantity="one">Dice tray, %1$d die rolling</item>
+    <item quantity="other">Dice tray, %1$d dice rolling</item>
+  </plurals>
+  <string name="roll_tray_settled">Dice tray, the dice have landed on %1$d</string>
+  <string name="roll_debug_overlay">Debug overlay</string>
+  <!-- The plan of the tray: how many dice, and how many in each of the three states. -->
+  <plurals name="roll_debug_plan">
+    <item quantity="one">Tray plan: %1$d die, %2$d at rest, %3$d moving, %4$d stacked</item>
+    <item quantity="other">Tray plan: %1$d dice, %2$d at rest, %3$d moving, %4$d stacked</item>
+  </plurals>
 </resources>

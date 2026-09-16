@@ -165,7 +165,7 @@ class ThrowSpecTest {
 
   /** One die already at rest in the tray, in the middle of it. */
   private fun down(): List<DieAtRest> =
-    listOf(DieAtRest(StandardDice.d20, RestingPlace(Vector3(0.0, 0.0, 8.0), Quaternion.Identity)))
+    listOf(DieAtRest(StandardDice.d20, "builtin", RestingPlace(Vector3(0.0, 0.0, 8.0), Quaternion.Identity)))
 
   private fun moment(step: Int): ShakeSample =
     ShakeSample(

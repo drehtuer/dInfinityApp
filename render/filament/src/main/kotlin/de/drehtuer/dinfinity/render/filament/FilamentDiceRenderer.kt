@@ -91,12 +91,12 @@ class FilamentDiceRenderer(
   ) {
     table(geometry, look, TrayView.Whole)
     spec.among.forEach { resting ->
-      val entity = addDie(resting.die, spec.dieScale)
+      val entity = addDie(resting.die, resting.setId, spec.dieScale)
       if (entity != Stage.NOTHING) {
         stage.place(entity, Transform.of(resting.at.position, resting.at.orientation))
       }
     }
-    dice = spec.dice.map { instance -> addDie(instance.die, spec.dieScale) }
+    dice = spec.dice.map { instance -> addDie(instance.die, instance.setId, spec.dieScale) }
   }
 
   override fun show(frame: RenderFrame) {
@@ -145,15 +145,34 @@ class FilamentDiceRenderer(
     stage.add(GpuMesh.of(tray.partsOf(TrayPart.Rim)), wall.copy(texturePath = null))
   }
 
+  /**
+   * One die, drawn with its package's artwork and its own printed labels.
+   *
+   * [setId] is what makes the artwork findable. A die's `texture` is a path
+   * relative to *its own set's folder*, and two sets may both ship
+   * `textures/d20.png`, so the path alone names nothing: what the stage is
+   * given is an [AtlasKey], and what fills it is on the far side of [Stage]
+   * (`docs/dice-sets.md`, "Textures").
+   *
+   * The labels are built whatever the die wears. An atlas may leave a face's
+   * cell clear and that face is then printed, which is a decision the material
+   * makes per pixel rather than one this side can make at all ([PrintedDice]).
+   */
   private fun addDie(
     die: Die,
+    setId: String,
     scale: Double,
   ): Int {
     val mesh = DieMesh.of(die.shape)
     return stage.add(
       // How far this shape reaches from its middle, at the throw's scale.
       mesh = GpuMesh.of(mesh.faces, scale = die.material.boundingRadiusMm * scale),
-      parameters = DiceMaterial.dieOf(die.material, die.texturePath, printed.of(die, mesh)),
+      parameters =
+        DiceMaterial.dieOf(
+          material = die.material,
+          texturePath = die.texturePath?.let { AtlasKey.of(setId, it) },
+          numbers = printed.of(die, mesh),
+        ),
     )
   }
 

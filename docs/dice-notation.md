@@ -221,7 +221,11 @@ formula and never throws one away":
   Dice inside brackets and dice being subtracted are likewise not the
   picker's to change.
 - **A long press takes one die off**, and takes the group away with it when it
-  was the last one. A press with nothing to remove does nothing.
+  was the last one. A press with nothing to remove does nothing. It is the
+  whole of what a long press on this row means: the face designer's "Doodle
+  this die" is offered on the dice in the *breakdown* instead, so that taking
+  a die off stays one gesture rather than a gesture and a menu
+  (`docs/face-designer.md`, "Quick mode").
 - **Everything else in the formula is left exactly as written.** Edits are
   spliced into the text, not re-printed from the parse tree, so modifiers,
   brackets, set references and a trailing `[label]` come back spelled the way
