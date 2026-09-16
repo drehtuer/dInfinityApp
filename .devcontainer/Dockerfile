@@ -11,6 +11,21 @@ ARG ANDROID_API=37
 ARG CMDLINE_TOOLS=13114758
 ARG GRADLE_VERSION=9.7.1
 ARG SONAR_SCANNER_VERSION=7.3.0.5189
+# Node exists for one reason: markdown lint. It runs on CI and used to have
+# nowhere to run here, so `./gradlew check` said nothing about the documents
+# and pull requests went green locally and failed on CI over a blank line.
+#
+# The LTS line rather than "Current". Current is two versions ahead and drops
+# out of support within months; nothing here needs what it added, and a build
+# image that has to be bumped on somebody else's schedule is the thing this
+# whole change is about.
+ARG NODE_VERSION=24.21.0
+ARG NODE_SHA256=fd8e59d5a511510f6a298afb548f18c7d2b1be404d8b4a27d94fbe49f56cb2d6
+# Pinned to the version `DavidAnson/markdownlint-cli2-action` ships, so the two
+# machines cannot disagree about what the rules mean. Bump them together: the
+# action is named in `.github/workflows/ci.yml` and prints its version in the
+# run log.
+ARG MARKDOWNLINT_CLI2_VERSION=0.23.2
 # simulation/jolt is C++ and compiles Jolt from source, so without the NDK the
 # module cannot be built at all. It is ~2.5 GB, so it can still be switched off
 # for a quick image with no native code in it.
@@ -64,6 +79,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         ripgrep \
         sudo \
         unzip \
+        # Node ships as .tar.xz and Ubuntu's tar cannot open one without this.
+        xz-utils \
         zip \
     && rm -rf /var/lib/apt/lists/* \
 # ── Android SDK ──────────────────────────────────────────────────────────
@@ -77,7 +94,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # build-tools is added to PATH after it is installed, below, so apksigner,
 # zipalign and aapt2 are usable by hand.
-ENV PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${GRADLE_HOME}/bin:${SONAR_SCANNER_HOME}/bin:${PATH}"
+ENV PATH="${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools:${GRADLE_HOME}/bin:${SONAR_SCANNER_HOME}/bin:/opt/node/bin:${PATH}"
 
 # The platform and build-tools are resolved from what the repository actually
 # offers, so a new Android release does not need this file edited.
@@ -195,6 +212,19 @@ RUN BUILD_TOOLS_VERSION="$(cat "${ANDROID_HOME}/.build-tools-version")" \
  && unzip -q /tmp/gradle.zip -d /opt \
  && mv "/opt/gradle-${GRADLE_VERSION}" "${GRADLE_HOME}" \
  && rm /tmp/gradle.zip \
+# ── Node, for markdown lint ──────────────────────────────────────────────
+# Checksummed rather than trusted to https alone, because this one arrives with
+# a package manager attached and installs more of the internet on first use.
+ && curl --proto '=https' --proto-redir '=https' -fsSL -o /tmp/node.tar.xz \
+      "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+ && echo "${NODE_SHA256}  /tmp/node.tar.xz" | sha256sum -c - \
+ && tar -xJf /tmp/node.tar.xz -C /opt \
+ && mv "/opt/node-v${NODE_VERSION}-linux-x64" /opt/node \
+ && rm /tmp/node.tar.xz \
+# `npm` is a script whose shebang is `env node`, and node is not on PATH until
+# the ENV below — which is a later layer. So it is put there for this command.
+ && PATH="/opt/node/bin:${PATH}" npm install -g --no-fund --no-audit \
+      "markdownlint-cli2@${MARKDOWNLINT_CLI2_VERSION}" \
 # ── SonarQube scanner ────────────────────────────────────────────────────
  && curl --proto '=https' --proto-redir '=https' -fsSL -o /tmp/sonar.zip \
       "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-${SONAR_SCANNER_VERSION}-linux-x64.zip" \

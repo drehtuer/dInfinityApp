@@ -33,6 +33,14 @@
     "!node_modules/**",
     // Someone else's generated export, kept verbatim so it stays comparable
     // with the source it came from.
-    "!design/_ds/**"
+    "!design/_ds/**",
+    // CMake's working directory for the native build. It holds the Jolt
+    // sources it fetched, README and all, and they are not this project's to
+    // lint. CI never sees it — it lints a clean checkout — so without this the
+    // check finds different files on the two machines, which is the whole
+    // thing the local run exists to stop.
+    "!**/.cxx/**",
+    // Gradle's own, for the same reason.
+    "!**/.gradle/**"
   ]
 }

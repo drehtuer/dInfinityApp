@@ -140,6 +140,61 @@ val verifySourcesTracked by tasks.registering {
  * Only relative links are checked. External URLs need the network and would
  * turn an offline build into a failing one.
  */
+/**
+ * Runs markdown lint, the same one CI runs, against the same
+ * `.markdownlint-cli2.jsonc`.
+ *
+ * It is here because it used to be only on CI: there was no node in the
+ * devcontainer, so `./gradlew check` said nothing at all about the documents
+ * and a pull request could be green locally and fail on CI over a blank line.
+ * Three did.
+ *
+ * **It is skipped, loudly, when there is no `markdownlint-cli2` on PATH**
+ * rather than failing. Not everything that builds this project is the
+ * devcontainer — an older image will not have node in it — and a check that
+ * broke every such build would be a worse trade than the gap it closes. CI has
+ * its own copy of this check and does not depend on this task, so nothing can
+ * reach `main` unlinted either way.
+ */
+val markdownLint by tasks.registering {
+  group = "verification"
+  description = "Lints every Markdown document, as CI does."
+
+  val rootDir = layout.projectDirectory.asFile
+  val path = providers.environmentVariable("PATH").orElse("")
+  outputs.upToDateWhen { false }
+
+  doLast {
+    val runner =
+      path
+        .get()
+        .split(File.pathSeparator)
+        .map { File(it, "markdownlint-cli2") }
+        .firstOrNull { it.canExecute() }
+    if (runner == null) {
+      logger.warn(
+        "markdownLint: no markdownlint-cli2 on PATH, so the documents are unchecked here. " +
+          "The devcontainer has one; CI checks them regardless.",
+      )
+      return@doLast
+    }
+
+    // No globs: `.markdownlint-cli2.jsonc` carries them, and naming them here
+    // as well would be a second list to keep in step with CI's.
+    val process =
+      ProcessBuilder(runner.absolutePath)
+        .directory(rootDir)
+        .redirectErrorStream(true)
+        .start()
+    val said = process.inputStream.bufferedReader().readText()
+    if (process.waitFor() != 0) {
+      logger.lifecycle(said)
+      throw GradleException("markdown lint found problems; the lines above say which")
+    }
+    logger.lifecycle(said.trim().ifEmpty { "Markdown: clean." })
+  }
+}
+
 val verifyDocsLinks by tasks.registering {
   group = "verification"
   description = "Checks that every relative Markdown link points at something that exists."
@@ -317,7 +372,7 @@ subprojects {
 }
 
 tasks.named("check") {
-  dependsOn(verifyModuleGraph, verifyDocsIndex, verifyDocsLinks, verifySourcesTracked, verifyCoverage)
+  dependsOn(verifyModuleGraph, verifyDocsIndex, verifyDocsLinks, markdownLint, verifySourcesTracked, verifyCoverage)
   // build-logic is a separate, included build: nothing here reaches its tasks
   // unless it is asked for by name, so its linter and its own unit tests would
   // never run. `verifyTextIsAResource`'s scan lives there, and a check nobody
