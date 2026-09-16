@@ -72,7 +72,16 @@ class SensorShakeSourceTest {
     val session = ShakeSession()
     var started = 0
     var ended = 0
-    val source = SensorShakeSource(manager, session, onStarted = { started++ }, onEnded = { ended++ })
+    val source =
+      SensorShakeSource(
+        manager,
+        session,
+        onStarted = {
+          started++
+          true
+        },
+        onEnded = { ended++ },
+      )
     source.start()
 
     shakeHard(atMillis = 0)
@@ -107,12 +116,90 @@ class SensorShakeSourceTest {
   }
 
   @Test
+  fun `a shake at dice already in the air still reaches the roll driving them`() {
+    // The whole of the bug: a second shake used to number its moments from
+    // zero, naming steps the running roll took a second ago, so shaking a
+    // phone at moving dice did nothing (`docs/TODO.md`, Step 4.1).
+    addSensors()
+    val session = ShakeSession()
+    var threw = true
+    val source = SensorShakeSource(manager, session, onStarted = { threw })
+    source.start()
+
+    shakeHard(atMillis = 0)
+    shakeHard(atMillis = ShakeThresholds.START_MILLIS)
+    // From here a roll is in the air, so a shake throws nothing.
+    threw = false
+    beStill(atMillis = 1_000)
+    beStill(atMillis = 1_000 + ShakeThresholds.STOP_MILLIS)
+    val driven = session.recorded().last().stepIndex
+
+    shakeHard(atMillis = 2_000)
+    shakeHard(atMillis = 2_000 + ShakeThresholds.START_MILLIS)
+
+    assertTrue(
+      "the second shake named steps the roll had already taken",
+      session.recorded().last().stepIndex > driven,
+    )
+  }
+
+  @Test
+  fun `a second shake still claims the hand, because a hand is still on the phone`() {
+    // It starts no throw — there is nothing prepared to throw — but the edges
+    // are held and the haptics that go with them fire either way.
+    addSensors()
+    var started = 0
+    val source =
+      SensorShakeSource(
+        manager,
+        ShakeSession(),
+        onStarted = {
+          started++
+          // A roll is already in the air, so this shake threw nothing.
+          false
+        },
+      )
+    source.start()
+
+    shakeHard(atMillis = 0)
+    shakeHard(atMillis = ShakeThresholds.START_MILLIS)
+
+    assertEquals(1, started)
+  }
+
+  @Test
+  fun `with no roll in the air a shake is a throw of its own, numbered from zero`() {
+    addSensors()
+    val session = ShakeSession()
+    val source = SensorShakeSource(manager, session, onStarted = { true })
+    source.start()
+
+    shakeHard(atMillis = 0)
+    shakeHard(atMillis = ShakeThresholds.START_MILLIS)
+    beStill(atMillis = 1_000)
+    beStill(atMillis = 1_000 + ShakeThresholds.STOP_MILLIS)
+
+    shakeHard(atMillis = 2_000)
+    shakeHard(atMillis = 2_000 + ShakeThresholds.START_MILLIS)
+
+    assertEquals(0, session.recorded().first().stepIndex)
+  }
+
+  @Test
   fun `ordinary handling is not a shake`() {
     // Picking the phone up, setting it down, handing it over: all of them
     // cross the threshold for a moment and none of them stays there.
     addSensors()
     var started = 0
-    val source = SensorShakeSource(manager, ShakeSession(), onStarted = { started++ })
+    val source =
+      SensorShakeSource(
+        manager,
+        ShakeSession(),
+        onStarted = {
+          started++
+          true
+        },
+      )
     source.start()
 
     send(Sensor.TYPE_LINEAR_ACCELERATION, atMillis = 0, x = 8f)

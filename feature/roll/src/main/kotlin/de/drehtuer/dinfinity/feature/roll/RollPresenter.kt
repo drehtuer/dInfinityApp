@@ -182,16 +182,23 @@ class RollPresenter(
    * before the machine is touched.
    *
    * @param shake what the phone did, or empty for a tap.
+   * @return whether dice were actually thrown. False when there is nothing to
+   *   throw — a formula that does not read, a throw the table cannot hold, or
+   *   **a roll already in the air**, which is what a second shake at tumbling
+   *   dice meets. The shake source needs the answer: a shake that threw
+   *   nothing goes on numbering its moments on the running roll's clock rather
+   *   than starting a new one (`docs/physics-and-rendering.md`, "Shake input").
    */
-  fun roll(shake: List<ShakeSample> = emptyList()) {
+  fun roll(shake: List<ShakeSample> = emptyList()): Boolean {
     // A roll that has landed is a roll that is over. Throwing again is one act
     // — one press, one shake — not "put the total away" followed by "now
     // throw", which is what a shake could never have expressed anyway.
     if (state is RollState.Settled) machine.clear()
 
-    val spec = machine.throwDice(shake) ?: return
+    val spec = machine.throwDice(shake) ?: return false
     publish()
     throwIt(spec)
+    return true
   }
 
   /**
