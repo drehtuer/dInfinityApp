@@ -38,6 +38,12 @@ my-dice/
 
 Only `diceset.toml` is required. Anything not referenced from it is ignored.
 
+A worked example of exactly this layout is in the repository at
+[`examples/`](../examples/) — one die on every catalogue shape, a `diceset.toml`
+whose comments say what each field is for and what it is limited to, and a
+blank atlas per shape cut to the grid below. It is the place to start, and
+[Authoring tips](#authoring-tips) says why.
+
 ## `diceset.toml`
 
 ```toml
@@ -715,11 +721,16 @@ are ignored with a warning to allow future extensions.
 
 ## Authoring tips
 
-- Start from `examples/` in this repository: a complete, commented dice set
-  using every catalogue shape, with blank atlases to draw over. Copy the
-  folder and edit it. (The built-in set cannot be exported from the app —
-  `examples/` is what it would have given you, kept where it can be reviewed
-  and versioned.)
+- Start from [`examples/`](../examples/) in this repository: a complete,
+  commented dice set using every catalogue shape, with blank atlases to draw
+  over. Copy the folder and edit it. (The built-in set cannot be exported from
+  the app — `examples/` is what it would have given you, kept where it can be
+  reviewed and versioned.)
+- Its atlases are **generated**, by `tools/generate-atlases.py`, and checked
+  against the catalogue by a test in `dicesets/format`: each is fully
+  transparent, at 256 px per cell, in the grid the shape's face count gives.
+  That is the size worth copying — an atlas in the wrong grid validates,
+  installs, and comes out sliced down the middle of every face.
 - Or draw one. The face designer's export is a complete package with its
   atlases already in the right grid, which is a working starting point for a
   set meant to be finished on a computer (`docs/face-designer.md`).

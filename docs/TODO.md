@@ -500,7 +500,6 @@ device, not the other way round.
 
 ## Step 6 — v1 release
 
-- [ ] `examples/` dice set: every catalogue shape, commented, blank atlases (the built-in set has no export)
 - [ ] Accessibility pass: TalkBack through every screen, contrast, touch targets, no colour-only meaning
 - [ ] Localisation scaffolding (strings extracted) even if only English ships
 - [ ] Play Store metadata, screenshots taken from the real app, privacy statement (no analytics, nothing leaves the phone)
