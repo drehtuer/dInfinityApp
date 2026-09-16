@@ -173,7 +173,12 @@ Rules:
 - No mesh field. There is nothing to put there.
 - Textures: PNG/WebP, max 2048×2048, same byte limits as die textures.
   `floor_tiling` lets a 512×512 felt tile cover the floor without a
-  screen-sized image.
+  screen-sized image. **They are validated and not yet drawn.** A die's
+  artwork is found by a key of package and path, and a table look's texture
+  carries a path and nothing saying whose package — so it resolves to nothing
+  and the table is drawn in `floor_color` and `wall_color` alone
+  (`docs/dice-sets.md`, "How an atlas reaches the tray";
+  `docs/TODO.md`, "Open questions").
 - Physics values are clamped at validation and again at load, like dice.
   A table can be a bit slippery or a bit grippy; it cannot be frictionless.
 - Sound and light are names from built-in lists so a package cannot ship

@@ -29,8 +29,16 @@ data class RestingPlace(
  * not by tuning, but because there is nothing there to touch. What it is for is
  * the two things outside the solver that still need it: where *not* to drop the
  * new die ([ClearSpace]), and what to draw around it.
+ *
+ * @param setId which package supplied [die]. Carried for the drawing half:
+ *   a die's `texture` is a path inside *its own set's folder*, so the renderer
+ *   cannot find the artwork of a die already down without being told which set
+ *   it came from (`docs/dice-sets.md`, "Textures"). It is not defaulted on
+ *   purpose — a die drawn against the wrong package is a die wearing somebody
+ *   else's picture, and that is not a thing to get by forgetting an argument.
  */
 data class DieAtRest(
   val die: Die,
+  val setId: String,
   val at: RestingPlace,
 )

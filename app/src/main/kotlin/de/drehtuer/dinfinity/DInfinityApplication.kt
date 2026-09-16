@@ -23,6 +23,7 @@ import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.MineSets
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import de.drehtuer.dinfinity.dicesets.install.InstalledArtwork
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
@@ -157,8 +158,20 @@ class DInfinityApplication : Application() {
       catalogue = { setLibrary.catalogue },
       chosenTable = { chosenTable },
       developer = developerLog,
+      artwork = DieArtwork(artwork::read),
     )
   }
+
+  /**
+   * A die's artwork, read out of the package it was installed with
+   * (`docs/dice-sets.md`, "Textures").
+   *
+   * Here rather than in [RollWiring] because it is made of [packages], which
+   * is this class's one Android-shaped fact — where `dicesets/` is — and
+   * because the face designer writes into the same folder, so "My dice" is
+   * found by exactly the same scan as anything downloaded.
+   */
+  private val artwork: InstalledArtwork by lazy { InstalledArtwork(packages) }
 
   /**
    * The table look the player chose, as last read from the settings.

@@ -105,4 +105,36 @@ class DiceSetTest {
     assertEquals("Brass numerals.", set.description)
     assertEquals("https://example.org/brass", set.homepage)
   }
+
+  @Test
+  fun `the grid an atlas is cut into is the grid of the die that wears it`() {
+    val set =
+      DiceSet(
+        id = "brass",
+        name = "Brass",
+        version = "1.0.0",
+        dice =
+          listOf(
+            Die.standard("d6", DieShape.Cube).copy(texturePath = "textures/d6.png"),
+            Die.standard("d20", DieShape.Icosahedron).copy(texturePath = "textures/d20.png"),
+            Die.standard("d8", DieShape.Octahedron),
+          ),
+      )
+
+    assertEquals(6, set.facesForTexture("textures/d6.png"))
+    assertEquals(20, set.facesForTexture("textures/d20.png"))
+  }
+
+  @Test
+  fun `an atlas no die wears is cut into no grid at all`() {
+    val set =
+      DiceSet(
+        id = "brass",
+        name = "Brass",
+        version = "1.0.0",
+        dice = listOf(Die.standard("d6", DieShape.Cube)),
+      )
+
+    assertNull(set.facesForTexture("textures/spare.png"))
+  }
 }
