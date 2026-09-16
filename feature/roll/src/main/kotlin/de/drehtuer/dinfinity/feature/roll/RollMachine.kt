@@ -124,8 +124,15 @@ class RollMachine(
     /** The faces of the dice the roll has added, in the order it asked for them. */
     val added: MutableList<Int> = mutableListOf()
 
-    /** The die in the air now, or null while the first throw is the one in the air. */
-    var adding: DieInstance? = null
+    /**
+     * The dice in the air now, empty while the first throw is the one in the
+     * air.
+     *
+     * A list rather than one die because every chain that earned a throw is
+     * owed it at the same moment: three sixes in `8d6!` are three dice, thrown
+     * together on one shake, because that is what a player does at a table.
+     */
+    var adding: List<DieInstance> = emptyList()
 
     /** The faces of the first throw, which is the only throw the plan describes. */
     var faces: Map<Int, Int> = emptyMap()
@@ -343,19 +350,22 @@ class RollMachine(
   ): Landed? {
     val flight = inFlight ?: return null
 
-    when (val adding = flight.adding) {
-      null -> {
-        flight.faces = outcome.faces
-        flight.drivenBy = drivenBy
-        flight.cameToRest(flight.prepared.plan.dice, outcome)
-      }
-      else -> {
+    val adding = flight.adding
+    if (adding.isEmpty()) {
+      flight.faces = outcome.faces
+      flight.drivenBy = drivenBy
+      flight.cameToRest(flight.prepared.plan.dice, outcome)
+    } else {
+      // In the order they were asked for, which is the order they were thrown
+      // in: the scoring is re-run from the beginning over these faces, and a
+      // face that went to the wrong chain would be a different roll.
+      adding.forEachIndexed { at, die ->
         flight.added +=
-          requireNotNull(outcome.faces[0]) { "the added ${adding.die.id} was thrown and reported no face" }
-        flight.cameToRest(listOf(adding), outcome)
+          requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
       }
+      flight.cameToRest(adding, outcome)
     }
-    flight.adding = null
+    flight.adding = emptyList()
 
     val scoring =
       RunningScore.of(
@@ -373,9 +383,30 @@ class RollMachine(
       )
     return when (scoring) {
       is Scoring.OneMoreDie -> {
-        val next = oneMore(flight, scoring)
+        // Every chain that earned a throw, not just the first to ask. They are
+        // all owed the moment the dice stop, and one shake throws the lot.
+        val owed =
+          RunningScore.pending(
+            formula = flight.prepared.formula,
+            plan = flight.prepared.plan,
+            outcome =
+              ThrowOutcome(
+                faces = flight.faces,
+                rethrows = flight.rethrows,
+                forcedSettles = flight.forcedSettles,
+                rolledAtEpochMs = clock(),
+              ),
+            rounding = rounding,
+            // Each die the round owes takes floor the next one cannot have, so
+            // the question is asked with the ones already owed standing on it.
+            // Without that a round could be promised more dice than the tray
+            // can hold, and the throw would have nowhere to put the last of
+            // them (`docs/tables.md`, "Capacity rule").
+            added = AddedDice(faces = flight.added, room = roomForRound(flight)),
+          )
+        val next = earnedThrow(flight, owed.ifEmpty { listOf(scoring.die) })
         earned = next
-        state = RollState.ShakeAgain(diceCount = flight.down.size)
+        state = RollState.ShakeAgain(diceCount = flight.down.size, waiting = next.dice.size)
         Landed.OneMore(next)
       }
       is Scoring.Scored -> Landed.Complete(complete(flight, scoring.result))
@@ -445,29 +476,35 @@ class RollMachine(
    * at the roll's own scale, so a formula with explosions in it replays like
    * any other and its added dice are the size of the dice they joined.
    */
-  private fun oneMore(
+  private fun earnedThrow(
     flight: InFlight,
-    needed: Scoring.OneMoreDie,
+    owed: List<Die>,
   ): ThrowSpec {
-    // The die is one of the dice already in the throw, so which set it came
+    // Each die is one of the dice already in the throw, so which set it came
     // from is a lookup rather than a guess and the statistics stay attributed
     // to the right one.
-    val came =
-      flight.prepared.plan.dice
-        .first { it.die == needed.die }
+    val dice =
+      owed.mapIndexed { at, die ->
+        flight.prepared.plan.dice
+          .first { it.die == die }
+          .copy(index = at)
+      }
     val spec =
       ThrowSpec(
-        dice = listOf(came.copy(index = 0)),
+        dice = dice,
         geometry = geometry,
         table = table,
         // Not `seed + n`: two seeds that differ by one are not two independent
         // throws, so an exploding die used to be thrown by a stream related to
         // the one that set it off (`Seeds`).
-        seed = Seeds.derived(flight.spec.seed, needed.ordinal + 1),
+        //
+        // One seed for the batch, because it is one throw. The dice the round
+        // owes go into the tray together, the way a hand throws them.
+        seed = Seeds.derived(flight.spec.seed, flight.added.size + 1),
         dieScale = flight.prepared.scale,
         among = flight.down.toList(),
       )
-    flight.adding = spec.dice.single()
+    flight.adding = spec.dice
     return spec
   }
 
@@ -498,13 +535,31 @@ class RollMachine(
   }
 
   /**
-   * Whether the tray could take one more of [die].
+   * Whether the tray could take one more of [die], asked once per die of a
+   * round and counting the round so far.
    *
    * The end of a chain of explosions that the depth limit does not reach: an
    * added die is dropped into clear floor, and a tray with none left cannot
    * take one. The breakdown says which of the two stopped it
    * (`docs/dice-notation.md`, "Limits").
+   *
+   * [ClearSpace] is asked about a tray holding the dice that are down *and* the
+   * dice this round has already been promised. A fresh one is made for each
+   * round, because the count it carries is that round's.
    */
+  private fun roomForRound(flight: InFlight): (Die) -> Boolean {
+    var promised = 0
+    return { die ->
+      ClearSpace
+        .roomForAnother(
+          geometry = geometry,
+          dieRadiusMm = ClearSpace.radiusOf(die, flight.prepared.scale),
+          taken = flight.taken(),
+          alreadyPromised = promised,
+        ).also { if (it) promised++ }
+    }
+  }
+
   private fun roomForAnother(
     flight: InFlight,
     die: Die,

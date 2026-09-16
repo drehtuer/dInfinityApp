@@ -155,10 +155,18 @@ Modifiers take effect in this order whatever order they were written in, so
    clear floor left for another die; either way the die that would have exploded
    again is marked in the breakdown.
 
-   **The app does not throw the earned die. The player shakes again.** An
+   **The app does not throw the earned dice. The player shakes again.** An
    exploding six earns a throw, and a throw is something a hand does — so the
    dice that are down stay down, the screen says a shake is owed, and the next
-   shake throws the one die. A chain that threw itself finished a roll the
+   shake throws them.
+
+   **Every chain that earned a die is owed one at the same moment**, and one
+   shake throws the lot. Three sixes in `8d6!` are three dice, thrown together,
+   because that is what a hand does with three dice; asking for a shake each
+   would be asking three times for one act. Depth is the part that stays
+   sequential — a chain cannot know it needs a third die until the second has
+   landed — so a long chain is several rounds and a wide one is a single
+   handful. A chain that threw itself finished a roll the
    player had not finished asking for, and it made the one moment worth
    watching happen without them. Everything else about it is unchanged: the
    earned die is thrown into the same tray, among the dice already down, on a

@@ -35,6 +35,7 @@ import kotlin.random.Random
  *   an explosion or a reroll adds. Empty for every other throw, which is what
  *   the grid above is for.
  */
+@Suppress("TooManyFunctions")
 class SpawnLayout(
   private val geometry: TableGeometry,
   private val dieRadiusMm: Double,
@@ -73,6 +74,9 @@ class SpawnLayout(
     )
   }
 
+  /** Where each die of an added round was put, filled in as they are asked for. */
+  private val addedPoints = mutableListOf<Vector3>()
+
   /**
    * Where the die an explosion or a reroll added is dropped
    * (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
@@ -86,19 +90,41 @@ class SpawnLayout(
    * nobody made room for. The dice already down are not in this throw's world
    * and cannot be moved by it; the clear space is so the *picture* is honest
    * too.
+   *
+   * A round may be several dice — three sixes in `8d6!` earn three throws — and
+   * [addedPoint] is what stops them all landing on the same clear patch.
    */
   private fun addedPlacement(index: Int): Placement {
     val random = randomFor(index, Seeds.SPAWN)
-    val point =
-      requireNotNull(ClearSpace.clearestPoint(geometry, dieRadiusMm, among)) {
-        "there is nowhere left in the tray to drop a die of ${dieRadiusMm * 2} mm"
-      }
     return Placement(
-      position = point.copy(z = RETHROW_HEIGHT_MM + dieRadiusMm),
+      position = addedPoint(index).copy(z = RETHROW_HEIGHT_MM + dieRadiusMm),
       rotation = randomRotation(random),
       linearVelocity = Vector3(0.0, 0.0, -RETHROW_DOWN_MM_PER_SECOND),
       angularVelocity = randomSpin(random, RETHROW_SPIN_RADIANS_PER_SECOND),
     )
+  }
+
+  /**
+   * Where the [index]th die of an added round goes.
+   *
+   * **Each die makes room for the ones after it.** A round can be several dice
+   * — three sixes in `8d6!` earn three throws and a player throws them
+   * together — and asking [ClearSpace] the same question three times gives the
+   * same answer three times, which would drop all three on one patch of floor.
+   * So a die that has been placed counts as taken for the next one.
+   *
+   * Computed in order and kept, so asking for the third first still fills the
+   * first two the same way: the answer for a die must not depend on which
+   * order the caller happened to ask.
+   */
+  private fun addedPoint(index: Int): Vector3 {
+    while (addedPoints.size <= index) {
+      addedPoints +=
+        requireNotNull(ClearSpace.clearestPoint(geometry, dieRadiusMm, among + addedPoints)) {
+          "there is nowhere left in the tray to drop a die of ${dieRadiusMm * 2} mm"
+        }
+    }
+    return addedPoints[index]
   }
 
   /**

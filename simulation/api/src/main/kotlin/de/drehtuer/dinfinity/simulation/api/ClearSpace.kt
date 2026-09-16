@@ -97,12 +97,33 @@ object ClearSpace {
    * engine's hard cap on bodies in a tray, and the floor running out. It is the
    * same code that finds the point, deliberately — a roll told there was room
    * and then unable to find any would be two rules disagreeing.
+   *
+   * @param alreadyPromised dice this round is going to drop but has not
+   *   dropped yet. A round can owe several dice at once — three sixes in
+   *   `8d6!` earn three throws — and each of them takes floor the next one
+   *   cannot have, so a question asked as though the tray were still empty of
+   *   them would promise more dice than there is room for. They are counted
+   *   rather than placed, because where each one ends up is the spawn's to
+   *   decide and this is only asking whether it could
+   *   (`docs/dice-notation.md`, "Evaluation").
    */
   fun roomForAnother(
     geometry: TableGeometry,
     dieRadiusMm: Double,
     taken: List<Vector3>,
-  ): Boolean = taken.size < TableCapacity.MAX_DICE && clearestPoint(geometry, dieRadiusMm, taken) != null
+    alreadyPromised: Int = 0,
+  ): Boolean {
+    if (taken.size + alreadyPromised >= TableCapacity.MAX_DICE) return false
+    // Each promised die is stood where the spawn would actually put it — the
+    // clearest point of the tray as it will be by then — and the next question
+    // is asked with it standing there. Asking about the same point every time
+    // would be asking whether one die fits, N times over.
+    var standing = taken
+    repeat(alreadyPromised) {
+      standing = standing + (clearestPoint(geometry, dieRadiusMm, standing) ?: return false)
+    }
+    return clearestPoint(geometry, dieRadiusMm, standing) != null
+  }
 
   /**
    * The room a die of [die]'s size, thrown at [dieScale], needs on the floor.

@@ -36,20 +36,27 @@ class ThrowSpecTest {
   }
 
   @Test
-  fun `a throw into a tray that already holds dice is a throw of one die`() {
-    // An explosion and a reroll each add one die, after the last one landed.
-    // Two at once would be two dice dropped onto the same clear patch of floor,
-    // because neither can see the other coming
-    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
-    // adds").
-    assertFailsWith<IllegalArgumentException> { spec(count = 2, scale = 1.0).copy(among = down()) }
+  fun `a round thrown into a tray that already holds dice may be several dice`() {
+    // It used to be exactly one, because two dice asked `ClearSpace` the same
+    // question and were dropped onto the same patch of floor. The spawn stands
+    // each die of a round where the last one went before placing the next, so a
+    // round is now as many dice as the chains earned — three sixes in `8d6!`
+    // earn three throws and a player throws them together
+    // (`docs/dice-notation.md`, "Evaluation").
+    assertEquals(2, spec(count = 2, scale = 1.0).copy(among = down()).dice.size)
     assertEquals(1, spec(count = 1, scale = 1.0).copy(among = down()).among.size)
   }
 
   @Test
+  fun `a throw into a tray that already holds dice still has to throw something`() {
+    assertFailsWith<IllegalArgumentException> { spec(count = 0, scale = 1.0).copy(among = down()) }
+  }
+
+  @Test
   fun `the dice already down are not dice in the throw`() {
-    // The whole rule in one assertion: an added die's world holds one body, so
-    // there is nothing in it that a settled die could be shoved by.
+    // The whole rule in one assertion: an added round's world holds only the
+    // dice being thrown, so there is nothing in it that a settled die could be
+    // shoved by.
     val added = spec(count = 1, scale = 1.0).copy(among = down())
 
     assertEquals(1, added.dice.size)

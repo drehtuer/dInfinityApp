@@ -200,6 +200,24 @@ class RollMachineTest {
   }
 
   @Test
+  fun `every six in a throw earns a die, and they are all thrown together`() {
+    // Three sixes are three dice, owed the instant the dice stop, and a player
+    // throws them in one handful. Asking for a shake each would be asking three
+    // times for one act (`docs/dice-notation.md`, "Evaluation").
+    val machine = machine(seed = 77L)
+    machine.type("4d6!")
+    machine.throwDice()
+
+    val landed = machine.settled(settledAt(mapOf(0 to 5, 1 to 1, 2 to 5, 3 to 5)))
+
+    val next = requireNotNull(landed as? Landed.OneMore).spec
+    assertEquals("three sixes earned three dice", 3, next.dice.size)
+    assertEquals("the round was not numbered from zero", listOf(0, 1, 2), next.dice.map { it.index })
+    assertEquals("the dice already down did not travel with the round", 4, next.among.size)
+    assertEquals(RollState.ShakeAgain(diceCount = 4, waiting = 3), machine.state)
+  }
+
+  @Test
   fun `the die an explosion earns is thrown by the hand that asks for it`() {
     val machine = machine(seed = 77L)
     machine.type("1d6!")
