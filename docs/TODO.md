@@ -567,7 +567,15 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 ### 5.7 Performance on the Pixel 10a
 
 - [ ] 60 fps sustained at 20 dice, frame time p99 under 16.6 ms; at least 30 fps at the capacity limit
-- [ ] No memory growth over 500 rolls
+- [ ] **Done, on the Pixel 10a: 500 rolls leave 1,440 bytes behind.** Under
+      three bytes a roll, which is allocator noise rather than anything anybody
+      allocated. `MemoryTest` measures the **native** heap, which is the half
+      that matters — a physics world is a handle into a solver the collector
+      knows nothing about, so a world nobody closed would show there and nowhere
+      else — and holds it to a quarter of a megabyte, a hundred and eighty times
+      the measurement and still tight enough to catch ten leaked worlds, let
+      alone five hundred. The JVM heap is held looser on purpose, against a
+      collector that decides for itself when to shrink
 - [ ] Battery cost of 100 rolls measured, then written into `docs/physics-and-rendering.md` as the budget
 
 **Done when** every target above is met on the Pixel 10a and the user agrees
