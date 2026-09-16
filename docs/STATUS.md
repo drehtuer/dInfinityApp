@@ -95,14 +95,27 @@ thing feels right is still a person's call.
 
 ## Known risks
 
-- **The correction ladder leans on corrections far too hard.** On the Pixel
-  10a: **42–45 %** of dice corrected against a 0.5 % budget, **1–3.5 %**
-  re-thrown against 0.05 %, and dice reaching **up to 11.6 mm** into each other
-  against a bar of 0.2 mm, on dice 16 mm across — worse than the 9.0 mm first
-  recorded, on a larger sample. Every honesty bar passes on every run: **zero**
-  dice at rest on another die, **zero** post-rest corrections, zero forced
-  settles, median settle 0.7–0.8 s. The engine is fast and honest and cheats
-  visibly to get there — at 100 dice the corrections look like popcorn. Step 5.5.
+- **The correction ladder leans on corrections far too hard**, and at sixty dice
+  the honesty bar breaks for the first time. Ten thousand rolls on the Pixel
+  10a, at each of twenty and sixty dice:
+
+  | | 20 dice (200,000) | 60 dice (600,000) |
+  | --- | --- | --- |
+  | dice at rest on another die | **0** | **29** |
+  | post-rest corrections | **0** | **0** |
+  | dice corrected (budget 0.5 %) | 44.9 % | 47.1 % |
+  | dice re-thrown (budget 0.05 %) | 2.9 % | 6.1 % |
+  | rolls out of the 12 s cap | 3 | 29 |
+  | deepest die–die overlap (bar 0.2 mm) | 11.6 mm | 10.1 mm |
+
+  Of the twenty-nine stacked dice, **twenty are in rolls the cap froze** — rung
+  3 never got to throw them again — and **nine finished cleanly**, which is
+  prevention failing outright. **Not one post-rest correction in 800,000 dice**,
+  which is the rule that is inviolable rather than a target.
+
+  Note the overlap: 11.6 mm at twenty dice against the 9.0 mm two hundred rolls
+  first found. Nothing got worse — an extreme value climbs with the sample, so
+  the old figure was optimism about how long anybody had looked.
 - **The "no invisible hand" bar** can only be judged on a device. If prevention
   cannot reach it, the fallback is a visible re-throw, which is honest but must
   not become common.
