@@ -155,6 +155,15 @@ class RollMachine(
 
   private var prepared: Prepared? = null
   private var inFlight: InFlight? = null
+
+  /**
+   * The throw an explosion earned and nobody has thrown yet.
+   *
+   * It waits here for a shake rather than going straight back to the tray: a
+   * throw is something a hand does, and a chain that threw itself finished a
+   * roll the player had not finished asking for.
+   */
+  private var earned: ThrowSpec? = null
   private var scored: Pair<Formula, RollResult>? = null
 
   /** What the screen draws. */
@@ -284,6 +293,8 @@ class RollMachine(
   fun throwDice(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
     val ready = prepared ?: return null
     prepared = null
+    // A new throw is not the continuation of the last one's chain.
+    earned = null
 
     val spec =
       ThrowSpec(
@@ -361,10 +372,37 @@ class RollMachine(
         added = AddedDice(faces = flight.added, room = { die -> roomForAnother(flight, die) }),
       )
     return when (scoring) {
-      is Scoring.OneMoreDie -> Landed.OneMore(oneMore(flight, scoring))
+      is Scoring.OneMoreDie -> {
+        val next = oneMore(flight, scoring)
+        earned = next
+        state = RollState.ShakeAgain(diceCount = flight.down.size)
+        Landed.OneMore(next)
+      }
       is Scoring.Scored -> Landed.Complete(complete(flight, scoring.result))
     }
   }
+
+  /**
+   * Throws the die an explosion earned, driven by [shake].
+   *
+   * Null when nothing is waiting, which is every shake that is not the one
+   * after a chain paused. The samples are the *new* hand rather than the one
+   * that threw the dice already down: this is a throw of its own, and a throw
+   * is driven by the hand that made it.
+   */
+  fun throwEarned(shake: List<ShakeSample>): ThrowSpec? {
+    val next = earned ?: return null
+    earned = null
+    state = RollState.Rolling(diceCount = 1)
+    // The flight keeps the throw that *started* it, untouched. It is what goes
+    // in the history, and it is the seed every later throw in the chain is
+    // derived from — so a chain whose base moved would be a chain that threw
+    // different dice the second time it was replayed.
+    return next.copy(shake = shake)
+  }
+
+  /** Whether a throw has been earned and not yet thrown. */
+  val awaitingShake: Boolean get() = earned != null
 
   /**
    * The same throw under a different rounding (`design/dInfinity.dc.html`,
@@ -579,6 +617,24 @@ sealed interface RollState {
   /** The dice are in the air. */
   data class Rolling(
     val diceCount: Int,
+  ) : RollState
+
+  /**
+   * A die exploded, and the die it earned is waiting to be thrown.
+   *
+   * **The app does not throw it.** An exploding six earns another throw, and a
+   * throw is something a hand does — so the dice that are down stay down, the
+   * one that was earned sits ready, and the next shake throws it. Doing it
+   * automatically made the app finish a roll the player had not finished
+   * asking for (`docs/dice-notation.md`, "Evaluation").
+   *
+   * @param diceCount how many dice are down and read so far.
+   * @param waiting how many throws the chain has earned and not yet had. One,
+   *   today, because a chain adds a die at a time.
+   */
+  data class ShakeAgain(
+    val diceCount: Int,
+    val waiting: Int = 1,
   ) : RollState
 
   /**

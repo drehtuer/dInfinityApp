@@ -190,6 +190,15 @@ class RollPresenter(
    *   than starting a new one (`docs/physics-and-rendering.md`, "Shake input").
    */
   fun roll(shake: List<ShakeSample> = emptyList()): Boolean {
+    // A chain that is waiting is continued rather than restarted: the shake in
+    // the player's hand is for the die the explosion earned, and throwing a
+    // fresh formula instead would drop the dice already down.
+    machine.throwEarned(shake)?.let { earned ->
+      publish()
+      throwIt(earned)
+      return true
+    }
+
     // A roll that has landed is a roll that is over. Throwing again is one act
     // — one press, one shake — not "put the total away" followed by "now
     // throw", which is what a shake could never have expressed anyway.
@@ -243,10 +252,11 @@ class RollPresenter(
               // the toggle for exactly that reason (`docs/statistics.md`).
               developer.landed(landed.thrown.thrown, outcome, landed.thrown.result.rolledAtEpochMs)
             }
-            // Straight back round: the next die is thrown the moment the last
-            // one has stopped, which is what a player does with an exploding
-            // six.
-            is Landed.OneMore -> throwIt(landed.spec)
+            // And there it stops until somebody shakes again. An exploding
+            // six earns another throw; it does not take one. The die that was
+            // earned sits ready and the dice that are down stay down
+            // (`docs/dice-notation.md`, "Evaluation").
+            is Landed.OneMore -> Unit
             // Nobody is waiting for this throw any more — the formula was typed
             // over while it was in the air. Nothing landed as far as the screen
             // is concerned, and nothing follows it.

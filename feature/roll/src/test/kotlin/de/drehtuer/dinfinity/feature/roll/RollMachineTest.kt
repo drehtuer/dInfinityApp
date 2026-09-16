@@ -19,6 +19,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -192,8 +193,41 @@ class RollMachineTest {
     assertEquals(first.table, next.table)
     assertEquals(first.geometry, next.geometry)
     assertEquals("an added die was not given a stream of its own", Seeds.derived(first.seed, 1), next.seed)
-    assertTrue("nobody shakes the phone at a die the app threw", next.shake.isEmpty())
-    assertTrue("the screen stopped rolling while it was still rolling", machine.state is RollState.Rolling)
+    // The earned throw carries no shake of its own yet: it is waiting for the
+    // hand that will throw it, and that hand has not moved.
+    assertTrue("a throw nobody has made yet was already driven by something", next.shake.isEmpty())
+    assertTrue("the screen did not ask for the shake it is waiting on", machine.state is RollState.ShakeAgain)
+  }
+
+  @Test
+  fun `the die an explosion earns is thrown by the hand that asks for it`() {
+    val machine = machine(seed = 77L)
+    machine.type("1d6!")
+    machine.throwDice()
+    machine.settled(settledAt(mapOf(0 to 5)))
+    val hand = listOf(ShakeSample(stepIndex = 0, accelerationMmPerSecond2 = Vector3(1.0, 2.0, 3.0), gravity = DOWN))
+
+    val thrown = requireNotNull(machine.throwEarned(hand))
+
+    assertEquals("the earned die was thrown by somebody else's shake", hand, thrown.shake)
+    assertTrue("the screen is not rolling once the earned die is in the air", machine.state is RollState.Rolling)
+    assertFalse("the same throw could be taken twice", machine.awaitingShake)
+    assertNull("and taking it again threw a second die", machine.throwEarned(hand))
+  }
+
+  @Test
+  fun `typing over a chain that is waiting drops the throw it earned`() {
+    // The formula is the roll. A chain waiting on a shake belongs to a formula
+    // nobody is asking for any more.
+    val machine = machine(seed = 77L)
+    machine.type("1d6!")
+    machine.throwDice()
+    machine.settled(settledAt(mapOf(0 to 5)))
+
+    machine.type("2d20")
+    machine.throwDice()
+
+    assertFalse("a throw earned by a formula nobody typed was still waiting", machine.awaitingShake)
   }
 
   @Test

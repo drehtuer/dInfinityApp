@@ -370,6 +370,16 @@ private fun Outcome(
         ResultSheet(result = state.result, divides = state.divides, onRound = onRound, onDoodle = onDoodle)
       }
 
+    // An exploding die earns a throw rather than taking one, so the screen
+    // asks for it. Without this the roll simply appears to stop
+    // (`docs/dice-notation.md`, "Evaluation").
+    is RollState.ShakeAgain ->
+      Message(
+        text = stringResource(R.string.roll_shake_again),
+        colour = MaterialTheme.colorScheme.onBackground,
+        tag = RollTestTags.SHAKE_AGAIN,
+      )
+
     is RollState.Rolling ->
       Message(
         text = stringResource(R.string.roll_rolling),
@@ -421,6 +431,7 @@ private fun TrayReading.spoken(): String =
     TrayReading.Empty -> stringResource(R.string.roll_tray_empty)
     is TrayReading.Ready -> pluralStringResource(R.plurals.roll_tray_ready, dice, dice)
     is TrayReading.Rolling -> pluralStringResource(R.plurals.roll_tray_rolling, dice, dice)
+    is TrayReading.ShakeAgain -> pluralStringResource(R.plurals.roll_tray_shake_again, dice, dice)
     is TrayReading.Settled -> stringResource(R.string.roll_tray_settled, total)
   }
 
@@ -491,6 +502,9 @@ object RollTestTags {
   const val THROW: String = "roll:throw"
   const val TOTAL: String = "roll:total"
   const val ROLLING: String = "roll:rolling"
+
+  /** The chain has earned a throw and is waiting for a hand (design option 1j). */
+  const val SHAKE_AGAIN: String = "roll:shake-again"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = FormulaTestTags.ERROR
 

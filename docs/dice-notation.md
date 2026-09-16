@@ -148,12 +148,22 @@ Modifiers take effect in this order whatever order they were written in, so
    first struck through. A reroll the tray has no room for does not happen and
    the die stands as it fell, marked in the breakdown — the alternative being a
    die dropped onto dice that have already been read.
-2. **`!`** — a die showing its highest face throws another of the same die.
-   The new die joins *that die's* chain rather than the group at large, so
+2. **`!`** — a die showing its highest face **earns** another throw of the same
+   die. The new die joins *that die's* chain rather than the group at large, so
    `2d6!kh1` keeps the better of two chains, which is what a player means by
    it. A chain stops after the explosion depth limit, or when the tray has no
    clear floor left for another die; either way the die that would have exploded
    again is marked in the breakdown.
+
+   **The app does not throw the earned die. The player shakes again.** An
+   exploding six earns a throw, and a throw is something a hand does — so the
+   dice that are down stay down, the screen says a shake is owed, and the next
+   shake throws the one die. A chain that threw itself finished a roll the
+   player had not finished asking for, and it made the one moment worth
+   watching happen without them. Everything else about it is unchanged: the
+   earned die is thrown into the same tray, among the dice already down, on a
+   seed derived from the throw that started the chain — so a chain still
+   replays to itself however long the player takes between shakes.
 3. **`min n`** — a die below `n` counts as `n`, per die. The face it actually
    landed on is still what the breakdown shows; only its contribution changes.
 4. **`kh` / `kl` / `dh` / `dl`** — whole chains are kept or dropped, ranked by
