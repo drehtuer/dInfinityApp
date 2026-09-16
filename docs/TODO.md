@@ -625,10 +625,27 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
       What holds, at 600,000 dice: **not one post-rest correction.** Nothing
       touched a die after it had stopped, which is the rule that matters most
       and the only one of these that is inviolable rather than a target
-- [ ] Fewer than 0.5 % of dice need any correction; **100 %** of those corrections land while the die is still moving
-- [ ] **Zero** post-rest corrections. The harness asserts this; one occurrence is a bug, not a statistic
-- [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
-- [ ] Settle time at 20 dice: median under 2 s, p99 under 4 s; the 12 s cap never reached in 10,000 rolls
+- [ ] Fewer than 0.5 % of dice need any correction — **measured 44.9 % at
+      twenty dice and 47.1 % at sixty**, over 800,000 dice, which is the number
+      the rest of this section is about. The second half of the claim does hold:
+      **100 % of those corrections landed while the die was still moving**,
+      because not one landed after it had stopped
+- [ ] **Zero post-rest corrections, and it is measured rather than asserted
+      now: none in 800,000 dice.** Ten thousand rolls at twenty and ten thousand
+      at sixty, on the Pixel 10a. One occurrence is a bug rather than a
+      statistic, and the harness fails on it — this is the run that says the gate
+      has never had to
+- [ ] Re-throws (the last resort) under 0.05 % of dice — **measured 2.9 % at
+      twenty and 6.1 % at sixty**, so it is sixty to a hundred and twenty times
+      the budget and it grows with the count. Whether each one *looks* like a
+      die being picked up and thrown again is the separate half, and needs eyes
+      (5.6)
+- [ ] **Two of these three are met.** At twenty dice over ten thousand rolls:
+      median settle **0.78 s** against 2 s, p99 **1.81 s** against 4 s — both
+      comfortable. The third is not: **three rolls in ten thousand ran out of
+      the twelve-second cap**, where the bar is never. At sixty it is
+      twenty-nine, and twenty of those are where the stacked dice come from,
+      which is what makes the cap a stacking problem rather than a patience one
 - [ ] **Measured, on the Pixel 10a: both obvious levers work, and both pay for
       it in the same coin.** Two experiments, 200 throws of 20 d20s each, base
       seeds 1 and 7, against the sixteen-seed shaken-spread check in
