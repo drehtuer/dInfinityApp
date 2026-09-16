@@ -382,16 +382,6 @@ the comparison. The device only rolls, times and writes two files
 misses today, which is the plan being behind the check rather than the check
 being wrong.
 
-- [ ] **Frame times, which a headless run cannot give.** The harness holds the
-      device to simulating a step in less time than the step covers (1/120 s);
-      Step 5.7's "p99 frame time under 16.6 ms" is about *drawing* and needs the
-      renderer on and a surface to draw to. The seam is `LiveRoll.advance` and
-      `FrameClock.droppedSteps`, which already counts the time a slow frame lost
-- [ ] Soak mode (run for minutes, report worst case) and 60 fps screen capture
-      for visual review. Neither is started, and each is small: a soak is the
-      same runner given a duration rather than a roll count, and the capture is
-      `screenrecord` around a rendered roll
-
 ### 5.2 Fairness and determinism
 
 **Done, on the Pixel 10a.** Every catalogue shape at 100,000 rolls: seven pass
@@ -533,6 +523,21 @@ The figures are reported in every PR description either way.
       question for a person, not a change to make quietly
 
 ## Open questions
+
+- [ ] **Who measures a drawn frame?** The harness now paces a roll the way the
+      screen does (`tools/harness.sh --frames`) and times `LiveRoll.advance`,
+      but it has no surface, so what it measures is the simulation half of a
+      frame; Step 5.7's "p99 under 16.6 ms" is about drawing. The harness
+      therefore scores that row as **not measured** rather than as a pass, and
+      the eye gets `--capture` instead (`docs/architecture.md`, decision 57).
+      The alternative is a second, rendered harness — an instrumented test in
+      `app/` or `render/filament` that opens a real surface, rolls twenty dice
+      and reports its own frame times — which would answer Step 5.7 with a
+      number rather than with a video. It is not small: it needs an activity, a
+      Filament engine and a device, and none of its arithmetic could be reused
+      without moving it into `:simulation:harness` first. Worth doing when 5.7
+      is reached, or worth leaving to the eye and the systrace — a decision for
+      a person
 
 - [ ] **Should the anomaly log survive a restart?** It is in memory today,
       bounded to fifty entries, and goes when the app does — because an entry
