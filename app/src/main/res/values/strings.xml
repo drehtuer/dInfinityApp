@@ -1,4 +1,79 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<!--
+  The application's own text: the launcher name, the menu's rows, and the two
+  things only the navigation graph says.
+
+  `tools:locale` names the language this file is written in, so Lint and every
+  translation tool know what they would be translating *from*
+  (`docs/architecture.md`, "Text a person reads").
+-->
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <string name="app_name">dInfinity</string>
+
+  <!--
+    One row of the menu per screen: its name, then one line saying what it is
+    for (`design/dInfinity.dc.html`, option 1q). A menu of twelve names is a
+    quiz — "Sessions" means nothing until it does — so every screen the menu
+    lists has both.
+  -->
+  <string name="screen_roll">Roll</string>
+  <string name="screen_roll_description">The tray. Shake it, or pick dice and press Roll.</string>
+  <string name="screen_graph">Outcome graph</string>
+  <string name="screen_graph_description">Exact odds before you roll, with the mean and σ.</string>
+  <string name="screen_saved">Saved rolls</string>
+  <string name="screen_saved_description">Groups per game and per character.</string>
+  <string name="screen_stats">Statistics</string>
+  <string name="screen_stats_description">Natural highs and lows, averages — per die and per set.</string>
+  <string name="screen_history">History</string>
+  <string name="screen_history_description">Every roll with its breakdown. No replays: a roll is a roll.</string>
+  <string name="screen_sessions">Sessions</string>
+  <string name="screen_sessions_description">Buckets for statistics, and where collections are imported.</string>
+  <string name="screen_savedstats">Saved-roll statistics</string>
+  <string name="screen_savedstats_description">What each saved roll has come to, against what it should.</string>
+  <string name="screen_sets">Dice sets</string>
+  <string name="screen_sets_description">What is installed, and how to install more.</string>
+  <string name="screen_tables">Table</string>
+  <string name="screen_tables_description">Felt, wood, glass or your own photo. Same tray.</string>
+  <string name="screen_designer">Face designer</string>
+  <string name="screen_designer_description">Draw die faces with a finger, then roll them.</string>
+  <string name="screen_settings">Settings</string>
+  <string name="screen_settings_description">Appearance, shake, rounding, power saving.</string>
+  <string name="screen_notation">Notation</string>
+  <string name="screen_notation_description">What you can type, with examples you can roll.</string>
+  <!--
+    Listed only while the developer toggle is on, which it is on no install
+    until somebody turns it on (`docs/physics-and-rendering.md`, "Debug
+    tooling"). It is still text a person reads, so it is still here.
+  -->
+  <string name="screen_developer">Developer</string>
+  <string name="screen_developer_description">Anomaly log, and the last roll thrown again.</string>
+
+  <!--
+    The four screens the menu does not list, which have a name but no line
+    under it: the menu itself, and the three reached from a row rather than
+    from the list.
+  -->
+  <string name="screen_editor">Saved roll</string>
+  <string name="screen_import">Import a collection</string>
+  <string name="screen_setdetail">Dice set</string>
+
+  <!-- The menu's four headings, in the order it prints them. -->
+  <string name="menu_group_play">Play</string>
+  <string name="menu_group_look_back">Look back</string>
+  <string name="menu_group_customise">Customise</string>
+  <string name="menu_group_app">App</string>
+
+  <!--
+    What a route with no screen behind it draws. A player never sees it in a
+    shipped build; a developer opening an unwired destination does, which is
+    the bug it exists to make loud.
+  -->
+  <string name="screen_not_built">Not built yet — see docs/TODO.md</string>
+
+  <!--
+    The name of the tray's look when there is no look at all: no pin, no
+    choice, and not even the bundled package installed (`docs/tables.md`,
+    "Selecting a table").
+  -->
+  <string name="table_look_fallback">Default</string>
 </resources>

@@ -132,7 +132,7 @@ class RollWiring(
     val fromPin = wanted?.let { catalog.set(it.setId)?.tables?.firstOrNull { table -> table.id == it.tableId } }
     return fromPin
       ?: catalog.set(DiceSet.BUILTIN_ID)?.tables?.firstOrNull()
-      ?: TableLook(id = "default", name = "Default")
+      ?: TableLook(id = "default", name = context.getString(R.string.table_look_fallback))
   }
 
   /**

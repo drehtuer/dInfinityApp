@@ -6,6 +6,7 @@ build/
 # package the convention plugins' task classes live in. That is source, not
 # output, and leaving it ignored silently kept it out of the repository.
 !build-logic/src/main/kotlin/de/drehtuer/dinfinity/build/
+!build-logic/src/test/kotlin/de/drehtuer/dinfinity/build/
 local.properties
 
 # Android

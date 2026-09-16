@@ -174,6 +174,11 @@ the tracking files are kept tidy — are in
   than assumed — the rules, the measurements and the two ratios that fall
   short are in
   [docs/architecture.md](docs/architecture.md#accessibility)
+- Language: English, and only English ships. Every word a screen says is a
+  string resource, so nothing in the app stands between here and a translation
+  somebody writes — the rule, where the line between text and a test tag is
+  drawn, and the check that enforces it are in
+  [docs/architecture.md](docs/architecture.md#text-a-person-reads)
 - 3D rendering and physics run on-device; the app works fully offline.
   Network access is only used when you explicitly install a dice set, a
   table or a saved-roll collection from a URL.
