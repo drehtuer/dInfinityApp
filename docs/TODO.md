@@ -463,7 +463,26 @@ a die fairer than the plastic one in their hand, is not worth a warning
 - [ ] **`100d4` does not reliably settle, and never did.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. `JoltBridgeTest` used to try eight seeds and pass; twenty-four seeds show **five running out of the twelve-second cap**, and the same twenty-four under the correlated spawn streams that preceded them showed two — a difference well inside noise at that sample size. What changed is not the physics but the sample: the eight were the easy ones. Nothing is ever touched after it has come to rest, on any seed, which is the rule that matters; the cap firing at all is a prevention problem (5.5), and the bound in the test is today's worst case written down rather than a target
 - [ ] **Decide what a tilted phone should mean.** Deferred, not answered. The table is horizontal now and the gyroscope no longer turns the world, which is what stopped the dice pouring into a wall — but "tilt the phone and the dice slide" was a real idea and this is not a verdict on it. The direction is still recorded with every sample, so whichever way it goes the data is there. The three answers, unchanged: gravity always straight down and only the hand moves the dice; anchor to `TYPE_GRAVITY` and accept that a phone held upright pours everything to the bottom wall; or keep a tilt and clamp it so a tray can lean without becoming a chute
 - [ ] **A shake along the phone's long axis still drives the dice into one end.** Seen as dice stuck at the bottom after a vertical shake. The table being horizontal fixes the *pouring* — the tray no longer leans — but the hand's own force still points that way, and a hundred dice pushed at one wall have nowhere else to be. Whether that is right (it is what a hand does) or wants shaping is a Step 5.6 question with a phone in it
-- [ ] Extreme input: sensor maxima, 30 s of shaking, rotation through all axes, shake-then-drop, phone vertical and upside down. **Upside down is done and was broken:** the roll screen pinned the display to the rotation it opened at, so `PhoneAxes` was told the phone was upright while it was being shaken the other way up and the dice pooled at the end away from the hand. The screen now holds its shape rather than its rotation (`docs/tables.md`); a quarter turn is still refused
+- [ ] **Done, on the Pixel 10a, bar the two that need a person holding the
+      phone.** `ExtremeInputTest` drives twenty dice with a sensor pinned at its
+      maximum (every axis at `Double.MAX_VALUE / 2`, which is a broken
+      accelerometer rather than a hand, and what `ShakeDriver`'s clamp exists
+      for), thirty seconds of shaking, a phone turned through all three axes
+      while the dice are in the air, and a shake that ends in free fall. Each
+      one still reads a face for every die, leaves every die on the table,
+      produces no position that is not a number, and gives the same answer
+      twice.
+
+      The thirty-second case also asserts the bound that makes it safe: a roll
+      is force-settled at twelve seconds, so the record keeps 1,440 moments and
+      refuses the rest rather than growing for as long as an arm does.
+
+      **Upside down was done earlier and was broken** — the roll screen pinned
+      the display to the rotation it opened at, so `PhoneAxes` was told the
+      phone was upright while it was shaken the other way up. The screen holds
+      its shape rather than its rotation now (`docs/tables.md`); a quarter turn
+      is still refused. What is left is *vertical* and *upside down* with a real
+      hand, which no test can hold
 - [ ] Interruptions mid-roll: call, backgrounding, rotation, low memory — the roll finishes or is discarded cleanly, never half-resolved
 
 - [ ] **The corner cases are asked on the phone now, and one of them fails.**
