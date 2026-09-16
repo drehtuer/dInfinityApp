@@ -187,6 +187,8 @@ private class PaintedStage(
     matrix: FloatArray,
   ) = Unit
 
+  override fun take(entity: Int) = Unit
+
   override fun aim(shot: CameraShot) = Unit
 
   override fun draw(): Boolean = true

@@ -29,6 +29,9 @@ class FilamentDiceRenderer(
   private val stage: Stage,
 ) : Renderer {
   private var dice: List<Int> = emptyList()
+
+  /** Which dice are in the scene right now, so one leaves it exactly once. */
+  private val shown = mutableSetOf<Int>()
   private var geometry: TableGeometry? = null
 
   /** Each die's printed numbers, built once and kept for as long as this renderer is. */
@@ -118,17 +121,31 @@ class FilamentDiceRenderer(
   override fun end() {
     stage.clear()
     dice = emptyList()
+    shown.clear()
     geometry = null
   }
 
   private fun place(frame: RenderFrame) {
-    frame.blended().forEach { body ->
+    val bodies = frame.blended()
+    bodies.forEach { body ->
       // Nought is Filament's word for "no entity", which is what a die with
       // nothing to draw was given.
       dice.getOrNull(body.index)?.takeIf { it != Stage.NOTHING }?.let { entity ->
         stage.place(entity, Transform.of(body.position, body.orientation))
+        shown += body.index
       }
     }
+
+    // A die the frame has stopped mentioning has been counted and lifted off
+    // the table. Leaving it where it was would draw it under whatever lands
+    // there next, so it comes out of the scene — once, rather than every frame
+    // for the rest of the roll.
+    val here = bodies.mapTo(mutableSetOf()) { it.index }
+    val left = shown - here
+    left.forEach { index ->
+      dice.getOrNull(index)?.takeIf { it != Stage.NOTHING }?.let(stage::take)
+    }
+    shown -= left
   }
 
   private fun addTray(

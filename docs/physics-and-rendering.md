@@ -322,13 +322,18 @@ is answered the gesture stays unspent — which is what it has been all along.
 
 ## What a shake's spread currently rests on
 
-Measured on the Pixel 10a and worth knowing before anything here is tuned: the
-reason a shaken throw ends up spread across the tray rather than packed into one
-end is **not** prevention. It is two accidents.
+Measured on the Pixel 10a and worth knowing, though it is now history rather
+than advice: while there was still a correction ladder, the reason a shaken
+throw ended up spread across the tray rather than packed into one end was
+**not** prevention. It was two accidents.
 
-The first is rung 2. A bias always carries a little upward, so it is what lifts
-a die out of a pile; take it away — by making it wait for real trouble rather
-than for fifty milliseconds of it — and the dice stay where the shake put them.
+The first was the bias. A bias always carried a little upward, so it was what
+lifted a die out of a pile; take it away and the dice stayed where the shake put
+them. It has been taken away — there is no bias any more — and the dice do now
+stay where the shake puts them. That is no longer treated as a failure: a
+cluster of dice that can all be read is what a sideways shake looks like, and a
+heap that cannot be read is counted, cleared and thrown again rather than
+spread by a hand nobody can see.
 The second is the solver's own error. At 1/120 s a die travelling a metre a
 second crosses half its own width between collision checks, so two dice are
 first seen already deep inside each other and are pushed apart hard. Resolve
@@ -784,99 +789,50 @@ throwing it again").
    free floor area (capacity rule in `docs/tables.md`). Spawn positions are
    spread and staggered in height so dice do not fall onto each other. The
    throw carries enough energy that a die landing on another slides off it
-   while it still has speed. Tuning these until stacking is *rare* is the
-   real fix; the steps below only catch what slips through.
+   while it still has speed.
 
-2. **Early detection, while the die is still moving.** A die is watched from
-   the moment its speed drops below a threshold but before it is at rest. If
-   in that window it is supported by another die, leaning on a wall, or
-   heading for a cocked orientation, a small seeded bias is added to the
-   motion it already has — of the order of the energy still in the die, so it
-   reads as the die finishing its tumble rather than as a kick. The bias is
-   derived from the roll seed, so the roll stays deterministic and
-   reproducible.
+2. **Counting, and clearing the table.** When the dice have stopped, every die
+   that came to rest showing a face is **read** — that reading is its answer
+   for the rest of the roll — and its body leaves the world. The floor it was
+   standing on is free from that moment, for the dice that still have to land.
 
-3. **Last resort: re-throw that die.** If a die does reach full rest cocked or
-   stacked, it is **not** poked, tilted, or snapped to a face. It is picked up
-   and thrown again — one die, from a low height, visibly, while the others
-   stay where they are. That is exactly what a player does with a cocked die,
-   it is fair (the re-throw is uniform over the faces), and it is honest:
-   the player sees a die being re-rolled instead of a die being moved. Each
-   re-throw is recorded in the outcome (`rethrows` counter). Re-throws come out
-   of the same twelve-second budget as the rest of the roll — the cap is a cap
-   on the throw, not on each attempt at it — and one die may be thrown again at
-   most three times. A die that has come up cocked three times running is not
-   unlucky, it is a physics bug, and letting it loop would spend the whole
-   budget on one die while the rest of the table waits.
+   A die standing on another one is not counted even when its own face is
+   perfectly readable: it is resting on something that is about to be taken
+   away, and a reading taken from a die that is about to fall is not a reading
+   of anything.
 
-4. **Never.** No impulse on a resting die. No tray tilt to slide a settled
-   pile. No snapping a die to its nearest face — that fabricates a result
-   nobody rolled. And no die dropped onto a settled pile to make room for an
-   explosion: a chain that has nowhere to land stops (see below).
+3. **Throwing the rest again.** Whatever could not be read is picked up and
+   thrown again, visibly, onto a table with more room on it than it had. Then
+   the dice are counted again, and again, until there is nothing left to throw.
+   Each pass reads most of what is on the table, so what remains shrinks fast.
 
-The 12-second hard cap above is a safety valve for a simulation that has gone
-wrong, not part of this ladder. When it fires, every die still moving is
-force-settled. A die that is still cocked at that point has had its three
-re-throws and there is no budget left for a fourth: it reports the face that
-came nearest and is counted in `forcedSettles`, which makes the outcome
-`clean = false`. That is the one place in the app where a number is read off a
-die that was not properly resting, it is recorded rather than hidden, and Step 5
-asserts it never happens.
+**There is no other rung, and that is the point.** Nothing biases a die, nudges
+one, pops a pair apart or places one anywhere. The share of dice needing a
+correction is not a number to tune any more: there is no code in the loop that
+could correct one, so it is zero by construction, and "it does not look like it
+cheats" stops being a separate claim from "it does not cheat".
 
-The whole loop runs inside the simulation, so power-saving mode behaves
-identically — including the re-throws, which simply do not get drawn.
+**Taking a counted die off the table is not moving it.** Its face has been read
+and nothing about it can change again; it is out of play, which is the one
+thing the rule above allows. What it is *not* allowed to be is still drawn
+where it was standing — a counted die's floor is free, so a die thrown
+afterwards may land exactly there, and a tray that kept drawing both would show
+two dice in one place. Measured on the Pixel 10a before the renderer was
+taught to take them out: 33 pairs of dice sharing a spot across 8 seeds of 20,
+the worst overlapping by 10.9 mm of a 16 mm die. So a counted die leaves the
+tray as it is read, and what the player follows is the running total rather
+than the dice (`docs/TODO.md`, Step 5.5).
 
-Targets, verified on a device (`docs/TODO.md`, Step 5): zero dice at rest
-supported by another die, fewer than 0.5 % of dice needing any correction at
-all, and **zero** corrections applied after rest.
-
-Every one of those is a number the outcome carries rather than a claim somebody
-checks by eye. A `SimulationOutcome` reports its corrections, its re-throws,
-its forced settles, the corrections that reached a die at rest — which is
-always zero — the dice that ended up **standing on another die**, and the
-**deepest one die ever got inside another**. The last two are there for this
-paragraph: the first is the stacking failure counted rather than described, and
-the second can only be read from the solver's own contact manifolds at the
-instant they are reported, so nothing upstream could work it out afterwards.
-The stacked count is taken where the dice *ended* and not while they were
-moving: a die on top of another mid-throw is an ordinary moment of a roll.
-
-`tools/harness.sh` is what asks the question at scale — rolls headless on a
-phone or the emulator, a JSON document of what they did, and a pass/fail table
-against every target above (`docs/build-setup.md`, "The physics harness"). It
-fails on the two that are not met yet, which is the plan being behind the check
-rather than the check being wrong.
-
-A run is asked for either as a number of throws or as a **length of time** —
-soak mode is the same runner given a duration, and the throw under way when the
-time runs out is finished rather than cut short, because a settle time that was
-interrupted is the longest one in the sample and is a fact about the stopwatch
-rather than about the dice.
-
-### What the harness may say about frames
-
-A harness run has no surface, so what it can honestly report about a frame is
-only part of one. Two halves, and they are measured in two different places:
-
-| The half | What measures it | Where the bar is |
-| --- | --- | --- |
-| simulating the steps a frame owes | `LiveRoll.advance`, timed by the harness in its paced mode, and `FrameClock.droppedSteps` for the steps a late frame never paid for | the step itself, 1/120 s, plus zero dropped steps |
-| drawing them | a renderer with a surface, which the harness does not have | Step 5.7's p99 under 16.6 ms at twenty dice |
-
-A paced run steps each roll exactly the way the screen does — one `advance` per
-60 Hz frame, at a frame's cadence — and times each call. The roll is the same
-roll either way: the clock decides *when* steps are taken and never how big
-they are or in what order, so a paced run and a flat-out one come to the same
-faces from the same seed.
-
-What such a run may **not** do is report that as a frame rate. Its frames were
-handed to the renderer that draws nothing, so the scorecard prints the figure
-it measured, marks it "simulation only", and scores Step 5.7's row as **not
-measured** — neither pass nor fail. A headless run has no frames at all and the
-figure is *absent* from the document rather than zero, because zero would score
-as the fastest run ever made. The frame rate on screen is answered by watching
-one: `tools/harness.sh --capture` records the app rolling, at whatever rate the
-panel runs (`docs/build-setup.md`).
+**What it costs is time, and once in a while all of it.** Measured on the
+Pixel 10a over sixteen seeds of twenty dice under a hard sideways shake:
+fifteen resolve in 243 to 709 steps — two to six seconds — with nought to five
+re-throws between twenty dice, none left standing on another, and none read off
+a face it had not landed on. The sixteenth runs the twelve-second cap out
+with **no re-throws at all**, which says where it goes wrong: the dice never
+came to rest, so the roll never reached the point where anything is counted.
+That is a settling problem rather than a counting one, the same family as
+`100d4`, and it is bounded in the device suite at today's worst case so that
+the next change to the shake or the settle rule improves it or is noticed.
 
 ## The dice an explosion or a reroll adds
 
@@ -906,8 +862,8 @@ formula with explosions in it replays like any other.
   a corner, and a corner is the worst place to tumble. It is a fixed grid of
   points rather than a search, so the same tray always gives the same answer and
   a roll replays to itself.
-- **And it is dropped, not thrown.** The same low, gentle, spinning drop rung 3
-  gives a re-thrown die, for the same reason: a die hurled across the tray is a
+- **And it is dropped, not thrown.** The same low, gentle, spinning drop a
+  die thrown again is given, for the same reason: a die hurled across the tray is a
   die that arrives somewhere nobody made room for.
 - **The tray is drawn with them still in it.** The added throw carries the
   settled dice as `ThrowSpec.among`; the renderer puts one renderable per die
@@ -937,10 +893,10 @@ reports as it goes.
 `Impact` is one moment where a die hit something: which step, which die, what it
 struck, how hard, and how big the die was at the scale the capacity rule threw
 it. It is a *reading* of the roll and never an input to it. Nothing about an
-impact reaches the solver, the correction ladder does not consult it, and the
+impact reaches the solver, nothing that decides a roll consults it, and the
 same seed comes to the same faces with something listening and with nothing —
 which `ImpactRecorderTest` asserts rather than assumes, on a roll driven through
-the whole ladder.
+counting, clearing and being thrown again.
 
 It is decided in Kotlin over the `PhysicsWorld` seam, like everything else about
 a roll that only looks like physics (`docs/architecture.md`, decision 40).
@@ -1370,8 +1326,8 @@ A panel over the tray, drawn while the roll screen is open. It shows, per
 frame:
 
 - the step the roll is on, and how many dice have come to rest;
-- how many dice have been nudged (rung 2), how many thrown again (rung 3), and
-  how many contacts have been recorded;
+- how many dice have been counted and taken off the table, how many have been
+  thrown again, and how many contacts have been recorded;
 - a **plan of the tray** with one footprint per die — its collision size at the
   scale the capacity rule threw it — filled in proportion to that die's **rest
   timer**, coloured differently for a die standing on another, and dotted where

@@ -181,6 +181,39 @@ class FilamentDiceRendererTest {
   }
 
   @Test
+  fun `a die the frame stops mentioning is taken out of the scene`() {
+    // A counted die is off the table and its floor is free, so the next throw
+    // may land exactly where it was standing. Leaving it drawn there would put
+    // two dice in one place (`docs/TODO.md`, Step 5.5).
+    renderer.begin(spec(), geometry, look)
+    renderer.show(RenderFrame.still(List(3) { at(it, Vector3.Zero) }))
+    val onTheTable = stage.placed.keys.toSet()
+
+    // The middle die has been counted: the frame no longer carries it.
+    renderer.show(RenderFrame.still(listOf(at(0, Vector3.Zero), at(2, Vector3.Zero))))
+
+    assertEquals("one die was counted, so one die leaves the scene", 1, stage.taken.size)
+    assertEquals(
+      "the die taken out of the scene was not the one the frame dropped",
+      onTheTable - stage.placed.keys,
+      stage.taken.toSet(),
+    )
+  }
+
+  @Test
+  fun `a die already taken out is not taken out again`() {
+    renderer.begin(spec(), geometry, look)
+    renderer.show(RenderFrame.still(List(3) { at(it, Vector3.Zero) }))
+    val fewer = RenderFrame.still(listOf(at(0, Vector3.Zero), at(2, Vector3.Zero)))
+
+    renderer.show(fewer)
+    renderer.show(fewer)
+    renderer.show(fewer)
+
+    assertEquals("the same die left the scene more than once", 1, stage.taken.size)
+  }
+
+  @Test
   fun `a die the stage would not take is not moved either`() {
     // `add` hands back "no entity" for a mesh with nothing in it, and nought
     // is not an entity anything may be done to.

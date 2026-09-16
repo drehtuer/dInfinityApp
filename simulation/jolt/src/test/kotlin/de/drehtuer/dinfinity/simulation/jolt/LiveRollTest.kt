@@ -275,6 +275,43 @@ class LiveRollTest {
   }
 
   @Test
+  fun `a die that has been counted is not in the frame any more`() {
+    // It is off the table, and the floor it stood on is free for the dice
+    // still to be thrown — so a later die may land exactly there. A frame that
+    // still carried it would draw two dice in one place, which is a worse
+    // thing to watch than the stacking this replaced (`docs/TODO.md`, 5.5).
+    val world = FakeWorld(DICE, awkward())
+    val live = liveOver(world)
+    val atTheStart = live.frame().current.size
+
+    live.use { it.runToEnd() }
+
+    assertEquals("every die was in the first frame", DICE, atTheStart)
+    assertTrue("no die was ever counted, so this proves nothing", world.removed.isNotEmpty())
+    assertEquals(
+      "a die that had been lifted off the table was still being drawn on it",
+      DICE - world.removed.size,
+      live.frame().current.size,
+    )
+  }
+
+  @Test
+  fun `a frame has the same dice at both ends even as they are counted`() {
+    // The two halves are filtered by one list on purpose: a frame spans a step,
+    // and one that lost a die from only one end would be asking the renderer
+    // to blend between different dice.
+    val world = FakeWorld(DICE, awkward())
+
+    liveOver(world).use { live ->
+      while (live.running) {
+        live.advance(SettleRule.TIMESTEP_SECONDS)
+        val frame = live.frame()
+        assertEquals("a frame lost a die from one end only", frame.previous.size, frame.current.size)
+      }
+    }
+  }
+
+  @Test
   fun `a roll abandoned in the air takes its samples with it`() {
     // Nothing landed, so there is nothing to record — and the record of a throw
     // that was never made has nowhere to go. It dies with the roll rather than

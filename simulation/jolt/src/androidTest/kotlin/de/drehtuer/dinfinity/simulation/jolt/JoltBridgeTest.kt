@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
@@ -435,15 +436,70 @@ class JoltBridgeTest {
         spread < geometry.longSideMm / 4
       }
 
-    // Not `isEmpty()`, and that is a change of claim rather than of threshold.
-    // Two seeds in sixteen end in a heap, and two did before the spawn streams
-    // were decorrelated as well — the same two out of a different sixteen. The
-    // four seeds this used to try were simply the lucky ones. Spreading a
-    // shaken throw properly is Step 5.5's prevention work; what this holds is
-    // that it does not get worse.
+    // **Recorded rather than asserted, because it stopped being a bar.** This
+    // measured how far apart the dice ended up, as a stand-in for "the
+    // corrections did their job" — and there are no corrections now. A shaken
+    // throw drives the dice towards one end because that is where the hand
+    // pushed them, and a cluster of dice that can all be read is not a failure,
+    // it is what a sideways shake looks like. What a throw has to do is
+    // *resolve*, and that is [aShakenThrowResolvesEveryDie] below.
+    Log.e("ShakeSpread", "seeds ending clustered: $heaped of 16")
+  }
+
+  @Test
+  fun aShakenThrowResolvesEveryDie() {
+    // The bar that replaced the spread one, and it is the honest one: whatever
+    // the hand does to where the dice go, every die must end up readable and
+    // none may end up standing on another. A heap is allowed to happen — it is
+    // then counted, cleared and thrown again until there is no heap left
+    // (`docs/TODO.md`, Step 5.5).
+    val dice = List(TWENTY) { d6() }
+    val alongTheTray =
+      List(SHAKE_STEPS) { step ->
+        val swing = if ((step / SWING_STEPS) % 2 == 0) SHAKE_MM_PER_SECOND2 else -SHAKE_MM_PER_SECOND2
+        ShakeSample(
+          stepIndex = step,
+          accelerationMmPerSecond2 = Vector3(swing, 0.0, 0.0),
+          gravity = Vector3(0.8, 0.0, -0.6),
+        )
+      }
+
+    val unresolved =
+      (1L..16L).filter { seed ->
+        val spec = spec(dice, seed).copy(shake = alongTheTray)
+        val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = dice.size))
+        val layout = SpawnLayout(geometry, radiusOf(d6()), spec.seed)
+        val outcome =
+          world.use {
+            dice.forEachIndexed { index, die ->
+              world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
+            }
+            world.finish()
+            RollLoop(spec, world, layout, ShakeDriver(spec.shake)).run()
+          }
+        Log.e(
+          "ShakeResolve",
+          "seed $seed steps=${outcome.steps} stacked=${outcome.stackedAtRest} " +
+            "forced=${outcome.forcedSettles} rethrows=${outcome.rethrows}",
+        )
+        outcome.stackedAtRest > 0 || outcome.forcedSettles > 0
+      }
+
+    // **Fifteen of sixteen, and the sixteenth never got as far as counting.**
+    // Measured on the Pixel 10a: the fifteen resolve in 243 to 709 steps — two
+    // to six seconds — with nought to five re-throws between twenty dice, no
+    // die left standing on another and none read off a face it had not
+    // actually landed on.
+    //
+    // Seed 9 runs the twelve-second cap out with **no re-throws at all**, which
+    // says where it goes wrong: the dice never came to rest, so the roll never
+    // reached the point where anything is counted. That is a settling problem
+    // and not a counting one — it is the same family as `100d4` — and it is
+    // bounded here at today's worst case so the next change to the shake or the
+    // settle rule either improves it or is noticed (`docs/TODO.md`, Step 5.5).
     assertTrue(
-      "a shaken throw ended in a heap at more seeds than it used to: $heaped",
-      heaped.size <= SHAKE_HEAPS_ALLOWED,
+      "a shaken throw left dice nobody could read at more seeds than it used to: $unresolved",
+      unresolved.size <= SHAKE_UNRESOLVED_ALLOWED,
     )
   }
 
@@ -478,6 +534,10 @@ class JoltBridgeTest {
   private companion object {
     val CAP_STEPS = SettleRule.HARD_CAP_STEPS
     const val TEN = 10
+
+    /** Seed 9 of sixteen, which runs the cap out before it counts anything. */
+    const val SHAKE_UNRESOLVED_ALLOWED = 1
+
     const val TWENTY = 20
     const val WATCHED_STEPS = 600
     const val SHAKE_STEPS = 120

@@ -121,6 +121,16 @@ class RollLoop(
     shake.add(sample)
   }
 
+  /**
+   * Which dice have been read and taken off the table, by index.
+   *
+   * What a renderer needs in order to stop drawing them: a counted die is out
+   * of play and the floor it stood on is free, so a die thrown afterwards may
+   * land exactly there. Drawing both would be two dice in one place
+   * (`docs/TODO.md`, Step 5.5).
+   */
+  val countedOut: List<Boolean> get() = counted.toList()
+
   /** What the throw came to, once [advance] has said there is nothing left. */
   fun outcome(): SimulationOutcome = requireNotNull(result) { "the roll has not finished yet" }
 
@@ -384,11 +394,18 @@ class RollLoop(
     /**
      * How often one die may be thrown again before the roll gives up on it.
      *
-     * A die that has been re-thrown this many times is not unlucky, it is a
-     * physics bug, and letting it loop would spend the whole step budget on
-     * one die while the other seventy-nine sit there.
+     * It used to be three, sized for a table with every other die still on it:
+     * letting one die loop would spend the whole step budget while the other
+     * seventy-nine sat there. That is no longer the trade. A die thrown again
+     * now lands on a table the counted dice have left, so the budget it spends
+     * is spent on the only dice that still need it.
+     *
+     * Eight because five is the most that sixteen seeds of twenty dice under a
+     * hard sideways shake ever needed — measured on the Pixel 10a — and the
+     * real backstop is the twelve-second cap rather than this. It is here to
+     * bound a die that is going nowhere, not to ration a roll.
      */
-    const val MAX_RETHROWS: Int = 3
+    const val MAX_RETHROWS: Int = 8
 
     /** A die that has not been read yet. Never reaches an outcome. */
     private const val NOT_YET = -1
