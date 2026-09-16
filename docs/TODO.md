@@ -610,7 +610,20 @@ device, not the other way round.
       the right length when they arrive one after another, and whether the tray
       is comprehensible with the screen curtain on. A person with the phone and
       TalkBack switched on, once
-- [ ] Localisation scaffolding (strings extracted) even if only English ships
+- [ ] Localisation: **the failure-reason pipeline.** Every word a screen says
+      is now a string resource and `verifyTextIsAResource` keeps it that way
+      (`docs/architecture.md`, "Text a person reads"). What is left is one
+      thing: the sentences that say why something was refused. They are
+      assembled across module boundaries — `dicesets/format`'s and
+      `dicesets/install`'s `ValidationMessage`, `core/collection`'s reader, and
+      the `app/` helpers that read a file or fetch a URL — and half of every
+      such sentence is written in a plain-Kotlin module that may not depend on
+      Android. Translating it means giving each refusal a typed reason the
+      screen phrases, which is a design change rather than a string move; the
+      same is true of `core/notation`'s `NotationReference`, which is the
+      notation screen's whole content and sits beside the parser on purpose.
+      Both are exempted by file name, with the reason, in their own build
+      scripts. Nothing is wrong today: v1 ships English
 - [ ] Play Store metadata, screenshots taken from the real app, privacy statement (no analytics, nothing leaves the phone)
 - [ ] Tag `v1.0.0`
 
@@ -660,6 +673,27 @@ The figures are reported in every PR description either way.
       question for a person, not a change to make quietly
 
 ## Open questions
+
+- [ ] **Does a refusal keep its words, or become a reason?** The sentences a
+      validator and a downloader write end up on screen, and they are written
+      in modules that have no resources — which is deliberate, because nothing
+      that reads a stranger's file may depend on Android
+      (`docs/architecture.md`, "Text a person reads"). Two ways out. Give every
+      `ValidationMessage` a typed reason with its arguments, and let the screen
+      phrase it: correct, translatable, and a change to every producer and
+      every test that asserts on a message's words. Or leave the sentences
+      where they are and accept that a refusal speaks English in a translated
+      app, which for a rare screen a player hopes never to see is not obviously
+      wrong. Worth deciding before a second language exists, not after
+- [ ] **Is percent typography text?** `"0 %"`, `"< 0.1 %"` and `"%.1f %%"` are
+      format patterns in `feature/graph` and `feature/stats`, and
+      `verifyTextIsAResource` leaves them alone because they contain no words —
+      `String.format` already follows the device's locale for the decimal
+      point. But the space before the `%` is a typographic convention that
+      differs by language, as is the `"—"` that stands for a value there is
+      none of. Moving them into resources means `percent()` taking a
+      `Resources`, which costs its JVM tests a context. Cheap either way, and
+      only worth paying once a second language exists
 
 - [ ] **A filled button's label is 3.76:1 on its own accent, and wants 4.5:1.**
       `onPrimary` is the ground colour by design, so the label on **Roll**,

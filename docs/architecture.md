@@ -1198,6 +1198,98 @@ one after another, and whether the tray is comprehensible with the screen
 curtain on. That is the one line left in `docs/TODO.md`, Step 6, and it is left
 there honestly rather than ticked.
 
+## Text a person reads
+
+Every word the app says is a **string resource**, in the `res/values/strings.xml`
+of the module that says it. v1 ships English and only English, and that is a
+decision about what is *in the APK* rather than about what the app could speak:
+nothing in the code stands between here and a `values-de/` that somebody writes.
+A caption typed into Kotlin is exactly such a thing, so there is a check that
+stops the next one.
+
+### Where the line is drawn
+
+Not every string is text. The rule is **words a person reads**, and the three
+questions that settle it are: does it reach the screen or TalkBack, does it have
+words in it, and are those words the app's own?
+
+| A resource | Stays in the code |
+| --- | --- |
+| a caption, a heading, a button's label | a test tag — `"saved:new"` is a handle, and no one reads it |
+| a `contentDescription` or `stateDescription` — TalkBack reads it out loud | a `require`/`check`/`error` message, which reaches a crash report and never a screen |
+| a menu row's name and the line under it | a TOML or JSON key, a file name, an extension, a MIME type, a URL |
+| a sentence saying why something was refused, where the app wrote that sentence | a navigation route or a query argument: `"savedstats"` is an address |
+| a count followed by a noun, as `<plurals>` — never as a string with a number in it | a formula, a die id, `"d20"`: dice notation is the same in every language |
+| | a glyph with no words in it — `"←"`, `"…"`, `"★"`, `"●"`, an emoji somebody picked as an icon. Where a mark carries meaning it is given a spoken label, and *that* is a resource |
+| | the shape a number is printed in — `"%.1f"`, `"%.2f"`, `"0 %"`, the `"—"` that stands for no value. `String.format` already follows the device's locale for the decimal point |
+
+A string that borrows its words rather than saying them is not text either:
+`"$groupName ▾"` is a marker after a name the player typed.
+
+### What holds it
+
+Android Lint has the rule already — `HardcodedText` — and it cannot help here.
+It reads layout XML, and this app has no layouts: every screen is Compose, so
+`Text("Roll")` is an ordinary function call no resource-aware check ever sees.
+It is switched on all the same, by name in both convention plugins, for the
+XML there is.
+
+The check that covers Kotlin is **`verifyTextIsAResource`**, registered by
+`dinfinity.quality` and so applied to every module, wired into `check`. It
+scans each module's `src/main/kotlin` for a string literal handed to `Text(`,
+`text =`, `contentDescription =`, `stateDescription =`, `placeholder =`,
+`label =`, `supportingText =` or `title =`, and fails the build when that
+literal has words of its own in it. Its scan is `TextIsAResource` in
+`build-logic`, and it has unit tests of its own — a check nobody tested is a
+check that passes everything.
+
+```mermaid
+flowchart LR
+  subgraph resources["Modules that can hold resources"]
+    app["app/"]
+    ui["ui/common"]
+    feature["feature/*"]
+  end
+  subgraph plain["Plain Kotlin: no res/, by design"]
+    notation["core/notation<br/>NotationReference"]
+    install["dicesets/install<br/>ValidationMessage"]
+  end
+  strings[("res/values/strings.xml<br/>tools:locale=en")]
+  app --> strings
+  ui --> strings
+  feature --> strings
+  notation -. "English in code,<br/>exempted by name" .-> screen
+  install -. "English in code,<br/>exempted by name" .-> screen
+  strings --> screen["What the player reads"]
+```
+
+The two dotted arrows are the gap, and it is named rather than hidden. Both
+modules are plain Kotlin on purpose — the notation reference sits beside the
+parser so one can be tested against the other, and a validator that reads a
+stranger's file may not depend on Android — so neither can hold a resource, and
+both write English that ends up on a screen. Their files are listed in their own
+build scripts with the reason beside them, the same way the coverage exclusions
+are, so the gap is a line in a diff. Closing it means giving each message a
+typed reason the screen phrases, which is a design change rather than a string
+move; it is recorded in `docs/TODO.md` under "Open questions".
+
+The same is true of the sentences `app/`'s download and file-reading helpers
+write — `PackageFileReading`, `CollectionFileReading`, `PackageDownload`,
+`CollectionDownload`, `CollectionInRepository`, `TablePhotoLibrary` — and of the
+two presenters that say a build cannot reach the network. They are halves of the
+same pipeline: the other half of every one of those sentences comes from
+`dicesets/install` or `core/collection`, and half a translated message reads
+worse than none.
+
+### The default locale
+
+`values/` is English and says so: every `strings.xml` carries
+`tools:locale="en"` on its `<resources>`, which is what tells Lint and any
+translation tool what they would be translating *from*. The application module
+sets `localeFilters += "en"`, so the seventy-odd languages AndroidX and Material
+ship translations for do not travel in an APK that speaks one. Adding a language
+is the same line as adding the folder.
+
 ## Data flow of a roll
 
 ```mermaid
@@ -1388,3 +1480,4 @@ the archives an install is working through, and those came from a stranger.
 | 58 | A die's artwork is addressed by a key of package and path, decoded outside the renderer, and cached on the Filament engine | Three separate things forced the shape. A `texture` is relative to *its own* set's folder, so the path alone names nothing — two packages may both ship `textures/d20.png` — and the renderer therefore needs the set id, which is why `DieAtRest` now carries one and why it is not defaulted: a die drawn against the wrong package wears somebody else's picture, and that is not a thing to get by forgetting an argument. `render/filament` may not read a disk, so the key crosses `(String) -> Texture?` and `:app` joins it to `dicesets/install` — the same seam, and the same reason, as decisions 40 and 47. And a `Texture` is a native handle, so *where it is cached* is the whole of whether it leaks: a decoded atlas belongs to a package, which outlives every surface and every visit, so it is held beside the material compiled on the device (decision 50) and given back with it. The key's separator is `::` rather than `/` so that a path arriving with no package in front of it — which is what a table look's floor texture is today — is refused instead of being read as a package called `textures` |
 | 59 | Every die is printed, and its artwork is composited over the printing by alpha | `docs/dice-sets.md` has always promised that an atlas may leave a cell transparent and the label shows through, and the old material could not keep it: `baseColor *= atlas` over a transparent pixel is black, not the die, and the printed field was suppressed for any die with a `texture` at all. Deciding it per *cell* instead would mean the renderer knowing which cells came out empty, which is a fact about pixels that live on the far side of `Stage` — so it is decided per *pixel*, in the material, where the alpha already is. The cost is a distance field built for dice that may not need one, which is cached per die and is eighty kilobytes; what it buys is that a die with no artwork and a die whose artwork covers every face are the same code path with different alpha, rather than two. Where the artwork is opaque the result is the old multiply exactly, which is what keeps a table's floor tinted by its floor colour |
 | 60 | The table picker's thumbnails are drawn by the roll screen's renderer, on the roll screen's thread and engine; everything that decides what one is a picture of is plain Kotlin | It is the first thing in the app to want the renderer somewhere that is not the tray, and there were three ways to get it and only one that keeps the promises already made. A private engine on the main thread is simply wrong — Filament takes calls only from the thread that made the engine (decision 49). A second engine on a second thread works and pays, again, the cost decision 50 exists to avoid: the dice material is compiled on the device for the driver that is actually there (decision 46) and takes long enough to watch, so a second one is that compile twice over and two graphics contexts held for one app. `RollThread` already outlives every visit to every screen and already has one engine on it, and a handler serialises what reaches it, so the picker posts. What a thumbnail owns is a swap chain and a scene, and both are given back before the post returns. The other half is decision 40 and 47 applied again: how big a picture is, what tray it is a tray of, where the camera stands, which face of the die is up, how high that leaves the die sitting, which looks are kept and which are dropped are all arithmetic and judgement, and all of them fail as *a slightly odd picture* rather than as an error — so all of them are `ThumbnailPlan` and `ThumbnailCache`, with JVM tests, and only the draw call and the buffer of pixels are behind `Stage`. The seam back out is the same one `TablePhotos` uses: `feature/tables` asks for a picture of a look and cannot name an engine, `render/filament` draws a frame and cannot name a bitmap, and `:app` joins them. The fallback is the screen's existing swatch, kept for exactly that — an engine that will not open, a driver that will not read a frame back, and power-saving mode, which promises that no engine is created *at all* |
+| 61 | Every word a screen says is a string resource, and a check of the project's own — not Android Lint's — is what keeps it that way | Lint has the rule and cannot apply it: `HardcodedText` reads layout XML, and there is no layout in this app to read. Left at that, "nothing prevents a translation" would be a claim maintained by whoever last remembered it, which is the kind of rule that decays quietly — a caption typed into a `Text(` is invisible in review and invisible in CI. So the rule is enforced by `verifyTextIsAResource`, which reads what a composable is *handed*. It is a heuristic over source text rather than a type-resolved analysis, and that shapes what it asks: only the handful of call sites that put words on a screen, and only literals with words of their own in them, so that a test tag, a route, a `require` message and `"%.1f"` are all left alone. The gaps are the two plain-Kotlin modules that write English on purpose — the notation reference beside its parser, and the validator that may not depend on Android — and they are exempted by file name in their own build scripts rather than by a directory nothing looks in, so the hole stays visible and small |

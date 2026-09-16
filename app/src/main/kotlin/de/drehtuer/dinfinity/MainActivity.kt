@@ -10,6 +10,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -193,7 +194,7 @@ class MainActivity : ComponentActivity() {
   ): MenuHeader {
     val sessions by app.sessions.sessions.collectAsStateWithLifecycle(emptyList())
     return MenuHeader.of(
-      appName = Destination.Menu.title,
+      appName = stringResource(Destination.Menu.title),
       activeSession = sessions.firstOrNull { it.id == settings.activeSessionId }?.name,
       sessions = sessions.size,
     )

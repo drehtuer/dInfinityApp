@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <!-- The dice-set list (design option 5a). -->
   <string name="sets_title">Dice sets</string>
   <string name="sets_order">What is installed. Long-press a set to switch it off or remove it.</string>
