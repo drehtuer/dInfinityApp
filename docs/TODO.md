@@ -408,7 +408,42 @@ a die fairer than the plastic one in their hand, is not worth a warning
 
 ### 5.3 Capacity and corner cases
 
-- [ ] Counts 1, 2, 5, 8, 20, 40, 60 and the capacity limit: all settle, no NaN, no tunnelling. `tools/harness.sh -c <n>` is the run; each count is one invocation
+- [ ] **Swept on the Pixel 10a, and two of the eight counts do not settle.** One
+      harness invocation per count — 200 rolls each up to 20 dice, 60 each above
+      it:
+
+      | dice | corrected | re-thrown | median | p99 settle | hit the cap | stacked at rest | post-rest | deepest overlap | p99 step |
+      | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+      | 1 | 47.50 % | 1.00 % | 0.53 s | 0.72 s | 0 | 0 | 0 | 0.000 mm | 0.92 ms |
+      | 2 | 44.75 % | 1.25 % | 0.58 s | 1.02 s | 0 | 0 | 0 | 0.567 mm | 0.33 ms |
+      | 5 | 41.60 % | 1.90 % | 0.65 s | 1.27 s | 0 | 0 | 0 | 6.148 mm | 0.75 ms |
+      | 8 | 42.19 % | 2.19 % | 0.68 s | 1.31 s | 0 | 0 | 0 | 6.010 mm | 1.15 ms |
+      | 20 | 43.55 % | 3.50 % | 0.81 s | 1.83 s | 0 | 0 | 0 | 9.019 mm | 0.88 ms |
+      | 40 | 48.46 % | 6.21 % | 1.29 s | **12.00 s** | **1** | 0 | 0 | 9.741 mm | 2.45 ms |
+      | 60 | 46.36 % | 5.64 % | 1.29 s | 3.23 s | 0 | 0 | 0 | 7.245 mm | 2.44 ms |
+      | 100 | 45.37 % | 6.32 % | 1.71 s | **12.00 s** | **1** | 0 | 0 | 7.171 mm | 3.09 ms |
+
+      **What holds everywhere, including at the cap: zero dice at rest on
+      another die and zero post-rest corrections.** The rule that matters most
+      does not weaken with the count, and no roll produced a NaN or lost a die
+      through a wall. The p99 step climbs to 3.09 ms at a hundred dice, which is
+      well inside the 8.33 ms a 120 Hz step has.
+
+      **What does not hold:** one roll in sixty at 40 dice and one in sixty at
+      100 runs out of the twelve-second cap, so "all settle" is false and the
+      forced settle is what ends those throws. Re-throws climb with the count
+      too, 1 % at one die to 6.3 % at a hundred. Both belong to 5.5
+- [ ] **A single die is corrected 47.5 % of the time, which cannot be about
+      stacking.** One d20 in an empty tray has nothing to be supported by and no
+      other die to overlap — the sweep measures 0.000 mm there, which is also a
+      neat proof that the overlap figure really is die-on-die only. So every one
+      of those corrections is the *cocked* half of the trouble check firing on a
+      die that is still rolling to a stop. It is the strongest evidence yet that
+      the 43–48 % is a threshold that fires too early rather than a crowding
+      problem, and it says where to look: `TroubleCheck` asks whether a die
+      **would** read cocked if it stopped now, fifty milliseconds after it began
+      to look that way, which is well before a d20 has finished toppling from
+      edge to face
 - [ ] **`100d4` does not reliably settle, and never did.** The d4 is the worst case by some way — it cannot rest flat on another one, so a heap of them has no stable packing. `JoltBridgeTest` used to try eight seeds and pass; twenty-four seeds show **five running out of the twelve-second cap**, and the same twenty-four under the correlated spawn streams that preceded them showed two — a difference well inside noise at that sample size. What changed is not the physics but the sample: the eight were the easy ones. Nothing is ever touched after it has come to rest, on any seed, which is the rule that matters; the cap firing at all is a prevention problem (5.5), and the bound in the test is today's worst case written down rather than a target
 - [ ] **Decide what a tilted phone should mean.** Deferred, not answered. The table is horizontal now and the gyroscope no longer turns the world, which is what stopped the dice pouring into a wall — but "tilt the phone and the dice slide" was a real idea and this is not a verdict on it. The direction is still recorded with every sample, so whichever way it goes the data is there. The three answers, unchanged: gravity always straight down and only the hand moves the dice; anchor to `TYPE_GRAVITY` and accept that a phone held upright pours everything to the bottom wall; or keep a tilt and clamp it so a tray can lean without becoming a chute
 - [ ] **A shake along the phone's long axis still drives the dice into one end.** Seen as dice stuck at the bottom after a vertical shake. The table being horizontal fixes the *pouring* — the tray no longer leans — but the hand's own force still points that way, and a hundred dice pushed at one wall have nowhere else to be. Whether that is right (it is what a hand does) or wants shaping is a Step 5.6 question with a phone in it
