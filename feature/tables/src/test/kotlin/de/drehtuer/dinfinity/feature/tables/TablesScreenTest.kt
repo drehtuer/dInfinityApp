@@ -4,6 +4,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -52,6 +54,22 @@ class TablesScreenTest {
     show(chosen = oak)
 
     compose.onNodeWithTag(TablesTestTags.chosenOf(oak), useUnmergedTree = true).assertIsDisplayed()
+  }
+
+  /**
+   * The word "Chosen" on the row is drawn in the accent, and the row is a
+   * merge root. `selected` puts the same fact in the semantics tree, so a
+   * screen reader announces the state of the control rather than reading a
+   * colour it cannot see (`docs/architecture.md`, "Accessibility").
+   */
+  @Test
+  fun `the one in use is marked in the semantics as well as in the accent`() {
+    val oak = TablePin(BuiltinDiceSet.set.id, "oak")
+    val glass = TablePin(BuiltinDiceSet.set.id, "dark-glass")
+    show(chosen = oak)
+
+    compose.onNodeWithTag(TablesTestTags.tableOf(oak)).assertIsSelected()
+    compose.onNodeWithTag(TablesTestTags.tableOf(glass)).assertIsNotSelected()
   }
 
   @Test

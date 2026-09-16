@@ -1075,6 +1075,120 @@ renderer appearing or vanishing under a roll in progress is not a setting
 taking effect — it is a bug (`docs/physics-and-rendering.md`, "Power-saving
 mode").
 
+## Accessibility
+
+The rule the whole interface follows: **nothing is said by a colour alone, and
+nothing that is drawn is silent.** It is the same rule the result sheet already
+made about dice — "anything else a die has to say about itself is a note in the
+breakdown, not a colour nobody can decode" — applied to every screen.
+
+### The decision, then the drawing
+
+What a screen reader says is worked out in plain Kotlin and only then looked
+up, for the same reason the bar heights are: a `Canvas` draw lambda and a
+semantics block are places a test cannot read, and the part that can be *wrong*
+is the words, not the call that attaches them.
+
+| What it decides | Where |
+| --- | --- |
+| which of three a landed die is — kept, highest face, dropped | `feature/roll`'s `DieReading` |
+| what the tray has on it, per `RollState` | `feature/roll`'s `TrayReading` |
+| how many dice are in each state on the debug plan | `feature/roll`'s `TrayPlan.tally` |
+| the shape of the distribution: how many totals, their range, the likeliest, what is marked | `feature/graph`'s `ChartReading` |
+| what the observed-against-expected chart claims | `feature/stats`' `TotalsReading` |
+| whether two colours can be told apart, in WCAG's arithmetic | `core/model`'s `Contrast` |
+
+The colour and the words then come from *one* answer rather than from two
+`when`s that could drift: `ResultSheet` asks `DieReading` for both the tint and
+the label, so a die cannot be painted as a natural maximum and announced as an
+ordinary one.
+
+### What was carrying meaning in colour alone, and what it says now
+
+| Where | The colour | The second channel |
+| --- | --- | --- |
+| the result sheet | a natural maximum in the accent, a dropped die struck through | "18, highest face", "1, dropped" |
+| the outcome graph | the rolled total marked in the accent | the chart's own description, and the line under it that names the total |
+| the statistics histogram | the observed bar over the fair line | "Face 2 came up 3 times, 75.0 %; a fair die, 50.0 %" |
+| the saved-roll chart | the exact distribution in the error colour across the ink bars | how many totals, their range, and how many ran ahead of the distribution |
+| the history | a total with a natural maximum in the accent | "20, with a natural maximum"; the dropped line says it is dropped |
+| the cuts, orders and table rows | the chosen one in the accent and in bold | `selected` in the semantics tree |
+| the set details | a source you can open printed in the accent | a click label, "Open in a browser" |
+| the menu | section names small, capitalised and in the accent | `heading()`, so the menu is jumped through by section |
+| the debug overlay's tray plan | three tints, two of them red | "Tray plan: 3 dice, 1 at rest, 1 moving, 1 stacked" |
+
+### Things that are drawn
+
+Four surfaces have nothing under them for a screen reader to find, and each
+says what it contains rather than nothing:
+
+- **the tray** (`AndroidExternalSurface`) — how many dice, and what they came
+  to. Never *which faces*: those are on the result sheet, die by die, and
+  saying them twice makes every throw two announcements of the same thing;
+- **the outcome graph** — the worst case of the lot, because the shape of the
+  distribution is the whole purpose of that screen. Not every bar: a `d100` has
+  a hundred, and a hundred spoken percentages is a minute nobody sits through;
+- **the face histogram** — a row per value, each saying its own share and the
+  fair one, because "is this die cursed" is a comparison and a count on its own
+  is not one;
+- **the download bar** — a bar is a picture of a number, and "downloading" with
+  no idea how far is the state people give up in.
+
+A control drawn as one glyph is labelled and given a target: the menu button,
+the export mark, a group's **…**, the back arrow out of a die. Rows that are
+one fact are merged with `mergeDescendants` so they arrive as one
+announcement rather than three.
+
+### Touch targets
+
+48 dp, which is Android's own figure and WCAG 2.2's success criterion 2.5.8 at
+level AA. The dice picker row was built to it from the start (`PickerRow`'s
+`TARGET`); the controls that needed saying so afterwards are the ones whose
+label is a single character, because a button sized to its text is a button the
+size of one glyph.
+
+### Contrast
+
+Measured rather than looked at. `Contrast` is WCAG 2.2's arithmetic — relative
+luminance, the ratio between two colours, and compositing a translucent one
+over its ground — and it is `core/model`'s because it is arithmetic and nothing
+else: no Android type, no composition, no screen. `AccentColorTest` and
+`ModernistContrastTest` both measure with it, so the palette's two halves
+cannot come to disagree about the same colour.
+
+The bars are 4.5:1 for body copy, 3:1 for large text and for a control's own
+boundary.
+
+| Pair | Light | Dark |
+| --- | --- | --- |
+| text on background | 14.86:1 | 14.86:1 |
+| text on surface | 13.70:1 | 12.60:1 |
+| the accent on background | 3.76:1 | 3.95:1 |
+| the accent on surface | 3.47:1 | 3.35:1 |
+| accent body copy (`accentOnLightText`) on background | 6.41:1 | — |
+| a filled button's label on its own accent | **3.76:1** | **3.95:1** |
+| the divider at 40 % of the text colour | **2.41:1** | 3.51:1 |
+
+The two in bold are short of their bar, and both would need the palette itself
+to change — which is a design decision and not a test's to make. They are
+written down in `docs/TODO.md` under "Open questions" with these numbers, and
+`ModernistContrastTest` holds them at the measured value so a palette edit
+cannot deepen the shortfall without failing.
+
+Every accent in the palette clears 3:1 against both grounds, and every pressed
+step clears 4.5:1 on the light one, because that step is what body copy in the
+accent uses — that is what `AccentColorTest` has always said and now says with
+the shared arithmetic.
+
+### What a test cannot answer
+
+The labels, the sizes and the ratios are asserted in Robolectric and on the
+JVM. What is left is a person with a phone: whether the reading *order* through
+a screen is sensible, whether the announcements are the right length arriving
+one after another, and whether the tray is comprehensible with the screen
+curtain on. That is the one line left in `docs/TODO.md`, Step 6, and it is left
+there honestly rather than ticked.
+
 ## Data flow of a roll
 
 ```mermaid

@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -148,8 +149,11 @@ private fun TableRow(
       Modifier
         .fillMaxWidth()
         .clickable(onClick = onChoose)
-        // One node for TalkBack: "Green felt, chosen" is one thing to hear.
-        .semantics(mergeDescendants = true) {}
+        // One node for TalkBack: "Green felt, chosen" is one thing to hear —
+        // and `selected` as well as the word, so the state is in the semantics
+        // tree rather than only in the accent
+        // (`docs/architecture.md`, "Accessibility").
+        .semantics(mergeDescendants = true) { selected = chosen }
         .testTag(TablesTestTags.tableOf(choice.pin))
         .padding(horizontal = 16.dp, vertical = 12.dp),
     verticalAlignment = Alignment.CenterVertically,

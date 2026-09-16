@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -113,7 +114,15 @@ fun RollScreen(
     // to: a surface is a buffer the compositor keeps, and the claim that mode
     // makes is that none of it exists (`docs/architecture.md`, decision 38).
     if (presenter.draws) {
-      DiceTray(driver = presenter.tray, geometry = presenter.geometry, modifier = Modifier.fillMaxSize())
+      DiceTray(
+        driver = presenter.tray,
+        geometry = presenter.geometry,
+        modifier = Modifier.fillMaxSize(),
+        // A surface has nothing under it for a screen reader to find, so what
+        // is on the table is said here or nowhere at all
+        // (`docs/architecture.md`, "Accessibility").
+        describing = TrayReading.of(presenter.state).spoken(),
+      )
     }
 
     Controls(
@@ -384,6 +393,21 @@ private fun Outcome(
       )
   }
 }
+
+/**
+ * What the tray holds, in the words a screen reader says.
+ *
+ * Which reading a state is is [TrayReading]'s and is tested on the JVM; all
+ * that happens here is looking the words up.
+ */
+@Composable
+private fun TrayReading.spoken(): String =
+  when (this) {
+    TrayReading.Empty -> stringResource(R.string.roll_tray_empty)
+    is TrayReading.Ready -> pluralStringResource(R.plurals.roll_tray_ready, dice, dice)
+    is TrayReading.Rolling -> pluralStringResource(R.plurals.roll_tray_rolling, dice, dice)
+    is TrayReading.Settled -> stringResource(R.string.roll_tray_settled, total)
+  }
 
 @Composable
 private fun Message(
