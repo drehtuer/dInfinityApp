@@ -234,6 +234,12 @@ arguments=(
 [ -n "${label}" ] && arguments+=(-e harness.label "${label}")
 
 echo "Rolling…"
+# Anything an earlier run left on the device goes first. The run is scored from
+# the files it wrote, and a file it did not write is a different run's answer:
+# with labels in play — `--soak` names its own — the folder accumulates them,
+# and the verdict below would happily read a PASS out of one of them.
+adb -s "${device}" shell "rm -f ${remote_dir}/harness-*" > /dev/null 2>&1 || true
+
 # `am instrument` rather than `connectedDebugAndroidTest`, and the verdict
 # comes from what the run wrote rather than from either of them: AGP cannot
 # pass a run on a device whose serial contains a colon, which is every phone
@@ -244,25 +250,31 @@ instrumentation=$?
 set -e
 
 mkdir -p "${out}"
-pulled=0
+# Only what *this* run wrote, by name. The out folder keeps every run ever
+# made — which is the point of `-l` — so "every table in the folder" would
+# print a run from last week and, below, could read its verdict.
+tables=()
 while read -r remote; do
   [ -n "${remote}" ] || continue
-  adb -s "${device}" pull "${remote}" "${out}/" > /dev/null 2>&1 && pulled=$(( pulled + 1 ))
+  adb -s "${device}" pull "${remote}" "${out}/" > /dev/null 2>&1 || continue
+  case "${remote}" in
+    *.txt) tables+=("${out}/$(basename "${remote}")") ;;
+  esac
 done < <(adb -s "${device}" shell "ls ${remote_dir}/harness-* 2> /dev/null" | tr -d '\r')
 
-if [ "${pulled}" -eq 0 ]; then
-  fail "the run left no files behind (am instrument exited ${instrumentation}); the output above says why"
+if [ "${#tables[@]}" -eq 0 ]; then
+  fail "the run left no scorecard behind (am instrument exited ${instrumentation}); the output above says why"
 fi
 
 echo
-for table in "${out}"/harness-*.txt; do
+for table in "${tables[@]}"; do
   cat "${table}"
 done
 echo
 echo "Files:   ${out}"
 
 # The verdict is the line the Kotlin wrote, and nothing here second-guesses it.
-if grep -qh 'HARNESS VERDICT: PASS' "${out}"/harness-*.txt; then
+if grep -qh 'HARNESS VERDICT: PASS' "${tables[@]}"; then
   exit 0
 fi
 exit 1

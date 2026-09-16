@@ -528,6 +528,14 @@ pulled into `build/harness`:
 - `harness-<label>.txt` — the pass/fail table, rendered on the device by the
   same Kotlin the unit tests hold, and printed by the script unchanged.
 
+**A run is printed and scored from the files it wrote itself.** The device's
+folder is cleared before the run and only what came back from it is read, so a
+run that fails cannot exit zero because an older, passing scorecard is still
+lying about in `build/harness`. That mattered little while every run used the
+same name and overwrote the last one; `-l` and `--soak`, which names itself,
+make the folder accumulate — which is the point of keeping them, and the reason
+the verdict may not go looking in there.
+
 ### Soak mode
 
 `--soak 5m` is the same runner given a duration rather than a roll count, and
