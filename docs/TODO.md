@@ -533,7 +533,31 @@ a die fairer than the plastic one in their hand, is not worth a warning
       its shape rather than its rotation now (`docs/tables.md`); a quarter turn
       is still refused. What is left is *vertical* and *upside down* with a real
       hand, which no test can hold
-- [ ] Interruptions mid-roll: call, backgrounding, rotation, low memory — the roll finishes or is discarded cleanly, never half-resolved
+- [ ] **Done, on the Pixel 10a, and it found a roll nobody could stop.** A
+      call, the home button and the lock screen all reach the app as the screen
+      stopping, and `InterruptedRollTest` drives all three at a throw in the
+      air: the dice land, and they land *while the app is away* rather than
+      when somebody looks again. That last one is the assumption the design
+      rests on — the frame callback is what steps the roll, so a backgrounded
+      process that stopped getting vsync would be a roll frozen on "Rolling…"
+      for good — and nothing had ever checked it.
+
+      **What it turned up:** the tray was given back by the tray *view*, which
+      is on screen only when there is something to draw. In power-saving mode
+      there is not, so nothing closed the tray at all: a roll the player walked
+      out on ran to the end on its worker thread, reported, and was written
+      into the history for a screen nobody was on. The roll screen gives the
+      tray back now, whichever kind it is, and a power-saving tray hands back
+      the thread it made for itself rather than leaving one behind per visit.
+
+      A rotation is not an interruption — the activity declares the config
+      changes and the screen pins its shape — and a recreated activity loses
+      the roll on purpose, which is the same rule as walking away.
+
+      **Low memory is the process being killed** and nothing survives it to be
+      tested. What makes that safe is already true: a roll is written in one
+      transaction or not at all, so the worst it costs is a statistic that is
+      missing, never a history that disagrees with itself
 
 - [ ] **The corner cases are asked on the phone now, and one of them fails.**
       `CornerCasesTest` throws exactly at the cap and one over (refused before a

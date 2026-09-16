@@ -3,7 +3,6 @@ package de.drehtuer.dinfinity.feature.roll
 import androidx.compose.foundation.AndroidExternalSurface
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -118,14 +117,10 @@ fun DiceTray(
     }
   }
 
-  // Leaving the screen gives up the physics world and the scene. The roll does
-  // not survive it and is not meant to: a throw the player walked away from
-  // never landed, so there is nothing to score. The thread and the engine
-  // underneath are not given up with them — rebuilding those is a black tray
-  // on the way back (`docs/architecture.md`, decision 50).
-  DisposableEffect(driver) {
-    onDispose { driver.close() }
-  }
+  // Giving the tray up on the way out is deliberately *not* here: this
+  // composable is only on the screen when there is something to draw, and a
+  // power-saving tray draws nothing, so a tray closed from here is a tray
+  // closed only some of the time. [RollScreen] does it for every tray it has.
 }
 
 /**

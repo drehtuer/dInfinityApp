@@ -13,6 +13,7 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import java.util.concurrent.Executor
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /**
@@ -47,9 +48,23 @@ import java.util.concurrent.Executors
  *   (`docs/physics-and-rendering.md`, "Power-saving mode").
  */
 class PowerSavingTray(
-  private val on: Executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, THREAD_NAME) },
+  on: Executor? = null,
   private val impacts: Impacts = Impacts.NONE,
 ) : Tray {
+  /**
+   * The thread this tray made for itself, if it was not given one — and
+   * therefore the only one it is allowed to shut down.
+   *
+   * The same rule `TrayDriver` follows about the roll thread, for the same
+   * reason: a tray that shut down an executor somebody else handed it would
+   * take their next roll with it. One per visit is one per visit only as long
+   * as each is given back (`docs/TODO.md`, Step 5.3).
+   */
+  private val own: ExecutorService? =
+    if (on == null) Executors.newSingleThreadExecutor { runnable -> Thread(runnable, THREAD_NAME) } else null
+
+  private val on: Executor = on ?: requireNotNull(own)
+
   /** Nothing is drawn, so nothing needs a surface. */
   override val draws: Boolean = false
 
@@ -109,6 +124,10 @@ class PowerSavingTray(
   override fun close() {
     closed = true
     on.execute { endRoll() }
+    // After the work that gives the roll back, not instead of it: `shutdown`
+    // lets what is already queued run and then lets the thread end, where
+    // stopping it now would strand a physics world nobody can reach.
+    own?.shutdown()
   }
 
   // Nothing to draw on, nothing to draw, nowhere to look from. Each of these
