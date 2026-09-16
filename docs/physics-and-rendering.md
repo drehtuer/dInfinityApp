@@ -179,6 +179,29 @@ accident — it replaces a result somebody may still be reading. Two deliberate
 gestures, one of them a button and the other a shake of the whole phone, are
 enough.
 
+## What a shake's spread currently rests on
+
+Measured on the Pixel 10a and worth knowing before anything here is tuned: the
+reason a shaken throw ends up spread across the tray rather than packed into one
+end is **not** prevention. It is two accidents.
+
+The first is rung 2. A bias always carries a little upward, so it is what lifts
+a die out of a pile; take it away — by making it wait for real trouble rather
+than for fifty milliseconds of it — and the dice stay where the shake put them.
+The second is the solver's own error. At 1/120 s a die travelling a metre a
+second crosses half its own width between collision checks, so two dice are
+first seen already deep inside each other and are pushed apart hard. Resolve
+collision in sub-steps and that stops happening — and the dice pack, because the
+popping apart was doing the spreading.
+
+Both are measured, with numbers, in `docs/TODO.md` (Step 5.5). The point for
+anyone changing this file is that **the correction rate and the overlap depth
+cannot be fixed independently of deciding what a sustained sideways shake should
+do to a tray of dice**, which is an open question below. A tray of dice under a
+1.8 g lateral drive packing against the far wall may well be right — it is what
+a hand does — but until that is decided, a change that improves the overlap will
+look like a regression in how a shaken roll reads.
+
 ## Shake input
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
@@ -672,11 +695,42 @@ instant they are reported, so nothing upstream could work it out afterwards.
 The stacked count is taken where the dice *ended* and not while they were
 moving: a die on top of another mid-throw is an ordinary moment of a roll.
 
-`tools/harness.sh` is what asks the question at scale — N rolls headless on a
+`tools/harness.sh` is what asks the question at scale — rolls headless on a
 phone or the emulator, a JSON document of what they did, and a pass/fail table
 against every target above (`docs/build-setup.md`, "The physics harness"). It
 fails on the two that are not met yet, which is the plan being behind the check
 rather than the check being wrong.
+
+A run is asked for either as a number of throws or as a **length of time** —
+soak mode is the same runner given a duration, and the throw under way when the
+time runs out is finished rather than cut short, because a settle time that was
+interrupted is the longest one in the sample and is a fact about the stopwatch
+rather than about the dice.
+
+### What the harness may say about frames
+
+A harness run has no surface, so what it can honestly report about a frame is
+only part of one. Two halves, and they are measured in two different places:
+
+| The half | What measures it | Where the bar is |
+| --- | --- | --- |
+| simulating the steps a frame owes | `LiveRoll.advance`, timed by the harness in its paced mode, and `FrameClock.droppedSteps` for the steps a late frame never paid for | the step itself, 1/120 s, plus zero dropped steps |
+| drawing them | a renderer with a surface, which the harness does not have | Step 5.7's p99 under 16.6 ms at twenty dice |
+
+A paced run steps each roll exactly the way the screen does — one `advance` per
+60 Hz frame, at a frame's cadence — and times each call. The roll is the same
+roll either way: the clock decides *when* steps are taken and never how big
+they are or in what order, so a paced run and a flat-out one come to the same
+faces from the same seed.
+
+What such a run may **not** do is report that as a frame rate. Its frames were
+handed to the renderer that draws nothing, so the scorecard prints the figure
+it measured, marks it "simulation only", and scores Step 5.7's row as **not
+measured** — neither pass nor fail. A headless run has no frames at all and the
+figure is *absent* from the document rather than zero, because zero would score
+as the fastest run ever made. The frame rate on screen is answered by watching
+one: `tools/harness.sh --capture` records the app rolling, at whatever rate the
+panel runs (`docs/build-setup.md`).
 
 ## The dice an explosion or a reroll adds
 
@@ -958,10 +1012,24 @@ impact sounds rather than a crash in the middle of a roll.
   there is destroyed in reverse; a roll's own entities go at the end of the
   roll, and the engine and the compiled material stay.
 - **One material** draws every surface of a roll: a lit, opaque, physically
-  based one with a base colour, a roughness and a metalness, optionally
-  multiplied by an atlas. Dice are dice and a tray is a tray. Everything a
-  package may vary is a number going into it rather than a line of it changing
-  (`docs/tables.md`, "Table looks"; `docs/TODO.md`, After v1).
+  based one with a base colour, a roughness and a metalness, with an atlas laid
+  over it. Dice are dice and a tray is a tray. Everything a package may vary is
+  a number going into it rather than a line of it changing (`docs/tables.md`,
+  "Table looks"; `docs/TODO.md`, After v1).
+- **The artwork is composited, not multiplied.** The body colour is worked out
+  first, with the die's printed label mixed into it, and the atlas is then laid
+  over that by its own alpha. Where the artwork is opaque the result is
+  `baseColor × atlas`, which is what it always was and what keeps a table's
+  floor tinted by its floor colour; where the author left the cell clear the
+  label shows through. A multiply could not do the second half — multiplying by
+  a transparent pixel gives black, not the die (`docs/dice-sets.md`,
+  "Textures").
+- **A die's artwork is decoded once per package and destroyed with the
+  engine**, not with a surface or a throw. Filament hands out native handles,
+  so an atlas re-uploaded on every rotation is a leak the JVM cannot see. Which
+  atlas a die wants is a key — the package and the path — and what fills it is
+  on the far side of `Stage`, in `:app` over `dicesets/install`
+  (`docs/dice-sets.md`, "How an atlas reaches the tray").
 - **Colours are converted out of sRGB before the renderer sees them.** A
   package writes `#1f5e3a`, which is the space a screen shows and a person
   picks colours in; light adds up in linear space. Handing a renderer sRGB
@@ -999,12 +1067,14 @@ impact sounds rather than a crash in the middle of a roll.
   (`docs/architecture.md`, decision 45). Face textures are applied via a
   per-face UV atlas (see `docs/dice-sets.md`); a coin's rim belongs to neither
   face and carries no cell: it is drawn in the die's own colour.
-- **A die with no artwork prints its labels**, in the set's `number_color` on
-  the set's body colour, laid out in that same per-face atlas grid — so a
-  printed die and a painted one are the same surface with the same coordinates
-  and the renderer samples them the same way. A d4 draws three numbers per
-  triangle, one at each corner, because its values belong to corners rather
-  than to faces (`docs/dice-sets.md`, "The d4").
+- **Every die prints its labels**, in the set's `number_color` on the set's
+  body colour, laid out in that same per-face atlas grid — so a printed die and
+  a painted one are the same surface with the same coordinates and the renderer
+  samples them the same way. A die with artwork is printed too, and the artwork
+  covers the printing wherever it is opaque: which of the two a face shows is
+  the alpha's to say, per pixel, and nothing above the material decides it. A
+  d4 draws three numbers per triangle, one at each corner, because its values
+  belong to corners rather than to faces (`docs/dice-sets.md`, "The d4").
 - **How big a number is, is solved rather than chosen.** A cell is the circle
   drawn round a face, and how much of one a face fills depends on what polygon
   it is: a dodecahedron's pentagon nearly all of it, a d20's triangle half, a

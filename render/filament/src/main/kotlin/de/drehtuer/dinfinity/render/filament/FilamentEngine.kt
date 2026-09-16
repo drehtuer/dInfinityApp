@@ -6,6 +6,7 @@ import com.google.android.filament.Material
 import com.google.android.filament.Texture
 import com.google.android.filament.TextureSampler
 import com.google.android.filament.filamat.MaterialBuilder
+import de.drehtuer.dinfinity.core.model.AtlasImage
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
@@ -33,8 +34,18 @@ import java.nio.ByteOrder
  * Filament hands out native handles rather than objects the garbage collector
  * knows about, so what is made here is destroyed in [close]. A stage made from
  * this must be closed *before* it is.
+ *
+ * @param artwork where a die's decoded atlas comes from, keyed by [AtlasKey] —
+ *   the package it belongs to and the path inside it. Given to the engine
+ *   rather than to a stage because artwork belongs to a *package*: it is
+ *   decoded once and drawn on every throw of every visit, so it is kept where
+ *   the compiled material is kept (`docs/dice-sets.md`, "Textures"). The
+ *   default draws nothing, which is what a device test with no packages on
+ *   disk wants.
  */
-class FilamentEngine : AutoCloseable {
+class FilamentEngine(
+  artwork: (String) -> AtlasImage? = { null },
+) : AutoCloseable {
   init {
     // Safe to call more than once, and nothing below works before it has been.
     Filament.init()
@@ -45,6 +56,17 @@ class FilamentEngine : AutoCloseable {
 
   /** The dice material, compiled once for this device's driver. */
   val material: Material = compileMaterial(engine)
+
+  /**
+   * Every package's artwork that has been asked for, uploaded once.
+   *
+   * Held here rather than on a stage because a `Texture` is a native handle
+   * and a surface comes and goes: an atlas re-uploaded on every rotation is a
+   * leak the JVM cannot see. It is given back in [close], before the engine
+   * that owns the handles ([AtlasCache]).
+   */
+  val atlases: AtlasCache<Texture> =
+    AtlasCache(artwork = artwork, upload = { uploadAtlas(engine, it) }, destroy = engine::destroyTexture)
 
   /**
    * A single white pixel, for every surface that has no atlas.
@@ -88,7 +110,7 @@ class FilamentEngine : AutoCloseable {
     width: Int,
     height: Int,
     postProcessing: Boolean = true,
-    atlases: (String) -> Texture? = { null },
+    atlases: (String) -> Texture? = this.atlases::of,
   ): FilamentStage =
     FilamentStage(
       width = width,
@@ -100,6 +122,7 @@ class FilamentEngine : AutoCloseable {
     )
 
   override fun close() {
+    atlases.close()
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
     engine.destroy()
@@ -151,6 +174,34 @@ class FilamentEngine : AutoCloseable {
       } finally {
         MaterialBuilder.shutdown()
       }
+    }
+
+    /**
+     * A decoded atlas, uploaded as it stands.
+     *
+     * `RGBA8` and straight alpha, because the material blends the artwork over
+     * the die's printed label by the artwork's own alpha and a premultiplied
+     * edge would drag every soft pixel towards the body colour
+     * ([AtlasImage]). One level: a die is looked at from a hand's distance and
+     * the atlas is already the larger of the two sizes involved.
+     */
+    fun uploadAtlas(
+      engine: Engine,
+      image: AtlasImage,
+    ): Texture {
+      val texture =
+        Texture
+          .Builder()
+          .width(image.width)
+          .height(image.height)
+          .levels(1)
+          .format(Texture.InternalFormat.RGBA8)
+          .build(engine)
+      val pixels = ByteBuffer.allocateDirect(image.pixels.size).order(ByteOrder.nativeOrder())
+      pixels.put(image.pixels)
+      pixels.flip()
+      texture.setImage(engine, 0, Texture.PixelBufferDescriptor(pixels, Texture.Format.RGBA, Texture.Type.UBYTE))
+      return texture
     }
 
     fun whitePixel(engine: Engine): Texture {

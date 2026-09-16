@@ -3,15 +3,18 @@ package de.drehtuer.dinfinity.feature.designer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import de.drehtuer.dinfinity.core.glyphs.BuiltinFont
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.FaceFill
+import de.drehtuer.dinfinity.designer.FaceStamp
 import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Mark
+import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
 
 /**
@@ -26,7 +29,7 @@ private const val BROAD = 0.05f
 /** Wider than the broad pen, because an eraser people have to be accurate with is a bad eraser. */
 private const val ERASER = 0.06f
 
-/** The bucket draws no line, so it has no width. */
+/** The bucket and the stamp draw no line, so they have no width. */
 private const val NO_NIB = 0f
 
 /** What the pen is doing (`docs/face-designer.md`, "Drawing tools"). */
@@ -57,12 +60,33 @@ enum class Nib(
    * colour (`FaceFill`).
    */
   Bucket(NO_NIB),
+
+  /**
+   * The stamp: a glyph of the built-in font, put down where the finger goes
+   * (`docs/face-designer.md`, "The stamp").
+   *
+   * In the row with the pens for the reason the bucket is — it is the same
+   * kind of decision, what the next touch does — and it answers a **tap** for
+   * the same reason too: there is no line to draw, only a letter to place.
+   */
+  Stamp(NO_NIB),
   ;
 
   val erases: Boolean get() = this == Eraser
 
   /** True for the bucket, which colours a region instead of drawing a line. */
   val fills: Boolean get() = this == Bucket
+
+  /** True for the stamp, which puts a glyph down instead of drawing a line. */
+  val stamps: Boolean get() = this == Stamp
+
+  /**
+   * True for the tools that answer a tap rather than a drag.
+   *
+   * The canvas listens for one or the other and never both: a detector
+   * listening for both would make a slow tap with a pen into a dot of ink.
+   */
+  val taps: Boolean get() = fills || stamps
 }
 
 /**
@@ -100,6 +124,17 @@ data class DesignerState(
    * the rule the pen and the colour already follow.
    */
   val clipboard: List<Mark> = emptyList(),
+  /**
+   * What the stamp is loaded with, or null while it follows the face.
+   *
+   * Null until somebody types something, and then theirs: the commonest thing
+   * to stamp is the number that belongs on the face, and the second commonest
+   * is a small edit of it that should not be undone by moving to the next face
+   * (`docs/face-designer.md`, "The stamp").
+   */
+  val stampText: String? = null,
+  /** How big the next stamp is, against what this face's own number would be. */
+  val stampSize: StampSize = StampSize.Medium,
 ) {
   /** The die being drawn on. */
   val die: Die get() = draft.die
@@ -112,6 +147,20 @@ data class DesignerState(
 
   /** The numbers under it — one, or a d4's three (`docs/dice-sets.md`, "The d4"). */
   val guide: List<GuideMark> get() = if (guideShown) draft.guide(cell) else emptyList()
+
+  /** What a stamp would put down: what somebody typed, or this face's own number. */
+  val stamping: String get() = stampText ?: FaceStamp.textOn(draft.die, cell)
+
+  /**
+   * True when the font can draw what the stamp is loaded with.
+   *
+   * The built-in font is deliberately small — digits, two signs, a times, a
+   * per cent and a full stop — and a label using anything else is refused
+   * whole rather than stamped as the half of it the font happens to have. The
+   * row says so before the tap rather than swallowing it
+   * (`BuiltinFont.canDraw`).
+   */
+  val canStamp: Boolean get() = BuiltinFont.canDraw(stamping)
 
   val canUndo: Boolean get() = face.canUndo
   val canRedo: Boolean get() = face.canRedo
@@ -147,6 +196,16 @@ data class DesignerState(
   fun markOf(dots: List<Dot>): Mark? =
     when {
       nib.fills -> dots.firstOrNull()?.let { FaceFill.at(point = it, marks = face.marks, colorArgb = colorArgb) }
+      nib.stamps ->
+        dots.firstOrNull()?.let {
+          FaceStamp.at(
+            text = stamping,
+            point = it,
+            outline = draft.outline,
+            size = stampSize,
+            colorArgb = colorArgb,
+          )
+        }
       dots.size < 2 -> null
       else -> Stroke(dots = dots, colorArgb = colorArgb, width = nib.width, erases = nib.erases)
     }
@@ -183,7 +242,13 @@ data class DesignerState(
  * big it is and this does not: a draft outlives the screen it was drawn on and
  * is re-rendered at export resolution, so a stroke in pixels would be a stroke
  * that moved when the phone was turned.
+ *
+ * It is over detekt's count of what a class may have, like `RollPresenter` and
+ * for the same reason: every one of them is a thing a finger does on one
+ * screen, and splitting them across two objects would only mean two objects
+ * holding one screen's state.
  */
+@Suppress("TooManyFunctions")
 class DesignerPresenter(
   die: Die,
   /**
@@ -249,8 +314,11 @@ class DesignerPresenter(
    * unnecessary, and a dialog that warns about a loss that cannot happen is
    * worse than no dialog at all.
    *
-   * The pen, its colour and whether the guide is showing all stay: they are
-   * how somebody is working, not what they are working on.
+   * The pen, its colour, how big the stamp is and whether the guide is showing
+   * all stay: they are how somebody is working, not what they are working on.
+   * What the stamp is *loaded with* does not — it goes back to following the
+   * face, because a number from the die that was put down is not a number this
+   * one has.
    */
   fun base(die: Die) {
     if (die.id == state.draft.die.id) return
@@ -263,6 +331,7 @@ class DesignerPresenter(
         guideShown = state.guideShown,
         choosable = state.choosable,
         clipboard = state.clipboard,
+        stampSize = state.stampSize,
       )
   }
 
@@ -280,6 +349,39 @@ class DesignerPresenter(
   /** A colour was chosen. The eraser is put down, because a coloured eraser is not a thing. */
   fun ink(colorArgb: Int) {
     state = state.copy(colorArgb = colorArgb, nib = if (state.nib.erases) Nib.Medium else state.nib)
+  }
+
+  /**
+   * The stamp was loaded with something else, or made bigger or smaller.
+   *
+   * One way in for both, because both are the same kind of thing — how the
+   * next stamp will come out, the way the nib and the colour are for the next
+   * stroke. Whichever is not given is left as it was.
+   *
+   * The text is kept as somebody typed it, including empty: a field that
+   * refuses a character is a field nobody can correct a mistake in. What the
+   * font can and cannot draw is said by the row ([DesignerState.canStamp]) and
+   * refused at the tap, where nothing has been lost.
+   */
+  fun stamp(
+    text: String? = state.stampText,
+    size: StampSize = state.stampSize,
+  ) {
+    state = state.copy(stampText = text, stampSize = size)
+  }
+
+  /**
+   * Puts each face's own number on it, in one tap
+   * (`docs/face-designer.md`, "The stamp").
+   *
+   * The starting point somebody who wants a numbered die rather than a drawn
+   * one begins from: the number the tray would print, where the tray would
+   * print it, in the ink in the pen. Faces already carrying a stamp are left
+   * alone, so pressing it twice changes nothing.
+   */
+  fun fillNumbers() {
+    state = state.copy(draft = FaceStamp.fill(state.draft, state.colorArgb))
+    drafts.save(state.draft)
   }
 
   /** The guide was turned on or off. */

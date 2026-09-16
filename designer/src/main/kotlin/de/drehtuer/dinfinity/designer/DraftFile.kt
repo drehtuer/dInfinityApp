@@ -110,6 +110,12 @@ object DraftFile {
    * of its region, told apart by [FILLS] — the one field a stroke never
    * carries, so a reader that does not know about fills drops them and keeps
    * the rest.
+   *
+   * A stamp is the same list again, every ring of the glyph end to end, with
+   * [RINGS] saying how long each one is. The lengths rather than a list of
+   * lists, so that the dots of every kind of mark are written and read the one
+   * way — and so that a reader that predates stamps drops them and keeps the
+   * drawing around them, exactly as it does a fill.
    */
   private fun markOf(mark: Mark): JsonObject =
     JsonObject(
@@ -122,6 +128,8 @@ object DraftFile {
           }
 
           is Fill -> put(FILLS, JsonPrimitive(true))
+
+          is Stamp -> put(RINGS, JsonArray(mark.rings.map { JsonPrimitive(it.size) }))
         }
         put(DOTS, JsonArray(mark.dots.flatMap { listOf(JsonPrimitive(it.x), JsonPrimitive(it.y)) }))
       },
@@ -139,10 +147,15 @@ object DraftFile {
     val mark = element as? JsonObject ?: return null
     val colour = (mark[COLOUR] as? JsonPrimitive)?.content?.toIntOrNull()
     val fills = (mark[FILLS] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false
-    val dots = dotsOf(mark, least = if (fills) DOTS_OF_A_REGION else DOTS_OF_A_STROKE)
+    // Nothing at all for a mark that carries no rings, and a ring of zero for
+    // one whose lengths are not numbers — which `Stamp.of` refuses like any
+    // other ring that encloses nothing.
+    val rings = (mark[RINGS] as? JsonArray)?.map { (it as? JsonPrimitive)?.content?.toIntOrNull() ?: 0 }
+    val dots = dotsOf(mark, least = if (fills || rings != null) DOTS_OF_A_REGION else DOTS_OF_A_STROKE)
     val width = (mark[WIDTH] as? JsonPrimitive)?.content?.toFloatOrNull()
     return when {
       colour == null || dots == null -> null
+      rings != null -> Stamp.of(rings, dots, colour)
       fills -> Fill(dots = dots, colorArgb = colour)
       width == null -> null
       else ->
@@ -191,5 +204,6 @@ object DraftFile {
   private const val WIDTH = "width"
   private const val ERASES = "erases"
   private const val FILLS = "fill"
+  private const val RINGS = "rings"
   private const val DOTS = "dots"
 }

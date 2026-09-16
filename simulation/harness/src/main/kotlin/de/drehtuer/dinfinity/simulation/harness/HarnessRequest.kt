@@ -28,19 +28,25 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * @param label a name for the run, and for the files it writes.
  * @param shape the catalogue solid every die in the throw is.
  * @param diceCount how many dice are in each throw.
- * @param rolls how many throws to make.
+ * @param length how much of a run there is: a number of throws, or a length of
+ *   time to go on throwing for ([RunLength]).
  * @param seed the run's base seed. Every roll's own seed comes from it, so one
  *   number replays a whole run.
+ * @param framePaced whether each roll is stepped the way the screen steps one —
+ *   a `LiveRoll.advance` per display frame, timed — rather than run flat out
+ *   with no clock at all. Off by default, because a paced run takes as long as
+ *   the dice really take and a thousand of those is an hour
+ *   ([FrameTimes]).
  */
 data class HarnessRequest(
   val label: String,
   val shape: DieShape,
   val diceCount: Int,
-  val rolls: Int,
+  val length: RunLength,
   val seed: Long,
+  val framePaced: Boolean = false,
 ) {
   init {
-    require(rolls > 0) { "a run of $rolls rolls has nothing to measure" }
     require(diceCount in 1..TableCapacity.MAX_DICE) {
       "$diceCount dice is outside the 1..${TableCapacity.MAX_DICE} the engine takes"
     }
@@ -83,8 +89,20 @@ data class HarnessRequest(
   }
 
   companion object {
-    /** How many rolls to make. Absent means no run was asked for at all. */
+    /** How many rolls to make. Absent, with [SOAK] absent too, means no run was asked for at all. */
     const val ROLLS: String = "harness.rolls"
+
+    /**
+     * How long to go on rolling for instead — soak mode. `300`, `300s`, `5m`
+     * and `1h` are all the same run ([RunLength.secondsOf]).
+     */
+    const val SOAK: String = "harness.soak"
+
+    /**
+     * Whether to step each roll on a frame's cadence and time the frames
+     * ([FrameTimes]). Anything but `0`, `false` or nothing turns it on.
+     */
+    const val FRAMES: String = "harness.frames"
 
     /** How many dice in each throw. */
     const val DICE: String = "harness.dice"
@@ -112,21 +130,54 @@ data class HarnessRequest(
      *
      * Null rather than a default run, so that the harness can sit in the
      * ordinary device suite without adding minutes to it: no
-     * `-e harness.rolls`, no run (`docs/build-setup.md`).
+     * `harness.rolls` and no `harness.soak`, no run (`docs/build-setup.md`).
      */
     fun from(arguments: (String) -> String?): HarnessRequest? {
-      val rolls = arguments(ROLLS)?.trim()?.toIntOrNull() ?: return null
-      if (rolls <= 0) return null
+      val length = RunLength.from(arguments(ROLLS), arguments(SOAK)) ?: return null
       val shape = arguments(SHAPE)?.let(::shapeOf) ?: DEFAULT_SHAPE
       val diceCount = arguments(DICE)?.trim()?.toIntOrNull() ?: DEFAULT_DICE
       return HarnessRequest(
-        label = arguments(LABEL)?.trim()?.takeIf(String::isNotEmpty) ?: "${diceCount}d${shape.faceCount}",
+        label = arguments(LABEL)?.trim()?.takeIf(String::isNotEmpty) ?: labelOf(diceCount, shape, length),
         shape = shape,
         diceCount = diceCount,
-        rolls = rolls,
+        length = length,
         seed = arguments(SEED)?.trim()?.toLongOrNull() ?: DEFAULT_SEED,
+        framePaced = asked(arguments(FRAMES)),
       )
     }
+
+    /**
+     * What a run calls itself when nobody named it.
+     *
+     * A soak says so in its own name, because the files are named after the
+     * label and a soak of `20d20` that overwrote the `20d20` run beside it
+     * would be two measurements in one file name.
+     */
+    fun labelOf(
+      diceCount: Int,
+      shape: DieShape,
+      length: RunLength,
+    ): String =
+      buildString {
+        append(diceCount)
+        append('d')
+        append(shape.faceCount)
+        if (length is RunLength.Soak) append("-soak")
+      }
+
+    /**
+     * Whether a flag argument means yes.
+     *
+     * Absent is no, and so are the two spellings of no that a shell or a
+     * person produces — `0` and `false` — because `-e harness.frames 0` is
+     * what somebody writes to turn a thing off and a flag that read it as yes
+     * would be a switch with one position.
+     */
+    fun asked(value: String?): Boolean =
+      when (value?.trim()?.lowercase()) {
+        null, "", "0", "false", "no" -> false
+        else -> true
+      }
 
     /**
      * The catalogue solid [name] means.

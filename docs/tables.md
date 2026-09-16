@@ -173,7 +173,12 @@ Rules:
 - No mesh field. There is nothing to put there.
 - Textures: PNG/WebP, max 2048×2048, same byte limits as die textures.
   `floor_tiling` lets a 512×512 felt tile cover the floor without a
-  screen-sized image.
+  screen-sized image. **They are validated and not yet drawn.** A die's
+  artwork is found by a key of package and path, and a table look's texture
+  carries a path and nothing saying whose package — so it resolves to nothing
+  and the table is drawn in `floor_color` and `wall_color` alone
+  (`docs/dice-sets.md`, "How an atlas reaches the tray";
+  `docs/TODO.md`, "Open questions").
 - Physics values are clamped at validation and again at load, like dice.
   A table can be a bit slippery or a bit grippy; it cannot be frictionless.
 - Sound and light are names from built-in lists so a package cannot ship
@@ -202,10 +207,85 @@ is what power-saving mode's result screen echoes).
 
 ### Your own photo
 
-"Use a photo as table" in settings takes any image from the system picker,
-downsizes it to 2048 px on the long side, and writes a `[[table]]` entry
-into the user's personal package (`mine`). It is then a normal table and can
-be exported with the rest of `mine`.
+**Use a photo** sits at the foot of the table picker (`design/dInfinity.dc.html`,
+option `1u`): it takes an image from the system picker, cuts it down to size,
+and writes a `[[table]]` entry and its picture into the personal package,
+`mine` (`docs/dice-sets.md`, "Packages the app writes"). It is then a normal
+table — listed with the rest, choosable, pinnable by a group or a saved roll,
+and exported inside `mine`'s zip like anything else drawn on this phone.
+
+**Nothing about it is a privileged path.** The photo is written into the
+package and that *whole package* then goes through the same `DiceSetValidator`
+a downloaded one goes through. A package that comes back rejected is not
+installed, the photo is taken back out of the store it was put in, and the
+report the validator wrote is what the sheet shows — the same lines a refused
+install shows. So a refusal leaves the phone exactly as it was, which matters
+more here than anywhere: the photos are the record the package is *rebuilt*
+from, and one left behind after a refusal would take the drawn dice down with
+it at the next rebuild.
+
+```mermaid
+flowchart TD
+  pick["The system picker<br/>(image/* only)"] --> bounds["Bounds-only decode:<br/>the header, no pixels"]
+  bounds -- "not a picture" --> refused
+  bounds --> plan["PhotoScaling: the target size,<br/>and the subsample to reach it"]
+  plan --> decode["Subsampled decode,<br/>then one exact scale"]
+  decode --> encode["WebP, quality 80"]
+  encode -- "over 4 MiB" --> plan
+  encode --> store["The photo store:<br/>tables/&lt;id&gt;.webp and its name"]
+  store --> build["The whole of 'My dice',<br/>rebuilt from drafts and photos"]
+  build --> check["DiceSetValidator"]
+  check -- "valid" --> installed["Installed, and one more row<br/>in the table picker"]
+  check -- "rejected" --> undo["The photo is taken back out"]
+  undo --> refused["Refused, with every line<br/>the validator wrote"]
+```
+
+**How small, and why that small.** Neither number is this feature's own. A
+phone camera makes something like 4080 × 3072 — forty-eight megabytes decoded —
+and a hostile file may claim very much more, so the size is decided from the
+limits the format already publishes:
+
+| | |
+| --- | --- |
+| longest side | `MAX_TEXTURE_PIXELS` (2048), the aspect ratio kept, never upscaled — so a 4080 × 3072 photo becomes 2048 × 1542 |
+| file size | `MAX_TEXTURE_MIB` (4). A 2048-pixel photo is not *guaranteed* to encode under it, so the size is a ladder: each rung halves the one before, down to 256 px on the long side, and the first rung whose encoded bytes fit is the one written. In practice the first rung always wins — a 2048 × 1542 WebP of a photograph is a few hundred kilobytes |
+| format | **WebP, lossy, quality 80.** A photograph in PNG is several times the size for a difference nobody can see under tumbling dice, and WebP is one of the two kinds the validator's header reader already understands |
+| how many | `MAX_PACKAGE_TEXTURE_MIB / MAX_TEXTURE_MIB` = **6**: as many textures as a package could hold if every one of them were the largest a texture may be. The seventh is refused rather than pushing the oldest out — a drawing nobody has opened for months is a fair thing to drop, and the table somebody is playing on tonight is not |
+
+**The decode is in two passes, and that order is the whole of the defence.**
+The first asks only for the header (`inJustDecodeBounds`) and allocates
+nothing, so a file claiming to be thirty thousand pixels square is found out
+for the cost of a few bytes. The second carries an `inSampleSize` — the largest
+power of two that still leaves enough pixels — so the decoder never holds more
+than about four times what is wanted, and one ordinary scale finishes the job.
+**A full-size decode of an attacker-controlled image does not happen on any
+path.**
+
+**What a photo table is, as a look.** Its tiling is `[1, 1]`: tiling exists so
+a 512-pixel felt swatch can cover a tray without being a screen-sized image,
+and a photograph is one picture of one thing. Its floor colour is white, so the
+picture is shown as it was taken rather than multiplied by a tint; its walls
+keep `plain`'s grey. Its `sound` is `felt` and its `light` is `neutral` — a
+photograph says nothing about how hard a surface is — and **every physics value
+is the model's own default**: a photo changes how the tray looks and nothing
+about how it rolls.
+
+Its id is `photo-` plus the name slugged, numbered (`photo-oak-2`) when that id
+is taken, so a photo can never land on a drawn set's table id. The name is the
+player's, tidied and cut to 40 characters — the length an id may be — and
+suggested from the file's own name (`oak_table-02.jpg` → "Oak table 02"), which
+is a suggestion to type over rather than an answer.
+
+A photo table is also the one row in the picker that offers **Remove**, because
+it is the one look that does not belong to a package: everything else is
+removed by removing its package, on the screen that is about packages.
+
+**The tray does not draw the picture yet**, and neither does it draw a drawn
+die's artwork: nothing fills the `atlases` seam that turns a package's texture
+into a `Texture` on the GPU (`docs/TODO.md`, Step 3). So a photo table is a
+complete, valid, exportable table that currently renders as its colours, in
+exactly the state a die with a drawn atlas is in. What is done here is the
+package and the path into it; what is left is one seam, shared with the dice.
 
 ## Selecting a table
 

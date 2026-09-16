@@ -38,6 +38,12 @@ my-dice/
 
 Only `diceset.toml` is required. Anything not referenced from it is ignored.
 
+A worked example of exactly this layout is in the repository at
+[`examples/`](../examples/) — one die on every catalogue shape, a `diceset.toml`
+whose comments say what each field is for and what it is limited to, and a
+blank atlas per shape cut to the grid below. It is the place to start, and
+[Authoring tips](#authoring-tips) says why.
+
 ## `diceset.toml`
 
 ```toml
@@ -155,12 +161,20 @@ been picked (`docs/face-designer.md`, "The licence, and why it is a gate").
 
 One package is generated on the device rather than downloaded: **"My dice"**,
 id `mine`, built from the drawings in the face designer
-(`docs/face-designer.md`). It is a folder in `dicesets/` like any other, and
-there is no privileged path for it:
+(`docs/face-designer.md`) **and from the photographs somebody has made tables
+of** (`docs/tables.md`, "Your own photo"). It is a folder in `dicesets/` like
+any other, and there is no privileged path for it:
 
-- It is written through the same layout as any package — a `diceset.toml` and
-  one `textures/<die-id>.png` per drawn die, at 256 px per atlas cell, with
-  cells nobody drew on left out so they stay transparent.
+- It is written through the same layout as any package — a `diceset.toml`, one
+  `textures/<die-id>.png` per drawn die at 256 px per atlas cell with cells
+  nobody drew on left out so they stay transparent, and one
+  `tables/<table-id>.webp` per photo table.
+- It is **built, not accumulated.** The drafts and the photos are the record;
+  the folder is a view of them, rebuilt whenever either has moved on. So a
+  drawing deleted is a die gone at the next reading, and nothing can drift out
+  of step with anything.
+- A package of nothing but tables is as ordinary as one of nothing but dice: a
+  phone with photos and no drawings has a `mine` that is a table pack.
 - It goes through **the validator** before it is written to `dicesets/` and
   again before its zip is offered to anybody. A package the app built and could
   not install is a bug caught on this phone rather than an install failure on
@@ -305,17 +319,76 @@ unfair dice and a fairness UI — a whole feature, not a field.
 - PNG or WebP. Max 2048×2048, max 4 MiB per file, max 24 MiB per set.
 - Image dimensions are read from the header *before* decoding
   (`inJustDecodeBounds`); oversized images are rejected without decoding.
-- Decoded on the IO dispatcher into a size-capped bitmap pool; never on the
-  main thread.
+- Decoded where the package is installed, never on the main thread, and kept
+  per package for as long as the renderer's engine is (below).
 - Textures are optional per die and per face: an atlas may leave cells
   transparent, in which case the label is rendered in `number_color` on top
   of the die colour for that face.
 
-### Labels a die has no artwork for
+### How an atlas reaches the tray
 
-A die with no `texture` at all has its `labels` printed instead, in
-`number_color` on the body colour, in the same atlas grid an image would have
-filled. Three rules decide what a face ends up carrying:
+A die's `texture` is a path relative to **its own set's folder**, so the path
+alone names nothing — two packages may both ship `textures/d20.png`. What the
+renderer asks for is therefore a *key*: the package and the path, written
+`mine::textures/d20.png` (`AtlasKey` in `render/filament`). The separator is
+`::` because a set id is a slug and cannot contain one, and because a path that
+arrives with no package in front of it is then refused rather than mistaken for
+a package called `textures`.
+
+```mermaid
+flowchart LR
+  die["Die.texturePath<br/>textures/d20.png"] --> key["AtlasKey.of(setId, path)<br/>mine::textures/d20.png"]
+  key --> stage["FilamentStage<br/>atlases: (String) -> Texture?"]
+  stage --> cache["AtlasCache, on FilamentEngine<br/>one Texture per key, misses remembered"]
+  cache --> app["DieArtwork, in :app<br/>splits the key"]
+  app --> found["InstalledArtwork<br/>which folder, which file, how big"]
+  found --> decode["AtlasDecoder<br/>bounds, then pixels, then cells"]
+  decode --> image["AtlasImage<br/>RGBA8, straight alpha"]
+  image --> cache
+```
+
+Four things about that path are rules rather than arrangement:
+
+- **The renderer cannot read the disk.** `render/filament` knows a key and a
+  `(String) -> Texture?`; where a package lives and how a PNG becomes pixels are
+  `dicesets/install`'s, joined in `:app` — the same seam `RollWiring` is
+  (`docs/architecture.md`, decision 40).
+- **A decoded atlas belongs to the package, not to a throw or a surface.** It
+  is held on `FilamentEngine`, beside the material compiled on the device, and
+  destroyed with it. A `Texture` is a native handle, so one uploaded per throw
+  and dropped is a leak nothing on the JVM can see. A key that came back empty
+  is remembered as empty too, so a file that will not decode is read once.
+- **Straight alpha, not premultiplied.** The material lays the artwork over the
+  die's printed label by the artwork's own alpha, so a half-transparent pixel
+  has to keep its full colour. Android premultiplies by default and the decoder
+  asks it not to.
+- **Nothing that fails here breaks a roll.** A package that is not installed, a
+  path that tries to leave it, a file over the cap, a file that will not decode
+  — each comes back as report lines and the die is drawn the way a die with no
+  artwork is drawn. The bytes never reach a decoder until the path, the size
+  and the dimensions have each been checked, in that order.
+
+**A table look's floor and wall textures do not go through this yet.** They
+carry a path and nothing saying whose package, so they resolve to nothing and a
+table is drawn in its own colours (`docs/tables.md`, "Table looks";
+`docs/TODO.md`, "Open questions").
+
+### Labels, and the artwork over them
+
+**Every die is printed, and the artwork is laid over it.** The labels go on in
+`number_color` on the body colour, in the same atlas grid an image fills, and
+the atlas is then composited over that by its own alpha — so a cell an author
+drew in carries the drawing, and a cell they left clear carries the label. That
+is what "an atlas may leave cells transparent" above means, and it is settled
+per *pixel*, in the material, rather than per face anywhere else
+(`docs/physics-and-rendering.md`, "Rendering"). A die with no `texture` at all
+is simply the case where every cell is clear.
+
+The decoder says which face cells came out empty, as a warning, because the
+other way to arrive at an empty cell is an atlas saved in the wrong grid and
+the two look identical from outside ("Validation", below).
+
+Three rules decide what a face ends up carrying when it is printed:
 
 | The label | What is printed | Why |
 | --- | --- | --- |
@@ -532,6 +605,21 @@ Warnings (set installs, user sees them):
 - Unknown key, ignored
 - A texture that does not divide into square atlas cells
 
+Two of the checks need a decoder, so they are **not** in either list above:
+they cannot be answered from bytes alone and are raised where a texture is
+first decoded, at load time, by `AtlasDecoder` in `dicesets/install`. They
+produce the same `ValidationMessage` lines as everything else.
+
+| Code | Severity | What it means |
+| --- | --- | --- |
+| `TextureWillNotDecode` | error | The header check passed and the pixels are not there — a truncated download, a corrupt file, or a `.png` whose `IHDR` is the only sound thing about it. The die falls back to its printed labels and the package is otherwise untouched |
+| `AtlasCellsEmpty` | warning | The atlas leaves one or more of a die's face cells undrawn, so those faces are printed instead. Legal, and often meant; it is said because an atlas saved at the wrong size or in the wrong grid looks exactly the same from outside |
+
+Neither can refuse an *install*, and that is deliberate: a package is installed
+from its files and validated from its header, and a picture that goes bad on
+disk afterwards is a die that prints its labels rather than a set that stops
+working.
+
 Every error is reported, not only the first: an author fixing a set wants the
 whole list, and the screen that shows a failed install has room for it
 (option 6b).
@@ -633,11 +721,16 @@ are ignored with a warning to allow future extensions.
 
 ## Authoring tips
 
-- Start from `examples/` in this repository: a complete, commented dice set
-  using every catalogue shape, with blank atlases to draw over. Copy the
-  folder and edit it. (The built-in set cannot be exported from the app —
-  `examples/` is what it would have given you, kept where it can be reviewed
-  and versioned.)
+- Start from [`examples/`](../examples/) in this repository: a complete,
+  commented dice set using every catalogue shape, with blank atlases to draw
+  over. Copy the folder and edit it. (The built-in set cannot be exported from
+  the app — `examples/` is what it would have given you, kept where it can be
+  reviewed and versioned.)
+- Its atlases are **generated**, by `tools/generate-atlases.py`, and checked
+  against the catalogue by a test in `dicesets/format`: each is fully
+  transparent, at 256 px per cell, in the grid the shape's face count gives.
+  That is the size worth copying — an atlas in the wrong grid validates,
+  installs, and comes out sliced down the middle of every face.
 - Or draw one. The face designer's export is a complete package with its
   atlases already in the right grid, which is a working starting point for a
   set meant to be finished on a computer (`docs/face-designer.md`).

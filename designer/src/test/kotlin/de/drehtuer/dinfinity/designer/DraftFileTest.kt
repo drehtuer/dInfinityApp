@@ -171,7 +171,63 @@ class DraftFileTest {
     assertTrue("a fill came back over the ink", back.face(0).marks.first() is Fill)
   }
 
+  @Test
+  fun `a stamp comes back with its rings the shape they went out`() {
+    val glyph = stamp()
+    val drawn = Draft(die = d6).onFace(2) { it.draw(glyph) }
+
+    val back = requireNotNull(DraftFile.read(DraftFile.write(drawn), d6))
+
+    assertEquals(glyph, back.face(2).marks.single())
+  }
+
+  @Test
+  fun `a stamp is told from a stroke and a fill by a field neither carries`() {
+    val written = DraftFile.write(Draft(die = d6).onFace(0) { it.draw(stamp()) })
+
+    assertTrue("a stamp went out without its rings", written.contains(""""rings":[4,4]"""))
+    assertTrue("a stamp went out looking like a stroke", !written.contains(""""width""""))
+  }
+
+  @Test
+  fun `a stamp whose rings do not add up is dropped, and the drawing kept`() {
+    // A reader that predates stamps drops them the same way, which is why the
+    // format number was not bumped for one.
+    val mangled =
+      DraftFile
+        .write(Draft(die = d6).onFace(0) { it.draw(stamp()).draw(stroke()) })
+        .replace(""""rings":[4,4]""", """"rings":[4,5]""")
+
+    val back = requireNotNull(DraftFile.read(mangled, d6))
+
+    assertEquals("the drawing was lost over one bad stamp", 1, back.face(0).marks.size)
+    assertTrue(back.face(0).marks.single() is Stroke)
+  }
+
+  @Test
+  fun `a ring of fewer than three dots is not a glyph`() {
+    val mangled =
+      DraftFile
+        .write(Draft(die = d6).onFace(0) { it.draw(stamp()).draw(stroke()) })
+        .replace(""""rings":[4,4]""", """"rings":[8,0]""")
+
+    val back = requireNotNull(DraftFile.read(mangled, d6))
+
+    assertEquals(1, back.face(0).marks.size)
+  }
+
   private fun stroke() = Stroke(dots = listOf(Dot(0.1f, 0.2f), Dot(0.3f, 0.4f)), colorArgb = INK, width = 0.02f)
+
+  /** A glyph with a hole in it: an outer ring and a counter. */
+  private fun stamp() =
+    Stamp(
+      rings =
+        listOf(
+          listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.2f), Dot(0.8f, 0.8f), Dot(0.2f, 0.8f)),
+          listOf(Dot(0.4f, 0.4f), Dot(0.6f, 0.4f), Dot(0.6f, 0.6f), Dot(0.4f, 0.6f)),
+        ),
+      colorArgb = RED,
+    )
 
   private companion object {
     const val INK = 0xFF000000.toInt()

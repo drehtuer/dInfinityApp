@@ -10,6 +10,7 @@ import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -402,11 +403,22 @@ class DieNumbersTest {
   }
 
   @Test
-  fun `never builds anything for a die whose author supplied artwork`() {
+  fun `builds the labels of a die whose author supplied artwork too`() {
+    // An atlas may leave a face's cell clear, and `docs/dice-sets.md`
+    // ("Textures") says that face carries its label — so the field is built
+    // whatever the die wears, and the material decides per pixel.
     val printed = PrintedDice(cellPixels = 16)
 
-    assertNull(printed.of(d6.copy(texturePath = "textures/d6.png")))
-    assertEquals("an atlas was written over", 0, printed.built)
+    assertNotNull(printed.of(d6.copy(texturePath = "textures/d6.png")))
+    assertEquals(1, printed.built)
+  }
+
+  @Test
+  fun `builds nothing for a die with nothing written on any face`() {
+    val printed = PrintedDice(cellPixels = 16)
+
+    assertNull(printed.of(die(List(6) { "" }, DieShape.Cube)))
+    assertEquals("a blank die was remembered as blank", 1, printed.built)
   }
 
   private companion object {

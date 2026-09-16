@@ -89,8 +89,10 @@ class FilamentDiceRendererTest {
   }
 
   @Test
-  fun `a die whose author supplied artwork prints nothing over it`() {
-    // An author who drew a face decided what is on it.
+  fun `a die with artwork names it by package and path, and is printed as well`() {
+    // An atlas may leave a face's cell clear, and that face carries its label
+    // (`docs/dice-sets.md`, "Textures"), so both are handed to the material
+    // and the artwork's alpha decides between them per pixel.
     val painted = StandardDice.d6.copy(texturePath = "textures/d6.png")
     val throwSpec =
       spec().copy(
@@ -101,7 +103,24 @@ class FilamentDiceRendererTest {
 
     val parameters = stage.added[TRAY_PARTS].second
     assertTrue(parameters.textured)
-    assertFalse("the app wrote over the author's artwork", parameters.numbered)
+    assertEquals(
+      "a path with no package names two sets' pictures at once",
+      AtlasKey.of("brass", "textures/d6.png"),
+      parameters.texturePath,
+    )
+    assertTrue("a clear cell has nothing to show through to", parameters.numbered)
+  }
+
+  @Test
+  fun `a die already down wears its own package's artwork`() {
+    // A die an explosion landed among came from some set, and the throw that
+    // draws it is not that set's: the resting die carries its own.
+    val painted = StandardDice.d6.copy(texturePath = "textures/d6.png")
+    val resting = DieAtRest(painted, "brass", RestingPlace(Vector3(0.0, 0.0, 8.0), Quaternion.Identity))
+
+    renderer.begin(added(listOf(resting)), geometry, look)
+
+    assertEquals(AtlasKey.of("brass", "textures/d6.png"), stage.added[TRAY_PARTS].second.texturePath)
   }
 
   @Test
@@ -264,7 +283,8 @@ class FilamentDiceRendererTest {
       among = down,
     )
 
-  private fun at(position: Vector3): DieAtRest = DieAtRest(StandardDice.d6, RestingPlace(position, Quaternion.Identity))
+  private fun at(position: Vector3): DieAtRest =
+    DieAtRest(StandardDice.d6, "builtin", RestingPlace(position, Quaternion.Identity))
 
   private fun spec(scale: Double = 1.0): ThrowSpec =
     ThrowSpec(

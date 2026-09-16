@@ -19,8 +19,8 @@ installed by other users like any other set.
 2. **Draw.** The screen shows one face at a time as a large square canvas
    with the face's outline (triangle, square, pentagon, kite for the d10…)
    masked in. Swipe left/right or use the strip at the bottom to move between
-   faces. The current face value is shown faintly as a guide and can be
-   hidden.
+   faces. The number that belongs on the face is shown faintly under the
+   drawing as something to trace, and can be hidden ("The guide").
 
    **A d4 is the exception and needs three guides, not one.** Its numbers
    belong to corners rather than to faces, so each of its four triangles
@@ -59,11 +59,12 @@ steered from. The tool, clipboard and colour rows **wrap** rather than scroll
 sideways: a tool hidden off the edge of a row is a tool nobody finds. Only the
 face strip scrolls sideways, because twenty faces have to go somewhere.
 
-The toolbar the design asks for is three-quarters there: the **fill bucket**,
-**copy face → paste with a turn and a mirror**, and a **colour picker past the
-twelve presets** (`4c`). Each of them is arithmetic over the stored vectors and
-lives in `designer/` where a plain test can reach it; what is left in the
-screen is a path and a mask.
+The toolbar the design asks for is there: the **fill bucket**, **copy face →
+paste with a turn and a mirror**, a **colour picker past the twelve presets**
+(`4c`), and the **stamp** with the "fill all with numbers" beside the face
+strip. Each of them is arithmetic over the stored vectors and lives in
+`designer/` where a plain test can reach it; what is left in the screen is a
+path and a mask.
 
 **The d4 rule is derived, not checked.** A cell's three numbers are read from
 the three corners that cell meets, so two cells sharing an edge draw the same
@@ -105,10 +106,6 @@ The export is built: "My dice" is a real installed package, and the details
 screen behind it offers it as a zip once a licence has been chosen ("Export
 details" below).
 
-Still to come, in `docs/TODO.md` 4.6: the stamp and "fill all faces with
-numbers" — both of which place a glyph, and so both wait on the built-in SDF
-font (Step 3).
-
 ## Drawing tools
 
 Deliberately small:
@@ -118,10 +115,9 @@ Deliberately small:
 - Undo/redo (per face, unlimited within the session)
 - Copy face → paste onto another face, with optional turn/mirror (for making
   all faces share a border, for example)
-- Stamp: place a digit/letter/symbol from the built-in font, scalable and
-  rotatable, so people who cannot draw a legible "8" still get an "8" — not
-  built yet, and neither is the "fill all faces with numbers" one-tap starting
-  point it shares a font with
+- Stamp: place a digit or a sign from the built-in font, in three sizes, so
+  people who cannot draw a legible "8" still get an "8" — and "fill all with
+  numbers", the one tap that puts every face's own number on it ("The stamp")
 
 ### The fill bucket
 
@@ -153,6 +149,116 @@ a fill that landed on top would hide the drawing it was aimed at, and the way
 to cover ink is the eraser. A fill is one mark, so it is one press of undo, it
 counts against the two-hundred limit like a stroke, and it round-trips through
 the draft file with its region and its colour.
+
+### The stamp
+
+> **Design:** the stamp is in the tool row of option `1v` and "fill all with
+> numbers" sits beside the face strip, which is where the prototype puts them.
+
+**The font is the tray's, and so is the placement.** `core/glyphs` holds the
+outlines a die with no artwork is printed with, and `LabelRoom` solves how big
+a label may be on a face and where on that face it goes. The tray asks it about
+the polygon its mesh draws; the designer asks the same object about the polygon
+the canvas is masked into. A die drawn from its own numbers and the same die
+printed therefore agree about where a `6` sits, which two solves could not be
+relied on to do (`docs/architecture.md`, decision 45 and decision 51).
+
+```mermaid
+flowchart LR
+  font["core/glyphs<br/>BuiltinFont + Typesetter"] --> room["LabelRoom<br/>how big, and where"]
+  room --> tray["render/filament<br/>DieNumbers: the mesh's face"]
+  room --> designer["designer<br/>FaceStamp: the canvas's outline"]
+  tray --> field["a distance field the tray samples"]
+  designer --> marks["marks on a face, like any other"]
+```
+
+**A stamp is a mark like a stroke, and one mark however many rings it has.**
+What the typesetter hands back is closed outlines — the outside of the ink, and
+a counter for every hole in it — and they are kept together and drawn as one
+shape under the **even-odd rule**, which is what leaves the hole in a `0` open.
+Each ring as a fill of its own would paint that hole in. `10` is one press of
+undo, one mark against the face's two hundred, and one thing a turn or a mirror
+carries whole.
+
+**Three sizes, measured against the face rather than the canvas.** Small,
+medium and large are 0.6, 1 and 1.4 times what *this die's own* number would be
+printed at, because a number that fills a d6's square runs off a d20's
+triangle. The middle one is therefore the printed size exactly, and the largest
+still fits inside the face when it is stamped in its middle. Where it goes is
+where the finger went; a stamp put down near an edge is clipped by the mask
+like a turned paste, because what falls outside the outline belongs to no face.
+
+The stamp is **loaded with the face's own number** and follows the face until
+somebody types something, and then it is theirs — the commonest stamp of all is
+the number that belongs there, and the second commonest is a small edit of it
+that moving to the next face should not undo. What the font cannot draw is
+**said before the tap rather than swallowed by it**: it draws `0`–`9`, the two
+signs, a times, a per cent and a full stop, and a word is refused whole rather
+than stamped as the half of it the font happens to have.
+
+**A stamp does not move once it is down.** There is no dragging it about and no
+handle to turn it by: it is a mark like every other mark, and the way to change
+one is undo and stamp again. A drawing where one kind of mark can be picked up
+again and the others cannot is two drawings. The prototype does let one be
+dragged, and whether that is worth the difference is a question for a phone
+(`docs/TODO.md`, "Open questions").
+
+### Fill all with numbers
+
+One tap puts every face's own number on it, in the ink in the pen: the number
+the tray would print, where the tray would print it, underlined where the tray
+would underline it — a `6` on a die that also has a `9` gets its bar, and a d6's
+`6` does not (`docs/physics-and-rendering.md`, "Rendering"). It is the starting
+point for somebody who wants a numbered die to decorate rather than a blank one
+to letter.
+
+**It leaves a stamped face alone**, so pressing it twice changes nothing and a
+face somebody has already lettered by hand is not written over. A face that was
+*drawn* on but not stamped is filled, and the number lands over the drawing the
+way a paste does.
+
+**It is one undoable step per face, not one for the die.** Undo belongs to the
+face it was made on, so the number comes off the face in front of the player
+with one press and off the others as they are reached. A single step spanning
+twenty faces would be an undo stack that reached across faces, which is not
+what the button on this screen has ever meant.
+
+**A d4 gets three, one at each corner**, each turned to face its own corner,
+because its values belong to corners rather than to faces (`docs/dice-sets.md`,
+"The d4"). They land exactly where the guide already showed them: how far in
+from the corner a number sits is one number in `core/glyphs`, and the guide and
+the stamp both read it, so tracing the guide and stamping the number cannot
+come out in two places.
+
+A face an author left blank stays blank, and a face whose label the font cannot
+draw gets its **value** — the one thing about a face the app can always write
+down, which is the rule the tray already follows.
+
+### The guide
+
+**It is the numeral, not a dot where the numeral goes.** It was a dot for as
+long as nothing on the phone could measure a piece of text: drawing a string
+inside a `Canvas` wants a measurer, and the screen had no reason to hold one.
+`core/glyphs` is that measurer — it holds the outlines the tray prints with and
+`LabelRoom` solves how big a number may be on a face and where on that face it
+sits — so the guide is now the very shape "fill all with numbers" would put
+down, at the same size, in the same place, with the same bar under a `6` that
+needs one.
+
+That is the point of it rather than a nicety. A guide and a stamp that were
+solved separately could drift apart, and then tracing the guide and pressing
+the button would put ink in two different places; there is one solve
+(`designer`'s `FaceStamp.printed`) and both read it. A d4 gets three, one at
+each corner, for the same reason the stamp does.
+
+**A face with nothing printed on it still gets its dot.** Half a Fudge die is a
+blank side an author asked for, and printing a `0` on it would be the app
+arguing with the set file — so there is no numeral to trace and the guide falls
+back to marking the place. The screen is not told which case it is looking at:
+what reaches the draw lambda is a list of closed rings either way.
+
+The guide can still be turned off, and the face's value is still on the strip
+under the canvas while it is.
 
 ### Copy and paste
 
@@ -240,12 +346,17 @@ is the class shape of the day, and a drawing has to survive the class changing
 under it. Anything that does not read is simply not a draft, and the canvas
 opens blank.
 
-**The format number was not bumped for fills.** A fill is a new kind of entry
-in the list of marks that was already there, told apart by a field a stroke
-never carries, so every draft written before fills existed reads exactly as it
-did and a build that predates them drops a fill it cannot draw rather than
-losing the drawing around it. Bumping the number would blank every drawing on
-the device to spare an older build one shape, which is not a trade.
+**The format number was not bumped for fills, nor for stamps.** Each is a new
+kind of entry in the list of marks that was already there, told apart by a
+field a stroke never carries — `fill` for one, the ring lengths for the other —
+so every draft written before them reads exactly as it did and a build that
+predates them drops what it cannot draw rather than losing the drawing around
+it. Bumping the number would blank every drawing on the device to spare an
+older build one shape, which is not a trade.
+
+A stamp's dots are written the way every other mark's are, every ring end to
+end, with the lengths beside them; a stamp whose lengths do not add up to the
+dots it carries is not a stamp this wrote and is dropped.
 
 ## Export details
 
@@ -300,6 +411,12 @@ is far too much to do after every stroke, so it is rebuilt when the sets folder
 is read and only when a drawing has actually changed — once per sitting at
 worst, and not at all while nobody is looking at the list.
 
+The drawings are not the only thing in it. A photograph somebody has made a
+table of is written into the same package, as a `[[table]]` entry and a
+`tables/<id>.webp` beside the atlases (`docs/tables.md`, "Your own photo") —
+so the same package is rebuilt from two records rather than one, and a phone
+with photos and no drawings has a `mine` that is a table pack.
+
 A draft whose die is not installed is not in the package, and its file is kept:
 re-installing the package that defines the die brings the drawing back.
 
@@ -349,16 +466,57 @@ install failure on somebody else's.
 
 ## Quick mode
 
-From the roll screen, long-pressing a die offers "Doodle this die": the
-designer opens on that die with its existing texture (if any) as the starting
-layer. Saving creates a variant in "My dice" with the same id suffixed
-`-doodle` and switches the current roll to use it. This is the "draw a skull
-on the 1 in ten seconds" path.
+> **Design:** the breakdown a long press lands on is option `1f` of the
+> [clickable design](../design/dInfinity.dc.html); what it opens is the
+> designer itself, `1v`.
+
+**Long-press a die in the breakdown and it offers "Doodle this die."** Taking
+the offer opens the face designer on that die, with that die's own draft
+already on the canvas. It is the same screen the menu opens and it does nothing
+the menu cannot: what it saves is the hunt through the chooser for the die
+already in front of the player, which is the whole of "draw a skull on the 1 in
+ten seconds".
+
+**The dice that landed, not the picker row.** The obvious place is the picker —
+it is a row of dice on the roll screen — but a long press there already takes a
+die off the formula (`docs/dice-notation.md`, "Picking dice without typing"),
+and that is a fast edit made in twos and threes. Putting a menu in front of it
+to make room for something somebody does once a month would slow down the
+common thing for the rare one. The dice in the breakdown had no gesture at all,
+and they are the better subject anyway: a die that has just landed is the one
+being looked at when "this d6 is boring" is thought. A dropped die offers it
+like any other — a `4d6dl1` whose 1 is the dull one is exactly the case — and
+so does a die plain notation cannot name, which the picker row cannot even
+show (`docs/architecture.md`, decision 31). Whether the picker row should offer
+it too, through a menu, is an open question (`docs/TODO.md`).
+
+**It offers rather than opens.** The press puts up a one-line menu and the menu
+navigates. Leaving the tray on a gesture that announced nothing would be a
+screen that vanishes when a finger rests on it, and the menu is also the only
+thing that tells anybody the shortcut is there. TalkBack is told what the long
+press does rather than left to say "double tap and hold".
+
+**Nothing is saved and nothing is switched.** An earlier plan had the designer
+make a variant die — the same id suffixed `-doodle` — and switch the current
+roll to it. There is nothing left of that to build: a drawing *is* a draft on
+disk under the die's own id and the drafts together already *are* "My dice", so
+the variant would be a second copy of a drawing that exists, and the switch
+would be a roll whose dice a screen changed behind the player. The ways back to
+the tray are Back and "Roll it", which hands the tray the die being drawn
+("Flow", step 4).
+
+Which die the screen opens on is one rule with the menu's
+(`designer`'s `OpeningDie`): the die the long press named, and the usual d6
+when it named none — or when it named a die that is no longer installed, which
+can happen to a result still on the tray after its package has been removed.
+The route carries the id and nothing else (`docs/architecture.md`,
+"Navigation").
 
 ## Constraints
 
-- Drafts are limited to 50 per device and 200 marks per face — strokes and
-  fills alike — to keep storage and export time bounded.
+- Drafts are limited to 50 per device and 200 marks per face — strokes, fills
+  and stamps alike — to keep storage and export time bounded. A stamped `10` is
+  one mark, not one per ring.
 - The mark limit **warns and then refuses**: the face stops taking marks and
   says so twenty strokes before it does, because a canvas that silently stops
   drawing reads as a broken screen. A paste that would not fit is refused

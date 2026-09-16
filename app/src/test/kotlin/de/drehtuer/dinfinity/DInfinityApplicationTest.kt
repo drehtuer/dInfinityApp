@@ -3,9 +3,14 @@ package de.drehtuer.dinfinity
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.feature.tables.PhotoOutcome
+import de.drehtuer.dinfinity.feature.tables.PickedPhoto
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertSame
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -43,6 +48,27 @@ class DInfinityApplicationTest {
     assertNotNull(app.installedSets)
     assertSame(app.setLibrary, app.setLibrary)
   }
+
+  @Test
+  fun `making a table out of a photograph is built once and shared`() =
+    runTest {
+      // It holds the personal package and a decoder, so a second one would be
+      // a second writer of the same folder.
+      assertSame(app.tablePhotos, app.tablePhotos)
+
+      // A file nothing can read is a refusal rather than a crash, which is the
+      // one thing worth asking of the wiring without a real picture: a real
+      // one needs a real encoder, and Robolectric does not have one
+      // (`BitmapPhotoTest`).
+      val outcome = app.tablePhotos.add(PickedPhoto(label = "not-a-picture.txt") { null }, "Nothing")
+      assertTrue("$outcome", outcome is PhotoOutcome.Refused)
+
+      // And removing one that is not there re-reads the catalogue anyway,
+      // which is the other half of the wiring: a table written and not re-read
+      // is a table that is on disk and in no list.
+      app.tablePhotos.remove(TablePin(DiceSet.PERSONAL_ID, "photo-nothing"))
+      assertNotNull(app.setLibrary.catalogue.set(DiceSet.BUILTIN_ID))
+    }
 
   @Test
   fun `a formula starts out resolving against the bundled set`() {

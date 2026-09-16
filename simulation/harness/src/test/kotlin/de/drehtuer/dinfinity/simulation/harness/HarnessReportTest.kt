@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -138,6 +139,36 @@ class HarnessReportTest {
   }
 
   @Test
+  fun `a run with no frames has none, rather than having them at zero`() {
+    val summary = HarnessSummary.of(diceCount = 20, records = listOf(record()))
+
+    assertNull(summary.frames)
+  }
+
+  @Test
+  fun `a paced run's frames are summarised over every frame of the run`() {
+    val frames = FrameTimes(millis = listOf(4.0, 2.0, 30.0, 6.0), droppedSteps = 5, drawn = false)
+
+    val summary = HarnessSummary.of(diceCount = 20, records = listOf(record()), frames = frames)
+    val measured = requireNotNull(summary.frames)
+
+    assertEquals(4L, measured.frames)
+    assertEquals(5L, measured.droppedSteps)
+    assertEquals(30.0, measured.millis.worst)
+    assertFalse(measured.drawn)
+  }
+
+  @Test
+  fun `a report carries whatever the run measured about its frames into its scorecard`() {
+    val frames = FrameTimes(millis = listOf(8.0), droppedSteps = 0, drawn = true)
+
+    val report = HarnessReport.of(facts(), listOf(record()), frames)
+
+    assertEquals(HarnessTargets().score(report.summary), report.scorecard)
+    assertEquals(1L, requireNotNull(report.summary.frames).frames)
+  }
+
+  @Test
   fun `a device is told from an emulator by the hardware it says it is`() {
     assertTrue(DeviceFacts.of("sdk_gphone64_x86_64", "x86_64", 36, "ranchu").emulator)
     assertTrue(DeviceFacts.of("Android SDK", "x86_64", 36, " Goldfish ").emulator)
@@ -150,7 +181,9 @@ class HarnessReportTest {
       shapeId = "d20",
       diceCount = 20,
       dieScale = 1.0,
+      length = RunLength.Rolls(1),
       rolls = 1,
+      framePaced = false,
       seed = 7L,
       device = DeviceFacts(model = "Pixel 10a", abi = "arm64-v8a", androidApi = 37, emulator = false),
       startedAtEpochMs = 1_700_000_000_000L,

@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity
 
 import android.content.Context
+import de.drehtuer.dinfinity.core.model.AtlasImage
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableLook
@@ -68,6 +69,16 @@ class RollWiring(
    * the player has left the tray.
    */
   private val developer: DeveloperLog = DeveloperLog.NONE,
+  /**
+   * Where a die's artwork comes from, keyed by package and path
+   * (`de.drehtuer.dinfinity.render.filament.AtlasKey`).
+   *
+   * Handed to the roll thread and therefore to the engine, because a decoded
+   * atlas belongs to a *package* and outlives every visit to the screen
+   * (`docs/dice-sets.md`, "Textures"). The default draws nothing, which is
+   * what the dice looked like before anything filled this in.
+   */
+  private val artwork: (String) -> AtlasImage? = { null },
 ) {
   private val simulator = JoltDiceSimulator()
 
@@ -215,7 +226,7 @@ class RollWiring(
    * to the screen is the black tray somebody sees on the way back from the menu
    * (`RollThread`).
    */
-  private val rollThread: RollThread by lazy { RollThread() }
+  private val rollThread: RollThread by lazy { RollThread(artwork) }
 
   /**
    * The tray this visit gets.

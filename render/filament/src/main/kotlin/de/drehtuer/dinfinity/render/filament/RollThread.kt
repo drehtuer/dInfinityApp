@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.filament
 
 import android.os.Handler
 import android.os.HandlerThread
+import de.drehtuer.dinfinity.core.model.AtlasImage
 import java.util.concurrent.CountDownLatch
 
 /**
@@ -33,8 +34,15 @@ import java.util.concurrent.CountDownLatch
  *
  * One of these belongs to the application, not to a screen. [close] is for
  * tests and for symmetry; a process that is ending does not need it.
+ *
+ * @param artwork where a die's decoded atlas comes from ([AtlasKey]). It is
+ *   handed on to the engine and to nothing else: the artwork of a package is
+ *   kept for as long as the engine is, for the same reason the compiled
+ *   material is (`docs/dice-sets.md`, "Textures").
  */
-class RollThread : AutoCloseable {
+class RollThread(
+  private val artwork: (String) -> AtlasImage? = { null },
+) : AutoCloseable {
   private val thread = HandlerThread(THREAD_NAME).apply { start() }
 
   /** Where every call into the engine and the physics world is posted. */
@@ -57,7 +65,7 @@ class RollThread : AutoCloseable {
    * **Call only on the roll thread.** A graphics context belongs to the thread
    * that made it, and every caller is already inside a [handler] post.
    */
-  fun filament(): FilamentEngine = filament ?: FilamentEngine().also { filament = it }
+  fun filament(): FilamentEngine = filament ?: FilamentEngine(artwork).also { filament = it }
 
   /**
    * Runs [work] on the roll thread and waits for it.
