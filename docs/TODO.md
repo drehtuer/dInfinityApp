@@ -425,6 +425,48 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - [ ] **Zero** post-rest corrections. The harness asserts this; one occurrence is a bug, not a statistic
 - [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
 - [ ] Settle time at 20 dice: median under 2 s, p99 under 4 s; the 12 s cap never reached in 10,000 rolls
+- [ ] **Measured, on the Pixel 10a: both obvious levers work, and both pay for
+      it in the same coin.** Two experiments, 200 throws of 20 d20s each, base
+      seeds 1 and 7, against the sixteen-seed shaken-spread check in
+      `JoltBridgeTest`:
+
+      | change | corrected | re-thrown | deepest overlap | p99 step | shaken throws that heaped |
+      | --- | --- | --- | --- | --- | --- |
+      | today | 43.55 % | 3.50 % | 9.019 mm | 0.91 ms | 2 of 16 (the bound) |
+      | 4 collision sub-steps | 44.10 % | 2.35 % | 3.182 mm | 0.85 ms | **8 of 16** |
+      | 8 collision sub-steps | 0.38 % † | 2.43 % | **1.577 mm** | 1.32 ms | **13 of 16** |
+      | bias waits 400 ms not 50 ms | **0.00 %** | 2.43 % | 9.019 mm | 0.91 ms | **4 of 16** |
+
+      † with the longer wait also applied. 16 sub-steps is *worse* than 8
+      (5.965 mm), so it is not a free knob.
+
+      **Sub-stepping collision is the overlap fix.** A 16 mm die travelling a
+      metre a second crosses half its own width in one 1/120 s step, so
+      discrete detection first sees two dice already deep inside each other and
+      the solver's job becomes pushing them apart rather than keeping them
+      apart. Four slices cut the worst overlap by a factor of three, eight by
+      nearly six, and a step still costs well under a fifth of its 8.33 ms
+      budget.
+
+      **The 43.55 % is almost entirely dice that would have sorted themselves
+      out.** The bias fires after 50 ms of "nearly stopped and either leaning on
+      a die or reading cocked", which a tapped throw produces constantly.
+      Waiting 400 ms takes it to zero and changes *nothing else* about a tapped
+      throw — same re-throws, same settle times, still zero stacked and zero
+      post-rest.
+
+      **And here is why neither shipped.** Both levers make a *shaken* throw
+      pack into one end, and they do it for the same reason: the spread of a
+      shaken throw today is produced by corrections and by interpenetration
+      artifacts rather than by prevention. The bias always pushes a little
+      upward, so it is what un-piles a heap; deep overlaps pop dice apart, so
+      the solver's own error was spreading them too. Take either away and the
+      dice pack, because **nothing else is spreading them**. That is exactly the
+      thing this section says must stop being true, and it means the next
+      attempt is not a threshold but a mechanism: a shaken throw needs a real
+      spreading force, and what a sustained sideways shake *should* do to a
+      tray of dice is the open question in 5.6 that has to be answered first.
+      The numbers above are the starting point; nothing in the code changed
 - [ ] Tune prevention (spawn spread and stagger, dice-on-dice friction, throw energy, scale) until the numbers above hold without leaning on corrections. **Where it starts:** 20 d20s at the capacity rule's scale settle in 89–132 steps on the Pixel 10a, with 9 of the 20 corrected, 0–1 re-thrown and **zero** post-rest corrections. The last figure is the one that must stay at zero and does; the correction rate is 45 % against a 0.5 % budget, and bringing it down is what this task is
 - [ ] *Measured, on the Pixel 10a:* 200 throws of 20 d20s, base seed 1. **43.55 %** of dice corrected against a 0.5 % budget, **3.50 %** re-thrown against 0.05 %. What passes on the same run is every honesty bar and every timing one: **zero** dice at rest on another die, **zero** post-rest corrections, zero forced settles, no throw near the twelve-second cap, median settle 0.81 s and p99 1.83 s against 2 s and 4 s, and a p99 step of 1.00 ms against the 8.33 ms a 120 Hz step has. The engine is fast and honest and leans on corrections far too hard, which is what the rest of this section is about
 - [ ] **The corrections are visible at 100 dice, and they look like popcorn.** Seen on the Pixel 10a: dice stack against a wall and then *pop* apart to unstack, and individual dice jump to find a better spot. Every one of those lands while the die is still moving, so the honest rule holds and nothing touches a die at rest — but "it does not cheat" and "it does not look like it cheats" are different claims, and this is the second one failing. It is the 45 %-against-0.5 % correction rate above, seen rather than counted, and it is the argument for prevention over correction rather than a separate task

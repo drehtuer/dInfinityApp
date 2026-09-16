@@ -179,6 +179,29 @@ accident — it replaces a result somebody may still be reading. Two deliberate
 gestures, one of them a button and the other a shake of the whole phone, are
 enough.
 
+## What a shake's spread currently rests on
+
+Measured on the Pixel 10a and worth knowing before anything here is tuned: the
+reason a shaken throw ends up spread across the tray rather than packed into one
+end is **not** prevention. It is two accidents.
+
+The first is rung 2. A bias always carries a little upward, so it is what lifts
+a die out of a pile; take it away — by making it wait for real trouble rather
+than for fifty milliseconds of it — and the dice stay where the shake put them.
+The second is the solver's own error. At 1/120 s a die travelling a metre a
+second crosses half its own width between collision checks, so two dice are
+first seen already deep inside each other and are pushed apart hard. Resolve
+collision in sub-steps and that stops happening — and the dice pack, because the
+popping apart was doing the spreading.
+
+Both are measured, with numbers, in `docs/TODO.md` (Step 5.5). The point for
+anyone changing this file is that **the correction rate and the overlap depth
+cannot be fixed independently of deciding what a sustained sideways shake should
+do to a tray of dice**, which is an open question below. A tray of dice under a
+1.8 g lateral drive packing against the far wall may well be right — it is what
+a hand does — but until that is decided, a change that improves the overlap will
+look like a regression in how a shaken roll reads.
+
 ## Shake input
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
