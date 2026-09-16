@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.stats
 
 import android.content.Context
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -112,6 +113,26 @@ class SavedStatsScreenTest {
     compose.waitUntil(PATIENCE) { presenter.state.selected != null }
     compose.onNodeWithTag(SavedStatsTestTags.NEVER).assertIsDisplayed()
     compose.onNodeWithTag(SavedStatsTestTags.CHART).assertIsNotDisplayed()
+  }
+
+  /**
+   * The chart draws the totals rolled and lays the exact distribution across
+   * them as a mark, and tells the two apart by colour alone — on a `Canvas`,
+   * which hands a screen reader an empty rectangle
+   * (`docs/architecture.md`, "Accessibility").
+   */
+  @Test
+  fun `the chart says what it is a picture of`() {
+    given("fireball", "Fireball", "2d6")
+    rolled("fireball", totals = listOf(4L, 6L, 8L))
+    opened("fireball")
+
+    compose
+      .onNodeWithTag(SavedStatsTestTags.CHART)
+      .assertContentDescriptionContains(
+        "Bar chart of 11 totals rolled against the exact distribution. They run from 2 to 12.",
+        substring = true,
+      )
   }
 
   @Test

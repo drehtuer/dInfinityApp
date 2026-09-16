@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -110,7 +111,35 @@ class DebugOverlayTest {
       DebugOverlay(diagnostics = RollDiagnostics(dice = listOf(die(0))), geometry = geometry)
     }
 
-    compose.onNodeWithTag(DebugTestTags.OVERLAY).assertContentDescriptionEquals("Debug overlay")
+    compose.onNodeWithTag(DebugTestTags.OVERLAY).assertContentDescriptionContains("Debug overlay")
+  }
+
+  /**
+   * The plan tints a die's box by its state, and two of the three tints are
+   * red on red. The counts are the whole of what the picture claims, so a
+   * `Canvas` that would otherwise be silent says them
+   * (`docs/architecture.md`, "Accessibility").
+   */
+  @Test
+  fun `the plan says how many dice are in each state rather than only tinting them`() {
+    compose.setContent {
+      DebugOverlay(
+        diagnostics =
+          RollDiagnostics(
+            dice =
+              listOf(
+                die(0, still = SettleRule.REST_STEPS),
+                die(1),
+                die(2, stacked = true),
+              ),
+          ),
+        geometry = geometry,
+      )
+    }
+
+    compose
+      .onNodeWithTag(DebugTestTags.PLAN, useUnmergedTree = true)
+      .assertContentDescriptionEquals("Tray plan: 3 dice, 1 at rest, 1 moving, 1 stacked")
   }
 
   @Test
@@ -176,6 +205,7 @@ class DebugOverlayTest {
   private fun die(
     index: Int,
     still: Int = 0,
+    stacked: Boolean = false,
   ): DieDiagnostic =
     DieDiagnostic(
       index = index,
@@ -183,6 +213,7 @@ class DebugOverlayTest {
       acrossMm = 16.0,
       stillForSteps = still,
       atRest = still >= SettleRule.REST_STEPS,
+      supportedByDie = stacked,
     )
 
   private fun contact(): ContactPoint =
