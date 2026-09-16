@@ -646,6 +646,45 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
       the twelve-second cap**, where the bar is never. At sixty it is
       twenty-nine, and twenty of those are where the stacked dice come from,
       which is what makes the cap a stacking problem rather than a patience one
+- [ ] **The nine clean stacked rolls have a signature, and it is not the cause.**
+      Of the sixty-dice rolls that finished properly and still left a die
+      standing, every one had **five or more re-throws** — and of 6,819 clean
+      rolls with four or fewer, not one stacked:
+
+      | re-throws | rolls | ended stacked |
+      | --- | --- | --- |
+      | 0–4 | 6,819 | **0** |
+      | 5 | 1,187 | 3 |
+      | 6 | 831 | 2 |
+      | 7 | 503 | 2 |
+      | 9 | 155 | 2 |
+
+      They also take twice as long (294 steps against a median of 159) and have
+      twice the re-throws (6 against 3) — but **the same number of corrections**
+      (29 against 28). So it tracks rung 3 and not rung 2.
+
+      The obvious reading was that `SpawnLayout.rethrowPlacement` drops a
+      re-thrown die at a **uniformly random point**, where `addedPlacement` asks
+      `ClearSpace` for floor nothing is on — the same question answered two
+      ways. Both repairs were tried on the phone and **both are worse**:
+
+      | | rolls stacking | rolls at the cap | p99 step |
+      | --- | --- | --- | --- |
+      | today (random point) | 0.29 % | 0.29 % | 1.69 ms |
+      | the clearest point | **7.4 %** | **12.8 %** | 5.31 ms |
+      | a random point, redrawn until clear | 0.2 % | **2.2 %** | 1.49 ms |
+
+      The first fails for a reason worth keeping: rung 3 can throw **several**
+      dice again in the same step, and one deterministic clearest point drops
+      all of them on the same patch. An explosion may ask for it because it adds
+      exactly one die. The draw is what keeps simultaneous re-throws apart.
+
+      The second keeps the draw and still makes the cap seven times worse, which
+      is what says the placement was never the cause. **The re-throw count and
+      the stacking are both symptoms of the same crowded roll**, not one causing
+      the other — so the thing to attack is why a sixty-dice roll needs six
+      re-throws at all, which is rung 1 and this section's real subject. Nothing
+      in the code changed
 - [ ] **Measured, on the Pixel 10a: both obvious levers work, and both pay for
       it in the same coin.** Two experiments, 200 throws of 20 d20s each, base
       seeds 1 and 7, against the sixteen-seed shaken-spread check in
