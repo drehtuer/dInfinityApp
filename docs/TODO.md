@@ -99,7 +99,22 @@ rather than a sentence with a zero written into it.
 
 What is below is what it does not have yet.
 
-- [ ] Revisit the capacity constants now that they bite much later. 30 % of the floor and a 40 % minimum scale no longer refuse anything the engine would take: it would take about 240 dice to reach the floor and the engine stops at 100 (`docs/tables.md`). Step 5.3 is where those numbers meet a device
+- [ ] **Revisited against the device data, and left alone deliberately.** The
+      two constants do different jobs: `FLOOR_SHARE` *shrinks* and `MIN_SCALE`
+      *refuses*. At the engine's cap of a hundred 16 mm d6 the shrink is 0.62,
+      which is nowhere near the 0.40 floor, so the refusal a player meets is
+      always the body count — exactly as this bullet suspected. `MIN_SCALE`
+      would not begin refusing until **241 dice**, two and a half times the cap.
+
+      What the Step 5.3 sweep says about the shrink it does apply: at a hundred
+      dice everything settles but one roll in sixty, nothing is stacked at rest,
+      nothing leaves the tray and the p99 step is 3.09 ms against 8.33. So there
+      is no evidence for changing either number, and changing one on no evidence
+      is how a tuned constant stops meaning anything.
+
+      Both figures are now `TableCapacityTest` assertions rather than a
+      suspicion in a plan, so raising `MAX_DICE` past 241 is noticed — it would
+      make the scale floor live for the first time
 - [ ] **Freeze the dice that are down and let the player re-roll the ones that are not.** The user's proposal for unstacking, and worth taking seriously: a die that has landed cleanly is finished and could be lifted off the mat and shown as an overlay, leaving only the stuck ones in the tray to be thrown again. It keeps the honest rule — a settled die is never *moved*, only taken out of play once its face is read — and it turns the worst case from "the app fixes it invisibly" into "you roll again", which is what a person does at a table. Needs the design for how ninety-nine finished dice are shown; the mechanism can be decided first (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice")
 - [ ] *Confirm on the phone:* a roll stranded by losing its surface is fixed (a roll now asks for frames with nowhere to draw), but whether that was what left `100d4` on "Rolling…" for ever is unproven — the physics settles that throw headlessly on eight seeds, so the hang was never in the engine
 - [ ] **The surface outlives the screen going off.** After a lock and unlock the old rendering surface is still there. Found on the Pixel 10a; `DiceTray` gives the surface up on `onDestroyed` and the driver keeps the engine now (Step 4.1, done), so what is left is which of those two the lock screen actually triggers
