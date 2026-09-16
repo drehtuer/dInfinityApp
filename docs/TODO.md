@@ -585,7 +585,22 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
 - **a die visibly moved after it stopped**, which is worse — it turns a roll
   into an arrangement in front of the player's eyes.
 
-- [ ] 10,000 headless rolls at 20 dice and 10,000 at 60: **zero** dice at rest supported by another die. `tools/harness.sh -n 10000 -c 20` and `-c 60`; the count is in every run's JSON and its scorecard
+- [ ] **Run at 20 dice on the Pixel 10a, and the bar holds: zero.** Ten thousand
+      rolls, **200,000 dice**, and not one of them came to rest standing on
+      another — nor was one touched after it had stopped. Those are the two bars
+      this whole section exists for and they hold at a sample fifty times larger
+      than anything that had been run before.
+
+      Three things only appear at this size, and all three are worth having:
+      **three rolls in ten thousand run out of the twelve-second cap** (0.03 %,
+      where two hundred rolls showed none), the deepest die-into-die overlap
+      grows to **11.6 mm** from the 9.0 mm two hundred rolls found — an extreme
+      value climbs with the sample, so the earlier figure was optimism rather
+      than a better engine — and the median roll costs 28.6 ms of wall time,
+      with a worst of 450 ms.
+
+      The correction rate is unchanged at 44.9 %, which is the rest of this
+      section. 10,000 at 60 dice is still to run
 - [ ] Fewer than 0.5 % of dice need any correction; **100 %** of those corrections land while the die is still moving
 - [ ] **Zero** post-rest corrections. The harness asserts this; one occurrence is a bug, not a statistic
 - [ ] Re-throws (the last resort) under 0.05 % of dice, and each one looks like a die being picked up and thrown again
