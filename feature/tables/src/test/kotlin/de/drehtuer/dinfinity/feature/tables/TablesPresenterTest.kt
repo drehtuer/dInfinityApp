@@ -4,6 +4,8 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -118,7 +120,16 @@ class TablesPresenterTest {
     sets: List<DiceSet> = listOf(BuiltinDiceSet.set),
     chosen: TablePin? = null,
     onChosen: (TablePin) -> Unit = {},
-  ) = TablesPresenter(sets = { sets }, chosen = chosen, onChosen = onChosen)
+    photos: TablePhotos? = null,
+  ) = TablesPresenter(
+    sets = { sets },
+    chosen = chosen,
+    onChosen = onChosen,
+    // Unconfined, so a photo that is "added" has landed by the time the next
+    // line asserts on it. Nothing here is about which thread anything is on.
+    scope = CoroutineScope(Dispatchers.Unconfined),
+    photos = photos,
+  )
 
   private fun felt(
     id: String,

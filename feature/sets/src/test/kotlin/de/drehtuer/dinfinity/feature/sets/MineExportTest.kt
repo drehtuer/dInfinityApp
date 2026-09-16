@@ -16,6 +16,7 @@ import de.drehtuer.dinfinity.designer.ExportResult
 import de.drehtuer.dinfinity.designer.MinePackage
 import de.drehtuer.dinfinity.designer.MineSets
 import de.drehtuer.dinfinity.designer.PackageFile
+import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.designer.SetLicense
 import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
@@ -58,6 +59,7 @@ class MineExportTest {
   private val temporary: File = Files.createTempDirectory("dinfinity-mine").toFile()
   private val root = File(temporary, "dicesets")
   private val drafts = DraftStore(File(temporary, "drafts"))
+  private val photos = PhotoStore(File(temporary, "table-photos"))
   private val scope = CoroutineScope(Dispatchers.Unconfined)
   private lateinit var database: DInfinityDatabase
   private lateinit var registry: InstalledSetRepository
@@ -239,6 +241,7 @@ class MineExportTest {
           root = root,
           painter = BitmapAtlas(),
           dice = { listOf(d6) },
+          photos = photos,
         ),
     )
 
