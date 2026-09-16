@@ -178,12 +178,17 @@ class TrayRenderer : Renderer {
       table(showing.geometry, showing.look)
       return
     }
+    val standing = RenderFrame.still(restingTransforms(spec))
     scene = showing.copy(spec = spec)
-    latest = null
-    settled = false
+    // Remembered, not just drawn. A surface comes and goes — the lock screen,
+    // a rotation — and the board has to come back with it, exactly as a
+    // finished roll does. Kept as settled, because that is what it is: dice on
+    // a table, not moving (`docs/physics-and-rendering.md`).
+    latest = standing
+    settled = true
     drawing?.let { renderer ->
       renderer.begin(spec, showing.geometry, showing.look)
-      renderer.settled(RenderFrame.still(restingTransforms(spec)))
+      renderer.settled(standing)
     }
   }
 

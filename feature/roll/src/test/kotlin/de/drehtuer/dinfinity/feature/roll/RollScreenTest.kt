@@ -191,6 +191,31 @@ class RollScreenTest {
   }
 
   @Test
+  fun `while the dice are being read the screen says how far it has got`() {
+    // The dice leave the table as they are counted, so the count and the range
+    // are what a player follows instead of them (`docs/TODO.md`, Step 5.5).
+    val tray = CountingTray(mapOf(0 to 5, 1 to 5))
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+
+    typeFormula("4d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.COUNTING).assertExists()
+  }
+
+  @Test
+  fun `a roll nobody has counted anything in still says it is rolling`() {
+    val tray = PendingTray()
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+
+    typeFormula("4d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.ROLLING).assertExists()
+    compose.onNodeWithTag(RollTestTags.COUNTING).assertDoesNotExist()
+  }
+
+  @Test
   fun `a formula puts its dice on the board before anybody throws them`() {
     val tray = DirectTray()
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
@@ -747,6 +772,22 @@ class RollScreenTest {
 
     override fun close() {
       closes++
+    }
+  }
+
+  /**
+   * A tray that reports some dice counted and then leaves the roll in the air,
+   * which is what the screen looks like halfway through one.
+   */
+  private class CountingTray(
+    private val read: Map<Int, Int>,
+  ) : Tray by PendingTray() {
+    override fun roll(
+      start: (Renderer) -> WatchedRoll,
+      onCounted: (Map<Int, Int>) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
+    ) {
+      onCounted(read)
     }
   }
 
