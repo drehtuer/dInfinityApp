@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -364,6 +365,35 @@ class SetsScreenTest {
     compose.onNodeWithTag(SetsTestTags.STOP).assertIsDisplayed()
   }
 
+  /**
+   * A bar is a picture of a number, and the number is the one thing a screen
+   * reader cannot see. "Downloading" with no idea how far is the state people
+   * give up in (`docs/architecture.md`, "Accessibility").
+   */
+  @Test
+  fun `the download bar says how far along it is, in words`() {
+    val presenter = show(download = { _, far -> held(far) })
+
+    presenter.installFrom("https://example.test/brass.zip")
+
+    compose.waitUntil(PATIENCE) { presenter.state.progress != null }
+    // 512 bytes of 2048.
+    compose.onNodeWithContentDescription("Downloading, 25 %").assertIsDisplayed()
+  }
+
+  @Test
+  fun `a download of unknown length still says it is downloading`() {
+    // A `Content-Length` is a claim rather than a fact. The bar is
+    // indeterminate without one, and an indeterminate bar with no label is a
+    // spinner a screen reader cannot see at all.
+    val presenter = show(download = { _, far -> heldWithoutALength(far) })
+
+    presenter.installFrom("https://example.test/brass.zip")
+
+    compose.waitUntil(PATIENCE) { presenter.state.progress != null }
+    compose.onNodeWithContentDescription("Downloading").assertIsDisplayed()
+  }
+
   @Test
   fun `stopping it says nothing, because the person who stopped it knows`() {
     // A screen that answered a Cancel button with an error message would be a
@@ -401,6 +431,12 @@ class SetsScreenTest {
    */
   private suspend fun held(onProgress: (PackageFetcher.Progress) -> Unit): FetchedPackage {
     onProgress(PackageFetcher.Progress(bytes = 512, total = 2048))
+    awaitCancellation()
+  }
+
+  /** The same, from a server that did not say how big the archive is. */
+  private suspend fun heldWithoutALength(onProgress: (PackageFetcher.Progress) -> Unit): FetchedPackage {
+    onProgress(PackageFetcher.Progress(bytes = 512, total = null))
     awaitCancellation()
   }
 

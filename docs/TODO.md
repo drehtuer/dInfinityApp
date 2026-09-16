@@ -549,7 +549,13 @@ device, not the other way round.
 
 ## Step 6 — v1 release
 
-- [ ] Accessibility pass: TalkBack through every screen, contrast, touch targets, no colour-only meaning
+- [ ] Accessibility: **walk every screen with TalkBack on a real phone.** The
+      rules, the labels and the measured contrast are done and tested
+      (`docs/architecture.md`, "Accessibility"); what a test cannot answer is
+      whether the reading *order* is sensible, whether the announcements are
+      the right length when they arrive one after another, and whether the tray
+      is comprehensible with the screen curtain on. A person with the phone and
+      TalkBack switched on, once
 - [ ] Localisation scaffolding (strings extracted) even if only English ships
 - [ ] Play Store metadata, screenshots taken from the real app, privacy statement (no analytics, nothing leaves the phone)
 - [ ] Tag `v1.0.0`
@@ -600,6 +606,26 @@ The figures are reported in every PR description either way.
       question for a person, not a change to make quietly
 
 ## Open questions
+
+- [ ] **A filled button's label is 3.76:1 on its own accent, and wants 4.5:1.**
+      `onPrimary` is the ground colour by design, so the label on **Roll**,
+      **Save group** and every other filled button is the pale ink on the
+      accent. Measured against the light ground: vermilion 3.76:1, coral
+      3.25:1, sky 3.11:1, moss 3.63:1, amber 3.79:1, violet 4.05:1 — all past
+      3:1, none at the 4.5:1 that 13 sp semi-bold text asks for. On the dark
+      ground three of the six pass. Every fix is a palette change and therefore
+      a design decision: fill with the ramp's 700 step and keep the pale label,
+      keep the fill and darken the label, or make the primary action an
+      outlined button in the accent with ink text. `ModernistContrastTest`
+      holds the floor at the measured ratios so it cannot quietly get worse
+- [ ] **The divider is 2.41:1 on the light ground, and Material uses the same
+      token for a control's border.** `--color-divider` is the text colour at
+      40 %, which is 2.41:1 on the light ground and 3.51:1 on the dark one. As
+      a rule between rows that is decoration and 3:1 does not apply; as
+      `outline` it is also an `OutlinedButton`'s border, which is a control
+      boundary and does. Raising the alpha to about 55 % on the light ground
+      would clear it, at the cost of heavier rules everywhere — the design
+      system says 40 %, so this is the design's to answer, not a test's
 
 - [ ] **Who measures a drawn frame?** The harness now paces a roll the way the
       screen does (`tools/harness.sh --frames`) and times `LiveRoll.advance`,

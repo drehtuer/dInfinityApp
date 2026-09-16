@@ -84,4 +84,12 @@
   </plurals>
   <string name="sets_sheet_update">Update</string>
   <string name="sets_outdated">Update available</string>
+  <!--
+    The download bar, for a screen reader: a bar is a picture of a number, and
+    the number is what it cannot see (`docs/architecture.md`, "Accessibility").
+  -->
+  <string name="sets_downloading">Downloading</string>
+  <string name="sets_downloading_far">Downloading, %1$d %%</string>
+  <!-- What tapping the source of a set does, for a screen reader. -->
+  <string name="sets_detail_source_open">Open in a browser</string>
 </resources>

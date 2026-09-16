@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -65,7 +66,15 @@ fun MenuScreen(
           style = MaterialTheme.typography.labelSmall,
           fontWeight = FontWeight.SemiBold,
           color = MaterialTheme.colorScheme.primary,
-          modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+          // A section name is small, capitalised and in the accent — three
+          // ways of saying "heading" that a screen reader gets none of.
+          // Marked as one, so the menu can be jumped through by section
+          // instead of swiped through row by row
+          // (`docs/architecture.md`, "Accessibility").
+          modifier =
+            Modifier
+              .semantics { heading() }
+              .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
         )
         section.entries.forEach { entry ->
           HorizontalDivider()

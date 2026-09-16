@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -58,6 +59,7 @@ fun DebugOverlay(
   modifier: Modifier = Modifier,
 ) {
   val anomalies = diagnostics.forcedSettles + diagnostics.postRestCorrections
+  val overlayLabel = stringResource(R.string.roll_debug_overlay)
   Column(
     modifier =
       modifier
@@ -65,7 +67,7 @@ fun DebugOverlay(
         .background(MaterialTheme.colorScheme.surface.copy(alpha = PANEL_ALPHA))
         .padding(8.dp)
         .semantics(mergeDescendants = true) {
-          contentDescription = "Debug overlay"
+          contentDescription = overlayLabel
         }.testTag(DebugTestTags.OVERLAY),
     verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
@@ -133,6 +135,20 @@ private fun TrayPlanView(
     )
   val dice = diagnostics.dice.map { die -> TrayPlan.markOf(die, geometry) }
   val contacts = diagnostics.contacts.map { contact -> TrayPlan.markOf(contact, geometry) }
+  // The plan says which die is which by tinting its box, and on this overlay
+  // two of the three tints are red on red. The counts are the whole of what the
+  // picture claims, so a `Canvas` that would otherwise be silent says them
+  // (`docs/architecture.md`, "Accessibility").
+  val tally = TrayPlan.tally(dice)
+  val label =
+    pluralStringResource(
+      R.plurals.roll_debug_plan,
+      dice.size,
+      dice.size,
+      tally.getValue(PlanTint.Still),
+      tally.getValue(PlanTint.Moving),
+      tally.getValue(PlanTint.Trouble),
+    )
   Canvas(
     modifier =
       Modifier
@@ -140,6 +156,7 @@ private fun TrayPlanView(
         // The tray's own shape, long side vertical, so the plan and the tray
         // are the same way up.
         .aspectRatio(TrayPlan.aspect(geometry).toFloat())
+        .semantics { contentDescription = label }
         .testTag(DebugTestTags.PLAN),
   ) {
     drawRect(color = wall, style = Stroke(width = 1.dp.toPx()))

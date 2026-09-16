@@ -24,6 +24,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -270,6 +271,11 @@ private fun ChainLimitLine(
  * The press **offers** rather than navigates. Leaving the screen on a gesture
  * nothing announced would be a tray that vanishes when a finger rests on it,
  * and the menu is also what tells anybody the shortcut is there.
+ *
+ * Which of the three states it is in is [DieReading]'s, and both the colour and
+ * the words come from that one answer. The strike and the accent are marks only
+ * an eye can read, so the same fact is said in the label a screen reader gets —
+ * "18, highest face", "1, dropped" (`docs/architecture.md`, "Accessibility").
  */
 @Composable
 private fun DieChip(
@@ -278,12 +284,14 @@ private fun DieChip(
 ) {
   var offered by remember(die.instanceIndex) { mutableStateOf(false) }
   val doodle = stringResource(R.string.roll_die_doodle)
+  val reading = DieReading.of(die)
+  val spoken = reading.said?.let { stringResource(it, die.label) }
   Box {
     Text(
       text = die.label,
       style = MaterialTheme.typography.bodyMedium,
-      color = die.colour(),
-      textDecoration = if (die.kept) null else TextDecoration.LineThrough,
+      color = reading.colour(),
+      textDecoration = if (reading == DieReading.Dropped) TextDecoration.LineThrough else null,
       modifier =
         Modifier
           .testTag(RollTestTags.dieAt(die.instanceIndex))
@@ -293,6 +301,10 @@ private fun DieChip(
           // beside it, which is the half of it a gesture detector cannot say.
           .pointerInput(die.instanceIndex) { detectTapGestures(onLongPress = { offered = true }) }
           .semantics {
+            // Only said where there is something the drawing does not say. A
+            // die that reads "7, ordinary" on every row is noise, and noise is
+            // what makes somebody turn the reader off.
+            spoken?.let { said -> contentDescription = said }
             onLongClick(label = doodle) {
               offered = true
               true
@@ -313,9 +325,9 @@ private fun DieChip(
 }
 
 @Composable
-private fun RolledDie.colour(): Color =
-  when {
-    !kept -> MaterialTheme.colorScheme.onSurfaceVariant
-    naturalMax -> MaterialTheme.colorScheme.primary
-    else -> MaterialTheme.colorScheme.onBackground
+private fun DieReading.colour(): Color =
+  when (this) {
+    DieReading.Dropped -> MaterialTheme.colorScheme.onSurfaceVariant
+    DieReading.NaturalMax -> MaterialTheme.colorScheme.primary
+    DieReading.Kept -> MaterialTheme.colorScheme.onBackground
   }
