@@ -679,6 +679,13 @@ The two failures to hunt, per `docs/physics-and-rendering.md`:
       all of them on the same patch. An explosion may ask for it because it adds
       exactly one die. The draw is what keeps simultaneous re-throws apart.
 
+      A fourth thing was tried on the strength of that — **more height bands at
+      spawn**, five rather than three, which is rung 1 and adds separation
+      instead of removing energy. It is **neutral**: 47.4 % corrected against
+      47.1 %, one stacked roll in five hundred against an expected one and a
+      half, re-throws a shade worse at 6.7 %. The obvious stagger lever does not
+      move this, which is worth knowing before somebody spends an evening on it.
+
       The second keeps the draw and still makes the cap seven times worse, which
       is what says the placement was never the cause. **The re-throw count and
       the stacking are both symptoms of the same crowded roll**, not one causing
