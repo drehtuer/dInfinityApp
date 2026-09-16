@@ -120,7 +120,7 @@ What is below is what it does not have yet.
 - [ ] **The surface outlives the screen going off.** After a lock and unlock the old rendering surface is still there. Found on the Pixel 10a; `DiceTray` gives the surface up on `onDestroyed` and the driver keeps the engine now (Step 4.1, done), so what is left is which of those two the lock screen actually triggers
 - [ ] *Judge a second shake on the phone:* a shake at dice still in the air now keeps them moving rather than doing nothing — it starts no throw, and its moments are numbered on the running roll's clock so they reach it at all, which is what was actually broken (`docs/physics-and-rendering.md`, "Shake input"). Decided along the way: a second shake is **more of the same roll**, not a throw that replaces it, because the dice are the ones already tumbling. Whether that reads as the dice answering the hand, and whether a roll can now be kept going longer than anybody wants, needs a phone
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
-- [ ] Pick a die up and throw it again, which is what the tray's one-finger touch is being kept for (`docs/physics-and-rendering.md`, "Starting a roll")
+- [ ] **Wire the one-finger touch to a hand re-throw.** The two decisions underneath it are built and tested: `TrayPick` (`render/filament`) says which die a finger is on, and `PickUp` (`core/notation`) says which dice a hand may go near — a group carrying `!` or `r n` offers none, because a die another die was thrown because of cannot be thrown again without the roll holding a die nothing asks for. The throw itself is the one an explosion already makes (`ThrowSpec.among`), so there is no second path to a number to build. What is missing is not code: it is **what the history says about a roll a die was thrown again in**, under "Open questions" below. Until that is answered the gesture stays unspent (`docs/physics-and-rendering.md`, "Picking a die up and throwing it again")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] **A set's own dice cannot be picked**, which is the open half of decision 31: plain notation names `dN`, `d%` and `dF`, so `skull-d6` has no spelling the formula field could carry and the row cannot offer it. Either notation gains a way to name a set's die, or picked dice stop going through the text — and the second is a bigger change than it looks, because the text *is* the roll everywhere downstream (`docs/dice-notation.md`)
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
@@ -928,3 +928,38 @@ The figures are reported in every PR description either way.
       takes the first reading, and the bars are data, so changing it is one
       line in `HarnessTargets` — but which it should be is a decision
       (`docs/build-setup.md`, "The physics harness")
+- [ ] **What does the history say about a roll a die was thrown again in?**
+      A player picking a die up out of a finished roll is the player's own act
+      and the app should allow it (`docs/physics-and-rendering.md`, "Picking a
+      die up and throwing it again"); every other question it raises has an
+      answer already. The face the die showed stands and is counted, because it
+      was genuinely thrown. The new face is the physics' and is scored by
+      re-running the scoring, which is what an explosion already does. Which
+      dice a hand may go near is `PickUp`. What is left is that **a roll is
+      written down the moment its dice stop** — one `RollHistory` row and a
+      face count per die (`docs/statistics.md`) — and a hand re-throw happens
+      afterwards and changes the total. Three ways out, and they are three
+      different products rather than three spellings of one:
+
+      *Amend the row.* The roll keeps one history entry and it holds the total
+      the player actually used; the re-thrown die adds one throw to its own
+      face counts and nothing else changes. Costs a new operation on
+      `StatisticsRepository` and a second method on `ThrowRecorder`, and it
+      makes a history row mutable for the first time — which is a claim
+      `docs/statistics.md` currently does not make.
+
+      *Write a second row.* Honest about what happened and needs no schema
+      change, but the per-die counters would count the dice **nobody touched**
+      twice, which contradicts "the die was thrown and landed on that face" in
+      the plainest possible way. Only workable if a row can say which of its
+      dice are new, which is the first option wearing a hat.
+
+      *Write the roll down when it is put away, not when it lands.* No schema
+      change and no new seam: `RollPresenter` holds the finished throw and
+      records it on the next roll, on **Clear**, or when the screen goes. It
+      changes what happens to *every* roll, not just this one, and it loses a
+      roll if the process is killed while the result sheet is up — which today
+      it does not.
+
+      None is wrong. Which one it is decides what the history *means*, so it is
+      a decision for a person and not one to make inside a gesture
