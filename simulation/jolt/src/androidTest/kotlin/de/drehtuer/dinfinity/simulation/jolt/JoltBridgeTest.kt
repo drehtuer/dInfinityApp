@@ -171,6 +171,68 @@ class JoltBridgeTest {
   }
 
   @Test
+  fun aShakeDrivenRollReplaysToItselfFromItsOwnRecord() {
+    // The claim Step 3 left open, and it is the one that makes a bug report
+    // worth filing: a roll driven by a hand can be re-run from what was
+    // written down about it and come to the same faces — on hardware, where
+    // the float arithmetic actually happens.
+    //
+    // It is not the same code path twice. A live roll is spawned before the
+    // shake exists and the moments arrive one at a time, through `shake()`,
+    // while the world is already being stepped; the replay is the same spec
+    // with the whole record written into it up front, stepped by nobody. If
+    // those two disagreed, every roll on the phone would be unreproducible
+    // and `FinishedThrow.thrown` would be a lie
+    // (`docs/physics-and-rendering.md`, "Shake input").
+    val dice = List(TEN) { d6() }
+    val started = spec(dice, seed = 11L)
+    val hand = handShaking()
+
+    val live =
+      JoltDiceSimulator().start(started).use { roll ->
+        var delivered = 0
+        while (roll.running) {
+          // As a hand does it: a moment reaches the roll *before* the step it
+          // names is taken, never after. That is not a convenience — it is the
+          // property the whole scheme rests on. A sample is numbered from the
+          // wall clock and the frame clock never runs the simulation faster
+          // than real time, so on a phone the step a sample names is always
+          // still ahead of the step the world is on
+          // (`docs/physics-and-rendering.md`, "Shake input"). A test that
+          // handed them over late would be testing a race the app does not
+          // have, and the replay would rightly disagree.
+          val reached = roll.stepsTaken + STEPS_PER_FRAME
+          while (delivered < hand.size && hand[delivered].stepIndex <= reached) {
+            roll.shake(hand[delivered])
+            delivered++
+          }
+          roll.advance(FRAME_SECONDS)
+        }
+        // `spec.copy(shake = drivenBy)` is what `FinishedThrow.thrown` is.
+        requireNotNull(roll.outcome) to started.copy(shake = roll.drivenBy)
+      }
+
+    val (outcome, record) = live
+    assertTrue("the shake never reached the roll", record.shake.isNotEmpty())
+
+    val replayed = JoltDiceSimulator().run(record)
+
+    assertEquals("the replay read different faces", outcome.faces, replayed.faces)
+    assertEquals("the replay took a different number of steps", outcome.steps, replayed.steps)
+  }
+
+  /** A hand swinging the phone, quantised onto steps the way `ShakeRecorder` does. */
+  private fun handShaking(): List<ShakeSample> =
+    List(SHAKE_STEPS) { step ->
+      val swing = if ((step / SWING_STEPS) % 2 == 0) SHAKE_MM_PER_SECOND2 else -SHAKE_MM_PER_SECOND2
+      ShakeSample(
+        stepIndex = step,
+        accelerationMmPerSecond2 = Vector3(swing, swing / 2, 0.0),
+        gravity = Vector3(0.0, 0.0, -1.0),
+      )
+    }
+
+  @Test
   fun aFullTrayLeavesEveryDieOnTheTableAndNoneInTheAir() {
     // The throw from the phone: 2d4 + 3d6 + 95d20, which is the engine's cap.
     // Two things were seen there that no roll may contain — a die at rest on
@@ -421,6 +483,12 @@ class JoltBridgeTest {
     const val SHAKE_STEPS = 120
     const val SWING_STEPS = 12
     const val SHAKE_MM_PER_SECOND2 = 18_000.0
+
+    /** One displayed frame at 60 Hz, which is how a watched roll is advanced. */
+    const val FRAME_SECONDS = 1.0 / 60
+
+    /** And how many fixed 120 Hz steps that frame pays for. */
+    const val STEPS_PER_FRAME = 2
 
     /** Higher above the floor than this, in die radii, and something should be under it. */
     const val AIRBORNE = 2.5
