@@ -456,10 +456,21 @@ a die fairer than the plastic one in their hand, is not worth a warning
 ### 5.4 Collisions
 
 - [ ] **Dice go 9 mm into each other, and the bar is 0.2 mm.** Measured on the Pixel 10a the first time the harness ran: 200 throws of 20 d20s, deepest die–die overlap **9.019 mm** against a target of 0.2, on dice 16 mm across. More than half a die. It is the number the plan asked for and nobody had ever had, and it is almost certainly the same fault as the correction rate below rather than a second one: dice are spawned or corrected into each other and the solver pushes them apart afterwards, which is what a 45 % correction rate looks like from the collision side. Prevention (5.5) is where it is fixed; this is where it is measured
-- [ ] No tunnelling at maximum shake velocity — assert every body inside the box on every step, all roll long
-- [ ] Dice driven into a corner at speed neither wedge nor jitter
-- [ ] A settled pile is stable: no creep, no vibration, no slow slide
-- [ ] Assert containment on *every step* rather than only at rest, at the capacity limit: the at-rest check is in `JoltBridgeTest` now, but a die that leaves the tray mid-roll and comes back would still pass it
+- [ ] **Done, on the Pixel 10a, and the old check was too kind twice over.**
+      `ContainmentTest` asks the tray's own bounds — half a side, not a whole
+      one, which is what `JoltBridgeTest` allowed and is twice as far out as the
+      wall — of every die on every step. Four things hold: a **full tray** of a
+      hundred dice never puts a centre outside the walls; **nothing tunnels out
+      at the hardest shake the cap allows**, driven at four gravities in a
+      direction that changes every tenth of a second; dice **driven into a
+      corner and held there** all stop, which is what the rounded corners are
+      for; and a **settled pile stays put** — measured creep over two undriven
+      seconds is 3.4 × 10⁻⁵ mm, and the test holds it to a hundredth of a
+      millimetre.
+
+      Each assertion was checked by making it fail: dice really do reach within
+      about six millimetres of the walls, so the bound is exercised rather than
+      merely satisfied by dice that stayed in the middle
 
 ### 5.5 Stacking and cocking — and no invisible hand
 
