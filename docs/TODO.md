@@ -1107,6 +1107,15 @@ The figures are reported in every PR description either way.
       repository root instead, because the path after the ref is a dice set's
       subfolder and a collection is found at the root. Decide whether such a
       link should import the file it names
+- [ ] **Markdown lint runs on CI and cannot run in the devcontainer.** There is
+      no node in the image, so `markdownlint-cli2` has nowhere to run, and
+      `./gradlew check` says nothing about the documents. Three pull requests
+      in a row have gone green locally and failed on CI for a stray blank line.
+      It is the same shape as the dependency-version check that used to break
+      the build — a check that only fires on one of the two machines — and the
+      answers are the same three: put node in the image, drop the rules that
+      only catch formatting, or accept it and fix on CI. Whichever it is, it
+      should be decided rather than rediscovered
 - [ ] Raise `sdk` in `app/src/test/resources/robolectric.properties` to 37 when Robolectric supports it
 - [ ] Move the container's emulator up when an automated-test image exists
       above API 36 — the same wait as the line above, for the same reason
@@ -1146,4 +1155,3 @@ The figures are reported in every PR description either way.
       Unblocks the one-finger pick-up-and-throw (4.1), whose two decisions —
       `TrayPick` for which die a finger is on, `PickUp` for which dice a hand
       may go near — are built and tested and were waiting only on this
-
