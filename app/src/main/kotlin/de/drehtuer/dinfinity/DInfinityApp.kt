@@ -68,6 +68,7 @@ import de.drehtuer.dinfinity.feature.stats.StatsScreen
 import de.drehtuer.dinfinity.feature.tables.PickedPhoto
 import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesScreen
+import de.drehtuer.dinfinity.navigation.DesignerArgument
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
 import de.drehtuer.dinfinity.navigation.GraphArgument
@@ -251,6 +252,11 @@ private fun Roll(
     onAddSets = { navController.navigate(Destination.DiceSets.route) },
     shakeToRoll = settings.shakeToRoll,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
+    // Quick mode: a long press on a die that landed opens the designer on that
+    // die (`docs/face-designer.md`, "Quick mode"). The tray is left behind
+    // like any other way off this screen, and back comes to it again — which
+    // is why the drawing is a draft on disk rather than something to save.
+    onDoodle = { dieId -> navController.navigate(designerRoute(dieId)) },
     menu = { MenuTo(navController) },
     // The active group's saved rolls, handed to the tray as a slot: the roll
     // screen does not know what a saved roll is, and does not have to
@@ -501,8 +507,12 @@ private fun customising(
     }
 
     Destination.FaceDesigner if screens != null -> {
+      // On the die the route names — "Doodle this die" off a long press in the
+      // breakdown — and on the usual one when it names none
+      // (`docs/face-designer.md`, "Quick mode").
+      val die = entry.arguments?.getString(DesignerArgument.DIE).orEmpty()
       DesignerScreen(
-        presenter = remember(entry) { screens.faceDesigner() },
+        presenter = remember(entry) { screens.faceDesigner(die) },
         // Straight to the tray with the die in the field, unrolled — the same
         // answer the notation screen's examples give, and for the same reason:
         // the throw is the player's to make.
@@ -780,6 +790,16 @@ internal fun editorRoute(
       )
     if (arguments.isNotEmpty()) append("?" + arguments.joinToString("&"))
   }
+
+/**
+ * The route that opens the face designer on the die with this id.
+ *
+ * Encoded like every other argument, although a die id is tamer than a
+ * formula: an id comes out of a dice set file, and what a stranger may put in
+ * one is not this function's to assume (`docs/dice-sets.md`).
+ */
+internal fun designerRoute(dieId: String): String =
+  "${Destination.FaceDesigner.route}?${DesignerArgument.DIE}=${Uri.encode(dieId)}"
 
 /**
  * The route that opens the tray with [formula] already in the field.

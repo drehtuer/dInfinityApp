@@ -72,7 +72,13 @@ enum class Destination(
 
   DiceSets("sets", "Dice sets", "What is installed, and how to install more.", MenuGroup.Customise),
   Tables("tables", "Table", "Felt, wood, glass or your own photo. Same tray.", MenuGroup.Customise),
-  FaceDesigner("designer", "Face designer", "Draw die faces with a finger, then roll them.", MenuGroup.Customise),
+  FaceDesigner(
+    "designer",
+    "Face designer",
+    "Draw die faces with a finger, then roll them.",
+    MenuGroup.Customise,
+    arguments = listOf(DesignerArgument.DIE),
+  ),
 
   // No haptics in the list: nothing plays anything yet, and a menu row is as
   // able to promise something that is not there as a settings row is.
@@ -211,6 +217,26 @@ object GraphArgument {
 
   /** The total that was rolled, to mark on the chart. Empty for no mark. */
   const val TOTAL: String = "total"
+}
+
+/**
+ * What the face designer is opened with.
+ *
+ * Its own object rather than constants on [Destination], for the reason
+ * [GraphArgument] gives: an enum's companion is not initialised when its
+ * entries are.
+ */
+object DesignerArgument {
+  /**
+   * The die to draw on, by id. Empty opens on the usual one.
+   *
+   * What "Doodle this die" carries from the roll screen
+   * (`docs/face-designer.md`, "Quick mode"). Empty is the menu's way in, and
+   * an id nothing answers to opens on the usual die rather than on nothing —
+   * a package can be removed while its result is still on the tray
+   * (`designer`'s `OpeningDie`).
+   */
+  const val DIE: String = "die"
 }
 
 /** What the saved-roll editor is opened with. */

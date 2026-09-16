@@ -49,14 +49,31 @@ class ScreenWiringTest {
     assertNotNull("the saved-roll statistics", presenters.savedStatistics())
     assertNotNull("the dice sets", presenters.diceSets())
     assertNotNull("the table picker", presenters.tables())
-    assertNotNull("the face designer", presenters.faceDesigner())
+    assertNotNull("the face designer", presenters.faceDesigner(""))
   }
 
   @Test
   fun `the designer opens on a die somebody would call a die`() {
     // The set's first die is the d2. Opening a drawing app on a coin is a poor
     // answer to "draw a die", so the d6 is picked out by shape.
-    val designer = wiring().presenters().faceDesigner()
+    val designer = wiring().presenters().faceDesigner("")
+
+    assertEquals(de.drehtuer.dinfinity.core.model.DieShape.Cube, designer.state.draft.die.shape)
+  }
+
+  @Test
+  fun `the designer opens on the die quick mode named`() {
+    // "Doodle this die" carries an id and nothing else, and the screen it
+    // opens is the same screen (`docs/face-designer.md`, "Quick mode").
+    val designer = wiring().presenters().faceDesigner("d20")
+
+    assertEquals("d20", designer.state.draft.die.id)
+  }
+
+  @Test
+  fun `the designer opens on the usual die when the named one is gone`() {
+    // A package can be removed while a result it threw is still on the tray.
+    val designer = wiring().presenters().faceDesigner("brass-d12")
 
     assertEquals(de.drehtuer.dinfinity.core.model.DieShape.Cube, designer.state.draft.die.shape)
   }

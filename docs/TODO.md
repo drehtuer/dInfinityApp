@@ -250,8 +250,6 @@ written and again before its zip is offered, the licence is asked for first
 (`8c`, in 4.4 above), and the file leaves through the share sheet the way an
 exported collection does.
 
-- [ ] The guide draws a dot where each number goes rather than the number: text inside a `Canvas` wants a measurer, and the value is legible on the strip meanwhile
-- [ ] Quick mode: long-press a die on the roll screen for "Doodle this die"
 - [ ] *Judgement, with a finger:* the bucket calls a stroke closed when its
       ends come back within 0.08 of the canvas of each other, and fills the
       smallest shape the tap is inside. Both numbers are guesses about how
@@ -651,6 +649,18 @@ The figures are reported in every PR description either way.
       fraction on the phone, which is Step 5.6's question anyway — the two
       should be answered together, and whichever way it goes the tray and the
       designer move together because they read the same number
+- [ ] **Should the picker row offer "Doodle this die" as well?** Quick mode is
+      a long press on a die in the **breakdown**, not on the picker row
+      (`docs/face-designer.md`, "Quick mode"): the picker's long press already
+      takes a die off the formula, which is a fast edit made in twos and
+      threes, and putting a menu in front of it for something somebody does
+      once a month would slow the common thing down for the rare one. The
+      alternative is exactly that menu — a long press on a picker chip opening
+      "Take one off" and "Doodle this die" together — which would make the
+      shortcut reachable before a roll rather than only after one, at the cost
+      of a tap on every removal. It needs a phone to judge: whether reaching
+      the designer before anything has been thrown is a thing anybody wants,
+      and whether a menu on the picker feels like a delay
 - [ ] **Should a stamp be draggable after it is put down?** The prototype lets
       one be picked up and moved (`design/dInfinity.dc.html`, option `1v`); the
       app does not, because a stamp is a mark like a stroke and no other mark

@@ -4,10 +4,12 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.room.Room
@@ -37,6 +39,7 @@ import de.drehtuer.dinfinity.feature.settings.NotationTestTags
 import de.drehtuer.dinfinity.feature.stats.HistoryTestTags
 import de.drehtuer.dinfinity.feature.stats.SessionsTestTags
 import de.drehtuer.dinfinity.feature.stats.StatsTestTags
+import de.drehtuer.dinfinity.navigation.DesignerArgument
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.GraphArgument
 import de.drehtuer.dinfinity.theme.DInfinityTheme
@@ -294,6 +297,53 @@ class DInfinityScreensTest {
         navigation.currentBackStackEntry
           ?.arguments
           ?.getString(GraphArgument.FORMULA)
+      },
+    )
+  }
+
+  @Test
+  fun `the designer opens on the die a route names, which is what quick mode carries`() {
+    // "Doodle this die" is the same screen opened on a different die
+    // (`docs/face-designer.md`, "Quick mode"), so what the graph has to get
+    // right is the argument.
+    val navigation = app()
+
+    compose.runOnIdle { navigation.navigate(designerRoute("d20")) }
+
+    compose.onNodeWithTag(DesignerTestTags.SCREEN).assertIsDisplayed()
+    // Twenty faces on the strip. A d6 — which is what the menu opens on —
+    // has six, so this says which die is being drawn without reading a label.
+    compose.onNodeWithTag(DesignerTestTags.faceOf(19)).assertExists()
+  }
+
+  @Test
+  fun `a long press on a die that landed opens the designer on that die`() {
+    // The whole of quick mode, through the real graph: the sheet offers, the
+    // roll screen hands over an id, and the wiring turns it into a route.
+    runBlocking {
+      savedGroups.ensureUnfiled("Unfiled")
+      saved.save(SavedRoll(id = "fireball", groupId = SavedRollGroup.UNFILED_ID, name = "Fireball", formula = "1d20"))
+    }
+    val navigation = app()
+    go(navigation, Destination.Roll)
+
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+    compose.waitUntil(PATIENCE) {
+      compose.onAllNodesWithTag(RollTestTags.dieAt(0)).fetchSemanticsNodes().isNotEmpty()
+    }
+    compose.onNodeWithTag(RollTestTags.dieAt(0)).performTouchInput { longClick() }
+    compose.onNodeWithTag(RollTestTags.doodleOf(0)).performClick()
+
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.FaceDesigner
+    }
+    assertEquals(
+      "d20",
+      compose.runOnIdle {
+        navigation.currentBackStackEntry
+          ?.arguments
+          ?.getString(DesignerArgument.DIE)
       },
     )
   }
