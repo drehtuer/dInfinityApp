@@ -1,10 +1,10 @@
 package de.drehtuer.dinfinity.core.model
 
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
-import org.junit.Test
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class AtlasImageTest {
   @Test
@@ -18,18 +18,18 @@ class AtlasImageTest {
 
   @Test
   fun `an atlas whose bytes do not match its size is refused`() {
-    val short = assertThrows(IllegalArgumentException::class.java) { AtlasImage(2, 2, ByteArray(4)) }
+    val short = assertFailsWith<IllegalArgumentException> { AtlasImage(2, 2, ByteArray(4)) }
 
     assertTrue(short.message!!.contains("16 bytes"))
-    assertThrows(IllegalArgumentException::class.java) { AtlasImage(0, 4, ByteArray(0)) }
+    assertFailsWith<IllegalArgumentException> { AtlasImage(0, 4, ByteArray(0)) }
   }
 
   @Test
   fun `a pixel outside the picture is not a pixel`() {
     val image = blank(4, 4)
 
-    assertThrows(IllegalArgumentException::class.java) { image.alphaAt(4, 0) }
-    assertThrows(IllegalArgumentException::class.java) { image.alphaAt(0, -1) }
+    assertFailsWith<IllegalArgumentException> { image.alphaAt(4, 0) }
+    assertFailsWith<IllegalArgumentException> { image.alphaAt(0, -1) }
   }
 
   @Test
@@ -61,7 +61,8 @@ class AtlasImageTest {
   fun `a pixel an eraser left behind does not count as drawing`() {
     val image = painted(30, 20) { _, _ -> AtlasImage.CLEAR_ALPHA }
 
-    assertEquals("an alpha of one is not a picture of anything", 6, image.emptyCells(faces = 6).size)
+    // kotlin.test takes the message last, where JUnit takes it first.
+    assertEquals(6, image.emptyCells(faces = 6).size, "an alpha of one is not a picture of anything")
     assertTrue(painted(30, 20) { _, _ -> AtlasImage.CLEAR_ALPHA + 1 }.emptyCells(faces = 6).isEmpty())
   }
 
@@ -89,8 +90,8 @@ class AtlasImageTest {
   fun `a face the die does not have has no cell to ask about`() {
     val image = blank(30, 20)
 
-    assertThrows(IllegalArgumentException::class.java) { image.cellIsEmpty(faces = 6, index = 6) }
-    assertThrows(IllegalArgumentException::class.java) { image.cellIsEmpty(faces = 6, index = -1) }
+    assertFailsWith<IllegalArgumentException> { image.cellIsEmpty(faces = 6, index = 6) }
+    assertFailsWith<IllegalArgumentException> { image.cellIsEmpty(faces = 6, index = -1) }
   }
 
   private fun blank(
