@@ -40,7 +40,7 @@ object MinePackage {
   const val VERSION: String = "1.0.0"
 
   /** What the details screen shows under the name. */
-  const val DESCRIPTION: String = "Dice drawn in the face designer on this phone."
+  const val DESCRIPTION: String = "Dice drawn in the face designer, and tables made from photos, on this phone."
 
   /** What the zip is called when it is handed to another application. */
   const val FILE_NAME: String = "my-dice.zip"
@@ -58,19 +58,30 @@ object MinePackage {
    * @param author the name written into the file, or null to leave the field
    *   out. A field that said "You" would be worse than no field at all on
    *   somebody else's phone.
+   * @param photos the photographs somebody has made tables of
+   *   (`docs/tables.md`, "Your own photo"). Each becomes a `[[table]]` entry
+   *   and its picture, and they are last in the parameter list because they
+   *   arrived last — a package of nothing but photos is as ordinary as a
+   *   package of nothing but dice.
    */
   fun of(
     drawings: List<Draft>,
     license: String,
     author: String?,
     painter: AtlasPainter,
+    photos: List<TablePhoto> = emptyList(),
   ): Map<String, ByteArray> {
-    val atlases = mutableMapOf<String, ByteArray>()
+    val files = mutableMapOf<String, ByteArray>()
     val dice =
       drawings
         .filterNot(Draft::blank)
         .distinctBy { it.die.id }
-        .map { draft -> withArtwork(draft, painter, atlases) }
+        .map { draft -> withArtwork(draft, painter, files) }
+    val tables =
+      photos.distinctBy(TablePhoto::id).map { photo ->
+        files[PhotoTable.texturePathOf(photo.id)] = photo.image
+        PhotoTable.lookOf(photo.id, photo.name)
+      }
     val set =
       DiceSet(
         id = ID,
@@ -80,8 +91,9 @@ object MinePackage {
         license = license,
         description = DESCRIPTION,
         dice = dice,
+        tables = tables,
       )
-    return atlases + (DiceSetValidator.DICE_SET_FILE to DiceSetToml.write(set).encodeToByteArray())
+    return files + (DiceSetValidator.DICE_SET_FILE to DiceSetToml.write(set).encodeToByteArray())
   }
 
   /**
@@ -100,12 +112,12 @@ object MinePackage {
   private fun withArtwork(
     draft: Draft,
     painter: AtlasPainter,
-    atlases: MutableMap<String, ByteArray>,
+    files: MutableMap<String, ByteArray>,
   ): Die {
     val die = draft.die
     val png = Atlas.plan(draft)?.let(painter::png)
     val path = DiceSetToml.texturePathOf(die.id)
-    if (png != null) atlases[path] = png
+    if (png != null) files[path] = png
     return Die(
       id = die.id,
       shape = die.shape,

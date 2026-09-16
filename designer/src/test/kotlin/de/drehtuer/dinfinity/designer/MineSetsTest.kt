@@ -35,6 +35,7 @@ class MineSetsTest {
 
   private lateinit var drafts: DraftStore
   private lateinit var root: File
+  private lateinit var photos: PhotoStore
 
   private fun mine(
     painter: AtlasPainter = Drawings.headers(),
@@ -42,7 +43,15 @@ class MineSetsTest {
   ): MineSets {
     drafts = DraftStore(temporary.newFolder("drafts"))
     root = temporary.newFolder("dicesets")
-    return MineSets(drafts = drafts, root = root, painter = painter, dice = { listOf(cube, d20) }, author = { author })
+    photos = PhotoStore(temporary.newFolder("photos"))
+    return MineSets(
+      drafts = drafts,
+      root = root,
+      painter = painter,
+      dice = { listOf(cube, d20) },
+      photos = photos,
+      author = { author },
+    )
   }
 
   @Test
@@ -222,7 +231,14 @@ class MineSetsTest {
     // be a name on somebody else's phone.
     drafts = DraftStore(temporary.newFolder("plain-drafts"))
     root = temporary.newFolder("plain-sets")
-    val sets = MineSets(drafts = drafts, root = root, painter = Drawings.headers(), dice = { listOf(cube) })
+    val sets =
+      MineSets(
+        drafts = drafts,
+        root = root,
+        painter = Drawings.headers(),
+        dice = { listOf(cube) },
+        photos = PhotoStore(temporary.newFolder("plain-photos")),
+      )
     drafts.save(Drawings.drawn(cube, 0))
 
     val ready = sets.export(SetLicense.Mit) as ExportResult.Ready
@@ -237,7 +253,14 @@ class MineSetsTest {
     // is simply not brought up to date, which the next reading will try again.
     val blocked = temporary.newFile("not-a-folder")
     drafts = DraftStore(temporary.newFolder("blocked-drafts"))
-    val sets = MineSets(drafts = drafts, root = blocked, painter = Drawings.headers(), dice = { listOf(cube) })
+    val sets =
+      MineSets(
+        drafts = drafts,
+        root = blocked,
+        painter = Drawings.headers(),
+        dice = { listOf(cube) },
+        photos = PhotoStore(temporary.newFolder("blocked-photos")),
+      )
     drafts.save(Drawings.drawn(cube, 0))
 
     val result = sets.export(SetLicense.Mit)

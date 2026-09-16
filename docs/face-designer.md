@@ -385,6 +385,12 @@ is far too much to do after every stroke, so it is rebuilt when the sets folder
 is read and only when a drawing has actually changed — once per sitting at
 worst, and not at all while nobody is looking at the list.
 
+The drawings are not the only thing in it. A photograph somebody has made a
+table of is written into the same package, as a `[[table]]` entry and a
+`tables/<id>.webp` beside the atlases (`docs/tables.md`, "Your own photo") —
+so the same package is rebuilt from two records rather than one, and a phone
+with photos and no drawings has a `mine` that is a table pack.
+
 A draft whose die is not installed is not in the package, and its file is kept:
 re-installing the package that defines the die brings the drawing back.
 

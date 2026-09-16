@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.tables
 
 import de.drehtuer.dinfinity.data.DataModule
+import de.drehtuer.dinfinity.designer.DesignerModule
 import de.drehtuer.dinfinity.dicesets.format.DicesetsFormatModule
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -18,6 +19,7 @@ class FeatureTablesModuleTest {
   fun `reaches every module it depends on`() {
     assertTrue(DicesetsFormatModule.PATH in FeatureTablesModule.DEPENDS_ON)
     assertTrue(DataModule.PATH in FeatureTablesModule.DEPENDS_ON)
-    assertEquals(2, FeatureTablesModule.DEPENDS_ON.size)
+    assertTrue(DesignerModule.PATH in FeatureTablesModule.DEPENDS_ON)
+    assertEquals(3, FeatureTablesModule.DEPENDS_ON.size)
   }
 }

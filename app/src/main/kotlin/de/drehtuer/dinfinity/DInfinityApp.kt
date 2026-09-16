@@ -65,6 +65,8 @@ import de.drehtuer.dinfinity.feature.stats.HistoryScreen
 import de.drehtuer.dinfinity.feature.stats.SavedStatsScreen
 import de.drehtuer.dinfinity.feature.stats.SessionsScreen
 import de.drehtuer.dinfinity.feature.stats.StatsScreen
+import de.drehtuer.dinfinity.feature.tables.PickedPhoto
+import de.drehtuer.dinfinity.feature.tables.TablesPresenter
 import de.drehtuer.dinfinity.feature.tables.TablesScreen
 import de.drehtuer.dinfinity.navigation.Destination
 import de.drehtuer.dinfinity.navigation.EditorArgument
@@ -401,6 +403,53 @@ private fun Sets(
 private const val CHOSEN = "chosen-packages"
 
 /**
+ * The table picker, with the photo picker that makes a look out of a
+ * photograph (`docs/tables.md`, "Your own photo").
+ *
+ * The launcher is here rather than in `feature/tables` for the reason [Sets]'s
+ * is: a content URI is the application's business. What crosses into the
+ * feature module is a *way of opening a stream* and the file's display name —
+ * never a `Uri`, and never bytes, because the photo is opened twice and the
+ * second open must not have to rewind the first.
+ *
+ * Read permission is taken for the length of the pick and no longer. The photo
+ * is scaled and written into the personal package while the sheet is up; after
+ * that the app has its own copy and has no business holding a handle to
+ * somebody's photo library.
+ */
+@Composable
+private fun Tables(
+  presenter: TablesPresenter,
+  navController: NavHostController,
+) {
+  val context = LocalContext.current
+  val choose =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      // A null uri is the picker being dismissed, which is not a failure and
+      // has nothing to say.
+      if (uri == null) return@rememberLauncherForActivityResult
+      presenter.picked(
+        PickedPhoto(
+          label = PhotoNames.of(context.contentResolver, uri),
+          open = { context.contentResolver.openInputStream(uri) },
+        ),
+      )
+    }
+  TablesScreen(
+    presenter = presenter,
+    menu = { MenuTo(navController) },
+    // Pictures only. Unlike a dice set — which arrives as
+    // `application/octet-stream` as often as not and so may not be filtered —
+    // a photo picker that offered every file on the phone would be offering
+    // files that cannot possibly work.
+    onPickPhoto = { choose.launch(arrayOf(IMAGES)) },
+  )
+}
+
+/** What the photo picker is allowed to offer. */
+private const val IMAGES = "image/*"
+
+/**
  * What the saved rolls have come to, against what they should.
  *
  * Its own branch rather than one more parameter on [lookingBack], which is
@@ -447,7 +496,7 @@ private fun customising(
     }
 
     Destination.Tables if screens != null -> {
-      TablesScreen(presenter = remember(entry) { screens.tables() }, menu = { MenuTo(navController) })
+      Tables(remember(entry) { screens.tables() }, navController)
       true
     }
 

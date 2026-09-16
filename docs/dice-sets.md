@@ -155,12 +155,20 @@ been picked (`docs/face-designer.md`, "The licence, and why it is a gate").
 
 One package is generated on the device rather than downloaded: **"My dice"**,
 id `mine`, built from the drawings in the face designer
-(`docs/face-designer.md`). It is a folder in `dicesets/` like any other, and
-there is no privileged path for it:
+(`docs/face-designer.md`) **and from the photographs somebody has made tables
+of** (`docs/tables.md`, "Your own photo"). It is a folder in `dicesets/` like
+any other, and there is no privileged path for it:
 
-- It is written through the same layout as any package — a `diceset.toml` and
-  one `textures/<die-id>.png` per drawn die, at 256 px per atlas cell, with
-  cells nobody drew on left out so they stay transparent.
+- It is written through the same layout as any package — a `diceset.toml`, one
+  `textures/<die-id>.png` per drawn die at 256 px per atlas cell with cells
+  nobody drew on left out so they stay transparent, and one
+  `tables/<table-id>.webp` per photo table.
+- It is **built, not accumulated.** The drafts and the photos are the record;
+  the folder is a view of them, rebuilt whenever either has moved on. So a
+  drawing deleted is a die gone at the next reading, and nothing can drift out
+  of step with anything.
+- A package of nothing but tables is as ordinary as one of nothing but dice: a
+  phone with photos and no drawings has a `mine` that is a table pack.
 - It goes through **the validator** before it is written to `dicesets/` and
   again before its zip is offered to anybody. A package the app built and could
   not install is a bug caught on this phone rather than an install failure on

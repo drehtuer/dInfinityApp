@@ -188,6 +188,10 @@ internal class ScreenWiring(
       sets = { app.setLibrary.catalogue.installed },
       chosen = settings.defaultTable,
       onChosen = { pin -> scope.launch { repository.setDefaultTable(pin) } },
+      scope = scope,
+      // The Android half of "use a photo": a decoder, the personal package and
+      // the catalogue that has to be re-read once one lands (`TablePhotoLibrary`).
+      photos = app.tablePhotos,
     )
 
   /**

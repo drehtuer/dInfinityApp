@@ -63,7 +63,7 @@ render/
 input/
   shake/             Sensor fusion → throw impulses
 feedback/            Impacts → haptic ticks and impact sounds (docs/physics-and-rendering.md)
-designer/            The drawing model behind the face designer: marks, drafts on disk, cell outlines, and the export that turns them into an installable dice set (docs/face-designer.md)
+designer/            The personal package, "My dice": the drawing model behind the face designer (marks, drafts on disk, cell outlines), the photographs somebody has made tables of, and the export that turns both into an installable package (docs/face-designer.md, docs/tables.md)
 data/                Room database, DAOs, DataStore
 ui/
   common/            Screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes
@@ -72,7 +72,7 @@ feature/             One module per screen group; see docs/TODO.md Step 4
   graph/             Outcome graph
   saved/             Saved rolls: groups, list, editor, import/export
   sets/              Dice set browser, details, installer, and the "My dice" export behind a licence choice
-  tables/            Table picker
+  tables/            Table picker, and "use a photo"
   designer/          Face designer screen over the designer/ engine
   stats/             Statistics, history and sessions — the "Look back" screens
   settings/          Settings, the menu, the notation reference, and the developer screen (docs/physics-and-rendering.md)
@@ -652,6 +652,41 @@ afterwards. `RollPresenter` remembers the look it last announced and calls
 `Tray.table` again only when it actually changes — a scene is rebuilt on that
 call, and rebuilding one per keystroke is not a thing to do by accident.
 
+### Making a table out of a photograph
+
+The one screen that *adds* to a package rather than reading one
+(`docs/tables.md`, "Your own photo"). Four things have to meet, and they are
+deliberately in four places:
+
+| | Where | Why there |
+| --- | --- | --- |
+| the picker | `:app` (`DInfinityApp`) | a content URI is reached through a `ContentResolver`; the same reason the dice-set screen's file picker is there |
+| the arithmetic | `designer`'s `PhotoScaling`, plain Kotlin | what size to aim at, which power of two to subsample by, and how far the ladder goes are decisions a JVM test can assert on |
+| the pixels | `designer`'s `BitmapPhoto` | the seam `AtlasPainter` draws, in the other direction: a decode, a scale and an encoder, which can fail but cannot be wrong (decision 55) |
+| the writing | `designer`'s `MineSets`, `PhotoStore`, `PackageFolder` | the personal package is already written and validated here, and a photo is one more thing it is built from |
+
+What crosses into `feature/tables` is a `TablePhotos` — the seam
+`feature/roll`'s `ThrowRecorder` draws, and for the same reason: a screen that
+lists tables has no business decoding a JPEG or running the validator. What
+crosses into it is a *way of opening a stream* and the file's display name;
+never a `Uri`, and never bytes, because the photo is opened **twice** — header
+first, pixels second — and the second open must not have to rewind the first.
+
+`:app`'s `TablePhotoLibrary` joins the four up, and does one thing besides:
+after a photo lands it calls `SetLibrary.all()`, because the catalogue the
+picker lists from is only re-read there. A table written and not re-read is a
+table that is on disk and in no list.
+
+The photos are kept **outside** `dicesets/`, in `filesDir/table-photos/`, for a
+structural reason: everything in `dicesets/` is scanned as a package, so a
+folder of loose pictures in it would be listed as a dice set that does not
+validate.
+
+`feature/tables` depends on `:designer`, which is the same dependency
+`feature/sets` already takes and for the same reason — "My dice" is an ordinary
+installed package built by that module, and a screen that adds to it needs its
+rules rather than a second copy of them.
+
 ### Writing a roll down
 
 The statistics tables have existed since database version 1 and nothing wrote
@@ -1132,6 +1167,8 @@ to re-run (decision 13).
     .mine.writing/            it being rebuilt; renamed into place, and never a package because of the dot
     .mine.previous/           the one it replaced, held until the swap is done
   drafts/…                    in-progress face drawings, one file per die
+  table-photos/…              photographs made into tables: <id>.webp and <id>.name, two files each
+                              (deliberately not inside dicesets/, where a loose folder would be scanned as a package)
   savedrolls/
     imports/…                 imported collections kept for "re-import / diff"
 <cacheDir>/
@@ -1143,7 +1180,8 @@ to re-run (decision 13).
 
 Dice set folders are treated as read-only after installation, with one
 exception the app owns end to end: `dicesets/mine/` is rewritten from the
-drafts whenever the folder is read and a drawing has changed. Uninstall
+drafts *and the photo tables* whenever the folder is read and either has
+changed. Uninstall
 deletes the folder and the registry row; statistics referencing that set are
 kept (they are keyed by set id and die id, not by file path).
 
