@@ -1,20 +1,31 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -47,6 +58,15 @@ internal fun ResultSheet(
   modifier: Modifier = Modifier,
   divides: Boolean = false,
   onRound: (Rounding) -> Unit = {},
+  /**
+   * Quick mode: the die under a long press, to be drawn on
+   * (`docs/face-designer.md`, "Quick mode").
+   *
+   * The id of the die rather than the die, because this module has no idea
+   * what a dice set holds — which of them is installed and what it looks like
+   * is the designer's question and `:app`'s to answer.
+   */
+  onDoodle: (String) -> Unit = {},
 ) {
   Column(
     modifier = modifier.fillMaxWidth().testTag(RollTestTags.SHEET),
@@ -61,7 +81,7 @@ internal fun ResultSheet(
 
     // One row per group rather than one per die: `3d6 + 1d20` is two things a
     // player asked for, and the dice under each are how it came out.
-    result.groups.forEach { group -> GroupRow(group) }
+    result.groups.forEach { group -> GroupRow(group, onDoodle) }
 
     // And a row per number the formula adds, so the rows on screen add up to
     // the total. Absent for a formula whose total cannot be read off them —
@@ -153,7 +173,10 @@ private fun Rounding.label(): Int =
   }
 
 @Composable
-private fun GroupRow(group: RolledGroup) {
+private fun GroupRow(
+  group: RolledGroup,
+  onDoodle: (String) -> Unit,
+) {
   Column(modifier = Modifier.fillMaxWidth()) {
     Row(
       modifier = Modifier.fillMaxWidth(),
@@ -186,7 +209,7 @@ private fun GroupRow(group: RolledGroup) {
     }
 
     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      group.dice.forEach { die -> DieChip(die) }
+      group.dice.forEach { die -> DieChip(die, onDoodle) }
     }
 
     // And why there are not more of them. Everything else a die has to say is
@@ -230,21 +253,63 @@ private fun ChainLimitLine(
 }
 
 /**
- * One die as it landed.
+ * One die as it landed, and the way to draw on it
+ * (`docs/face-designer.md`, "Quick mode").
  *
  * Three states and no more: kept, kept and showing its highest face, or
  * dropped. Anything else a die has to say about itself is a note in the
  * breakdown, not a colour nobody can decode.
+ *
+ * **A long press here rather than on the picker row**, although the picker is
+ * where a player picks dice: a long press there already takes one off the
+ * formula, and it is a fast, repeated edit that a menu would slow down for the
+ * sake of something a player does once a month. What a long press offers is
+ * therefore per *die that landed* — the one in front of them, which is when
+ * "this d6 is boring" is thought — and the picker keeps its gesture whole.
+ *
+ * The press **offers** rather than navigates. Leaving the screen on a gesture
+ * nothing announced would be a tray that vanishes when a finger rests on it,
+ * and the menu is also what tells anybody the shortcut is there.
  */
 @Composable
-private fun DieChip(die: RolledDie) {
-  Text(
-    text = die.label,
-    style = MaterialTheme.typography.bodyMedium,
-    color = die.colour(),
-    textDecoration = if (die.kept) null else TextDecoration.LineThrough,
-    modifier = Modifier.testTag(RollTestTags.dieAt(die.instanceIndex)),
-  )
+private fun DieChip(
+  die: RolledDie,
+  onDoodle: (String) -> Unit,
+) {
+  var offered by remember(die.instanceIndex) { mutableStateOf(false) }
+  val doodle = stringResource(R.string.roll_die_doodle)
+  Box {
+    Text(
+      text = die.label,
+      style = MaterialTheme.typography.bodyMedium,
+      color = die.colour(),
+      textDecoration = if (die.kept) null else TextDecoration.LineThrough,
+      modifier =
+        Modifier
+          .testTag(RollTestTags.dieAt(die.instanceIndex))
+          // A gesture rather than `combinedClickable`, which would make every
+          // number in the breakdown a button whose tap does nothing — and
+          // announce it as one. The long press is spelled out for TalkBack
+          // beside it, which is the half of it a gesture detector cannot say.
+          .pointerInput(die.instanceIndex) { detectTapGestures(onLongPress = { offered = true }) }
+          .semantics {
+            onLongClick(label = doodle) {
+              offered = true
+              true
+            }
+          },
+    )
+    DropdownMenu(expanded = offered, onDismissRequest = { offered = false }) {
+      DropdownMenuItem(
+        text = { Text(doodle) },
+        onClick = {
+          offered = false
+          onDoodle(die.dieId)
+        },
+        modifier = Modifier.testTag(RollTestTags.doodleOf(die.instanceIndex)),
+      )
+    }
+  }
 }
 
 @Composable

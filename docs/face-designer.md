@@ -19,8 +19,8 @@ installed by other users like any other set.
 2. **Draw.** The screen shows one face at a time as a large square canvas
    with the face's outline (triangle, square, pentagon, kite for the d10…)
    masked in. Swipe left/right or use the strip at the bottom to move between
-   faces. The current face value is shown faintly as a guide and can be
-   hidden.
+   faces. The number that belongs on the face is shown faintly under the
+   drawing as something to trace, and can be hidden ("The guide").
 
    **A d4 is the exception and needs three guides, not one.** Its numbers
    belong to corners rather than to faces, so each of its four triangles
@@ -234,6 +234,32 @@ A face an author left blank stays blank, and a face whose label the font cannot
 draw gets its **value** — the one thing about a face the app can always write
 down, which is the rule the tray already follows.
 
+### The guide
+
+**It is the numeral, not a dot where the numeral goes.** It was a dot for as
+long as nothing on the phone could measure a piece of text: drawing a string
+inside a `Canvas` wants a measurer, and the screen had no reason to hold one.
+`core/glyphs` is that measurer — it holds the outlines the tray prints with and
+`LabelRoom` solves how big a number may be on a face and where on that face it
+sits — so the guide is now the very shape "fill all with numbers" would put
+down, at the same size, in the same place, with the same bar under a `6` that
+needs one.
+
+That is the point of it rather than a nicety. A guide and a stamp that were
+solved separately could drift apart, and then tracing the guide and pressing
+the button would put ink in two different places; there is one solve
+(`designer`'s `FaceStamp.printed`) and both read it. A d4 gets three, one at
+each corner, for the same reason the stamp does.
+
+**A face with nothing printed on it still gets its dot.** Half a Fudge die is a
+blank side an author asked for, and printing a `0` on it would be the app
+arguing with the set file — so there is no numeral to trace and the guide falls
+back to marking the place. The screen is not told which case it is looking at:
+what reaches the draw lambda is a list of closed rings either way.
+
+The guide can still be turned off, and the face's value is still on the strip
+under the canvas while it is.
+
 ### Copy and paste
 
 Copying takes what is on the face — the drawing, not its undo stack, which
@@ -440,11 +466,51 @@ install failure on somebody else's.
 
 ## Quick mode
 
-From the roll screen, long-pressing a die offers "Doodle this die": the
-designer opens on that die with its existing texture (if any) as the starting
-layer. Saving creates a variant in "My dice" with the same id suffixed
-`-doodle` and switches the current roll to use it. This is the "draw a skull
-on the 1 in ten seconds" path.
+> **Design:** the breakdown a long press lands on is option `1f` of the
+> [clickable design](../design/dInfinity.dc.html); what it opens is the
+> designer itself, `1v`.
+
+**Long-press a die in the breakdown and it offers "Doodle this die."** Taking
+the offer opens the face designer on that die, with that die's own draft
+already on the canvas. It is the same screen the menu opens and it does nothing
+the menu cannot: what it saves is the hunt through the chooser for the die
+already in front of the player, which is the whole of "draw a skull on the 1 in
+ten seconds".
+
+**The dice that landed, not the picker row.** The obvious place is the picker —
+it is a row of dice on the roll screen — but a long press there already takes a
+die off the formula (`docs/dice-notation.md`, "Picking dice without typing"),
+and that is a fast edit made in twos and threes. Putting a menu in front of it
+to make room for something somebody does once a month would slow down the
+common thing for the rare one. The dice in the breakdown had no gesture at all,
+and they are the better subject anyway: a die that has just landed is the one
+being looked at when "this d6 is boring" is thought. A dropped die offers it
+like any other — a `4d6dl1` whose 1 is the dull one is exactly the case — and
+so does a die plain notation cannot name, which the picker row cannot even
+show (`docs/architecture.md`, decision 31). Whether the picker row should offer
+it too, through a menu, is an open question (`docs/TODO.md`).
+
+**It offers rather than opens.** The press puts up a one-line menu and the menu
+navigates. Leaving the tray on a gesture that announced nothing would be a
+screen that vanishes when a finger rests on it, and the menu is also the only
+thing that tells anybody the shortcut is there. TalkBack is told what the long
+press does rather than left to say "double tap and hold".
+
+**Nothing is saved and nothing is switched.** An earlier plan had the designer
+make a variant die — the same id suffixed `-doodle` — and switch the current
+roll to it. There is nothing left of that to build: a drawing *is* a draft on
+disk under the die's own id and the drafts together already *are* "My dice", so
+the variant would be a second copy of a drawing that exists, and the switch
+would be a roll whose dice a screen changed behind the player. The ways back to
+the tray are Back and "Roll it", which hands the tray the die being drawn
+("Flow", step 4).
+
+Which die the screen opens on is one rule with the menu's
+(`designer`'s `OpeningDie`): the die the long press named, and the usual d6
+when it named none — or when it named a die that is no longer installed, which
+can happen to a result still on the tray after its package has been removed.
+The route carries the id and nothing else (`docs/architecture.md`,
+"Navigation").
 
 ## Constraints
 

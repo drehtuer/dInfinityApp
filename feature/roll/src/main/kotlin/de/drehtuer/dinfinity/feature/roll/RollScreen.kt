@@ -71,6 +71,17 @@ fun RollScreen(
   onImportCollection: () -> Unit = {},
   onAddSets: () -> Unit = {},
   onSeeTheOdds: (formula: String, total: Long?) -> Unit = { _, _ -> },
+  /**
+   * Quick mode: draw on the die a long press picked out of the breakdown
+   * (`docs/face-designer.md`, "Quick mode").
+   *
+   * The die's id and nothing else. Which die that names, and what the face
+   * designer opens on when it names nothing any more, is `:app`'s to decide
+   * with the catalogue in hand (`designer`'s `OpeningDie`) — a screen that
+   * knew about another screen would be one feature module depending on
+   * another (`docs/architecture.md`, "Modules").
+   */
+  onDoodle: (String) -> Unit = {},
   menu: @Composable () -> Unit = {},
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit = {},
   shakeToRoll: Boolean = true,
@@ -108,6 +119,7 @@ fun RollScreen(
     Controls(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
+      onDoodle = onDoodle,
       strip = strip,
       editing = editing,
       onEditing = { editing = it },
@@ -208,6 +220,7 @@ private const val FIRST_ROLL = "1d20"
 private fun Controls(
   presenter: RollPresenter,
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
+  onDoodle: (String) -> Unit,
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
   editing: Boolean,
   onEditing: (Boolean) -> Unit,
@@ -223,7 +236,7 @@ private fun Controls(
     verticalArrangement = Arrangement.spacedBy(12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Outcome(state, onRound = presenter::round)
+    Outcome(state, onRound = presenter::round, onDoodle = onDoodle)
     // The odds for the formula in the field, with the throw that just landed
     // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
     // throw the table refuses too: that is exactly when "what would it have
@@ -315,6 +328,7 @@ private fun KeepTheScreenAwake() {
 private fun Outcome(
   state: RollState,
   onRound: (Rounding) -> Unit,
+  onDoodle: (String) -> Unit,
 ) {
   when (state) {
     is RollState.Settled ->
@@ -329,7 +343,7 @@ private fun Outcome(
           color = MaterialTheme.colorScheme.onBackground,
           modifier = Modifier.testTag(RollTestTags.TOTAL),
         )
-        ResultSheet(result = state.result, divides = state.divides, onRound = onRound)
+        ResultSheet(result = state.result, divides = state.divides, onRound = onRound, onDoodle = onDoodle)
       }
 
     is RollState.Rolling ->
@@ -493,4 +507,7 @@ object RollTestTags {
   ): String = "roll:sheet:limit:$groupId:$limit"
 
   fun dieAt(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex"
+
+  /** "Doodle this die", offered by a long press on one (`docs/face-designer.md`, "Quick mode"). */
+  fun doodleOf(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex:doodle"
 }

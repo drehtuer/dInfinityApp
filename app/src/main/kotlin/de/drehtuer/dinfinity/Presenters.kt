@@ -69,8 +69,15 @@ data class Presenters(
   val diceSets: () -> SetsPresenter,
   /** Which table the dice are thrown onto (`docs/tables.md`). */
   val tables: () -> TablesPresenter,
-  /** Drawing the faces of a die (`docs/face-designer.md`). */
-  val faceDesigner: () -> DesignerPresenter,
+  /**
+   * Drawing the faces of a die (`docs/face-designer.md`).
+   *
+   * Takes the die to open on, by id, or empty for the usual one: quick mode
+   * opens the same screen on the die a player long-pressed in the breakdown
+   * ("Quick mode"), and which die that is, is an argument on the route rather
+   * than a second screen.
+   */
+  val faceDesigner: (String) -> DesignerPresenter,
   /**
    * The debugging tools (`docs/physics-and-rendering.md`, "Debug tooling").
    *

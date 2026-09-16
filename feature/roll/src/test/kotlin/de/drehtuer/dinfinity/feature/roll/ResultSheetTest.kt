@@ -5,9 +5,11 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import de.drehtuer.dinfinity.core.model.DieNote
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
@@ -267,6 +269,61 @@ class ResultSheetTest {
     compose.setContent { ResultSheet(fourD6DropLowest()) }
 
     compose.onNodeWithTag(RollTestTags.adjustmentOf(0)).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a long press on a die offers to draw on it`() {
+    // Quick mode (`docs/face-designer.md`). It offers rather than navigates:
+    // leaving the tray on a gesture nothing announced would be a screen that
+    // vanishes when a finger rests on it.
+    compose.setContent { ResultSheet(fourD6DropLowest()) }
+
+    compose.onNodeWithTag(RollTestTags.dieAt(0)).performTouchInput { longClick() }
+
+    compose.onNodeWithTag(RollTestTags.doodleOf(0)).assertIsDisplayed()
+  }
+
+  @Test
+  fun `nothing is offered until a die is pressed`() {
+    compose.setContent { ResultSheet(fourD6DropLowest()) }
+
+    compose.onNodeWithTag(RollTestTags.doodleOf(0)).assertDoesNotExist()
+  }
+
+  @Test
+  fun `taking the offer names the die rather than the face it showed`() {
+    // The designer draws a *die*, so what leaves this screen is the id of the
+    // die that landed and not the number on it.
+    val asked = mutableListOf<String>()
+    compose.setContent { ResultSheet(fourD6DropLowest(), onDoodle = asked::add) }
+
+    compose.onNodeWithTag(RollTestTags.dieAt(2)).performTouchInput { longClick() }
+    compose.onNodeWithTag(RollTestTags.doodleOf(2)).performClick()
+
+    assertEquals(listOf("d6"), asked)
+  }
+
+  @Test
+  fun `a dropped die can be drawn on like any other`() {
+    // It is the same die. A `4d6dl1` whose 1 is the boring one is exactly when
+    // somebody wants to draw on it.
+    val asked = mutableListOf<String>()
+    compose.setContent { ResultSheet(fourD6DropLowest(), onDoodle = asked::add) }
+
+    compose.onNodeWithTag(RollTestTags.dieAt(DROPPED)).performTouchInput { longClick() }
+    compose.onNodeWithTag(RollTestTags.doodleOf(DROPPED)).performClick()
+
+    assertEquals(listOf("d6"), asked)
+  }
+
+  @Test
+  fun `the offer is taken back down once it has been taken`() {
+    compose.setContent { ResultSheet(fourD6DropLowest()) }
+
+    compose.onNodeWithTag(RollTestTags.dieAt(1)).performTouchInput { longClick() }
+    compose.onNodeWithTag(RollTestTags.doodleOf(1)).performClick()
+
+    compose.onNodeWithTag(RollTestTags.doodleOf(1)).assertDoesNotExist()
   }
 
   private fun RollResult.plus(amount: Long): RollResult =

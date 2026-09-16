@@ -249,19 +249,24 @@ saved-roll editor is about one roll, reached from that roll; and importing a
 collection is about saved rolls, reached from their screen. A menu row for the
 last of those would be a row that means nothing until somebody has a file.
 
-**Three destinations are opened with arguments.** The outcome graph is about a
+**Five destinations are opened with arguments.** The outcome graph is about a
 formula, and after a roll it also marks the total that came up, so its route
 is `graph?formula={formula}&total={total}`. The tray takes a formula too —
 `roll?formula={formula}` — which is what tapping a saved roll does, and the
 editor takes the roll it is editing, or nothing for a new one: it puts
 the formula in the field and leaves the throw to the player, because a saved
-roll is a formula with a name rather than a roll waiting to happen. Two rules
-keep arguments from spreading trouble:
+roll is a formula with a name rather than a roll waiting to happen. A set's
+details screen takes the set. The face designer takes the die to draw on —
+`designer?die={die}` — which is what "Doodle this die" carries out of the
+breakdown: quick mode is the same screen on a different die rather than a
+screen of its own (`docs/face-designer.md`, "Quick mode"). Two rules keep
+arguments from spreading trouble:
 
 - **Every argument is optional and defaults to empty.** A destination that
   could only be opened with an argument is a destination the menu could not
   open, and the menu opens every one of them. A bare `graph` is a graph with
-  no formula, which says where a formula comes from.
+  no formula, which says where a formula comes from, and a bare `designer` is
+  the designer on the die it always opens on.
 - **The formula is URI-encoded on the way in.** `+` and `/` are characters a
   formula is made of and a URI reserves; unencoded, `3d6 + 4` arrives as
   `3d6   4` and graphs a different roll.
