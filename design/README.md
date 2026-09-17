@@ -29,6 +29,12 @@ prototype's own logic — is in this folder.
 
 The project's `.thumbnail` (a binary preview image) is not imported.
 
+**The app has moved since the last sync.**
+[../docs/design-handover.md](../docs/design-handover.md) is the list of what
+moved and what it needs from the design — read it before the next pass over
+these files, because several screens now describe something the physics no
+longer does.
+
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, whose last
 sync from this repo was 2026-09-11. Every design decision it recorded for
 feeding back has been folded into `docs/`; what remains open is listed under
