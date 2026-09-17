@@ -1,11 +1,14 @@
 package de.drehtuer.dinfinity.ui.common
 
 import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertLeftPositionInRootIsEqualTo
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.filterToOne
@@ -167,6 +170,64 @@ class SheetTest {
 
     compose.onNodeWithText("Rolls with their breakdown.").assertExists()
     compose.onNodeWithText("Dice sets and tables are not included.").assertExists()
+  }
+
+  @Test
+  fun `a sheet follows its state rather than holding the first thing it drew`() {
+    // A sheet is not a snapshot. The install-outcome sheet fills in as the
+    // validator reports, the group sheet's Save enables as the name is typed,
+    // and every one of them is a composable the screen recomposes rather than
+    // a window it opens once. So the thing worth holding is that a second
+    // composition reaches the sheet at all.
+    val title = mutableStateOf("Fetching…")
+    val ready = mutableStateOf(false)
+    compose.setContent {
+      Sheet(
+        title = title.value,
+        onDismiss = {},
+        modifier = Modifier.testTag("sheet"),
+        actions = {
+          ModernistButton(
+            text = "Install",
+            onClick = {},
+            enabled = ready.value,
+            modifier = Modifier.testTag("install"),
+          )
+        },
+      ) {
+        Text(if (ready.value) "Brass & Bone 1.2.0 validated" else "Reading the package…")
+      }
+    }
+
+    compose.onNodeWithText("Reading the package…").assertExists()
+    compose.onNodeWithTag("install").assertIsNotEnabled()
+
+    title.value = "Brass & Bone"
+    ready.value = true
+
+    compose.onNodeWithText("Brass & Bone").assertExists()
+    compose.onNodeWithText("Brass & Bone 1.2.0 validated").assertExists()
+    compose.onNodeWithTag("install").assertIsEnabled()
+  }
+
+  @Test
+  fun `a sheet with nothing to do still draws, and still closes`() {
+    // `actions` defaults to nothing: a sheet can be a statement rather than a
+    // question, and the way out is then the backdrop alone.
+    var dismissed = false
+    compose.setContent {
+      Sheet(title = "Exported", onDismiss = { dismissed = true }) {
+        Text("dInfinity-rolls.json · 214 rolls · 41 kB.")
+      }
+    }
+
+    compose.onNodeWithText("dInfinity-rolls.json · 214 rolls · 41 kB.").assertExists()
+    compose
+      .onAllNodes(isRoot())
+      .filterToOne(SemanticsMatcher("has a size") { it.size.height > 0 })
+      .performTouchInput { click(Offset(1f, 1f)) }
+
+    compose.runOnIdle { assertTrue("a sheet with no actions could not be closed", dismissed) }
   }
 
   private companion object {
