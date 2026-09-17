@@ -123,7 +123,7 @@ class HarnessTargetsTest {
 
   @Test
   fun `a single roll that reached the cap fails, valve or not`() {
-    assertMisses("rolls that hit the 12 s cap", perfect().copy(capsReached = 1))
+    assertMisses("rolls that gave up", perfect().copy(capsReached = 1))
   }
 
   @Test

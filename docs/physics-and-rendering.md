@@ -823,6 +823,25 @@ the worst overlapping by 10.9 mm of a 16 mm die. So a counted die leaves the
 tray as it is read, and what the player follows is the running total rather
 than the dice (`docs/TODO.md`, Step 5.5).
 
+**A roll that cannot finish says so, and offers its dice back.** There used to
+be a twelve-second cap that ended a roll by force-settling every die still
+moving and reading it off whatever face it was nearest — a number nobody
+rolled, which is the one thing this app may not produce. A roll now runs until
+its dice have stopped, and a die is thrown again as often as it takes.
+
+What is left of the twelve seconds is a **backstop**, and it is visible rather
+than silent. The dice that could be read are read and taken off the table; the
+screen says how many never settled and offers to throw **those and only those**
+again. A headless run — the harness, where there is no screen to walk away from
+— fails instead of answering, because a roll whose dice never stopped has no
+faces to report.
+
+It costs nothing at ordinary loads: **2,000 rolls of 20d20 on the Pixel 10a,
+and not one of them gave up.** Where it bites is where the throw was never
+settling in the first place — `100d4`, the flattest shape at the capacity
+limit, a sustained sideways shake — and there it replaces a fabricated answer
+with an honest refusal.
+
 **What it costs is time, and once in a while all of it.** Measured on the
 Pixel 10a over sixteen seeds of twenty dice under a hard sideways shake:
 fifteen resolve in 243 to 709 steps — two to six seconds — with nought to five

@@ -12,8 +12,8 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
@@ -72,12 +72,14 @@ class RollLoopTest {
   fun `nothing touches a die that has come to rest, however wrong it looks`() {
     // Stopped dead and standing on another die: as much trouble as a die can
     // be in, and out of reach for exactly that reason.
+    // It is thrown again for as long as it takes, and never touched where it
+    // lies — so a run nobody is watching gives up rather than reporting a die
+    // standing on another one.
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
-    val outcome = loop(listOf(StandardDice.d6), world).run()
+
+    assertThrows(IllegalStateException::class.java) { loop(listOf(StandardDice.d6), world).run() }
 
     assertTrue("a settled die was biased", world.biases.isEmpty())
-    assertEquals(0, outcome.corrections)
-    assertEquals(0, outcome.postRestCorrections)
   }
 
   @Test
@@ -153,10 +155,11 @@ class RollLoopTest {
         motion = DieMotion(speedMmPerSecond = 1.0, spinRadiansPerSecond = 0.001),
       )
     val world = FakeWorld(1) { _, _, _ -> crawling }
-    val outcome = loop(listOf(StandardDice.d6), world).run()
+
+    assertThrows(IllegalStateException::class.java) { loop(listOf(StandardDice.d6), world).run() }
 
     assertTrue(world.biases.isEmpty())
-    assertTrue("what a bias may not fix, a re-throw must", outcome.rethrows > 0)
+    assertTrue("what nothing may fix, a re-throw must", world.respawns.isNotEmpty())
   }
 
   @Test
@@ -187,24 +190,69 @@ class RollLoopTest {
   }
 
   @Test
-  fun `a die that will not come good is given up on rather than thrown for ever`() {
+  fun `a die nobody can read is thrown again until the run gives up, and never answered`() {
+    // It used to be thrown three times and then **read off the face it was
+    // nearest** — a made-up answer to a die that never came good. There is no
+    // budget now: it is thrown as often as it takes, and a run nobody is
+    // watching stops waiting rather than inventing a number
+    // (`SettleRule.HARD_CAP_SECONDS`).
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(cocked) }
-    val outcome = loop(listOf(StandardDice.d6), world).run()
 
-    assertEquals(RollLoop.MAX_RETHROWS, outcome.rethrows)
-    assertEquals("giving up is an anomaly, and is counted as one", 1, outcome.forcedSettles)
-    assertFalse(outcome.clean)
-    assertTrue("a roll still has to answer", outcome.faces.containsKey(0))
+    val refused =
+      assertThrows(IllegalStateException::class.java) {
+        loop(listOf(StandardDice.d6), world).run()
+      }
+
+    assertTrue(
+      "the failure does not say what went wrong",
+      refused.message.orEmpty().contains("had not settled"),
+    )
+    assertTrue("the die was not thrown again at all", world.respawns.size > OLD_BUDGET)
   }
 
   @Test
-  fun `a roll that never settles is stopped by the cap and says so`() {
-    val world = FakeWorld(1) { _, _, _ -> FakeWorld.tumbling() }
-    val outcome = loop(listOf(StandardDice.d6), world).run()
+  fun `a roll that gave up says which dice never settled`() {
+    // What the screen needs in order to offer them back: the dice that were
+    // read are read and off the table, and only the ones still moving are
+    // thrown again (`docs/physics-and-rendering.md`).
+    val world =
+      FakeWorld(2) { _, index, _ ->
+        if (index == 0) FakeWorld.settled() else FakeWorld.tumbling()
+      }
+    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world)
 
-    assertEquals(SettleRule.HARD_CAP_STEPS, outcome.steps)
-    assertEquals(1, outcome.forcedSettles)
-    assertFalse(outcome.clean)
+    @Suppress("ControlFlowWithEmptyBody")
+    while (loop.advance()) {
+      // Every step is the same step.
+    }
+
+    assertTrue("the roll did not give up", loop.stalled)
+    assertEquals("the die that settled was offered back too", listOf(1), loop.unsettled)
+  }
+
+  @Test
+  fun `a roll that gave up has no outcome, because it has no answer`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(listOf(StandardDice.d6), world)
+
+    @Suppress("ControlFlowWithEmptyBody")
+    while (loop.advance()) {
+      // Every step is the same step.
+    }
+
+    assertThrows(IllegalArgumentException::class.java) { loop.outcome() }
+  }
+
+  @Test
+  fun `a roll that never settles is given up on rather than answered`() {
+    // It used to be force-settled at twelve seconds and read off whatever face
+    // each die was nearest, which is a made-up answer to a throw that never
+    // ended. A run nobody is watching stops waiting instead, and says so.
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.tumbling() }
+
+    assertThrows(IllegalStateException::class.java) { loop(listOf(StandardDice.d6), world).run() }
+
+    assertEquals("it kept stepping past the backstop", SettleRule.HARD_CAP_STEPS, world.steps)
   }
 
   @Test
@@ -325,18 +373,19 @@ class RollLoopTest {
   }
 
   @Test
-  fun `a hand that never stops cannot push a roll past its own cap`() {
-    // Thirty seconds of shaking against a twelve-second cap. The hand holds a
-    // roll open, but the safety valve is not something it gets a vote on: the
-    // steps would go on being counted and the outcome would be one nothing can
-    // describe.
+  fun `a hand that never stops holds the roll open, and a run nobody watches gives up`() {
+    // Thirty seconds of shaking. A hand holds a roll open for as long as it
+    // goes, which is the point of a shake — and on screen that is the player's
+    // own doing and their own to stop. A headless run has no hand to stop and
+    // no screen to leave, so it is the backstop that ends this one.
     val forever = List(THIRTY_SECONDS_OF_STEPS) { ShakeSample(it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
 
-    val outcome = loop(listOf(StandardDice.d6), world, shake = forever).run()
+    assertThrows(IllegalStateException::class.java) {
+      loop(listOf(StandardDice.d6), world, shake = forever).run()
+    }
 
-    assertEquals(SettleRule.HARD_CAP_STEPS.toLong(), outcome.steps.toLong())
-    assertEquals("the world was stepped past the cap", SettleRule.HARD_CAP_STEPS, world.steps)
+    assertEquals("the roll stopped before the backstop", SettleRule.HARD_CAP_STEPS, world.steps)
   }
 
   @Test
@@ -362,13 +411,15 @@ class RollLoopTest {
 
   @Test
   fun `a die that ends standing on another is counted, whatever the ladder tried`() {
-    // It has had its three re-throws and comes down on another die every time,
-    // which is the failure Step 5.5 asks the harness to count.
+    // A die that comes down on another one every time is thrown again for ever
+    // rather than being left standing on it — so the run gives up instead of
+    // reporting a die at rest on another die, which was the failure Step 5.5
+    // asks the harness to count.
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
-    val outcome = loop(listOf(StandardDice.d6), world).run()
 
-    assertEquals(1, outcome.stackedAtRest)
-    assertEquals(RollLoop.MAX_RETHROWS, outcome.rethrows)
+    assertThrows(IllegalStateException::class.java) { loop(listOf(StandardDice.d6), world).run() }
+
+    assertTrue("the die was left where it fell", world.respawns.size > OLD_BUDGET)
   }
 
   private fun loop(
@@ -407,6 +458,9 @@ class RollLoopTest {
     )
 
   private companion object {
+    /** The three re-throws a die used to be rationed. */
+    const val OLD_BUDGET = 3
+
     const val RADIUS_MM = 8.0
 
     /** A shake that outlasts the settle rule several times over. */

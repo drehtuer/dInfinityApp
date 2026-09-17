@@ -179,6 +179,16 @@ data class RollRecord(
   val forcedSettles: Int,
   val stackedAtRest: Int,
   val deepestDiePenetrationMm: Double,
+  /**
+   * True when this roll gave up: it ran longer than a roll should and its dice
+   * never stopped, so it has no faces to report.
+   *
+   * It used to be derived from the step count, because a roll that ran out of
+   * time was force-settled and still produced an outcome. There is no such
+   * outcome any more — a roll either reads every die or says it could not — so
+   * this is recorded rather than inferred (`SettleRule.HARD_CAP_SECONDS`).
+   */
+  val gaveUp: Boolean = false,
 ) {
   /** How long the roll took in simulated seconds, which is what the targets are in. */
   val settleSeconds: Double get() = steps * SettleRule.TIMESTEP_SECONDS
@@ -186,10 +196,34 @@ data class RollRecord(
   /** How long the device spent on one step of it, on average over the roll. */
   val stepWallMillis: Double get() = if (steps == 0) 0.0 else wallMillis / steps
 
-  /** True when this roll ran out of its twelve seconds rather than finishing. */
-  val capReached: Boolean get() = steps >= SettleRule.HARD_CAP_STEPS
-
   companion object {
+    /**
+     * A roll that gave up, with no faces to report.
+     *
+     * Everything a roll is measured by is about dice that stopped, so all of
+     * it is nought here — and the run is scored on how *many* of these there
+     * were, which is the one figure that matters about them.
+     */
+    fun gaveUp(
+      index: Int,
+      seed: Long,
+      steps: Int,
+      wallMillis: Double,
+    ): RollRecord =
+      RollRecord(
+        index = index,
+        seed = seed,
+        steps = steps,
+        wallMillis = wallMillis,
+        corrections = 0,
+        postRestCorrections = 0,
+        rethrows = 0,
+        forcedSettles = 0,
+        stackedAtRest = 0,
+        deepestDiePenetrationMm = 0.0,
+        gaveUp = true,
+      )
+
     /**
      * The record of one roll, from what the simulation reported and how long
      * the device took over it.
@@ -237,7 +271,9 @@ data class RollRecord(
  * @param rethrows dice thrown again.
  * @param forcedSettles dice the simulation finished for.
  * @param stackedAtRest dice left standing on another die.
- * @param capsReached rolls that ran out of their twelve seconds.
+ * @param capsReached rolls that gave up: they ran longer than a roll should
+ *   and their dice never stopped, so they have no faces to report. They used
+ *   to be force-settled and counted as rolls that happened.
  * @param deepestDiePenetrationMm the deepest overlap seen anywhere in the run.
  * @param frames what the run's frames cost, or **null** when it had none.
  *   Null rather than an empty distribution: a headless run did not measure a
@@ -288,7 +324,7 @@ data class HarnessSummary(
         rethrows = records.sumOf { it.rethrows.toLong() },
         forcedSettles = records.sumOf { it.forcedSettles.toLong() },
         stackedAtRest = records.sumOf { it.stackedAtRest.toLong() },
-        capsReached = records.count(RollRecord::capReached),
+        capsReached = records.count(RollRecord::gaveUp),
         deepestDiePenetrationMm = records.maxOfOrNull { it.deepestDiePenetrationMm } ?: 0.0,
         frames = frames.summary(),
       )

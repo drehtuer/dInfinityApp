@@ -124,10 +124,11 @@ class TrayDriver(
   override fun roll(
     start: (Renderer) -> WatchedRoll,
     onCounted: (Map<Int, Int>) -> Unit,
+    onStalled: (List<Int>) -> Unit,
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     post {
-      loop.roll(start, onCounted, onSettled)
+      loop.roll(start, onCounted, onStalled, onSettled)
       schedule()
     }
   }

@@ -53,7 +53,11 @@ class LiveRoll internal constructor(
     private set
 
   /** True until the last die has come to rest. */
-  override val running: Boolean get() = outcome == null
+  override val running: Boolean get() = outcome == null && !loop.stalled
+
+  override val stalled: Boolean get() = loop.stalled
+
+  override val unsettled: List<Int> get() = loop.unsettled
 
   /** How many fixed steps the roll has taken. Simulated time, never wall time. */
   val stepsTaken: Int get() = loop.stepsTaken
@@ -134,11 +138,30 @@ class LiveRoll internal constructor(
    * settled dice are handed over once at the end, because even power-saving
    * mode has a last position and something may want it.
    */
-  fun runToEnd(): SimulationOutcome {
-    while (running) step()
+  fun runToEnd(giveUp: () -> Boolean = { outOfTime }): SimulationOutcome? {
+    while (running) {
+      if (giveUp()) return null
+      step()
+    }
     present()
     return requireNotNull(outcome)
   }
+
+  /**
+   * True once the roll has been going longer than a roll should
+   * ([SettleRule.HARD_CAP_SECONDS]).
+   *
+   * **The backstop for the runs nobody is watching.** A roll on screen needs
+   * none: it runs until its dice have stopped, and a player who is tired of
+   * waiting leaves the screen, which gives it up. A headless run has no screen
+   * to leave — the harness throws thousands of them — so a roll that never
+   * settled would hang the run instead of failing it.
+   *
+   * What it does *not* do is end the roll. The dice are not read off whatever
+   * face they were nearest and handed back as a result; there is no result, and
+   * the caller is told so (`docs/build-setup.md`, "The physics harness").
+   */
+  val outOfTime: Boolean get() = loop.outOfTime
 
   /**
    * One more moment of the shake, for a roll that is still going.

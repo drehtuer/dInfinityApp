@@ -89,7 +89,11 @@ data class HarnessTargets(
         share("dice re-thrown", summary.rethrownShare, rethrownShare),
         seconds("median settle", summary.settleSeconds.median, medianSettleSeconds),
         seconds("p99 settle", summary.settleSeconds.p99, p99SettleSeconds),
-        atMost("rolls that hit the 12 s cap", summary.capsReached.toLong(), capsReached.toLong()),
+        atMost("rolls that gave up", summary.capsReached.toLong(), capsReached.toLong()),
+        // Nought by construction rather than by measurement: a forced settle
+        // was a die read off a face it never landed on, and there is no code
+        // left that can produce one. Kept as a row so that a change which
+        // brought one back would show up here rather than pass unnoticed.
         atMost("forced settles", summary.forcedSettles, forcedSettles),
         millimetres("deepest die-die overlap", summary.deepestDiePenetrationMm, deepestDiePenetrationMm),
         millis("p99 step time", summary.stepWallMillis.p99, p99StepWallMillis),

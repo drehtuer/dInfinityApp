@@ -171,7 +171,9 @@ class CornerCasesTest {
         world.addDie(ShapeGeometry.hullOf(die, scale), die.material, layout.placementOf(index, dice.size))
       }
       world.finish()
-      RollLoop(spec, world, layout, ShakeDriver(emptyList())).run()
+      // A roll that gave up still left its dice somewhere, and where they are
+      // is what these corners ask about.
+      RollLoop(spec, world, layout, ShakeDriver(emptyList())).runOrGiveUp()
       world.readStates()
     }
   }

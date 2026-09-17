@@ -96,20 +96,25 @@ class SettleRuleTest {
   }
 
   @Test
-  fun `the cap fires at twelve seconds, and says which dice were still going`() {
+  fun `a roll that has run too long says so, and does not call itself finished`() {
+    // It used to. Every die still moving was force-settled and read off the
+    // face it was nearest, which is a made-up answer to a throw that never
+    // ended. The roll is not over while a die is still going — what running
+    // too long means now is that nobody watching it should keep waiting
+    // (`SettleRule.HARD_CAP_SECONDS`).
     val tracker = RestTracker(2)
     repeat(SettleRule.HARD_CAP_STEPS) { tracker.step(listOf(DieMotion.Stopped, DieMotion(200.0, 9.0))) }
-    assertTrue(tracker.capReached())
-    assertTrue(tracker.finished())
+    assertTrue(tracker.outOfTime())
+    assertFalse(tracker.finished(), "a roll with a die still moving called itself finished")
     assertEquals(listOf(1), tracker.stillMoving())
   }
 
   @Test
-  fun `a roll that settles cleanly never reaches the cap`() {
+  fun `a roll that settles cleanly never runs out of time`() {
     val tracker = RestTracker(1)
     repeat(SettleRule.REST_STEPS) { tracker.step(listOf(DieMotion.Stopped)) }
     assertTrue(tracker.finished())
-    assertFalse(tracker.capReached())
+    assertFalse(tracker.outOfTime())
     assertEquals(SettleRule.REST_STEPS, tracker.stepsTaken)
   }
 

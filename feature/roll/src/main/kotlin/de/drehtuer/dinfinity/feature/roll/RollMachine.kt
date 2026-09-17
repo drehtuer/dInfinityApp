@@ -173,6 +173,9 @@ class RollMachine(
    * roll the player had not finished asking for.
    */
   private var earned: ThrowSpec? = null
+
+  /** The dice a roll gave up on, waiting for somebody to throw them again. */
+  private var stuck: List<Int>? = null
   private var scored: Pair<Formula, RollResult>? = null
 
   /** What the screen draws. */
@@ -302,8 +305,10 @@ class RollMachine(
   fun throwDice(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
     val ready = prepared ?: return null
     prepared = null
-    // A new throw is not the continuation of the last one's chain.
+    // A new throw is not the continuation of the last one's chain, nor of a
+    // throw somebody gave up on.
     earned = null
+    stuck = null
 
     val spec =
       ThrowSpec(
@@ -505,6 +510,41 @@ class RollMachine(
         ),
     )
   }
+
+  /**
+   * The roll gave up. Says so, and remembers the dice to offer back.
+   *
+   * The throw is not scored and not recorded: there is no total, because some
+   * of its dice were never read. What there is instead is a throw of those
+   * dice, waiting for somebody to ask for it.
+   */
+  fun gaveUp(unsettled: List<Int>): Boolean {
+    val flight = inFlight ?: return false
+    if (unsettled.isEmpty()) return false
+    stuck = unsettled
+    state = RollState.Stalled(unsettled = unsettled.size, read = flight.prepared.plan.dice.size - unsettled.size)
+    return true
+  }
+
+  /**
+   * Throws the dice that never settled, driven by [shake].
+   *
+   * Only those: the dice that were read are read, off the table and out of the
+   * way, and throwing them again would be throwing away answers the roll
+   * already has. It is the same throw an explosion's round is — a handful of
+   * dice into a tray that already holds some — so there is one path to a
+   * number and this is not a second one (`docs/architecture.md`, goal 1).
+   */
+  fun throwUnsettled(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
+    val flight = inFlight ?: return null
+    val again = stuck ?: return null
+    stuck = null
+    val dice = flight.prepared.plan.dice
+    return earnedThrow(flight, again.mapNotNull { dice.getOrNull(it)?.die }).copy(shake = shake)
+  }
+
+  /** Whether a throw gave up and its dice are waiting to be thrown again. */
+  val awaitingRethrow: Boolean get() = stuck != null
 
   /**
    * An empty board: the same table, with no dice on it.
@@ -776,9 +816,27 @@ sealed interface RollState {
    * @param waiting how many throws the chain has earned and not yet had. One,
    *   today, because a chain adds a die at a time.
    */
+
   data class ShakeAgain(
     val diceCount: Int,
     val waiting: Int = 1,
+  ) : RollState
+
+  /**
+   * The roll gave up: it ran too long and these dice never stopped.
+   *
+   * **There is no total, and there will not be one for this throw.** The dice
+   * that could be read have been, and the rest are still moving — so rather
+   * than reading them off whatever face they were nearest, which is making a
+   * number up, the roll says it could not finish and offers them back
+   * (`docs/physics-and-rendering.md`).
+   *
+   * @param unsettled how many dice never came to rest.
+   * @param read how many were counted before it gave up.
+   */
+  data class Stalled(
+    val unsettled: Int,
+    val read: Int,
   ) : RollState
 
   /**

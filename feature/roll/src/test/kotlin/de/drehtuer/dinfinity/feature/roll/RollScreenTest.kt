@@ -216,6 +216,34 @@ class RollScreenTest {
   }
 
   @Test
+  fun `a roll that gave up says so on screen and offers the dice back`() {
+    // Rather than reading them off whatever face they were nearest, which is
+    // the one thing this app may not do (`docs/physics-and-rendering.md`).
+    val tray = StallingTray(unsettled = listOf(1, 2))
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+
+    typeFormula("4d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+
+    compose.onNodeWithTag(RollTestTags.STALLED).assertExists()
+    compose.onNodeWithTag(RollTestTags.THROW_AGAIN).assertExists()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the offer throws the dice that never settled`() {
+    val tray = StallingTray(unsettled = listOf(1, 2))
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+    typeFormula("4d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    val thrown = tray.throws
+
+    compose.onNodeWithTag(RollTestTags.THROW_AGAIN).performClick()
+
+    assertEquals("the offer threw nothing", thrown + 1, tray.throws)
+  }
+
+  @Test
   fun `a formula puts its dice on the board before anybody throws them`() {
     val tray = DirectTray()
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
@@ -741,6 +769,7 @@ class RollScreenTest {
     override fun roll(
       start: (Renderer) -> WatchedRoll,
       onCounted: (Map<Int, Int>) -> Unit,
+      onStalled: (List<Int>) -> Unit,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       val live = start(HeadlessRenderer())
@@ -785,9 +814,28 @@ class RollScreenTest {
     override fun roll(
       start: (Renderer) -> WatchedRoll,
       onCounted: (Map<Int, Int>) -> Unit,
+      onStalled: (List<Int>) -> Unit,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       onCounted(read)
+    }
+  }
+
+  /** A tray whose roll gives up: some dice never settle, and there is no total. */
+  private class StallingTray(
+    private val unsettled: List<Int>,
+  ) : Tray by PendingTray() {
+    var throws = 0
+      private set
+
+    override fun roll(
+      start: (Renderer) -> WatchedRoll,
+      onCounted: (Map<Int, Int>) -> Unit,
+      onStalled: (List<Int>) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
+    ) {
+      throws++
+      onStalled(unsettled)
     }
   }
 
@@ -812,6 +860,7 @@ class RollScreenTest {
     override fun roll(
       start: (Renderer) -> WatchedRoll,
       onCounted: (Map<Int, Int>) -> Unit,
+      onStalled: (List<Int>) -> Unit,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       start(HeadlessRenderer())

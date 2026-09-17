@@ -82,6 +82,7 @@ class PowerSavingTray(
     // by the real one in the same breath (`docs/physics-and-rendering.md`,
     // "Power-saving mode").
     onCounted: (Map<Int, Int>) -> Unit,
+    onStalled: (List<Int>) -> Unit,
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     on.execute {
@@ -99,18 +100,27 @@ class PowerSavingTray(
       // and for the same reason: a roll does not outlive being read, and both
       // are records it holds.
       var heard: List<Impact> = emptyList()
+      var stuck: List<Int> = emptyList()
       val (outcome, drove) =
         roll.use { throwing ->
           val reached = runOut(throwing)
           heard = throwing.impacts.toList()
+          // A power-saving roll gives up the same way a watched one does. It
+          // has no frames, so it reaches the backstop in a fraction of a second
+          // rather than in twelve — but a roll that cannot finish still says so
+          // rather than answering.
+          if (throwing.stalled) stuck = throwing.unsettled
           reached to throwing.drivenBy
         }
       live = null
       // A roll given up because the screen was left reports nothing, because
       // nothing landed — and plays nothing either.
-      if (!closed && outcome != null) {
+      if (closed) return@execute
+      if (outcome != null) {
         impacts.play(heard, Impacts.REPLAY_SECONDS)
         onSettled(outcome, drove)
+      } else if (stuck.isNotEmpty()) {
+        onStalled(stuck)
       }
     }
   }

@@ -38,6 +38,14 @@ internal sealed interface TrayReading {
     val dice: Int,
   ) : TrayReading
 
+  /**
+   * The roll gave up and these dice are still on the table, unread, waiting to
+   * be thrown again.
+   */
+  data class Stalled(
+    val dice: Int,
+  ) : TrayReading
+
   /** Landed, and this is the total. */
   data class Settled(
     val total: Long,
@@ -57,6 +65,7 @@ internal sealed interface TrayReading {
         is RollState.Ready -> Ready(state.diceCount)
         is RollState.Rolling -> Rolling(state.diceCount)
         is RollState.ShakeAgain -> ShakeAgain(state.diceCount)
+        is RollState.Stalled -> Stalled(state.unsettled)
         is RollState.Settled -> Settled(state.result.total)
       }
   }

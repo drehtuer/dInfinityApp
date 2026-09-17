@@ -244,6 +244,14 @@ class RollPresenter(
         // stepped, once per die read, and the state it sets is Compose's.
         toTheScreen { progress = machine.progress(counted) }
       },
+      onStalled = { unsettled ->
+        toTheScreen {
+          if (machine.gaveUp(unsettled)) {
+            progress = null
+            publish()
+          }
+        }
+      },
       onSettled = { outcome, drivenBy ->
         toTheScreen {
           // Written down on the screen's thread, where the result exists, and
@@ -282,6 +290,21 @@ class RollPresenter(
         }
       },
     )
+  }
+
+  /**
+   * Throws the dice a roll gave up on, and nothing else.
+   *
+   * The dice that were read are read: they are off the table and out of the
+   * way, and throwing them again would throw away answers the roll already
+   * has. What goes back in the air is only what never settled
+   * (`docs/physics-and-rendering.md`).
+   */
+  fun throwUnsettled(shake: List<ShakeSample> = emptyList()): Boolean {
+    val again = machine.throwUnsettled(shake) ?: return false
+    publish()
+    throwIt(again)
+    return true
   }
 
   /**

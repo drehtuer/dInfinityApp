@@ -219,6 +219,7 @@ class DeveloperToolsTest {
     override fun roll(
       start: (Renderer) -> WatchedRoll,
       onCounted: (Map<Int, Int>) -> Unit,
+      onStalled: (List<Int>) -> Unit,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       val roll = start(HeadlessRenderer())

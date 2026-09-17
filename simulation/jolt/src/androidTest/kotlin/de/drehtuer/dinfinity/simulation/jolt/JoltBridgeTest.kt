@@ -261,7 +261,7 @@ class JoltBridgeTest {
           )
         }
         world.finish()
-        RollLoop(spec, world, layout, ShakeDriver(emptyList())).run()
+        RollLoop(spec, world, layout, ShakeDriver(emptyList())).runOrGiveUp()
         world.readStates()
       }
 
@@ -322,9 +322,14 @@ class JoltBridgeTest {
               world.addDie(ShapeGeometry.hullOf(die, scale), die.material, layout.placementOf(index, dice.size))
             }
             world.finish()
-            RollLoop(spec, world, layout, ShakeDriver(emptyList())).run()
+            // Null when the roll gave up. A hundred d4s do, on some seeds, and
+            // always have — what is new is that giving up says so instead of
+            // reading every die off the face it was nearest.
+            RollLoop(spec, world, layout, ShakeDriver(emptyList())).runOrGiveUp()
           }
-        assertEquals("a die went unread at seed $seed", dice.size, outcome.faces.size)
+        if (outcome != null) {
+          assertEquals("a die went unread at seed $seed", dice.size, outcome.faces.size)
+        }
         seed to outcome
       }
 
@@ -332,8 +337,8 @@ class JoltBridgeTest {
     // die that has come to rest (`docs/physics-and-rendering.md`, rung 4).
     assertTrue(
       "a die was touched after it had stopped: " +
-        report.joinToString { (seed, o) -> "$seed:${o.postRestCorrections}" },
-      report.all { (_, outcome) -> outcome.postRestCorrections == 0 },
+        report.joinToString { (seed, o) -> "$seed:${o?.postRestCorrections}" },
+      report.all { (_, outcome) -> outcome == null || outcome.postRestCorrections == 0 },
     )
 
     // And the bar that is *not* met. `100d4` runs out of its twelve seconds on
@@ -344,16 +349,20 @@ class JoltBridgeTest {
     // the easy ones. The target is zero and it belongs to prevention
     // (`docs/TODO.md`, Step 5.3 and 5.5); the bound here is what today's worst
     // case is, so that it cannot quietly get worse in the meantime.
-    val stuck = report.filter { (_, outcome) -> outcome.steps >= CAP_STEPS }
+    val stuck = report.filter { (_, outcome) -> outcome == null }
     assertTrue(
       "a hundred d4s ran out of time on more seeds than they used to: " +
-        report.joinToString { (seed, o) -> "$seed:${o.steps}/${o.forcedSettles}f/${o.rethrows}r" },
+        report.joinToString { (seed, o) -> "$seed:" + (o?.steps?.toString() ?: "gave up") },
       stuck.size <= D4_PILE_UPS_ALLOWED,
     )
+    // And nothing that *did* finish was finished for it. A forced settle is a
+    // die read off a face it never landed on, and there is no longer any code
+    // that can produce one — a roll either reads every die or says it could
+    // not (`docs/physics-and-rendering.md`).
     assertEquals(
-      "a seed that ran out of time reported no forced settle, so the cap did not fire",
-      stuck.size,
-      report.count { (_, outcome) -> outcome.forcedSettles > 0 },
+      "a roll that finished still reported a forced settle",
+      0,
+      report.count { (_, outcome) -> outcome != null && outcome.forcedSettles > 0 },
     )
   }
 
@@ -374,7 +383,9 @@ class JoltBridgeTest {
               world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
             }
             world.finish()
-            RollLoop(spec, world, layout, ShakeDriver(emptyList())).run()
+            // A roll that gave up still left its dice somewhere, and where
+            // they are is what this asks about.
+            RollLoop(spec, world, layout, ShakeDriver(emptyList())).runOrGiveUp()
             world.readStates()
           }
         seed to states
@@ -429,7 +440,7 @@ class JoltBridgeTest {
               world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
             }
             world.finish()
-            RollLoop(spec, world, layout, ShakeDriver(spec.shake)).run()
+            RollLoop(spec, world, layout, ShakeDriver(spec.shake)).runOrGiveUp()
             world.readStates()
           }
         val spread = states.maxOf { it.position.x } - states.minOf { it.position.x }
@@ -475,8 +486,9 @@ class JoltBridgeTest {
               world.addDie(ShapeGeometry.hullOf(die), die.material, layout.placementOf(index, dice.size))
             }
             world.finish()
-            RollLoop(spec, world, layout, ShakeDriver(spec.shake)).run()
+            RollLoop(spec, world, layout, ShakeDriver(spec.shake)).runOrGiveUp()
           }
+        if (outcome == null) return@filter true
         Log.e(
           "ShakeResolve",
           "seed $seed steps=${outcome.steps} stacked=${outcome.stackedAtRest} " +

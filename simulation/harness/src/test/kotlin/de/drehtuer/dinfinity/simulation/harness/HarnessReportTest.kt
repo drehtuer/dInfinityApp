@@ -49,9 +49,14 @@ class HarnessReportTest {
   }
 
   @Test
-  fun `a roll that ran out of the twelve seconds says so`() {
-    assertFalse(record(steps = SettleRule.HARD_CAP_STEPS - 1).capReached)
-    assertTrue(record(steps = SettleRule.HARD_CAP_STEPS).capReached)
+  fun `a roll that gave up says so, and a long one that finished does not`() {
+    // It used to be read off the step count, because a roll that ran out of
+    // time was force-settled and still produced an outcome. A roll that takes
+    // its full twelve seconds and *finishes* is a slow roll, not a failed one,
+    // and only the roll with no faces to report is the second
+    // (`SettleRule.HARD_CAP_SECONDS`).
+    assertFalse(record(steps = SettleRule.HARD_CAP_STEPS).gaveUp)
+    assertTrue(RollRecord.gaveUp(index = 0, seed = 1L, steps = SettleRule.HARD_CAP_STEPS, wallMillis = 1.0).gaveUp)
   }
 
   @Test
@@ -106,18 +111,21 @@ class HarnessReportTest {
   }
 
   @Test
-  fun `a run counts the rolls that hit the cap, and every forced settle in them`() {
+  fun `a run counts the rolls that gave up, and they report nothing else`() {
+    // A roll that gave up has no faces, so it has no corrections, no re-throws
+    // and no forced settles either — the one thing worth counting about it is
+    // that it happened (`SettleRule.HARD_CAP_SECONDS`).
     val records =
       listOf(
-        record(index = 0, steps = SettleRule.HARD_CAP_STEPS, forcedSettles = 3),
+        RollRecord.gaveUp(index = 0, seed = 1L, steps = SettleRule.HARD_CAP_STEPS, wallMillis = 1.0),
         record(index = 1, steps = 200),
-        record(index = 2, steps = SettleRule.HARD_CAP_STEPS, forcedSettles = 1),
+        RollRecord.gaveUp(index = 2, seed = 3L, steps = SettleRule.HARD_CAP_STEPS, wallMillis = 1.0),
       )
 
     val summary = HarnessSummary.of(diceCount = 20, records = records)
 
     assertEquals(2, summary.capsReached)
-    assertEquals(4L, summary.forcedSettles)
+    assertEquals(0L, summary.forcedSettles, "a roll with no faces reported a forced settle")
   }
 
   @Test

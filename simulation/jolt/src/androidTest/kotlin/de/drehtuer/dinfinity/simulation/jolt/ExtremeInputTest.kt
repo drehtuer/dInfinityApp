@@ -157,13 +157,16 @@ class ExtremeInputTest {
   private fun shaken(shake: List<ShakeSample>): Pair<List<DieState>, Map<Int, Int>> {
     val dice = List(TWENTY) { Die.standard("d6", DieShape.Cube) }
     val spec = specOf(dice).copy(shake = shake)
-    val outcome = JoltDiceSimulator().run(spec)
+    // Null when the roll gave up. Input this violent is exactly where a throw
+    // may fail to settle, and a roll that cannot finish says so rather than
+    // reading every die off the face it was nearest.
+    val outcome = runCatching { JoltDiceSimulator().run(spec) }.getOrNull()
 
-    // And again, to say the same hand gives the same answer. A roll driven by
-    // input this violent is exactly where a dependence on anything but the
-    // seed would show.
-    val again = JoltDiceSimulator().run(spec)
-    assertEquals("the same extreme shake gave two different rolls", outcome.faces, again.faces)
+    // And again, to say the same hand gives the same answer — including the
+    // answer "this one did not settle". A roll driven by input this violent is
+    // exactly where a dependence on anything but the seed would show.
+    val again = runCatching { JoltDiceSimulator().run(spec) }.getOrNull()
+    assertEquals("the same extreme shake gave two different rolls", outcome?.faces, again?.faces)
 
     val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = dice.size))
     val layout = SpawnLayout(geometry, dice.first().material.boundingRadiusMm * spec.dieScale, spec.seed)
@@ -173,10 +176,10 @@ class ExtremeInputTest {
           world.addDie(ShapeGeometry.hullOf(die, spec.dieScale), die.material, layout.placementOf(index, dice.size))
         }
         world.finish()
-        RollLoop(spec, world, layout, ShakeDriver(shake)).run()
+        RollLoop(spec, world, layout, ShakeDriver(shake)).runOrGiveUp()
         world.readStates()
       }
-    return states to outcome.faces
+    return states to outcome?.faces.orEmpty()
   }
 
   /** Every die on the table, and a face read for each of them. */
@@ -185,7 +188,14 @@ class ExtremeInputTest {
     what: String,
   ) {
     val (states, faces) = result
-    assertEquals("$what did not read a face for every die", TWENTY, faces.size)
+    // Either every die was read, or the roll gave up and read none of them.
+    // What it may not do is answer for some and invent the rest: a die read off
+    // whatever face it was nearest is a number nobody rolled
+    // (`docs/physics-and-rendering.md`).
+    assertTrue(
+      "$what read $faces of $TWENTY dice, which is neither a roll nor a roll given up",
+      faces.isEmpty() || faces.size == TWENTY,
+    )
 
     val escaped =
       states.withIndex().filterNot { (_, state) ->

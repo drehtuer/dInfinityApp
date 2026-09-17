@@ -183,7 +183,13 @@ class HarnessTest {
         LockSupport.parkNanos(FrameTimes.waitNanos(work))
       }
       frames.droppedSteps += roll.droppedSteps
-      RollRecord.of(index, spec.seed, requireNotNull(roll.outcome), workNanos.toDouble() / NANOS_PER_MILLISECOND)
+      val millis = workNanos.toDouble() / NANOS_PER_MILLISECOND
+      // A roll that gave up is a row like any other, and the one row that
+      // matters most: it ran longer than a roll should and its dice never
+      // stopped, so it has no faces. It used to be force-settled into an
+      // outcome and counted as a roll that happened.
+      roll.outcome?.let { RollRecord.of(index, spec.seed, it, millis) }
+        ?: RollRecord.gaveUp(index, spec.seed, roll.stepsTaken, millis)
     }
 
   private fun secondsSince(nanos: Long): Double = (System.nanoTime() - nanos).toDouble() / NANOS_PER_SECOND
