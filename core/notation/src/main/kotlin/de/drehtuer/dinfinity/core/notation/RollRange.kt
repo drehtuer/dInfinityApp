@@ -18,6 +18,17 @@ import de.drehtuer.dinfinity.core.model.Rounding
 data class RollRange(
   val lowest: Long,
   val highest: Long,
+  /**
+   * True when [highest] is not the end of it.
+   *
+   * A chain that has not stopped can still earn dice nobody has thrown, and
+   * the total those would add is unbounded in any useful sense — twenty-one
+   * sixes is a number no readout should carry. So the ceiling is **what the
+   * throw can reach without earning another die**, and this says it can go
+   * higher. The screen draws it as a `+` after the number
+   * (`docs/dice-notation.md`).
+   */
+  val more: Boolean = false,
 )
 
 /**
@@ -58,12 +69,13 @@ data class RollRange(
  *
  * - **Floor: exact.** The lowest faces set off no explosion, so the number is
  *   the total of a throw that could happen.
- * - **Ceiling with `!`: reachable, but only just.** A maximum face earns
- *   another die, and that die is forced to its maximum too, so a forced chain
- *   runs all the way to the explosion depth limit — `8d6!` tops out at 1008,
- *   eight chains of twenty-one sixes. That total *is* attainable, so the bound
- *   is never wrong, but it counts dice the roll has not earned yet and a
- *   player will never see the readout go near it.
+ * - **Ceiling with `!`: every die at its highest and every throw they earn at
+ *   its lowest**, with [RollRange.more] to say it can go higher. `3d6!` is
+ *   three sixes and the three throws they earn coming up one apiece — "3 to
+ *   21+". Letting the forced chain run instead gave a number that was
+ *   attainable and useless: every maximum earning another maximum, all the way
+ *   to the depth limit, so `8d6!` read "8 to 1008". A lowest face explodes
+ *   nowhere, so the chain stops itself rather than being cut off.
  * - **Ceiling versus the tray: loose.** [AddedDice.room] is asked about each
  *   die a forced chain would add, but it answers about the tray as it is now
  *   and cannot know about the dice the chain before it would have dropped. A
@@ -99,7 +111,7 @@ object RollBounds {
         highest = throwing.subtotals(Extreme.Highest),
         rounding = rounding,
       )
-    return spans.of(formula.root)
+    return spans.of(formula.root).copy(more = throwing.wantedMore)
   }
 }
 
@@ -117,11 +129,18 @@ private class ForcedScoring(
   private val rounding: Rounding,
   private val added: AddedDice,
 ) {
+  /** True once a forced chain has asked for a die it was not given. */
+  var wantedMore: Boolean = false
+    private set
+
   /** What every group comes to with the unread dice pushed to one [extreme]. */
   fun subtotals(extreme: Extreme): Map<Int, Long> {
     val forcing = Forcing(plan, extreme)
+    val unearned = Forcing(plan, Extreme.Lowest)
     val forced = outcome.copy(faces = forcing.faces(outcome.faces))
-    val result = RollEvaluator.score(formula, plan, forced, rounding, ForcedThrow(added, forcing))
+    val throwing = ForcedThrow(added, forcing, unearned, extreme)
+    val result = RollEvaluator.score(formula, plan, forced, rounding, throwing)
+    if (throwing.wantedMore) wantedMore = true
     return result.groups.subtotals()
   }
 }
@@ -313,13 +332,48 @@ private class Forcing(
 private class ForcedThrow(
   private val added: AddedDice,
   private val forcing: Forcing,
+  /**
+   * What a die the roll has not thrown yet shows.
+   *
+   * The floor's own forcing, in both passes. A die nobody has thrown is a die
+   * the roll has only *earned*, and the ceiling counts it at its lowest:
+   * `3d6!` is three sixes and three re-rolls that came up one — **21+** — and
+   * the `+` is what says those three could have been sixes as well. Forcing
+   * them high instead made every maximum earn another maximum, all the way to
+   * the depth limit, which was a number nobody could use.
+   */
+  private val unearned: Forcing,
+  private val extreme: Extreme,
 ) : ExtraThrow {
   private var taken = 0
 
+  /**
+   * True once a chain has asked for a die this refused to give it.
+   *
+   * Which is the same question as "can the total go higher than the ceiling
+   * says": a chain only asks when its last die was a maximum, and a maximum
+   * earns a throw.
+   */
+  var wantedMore: Boolean = false
+    private set
+
   override fun roll(die: Die): Int {
     if (taken < added.faces.size) return added.faces[taken++]
-    return forcing.faceOf(die)
+    // A die the roll earned and has not thrown. It stops the chain where it
+    // is, because a lowest face explodes nowhere.
+    //
+    // Only the ceiling's pass sets the mark. The floor draws extra dice too —
+    // a die forced low is what sets off `r n` — and a reroll is not an
+    // explosion: its replacement stands, so `1d6r3` really does top out at six
+    // and marking it would promise a number that cannot come.
+    if (extreme == Extreme.Highest) wantedMore = true
+    return unearned.faceOf(die)
   }
 
+  /**
+   * A die already thrown went into a tray that had room for it, whatever the
+   * tray looks like now, and only a die that has not been thrown is a real
+   * question.
+   */
   override fun roomForAnother(die: Die): Boolean = taken < added.faces.size || added.room(die)
 }

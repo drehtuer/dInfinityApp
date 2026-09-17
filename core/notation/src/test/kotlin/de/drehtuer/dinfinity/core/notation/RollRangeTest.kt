@@ -112,28 +112,45 @@ class RollRangeTest {
   }
 
   @Test
-  fun `an exploding group is bounded by the dice it has not earned yet`() {
-    // Twenty-one sixes per chain: the first one and the twenty the depth limit
-    // allows after it (`docs/dice-notation.md`, "Limits"). It is a total the
-    // roll could reach, so the range is not lying — but it counts dice no six
-    // has earned, and the readout will never go near it.
-    assertEquals(RollRange(8L, 8L * 126L), bounds("8d6!"))
+  fun `an exploding group counts its re-rolls at their lowest, and says it can go higher`() {
+    // Eight sixes, and the eight throws they earn coming up one apiece.
+    // Letting the forced chains run instead gave `8 to 1008` — twenty-one sixes
+    // each, attainable and useless (`docs/dice-notation.md`).
+    assertEquals(RollRange(8L, 56L, more = true), bounds("8d6!"))
   }
 
   @Test
-  fun `a six already on the table has earned a die the range has to allow for`() {
-    // `RunningScore` is asking for one more d6 at this point, and the range
-    // says what that die can still do: at worst a one, at best twenty more
-    // sixes behind it.
+  fun `three exploding sixes read three to twenty-one`() {
+    // Three sixes is eighteen, and the three throws they earn are worth one
+    // each at worst. The `+` is what says they could be sixes as well.
+    assertEquals(RollRange(3L, 21L, more = true), bounds("3d6!"))
+  }
+
+  @Test
+  fun `a group that cannot explode never says there is more`() {
+    // The mark has to mean something. A formula with no `!` in it has a real
+    // ceiling, and marking it would be telling the player to expect a number
+    // that cannot come.
+    assertEquals(RollRange(4L, 24L), bounds("4d6"))
+    assertEquals(false, bounds("4d6dl1").more)
+  }
+
+  @Test
+  fun `a six already on the table has earned a die, and the range says so`() {
+    // `RunningScore` is asking for one more d6 at this point. The range does
+    // not guess what it will be.
     assertIs<Scoring.OneMoreDie>(scoring("1d6!", values = listOf(6)))
-    assertEquals(RollRange(7L, 126L), bounds("1d6!", values = listOf(6)))
+    // Six on the table and a throw earned but not made. Both ends stop at the
+    // dice in play, which is why they meet, and the `+` is what says the roll
+    // is not over.
+    assertEquals(RollRange(7L, 7L, more = true), bounds("1d6!", values = listOf(6)))
   }
 
   @Test
   fun `the dice an explosion has already thrown are read, not re-imagined`() {
     // Two sixes down the same chain: both stand, and only the die that has not
     // landed is still a question.
-    assertEquals(RollRange(13L, 126L), bounds("1d6!", values = listOf(6), added = listOf(6)))
+    assertEquals(RollRange(13L, 13L, more = true), bounds("1d6!", values = listOf(6), added = listOf(6)))
   }
 
   @Test

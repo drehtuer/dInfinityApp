@@ -444,6 +444,15 @@ private fun TrayReading.spoken(): String =
 /** How many dice have been read, and where the total can still land. */
 @Composable
 private fun Counting(progress: RollProgress) {
+  // A ceiling a chain can still climb past is marked rather than guessed at: a
+  // six earns another throw, and the number that counted those was attainable
+  // and useless (`docs/dice-notation.md`).
+  val ceiling =
+    if (progress.range.more) {
+      stringResource(R.string.roll_ceiling_more, progress.range.highest)
+    } else {
+      progress.range.highest.toString()
+    }
   Message(
     text =
       pluralStringResource(
@@ -452,7 +461,7 @@ private fun Counting(progress: RollProgress) {
         progress.read,
         progress.of,
         progress.range.lowest,
-        progress.range.highest,
+        ceiling,
       ),
     colour = MaterialTheme.colorScheme.onBackground,
     tag = RollTestTags.COUNTING,
