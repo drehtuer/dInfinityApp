@@ -17,13 +17,16 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
 @keyframes dz-spin{0%{transform:rotate(-260deg)}100%{transform:rotate(0deg)}}
 @keyframes dz-rot{to{transform:rotate(360deg)}}
 @keyframes dz-up{from{transform:translateY(28px);opacity:0}to{transform:none;opacity:1}}
+@keyframes dz-drop{0%{transform:translate(0,-420px) scale(1.5);opacity:0}18%{opacity:1}62%{transform:translate(0,6px) scale(.97)}82%{transform:translate(0,-3px) scale(1.01)}100%{transform:none}}
+@keyframes dz-shove{0%{transform:translate(var(--sx),var(--sy))}70%{transform:translate(calc(var(--sx) * -0.08), calc(var(--sy) * -0.08))}100%{transform:none}}
+@keyframes dz-orbit{from{transform:rotateX(-16deg) rotateY(0deg)}to{transform:rotateX(-16deg) rotateY(360deg)}}
 .dz-dark,.dz-dark input,.dz-dark button{color-scheme:dark}
 .dz-dark{--color-bg:#201e1d;--color-surface:#2d2b2b;--color-text:#f3f2f2;--color-divider:color-mix(in srgb,#f3f2f2 40%,transparent);--color-neutral-200:#444141;--color-neutral-300:#605d5d;--color-neutral-400:#7d7979;--color-neutral-500:#9b9797;--color-accent-100:#4d170e;--color-accent-200:#7c1405;--color-accent-700:#ffc4b8;--color-accent-800:#ffe0d9;--shadow-md:0 3px 10px rgba(0,0,0,.5);--shadow-lg:0 12px 32px rgba(0,0,0,.6)}
 @media (prefers-color-scheme: dark){.dz-system,.dz-system input,.dz-system button{color-scheme:dark}.dz-system{--color-bg:#201e1d;--color-surface:#2d2b2b;--color-text:#f3f2f2;--color-divider:color-mix(in srgb,#f3f2f2 40%,transparent);--color-neutral-200:#444141;--color-neutral-300:#605d5d;--color-neutral-400:#7d7979;--color-neutral-500:#9b9797;--color-accent-100:#4d170e;--color-accent-200:#7c1405;--color-accent-700:#ffc4b8;--color-accent-800:#ffe0d9;--shadow-md:0 3px 10px rgba(0,0,0,.5);--shadow-lg:0 12px 32px rgba(0,0,0,.6)}}
 </style>
 </helmet>
 <x-import component-from-global-scope="AndroidDevice" from="./android-frame.jsx" width="{{ 412 }}" height="{{ 892 }}" dark="{{ isDark }}" keyboard="{{ kbOpen }}" hint-size="428px,908px">
-<div class="{{ themeClass }}" style="height:100%;position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:15px;line-height:1.4">
+<div class="{{ themeClass }}" onPointerDown="{{ edgeDown }}" onPointerUp="{{ edgeUp }}" style="height:100%;position:relative;overflow:hidden;display:flex;flex-direction:column;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);font-size:15px;line-height:1.4;--color-accent:{{ acc }};--color-accent-100:{{ acc100 }};--color-accent-200:{{ acc200 }};--color-accent-600:{{ acc600 }};--color-accent-700:{{ acc700 }};--color-accent-800:{{ acc800 }}">
 <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
 <symbol id="ic-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M4 6h16M4 18h16"></path></symbol>
 <symbol id="ic-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></symbol>
@@ -77,7 +80,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
   <div style="order:{{ pickerOrder }};position:relative;border-bottom:2px solid {{ rollRule }};border-top:2px solid {{ rollRule }};margin-top:-2px">
     <sc-if value="{{ setMenuOpen }}" hint-placeholder-val="{{ false }}">
       <div style="position:absolute;top:100%;left:0;right:0;z-index:7;background:var(--color-bg);color:var(--color-text);border-bottom:2px solid var(--color-divider);box-shadow:var(--shadow-md)">
-        <div style="padding:8px 16px 2px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">Dice set for the picker</div>
+        <div style="padding:8px 16px 2px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Dice set for the picker</div>
         <sc-for list="{{ setOptions }}" as="s" hint-placeholder-count="3">
           <button type="button" onClick="{{ s.pick }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 16px;border:0;border-top:1px solid var(--color-divider);background:{{ s.bg }};color:inherit;font:inherit;cursor:pointer"><svg viewBox="0 0 100 100" width="22" height="22" style="display:block;overflow:visible;flex:none"><path d="M50 5 89 27.5v45L50 95 11 72.5v-45z" fill="{{ s.fill }}" stroke="#201e1d" stroke-width="3"></path></svg><span style="flex:1"><span style="display:block;font-weight:600">{{ s.name }}</span><span style="display:block;font-size:12px;opacity:.6">{{ s.meta }}</span></span><sc-if value="{{ s.active }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-check"></use></svg></sc-if></button>
         </sc-for>
@@ -116,11 +119,16 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
   </div>
 
     <sc-if value="{{ fromDesigner }}" hint-placeholder-val="{{ false }}"><div style="order:{{ pickerOrder }}">
-      <button type="button" onClick="{{ backToDesigner }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 16px;border:0;border-bottom:2px solid var(--color-divider);background:var(--color-accent-100);color:var(--color-text);font:inherit;text-align:left;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><use href="#ic-pencil"></use></svg><span style="flex:1"><span style="display:block;font-weight:600">Testing your doodled die</span><span style="display:block;font-size:12px;opacity:.65">Press Roll to throw it again · tap here to go back to the designer</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:.6"><use href="#ic-right"></use></svg></button>
+      <button type="button" onClick="{{ backToDesigner }}" style="display:flex;align-items:center;gap:10px;width:100%;padding:8px 16px;border:0;border-bottom:2px solid var(--color-divider);background:var(--color-accent-100);color:var(--color-text);font:inherit;text-align:left;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><use href="#ic-pencil"></use></svg><span style="flex:1"><span style="display:block;font-weight:600">Testing your doodled die</span><span style="display:block;font-size:12px;opacity:.65">Tap the tray to roll again · tap here to go back to the designer</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none;opacity:.6"><use href="#ic-right"></use></svg></button>
     </div></sc-if>
   <!-- tray -->
-  <div onClick="{{ tapTray }}" style="order:2;flex:{{ trayFlex }};position:relative;min-height:0;background:{{ tbl.floor }};border:{{ trayBorder }};overflow:hidden;cursor:default;color:{{ tbl.ink }}">
-    <div style="position:absolute;left:14px;top:12px;right:14px;z-index:1;pointer-events:none">
+  <div onClick="{{ tapTray }}" style="order:2;flex:{{ trayFlex }};position:relative;min-height:0;background:{{ tbl.floor }};border:{{ trayBorder }};overflow:hidden;cursor:pointer;color:{{ tbl.ink }}">
+    <sc-if value="{{ wallOn }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:{{ wallTop }};clip-path:polygon(0 0, 100% 0, 100% 5.5%, 5% 5.5%);pointer-events:none"></div>
+      <div style="position:absolute;inset:0;background:{{ wallLeft }};clip-path:polygon(0 0, 5% 5.5%, 5% 100%, 0 100%);pointer-events:none"></div>
+      <div style="position:absolute;left:5%;top:5.5%;right:0;bottom:0;border-top:2px solid {{ tbl.floor }};border-left:2px solid {{ tbl.floor }};pointer-events:none"></div>
+    </sc-if>
+    <div style="position:absolute;left:{{ plateLeft }};top:{{ plateTop }};max-width:calc(100% - 28px);z-index:1;pointer-events:none;background:var(--color-bg);color:var(--color-text);padding:7px 11px 8px;box-shadow:var(--shadow-sm)">
       <sc-if value="{{ notEditing }}" hint-placeholder-val="{{ true }}">
         <button type="button" onClick="{{ editFormula }}" title="Tap to type tabletop notation" style="pointer-events:auto;display:block;max-width:100%;text-align:left;padding:0 0 2px;border:0;border-bottom:2px dashed color-mix(in srgb, currentColor 45%, transparent);background:transparent;color:inherit;font-family:var(--font-heading);font-weight:800;font-size:22px;line-height:1.1;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:text">{{ planText }}</button>
         <div style="display:flex;align-items:center;gap:8px;margin-top:4px"><sc-if value="{{ formulaBad }}"><span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;background:var(--color-accent);color:var(--color-bg);font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-alert"></use></svg>Invalid notation</span></sc-if><span style="font-size:12px;opacity:.85">{{ capText }}</span></div>
@@ -143,14 +151,40 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <div style="position:absolute;inset:0;background:#9b9797;color:#201e1d;display:flex;flex-direction:column;justify-content:flex-end;padding:14px"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600">Power-saving mode</div><div style="font-size:13px;max-width:34ch">Same physics, no rendering. The result is identical to what the tray would show.</div></div>
     </sc-if>
     <sc-for list="{{ trayDice }}" as="d" hint-placeholder-count="0">
-      <div style="position:absolute;left:{{ d.x }}%;top:{{ d.y }}%;width:{{ d.size }}px;height:{{ d.size }}px;animation:{{ d.anim }};opacity:{{ d.op }}">
+      <div style="position:absolute;left:{{ d.x }}%;top:{{ d.y }}%;width:{{ d.size }}px;height:{{ d.size }}px;animation:{{ d.anim }};opacity:{{ d.op }};--sx:{{ d.sx }};--sy:{{ d.sy }}">
         <div style="width:100%;height:100%;transform:rotate({{ d.rot }}deg);animation:{{ d.spin }}">
-          <div style="position:relative;width:100%;height:100%"><svg viewBox="0 0 100 100" width="100%" height="100%" style="display:block;overflow:visible"><path d="{{ d.path }}" fill="{{ d.fill }}" stroke="#201e1d" stroke-width="2.5" stroke-linejoin="round"></path></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:{{ d.padTop }}px;font-family:var(--font-heading);font-weight:800;font-size:{{ d.fsPx }}px;line-height:1;color:{{ d.color }};font-variant-numeric:tabular-nums;text-decoration:{{ d.deco }};text-decoration-thickness:3px">{{ d.label }}</div></div>
+          <div style="position:relative;width:100%;height:100%"><svg viewBox="0 0 100 100" width="100%" height="100%" style="display:block;overflow:visible"><path d="{{ d.path }}" fill="{{ d.fill }}" fill-opacity="{{ d.alpha }}" stroke="{{ d.stroke }}" stroke-width="{{ d.strokeW }}" stroke-linejoin="round"></path></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:{{ d.padTop }}px;font-family:var(--font-heading);font-weight:800;font-size:{{ d.fsPx }}px;line-height:1;color:{{ d.color }};font-variant-numeric:tabular-nums;text-decoration:{{ d.deco }};text-decoration-thickness:3px">{{ d.label }}</div></div>
         </div>
-        <div style="position:absolute;left:50%;top:100%;transform:translate(-50%,2px);display:{{ d.tagShow }};padding:1px 6px;background:var(--color-bg);color:var(--color-text);font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">dropped</div>
+        <div style="position:absolute;left:50%;top:100%;transform:translate(-50%,2px);display:{{ d.markShow }};padding:1px 6px;background:var(--color-bg);color:{{ d.markInk }};font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap">{{ d.markText }}</div>
       </div>
     </sc-for>
-    <sc-if value="{{ showHint }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;left:14px;bottom:12px;font-size:13px;font-weight:600;opacity:.9;pointer-events:none">{{ hintText }}</div></sc-if>
+    <sc-if value="{{ showHint }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;left:14px;bottom:12px;max-width:calc(100% - 28px);background:var(--color-bg);color:var(--color-text);padding:5px 10px 6px;font-size:13px;font-weight:600;pointer-events:none;box-shadow:var(--shadow-sm)">{{ hintText }}</div></sc-if>
+    <sc-if value="{{ counting }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:12px;background:var(--color-bg);color:var(--color-text);padding:7px 11px 9px;display:flex;flex-direction:column;gap:5px;box-shadow:var(--shadow-sm);pointer-events:none">
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;opacity:.65">Counting</div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font-family:var(--font-heading);font-weight:800;font-size:17px;font-variant-numeric:tabular-nums">{{ countRead }}</span>
+          <span style="font-size:13px;opacity:.75">of {{ countAll }} read</span>
+          <span style="flex:1"></span>
+          <span style="font-size:13px;font-weight:600;font-variant-numeric:tabular-nums">{{ countLo }} to {{ countHi }}<span style="font-family:var(--font-heading);font-weight:800;color:var(--color-accent-700)">{{ countPlus }}</span></span>
+        </div>
+        <div style="height:3px;background:var(--color-neutral-200)"><div style="height:100%;width:{{ countPct }};background:var(--color-text)"></div></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ earned }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:12px;background:var(--color-bg);color:var(--color-text);padding:8px 11px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:var(--shadow-sm)">
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--color-accent-700)">Another throw earned</div>
+        <div style="font-size:13px;line-height:1.35;text-wrap:pretty">{{ earnedText }} The dice that are down stay down — shake, or throw them here.</div>
+        <div style="display:flex;gap:6px"><button type="button" class="btn btn-primary" onClick="{{ throwEarned }}">Throw {{ earnedCount }} more</button><button type="button" class="btn btn-ghost" onClick="{{ stopChain }}">Stop the chain</button></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ stuck }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:14px;right:14px;bottom:12px;background:var(--color-bg);color:var(--color-text);padding:8px 11px 10px;display:flex;flex-direction:column;gap:7px;box-shadow:var(--shadow-sm)">
+        <div style="display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><use href="#ic-alert"></use></svg><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--color-accent-700)">Could not settle</span></div>
+        <div style="font-size:13px;line-height:1.35;text-wrap:pretty">{{ stuckCount }} of {{ countAll }} dice never stopped, so the roll has no total yet. {{ stuckRead }} are read and counted.</div>
+        <div style="display:flex;gap:6px"><button type="button" class="btn btn-primary" onClick="{{ throwStuck }}">Throw those {{ stuckCount }} again</button><button type="button" class="btn btn-ghost" onClick="{{ cancelStuck }}">Cancel the roll</button></div>
+      </div>
+    </sc-if>
   </div>
 
   <!-- saved slot -->
@@ -161,7 +195,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
     </sc-if>
     <sc-if value="{{ stripLedger }}" hint-placeholder-val="{{ false }}">
       <div style="flex:1;min-height:0;overflow:auto">
-        <div style="display:flex;align-items:baseline;gap:10px;padding:10px 16px 6px;border-bottom:1px solid var(--color-divider)"><span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">{{ groupName }}</span><span style="flex:1"></span><button type="button" class="btn btn-ghost" onClick="{{ goSaved }}" style="padding:2px 4px;font-size:12px">All rolls</button></div>
+        <div style="display:flex;align-items:baseline;gap:10px;padding:10px 16px 6px;border-bottom:1px solid var(--color-divider)"><span style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">{{ groupName }}</span><span style="flex:1"></span><button type="button" class="btn btn-ghost" onClick="{{ goSaved }}" style="padding:2px 4px;font-size:12px">All rolls</button></div>
         <sc-for list="{{ visibleRolls }}" as="r" hint-placeholder-count="4">
           <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="display:grid;grid-template-columns:20px 1fr auto auto;align-items:center;gap:10px;width:100%;padding:9px 16px;border:0;border-bottom:1px solid var(--color-divider);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-{{ r.icon }}" style="color:{{ r.iconColor }}"></use></svg><span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</span><span style="font-size:13px;opacity:.7;font-variant-numeric:tabular-nums">{{ r.formulaShort }}</span><span style="font-family:var(--font-heading);font-weight:800;font-size:18px;min-width:28px;text-align:right;font-variant-numeric:tabular-nums">{{ r.last }}</span></button>
         </sc-for>
@@ -186,7 +220,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
     <sc-if value="{{ stripPoster }}" hint-placeholder-val="{{ false }}">
       <div style="display:grid;grid-template-columns:1fr 1fr">
         <sc-for list="{{ favRolls }}" as="r" hint-placeholder-count="2">
-          <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="padding:12px 16px 14px;border:0;border-right:1px solid var(--color-divider);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">{{ r.formulaShort }}</span><span style="font-family:var(--font-heading);font-weight:800;font-size:22px;line-height:1.05;letter-spacing:-.01em">{{ r.name }}</span></button>
+          <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="padding:12px 16px 14px;border:0;border-right:1px solid var(--color-divider);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">{{ r.formulaShort }}</span><span style="font-family:var(--font-heading);font-weight:800;font-size:22px;line-height:1.05;letter-spacing:-.01em">{{ r.name }}</span></button>
         </sc-for>
       </div>
       <button type="button" class="btn btn-ghost" onClick="{{ goSaved }}" style="margin:0 12px 6px;font-size:12px">All {{ groupRollCount }} rolls in {{ groupName }}</button>
@@ -199,7 +233,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <div style="display:flex;align-items:center;padding:10px 8px 6px 16px;flex:none"><span style="font-family:var(--font-heading);font-weight:800;font-size:18px">Pick dice</span><span style="flex:1"></span><span style="font-size:12px;opacity:.7;margin-right:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px">{{ planText }}</span><button type="button" class="btn btn-ghost btn-icon" onClick="{{ closePicker }}" style="color:inherit" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-x"></use></svg></button></div>
       <div style="flex:1;min-height:0;overflow:auto">
         <sc-for list="{{ gridSets }}" as="gs" hint-placeholder-count="3">
-          <div style="display:flex;align-items:baseline;gap:8px;padding:8px 16px 4px;border-top:2px solid var(--color-divider)"><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">{{ gs.name }}</span><span style="font-size:11px;opacity:.6">{{ gs.meta }}</span></div>
+          <div style="display:flex;align-items:baseline;gap:8px;padding:8px 16px 4px;border-top:2px solid var(--color-divider)"><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">{{ gs.name }}</span><span style="font-size:11px;opacity:.6">{{ gs.meta }}</span></div>
           <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--color-divider);border-left:1px solid var(--color-divider)">
             <sc-for list="{{ gs.dice }}" as="p" hint-placeholder-count="4">
               <div style="min-width:0;border-right:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);padding:8px 6px 6px;display:flex;flex-direction:column;align-items:flex-start;gap:4px;background:{{ p.bg }}">
@@ -234,7 +268,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <sc-if value="{{ denFull }}" hint-placeholder-val="{{ true }}">
         <div style="padding:14px 8px 8px 16px;display:flex;align-items:flex-end;gap:14px">
           <div style="font-family:var(--font-heading);font-weight:800;font-size:76px;line-height:.9;letter-spacing:-.04em;font-variant-numeric:tabular-nums">{{ res.total }}</div>
-          <div style="flex:1;min-width:0;padding-bottom:4px"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">{{ res.kicker }}</div><div style="font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ res.title }}</div></div>
+          <div style="flex:1;min-width:0;padding-bottom:4px"><div style="font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">{{ res.kicker }}</div><div style="font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ res.title }}</div></div>
           <button type="button" class="btn btn-ghost btn-icon" onClick="{{ dismiss }}" style="color:inherit;align-self:flex-start" aria-label="Close"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-x"></use></svg></button>
         </div>
       </sc-if>
@@ -271,7 +305,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
   <div style="flex:1;overflow:auto">
     <sc-for list="{{ menuSections }}" as="s" hint-placeholder-count="4">
       <div style="border-bottom:2px solid var(--color-divider)">
-        <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">{{ s.name }}</div>
+        <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">{{ s.name }}</div>
         <sc-for list="{{ s.items }}" as="it" hint-placeholder-count="2">
           <button type="button" onClick="{{ it.go }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;border:0;border-top:1px solid var(--color-divider);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer"><span style="flex:1"><span style="display:block;font-family:var(--font-heading);font-weight:800;font-size:20px;line-height:1.1">{{ it.title }}</span><span style="display:block;font-size:13px;opacity:.65;margin-top:2px">{{ it.desc }}</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.6"><use href="#ic-right"></use></svg></button>
         </sc-for>
@@ -341,16 +375,16 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <div style="padding:8px 16px 10px;border-top:2px solid var(--color-divider)"><div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:6px">Table</div><div style="display:flex;overflow-x:auto;overflow-y:hidden;margin:0 -16px;padding:0 16px 4px;scrollbar-width:thin;scrollbar-color:var(--color-divider) transparent"><div class="seg" style="flex:none;display:flex;white-space:nowrap"><sc-for list="{{ groupTables }}" as="t" hint-placeholder-count="6"><label class="seg-opt" style="flex:none;white-space:nowrap;padding:5px 9px;font-size:12px"><input type="radio" checked="{{ t.on }}" onChange="{{ t.pick }}">{{ t.name }}</label></sc-for></div><div style="flex:none;width:16px"></div></div></div>
     </div>
   </sc-if>
-  <div style="flex:1;overflow:auto">
-    <div style="padding:10px 16px 6px;font-size:12px;opacity:.65">{{ groupPath }} · favourites first, then by recent use. Tap to roll, long-press to edit.</div>
+  <div style="flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain">
+    <div style="padding:10px 16px 6px;font-size:12px;opacity:.65">{{ groupPath }} · your order. Tap to roll, long-press to edit, drag the grip to move.</div>
     <sc-if value="{{ noRolls }}" hint-placeholder-val="{{ false }}"><div style="padding:24px 16px 8px"><div style="font-family:var(--font-heading);font-weight:800;font-size:28px;line-height:1.05;letter-spacing:-.02em">Nothing saved yet.</div><p style="margin:8px 0 0;font-size:14px;opacity:.75;max-width:34ch">Name a formula, give it an icon — “Longsword”, “Fireball” — and roll it with one tap. Or import a collection someone shared.</p><button type="button" class="btn btn-primary" onClick="{{ newRoll }}" style="margin-top:14px">New saved roll</button></div></sc-if>
     <sc-if value="{{ tilesMode }}" hint-placeholder-val="{{ true }}">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:6px 12px 12px">
         <sc-for list="{{ visibleRolls }}" as="r" hint-placeholder-count="6">
-          <div style="position:relative;background:var(--color-surface);min-height:116px;display:flex;flex-direction:column">
+          <div data-roll-id="{{ r.id }}" style="position:relative;background:var(--color-surface);min-height:116px;display:flex;flex-direction:column;opacity:{{ r.dragOp }};box-shadow:{{ r.dragShadow }}">
             <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="flex:1;padding:12px 12px 8px;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;display:flex;flex-direction:column;gap:6px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-{{ r.icon }}" style="color:{{ r.iconColor }}"></use></svg><span style="flex:1"></span><span style="font-family:var(--font-heading);font-weight:800;font-size:16px;line-height:1.15">{{ r.name }}</span><span style="font-size:12px;opacity:.7;font-variant-numeric:tabular-nums">{{ r.formula }}</span></button>
-            <div style="display:flex;align-items:center;padding:0 6px 4px 12px;font-size:11px;opacity:.6"><span>{{ r.useText }}</span><span style="flex:1"></span><button type="button" class="btn btn-ghost btn-icon" onClick="{{ r.edit }}" style="color:inherit;width:30px;height:30px" aria-label="Edit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-pencil"></use></svg></button></div>
-            <sc-if value="{{ r.fav }}"><svg width="12" height="12" viewBox="0 0 24 24" fill="var(--color-accent)" stroke="var(--color-accent)" stroke-width="2" style="position:absolute;top:12px;right:12px"><use href="#ic-star"></use></svg></sc-if>
+            <div style="display:flex;align-items:center;padding:0 6px 4px 12px;font-size:11px;opacity:.6"><span>{{ r.useText }}</span><span style="flex:1"></span><button type="button" onPointerDown="{{ r.dragDown }}" onPointerMove="{{ r.dragMove }}" onPointerUp="{{ r.dragUp }}" onPointerCancel="{{ r.dragUp }}" aria-label="Reorder {{ r.name }}" title="Drag to reorder" style="flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:inherit;opacity:.5;cursor:grab;touch-action:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16"></path></svg></button><button type="button" class="btn btn-ghost btn-icon" onClick="{{ r.edit }}" style="color:inherit;width:30px;height:30px" aria-label="Edit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-pencil"></use></svg></button></div>
+            
           </div>
         </sc-for>
       </div>
@@ -358,9 +392,10 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
     <sc-if value="{{ rowsMode }}" hint-placeholder-val="{{ false }}">
       <div style="border-top:2px solid var(--color-divider)">
         <sc-for list="{{ visibleRolls }}" as="r" hint-placeholder-count="6">
-          <div style="display:grid;grid-template-columns:20px 1fr auto 36px;align-items:center;gap:10px;padding:6px 8px 6px 16px;border-bottom:1px solid var(--color-divider)">
+          <div data-roll-id="{{ r.id }}" style="display:grid;grid-template-columns:30px 20px 1fr auto 36px;align-items:center;gap:8px;padding:6px 8px 6px 6px;border-bottom:1px solid var(--color-divider);opacity:{{ r.dragOp }};box-shadow:{{ r.dragShadow }};background:var(--color-bg)">
+            <button type="button" onPointerDown="{{ r.dragDown }}" onPointerMove="{{ r.dragMove }}" onPointerUp="{{ r.dragUp }}" onPointerCancel="{{ r.dragUp }}" aria-label="Reorder {{ r.name }}" title="Drag to reorder" style="flex:none;width:30px;height:30px;display:flex;align-items:center;justify-content:center;padding:0;border:0;background:transparent;color:inherit;opacity:.5;cursor:grab;touch-action:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9h16M4 15h16"></path></svg></button>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-{{ r.icon }}" style="color:{{ r.iconColor }}"></use></svg>
-            <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="min-width:0;padding:6px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer"><span style="display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}<sc-if value="{{ r.fav }}"><span style="color:var(--color-accent)"> ★</span></sc-if></span><span style="display:block;font-size:12px;opacity:.65">{{ r.useText }}</span></button>
+            <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="min-width:0;padding:6px 0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer"><span style="display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.name }}</span><span style="display:block;font-size:12px;opacity:.65">{{ r.useText }}</span></button>
             <span style="font-size:13px;font-variant-numeric:tabular-nums;opacity:.8">{{ r.formula }}</span>
             <button type="button" class="btn btn-ghost btn-icon" onClick="{{ r.edit }}" style="color:inherit" aria-label="Edit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-pencil"></use></svg></button>
           </div>
@@ -370,7 +405,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
     <sc-if value="{{ posterMode }}" hint-placeholder-val="{{ false }}">
       <div style="border-top:2px solid var(--color-divider)">
         <sc-for list="{{ favRolls }}" as="r" hint-placeholder-count="2">
-          <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="display:flex;align-items:flex-end;gap:12px;width:100%;padding:16px 16px 14px;border:0;border-bottom:2px solid var(--color-divider);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer"><span style="flex:1;min-width:0"><span style="display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">Favourite · {{ r.formula }}</span><span style="display:block;font-family:var(--font-heading);font-weight:800;font-size:34px;line-height:1;letter-spacing:-.02em;margin-top:4px">{{ r.name }}</span></span><span style="font-size:12px;opacity:.6;white-space:nowrap">{{ r.useText }}</span></button>
+          <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="display:flex;align-items:flex-end;gap:12px;width:100%;padding:16px 16px 14px;border:0;border-bottom:2px solid var(--color-divider);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer"><span style="flex:1;min-width:0"><span style="display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">{{ r.formula }}</span><span style="display:block;font-family:var(--font-heading);font-weight:800;font-size:34px;line-height:1;letter-spacing:-.02em;margin-top:4px">{{ r.name }}</span></span><span style="font-size:12px;opacity:.6;white-space:nowrap">{{ r.useText }}</span></button>
         </sc-for>
         <sc-for list="{{ otherRolls }}" as="r" hint-placeholder-count="4">
           <button type="button" onClick="{{ r.roll }}" onContextMenu="{{ r.edit }}" style="display:grid;grid-template-columns:20px 1fr auto;align-items:center;gap:10px;width:100%;padding:10px 16px;border:0;border-bottom:1px solid var(--color-divider);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-{{ r.icon }}" style="color:{{ r.iconColor }}"></use></svg><span style="font-weight:600">{{ r.name }}</span><span style="font-size:13px;opacity:.75;font-variant-numeric:tabular-nums">{{ r.formula }}</span></button>
@@ -392,12 +427,12 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <sc-if value="{{ edOk }}" hint-placeholder-val="{{ true }}"><div style="font-size:12px;opacity:.7;margin-top:4px">{{ edStats }}</div></sc-if>
     </div>
     <div class="field"><label>Icon</label><div style="display:flex;gap:4px;flex-wrap:wrap"><sc-for list="{{ iconOptions }}" as="ic" hint-placeholder-count="8"><button type="button" onClick="{{ ic.pick }}" aria-label="{{ ic.name }}" style="width:42px;height:42px;border:1px solid {{ ic.border }};background:{{ ic.bg }};color:{{ ic.color }};cursor:pointer;display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-{{ ic.name }}"></use></svg></button></sc-for></div></div>
-    <div class="field"><label>Colour tag</label><div style="display:flex;gap:4px;align-items:center"><sc-for list="{{ tagOptions }}" as="t" hint-placeholder-count="5"><button type="button" onClick="{{ t.pick }}" aria-label="{{ t.name }}" style="width:34px;height:34px;border:2px solid {{ t.border }};background:{{ t.color }};cursor:pointer;padding:0"></button></sc-for>
+    <div class="field"><label>Colour tag</label><div style="display:flex;gap:4px;align-items:center;flex-wrap:wrap"><sc-for list="{{ tagOptions }}" as="t" hint-placeholder-count="12"><button type="button" onClick="{{ t.pick }}" aria-label="{{ t.name }}" style="width:34px;height:34px;border:2px solid {{ t.border }};background:{{ t.color }};cursor:pointer;padding:0"></button></sc-for>
       <label title="Custom colour" style="position:relative;width:34px;height:34px;border:2px solid {{ customBorder }};background:{{ customColor }};cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-left:6px"><input type="color" value="{{ customColor }}" onChange="{{ edCustom }}" aria-label="Custom colour" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;margin:0"><sc-if value="{{ customOff }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ customInk }}" stroke-width="2.5" stroke-linecap="round" style="pointer-events:none"><use href="#ic-plus"></use></svg></sc-if></label>
       <span style="font-size:12px;opacity:.65;font-variant-numeric:tabular-nums">{{ customHex }}</span></div></div>
     <div class="field"><label>Group</label><div style="overflow-x:auto;overflow-y:hidden;padding-bottom:2px"><div class="seg" style="flex:none;white-space:nowrap"><sc-for list="{{ edGroups }}" as="g" hint-placeholder-count="2"><label class="seg-opt" style="flex:none"><input type="radio" checked="{{ g.on }}" onChange="{{ g.pick }}">{{ g.name }}</label></sc-for></div></div></div>
     <div class="field"><label>Table for this roll</label><div style="display:flex;overflow-x:auto;overflow-y:hidden;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--color-divider) transparent"><div class="seg" style="flex:none;display:flex;white-space:nowrap"><sc-for list="{{ edTables }}" as="t" hint-placeholder-count="6"><label class="seg-opt" style="flex:none;white-space:nowrap"><input type="radio" checked="{{ t.on }}" onChange="{{ t.pick }}">{{ t.name }}</label></sc-for></div></div><div style="font-size:12px;opacity:.6;margin-top:4px">"Default" follows the group's pinned table, then Settings → Table.</div></div>
-    <label class="radio" style="gap:10px"><input type="checkbox" checked="{{ ed.fav }}" onChange="{{ edFav }}"><span class="dot" style="border-radius:0"></span>Favourite — pinned first on the home screen</label>
+    <label class="radio" style="gap:10px;display:none"><input type="checkbox" checked="{{ ed.fav }}" onChange="{{ edFav }}"><span class="dot" style="border-radius:0"></span>Favourite — pinned first on the home screen</label>
     <div style="display:flex;gap:8px;padding-top:4px;border-top:2px solid var(--color-divider);margin-top:4px;padding-top:12px"><button type="button" class="btn btn-primary" onClick="{{ edSave }}" disabled="{{ edCantSave }}">Save roll</button><button type="button" class="btn btn-secondary" onClick="{{ edRollNow }}" disabled="{{ edCantSave }}">Roll now</button><span style="flex:1"></span><sc-if value="{{ edExisting }}"><button type="button" class="btn btn-ghost" onClick="{{ edDelete }}">Delete</button></sc-if></div>
   </div>
 </div>
@@ -411,7 +446,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
     <sc-if value="{{ hasUpdateNote }}" hint-placeholder-val="{{ false }}"><div style="padding:8px 16px;font-size:12px;background:var(--color-surface);border-bottom:1px solid var(--color-divider)">{{ updateNote }}</div></sc-if>
     <div style="padding:8px 16px 0;font-size:12px;opacity:.6">Sets are never checked or updated on their own — tap Check for updates when you want to look.</div>
     <div style="padding:16px 16px 6px;border-bottom:2px solid var(--color-divider)">
-      <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600;margin-bottom:8px">Install from a URL or file</div>
+      <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600;margin-bottom:8px">Install from a URL or file</div>
       <div style="display:flex;gap:6px"><input class="input" value="{{ installUrl }}" onChange="{{ onInstallUrl }}" placeholder="https://github.com/ada/brass-and-bone" style="min-height:42px"><button type="button" class="btn btn-primary" onClick="{{ doInstall }}" disabled="{{ cantInstall }}">Install</button></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px"><button type="button" class="btn btn-ghost" onClick="{{ tryOk }}" style="font-size:12px">Try: github.com/ada/brass-and-bone</button><label class="btn btn-ghost" style="font-size:12px;cursor:pointer;margin:0">Pick a file…<input type="file" accept=".zip,.tar.gz,.tgz,.toml,.json" onChange="{{ onInstallFile }}" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none"></label></div>
       <div style="font-size:12px;opacity:.6;margin-bottom:8px">GitHub, GitLab, Codeberg or any https archive. Nothing from a set ever runs; it is parsed, validated and rejected on error.</div>
@@ -430,18 +465,18 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:8px">
         <div style="display:flex;align-items:center;gap:8px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-alert"></use></svg><span style="font-family:var(--font-heading);font-weight:800;font-size:18px">skulls.zip was rejected</span></div>
         <div style="font-size:13px;opacity:.75">sha256 9b7e…c210 · 1.8 MiB · Nothing was installed and no other set was touched.</div>
-        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600;margin-top:6px">3 errors</div>
+        <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600;margin-top:6px">3 errors</div>
         <sc-for list="{{ failErrors }}" as="w" hint-placeholder-count="3"><div style="display:grid;grid-template-columns:20px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--color-divider);font-size:13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px"><use href="#ic-x"></use></svg><span><span style="opacity:.55">{{ w.where }}</span> {{ w.text }}</span></div></sc-for>
         <div style="display:flex;gap:8px;margin-top:6px;border-top:2px solid var(--color-divider);padding-top:12px"><button type="button" class="btn btn-secondary" onClick="{{ noop }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-copy"></use></svg>Copy report</button><button type="button" class="btn btn-ghost" onClick="{{ cancelInstall }}">Dismiss</button></div>
       </div>
     </sc-if>
-    <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">Installed</div>
+    <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Installed</div>
     <div style="padding:0 16px 6px;font-size:12px;opacity:.6">Long-press a set to disable or remove it.</div>
     <sc-for list="{{ sets }}" as="s" hint-placeholder-count="3">
       <div onContextMenu="{{ s.ctx }}" onPointerDown="{{ s.down }}" onPointerUp="{{ s.up }}" onPointerLeave="{{ s.up }}" onClick="{{ s.click }}" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--color-divider);cursor:pointer;user-select:none;opacity:{{ s.opacity }}">
         <div style="display:flex;gap:2px;flex:none"><sc-for list="{{ s.shapes }}" as="sh" hint-placeholder-count="3"><svg viewBox="0 0 100 100" width="18" height="18" style="display:block;overflow:visible"><path d="{{ sh.path }}" fill="{{ s.color }}" stroke="#201e1d" stroke-width="4"></path></svg></sc-for></div>
         <div style="flex:1;min-width:0"><div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:var(--font-heading);font-weight:800;font-size:17px">{{ s.name }}</span><span style="font-size:12px;opacity:.6">{{ s.version }}</span></div><div style="font-size:12px;opacity:.7">{{ s.meta }}</div></div>
-        <sc-if value="{{ s.hasUpdate }}"><span class="tag tag-accent">{{ s.updateTag }}</span></sc-if>
+        <sc-if value="{{ s.hasUpdate }}"><span class="tag tag-accent" style="color:var(--color-accent-700)">{{ s.updateTag }}</span></sc-if>
         <sc-if value="{{ s.isDefault }}"><span class="tag tag-neutral">default</span></sc-if>
         <sc-if value="{{ s.disabled }}"><span class="tag tag-outline">disabled</span></sc-if>
       </div>
@@ -465,16 +500,35 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <div style="padding:9px 16px;border-bottom:1px solid var(--color-divider);opacity:.6">Source</div><div style="padding:9px 16px 9px 0;border-bottom:1px solid var(--color-divider);min-width:0;overflow-wrap:anywhere"><sc-if value="{{ detail.hasSource }}"><a href="{{ detail.source }}" target="_blank" rel="noopener" style="font-weight:600">{{ detail.sourceLabel }}</a><span style="opacity:.6"> · {{ detail.commit }}</span></sc-if><sc-if value="{{ detail.noSource }}"><span>{{ detail.sourceLabel }}</span></sc-if></div>
       <div style="padding:9px 16px;opacity:.6">Installed</div><div style="padding:9px 16px 9px 0">{{ detail.installed }}</div>
     </div>
+    <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Physical</div>
+    <div style="padding:0 16px 12px">
+      <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--color-divider)">
+        <div><div style="font-weight:600;font-size:14px">Weight</div><div style="font-size:12px;opacity:.6">Per die, as the author declares it. Heavier dice come to rest sooner on the table.</div></div>
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums;white-space:nowrap">{{ phys.weight }}</span>
+        <sc-if value="{{ phys.editable }}"><span style="display:flex;gap:4px"><button type="button" class="btn btn-ghost btn-icon" onClick="{{ phys.wDown }}" aria-label="Lighter">−</button><button type="button" class="btn btn-ghost btn-icon" onClick="{{ phys.wUp }}" aria-label="Heavier">+</button></span></sc-if>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--color-divider)">
+        <div><div style="font-weight:600;font-size:14px">Translucency</div><div style="font-size:12px;opacity:.6">{{ phys.opaque }} · numerals stay solid so a read is never in doubt.</div></div>
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums;white-space:nowrap">{{ phys.alpha }}</span>
+        <sc-if value="{{ phys.editable }}"><span style="display:flex;gap:4px"><button type="button" class="btn btn-ghost btn-icon" onClick="{{ phys.aDown }}" aria-label="Less translucent">−</button><button type="button" class="btn btn-ghost btn-icon" onClick="{{ phys.aUp }}" aria-label="More translucent">+</button></span></sc-if>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;padding:9px 0;border-top:1px solid var(--color-divider)">
+        <div><div style="font-weight:600;font-size:14px">Size</div><div style="font-size:12px;opacity:.6">{{ phys.sizeNote }} · 50 % to 150 % of an average die. Affects how many fit the table.</div></div>
+        <span style="font-family:var(--font-heading);font-weight:800;font-size:18px;font-variant-numeric:tabular-nums;white-space:nowrap">{{ phys.size }}</span>
+        <sc-if value="{{ phys.editable }}"><span style="display:flex;gap:4px"><button type="button" class="btn btn-ghost btn-icon" onClick="{{ phys.sDown }}" aria-label="Smaller">−</button><button type="button" class="btn btn-ghost btn-icon" onClick="{{ phys.sUp }}" aria-label="Bigger">+</button></span></sc-if>
+      </div>
+      <sc-if value="{{ phys.fixed }}"><div style="font-size:12px;opacity:.6;padding-top:8px">Declared in the set's diceset.toml — imported sets are read-only. Draw your own in the face designer to set these yourself.</div></sc-if>
+    </div>
     <sc-if value="{{ detail.okDice }}" hint-placeholder-val="{{ true }}">
-      <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">Dice · {{ detail.diceCount }} · rendered from the set</div>
+      <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Dice · {{ detail.diceCount }} · rendered from the set</div>
       <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:8px 16px 14px">
         <sc-for list="{{ detailDice }}" as="d" hint-placeholder-count="6">
-          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0"><div style="position:relative;width:100%;aspect-ratio:1;background:var(--color-surface)"><svg viewBox="0 0 100 100" width="100%" height="100%" style="display:block;overflow:visible;transform:rotate(12deg)"><path d="{{ d.path }}" fill="{{ d.fill }}" stroke="#201e1d" stroke-width="2.5" stroke-linejoin="round"></path></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:{{ d.padTop }}px;font-family:var(--font-heading);font-weight:800;font-size:22px;color:{{ d.ink }};transform:rotate(12deg)">{{ d.label }}</div></div><span style="font-size:12px;font-weight:600">{{ d.id }}</span></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;min-width:0"><div style="position:relative;width:100%;aspect-ratio:1;background:var(--color-surface)"><svg viewBox="0 0 100 100" width="100%" height="100%" style="display:block;overflow:visible;transform:rotate(12deg)"><path d="{{ d.path }}" fill="{{ d.fill }}" fill-opacity="{{ d.alpha }}" stroke="{{ d.stroke }}" stroke-width="{{ d.strokeW }}" stroke-linejoin="round"></path></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:{{ d.padTop }}px;font-family:var(--font-heading);font-weight:800;font-size:22px;color:{{ d.ink }};transform:rotate(12deg)">{{ d.label }}</div></div><span style="font-size:12px;font-weight:600">{{ d.id }}</span></div>
         </sc-for>
       </div>
     </sc-if>
     <sc-if value="{{ detail.failed }}" hint-placeholder-val="{{ false }}">
-      <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600">Validation report</div>
+      <div style="padding:14px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Validation report</div>
       <div style="padding:0 16px 12px"><sc-for list="{{ detail.report }}" as="w" hint-placeholder-count="2"><div style="display:grid;grid-template-columns:20px 1fr;gap:8px;padding:6px 0;border-top:1px solid var(--color-divider);font-size:13px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px"><use href="#ic-x"></use></svg><span><span style="opacity:.55">{{ w.where }}</span> {{ w.text }}</span></div></sc-for><div style="font-size:12px;opacity:.6;margin-top:8px">The folder is kept so an update can fix it. Its dice are hidden; notation referencing it falls back to the built-in set.</div></div>
     </sc-if>
     <sc-if value="{{ detail.isMine }}" hint-placeholder-val="{{ false }}"><div style="border-top:2px solid var(--color-divider);padding:12px 16px"><div style="font-weight:600;font-size:14px">Export as zip</div><div style="font-size:12px;opacity:.6;margin-bottom:8px">Pick a license before sharing; it is written into diceset.toml. The zip can be uploaded to a git repo as-is.</div><div style="display:flex;gap:6px;align-items:center"><select class="input" value="{{ mineLicense }}" onChange="{{ onMineLicense }}" style="flex:1;min-height:40px"><option value="unspecified">License — choose one</option><option value="CC0-1.0">CC0 1.0 (public domain)</option><option value="CC-BY-4.0">CC BY 4.0</option><option value="CC-BY-SA-4.0">CC BY-SA 4.0</option><option value="MIT">MIT</option><option value="GPL-2.0-or-later">GPL-2.0-or-later</option></select><button type="button" class="btn btn-primary" onClick="{{ exportMine }}" disabled="{{ cantExportMine }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-download"></use></svg>Export</button></div><div style="font-size:12px;color:var(--color-accent-700);margin-top:6px;min-height:16px">{{ exportedNote }}</div></div></sc-if>
@@ -532,7 +586,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
     <div style="border-top:2px solid var(--color-divider);padding:12px 16px"><div class="field"><label>New session</label><div style="display:flex;gap:6px"><input class="input" value="{{ newSessionName }}" onChange="{{ onNewSession }}" placeholder="Tuesday campaign"><button type="button" class="btn btn-primary" onClick="{{ addSession }}" disabled="{{ cantAddSession }}">Create</button></div></div></div>
     <div style="padding:0 16px 14px;font-size:12px;opacity:.55">Deleting a session keeps its rolls — they move to "Unfiled". Rolls are never replayed or re-done.</div>
     <div style="border-top:2px solid var(--color-divider);padding:12px 16px 16px">
-      <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600;margin-bottom:8px">Import and export</div>
+      <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600;margin-bottom:8px">Import and export</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn btn-secondary" onClick="{{ openImport }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-download"></use></svg>Import collection</button><button type="button" class="btn btn-ghost" onClick="{{ openExport }}">Export {{ exportName }}</button></div>
       <div style="margin-top:8px;font-size:12px;opacity:.6">Import brings in rolls and groups from the URL of a JSON collection. Export writes the active session's rolls and statistics to a JSON file.</div>
     </div>
@@ -566,23 +620,62 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
   <div style="display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:2px solid var(--color-divider)"><button type="button" class="btn btn-ghost btn-icon" onClick="{{ back }}" style="color:inherit" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-back"></use></svg></button><span style="font-family:var(--font-heading);font-weight:800;font-size:20px">Face designer</span><span style="font-size:13px;opacity:.6;margin-left:6px">face {{ faceNo }} of {{ dzSides }}</span><span style="flex:1"></span><button type="button" class="btn btn-ghost btn-icon" onClick="{{ undo }}" disabled="{{ noUndo }}" style="color:inherit" aria-label="Undo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-undo"></use></svg></button><button type="button" class="btn btn-ghost btn-icon" onClick="{{ redo }}" disabled="{{ noRedo }}" style="color:inherit" aria-label="Redo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-redo"></use></svg></button></div>
   <div style="flex:1;overflow:auto;display:flex;flex-direction:column">
     <div style="display:flex;align-items:center;gap:8px;padding:10px 16px 0"><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;flex:none">Base die</span><div style="display:flex;overflow-x:auto;overflow-y:hidden;flex:1;min-width:0;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--color-divider) transparent"><div class="seg" style="flex:none;display:flex;white-space:nowrap"><sc-for list="{{ dzDice }}" as="d" hint-placeholder-count="9"><label class="seg-opt" style="flex:none;padding:5px 9px;font-size:12px"><input type="radio" checked="{{ d.on }}" onChange="{{ d.pick }}">{{ d.id }}</label></sc-for></div></div></div>
-    <div style="padding:6px 16px 0;font-size:11px;opacity:.6">{{ dzShape }} · face values inherited from the built-in die</div>
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 16px 0">
+      <div class="seg" style="flex:none"><sc-for list="{{ dzViewTabs }}" as="o" hint-placeholder-count="2"><label class="seg-opt" style="padding:6px 14px;font-size:12px"><input type="radio" checked="{{ o.on }}" onChange="{{ o.pick }}">{{ o.label }}</label></sc-for></div>
+      <span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right">{{ dzShape }} · face values inherited from the built-in die</span>
+    </div>
     <div style="padding:8px 16px 8px;display:flex;justify-content:center">
+      <sc-if value="{{ editorOn }}" hint-placeholder-val="{{ true }}">
       <div style="position:relative;width:320px;height:320px;background:var(--color-surface);outline:2px solid var(--color-divider)">
         <svg viewBox="0 0 320 320" width="320" height="320" style="position:absolute;inset:0;display:block;pointer-events:none"><path d="{{ maskPath }}" fill="{{ faceBg }}" stroke="var(--color-divider)" stroke-width="2"></path></svg>
-        <sc-if value="{{ showGuide }}"><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:30px;font-family:var(--font-heading);font-weight:800;font-size:170px;line-height:1;color:#201e1d;opacity:.12;pointer-events:none;clip-path:{{ maskClip }}">{{ faceNo }}</div></sc-if>
+        <sc-if value="{{ showGuideNum }}"><div style="position:absolute;left:{{ guideX }}%;top:{{ guideY }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ guidePx }}px;line-height:1;color:#201e1d;opacity:.12;pointer-events:none;white-space:nowrap">{{ faceValue }}</div></sc-if>
+        <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;display:block;pointer-events:none"><sc-for list="{{ pipDots }}" as="p" hint-placeholder-count="0"><circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="24" fill="{{ p.ink }}"></circle></sc-for></svg>
         <sc-for list="{{ stamps }}" as="s" hint-placeholder-count="0"><div style="position:absolute;left:{{ s.lx }}%;top:{{ s.ly }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ s.size }}px;line-height:1;color:{{ s.color }};pointer-events:none">{{ s.text }}</div></sc-for>
+        <sc-for list="{{ edgeMarks }}" as="e" hint-placeholder-count="0"><div style="position:absolute;left:{{ e.x }}%;top:{{ e.y }}%;transform:translate(-50%,-50%) rotate({{ e.rot }}deg);font-family:var(--font-heading);font-weight:800;font-size:76px;line-height:1;color:{{ e.ink }};pointer-events:none">{{ e.text }}</div></sc-for>
         <svg viewBox="0 0 320 320" width="320" height="320" onPointerDown="{{ cvDown }}" onPointerMove="{{ cvMove }}" onPointerUp="{{ cvUp }}" onPointerCancel="{{ cvUp }}" style="position:relative;display:block;touch-action:none;cursor:crosshair;clip-path:{{ maskClip }}">
           <sc-for list="{{ strokes }}" as="s" hint-placeholder-count="0"><polyline points="{{ s.pts }}" fill="none" stroke="{{ s.color }}" stroke-width="{{ s.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-for>
           <sc-if value="{{ drawingOn }}"><polyline points="{{ drawing.pts }}" fill="none" stroke="{{ drawing.color }}" stroke-width="{{ drawing.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-if>
         </svg>
       </div>
+      </sc-if>
+      <sc-if value="{{ solidOn }}" hint-placeholder-val="{{ false }}">
+      <div onPointerDown="{{ sdDown }}" onPointerMove="{{ sdMove }}" onPointerUp="{{ sdUp }}" onPointerCancel="{{ sdUp }}" style="position:relative;width:320px;height:320px;background:var(--color-surface);outline:2px solid var(--color-divider);perspective:900px;touch-action:none;cursor:grab;overflow:hidden;user-select:none">
+        <div style="position:absolute;left:50%;top:50%;width:0;height:0;transform-style:preserve-3d;pointer-events:none;transform:{{ sdTransform }};animation:{{ sdAnim }}">
+          <sc-for list="{{ solidFaces }}" as="f" hint-placeholder-count="6">
+            <div style="position:absolute;left:0;top:0;width:{{ f.box }}px;height:{{ f.box }}px;margin-left:{{ f.off }}px;margin-top:{{ f.off }}px;transform:{{ f.m }};backface-visibility:hidden;clip-path:{{ f.clip }};background:{{ f.bg }};overflow:hidden">
+              <div style="position:absolute;left:{{ f.cleft }}px;top:{{ f.ctop }}px;width:{{ f.cbox }}px;height:{{ f.cbox }}px">
+                <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;display:block;pointer-events:none"><sc-for list="{{ f.pipDots }}" as="p" hint-placeholder-count="0"><circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="24" fill="{{ p.ink }}"></circle></sc-for></svg>
+                <svg viewBox="0 0 320 320" width="100%" height="100%" style="position:absolute;inset:0;display:block"><sc-for list="{{ f.strokes }}" as="s" hint-placeholder-count="0"><polyline points="{{ s.pts }}" fill="none" stroke="{{ s.color }}" stroke-width="{{ s.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-for></svg>
+                <sc-for list="{{ f.stamps }}" as="s" hint-placeholder-count="0"><div style="position:absolute;left:{{ s.lx }}%;top:{{ s.ly }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ s.px }}px;line-height:1;color:{{ s.color }}">{{ s.text }}</div></sc-for>
+                <sc-for list="{{ f.edgeMarks }}" as="e" hint-placeholder-count="0"><div style="position:absolute;left:{{ e.x }}%;top:{{ e.y }}%;transform:translate(-50%,-50%) rotate({{ e.rot }}deg);font-family:var(--font-heading);font-weight:800;font-size:{{ f.edgePx }}px;line-height:1;color:{{ e.ink }};pointer-events:none">{{ e.text }}</div></sc-for>
+              </div>
+              <svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style="position:absolute;inset:0;display:block"><polygon points="{{ f.poly }}" fill="none" stroke="{{ f.outline }}" stroke-width="{{ f.outlineW }}" vector-effect="non-scaling-stroke"></polygon></svg>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      </sc-if>
     </div>
+    <sc-if value="{{ solidOn }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:center;gap:10px;padding:0 16px 12px">
+        <label class="radio" style="font-size:12px"><input type="checkbox" checked="{{ sdSpin }}" onChange="{{ toggleSpin }}"><span class="dot" style="border-radius:0"></span>Spin</label>
+        <span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right;line-height:1.3">{{ sdNote }}</span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ editorOn }}" hint-placeholder-val="{{ true }}">
     <div style="display:flex;align-items:center;gap:4px;padding:0 12px 8px">
       <sc-for list="{{ tools }}" as="t" hint-placeholder-count="6"><button type="button" onClick="{{ t.pick }}" aria-label="{{ t.name }}" title="{{ t.name }}" style="width:44px;height:44px;border:1px solid {{ t.border }};background:{{ t.bg }};color:{{ t.color }};cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-{{ t.icon }}"></use></svg><sc-if value="{{ t.isPen }}"><span style="position:absolute;bottom:5px;right:5px;width:{{ t.dot }}px;height:{{ t.dot }}px;background:currentColor;border-radius:50%"></span></sc-if></button></sc-for>
       <span style="flex:1"></span>
       <label class="radio" style="font-size:12px"><input type="checkbox" checked="{{ showGuide }}" onChange="{{ toggleGuide }}"><span class="dot" style="border-radius:0"></span>Guide</label>
     </div>
+    <sc-if value="{{ hasEdges }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:8px;padding:0 12px 10px;flex-wrap:wrap">
+        <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;flex:none">{{ edgeLabel }}</span>
+        <sc-for list="{{ edgeFields }}" as="e" hint-placeholder-count="3"><input class="input" value="{{ e.value }}" onChange="{{ e.set }}" aria-label="Edge {{ e.no }}" style="flex:none;width:52px;min-height:36px;text-align:center;font-family:var(--font-heading);font-weight:800"></sc-for>
+        <button type="button" class="btn btn-ghost" onClick="{{ fillEdges }}" style="font-size:12px">{{ edgeResetLabel }}</button>
+      </div>
+      <div style="padding:0 12px 10px;font-size:12px;opacity:.6">{{ edgeNote }}</div>
+    </sc-if>
     <sc-if value="{{ stampOn }}" hint-placeholder-val="{{ false }}">
       <div style="display:flex;align-items:center;gap:8px;padding:0 12px 10px">
         <input class="input" value="{{ stampText }}" onChange="{{ onStampText }}" aria-label="Text to place" style="flex:1;min-height:38px;font-family:var(--font-heading);font-weight:800"><div class="seg" style="flex:none"><sc-for list="{{ stampSizes }}" as="o" hint-placeholder-count="3"><label class="seg-opt" style="padding:6px 9px;font-size:12px"><input type="radio" checked="{{ o.on }}" onChange="{{ o.pick }}">{{ o.label }}</label></sc-for></div>
@@ -594,11 +687,32 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <label title="Custom colour" style="position:relative;width:26px;height:26px;border:2px solid {{ dzCustomBorder }};background:{{ dzCustomColor }};cursor:pointer;display:flex;align-items:center;justify-content:center;overflow:hidden;margin-left:6px"><input type="color" value="{{ dzCustomColor }}" onChange="{{ dzPickCustom }}" aria-label="Custom colour" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;margin:0"><sc-if value="{{ dzCustomOff }}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f3f2f2" stroke-width="2.5" stroke-linecap="round" style="pointer-events:none"><use href="#ic-plus"></use></svg></sc-if></label>
       <span style="font-size:11px;opacity:.65;font-variant-numeric:tabular-nums">{{ dzCustomHex }}</span>
     </div>
+    </sc-if>
     <div style="display:flex;gap:6px;padding:10px 12px;border-top:2px solid var(--color-divider);overflow-x:auto;overflow-y:hidden;flex:none;min-width:0">
-      <sc-for list="{{ faceStrip }}" as="f" hint-placeholder-count="6"><button type="button" onClick="{{ f.pick }}" aria-label="Face {{ f.no }}" style="flex:none;width:52px;height:52px;padding:0;border:2px solid {{ f.border }};background:var(--color-surface);cursor:pointer;position:relative;overflow:hidden"><svg viewBox="0 0 320 320" width="48" height="48" style="position:absolute;inset:0;display:block"><path d="{{ maskPath }}" fill="{{ f.bg }}" stroke="var(--color-divider)" stroke-width="6"></path></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:4px;font-family:var(--font-heading);font-weight:800;font-size:26px;line-height:1;color:#201e1d;opacity:.16">{{ f.no }}</div><sc-for list="{{ f.stamps }}" as="s" hint-placeholder-count="0"><div style="position:absolute;left:{{ s.lx }}%;top:{{ s.ly }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ s.sizeSm }}px;line-height:1;color:{{ s.color }}">{{ s.text }}</div></sc-for><svg viewBox="0 0 320 320" width="48" height="48" style="position:relative;display:block"><sc-for list="{{ f.strokes }}" as="s" hint-placeholder-count="0"><polyline points="{{ s.pts }}" fill="none" stroke="{{ s.color }}" stroke-width="{{ s.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-for></svg></button></sc-for>
-      <button type="button" class="btn btn-ghost" onClick="{{ fillNumbers }}" style="flex:none;font-size:12px;align-self:center;white-space:nowrap">Fill all with numbers</button>
+      <sc-for list="{{ faceStrip }}" as="f" hint-placeholder-count="6"><button type="button" onClick="{{ f.pick }}" aria-label="Face {{ f.no }}" style="flex:none;width:52px;height:52px;padding:0;border:2px solid {{ f.border }};background:var(--color-surface);cursor:pointer;position:relative;overflow:hidden"><svg viewBox="0 0 320 320" width="48" height="48" style="position:absolute;inset:0;display:block"><path d="{{ maskPath }}" fill="{{ f.bg }}" stroke="var(--color-divider)" stroke-width="6"></path><sc-for list="{{ f.pipDots }}" as="p" hint-placeholder-count="0"><circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="24" fill="{{ p.ink }}"></circle></sc-for></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:4px;font-family:var(--font-heading);font-weight:800;font-size:26px;line-height:1;color:#201e1d;opacity:{{ f.numOp }}">{{ f.no }}</div><sc-for list="{{ f.stamps }}" as="s" hint-placeholder-count="0"><div style="position:absolute;left:{{ s.lx }}%;top:{{ s.ly }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ s.sizeSm }}px;line-height:1;color:{{ s.color }}">{{ s.text }}</div></sc-for><svg viewBox="0 0 320 320" width="48" height="48" style="position:relative;display:block"><sc-for list="{{ f.strokes }}" as="s" hint-placeholder-count="0"><polyline points="{{ s.pts }}" fill="none" stroke="{{ s.color }}" stroke-width="{{ s.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-for></svg></button></sc-for>
+      </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px">
+      <button type="button" class="btn btn-ghost" onClick="{{ fillNumbers }}" style="flex:none;font-size:12px;white-space:nowrap">Fill all with numbers</button>
+      <sc-if value="{{ isD6 }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-ghost" onClick="{{ fillPips }}" style="flex:none;font-size:12px;white-space:nowrap">Fill all with eyes</button></sc-if>
+      <sc-if value="{{ hasPips }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-ghost" onClick="{{ clearPips }}" style="flex:none;font-size:12px;white-space:nowrap">Clear eyes</button></sc-if>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;padding:10px 16px 14px;border-top:2px solid var(--color-divider)"><button type="button" class="btn btn-primary" onClick="{{ rollDesigned }}" style="flex:none;white-space:nowrap">Roll it</button><button type="button" class="btn btn-secondary" onClick="{{ saveDesigned }}" style="flex:none;white-space:nowrap">Save to My dice</button><span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right;line-height:1.3">{{ designerNote }}</span></div>
+    <div style="display:flex;gap:8px;align-items:center;padding:10px 16px 14px;border-top:2px solid var(--color-divider)"><button type="button" class="btn btn-primary" onClick="{{ rollDesigned }}" style="flex:none;white-space:nowrap">Roll it</button><button type="button" class="btn btn-secondary" onClick="{{ saveDesigned }}" style="flex:none;white-space:nowrap">Save to set</button><span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right;line-height:1.3">{{ designerNote }}</span></div>
+  <sc-if value="{{ hasSavedNote }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:20;background:var(--color-text);color:var(--color-bg);padding:8px 14px;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:var(--shadow-md);pointer-events:none">{{ savedNote }}</div></sc-if>
+  <sc-if value="{{ saveOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSave }}" style="position:absolute;inset:0;z-index:30;background:color-mix(in srgb, var(--color-text) 45%, transparent);display:flex;flex-direction:column;justify-content:flex-end">
+      <div onClick="{{ stopClose }}" style="background:var(--color-bg);color:var(--color-text);border-top:2px solid var(--color-divider);box-shadow:var(--shadow-lg)">
+        <div style="padding:14px 16px 4px"><div style="font-family:var(--font-heading);font-weight:800;font-size:20px">Save to set</div><div style="font-size:12px;opacity:.65">Every face of this die goes into the set you pick. Imported sets are read-only.</div></div>
+        <sc-for list="{{ saveTargets }}" as="t" hint-placeholder-count="1">
+          <button type="button" onClick="{{ t.save }}" style="display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 16px;border:0;border-top:1px solid var(--color-divider);background:transparent;color:inherit;cursor:pointer"><span style="flex:1;min-width:0"><span style="display:block;font-family:var(--font-heading);font-weight:800;font-size:16px">{{ t.name }}</span><span style="display:block;font-size:12px;opacity:.6">{{ t.meta }}</span></span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-download"></use></svg></button>
+        </sc-for>
+        <div style="padding:12px 16px 16px;border-top:2px solid var(--color-divider);display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">New set</div>
+          <div style="display:flex;gap:6px"><input class="input" value="{{ newSetName }}" onChange="{{ onNewSetName }}" placeholder="Skull and bone" style="flex:1;min-height:42px"><button type="button" class="btn btn-primary" onClick="{{ createSet }}" disabled="{{ cantCreateSet }}">Create and save</button></div>
+          <div style="font-size:12px;opacity:.6">A new personal set, empty apart from this die. Weight, translucency and size start at the average and are yours to set.</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
   </div>
 </div>
 </sc-if>
@@ -638,7 +752,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
   <div style="flex:1;overflow:auto">
     <sc-if value="{{ noHistory }}" hint-placeholder-val="{{ false }}"><div style="padding:24px 16px"><div style="font-family:var(--font-heading);font-weight:800;font-size:28px;line-height:1.05;letter-spacing:-.02em">Nothing rolled yet.</div><p style="margin:8px 0 0;font-size:14px;opacity:.75;max-width:34ch">Nothing rolled in “{{ sessionLabel }}” yet. Every roll lands here with its breakdown, kept on this phone only. Switch session on the Sessions screen to see another.</p></div></sc-if>
     <sc-for list="{{ historyDays }}" as="day" hint-placeholder-count="2">
-      <div style="padding:12px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600;border-bottom:2px solid var(--color-divider)">{{ day.label }} · {{ day.count }} rolls</div>
+      <div style="padding:12px 16px 4px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600;border-bottom:2px solid var(--color-divider)">{{ day.label }} · {{ day.count }} rolls</div>
       <sc-for list="{{ day.rows }}" as="h" hint-placeholder-count="5">
         <div style="display:flex;align-items:center;gap:12px;padding:9px 16px;border-bottom:1px solid var(--color-divider)">
           <div style="width:40px;flex:none;font-size:11px;opacity:.6;font-variant-numeric:tabular-nums">{{ h.time }}</div>
@@ -669,7 +783,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <div style="margin-top:12px;font-size:12px;opacity:.6">Tap any example to load it on the tray. Capitals and spaces don't matter.</div>
     </div>
     <sc-for list="{{ helpGroups }}" as="g" hint-placeholder-count="4">
-      <div style="padding:12px 16px 6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent);font-weight:600;border-bottom:2px solid var(--color-divider)">{{ g.name }}</div>
+      <div style="padding:12px 16px 6px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600;border-bottom:2px solid var(--color-divider)">{{ g.name }}</div>
       <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
         <sc-if value="{{ r.run }}">
           <button type="button" onClick="{{ r.use }}" style="display:grid;grid-template-columns:112px 1fr;align-items:baseline;gap:12px;width:100%;padding:10px 16px;border:0;border-bottom:1px solid var(--color-divider);background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer" style-hover="background:var(--color-surface)"><span style="font-weight:700;font-variant-numeric:tabular-nums;font-size:15px">{{ r.code }}</span><span style="font-size:13px;opacity:.8">{{ r.text }}</span></button>
@@ -695,6 +809,16 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
         <div class="seg" style="flex:none"><sc-for list="{{ r.opts }}" as="o" hint-placeholder-count="2"><label class="seg-opt" style="padding:6px 10px"><input type="radio" checked="{{ o.on }}" onChange="{{ o.pick }}">{{ o.label }}</label></sc-for></div>
       </div>
     </sc-for>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px">
+      <div><div style="font-weight:600">Accent colour</div><div style="font-size:12px;opacity:.65">Used for the primary action, badges and the result poster. Never drawn straight onto the felt — accent text sits on a ground. <span style="font-variant-numeric:tabular-nums;font-weight:600;opacity:.9">{{ accHex }}</span></div></div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">
+        <sc-for list="{{ accentSwatches }}" as="c" hint-placeholder-count="6"><button type="button" onClick="{{ c.pick }}" title="{{ c.name }}" aria-label="{{ c.name }}" style="height:44px;border:2px solid {{ c.border }};background:{{ c.hex }};cursor:pointer;padding:0"></button></sc-for>
+        <label title="Custom colour" style="position:relative;height:44px;border:2px solid {{ accCustomBorder }};background:{{ accCustomColor }};cursor:pointer;display:flex;align-items:center;justify-content:center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ accCustomInk }}" stroke-width="2" stroke-linecap="round" style="opacity:{{ accCustomPlus }}"><path d="M12 5v14M5 12h14"></path></svg>
+          <input type="color" value="{{ accCustomColor }}" onChange="{{ onAccentCustom }}" style="position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;padding:0;border:0">
+        </label>
+      </div>
+    </div>
     <div style="padding:12px 16px;display:flex;flex-direction:column;gap:6px;align-items:flex-start"><a href="https://github.com/drehtuer/dInfinityApp/tree/main/examples" target="_blank" rel="noopener" class="btn btn-secondary" style="text-decoration:none">Example dice set on GitHub</a><button type="button" class="btn btn-ghost" onClick="{{ resetStats }}" style="color:var(--color-accent-700)">Reset statistics for {{ sessionLabel }}…</button></div>
     <div style="padding:14px 16px 16px;border-top:2px solid var(--color-divider);display:flex;flex-direction:column;gap:6px;font-size:13px">
       <div style="display:flex;align-items:baseline;gap:8px"><span style="font-family:var(--font-heading);font-weight:800;font-size:18px">dInfinity</span><span style="opacity:.65">{{ appVersion }}</span></div>
@@ -805,7 +929,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
   <sc-if value="{{ welcomeOpen }}" hint-placeholder-val="{{ false }}">
     <div style="position:absolute;inset:0;z-index:13;background:var(--color-bg);color:var(--color-text);display:flex;flex-direction:column">
       <div style="flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;padding:24px 20px 0">
-        <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent);font-weight:600">First launch</div>
+        <div style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">First launch</div>
         <div style="font-family:var(--font-heading);font-weight:800;font-size:44px;line-height:.95;letter-spacing:-.03em;margin-top:10px">Nothing to<br>set up.</div>
         <p style="margin:14px 0 0;font-size:15px;line-height:1.45;max-width:32ch;opacity:.8">Built-in dice are installed and the table is laid out. Shake the phone or tap the tray to roll. Everything else — saved rolls, your own dice, statistics — is in the menu, top right.</p>
         <div style="display:flex;gap:16px;margin:22px 0 0;padding-top:14px;border-top:2px solid var(--color-divider);font-size:12px;opacity:.7"><span>1 dice set</span><span>0 saved rolls</span><span>0 sessions</span></div>
@@ -844,12 +968,26 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       </div>
     </div>
   </sc-if>
+
+  <sc-if value="{{ backArmed }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:50%;bottom:18px;transform:translateX(-50%);z-index:40;background:var(--color-text);color:var(--color-bg);padding:8px 14px;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:var(--shadow-md);pointer-events:none">Back again to leave dInfinity</div>
+  </sc-if>
+
+  <sc-if value="{{ exited }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:50;background:#15140f;color:#f3f2f2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:24px">
+      <div style="font-family:var(--font-heading);font-weight:800;font-size:76px;line-height:1;letter-spacing:-.05em">d<span style="color:var(--color-accent)">∞</span></div>
+      <div style="margin-top:18px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.6">Closed</div>
+      <div style="margin-top:10px;max-width:26ch;text-align:center;font-size:13px;line-height:1.4;opacity:.8;text-wrap:pretty">The session, the history and the dice are all still here. Nothing is lost by leaving.</div>
+      <button type="button" class="btn btn-primary" onClick="{{ reopen }}" style="margin-top:20px">Open dInfinity</button>
+    </div>
+  </sc-if>
 </div>
 </x-import>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:940},
 &quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;roll&quot;,&quot;options&quot;:[&quot;help&quot;,&quot;roll&quot;,&quot;menu&quot;,&quot;graph&quot;,&quot;saved&quot;,&quot;editor&quot;,&quot;sets&quot;,&quot;setdetail&quot;,&quot;tables&quot;,&quot;designer&quot;,&quot;stats&quot;,&quot;rollstats&quot;,&quot;history&quot;,&quot;sessions&quot;,&quot;settings&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
 &quot;formula&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;3d6 + 1d20 - 4&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
+&quot;rollState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;none&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;counting&quot;,&quot;earned&quot;,&quot;stuck&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
 &quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;system&quot;,&quot;options&quot;:[&quot;system&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
 &quot;firstLaunch&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},
 &quot;editing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},
@@ -902,14 +1040,14 @@ const SEED_ROLLS=[
 {id:12,group:'ezren',name:'Bone damage',icon:'zap',formula:'brass:2d8 + 1',fav:false,tag:3}];
 const SET_ROWS=[
 {key:null,name:'Built-in',version:'1.0',meta:'9 dice · 5 tables · bundled',fixed:true,author:'dInfinity',license:'GPL-2.0-or-later',source:'https://github.com/drehtuer/dInfinityApp/tree/main/examples',sourceLabel:'example set in the dInfinity repo',commit:'main',status:'Bundled',statusOk:true,installed:'with the app',description:'The standard set: d2, d4–d20 and d100, blank atlases, plain labels. Everything falls back to it. To author your own, start from the example set in the repo.'},
-{key:'mine',name:'My dice',version:'mine',meta:'face designer, photos',author:'You',license:'unspecified — pick one before sharing',source:null,sourceLabel:'this phone',status:'Installed · personal',statusOk:true,installed:'12 Sep 2026',description:'Dice you drew in the face designer and tables made from your photos. Export as a zip to share.'},
+{key:'mine',name:'My dice',version:'mine',owned:true,meta:'face designer, photos',author:'You',license:'unspecified — pick one before sharing',source:null,sourceLabel:'this phone',status:'Installed · personal',statusOk:true,installed:'12 Sep 2026',description:'Dice you drew in the face designer and tables made from your photos. Export as a zip to share.'},
 {key:'brass',name:'Brass & Bone',version:'1.2.0',meta:'5 dice · 1 table · Ada Example · CC-BY-4.0 · github',author:'Ada Example',license:'CC-BY-4.0',source:'https://github.com/ada/brass-and-bone',sourceLabel:'github.com/ada/brass-and-bone',commit:'4f1c9e2',status:'Installed',statusOk:true,installed:'11 Sep 2026 · 3 warnings',description:'Brass numerals on bone-coloured resin. Ships the Bone felt table look.'},
 {key:'runes',name:'Nordic runes',version:'0.3.1',meta:'texture over 2048 px after app update · disabled by the app',fill:'#bab6b6',author:'Sigrún Example',license:'CC0-1.0',source:'https://codeberg.org/sigrun/nordic-runes',sourceLabel:'codeberg.org/sigrun/nordic-runes',commit:'a91d0c4',status:'Validation failed',statusOk:false,installed:'2 Sep 2026 · disabled 12 Sep 2026',description:'Rune faces on slate. Loaded fine on 0.0.9; the stricter texture limit in 0.1.0 rejects its atlas.',report:[{where:'textures/runes.png',text:'4096 × 4096 exceeds the 2048 px limit (rejected before decoding)'},{where:'diceset.toml:31',text:'die "d20" texture unavailable — set disabled, notation falls back to the built-in d20'}]}];
 function lumOf(c){const f=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)};return 0.2126*f(c[0])+0.7152*f(c[1])+0.0722*f(c[2])}
 function legible(color,isDark){if(!color||color[0]!=='#')return color;const h=color.length===4?'#'+[1,2,3].map(i=>color[i]+color[i]).join(''):color;let c=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));const g=isDark?[32,30,29]:[243,242,242],t=isDark?[255,255,255]:[0,0,0];const lg=lumOf(g);const ratio=x=>{const l=lumOf(x);return(Math.max(l,lg)+0.05)/(Math.min(l,lg)+0.05)};for(let k=0;k<=10;k++){const m=c.map((v,i)=>Math.round(v+(t[i]-v)*k/10));if(ratio(m)>=3)return`rgb(${m[0]}, ${m[1]}, ${m[2]})`}return isDark?'var(--color-bg)':'var(--color-text)'}
 const ICON_LIST=['sword','shield','flame','heart','zap','dices','timer','sparkles'];
 const IMPORT_ERRORS=[{where:'skulls.json:22',text:'roll “Bite” has no formula'},{where:'skulls.json:40',text:'“1d6+STR” — STR is not a number or a die'},{where:'skulls.json',text:'group name “Skulls!” must be 1–40 characters, no punctuation'}];
-const TAGS=[{name:'accent',color:'#ec3013'},{name:'deep',color:'#ae1800'},{name:'ink',color:'#201e1d'},{name:'grey',color:'#7d7979'},{name:'light',color:'#d7d3d3'}];
+const TAGS=[{name:'ink',color:'#201e1d'},{name:'grey',color:'#7d7979'},{name:'red',color:'#ec3013'},{name:'deep red',color:'#ae1800'},{name:'orange',color:'#c05a00'},{name:'amber',color:'#b8870a'},{name:'pine',color:'#0f7a50'},{name:'teal',color:'#0d7f86'},{name:'cobalt',color:'#1d5fd4'},{name:'violet',color:'#6b2fd0'},{name:'magenta',color:'#c2186f'},{name:'bone',color:'#bab6b6'}];
 const PALETTE=['#201e1d','#f3f2f2','#ec3013','#ae1800','#7d7979','#bab6b6','#1f5e3a','#2b5aa8','#e0a52a','#5a3a1e','#8a6d1e','#e8dcc0'];
 const HELP=[
 {name:'Dice',rows:[
@@ -991,9 +1129,29 @@ groups.push({text:diceText(n),setName:setLabel(n),sub,dice:dice.map(d=>({...d,ma
 function rollFormula(f,rng){const p=parseFormula(f);if(p.error||p.empty)return null;const cap=capacity(p.ast);if(cap.refused)return{refused:cap};const groups=[];const total=evalNode(p.ast,groups,rng);const terms=flatten(p.ast);
 const mods=terms?terms.filter(t=>t.node.t==='num').map(t=>({v:t.sign*t.node.v,text:(t.sign<0?'− ':'+ ')+t.node.v})):[];
 return{total,groups,mods,complex:!terms,formula:f.replace(/\s*\[.*$/,'').trim(),label:p.label,scale:cap.scale,N:cap.N,ast:p.ast,hasDiv:hasDiv(p.ast),rounding:ROUNDING}}
-function layoutTray(res,rng){const dice=[];res.groups.forEach(g=>g.dice.forEach(d=>{const sd=SETS.find(x=>x.key===(d.set||null))||SETS[0];const base={set:d.set,fill:sd.fill,ink:sd.ink,dropped:d.dropped};if(d.sides===100){const t=Math.floor((d.v%100)/10)*10,u=d.v%10;dice.push({...base,sides:10,label:String(t).padStart(2,'0'),max:d.v===100,min:d.v===1});dice.push({...base,sides:10,label:String(u),max:d.v===100,min:d.v===1})}else dice.push({...base,sides:d.sides,label:String(d.v),max:d.max,min:d.min})}));
+const pipDot=v=>(v==='6'||v==='9')?v+'.':v;              // a rolled die lies at any angle
+function layoutTray(res,rng){const dice=[];res.groups.forEach(g=>g.dice.forEach(d=>{const sd=SETS.find(x=>x.key===(d.set||null))||SETS[0];const ph=physOf(d.set);const base={set:d.set,fill:sd.fill,ink:sd.ink,dropped:d.dropped,exploded:d.exploded,pass:d.pass,alpha:+(1-ph.a/100).toFixed(2),grow:ph.s/100};if(d.sides===100){const t=Math.floor((d.v%100)/10)*10,u=d.v%10;dice.push({...base,sides:10,label:String(t).padStart(2,'0'),max:d.v===100,min:d.v===1});dice.push({...base,sides:10,label:pipDot(String(u)),max:d.v===100,min:d.v===1})}else dice.push({...base,sides:d.sides,label:pipDot(String(d.v)),max:d.max,min:d.min})}));
 const n=dice.length;const cols=Math.max(1,Math.ceil(Math.sqrt(n*0.6)));const rows=Math.max(1,Math.ceil(n/cols));const cells=[];for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)cells.push([c,r]);for(let i=cells.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[cells[i],cells[j]]=[cells[j],cells[i]]}
-return dice.map((d,i)=>{const[c,r]=cells[i];const cw=82/cols,ch=62/rows;const size=Math.round(2*RAD[d.sides]*res.scale*2.1);return{...d,path:SHAPES[d.sides],x:+(6+c*cw+rng()*Math.max(0,cw-16)).toFixed(1),y:+(16+r*ch+rng()*Math.max(0,ch-14)).toFixed(1),size,rot:Math.round(rng()*360),fsPx:Math.round(size*(d.label.length>1?0.3:0.4)),padTop:d.sides===4?Math.round(size*0.22):0,color:d.max?'#ec3013':d.ink,op:d.dropped?0.6:1,deco:d.dropped?'line-through':'none',tagShow:d.dropped?'flex':'none'}})}
+return dice.map((d,i)=>{const[c,r]=cells[i];const cw=82/cols,ch=62/rows;const size=Math.round(2*RAD[d.sides]*res.scale*2.1*(d.grow||1));return{...d,path:SHAPES[d.sides],x:+(6+c*cw+rng()*Math.max(0,cw-16)).toFixed(1),y:+(16+r*ch+rng()*Math.max(0,ch-14)).toFixed(1),size,rot:Math.round(rng()*360),fsPx:Math.round(size*(d.label.length>1?0.3:0.4)),padTop:d.sides===4?Math.round(size*0.22):0,color:d.max?'var(--color-accent-700)':d.ink,op:d.dropped?0.6:1,deco:d.dropped?'line-through':'none',tagShow:d.dropped?'flex':'none'}})}
+// dice land one after another; each landing die shoves whatever is already down
+function settleTray(tray,rng){const W=380,H=520;
+  const P=tray.map(d=>({d,x:d.x/100*W+d.size/2,y:d.y/100*H+d.size/2,r:d.size*0.46,ox:null,oy:null,by:-1}));
+  for(let i=0;i<P.length;i++){const a=P[i];
+    for(let pass=0;pass<3;pass++)for(let j=0;j<i;j++){const b=P[j];
+      let dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy),min=(a.r+b.r)*0.94;
+      if(dist>=min)continue;
+      if(dist<0.5){const th=rng()*2*Math.PI;dx=Math.cos(th);dy=Math.sin(th);dist=1}
+      if(b.ox===null){b.ox=b.x;b.oy=b.y;b.by=i}
+      const push=(min-dist)+2+rng()*7;                       // a shove, not a neat resolve
+      b.x=Math.max(b.r,Math.min(W-b.r,b.x+dx/dist*push));
+      b.y=Math.max(b.r+H*0.1,Math.min(H-b.r,b.y+dy/dist*push))}}
+  return P.map((p,i)=>{const d=p.d,moved=p.ox!==null;
+    const sx=moved?(p.ox-p.x)/d.size*100:0,sy=moved?(p.oy-p.y)/d.size*100:0;
+    return {...d,x:+((p.x-d.size/2)/W*100).toFixed(2),y:+((p.y-d.size/2)/H*100).toFixed(2),
+      drop:+(i*0.085).toFixed(3),                             // when this one lands
+      shoved:moved,shoveAt:moved?+(p.by*0.085).toFixed(3):0,
+      sx:sx.toFixed(1)+'%',sy:sy.toFixed(1)+'%',
+      spinTo:moved?Math.round(d.rot+(rng()*70-35)):d.rot}})}
 const P={c:n=>({off:n,p:[1]}),
 die:faces=>{const mn=Math.min(...faces),mx=Math.max(...faces);const p=new Array(mx-mn+1).fill(0);for(const f of faces)p[f-mn]+=1/faces.length;return{off:mn,p}},
 conv:(a,b)=>{const p=new Array(a.p.length+b.p.length-1).fill(0);for(let i=0;i<a.p.length;i++){const ai=a.p[i];if(!ai)continue;for(let j=0;j<b.p.length;j++)p[i+j]+=ai*b.p[j]}return{off:a.off+b.off,p}},
@@ -1023,9 +1181,127 @@ function fmt1(x){return(Math.round(x*100)/100).toString()}
 function seedHistory(){const rng=mulberry(7);const out=[];const days=[new Date(2026,8,1,19,0),new Date(2026,8,8,19,0),new Date(2026,8,11,18,30)];
 days.forEach((d,di)=>{const n=di===2?9:17;for(let k=0;k<n;k++){const g=rng()<0.78?'thorin':'ezren';const pool=SEED_ROLLS.filter(r=>r.group===g);const r=pool[Math.floor(rng()*pool.length)];const res=rollFormula(r.formula,rng);if(!res||res.refused)continue;out.push({...res,ts:d.getTime()+k*6*60000+Math.floor(rng()*120000),name:r.name,session:g==='thorin'?'Thorin':'Ezren',rollId:r.id})}});return out}
 function dieStats(history,sides,setKey='all'){const seq=[];history.slice().sort((a,b)=>a.ts-b.ts).forEach(h=>h.groups.forEach(g=>g.dice.forEach(d=>{if(d.sides===sides&&(setKey==='all'||(d.set||null)===setKey))seq.push(d.v)})));const n=seq.length;const hist=Array.from({length:sides},(_,i)=>seq.filter(v=>v===i+1).length);const highs=hist[sides-1]||0,lows=hist[0]||0;const avg=n?seq.reduce((a,b)=>a+b,0)/n:0;let best=0,cur=0;seq.forEach(v=>{cur=v===sides?cur+1:0;best=Math.max(best,cur)});return{n,hist,highs,lows,avg,best,expected:n/sides}}
-function makeFaces(n=6){return Array.from({length:n},()=>({strokes:[],stamps:[],bg:null,past:[],redo:[]}))}
+function makeFaces(n=6){return Array.from({length:n},()=>({strokes:[],stamps:[],bg:null,edges:[],past:[],redo:[]}))}
 const MASKS={2:'M160 14a146 146 0 1 0 0 292a146 146 0 1 0 0-292Z',4:'M160 22 302 282H18Z',6:'M28 28h264v264H28Z',7:'M160 14 275 68 304 190 233 302H87L16 190 45 68Z',8:'M160 22 302 282H18Z',10:'M160 12 300 140 160 308 20 140Z',12:'M160 16 304 120 249 292H71L16 120Z',18:'M160 10 264 142 160 310 56 142Z',20:'M160 22 302 282H18Z',30:'M160 12 300 160 160 308 20 160Z'};
 const DZ_DICE=[2,4,6,8,10,12,18,20];
+const PHYS={builtin:{w:4.2,a:0,s:100},mine:{w:4.2,a:0,s:100},brass:{w:6.8,a:18,s:108},runes:{w:9.1,a:0,s:115}};
+const physOf=k=>PHYS[k||'builtin']||PHYS.builtin;
+const POLY={4:[[160,22],[302,282],[18,282]],6:[[28,28],[292,28],[292,292],[28,292]],8:[[160,22],[302,282],[18,282]],10:[[160,12],[300,140],[160,308],[20,140]],12:[[160,16],[304,120],[249,292],[71,292],[16,120]],18:[[160,10],[264,142],[160,310],[56,142]],20:[[160,22],[302,282],[18,282]]};
+const NUM={2:[160,160,190],6:[160,160,180],8:[160,200,118],10:[160,146,146],12:[160,168,172],18:[160,152,124],20:[160,200,104],100:[160,200,104]};
+const CORNER=76;
+const PIPG=[96,160,224];
+const PIPS={1:[[1,1]],2:[[0,0],[2,2]],3:[[0,0],[1,1],[2,2]],4:[[0,0],[2,0],[0,2],[2,2]],5:[[0,0],[2,0],[1,1],[0,2],[2,2]],6:[[0,0],[2,0],[0,1],[2,1],[0,2],[2,2]]};
+const pipDots=(n,ink)=>(PIPS[n]||[]).map(p=>({cx:PIPG[p[0]],cy:PIPG[p[1]],ink:ink||'#201e1d'}));                                        // authored glyph size for d4 corner values
+const _CV={};
+function cornerVals(face){const key='c'+face;if(_CV[key])return _CV[key];
+  const g=solidGeom(4),vals=faceVals(4),f=g[face];
+  const byVertex=f.vi.map((q,i)=>{const j=g.findIndex(o=>!o.vi.includes(q));   // the face opposite this corner
+    const p=f.pts2[i];return {v:vals[j]??'',a:Math.atan2(p[1],p[0])}});
+  const P=POLY[4],c=[P.reduce((a,p)=>a+p[0],0)/3,P.reduce((a,p)=>a+p[1],0)/3];
+  const out=P.map(p=>{const a=Math.atan2(p[1]-c[1],p[0]-c[0]);              // match the flat mask's corner order
+    let best=byVertex[0],bd=9;
+    for(const m of byVertex){let d=Math.abs(((m.a-a+Math.PI*3)%(Math.PI*2))-Math.PI);if(d<bd){bd=d;best=m}}
+    const t=String(best.v);return (t==='6'||t==='9')?t+'.':t});
+  _CV[key]=out;return out}
+const _FV={};
+function faceVals(sides){if(_FV[sides])return _FV[sides];
+  const N=solidGeom(sides).map(f=>f.n||[0,0,1]),out=new Array(N.length).fill(null);let v=1;
+  for(let i=0;i<N.length;i++){if(out[i]!=null)continue;out[i]=v;
+    const j=N.findIndex((m,k)=>k!==i&&out[k]==null&&Math.abs(m[0]+N[i][0])<1e-6&&Math.abs(m[1]+N[i][1])<1e-6&&Math.abs(m[2]+N[i][2])<1e-6);
+    if(j>=0)out[j]=sides+1-v;                              // its opposite takes the complement
+    v++}
+  _FV[sides]=out;return out}
+function faceLabel(sides,i){const n=faceVals(sides)[i]??(i+1);
+  const v=(sides===10&&n===10)?'0':String(n);
+  return (v==='6'||v==='9')?v+'.':v}   // a d10's tenth face is 0
+function edgeMarks(sides,vals,ink){ink=ink||'#201e1d';const P=POLY[sides];if(!P)return[];
+  const c=[P.reduce((a,p)=>a+p[0],0)/P.length,P.reduce((a,p)=>a+p[1],0)/P.length];
+  if(sides===4)return P.map((v,i)=>{                       // corner values, the d4 convention
+    const ux=v[0]-c[0],uy=v[1]-c[1];                       // glyph 'up' points at its own corner
+    const L=Math.hypot(ux,uy)||1,t=Math.min(0.46,(CORNER*1.5)/L);
+    return {text:(vals&&vals[i])||'',ink,
+      x:(v[0]+(c[0]-v[0])*t)/320*100,y:(v[1]+(c[1]-v[1])*t)/320*100,
+      rot:Math.atan2(uy,ux)*180/Math.PI+90}});             // upright when its own corner is the apex
+  return P.map((v,i)=>{let a=v,b=P[(i+1)%P.length];
+    let dx=b[0]-a[0],dy=b[1]-a[1],L=Math.hypot(dx,dy)||1;
+    let n=[dy/L,-dx/L];const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+    if(n[0]*(c[0]-m[0])+n[1]*(c[1]-m[1])<0){[a,b]=[b,a];dx=-dx;dy=-dy;n=[-n[0],-n[1]]}  // keep the label upright, reading in from outside
+    const inset=Math.min(34,L*0.22);
+    return {text:(vals&&vals[i])||'',ink,x:(m[0]+n[0]*inset)/320*100,y:(m[1]+n[1]*inset)/320*100,rot:Math.atan2(dy,dx)*180/Math.PI}})}
+const _SG={};
+function _hullFaces(V){const pl=[];
+  const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const len=a=>Math.sqrt(dot(a,a)),unit=a=>{const l=len(a)||1;return[a[0]/l,a[1]/l,a[2]/l]};
+  const mid=vs=>[0,1,2].map(i=>vs.reduce((t,v)=>t+v[i],0)/vs.length);
+  for(let i=0;i<V.length;i++)for(let j=i+1;j<V.length;j++)for(let k=j+1;k<V.length;k++){
+    let N=cross(sub(V[j],V[i]),sub(V[k],V[i]));if(len(N)<1e-9)continue;N=unit(N);let d=dot(N,V[i]);
+    if(d<0){N=N.map(x=>-x);d=-d}
+    if(d<1e-6)continue;                                   // plane through the centre is not a face
+    if(!V.every(v=>dot(N,v)<=d+1e-6))continue;            // every vertex on one side -> hull face
+    if(pl.some(p=>Math.abs(dot(p.N,N)-1)<1e-4&&Math.abs(p.d-d)<1e-4))continue;
+    const idx=V.map((v,q)=>q).filter(q=>Math.abs(dot(N,V[q])-d)<1e-5);
+    if(idx.length<3)continue;
+    const c=mid(idx.map(q=>V[q])),t0=unit(sub(V[idx[0]],c)),b0=cross(N,t0);
+    idx.sort((p,q)=>{const P=sub(V[p],c),Q=sub(V[q],c);return Math.atan2(dot(P,b0),dot(P,t0))-Math.atan2(dot(Q,b0),dot(Q,t0))});
+    pl.push({N,d,idx})}
+  return pl}
+function solidGeom(sides,R=112){
+  const key=sides+'@'+R;if(_SG[key])return _SG[key];
+  const PHI=(1+Math.sqrt(5))/2,ip=1/PHI;
+  const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+  const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+  const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+  const len=a=>Math.sqrt(dot(a,a));
+  const unit=a=>{const l=len(a)||1;return[a[0]/l,a[1]/l,a[2]/l]};
+  const mid=vs=>[0,1,2].map(i=>vs.reduce((t,v)=>t+v[i],0)/vs.length);
+  let V=[],coin=false;
+  if(sides===2){coin=true;V=[[0,0,1],[0,0,-1]]}
+  else if(sides===4){V=[[1,1,1],[1,-1,-1],[-1,1,-1],[-1,-1,1]]}
+  else if(sides===6){for(const x of[-1,1])for(const y of[-1,1])for(const z of[-1,1])V.push([x,y,z])}
+  else if(sides===8){V=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]}
+  else if(sides===20){for(const a of[-1,1])for(const b of[-1,1])V.push([0,a,b*PHI],[a,b*PHI,0],[b*PHI,0,a])}
+  else if(sides===12){for(const x of[-1,1])for(const y of[-1,1])for(const z of[-1,1])V.push([x,y,z]);
+    for(const a of[-1,1])for(const b of[-1,1])V.push([0,a*ip,b*PHI],[a*ip,b*PHI,0],[b*PHI,0,a*ip])}
+  else {                                                  // trapezohedron: 2n kites (d10, d18)
+    const n=sides/2,a=2*Math.PI/n,m=Math.cos(a/2),h=n<=5?1.2:0.75,z0=h*(1-m)/(1+m);
+    const A=[],B=[];for(let i=0;i<n;i++){A.push([Math.cos(a*i),Math.sin(a*i),z0]);B.push([Math.cos(a*(i+0.5)),Math.sin(a*(i+0.5)),-z0])}
+    V=[[0,0,h],[0,0,-h],...A,...B]}
+  const norm=Math.max(...V.map(len));V=V.map(v=>[v[0]/norm,v[1]/norm,v[2]/norm]);
+  // authored mask reference: centre x, centre y, circumradius, inradius (320-space)
+  const MREF={2:[160,160,146,146],4:[160,195.33,173.33,83.07],6:[160,160,186.68,132],8:[160,195.33,173.33,83.07],10:[160,150,158,101],12:[160,168,152.6,123.2],18:[160,151,159,87.3],20:[160,195.33,173.33,83.07]}[sides]||[160,160,160,140];
+  const plate=(c,t,b,n,pts)=>{
+    const rad=Math.max(...pts.map(p=>Math.hypot(p[0],p[1])))||1,box=2*rad*R;
+    const poly=pts.map(p=>[((p[0]/(2*rad))+0.5)*100,((p[1]/(2*rad))+0.5)*100]);
+    const inr=Math.min(...pts.map((p,i)=>{const q=pts[(i+1)%pts.length],dx=q[0]-p[0],dy=q[1]-p[1],L=Math.hypot(dx,dy)||1;
+      return Math.abs(p[0]*dy-p[1]*dx)/L}));                // polygon inradius, in the same units as pts
+    const k=Math.min((box/2)/MREF[2],inr*R/MREF[3]);        // fit the authored face inside the real one
+    return {box,off:-box/2,k,n,pts2:pts,cbox:320*k,cleft:box/2-MREF[0]*k,ctop:box/2-MREF[1]*k,
+      m:'matrix3d('+[t[0],t[1],t[2],0,b[0],b[1],b[2],0,n[0],n[1],n[2],0,(c[0]*R).toFixed(2),(c[1]*R).toFixed(2),(c[2]*R).toFixed(2),1].join(',')+')',
+      clip:'polygon('+poly.map(p=>p[0].toFixed(2)+'% '+p[1].toFixed(2)+'%').join(',')+')',
+      poly:poly.map(p=>p[0].toFixed(2)+','+p[1].toFixed(2)).join(' ')}};
+  let out;
+  if(coin){
+    const zc=0.16,rad=Math.sqrt(Math.max(0,1-zc*zc));
+    out=V.map(n=>{const t=[1,0,0],b=cross(n,t);
+      const pts=Array.from({length:48},(_,i)=>{const th=i/48*2*Math.PI;return[Math.cos(th)*rad,Math.sin(th)*rad]});
+      return plate([n[0]*zc,n[1]*zc,n[2]*zc],t,b,n,pts)})}
+  else out=_hullFaces(V).map(f=>{const _vi=f.idx;
+    const vs=f.idx.map(i=>V[i]),c=mid(vs),n=f.N;
+    // which way is "up" on the face, to match how the flat mask is drawn
+    const rule=sides===6?'edge':(sides===10||sides===18?'kite':'far');
+    const rs=vs.map(v=>len(sub(v,c))),tag=r=>r.toFixed(4);
+    let cand;
+    if(rule==='edge')cand=vs.map((v,i)=>{const w=vs[(i+1)%vs.length];return[0,1,2].map(q=>(v[q]+w[q])/2)});  // square: an edge is up, never a corner
+    else if(rule==='kite'){                                               // kite: the short tip on its axis
+      const axis=vs.filter((v,i)=>rs.filter(r=>tag(r)===tag(rs[i])).length===1);
+      const pool=axis.length?axis:vs;let t=pool[0];for(const v of pool)if(len(sub(v,c))<len(sub(t,c)))t=v;cand=[t]}
+    else {const mx=Math.max(...rs);cand=vs.filter((v,i)=>Math.abs(rs[i]-mx)<1e-6)}  // regular face: any far vertex
+    let up=cand[0];for(const v of cand)if(v[1]<up[1])up=v;                // of the equivalent choices, the most upright
+    const d0=sub(c,up),b=unit([d0[0]-n[0]*dot(d0,n),d0[1]-n[1]*dot(d0,n),d0[2]-n[2]*dot(d0,n)]);
+    const t=cross(b,n);
+    const pl=plate(c,t,b,n,vs.map(v=>{const q=sub(v,c);return[dot(q,t),dot(q,b)]}));pl.vi=_vi;return pl});
+  _SG[key]=out;return out}
 const MASK_NAMES={2:'coin',4:'tetrahedron',6:'cube',8:'octahedron',10:'pentagonal trapezohedron',12:'dodecahedron',18:'enneagonal trapezohedron',20:'icosahedron',30:'rhombic triacontahedron'};
 function timeOf(ts){const d=new Date(ts);return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')}
 function dayLabel(ts){const d=new Date(ts);const today=new Date(2026,8,11);if(d.toDateString()===today.toDateString())return'Today';return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
@@ -1035,9 +1311,19 @@ class Component extends DCLogic {
   state={screen:null,stack:[],formula:null,result:null,rolling:false,pending:null,groupsOpen:null,activeGroup:'thorin',rolls:SEED_ROLLS.map(r=>({...r,useCount:0,lastUsedAt:0})),history:seedHistory(),atLeast:false,gFormula:null,picked:null,editor:null,table:null,settings:{},installUrl:null,installState:null,statsDie:null,pickerOpen:null,face:0,tool:'pen',penW:6,color:'#201e1d',showGuide:true,drawing:null,dismissed:false,touched:false,refused:null,nextId:100,sessionName:'',disabledSets:['runes'],removedSets:[],setDialog:null,statsSet:null,detailSet:null,setTable:{},dzSides:null,designs:{6:makeFaces(6)},pickerSetByGroup:{},extraSessions:[],renamingSession:null,renameText:'',newSessionName:'',importDialog:null,firstLaunch:null,extraGroups:[],updateAvail:null,updating:null,setVersions:{},checking:false,checkedNote:''};
   setLongPress(key){const k=key||'builtin';return{down:()=>{clearTimeout(this._sp);this._spFired=false;this._sp=setTimeout(()=>{this._spFired=true;this.setState({setDialog:k})},450)},up:()=>clearTimeout(this._sp),ctx:e=>{e&&e.preventDefault&&e.preventDefault();this.setState({setDialog:k})},click:()=>{if(this._spFired){this._spFired=false;return}this.setState({detailSet:k});this.go('setdetail')}}}
   _cache=new Map();
-  componentDidMount(){if(!this.state.sessionName)this.setState({sessionName:this.group().name});if(this.props.firstLaunch)this.setState({firstLaunch:true,rolls:[],history:[],extraSessions:[],sessionName:'Unfiled',removedSets:['mine','brass','runes'],activeGroup:'unfiled'});if(typeof matchMedia!=='function')return;this._mq=matchMedia('(prefers-color-scheme: dark)');this.setState({sysDark:this._mq.matches});this._mqFn=e=>this.setState({sysDark:e.matches});this._mq.addEventListener('change',this._mqFn)}
-  componentWillUnmount(){this._mq&&this._mq.removeEventListener('change',this._mqFn);clearTimeout(this._t);clearTimeout(this._i);clearTimeout(this._im);clearInterval(this._ip)}
+  componentDidMount(){if(!this.state.sessionName)this.setState({sessionName:this.group().name});if(this.props.firstLaunch)this.setState({firstLaunch:true,rolls:[],history:[],extraSessions:[],sessionName:'Unfiled',removedSets:['mine','brass','runes'],activeGroup:'unfiled'});if(typeof matchMedia!=='function')return;this._mq=matchMedia('(prefers-color-scheme: dark)');this.setState({sysDark:this._mq.matches});this._mqFn=e=>this.setState({sysDark:e.matches});this._mq.addEventListener('change',this._mqFn);
+    this._kf=e=>{if(e.key==='Escape'){e.preventDefault();this.sysBack()}};addEventListener('keydown',this._kf)}
+  componentWillUnmount(){this._mq&&this._mq.removeEventListener('change',this._mqFn);if(this._kf)removeEventListener('keydown',this._kf);clearTimeout(this._t);clearTimeout(this._i);clearTimeout(this._im);clearInterval(this._ip);clearTimeout(this._bk)}
+  // system back: anywhere -> the tray; on the tray, twice -> out of the app
+  sysBack=()=>{const S=this.state;if(S.exited)return;
+    if(this.screen()!=='roll'){this.setState({screen:'roll',stack:[],groupsOpen:false,pickerOpen:false,setMenuOpen:false,dzView:'face'});return}
+    if(S.backArmed){clearTimeout(this._bk);this.setState({exited:true,backArmed:false});return}
+    this.setState({backArmed:true});clearTimeout(this._bk);this._bk=setTimeout(()=>this.setState({backArmed:false}),2000)}
+  edgeDown=e=>{const r=e.currentTarget.getBoundingClientRect();this._eg=(e.clientX-r.left<20||r.right-e.clientX<20)?[e.clientX,e.clientY]:null}
+  edgeUp=e=>{const g=this._eg;this._eg=null;if(!g)return;if(Math.abs(e.clientX-g[0])>44&&Math.abs(e.clientY-g[1])<70)this.sysBack()}
   theme(){return this.state.settings.theme??this.props.theme??'system'}
+  sysDark(){const s=this.state.sysDark;if(s!=null)return !!s;return typeof matchMedia==='function'&&matchMedia('(prefers-color-scheme: dark)').matches}
+  isDark(){const t=this.theme();return t==='dark'||(t==='system'&&this.sysDark())}
   dflt(){const k=this.state.settings.defaultSet??'builtin';if(k==='builtin'||this.state.disabledSets.includes(k)||this.state.removedSets.includes(k)||!SETS.some(x=>x.key===k))return null;return k}
   sync(){DEFAULT_SET=this.dflt();ROUNDING=this.state.settings.rounding??'floor'}
   setRounding=(mode)=>{this.setState(s=>{const r=s.result||(this._seed&&!this._seed.refused?this._seed:null);if(!r||!r.ast)return{};const prev=ROUNDING;ROUNDING=mode;const total=evalFixed(r.ast,r.groups[Symbol.iterator]());ROUNDING=prev;const nr={...r,total,rounding:mode};return{result:nr,history:s.history.map(h=>h.ts===r.ts?{...h,total,rounding:mode}:h)}})}
@@ -1067,7 +1353,7 @@ class Component extends DCLogic {
   checkUpdates=()=>{this.setState({checking:true});clearTimeout(this._c);this._c=setTimeout(()=>this.setState(s=>{const has=!s.removedSets.includes('brass')&&!(s.setVersions.brass);return{checking:false,updateAvail:has?{brass:'1.3.0'}:{},checkedNote:has?'1 update available · checked just now':'Everything is up to date · checked just now'}}),900)}
   groupName(){return this.state.sessionName||this.group().name}
   go=(s)=>{this.setState(st=>({screen:s,stack:[...st.stack,this.screen()],groupsOpen:false,pickerOpen:false,fromDesigner:false}))}
-  back=()=>{this.setState(st=>{const stack=st.stack.slice();const prev=stack.pop()||'roll';return{screen:prev,stack,groupsOpen:false}})}
+  back=()=>{this.setState(st=>({screen:st.screen==='menu'?'roll':'menu',stack:[],groupsOpen:false,setMenuOpen:false}))}
   setFormula(f){this._cache.size>200&&this._cache.clear();this.setState({formula:f,result:null,dismissed:true,touched:true,refused:null,picked:null,fromDesigner:false})}
   terms(){this.sync();const p=parseFormula(this.formula());if(p.error||p.empty)return{terms:[],label:null,bad:!!p.error};return{terms:flatten(p.ast)||[],label:p.label,bad:false,complex:!flatten(p.ast)}}
   addDie=(sides,set=null)=>{const{terms,label,complex}=this.terms();let t=complex?[]:terms.slice();const hit=t.find(x=>x.node.t==='dice'&&x.node.sides===sides&&!x.node.mods.length&&x.sign>0&&(x.node.set||null)===set);if(hit)hit.node={...hit.node,count:hit.node.count+1};else{const numsAt=t.findIndex(x=>x.node.t==='num');const nt={sign:1,node:{t:'dice',count:1,sides,set,mods:[]}};numsAt<0?t.push(nt):t.splice(numsAt,0,nt)}this.setFormula(rebuild(t,label))}
@@ -1075,18 +1361,66 @@ class Component extends DCLogic {
   countOf(terms,sides,set=null){return terms.filter(x=>x.node.t==='dice'&&x.node.sides===sides&&x.sign>0&&(x.node.set||null)===set).reduce((a,x)=>a+x.node.count,0)}
   doRoll=(formula,saved)=>{this.sync();const f=formula??this.formula();const res=rollFormula(f,Math.random);if(!res){this.setState({screen:'roll',touched:true,formula:f,dismissed:true});return}
     if(res.refused){this.setState({refused:res.refused.msg,result:null,rolling:false,screen:'roll',touched:true,pickerOpen:false});return}
-    res.tray=layoutTray(res,Math.random);res.ts=Date.now();res.name=saved?saved.name:null;res.table=saved?saved.table:undefined;res.session=this.groupName();res.rollId=saved?saved.id:null;
+    res.tray=settleTray(layoutTray(res,Math.random),Math.random);res.ts=Date.now();res.name=saved?saved.name:null;res.table=saved?saved.table:undefined;res.session=this.groupName();res.rollId=saved?saved.id:null;
     const base={screen:'roll',touched:true,refused:null,pickerOpen:false,groupsOpen:false,formula:f};
     if(saved)this.setState(s=>({rolls:s.rolls.map(r=>r.id===saved.id?{...r,useCount:r.useCount+1,lastUsedAt:Date.now()}:r)}));
     if(this.powerOn()){this.setState({...base,result:res,rolling:false,pending:null,dismissed:false},()=>this.record(res));return}
-    this.setState({...base,rolling:true,pending:res,result:null,dismissed:false});clearTimeout(this._t);this._t=setTimeout(()=>{const r=this.state.pending;if(!r)return;this.setState({rolling:false,pending:null,result:r,dismissed:false});this.record(r)},1150)}
+    this.setState({...base,rolling:true,pending:res,result:null,dismissed:false});clearTimeout(this._t);this._t=setTimeout(()=>{const r=this.state.pending;if(!r)return;this.setState({rolling:false,pending:null,result:r,dismissed:false});this.record(r)},Math.min(2400,950+(res.tray.length-1)*85))}
+  rollStateVals(props,live){
+    const rs=props.rollState||'none';
+    const ds=live&&live.groups?live.groups.reduce((a,g)=>a.concat(g.dice||[]),[]):[];
+    const all=ds.length||20;
+    const unread=Math.max(1,Math.min(3,all-Math.max(1,Math.round(all*0.72))));
+    const readDice=ds.length?ds.slice(0,all-unread):[];
+    const rest=ds.length?ds.slice(all-unread):new Array(unread).fill({v:1,sides:6});
+    const sum=readDice.reduce((a,d)=>a+(d.v||0),0);
+    const allSum=ds.reduce((a,d)=>a+(d.v||0),0);
+    const off=live&&typeof live.total==='number'?live.total-allSum:0;
+    const a=sum+rest.length+off,b=sum+rest.reduce((a,d)=>a+(d.sides||6),0)+off;
+    const lo=Math.min(a,b),hi=Math.max(a,b);
+    const explodes=/!/.test((live&&live.formula)||'');
+    const maxed=Math.max(1,ds.filter(d=>d.v&&d.sides&&d.v===d.sides).length);
+    const readN=readDice.length||all-unread;
+    return {
+      counting:rs==='counting'||(!!this.state.rolling&&!!live),
+      earned:rs==='earned',stuck:rs==='stuck',
+      countRead:String(readN),countAll:String(all),countLo:String(lo),countHi:String(hi),
+      countPlus:explodes?'+':'',countPct:Math.round(readN/all*100)+'%',
+      earnedCount:String(maxed),
+      earnedText:maxed===1?'One die rolled its highest face and earned a throw.':`${maxed} dice rolled their highest face and earned a throw.`,
+      stuckCount:String(rest.length),stuckRead:String(readN),
+      throwEarned:()=>this.doRoll(),throwStuck:()=>this.doRoll(),
+      stopChain:()=>this.setState({dismissed:false}),cancelStuck:()=>this.setState({result:null,pending:null,rolling:false,dismissed:true})
+    }
+  }
   record(res){this.setState(s=>({history:[...s.history,res]}))}
   pickGroup=(id)=>{this.setState({activeGroup:id,groupsOpen:false})}
+  dragDown=id=>e=>{e.preventDefault();try{e.currentTarget.setPointerCapture(e.pointerId)}catch(x){}this.setState({dragId:id})}
+  dragMove=e=>{const id=this.state.dragId;if(id==null)return;
+    const doc=e.currentTarget.ownerDocument;
+    const under=doc.elementFromPoint(e.clientX,e.clientY);
+    const host=under&&under.closest?under.closest('[data-roll-id]'):null;
+    const target=host?+host.getAttribute('data-roll-id'):null;
+    if(target==null||target===id)return;
+    this.setState(s=>{const arr=s.rolls.slice();
+      const from=arr.findIndex(r=>r.id===id),to=arr.findIndex(r=>r.id===target);
+      if(from<0||to<0)return null;const [it]=arr.splice(from,1);arr.splice(to,0,it);return{rolls:arr}})}
+  dragUp=()=>{if(this.state.dragId!=null)this.setState({dragId:null})}
   openEditor=(r)=>{const ed=r?{id:r.id,name:r.name,icon:r.icon,formula:r.formula,fav:!!r.fav,group:r.group,tag:r.tag??0,table:r.table,customColor:r.customColor}:{id:null,name:'',icon:'dices',formula:this.formula(),fav:false,group:this.state.activeGroup,tag:0};this.setState({editor:ed});this.go('editor')}
   edSave=()=>{const ed=this.state.editor;const p=parseFormula(ed.formula);if(p.error||p.empty||!ed.name.trim())return;this.setState(s=>{const rolls=ed.id?s.rolls.map(r=>r.id===ed.id?{...r,...ed}:r):[...s.rolls,{...ed,id:s.nextId,useCount:0,lastUsedAt:Date.now()}];return{rolls,nextId:s.nextId+1,activeGroup:ed.group}});this.back()}
   edDelete=()=>{const ed=this.state.editor;this.askConfirm({title:'Delete “'+(ed.name||'this roll')+'”?',body:'The saved roll is removed from its group. Rolls already in the history and in the statistics stay as they are.',label:'Delete roll',act:()=>{this.setState(s=>({rolls:s.rolls.filter(r=>r.id!==ed.id)}));this.back()}})}
   cvPt(e){const r=e.currentTarget.getBoundingClientRect();return[Math.round((e.clientX-r.left)/r.width*320),Math.round((e.clientY-r.top)/r.height*320)]}
   sides(){return this.state.dzSides??(+this.props.designerDie||6)}
+  sdDown=e=>{try{e.currentTarget.setPointerCapture(e.pointerId)}catch(x){}this.setState({sdDrag:[e.clientX,e.clientY],sdSpin:false})}
+  sdMove=e=>{const d=this.state.sdDrag;if(!d)return;const r=this.state.sdRot||{x:-16,y:0};
+    this.setState({sdRot:{x:Math.max(-85,Math.min(85,r.x-(e.clientY-d[1])*0.55)),y:r.y+(e.clientX-d[0])*0.55},sdDrag:[e.clientX,e.clientY]})}
+  sdUp=()=>{if(this.state.sdDrag)this.setState({sdDrag:null})}
+  solidView(){const faces=this.dz();
+    return solidGeom(this.sides()).map((f,i)=>{const fc=faces[i]||{strokes:[],stamps:[],bg:null};
+      const sel=i===this.state.face;return {m:f.m,clip:f.clip,poly:f.poly,box:Math.round(f.box),off:Math.round(f.off),edgePx:Math.max(7,Math.round(CORNER*f.k)),bg:sel?`color-mix(in srgb, var(--color-accent) 16%, ${fc.bg||'#e8e5e4'})`:(fc.bg||'#e8e5e4'),
+        sel,edgeMarks:this.sides()===4?edgeMarks(4,fc.edges,fc.edgeColor):[],outline:sel?'var(--color-accent-700)':'#201e1d',outlineW:sel?4:1.4,
+        cbox:Math.round(f.cbox),cleft:Math.round(f.cleft),ctop:Math.round(f.ctop),
+        strokes:fc.strokes,pipDots:pipDots(fc.pips,fc.pipColor),stamps:fc.stamps.map(s=>({text:s.text,color:s.color,lx:s.x/320*100,ly:s.y/320*100,px:Math.max(6,Math.round(s.size*f.k))}))}})}
   dz(){const S=this.state;const n=this.sides();return S.designs[n]||makeFaces(n)}
   face(){return this.dz()[this.state.face]}
   updFace(fn,snap){this.setState(s=>{const n=this.sides();const faces=(s.designs[n]||makeFaces(n)).slice();const cur=faces[s.face];const next=fn({...cur});
@@ -1104,7 +1438,21 @@ class Component extends DCLogic {
   cvUp=()=>{if(this.state.dragStamp!=null)this.setState({dragStamp:null});const d=this.state.drawing;if(!d)return;const pts=d.pts.length===1?[d.pts[0],d.pts[0]]:d.pts;this.setState({drawing:null});this.updFace(f=>({...f,strokes:[...f.strokes,{pts:pts.map(p=>p.join(',')).join(' '),color:d.color,w:d.w}]}),true)}
   undo=()=>{this.updFace(f=>{const past=f.past||[];if(!past.length)return f;const prev=past[past.length-1];return{...f,...prev,past:past.slice(0,-1),redo:[...(f.redo||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}]}})}
   redo=()=>{this.updFace(f=>{const rd=f.redo||[];if(!rd.length)return f;const nx=rd[rd.length-1];return{...f,...nx,redo:rd.slice(0,-1),past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}]}})}
-  fillNumbers=()=>{this.setState(s=>{const n=this.sides();const faces=(s.designs[n]||makeFaces(n)).map((f,i)=>f.stamps.length?f:({...f,past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}],redo:[],stamps:[{x:160,y:170,size:n>=20?150:190,text:String(i+1),color:s.color}]}));return{designs:{...s.designs,[n]:faces}}})}
+  saveToSet=(key,newName)=>{const n=this.sides();
+    if(newName){key=newName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'set';
+      if(!SETS.some(x=>x.key===key)){
+        SETS.push({key,name:newName,meta:'face designer · your set',dice:DZ_DICE.slice(),fill:'#f3f2f2',ink:'#201e1d'});
+        SET_ROWS.push({key,name:newName,version:'mine',owned:true,meta:'face designer',author:'You',license:'unspecified — pick one before sharing',source:null,sourceLabel:'this phone',status:'Installed · personal',statusOk:true,installed:'just now',description:'A set you started in the face designer.'});
+        PHYS[key]={w:4.2,a:0,s:100}}}
+    const row=SET_ROWS.find(x=>x.key===key);
+    this.setState({saveOpen:false,newSetName:'',savedNote:`d${n} saved to ${row?row.name:'the set'}`});
+    clearTimeout(this._sv);this._sv=setTimeout(()=>this.setState({savedNote:''}),2600)}
+  fillPips=()=>{this.setState(s=>{const faces=(s.designs[6]||makeFaces(6)).map((f,i)=>({...f,
+    past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}],redo:[],
+    stamps:f.stamps.filter(x=>!x.auto),pips:faceVals(6)[i]||i+1,pipColor:s.color}));
+    return{designs:{...s.designs,6:faces}}})}
+  clearPips=()=>this.updFace(f=>({...f,pips:null}),true)
+  fillNumbers=()=>{this.setState(s=>{const n=this.sides();const faces=(s.designs[n]||makeFaces(n)).map((f,i)=>(f.strokes.length&&f.stamps.length)?f:({...f,past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}],redo:[],pips:null,stamps:n===4?[]:[(g=>({x:g[0],y:g[1],size:g[2],auto:true,text:faceLabel(n,i),color:s.color}))(NUM[n]||[160,160,180])],edges:n===4?cornerVals(i):[],edgeColor:s.color}));return{designs:{...s.designs,[n]:faces}}})}
   bars(pmf,st,atLeast,picked){const cum=[];let acc=0;for(let i=pmf.p.length-1;i>=0;i--){acc+=pmf.p[i];cum[i]=acc}
     let items=[];for(let k=st.min;k<=st.max;k++)items.push({k,k2:k,p:pmf.p[k-pmf.off],c:cum[k-pmf.off]});
     if(items.length>110){const b=Math.ceil(items.length/110);const out=[];for(let i=0;i<items.length;i+=b){const sl=items.slice(i,i+b);out.push({k:sl[0].k,k2:sl[sl.length-1].k,p:sl.reduce((a,x)=>a+x.p,0),c:sl[0].c})}items=out}
@@ -1117,10 +1465,12 @@ class Component extends DCLogic {
     const overlay=layout==='overlay',ledger=layout==='ledger';
     const groupsAll=this.groupsAll();const grp=this.group();const parent=groupsAll.find(g=>g.id===grp.parent);
     const groupRolls=S.rolls.filter(r=>r.group===grp.id);
-    const sorted=groupRolls.slice().sort((a,b)=>(b.fav-a.fav)||(b.lastUsedAt-a.lastUsedAt)||(a.id-b.id));
+    const sorted=groupRolls.slice();                        // the order the user dragged them into
     const lastOf=id=>{const h=S.history.filter(h=>h.rollId===id).pop();return h?String(h.total):'–'};
-    const thNow=this.theme();const darkNow=thNow==='dark'||(thNow==='system'&&!!S.sysDark);
-    const mkRoll=r=>({...r,iconColor:legible(r.tag===-1?(r.customColor||null):(TAGS[r.tag||0]||TAGS[2]).color,darkNow)||'var(--color-text)',formulaShort:r.formula.replace(/\s*\[.*$/,''),tableName:r.table?(TABLES.find(t=>t.id===r.table)||{}).name:'',last:lastOf(r.id),useText:(r.useCount||S.history.some(h=>h.rollId===r.id)?`rolled ${S.history.filter(h=>h.rollId===r.id).length}×`:'never rolled')+(r.table?` · on ${(TABLES.find(t=>t.id===r.table)||{}).name}`:''),roll:()=>this.doRoll(r.formula,r),edit:e=>{e&&e.preventDefault&&e.preventDefault();this.openEditor(r)}});
+    const thNow=this.theme();const darkNow=this.isDark();
+    const mkRoll=r=>({...r,iconColor:legible(r.tag===-1?(r.customColor||null):(TAGS[r.tag||0]||TAGS[0]).color,darkNow)||'var(--color-text)',formulaShort:r.formula.replace(/\s*\[.*$/,''),tableName:r.table?(TABLES.find(t=>t.id===r.table)||{}).name:'',last:lastOf(r.id),useText:(r.useCount||S.history.some(h=>h.rollId===r.id)?`rolled ${S.history.filter(h=>h.rollId===r.id).length}×`:'never rolled')+(r.table?` · on ${(TABLES.find(t=>t.id===r.table)||{}).name}`:''),roll:()=>this.doRoll(r.formula,r),edit:e=>{e&&e.preventDefault&&e.preventDefault();this.openEditor(r)},
+      dragDown:this.dragDown(r.id),dragMove:this.dragMove,dragUp:this.dragUp,
+      dragging:S.dragId===r.id,dragOp:S.dragId===r.id?0.55:1,dragShadow:S.dragId===r.id?'var(--shadow-lg)':'none'});
     const visibleRolls=sorted.map(mkRoll);
     // parse current formula
     const parsed=parseFormula(f);const terms=parsed.ast?flatten(parsed.ast):null;
@@ -1130,8 +1480,11 @@ class Component extends DCLogic {
     const showSheet=!!result&&!S.rolling&&!S.dismissed&&screen==='roll';
     const primaryDie=(S.pending||result)?((S.pending||result).groups[0]||{dice:[{}]}).dice[0]:null;const firstDice=(n=>{const w=x=>x?x.t==='dice'?x:x.t==='bin'?(w(x.l)||w(x.r)):x.t==='neg'?w(x.e):null:null;return w(n)})(parsed.ast);
     const live=S.pending||result;const gPin=(S.groupTable||{})[grp.id];const tbl=(live&&live.table&&TABLES.find(t=>t.id===live.table))||(gPin&&TABLES.find(t=>t.id===gPin))||tblDefault;
-    const trayDice=S.rolling&&S.pending?S.pending.tray.map(d=>({...d,label:'',anim:'dz-tumble 1.05s cubic-bezier(.2,.7,.2,1) both',spin:'dz-spin 1.05s cubic-bezier(.2,.7,.2,1) both',op:1})):(result?result.tray.map(d=>({...d,anim:'none',spin:'none'})):[]);
-    const dieChip=d=>({label:d.sides===100?String(d.v):String(d.v),color:d.max?'var(--color-accent)':d.min?'var(--color-neutral-500)':'var(--color-text)',deco:d.dropped?'line-through':'none',op:d.dropped?0.45:1,border:d.exploded?'var(--color-accent)':'var(--color-divider)',title:d.dropped?'dropped':d.exploded?'exploded':d.flag?`${d.flag} from ${d.was}`:''});
+    const mark=d=>{const p=d.pass>1?d.pass:(d.exploded?2:0);const t=d.dropped?'dropped':(p?'pass '+p:'');return{markText:t,markShow:t?'block':'none',markInk:d.dropped?'var(--color-text)':'var(--color-accent-700)',stroke:p&&!d.dropped?'var(--color-accent-700)':'#201e1d',strokeW:p&&!d.dropped?4:2.5}};
+    const settle=d=>Math.max(0.7,Math.min(1.45,1.05*Math.pow(4.2/physOf(d.set).w,0.35))).toFixed(2);  // heavier dice come to rest sooner
+    const wall=(S.settings.tableView??'flat')==='angled';const inset=d=>wall?{...d,x:+(5.5+d.x*0.945).toFixed(1),y:+(6+d.y*0.94).toFixed(1)}:d;
+    const trayDice=S.rolling&&S.pending?S.pending.tray.map(d=>inset(d)).map(d=>({...d,...mark(d),label:'',markShow:'none',anim:`dz-drop ${settle(d)}s cubic-bezier(.22,.9,.25,1) ${d.drop||0}s both`+(d.shoved?`, dz-shove .42s cubic-bezier(.2,.8,.3,1) ${d.shoveAt||0}s both`:''),spin:`dz-spin ${settle(d)}s cubic-bezier(.2,.7,.2,1) ${d.drop||0}s both`,op:1})):(result?result.tray.map(d=>inset(d)).map(d=>({...d,...mark(d),rot:d.shoved?(d.spinTo??d.rot):d.rot,anim:'none',spin:'none'})):[]);
+    const dieChip=d=>({label:d.sides===100?String(d.v):String(d.v),color:d.max?'var(--color-accent-700)':d.min?'var(--color-neutral-500)':'var(--color-text)',deco:d.dropped?'line-through':'none',op:d.dropped?0.45:1,border:d.exploded?'var(--color-accent)':'var(--color-divider)',title:d.dropped?'dropped':d.exploded?'exploded':d.flag?`${d.flag} from ${d.was}`:''});
     const res=result?{total:result.total,title:result.name?`${result.name} · ${result.formula}`:result.formula,kicker:result.label||(result.name?'Saved roll':'Roll'),formula:result.formula,groups:result.groups.map(g=>({text:g.text,setName:g.setName||'',sub:g.sub,dice:g.dice.map(dieChip)})),hasDiv:!!result.hasDiv,...(dp=>{const names={floor:'division rounds down',round:'division rounds to nearest',ceil:'division rounds up'};const pinnedMode=dp.n&&dp.pinned===dp.n?dp.mode:null;return{divPinnedAll:!!pinnedMode&&dp.mode!=='mixed',divPinnedMixed:dp.n>0&&dp.pinned===dp.n&&dp.mode==='mixed',divLoose:!(dp.n&&dp.pinned===dp.n),pinnedLabel:({floor:'Down',round:'Nearest',ceil:'Up'})[pinnedMode]||'per division'}})(divPinned(result.ast)),roundNote:(dp=>dp.n&&dp.pinned===dp.n?'This formula pins its own rounding — Settings and this switch leave it alone.':dp.pinned?'Some divisions pin their own rounding; the rest follow this switch.':'Default from Settings; the total updates, the dice do not.')(divPinned(result.ast)),roundingText:(dp=>{const names={floor:'division rounds down',round:'division rounds to nearest',ceil:'division rounds up'};if(dp.n&&dp.pinned===dp.n)return dp.mode==='mixed'?'rounding pinned per division':names[dp.mode]+' (pinned by the formula)';if(dp.pinned)return 'mixed rounding — some divisions pinned by the formula';return names[result.rounding||'floor']})(divPinned(result.ast)),roundOpts:[['floor','Down'],['round','Nearest'],['ceil','Up']].map(o=>({label:o[1],on:(result.rounding||'floor')===o[0],pick:()=>this.setRounding(o[0])})),mods:result.mods,hasMods:result.mods.length>0,modText:result.mods.map(m=>m.text).join(' '),complex:result.complex,allDice:result.groups.flatMap(g=>g.dice.map(dieChip)),scaled:result.scale<1,scaleNote:`${result.N} dice shrunk to ${Math.round(result.scale*100)} % to fit the table`}:{groups:[],mods:[],allDice:[]};
     const liveSets=SETS.filter(x=>!S.removedSets.includes(x.key)&&!S.disabledSets.includes(x.key));
     const curSet=liveSets.find(x=>x.key===this.pickerSetKey())||liveSets[0];const setPickerSet=key=>this.setState(s=>({pickerSetByGroup:{...(s.pickerSetByGroup||{}),[s.activeGroup]:key},setMenuOpen:false}));
@@ -1170,9 +1523,26 @@ class Component extends DCLogic {
     // settings
     const set=S.settings;const sv=(k,d)=>set[k]??d;const setS=(k,v)=>this.setState(s=>({settings:{...s.settings,[k]:v}}));
     const seg=(k,d,opts)=>opts.map(o=>({label:o[1],on:sv(k,d)===o[0],pick:()=>setS(k,o[0])}));
-    const theme=this.theme();const isDark=theme==='dark'||(theme==='system'&&!!S.sysDark);
+    const theme=this.theme();const isDark=this.isDark();
     const editing=screen==='roll'&&(S.editingFormula??!!props.editing);
-    const settingRows=[{label:'Appearance',desc:'System follows the Android dark-mode setting.',opts:seg('theme','system',[['system','System'],['light','Light'],['dark','Dark']])},{label:'Power-saving mode',desc:'Reduces animation: same physics, nothing rendered — the result appears at once.',opts:seg('powerSaving',props.powerSaving?'on':'off',[['off','Off'],['on','On']])},{label:'Haptics',desc:'A tick on each impact. Off for a silent, still roll.',opts:seg('haptics','on',[['on','On'],['off','Off']])},{label:'Impact sound',desc:'Dice hitting the tray and each other. The same sound on every table.',opts:seg('sound','on',[['on','On'],['off','Off']])},{label:'Division',desc:sv('rounding','floor')==='ceil'?'7 / 2 = 4':sv('rounding','floor')==='round'?'Exactly .5 rounds up, below rounds down · 7 / 2 = 4':'7 / 2 = 3 in most games.',opts:seg('rounding','floor',[['floor','Down'],['round','Nearest'],['ceil','Up']])}];
+    const settingRows=[{label:'Appearance',desc:'System follows the Android dark-mode setting.',opts:seg('theme','system',[['system','System'],['light','Light'],['dark','Dark']])},{label:'Table view',desc:'Straight down keeps every die square to the screen. Angled shows the top and left wall.',opts:seg('tableView','flat',[['flat','Straight down'],['angled','Angled']])},{label:'Power-saving mode',desc:'Reduces animation: same physics, nothing rendered — the result appears at once.',opts:seg('powerSaving',props.powerSaving?'on':'off',[['off','Off'],['on','On']])},{label:'Haptics',desc:'A tick on each impact. Off for a silent, still roll.',opts:seg('haptics','on',[['on','On'],['off','Off']])},{label:'Division',desc:sv('rounding','floor')==='ceil'?'7 / 2 = 4':sv('rounding','floor')==='round'?'Exactly .5 rounds up, below rounds down · 7 / 2 = 4':'7 / 2 = 3 in most games.',opts:seg('rounding','floor',[['floor','Down'],['round','Nearest'],['ceil','Up']])}];
+    const ACCENTS=[['Light blue','#38a8dc'],['Modernist red','#ec3013'],['Magenta','#c2186f'],['Cobalt','#1d5fd4'],['Pine','#0f7a50'],['Amber','#c07000']];
+    const accRaw=sv('accent','#38a8dc');const accPreset=ACCENTS.some(a=>a[1]===accRaw);
+    const acc=legible(accRaw,isDark)||accRaw;
+    const accentVals={
+      acc,accHex:accRaw.toUpperCase(),
+      acc100:`color-mix(in srgb, ${acc} 16%, var(--color-bg))`,
+      acc200:`color-mix(in srgb, ${acc} 28%, var(--color-bg))`,
+      acc600:`color-mix(in srgb, ${acc} 86%, var(--color-text))`,
+      acc700:`color-mix(in srgb, ${acc} 58%, var(--color-text))`,
+      acc800:`color-mix(in srgb, ${acc} 40%, var(--color-text))`,
+      accentSwatches:ACCENTS.map(a=>({name:a[0],hex:a[1],border:accRaw===a[1]?'var(--color-text)':'var(--color-divider)',pick:()=>setS('accent',a[1])})),
+      accCustomColor:accPreset?(S.accentCustom||'#2b5aa8'):accRaw,
+      accCustomBorder:accPreset?'var(--color-divider)':'var(--color-text)',
+      accCustomInk:accPreset?'var(--color-text)':'#f3f2f2',
+      accCustomPlus:accPreset?1:0,
+      onAccentCustom:e=>{const v=e.target.value;this.setState(s=>({accentCustom:v,settings:{...s.settings,accent:v}}))}
+    };
     const installState=S.installState??(props.installState&&props.installState!=='none'?props.installState:null);
     const installUrl=S.installUrl??(installState==='ok'?'https://github.com/ada/brass-and-bone':installState==='fail'?'https://example.org/dice/skulls.zip':'');
     const mineCount=S.rolls.some(r=>r.formula.startsWith('mine:'))?1:0;
@@ -1219,6 +1589,7 @@ class Component extends DCLogic {
         return{sessions:rows,sessionCount:rows.length,noSessions:rows.length===0,renameText:S.renameText,onRenameText:e=>this.setState({renameText:e.target.value}),commitRename:()=>this.setState(s=>{const from=s.renamingSession,to=(s.renameText||'').trim();if(!to||to===from)return{renamingSession:null};return{renamingSession:null,extraSessions:s.extraSessions.map(x=>x===from?to:x),history:s.history.map(h=>h.session===from?{...h,session:to}:h),sessionName:s.sessionName===from?to:s.sessionName}}),cancelRename:()=>this.setState({renamingSession:null}),
         newSessionName:S.newSessionName,onNewSession:e=>this.setState({newSessionName:e.target.value}),addSession:()=>this.setState(s=>{const n=(s.newSessionName||'').trim();if(!n)return{};return{extraSessions:s.extraSessions.includes(n)?s.extraSessions:[...s.extraSessions,n],newSessionName:'',sessionName:n}}),cantAddSession:!(S.newSessionName||'').trim(),goSessions:()=>this.go('sessions')}})(),isGraph:screen==='graph',isSaved:screen==='saved',isEditor:screen==='editor',isSets:screen==='sets',isTables:screen==='tables',isDesigner:screen==='designer',isStats:screen==='stats',isHistory:screen==='history',isSettings:screen==='settings',
       tbl,rollBg:overlay?tbl.floor:'var(--color-bg)',rollInk:overlay?tbl.ink:'var(--color-text)',rollRule:overlay?'color-mix(in srgb, currentColor 45%, transparent)':'var(--color-divider)',
+      wallOn:(S.settings.tableView??'flat')==='angled',plateLeft:(S.settings.tableView??'flat')==='angled'?'calc(5% + 14px)':'14px',plateTop:(S.settings.tableView??'flat')==='angled'?'calc(5.5% + 12px)':'12px',wallTop:`color-mix(in srgb, ${tbl.wall} 88%, #000)`,wallLeft:tbl.wall,
       pickerOrder:layout==='stack'?1:3,trayFlex:ledger?'0 0 340px':'1 1 0%',trayBorder:overlay?'0':`6px solid ${tbl.wall}`,stripFlex:ledger?'1 1 0%':'0 0 auto',
       groupPath:parent?`${parent.name} / ${grp.name}`:grp.name,groupName:grp.name,groupRollCount:groupRolls.length,groupsOpen:S.groupsOpen??!!props.groupMenuOpen,toggleGroups:()=>this.setState(s=>({groupsOpen:!(s.groupsOpen??!!props.groupMenuOpen)})),
       groupTables:[{id:'default',name:'App default'},...TABLES].map(t=>({name:t.name,on:(gPin||'default')===t.id,pick:()=>this.setState(s=>({groupTable:{...(s.groupTable||{}),[s.activeGroup]:t.id==='default'?undefined:t.id}}))})),pinNote:gPin?`${grp.name} is pinned to ${(TABLES.find(t=>t.id===gPin)||{}).name}; a group’s table wins over this default while it is active. Saved rolls can pin their own.`:'Groups and saved rolls can pin a table of their own; a pin wins over this default while active.',
@@ -1233,11 +1604,11 @@ class Component extends DCLogic {
       formulaKey:e=>{if(e.key==='Enter'){e.preventDefault();this.setState({editingFormula:false});this.doRoll(e.target.value)}if(e.key==='Escape')this.setState({editingFormula:false})},
       formula:f,onFormula:e=>this.setFormula(e.target.value),formulaErr:!!err,errPre:err?err.pre:'',errMid:err?err.mid:'',errPost:err?err.post:'',errMsg:parsed.error||'',
       refused:!!S.refused,refusedMsg:S.refused||'',clearRefused:e=>{e&&e.stopPropagation&&e.stopPropagation();this.setState({refused:null})},
-      powerOn:this.powerOn(),trayDice,showHint:!S.rolling&&!showSheet&&!S.refused,
-      tapTray:()=>{if(S.rolling)return;if(S.setMenuOpen){this.setState({setMenuOpen:false});return}if(editing){this.setState({editingFormula:false});return}if(showSheet){this.setState({dismissed:true});return}if(S.groupsOpen){this.setState({groupsOpen:false});return}},
+      powerOn:this.powerOn(),trayDice,showHint:!S.rolling&&!showSheet&&!S.refused&&(props.rollState||'none')==='none',
+      tapTray:()=>{if(S.rolling)return;if(S.setMenuOpen){this.setState({setMenuOpen:false});return}if(editing){this.setState({editingFormula:false});return}if(showSheet){this.setState({dismissed:true});return}if(S.groupsOpen){this.setState({groupsOpen:false});return}this.doRoll()},
       stripHandle:overlay,stripLedger:ledger,stripTiles:!overlay&&!ledger&&tileStyle==='tiles',stripRows:!overlay&&!ledger&&tileStyle==='rows',stripPoster:!overlay&&!ledger&&tileStyle==='poster',
       noRolls:visibleRolls.length===0,hasRolls:visibleRolls.length>0,noHistory:S.history.length===0,hasHistory:S.history.length>0,allRollsText:visibleRolls.length?`All ${visibleRolls.length} rolls in ${grp.name}`:'Saved rolls',
-      visibleRolls,...(()=>{const favs=visibleRolls.filter(r=>r.fav);const many=favs.length>3;return{visibleRollsTop:many?visibleRolls:visibleRolls.slice(0,3),stripListMax:many?'168px':'none',stripListOverflow:many?'auto':'visible'}})(),favRolls:visibleRolls.filter(r=>r.fav).slice(0,2),otherRolls:visibleRolls.filter(r=>!r.fav),
+      visibleRolls,...(()=>{const many=visibleRolls.length>3;return{visibleRollsTop:many?visibleRolls:visibleRolls.slice(0,3),stripListMax:many?'168px':'none',stripListOverflow:many?'auto':'visible'}})(),favRolls:visibleRolls.slice(0,2),otherRolls:visibleRolls.slice(2),
       showSheet,denCompact:density==='compact',denPoster:density==='poster',denFull:density==='full',denRows:density!=='compact',res,
       rollAgain:()=>this.doRoll(result&&result.formula?(result.label?`${result.formula} [${result.label}]`:result.formula):undefined,result&&result.rollId?S.rolls.find(r=>r.id===result.rollId):undefined),
       dismiss:()=>this.setState({dismissed:true,touched:true}),saveResult:()=>{const ed={id:null,name:'',icon:'dices',formula:result?(result.label?`${result.formula} [${result.label}]`:result.formula):f,fav:false,group:grp.id,tag:0};this.setState({editor:ed});this.go('editor')},
@@ -1269,7 +1640,17 @@ class Component extends DCLogic {
       // set detail
       ...(()=>{const key=S.detailSet===null?(props.detailSet&&props.detailSet!=='none'?props.detailSet:'brass'):S.detailSet;const r=SET_ROWS.find(x=>(x.key||'builtin')===key)||SET_ROWS[2];const def=SETS.find(x=>x.key===r.key);const dis=S.disabledSets.includes(r.key);const st=S.disabledSets.includes(r.key)&&r.statusOk?'Disabled by you':r.status;
         return{detail:{...r,version:S.setVersions[r.key]||r.version,hasUpdate:!!updAvail[r.key],updateLabel:updAvail[r.key]?`Update to ${updAvail[r.key]}`:'',startUpdate:()=>this.startUpdate(r.key),license:r.key==='mine'?((S.mineLicense&&S.mineLicense!=='unspecified')?S.mineLicense:r.license):r.license,statusText:st,tagClass:r.statusOk&&!dis?'tag tag-accent':'tag tag-outline',hasSource:!!r.source,noSource:!r.source,fill:r.fill||(def?def.fill:'#d7d3d3'),ink:def?def.ink:'#201e1d',isDefault:sv('defaultSet','builtin')===(r.key||'builtin'),canManage:!r.fixed,isMine:r.key==='mine',manageLabel:dis?'Enable or remove…':'Disable or remove…',okDice:!!r.statusOk&&!dis,failed:!r.statusOk,report:r.report||[],diceCount:def?def.dice.length:0},
-        detailDice:(def?def.dice:[]).map(s=>({id:s===100?'d%':'d'+s,path:SHAPES[s===100?10:s],label:s===100?'00':String(s),fill:r.fill||(def?def.fill:'#d7d3d3'),ink:def?def.ink:'#201e1d',padTop:s===4?10:0})),
+        detailDice:(def?def.dice:[]).map(s=>({id:s===100?'d%':'d'+s,path:SHAPES[s===100?10:s],label:s===100?'00':String(s),fill:r.fill||(def?def.fill:'#d7d3d3'),ink:def?def.ink:'#201e1d',padTop:s===4?10:0,stroke:'#201e1d',strokeW:2.5,alpha:+(1-physOf(r.key).a/100).toFixed(2)})),
+        ...(()=>{const k=r.key||'builtin',ph=physOf(k),mine=k==='mine';
+          const bump=(f,step,lo,hi)=>()=>{const cur=physOf(k);PHYS[k]={...cur,[f]:Math.round(Math.min(hi,Math.max(lo,cur[f]+step))*10)/10};this.forceUpdate()};
+          return{phys:{
+            weight:ph.w.toFixed(1)+' g',alpha:ph.a+' %',size:ph.s+' %',
+            opaque:ph.a===0?'opaque':'lets the table through',
+            sizeNote:ph.s===100?'average':(ph.s>100?ph.s-100+' % over average':100-ph.s+' % under average'),
+            editable:mine,fixed:!mine,
+            wUp:bump('w',0.1,0.5,50),wDown:bump('w',-0.1,0.5,50),
+            aUp:bump('a',5,0,100),aDown:bump('a',-5,0,100),
+            sUp:bump('s',5,50,150),sDown:bump('s',-5,50,150)}}})(),
         mineLicense:S.mineLicense||'unspecified',onMineLicense:e=>this.setState({mineLicense:e.target.value}),cantExportMine:(S.mineLicense||'unspecified')==='unspecified',exportMine:()=>this.setState({exported:true}),exportedNote:S.exported?'my-dice.zip shared — upload it to any git repo as-is.':'',
         detailSetDefault:()=>setS('defaultSet',r.key||'builtin'),detailManage:()=>this.setState({setDialog:r.key||'builtin'}),openSetDetail:k=>{this.setState({detailSet:k||'builtin'});this.go('setdetail')}}})(),
       installUrl,onInstallUrl:e=>this.setState({installUrl:e.target.value,installState:'none'}),cantInstall:!/^https:\/\//.test(installUrl)&&!/^file:/.test(installUrl),
@@ -1300,16 +1681,42 @@ class Component extends DCLogic {
         const i=TABLES.findIndex(x=>x.id===id);if(i<0)TABLES.push(row);else TABLES[i]=row;
         this.setState(st=>({uploadOpen:false,uploadFile:null,uploadName:'',table:id,groupTable:{...(st.groupTable||{}),[st.activeGroup]:undefined}}))},
       // designer
-      faceNo:S.face+1,faceBg:face.bg||'#e8e5e4',strokes:face.strokes,stamps:face.stamps.map(stampView),drawing:S.drawing||{pts:'',color:'',w:0},drawingOn:!!S.drawing,cvDown:this.cvDown,cvMove:this.cvMove,cvUp:this.cvUp,undo:this.undo,redo:this.redo,noUndo:!(face.past||[]).length,noRedo:!(face.redo||[]).length,showGuide:S.showGuide,toggleGuide:e=>this.setState({showGuide:e.target.checked}),
-      stampOn:S.tool==='stamp',stampText:S.stampText??String(S.face+1),onStampText:e=>this.setState({stampText:e.target.value}),
+      faceNo:S.face+1,faceValue:this.sides()===4?'':faceLabel(this.sides(),S.face),
+      ...(g=>({guideX:g[0]/320*100,guideY:g[1]/320*100,guidePx:g[2]}))(NUM[this.sides()]||[160,160,180]),
+      isD6:this.sides()===6,fillPips:this.fillPips,clearPips:this.clearPips,
+      pipDots:pipDots(face.pips,face.pipColor),hasPips:!!face.pips,
+      showGuideNum:!!this.state.showGuide&&!face.pips,faceBg:face.bg||'#e8e5e4',edgeMarks:this.sides()===4?edgeMarks(4,face.edges,face.edgeColor):[],
+      edgeFields:(this.sides()===4?[0,1,2]:[]).map((p,i)=>({no:i+1,value:(face.edges||[])[i]||'',set:e=>{const v=e.target.value;this.updFace(f=>{const ar=(f.edges||[]).slice();ar[i]=v;return{...f,edges:ar,edgeColor:S.color}})}})),
+      hasEdges:this.sides()===4,edgeCount:3,
+      edgeLabel:'Corner values',edgeResetLabel:'Reset to standard',
+      edgeNote:'Each corner carries the value of the face opposite it, so the three faces meeting at the apex all read the same number — the value of the face the die is resting on.',
+      fillEdges:()=>this.updFace(f=>({...f,edges:cornerVals(S.face),edgeColor:S.color}),true),strokes:face.strokes,stamps:face.stamps.map(stampView),drawing:S.drawing||{pts:'',color:'',w:0},drawingOn:!!S.drawing,cvDown:this.cvDown,cvMove:this.cvMove,cvUp:this.cvUp,undo:this.undo,redo:this.redo,noUndo:!(face.past||[]).length,noRedo:!(face.redo||[]).length,showGuide:S.showGuide,toggleGuide:e=>this.setState({showGuide:e.target.checked}),
+      stampOn:S.tool==='stamp',stampText:S.stampText??faceLabel(this.sides(),S.face),onStampText:e=>this.setState({stampText:e.target.value}),
       stampSizes:[['S',90],['M',150],['L',210]].map(o=>({label:o[0],on:(S.stampSize||150)===o[1],pick:()=>this.setState({stampSize:o[1]})})),
       tools,palette:PALETTE.map(hex=>({hex,border:S.color===hex?'var(--color-text)':'var(--color-divider)',pick:()=>this.setState({color:hex})})),
       dzCustomColor:S.customColor||'#2b5aa8',dzCustomBorder:S.customColor&&S.color===S.customColor?'var(--color-text)':'var(--color-divider)',dzCustomOff:!(S.customColor&&S.color===S.customColor),dzCustomHex:S.customColor&&S.color===S.customColor?S.customColor.toUpperCase():'Custom…',dzPickCustom:e=>this.setState({customColor:e.target.value,color:e.target.value}),
       dzDice:DZ_DICE.map(s=>({id:'d'+s,on:this.sides()===s,pick:()=>this.setState({dzSides:s,face:0,drawing:null})})),dzSides:this.sides(),dzShape:MASK_NAMES[this.sides()],maskPath:MASKS[this.sides()]||MASKS[6],maskClip:`path('${MASKS[this.sides()]||MASKS[6]}')`,
-      faceStrip:this.dz().map((fc,i)=>({no:i+1,strokes:fc.strokes,stamps:fc.stamps.map(stampView),bg:fc.bg||'#e8e5e4',border:i===S.face?'var(--color-accent)':'var(--color-divider)',pick:()=>this.setState({face:i,drawing:null})})),
+      faceStrip:this.dz().map((fc,i)=>({no:faceLabel(this.sides(),i),pipDots:pipDots(fc.pips,fc.pipColor),numOp:fc.pips?0:0.16,strokes:fc.strokes,stamps:fc.stamps.map(stampView),bg:fc.bg||'#e8e5e4',border:i===S.face?'var(--color-accent)':'var(--color-divider)',pick:()=>this.setState({face:i,drawing:null})})),
+      ...(()=>{const solid=S.dzView==='solid';const spin=S.sdSpin??true;const r=S.sdRot||{x:-16,y:0};
+        return{editorOn:!solid,solidOn:solid,
+          dzViewTabs:[['face','Face'],['solid','Solid']].map(o=>({label:o[1],on:(S.dzView||'face')===o[0],pick:()=>this.setState({dzView:o[0]})})),
+          solidFaces:solid?this.solidView():[],
+          sdDown:this.sdDown,sdMove:this.sdMove,sdUp:this.sdUp,
+          sdTransform:`rotateX(${r.x.toFixed(1)}deg) rotateY(${r.y.toFixed(1)}deg)`,
+          sdAnim:spin?'dz-orbit 16s linear infinite':'none',
+          sdSpin:spin,toggleSpin:()=>this.setState({sdSpin:!spin}),
+          sdNote:`${MASK_NAMES[this.sides()]} · ${this.sides()} faces · drag to turn it`}})(),
+      exited:!!S.exited,backArmed:!!S.backArmed&&!S.exited,
+      edgeDown:this.edgeDown,edgeUp:this.edgeUp,
+      reopen:()=>this.setState({exited:false,backArmed:false,screen:'roll',stack:[]}),
       fillNumbers:this.fillNumbers,rollDesigned:()=>{this.setState({stack:[],fromDesigner:true});this.doRoll(`mine:1d${this.sides()} [doodle]`)},
-      fromDesigner:screen==='roll'&&!!S.fromDesigner,notFromDesigner:!(screen==='roll'&&!!S.fromDesigner),backToDesigner:e=>{e&&e.stopPropagation&&e.stopPropagation();this.setState({fromDesigner:false,dismissed:true,screen:'designer',stack:[]})},saveDesigned:()=>{this.setState(s=>({rolls:s.rolls.some(r=>r.formula.startsWith('mine:'))?s.rolls:[...s.rolls,{id:s.nextId,group:grp.id,name:'Skull d6',icon:'dices',formula:'mine:1d6',fav:false,tag:2,useCount:0,lastUsedAt:Date.now()}],nextId:s.nextId+1}));this.go('sets')},
-      designerNote:`${this.dz().reduce((a,fc)=>a+fc.strokes.length,0)} strokes · 256 px per face · saved as "mine:d${this.sides()}-doodle"`,
+      fromDesigner:screen==='roll'&&!!S.fromDesigner,notFromDesigner:!(screen==='roll'&&!!S.fromDesigner),backToDesigner:e=>{e&&e.stopPropagation&&e.stopPropagation();this.setState({fromDesigner:false,dismissed:true,screen:'designer',stack:[]})},saveDesigned:()=>this.setState({saveOpen:true}),
+      saveOpen:!!S.saveOpen,stopClose:e=>e.stopPropagation(),closeSave:()=>this.setState({saveOpen:false,newSetName:''}),
+      saveTargets:SET_ROWS.filter(r=>r.owned&&!S.removedSets.includes(r.key)).map(r=>({name:r.name,meta:r.meta,save:()=>this.saveToSet(r.key)})),
+      newSetName:S.newSetName||'',onNewSetName:e=>this.setState({newSetName:e.target.value}),
+      cantCreateSet:!(S.newSetName||'').trim(),createSet:()=>this.saveToSet(null,(S.newSetName||'').trim()),
+      savedNote:S.savedNote||'',hasSavedNote:!!S.savedNote,
+      designerNote:`${this.dz().reduce((a,fc)=>a+fc.strokes.length,0)} strokes · ${this.sides()===4?'corner values':'centre value'} · 256 px per face`,
       // stats
       statsSets:[{key:'all',name:'All sets'},...SETS.filter(x=>!S.removedSets.includes(x.key)).map(x=>({key:x.key,name:x.name}))].map(x=>({name:x.name,on:statsSet===x.key,pick:()=>this.setState({statsSet:x.key})})),
       statsDice:statsDiceList.map(s=>({id:dieId(s),on:statsSides===s,pick:()=>this.setState({statsDie:s})})),statsDieId:(statsSetDef?statsSetDef.name+' · ':'all sets · ')+dieId(statsSides),statsSides,
@@ -1322,7 +1729,7 @@ class Component extends DCLogic {
       noHistory:hist.length===0,
       // settings
       resetStats:()=>this.askConfirm({title:'Reset statistics for “'+this.groupName()+'”?',body:'Every roll recorded in this session is deleted — counts, histograms and streaks go back to zero. Saved rolls, dice sets and other sessions are untouched.',label:'Reset session',act:()=>this.setState(st=>({history:st.history.filter(h=>h.session!==this.groupName())}))}),
-      settingRows,sessionName:S.sessionName,onSession:e=>this.setState({sessionName:e.target.value})
+      settingRows,...accentVals,...this.rollStateVals(props,live),sessionName:S.sessionName,onSession:e=>this.setState({sessionName:e.target.value})
     }
   }
 }
