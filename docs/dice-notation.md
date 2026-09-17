@@ -194,10 +194,22 @@ to their lowest or highest faces is a real assignment, and a group's subtotal
 only goes up as its dice do. Subtraction turns a group's range over rather than
 carrying it through, so `20 - 1d6` reads 14 to 19 and not the other way about.
 
-**The ceiling of an exploding formula is honest and very high.** A maximum face
-earns another die, which can itself be a maximum, so the highest `8d6!` can
-reach is eight chains of twenty-one sixes — 1008. It is attainable, so the range
-is never wrong; whether it is *useful* is `docs/TODO.md`, Step 4.1.
+**A formula that can explode shows its ceiling with a `+`.** A maximum face
+earns another throw, so there is no useful highest number — counting every die a
+forced chain could earn gave `8d6!` a ceiling of 1008, attainable and useless.
+
+The ceiling is instead **every die at its highest, and every throw they earn at
+its lowest**. `3d6!` is three sixes, and the three throws those earn coming up
+one apiece: `3 to 21+`. The `+` is the honest part — those three could have been
+sixes too, and earned three more.
+
+A lowest face explodes nowhere, so the chain stops itself rather than being cut
+off, and the number is a total the roll could really come to.
+
+The mark comes from the ceiling's reckoning alone. The floor draws extra dice as
+well — a die forced *low* is what sets off `r n` — and **a reroll is not an
+explosion**: its replacement stands however it lands, so `1d6r3` really does top
+out at six and marking it would promise a number that cannot come.
 
 A group may carry each modifier at most once, and may keep **or** drop, not
 both: `4d6dl1dl1` and `4d6kh1dl1` are refused rather than quietly meaning
