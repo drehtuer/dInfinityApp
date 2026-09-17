@@ -6,10 +6,14 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -134,6 +138,24 @@ fun DInfinityApp(
   onPowerSavingChanged: (Boolean) -> Unit = {},
   onWelcomeSeen: () -> Unit = {},
   menuHeader: MenuHeader? = null,
+  /**
+   * What leaving the app is — the activity finishing.
+   *
+   * Only the roll screen ever asks for it, and only on the second press of
+   * back inside two seconds ([TwoStageBack]). A no-op by default, because a
+   * Robolectric test of the graph has no activity to finish and a default that
+   * finished one would be a test suite that closed itself.
+   */
+  onLeave: () -> Unit = {},
+  /**
+   * What the system is covering: the status bar, the gesture bar, a cutout.
+   *
+   * Taken rather than only read, for the reason [navController] is taken — so
+   * a test can put a 58 dp status bar over the app and see whether a screen
+   * clears it, which no Robolectric window has of its own
+   * (`ScreenInsetsTest`).
+   */
+  insets: WindowInsets = WindowInsets.safeDrawing,
   navController: NavHostController = rememberNavController(),
 ) {
   NavHost(
@@ -154,44 +176,87 @@ fun DInfinityApp(
             }
           },
       ) { entry ->
-        // Split in three, by what the screens are *about* rather than for
-        // tidiness: the graph's own table outgrew both the length and the
-        // complexity limits when sessions arrived, and each of these is one
-        // question — what the app does, what a player saved, what they have
-        // done. Each returns whether it recognised the destination, so exactly
-        // one of them draws and nothing falls through silently.
-        val drawn =
-          playing(destination, entry, navController, settings, screens, onWelcomeSeen) ||
-            saving(destination, entry, navController, screens) ||
-            lookingBack(destination, entry, navController, screens) ||
-            counting(destination, entry, navController, screens) ||
-            customising(destination, entry, navController, screens, onSource) ||
-            chrome(
-              destination = destination,
-              entry = entry,
-              navController = navController,
-              settings = settings,
-              onAccentSelected = onAccentSelected,
-              onAppearanceSelected = onAppearanceSelected,
-              onPowerSavingChanged = onPowerSavingChanged,
-              onShakeChanged = onShakeChanged,
-              onHapticsChanged = onHapticsChanged,
-              onSoundChanged = onSoundChanged,
-              onRoundingSelected = onRoundingSelected,
-              onDeveloperToolsChanged = onDeveloperToolsChanged,
-              onRepository = onRepository,
-              version = version,
-              menuHeader = menuHeader,
-              developer = screens?.developer,
-              onShareText = onShareText,
-            )
-        // A destination whose screen is not built yet, or whose presenter was
-        // not supplied — a Robolectric test of the graph has neither a GPU nor
-        // a physics engine, and a placeholder is the honest thing to draw.
-        if (!drawn) PlaceholderScreen(destination = destination, menu = { MenuTo(navController) })
+        // Inside the safe area, once, for every screen the graph draws
+        // ([WithinTheSafeArea]).
+        WithinTheSafeArea(destination = destination, insets = insets) {
+          // Split in three, by what the screens are *about* rather than for
+          // tidiness: the graph's own table outgrew both the length and the
+          // complexity limits when sessions arrived, and each of these is one
+          // question — what the app does, what a player saved, what they have
+          // done. Each returns whether it recognised the destination, so exactly
+          // one of them draws and nothing falls through silently.
+          val drawn =
+            playing(destination, entry, navController, settings, screens, onWelcomeSeen) ||
+              saving(destination, entry, navController, screens) ||
+              lookingBack(destination, entry, navController, screens) ||
+              counting(destination, entry, navController, screens) ||
+              customising(destination, entry, navController, screens, onSource) ||
+              chrome(
+                destination = destination,
+                entry = entry,
+                navController = navController,
+                settings = settings,
+                onAccentSelected = onAccentSelected,
+                onAppearanceSelected = onAppearanceSelected,
+                onPowerSavingChanged = onPowerSavingChanged,
+                onShakeChanged = onShakeChanged,
+                onHapticsChanged = onHapticsChanged,
+                onSoundChanged = onSoundChanged,
+                onRoundingSelected = onRoundingSelected,
+                onDeveloperToolsChanged = onDeveloperToolsChanged,
+                onRepository = onRepository,
+                version = version,
+                menuHeader = menuHeader,
+                developer = screens?.developer,
+                onShareText = onShareText,
+              )
+          // A destination whose screen is not built yet, or whose presenter was
+          // not supplied — a Robolectric test of the graph has neither a GPU nor
+          // a physics engine, and a placeholder is the honest thing to draw.
+          if (!drawn) PlaceholderScreen(destination = destination, menu = { MenuTo(navController) })
+          // Two presses to leave, and only from the tray: the handler is in
+          // the composition only while the roll screen is
+          // (`docs/architecture.md`, "Navigation").
+          if (destination == Destination.home) {
+            TwoStageBack(onLeave = onLeave, modifier = Modifier.align(Alignment.BottomCenter))
+          }
+        }
       }
     }
   }
+}
+
+/**
+ * Draws a screen inside whatever the system is covering — once, here, rather
+ * than in each screen.
+ *
+ * **This is where the status bar was lost.** Every screen used to apply
+ * `safeDrawingPadding` itself, which works exactly as long as nobody writes a
+ * screen that forgets; Settings forgot, and printed its title under the clock
+ * on a phone whose status bar is 58 dp while the tray's menu button cleared it
+ * (`docs/TODO.md`, Step 4). Applying it here makes forgetting impossible: a
+ * screen does not have to know the window has edges.
+ *
+ * The padding **consumes** what it applies, so a screen that still insets
+ * something inside itself — the tray's floating controls do — gets nothing
+ * twice.
+ *
+ * [Destination.fullBleed] is the one way out, and the tray is the one
+ * destination that takes it.
+ */
+@Composable
+private fun WithinTheSafeArea(
+  destination: Destination,
+  insets: WindowInsets,
+  content: @Composable BoxScope.() -> Unit,
+) {
+  Box(
+    modifier =
+      Modifier
+        .fillMaxSize()
+        .then(if (destination.fullBleed) Modifier else Modifier.windowInsetsPadding(insets)),
+    content = content,
+  )
 }
 
 /**
@@ -533,7 +598,7 @@ private fun customising(
         // Removing the set leaves the screen that was showing it: there is
         // nothing left to show, and staying would be a page about a folder
         // that is not there.
-        presenter = remember(entry) { screens.diceSet(id) { navController.popBackStack() } },
+        presenter = remember(entry) { screens.diceSet(id) { navController.climb(Destination.SetDetail) } },
         onSource = onSource,
         menu = { MenuTo(navController) },
       )
@@ -701,9 +766,10 @@ private fun Saved(
 /**
  * Writing down one saved roll.
  *
- * Leaves when it is saved or deleted, by going back rather than forward: the
- * editor is a detour from the list, and finishing one is arriving back where
- * it started.
+ * Leaves when it is saved or deleted, and by the chevron in its header before
+ * that — all three by climbing to the list of saved rolls rather than by
+ * retracing. The editor is a detour from that list however it was opened, and
+ * finishing one is arriving at it ([climb]).
  */
 @Composable
 private fun Editor(
@@ -724,7 +790,11 @@ private fun Editor(
   EditorScreen(
     presenter = remember(entry) { presenter(opening) },
     groups = remember(entry) { groups() },
-    onDone = { navController.popBackStack() },
+    // Written down, taken away, or left by the chevron: all three climb to the
+    // list of saved rolls, which is what the editor is a detour from — whether
+    // the detour started there, at the tray's strip or at the outcome graph.
+    onDone = { navController.climb(Destination.SavedRollEditor) },
+    onUp = { navController.climb(Destination.SavedRollEditor) },
     onRollNow = { formula ->
       navController.navigate(rollRoute(formula)) {
         popUpTo(Destination.home.route) { inclusive = true }
@@ -766,11 +836,7 @@ private fun Import(
     // and a picker that hides the file somebody is looking at is worse than
     // one that lets them choose the wrong thing and be told so.
     onChooseFile = { choose.launch(arrayOf("*/*")) },
-    onDone = {
-      navController.navigate(Destination.SavedRolls.route) {
-        popUpTo(Destination.CollectionImport.route) { inclusive = true }
-      }
-    },
+    onDone = { navController.climb(Destination.CollectionImport) },
     menu = { MenuTo(navController) },
   )
 }
@@ -814,6 +880,33 @@ internal fun designerRoute(dieId: String): String =
  */
 internal fun rollRoute(formula: String): String =
   "${Destination.Roll.route}?${GraphArgument.FORMULA}=${Uri.encode(formula)}"
+
+/**
+ * Up, out of [from] — to the screen it hangs off, whatever path the player
+ * took to get there ([Destination.up]).
+ *
+ * **It is not `popBackStack`, and the difference is the point.** Popping
+ * retraces: the editor opened from the tray's strip would go back to the tray,
+ * the same editor opened from the list would go back to the list, and a
+ * control that lands somewhere different each time is one nobody can predict.
+ * This climbs — the same control, the same destination, every time
+ * (`docs/architecture.md`, "Navigation").
+ *
+ * What is left behind is a stack a player could have built by hand: the tray
+ * at the bottom, the screen climbed to on top of it. Climbing *to* the tray
+ * leaves the tray alone at the bottom, which is where the app opens.
+ *
+ * From the tray itself there is nowhere up, and nothing happens — leaving is
+ * system back's, twice ([TwoStageBack]).
+ */
+internal fun NavHostController.climb(from: Destination) {
+  val up = from.up ?: return
+  navigate(up.route) {
+    popUpTo(Destination.home.route) { inclusive = up == Destination.home }
+    // Climbing to the screen already underneath is not a second copy of it.
+    launchSingleTop = true
+  }
+}
 
 /**
  * The menu's rows, one per screen, grouped as the design groups them.

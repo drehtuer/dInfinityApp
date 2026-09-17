@@ -223,7 +223,7 @@ stateDiagram-v2
     Roll --> Graph: See the odds
     Roll --> Menu: the menu button
     Screen --> Editor: a saved roll, or New
-    Editor --> Screen: saved, deleted, or back
+    Editor --> Screen: saved, deleted, or the chevron
     Editor --> Roll: Roll now
     Graph --> Menu: the menu button
     Screen --> Menu: the menu button
@@ -261,11 +261,67 @@ roll screen is where the app opens and where a result sits while somebody is
 still reading it, and it is also the screen with the largest gesture surface in
 the app.
 
+The rule is `LeavingTheApp`, a state machine over "back was pressed at time
+*t*" with **the clock handed in**, and it knows nothing about Compose. A timer
+inside a composable would make the behaviour something only a phone could
+observe, and the case that matters most — the press that arrives a millisecond
+too late — would be a two-second sleep in a suite that runs on every commit.
+What the screen adds is the press, the words and `finish()`; the handler is in
+the composition only while the tray is, so it cannot fire on a screen it was
+not written for. There is **no "closed app" screen**: the prototype draws one
+because a web page cannot close, and an app that closes is closed.
+
+The toast is `ui/common`'s `ModernistToast` — the design's inverted plate,
+`--color-text` ground and `--color-bg` letters, `8`/`14` dp of padding and
+`--shadow-md` — and it takes itself away after **2.6 s**. That is six tenths of
+a second longer than the window it names, so a press in the gap arms again
+rather than leaving. It is the failure worth having: an app that stays open
+when it was asked twice is one press from closing, and one that closes when it
+was asked once is gone.
+
 **A chevron in a header always goes up, never back.** It takes the player to
 the hub the screen was opened from, and from the hub to Roll, whatever path
 they took to get there. It is not a second spelling of the system's back
 button: one of them retraces steps and the other climbs, and a control that
 sometimes does each is a control nobody can predict.
+
+Where up *is* is `Destination.up`, and it is total: the menu for everything the
+menu lists, the list it belongs to for the three screens that are about one of
+something — the editor and an import go to Saved rolls, a set's details to Dice
+sets — the tray from the menu, and nowhere from the tray, where leaving is back
+twice. `NavHostController.climb` is the only way it is used, and it never pops:
+it navigates, leaving the tray at the bottom of the stack and the screen
+climbed to on top of it. So the editor opened from the tray's strip and the
+same editor opened from the list leave by the same chevron to the same place,
+which a `popBackStack` could not do.
+
+Today one screen draws the chevron: the **saved-roll editor**, which is the
+only screen with no menu button — it is about a roll rather than about a
+subject — so without it the only ways out were saving, deleting and the
+system's own back. Saving and deleting climb the same way. The `←` on
+Statistics and the `Back` on saved-roll statistics are *not* chevrons in this
+sense and do not navigate: they close a detail on the screen they are drawn on.
+
+### One safe area, applied once
+
+The window goes edge to edge, and what the system covers — the status bar, the
+gesture bar, a cutout — is applied by the navigation graph, **once**, around
+whatever it is about to draw.
+
+It used to be each screen's own job, which works exactly as long as nobody
+forgets. Settings forgot: on the Pixel 10a its title and menu button sat under
+the clock, 58 dp above where the tray's menu button sat, and nothing could have
+caught it because every screen's own test draws that screen in a window with no
+status bar, where inset and not-inset look identical. A screen should not have
+to know the window has edges.
+
+`Destination.fullBleed` is the one way out and the tray is the one destination
+that takes it: it is a single full-bleed table with everything floating on it,
+and felt inset by 58 dp would be a grey stripe across the top of the screen.
+The tray insets its *controls* instead — the menu button, the debug overlay,
+the stack of controls along the bottom. Window-inset padding consumes what it
+applies, so a screen that still insets something inside itself gets nothing
+twice.
 
 The menu button is **handed to each screen rather than built by it**. A screen
 that knew what the menu was would be one feature module depending on another,
@@ -912,7 +968,7 @@ one made here.
 | **Fetch** a link | `fetch`, then `CollectionDownload` in `:app` | a file or a repository is downloaded, and becomes text or a refusal |
 | *(not a control)* the file's text | `offer` | the state, to one of the four above |
 | **Choose another file** | `again`, then the picker | back to `Waiting` |
-| **See the rolls** | *(navigation)* | the saved-rolls list, with the import taken off the back stack |
+| **See the rolls** | *(navigation)* | climbs to the saved-rolls list, leaving the import behind |
 
 The picker is in `:app` rather than on the screen, because a content URI is the
 application's business. The screen takes text; the permission, the **bounded**
@@ -944,8 +1000,11 @@ numbers beside it.
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
 | **Delete** | `delete` | the roll is taken away, and the editor leaves |
 
-The editor leaves by going *back* rather than forward: it is a detour from the
-list, and finishing one is arriving back where it started.
+The editor leaves by **climbing**, not by going back: saving, deleting and the
+chevron in its header all land on the saved-rolls list. It is a detour from
+that list however it was opened — from the list, from the tray's strip, from
+the outcome graph's "Save as roll" — and finishing one is arriving at it
+("Navigation").
 
 ### Sessions
 

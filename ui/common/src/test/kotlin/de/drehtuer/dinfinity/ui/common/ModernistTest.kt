@@ -198,6 +198,28 @@ class ModernistTest {
   }
 
   @Test
+  fun `a shadow is the blur the stylesheet blurs by`() {
+    // The CSS shadows are three lengths and a tint and Compose takes one
+    // number, so what is transcribed is the blur — the length that says how
+    // far the shadow reaches. `--shadow-lg` has no token because nothing in
+    // this app is lifted that far.
+    assertEquals(
+      "--shadow-sm",
+      blur("--shadow-sm"),
+      Modernist.Shadow.sm.value
+        .toDouble(),
+      0.0,
+    )
+    assertEquals(
+      "--shadow-md",
+      blur("--shadow-md"),
+      Modernist.Shadow.md.value
+        .toDouble(),
+      0.0,
+    )
+  }
+
+  @Test
   fun `a divider is the ink at forty per cent, on either ground`() {
     // `--color-divider` is written as a `color-mix` of the text colour, so what
     // is checked is the share rather than a hex — and that it follows the ink
@@ -218,6 +240,19 @@ class ModernistTest {
     val found =
       Regex(selector + """\s*\{[^}]*font-size:\s*([\d.]+)px""").find(css)
         ?: error("$selector has no font-size in the stylesheet")
+    return found.groupValues[1].toDouble()
+  }
+
+  /**
+   * The third length of a `box-shadow`: how far it reaches.
+   *
+   * The first length is a bare `0` rather than `0px` — a zero needs no unit in
+   * CSS — so only the second and third are matched with one.
+   */
+  private fun blur(token: String): Double {
+    val found =
+      Regex(Regex.escape(token) + """:\s*[\d.]+(?:px)?\s+[\d.]+px\s+([\d.]+)px""").find(css)
+        ?: error("$token is not a three-length shadow in the stylesheet")
     return found.groupValues[1].toDouble()
   }
 

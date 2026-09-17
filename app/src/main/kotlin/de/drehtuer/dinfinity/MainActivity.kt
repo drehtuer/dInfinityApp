@@ -171,6 +171,11 @@ class MainActivity : ComponentActivity() {
       onRepository = { openRepository() },
       version = installedVersion(),
       onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
+      // The second press of back on the roll screen, inside two seconds
+      // (`docs/architecture.md`, "Navigation"). `finish` rather than anything
+      // cleverer: an app that closes is closed, and the next launch opens on
+      // the tray like the first one did.
+      onLeave = { finish() },
       menuHeader = menuHeader(app, settings),
       screens = ScreenWiring(app, settings, repository, saved, lifecycleScope).presenters(),
       onSource = { url -> open(url) },

@@ -69,13 +69,6 @@ the canvas — open [design/](../design/) beside the code.
       (`docs/design-handover.md`, "Four the pass did not reach"). The mode is read
       when the screen opens, so the screen already knows.
 
-- [ ] **Two screens disagree about where the top of the screen is.** On the
-      Pixel 10a the Roll screen's menu button sits at y≈174 px and Settings'
-      at y≈64, immediately under the status bar, with its title a few pixels
-      off the clock. Whatever `safeDrawingPadding` the roll screen applies is
-      not reaching the screens the menu opens. Seen, not measured against a
-      spec — one of them is right and the same one should be right everywhere.
-
 Every screen follows the same four steps, so they are written out once here
 rather than repeated below:
 
@@ -554,8 +547,31 @@ every throw filed under it (`docs/statistics.md`, per session).
 - [ ] **Four across, not five.** Six swatches at today's size lay out 5 + 1
       with one orphaned; at 44 dp on a four-column grid, six presets and a
       custom swatch come out 4 + 3
-- [ ] **The two-stage back**, and the "Back again to leave dInfinity" toast
-      with it (`docs/architecture.md`, "Navigation")
+
+**Navigation is finished, and three things were decided while finishing it**
+(`docs/architecture.md`, "Navigation" and "One safe area, applied once"):
+
+- **The toast outlives its window by six tenths of a second.** The design gives
+  the toast 2.6 s and the arming 2 s, so a press in the gap arms again rather
+  than leaving. Kept as the design wrote it: the failure that stays open is one
+  press from closing, and the one that closes is gone. `LeavingTheApp` holds
+  the window and takes its clock as an argument, so both edges are JVM tests
+  rather than a two-second sleep.
+- **The chevron is drawn on one screen, not on all of them.** The prototype
+  puts one in every header; the app puts a menu button there instead, which
+  reaches every screen rather than one. The editor is the exception because it
+  has no menu button — it is about a roll rather than a subject — and had no
+  way out but saving, deleting or system back. `Destination.up` and
+  `NavHostController.climb` are the rule for all of them either way, and the
+  three screens that are about *one* of something climb to the list of them
+  rather than to the menu. The `←` on Statistics is not a chevron: it closes a
+  detail on the screen it is drawn on.
+- **The safe area is the graph's, not each screen's.** The fourteen
+  `safeDrawingPadding` calls are gone; `Destination.fullBleed` is the single
+  exception and only the tray takes it. `DInfinityApp` takes its insets like it
+  takes its `NavHostController`, so a test can hold a 58 dp status bar over
+  every destination — which is the only way this could have been caught, since
+  a Robolectric window has no status bar of its own.
 
 The **developer toggle** is the last thing on that screen, and it is the one
 setting that is off on every install. It adds a debug overlay over the tray, a

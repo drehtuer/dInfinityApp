@@ -172,6 +172,56 @@ enum class Destination(
         arguments.joinToString(separator = "&", prefix = "$route?") { "$it={$it}" }
       }
 
+  /**
+   * Whether this screen draws to the edges of the glass itself.
+   *
+   * Every other destination is drawn **inside the safe area** by the graph,
+   * once, so that a screen cannot forget the status bar — which is exactly
+   * what Settings did, printing its title under the clock while the tray's
+   * menu button cleared it (`docs/architecture.md`, "One safe area, applied
+   * once").
+   *
+   * The tray is the exception and has to be: it is one full-bleed table with
+   * everything floating on it, and a felt inset by 58 dp at the top is a
+   * screen with a grey stripe across it. It insets its *controls* instead, and
+   * `RollScreen` is where that is done.
+   *
+   * A property rather than a constructor argument, like [up]: the entry list
+   * is already at the limit detekt sets for one, and "which screen is
+   * full-bleed" is one answer rather than a column of `false`.
+   */
+  val fullBleed: Boolean get() = this == Roll
+
+  /**
+   * Where a chevron in this screen's header goes, or null for the one screen
+   * with nothing above it.
+   *
+   * **It climbs; it does not retrace.** The player is taken to the screen this
+   * one hangs off, whatever path they took to get here — the menu for
+   * everything the menu lists, the list it belongs to for the three screens
+   * that are about *one* of something, and the tray from the menu itself. A
+   * control that sometimes climbs and sometimes retraces is one nobody can
+   * predict (`docs/architecture.md`, "Navigation").
+   *
+   * A `when` over the entries rather than a constructor argument: an enum
+   * entry cannot name another one before it exists, and half of these point
+   * backwards. [DestinationTest] holds it to being total and to ending at the
+   * tray from everywhere.
+   */
+  val up: Destination?
+    get() =
+      when (this) {
+        // Home. Back from here leaves the app, in two presses (`LeavingTheApp`).
+        Roll -> null
+        Menu -> Roll
+        // The three that are about one of something go up to the list of them,
+        // not to the menu: the editor is about a roll, an import is about the
+        // rolls it brings in, and a set's details are about that set.
+        SavedRollEditor, CollectionImport -> SavedRolls
+        SetDetail -> DiceSets
+        else -> Menu
+      }
+
   companion object {
     val home: Destination = Roll
 

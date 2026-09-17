@@ -76,4 +76,12 @@
     "Selecting a table").
   -->
   <string name="table_look_fallback">Default</string>
+
+  <!--
+    What the first press of system back on the roll screen says. The second
+    within two seconds leaves the app (`docs/architecture.md`, "Navigation").
+    It names the app rather than saying "to exit", because a phone shows more
+    than one thing at a time and the sentence should say which one is going.
+  -->
+  <string name="back_again">Back again to leave dInfinity</string>
 </resources>

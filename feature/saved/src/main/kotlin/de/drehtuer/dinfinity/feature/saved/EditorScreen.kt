@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
@@ -39,6 +38,7 @@ import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.OptionBox
 import de.drehtuer.dinfinity.ui.common.OptionFill
 import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.UpButton
 
 /**
  * Writing down a saved roll (`design/dInfinity.dc.html`, options 1r and 7b).
@@ -59,6 +59,19 @@ fun EditorScreen(
   modifier: Modifier = Modifier,
   onDone: () -> Unit = {},
   onRollNow: (String) -> Unit = {},
+  /**
+   * Where the chevron in the header goes.
+   *
+   * A lambda rather than a destination: this module does not know what the
+   * navigation graph is, and the rule that the chevron *climbs* rather than
+   * retraces belongs to the graph (`docs/architecture.md`, "Navigation").
+   *
+   * It matters more here than anywhere else, because this is the one screen
+   * with no menu button: the editor is about a roll rather than a subject, so
+   * without a way out of its own it could only be left by saving, deleting or
+   * the system's own back.
+   */
+  onUp: () -> Unit = {},
 ) {
   val state = presenter.state
   Column(
@@ -66,10 +79,9 @@ fun EditorScreen(
       modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
-        .safeDrawingPadding()
         .testTag(EditorTestTags.SCREEN),
   ) {
-    Title(existing = state.existing)
+    Title(existing = state.existing, onUp = onUp)
     Form(
       state = state,
       presenter = presenter,
@@ -160,13 +172,25 @@ private fun Form(
  * was Material's 24 sp at 400.
  */
 @Composable
-private fun Title(existing: Boolean) {
-  Text(
-    text = stringResource(if (existing) R.string.editor_title_edit else R.string.editor_title_new),
-    style = MaterialTheme.typography.titleLarge,
-    color = MaterialTheme.colorScheme.onBackground,
-    modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x2),
-  )
+private fun Title(
+  existing: Boolean,
+  onUp: () -> Unit,
+) {
+  // The chevron, then the name of what is being written down — the header the
+  // prototype draws on every screen it can be left from
+  // (`design/dInfinityPhone.dc.html`, the editor).
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = Modernist.x2, vertical = Modernist.x1),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
+  ) {
+    UpButton(onUp = onUp)
+    Text(
+      text = stringResource(if (existing) R.string.editor_title_edit else R.string.editor_title_new),
+      style = MaterialTheme.typography.titleLarge,
+      color = MaterialTheme.colorScheme.onBackground,
+    )
+  }
   Rule()
 }
 

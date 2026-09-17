@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-09-17
+**Last updated:** 2026-09-18
 
 ## Where we are
 
@@ -70,8 +70,14 @@ over it against the prototype. What is left on each is in `docs/TODO.md`.
 every question the app was waiting on and decided a good deal nobody had asked
 about, so each screen's list has gained work that is code rather than an eye:
 plates over the table, a counting plate, per-set physical properties, the
-designer's Solid tab, dragged saved rolls, an accent picker behind a contrast
-clamp, and a two-stage back.
+designer's Solid tab, dragged saved rolls and an accent picker behind a
+contrast clamp.
+
+**Navigation is done.** Back off the tray is two presses with the design's
+toast between them, a header chevron climbs rather than retraces, and the safe
+area is applied once by the graph instead of by each screen — which is what
+Settings had been forgetting to do under the Pixel 10a's status bar
+(`docs/architecture.md`, "Navigation" and "One safe area, applied once").
 
 **Step 5 is the real remaining work** — see Known risks.
 

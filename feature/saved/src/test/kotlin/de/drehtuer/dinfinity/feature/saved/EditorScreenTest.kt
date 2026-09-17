@@ -24,6 +24,7 @@ import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
+import de.drehtuer.dinfinity.ui.common.UpTestTags
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -171,6 +172,22 @@ class EditorScreenTest {
     val rolls = runBlocking { repository.all.first() }
     assertEquals("one edit made two rolls", 1, rolls.size)
     assertEquals("10d6", rolls.single().formula)
+  }
+
+  @Test
+  fun `the chevron is the way out, and it is the only one that does not decide anything`() {
+    // This is the one screen with no menu button — it is about a roll rather
+    // than a subject — so without the chevron the only ways out are saving,
+    // deleting and the system's own back. Where it goes is the graph's
+    // (`docs/architecture.md`, "Navigation"); that it is here, and that
+    // pressing it neither writes nor deletes, is this screen's.
+    var climbed = 0
+    show(onUp = { climbed++ })
+
+    compose.onNodeWithTag(UpTestTags.UP).performClick()
+
+    assertEquals(1, climbed)
+    assertEquals("nothing should have been written", 0, runBlocking { repository.all.first() }.size)
   }
 
   @Test
@@ -335,6 +352,7 @@ class EditorScreenTest {
     startingFormula: String = "",
     onDone: () -> Unit = {},
     onRollNow: (String) -> Unit = {},
+    onUp: () -> Unit = {},
   ): EditorPresenter {
     val presenter =
       EditorPresenter(
@@ -358,7 +376,13 @@ class EditorScreenTest {
         },
       )
     compose.setContent {
-      EditorScreen(presenter = presenter, groups = groups, onDone = onDone, onRollNow = onRollNow)
+      EditorScreen(
+        presenter = presenter,
+        groups = groups,
+        onDone = onDone,
+        onRollNow = onRollNow,
+        onUp = onUp,
+      )
     }
     return presenter
   }
