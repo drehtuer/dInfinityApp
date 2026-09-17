@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -31,6 +30,9 @@ import androidx.compose.ui.text.input.ImeAction
 import de.drehtuer.dinfinity.data.Session
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * The buckets statistics are filtered by
@@ -176,53 +178,48 @@ private fun NameSheet(
   draft: SessionDraft,
   presenter: SessionsPresenter,
 ) {
-  AlertDialog(
+  Sheet(
+    title = stringResource(if (draft.fresh) R.string.sessions_new else R.string.sessions_rename),
+    onDismiss = { presenter.edit(null) },
     modifier = Modifier.testTag(SessionsTestTags.SHEET),
-    onDismissRequest = { presenter.edit(null) },
-    title = {
-      Text(stringResource(if (draft.fresh) R.string.sessions_new else R.string.sessions_rename))
-    },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(Modernist.x2)) {
-        OutlinedTextField(
-          value = draft.name,
-          onValueChange = presenter::name,
-          singleLine = true,
-          label = { Text(stringResource(R.string.sessions_name)) },
-          placeholder = { Text(stringResource(R.string.sessions_name_hint)) },
-          keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-          shape = Modernist.square,
-          modifier = Modifier.fillMaxWidth().testTag(SessionsTestTags.NAME),
-        )
-        if (draft.fresh) {
-          Text(
-            text = stringResource(R.string.sessions_new_note),
-            style = MaterialTheme.typography.labelSmall,
-            color = Ink.muted,
-          )
-        }
-      }
-    },
-    confirmButton = {
-      Button(
+    actions = {
+      ModernistButton(
+        text = stringResource(R.string.sessions_save),
         onClick = presenter::save,
+        kind = ModernistButtonKind.Primary,
         enabled = draft.savable,
-        shape = Modernist.square,
         modifier = Modifier.testTag(SessionsTestTags.SAVE),
-      ) {
-        Text(stringResource(R.string.sessions_save))
-      }
-    },
-    dismissButton = {
-      TextButton(
+      )
+      ModernistButton(
+        text = stringResource(R.string.sessions_cancel),
         onClick = { presenter.edit(null) },
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(SessionsTestTags.CANCEL),
-      ) {
-        Text(stringResource(R.string.sessions_cancel))
-      }
+      )
     },
-  )
+  ) {
+    // The field and its note, a step closer together than the sheet spaces its
+    // blocks: the note is about the field, not a block beside it.
+    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x2)) {
+      OutlinedTextField(
+        value = draft.name,
+        onValueChange = presenter::name,
+        singleLine = true,
+        label = { Text(stringResource(R.string.sessions_name)) },
+        placeholder = { Text(stringResource(R.string.sessions_name_hint)) },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        shape = Modernist.square,
+        modifier = Modifier.fillMaxWidth().testTag(SessionsTestTags.NAME),
+      )
+      if (draft.fresh) {
+        Text(
+          text = stringResource(R.string.sessions_new_note),
+          style = MaterialTheme.typography.labelSmall,
+          color = Ink.muted,
+        )
+      }
+    }
+  }
 }
 
 /** What the tests reach the sessions screen by. */

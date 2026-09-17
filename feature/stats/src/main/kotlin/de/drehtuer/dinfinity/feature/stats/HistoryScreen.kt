@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -39,8 +38,11 @@ import de.drehtuer.dinfinity.data.StoredDie
 import de.drehtuer.dinfinity.data.StoredGroup
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.SectionKicker
+import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import kotlin.math.abs
 
@@ -244,22 +246,32 @@ private fun ForgetDialog(
       is HistoryFilter.OfSavedRoll -> stringResource(R.string.history_forget_roll, filter.name)
       HistoryFilter.Everything -> return
     }
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.history_forget_title),
+    onDismiss = onNo,
     modifier = Modifier.testTag(HistoryTestTags.FORGET_DIALOG),
-    onDismissRequest = onNo,
-    title = { Text(stringResource(R.string.history_forget_title)) },
-    text = { Text(explanation) },
-    confirmButton = {
-      TextButton(onClick = onYes, shape = Modernist.square, modifier = Modifier.testTag(HistoryTestTags.FORGET_YES)) {
-        Text(stringResource(R.string.history_forget_yes), color = MaterialTheme.colorScheme.primary)
-      }
+    actions = {
+      // The confirming action is filled and the way out is the ghost, which is
+      // how the prototype's shared confirm sheet draws every question it asks
+      // (`design/dInfinityPhone.dc.html`, the `confirmOpen` block:
+      // `btn-primary` on the yes, `btn-ghost` on "Keep it"). Being destructive
+      // does not change it — this screen used to say otherwise, on its own.
+      ModernistButton(
+        text = stringResource(R.string.history_forget_yes),
+        onClick = onYes,
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(HistoryTestTags.FORGET_YES),
+      )
+      ModernistButton(
+        text = stringResource(R.string.history_forget_no),
+        onClick = onNo,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(HistoryTestTags.FORGET_NO),
+      )
     },
-    dismissButton = {
-      TextButton(onClick = onNo, shape = Modernist.square, modifier = Modifier.testTag(HistoryTestTags.FORGET_NO)) {
-        Text(stringResource(R.string.history_forget_no))
-      }
-    },
-  )
+  ) {
+    Text(explanation)
+  }
 }
 
 /**

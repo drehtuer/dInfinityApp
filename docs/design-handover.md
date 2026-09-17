@@ -181,14 +181,36 @@ prototype has a Save button.
    which is the badge that says a dice set has an update. `tag-neutral` and
    `tag-outline` need no ramp and are drawn.
 
-3. **Every sheet in the prototype is a bottom sheet** — full width, slid up,
-   with its actions aligned **left**. Material's dialog is centred, inset and
-   right-aligns them. This one is worth a single shared component rather than
-   one per screen.
-4. **The slider has no design.** Hue, depth and brightness in the designer use
+3. **The design system's dialog and the prototype's sheet disagree, and the
+   prototype wins.** `.dialog-backdrop` in `styles.css` centres its card and
+   `.dialog-actions` puts the buttons at `flex-end`; every sheet in
+   `dInfinityPhone.dc.html` overrides all three — `align-items: end`,
+   `width: 100%`, `justify-content: flex-start`. The app follows the phone,
+   because the thumb is at the bottom of a phone. Worth making the export say
+   the same thing, so the next person reading the stylesheet alone does not
+   build the centred one again. There is one shared `Sheet` in the app now
+   rather than nine hand-made dialogs, so this is a one-line change when you
+   decide it.
+
+4. **Does a destructive action get a colour?** The prototype's set action
+   sheet draws Remove as a plain `.btn-secondary` — a bordered box with
+   ordinary text, sitting between a filled toggle and a ghost Cancel
+   (`design/dInfinityPhone.dc.html`, line 713). The app used to draw it as
+   accent-coloured text, so Remove was the one red word in the sheet. It now
+   follows the prototype, and the "this is the one that takes something away"
+   signal has gone with it.
+
+   The same question one level up: the shared confirm sheet (line 843) fills
+   the destructive confirm with `.btn-primary` and gives the ghost to "Keep
+   it", so the destructive action is also the loudest button on the sheet. The
+   app follows that too. Both are what the prototype says and both are worth a
+   second look, because a system with one red and no other colour has only
+   weight and wording left to say "careful".
+
+5. **The slider has no design.** Hue, depth and brightness in the designer use
    Material's, which has a circular thumb and a rounded track, in a system with
    no round anything.
-5. **Uppercase.** The prototype sets kickers and column headings in
+6. **Uppercase.** The prototype sets kickers and column headings in
    `text-transform: uppercase` with wide tracking. The tracking is applied; the
    case is not, because Compose has no text transform, so applying it means
    uppercasing the string itself and changing what a screen reader says.
@@ -199,9 +221,9 @@ prototype has a Save button.
    that a kicker is sometimes a name somebody typed. The History heading is a
    session's name, and `THORIN'S CAMPAIGN` is a decision about someone else's
    words. If uppercase is wanted, is it wanted on those too?
-6. **The designer's canvas paper is white** — a literal, not a token. Is that
+7. **The designer's canvas paper is white** — a literal, not a token. Is that
    the die's real painted ground, or chrome that should follow the theme?
-7. **`gap: 6px` in the face strip** is not on the 4/8/12 scale. Deliberate?
+8. **`gap: 6px` in the face strip** is not on the 4/8/12 scale. Deliberate?
 
 ## Where the screens live in the code
 

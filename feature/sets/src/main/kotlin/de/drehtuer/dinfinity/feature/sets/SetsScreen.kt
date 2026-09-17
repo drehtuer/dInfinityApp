@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
@@ -37,8 +36,11 @@ import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.SectionKicker
+import de.drehtuer.dinfinity.ui.common.Sheet
 import kotlin.math.roundToInt
 
 /**
@@ -224,33 +226,34 @@ private fun OutcomeSheet(
   outcome: PackageInstaller.Result,
   presenter: SetsPresenter,
 ) {
-  AlertDialog(
-    onDismissRequest = { presenter.dismiss() },
+  Sheet(
+    title = outcomeTitle(outcome),
+    onDismiss = { presenter.dismiss() },
     modifier = Modifier.testTag(SetsTestTags.OUTCOME),
-    // `.dialog-title`: the heading font at 800, 20 px.
-    title = { Text(text = outcomeTitle(outcome), style = MaterialTheme.typography.titleLarge) },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (outcome is PackageInstaller.Result.Failed) {
-          Text(
-            text = outcome.reason,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.testTag(SetsTestTags.OUTCOME_REASON),
-          )
-        }
-        Messages(outcome)
-      }
-    },
-    confirmButton = {
-      TextButton(
+    actions = {
+      // The only way out of the sheet is a dismissal, not a confirmation, so
+      // it is the ghost: there is nothing here to fill a button for.
+      ModernistButton(
+        text = stringResource(R.string.sets_install_close),
         onClick = { presenter.dismiss() },
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(SetsTestTags.OUTCOME_CLOSE),
-      ) {
-        Text(stringResource(R.string.sets_install_close))
-      }
+      )
     },
-  )
+  ) {
+    // Tighter than the sheet's own spacing: the reason and the lines the
+    // validator wrote are one block of text, not three parts of the sheet.
+    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
+      if (outcome is PackageInstaller.Result.Failed) {
+        Text(
+          text = outcome.reason,
+          style = MaterialTheme.typography.bodyMedium,
+          modifier = Modifier.testTag(SetsTestTags.OUTCOME_REASON),
+        )
+      }
+      Messages(outcome)
+    }
+  }
 }
 
 @Composable
@@ -515,62 +518,55 @@ private fun ActionSheet(
   row: SetRow,
   presenter: SetsPresenter,
 ) {
-  AlertDialog(
-    onDismissRequest = { presenter.act(null) },
+  Sheet(
+    title = row.name,
+    onDismiss = { presenter.act(null) },
     modifier = Modifier.testTag(SetsTestTags.SHEET),
-    title = { Text(text = row.name, style = MaterialTheme.typography.titleLarge) },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-          text = stringResource(if (row.enabled) R.string.sets_sheet_disable_note else R.string.sets_sheet_remove_note),
-          style = MaterialTheme.typography.bodySmall,
-          color = Ink.muted,
+    // The prototype's order, left to right, and its kinds with it
+    // (`design/dInfinityPhone.dc.html`, the set sheet): the toggle filled, the
+    // other real choices bordered, and the ghost kept for the way out. The
+    // sheet wraps them, which is what `flex-wrap: wrap` on the prototype's
+    // `.dialog-actions` does.
+    actions = {
+      ModernistButton(
+        text = stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable),
+        onClick = { presenter.setEnabled(row, enabled = !row.enabled) },
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(SetsTestTags.TOGGLE),
+      )
+      if (row.checkable) {
+        ModernistButton(
+          text = stringResource(R.string.sets_sheet_update),
+          // An update is a re-install from where the set came from, and
+          // saying so at the one call site beats a wrapper that has to be
+          // kept in step with it (`SetsPresenter.installFrom`).
+          onClick = { presenter.installFrom(row.meta.source.orEmpty()) },
+          kind = ModernistButtonKind.Secondary,
+          modifier = Modifier.testTag(SetsTestTags.UPDATE),
         )
       }
+      // A second real choice rather than the way out, so it is bordered and
+      // not a ghost — `btn-secondary`, as the prototype draws it.
+      ModernistButton(
+        text = stringResource(R.string.sets_sheet_remove),
+        onClick = { presenter.remove(row) },
+        kind = ModernistButtonKind.Secondary,
+        modifier = Modifier.testTag(SetsTestTags.REMOVE),
+      )
+      ModernistButton(
+        text = stringResource(R.string.sets_sheet_cancel),
+        onClick = { presenter.act(null) },
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(SetsTestTags.CANCEL),
+      )
     },
-    confirmButton = {
-      Button(
-        onClick = { presenter.setEnabled(row, enabled = !row.enabled) },
-        shape = Modernist.square,
-        modifier = Modifier.testTag(SetsTestTags.TOGGLE),
-      ) {
-        Text(stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable))
-      }
-    },
-    dismissButton = {
-      Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (row.checkable) {
-          TextButton(
-            // An update is a re-install from where the set came from, and
-            // saying so at the one call site beats a wrapper that has to be
-            // kept in step with it (`SetsPresenter.installFrom`).
-            onClick = { presenter.installFrom(row.meta.source.orEmpty()) },
-            shape = Modernist.square,
-            modifier = Modifier.testTag(SetsTestTags.UPDATE),
-          ) {
-            Text(stringResource(R.string.sets_sheet_update))
-          }
-        }
-        TextButton(
-          onClick = { presenter.remove(row) },
-          shape = Modernist.square,
-          modifier = Modifier.testTag(SetsTestTags.REMOVE),
-        ) {
-          Text(
-            text = stringResource(R.string.sets_sheet_remove),
-            color = Ink.accent,
-          )
-        }
-        TextButton(
-          onClick = { presenter.act(null) },
-          shape = Modernist.square,
-          modifier = Modifier.testTag(SetsTestTags.CANCEL),
-        ) {
-          Text(stringResource(R.string.sets_sheet_cancel))
-        }
-      }
-    },
-  )
+  ) {
+    Text(
+      text = stringResource(if (row.enabled) R.string.sets_sheet_disable_note else R.string.sets_sheet_remove_note),
+      style = MaterialTheme.typography.bodySmall,
+      color = Ink.muted,
+    )
+  }
 }
 
 /** A fraction is spoken as a percentage; nobody says "nought point four one". */

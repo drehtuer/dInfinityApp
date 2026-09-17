@@ -1,13 +1,13 @@
 package de.drehtuer.dinfinity.feature.stats
 
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * Which shape a file takes (`docs/statistics.md`, "Export and reset").
@@ -33,28 +33,28 @@ internal fun ExportChoice(
   onDismiss: () -> Unit,
   onChosen: (ExportFormat) -> Unit,
 ) {
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.export_title),
+    onDismiss = onDismiss,
     modifier = Modifier.testTag("$tagPrefix:dialog"),
-    onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.export_title)) },
-    text = { Text(body) },
-    confirmButton = {
-      TextButton(
+    actions = {
+      ModernistButton(
+        text = stringResource(R.string.export_json),
         onClick = { onChosen(ExportFormat.Json) },
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Primary,
         modifier = Modifier.testTag("$tagPrefix:json"),
-      ) {
-        Text(stringResource(R.string.export_json))
-      }
-    },
-    dismissButton = {
-      TextButton(
+      )
+      // The second format is a choice too, not a way out, so it is the
+      // bordered `.btn-secondary` the prototype gives a sheet's second real
+      // action — not the ghost, which is what a Cancel is.
+      ModernistButton(
+        text = stringResource(R.string.export_csv),
         onClick = { onChosen(ExportFormat.Csv) },
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Secondary,
         modifier = Modifier.testTag("$tagPrefix:csv"),
-      ) {
-        Text(stringResource(R.string.export_csv))
-      }
+      )
     },
-  )
+  ) {
+    Text(body)
+  }
 }

@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -44,6 +42,9 @@ import de.drehtuer.dinfinity.designer.PhotoScaling
 import de.drehtuer.dinfinity.designer.PhotoTable
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * Which table the dice are thrown onto
@@ -293,39 +294,30 @@ private fun PhotoSheet(
   presenter: TablesPresenter,
   onPickPhoto: () -> Unit,
 ) {
-  AlertDialog(
-    onDismissRequest = presenter::dismissPhoto,
+  Sheet(
+    title = stringResource(R.string.tables_photo_title),
+    onDismiss = presenter::dismissPhoto,
     modifier = Modifier.testTag(TablesTestTags.PHOTO_SHEET),
-    title = {
-      Text(
-        text = stringResource(R.string.tables_photo_title),
-        // `.dialog-title`: the heading font at 800, 20 px.
-        style = MaterialTheme.typography.titleLarge,
+    actions = {
+      // `.dialog-actions` leads with the `btn-primary`; the way out beside it
+      // is the `btn-ghost`.
+      ModernistButton(
+        text = stringResource(R.string.tables_photo_confirm),
+        onClick = presenter::confirmPhoto,
+        kind = ModernistButtonKind.Primary,
+        enabled = draft.ready,
+        modifier = Modifier.testTag(TablesTestTags.PHOTO_CONFIRM),
+      )
+      ModernistButton(
+        text = stringResource(R.string.tables_photo_cancel),
+        onClick = presenter::dismissPhoto,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(TablesTestTags.PHOTO_CANCEL),
       )
     },
-    text = { PhotoSheetBody(draft, presenter, onPickPhoto) },
-    confirmButton = {
-      // `.dialog-actions` leads with a `btn-primary`; the way out beside it
-      // stays a `btn-ghost`, which is what a Material text button already is.
-      Button(
-        onClick = presenter::confirmPhoto,
-        enabled = draft.ready,
-        shape = Modernist.square,
-        modifier = Modifier.testTag(TablesTestTags.PHOTO_CONFIRM),
-      ) {
-        Text(stringResource(R.string.tables_photo_confirm))
-      }
-    },
-    dismissButton = {
-      TextButton(
-        onClick = presenter::dismissPhoto,
-        shape = Modernist.square,
-        modifier = Modifier.testTag(TablesTestTags.PHOTO_CANCEL),
-      ) {
-        Text(stringResource(R.string.tables_photo_cancel))
-      }
-    },
-  )
+  ) {
+    PhotoSheetBody(draft, presenter, onPickPhoto)
+  }
 }
 
 @Composable

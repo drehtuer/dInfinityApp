@@ -4,17 +4,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -25,8 +19,11 @@ import androidx.compose.ui.text.input.ImeAction
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.OptionBox
 import de.drehtuer.dinfinity.ui.common.OptionFill
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * Naming a group (`docs/dice-notation.md`, "Saved rolls").
@@ -40,7 +37,6 @@ import de.drehtuer.dinfinity.ui.common.OptionFill
  * when they press Save. A name already taken says whose it is, because "that
  * name is taken" is only useful if it says by what.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GroupSheet(
   draft: GroupDraft,
@@ -48,55 +44,43 @@ internal fun GroupSheet(
   modifier: Modifier = Modifier,
   onSaved: (String) -> Unit = {},
 ) {
-  AlertDialog(
+  Sheet(
+    title =
+      stringResource(
+        if (draft.fresh) R.string.group_title_new else R.string.group_title_edit,
+      ),
+    onDismiss = presenter::dismiss,
     modifier = modifier.testTag(GroupTestTags.SHEET),
-    onDismissRequest = presenter::dismiss,
-    // `.dialog`: the surface, no corner, and a title at the scale's `h4` in
-    // the heading weight. Material's own dialog title is `headlineSmall`,
-    // which is not a style the theme fills in.
-    shape = Modernist.square,
-    title = {
-      Text(
-        text =
-          stringResource(
-            if (draft.fresh) R.string.group_title_new else R.string.group_title_edit,
-          ),
-        style = MaterialTheme.typography.titleLarge,
+    actions = {
+      // The confirming action leads, the way `.dialog-actions` does.
+      ModernistButton(
+        text = stringResource(R.string.group_save),
+        onClick = { presenter.save(onSaved) },
+        kind = ModernistButtonKind.Primary,
+        enabled = draft.savable,
+        modifier = Modifier.testTag(GroupTestTags.SAVE),
+      )
+      if (draft.deletable) {
+        // A second real action rather than the way out, so `.btn-secondary` —
+        // the shape the prototype's own three-action sheet has (primary,
+        // secondary, ghost).
+        ModernistButton(
+          text = stringResource(R.string.group_delete),
+          onClick = { presenter.delete() },
+          kind = ModernistButtonKind.Secondary,
+          modifier = Modifier.testTag(GroupTestTags.DELETE),
+        )
+      }
+      ModernistButton(
+        text = stringResource(R.string.group_cancel),
+        onClick = presenter::dismiss,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(GroupTestTags.CANCEL),
       )
     },
-    text = { Body(draft = draft, presenter = presenter) },
-    confirmButton = {
-      Button(
-        onClick = { presenter.save(onSaved) },
-        enabled = draft.savable,
-        shape = Modernist.square,
-        modifier = Modifier.testTag(GroupTestTags.SAVE),
-      ) {
-        Text(stringResource(R.string.group_save))
-      }
-    },
-    dismissButton = {
-      Row(horizontalArrangement = Arrangement.spacedBy(Modernist.x2)) {
-        if (draft.deletable) {
-          TextButton(
-            onClick = { presenter.delete() },
-            shape = Modernist.square,
-            modifier = Modifier.testTag(GroupTestTags.DELETE),
-          ) {
-            // The system's one red, which is the accent (`Modernist`).
-            Text(stringResource(R.string.group_delete), color = Ink.accent)
-          }
-        }
-        TextButton(
-          onClick = presenter::dismiss,
-          shape = Modernist.square,
-          modifier = Modifier.testTag(GroupTestTags.CANCEL),
-        ) {
-          Text(stringResource(R.string.group_cancel))
-        }
-      }
-    },
-  )
+  ) {
+    Body(draft = draft, presenter = presenter)
+  }
 }
 
 /** Everything about the group that can be typed or chosen. */
@@ -105,10 +89,10 @@ private fun Body(
   draft: GroupDraft,
   presenter: GroupPresenter,
 ) {
-  Column(
-    modifier = Modifier.verticalScroll(rememberScrollState()),
-    verticalArrangement = Arrangement.spacedBy(Modernist.x3),
-  ) {
+  // No scroll of its own: the form is the tallest thing the app puts in a
+  // sheet — a name, ten marks, a parent picker and a table picker — and the
+  // sheet is what scrolls it (`Sheet`). Two scrolls in one direction fight.
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x3)) {
     OutlinedTextField(
       value = draft.name,
       onValueChange = presenter::name,

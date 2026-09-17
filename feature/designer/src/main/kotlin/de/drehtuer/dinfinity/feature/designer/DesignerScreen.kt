@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
@@ -55,6 +54,9 @@ import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import de.drehtuer.dinfinity.ui.common.Ink as Colours
 
@@ -617,54 +619,47 @@ private fun ColourPicker(
   onChosen: (Int) -> Unit,
 ) {
   var hsv by remember { mutableStateOf(Ink.hsv(start)) }
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.designer_colour_title),
+    onDismiss = onDismiss,
     modifier = Modifier.testTag(DesignerTestTags.PICKER),
-    onDismissRequest = onDismiss,
-    // `.dialog-title`: the heading font at 800, 20 px.
-    title = {
-      Text(
-        text = stringResource(R.string.designer_colour_title),
-        style = MaterialTheme.typography.titleLarge,
+    // Taking the colour first and leaving it after, because the sheet reads
+    // left to right and the confirming action is what it is for.
+    actions = {
+      ModernistButton(
+        text = stringResource(R.string.designer_colour_use),
+        onClick = { onChosen(hsv.argb) },
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(DesignerTestTags.PICKER_USE),
+      )
+      ModernistButton(
+        text = stringResource(R.string.designer_colour_cancel),
+        onClick = onDismiss,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL),
       )
     },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .height(TOUCH_TARGET)
-              .background(Color(hsv.argb))
-              .border(Modernist.rule, MaterialTheme.colorScheme.outline)
-              .semantics { contentDescription = Ink.hex(hsv.argb) }
-              .testTag(DesignerTestTags.PICKER_PATCH),
-        )
-        Channel(R.string.designer_hue, hsv.hue, HUE_ROUND, DesignerTestTags.HUE) { hsv = hsv.copy(hue = it) }
-        Channel(R.string.designer_depth, hsv.saturation, 1f, DesignerTestTags.DEPTH) {
-          hsv = hsv.copy(saturation = it)
-        }
-        Channel(R.string.designer_brightness, hsv.value, 1f, DesignerTestTags.BRIGHTNESS) { hsv = hsv.copy(value = it) }
+  ) {
+    // Tighter than the sheet's own spacing: the patch and the three sliders
+    // are one control, not four blocks of the sheet.
+    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
+      Box(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .height(TOUCH_TARGET)
+            .background(Color(hsv.argb))
+            .border(Modernist.rule, MaterialTheme.colorScheme.outline)
+            .semantics { contentDescription = Ink.hex(hsv.argb) }
+            .testTag(DesignerTestTags.PICKER_PATCH),
+      )
+      Channel(R.string.designer_hue, hsv.hue, HUE_ROUND, DesignerTestTags.HUE) { hsv = hsv.copy(hue = it) }
+      Channel(R.string.designer_depth, hsv.saturation, 1f, DesignerTestTags.DEPTH) {
+        hsv = hsv.copy(saturation = it)
       }
-    },
-    confirmButton = {
-      Button(
-        onClick = { onChosen(hsv.argb) },
-        shape = Modernist.square,
-        modifier = Modifier.testTag(DesignerTestTags.PICKER_USE),
-      ) {
-        Text(stringResource(R.string.designer_colour_use))
-      }
-    },
-    dismissButton = {
-      TextButton(
-        onClick = onDismiss,
-        shape = Modernist.square,
-        modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL),
-      ) {
-        Text(stringResource(R.string.designer_colour_cancel))
-      }
-    },
-  )
+      Channel(R.string.designer_brightness, hsv.value, 1f, DesignerTestTags.BRIGHTNESS) { hsv = hsv.copy(value = it) }
+    }
+  }
 }
 
 /** One of the picker's three sliders, named so a screen reader can say which. */

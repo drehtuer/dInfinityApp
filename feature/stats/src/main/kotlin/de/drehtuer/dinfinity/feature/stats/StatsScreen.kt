@@ -21,8 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +43,9 @@ import androidx.compose.ui.text.font.FontWeight
 import de.drehtuer.dinfinity.core.stats.FaceBar
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
@@ -639,29 +640,32 @@ private fun Confirm(
   onYes: () -> Unit,
   onNo: () -> Unit,
 ) {
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.stats_confirm_title),
+    onDismiss = onNo,
     modifier = Modifier.testTag(StatsTestTags.CONFIRM),
-    onDismissRequest = onNo,
-    title = { Text(stringResource(R.string.stats_confirm_title)) },
-    text = {
-      Text(
-        when (what) {
-          is Reset.OneDie -> stringResource(R.string.stats_confirm_die, what.name)
-          Reset.Everything -> stringResource(R.string.stats_confirm_all)
-        },
+    actions = {
+      ModernistButton(
+        text = stringResource(R.string.stats_confirm_yes),
+        onClick = onYes,
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(StatsTestTags.CONFIRM_YES),
+      )
+      ModernistButton(
+        text = stringResource(R.string.group_cancel_stats),
+        onClick = onNo,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(StatsTestTags.CONFIRM_NO),
       )
     },
-    confirmButton = {
-      Button(onClick = onYes, shape = Modernist.square, modifier = Modifier.testTag(StatsTestTags.CONFIRM_YES)) {
-        Text(stringResource(R.string.stats_confirm_yes))
-      }
-    },
-    dismissButton = {
-      TextButton(onClick = onNo, shape = Modernist.square, modifier = Modifier.testTag(StatsTestTags.CONFIRM_NO)) {
-        Text(stringResource(R.string.group_cancel_stats))
-      }
-    },
-  )
+  ) {
+    Text(
+      when (what) {
+        is Reset.OneDie -> stringResource(R.string.stats_confirm_die, what.name)
+        Reset.Everything -> stringResource(R.string.stats_confirm_all)
+      },
+    )
+  }
 }
 
 @Composable

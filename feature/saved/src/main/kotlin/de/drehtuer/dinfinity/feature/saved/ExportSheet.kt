@@ -1,9 +1,7 @@
 package de.drehtuer.dinfinity.feature.saved
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -15,6 +13,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * Collections, in and out (`docs/dice-notation.md`, "Export and import").
@@ -40,65 +41,55 @@ internal fun ExportSheet(
   modifier: Modifier = Modifier,
 ) {
   val group = state.activeGroup
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.collections_title),
+    onDismiss = onDismiss,
     modifier = modifier.testTag(ExportTestTags.SHEET),
-    onDismissRequest = onDismiss,
-    // `.dialog`: the surface, no corner, `.dialog-title` at the scale's `h4`.
-    shape = Modernist.square,
-    title = {
-      Text(
-        text = stringResource(R.string.collections_title),
-        style = MaterialTheme.typography.titleLarge,
+    actions = {
+      // The only action is the way out, and a way out is a `.btn-ghost`.
+      ModernistButton(
+        text = stringResource(R.string.group_cancel),
+        onClick = onDismiss,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(ExportTestTags.CANCEL),
       )
     },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(Modernist.x3)) {
-        Text(
-          text = stringResource(R.string.export_note),
-          style = MaterialTheme.typography.bodyLarge,
-          color = Ink.muted,
-        )
-        if (group != null) {
-          Choice(
-            label = stringResource(R.string.export_group, group.group.name),
-            note = pluralStringResource(R.plurals.saved_group_rolls, group.rolls, group.rolls),
-            tag = ExportTestTags.GROUP,
-            onClick = { onExport(group.group.id) },
-          )
-        }
-        Choice(
-          label = stringResource(R.string.export_everything),
-          note =
-            pluralStringResource(
-              R.plurals.saved_group_rolls,
-              state.allRolls.size,
-              state.allRolls.size,
-            ),
-          tag = ExportTestTags.EVERYTHING,
-          onClick = { onExport(null) },
-        )
-        HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
-        // In as well as out. The same sheet, because a file arriving and a
-        // file leaving are one idea to a player and the alternative is a
-        // second control on a bar that already has a group name in it.
-        Choice(
-          label = stringResource(R.string.import_open),
-          note = stringResource(R.string.import_note),
-          tag = ExportTestTags.IMPORT,
-          onClick = onImport,
-        )
-      }
-    },
-    confirmButton = {
-      TextButton(
-        onClick = onDismiss,
-        shape = Modernist.square,
-        modifier = Modifier.testTag(ExportTestTags.CANCEL),
-      ) {
-        Text(stringResource(R.string.group_cancel))
-      }
-    },
-  )
+  ) {
+    Text(
+      text = stringResource(R.string.export_note),
+      style = MaterialTheme.typography.bodyLarge,
+      color = Ink.muted,
+    )
+    if (group != null) {
+      Choice(
+        label = stringResource(R.string.export_group, group.group.name),
+        note = pluralStringResource(R.plurals.saved_group_rolls, group.rolls, group.rolls),
+        tag = ExportTestTags.GROUP,
+        onClick = { onExport(group.group.id) },
+      )
+    }
+    Choice(
+      label = stringResource(R.string.export_everything),
+      note =
+        pluralStringResource(
+          R.plurals.saved_group_rolls,
+          state.allRolls.size,
+          state.allRolls.size,
+        ),
+      tag = ExportTestTags.EVERYTHING,
+      onClick = { onExport(null) },
+    )
+    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+    // In as well as out. The same sheet, because a file arriving and a
+    // file leaving are one idea to a player and the alternative is a
+    // second control on a bar that already has a group name in it.
+    Choice(
+      label = stringResource(R.string.import_open),
+      note = stringResource(R.string.import_note),
+      tag = ExportTestTags.IMPORT,
+      onClick = onImport,
+    )
+  }
 }
 
 @Composable
