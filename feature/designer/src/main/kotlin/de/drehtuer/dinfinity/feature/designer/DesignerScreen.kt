@@ -54,6 +54,13 @@ import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
+import de.drehtuer.dinfinity.ui.common.Ink as Colours
+
+// `Colours` is `ui/common`'s `Ink`, aliased because both better names are
+// taken here: `Ink` is `designer/`'s own hex and HSV arithmetic, and
+// `Palette` is the composable below that draws the twelve colours.
 
 /**
  * Drawing the faces of a die (`design/dInfinity.dc.html`, options `1v`, `4c`
@@ -263,7 +270,7 @@ private fun Warning(state: DesignerState) {
   Text(
     text = stringResource(if (state.full) R.string.designer_face_full else R.string.designer_face_nearly_full),
     style = MaterialTheme.typography.labelSmall,
-    color = wrong,
+    color = Colours.accent,
     modifier = Modifier.padding(horizontal = 24.dp).testTag(DesignerTestTags.WARNING),
   )
 }
@@ -351,7 +358,7 @@ private fun Tool(
           contentColor = MaterialTheme.colorScheme.background,
         )
       } else {
-        ButtonDefaults.textButtonColors(contentColor = muted)
+        ButtonDefaults.textButtonColors(contentColor = Colours.muted)
       },
     modifier = Modifier.semantics { selected = chosen }.testTag(tag),
   ) {
@@ -418,7 +425,7 @@ private fun StampBar(
       Text(
         text = stringResource(R.string.designer_stamp_refused),
         style = MaterialTheme.typography.labelSmall,
-        color = wrong,
+        color = Colours.accent,
         modifier = Modifier.testTag(DesignerTestTags.STAMP_REFUSED),
       )
     }
@@ -526,7 +533,7 @@ private fun Palette(
     Text(
       text = Ink.hex(state.colorArgb),
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Colours.muted,
       modifier = Modifier.testTag(DesignerTestTags.INK_HEX),
     )
   }
@@ -579,7 +586,7 @@ private fun Swatch(
     Box(
       modifier =
         Modifier
-          .size(Modernist.swatch)
+          .size(SWATCH)
           .background(Color(argb))
           .border(
             width = Modernist.rule,
@@ -670,7 +677,7 @@ private fun Channel(
   onChange: (Float) -> Unit,
 ) {
   val name = stringResource(label)
-  Text(text = name, style = MaterialTheme.typography.labelSmall, color = muted)
+  Text(text = name, style = MaterialTheme.typography.labelSmall, color = Colours.muted)
   Slider(
     value = value,
     onValueChange = onChange,
@@ -746,8 +753,14 @@ private const val GUIDE_ALPHA = 0.35f
 /** All the way round the wheel, which is where hue starts again. */
 private const val HUE_ROUND = 360f
 
-/** What a finger is owed, whatever is drawn inside it. */
-private val TOUCH_TARGET = 48.dp
+/**
+ * How big a colour swatch is drawn (`width:26px;height:26px`).
+ *
+ * This screen's own measurement rather than a token of the design system:
+ * nothing else in the app draws a swatch, so there is nothing for it to stay
+ * equal to.
+ */
+private val SWATCH = 26.dp
 
 /** The twelve the design shows (`design/dInfinity.dc.html`, option `4c`). */
 private val PRESETS =

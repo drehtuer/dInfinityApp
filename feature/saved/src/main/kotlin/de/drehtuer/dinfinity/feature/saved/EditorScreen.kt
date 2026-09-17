@@ -39,6 +39,11 @@ import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.ui.common.FormulaField
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.inkColours
+import de.drehtuer.dinfinity.ui.common.segBorder
+import de.drehtuer.dinfinity.ui.common.segColours
 
 /**
  * Writing down a saved roll (`design/dInfinity.dc.html`, options 1r and 7b).
@@ -132,7 +137,7 @@ private fun Form(
       Text(
         text = stringResource(R.string.editor_odds, "%.1f".format(odds.mean), odds.lowest, odds.highest),
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.testTag(EditorTestTags.ODDS),
       )
     }
@@ -167,7 +172,7 @@ private fun Title(existing: Boolean) {
     color = MaterialTheme.colorScheme.onBackground,
     modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x2),
   )
-  HorizontalDivider(thickness = Modernist.rule, color = divider)
+  HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
 }
 
 @Composable
@@ -209,7 +214,7 @@ private fun Buttons(
   // Over a 2 dp rule, and in the prototype's three weights: the one thing to
   // do is filled, the other is outlined, and the one that takes something away
   // is a ghost.
-  HorizontalDivider(thickness = Modernist.rule, color = divider)
+  HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
   Row(
     horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
     verticalAlignment = Alignment.CenterVertically,
@@ -240,7 +245,7 @@ private fun Buttons(
         modifier = Modifier.testTag(EditorTestTags.DELETE),
       ) {
         // `.btn-ghost` is the accent, which is also the system's only red.
-        Text(stringResource(R.string.editor_delete), color = accent)
+        Text(stringResource(R.string.editor_delete), color = Ink.accent)
       }
     }
   }
@@ -324,7 +329,7 @@ private fun Swatch(
           // divider the others wear.
           .border(
             width = Modernist.rule,
-            color = if (chosen) MaterialTheme.colorScheme.onBackground else divider,
+            color = if (chosen) MaterialTheme.colorScheme.onBackground else Ink.divider,
           ).clickable(onClick = onPick)
           .testTag(tag),
     ) { }
@@ -402,7 +407,7 @@ private fun Tables(
     Text(
       text = stringResource(R.string.editor_table_note),
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }
@@ -417,7 +422,7 @@ private fun Field(
       // `.field > label`: small, quiet, and above the thing it names.
       text = label,
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Ink.muted,
     )
     content()
   }

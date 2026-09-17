@@ -31,6 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.ui.common.FormulaField
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.segBorder
+import de.drehtuer.dinfinity.ui.common.segColours
 
 /**
  * What a formula is likely to come to, before or after it is thrown
@@ -75,7 +79,7 @@ fun GraphScreen(
       )
       menu()
     }
-    HorizontalDivider(thickness = Modernist.rule, color = divider)
+    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
 
     Column(
       modifier =
@@ -172,7 +176,7 @@ private fun YourRoll(rolled: Reading) {
     Box(
       modifier =
         Modifier
-          .width(Modernist.mark)
+          .width(MARK)
           .height(BAND_HEIGHT)
           .background(MaterialTheme.colorScheme.primary),
     )
@@ -285,19 +289,19 @@ private fun GraphMode.label(): Int =
 @Composable
 private fun Numbers(stats: GraphStats) {
   Column(modifier = Modifier.fillMaxWidth()) {
-    HorizontalDivider(thickness = Modernist.rule, color = divider)
+    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
     Row(modifier = Modifier.fillMaxWidth()) {
       Number(MEAN, stringResource(R.string.graph_stat_mean), format(stats.mean))
       Number(DEVIATION, stringResource(R.string.graph_stat_deviation), format(stats.standardDeviation))
       Number(RANGE, stringResource(R.string.graph_stat_range), "${stats.lowest}–${stats.highest}")
     }
-    HorizontalDivider(thickness = Modernist.hairline, color = divider)
+    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
     Row(modifier = Modifier.fillMaxWidth()) {
       Number(LOWEST, stringResource(R.string.graph_stat_chance_of, stats.lowest), percent(stats.chanceOfLowest))
       Number(HIGHEST, stringResource(R.string.graph_stat_chance_of, stats.highest), percent(stats.chanceOfHighest))
       Number(DICE, stringResource(R.string.graph_stat_dice), stats.dice.toString())
     }
-    HorizontalDivider(thickness = Modernist.hairline, color = divider)
+    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
   }
 }
 
@@ -328,8 +332,8 @@ private fun RowScope.Number(
     Text(
       text = label.uppercase(),
       style = MaterialTheme.typography.labelSmall,
-      letterSpacing = Modernist.kickerTracking,
-      color = muted,
+      letterSpacing = Modernist.headingTracking,
+      color = Ink.muted,
     )
     Text(
       text = value,
@@ -345,7 +349,7 @@ private fun Quiet(text: String) {
   Text(
     text = text,
     style = MaterialTheme.typography.labelSmall,
-    color = muted,
+    color = Ink.muted,
   )
 }
 
@@ -357,7 +361,7 @@ private fun Note(
   Text(
     text = text,
     style = MaterialTheme.typography.bodyLarge,
-    color = muted,
+    color = Ink.muted,
     modifier = Modifier.testTag(tag),
   )
 }

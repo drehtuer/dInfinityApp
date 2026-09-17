@@ -23,6 +23,11 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.inkColours
+import de.drehtuer.dinfinity.ui.common.segBorder
+import de.drehtuer.dinfinity.ui.common.segColours
 
 /**
  * Naming a group (`docs/dice-notation.md`, "Saved rolls").
@@ -80,7 +85,7 @@ internal fun GroupSheet(
             modifier = Modifier.testTag(GroupTestTags.DELETE),
           ) {
             // The system's one red, which is the accent (`Modernist`).
-            Text(stringResource(R.string.group_delete), color = accent)
+            Text(stringResource(R.string.group_delete), color = Ink.accent)
           }
         }
         TextButton(
@@ -121,7 +126,7 @@ private fun Body(
       Text(
         text = stringResource(R.string.group_name_taken, taken),
         style = MaterialTheme.typography.labelSmall,
-        color = accent,
+        color = Ink.accent,
         modifier = Modifier.testTag(GroupTestTags.CLASH),
       )
     }
@@ -134,7 +139,7 @@ private fun Body(
       Text(
         text = pluralStringResource(R.plurals.group_delete_moves, draft.rolls, draft.rolls),
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.testTag(GroupTestTags.MOVES),
       )
     }
@@ -185,7 +190,7 @@ private fun Parents(
       Text(
         text = stringResource(R.string.group_parent_has_children),
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.testTag(GroupTestTags.NO_NESTING),
       )
       return@Column
@@ -244,7 +249,7 @@ private fun Tables(
     Text(
       text = stringResource(R.string.group_table_note),
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }
@@ -255,7 +260,7 @@ private fun Label(text: String) {
     // `.field > label`: small, quiet, and above the thing it names.
     text = text,
     style = MaterialTheme.typography.labelSmall,
-    color = muted,
+    color = Ink.muted,
   )
 }
 

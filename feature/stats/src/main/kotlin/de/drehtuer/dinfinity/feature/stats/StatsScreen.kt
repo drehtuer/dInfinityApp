@@ -43,6 +43,9 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import de.drehtuer.dinfinity.core.stats.FaceBar
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
  * What every die has done (`design/dInfinity.dc.html`, option 1w).
@@ -154,7 +157,7 @@ private fun Header(
   // Every screen in the prototype hangs from a 2 dp rule under its title.
   HorizontalDivider(
     thickness = Modernist.rule,
-    color = divider,
+    color = Ink.divider,
     modifier = Modifier.testTag(StatsTestTags.HEADER_RULE),
   )
 }
@@ -333,7 +336,7 @@ private fun Cut(
     Text(
       text = label,
       style = MaterialTheme.typography.labelLarge,
-      color = if (chosen) MaterialTheme.colorScheme.primary else muted,
+      color = if (chosen) MaterialTheme.colorScheme.primary else Ink.muted,
       fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
     )
   }
@@ -351,7 +354,7 @@ private fun Dice(
   Text(
     text = stringResource(noteFor(state)),
     style = MaterialTheme.typography.labelSmall,
-    color = muted,
+    color = Ink.muted,
     modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x1),
   )
   if (state.filteredToNothing) {
@@ -363,11 +366,11 @@ private fun Dice(
   }
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(StatsTestTags.LIST)) {
     items(dice, key = { "${it.setId}/${it.dieId}" }) { row ->
-      HorizontalDivider(thickness = Modernist.hairline, color = divider)
+      HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
       DieLine(row = row, onOpen = { presenter.select(row.setId, row.dieId) })
     }
     item(key = "reset-everything") {
-      HorizontalDivider(thickness = Modernist.rule, color = divider)
+      HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
       TextButton(
         onClick = { presenter.confirm(Reset.Everything) },
         shape = Modernist.square,
@@ -410,13 +413,13 @@ private fun DieLine(
             stringResource(R.string.stats_set_gone, row.setId)
           },
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
     Text(
       text = pluralStringResource(R.plurals.stats_throws, row.summary.throws.toInt(), row.summary.throws),
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Ink.muted,
     )
     Text(
       text = row.summary.mean?.let { "%.2f".format(it) } ?: "—",
@@ -479,7 +482,7 @@ private fun Detail(
 @Composable
 private fun Tiles(detail: DieDetail) {
   Column(modifier = Modifier.fillMaxWidth()) {
-    HorizontalDivider(thickness = Modernist.rule, color = divider)
+    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
     TileRow {
       Tile(
         label = stringResource(R.string.stats_natural_high, detail.extremes.highestValue),
@@ -487,7 +490,7 @@ private fun Tiles(detail: DieDetail) {
         tag = StatsTestTags.HIGHS,
         modifier = Modifier.weight(1f),
       )
-      VerticalDivider(thickness = Modernist.hairline, color = divider)
+      VerticalDivider(thickness = Modernist.hairline, color = Ink.divider)
       Tile(
         label = stringResource(R.string.stats_natural_low, detail.extremes.lowestValue),
         value = detail.extremes.lows.toString(),
@@ -495,7 +498,7 @@ private fun Tiles(detail: DieDetail) {
         modifier = Modifier.weight(1f),
       )
     }
-    HorizontalDivider(thickness = Modernist.hairline, color = divider)
+    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
     TileRow {
       Tile(
         label = stringResource(R.string.stats_average),
@@ -505,7 +508,7 @@ private fun Tiles(detail: DieDetail) {
         tag = StatsTestTags.MEAN,
         modifier = Modifier.weight(1f),
       )
-      VerticalDivider(thickness = Modernist.hairline, color = divider)
+      VerticalDivider(thickness = Modernist.hairline, color = Ink.divider)
       Tile(
         label = stringResource(R.string.stats_total_throws),
         value =
@@ -515,7 +518,7 @@ private fun Tiles(detail: DieDetail) {
         modifier = Modifier.weight(1f),
       )
     }
-    HorizontalDivider(thickness = Modernist.hairline, color = divider)
+    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
   }
 }
 
@@ -550,7 +553,7 @@ private fun Tile(
     Text(
       text = label,
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }
@@ -598,7 +601,7 @@ private fun Histogram(bars: List<FaceBar>) {
         Text(
           text = bar.value.toString(),
           style = MaterialTheme.typography.labelSmall,
-          color = muted,
+          color = Ink.muted,
           modifier = Modifier.width(LABEL),
         )
         Box(modifier = Modifier.weight(1f)) {
@@ -609,7 +612,7 @@ private fun Histogram(bars: List<FaceBar>) {
               Modifier
                 .fillMaxWidth((bar.fairShare / widest).toFloat())
                 .height(BAR)
-                .background(divider),
+                .background(Ink.divider),
           )
           Box(
             modifier =
@@ -622,7 +625,7 @@ private fun Histogram(bars: List<FaceBar>) {
         Text(
           text = bar.count.toString(),
           style = MaterialTheme.typography.labelSmall,
-          color = muted,
+          color = Ink.muted,
           modifier = Modifier.width(LABEL),
         )
       }
@@ -675,7 +678,7 @@ private fun Empty() {
     Text(
       text = stringResource(R.string.stats_empty_body),
       style = MaterialTheme.typography.bodyLarge,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }

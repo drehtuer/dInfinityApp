@@ -24,6 +24,7 @@ import de.drehtuer.dinfinity.data.SessionRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.data.db.RollHistoryRow
 import de.drehtuer.dinfinity.data.db.SessionRow
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel

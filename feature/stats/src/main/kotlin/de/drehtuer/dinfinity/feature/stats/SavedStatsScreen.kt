@@ -30,6 +30,8 @@ import androidx.compose.ui.semantics.semantics
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.stats.RollComparison
 import de.drehtuer.dinfinity.core.stats.TotalBar
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * What a saved roll has actually rolled, against what it should
@@ -101,7 +103,7 @@ private fun Header(
   // The rule every screen in the prototype hangs from.
   HorizontalDivider(
     thickness = Modernist.rule,
-    color = divider,
+    color = Ink.divider,
     modifier = Modifier.testTag(SavedStatsTestTags.HEADER_RULE),
   )
 }
@@ -120,7 +122,7 @@ private fun EmptyNote() {
     Text(
       text = stringResource(R.string.savedstats_empty_body),
       style = MaterialTheme.typography.bodyLarge,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }
@@ -133,12 +135,12 @@ private fun Rolls(
   Text(
     text = stringResource(R.string.savedstats_order),
     style = MaterialTheme.typography.labelSmall,
-    color = muted,
+    color = Ink.muted,
     modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x1),
   )
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedStatsTestTags.LIST)) {
     items(rolls, key = SavedRoll::id) { roll ->
-      HorizontalDivider(thickness = Modernist.hairline, color = divider)
+      HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
       Column(
         modifier =
           Modifier
@@ -155,7 +157,7 @@ private fun Rolls(
         Text(
           text = roll.formula,
           style = MaterialTheme.typography.labelSmall,
-          color = muted,
+          color = Ink.muted,
         )
       }
     }
@@ -176,7 +178,7 @@ private fun Detail(stats: SavedRollStats) {
     Text(
       text = stats.roll.formula,
       style = MaterialTheme.typography.bodyLarge,
-      color = muted,
+      color = Ink.muted,
     )
     if (comparison.throws == 0L) {
       Text(text = stringResource(R.string.savedstats_never), modifier = Modifier.testTag(SavedStatsTestTags.NEVER))
@@ -220,7 +222,7 @@ private fun Numbers(
       Text(
         text = stringResource(R.string.savedstats_expected, format(comparison.expectedMean)),
         style = MaterialTheme.typography.bodyLarge,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.testTag(SavedStatsTestTags.EXPECTED),
       )
     }
@@ -241,7 +243,7 @@ private fun Numbers(
           )
         },
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Ink.muted,
       modifier = Modifier.testTag(SavedStatsTestTags.RANGE),
     )
   }
@@ -264,7 +266,7 @@ private fun Verdict(comparison: RollComparison) {
   Text(
     text = text,
     style = MaterialTheme.typography.labelSmall,
-    color = if (comparison.worthALook) MaterialTheme.colorScheme.primary else muted,
+    color = if (comparison.worthALook) MaterialTheme.colorScheme.primary else Ink.muted,
     modifier = Modifier.testTag(SavedStatsTestTags.VERDICT),
   )
 }

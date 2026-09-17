@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-09-17
 
 ## Where we are
 
@@ -21,9 +21,14 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#245**: all of Step 3, every screen of Step 4,
-the harness, and the ten-thousand-roll measurements below. Nothing is in
-flight.
+`main` has everything through **#260**: all of Step 3, every screen of Step 4,
+the harness, the ten-thousand-roll measurements below, count-and-clear rolling,
+shake-to-throw, the `3 to 21+` ceiling and the visible backstop.
+
+**In flight:** a stack of pull requests from a pass over the UI against the
+prototype — the hand-over to the designer, the drift put back, and the design
+tokens moved out of `:app` into `ui/common` so every screen can read them
+instead of keeping its own copy.
 
 ## Done
 

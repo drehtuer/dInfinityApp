@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * Which shape a file takes (`docs/statistics.md`, "Export and reset").

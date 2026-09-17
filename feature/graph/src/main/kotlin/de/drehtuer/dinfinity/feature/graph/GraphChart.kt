@@ -17,6 +17,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * The distribution, drawn (`design/dInfinity.dc.html`, option 1k).
@@ -49,7 +51,7 @@ internal fun GraphChart(
   // in before, are roles the theme does not fill in — so two of the four were
   // Material's baseline lavender.
   val ink = MaterialTheme.colorScheme.onBackground
-  val bar = faint
+  val bar = BAR_GREY
   val chosen = MaterialTheme.colorScheme.primary
   val band = MaterialTheme.colorScheme.surface
   val mark = MaterialTheme.colorScheme.primary
@@ -172,6 +174,38 @@ private val MIN_BAR: Dp = Modernist.hairline
 private val LINE: Dp = Modernist.rule
 private val AXIS: Dp = Modernist.rule
 
-/** The roll's own line: `border-left:3px solid var(--color-accent)`. */
-private val MARK: Dp = Modernist.mark
+/**
+ * The line at the total that actually came up: 3 px, where the mean's is 2
+ * (`design/dInfinityPhone.dc.html`, the graph's `border-left:3px solid
+ * var(--color-accent)`). It is the one thing on the chart that is about this
+ * player rather than about the formula, so it is drawn heavier than the
+ * statistic behind it.
+ *
+ * Not a design-system token — the system has no 3 px step, and this is this
+ * chart's own weight. `internal` because [GraphScreen] draws the same edge
+ * down the side of the band that says which roll opened the graph.
+ */
+internal val MARK: Dp = 3.dp
 private const val DASH = 8f
+
+/**
+ * `--color-neutral-500`: the grey a bar outside ±1σ is drawn in.
+ *
+ * The chart **names the ramp step** rather than following the ink, and it is
+ * the one colour here that does. The step is `#9b9797` on both grounds: the
+ * prototype's dark override remaps the neutral ramp by reflecting it about
+ * this step — `--color-neutral-200` takes 800's value, 300 takes 700's, 400
+ * takes 600's — and remaps `--color-neutral-500` to itself
+ * (`design/dInfinityPhone.dc.html`, `.dz-dark`). It is the fixed point of that
+ * reflection, so it is the same grey on a light page and a dark one by
+ * construction, not by coincidence.
+ *
+ * That is why it does not follow the theme, and why it is a top-level value
+ * here while the other four inks are read off `MaterialTheme` inside the
+ * chart. Thinning the ink is what this replaced, and it drifted three ways:
+ * 45 % of the ink lands on neutral-500 on the light ground but on
+ * **neutral-600** on the dark one, and on two further greys again where a bar
+ * stands on the ±1σ band and composites against the surface instead. One
+ * named step cannot do any of that.
+ */
+internal val BAR_GREY: Color = Modernist.Neutral.v500

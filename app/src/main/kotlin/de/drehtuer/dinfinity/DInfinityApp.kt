@@ -76,7 +76,7 @@ import de.drehtuer.dinfinity.navigation.GraphArgument
 import de.drehtuer.dinfinity.navigation.MenuGroup
 import de.drehtuer.dinfinity.navigation.SetArgument
 import de.drehtuer.dinfinity.theme.LocalModernistColors
-import de.drehtuer.dinfinity.theme.ModernistTokens
+import de.drehtuer.dinfinity.ui.common.Modernist
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 
@@ -903,9 +903,9 @@ internal fun PlaceholderScreen(
     contentAlignment = Alignment.Center,
   ) {
     Column(
-      verticalArrangement = Arrangement.spacedBy(ModernistTokens.Space.x2),
+      verticalArrangement = Arrangement.spacedBy(Modernist.x2),
       horizontalAlignment = Alignment.Start,
-      modifier = Modifier.padding(ModernistTokens.Space.x6),
+      modifier = Modifier.padding(Modernist.x6),
     ) {
       Text(
         text = stringResource(destination.title),

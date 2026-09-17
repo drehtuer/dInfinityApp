@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * Collections, in and out (`docs/dice-notation.md`, "Export and import").
@@ -54,7 +56,7 @@ internal fun ExportSheet(
         Text(
           text = stringResource(R.string.export_note),
           style = MaterialTheme.typography.bodyLarge,
-          color = muted,
+          color = Ink.muted,
         )
         if (group != null) {
           Choice(
@@ -75,7 +77,7 @@ internal fun ExportSheet(
           tag = ExportTestTags.EVERYTHING,
           onClick = { onExport(null) },
         )
-        HorizontalDivider(thickness = Modernist.hairline, color = divider)
+        HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
         // In as well as out. The same sheet, because a file arriving and a
         // file leaving are one idea to a player and the alternative is a
         // second control on a bar that already has a group name in it.
@@ -116,7 +118,7 @@ private fun Choice(
       Text(
         text = note,
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
   }

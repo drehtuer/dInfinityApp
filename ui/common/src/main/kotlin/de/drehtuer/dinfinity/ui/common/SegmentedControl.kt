@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -12,15 +13,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SelectableChipColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.unit.dp
 
 /**
  * One choice out of a few, drawn as the design system's `.seg` / `.seg-opt`
@@ -71,7 +75,7 @@ fun <T> SegmentedControl(
       modifier
         .then(if (onSelect == null) Modifier.clearAndSetSemantics { } else Modifier.selectableGroup())
         .height(IntrinsicSize.Min)
-        .border(HAIRLINE, MaterialTheme.colorScheme.outline),
+        .border(HAIRLINE, Ink.divider),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     options.forEachIndexed { index, option ->
@@ -81,7 +85,7 @@ fun <T> SegmentedControl(
             Modifier
               .width(HAIRLINE)
               .fillMaxHeight()
-              .background(MaterialTheme.colorScheme.outline),
+              .background(Ink.divider),
         )
       }
       Option(
@@ -116,7 +120,7 @@ private fun Option(
         // `selectable` does not.
         .defaultMinSize(minHeight = TOUCH_TARGET)
         .then(if (isSelected) Modifier.background(MaterialTheme.colorScheme.primary) else Modifier)
-        .padding(horizontal = 12.dp, vertical = 8.dp),
+        .padding(horizontal = Modernist.x3, vertical = Modernist.x2),
   ) {
     Text(
       text = text,
@@ -127,7 +131,46 @@ private fun Option(
 }
 
 /** `.seg`'s own border, and the line between two options. */
-private val HAIRLINE = 1.dp
+private val HAIRLINE = Modernist.hairline
 
-/** Android's minimum touch target. */
-private val TOUCH_TARGET = 48.dp
+/**
+ * `.seg-opt` as Material's `FilterChip` draws it: transparent until it is the
+ * one chosen, then filled with the accent and labelled in the ground colour.
+ *
+ * The chip's own defaults fill with `secondaryContainer` and label with
+ * `onSecondaryContainer`, which the theme now maps into the palette — but a
+ * chip is still a rounded, spaced, tick-prefixed control, so this is the
+ * halfway house for the two screens that have not moved to [SegmentedControl]
+ * yet: the right colours on the wrong shape, rather than both wrong.
+ */
+@Composable
+fun segColours(): SelectableChipColors =
+  FilterChipDefaults.filterChipColors(
+    containerColor = Color.Transparent,
+    labelColor = MaterialTheme.colorScheme.onBackground,
+    selectedContainerColor = MaterialTheme.colorScheme.primary,
+    selectedLabelColor = MaterialTheme.colorScheme.background,
+  )
+
+/**
+ * The same, inverting to the **ink** rather than to the accent
+ * (`design/dInfinityPhone.dc.html`, `iconOptions`: `bg:'var(--color-text)'`,
+ * `color:'var(--color-bg)'`).
+ *
+ * For a control whose options already carry the accent in their own content: a
+ * red square behind a red mark would be the two saying the same thing over
+ * each other.
+ */
+@Composable
+fun inkColours(): SelectableChipColors =
+  FilterChipDefaults.filterChipColors(
+    containerColor = Color.Transparent,
+    labelColor = MaterialTheme.colorScheme.onBackground,
+    selectedContainerColor = MaterialTheme.colorScheme.onBackground,
+    selectedLabelColor = MaterialTheme.colorScheme.background,
+  )
+
+/** `.seg`'s own `1px solid var(--color-divider)`, around every option of it. */
+@Composable
+@ReadOnlyComposable
+fun segBorder(): BorderStroke = BorderStroke(width = Modernist.hairline, color = Ink.divider)

@@ -68,7 +68,10 @@ These are in [TODO.md](TODO.md) in full. They are here because they are yours.
 1. **A filled button's label is 3.76:1 on its own accent and wants 4.5:1**, and
    **a divider is 2.41:1 on the light ground and wants 3:1.** Both are measured,
    both are the design system's own tokens. Darkening the accent changes the
-   identity; a darker label on it may be the cheaper answer.
+   identity; a darker label on it may be the cheaper answer. The app now
+   carries the full accent ramp, so `--color-accent-700` and `-800` are both
+   available to a fix — which turns this from "no token can do it" into a
+   choice about how loud the accent is allowed to be.
 2. **Is percent typography text?** `"0 %"`, `"< 0.1 %"` and `"%.1f %%"` are
    currently three different renderings of the same idea.
 3. **Does a refusal keep its words, or become a reason?** Refusal sentences are
@@ -131,10 +134,33 @@ prototype has a Save button.
 
 ## Things the design system does not yet say
 
-1. **There is no accent ramp.** `tag-accent` needs `--color-accent-100` and
-   `-800`; `tag-neutral` needs the neutral ramp. The app's tokens carry the
-   accent and three steps, so **tags cannot be built** without inventing
-   colours. The ramps are in `styles.css`; they need to reach the app.
+1. **The dark ramp is missing the two steps a neutral tag is made of.** Both
+   ramps have reached the app since this was written — all nine steps of
+   `--color-accent-*` and of `--color-neutral-*` — so `tag-accent` and
+   `tag-neutral` can now be built from real tokens rather than invented ones.
+
+   The dark ground is not a straight swap, and the prototype says exactly what
+   it is: `.dz-dark` in
+   [dInfinityPhone.dc.html](../design/dInfinityPhone.dc.html) **reflects each
+   ramp about its middle step**. `--color-accent-100` becomes the light `-900`,
+   `-200` becomes `-800`, `-700` becomes `-300`, `-800` becomes `-200`; the
+   neutrals do the same, `-200`↔`-800`, `-300`↔`-700`, `-400`↔`-600`, and
+   `-500` maps to itself. A step is therefore a *depth* rather than a pigment,
+   and `-500` is the reflection's fixed point — the only step that is the same
+   colour on both pages. That is a genuinely elegant rule and the app now
+   follows it.
+
+   **It is applied to eight steps, and `tag-neutral` is made of the two it
+   misses.** `.tag-neutral` is `--color-neutral-100` filled and `-800`
+   lettered, and neither is in the override list — so on a dark page it comes
+   out as a near-white chip with dark grey text, an inverted badge among tags
+   that follow the ground. `tag-accent`, which uses `-100` and `-800` of the
+   *accent* ramp, is covered and comes out as deep red, exactly right. So the
+   omission looks like an override list that stopped short rather than a
+   decision. The app extends the reflection to the two missing steps, because
+   the rule is unambiguous where the list is silent — but it is an inference,
+   and it is the one thing here that would change a drawn screen if you meant
+   the other.
 2. **Every sheet in the prototype is a bottom sheet** — full width, slid up,
    with its actions aligned **left**. Material's dialog is centred, inset and
    right-aligns them. This one is worth a single shared component rather than
@@ -162,5 +188,12 @@ prototype has a Save button.
 | Face designer | `feature/designer` |
 | Statistics, history, sessions | `feature/stats` |
 | Settings, menu, notation reference | `feature/settings` |
-| Shared widgets | `ui/common` |
-| Palette, type, shapes | `app/src/main/kotlin/de/drehtuer/dinfinity/theme` |
+| Shared widgets, **and the design tokens** | `ui/common` |
+| Palette, type and shapes as Material's roles | `app/src/main/kotlin/de/drehtuer/dinfinity/theme` |
+
+The tokens moved into `ui/common` in this pass. They used to live beside the
+theme in `app/`, which every screen module is *below* rather than above — so no
+screen could read them and six of them each kept a transcription of the same
+scale. Nothing about the design changed; it is only that the numbers now have
+one home, and a test reads `styles.css` to prove that home still agrees with
+it.

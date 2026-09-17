@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 
 /**
  * A button, drawn as the design system's `.btn`
@@ -70,10 +69,10 @@ fun ModernistButton(
         .then(
           when (kind) {
             ModernistButtonKind.Primary -> Modifier.background(accent)
-            ModernistButtonKind.Secondary -> Modifier.border(HAIRLINE, MaterialTheme.colorScheme.outline)
+            ModernistButtonKind.Secondary -> Modifier.border(HAIRLINE, Ink.divider)
             ModernistButtonKind.Ghost -> Modifier
           },
-        ).padding(horizontal = 16.dp, vertical = 8.dp),
+        ).padding(horizontal = Modernist.x4, vertical = Modernist.x2),
   ) {
     Text(
       text = text,
@@ -95,10 +94,7 @@ enum class ModernistButtonKind {
 }
 
 /** `.btn:disabled { opacity: 0.45 }`. */
-private const val DISABLED = 0.45f
+private const val DISABLED = Modernist.DISABLED
 
 /** `.btn-secondary`'s border. */
-private val HAIRLINE = 1.dp
-
-/** Android's minimum touch target. */
-private val TOUCH_TARGET = 48.dp
+private val HAIRLINE = Modernist.hairline

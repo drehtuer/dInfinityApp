@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
 import de.drehtuer.dinfinity.core.model.AccentColor
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * Reads the Modernist palette anywhere under [DInfinityTheme]. Material's own
@@ -27,12 +28,12 @@ import de.drehtuer.dinfinity.core.model.AccentColor
 val LocalModernistColors =
   staticCompositionLocalOf {
     ModernistColors(
-      background = ModernistTokens.Light.background,
-      surface = ModernistTokens.Light.surface,
-      text = ModernistTokens.Light.text,
-      accent = ModernistTokens.accent,
-      accentPressed = ModernistTokens.accent700,
-      divider = ModernistTokens.divider(ModernistTokens.Light.text),
+      background = Modernist.Light.background,
+      surface = Modernist.Light.surface,
+      text = Modernist.Light.text,
+      accent = Modernist.accent,
+      accentPressed = Modernist.accent700,
+      divider = Modernist.divider(Modernist.Light.text),
       isDark = false,
     )
   }
@@ -45,7 +46,7 @@ val LocalModernistColors =
 private val ModernistFontFamily = FontFamily.SansSerif
 
 private fun typography(): Typography {
-  val t = ModernistTokens.Type
+  val t = Modernist.Type
 
   fun heading(size: TextUnit) =
     TextStyle(
@@ -155,16 +156,16 @@ private fun ColorScheme.modernist(palette: ModernistColors): ColorScheme =
  * A number rather than a second grey, because the palette has one ink and the
  * system dims it rather than mixing a new one.
  */
-private const val MUTED = 0.65f
+private const val MUTED = Modernist.MUTED
 
 /** Zero radius everywhere — `--radius-*` is 0 by design. */
 private val ModernistShapes =
   Shapes(
-    extraSmall = RoundedCornerShape(ModernistTokens.radius),
-    small = RoundedCornerShape(ModernistTokens.radius),
-    medium = RoundedCornerShape(ModernistTokens.radius),
-    large = RoundedCornerShape(ModernistTokens.radius),
-    extraLarge = RoundedCornerShape(ModernistTokens.radius),
+    extraSmall = RoundedCornerShape(Modernist.radius),
+    small = RoundedCornerShape(Modernist.radius),
+    medium = RoundedCornerShape(Modernist.radius),
+    large = RoundedCornerShape(Modernist.radius),
+    extraLarge = RoundedCornerShape(Modernist.radius),
   )
 
 /**
@@ -181,22 +182,22 @@ fun DInfinityTheme(
   val palette =
     if (darkTheme) {
       ModernistColors(
-        background = ModernistTokens.Dark.background,
-        surface = ModernistTokens.Dark.surface,
-        text = ModernistTokens.Dark.text,
+        background = Modernist.Dark.background,
+        surface = Modernist.Dark.surface,
+        text = Modernist.Dark.text,
         accent = Color(accent.argb),
         accentPressed = Color(accent.pressedOnDarkArgb),
-        divider = ModernistTokens.divider(ModernistTokens.Dark.text),
+        divider = Modernist.divider(Modernist.Dark.text),
         isDark = true,
       )
     } else {
       ModernistColors(
-        background = ModernistTokens.Light.background,
-        surface = ModernistTokens.Light.surface,
-        text = ModernistTokens.Light.text,
+        background = Modernist.Light.background,
+        surface = Modernist.Light.surface,
+        text = Modernist.Light.text,
         accent = Color(accent.argb),
         accentPressed = Color(accent.pressedOnLightArgb),
-        divider = ModernistTokens.divider(ModernistTokens.Light.text),
+        divider = Modernist.divider(Modernist.Light.text),
         isDark = false,
       )
     }

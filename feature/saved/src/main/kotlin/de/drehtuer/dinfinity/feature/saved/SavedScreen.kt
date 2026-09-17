@@ -38,6 +38,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
  * Named formulas, rolled with one tap
@@ -139,16 +142,16 @@ private fun ColumnScope.Rolls(
   Text(
     text = stringResource(R.string.saved_order),
     style = MaterialTheme.typography.labelSmall,
-    color = muted,
+    color = Ink.muted,
     modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x2),
   )
   // The list hangs from a rule and is ruled inside by hairlines: 2 dp says
   // "a new thing starts here", 1 dp says "another row of the same thing"
   // (`design/dInfinityPhone.dc.html`, the saved-rolls list).
-  HorizontalDivider(thickness = Modernist.rule, color = divider)
+  HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedTestTags.LIST)) {
     itemsIndexed(rolls, key = { _, entry -> entry.roll.id }) { index, entry ->
-      if (index > 0) HorizontalDivider(thickness = Modernist.hairline, color = divider)
+      if (index > 0) HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
       SavedRow(entry = entry, onRoll = { onRoll(entry) }, onEdit = { onEdit(entry) })
     }
   }
@@ -244,7 +247,7 @@ private fun TopBar(
     menu()
   }
   // Every screen in the prototype hangs from a 2 dp rule under its title bar.
-  HorizontalDivider(thickness = Modernist.rule, color = divider)
+  HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
 }
 
 /**
@@ -291,7 +294,7 @@ private fun GroupSwitcher(
 ) {
   Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
     groups.forEachIndexed { index, entry ->
-      if (index > 0) HorizontalDivider(thickness = Modernist.hairline, color = divider)
+      if (index > 0) HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
       val parent = groups.firstOrNull { it.group.id == entry.group.parentId }?.group?.name
       Row(
         modifier =
@@ -311,7 +314,7 @@ private fun GroupSwitcher(
             Text(
               text = parent,
               style = MaterialTheme.typography.labelSmall,
-              color = muted,
+              color = Ink.muted,
             )
           }
           Text(
@@ -327,12 +330,12 @@ private fun GroupSwitcher(
         Text(
           text = pluralStringResource(R.plurals.saved_group_rolls, entry.rolls, entry.rolls),
           style = MaterialTheme.typography.labelSmall,
-          color = muted,
+          color = Ink.muted,
         )
         EditGroup(group = entry.group, onEdit = { onEdit(entry.group.id) })
       }
     }
-    HorizontalDivider(thickness = Modernist.rule, color = divider)
+    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
     TextButton(
       onClick = onNew,
       shape = Modernist.square,
@@ -340,7 +343,7 @@ private fun GroupSwitcher(
     ) {
       Text(stringResource(R.string.group_new))
     }
-    HorizontalDivider(thickness = Modernist.rule, color = divider)
+    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
   }
 }
 
@@ -392,7 +395,7 @@ private fun SavedRow(
         Text(
           text = stringResource(R.string.saved_broken),
           style = MaterialTheme.typography.labelSmall,
-          color = accent,
+          color = Ink.accent,
           modifier = Modifier.testTag(SavedTestTags.brokenOf(roll.id)),
         )
       }
@@ -402,7 +405,7 @@ private fun SavedRow(
       // The prototype's `font-size:13px` with no weight of its own: the name
       // is what is read first, and the formula is what is checked after it.
       style = MaterialTheme.typography.bodyMedium,
-      color = muted,
+      color = Ink.muted,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
@@ -417,7 +420,7 @@ private fun starred(
 ) = buildAnnotatedString {
   append(name)
   if (favourite) {
-    withStyle(SpanStyle(color = accent)) { append(" ★") }
+    withStyle(SpanStyle(color = Ink.accent)) { append(" ★") }
   }
 }
 
@@ -443,7 +446,7 @@ private fun Empty(onNew: () -> Unit) {
     Text(
       text = stringResource(R.string.saved_empty_body),
       style = MaterialTheme.typography.bodyLarge,
-      color = muted,
+      color = Ink.muted,
     )
     Button(
       onClick = onNew,

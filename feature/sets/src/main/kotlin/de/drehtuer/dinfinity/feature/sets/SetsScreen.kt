@@ -35,6 +35,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 import kotlin.math.roundToInt
 
 /**
@@ -267,14 +269,14 @@ private fun Messages(outcome: PackageInstaller.Result) {
     Text(
       text = stringResource(R.string.sets_install_warnings),
       style = MaterialTheme.typography.bodySmall,
-      color = muted,
+      color = Ink.muted,
     )
   }
   messages.forEach { message ->
     Text(
       text = message.toString(),
       style = MaterialTheme.typography.bodySmall,
-      color = if (outcome is PackageInstaller.Result.Failed) wrong else muted,
+      color = if (outcome is PackageInstaller.Result.Failed) Ink.accent else Ink.muted,
       modifier = Modifier.testTag(SetsTestTags.OUTCOME_LINE),
     )
   }
@@ -299,7 +301,7 @@ private fun Header(menu: @Composable () -> Unit) {
   Text(
     text = stringResource(R.string.sets_order),
     style = MaterialTheme.typography.bodySmall,
-    color = muted,
+    color = Ink.muted,
     modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
   )
 }
@@ -318,7 +320,7 @@ private fun EmptyNote() {
     Text(
       text = stringResource(R.string.sets_empty_body),
       style = MaterialTheme.typography.bodyMedium,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }
@@ -384,7 +386,7 @@ private fun Updates(
               pluralStringResource(R.plurals.sets_check_unreachable, checked.unreachable, checked.unreachable)
           },
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.testTag(SetsTestTags.CHECKED),
       )
     }
@@ -434,14 +436,14 @@ private fun SetLine(
         Text(
           text = version,
           style = MaterialTheme.typography.labelMedium,
-          color = muted,
+          color = Ink.muted,
         )
       }
     }
     Text(
       text = status(row),
       style = MaterialTheme.typography.bodySmall,
-      color = if (row.usable) muted else wrong,
+      color = if (row.usable) Ink.muted else Ink.accent,
     )
     // Under the status rather than replacing it: whether a set is broken or
     // switched off is what the player can do something about first, and
@@ -487,7 +489,7 @@ private fun ActionSheet(
         Text(
           text = stringResource(if (row.enabled) R.string.sets_sheet_disable_note else R.string.sets_sheet_remove_note),
           style = MaterialTheme.typography.bodySmall,
-          color = muted,
+          color = Ink.muted,
         )
       }
     },
@@ -521,7 +523,7 @@ private fun ActionSheet(
         ) {
           Text(
             text = stringResource(R.string.sets_sheet_remove),
-            color = wrong,
+            color = Ink.accent,
           )
         }
         TextButton(

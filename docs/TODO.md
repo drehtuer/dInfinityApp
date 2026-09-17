@@ -1003,6 +1003,18 @@ The figures are reported in every PR description either way.
       boundary and does. Raising the alpha to about 55 % on the light ground
       would clear it, at the cost of heavier rules everywhere — the design
       system says 40 %, so this is the design's to answer, not a test's
+- [ ] **A neutral tag has no dark ground.** The prototype's dark override
+      (`.dz-dark` in `design/dInfinityPhone.dc.html`) **reflects each ramp
+      about its middle step** — accent 100↔900, 200↔800, 700↔300, 800↔200 and
+      neutral 200↔800, 300↔700, 400↔600, with 500 its own fixed point. Eight
+      steps are written out. `.tag-neutral` is `--color-neutral-100` filled and
+      `-800` lettered, and **neither is among them**, so on a dark page it is a
+      near-white chip with dark grey text while `tag-accent` — covered by the
+      list — flips correctly to deep red. The rule says what those two should
+      be and the app follows it, but the list does not say it, so the
+      inference is recorded in `docs/design-handover.md` rather than taken as
+      settled. `ModernistTest` asserts the eight that *are* written down, so
+      the rule itself cannot drift
 
 - [ ] **The picker is a list of rows; the prototype's `1u` is a grid of cards.**
       The thumbnails landed in the list that was already there — one 44 × 64 dp

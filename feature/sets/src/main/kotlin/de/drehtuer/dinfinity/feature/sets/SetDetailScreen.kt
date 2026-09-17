@@ -43,6 +43,8 @@ import de.drehtuer.dinfinity.designer.MinePackage
 import de.drehtuer.dinfinity.designer.SetLicense
 import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 import de.drehtuer.dinfinity.ui.common.DieSilhouette
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * One dice set, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`).
@@ -104,7 +106,7 @@ private fun Header(
       Text(
         text = it,
         style = MaterialTheme.typography.labelMedium,
-        color = muted,
+        color = Ink.muted,
       )
     }
     menu()
@@ -126,7 +128,7 @@ private fun Missing() {
     Text(
       text = stringResource(R.string.sets_detail_gone_body),
       style = MaterialTheme.typography.bodyMedium,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }
@@ -206,7 +208,7 @@ private fun Source(
       Text(
         text = stringResource(R.string.sets_detail_commit, it),
         style = MaterialTheme.typography.bodySmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
   }
@@ -249,7 +251,7 @@ private fun Default(presenter: SetDetailPresenter) {
       Text(
         text = stringResource(R.string.sets_detail_default_note),
         style = MaterialTheme.typography.bodySmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
   }
@@ -278,7 +280,7 @@ private fun Manage(
       shape = Modernist.square,
       modifier = Modifier.testTag(SetDetailTestTags.REMOVE),
     ) {
-      Text(text = stringResource(R.string.sets_sheet_remove), color = wrong)
+      Text(text = stringResource(R.string.sets_sheet_remove), color = Ink.accent)
     }
   }
 }
@@ -311,7 +313,7 @@ private fun Export(presenter: SetDetailPresenter) {
     Text(
       text = stringResource(R.string.sets_detail_export_note),
       style = MaterialTheme.typography.bodySmall,
-      color = muted,
+      color = Ink.muted,
     )
     Row(
       modifier = Modifier.fillMaxWidth(),
@@ -340,7 +342,7 @@ private fun Export(presenter: SetDetailPresenter) {
       Text(
         text = message.toString(),
         style = MaterialTheme.typography.bodySmall,
-        color = wrong,
+        color = Ink.accent,
         modifier = Modifier.fillMaxWidth().testTag(SetDetailTestTags.EXPORT_PROBLEM),
       )
     }
@@ -429,7 +431,7 @@ private fun DieLine(die: Die) {
       // The ground the system has, not Material's lavender `surfaceVariant`,
       // and the same ink the row is written in, thinned.
       fill = MaterialTheme.colorScheme.surface,
-      ink = muted,
+      ink = Ink.muted,
       modifier = Modifier.size(32.dp),
     )
     Column(modifier = Modifier.weight(1f)) {
@@ -437,7 +439,7 @@ private fun DieLine(die: Die) {
       Text(
         text = pluralStringResource(R.plurals.sets_detail_faces, die.faces.size, die.faces.size),
         style = MaterialTheme.typography.bodySmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
   }
@@ -459,7 +461,7 @@ private fun LazyListScope.report(report: List<ValidationMessage>) {
       Text(
         text = stringResource(R.string.sets_detail_report_note),
         style = MaterialTheme.typography.bodySmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
   }
@@ -467,7 +469,7 @@ private fun LazyListScope.report(report: List<ValidationMessage>) {
     Text(
       text = message.toString(),
       style = MaterialTheme.typography.bodySmall,
-      color = wrong,
+      color = Ink.accent,
       modifier =
         Modifier
           .fillMaxWidth()
@@ -498,7 +500,7 @@ private fun Label(
   Text(
     text = text,
     style = MaterialTheme.typography.labelSmall,
-    color = muted,
+    color = Ink.muted,
     modifier = modifier,
   )
 }

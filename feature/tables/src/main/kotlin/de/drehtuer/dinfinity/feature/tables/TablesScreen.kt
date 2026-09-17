@@ -42,6 +42,8 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.designer.PhotoScaling
 import de.drehtuer.dinfinity.designer.PhotoTable
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * Which table the dice are thrown onto
@@ -100,14 +102,14 @@ fun TablesScreen(
       Text(
         text = stringResource(R.string.tables_empty),
         style = MaterialTheme.typography.bodyMedium,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.padding(16.dp).testTag(TablesTestTags.EMPTY),
       )
     } else {
       Text(
         text = stringResource(R.string.tables_note),
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
       )
       Looks(state, presenter)
@@ -188,7 +190,7 @@ private fun TableRow(
         Text(
           text = choice.setName,
           style = MaterialTheme.typography.labelSmall,
-          color = muted,
+          color = Ink.muted,
         )
       }
     }
@@ -271,7 +273,7 @@ private fun UsePhotoRow(
             stringResource(R.string.tables_photo_use_hint)
           },
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
   }
@@ -336,7 +338,7 @@ private fun PhotoSheetBody(
     Text(
       text = stringResource(R.string.tables_photo_body, PhotoScaling.LONGEST_SIDE.toString()),
       style = MaterialTheme.typography.bodySmall,
-      color = muted,
+      color = Ink.muted,
     )
     TextButton(
       onClick = onPickPhoto,
@@ -348,7 +350,7 @@ private fun PhotoSheetBody(
     Text(
       text = draft.picked?.label ?: stringResource(R.string.tables_photo_none),
       style = MaterialTheme.typography.labelMedium,
-      color = muted,
+      color = Ink.muted,
       modifier = Modifier.testTag(TablesTestTags.PHOTO_FILE),
     )
     OutlinedTextField(
@@ -362,7 +364,7 @@ private fun PhotoSheetBody(
       Text(
         text = stringResource(R.string.tables_photo_working),
         style = MaterialTheme.typography.labelMedium,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.testTag(TablesTestTags.PHOTO_WORKING),
       )
     }
@@ -381,13 +383,13 @@ private fun Refusal(reasons: List<String>) {
     Text(
       text = stringResource(R.string.tables_photo_refused),
       style = MaterialTheme.typography.labelMedium,
-      color = wrong,
+      color = Ink.accent,
     )
     reasons.forEach { reason ->
       Text(
         text = reason,
         style = MaterialTheme.typography.bodySmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
   }
@@ -457,11 +459,19 @@ private fun Swatch(
   }
 }
 
-/** The tray's wall, as thick as the prototype draws it (`border:6px`). */
-private val WALL = Modernist.wall
+/**
+ * How thick the wall around a tray reads, which is the table card's
+ * `border:6px` in the prototype (`design/dInfinityPhone.dc.html`, the Tables
+ * screen).
+ *
+ * Not a design-system token: 6 dp is off the spacing scale, and it is this
+ * screen's own measurement of a tray wall rather than a number any other
+ * screen shares.
+ */
+private val WALL = 6.dp
 
 /** `.table td`'s `border-bottom: 1px` — the thinnest line the system draws. */
-private val HAIRLINE = 1.dp
+private val HAIRLINE = Modernist.hairline
 
 /** How long each dash of the "use a photo" placeholder's edge is. */
 private val DASH = 4.dp

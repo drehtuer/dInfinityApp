@@ -30,6 +30,7 @@ import de.drehtuer.dinfinity.simulation.api.AnomalyReport
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
  * The developer screen: the anomaly log, and the two ways of throwing the last
@@ -285,9 +286,6 @@ private fun AnomalyRow(anomaly: Anomaly) {
     modifier = Modifier.testTag(DeveloperTestTags.anomalyOf(anomaly.seed)),
   )
 }
-
-/** Android's own minimum, so a button here is as pressable as one anywhere. */
-private val TOUCH_TARGET = 48.dp
 
 /** Stable handles for tests, so a wording change does not break them. */
 object DeveloperTestTags {

@@ -28,6 +28,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import de.drehtuer.dinfinity.core.collection.CollectionProblem
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * Taking a collection in (`design/dInfinity.dc.html`, options 9f and 9g).
@@ -70,7 +72,7 @@ fun ImportScreen(
       )
       menu()
     }
-    HorizontalDivider(thickness = Modernist.rule, color = divider)
+    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
 
     when (val state = presenter.state) {
       is ImportState.Waiting -> {
@@ -261,7 +263,7 @@ private fun Problems(
       Text(
         text = problem.toString(),
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
       )
     }
   }
@@ -277,7 +279,7 @@ private fun Refusal(
     style = MaterialTheme.typography.titleMedium,
     // The system's one red is the accent; Material's `error` is a second one
     // the Modernist palette does not contain (`Modernist`).
-    color = accent,
+    color = Ink.accent,
     modifier = modifier,
   )
 }
@@ -287,7 +289,7 @@ private fun Note(text: String) {
   Text(
     text = text,
     style = MaterialTheme.typography.bodyLarge,
-    color = muted,
+    color = Ink.muted,
   )
 }
 

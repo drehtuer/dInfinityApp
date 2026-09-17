@@ -21,6 +21,12 @@ dependencies {
   implementation(project(":core:model"))
   implementation(project(":data"))
 
+  // Where the design tokens live. `:app` is the module that turns them into
+  // Material's roles, and it can only read them from a module the features can
+  // read too — which is the whole reason they moved here
+  // (`docs/design-handover.md`).
+  implementation(project(":ui:common"))
+
   implementation(project(":dicesets:builtin"))
   implementation(project(":input:shake"))
   implementation(project(":feedback"))
@@ -50,10 +56,9 @@ dependencies {
   testImplementation(libs.androidx.room.runtime)
 }
 
-// The palette is allowed to write the palette down. `ModernistTokens` is the
-// one file in the app whose job is to say what `--color-bg` and the accent ramp
-// actually are, and `Theme.kt` is where they become Material's roles — every
-// other file reads them from the theme (`docs/design-handover.md`).
+// `Theme.kt` is where the design tokens become Material's roles, so it is the
+// one file in this module allowed to name a colour — every other file reads
+// them from the theme (`docs/design-handover.md`).
 tasks.named<de.drehtuer.dinfinity.build.VerifyDesignSystemTask>("verifyDesignSystem") {
-  exempt.addAll("ModernistTokens.kt", "Theme.kt")
+  exempt.addAll("Theme.kt")
 }

@@ -26,6 +26,7 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.ui.common.DieSilhouette
 import de.drehtuer.dinfinity.ui.common.SegmentedControl
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
  * Dice added by tapping rather than by typing
@@ -129,7 +130,7 @@ private fun PickerDie(
   Box(
     modifier =
       Modifier
-        .sizeIn(minWidth = TARGET, minHeight = TARGET)
+        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
         .combinedClickable(
           // Spelled out for TalkBack, which otherwise announces a long press
           // as "double tap and hold" with no word about what it does.
@@ -179,6 +180,5 @@ private fun PickerDie(
   }
 }
 
-/** The smallest thing worth pressing, and the picture inside it. */
-private val TARGET = 48.dp
+/** The picture inside the smallest thing worth pressing. */
 private val SILHOUETTE = 26.dp

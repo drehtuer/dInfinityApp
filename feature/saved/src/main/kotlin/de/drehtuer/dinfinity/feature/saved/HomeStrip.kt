@@ -24,6 +24,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.SavedRollSource
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * The active group's saved rolls, on the tray
@@ -135,7 +137,7 @@ private fun Tile(
     Text(
       text = if (entry.broken) stringResource(R.string.strip_broken) else roll.formula,
       style = MaterialTheme.typography.labelSmall,
-      color = if (entry.broken) accent else muted,
+      color = if (entry.broken) Ink.accent else Ink.muted,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
       modifier = Modifier.testTag(HomeStripTestTags.noteOf(roll.id)),
@@ -155,7 +157,7 @@ private fun Invitation(
         // Outlined rather than filled: the tile beside it is a roll, and this
         // is not one. The prototype spends the surface colour on the things
         // that exist and gives the way to make another one a rule.
-        .border(width = Modernist.hairline, color = divider)
+        .border(width = Modernist.hairline, color = Ink.divider)
         .combinedClickableInvitation(onNew)
         .testTag(HomeStripTestTags.NEW)
         .padding(Modernist.x3),

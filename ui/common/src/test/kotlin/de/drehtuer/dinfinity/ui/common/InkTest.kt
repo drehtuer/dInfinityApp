@@ -45,4 +45,28 @@ class InkTest {
     // at the prototype's 65 %, which is the stronger of the two.
     assertTrue("a footnote is not fainter than a description", Ink.FAINT < Ink.MUTED)
   }
+
+  @Test
+  fun `the one red and the divider are the roles the theme fills in`() {
+    // Both exist so a call site can say *which* colour it means. The accent is
+    // `primary` rather than `error`, because the design system has one red and
+    // a screen reaching for Material's would get a second; the divider is
+    // `outline` rather than `outlineVariant`, because a rule and a control's
+    // border are the same token here and Material treats them as two.
+    var primary: Color? = null
+    var outline: Color? = null
+    var accent: Color? = null
+    var divider: Color? = null
+    compose.setContent {
+      primary = MaterialTheme.colorScheme.primary
+      outline = MaterialTheme.colorScheme.outline
+      accent = Ink.accent
+      divider = Ink.divider
+    }
+
+    compose.runOnIdle {
+      assertEquals(primary, accent)
+      assertEquals(outline, divider)
+    }
+  }
 }

@@ -29,6 +29,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import de.drehtuer.dinfinity.data.Session
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * The buckets statistics are filtered by
@@ -83,7 +85,7 @@ fun SessionsScreen(
     // The rule every screen in the prototype hangs from.
     HorizontalDivider(
       thickness = Modernist.rule,
-      color = divider,
+      color = Ink.divider,
       modifier = Modifier.testTag(SessionsTestTags.HEADER_RULE),
     )
 
@@ -92,13 +94,13 @@ fun SessionsScreen(
     Text(
       text = stringResource(R.string.sessions_explanation),
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Ink.muted,
       modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x1),
     )
 
     LazyColumn(modifier = Modifier.fillMaxSize().testTag(SessionsTestTags.LIST)) {
       items(state.sessions, key = { it.id }) { session ->
-        HorizontalDivider(thickness = Modernist.hairline, color = divider)
+        HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
         SessionRow(
           session = session,
           active = session.id == state.activeId,
@@ -144,7 +146,7 @@ private fun SessionRow(
             pluralStringResource(R.plurals.sessions_naturals, session.naturals.toInt(), session.naturals),
           ),
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.testTag(SessionsTestTags.countsOf(session.id)),
       )
     }
@@ -196,7 +198,7 @@ private fun NameSheet(
           Text(
             text = stringResource(R.string.sessions_new_note),
             style = MaterialTheme.typography.labelSmall,
-            color = muted,
+            color = Ink.muted,
           )
         }
       }

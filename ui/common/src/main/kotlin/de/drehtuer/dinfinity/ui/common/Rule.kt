@@ -4,11 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 
 /**
  * A horizontal rule, in the design system's ink and at one of its two weights
@@ -42,7 +40,7 @@ fun Rule(
       modifier
         .fillMaxWidth()
         .height(weight.thickness)
-        .background(MaterialTheme.colorScheme.outline),
+        .background(Ink.divider),
   )
 }
 
@@ -51,8 +49,8 @@ enum class RuleWeight(
   val thickness: Dp,
 ) {
   /** Between the rows of one block. */
-  Hairline(1.dp),
+  Hairline(Modernist.hairline),
 
   /** Between blocks, and under a heading. The system's `.hr`. */
-  Block(2.dp),
+  Block(Modernist.rule),
 }

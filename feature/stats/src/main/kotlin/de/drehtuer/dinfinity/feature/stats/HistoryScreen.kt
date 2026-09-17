@@ -37,6 +37,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import de.drehtuer.dinfinity.data.HistoryEntry
 import de.drehtuer.dinfinity.data.StoredDie
 import de.drehtuer.dinfinity.data.StoredGroup
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import kotlin.math.abs
 
 /**
@@ -110,7 +113,7 @@ fun HistoryScreen(
           item(key = "session:${roll.id}") { SessionHeading(roll.sessionId) }
         }
         item(key = roll.id) {
-          HorizontalDivider(thickness = Modernist.hairline, color = divider)
+          HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
           Entry(
             roll = roll,
             open = state.openId == roll.id,
@@ -178,7 +181,7 @@ private fun Header(
   // The rule every screen in the prototype hangs from.
   HorizontalDivider(
     thickness = Modernist.rule,
-    color = divider,
+    color = Ink.divider,
     modifier = Modifier.testTag(HistoryTestTags.HEADER_RULE),
   )
 }
@@ -278,7 +281,7 @@ private fun SessionHeading(name: String) {
           .fillMaxWidth()
           .padding(start = Modernist.x4, end = Modernist.x4, top = Modernist.x3, bottom = Modernist.x1),
     )
-    HorizontalDivider(thickness = Modernist.rule, color = divider)
+    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
   }
 }
 
@@ -314,7 +317,7 @@ private fun Entry(
         Text(
           text = at,
           style = MaterialTheme.typography.labelSmall,
-          color = muted,
+          color = Ink.muted,
         )
       }
       // A roll with a natural maximum in it prints in the accent, which is the
@@ -364,7 +367,7 @@ private fun Groups(roll: HistoryEntry) {
       Text(
         text = pluralStringResource(R.plurals.history_anomalies, roll.anomalies, roll.anomalies),
         style = MaterialTheme.typography.labelSmall,
-        color = muted,
+        color = Ink.muted,
         modifier = Modifier.testTag(HistoryTestTags.anomaliesOf(roll.id)),
       )
     }
@@ -390,7 +393,7 @@ private fun Adjustment(
     Text(
       text = stringResource(if (amount < 0) R.string.history_minus else R.string.history_plus),
       style = MaterialTheme.typography.labelLarge,
-      color = muted,
+      color = Ink.muted,
       modifier = Modifier.weight(3f),
     )
     Text(
@@ -410,7 +413,7 @@ private fun Group(group: StoredGroup) {
     Text(
       text = group.notation,
       style = MaterialTheme.typography.labelLarge,
-      color = muted,
+      color = Ink.muted,
       modifier = Modifier.weight(1f),
     )
     Text(
@@ -437,7 +440,7 @@ private fun Group(group: StoredGroup) {
       text = labels,
       style = MaterialTheme.typography.labelLarge,
       textDecoration = TextDecoration.LineThrough,
-      color = muted,
+      color = Ink.muted,
       modifier = Modifier.semantics { contentDescription = said },
     )
   }
@@ -446,7 +449,7 @@ private fun Group(group: StoredGroup) {
     Text(
       text = stringResource(R.string.history_fell_back, group.requestedSetId, group.setId),
       style = MaterialTheme.typography.labelSmall,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }
@@ -465,7 +468,7 @@ private fun Empty() {
     Text(
       text = stringResource(R.string.history_empty_body),
       style = MaterialTheme.typography.bodyLarge,
-      color = muted,
+      color = Ink.muted,
     )
   }
 }
@@ -539,7 +542,7 @@ private fun Choice(
     Text(
       text = label,
       style = MaterialTheme.typography.labelLarge,
-      color = if (chosen) MaterialTheme.colorScheme.primary else muted,
+      color = if (chosen) MaterialTheme.colorScheme.primary else Ink.muted,
       fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
     )
   }
