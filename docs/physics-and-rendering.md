@@ -1101,6 +1101,19 @@ impact sounds rather than a crash in the middle of a roll.
   picking a die up and for the tap that deliberately does not roll — and
   which die a finger is on is `TrayPick`, the inverse of this camera
   ("Picking a die up and throwing it again").
+- **How far it leans is the player's, and it leans less than it did.**
+  `TrayCamera.TILT_DEGREES` was 22° and not a setting. The design makes it
+  **Table view** in Settings, with two positions: *straight down*, which is the
+  default and puts every die square to the screen, and *angled*, which is the
+  22° shot and shows the top and left walls. The reason is what a phone
+  showed: at 411 × 923 dp a 22° shot spends a large share of the frame on the
+  rim and leaves the felt a tall trapezoid inside it, and the furniture is not
+  what anybody is looking at. The argument the other way is in `TrayCamera`'s
+  own KDoc and still holds — straight down is a diagram, and the point of
+  rolling real dice is watching them tumble — which is exactly why it is two
+  positions rather than a new constant. **It is a camera, not a projection:**
+  straight down still draws the dice in perspective and still casts their
+  shadows, it just stops leaning.
 - **The table is drawn before anything is thrown onto it, and after.** A tray
   is a table, not a roll: the screen says *there is a table* as soon as it
   opens, and the floor, the walls and the rim are built and drawn with nothing
@@ -1309,6 +1322,86 @@ impact sounds rather than a crash in the middle of a roll.
 Target: 60 fps with 20 dice on the Pixel 10a with headroom; the capacity rule
 caps a roll at what the table can hold, which on a phone-sized table is in
 the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
+
+## What is drawn over the table
+
+The prototype used to draw this screen as a column of bands with the tray as
+one of them; the app draws one full-bleed table with the formula, the hint, the
+picker and the buttons floating on it. **The app's shape won**, and the design
+of 2026-09-17 made it a design rather than an accident
+(`design/dInfinityPhone.dc.html`, and question 8 of `docs/design-handover.md`).
+
+**Every control over the table is a plate**: opaque `--color-bg`, no radius, no
+border, `--shadow-sm`, 7 / 11 / 8 dp of padding, hugging its content rather
+than filling the width. A plate is what keeps a control legible over a lit 3D
+table whose colour the player picked, and it is the answer to two of the faults
+the first device session found — a formula whose dashed rule ran the full width
+of the screen, so the text read as struck through rather than underlined, and a
+bordered box of controls sitting on bare felt.
+
+**Accent never touches felt.** Accent appears only *on* a plate, which is how a
+palette of six accents and a shelf of tables stops being thirty pairs to check
+— of which "See the odds" in Moss over green felt already failed (question 10).
+
+| Plate | Where | What it carries |
+| --- | --- | --- |
+| Formula | top left, 14 / 12 dp in | the formula, dashed underline as wide as the text, tap to edit |
+| Hint | bottom left, 13 dp / 600 | only while the table is idle |
+| Counting | across the bottom | how far through the reading a roll is |
+| Another throw earned | across the bottom | a chain that stopped, and the shake it wants |
+| Could not settle | across the bottom | how many dice never stopped, and what to do about them |
+
+**The counting plate is the home the running readout did not have.** It was the
+most important unstyled thing in the app: one line of text, sitting where
+"Rolling…" used to be because there was nowhere else. It is now a plate across
+the bottom carrying, in order, the kicker `COUNTING` at 10 dp / 600 with .1em
+tracking at 65 % opacity; the count as `14` at 17 dp / 800 in tabular figures
+followed by `of 20 read`; the range the finished roll can still come out in,
+right-aligned, carrying the formula's constant offset and ordered low to high;
+and a 3 dp progress rule, `--color-neutral-200` track and `--color-text` fill.
+An open exploding chain puts a `+` at the top of the range in
+`--color-accent-700` — which answers the hand-over's fifth question in passing:
+the `+` is accent, at body size, on a plate, so it is the 700 step like every
+other accent-coloured run of text at 10–14 dp.
+
+**Two states the prototype did not have live on that same plate.** *Another
+throw earned* is a chain that has stopped and is one shake short: an
+accent-700 kicker, a line of copy, `Throw 3 more` as the primary and `Stop the
+chain` as a ghost. *Could not settle* is the refusal: an alert icon, an
+accent-700 kicker, copy naming how many dice never stopped, then `Throw those 3
+again` and `Cancel the roll`. Both are reachable in the prototype through its
+`rollState` tweak, which is the quickest way to see them.
+
+**A die from a later pass says so.** A roll that had to throw something again
+shows the dice of its last pass only, so a total counting twenty dice can stand
+over a table holding three. Those dice get a 4 dp `--color-accent-700` outline
+and a `pass 2` label in the slot the `dropped` marker already uses, and the
+number on the felt stops looking like a mistake.
+
+**6 and 9 carry a trailing dot.** A die on a table lies at whatever angle it
+landed at, and `6` and `9` are the same glyph turned over. The app prints a bar
+under the ambiguous one (`docs/face-designer.md`); the design prints `6.` and
+`9.` instead, on the felt and in the designer both. A d% reads its units digit
+dotted and its tens pair undotted, because the tens pair is `10`–`90` and
+cannot be misread; a number set upright in the result sheet is not dotted at
+all, because nothing there is ambiguous. **This is a change to what is printed
+on a die**, so it lands in `core/glyphs` and the built-in set rather than in a
+Compose layout.
+
+**The dice arrive one at a time.** Each falls from above where it lands, 85 ms
+after the one before it, and the result sheet waits for the last of them:
+`min(2400, 950 + (n − 1) × 85)` ms. In the prototype the shove a landing die
+gives the dice already down is an animation — three passes along the collision
+normal, a randomised overshoot, a ±35° spin — because the prototype has no
+solver. **In the app it is not to be built at all.** A die landing among
+settled dice already moves them: they are rigid bodies and it hit them. What
+the app takes from this is the *stagger*, dice spawned across a beat rather
+than in one cluster; what it must not take is the shove, which written in
+Kotlin would be precisely the invisible hand this project refuses
+(`.claude/CLAUDE.md`). A settled die moved by another die is physics. A settled
+die moved by code is a bug. The stagger stays inside the seed either way — the
+schedule is part of the throw, so a replay replays it — and it is still one
+world, so the capacity rule is unchanged.
 
 ## Power-saving mode
 

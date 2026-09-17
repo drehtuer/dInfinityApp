@@ -58,9 +58,10 @@ a tumble; everything else is real.
 
 - **Physics-based rolls** — dice are convex rigid bodies with correct mass
   distribution; results come from which face lands up, not from `random()`.
-- **3D rendering** of the tray and dice, with haptics and sound on every real
-  impact — never on a die sliding or a die at rest. The table decides what it
-  sounds like, the die's size decides the pitch, and both switch off.
+- **3D rendering** of the tray and dice, seen straight down or at an angle that
+  shows the walls — your choice — with haptics and sound on every real impact,
+  never on a die sliding or a die at rest. The table decides what it sounds
+  like, the die's size decides the pitch, and both switch off.
 - **Shake to roll** — accelerometer and gyroscope drive the throw.
 - **Power-saving mode** — same physics, no rendering; just the result. The dice
   are still heard: the impacts the throw made are played back over a second.

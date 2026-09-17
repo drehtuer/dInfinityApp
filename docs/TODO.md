@@ -116,6 +116,47 @@ rather than a sentence with a zero written into it.
 
 What is below is what it does not have yet.
 
+**From the design pass of 2026-09-17** (`docs/physics-and-rendering.md`, "What
+is drawn over the table"):
+
+- [ ] **Put the controls on plates.** The screen keeps its shape — one
+      full-bleed table, everything floating on it — and every control over it
+      becomes an opaque `--color-bg` plate with `--shadow-sm`, no radius, no
+      border, 7 / 11 / 8 dp of padding, hugging its content. That fixes three
+      things at once: the formula's dashed rule stops running the width of the
+      screen and becomes an underline again, the picker and "Save a roll" stop
+      sitting on bare felt, and **accent stops touching felt anywhere**, which
+      is what makes six accents over a shelf of tables safe without checking
+      thirty pairs
+- [ ] **Build the counting plate.** Across the bottom: `COUNTING` kicker, the
+      count in tabular figures, `of 20 read`, the still-possible range
+      right-aligned with a `+` in accent-700 while a chain is open, and a 3 dp
+      progress rule. It replaces the line of text currently sitting where
+      "Rolling…" used to be — the most important unstyled thing in the app
+- [ ] **Two roll states on that same plate**: *another throw earned* (`Throw 3
+      more` / `Stop the chain`) and *could not settle* (`Throw those 3 again` /
+      `Cancel the roll`). Both are states the screen already reaches and
+      neither has a design until now; `rollState` in the prototype shows them
+- [ ] **Mark the dice of a later pass** — 4 dp accent-700 outline and a
+      `pass 2` label in the `dropped` slot — so a total counting twenty dice
+      over a table holding three explains itself on the felt
+- [ ] **Draw the total once.** Today the result is the total at ~42 dp centred
+      on the felt *and* again at the right edge at x ≈ 376 dp of 411, where it
+      looks clipped. The design has one result sheet; the second copy goes
+- [ ] **Stagger the spawn**, 85 ms between dice, with the result sheet waiting
+      `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
+      collision shove is **not** to be ported: a settled die moved by another
+      die is physics, a settled die moved by code is the invisible hand
+- [ ] **`6` and `9` take a trailing dot** on the felt and in the designer,
+      where the app prints a bar under the ambiguous one today. A d% units
+      digit is dotted and its tens pair is not; an upright number in the result
+      sheet is not. It is what is printed on a die, so it is `core/glyphs` and
+      the built-in set rather than a layout (`docs/face-designer.md`)
+- [ ] **Table view becomes a setting**, straight down by default and 22° on
+      *angled*. The camera arithmetic is already a function of one constant;
+      what is new is reading a setting and re-framing without restarting a roll
+      (`docs/physics-and-rendering.md`, "Rendering")
+
 - [ ] **Revisited against the device data, and left alone deliberately.** The
       two constants do different jobs: `FLOOR_SHARE` *shrinks* and `MIN_SCALE`
       *refuses*. At the engine's cap of a hundred 16 mm d6 the shrink is 0.62,
