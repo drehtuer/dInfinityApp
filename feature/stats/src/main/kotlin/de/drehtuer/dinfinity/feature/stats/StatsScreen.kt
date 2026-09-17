@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -315,35 +314,6 @@ private fun Cuts(
  * so TalkBack announces "selected" rather than leaving the state of the whole
  * row a guess (`docs/architecture.md`, "Accessibility").
  */
-@Composable
-private fun Cut(
-  label: String,
-  chosen: Boolean,
-  tag: String,
-  onChoose: () -> Unit,
-) {
-  // Not a [ModernistButton]: a cut is chosen or it is not, and the mark that
-  // says which is the accent on its label. `Ghost` is the accent by
-  // definition, so every cut in the row would read as the chosen one. The box
-  // below is what `Ghost` draws — nothing — with the label kept conditional.
-  Box(
-    contentAlignment = Alignment.Center,
-    modifier =
-      Modifier
-        .clickable(role = Role.Button, onClick = onChoose)
-        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
-        .semantics { selected = chosen }
-        .testTag(tag)
-        .padding(Modernist.x2),
-  ) {
-    Text(
-      text = label,
-      style = MaterialTheme.typography.labelLarge,
-      color = if (chosen) MaterialTheme.colorScheme.primary else Ink.muted,
-      fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
-    )
-  }
-}
 
 @Composable
 private fun Dice(

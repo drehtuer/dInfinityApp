@@ -1015,6 +1015,18 @@ The figures are reported in every PR description either way.
       inference is recorded in `docs/design-handover.md` rather than taken as
       settled. `ModernistTest` asserts the eight that *are* written down, so
       the rule itself cannot drift
+- [ ] **Statistics and History narrow their lists with a scrolling row of
+      accent words; the prototype uses a segmented control.** `Cut`
+      (`feature/stats`) draws one option of that row — no box, the chosen one
+      in the accent and bold — and both screens share it now. The prototype
+      draws the same choice as a `.seg`: one box with its options butted
+      together, the chosen one filled. `ui/common`'s `SegmentedControl` and
+      `OptionBox` between them can draw either shape, so what is missing is a
+      decision rather than a component. It is a visible redesign — a bordered
+      inverting box in place of a bare accent word — and a semantics change
+      with it (`Role.RadioButton` via `selectable`), so it wants an eye rather
+      than a refactor. The sets a player can have is unbounded, which is the
+      argument for the scrolling row and against the joined box
 - [ ] **The face designer's tool row is a set of `.seg-opt`s wearing button
       clothes.** Every one of its twenty-one controls goes through one `Tool`
       composable, and that composable is a two-state control: chosen is filled

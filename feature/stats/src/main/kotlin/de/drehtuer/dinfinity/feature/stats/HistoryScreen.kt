@@ -4,14 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
@@ -26,9 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -44,7 +40,6 @@ import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.SectionKicker
 import de.drehtuer.dinfinity.ui.common.Sheet
-import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import kotlin.math.abs
 
 /**
@@ -506,14 +501,14 @@ private fun Choosers(
     horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Choice(
+    Cut(
       label = stringResource(R.string.history_all),
       chosen = state.filter == HistoryFilter.Everything,
       tag = HistoryTestTags.ALL,
       onChoose = { presenter.filterBy(HistoryFilter.Everything) },
     )
     state.sessionChoices.forEach { session ->
-      Choice(
+      Cut(
         label = session.name,
         chosen = (state.filter as? HistoryFilter.InSession)?.id == session.id,
         tag = HistoryTestTags.sessionChoiceOf(session.id),
@@ -521,45 +516,13 @@ private fun Choosers(
       )
     }
     state.rollChoices.forEach { roll ->
-      Choice(
+      Cut(
         label = roll.name,
         chosen = (state.filter as? HistoryFilter.OfSavedRoll)?.id == roll.id,
         tag = HistoryTestTags.savedRollOf(roll.id),
         onChoose = { presenter.filterBy(HistoryFilter.OfSavedRoll(roll.id, roll.name)) },
       )
     }
-  }
-}
-
-@Composable
-private fun Choice(
-  label: String,
-  chosen: Boolean,
-  tag: String,
-  onChoose: () -> Unit,
-) {
-  // Not a [ModernistButton]: a cut is chosen or it is not, and the mark that
-  // says which is the accent on its label. `Ghost` is the accent by
-  // definition, so every cut in the row would read as the chosen one. The box
-  // below is what `Ghost` draws — nothing — with the label kept conditional.
-  Box(
-    contentAlignment = Alignment.Center,
-    modifier =
-      Modifier
-        .clickable(role = Role.Button, onClick = onChoose)
-        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
-        // The accent and the bold are marks only an eye reads; this is the
-        // same fact in the semantics tree.
-        .semantics { selected = chosen }
-        .testTag(tag)
-        .padding(Modernist.x2),
-  ) {
-    Text(
-      text = label,
-      style = MaterialTheme.typography.labelLarge,
-      color = if (chosen) MaterialTheme.colorScheme.primary else Ink.muted,
-      fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
-    )
   }
 }
 
