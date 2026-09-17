@@ -16,6 +16,89 @@ what changed, and says whether the design needs a decision or only needs
 bringing up to date. The last section is the questions that are genuinely
 yours — the app is waiting on them.
 
+> **2026-09-17: everything below has now been seen on a phone.** Until this
+> date it had not. The app was written, tested and released against unit tests,
+> Robolectric and this document; the first time any of it reached a screen was
+> a session on a Pixel 10a (411 × 923 dp, Android 17) that photographed every
+> screen and found two faults no test could see — both shipped in `v0.1.0`.
+> The section immediately below is what that session showed, and it is the part
+> of this document worth reading first, because it is the part that is about
+> pictures rather than about behaviour.
+
+## What the phone showed
+
+Read this next to `screen="roll"` in
+[dInfinityPhone.dc.html](../design/dInfinityPhone.dc.html). It is one screen,
+and it is the one the app opens on.
+
+**The prototype's roll screen is a column of bands; the app's is one picture
+with the controls floating on it.** In the prototype the tray is a flex item —
+`order: 2`, its own background, `2px solid var(--color-divider)` between it and
+what sits above and below. The formula is a button pinned `left: 14px;
+top: 12px` *inside* the tray with a dashed underline as wide as its text; the
+hint sits `left: 14px; bottom: 12px` at 13 px; the saved-roll strip and the
+button row are separate bands underneath.
+
+In the app the tray is a `SurfaceView` filling the whole screen, and the
+formula, the hint, the die picker, "Save a roll" and the Roll button are all
+drawn *over* it. There are no bands and no rules. The consequences are all
+visible in a screenshot:
+
+- **The formula sits centred at the bottom and its dashed rule runs the full
+  width of the screen**, so the text appears to be struck through rather than
+  underlined.
+- **The hint is centred mid-screen** rather than tucked into the tray's bottom
+  left.
+- **Every control is on felt.** A bordered "Save a roll" box and a row of die
+  glyphs are drawn straight onto a lit 3D table, with nothing behind them.
+- **"See the odds" is accent-coloured text on the felt.** The player picks the
+  accent and the table picks the felt, so the two collide: on Moss over green
+  felt it is very nearly invisible.
+
+**The tray is not a coloured rectangle, it is a rendered table.** The prototype
+draws a flat region with SVG dice on it. The app draws a real 3D scene — a
+wooden rim in perspective, a felt floor, cast shadows, seen from a camera
+tilted 22° off vertical and standing off the near end. At 411 × 923 dp the rim
+takes a large share of the frame and the felt is a tall trapezoid inside it.
+Nothing about the prototype prepares somebody for how much of the screen the
+furniture takes.
+
+**The result readout is the least designed thing in the app.** After a throw the
+app draws, in this order down the screen: the total at ~42 px centred on the
+felt; the formula as a kicker; the formula again as a title; **the total a
+second time, hard against the right edge at x ≈ 376 dp of 411**; then the die
+chips at the far left. Two copies of the same number at two sizes in two places,
+and the second one looks clipped. This has no counterpart in the prototype and
+needs one.
+
+**Power-saving mode draws nothing at all, and looks broken.** The prototype has
+a panel for it — `#9b9797`, the words "Power-saving mode" as an uppercase
+kicker and "Same physics, no rendering. The result is identical to what the
+tray would show." The app puts no surface on the screen and adds no panel, so
+what a player sees is an empty tray and a number appearing from nowhere. The
+session that produced this document lost twenty minutes to exactly that,
+believing the renderer was broken. **This is the clearest case in the document
+of the prototype being right and the app simply not having built it.**
+
+**Two screens disagree about where the top of the screen is.** The status bar
+is 58 dp. The Roll screen's menu button starts at 66 dp, clear of it; the
+Settings screen's starts at **24 dp**, so it and the title sit underneath the
+clock. Whatever inset the roll screen applies is not reaching the screens the
+menu opens. That is a bug rather than a question, and it is recorded in
+[TODO.md](TODO.md) — it is here only so that a screenshot taken today is not
+mistaken for a layout decision.
+
+**The accent swatches wrap.** Six accents at the current swatch size lay out
+five across and one alone on a second row, with "Violet" orphaned. The
+prototype has never had to draw six.
+
+**Any screenshot of `v0.1.0` has mirrored numbers on its dice.** Every glyph on
+every die was drawn reflected — `18` read as `8I`. It was a single wrong default
+in the material compiler, fixed in
+[#272](https://github.com/drehtuer/dInfinityApp/pull/272), and it is mentioned
+only because pictures of the first release are wrong in a way that looks
+deliberate.
+
 ## The one change that reaches every screen with dice on it
 
 **A roll can clear the table in front of the player, and only sometimes does.**
@@ -62,7 +145,7 @@ than are on the table.
 | Roll | `1a` | **Tapping a saved roll puts its dice on the table** rather than throwing them. The board follows the formula as it is edited and as the picker adds to it, so what you look at before you shake is what you are about to throw. | Confirm: the prototype shows an empty tray until the throw |
 | Roll | `1k` | The outcome range carries a **`+`** when a chain can still earn dice: `3d6!` reads `3 to 21+`. Without it the ceiling was `1008`, which is true and useless. | Typography for the `+` |
 | Roll | `1h` | The picker row still offers only the ten standard dice. A set's own dice (`skull-d6`) will become typable as `3{skull-d6}kh1`. | Whether the picker row grows a brace form |
-| Roll | `1z` | Power-saving mode puts **no surface on the screen at all**, so the tray region is absent rather than blank. | Confirm the layout with no tray |
+| Roll | `1z` | Power-saving mode puts **no surface on the screen at all**, so the tray region is absent rather than blank — and the app draws nothing in its place, where the prototype has a grey panel saying so. Seen on the phone: it reads as a broken renderer. | Build the prototype's panel, or say what replaces it |
 | Tables | `1u` | The picker is **a list of rows**, where the prototype has a two-column grid of cards. Deliberate — a row fits a 44 × 64 thumbnail and a name at a touch target worth pressing — but it is a real divergence. | Decide: keep the list, or make the grid work |
 | Designer | `8a`–`8d` | There is **no 3D preview**; "Roll it" is the preview, as in the prototype. Recorded so it is not mistaken for something missing. | Confirm |
 | Sets | `4a` | A **photograph can be a table**. It is downsized, written into the personal package and validated like any other table. The prototype's upload sheet does not say how a photo sits on a tray that changes shape with the phone. | How a photo crops |
@@ -77,6 +160,8 @@ inventory and the notation are all as designed.
 ## Questions the app is waiting on
 
 These are in [TODO.md](TODO.md) in full. They are here because they are yours.
+The last four came out of the phone session, and they are the ones that would
+change a drawn screen rather than a token.
 
 1. **A filled button's label is 3.76:1 on its own accent and wants 4.5:1**, and
    **a divider is 2.41:1 on the light ground and wants 3:1.** Both are measured,
@@ -99,6 +184,21 @@ These are in [TODO.md](TODO.md) in full. They are here because they are yours.
 7. **How should a photo sit on the tray** — cropped at import, losing pixels
    somebody chose, or mapped at draw time, which needs the tray's aspect and the
    tray's aspect changes with the phone.
+
+8. **Does the roll screen keep its bands, or become one picture?** The
+   prototype is a column with rules; the app overlays everything on a
+   full-bleed tray. One of them is the design. If it is the prototype's, the
+   tray needs a height and the controls need a ground to sit on; if it is the
+   app's, the controls need something that keeps them legible over a lit 3D
+   table that the player chooses the colour of.
+9. **Where does the total go, and how many times?** Today it is drawn twice —
+   large and centred on the felt, and again small at the right edge.
+10. **What does the accent do when the table is the same colour?** "See the
+    odds" is accent text on felt, and both are the player's choice. Six accents
+    times five tables is thirty pairs, of which at least Moss-on-green-felt
+    fails.
+11. **Six accent swatches wrap 5 + 1.** Two rows of three, a smaller swatch, or
+    a scroller?
 
 ## Screens whose shape differs, not just their styling
 
@@ -130,11 +230,15 @@ both?
 session" field, the note that deleting moves rolls to Unfiled, and the entire
 "Import and export" block.
 
-**Dice sets** groups itself with accent kickers over 2 dp rules ("Install from a
-URL or file", "Installed"); the app has the same controls in a different order
-with no kickers. Its rows badge state with tags — update available, default,
-disabled — where the app says all three in prose and never shows which set is
-the default at all.
+**Dice sets** — mostly caught up. The accent kickers over 2 dp rules ("Install
+from a URL or file", "Installed") are drawn now, and the rows carry two of the
+prototype's three tags: `default`, and `switched off` where the prototype writes
+`disabled` (see "One tag says something other than what the prototype writes"
+below). **The third is still prose.** "Update available" is a line of accent
+text under the status rather than a filled accent tag, because a filled accent
+tag needs both ends of an accent ramp and only two of the six accents have one
+— which is question 2 under "Things the design system does not yet say", and
+the one thing on this screen still waiting on you.
 
 **Dice set details** has a two-tier header (a 20 px bar, then the set's name at
 **28 px/800**), provenance as a two-column table with rules, dice as a 4-up grid

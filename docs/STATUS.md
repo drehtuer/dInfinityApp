@@ -32,7 +32,7 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#272**. `v0.1.0` is cut from #268 and is two
+`main` has everything through **#274**. `v0.1.0` is cut from #268 and is two
 fixes behind. Nothing is in flight.
 
 ## Done
@@ -70,11 +70,18 @@ most of it is judgement with a phone in hand rather than code.
 ## Blocked / waiting on
 
 **Nothing is blocked.** The phone came back and the UI stack has now been on a
-real screen: every screen photographed through the accessibility tree,
-`:render:filament`'s 22 instrumented tests green on the device, and the two
-faults above found and fixed there. What that cost is the entry above — a
+real screen: every screen photographed through the accessibility tree, and the
+two faults above found and fixed there. What that cost is the entry above — a
 release was cut while this section said the opposite, and it shipped both of
 them.
+
+**The whole device tier runs, and until #274 it could not.** `./gradlew
+connectedDebugAndroidTest` across every module on the Pixel 10a: **82 tests, 1
+skipped, 0 failed**, 11m 25s. It used to fail however green the tests were,
+because `HarnessTest` declines to run without `harness.rolls` and the runner
+files an assumption as a failure. So the command `.claude/CLAUDE.md` asks a
+developer to run before a PR was one nobody could pass — which is the third
+thing this round found by running it rather than reasoning about it.
 
 **Judgements that need a person and a phone.** All listed in `docs/TODO.md`.
 The ones added this round: whether a chain that stopped reads as a rule or a
@@ -96,11 +103,12 @@ thing feels right is still a person's call.
 - Three smaller ones in `docs/TODO.md`, Open questions: who measures a *drawn*
   frame, whether a stamp should be draggable, and `FACE_SHARE` being applied
   twice.
-- **Eight questions for the designer**, in `docs/design-handover.md`. The two
-  that block work: the dark ramp does not redefine the two steps a neutral tag
-  is made of, and the accent ramp exists for two accents where the app offers
-  six — so the app still cannot draw the badge that says a dice set has an
-  update.
+- **Eleven questions for the designer**, in `docs/design-handover.md`. The one
+  that blocks work: the accent ramp exists for two accents where the app offers
+  six, so the app still cannot draw the badge that says a dice set has an
+  update. The four newest come from the phone session and are about the roll
+  screen, which the prototype draws as a column of bands and the app draws as
+  one full-bleed picture with the controls floating on it.
 
 ## Known risks
 
