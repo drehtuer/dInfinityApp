@@ -477,6 +477,20 @@ correct — decides instead.
 Delete `VerifyDeviceTestResultsTask` and the `ignoreFailures` beside it once
 AGP compares like with like.
 
+**What it counts is `DeviceTestCounts`', not the XML's own root counters.**
+They disagree about one thing and the root is wrong: a test that opted out with
+`Assume.assumeTrue` is filed as a `<failure>` and counted in `failures`, with
+`skipped` left at nought. One test does that — `HarnessTest`, which declines
+unless it is given `harness.rolls` or `harness.soak` — and that was enough to
+make the whole tier unpassable, so `DeviceTestCounts` reads the test cases
+instead and tells the two apart. A case that both declined *and* broke is a
+broken case.
+
+The whole tier on the Pixel 10a, for scale: **82 tests, 1 skipped, 0 failed, in
+11 minutes 25 seconds**, across `app`, `designer`, `dicesets/install`,
+`feature/roll`, `render/filament` and `simulation/jolt`. Every other module has
+no `src/androidTest` and says so.
+
 ### The physics harness
 
 Step 5 asks the same questions of the physics every time, and asking them by

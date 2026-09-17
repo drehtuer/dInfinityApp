@@ -35,6 +35,12 @@ moved and what it needs from the design — read it before the next pass over
 these files, because several screens now describe something the physics no
 longer does.
 
+Since **2026-09-17** it also says what the app *looks like*, which it could not
+say before: the whole UI was written and released without ever reaching a
+screen, and a session on a Pixel 10a photographed every one of them. Its
+"What the phone showed" section is where the roll screen and this prototype
+part company hardest, and it is the first thing to read.
+
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, whose last
 sync from this repo was 2026-09-11. Every design decision it recorded for
 feeding back has been folded into `docs/`; what remains open is listed under

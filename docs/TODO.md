@@ -59,6 +59,16 @@ One section per screen. Each is a vertical slice: state, UI, tests, and the
 device check it needs. The design option ids (`1a`, `9c`, …) are the labels on
 the canvas — open [design/](../design/) beside the code.
 
+- [ ] **Power-saving mode says nothing, and reads as a broken renderer.** The
+      prototype has a panel for it — grey, "Power-saving mode" over "Same
+      physics, no rendering. The result is identical to what the tray would
+      show." The app draws no panel and no surface, so a player sees empty felt
+      and a total arriving from nowhere. The first device session lost twenty
+      minutes to it, convinced Filament had failed, and it is the clearest case
+      of the prototype being right and the app simply not having built it
+      (`docs/design-handover.md`, "What the phone showed"). The mode is read
+      when the screen opens, so the screen already knows.
+
 - [ ] **Two screens disagree about where the top of the screen is.** On the
       Pixel 10a the Roll screen's menu button sits at y≈174 px and Settings'
       at y≈64, immediately under the status bar, with its title a few pixels

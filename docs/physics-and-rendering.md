@@ -1322,6 +1322,14 @@ the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
   surface nothing draws to: a surface is a buffer the compositor keeps, and
   what this mode claims is that none of it exists. `PowerSavingTray` is the
   other implementation of `Tray`, and there is no Filament type in it.
+- **Nothing says so on the screen, and it should.** The prototype has a panel
+  for this mode — grey, with "Power-saving mode" over "Same physics, no
+  rendering. The result is identical to what the tray would show."
+  (`design/dInfinityPhone.dc.html`). The app draws neither the panel nor
+  anything in its place, so what a player sees is an empty tray and a total
+  arriving from nowhere, which is indistinguishable from a renderer that has
+  failed. The first device session mistook it for exactly that
+  (`docs/design-handover.md`, "What the phone showed").
 - The simulation runs on a worker thread as fast as possible, still at
   the same fixed timestep, still with the same seed, correction logic and
   settle rules. Typical roll finishes in well under 100 ms of wall time.

@@ -132,10 +132,16 @@ is the visual one. Each document below links to the screens that realise it.
 
 ## Status
 
-Design phase. The documents in `docs/` and the prototype in `design/` are the
-specification the implementation will be built against. Nothing here is
-shipped yet. See
-[docs/STATUS.md](docs/STATUS.md) for the current state and
+**Implementation. The app rolls dice on a phone, and `v0.1.0` is out** — a
+signed pre-release, published with its SHA-256, built from this repository by
+pushing a tag. Every screen is written and connected; the documents in `docs/`
+and the prototype in `design/` are still the specification, and where the two
+disagree one of them is a bug.
+
+It is a pre-release because the physics is not finished — `100d4` does not
+reliably settle, and a hard sideways shake can run a roll past its cap — and
+because `v0.1.0` itself shipped two faults that only a screen could catch, both
+since fixed. See [docs/STATUS.md](docs/STATUS.md) for where things stand and
 [docs/TODO.md](docs/TODO.md) for what is next.
 
 ## Building
