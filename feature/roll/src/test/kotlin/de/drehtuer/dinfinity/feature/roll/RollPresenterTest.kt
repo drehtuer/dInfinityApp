@@ -76,6 +76,13 @@ class RollPresenterTest {
     presenter.type("1d6!")
     presenter.roll()
 
+    // The six earns a throw; it does not take one. Nothing more reaches the
+    // tray until a hand asks for it.
+    assertEquals("the app threw the earned die by itself", 1, rolls.started.size)
+    assertTrue("the screen did not ask for a shake", presenter.state is RollState.ShakeAgain)
+
+    presenter.roll()
+
     assertEquals("the die the six called for never reached the tray", 2, rolls.started.size)
     val added = rolls.started.last()
     assertEquals("an added throw is one die", 1, added.dice.size)
@@ -103,6 +110,10 @@ class RollPresenterTest {
     val presenter = presenter(rolls, { written += it })
 
     presenter.type("1d6!")
+    // One shake per throw the chain earns, which is what a player does: the
+    // six earns a throw, that throw is another six and earns one more.
+    presenter.roll()
+    presenter.roll()
     presenter.roll()
 
     assertEquals("a roll was recorded once per throw it took", 1, written.size)
@@ -124,10 +135,12 @@ class RollPresenterTest {
     val watching = presenter(watched, tray = DirectTray(watcher = eyes))
     watching.type("2d6!")
     watching.roll()
+    watching.roll()
 
     val unwatched = RecordingRolls(faces = mapOf(0 to 5, 1 to 0), then = listOf(mapOf(0 to 0)))
     val alone = presenter(unwatched, tray = DirectTray())
     alone.type("2d6!")
+    alone.roll()
     alone.roll()
 
     assertTrue("nobody drew the roll that was supposed to be watched", eyes.begun > 1)
@@ -508,6 +521,7 @@ class RollPresenterTest {
 
     override fun roll(
       start: (Renderer) -> WatchedRoll,
+      onCounted: (Map<Int, Int>) -> Unit,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
       val roll = start(watcher)

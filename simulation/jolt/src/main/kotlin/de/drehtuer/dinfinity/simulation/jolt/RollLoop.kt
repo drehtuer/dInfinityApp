@@ -51,13 +51,18 @@ class RollLoop(
   private val diceCount = spec.dice.size
   private val tracker = RestTracker(diceCount)
   private val rethrowCount = IntArray(diceCount)
-  private val troubleFor = IntArray(diceCount)
-  private val biased = BooleanArray(diceCount)
   private val forced = BooleanArray(diceCount)
 
-  private var corrections = 0
+  /** Which dice have been read and taken off the table. */
+  private val counted = BooleanArray(diceCount)
+
+  /** The face each counted die came to rest on, kept as it is counted. */
+  private val countedFace = IntArray(diceCount) { NOT_YET }
+
+  /** And where it was standing when it was, which the next throw is aimed around. */
+  private val countedAt = arrayOfNulls<RestingPlace>(diceCount)
+
   private var rethrows = 0
-  private var postRestCorrections = 0
 
   /**
    * How wide each die is at the scale the capacity rule threw it
@@ -116,6 +121,26 @@ class RollLoop(
     shake.add(sample)
   }
 
+  /**
+   * Which dice have been read and taken off the table, by index.
+   *
+   * What a renderer needs in order to stop drawing them: a counted die is out
+   * of play and the floor it stood on is free, so a die thrown afterwards may
+   * land exactly there. Drawing both would be two dice in one place
+   * (`docs/TODO.md`, Step 5.5).
+   */
+  val countedOut: List<Boolean> get() = counted.toList()
+
+  /**
+   * The faces read so far, by die index.
+   *
+   * What the screen follows while a roll is going: dice leave the table as
+   * they are counted, so the running total is the only thing left to watch
+   * (`docs/TODO.md`, Step 5.5). A die that has not been counted is not in it.
+   */
+  val countedSoFar: Map<Int, Int>
+    get() = counted.indices.filter { counted[it] }.associateWith { countedFace[it] }
+
   /** What the throw came to, once [advance] has said there is nothing left. */
   fun outcome(): SimulationOutcome = requireNotNull(result) { "the roll has not finished yet" }
 
@@ -147,14 +172,14 @@ class RollLoop(
             touchingFloor = state.touchingFloor,
             touchingWall = state.touchingWall,
             supportedByDie = state.supportedByDie,
-            corrected = biased[index],
+            countedOut = counted[index],
             rethrows = rethrowCount[index],
           )
         },
-      corrections = corrections,
+      corrections = 0,
       rethrows = rethrows,
       forcedSettles = forced.count { it },
-      postRestCorrections = postRestCorrections,
+      postRestCorrections = 0,
       contacts = recentContacts,
     )
 
@@ -226,7 +251,6 @@ class RollLoop(
     // the step waits for.
     recorder.step(step, states, shake.gravity.length)
     tracker.step(states.map(DieState::motion))
-    correct(states, step)
     return true
   }
 
@@ -258,100 +282,84 @@ class RollLoop(
   private fun closeOutOrRethrow(): Boolean {
     if (tracker.capReached()) tracker.stillMoving().forEach { forced[it] = true }
 
-    if (!tracker.capReached() && rethrowCocked(states)) {
+    if (!tracker.capReached() && countAndClear(states)) {
       states = world.readStates()
       return true
     }
 
+    // Whatever is left has run out of its throws or out of the roll's twelve
+    // seconds, and is read where it lies. Step 5 asserts this never happens.
+    readWhatIsLeft(states)
+
     result =
       SimulationOutcome(
-        faces = readFaces(states),
+        faces = countedFace.indices.associateWith { countedFace[it] },
         // Where they stopped, for the throw an explosion or a reroll adds
         // next: it is aimed at the floor this one left clear and drawn among
         // the dice standing on the rest of it, and neither is something the
         // screen could work out for itself
         // (`docs/physics-and-rendering.md`).
-        restingAt = states.indices.associateWith { RestingPlace(states[it].position, states[it].orientation) },
+        restingAt =
+          countedAt.indices.associateWith { index ->
+            countedAt[index] ?: RestingPlace(states[index].position, states[index].orientation)
+          },
         steps = tracker.stepsTaken,
-        corrections = corrections,
+        // Zero, and not by luck. There is no correction left in this loop to
+        // count: a die is either read and lifted off or thrown again where the
+        // player can watch, and neither is a hand on a die
+        // (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
+        corrections = 0,
         rethrows = rethrows,
         // Per die, not per way of failing: a die that was still moving when
         // the cap fired *and* was cocked when it was read is one die the
         // simulation had to finish for, not two.
         forcedSettles = forced.count { it },
-        postRestCorrections = postRestCorrections,
-        // Read here and not while the roll was running: a die standing on
-        // another one mid-throw is an ordinary moment of a throw, and only
-        // where it *ended* is a result (`docs/physics-and-rendering.md`).
-        stackedAtRest = states.count(DieState::supportedByDie),
+        postRestCorrections = 0,
+        // A die counted and taken off the table cannot be stood on, so this
+        // counts only what was left standing on something when the roll ran
+        // out of throws — which is the number Step 5.5 wants at zero.
+        stackedAtRest = states.filterIndexed { index, _ -> !counted[index] }.count(DieState::supportedByDie),
         deepestDiePenetrationMm = world.deepestDiePenetrationMm,
       )
     return false
   }
 
   /**
-   * Rung 2: a small seeded bias for a die that is settling into trouble.
+   * Count what can be counted, take it off the table, throw the rest again —
+   * and say whether anything was thrown.
    *
-   * The gate is [CorrectionLadder.mayTouch] and it is asked for every die,
-   * every time, before anything else is considered. A die that is already at
-   * rest fails it, and that is the only thing standing between this app and an
-   * invisible hand.
-   */
-  private fun correct(
-    states: List<DieState>,
-    step: Int,
-  ) {
-    states.forEachIndexed { index, state ->
-      if (!TroubleCheck.isInTrouble(state, spec.dice[index].die)) {
-        troubleFor[index] = 0
-        return@forEachIndexed
-      }
-      troubleFor[index]++
-
-      // A tumbling die passes through plenty of orientations that would read
-      // as cocked if it stopped in them, and it is not going to stop in them.
-      // Waiting for trouble to *persist* is the difference between "heading
-      // for a cocked orientation" and "happens to be at an angle".
-      if (troubleFor[index] < TROUBLE_STEPS_BEFORE_BIAS) return@forEachIndexed
-      // One nudge, not a hand on the die. If a bias of the order of the energy
-      // the die still has does not shake it loose, more of them will not — that
-      // is what rung 3 is for, and a die pushed every step for half a second is
-      // a die being steered.
-      if (biased[index]) return@forEachIndexed
-
-      val atRest = tracker.isAtRest(index)
-      // A die in trouble that may not be touched is left in trouble. That is
-      // not a failure of the ladder, it is the ladder: rung 3 will throw it
-      // again where the player can see, and nothing reaches it before then.
-      if (!CorrectionLadder.mayTouch(state.motion, atRest)) return@forEachIndexed
-
-      world.applyBias(index, CorrectionLadder.bias(spec.seed, index, step, state.motion))
-      biased[index] = true
-      // Counted per die, not per nudge: the budget in `CorrectionLadder` is a
-      // share of the dice that needed correcting at all.
-      corrections++
-      // Unreachable while `mayTouch` keeps its promise, and here because that
-      // promise lives in another module. If it is ever broken this is what
-      // turns a silent invisible hand into a number the device harness fails
-      // on (`docs/TODO.md`, Step 5.5).
-      if (atRest) postRestCorrections++
-    }
-  }
-
-  /**
-   * Rung 3: throws the dice that finished cocked or stacked, and says whether
-   * any were.
+   * **This is the whole of how a heap is cleared, and there is no hand in it.**
+   * A die that came to rest showing a face is read, and that reading is its
+   * answer for the rest of the roll; it is then lifted off the table, which
+   * leaves the floor it was standing on free for the dice that still have to
+   * land. A die that finished cocked or standing on another one is thrown
+   * again, visibly, onto a table that now has more room on it than it had —
+   * which is what a player does when the dice land in a pile, and it is the
+   * reason this converges instead of being tuned.
    *
-   * Not a nudge and not a snap to the nearest face. The die is picked up and
-   * dropped back on the table where the player can watch it happen, which is
-   * what a player does and is the only correction that is still a roll.
+   * Taking a counted die out of play is not *moving* it: its face has already
+   * been read and nothing about it can change again. That is the line the
+   * honest rule draws (`docs/physics-and-rendering.md`).
    */
-  private fun rethrowCocked(states: List<DieState>): Boolean {
+  private fun countAndClear(states: List<DieState>): Boolean {
     var thrown = false
     states.forEachIndexed { index, state ->
+      if (counted[index]) return@forEachIndexed
       val die = spec.dice[index].die
-      val cocked = FaceReader.read(die, state.orientation) is Reading.Cocked
-      if (!cocked && !state.supportedByDie) return@forEachIndexed
+      val reading = FaceReader.read(die, state.orientation)
+
+      // A die standing on another one is not counted even when its face is
+      // perfectly readable: it is resting on something that is about to be
+      // taken away, and a reading taken from a die that is about to fall is
+      // not a reading of anything.
+      if (reading is Reading.Face && !state.supportedByDie) {
+        countedFace[index] = reading.index
+        countedAt[index] = RestingPlace(state.position, state.orientation)
+        counted[index] = true
+        world.remove(index)
+        return@forEachIndexed
+      }
+
       if (rethrowCount[index] >= MAX_RETHROWS) return@forEachIndexed
       world.respawn(index, layout.rethrowPlacement(index, rethrowCount[index]))
       // The speed it has the moment after this is the re-throw rather than a
@@ -361,9 +369,6 @@ class RollLoop(
       // The tracker still has it down as settled from a moment ago, and a die
       // in mid-air is not settled.
       tracker.rethrown(index)
-      // A re-thrown die is a fresh throw and gets a fresh chance to be helped.
-      troubleFor[index] = 0
-      biased[index] = false
       rethrowCount[index]++
       rethrows++
       thrown = true
@@ -372,35 +377,48 @@ class RollLoop(
   }
 
   /**
-   * What each die says, now that it has stopped.
+   * Reads whatever never got counted, where it lies.
    *
-   * A die that is still cocked here has been thrown again as often as it is
-   * going to be and the roll has run out of its twelve seconds — which is the
-   * safety valve firing, not the ladder working. It is counted as a forced
-   * settle so the harness sees it, and it reports the face that came nearest,
-   * because at that point the alternative is a roll with no answer at all.
-   * Step 5 asserts this never happens.
+   * A die reaching here has been thrown again as often as it is going to be,
+   * or the roll has run out of its twelve seconds — which is the safety valve
+   * firing rather than the mechanism working. It is counted as a forced settle
+   * so the harness sees it, and it reports the face that came nearest, because
+   * at that point the alternative is a roll with no answer at all. Step 5
+   * asserts this never happens.
    */
-  private fun readFaces(states: List<DieState>): Map<Int, Int> =
-    states.indices.associateWith { index ->
-      when (val reading = FaceReader.read(spec.dice[index].die, states[index].orientation)) {
-        is Reading.Face -> reading.index
-        is Reading.Cocked -> {
-          forced[index] = true
-          reading.nearestIndex
+  private fun readWhatIsLeft(states: List<DieState>) {
+    states.forEachIndexed { index, state ->
+      if (counted[index]) return@forEachIndexed
+      countedFace[index] =
+        when (val reading = FaceReader.read(spec.dice[index].die, state.orientation)) {
+          is Reading.Face -> reading.index
+          is Reading.Cocked -> {
+            forced[index] = true
+            reading.nearestIndex
+          }
         }
-      }
     }
+  }
 
   companion object {
     /**
      * How often one die may be thrown again before the roll gives up on it.
      *
-     * A die that has been re-thrown this many times is not unlucky, it is a
-     * physics bug, and letting it loop would spend the whole step budget on
-     * one die while the other seventy-nine sit there.
+     * It used to be three, sized for a table with every other die still on it:
+     * letting one die loop would spend the whole step budget while the other
+     * seventy-nine sat there. That is no longer the trade. A die thrown again
+     * now lands on a table the counted dice have left, so the budget it spends
+     * is spent on the only dice that still need it.
+     *
+     * Eight because five is the most that sixteen seeds of twenty dice under a
+     * hard sideways shake ever needed — measured on the Pixel 10a — and the
+     * real backstop is the twelve-second cap rather than this. It is here to
+     * bound a die that is going nowhere, not to ration a roll.
      */
-    const val MAX_RETHROWS: Int = 3
+    const val MAX_RETHROWS: Int = 8
+
+    /** A die that has not been read yet. Never reaches an outcome. */
+    private const val NOT_YET = -1
 
     /**
      * How long a die has to stay in trouble before it is worth touching —

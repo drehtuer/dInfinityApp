@@ -260,7 +260,7 @@ private fun Controls(
     verticalArrangement = Arrangement.spacedBy(12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Outcome(state, onRound = presenter::round, onDoodle = onDoodle)
+    Outcome(state, presenter.progress, onRound = presenter::round, onDoodle = onDoodle)
     // The odds for the formula in the field, with the throw that just landed
     // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
     // throw the table refuses too: that is exactly when "what would it have
@@ -351,6 +351,7 @@ private fun KeepTheScreenAwake() {
 @Composable
 private fun Outcome(
   state: RollState,
+  progress: RollProgress?,
   onRound: (Rounding) -> Unit,
   onDoodle: (String) -> Unit,
 ) {
@@ -369,6 +370,21 @@ private fun Outcome(
         )
         ResultSheet(result = state.result, divides = state.divides, onRound = onRound, onDoodle = onDoodle)
       }
+
+    // An exploding die earns a throw rather than taking one, so the screen
+    // asks for it. Without this the roll simply appears to stop
+    // (`docs/dice-notation.md`, "Evaluation").
+    is RollState.ShakeAgain ->
+      Message(
+        text = stringResource(R.string.roll_shake_again),
+        colour = MaterialTheme.colorScheme.onBackground,
+        tag = RollTestTags.SHAKE_AGAIN,
+      )
+
+    // While the dice are in the air the dice are not what to look at: each one
+    // is read and taken off the table as it lands, so this is what is left to
+    // follow (`docs/TODO.md`, Step 5.5).
+    is RollState.Rolling if progress != null -> Counting(requireNotNull(progress))
 
     is RollState.Rolling ->
       Message(
@@ -421,8 +437,27 @@ private fun TrayReading.spoken(): String =
     TrayReading.Empty -> stringResource(R.string.roll_tray_empty)
     is TrayReading.Ready -> pluralStringResource(R.plurals.roll_tray_ready, dice, dice)
     is TrayReading.Rolling -> pluralStringResource(R.plurals.roll_tray_rolling, dice, dice)
+    is TrayReading.ShakeAgain -> pluralStringResource(R.plurals.roll_tray_shake_again, dice, dice)
     is TrayReading.Settled -> stringResource(R.string.roll_tray_settled, total)
   }
+
+/** How many dice have been read, and where the total can still land. */
+@Composable
+private fun Counting(progress: RollProgress) {
+  Message(
+    text =
+      pluralStringResource(
+        R.plurals.roll_counting,
+        progress.of,
+        progress.read,
+        progress.of,
+        progress.range.lowest,
+        progress.range.highest,
+      ),
+    colour = MaterialTheme.colorScheme.onBackground,
+    tag = RollTestTags.COUNTING,
+  )
+}
 
 @Composable
 private fun Message(
@@ -491,6 +526,12 @@ object RollTestTags {
   const val THROW: String = "roll:throw"
   const val TOTAL: String = "roll:total"
   const val ROLLING: String = "roll:rolling"
+
+  /** The running count and range, while the dice are being read (design option 1j). */
+  const val COUNTING: String = "roll:counting"
+
+  /** The chain has earned a throw and is waiting for a hand (design option 1j). */
+  const val SHAKE_AGAIN: String = "roll:shake-again"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = FormulaTestTags.ERROR
 

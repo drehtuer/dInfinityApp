@@ -67,6 +67,14 @@ class FakeStage(
     placed[entity] = matrix
   }
 
+  /** Entities taken out of the scene, in the order they left it. */
+  val taken: MutableList<Int> = mutableListOf()
+
+  override fun take(entity: Int) {
+    taken += entity
+    placed -= entity
+  }
+
   override fun aim(shot: CameraShot) {
     shots += shot
   }

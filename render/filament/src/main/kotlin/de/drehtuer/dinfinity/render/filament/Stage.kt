@@ -43,6 +43,19 @@ interface Stage : AutoCloseable {
     matrix: FloatArray,
   )
 
+  /**
+   * Takes an entity out of the scene. It is not drawn again.
+   *
+   * What a counted die gets: it has been read and lifted off the table, and
+   * the floor it stood on is free for the dice still to be thrown — so a later
+   * die may land exactly there, and leaving this one drawn would be two dice
+   * in one place (`docs/physics-and-rendering.md`).
+   *
+   * The entity is not destroyed, because the mesh and its material are the
+   * expensive half and the same die may be drawn again by the next roll.
+   */
+  fun take(entity: Int)
+
   /** Points the camera where [shot] says. */
   fun aim(shot: CameraShot)
 

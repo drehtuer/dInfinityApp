@@ -148,17 +148,56 @@ Modifiers take effect in this order whatever order they were written in, so
    first struck through. A reroll the tray has no room for does not happen and
    the die stands as it fell, marked in the breakdown — the alternative being a
    die dropped onto dice that have already been read.
-2. **`!`** — a die showing its highest face throws another of the same die.
-   The new die joins *that die's* chain rather than the group at large, so
+2. **`!`** — a die showing its highest face **earns** another throw of the same
+   die. The new die joins *that die's* chain rather than the group at large, so
    `2d6!kh1` keeps the better of two chains, which is what a player means by
    it. A chain stops after the explosion depth limit, or when the tray has no
    clear floor left for another die; either way the die that would have exploded
    again is marked in the breakdown.
+
+   **The app does not throw the earned dice. The player shakes again.** An
+   exploding six earns a throw, and a throw is something a hand does — so the
+   dice that are down stay down, the screen says a shake is owed, and the next
+   shake throws them.
+
+   **Every chain that earned a die is owed one at the same moment**, and one
+   shake throws the lot. Three sixes in `8d6!` are three dice, thrown together,
+   because that is what a hand does with three dice; asking for a shake each
+   would be asking three times for one act. Depth is the part that stays
+   sequential — a chain cannot know it needs a third die until the second has
+   landed — so a long chain is several rounds and a wide one is a single
+   handful. A chain that threw itself finished a roll the
+   player had not finished asking for, and it made the one moment worth
+   watching happen without them. Everything else about it is unchanged: the
+   earned die is thrown into the same tray, among the dice already down, on a
+   seed derived from the throw that started the chain — so a chain still
+   replays to itself however long the player takes between shakes.
 3. **`min n`** — a die below `n` counts as `n`, per die. The face it actually
    landed on is still what the breakdown shows; only its contribution changes.
 4. **`kh` / `kl` / `dh` / `dl`** — whole chains are kept or dropped, ranked by
    what each chain came to together. A percentile pair counts as one unit, so
    `2d%kh1` keeps the better of two 1–100 results.
+
+### What the screen says while the dice are still landing
+
+A roll counts each die and takes it off the table the moment it can be read, so
+by the time the last one lands most of the answer has been known for a while and
+the dice that carried it are gone (`docs/physics-and-rendering.md`). What the
+screen follows instead is how many dice have been read and **how high and low
+the finished roll can still come out**, which is one line whether the throw was
+four dice or a hundred.
+
+The floor is exact: the lowest faces set off no explosion, so it is a total the
+roll could really come to. `kh`, `kl`, `dh`, `dl`, `min`, arithmetic and
+percentile pairs are exact at both ends — forcing the dice that have not landed
+to their lowest or highest faces is a real assignment, and a group's subtotal
+only goes up as its dice do. Subtraction turns a group's range over rather than
+carrying it through, so `20 - 1d6` reads 14 to 19 and not the other way about.
+
+**The ceiling of an exploding formula is honest and very high.** A maximum face
+earns another die, which can itself be a maximum, so the highest `8d6!` can
+reach is eight chains of twenty-one sixes — 1008. It is attainable, so the range
+is never wrong; whether it is *useful* is `docs/TODO.md`, Step 4.1.
 
 A group may carry each modifier at most once, and may keep **or** drop, not
 both: `4d6dl1dl1` and `4d6kh1dl1` are refused rather than quietly meaning

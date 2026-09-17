@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
@@ -72,6 +73,16 @@ class RollPresenter(
 ) {
   /** What the screen draws. */
   var state: RollState by mutableStateOf(machine.state)
+    private set
+
+  /**
+   * How far the roll in the air has got, or null when none is.
+   *
+   * What the screen follows while a roll is going, because the dice do not
+   * stay to be followed: each one is read and taken off the table as soon as
+   * it can be (`docs/TODO.md`, Step 5.5).
+   */
+  var progress: RollProgress? by mutableStateOf(null)
     private set
 
   /** The formula as typed, valid or not. */
@@ -190,6 +201,15 @@ class RollPresenter(
    *   than starting a new one (`docs/physics-and-rendering.md`, "Shake input").
    */
   fun roll(shake: List<ShakeSample> = emptyList()): Boolean {
+    // A chain that is waiting is continued rather than restarted: the shake in
+    // the player's hand is for the die the explosion earned, and throwing a
+    // fresh formula instead would drop the dice already down.
+    machine.throwEarned(shake)?.let { earned ->
+      publish()
+      throwIt(earned)
+      return true
+    }
+
     // A roll that has landed is a roll that is over. Throwing again is one act
     // — one press, one shake — not "put the total away" followed by "now
     // throw", which is what a shake could never have expressed anyway.
@@ -219,6 +239,11 @@ class RollPresenter(
   private fun throwIt(spec: ThrowSpec) {
     driver.roll(
       start = { watcher -> rolls.start(spec, watcher) },
+      onCounted = { counted ->
+        // On the screen's thread: this arrives from wherever the roll is
+        // stepped, once per die read, and the state it sets is Compose's.
+        toTheScreen { progress = machine.progress(counted) }
+      },
       onSettled = { outcome, drivenBy ->
         toTheScreen {
           // Written down on the screen's thread, where the result exists, and
@@ -233,6 +258,7 @@ class RollPresenter(
           // result, the plan and the seed off it, and nothing downstream has
           // anywhere to put a shake (`docs/architecture.md`, decision 13).
           val landed = machine.settled(outcome, drivenBy)
+          progress = null
           publish()
           when (landed) {
             is Landed.Complete -> {
@@ -243,10 +269,11 @@ class RollPresenter(
               // the toggle for exactly that reason (`docs/statistics.md`).
               developer.landed(landed.thrown.thrown, outcome, landed.thrown.result.rolledAtEpochMs)
             }
-            // Straight back round: the next die is thrown the moment the last
-            // one has stopped, which is what a player does with an exploding
-            // six.
-            is Landed.OneMore -> throwIt(landed.spec)
+            // And there it stops until somebody shakes again. An exploding
+            // six earns another throw; it does not take one. The die that was
+            // earned sits ready and the dice that are down stay down
+            // (`docs/dice-notation.md`, "Evaluation").
+            is Landed.OneMore -> Unit
             // Nobody is waiting for this throw any more — the formula was typed
             // over while it was in the air. Nothing landed as far as the screen
             // is concerned, and nothing follows it.
@@ -306,12 +333,24 @@ class RollPresenter(
       showing = machine.table
       driver.table(machine.geometry, machine.table)
     }
+    // And the dice that are waiting, so the board is what is about to be
+    // thrown rather than an empty table with a formula under it. Only when it
+    // changes: this runs on every keystroke, and rebuilding the bodies for
+    // each one would be a tray that flickers while somebody types.
+    val board = machine.waiting
+    if (board?.dice != onTheBoard) {
+      onTheBoard = board?.dice
+      driver.waiting(board ?: machine.clearedBoard())
+    }
     state = machine.state
     text = machine.text
     counts = machine.counts
     pickable = machine.pickable
     pickingFrom = machine.pickingFrom
   }
+
+  /** The dice the board is showing, so it is only redrawn when they change. */
+  private var onTheBoard: List<DieInstance>? = null
 
   private companion object {
     val MAIN = Handler(Looper.getMainLooper())

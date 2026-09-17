@@ -67,11 +67,14 @@ data class ThrowSpec(
       "a die is thrown between ${TableCapacity.MIN_SCALE} and full size, not $dieScale"
     }
     require(dice.size <= TableCapacity.MAX_DICE) { "${dice.size} dice is past the engine's cap" }
-    // An explosion and a reroll each add exactly one die, and they add it after
-    // the last one landed. Two at once would be two dice dropped onto the same
-    // clear patch of floor, since neither can see the other coming.
-    require(among.isEmpty() || dice.size == 1) {
-      "a throw into a tray that already holds ${among.size} dice is a throw of one die, not ${dice.size}"
+    // A round of added dice may be several — three sixes in `8d6!` earn three
+    // throws, and a player throws them together — so this is no longer one die
+    // at a time. What made it one was that two dice asked [ClearSpace] the same
+    // question and were dropped onto the same patch of floor; the spawn now
+    // stands each die of a round where the last one went before placing the
+    // next (`SpawnLayout`), so they make room for each other.
+    require(among.isEmpty() || dice.isNotEmpty()) {
+      "a throw into a tray that already holds ${among.size} dice is a throw of at least one die"
     }
   }
 

@@ -20,7 +20,7 @@ package de.drehtuer.dinfinity.fixtures
 data class GoldenCase(
   val seed: Long,
   val formula: String,
-  val input: GoldenInput = GoldenInput.Tap,
+  val input: GoldenInput = GoldenInput.Shake,
   val expected: GoldenOutcome? = null,
 )
 
@@ -28,7 +28,16 @@ data class GoldenCase(
 enum class GoldenInput(
   val id: String,
 ) {
-  /** A drop from the hand: no phone motion at all. */
+  /**
+   * A throw with no phone motion at all.
+   *
+   * **Kept for the harness, not for the app.** Every roll a player starts is
+   * started by a shake, so a case recorded this way would pin a path nobody
+   * reaches — which is why none of the golden cases uses it any more. It stays
+   * because the headless harness throws thousands of rolls with no hand in
+   * them, and the simulation has to keep accepting a throw with an empty shake
+   * (`docs/TODO.md`, Step 5.5).
+   */
   Tap("tap"),
 
   /** The recorded swing in [GoldenShake]. */

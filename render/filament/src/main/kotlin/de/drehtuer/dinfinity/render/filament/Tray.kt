@@ -7,6 +7,7 @@ import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
 /**
  * Somewhere to throw dice and watch them land.
@@ -60,9 +61,16 @@ interface Tray : AutoCloseable {
    * The shake comes back with the outcome rather than being asked for
    * afterwards because by then there is no roll left to ask: the roll is
    * closed the moment it is read (`WatchedRoll.drivenBy`).
+   *
+   * [onCounted] arrives wherever the roll is stepped, every time another die
+   * is read — which is what the screen follows while a roll is going, because
+   * a counted die leaves the table and the running total is all that is left
+   * to watch (`docs/TODO.md`, Step 5.5). It is only called when the reading
+   * changes, so a roll nobody is adding to costs nothing.
    */
   fun roll(
     start: (Renderer) -> WatchedRoll,
+    onCounted: (Map<Int, Int>) -> Unit = {},
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   )
 
@@ -81,6 +89,21 @@ interface Tray : AutoCloseable {
     geometry: TableGeometry,
     look: TableLook,
   )
+
+  /**
+   * These dice are on the table, waiting to be thrown.
+   *
+   * Tapping a saved roll clears the board and puts its dice down rather than
+   * throwing them; more can be added from the picker and the formula can be
+   * edited, and the board follows along. What the player looks at before they
+   * shake is what they are about to throw (`docs/TODO.md`, Step 4.1).
+   *
+   * **Nothing about this is a roll.** No body is made, no step is taken and no
+   * face is read — these are dice drawn where [RestingPlaces] says they sit,
+   * and the faces they happen to show are not a result and are never scored.
+   * Passing no dice clears the board back to an empty table.
+   */
+  fun waiting(spec: ThrowSpec) = Unit
 
   /**
    * One more moment of the shake that is throwing the dice now.

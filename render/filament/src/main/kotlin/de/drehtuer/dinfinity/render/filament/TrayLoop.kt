@@ -8,6 +8,7 @@ import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
 /**
  * What happens on the tray, frame by frame: which stage is being drawn to,
@@ -64,6 +65,10 @@ class TrayLoop(
   private var stage: Stage? = null
   private var roll: WatchedRoll? = null
   private var settling: ((SimulationOutcome, List<ShakeSample>) -> Unit)? = null
+
+  /** Who wants to know as the dice are counted, and what they were last told. */
+  private var counting: ((Map<Int, Int>) -> Unit)? = null
+  private var lastCounted: Map<Int, Int> = emptyMap()
   private var lastFrameNanos: Long? = null
   private var owed = false
 
@@ -137,6 +142,23 @@ class TrayLoop(
   }
 
   /**
+   * Puts the dice that are waiting to be thrown on the table.
+   *
+   * A still picture like the empty table is, and owed a frame for the same
+   * reason: nothing else here would produce one, so without it the dice would
+   * not appear until something else happened to draw.
+   *
+   * A roll already in the air is left alone. The board is what a player
+   * arranges *between* throws, and a formula edited while the dice are still
+   * moving is for the throw after this one.
+   */
+  fun waiting(spec: ThrowSpec) {
+    if (roll != null) return
+    renderer.waiting(spec)
+    owed = true
+  }
+
+  /**
    * The player is looking somewhere else, or closer.
    *
    * Only the camera moves, and nothing about the roll does. Owed a frame like
@@ -175,11 +197,13 @@ class TrayLoop(
    */
   fun roll(
     start: (Renderer) -> WatchedRoll,
+    onCounted: (Map<Int, Int>) -> Unit = {},
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit = { _, _ -> },
   ) {
     endRoll()
     roll = start(renderer)
     settling = onSettled
+    counting = onCounted
     lastFrameNanos = null
     played = 0
   }
@@ -232,6 +256,7 @@ class TrayLoop(
     live.advance(elapsed)
     hear(live)
     watch(live)
+    count(live)
 
     // A roll draws every frame of its own accord, so nothing is owed while one
     // is running.
@@ -271,6 +296,7 @@ class TrayLoop(
    * where there are no frames to pace anything
    * (`docs/physics-and-rendering.md`, "Power-saving mode").
    */
+
   private fun hear(live: WatchedRoll) {
     val heard = live.impacts
     if (heard.size <= played) return
@@ -278,6 +304,20 @@ class TrayLoop(
     // and a window onto it would change under whoever was playing it.
     impacts.play(heard.subList(played, heard.size).toList(), NOW)
     played = heard.size
+  }
+
+  /**
+   * Passes on the faces read so far, when they have changed.
+   *
+   * Only when: this runs every frame, and a roll whose dice are all still in
+   * the air would otherwise post the same empty map a hundred and twenty times
+   * a second at the thread the screen is drawn on.
+   */
+  private fun count(live: WatchedRoll) {
+    val read = live.countedSoFar
+    if (read == lastCounted) return
+    lastCounted = read
+    counting?.invoke(read)
   }
 
   /**
@@ -295,6 +335,8 @@ class TrayLoop(
     roll?.close()
     roll = null
     settling = null
+    counting = null
+    lastCounted = emptyMap()
     lastFrameNanos = null
   }
 

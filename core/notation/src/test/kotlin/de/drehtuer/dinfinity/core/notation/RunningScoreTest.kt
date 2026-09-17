@@ -147,6 +147,67 @@ class RunningScoreTest {
     )
   }
 
+  @Test
+  fun `every chain that earned a die is owed one at the same moment`() {
+    // Three sixes in one throw earn three dice, and they are all owed the
+    // instant the dice stop. Asking for them one at a time asked the player for
+    // three shakes where a table asks for one
+    // (`docs/dice-notation.md`, "Evaluation").
+    val owed = pending("4d6!", values = listOf(6, 2, 6, 6))
+
+    assertEquals(3, owed.size, "three sixes earn three dice")
+    assertTrue(owed.all { it.id == "d6" })
+  }
+
+  @Test
+  fun `a throw with nothing to add is owed nothing`() {
+    assertEquals(emptyList(), pending("4d6!", values = listOf(1, 2, 3, 4)))
+  }
+
+  @Test
+  fun `a chain is owed one die at a time however deep it goes`() {
+    // Depth is the one thing that *is* sequential: a chain cannot know it needs
+    // a third die until the second has landed.
+    assertEquals(1, pending("1d6!", values = listOf(6)).size)
+    assertEquals(1, pending("1d6!", values = listOf(6), added = listOf(6)).size)
+    assertEquals(0, pending("1d6!", values = listOf(6), added = listOf(6, 2)).size)
+  }
+
+  @Test
+  fun `what is owed is what the scoring would have asked for first`() {
+    // The two answers cannot disagree about the first die, or a roll would
+    // throw one die and score another.
+    val asked = assertIs<Scoring.OneMoreDie>(score("4d6!", values = listOf(6, 2, 6, 6)))
+
+    assertEquals(asked.die.id, pending("4d6!", values = listOf(6, 2, 6, 6)).first().id)
+  }
+
+  @Test
+  fun `a chain with no room left on the table is owed nothing`() {
+    assertEquals(emptyList(), pending("1d6!", values = listOf(6), room = { false }))
+  }
+
+  private fun pending(
+    text: String,
+    values: List<Int>,
+    added: List<Int> = emptyList(),
+    room: (Die) -> Boolean = { true },
+  ): List<Die> {
+    val plan = plan(text)
+    val faces =
+      plan.dice.mapIndexed { position, instance -> position to faceShowing(instance.die, values[position]) }
+    return RunningScore.pending(
+      formula = parsed(text),
+      plan = plan,
+      outcome = ThrowOutcome(faces = faces.toMap()),
+      added =
+        AddedDice(
+          faces = added.map { value -> faceShowing(plan.dice.first().die, value) },
+          room = room,
+        ),
+    )
+  }
+
   private fun score(
     text: String,
     values: List<Int>,

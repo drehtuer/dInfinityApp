@@ -557,6 +557,13 @@ class TrayLoopTest {
 
     override val drivenBy: List<ShakeSample> get() = shaken.toList()
 
+    /**
+     * One more die read per step, the way a real roll counts them off and takes
+     * them away as it goes.
+     */
+    override val countedSoFar: Map<Int, Int>
+      get() = (0 until minOf(advanced.size, steps)).associateWith { 0 }
+
     /** Impacts a test pushes in, as a real roll would accumulate them. */
     val hits = mutableListOf<Impact>()
 
@@ -602,6 +609,66 @@ class TrayLoopTest {
         renderer.begin(spec(), geometry, look)
         this
       }
+  }
+
+  @Test
+  fun `dice put on the board are owed a frame like any other still picture`() {
+    // Nothing else here would produce one, so without it the dice would not
+    // appear until something else happened to draw.
+    val loop = TrayLoop()
+    val stage = FakeStage()
+    loop.stage(stage)
+    loop.table(geometry, look)
+    val drawn = stage.frames
+
+    loop.waiting(spec())
+    loop.frame(SOME_LATE_UPTIME)
+
+    assertTrue("the board was never drawn", stage.frames > drawn)
+  }
+
+  @Test
+  fun `a roll in the air keeps the board`() {
+    // The board is what a player arranges *between* throws. A formula edited
+    // while the dice are still moving is for the throw after this one.
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+    loop.roll(roll.start())
+
+    loop.waiting(spec())
+
+    assertTrue("the board replaced a roll that was still going", loop.rolling)
+  }
+
+  @Test
+  fun `the dice counted so far are passed on as they are read`() {
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 4)
+    val read = mutableListOf<Map<Int, Int>>()
+    loop.stage(FakeStage())
+    loop.roll(roll.start(), onCounted = { read += it })
+
+    repeat(3) { loop.frame(SOME_LATE_UPTIME + it) }
+
+    assertTrue("nothing was ever reported as counted", read.isNotEmpty())
+  }
+
+  @Test
+  fun `the same reading is not reported twice`() {
+    // This runs every frame, and a roll whose dice are all still in the air
+    // would otherwise post the same empty map at the screen's thread a hundred
+    // and twenty times a second.
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 20)
+    val read = mutableListOf<Map<Int, Int>>()
+    loop.stage(FakeStage())
+    loop.roll(roll.start(), onCounted = { read += it })
+
+    repeat(5) { loop.frame(SOME_LATE_UPTIME + it) }
+
+    assertEquals("the same reading was posted more than once", read.size, read.distinct().size)
   }
 
   private fun spec(): ThrowSpec =

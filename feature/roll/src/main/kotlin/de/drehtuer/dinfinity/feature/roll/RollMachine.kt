@@ -18,8 +18,10 @@ import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.ParseResult
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.core.notation.PlanResult
+import de.drehtuer.dinfinity.core.notation.RollBounds
 import de.drehtuer.dinfinity.core.notation.RollEvaluator
 import de.drehtuer.dinfinity.core.notation.RollPlanner
+import de.drehtuer.dinfinity.core.notation.RollRange
 import de.drehtuer.dinfinity.core.notation.RunningScore
 import de.drehtuer.dinfinity.core.notation.Scoring
 import de.drehtuer.dinfinity.core.notation.ThrowOutcome
@@ -124,8 +126,15 @@ class RollMachine(
     /** The faces of the dice the roll has added, in the order it asked for them. */
     val added: MutableList<Int> = mutableListOf()
 
-    /** The die in the air now, or null while the first throw is the one in the air. */
-    var adding: DieInstance? = null
+    /**
+     * The dice in the air now, empty while the first throw is the one in the
+     * air.
+     *
+     * A list rather than one die because every chain that earned a throw is
+     * owed it at the same moment: three sixes in `8d6!` are three dice, thrown
+     * together on one shake, because that is what a player does at a table.
+     */
+    var adding: List<DieInstance> = emptyList()
 
     /** The faces of the first throw, which is the only throw the plan describes. */
     var faces: Map<Int, Int> = emptyMap()
@@ -155,6 +164,15 @@ class RollMachine(
 
   private var prepared: Prepared? = null
   private var inFlight: InFlight? = null
+
+  /**
+   * The throw an explosion earned and nobody has thrown yet.
+   *
+   * It waits here for a shake rather than going straight back to the tray: a
+   * throw is something a hand does, and a chain that threw itself finished a
+   * roll the player had not finished asking for.
+   */
+  private var earned: ThrowSpec? = null
   private var scored: Pair<Formula, RollResult>? = null
 
   /** What the screen draws. */
@@ -284,6 +302,8 @@ class RollMachine(
   fun throwDice(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
     val ready = prepared ?: return null
     prepared = null
+    // A new throw is not the continuation of the last one's chain.
+    earned = null
 
     val spec =
       ThrowSpec(
@@ -332,19 +352,22 @@ class RollMachine(
   ): Landed? {
     val flight = inFlight ?: return null
 
-    when (val adding = flight.adding) {
-      null -> {
-        flight.faces = outcome.faces
-        flight.drivenBy = drivenBy
-        flight.cameToRest(flight.prepared.plan.dice, outcome)
-      }
-      else -> {
+    val adding = flight.adding
+    if (adding.isEmpty()) {
+      flight.faces = outcome.faces
+      flight.drivenBy = drivenBy
+      flight.cameToRest(flight.prepared.plan.dice, outcome)
+    } else {
+      // In the order they were asked for, which is the order they were thrown
+      // in: the scoring is re-run from the beginning over these faces, and a
+      // face that went to the wrong chain would be a different roll.
+      adding.forEachIndexed { at, die ->
         flight.added +=
-          requireNotNull(outcome.faces[0]) { "the added ${adding.die.id} was thrown and reported no face" }
-        flight.cameToRest(listOf(adding), outcome)
+          requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
       }
+      flight.cameToRest(adding, outcome)
     }
-    flight.adding = null
+    flight.adding = emptyList()
 
     val scoring =
       RunningScore.of(
@@ -361,10 +384,145 @@ class RollMachine(
         added = AddedDice(faces = flight.added, room = { die -> roomForAnother(flight, die) }),
       )
     return when (scoring) {
-      is Scoring.OneMoreDie -> Landed.OneMore(oneMore(flight, scoring))
+      is Scoring.OneMoreDie -> {
+        // Every chain that earned a throw, not just the first to ask. They are
+        // all owed the moment the dice stop, and one shake throws the lot.
+        val owed =
+          RunningScore.pending(
+            formula = flight.prepared.formula,
+            plan = flight.prepared.plan,
+            outcome =
+              ThrowOutcome(
+                faces = flight.faces,
+                rethrows = flight.rethrows,
+                forcedSettles = flight.forcedSettles,
+                rolledAtEpochMs = clock(),
+              ),
+            rounding = rounding,
+            // Each die the round owes takes floor the next one cannot have, so
+            // the question is asked with the ones already owed standing on it.
+            // Without that a round could be promised more dice than the tray
+            // can hold, and the throw would have nowhere to put the last of
+            // them (`docs/tables.md`, "Capacity rule").
+            added = AddedDice(faces = flight.added, room = roomForRound(flight)),
+          )
+        val next = earnedThrow(flight, owed.ifEmpty { listOf(scoring.die) })
+        earned = next
+        state = RollState.ShakeAgain(diceCount = flight.down.size, waiting = next.dice.size)
+        Landed.OneMore(next)
+      }
       is Scoring.Scored -> Landed.Complete(complete(flight, scoring.result))
     }
   }
+
+  /**
+   * Throws the die an explosion earned, driven by [shake].
+   *
+   * Null when nothing is waiting, which is every shake that is not the one
+   * after a chain paused. The samples are the *new* hand rather than the one
+   * that threw the dice already down: this is a throw of its own, and a throw
+   * is driven by the hand that made it.
+   */
+  fun throwEarned(shake: List<ShakeSample>): ThrowSpec? {
+    val next = earned ?: return null
+    earned = null
+    state = RollState.Rolling(diceCount = 1)
+    // The flight keeps the throw that *started* it, untouched. It is what goes
+    // in the history, and it is the seed every later throw in the chain is
+    // derived from — so a chain whose base moved would be a chain that threw
+    // different dice the second time it was replayed.
+    return next.copy(shake = shake)
+  }
+
+  /**
+   * The dice waiting on the table, as a throw that nobody has made.
+   *
+   * What the board shows between throws: tap a saved roll and its dice are put
+   * down rather than thrown, and the board follows the formula as it is edited
+   * and as the picker adds to it (`docs/TODO.md`, Step 4.1).
+   *
+   * It is a [ThrowSpec] because that is what says "these dice, this size, on
+   * this table" and the tray already knows how to build bodies for one. It is
+   * never simulated: the seed is nought and nothing steps it. Null when there
+   * is nothing to put down — a formula that does not read, one the table
+   * cannot hold, or a roll already in the air, which owns the board until it
+   * lands.
+   */
+  val waiting: ThrowSpec?
+    get() {
+      val ready = prepared ?: return null
+      if (inFlight != null) return null
+      return ThrowSpec(
+        dice = ready.plan.dice,
+        geometry = geometry,
+        table = table,
+        seed = 0L,
+        dieScale = ready.scale,
+      )
+    }
+
+  /**
+   * How far the roll in the air has got, for the readout on the screen.
+   *
+   * **The dice stop being the thing to watch.** A die is read and taken off
+   * the table the moment it can be, so by the time the last one lands most of
+   * the answer has been known for a while and the dice that carried it are
+   * gone. This is what takes their place: how many have been read, what is on
+   * the table, and how high and low the finished roll can still come out
+   * (`docs/TODO.md`, Step 5.5).
+   *
+   * Null when there is no roll in the air, or when the throw in the air is an
+   * added round rather than the first — a round of two dice reports "two of
+   * two" of its own throw, which says nothing about the roll.
+   */
+  fun progress(counted: Map<Int, Int>): RollProgress? {
+    val flight = inFlight ?: return null
+    if (flight.adding.isNotEmpty()) return null
+    val dice = flight.prepared.plan.dice
+    return RollProgress(
+      read = counted.size,
+      of = dice.size,
+      // The face *values* of the dice read so far. What is on the table, and
+      // deliberately not called the roll's total: a formula that drops the
+      // lowest of four has a total this is not, which is what the range is for.
+      onTheTable =
+        counted.entries.sumOf { (index, face) ->
+          dice
+            .getOrNull(index)
+            ?.die
+            ?.faces
+            ?.getOrNull(face)
+            ?.value
+            ?.toLong() ?: 0L
+        },
+      range =
+        RollBounds.of(
+          formula = flight.prepared.formula,
+          plan = flight.prepared.plan,
+          outcome = ThrowOutcome(faces = counted, rolledAtEpochMs = clock()),
+          rounding = defaultRounding,
+          added = AddedDice(faces = flight.added, room = roomForRound(flight)),
+        ),
+    )
+  }
+
+  /**
+   * An empty board: the same table, with no dice on it.
+   *
+   * What the tray is given when there is nothing waiting — a formula that does
+   * not read, or one the table cannot hold. Clearing the board is saying "no
+   * dice", not "no table".
+   */
+  fun clearedBoard(): ThrowSpec =
+    ThrowSpec(
+      dice = emptyList(),
+      geometry = geometry,
+      table = table,
+      seed = 0L,
+    )
+
+  /** Whether a throw has been earned and not yet thrown. */
+  val awaitingShake: Boolean get() = earned != null
 
   /**
    * The same throw under a different rounding (`design/dInfinity.dc.html`,
@@ -407,29 +565,35 @@ class RollMachine(
    * at the roll's own scale, so a formula with explosions in it replays like
    * any other and its added dice are the size of the dice they joined.
    */
-  private fun oneMore(
+  private fun earnedThrow(
     flight: InFlight,
-    needed: Scoring.OneMoreDie,
+    owed: List<Die>,
   ): ThrowSpec {
-    // The die is one of the dice already in the throw, so which set it came
+    // Each die is one of the dice already in the throw, so which set it came
     // from is a lookup rather than a guess and the statistics stay attributed
     // to the right one.
-    val came =
-      flight.prepared.plan.dice
-        .first { it.die == needed.die }
+    val dice =
+      owed.mapIndexed { at, die ->
+        flight.prepared.plan.dice
+          .first { it.die == die }
+          .copy(index = at)
+      }
     val spec =
       ThrowSpec(
-        dice = listOf(came.copy(index = 0)),
+        dice = dice,
         geometry = geometry,
         table = table,
         // Not `seed + n`: two seeds that differ by one are not two independent
         // throws, so an exploding die used to be thrown by a stream related to
         // the one that set it off (`Seeds`).
-        seed = Seeds.derived(flight.spec.seed, needed.ordinal + 1),
+        //
+        // One seed for the batch, because it is one throw. The dice the round
+        // owes go into the tray together, the way a hand throws them.
+        seed = Seeds.derived(flight.spec.seed, flight.added.size + 1),
         dieScale = flight.prepared.scale,
         among = flight.down.toList(),
       )
-    flight.adding = spec.dice.single()
+    flight.adding = spec.dice
     return spec
   }
 
@@ -460,13 +624,31 @@ class RollMachine(
   }
 
   /**
-   * Whether the tray could take one more of [die].
+   * Whether the tray could take one more of [die], asked once per die of a
+   * round and counting the round so far.
    *
    * The end of a chain of explosions that the depth limit does not reach: an
    * added die is dropped into clear floor, and a tray with none left cannot
    * take one. The breakdown says which of the two stopped it
    * (`docs/dice-notation.md`, "Limits").
+   *
+   * [ClearSpace] is asked about a tray holding the dice that are down *and* the
+   * dice this round has already been promised. A fresh one is made for each
+   * round, because the count it carries is that round's.
    */
+  private fun roomForRound(flight: InFlight): (Die) -> Boolean {
+    var promised = 0
+    return { die ->
+      ClearSpace
+        .roomForAnother(
+          geometry = geometry,
+          dieRadiusMm = ClearSpace.radiusOf(die, flight.prepared.scale),
+          taken = flight.taken(),
+          alreadyPromised = promised,
+        ).also { if (it) promised++ }
+    }
+  }
+
   private fun roomForAnother(
     flight: InFlight,
     die: Die,
@@ -582,6 +764,24 @@ sealed interface RollState {
   ) : RollState
 
   /**
+   * A die exploded, and the die it earned is waiting to be thrown.
+   *
+   * **The app does not throw it.** An exploding six earns another throw, and a
+   * throw is something a hand does — so the dice that are down stay down, the
+   * one that was earned sits ready, and the next shake throws it. Doing it
+   * automatically made the app finish a roll the player had not finished
+   * asking for (`docs/dice-notation.md`, "Evaluation").
+   *
+   * @param diceCount how many dice are down and read so far.
+   * @param waiting how many throws the chain has earned and not yet had. One,
+   *   today, because a chain adds a die at a time.
+   */
+  data class ShakeAgain(
+    val diceCount: Int,
+    val waiting: Int = 1,
+  ) : RollState
+
+  /**
    * They have landed, and this is what they came to.
    *
    * @param divides whether the formula has a division in it, and so whether
@@ -593,4 +793,30 @@ sealed interface RollState {
     val result: RollResult,
     val divides: Boolean = false,
   ) : RollState
+}
+
+/**
+ * How far a roll has got, while it is still going.
+ *
+ * What the roll screen shows once the dice start leaving the table. It is a
+ * reading and never an input: nothing here reaches the roll, and the numbers
+ * come out of faces the simulation has already read.
+ *
+ * @param read how many dice have been counted and taken off the table.
+ * @param of how many were thrown.
+ * @param onTheTable the face values counted so far, added up. **Not the roll's
+ *   total** — `4d6dl1` drops one of them — which is what [range] is for.
+ * @param range the lowest and highest the finished roll can still come to. The
+ *   floor is exact; the ceiling counts dice an explosion has not earned yet,
+ *   so an exploding formula's is honest but very high
+ *   (`RollBounds`, and `docs/TODO.md`, Step 4.1).
+ */
+data class RollProgress(
+  val read: Int,
+  val of: Int,
+  val onTheTable: Long,
+  val range: RollRange,
+) {
+  /** True once every die is read, when the range has collapsed onto the total. */
+  val complete: Boolean get() = read >= of && range.lowest == range.highest
 }

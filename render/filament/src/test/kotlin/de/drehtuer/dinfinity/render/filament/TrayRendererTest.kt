@@ -285,6 +285,78 @@ class TrayRendererTest {
     assertEquals("the second roll landed on top of the first", TRAY_PARTS + DICE, stage.added.size)
   }
 
+  @Test
+  fun `the dice waiting to be thrown are drawn standing on the table`() {
+    // Tapping a saved roll puts its dice down rather than throwing them, so
+    // what a player looks at before shaking is what they are about to throw
+    // (`docs/TODO.md`, Step 4.1).
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    val added = stage.added.size
+
+    renderer.waiting(spec())
+
+    assertTrue("no dice were put on the table", stage.added.size > added)
+    assertEquals("the waiting dice were not drawn anywhere", DICE, stage.placed.size)
+  }
+
+  @Test
+  fun `waiting dice are laid out so that none of them overlaps`() {
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+
+    renderer.waiting(spec())
+
+    val where = stage.placed.values.map { it[TRANSLATION_X] to it[TRANSLATION_Y] }
+    assertEquals("two waiting dice were drawn in the same place", where.size, where.distinct().size)
+  }
+
+  @Test
+  fun `a board with no dice on it is the empty table again`() {
+    // Clearing the board is saying "no dice", not "no table".
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    renderer.waiting(spec())
+
+    renderer.waiting(spec().copy(dice = emptyList()))
+
+    assertTrue("the table went with the dice", renderer.redraw())
+    assertEquals("dice were left on a cleared board", 0, stage.placed.size)
+  }
+
+  @Test
+  fun `dice put on the table before there is a table to put them on are ignored`() {
+    // The screen says which table it is before it says what is on it, and a
+    // board with no scene under it has nowhere to stand.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+
+    renderer.waiting(spec())
+
+    assertTrue("dice were drawn onto a tray that does not exist yet", stage.placed.isEmpty())
+  }
+
+  @Test
+  fun `a surface that arrives after the board is given the board`() {
+    // The same rule a roll gets: the picture is rebuilt on the new stage from
+    // what is already known, rather than being thrown away.
+    val renderer = TrayRenderer()
+    renderer.table(geometry, look)
+    renderer.waiting(spec())
+
+    val stage = FakeStage()
+    renderer.stage(stage)
+
+    assertEquals("the waiting dice did not follow the surface", DICE, stage.placed.size)
+  }
+
   private fun spec(): ThrowSpec =
     ThrowSpec(
       dice =
@@ -321,5 +393,9 @@ class TrayRendererTest {
 
     /** The floor, the walls and the rim — three meshes, one material each. */
     const val TRAY_PARTS = 3
+
+    /** Where a 4x4 column-major transform keeps its x and y. */
+    const val TRANSLATION_X = 12
+    const val TRANSLATION_Y = 13
   }
 }

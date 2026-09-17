@@ -171,6 +171,11 @@ class FilamentStage(
     scene.indirectLight = ambient(engine).also { ambient = it }
   }
 
+  override fun take(entity: Int) {
+    if (entity == Stage.NOTHING) return
+    scene.removeEntity(entity)
+  }
+
   override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,

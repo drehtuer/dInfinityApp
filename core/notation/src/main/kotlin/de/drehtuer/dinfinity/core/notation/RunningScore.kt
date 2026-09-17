@@ -42,6 +42,61 @@ object RunningScore {
     } catch (needed: NeedsAnotherDie) {
       Scoring.OneMoreDie(needed.die, added.faces.size)
     }
+
+  /**
+   * Every die the roll is waiting on **right now**, in the order the scoring
+   * asks for them.
+   *
+   * [of] hands back one die at a time, because that is the shape of the
+   * conversation: a chain cannot know whether it needs a third die until the
+   * second has landed. But chains do not wait on each other — three sixes in
+   * `8d6!` each earn a throw, and all three are owed the moment the dice stop.
+   * Throwing them one at a time asked the player for three shakes where a
+   * table asks for one (`docs/dice-notation.md`, "Evaluation").
+   *
+   * It works by answering the unthrown dice with a face that is **not** the
+   * highest, which is exactly what makes each chain stop at the die it is
+   * waiting on and the scoring move on to the next. Nothing about the answer
+   * reaches a result: this is thrown away and the real scoring is run again
+   * from the beginning once the dice have actually landed, with their real
+   * faces (`docs/architecture.md`, goal 1).
+   */
+  fun pending(
+    formula: Formula,
+    plan: RollPlan,
+    outcome: ThrowOutcome,
+    rounding: Rounding = Rounding.Default,
+    added: AddedDice = AddedDice(),
+  ): List<Die> {
+    val probe = Probe(added)
+    runCatching { RollEvaluator.score(formula, plan, outcome, rounding, probe) }
+    return probe.asked
+  }
+}
+
+/**
+ * Answers like [Replay] until it runs out, then answers anything else with a
+ * face that cannot explode — and writes down what it was asked for.
+ *
+ * The lowest face rather than an arbitrary one, so that a die whose faces are
+ * all the same value still terminates on the explosion depth limit rather than
+ * here.
+ */
+private class Probe(
+  private val added: AddedDice,
+) : ExtraThrow {
+  private var taken = 0
+
+  /** The dice this was asked for and could not answer from what was thrown. */
+  val asked: MutableList<Die> = mutableListOf()
+
+  override fun roll(die: Die): Int {
+    if (taken < added.faces.size) return added.faces[taken++]
+    asked += die
+    return die.faces.indices.minByOrNull { die.faces[it].value } ?: 0
+  }
+
+  override fun roomForAnother(die: Die): Boolean = taken < added.faces.size || added.room(die)
 }
 
 /**

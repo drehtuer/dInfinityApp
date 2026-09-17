@@ -21,6 +21,7 @@ that only works on one laptop is a build nobody else can reproduce.
 | Gradle | 9.7.1 | Also present as the wrapper in the repository |
 | ktlint, detekt | via Gradle | Style and static analysis |
 | sonar-scanner | 7.3 | Coverage and quality gate |
+| Node + markdownlint-cli2 | 24 LTS, 0.23.2 | Markdown lint, so the documents are checked here and not only on CI. The LTS line, and the lint pinned to the version `markdownlint-cli2-action` ships — two machines that disagree about the rules are worse than one that never asks. Bump them together |
 
 The SDK packages are *resolved* at image build time from what Google's
 repository offers, not pinned by name — with one exception, the NDK and CMake,
@@ -820,7 +821,7 @@ request is always aimed at `main`.
 | `ci.yml` — Device tests compile | every PR, push to `main` | `assembleDebugAndroidTest`. The instrumented suite **cannot run here** — it needs the phone — so CI at least proves it still compiles rather than letting it rot between runs on real hardware |
 | `ci.yml` — Dependency review | every PR | Fails a pull request that introduces a dependency with a known moderate-or-worse advisory |
 | `ci.yml` — Submit dependency graph | push to `main` | Sends the *resolved* Gradle graph to GitHub, so Dependabot alerts see transitive dependencies and not just what the version catalog names |
-| `ci.yml` — Documentation | every PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. These two need Node and a headless browser, which the devcontainer does not carry for one linter and one diagram, so unlike the invariants above they run only here |
+| `ci.yml` — Documentation | every PR, push to `main` | markdownlint over every document, and every mermaid fence parsed by `mermaid-cli`. The lint also runs in the devcontainer, pinned to the same version — `./gradlew markdownLint`, and `check` depends on it. The mermaid half still runs only here, because it needs a headless browser and that is a great deal of image for one diagram |
 | `release.yml` | tag `vX.Y.Z` | The full check suite, then a signed release APK attached to a GitHub Release with its SHA-256. Refuses to republish an existing release, refuses a tag that disagrees with `version.txt`, and refuses an APK not signed by the release key |
 | `pages.yml` | push to `main` touching docs, design or the site config | Publishes `docs/` and `design/` to GitHub Pages, so the prototype opens from a link instead of a clone |
 | `dependabot-metadata.yml` | PR opened by Dependabot | Regenerates `gradle/verification-metadata.xml` for the bumped dependency and commits it to the branch |
@@ -936,6 +937,23 @@ moment the cache was empty.
 The task list matters for the same reason. It has to resolve every configuration
 the build uses, `assembleDebugAndroidTest` included, or the device suite fails on
 its own dependencies.
+
+**Keeping up to date is Dependabot's job, and only Dependabot's.** Android
+Lint ships two detectors that ask Maven Central whether anything newer exists —
+`NewerVersionAvailable` and `GradleDependency` — and both are switched off in
+the convention plugins. A build should succeed or fail on what is in the tree,
+not on what somebody else published this morning: tomlj 1.3.0 turned `main` red
+on a commit that changed no dependency, hours after the same code went green.
+
+The second reason is worse than the first. Those detectors need the network, and
+the devcontainer runs Gradle `--offline`, so they say nothing locally and fire
+on CI — `./gradlew check` passes on a tree CI will reject, which is exactly how
+that failure reached `main`. A check that only fires on one of the two machines
+is worse than no check. Turning off `NewerVersionAvailable` alone is not enough,
+either: `GradleDependency` asks the same question and simply takes over.
+
+So a new version arrives as a pull request to review, with the verification
+metadata regenerated beside it, rather than as a broken build.
 
 A Dependabot pull request changes which artifacts the build resolves, so it
 would fail until someone regenerated the file by hand. That is the check

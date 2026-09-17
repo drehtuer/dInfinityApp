@@ -86,27 +86,31 @@ thing feels right is still a person's call.
 
 ## Known risks
 
-- **The correction ladder leans on corrections far too hard**, and at sixty dice
-  the honesty bar breaks for the first time. Ten thousand rolls on the Pixel
-  10a, at each of twenty and sixty dice:
+- **The correction ladder is gone, and the bar it existed for is met by
+  construction.** A roll now counts the dice that can be read, takes them off
+  the table and throws the rest again, until nothing is left to throw. Nothing
+  biases, nudges or places a die, so there is no code left that could correct
+  one. 2,000 rolls of 20d20 on the Pixel 10a:
 
-  | | 20 dice (200,000) | 60 dice (600,000) |
+  | | the ladder | counting |
   | --- | --- | --- |
-  | dice at rest on another die | **0** | **29** |
-  | post-rest corrections | **0** | **0** |
-  | dice corrected (budget 0.5 %) | 44.9 % | 47.1 % |
-  | dice re-thrown (budget 0.05 %) | 2.9 % | 6.1 % |
-  | rolls out of the 12 s cap | 3 | 29 |
-  | deepest die–die overlap (bar 0.2 mm) | 11.6 mm | 10.1 mm |
+  | dice corrected (budget 0.5 %) | 44.9 % | **0.000 %** |
+  | dice at rest on another die | 0 | **0** |
+  | post-rest corrections | 0 | **0** |
+  | forced settles | 106 | **0** |
+  | rolls out of the 12 s cap | 3 | **0** |
+  | median / p99 settle | 1.33 / 2.93 s | **0.78 / 1.45 s** |
 
-  Of the twenty-nine stacked dice, **twenty are in rolls the cap froze** — rung
-  3 never got to throw them again — and **nine finished cleanly**, which is
-  prevention failing outright. **Not one post-rest correction in 800,000 dice**,
-  which is the rule that is inviolable rather than a target.
-
-  Note the overlap: 11.6 mm at twenty dice against the 9.0 mm two hundred rolls
-  first found. Nothing got worse — an extreme value climbs with the sample, so
-  the old figure was optimism about how long anybody had looked.
+  Ten of the harness's twelve rows pass where six did. Two do not: the
+  **re-throw budget** (2.80 % against 0.05 %), which is a bar written for a
+  mechanism that no longer exists and needs re-deciding rather than hitting,
+  and the **die-into-die overlap** (9.03 mm against 0.2 mm), which is the
+  solver's own error and is unchanged in kind.
+- **One shaken throw in sixteen still runs the cap out.** Under a hard sideways
+  shake, seed 9 of sixteen never settles at all — **no re-throws**, so it never
+  reaches the point where anything is counted. A settling problem rather than a
+  counting one, the same family as `100d4`, bounded in the device suite at
+  today's worst case.
 - **The "no invisible hand" bar** can only be judged on a device. If prevention
   cannot reach it, the fallback is a visible re-throw, which is honest but must
   not become common.

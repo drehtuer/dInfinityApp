@@ -58,6 +58,25 @@ android {
     // that covers Kotlin is `verifyTextIsAResource` in `dinfinity.quality`
     // (`docs/architecture.md`, "Text a person reads").
     error += setOf("HardcodedText", "MissingTranslation", "ExtraTranslation")
+    // Off, on purpose. `NewerVersionAvailable` asks Maven Central on every run
+    // whether anything newer exists, so a dependency publishing a release turns
+    // the build red on a commit that changed nothing — tomlj 1.3.0 did exactly
+    // that. A build should succeed or fail on what is in the tree.
+    //
+    // It is also invisible locally: the devcontainer runs Gradle `--offline`,
+    // so the detector has no network and says nothing, and `./gradlew check`
+    // passes on a tree CI will reject. A check that only fires on one of the
+    // two machines is worse than no check.
+    //
+    // Keeping up to date is Dependabot's, which opens a pull request per bump
+    // with the verification metadata regenerated beside it — a version arrives
+    // as something to review rather than as a broken build
+    // (`docs/build-setup.md`).
+    // Both of them: `GradleDependency` is the same question asked by a
+    // different detector, and turning one off simply hands the failure to the
+    // other. Found by putting tomlj back to 1.2.0 and watching the build fail
+    // again under the other name.
+    disable += setOf("NewerVersionAvailable", "GradleDependency")
   }
 }
 

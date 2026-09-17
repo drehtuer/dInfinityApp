@@ -214,6 +214,32 @@ class SpawnLayoutTest {
     }
   }
 
+  @Test
+  fun `a round of added dice is not dropped on one spot`() {
+    // Each die of a round takes floor the next one cannot have. Asking
+    // `ClearSpace` the same question three times gives the same answer three
+    // times, and all three dice would be dropped in one place — which is what
+    // the throw spec used to forbid by allowing only one added die at a time
+    // (`docs/dice-notation.md`, "Evaluation").
+    val layout = SpawnLayout(geometry, RADIUS_MM, seed = 77L, among = listOf(Vector3(0.0, 0.0, RADIUS_MM)))
+
+    val places = (0 until 3).map { layout.placementOf(it, 3).position }
+
+    assertEquals("two dice of one round were dropped on the same spot", 3, places.distinct().size)
+  }
+
+  @Test
+  fun `where a die of a round goes does not depend on which order it was asked for`() {
+    val among = listOf(Vector3(0.0, 0.0, RADIUS_MM))
+    val inOrder = SpawnLayout(geometry, RADIUS_MM, seed = 77L, among = among)
+    val backwards = SpawnLayout(geometry, RADIUS_MM, seed = 77L, among = among)
+
+    val forwards = (0 until 3).map { inOrder.placementOf(it, 3).position }
+    val reversed = (2 downTo 0).map { backwards.placementOf(it, 3).position }.reversed()
+
+    assertEquals(forwards, reversed)
+  }
+
   private companion object {
     /** A 16 mm d6's bounding radius, which is what the capacity table is built on. */
     const val RADIUS_MM = 13.86

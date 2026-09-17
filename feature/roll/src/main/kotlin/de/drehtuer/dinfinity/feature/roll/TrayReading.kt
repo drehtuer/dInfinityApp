@@ -30,6 +30,14 @@ internal sealed interface TrayReading {
     val dice: Int,
   ) : TrayReading
 
+  /**
+   * Down, read, and one throw short: a die exploded and the throw it earned is
+   * waiting for a hand.
+   */
+  data class ShakeAgain(
+    val dice: Int,
+  ) : TrayReading
+
   /** Landed, and this is the total. */
   data class Settled(
     val total: Long,
@@ -48,6 +56,7 @@ internal sealed interface TrayReading {
         RollState.Empty, is RollState.Invalid, is RollState.TooMany -> Empty
         is RollState.Ready -> Ready(state.diceCount)
         is RollState.Rolling -> Rolling(state.diceCount)
+        is RollState.ShakeAgain -> ShakeAgain(state.diceCount)
         is RollState.Settled -> Settled(state.result.total)
       }
   }

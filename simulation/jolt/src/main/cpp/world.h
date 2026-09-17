@@ -126,6 +126,20 @@ class World {
   /// is. The visible last resort, not a nudge (`docs/physics-and-rendering.md`).
   void Respawn(int index, const Placement& placement);
 
+  /// Takes a die off the table, for good.
+  ///
+  /// Its face has been read, so it is out of play and the floor it stood on is
+  /// free for the dice still being thrown. The body is taken out of the
+  /// simulation rather than destroyed: the index stays valid, and where the die
+  /// came to rest stays readable, because that reading is part of the result
+  /// (`docs/physics-and-rendering.md`).
+  ///
+  /// Nothing puts it back. Removing one twice does nothing the second time.
+  void Remove(int index);
+
+  /// Whether [index] has been taken off the table.
+  bool Removed(int index) const;
+
   /// Writes `kBodyStride` floats describing the body Jolt actually built for
   /// die `index`: its centre of mass, then its inertia tensor row by row.
   ///

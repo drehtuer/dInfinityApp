@@ -147,19 +147,37 @@ class LiveRoll internal constructor(
    * applied: nothing touches a die that has come to rest, and the hand is not
    * an exception (`.claude/CLAUDE.md`).
    */
+  override val countedSoFar: Map<Int, Int> get() = loop.countedSoFar
+
   override fun shake(sample: ShakeSample) {
     if (running) loop.shake(sample)
   }
 
-  /** The dice as they are at this moment, ready to be drawn. */
-  fun frame(): RenderFrame =
-    RenderFrame(
-      previous = previous,
-      current = current,
+  /**
+   * The dice as they are at this moment, ready to be drawn.
+   *
+   * **A die that has been counted is not in it.** Its face has been read, so it
+   * is off the table and out of the simulation — and the floor it was standing
+   * on is free for the dice still to be thrown, which means a later die may
+   * land exactly where it was. Drawing it there anyway would put two dice in
+   * one place, which is a worse thing to watch than the stacking this
+   * mechanism replaced (`docs/physics-and-rendering.md`).
+   *
+   * Both halves are filtered by the same list, so a frame still has the same
+   * dice at both ends of the step it spans. A die counted during that step
+   * leaves at once rather than gliding away, which is what being lifted off
+   * the table looks like.
+   */
+  fun frame(): RenderFrame {
+    val gone = loop.countedOut
+    return RenderFrame(
+      previous = previous.filterNot { gone.getOrElse(it.index) { false } },
+      current = current.filterNot { gone.getOrElse(it.index) { false } },
       // A roll that is over is not between two states: it is at the second of
       // them, and stays there.
       interpolation = if (running) clock.interpolation else 1.0,
     )
+  }
 
   /**
    * Gives the physics world back, whether or not the roll finished.

@@ -19,7 +19,13 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
  * deliberately the one with nothing in it worth testing there — the device
  * suite proves it moves dice, and every decision it carries out was made and
  * tested upstairs.
+ *
+ * One method per thing the bridge can be asked to do, and that list is the
+ * interface's rather than this class's: each is a single call across JNI with
+ * no logic on this side, so splitting it would put half a bridge in one file
+ * and half in another. The same reason [JoltNative] gives.
  */
+@Suppress("TooManyFunctions")
 class JoltWorld private constructor(
   private val handle: Long,
   maxDice: Int,
@@ -105,6 +111,8 @@ class JoltWorld private constructor(
     Units.mmToUnits(velocity.y),
     Units.mmToUnits(velocity.z),
   )
+
+  override fun remove(index: Int) = JoltNative.nativeRemove(handle, index)
 
   override fun respawn(
     index: Int,

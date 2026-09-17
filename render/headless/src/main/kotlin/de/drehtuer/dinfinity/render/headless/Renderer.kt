@@ -137,6 +137,21 @@ interface WatchedRoll : AutoCloseable {
   val outcome: SimulationOutcome?
 
   /**
+   * The faces read so far, by die index: what the roll knows already.
+   *
+   * A roll counts a die the moment it can be read and takes it off the table,
+   * so by the time the last die lands most of the answer has been known for a
+   * while — and the dice that carried it are gone from the tray. This is what
+   * the screen follows instead of the dice: a running total, and how high and
+   * low the finished roll can still come out
+   * (`docs/TODO.md`, Step 5.5).
+   *
+   * Empty until the first die is counted, and a *reading* like [outcome] is —
+   * nothing a watcher does with it can reach the roll.
+   */
+  val countedSoFar: Map<Int, Int> get() = emptyMap()
+
+  /**
    * Every moment of the shake that has reached this roll, in step order.
    *
    * What a throw *started* as is its `ThrowSpec`, and for a shake-driven throw

@@ -1,8 +1,12 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
+import de.drehtuer.dinfinity.simulation.api.ClearSpace
+import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RestingPlaces
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
@@ -161,11 +165,50 @@ class TrayRenderer : Renderer {
   }
 
   /**
+   * Draws the dice that are waiting to be thrown, at rest on the table.
+   *
+   * The same two calls a finished roll ends on — build the bodies, then show
+   * them standing still — because that is exactly what this is: dice on a
+   * table, not moving. What it is *not* is a roll, so nothing is stepped and
+   * no face is read.
+   */
+  fun waiting(spec: ThrowSpec) {
+    val showing = scene ?: return
+    if (spec.dice.isEmpty()) {
+      table(showing.geometry, showing.look)
+      return
+    }
+    val standing = RenderFrame.still(restingTransforms(spec))
+    scene = showing.copy(spec = spec)
+    // Remembered, not just drawn. A surface comes and goes — the lock screen,
+    // a rotation — and the board has to come back with it, exactly as a
+    // finished roll does. Kept as settled, because that is what it is: dice on
+    // a table, not moving (`docs/physics-and-rendering.md`).
+    latest = standing
+    settled = true
+    drawing?.let { renderer ->
+      renderer.begin(spec, showing.geometry, showing.look)
+      renderer.settled(standing)
+    }
+  }
+
+  /** Where each waiting die is drawn: laid out so none of them overlaps. */
+  private fun restingTransforms(spec: ThrowSpec): List<BodyTransform> =
+    RestingPlaces
+      .of(
+        geometry = spec.geometry,
+        radiiMm = spec.dice.map { ClearSpace.radiusOf(it.die, spec.dieScale) },
+      ).mapIndexed { index, place ->
+        BodyTransform(index = index, position = place, orientation = Quaternion.Identity)
+      }
+
+  /**
    * What a new stage has to be told to catch up with the old one.
    *
    * A null [spec] is a table with nothing on it, which is a scene like any
    * other: it has to be rebuilt on a new surface exactly as a throw does.
    */
+
   private data class Scene(
     val spec: ThrowSpec?,
     val geometry: TableGeometry,

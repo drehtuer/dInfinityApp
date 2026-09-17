@@ -76,6 +76,12 @@ class PowerSavingTray(
 
   override fun roll(
     start: (Renderer) -> WatchedRoll,
+    // Nothing follows a power-saving roll as it goes. It runs to the end on a
+    // worker thread in well under a tenth of a second, with no frames to pace
+    // it, so a running total would be a number that appeared and was replaced
+    // by the real one in the same breath (`docs/physics-and-rendering.md`,
+    // "Power-saving mode").
+    onCounted: (Map<Int, Int>) -> Unit,
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   ) {
     on.execute {
