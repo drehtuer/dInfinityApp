@@ -1201,7 +1201,6 @@ blocks code:
       and on the solid, exactly as it would on a real die. Leave it as
       authoring feedback, or shrink it to fit?
 
-
 - [ ] **Does a refusal keep its words, or become a reason?** The sentences a
       validator and a downloader write end up on screen, and they are written
       in modules that have no resources — which is deliberate, because nothing
