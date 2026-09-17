@@ -26,7 +26,7 @@ class CollectionRoundTripTest {
     val rolls =
       listOf(
         SavedRoll(id = "r1", groupId = "uuid-2", name = "Longsword", formula = "1d20 + 7 [Attack]", icon = "🗡️"),
-        SavedRoll(id = "r2", groupId = "uuid-2", name = "Fireball", formula = "8d6 [Fire]", favourite = true),
+        SavedRoll(id = "r2", groupId = "uuid-2", name = "Fireball", formula = "8d6 [Fire]", sortOrder = 1),
       )
 
     val written = CollectionWriter.write(CollectionWriter.collect(groups, rolls, name = "Strahd"))
@@ -47,11 +47,6 @@ class CollectionRoundTripTest {
       read.collection.rolls
         .first()
         .formula,
-    )
-    assertTrue(
-      read.collection.rolls
-        .last()
-        .favourite,
     )
   }
 

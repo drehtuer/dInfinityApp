@@ -4,7 +4,9 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -13,29 +15,34 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.withStyle
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
@@ -132,16 +139,33 @@ fun SavedScreen(
         onRoll(entry)
       },
       onEdit = onEdit,
+      onMove = presenter::move,
+      onSettle = presenter::settle,
     )
   }
 }
 
-/** The rolls of the group that is open, in the order SQL put them in. */
+/**
+ * The rolls of the group that is open, in the order the player dragged them
+ * into.
+ *
+ * **Its own scroll box.** The bar, the group switcher and the line above the
+ * list stay where they are and the rolls move under them, which is what
+ * `weight(1f)` buys: a list that scrolled the whole screen would take the
+ * group name away exactly when somebody is looking for it
+ * (`docs/dice-notation.md`, "Saved rolls").
+ *
+ * The drag itself is here and the arithmetic is not: where the pointer is and
+ * which row is under it is a question about a layout, and what the list should
+ * look like once it is answered is [SavedOrder]'s.
+ */
 @Composable
 private fun ColumnScope.Rolls(
   rolls: List<SavedEntry>,
   onRoll: (SavedEntry) -> Unit,
   onEdit: (SavedEntry) -> Unit,
+  onMove: (String, Int) -> Unit,
+  onSettle: () -> Unit,
 ) {
   Text(
     text = stringResource(R.string.saved_order),
@@ -153,13 +177,69 @@ private fun ColumnScope.Rolls(
   // "a new thing starts here", 1 dp says "another row of the same thing"
   // (`design/dInfinityPhone.dc.html`, the saved-rolls list).
   Rule()
-  LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedTestTags.LIST)) {
+  val list = rememberLazyListState()
+  // Where the finger is, in the list's own coordinates. Followed from the
+  // dragged row's middle rather than from the touch point, so the row does not
+  // jump to sit under the finger the moment the drag starts.
+  var pointer by remember { mutableFloatStateOf(0f) }
+  var dragging by remember { mutableStateOf<String?>(null) }
+  LazyColumn(
+    state = list,
+    modifier = Modifier.weight(1f).fillMaxWidth().testTag(SavedTestTags.LIST),
+  ) {
     itemsIndexed(rolls, key = { _, entry -> entry.roll.id }) { index, entry ->
       if (index > 0) Rule(weight = RuleWeight.Hairline)
-      SavedRow(entry = entry, onRoll = { onRoll(entry) }, onEdit = { onEdit(entry) })
+      val id = entry.roll.id
+      SavedRow(
+        entry = entry,
+        dragging = dragging == id,
+        onRoll = { onRoll(entry) },
+        onEdit = { onEdit(entry) },
+        grip =
+          Grip(
+            label = stringResource(R.string.saved_move_it, entry.roll.name),
+            up = stringResource(R.string.saved_move_up),
+            down = stringResource(R.string.saved_move_down),
+            onStep = { by ->
+              onMove(id, index + by)
+              onSettle()
+            },
+            onDrag = { by ->
+              pointer += by
+              list.indexUnder(pointer)?.let { under -> onMove(id, under) }
+            },
+            onDragging = { started ->
+              if (started) {
+                dragging = id
+                pointer = list.middleOf(id)
+              } else {
+                dragging = null
+                onSettle()
+              }
+            },
+          ),
+      )
     }
   }
 }
+
+/** The middle of the row [id] is drawn in, in the list's own coordinates. */
+private fun LazyListState.middleOf(id: String): Float =
+  layoutInfo.visibleItemsInfo
+    .firstOrNull { it.key == id }
+    ?.let { it.offset + it.size / 2f } ?: 0f
+
+/**
+ * Which row [at] is over, or null when it is over none of them.
+ *
+ * The row under the pointer rather than the one the drag began on: that is
+ * what lets a list longer than a thumb be reordered at all, because the finger
+ * ends up somewhere the row it picked up is not.
+ */
+private fun LazyListState.indexUnder(at: Float): Int? =
+  layoutInfo.visibleItemsInfo
+    .firstOrNull { at >= it.offset && at < it.offset + it.size }
+    ?.index
 
 /**
  * Gathering what was chosen and handing it up.
@@ -348,10 +428,84 @@ private fun GroupSwitcher(
   }
 }
 
+/**
+ * What the grip on a row does.
+ *
+ * A holder rather than six parameters on the row, because the row does not
+ * care what any of them mean: it draws the grip and hands the gestures over.
+ *
+ * [onStep] is the same move by a different route — a screen reader has no
+ * drag, so "move up" and "move down" are offered as actions on the grip. A
+ * reordering that can only be done by dragging is a list somebody using
+ * TalkBack cannot order at all (`docs/architecture.md`, "Accessibility").
+ *
+ * The grip sits *inside* the row rather than beside it, so those two actions
+ * merge upward with the row's own roll and edit: one thing on the screen is
+ * one thing to a screen reader, with everything it can do on it.
+ */
+private class Grip(
+  val label: String,
+  val up: String,
+  val down: String,
+  val onStep: (Int) -> Unit,
+  val onDrag: (Float) -> Unit,
+  val onDragging: (Boolean) -> Unit,
+)
+
+/**
+ * The two bars that are dragged, and the only part of a row that is.
+ *
+ * [key] is what the gesture is remembered by, and it has to be the roll rather
+ * than [grip]: a new [Grip] is built on every recomposition, and keying the
+ * gesture on it would tear the detector down and put a new one up the moment
+ * the list reordered — which is to say, one row into every drag.
+ */
+@Composable
+private fun GripHandle(
+  key: Any,
+  grip: Grip,
+  modifier: Modifier = Modifier,
+) {
+  Box(
+    contentAlignment = Alignment.Center,
+    modifier =
+      modifier
+        .size(TOUCH_TARGET)
+        .semantics {
+          contentDescription = grip.label
+          customActions =
+            listOf(
+              CustomAccessibilityAction(grip.up) {
+                grip.onStep(-1)
+                true
+              },
+              CustomAccessibilityAction(grip.down) {
+                grip.onStep(1)
+                true
+              },
+            )
+        }.pointerInput(key) {
+          detectDragGestures(
+            onDragStart = { grip.onDragging(true) },
+            onDragEnd = { grip.onDragging(false) },
+            onDragCancel = { grip.onDragging(false) },
+            onDrag = { change, moved ->
+              change.consume()
+              grip.onDrag(moved.y)
+            },
+          )
+        },
+  ) {
+    Text(text = "≡", style = MaterialTheme.typography.bodyLarge, color = Ink.muted)
+  }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SavedRow(
   entry: SavedEntry,
+  dragging: Boolean,
+  grip: Grip,
   onRoll: () -> Unit,
   onEdit: () -> Unit,
 ) {
@@ -367,23 +521,27 @@ private fun SavedRow(
           onLongClick = onEdit,
         ).semantics(mergeDescendants = true) {}
         .testTag(SavedTestTags.rollOf(roll.id))
-        .padding(horizontal = Modernist.x4, vertical = Modernist.x3),
+        // The row being dragged is drawn back, the way the prototype fades it
+        // to .55 while it is under the finger.
+        .alpha(if (dragging) DRAGGED else 1f)
+        .padding(end = Modernist.x4, top = Modernist.x3, bottom = Modernist.x3),
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(Modernist.x3),
   ) {
-    // The icon prints in the roll's own colour tag, which is the one place a
-    // saved roll gets to look like itself (design option 9d).
+    // The grip is at the left of every row, which is where the prototype puts
+    // it and where a thumb on a phone already is.
+    GripHandle(key = roll.id, grip = grip, modifier = Modifier.testTag(SavedTestTags.gripOf(roll.id)))
+    // The icon prints in the roll's own colour tag, through the contrast clamp
+    // that keeps it visible on whichever ground the theme is drawing
+    // (design option 9d; `RollColour`).
     Text(
       text = roll.icon.ifBlank { DEFAULT_ICON },
       style = MaterialTheme.typography.titleLarge,
-      color = roll.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary,
+      color = markColour(roll.colorArgb),
     )
     Column(modifier = Modifier.weight(1f)) {
       Text(
-        // The star prints in the accent, as it does on the prototype's rows.
-        // Part of the same text rather than a second one, so a long name
-        // ellipsises around it instead of pushing it off the row.
-        text = starred(roll.name, roll.favourite),
+        text = roll.name,
         style = MaterialTheme.typography.bodyLarge,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onBackground,
@@ -410,18 +568,6 @@ private fun SavedRow(
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
-  }
-}
-
-/** [name], with the accent star a favourite wears after it. */
-@Composable
-private fun starred(
-  name: String,
-  favourite: Boolean,
-) = buildAnnotatedString {
-  append(name)
-  if (favourite) {
-    withStyle(SpanStyle(color = Ink.accent)) { append(" ★") }
   }
 }
 
@@ -461,6 +607,9 @@ private fun Empty(onNew: () -> Unit) {
 /** What a roll with no icon of its own wears. */
 private const val DEFAULT_ICON = "●"
 
+/** How far back a row is drawn while it is the one under the finger. */
+private const val DRAGGED = 0.55f
+
 /** What the tests reach this screen by. */
 object SavedTestTags {
   const val SCREEN: String = "saved:screen"
@@ -472,6 +621,8 @@ object SavedTestTags {
   fun rollOf(id: String): String = "saved:roll:$id"
 
   fun brokenOf(id: String): String = "saved:roll:$id:broken"
+
+  fun gripOf(label: String): String = "saved:grip:$label"
 
   fun groupOf(id: String): String = "saved:group:$id"
 }

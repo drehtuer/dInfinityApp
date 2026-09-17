@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-09-17
+**Last updated:** 2026-09-18
 
 ## Where we are
 
@@ -72,6 +72,12 @@ about, so each screen's list has gained work that is code rather than an eye:
 plates over the table, a counting plate, per-set physical properties, the
 designer's Solid tab, dragged saved rolls, an accent picker behind a contrast
 clamp, and a two-stage back.
+
+**The saved-rolls half of that pass is built** (`feature/saved`): pinning is
+gone, the list is dragged into the player's own order and is its own scroll
+box, a roll wears one of twelve colour tags or one typed as a hex code, every
+colour goes through a contrast clamp, and database version 6 carries what a
+phone already has across — favourites first, then by recent use, once.
 
 **Step 5 is the real remaining work** — see Known risks.
 

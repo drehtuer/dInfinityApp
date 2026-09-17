@@ -13,7 +13,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.model.TablePin
@@ -125,8 +124,7 @@ class EditorScreenTest {
     compose.onNodeWithTag(EditorTestTags.NAME).performTextInput("Fireball")
     compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("8d6 [Fire]")
     compose.onNodeWithTag(EditorTestTags.iconOf("🔥")).performScrollTo().performClick()
-    compose.onNodeWithTag(EditorTestTags.colourOf(AccentColor.Vermilion.argb)).performScrollTo().performClick()
-    compose.onNodeWithTag(EditorTestTags.FAVOURITE).performScrollTo().performClick()
+    compose.onNodeWithTag(EditorTestTags.colourOf(RollColour.Cobalt.argb)).performScrollTo().performClick()
 
     compose.onNodeWithTag(EditorTestTags.SAVE).performScrollTo().performClick()
     presenter.written()
@@ -135,8 +133,64 @@ class EditorScreenTest {
     assertEquals("Fireball", saved.name)
     assertEquals("8d6 [Fire]", saved.formula)
     assertEquals("🔥", saved.icon)
-    assertEquals(AccentColor.Vermilion.argb, saved.colorArgb)
-    assertTrue(saved.favourite)
+    assertEquals(RollColour.Cobalt.argb, saved.colorArgb)
+  }
+
+  @Test
+  fun `all twelve colour tags are on offer, and none at all`() {
+    // Twelve spanning the hue circle is what makes a character sheet tellable
+    // apart at a glance (`docs/dice-notation.md`, "Saved rolls").
+    show()
+
+    compose.onNodeWithTag(EditorTestTags.colourOf(null)).performScrollTo().assertExists()
+    RollColour.entries.forEach { tag ->
+      compose.onNodeWithTag(EditorTestTags.colourOf(tag.argb)).performScrollTo().assertExists()
+    }
+  }
+
+  @Test
+  fun `a colour of somebody's own is taken as typed`() {
+    val presenter = show()
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("1d20")
+
+    compose.onNodeWithTag(EditorTestTags.COLOUR_CUSTOM).performScrollTo().performTextInput("#123456")
+    compose.onNodeWithTag(EditorTestTags.SAVE).performScrollTo().performClick()
+    presenter.written()
+
+    assertEquals(0xFF123456.toInt(), runBlocking { repository.all.first().single() }.colorArgb)
+  }
+
+  @Test
+  fun `half a colour chooses nothing rather than something wrong`() {
+    // Somebody in the middle of typing is not somebody making a mistake.
+    val presenter = show()
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("1d20")
+
+    compose.onNodeWithTag(EditorTestTags.COLOUR_CUSTOM).performScrollTo().performTextInput("#12")
+    compose.onNodeWithTag(EditorTestTags.SAVE).performScrollTo().performClick()
+    presenter.written()
+
+    assertNull(runBlocking { repository.all.first().single() }.colorArgb)
+  }
+
+  @Test
+  fun `editing a roll leaves it where it was dragged to`() {
+    // The editor is not where the order is decided, so a roll saved from it
+    // has to come back exactly where it was (`docs/dice-notation.md`).
+    runBlocking {
+      repository.save(SavedRoll(id = "first", groupId = SavedRollGroup.UNFILED_ID, name = "First", formula = "1d4"))
+      repository.save(SavedRoll(id = "second", groupId = SavedRollGroup.UNFILED_ID, name = "Second", formula = "1d6"))
+    }
+    val presenter = show(editing = "second")
+
+    compose.onNodeWithTag(EditorTestTags.NAME).performTextInput("!")
+    compose.onNodeWithTag(EditorTestTags.SAVE).performScrollTo().performClick()
+    presenter.written()
+
+    assertEquals(
+      listOf("first", "second"),
+      runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id },
+    )
   }
 
   @Test

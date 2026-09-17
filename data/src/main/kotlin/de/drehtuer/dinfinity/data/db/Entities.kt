@@ -205,6 +205,11 @@ data class SavedRollGroupRow(
  * more resolved than the text would make an uninstall quietly rewrite what
  * somebody wrote.
  *
+ * `sort_order` is the order the player dragged the list into, and the only
+ * thing that orders it: there is no favourite flag and no recency, because the
+ * two were solving the same problem twice and only one of them can say which
+ * favourite comes first (`docs/dice-notation.md`, "Saved rolls").
+ *
  * Deleting a group takes its rolls with it in SQL, which is what the foreign
  * key is for — but the screens move them to Unfiled instead, and only ever
  * delete a group that is already empty. The cascade is the floor, not the
@@ -220,7 +225,7 @@ data class SavedRollGroupRow(
       onDelete = ForeignKey.CASCADE,
     ),
   ],
-  indices = [Index("group_id"), Index("favourite"), Index("last_used_at")],
+  indices = [Index("group_id"), Index("sort_order"), Index("last_used_at")],
 )
 data class SavedRollRow(
   @PrimaryKey
@@ -232,7 +237,9 @@ data class SavedRollRow(
   val icon: String = "",
   @ColumnInfo(name = "colour_argb")
   val colourArgb: Int? = null,
-  val favourite: Boolean = false,
+  /** Where the player dragged it, low first. The whole of the list's order. */
+  @ColumnInfo(name = "sort_order")
+  val sortOrder: Int = 0,
   @ColumnInfo(name = "table_set_id")
   val tableSetId: String? = null,
   @ColumnInfo(name = "table_id")

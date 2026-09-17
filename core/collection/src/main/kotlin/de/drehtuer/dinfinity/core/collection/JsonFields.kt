@@ -110,7 +110,3 @@ internal fun JsonObject.optionalSlug(
   if (value == null || value is JsonNull) return null
   return slug(key, at, errors)
 }
-
-/** A truth value, or false: a flag left out is a flag not set. */
-internal fun JsonObject.flag(key: String): Boolean =
-  (this[key] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false

@@ -247,10 +247,19 @@ groups nest one level and nothing can make them nest deeper, a roll always has
 somewhere to be, and deleting a group moves its rolls rather than deleting
 them. What is left is the screens.
 
-The list is built: the group switcher, the row-style list in favourites-first
-order, the warning on a roll whose dice are gone, the empty state, and tapping
-a roll to send its formula to the tray. Groups can be made, renamed, moved and
-deleted, from the switcher or from the editor — the same sheet in both places.
+The list is built: the group switcher, the row-style list **in the order the
+player dragged it into**, the warning on a roll whose dice are gone, the empty
+state, and tapping a roll to send its formula to the tray. Groups can be made,
+renamed, moved and deleted, from the switcher or from the editor — the same
+sheet in both places.
+
+Pinning is gone with the design pass of 2026-09-17: each row carries a grip,
+the list reorders live under the finger and is written down when it lifts, the
+list is its own scroll box under a bar and a switcher that stay put, and a roll
+wears one of twelve colour tags or one typed as a hex code — every one of them
+through a contrast clamp. `sort_order` replaced the `favourite` column in
+database version 6, and the migration translates what a phone already has once:
+favourites first, then by recent use, numbered per group.
 
 Rolls and groups are one repository each now, joined by `SavedRollLibrary` for
 the screens that need both — the split the class size had been asking for, and
@@ -264,21 +273,39 @@ extractor unpacks it, and the one `*.dinfinity.json` at its root goes through
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
 
-**From the design pass of 2026-09-17** (`docs/dice-notation.md`, "Saved rolls"):
+**Decided while building the order and the colours**, because the design left
+the choice open:
 
-- [ ] **Drag the list into order, and drop pinning.** Each entry gets a grip;
-      the list reorders live under the finger, and the row that moves is the
-      one under the pointer rather than the one the drag began on. The
-      favourite flag goes, and favourites-first with it — a favourite and a
-      roll dragged to the top were solving the same problem twice, and only one
-      of them can say which favourite comes first. `sortOrder` replaces the
-      flag in storage, and the order travels in an exported collection as the
-      file's own order
-- [ ] **Twelve colour tags and a custom one**, each through the same contrast
-      clamp as the accent. The list is ink, grey, red, deep red, orange, amber,
-      pine, teal, cobalt, violet, magenta, bone
-- [ ] **The list is its own scroll box**, under a header and a group picker
-      that stay put
+- **A new roll lands at the bottom of its group.** It is a roll somebody has
+  just made and has not placed yet; putting it at the top would move
+  everything they *had* placed down by one.
+- **A custom colour is typed as `#rrggbb`** rather than picked off a wheel. The
+  system colour picker arrives with the accent's (4.9 below), and one picker
+  for both is worth more than two that are not quite the same; a hex code is
+  also what somebody copying a colour out of a character sheet already has.
+  Half a code chooses nothing rather than something wrong.
+- **The contrast clamp is a local function in `feature/saved`**
+  (`LegibleColour`), written against `core/model`'s `Contrast`. The accent's
+  clamp in 4.9 is the same arithmetic for every colour a player can pick, and
+  when it lands this file goes and the call site changes an import. Its KDoc
+  says so in prose rather than with the usual marker word, which detekt's
+  `ForbiddenComment` refuses.
+- **The grip carries *move up* and *move down* as accessibility actions**, so
+  the list can be ordered without a drag. What is *not* there is auto-scroll
+  while dragging past the top or bottom of the list — a row can only be
+  dragged as far as the list is showing, and moving it further takes a second
+  drag. Worth doing if a long list turns out to be tedious; not worth guessing
+  at before somebody has one.
+
+- [ ] `design/dInfinity.dc.html`'s caption for option `1r` still lists a
+      favourite among the editor's fields, and `1o`/`1p` still describe
+      favourites-first tiles. The screens themselves (`dInfinityPhone.dc.html`)
+      are right — these are captions in the imported options catalogue, and the
+      file carries a "last synced" marker, so they want fixing in the design
+      project and re-importing rather than by hand here
+- [ ] *Judge the drag on the phone:* whether a row follows the finger closely
+      enough to feel picked up rather than nudged, and whether the grip is
+      where a thumb expects it on a list the length of a character sheet
 
 ### 4.4 Dice sets — `feature/sets`
 

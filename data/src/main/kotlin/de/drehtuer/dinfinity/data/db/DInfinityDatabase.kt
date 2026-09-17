@@ -17,7 +17,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
  * than from the first release. A database that has only ever been created,
  * never migrated, is a database whose first migration is written under
  * pressure. Version 5 puts a session on every face count, and is the first
- * one to reshape a table somebody already has rows in.
+ * one to reshape a table somebody already has rows in. Version 6 takes the
+ * favourite flag off a saved roll and gives it the order the player dragged
+ * it into.
  *
  * Every version's schema is exported to `data/schemas/` and checked in.
  * `SchemaTest` walks them, so a version bump without a migration fails the
@@ -58,7 +60,7 @@ abstract class DInfinityDatabase : RoomDatabase() {
 
   companion object {
     /** Bumping this needs a migration and a checked-in schema. Both are enforced. */
-    const val VERSION: Int = 5
+    const val VERSION: Int = 6
 
     /** The file the app opens (`docs/architecture.md`, "Storage layout"). */
     const val NAME: String = "dinfinity.db"
@@ -70,7 +72,7 @@ abstract class DInfinityDatabase : RoomDatabase() {
      * entry was one line rather than a change to how the database opens.
      */
     val MIGRATIONS: List<Migration> =
-      listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+      listOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
 
     /** Opens the database, migrating it if it is older. */
     fun open(
@@ -257,5 +259,71 @@ internal val MIGRATION_4_5: Migration =
       db.execSQL("ALTER TABLE `die_stats_new` RENAME TO `die_stats`")
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_die_stats_sides` ON `die_stats` (`sides`)")
       db.execSQL("CREATE INDEX IF NOT EXISTS `index_die_stats_session_id` ON `die_stats` (`session_id`)")
+    }
+  }
+
+/**
+ * Version 5 → 6: pinning goes, and the order becomes the player's
+ * (`docs/dice-notation.md`, "Saved rolls").
+ *
+ * The favourite flag is dropped and `sort_order` takes its place, so the same
+ * twelve-step dance as version 5: a new table beside the old one, the rows
+ * copied in, the old one dropped, the new one renamed.
+ *
+ * **The interesting part is the one-off translation.** A phone that already
+ * has saved rolls must come back with them in an order somebody recognises,
+ * and the order they were in was favourites first and then by recent use. That
+ * is exactly what is written down here, once: the favourites take the low
+ * numbers in their old order and the rest follow in theirs. After this nothing
+ * computes an order ever again — it is a column, and only a drag changes it.
+ *
+ * Numbered per group rather than across the table, because the list is per
+ * group and two rolls in different groups sharing a number means nothing.
+ * `ROW_NUMBER()` does the counting; it has been in SQLite since 3.25 (2018),
+ * which is below every API level this app runs on.
+ */
+internal val MIGRATION_5_6: Migration =
+  object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+      db.execSQL(
+        """
+        CREATE TABLE IF NOT EXISTS `saved_roll_new` (
+          `id` TEXT NOT NULL,
+          `group_id` TEXT NOT NULL,
+          `name` TEXT NOT NULL,
+          `formula` TEXT NOT NULL,
+          `icon` TEXT NOT NULL,
+          `colour_argb` INTEGER,
+          `sort_order` INTEGER NOT NULL,
+          `table_set_id` TEXT,
+          `table_id` TEXT,
+          `created_at` INTEGER NOT NULL,
+          `last_used_at` INTEGER,
+          `use_count` INTEGER NOT NULL,
+          PRIMARY KEY(`id`),
+          FOREIGN KEY(`group_id`) REFERENCES `saved_roll_group`(`id`)
+            ON UPDATE NO ACTION ON DELETE CASCADE
+        )
+        """.trimIndent(),
+      )
+      db.execSQL(
+        """
+        INSERT INTO `saved_roll_new`
+          (`id`, `group_id`, `name`, `formula`, `icon`, `colour_argb`, `sort_order`,
+           `table_set_id`, `table_id`, `created_at`, `last_used_at`, `use_count`)
+        SELECT `id`, `group_id`, `name`, `formula`, `icon`, `colour_argb`,
+          ROW_NUMBER() OVER (
+            PARTITION BY `group_id`
+            ORDER BY `favourite` DESC, `last_used_at` IS NULL, `last_used_at` DESC, `name`
+          ) - 1,
+          `table_set_id`, `table_id`, `created_at`, `last_used_at`, `use_count`
+        FROM `saved_roll`
+        """.trimIndent(),
+      )
+      db.execSQL("DROP TABLE `saved_roll`")
+      db.execSQL("ALTER TABLE `saved_roll_new` RENAME TO `saved_roll`")
+      db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_roll_group_id` ON `saved_roll` (`group_id`)")
+      db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_roll_sort_order` ON `saved_roll` (`sort_order`)")
+      db.execSQL("CREATE INDEX IF NOT EXISTS `index_saved_roll_last_used_at` ON `saved_roll` (`last_used_at`)")
     }
   }

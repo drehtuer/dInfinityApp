@@ -10,7 +10,7 @@ class SavedRollTest {
   fun `a saved roll keeps its formula as text, to be re-validated when shown`() {
     val fireball = SavedRoll(id = "fireball", groupId = "thorin", name = "Fireball", formula = "8d6 [Fire]")
     assertEquals("8d6 [Fire]", fireball.formula)
-    assertFalse(fireball.favourite)
+    assertEquals(0, fireball.sortOrder)
     assertEquals(0, fireball.useCount)
     assertNull(fireball.lastUsedAtEpochMs)
   }

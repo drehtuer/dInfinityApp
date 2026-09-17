@@ -602,9 +602,32 @@ rolls are gone.
 
 Two things the screen does *not* decide. Whether a formula still resolves is
 re-checked every time the list is drawn rather than stored, because the set it
-names can be uninstalled between one drawing and the next; and the order —
-favourites first, then by recent use — is SQL's, because it is what the list
-*is* (`docs/dice-notation.md`, "Saved rolls").
+names can be uninstalled between one drawing and the next; and the order — the
+one the player dragged the list into, `sort_order` — is SQL's, because it is
+what the list *is* (`docs/dice-notation.md`, "Saved rolls").
+
+**A drag is the one thing the screen holds that the database does not yet.**
+The list reorders live under the finger and is written down when the finger
+lifts, so between those two moments the presenter is showing an order the
+database has not been told about; `move` keeps it and `settle` writes it, in
+one transaction. Until the database reports that order back, an emission
+arriving for any other reason — a use count, an import — is drawn in the order
+the drag left, because a row that snapped back under the finger moving it
+would be the screen arguing with the player. What a reorder *comes to* is
+`SavedOrder`, plain Kotlin with no Compose in it: the list, the row being
+dragged and where the finger is, to the list to draw. The gesture and the
+drawing are the screen's, and the row that moves is the one under the pointer
+rather than the one the drag began on.
+
+**The list is its own scroll box.** The title bar, the group switcher and the
+line above the list stay where they are; only the rolls move. A list that
+scrolled the whole screen would take the group name away exactly when somebody
+is looking for it.
+
+Reordering is offered twice, because a drag is not available to everybody: the
+grip carries **Move up** and **Move down** as custom accessibility actions, so
+a list that can be ordered with a finger can also be ordered with TalkBack
+("Accessibility", below).
 
 | Control | Calls | What changes |
 | --- | --- | --- |
@@ -938,7 +961,7 @@ numbers beside it.
 | --- | --- | --- |
 | the name field | `name` | what it will be called; blank means the formula is its name |
 | the formula field | `formula` | the formula, its error and its odds, all from one plan |
-| icon, colour, group, table, favourite | `choose` | that one field and nothing else — none of them needs re-validating |
+| icon, colour, group, table | `choose` | that one field and nothing else — none of them needs re-validating |
 | **New group** | `GroupPresenter.create` | the group sheet opens; the group it writes becomes this roll's |
 | **Save roll** | `save` | the roll is written down, and the editor leaves |
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |

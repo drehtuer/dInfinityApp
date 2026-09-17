@@ -108,7 +108,7 @@ class ModelValueSemanticsTest {
     val pin = TablePin(setId = "builtin", tableId = "oak")
     assertEquals(roll, roll.copy())
     assertEquals(roll.hashCode(), roll.copy().hashCode())
-    assertNotEquals(roll, roll.copy(favourite = true))
+    assertNotEquals(roll, roll.copy(sortOrder = 1))
     assertNotEquals(group, group.copy(sortOrder = 1))
     assertEquals(pin, TablePin("builtin", "oak"))
     assertEquals(pin.hashCode(), TablePin("builtin", "oak").hashCode())
