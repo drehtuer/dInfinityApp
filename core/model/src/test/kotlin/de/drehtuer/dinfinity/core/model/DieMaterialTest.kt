@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.core.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DieMaterialTest {
@@ -10,6 +11,28 @@ class DieMaterialTest {
     val material = DieMaterial()
     assertEquals(16.0, material.sizeMm)
     assertEquals(1.2, material.density)
+  }
+
+  @Test
+  fun `a die is solid until a set says otherwise`() {
+    val material = DieMaterial()
+    assertEquals(0.0, material.translucency)
+    assertEquals(1.0, material.opacity)
+    assertFalse(material.isTranslucent)
+  }
+
+  @Test
+  fun `translucency and opacity are the two ends of one number`() {
+    val glass = DieMaterial(translucency = 0.18)
+    assertEquals(0.82, glass.opacity, 1e-12)
+    assertTrue(glass.isTranslucent)
+  }
+
+  @Test
+  fun `a die cannot be more than wholly see-through, or less than solid`() {
+    assertEquals(1.0, DieMaterial(translucency = 4.0).clampedToLimits().translucency)
+    assertEquals(0.0, DieMaterial(translucency = -1.0).clampedToLimits().translucency)
+    assertEquals(0.0, DieMaterial(translucency = Double.NaN).clampedToLimits().translucency)
   }
 
   @Test

@@ -108,6 +108,63 @@ class FilamentStageTest {
   }
 
   @Test
+  fun bothMaterialsCompileOnThisDevice() {
+    // Two of them now: blending is baked into a material when it is compiled,
+    // so a die a set called translucent is drawn with a second material built
+    // from the same source. If the clear-coat lines or the premultiplied
+    // alpha were something this driver's compiler refused, it is here that it
+    // would say so (`docs/physics-and-rendering.md`, "Rendering").
+    FilamentEngine().use { filament ->
+      val solid = DiceMaterial.dieOf(StandardDice.d20.material, texturePath = null)
+      val clear = DiceMaterial.dieOf(StandardDice.d20.material.copy(translucency = HALF_CLEAR), texturePath = null)
+      assertEquals(filament.material, filament.materialFor(solid))
+      assertEquals(filament.blendedMaterial, filament.materialFor(clear))
+      assertTrue("both materials are the same one", filament.material != filament.blendedMaterial)
+    }
+  }
+
+  @Test
+  fun aTranslucentDieIsDrawnDifferentlyFromASolidOne() {
+    // The cheapest thing that notices a translucency that reaches the file
+    // format, the model and the material parameters and then does nothing at
+    // all — which is what every step of it up to here could be, and what a
+    // JVM test cannot tell apart from working.
+    val solid = drawnWith(translucency = 0.0)
+    val clear = drawnWith(translucency = MOSTLY_CLEAR)
+    assertTrue("a die at 80 % translucent drew exactly what a solid one did", !solid.contentEquals(clear))
+  }
+
+  /** One frame of one die of this translucency, as bytes. */
+  private fun drawnWith(translucency: Double): ByteArray {
+    // Post-processing off, for the reason `aDrawnFrameIsNotBlank` gives.
+    FilamentStage(WIDTH, HEIGHT, postProcessing = false).use { stage ->
+      val die = StandardDice.d20.copy(material = StandardDice.d20.material.copy(translucency = translucency))
+      val renderer = FilamentDiceRenderer(stage)
+      renderer.begin(
+        ThrowSpec(
+          dice = listOf(DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = die)),
+          geometry = geometry,
+          table = look,
+          seed = 1L,
+        ),
+        geometry,
+        look,
+      )
+      renderer.show(
+        RenderFrame.still(
+          listOf(BodyTransform(index = 0, position = Vector3(0.0, 0.0, 10.0), orientation = Quaternion.Identity)),
+        ),
+      )
+      val pixels = stage.pixelBuffer()
+      assertTrue(stage.draw(pixels))
+      return ByteArray(pixels.capacity()).also {
+        pixels.rewind()
+        pixels.get(it)
+      }
+    }
+  }
+
+  @Test
   fun oneEngineOutlivesTheSurfacesMadeFromIt() {
     // What a rotation does: the swap chain and the viewport go, the engine and
     // the compiled material stay. Each stage has to draw on its own, and
@@ -184,6 +241,12 @@ class FilamentStageTest {
     const val WIDTH = 320
     const val HEIGHT = 640
     const val ROLLS = 3
+
+    /** Clear enough that a blended die cannot come out as the solid one. */
+    const val MOSTLY_CLEAR = 0.8
+
+    /** And enough to pick the blended material at all. */
+    const val HALF_CLEAR = 0.5
 
     /** Rotations, near enough: a new surface each, one engine behind them. */
     const val SURFACES = 3

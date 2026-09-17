@@ -111,12 +111,65 @@ class DiceMaterialTest {
   fun `the material says what it does with the numbers it is given`() {
     // Not a test of the shader — that needs a GPU — but of the promise that
     // every parameter this file computes is one the source actually reads.
-    listOf("baseColor", "roughness", "metallic", "textured", "atlas", "numbered", "inkColor", "glyphs").forEach {
+    listOf(
+      "baseColor",
+      "roughness",
+      "metallic",
+      "textured",
+      "atlas",
+      "numbered",
+      "inkColor",
+      "glyphs",
+      "opacity",
+      "clearCoat",
+      "clearCoatRoughness",
+    ).forEach {
       assertTrue("the material never reads $it", DiceMaterial.SOURCE.contains(it))
     }
   }
 
+  @Test
+  fun `a solid die is drawn, and a translucent one is blended`() {
+    val solid = DiceMaterial.dieOf(DieMaterial(), texturePath = null)
+    assertEquals(1.0, solid.opacity, TOLERANCE)
+    assertFalse("a solid die needs no blending", solid.blended)
+
+    val glass = DiceMaterial.dieOf(DieMaterial(translucency = 0.35), texturePath = null)
+    assertEquals(0.65, glass.opacity, TOLERANCE)
+    assertTrue("a die you can see into has to be blended", glass.blended)
+  }
+
+  @Test
+  fun `a die is lacquered and a table is not`() {
+    assertEquals(DiceMaterial.DIE_COAT, DiceMaterial.dieOf(DieMaterial(), texturePath = null).clearCoat, TOLERANCE)
+    assertEquals(0.0, DiceMaterial.floorOf(PLAIN).clearCoat, TOLERANCE)
+    assertEquals(0.0, DiceMaterial.wallOf(PLAIN).clearCoat, TOLERANCE)
+  }
+
+  @Test
+  fun `the tray is never blended, however a die is drawn`() {
+    assertFalse(DiceMaterial.floorOf(PLAIN).blended)
+    assertFalse(DiceMaterial.wallOf(PLAIN).blended)
+  }
+
+  @Test
+  fun `what is printed on a die stays opaque, and the shader is where that happens`() {
+    // The mix is `opacity` where the face is bare and one where it is printed
+    // on, which is the line that keeps a numeral readable on a clear die. It
+    // cannot be asserted without a GPU; that it is *there* can be.
+    assertTrue(DiceMaterial.SOURCE.contains("mix(materialParams.opacity, 1.0, printed)"))
+  }
+
   private companion object {
+    /** Any table at all: nothing below asks it for anything but its surfaces. */
+    val PLAIN =
+      TableLook(
+        id = "plain",
+        name = "Plain",
+        floorColorArgb = 0xFF1F5E3A.toInt(),
+        wallColorArgb = 0xFF5A3A1E.toInt(),
+      )
+
     const val TOLERANCE = 1e-9
     const val ROUGH = 1e-4
     const val BLACK = 0xFF000000.toInt()

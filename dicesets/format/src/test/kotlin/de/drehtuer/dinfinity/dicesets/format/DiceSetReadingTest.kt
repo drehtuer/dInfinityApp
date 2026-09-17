@@ -30,6 +30,7 @@ class DiceSetReadingTest {
     roughness = 0.35
     size_mm = 16
     density = 1.2
+    translucency = 18
 
     [[die]]
     id = "d6"
@@ -63,6 +64,39 @@ class DiceSetReadingTest {
     sound = "felt"
     light = "warm"
     """.trimIndent()
+
+  @Test
+  fun `translucency is written as a per cent and read as a fraction`() {
+    val dice = accepting(full).set.dice.associateBy { it.id }
+    assertEquals(0.18, dice.getValue("d6").material.translucency, 1e-12)
+    assertEquals(0.18, dice.getValue("d20").material.translucency, 1e-12)
+  }
+
+  @Test
+  fun `a set that says nothing about translucency has solid dice`() {
+    val only = accepting(minimalToml()).set.dice.single()
+    assertEquals(0.0, only.material.translucency)
+  }
+
+  @Test
+  fun `a die may be clearer than the set it is in`() {
+    val toml = full.replace(D20_COLOUR, "$D20_COLOUR\n    translucency = 60")
+    val dice = accepting(toml).set.dice.associateBy { it.id }
+    assertEquals(0.6, dice.getValue("d20").material.translucency, 1e-12)
+    assertEquals(0.18, dice.getValue("d6").material.translucency, 1e-12)
+  }
+
+  @Test
+  fun `a translucency past a hundred per cent is clamped, and says so`() {
+    val result = accepting(minimalToml("translucency = 140"))
+    assertEquals(
+      1.0,
+      result.set.dice
+        .single()
+        .material.translucency,
+    )
+    assertTrue(result.codes().contains(ValidationCode.Clamped))
+  }
 
   @Test
   fun `the set's own details are read`() {
@@ -175,5 +209,10 @@ class DiceSetReadingTest {
     assertNull(set.license)
     assertNull(set.homepage)
     assertNull(set.dice.single().texturePath)
+  }
+
+  private companion object {
+    /** The one line in [full] a test hangs a per-die override off. */
+    const val D20_COLOUR = "color = \"#2b2b2b\""
   }
 }

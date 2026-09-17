@@ -54,8 +54,33 @@ class FilamentEngine(
   /** The engine every stage made from this draws with. */
   val engine: Engine = Engine.create()
 
-  /** The dice material, compiled once for this device's driver. */
-  val material: Material = compileMaterial(engine)
+  /**
+   * The dice material, compiled once for this device's driver.
+   *
+   * Everything that hides what is behind it, which is every surface of the
+   * tray and every die a set has not called translucent.
+   */
+  val material: Material = compileMaterial(engine, blended = false)
+
+  /**
+   * And the same material again, blended.
+   *
+   * Whether a surface is blended is fixed when a material is *compiled* —
+   * Filament bakes the blending mode into the shader, because a blended
+   * surface is drawn in a different pass, in a different order, against a
+   * depth buffer it does not write to. So a translucent die cannot be the
+   * opaque material with a different parameter; it is a second material, from
+   * the same source, and [materialFor] is what picks.
+   *
+   * The source is shared rather than copied because the two must agree about
+   * every other thing they draw: the same body, the same printed numbers, the
+   * same artwork over them. Only the blending differs, and only Filament's
+   * builder knows it does.
+   */
+  val blendedMaterial: Material = compileMaterial(engine, blended = true)
+
+  /** Which of the two [parameters] is to be drawn with. */
+  fun materialFor(parameters: DiceMaterial.Parameters): Material = if (parameters.blended) blendedMaterial else material
 
   /**
    * Every package's artwork that has been asked for, uploaded once.
@@ -125,6 +150,7 @@ class FilamentEngine(
     atlases.close()
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
+    engine.destroyMaterial(blendedMaterial)
     engine.destroy()
   }
 
@@ -135,15 +161,28 @@ class FilamentEngine(
     /** Every channel of the blank texture, which multiplies a colour by one. */
     const val OPAQUE_WHITE = 0xFF.toByte()
 
-    fun compileMaterial(engine: Engine): Material {
+    fun compileMaterial(
+      engine: Engine,
+      blended: Boolean,
+    ): Material {
       MaterialBuilder.init()
       try {
         val packet =
           MaterialBuilder()
-            .name("dinfinity")
+            .name(if (blended) "dinfinity-blended" else "dinfinity")
             .material(DiceMaterial.SOURCE)
             .shading(MaterialBuilder.Shading.LIT)
-            .blending(MaterialBuilder.BlendingMode.OPAQUE)
+            // `TRANSPARENT` rather than `FADE`: a die you can see into is a
+            // solid object made of clear stuff, so its own lighting — the
+            // sheen down one edge, the shadowed side — is *there* and belongs
+            // in the picture. `FADE` would take it out in proportion to how
+            // clear the die is, which is what a ghost looks like.
+            //
+            // It also means the shader hands over a colour already multiplied
+            // by its coverage, which `DiceMaterial.SOURCE` does.
+            .blending(
+              if (blended) MaterialBuilder.BlendingMode.TRANSPARENT else MaterialBuilder.BlendingMode.OPAQUE,
+            )
             // **Off, and the numbers are upside down without it.**
             //
             // `MaterialBuilder` defaults this to true, which makes `getUV0()`
@@ -176,6 +215,9 @@ class FilamentEngine(
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "numbered")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "inkColor")
+            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "opacity")
+            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoat")
+            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoatRoughness")
             .samplerParameter(
               MaterialBuilder.SamplerType.SAMPLER_2D,
               MaterialBuilder.SamplerFormat.FLOAT,
