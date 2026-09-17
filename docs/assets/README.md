@@ -15,7 +15,8 @@ app is about any die, so the name does the work".
 ## The blue is not the accent
 
 The infinity is `#1F92CC`, and it stays `#1F92CC`. The interface accent is
-something the player chooses in Settings (`core/model/AccentColor`), but the
+something the player chooses in Settings — a preset or any colour at all
+(`core/model/AccentChoice`) — but the
 identity is not theirs to change, and a launcher icon cannot follow a runtime
 setting anyway.
 

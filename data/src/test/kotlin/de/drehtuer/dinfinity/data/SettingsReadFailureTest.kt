@@ -41,7 +41,7 @@ class SettingsReadFailureTest {
   ) : DataStore<Preferences> {
     override val data: Flow<Preferences> =
       flow {
-        emit(preferencesOf(stringPreferencesKey("accent_colour") to AccentColor.Moss.id))
+        emit(preferencesOf(stringPreferencesKey("accent_colour") to AccentColor.Pine.id))
         throw failure
       }
 
@@ -72,14 +72,14 @@ class SettingsReadFailureTest {
   fun `what was read before the failure still arrives`() =
     runTest {
       val repository = DataStoreSettingsRepository(UnreadableThenEmpty(IOException("truncated")))
-      assertEquals(AccentColor.Moss, repository.settings.first().accentColor)
+      assertEquals(AccentColor.Pine, repository.settings.first().accentColor)
     }
 
   @Test
   fun `a write that fails throws rather than losing the choice silently`() =
     runTest {
       val repository = DataStoreSettingsRepository(FailingDataStore(IOException("read-only")))
-      val thrown = runCatching { repository.setAccentColor(AccentColor.Sky) }.exceptionOrNull()
+      val thrown = runCatching { repository.setAccentColor(AccentColor.LightBlue) }.exceptionOrNull()
       assertTrue("expected the write to fail, got $thrown", thrown is IOException)
     }
 }

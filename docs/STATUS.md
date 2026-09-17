@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-09-17
+**Last updated:** 2026-09-18
 
 ## Where we are
 
@@ -32,10 +32,10 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#275**. `v0.1.0` is cut from #268 and is two
-fixes behind. In flight: the design pass of 2026-09-17, as three stacked PRs —
-the import and the roll screen (#276), dice sets and the face designer (#277),
-saved rolls, settings and navigation (#278).
+`main` has everything through **#278**. `v0.1.0` is cut from #268 and is two
+fixes behind. In flight: the accent, on `feature/accent` — six new presets, a
+colour of the player's own behind the contrast clamp, and the filled accent tag
+that clamp finally makes drawable.
 
 ## Done
 
@@ -70,8 +70,11 @@ over it against the prototype. What is left on each is in `docs/TODO.md`.
 every question the app was waiting on and decided a good deal nobody had asked
 about, so each screen's list has gained work that is code rather than an eye:
 plates over the table, a counting plate, per-set physical properties, the
-designer's Solid tab, dragged saved rolls, an accent picker behind a contrast
-clamp, and a two-stage back.
+designer's Solid tab, dragged saved rolls, a table-view setting, and a
+two-stage back. **The accent is done**: six presets, a colour of the player's
+own, and `AccentRamp.clamp` between the choice and the paint — which turned the
+palette's accessibility claim from six measured colours into a property that
+holds for every colour.
 
 **Step 5 is the real remaining work** — see Known risks.
 
@@ -113,8 +116,8 @@ thing feels right is still a person's call.
   twice.
 - **The designer answered, on 2026-09-17**, and the blocking question is gone:
   accent text at body size is `--color-accent-700` and both ends of the ramp
-  are mixed from the accent the player picked, so the filled accent tag can be
-  drawn for any of them. The roll screen is **one picture**, not bands. What
+  are mixed from the accent the player picked. The filled accent tag is drawn —
+  it is what says "Update available" on a dice-set row. The roll screen is **one picture**, not bands. What
   the pass did *not* answer — percent typography, whether a refusal keeps its
   words, a draggable stamp, "Doodle this die", where a table look's texture says
   its package, how a photo crops — stays open, and the design added six of its

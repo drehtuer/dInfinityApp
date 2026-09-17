@@ -2,8 +2,22 @@ package de.drehtuer.dinfinity.core.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/**
+ * The six presets, and what happens to the ids the design of 2026-09-17 took
+ * away.
+ *
+ * What this file used to be was six colours measured against both grounds.
+ * That test has moved and got stronger: it is `AccentRampTest`'s property over
+ * *every* colour now, because the clamp is what keeps an accent legible and
+ * the clamp does not care which six are on the swatches
+ * (`docs/architecture.md`, "Settings"). What is left here is the part a
+ * property cannot say — which colours are offered, what they are called in
+ * storage, and that nobody's choice was thrown away.
+ */
 class AccentColorTest {
   @Test
   fun `ids are unique and stable`() {
@@ -12,17 +26,40 @@ class AccentColorTest {
     // Spelled out rather than derived from the enum: this is the set written
     // to storage, so a rename has to fail here before it resets everybody.
     assertEquals(
-      listOf("vermilion", "coral", "sky", "moss", "amber", "violet"),
+      listOf("light-blue", "vermilion", "magenta", "cobalt", "pine", "amber"),
       ids,
     )
   }
 
+  /**
+   * The two ids that outlived the palette they were named in.
+   *
+   * `vermilion` is Modernist red — the same `#EC3013`, re-labelled — and
+   * `amber` is a deeper amber. Both keep their id because a player who chose
+   * that swatch chose *that* colour, and a rename would have quietly moved
+   * them to the default.
+   */
   @Test
-  fun `an unknown or missing id falls back to the default`() {
+  fun `the ids that survived point at the same colour they always did`() {
+    assertEquals(AccentColor.ModernistRed, AccentColor.ofId("vermilion"))
+    assertEquals(0xFFEC3013.toInt(), AccentColor.ModernistRed.argb)
+    assertEquals(AccentColor.Amber, AccentColor.ofId("amber"))
+  }
+
+  @Test
+  fun `the swatches are the design's six, in the design's order`() {
+    assertEquals(
+      listOf(0xFF38A8DC, 0xFFEC3013, 0xFFC2186F, 0xFF1D5FD4, 0xFF0F7A50, 0xFFC07000).map { it.toInt() },
+      AccentColor.entries.map(AccentColor::argb),
+    )
+  }
+
+  @Test
+  fun `the default is light blue, and it is what an unreadable setting falls back to`() {
+    assertEquals(AccentColor.LightBlue, AccentColor.Default)
     assertEquals(AccentColor.Default, AccentColor.ofId(null))
     assertEquals(AccentColor.Default, AccentColor.ofId(""))
     assertEquals(AccentColor.Default, AccentColor.ofId("chartreuse"))
-    assertEquals(AccentColor.Vermilion, AccentColor.Default)
   }
 
   @Test
@@ -33,84 +70,55 @@ class AccentColorTest {
   }
 
   /**
-   * The accent carries meaning on its own, so it has to be legible on both
-   * grounds. 3:1 is the WCAG bar for large text and user-interface components,
-   * which is what the accent is used for — body copy in the accent uses the
-   * deeper pressed step instead.
+   * The migration, which is the interesting half of changing a stored id.
+   *
+   * Four of the old six are gone, and the default changed in the same release.
+   * Falling back would have repainted every phone that had chosen one of them
+   * — blue, in place of the green or the purple they asked for — with nothing
+   * on the screen to say why.
    */
   @Test
-  fun `every accent reaches 3 to 1 against both grounds`() {
+  fun `a retired id becomes the survivor nearest it rather than the default`() {
+    assertEquals(AccentColor.ModernistRed, AccentColor.ofId("coral"))
+    assertEquals(AccentColor.LightBlue, AccentColor.ofId("sky"))
+    assertEquals(AccentColor.Pine, AccentColor.ofId("moss"))
+    assertEquals(AccentColor.Cobalt, AccentColor.ofId("violet"))
+    // Three of the four land somewhere other than the default, which is the
+    // whole point of having a mapping at all.
+    listOf("coral", "moss", "violet").forEach { retired ->
+      assertNotEquals(AccentColor.Default, AccentColor.ofId(retired), "$retired was let fall to the default")
+    }
+  }
+
+  @Test
+  fun `only a retired id is migrated`() {
+    assertNull(AccentColor.retired("chartreuse"))
     AccentColor.entries.forEach { accent ->
-      val onLight = Contrast.ratio(accent.argb, LIGHT_GROUND)
-      val onDark = Contrast.ratio(accent.argb, DARK_GROUND)
-      assertTrue(onLight >= MIN_CONTRAST, "${accent.id} is ${"%.2f".format(onLight)}:1 on the light ground")
-      assertTrue(onDark >= MIN_CONTRAST, "${accent.id} is ${"%.2f".format(onDark)}:1 on the dark ground")
+      assertNull(AccentColor.retired(accent.id), "${accent.id} is both offered and retired")
     }
   }
 
   /**
-   * The pressed step has to be a different colour from the accent — otherwise
-   * pressing shows nothing — and has to stay readable on its own ground. On a
-   * light ground it also carries body copy, which is the 4.5:1 bar rather than
-   * 3:1.
+   * The presets are the design's colours, not six colours chosen for passing a
+   * test — and this says so out loud, because it used to be the opposite.
+   *
+   * Light blue on paper is 2.41:1, which is under the 3:1 bar for a control's
+   * own boundary. That is not a fault to fix by editing the hex: it is what
+   * `AccentRamp.clamp` is for, and the ramp is what the theme paints with.
    */
   @Test
-  fun `pressed steps are distinct from the accent and legible on their ground`() {
+  fun `a preset may be too pale for its ground, and the clamp is what answers that`() {
+    val raw = Contrast.ratio(AccentColor.LightBlue.argb, Ground.Light.backgroundArgb)
+    assertTrue(raw < Contrast.COMPONENT, "light blue now clears the bar unclamped: ${"%.2f".format(raw)}:1")
+    val clamped = AccentRamp.clamp(AccentColor.LightBlue.argb, Ground.Light)
+    assertTrue(Contrast.meets(clamped, Ground.Light.backgroundArgb, Contrast.COMPONENT))
+  }
+
+  /** A preset is a choice like any other, so it is stored and read back like one. */
+  @Test
+  fun `every preset round-trips through the choice it is`() {
     AccentColor.entries.forEach { accent ->
-      assertTrue(
-        accent.pressedOnLightArgb != accent.argb && accent.pressedOnDarkArgb != accent.argb,
-        "${accent.id} has a pressed step identical to the accent",
-      )
-      val body = Contrast.ratio(accent.pressedOnLightArgb, LIGHT_GROUND)
-      assertTrue(body >= BODY_CONTRAST, "${accent.id} pressed is ${"%.2f".format(body)}:1 on the light ground")
-      val onDark = Contrast.ratio(accent.pressedOnDarkArgb, DARK_GROUND)
-      assertTrue(onDark >= MIN_CONTRAST, "${accent.id} pressed is ${"%.2f".format(onDark)}:1 on the dark ground")
+      assertEquals(accent, AccentChoice.ofId(accent.id))
     }
-  }
-
-  /**
-   * The four accents the design system has no ramp for are derived with the
-   * rule the design itself uses for an ad-hoc accent,
-   * `color-mix(in srgb, accent 58%, text)` (`design/Logo.dc.html`). Recomputing
-   * it here stops a hand-edited constant drifting away from the system.
-   */
-  @Test
-  fun `derived accents match the design's colour-mix rule`() {
-    listOf(AccentColor.Sky, AccentColor.Moss, AccentColor.Amber, AccentColor.Violet).forEach { accent ->
-      assertEquals(
-        Contrast.over(accent.argb, ACCENT_SHARE, TEXT_ON_LIGHT),
-        accent.pressedOnLightArgb,
-        "${accent.id} light pressed step is not mix(accent 58%, text)",
-      )
-      assertEquals(
-        Contrast.over(accent.argb, ACCENT_SHARE, TEXT_ON_DARK),
-        accent.pressedOnDarkArgb,
-        "${accent.id} dark pressed step is not mix(accent 58%, text)",
-      )
-    }
-  }
-
-  /** The two the system does define keep the CSS ramp's exact values. */
-  @Test
-  fun `the design system's own accents keep their ramp steps`() {
-    assertEquals(0xFFEC3013.toInt(), AccentColor.Vermilion.argb)
-    assertEquals(0xFFAE1800.toInt(), AccentColor.Vermilion.pressedOnLightArgb)
-    assertEquals(0xFFDD2B0F.toInt(), AccentColor.Vermilion.pressedOnDarkArgb)
-    assertEquals(0xFFE15B47.toInt(), AccentColor.Coral.argb)
-    assertEquals(0xFF9E3526.toInt(), AccentColor.Coral.pressedOnLightArgb)
-    assertEquals(0xFFC94B39.toInt(), AccentColor.Coral.pressedOnDarkArgb)
-  }
-
-  private companion object {
-    // The bars themselves are `Contrast`'s, which is also where the arithmetic
-    // is: two transcriptions of the same WCAG formula would eventually give
-    // two answers about the same colour.
-    const val MIN_CONTRAST = Contrast.LARGE_TEXT
-    const val BODY_CONTRAST = Contrast.BODY_TEXT
-    const val ACCENT_SHARE = 0.58
-    const val LIGHT_GROUND = 0xFFF3F2F2.toInt()
-    const val DARK_GROUND = 0xFF201E1D.toInt()
-    const val TEXT_ON_LIGHT = 0xFF201E1D.toInt()
-    const val TEXT_ON_DARK = 0xFFF3F2F2.toInt()
   }
 }

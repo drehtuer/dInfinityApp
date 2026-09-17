@@ -1,31 +1,23 @@
 package de.drehtuer.dinfinity.feature.settings
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
@@ -45,7 +37,7 @@ import de.drehtuer.dinfinity.ui.common.RuleWeight
 @Composable
 fun SettingsScreen(
   settings: AppSettings,
-  onAccentSelected: (AccentColor) -> Unit,
+  onAccentSelected: (AccentChoice) -> Unit,
   modifier: Modifier = Modifier,
   onAppearanceSelected: (Appearance) -> Unit = {},
   onPowerSavingChanged: (Boolean) -> Unit = {},
@@ -139,77 +131,6 @@ private fun PowerSection(
   }
 }
 
-@Composable
-private fun AccentSection(
-  selected: AccentColor,
-  onAccentSelected: (AccentColor) -> Unit,
-) {
-  Section(
-    heading = stringResource(R.string.settings_accent_heading),
-    explanation = stringResource(R.string.settings_accent_explanation),
-  ) {
-    FlowRow(
-      modifier = Modifier.selectableGroup(),
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
-      verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-      AccentColor.entries.forEach { accent ->
-        AccentSwatch(
-          accent = accent,
-          isSelected = accent == selected,
-          onClick = { onAccentSelected(accent) },
-        )
-      }
-    }
-  }
-}
-
-@Composable
-private fun AccentSwatch(
-  accent: AccentColor,
-  isSelected: Boolean,
-  onClick: () -> Unit,
-) {
-  val label = stringResource(accent.labelRes())
-  Column(
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(4.dp),
-    modifier =
-      Modifier
-        .selectable(
-          selected = isSelected,
-          role = Role.RadioButton,
-          onClick = onClick,
-        ).testTag(SettingsTestTags.accentSwatch(accent)),
-  ) {
-    // Selection is a ring in the text colour, not a tick in the accent: on a
-    // swatch whose whole point is its colour, a mark drawn in another colour
-    // is the only one guaranteed to be visible on all six.
-    Box(
-      modifier =
-        Modifier
-          .size(SWATCH_SIZE)
-          .background(Color(accent.argb))
-          .then(
-            if (isSelected) {
-              // The system's rule weight, not a weight of this screen's own.
-              Modifier.border(RuleWeight.Block.thickness, MaterialTheme.colorScheme.onBackground)
-            } else {
-              Modifier.border(RuleWeight.Hairline.thickness, MaterialTheme.colorScheme.outline)
-            },
-          ),
-    )
-    Text(
-      text = label,
-      style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onBackground,
-      textAlign = TextAlign.Center,
-    )
-  }
-}
-
-private val SWATCH_SIZE = 56.dp
-
 /** Stable handles for tests, so a wording change does not break them. */
 object SettingsTestTags {
   const val SCREEN: String = "settings:screen"
@@ -228,6 +149,21 @@ object SettingsTestTags {
 
   const val SOUND: String = "settings:sound"
 
+  /** The seventh swatch: a colour of the player's own. */
+  const val ACCENT_CUSTOM: String = "settings:accent:custom"
+
+  /** The chosen colour written out — what was picked, not what is painted. */
+  const val ACCENT_HEX: String = "settings:accent:hex"
+
+  /** The sheet behind the custom swatch, and the three sliders on it. */
+  const val ACCENT_PICKER: String = "settings:accent:picker"
+  const val ACCENT_PICKER_PATCH: String = "settings:accent:picker:patch"
+  const val ACCENT_PICKER_USE: String = "settings:accent:picker:use"
+  const val ACCENT_PICKER_CANCEL: String = "settings:accent:picker:cancel"
+  const val ACCENT_HUE: String = "settings:accent:hue"
+  const val ACCENT_DEPTH: String = "settings:accent:depth"
+  const val ACCENT_BRIGHTNESS: String = "settings:accent:brightness"
+
   /** What this is and where it came from (design option 2d). */
   const val VERSION: String = "settings:version"
   const val REPOSITORY: String = "settings:repository"
@@ -236,5 +172,6 @@ object SettingsTestTags {
 
   fun roundingOf(rounding: Rounding): String = "settings:rounding:${rounding.id}"
 
+  /** One of the six presets. The custom swatch is [ACCENT_CUSTOM]. */
   fun accentSwatch(accent: AccentColor): String = "settings:accent:${accent.id}"
 }

@@ -22,7 +22,7 @@ here any more — this table is only a map from the question to its home.
 | What does the accent do over felt? | Nothing. Accent only ever appears on a plate | same |
 | Typography for the `+` on an open chain | `--color-accent-700`, like every accent-coloured run of text at body size | same |
 | Six accent swatches wrap 5 + 1 | Four across, 44 dp: six presets and a custom swatch come out 4 + 3 | `docs/architecture.md`, "Settings" |
-| A filled accent tag needs both ends of a ramp | Both ends are mixed from the accent the player picked, against text and ground rather than black and white | `docs/TODO.md`, 4.4 |
+| A filled accent tag needs both ends of a ramp | Both ends are mixed from the accent the player picked, against text and ground rather than black and white. Built: `ui/common`'s `TagKind.Accent`, and it is what says "Update available" on a dice-set row | `docs/architecture.md`, "Settings" |
 | Is there a 3D preview in the designer? | There is now: a **Solid** tab | `docs/face-designer.md`, "The solid, not just the face" |
 | Where does the total go, and how many times? | Once, in the result sheet | `docs/TODO.md`, 4.1 |
 
@@ -129,7 +129,10 @@ the prototype has a Save button.
    misses.** `.tag-neutral` is `--color-neutral-100` filled and `-800`
    lettered, and neither is in the override list — so on a dark page it comes
    out as a near-white chip with dark grey text, an inverted badge among tags
-   that follow the ground. `tag-accent` is covered and comes out right. The app
+   that follow the ground. `tag-accent` is the question that no longer arises:
+   the app mixes both of its ends from the accent the player picked, against
+   the ground's own page and ink, so it follows the page by construction rather
+   than by being on the override list (`core/model/AccentRamp`). The app
    extends the reflection to the two missing steps, because the rule is
    unambiguous where the list is silent — but it is an inference, and it is the
    one thing here that would change a drawn screen if you meant the other. Its

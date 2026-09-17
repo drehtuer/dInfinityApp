@@ -23,8 +23,8 @@ class SettingsStorageTest {
   fun `the repository it builds round-trips an accent`() =
     runTest {
       val repository = SettingsStorage.create(context)
-      repository.setAccentColor(AccentColor.Violet)
-      assertEquals(AccentColor.Violet, repository.settings.first().accentColor)
+      repository.setAccentColor(AccentColor.Cobalt)
+      assertEquals(AccentColor.Cobalt, repository.settings.first().accentColor)
     }
 
   /**

@@ -17,7 +17,10 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.em
+import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AccentColor
+import de.drehtuer.dinfinity.core.model.AccentRamp
+import de.drehtuer.dinfinity.core.model.Ground
 import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
@@ -169,24 +172,33 @@ private val ModernistShapes =
   )
 
 /**
- * @param accent the accent the player chose in Settings. The default is the
- *   design system's own, which is what a preview or a test gets without
- *   saying anything.
+ * @param accent what the player chose in Settings — a preset or a colour of
+ *   their own. The default is what a new install is painted with, which is
+ *   what a preview or a test gets without saying anything.
+ *
+ * **What is painted is the accent after the clamp**, never the raw choice:
+ * `AccentRamp.of` pushes it off the ground it will be read against until it
+ * clears 3:1 and mixes the ramp from what comes out. A ground therefore has
+ * its own accent as well as its own pressed step — the same magenta is legible
+ * on paper as it is and needs lifting on a dark page (`AccentRamp`). The
+ * unclamped colour is the player's and stays in Settings, on the swatch and in
+ * the hex label.
  */
 @Composable
 fun DInfinityTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
-  accent: AccentColor = AccentColor.Default,
+  accent: AccentChoice = AccentColor.Default,
   content: @Composable () -> Unit,
 ) {
+  val ramp = AccentRamp.of(accent.argb, if (darkTheme) Ground.Dark else Ground.Light)
   val palette =
     if (darkTheme) {
       ModernistColors(
         background = Modernist.Dark.background,
         surface = Modernist.Dark.surface,
         text = Modernist.Dark.text,
-        accent = Color(accent.argb),
-        accentPressed = Color(accent.pressedOnDarkArgb),
+        accent = Color(ramp.accent),
+        accentPressed = Color(ramp.v700),
         divider = Modernist.divider(Modernist.Dark.text),
         isDark = true,
       )
@@ -195,8 +207,8 @@ fun DInfinityTheme(
         background = Modernist.Light.background,
         surface = Modernist.Light.surface,
         text = Modernist.Light.text,
-        accent = Color(accent.argb),
-        accentPressed = Color(accent.pressedOnLightArgb),
+        accent = Color(ramp.accent),
+        accentPressed = Color(ramp.v700),
         divider = Modernist.divider(Modernist.Light.text),
         isDark = false,
       )

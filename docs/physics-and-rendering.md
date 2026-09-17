@@ -1340,9 +1340,11 @@ the first device session found — a formula whose dashed rule ran the full widt
 of the screen, so the text read as struck through rather than underlined, and a
 bordered box of controls sitting on bare felt.
 
-**Accent never touches felt.** Accent appears only *on* a plate, which is how a
-palette of six accents and a shelf of tables stops being thirty pairs to check
-— of which "See the odds" in Moss over green felt already failed (question 10).
+**Accent never touches felt.** Accent appears only *on* a plate, which is how
+an accent the player chooses freely and a shelf of tables stop being a pair
+anybody has to check — a green accent on green felt cannot happen if the accent
+is never on the felt, and with a colour picker there is no list of pairs to
+check in the first place (question 10).
 
 | Plate | Where | What it carries |
 | --- | --- | --- |

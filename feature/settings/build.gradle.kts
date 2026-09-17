@@ -26,6 +26,13 @@ dependencies {
   // accident of somebody else's dependency graph.
   api(project(":core:notation"))
 
+  // The accent's own colour picker is the one the face designer already draws:
+  // hue, depth and brightness over `designer/Ink`, whose arithmetic has a JVM
+  // test. Two pickers in one app that disagreed about what a hue is would be
+  // one too many, and the alternative — three red-green-blue sliders — is the
+  // picker `Ink`'s own KDoc argues against, because nobody thinks in those.
+  implementation(project(":designer"))
+
   // Standard dice, for building the `ThrowSpec` a replay test replays.
   testImplementation(project(":test-fixtures"))
 }
