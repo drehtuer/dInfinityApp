@@ -328,10 +328,11 @@ translucency and size, as a person sets them"):
       mix is against `--color-text` and `--color-bg` rather than black and
       white, which is what makes it resolve on both grounds. So the status that
       is a line of accent prose today becomes the tag the prototype draws
-- [ ] **A `translucency` field**, per cent and clamped, in `defaults` and per
-      die, through the validator and `DieMaterial` and into the die material —
-      with the **numerals held opaque** whatever it is. It is the one of the
-      three that the format does not already have a spelling for
+- [x] **A `translucency` field**, per cent and clamped, in `defaults` and per
+      die, through the validator and into `DieMaterial`. It is the one of the
+      three that the format did not already have a spelling for. What is left
+      of it is the renderer's half — blending it, with the **numerals held
+      opaque** whatever it is — which is in 5.7 below
 - [ ] **The Physical block on a set's detail screen** — weight in grams,
       translucency in per cent, size as a percentage of the average die.
       Weight is `density × volume`, and the volume is the one the solver

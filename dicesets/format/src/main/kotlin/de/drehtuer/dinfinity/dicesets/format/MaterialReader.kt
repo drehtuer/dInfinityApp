@@ -19,7 +19,17 @@ internal class MaterialReader(
 ) {
   /** The keys this reader knows, so a caller can tell a typo from a value. */
   val keys: Set<String> =
-    setOf("color", "number_color", "roughness", "metallic", "size_mm", "density", "restitution", "friction")
+    setOf(
+      "color",
+      "number_color",
+      "roughness",
+      "metallic",
+      "size_mm",
+      "density",
+      "translucency",
+      "restitution",
+      "friction",
+    )
 
   /** [table]'s material keys, with anything it does not set taken from [inherited]. */
   fun read(
@@ -34,9 +44,26 @@ internal class MaterialReader(
       metallic = bounded(table, "metallic", where, DieMaterial.UnitRange) ?: inherited.metallic,
       sizeMm = bounded(table, "size_mm", where, DieMaterial.SizeMmRange) ?: inherited.sizeMm,
       density = bounded(table, "density", where, DieMaterial.DensityRange) ?: inherited.density,
+      translucency = percentage(table, "translucency", where) ?: inherited.translucency,
       restitution = bounded(table, "restitution", where, DieMaterial.RestitutionRange) ?: inherited.restitution,
       friction = bounded(table, "friction", where, DieMaterial.FrictionRange) ?: inherited.friction,
     )
+
+  /**
+   * A per cent as a fraction, or `null` when the file did not set one.
+   *
+   * `translucency` is the one material key an author writes in per cent rather
+   * than in the unit the renderer wants, because "18 % translucent" is how
+   * anybody describes a die and "0.18" is how nobody does
+   * (`docs/dice-sets.md`). The clamping, the warning and the refusal of a
+   * value that is not a number are [bounded]'s, so the two cannot disagree
+   * about what a bad number means.
+   */
+  fun percentage(
+    table: TomlTable,
+    key: String,
+    where: String,
+  ): Double? = bounded(table, key, where, PERCENT_RANGE)?.div(PERCENT)
 
   /**
    * A number forced inside [range], saying so when it had to be moved, or
@@ -83,6 +110,10 @@ internal class MaterialReader(
   }
 
   private companion object {
+    /** What a per-cent key is clamped to before it becomes a fraction. */
+    val PERCENT_RANGE: ClosedFloatingPointRange<Double> = 0.0..100.0
+
+    const val PERCENT = 100.0
     const val RGB_DIGITS = 6
     const val ARGB_DIGITS = 8
     const val HEX = 16
