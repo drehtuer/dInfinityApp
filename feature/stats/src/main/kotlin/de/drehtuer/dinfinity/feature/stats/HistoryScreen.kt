@@ -10,14 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,15 +25,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.data.HistoryEntry
 import de.drehtuer.dinfinity.data.StoredDie
 import de.drehtuer.dinfinity.data.StoredGroup
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
+import de.drehtuer.dinfinity.ui.common.SectionKicker
+import de.drehtuer.dinfinity.ui.common.Sheet
 import kotlin.math.abs
 
 /**
@@ -111,7 +113,7 @@ fun HistoryScreen(
           item(key = "session:${roll.id}") { SessionHeading(roll.sessionId) }
         }
         item(key = roll.id) {
-          HorizontalDivider()
+          Rule(weight = RuleWeight.Hairline)
           Entry(
             roll = roll,
             open = state.openId == roll.id,
@@ -140,33 +142,42 @@ private fun Header(
   menu: @Composable () -> Unit,
 ) {
   Row(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = Modernist.x4, vertical = Modernist.x2),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(
       text = stringResource(R.string.history_title),
+      // Already 800, the system's heading weight; `Bold` is 700 and would
+      // make this heading lighter than the design's.
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(1f),
     )
     // Only when there is something to export. A button that writes an empty
     // file is a button that lies about having done something.
     if (offerExport) {
-      TextButton(onClick = onExport, modifier = Modifier.testTag(HistoryTestTags.EXPORT)) {
-        Text(stringResource(R.string.history_export))
-      }
+      ModernistButton(
+        text = stringResource(R.string.history_export),
+        onClick = onExport,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(HistoryTestTags.EXPORT),
+      )
     }
     // Beside Export and only with a filter on, because the two are the same
     // act on the same rolls: keep a copy of what you are looking at, or be rid
     // of it.
     if (offerForget) {
-      TextButton(onClick = onForget, modifier = Modifier.testTag(HistoryTestTags.FORGET)) {
-        Text(stringResource(R.string.history_forget), color = MaterialTheme.colorScheme.error)
-      }
+      ModernistButton(
+        text = stringResource(R.string.history_forget),
+        onClick = onForget,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(HistoryTestTags.FORGET),
+      )
     }
     menu()
   }
+  // The rule every screen in the prototype hangs from.
+  Rule(modifier = Modifier.testTag(HistoryTestTags.HEADER_RULE))
 }
 
 /**
@@ -225,38 +236,58 @@ private fun ForgetDialog(
       is HistoryFilter.OfSavedRoll -> stringResource(R.string.history_forget_roll, filter.name)
       HistoryFilter.Everything -> return
     }
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.history_forget_title),
+    onDismiss = onNo,
     modifier = Modifier.testTag(HistoryTestTags.FORGET_DIALOG),
-    onDismissRequest = onNo,
-    title = { Text(stringResource(R.string.history_forget_title)) },
-    text = { Text(explanation) },
-    confirmButton = {
-      TextButton(onClick = onYes, modifier = Modifier.testTag(HistoryTestTags.FORGET_YES)) {
-        Text(stringResource(R.string.history_forget_yes), color = MaterialTheme.colorScheme.error)
-      }
+    actions = {
+      // The confirming action is filled and the way out is the ghost, which is
+      // how the prototype's shared confirm sheet draws every question it asks
+      // (`design/dInfinityPhone.dc.html`, the `confirmOpen` block:
+      // `btn-primary` on the yes, `btn-ghost` on "Keep it"). Being destructive
+      // does not change it — this screen used to say otherwise, on its own.
+      ModernistButton(
+        text = stringResource(R.string.history_forget_yes),
+        onClick = onYes,
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(HistoryTestTags.FORGET_YES),
+      )
+      ModernistButton(
+        text = stringResource(R.string.history_forget_no),
+        onClick = onNo,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(HistoryTestTags.FORGET_NO),
+      )
     },
-    dismissButton = {
-      TextButton(onClick = onNo, modifier = Modifier.testTag(HistoryTestTags.FORGET_NO)) {
-        Text(stringResource(R.string.history_forget_no))
-      }
-    },
-  )
+  ) {
+    Text(explanation)
+  }
 }
 
+/**
+ * Which session the rolls below belong to.
+ *
+ * A [SectionKicker] over a [Rule], which is how the prototype heads a run of
+ * rows (`design/dInfinityPhone.dc.html`, the History screen): the accent,
+ * tracked out, with a 2 dp line under it. Not a filled grey band — the system
+ * has one surface colour and does not tint a heading with it.
+ *
+ * It was the same idea written out by hand, a step too large at `labelSmall`'s
+ * eleven sp; the shared component is the design system's ten, so every kicker
+ * in the app is one size.
+ */
 @Composable
 private fun SessionHeading(name: String) {
-  Text(
-    text = name,
-    style = MaterialTheme.typography.labelMedium,
-    fontWeight = FontWeight.Bold,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .background(MaterialTheme.colorScheme.surfaceVariant)
-        .padding(horizontal = 16.dp, vertical = 6.dp)
-        .testTag(HistoryTestTags.sessionOf(name)),
-  )
+  Column(modifier = Modifier.fillMaxWidth().testTag(HistoryTestTags.sessionOf(name))) {
+    SectionKicker(
+      text = name,
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .padding(start = Modernist.x4, end = Modernist.x4, top = Modernist.x3, bottom = Modernist.x1),
+    )
+    Rule()
+  }
 }
 
 @Composable
@@ -272,12 +303,12 @@ private fun Entry(
         .fillMaxWidth()
         .clickable(enabled = roll.hasBreakdown, onClick = onOpen)
         .testTag(HistoryTestTags.rollOf(roll.id))
-        .padding(horizontal = 16.dp, vertical = 10.dp),
+        .padding(horizontal = Modernist.x4, vertical = Modernist.x3),
   ) {
     Row(
       modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
+      horizontalArrangement = Arrangement.spacedBy(Modernist.x3),
     ) {
       Column(modifier = Modifier.weight(1f)) {
         Text(
@@ -291,7 +322,7 @@ private fun Entry(
         Text(
           text = at,
           style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = Ink.muted,
         )
       }
       // A roll with a natural maximum in it prints in the accent, which is the
@@ -301,8 +332,7 @@ private fun Entry(
       val natural = stringResource(R.string.history_natural_max, roll.total)
       Text(
         text = roll.total.toString(),
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleLarge,
         color =
           if (roll.hasNaturalMax) {
             MaterialTheme.colorScheme.primary
@@ -329,8 +359,8 @@ private fun Entry(
 @Composable
 private fun Groups(roll: HistoryEntry) {
   Column(
-    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag(HistoryTestTags.breakdownOf(roll.id)),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
+    modifier = Modifier.fillMaxWidth().padding(top = Modernist.x2).testTag(HistoryTestTags.breakdownOf(roll.id)),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
     roll.groups.forEach { group -> Group(group) }
     // And what the formula added, so the rows add up to the total the way they
@@ -342,7 +372,7 @@ private fun Groups(roll: HistoryEntry) {
       Text(
         text = pluralStringResource(R.plurals.history_anomalies, roll.anomalies, roll.anomalies),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.testTag(HistoryTestTags.anomaliesOf(roll.id)),
       )
     }
@@ -363,17 +393,17 @@ private fun Adjustment(
 ) {
   Row(
     modifier = Modifier.fillMaxWidth().testTag(HistoryTestTags.adjustmentOf(id, amount)),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Text(
       text = stringResource(if (amount < 0) R.string.history_minus else R.string.history_plus),
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.labelLarge,
+      color = Ink.muted,
       modifier = Modifier.weight(3f),
     )
     Text(
       text = abs(amount).toString(),
-      style = MaterialTheme.typography.labelMedium,
+      style = MaterialTheme.typography.labelLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
   }
@@ -383,23 +413,23 @@ private fun Adjustment(
 private fun Group(group: StoredGroup) {
   Row(
     modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Text(
       text = group.notation,
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.labelLarge,
+      color = Ink.muted,
       modifier = Modifier.weight(1f),
     )
     Text(
       text = group.dice.joinToString(" ") { it.label },
-      style = MaterialTheme.typography.bodySmall,
+      style = MaterialTheme.typography.labelLarge,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(2f),
     )
     Text(
       text = group.subtotal.toString(),
-      style = MaterialTheme.typography.labelMedium,
+      style = MaterialTheme.typography.labelLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
   }
@@ -413,9 +443,9 @@ private fun Group(group: StoredGroup) {
     val said = stringResource(R.string.history_dropped, labels)
     Text(
       text = labels,
-      style = MaterialTheme.typography.bodySmall,
+      style = MaterialTheme.typography.labelLarge,
       textDecoration = TextDecoration.LineThrough,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
       modifier = Modifier.semantics { contentDescription = said },
     )
   }
@@ -424,7 +454,7 @@ private fun Group(group: StoredGroup) {
     Text(
       text = stringResource(R.string.history_fell_back, group.requestedSetId, group.setId),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
   }
 }
@@ -432,19 +462,18 @@ private fun Group(group: StoredGroup) {
 @Composable
 private fun Empty() {
   Column(
-    modifier = Modifier.fillMaxWidth().padding(24.dp).testTag(HistoryTestTags.EMPTY),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    modifier = Modifier.fillMaxWidth().padding(Modernist.x6).testTag(HistoryTestTags.EMPTY),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Text(
       text = stringResource(R.string.history_empty_title),
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.headlineMedium,
       color = MaterialTheme.colorScheme.onBackground,
     )
     Text(
       text = stringResource(R.string.history_empty_body),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.bodyLarge,
+      color = Ink.muted,
     )
   }
 }
@@ -468,18 +497,18 @@ private fun Choosers(
       Modifier
         .fillMaxWidth()
         .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 8.dp),
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
+        .padding(horizontal = Modernist.x2),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Choice(
+    Cut(
       label = stringResource(R.string.history_all),
       chosen = state.filter == HistoryFilter.Everything,
       tag = HistoryTestTags.ALL,
       onChoose = { presenter.filterBy(HistoryFilter.Everything) },
     )
     state.sessionChoices.forEach { session ->
-      Choice(
+      Cut(
         label = session.name,
         chosen = (state.filter as? HistoryFilter.InSession)?.id == session.id,
         tag = HistoryTestTags.sessionChoiceOf(session.id),
@@ -487,39 +516,13 @@ private fun Choosers(
       )
     }
     state.rollChoices.forEach { roll ->
-      Choice(
+      Cut(
         label = roll.name,
         chosen = (state.filter as? HistoryFilter.OfSavedRoll)?.id == roll.id,
         tag = HistoryTestTags.savedRollOf(roll.id),
         onChoose = { presenter.filterBy(HistoryFilter.OfSavedRoll(roll.id, roll.name)) },
       )
     }
-  }
-}
-
-@Composable
-private fun Choice(
-  label: String,
-  chosen: Boolean,
-  tag: String,
-  onChoose: () -> Unit,
-) {
-  TextButton(
-    onClick = onChoose,
-    modifier =
-      Modifier
-        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
-        // The accent and the bold are marks only an eye reads; this is the
-        // same fact in the semantics tree.
-        .semantics { selected = chosen }
-        .testTag(tag),
-  ) {
-    Text(
-      text = label,
-      style = MaterialTheme.typography.labelLarge,
-      color = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-      fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
-    )
   }
 }
 
@@ -533,16 +536,16 @@ private fun Choice(
 @Composable
 private fun FilteredToNothing(presenter: HistoryPresenter) {
   Column(
-    modifier = Modifier.fillMaxWidth().padding(16.dp).testTag(HistoryTestTags.FILTERED_EMPTY),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
+    modifier = Modifier.fillMaxWidth().padding(Modernist.x4).testTag(HistoryTestTags.FILTERED_EMPTY),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
-    Text(text = stringResource(R.string.history_filtered_empty), style = MaterialTheme.typography.bodyMedium)
-    TextButton(
+    Text(text = stringResource(R.string.history_filtered_empty), style = MaterialTheme.typography.bodyLarge)
+    ModernistButton(
+      text = stringResource(R.string.history_clear_filter),
       onClick = { presenter.filterBy(HistoryFilter.Everything) },
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(HistoryTestTags.CLEAR_FILTER),
-    ) {
-      Text(stringResource(R.string.history_clear_filter))
-    }
+    )
   }
 }
 
@@ -554,6 +557,9 @@ object HistoryTestTags {
   const val ALL: String = "history:all"
   const val FILTERED_EMPTY: String = "history:filtered-empty"
   const val CLEAR_FILTER: String = "history:clear-filter"
+
+  /** The 2 dp rule the whole screen hangs from. */
+  const val HEADER_RULE: String = "history:header-rule"
 
   /** Also the prefix the export dialog's own tags are built from. */
   const val EXPORT: String = "history:export"

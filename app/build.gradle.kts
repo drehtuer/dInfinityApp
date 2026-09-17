@@ -21,6 +21,12 @@ dependencies {
   implementation(project(":core:model"))
   implementation(project(":data"))
 
+  // Where the design tokens live. `:app` is the module that turns them into
+  // Material's roles, and it can only read them from a module the features can
+  // read too — which is the whole reason they moved here
+  // (`docs/design-handover.md`).
+  implementation(project(":ui:common"))
+
   implementation(project(":dicesets:builtin"))
   implementation(project(":input:shake"))
   implementation(project(":feedback"))
@@ -48,4 +54,11 @@ dependencies {
   // format the extractor is being tested against.
   testImplementation(libs.commons.compress)
   testImplementation(libs.androidx.room.runtime)
+}
+
+// `Theme.kt` is where the design tokens become Material's roles, so it is the
+// one file in this module allowed to name a colour — every other file reads
+// them from the theme (`docs/design-handover.md`).
+tasks.named<de.drehtuer.dinfinity.build.VerifyDesignSystemTask>("verifyDesignSystem") {
+  exempt.addAll("Theme.kt")
 }

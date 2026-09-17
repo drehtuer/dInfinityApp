@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.Contrast
-import de.drehtuer.dinfinity.theme.ModernistTokens
+import de.drehtuer.dinfinity.ui.common.Modernist
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,10 +25,10 @@ import org.junit.Test
 class ModernistContrastTest {
   @Test
   fun `body copy clears 4 point 5 to 1 on both grounds`() {
-    passes("light text on background", ModernistTokens.Light.text, ModernistTokens.Light.background, Contrast.BODY_TEXT)
-    passes("light text on surface", ModernistTokens.Light.text, ModernistTokens.Light.surface, Contrast.BODY_TEXT)
-    passes("dark text on background", ModernistTokens.Dark.text, ModernistTokens.Dark.background, Contrast.BODY_TEXT)
-    passes("dark text on surface", ModernistTokens.Dark.text, ModernistTokens.Dark.surface, Contrast.BODY_TEXT)
+    passes("light text on background", Modernist.Light.text, Modernist.Light.background, Contrast.BODY_TEXT)
+    passes("light text on surface", Modernist.Light.text, Modernist.Light.surface, Contrast.BODY_TEXT)
+    passes("dark text on background", Modernist.Dark.text, Modernist.Dark.background, Contrast.BODY_TEXT)
+    passes("dark text on surface", Modernist.Dark.text, Modernist.Dark.surface, Contrast.BODY_TEXT)
   }
 
   /**
@@ -38,14 +38,14 @@ class ModernistContrastTest {
    */
   @Test
   fun `the accent clears the bar for what it is used for`() {
-    passes("accent on light background", ModernistTokens.accent, ModernistTokens.Light.background, Contrast.LARGE_TEXT)
-    passes("accent on light surface", ModernistTokens.accent, ModernistTokens.Light.surface, Contrast.LARGE_TEXT)
-    passes("accent on dark background", ModernistTokens.accent, ModernistTokens.Dark.background, Contrast.LARGE_TEXT)
-    passes("accent on dark surface", ModernistTokens.accent, ModernistTokens.Dark.surface, Contrast.LARGE_TEXT)
+    passes("accent on light background", Modernist.accent, Modernist.Light.background, Contrast.LARGE_TEXT)
+    passes("accent on light surface", Modernist.accent, Modernist.Light.surface, Contrast.LARGE_TEXT)
+    passes("accent on dark background", Modernist.accent, Modernist.Dark.background, Contrast.LARGE_TEXT)
+    passes("accent on dark surface", Modernist.accent, Modernist.Dark.surface, Contrast.LARGE_TEXT)
     passes(
       "accent body copy on light",
-      ModernistTokens.accentOnLightText,
-      ModernistTokens.Light.background,
+      Modernist.accentOnLightText,
+      Modernist.Light.background,
       Contrast.BODY_TEXT,
     )
   }
@@ -63,13 +63,13 @@ class ModernistContrastTest {
   fun `the divider is short of 3 to 1 on the light ground`() {
     val onLight =
       Contrast.ratio(
-        Contrast.over(ModernistTokens.Light.text.toArgb(), DIVIDER_ALPHA, ModernistTokens.Light.background.toArgb()),
-        ModernistTokens.Light.background.toArgb(),
+        Contrast.over(Modernist.Light.text.toArgb(), DIVIDER_ALPHA, Modernist.Light.background.toArgb()),
+        Modernist.Light.background.toArgb(),
       )
     val onDark =
       Contrast.ratio(
-        Contrast.over(ModernistTokens.Dark.text.toArgb(), DIVIDER_ALPHA, ModernistTokens.Dark.background.toArgb()),
-        ModernistTokens.Dark.background.toArgb(),
+        Contrast.over(Modernist.Dark.text.toArgb(), DIVIDER_ALPHA, Modernist.Dark.background.toArgb()),
+        Modernist.Dark.background.toArgb(),
       )
     noWorseThan("divider on the light ground", onLight, DIVIDER_ON_LIGHT)
     assertTrue(
@@ -91,8 +91,8 @@ class ModernistContrastTest {
   @Test
   fun `a filled button's label is short of 4 point 5 to 1`() {
     AccentColor.entries.forEach { accent ->
-      val onLight = Contrast.ratio(ModernistTokens.Light.background.toArgb(), accent.argb)
-      val onDark = Contrast.ratio(ModernistTokens.Dark.background.toArgb(), accent.argb)
+      val onLight = Contrast.ratio(Modernist.Light.background.toArgb(), accent.argb)
+      val onDark = Contrast.ratio(Modernist.Dark.background.toArgb(), accent.argb)
       // Still legible as large text on both grounds, which is what keeps this
       // an open question rather than a bug to stop the release.
       assertTrue(
@@ -106,7 +106,7 @@ class ModernistContrastTest {
     }
     noWorseThan(
       "the default accent's button label on the light ground",
-      Contrast.ratio(ModernistTokens.Light.background.toArgb(), AccentColor.Default.argb),
+      Contrast.ratio(Modernist.Light.background.toArgb(), AccentColor.Default.argb),
       DEFAULT_BUTTON_ON_LIGHT,
     )
   }
@@ -139,7 +139,7 @@ class ModernistContrastTest {
   private fun said(ratio: Double): String = "%.2f:1".format(ratio)
 
   private companion object {
-    /** `--color-divider`: the text colour at 40 % (`ModernistTokens.divider`). */
+    /** `--color-divider`: the text colour at 40 % (`Modernist.divider`). */
     const val DIVIDER_ALPHA = 0.4
 
     /** Measured, and written down in `docs/TODO.md`. */

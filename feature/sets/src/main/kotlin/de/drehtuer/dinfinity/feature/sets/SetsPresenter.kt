@@ -59,6 +59,14 @@ data class SetRow(
   val folder: File?,
   val enabled: Boolean,
   val bundled: Boolean = false,
+  /**
+   * True for the set a plain `d20` comes from (design `6a`).
+   *
+   * Not a fact about the folder, which is why nothing that reads one fills it
+   * in: it is a setting somebody changes on another screen, and the row is
+   * marked with it where the list is assembled ([SetsPresenter.refresh]).
+   */
+  val isDefault: Boolean = false,
 ) {
   /** True when the package did not pass validation on this reading (`6b`). */
   val broken: Boolean get() = set == null
@@ -256,7 +264,12 @@ class SetsPresenter(
    */
   fun refresh() {
     scope.launch {
-      state = state.copy(sets = library.all(), loaded = true)
+      // Which set is the default is asked once per reading rather than once
+      // per row: it is one setting, and the rows are a list of packages that
+      // knows nothing about it until here (`SetRow.isDefault`).
+      val default = library.defaultId
+      val sets = library.all().map { row -> row.copy(isDefault = row.id == default) }
+      state = state.copy(sets = sets, loaded = true)
     }
   }
 

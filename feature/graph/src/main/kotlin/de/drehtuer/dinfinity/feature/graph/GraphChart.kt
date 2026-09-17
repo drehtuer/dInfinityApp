@@ -16,7 +16,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.ui.common.Modernist
 
 /**
  * The distribution, drawn (`design/dInfinity.dc.html`, option 1k).
@@ -41,10 +43,17 @@ internal fun GraphChart(
   rolled: Reading? = null,
   onPick: (Int) -> Unit = {},
 ) {
+  // The prototype's four inks, and no others: a bar inside ±1σ is the text
+  // colour, one outside it `--color-neutral-500`, the one that was tapped the
+  // accent, and the band behind them the surface
+  // (`design/dInfinityPhone.dc.html`: `bg: isPick ? accent : inS ? text :
+  // neutral-500`). `surfaceVariant` and `onSurfaceVariant`, which this drew
+  // in before, are roles the theme does not fill in — so two of the four were
+  // Material's baseline lavender.
   val ink = MaterialTheme.colorScheme.onBackground
-  val bar = MaterialTheme.colorScheme.onSurfaceVariant
-  val chosen = MaterialTheme.colorScheme.onBackground
-  val band = MaterialTheme.colorScheme.surfaceVariant
+  val bar = BAR_GREY
+  val chosen = MaterialTheme.colorScheme.primary
+  val band = MaterialTheme.colorScheme.surface
   val mark = MaterialTheme.colorScheme.primary
 
   // A `Canvas` hands a screen reader an empty rectangle, and this one is the
@@ -77,7 +86,15 @@ internal fun GraphChart(
     bars.forEachIndexed { index, drawn ->
       val height = (drawn.share * size.height).toFloat()
       drawRect(
-        color = if (picked != null && picked.value in drawn) chosen else bar,
+        color =
+          when {
+            picked != null && picked.value in drawn -> chosen
+            // Inside the band it stands on, the bar is the full ink; outside
+            // it, the grey. The band is a shape the eye reads *through* the
+            // bars, which is why the bars say where it ends as well.
+            stats.within(drawn) -> ink
+            else -> bar
+          },
         topLeft = Offset(x = index * width, y = size.height - height),
         size = Size(width = maxOf(width - GAP.toPx(), MIN_BAR.toPx()), height = height),
       )
@@ -85,8 +102,10 @@ internal fun GraphChart(
 
     // Dashed, and behind the roll's line: the mean is where the dice tend, and
     // what actually happened is the thing being looked at.
-    upright(stats.meanShare, ink, dashed = true)
-    if (rolled != null) upright(stats.share(rolled.value.toDouble()), mark, dashed = false)
+    upright(stats.meanShare, ink, LINE, dashed = true)
+    // Heavier than the mean's line and solid, as the prototype draws it: 3 px
+    // against 2, because this one is about the player rather than the formula.
+    if (rolled != null) upright(stats.share(rolled.value.toDouble()), mark, MARK, dashed = false)
 
     drawLine(
       color = ink,
@@ -118,6 +137,7 @@ private fun ChartReading.spoken(): String =
 private fun DrawScope.upright(
   share: Double,
   colour: Color,
+  thickness: Dp,
   dashed: Boolean,
 ) {
   val x = (share * size.width).toFloat()
@@ -125,7 +145,7 @@ private fun DrawScope.upright(
     color = colour,
     start = Offset(x, 0f),
     end = Offset(x, size.height),
-    strokeWidth = LINE.toPx(),
+    strokeWidth = thickness.toPx(),
     pathEffect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(DASH, DASH)) else null,
   )
 }
@@ -146,8 +166,46 @@ internal fun barAt(
   return bars.getOrNull((fraction * bars.size).toInt().coerceAtMost(bars.size - 1))
 }
 
-private val GAP = 1.dp
-private val MIN_BAR = 1.dp
-private val LINE = 2.dp
-private val AXIS = 2.dp
+/** `gap:1px` between two bars, and the least a bar may be and still be one. */
+private val GAP: Dp = Modernist.hairline
+private val MIN_BAR: Dp = Modernist.hairline
+
+/** The mean's dashed line, and the axis the bars stand on: both 2 px rules. */
+private val LINE: Dp = Modernist.rule
+private val AXIS: Dp = Modernist.rule
+
+/**
+ * The line at the total that actually came up: 3 px, where the mean's is 2
+ * (`design/dInfinityPhone.dc.html`, the graph's `border-left:3px solid
+ * var(--color-accent)`). It is the one thing on the chart that is about this
+ * player rather than about the formula, so it is drawn heavier than the
+ * statistic behind it.
+ *
+ * Not a design-system token — the system has no 3 px step, and this is this
+ * chart's own weight. `internal` because [GraphScreen] draws the same edge
+ * down the side of the band that says which roll opened the graph.
+ */
+internal val MARK: Dp = 3.dp
 private const val DASH = 8f
+
+/**
+ * `--color-neutral-500`: the grey a bar outside ±1σ is drawn in.
+ *
+ * The chart **names the ramp step** rather than following the ink, and it is
+ * the one colour here that does. The step is `#9b9797` on both grounds: the
+ * prototype's dark override remaps the neutral ramp by reflecting it about
+ * this step — `--color-neutral-200` takes 800's value, 300 takes 700's, 400
+ * takes 600's — and remaps `--color-neutral-500` to itself
+ * (`design/dInfinityPhone.dc.html`, `.dz-dark`). It is the fixed point of that
+ * reflection, so it is the same grey on a light page and a dark one by
+ * construction, not by coincidence.
+ *
+ * That is why it does not follow the theme, and why it is a top-level value
+ * here while the other four inks are read off `MaterialTheme` inside the
+ * chart. Thinning the ink is what this replaced, and it drifted three ways:
+ * 45 % of the ink lands on neutral-500 on the light ground but on
+ * **neutral-600** on the dark one, and on two further greys again where a bar
+ * stands on the ±1σ band and composites against the surface instead. One
+ * named step cannot do any of that.
+ */
+internal val BAR_GREY: Color = Modernist.Neutral.v500

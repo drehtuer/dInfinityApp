@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +45,15 @@ import de.drehtuer.dinfinity.core.notation.NotationError
  * Where a mistake has an obvious reading — `3 d 6` meant `3d6`, `d7` meant the
  * nearest die the set actually has — the parser says so, and the fix is one
  * tap (`docs/dice-notation.md`, "Error messages").
+ *
+ * **It is drawn in the accent, not in a red of its own.** The prototype prints
+ * this badge as a wash of `--color-accent-100` with the wave in
+ * `--color-accent`, because the Modernist system has exactly one warm colour
+ * and saying a formula is wrong is one of the things it is spent on. Material's
+ * `error` and `errorContainer` are a second red and a second container — a
+ * palette this app does not have — so the badge takes the accent and lays it
+ * on thinly, and follows the accent the player chose like everything else the
+ * accent touches.
  */
 @Composable
 fun FormulaError(
@@ -58,28 +66,28 @@ fun FormulaError(
     modifier =
       modifier
         .fillMaxWidth()
-        .background(MaterialTheme.colorScheme.errorContainer)
+        // `--color-accent-100`: the accent laid thinly over whichever ground
+        // is underneath, so the badge tints in both themes without needing a
+        // ramp step the theme does not publish.
+        .background(MaterialTheme.colorScheme.primary.copy(alpha = WASH))
         .padding(horizontal = 8.dp, vertical = 4.dp),
     verticalArrangement = Arrangement.spacedBy(2.dp),
   ) {
     Squiggled(
       text = said(formula, error.message),
       under = squiggleOver(formula, error.range),
-      colour = MaterialTheme.colorScheme.error,
+      colour = MaterialTheme.colorScheme.primary,
       modifier = Modifier.testTag(FormulaTestTags.ERROR),
     )
 
     val suggestion = error.suggestion
     if (suggestion != null) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.formula_suggestion, suggestion),
         onClick = { onSuggestion(suggestion) },
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(FormulaTestTags.SUGGESTION),
-      ) {
-        Text(
-          text = stringResource(R.string.formula_suggestion, suggestion),
-          style = MaterialTheme.typography.labelMedium,
-        )
-      }
+      )
     }
   }
 }
@@ -92,7 +100,7 @@ private fun said(
 ): AnnotatedString =
   buildAnnotatedString {
     withStyle(SpanStyle(fontWeight = FontWeight.SemiBold)) { append(formula) }
-    withStyle(SpanStyle(color = MaterialTheme.colorScheme.onErrorContainer)) { append(" — $message") }
+    withStyle(SpanStyle(color = MaterialTheme.colorScheme.onBackground)) { append(" — $message") }
   }
 
 /**
@@ -112,7 +120,7 @@ private fun Squiggled(
   Text(
     text = text,
     style = MaterialTheme.typography.labelMedium,
-    color = MaterialTheme.colorScheme.onErrorContainer,
+    color = MaterialTheme.colorScheme.onBackground,
     onTextLayout = { laidOut = it },
     modifier =
       modifier.drawBehind {
@@ -202,6 +210,9 @@ internal fun squiggleOver(
   val to = range.last.coerceIn(from, last)
   return from..to
 }
+
+/** How thinly the accent is laid on to make the badge's ground. */
+private const val WASH = 0.12f
 
 /** How far above the baseline's bottom the wave sits, and how big it is. */
 private val CLEARANCE = 1.dp

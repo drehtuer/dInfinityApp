@@ -66,7 +66,7 @@ feedback/            Impacts → haptic ticks and impact sounds (docs/physics-an
 designer/            The personal package, "My dice": the drawing model behind the face designer (marks, drafts on disk, cell outlines), the photographs somebody has made tables of, and the export that turns both into an installable package (docs/face-designer.md, docs/tables.md)
 data/                Room database, DAOs, DataStore
 ui/
-  common/            Screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes
+  common/            The design system's tokens, and the screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes, the button, the rule, the segmented control
 feature/             One module per screen group; see docs/TODO.md Step 4
   roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
@@ -127,6 +127,19 @@ needs it, and it needs no screen.** A control that navigates does not go in —
 the menu button lives in `feature/settings` and is handed to each screen as a
 slot, because where it goes is the navigation graph's business and the
 navigation graph is `:app`'s.
+
+**The design system's tokens live here too, and the reason is the dependency
+arrow.** `Modernist` — the palette, both ramps, the spacing scale, the type
+scale, the rule weights and the zero radius, transcribed from
+`design/_ds/modernist-.../styles.css` — used to sit beside the theme in `app/`.
+But `:app` depends on every feature module, so no feature could import it, and
+six of them each kept their own transcription of the same numbers. Six copies
+of one scale is six chances for it to drift from the stylesheet and from each
+other. `ui/common` is the only module every screen is above, so it is the only
+place the tokens can be. `:app` reads them from here as well, and `Theme.kt`
+keeps the job it always had: turning them into Material's colour roles, type
+slots and shapes. `ModernistTest` reads `styles.css` at test time and fails if
+the transcription and the design system have come apart.
 
 `feedback` is the other end of the wire `input/shake` is one end of, and it is
 shaped the same way: the thresholds, the layout in time, the pitch, the tick and

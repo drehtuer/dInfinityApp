@@ -7,6 +7,10 @@ android {
 }
 
 dependencies {
+  // The Modernist tokens and the controls drawn from them, which every screen
+  // shares rather than transcribing (`docs/design-handover.md`).
+  implementation(project(":ui:common"))
+
   api(project(":core:stats"))
   api(project(":data"))
 

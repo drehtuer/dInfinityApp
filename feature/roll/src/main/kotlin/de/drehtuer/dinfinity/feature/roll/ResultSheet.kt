@@ -1,15 +1,18 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,7 +30,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.RollResult
@@ -35,6 +39,8 @@ import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.notation.NotationLimits
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.SegmentedControl
 import kotlin.math.abs
 
 /**
@@ -75,8 +81,8 @@ internal fun ResultSheet(
   ) {
     Text(
       text = result.label?.let { "$it · ${result.formula}" } ?: result.formula,
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.labelLarge,
+      color = Ink.muted,
       modifier = Modifier.testTag(RollTestTags.SHEET_FORMULA),
     )
 
@@ -114,14 +120,15 @@ private fun AdjustmentRow(amount: Long) {
   ) {
     Text(
       text = stringResource(if (amount < 0) R.string.roll_sheet_minus else R.string.roll_sheet_plus),
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.labelLarge,
+      color = Ink.muted,
       modifier = Modifier.weight(1f),
     )
     Text(
       text = abs(amount).toString(),
-      style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      // The same 20 sp heading a group's subtotal is set in: they are the
+      // numbers that add up to the total and they line up in one column.
+      style = MaterialTheme.typography.titleLarge.tabular(),
       color = MaterialTheme.colorScheme.onBackground,
     )
   }
@@ -139,6 +146,14 @@ private fun AdjustmentRow(amount: Long) {
  *
  * Nor is the choice remembered. It belongs to the throw in front of the
  * player; the next roll uses the setting again.
+ *
+ * Drawn as the design system's **segmented control** (`.seg` / `.seg-opt`,
+ * `ui/common`'s `SegmentedControl`): one bordered box, the options divided by
+ * a hairline, the chosen one filled with the accent and printed in the ground
+ * colour. It used to be three Material `FilterChip`s — separate pills with a
+ * tick in front of the chosen one — which is a component this system does not
+ * have, and which Material draws with a rounded corner whatever the theme's
+ * `Shapes` say.
  */
 @Composable
 private fun RoundingControl(
@@ -153,16 +168,15 @@ private fun RoundingControl(
     Text(
       text = stringResource(R.string.roll_rounding_label),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
-    Rounding.entries.forEach { rounding ->
-      FilterChip(
-        selected = rounding == chosen,
-        onClick = { onRound(rounding) },
-        label = { Text(stringResource(rounding.label())) },
-        modifier = Modifier.testTag(RollTestTags.roundingOf(rounding)),
-      )
-    }
+    SegmentedControl(
+      options = Rounding.entries,
+      selected = chosen,
+      label = { rounding -> stringResource(rounding.label()) },
+      onSelect = onRound,
+      tagOf = { rounding -> RollTestTags.roundingOf(rounding) },
+    )
   }
 }
 
@@ -186,13 +200,12 @@ private fun GroupRow(
     ) {
       Text(
         text = group.notation,
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.labelLarge.tabular(),
         color = MaterialTheme.colorScheme.onBackground,
       )
       Text(
         text = group.subtotal.toString(),
-        style = MaterialTheme.typography.bodyMedium,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleLarge.tabular(),
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.testTag(RollTestTags.subtotalOf(group.id)),
       )
@@ -204,12 +217,15 @@ private fun GroupRow(
       Text(
         text = stringResource(R.string.roll_group_fell_back, group.setId),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.testTag(RollTestTags.fallbackOf(group.id)),
       )
     }
 
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    FlowRow(
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
       group.dice.forEach { die -> DieChip(die, onDoodle) }
     }
 
@@ -248,7 +264,7 @@ private fun ChainLimitLine(
         ChainLimit.TrayFull -> stringResource(R.string.roll_group_tray_full)
       },
     style = MaterialTheme.typography.labelSmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    color = Ink.muted,
     modifier = Modifier.testTag(RollTestTags.chainLimitOf(groupId, limit.name)),
   )
 }
@@ -289,12 +305,20 @@ private fun DieChip(
   Box {
     Text(
       text = die.label,
-      style = MaterialTheme.typography.bodyMedium,
+      style = MaterialTheme.typography.labelLarge.tabular(),
       color = reading.colour(),
+      textAlign = TextAlign.Center,
       textDecoration = if (reading == DieReading.Dropped) TextDecoration.LineThrough else null,
       modifier =
         Modifier
           .testTag(RollTestTags.dieAt(die.instanceIndex))
+          // A cell rather than a loose number: the design draws every die that
+          // landed in a bordered square of its own, so a breakdown reads as
+          // the dice on the table and not as a sentence of digits.
+          .border(CHIP_RULE, MaterialTheme.colorScheme.outline)
+          .defaultMinSize(minWidth = CHIP, minHeight = CHIP)
+          .wrapContentSize(Alignment.Center)
+          .padding(horizontal = CHIP_PADDING)
           // A gesture rather than `combinedClickable`, which would make every
           // number in the breakdown a button whose tap does nothing — and
           // announce it as one. The long press is spelled out for TalkBack
@@ -327,7 +351,29 @@ private fun DieChip(
 @Composable
 private fun DieReading.colour(): Color =
   when (this) {
-    DieReading.Dropped -> MaterialTheme.colorScheme.onSurfaceVariant
+    DieReading.Dropped -> MaterialTheme.colorScheme.onBackground.copy(alpha = DROPPED)
     DieReading.NaturalMax -> MaterialTheme.colorScheme.primary
     DieReading.Kept -> MaterialTheme.colorScheme.onBackground
   }
+
+/**
+ * `font-variant-numeric: tabular-nums`.
+ *
+ * Every number on this sheet is in a column with other numbers, and figures
+ * of different widths make those columns crawl as the dice change.
+ */
+internal fun TextStyle.tabular(): TextStyle = copy(fontFeatureSettings = TABULAR)
+
+private const val TABULAR = "tnum"
+
+/**
+ * A die the formula threw away, at the opacity the design gives it. It is
+ * struck through as well, and said in words to a screen reader — the colour is
+ * the least of the three.
+ */
+private const val DROPPED = 0.45f
+
+/** One die's cell: `min-width:26px; height:26px; padding:0 6px; border:1px`. */
+private val CHIP = 26.dp
+private val CHIP_PADDING = 6.dp
+private val CHIP_RULE = 1.dp

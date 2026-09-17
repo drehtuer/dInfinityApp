@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.ui.common.Ink
 
 /**
  * The debug overlay: what the roll is doing, over the tray it is doing it on
@@ -127,17 +128,22 @@ private fun TrayPlanView(
   geometry: TableGeometry,
 ) {
   val wall = MaterialTheme.colorScheme.outline
+  // Three tints that are three colours. The palette has one red and the theme
+  // maps `error` onto it, so "at rest" and "in trouble" both used to come out
+  // accent — and the one that should shout was the one that did not. Ink for a
+  // die that has stopped, the muted ink for one still moving, and the accent
+  // kept for the only state that is a bug.
   val tints =
     mapOf(
-      PlanTint.Still to MaterialTheme.colorScheme.primary,
-      PlanTint.Moving to MaterialTheme.colorScheme.onSurfaceVariant,
+      PlanTint.Still to MaterialTheme.colorScheme.onSurface,
+      PlanTint.Moving to Ink.muted,
       PlanTint.Trouble to MaterialTheme.colorScheme.error,
     )
   val dice = diagnostics.dice.map { die -> TrayPlan.markOf(die, geometry) }
   val contacts = diagnostics.contacts.map { contact -> TrayPlan.markOf(contact, geometry) }
-  // The plan says which die is which by tinting its box, and on this overlay
-  // two of the three tints are red on red. The counts are the whole of what the
-  // picture claims, so a `Canvas` that would otherwise be silent says them
+  // The plan says which die is which by tinting its box, which is a mark only
+  // an eye can read. The counts are the whole of what the picture claims, so a
+  // `Canvas` that would otherwise be silent says them
   // (`docs/architecture.md`, "Accessibility").
   val tally = TrayPlan.tally(dice)
   val label =

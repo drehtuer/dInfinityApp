@@ -4,26 +4,26 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.OptionBox
+import de.drehtuer.dinfinity.ui.common.OptionFill
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * Naming a group (`docs/dice-notation.md`, "Saved rolls").
@@ -37,7 +37,6 @@ import de.drehtuer.dinfinity.core.model.TablePin
  * when they press Save. A name already taken says whose it is, because "that
  * name is taken" is only useful if it says by what.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun GroupSheet(
   draft: GroupDraft,
@@ -45,43 +44,43 @@ internal fun GroupSheet(
   modifier: Modifier = Modifier,
   onSaved: (String) -> Unit = {},
 ) {
-  AlertDialog(
+  Sheet(
+    title =
+      stringResource(
+        if (draft.fresh) R.string.group_title_new else R.string.group_title_edit,
+      ),
+    onDismiss = presenter::dismiss,
     modifier = modifier.testTag(GroupTestTags.SHEET),
-    onDismissRequest = presenter::dismiss,
-    title = {
-      Text(
-        text =
-          stringResource(
-            if (draft.fresh) R.string.group_title_new else R.string.group_title_edit,
-          ),
-      )
-    },
-    text = { Body(draft = draft, presenter = presenter) },
-    confirmButton = {
-      Button(
+    actions = {
+      // The confirming action leads, the way `.dialog-actions` does.
+      ModernistButton(
+        text = stringResource(R.string.group_save),
         onClick = { presenter.save(onSaved) },
+        kind = ModernistButtonKind.Primary,
         enabled = draft.savable,
         modifier = Modifier.testTag(GroupTestTags.SAVE),
-      ) {
-        Text(stringResource(R.string.group_save))
+      )
+      if (draft.deletable) {
+        // A second real action rather than the way out, so `.btn-secondary` —
+        // the shape the prototype's own three-action sheet has (primary,
+        // secondary, ghost).
+        ModernistButton(
+          text = stringResource(R.string.group_delete),
+          onClick = { presenter.delete() },
+          kind = ModernistButtonKind.Secondary,
+          modifier = Modifier.testTag(GroupTestTags.DELETE),
+        )
       }
+      ModernistButton(
+        text = stringResource(R.string.group_cancel),
+        onClick = presenter::dismiss,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(GroupTestTags.CANCEL),
+      )
     },
-    dismissButton = {
-      Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (draft.deletable) {
-          TextButton(
-            onClick = { presenter.delete() },
-            modifier = Modifier.testTag(GroupTestTags.DELETE),
-          ) {
-            Text(stringResource(R.string.group_delete), color = MaterialTheme.colorScheme.error)
-          }
-        }
-        TextButton(onClick = presenter::dismiss, modifier = Modifier.testTag(GroupTestTags.CANCEL)) {
-          Text(stringResource(R.string.group_cancel))
-        }
-      }
-    },
-  )
+  ) {
+    Body(draft = draft, presenter = presenter)
+  }
 }
 
 /** Everything about the group that can be typed or chosen. */
@@ -90,10 +89,10 @@ private fun Body(
   draft: GroupDraft,
   presenter: GroupPresenter,
 ) {
-  Column(
-    modifier = Modifier.verticalScroll(rememberScrollState()),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
-  ) {
+  // No scroll of its own: the form is the tallest thing the app puts in a
+  // sheet — a name, ten marks, a parent picker and a table picker — and the
+  // sheet is what scrolls it (`Sheet`). Two scrolls in one direction fight.
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x3)) {
     OutlinedTextField(
       value = draft.name,
       onValueChange = presenter::name,
@@ -109,8 +108,8 @@ private fun Body(
     draft.clash?.let { taken ->
       Text(
         text = stringResource(R.string.group_name_taken, taken),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.labelSmall,
+        color = Ink.accent,
         modifier = Modifier.testTag(GroupTestTags.CLASH),
       )
     }
@@ -123,7 +122,7 @@ private fun Body(
       Text(
         text = pluralStringResource(R.plurals.group_delete_moves, draft.rolls, draft.rolls),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.testTag(GroupTestTags.MOVES),
       )
     }
@@ -137,14 +136,23 @@ private fun Marks(
   chosen: String,
   onPick: (String) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
     Label(stringResource(R.string.group_icon))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       GROUP_ICONS.forEach { icon ->
-        FilterChip(
+        OptionBox(
+          text = icon,
           selected = icon == chosen,
           onClick = { onPick(if (icon == chosen) "" else icon) },
-          label = { Text(icon) },
+          // The ink rather than the accent, for the reason the editor's marks
+          // use it: the mark itself is what carries the accent.
+          fill = OptionFill.Ink,
+          square = true,
+          // Tapping the chosen mark clears it, so the set can end up empty.
+          role = Role.Checkbox,
+          // The emoji is the label, and an emoji is not a name: a screen
+          // reader is told what the picture is of (`MarkNames.kt`).
+          contentDescription = markName(icon)?.let { name -> stringResource(name) },
           modifier = Modifier.testTag(GroupTestTags.iconOf(icon)),
         )
       }
@@ -166,29 +174,31 @@ private fun Parents(
   draft: GroupDraft,
   onPick: (String?) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
     Label(stringResource(R.string.group_parent))
     if (!draft.nestable) {
       Text(
         text = stringResource(R.string.group_parent_has_children),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.testTag(GroupTestTags.NO_NESTING),
       )
       return@Column
     }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-      FilterChip(
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
+      OptionBox(
+        text = stringResource(R.string.group_parent_none),
         selected = draft.parentId == null,
         onClick = { onPick(null) },
-        label = { Text(stringResource(R.string.group_parent_none)) },
+        fill = OptionFill.Accent,
         modifier = Modifier.testTag(GroupTestTags.parentOf(null)),
       )
       draft.parents.forEach { group ->
-        FilterChip(
+        OptionBox(
+          text = group.name,
           selected = draft.parentId == group.id,
           onClick = { onPick(group.id) },
-          label = { Text(group.name) },
+          fill = OptionFill.Accent,
           modifier = Modifier.testTag(GroupTestTags.parentOf(group.id)),
         )
       }
@@ -210,14 +220,15 @@ private fun Tables(
   draft: GroupDraft,
   onPick: (TablePin?) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
     Label(stringResource(R.string.group_table))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       draft.tables.forEach { choice ->
-        FilterChip(
+        OptionBox(
+          text = choice.name ?: stringResource(R.string.editor_table_default),
           selected = choice.pin == draft.tablePin,
           onClick = { onPick(choice.pin) },
-          label = { Text(choice.name ?: stringResource(R.string.editor_table_default)) },
+          fill = OptionFill.Accent,
           modifier = Modifier.testTag(GroupTestTags.tableOf(choice.pin)),
         )
       }
@@ -225,7 +236,7 @@ private fun Tables(
     Text(
       text = stringResource(R.string.group_table_note),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
   }
 }
@@ -233,14 +244,15 @@ private fun Tables(
 @Composable
 private fun Label(text: String) {
   Text(
+    // `.field > label`: small, quiet, and above the thing it names.
     text = text,
-    style = MaterialTheme.typography.labelMedium,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    style = MaterialTheme.typography.labelSmall,
+    color = Ink.muted,
   )
 }
 
 /** The marks on offer. Emoji, for the same reason a saved roll's are. */
-private val GROUP_ICONS = listOf("🎲", "🐉", "🏰", "🗺️", "⚔️", "🧙", "🌲", "🚀", "📕", "⭐")
+internal val GROUP_ICONS = listOf("🎲", "🐉", "🏰", "🗺️", "⚔️", "🧙", "🌲", "🚀", "📕", "⭐")
 
 /** What the tests reach the group sheet by. */
 object GroupTestTags {

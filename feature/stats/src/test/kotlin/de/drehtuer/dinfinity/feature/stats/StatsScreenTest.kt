@@ -76,6 +76,15 @@ class StatsScreenTest {
   }
 
   @Test
+  fun `the title hangs from a rule`() {
+    // Every screen in the prototype does (`design/dInfinityPhone.dc.html`):
+    // a 2 dp divider under the header, and nothing between it and the title.
+    show()
+
+    compose.onNodeWithTag(StatsTestTags.HEADER_RULE, useUnmergedTree = true).assertExists()
+  }
+
+  @Test
   fun `a fresh install says nothing has been thrown`() {
     show()
 

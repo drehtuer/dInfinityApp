@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.feature.sets
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,14 +15,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -41,6 +41,14 @@ import de.drehtuer.dinfinity.designer.MinePackage
 import de.drehtuer.dinfinity.designer.SetLicense
 import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 import de.drehtuer.dinfinity.ui.common.DieSilhouette
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.SectionKicker
+import de.drehtuer.dinfinity.ui.common.Tag
+import de.drehtuer.dinfinity.ui.common.TagKind
 
 /**
  * One dice set, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`).
@@ -93,15 +101,16 @@ private fun Header(
   ) {
     Text(
       text = name,
+      // `titleLarge` is already the heading font at 800; a `Bold` here pulled
+      // it back to Material's 700 (`--font-heading-weight: 800`).
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
       modifier = Modifier.weight(1f).testTag(SetDetailTestTags.NAME),
     )
     version?.let {
       Text(
         text = it,
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
       )
     }
     menu()
@@ -118,12 +127,12 @@ private fun Missing() {
     Text(
       text = stringResource(R.string.sets_detail_gone),
       style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      fontWeight = FontWeight.ExtraBold,
     )
     Text(
       text = stringResource(R.string.sets_detail_gone_body),
       style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
   }
 }
@@ -139,7 +148,11 @@ private fun Body(
     item { Default(presenter) }
     item { Manage(row, presenter) }
     item { Export(presenter) }
-    item { HorizontalDivider() }
+    // The 2 dp rule, not Material's hairline. This is a boundary *between
+    // blocks* — the prototype draws it under the facts and above the dice —
+    // and `HorizontalDivider` only ever draws the 1 dp line that separates
+    // rows inside one (`ui/common/Rule.kt`).
+    item { Rule() }
     if (row.broken) report(row.report) else dice(row.set?.dice.orEmpty())
   }
 }
@@ -203,7 +216,7 @@ private fun Source(
       Text(
         text = stringResource(R.string.sets_detail_commit, it),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
       )
     }
   }
@@ -220,28 +233,33 @@ private fun Default(presenter: SetDetailPresenter) {
   val state = presenter.state
   Column(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     if (state.isDefault) {
-      Text(
+      // A badge rather than a line of accent-coloured text: being the default
+      // is a state that is simply true, and the prototype says so with a
+      // `tag-neutral` (`design/dInfinityPhone.dc.html`, line 459). Nothing
+      // about it is pressable — the button beside it is the thing that acts.
+      Tag(
         text = stringResource(R.string.sets_detail_is_default),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        kind = TagKind.Neutral,
         modifier = Modifier.testTag(SetDetailTestTags.IS_DEFAULT),
       )
     } else if (state.canBeDefault) {
-      TextButton(
+      // `btn btn-secondary` in the prototype: an outline in the divider
+      // colour with the text in the ink, not another accent-coloured ghost.
+      ModernistButton(
+        text = stringResource(R.string.sets_detail_default),
         onClick = { presenter.makeDefault() },
+        kind = ModernistButtonKind.Secondary,
         modifier = Modifier.testTag(SetDetailTestTags.MAKE_DEFAULT),
-      ) {
-        Text(stringResource(R.string.sets_detail_default))
-      }
+      )
     }
     if (state.isDefault || state.canBeDefault) {
       Text(
         text = stringResource(R.string.sets_detail_default_note),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
       )
     }
   }
@@ -258,15 +276,20 @@ private fun Manage(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(4.dp),
   ) {
-    TextButton(
+    ModernistButton(
+      text = stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable),
       onClick = { presenter.setEnabled(!row.enabled) },
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(SetDetailTestTags.TOGGLE),
-    ) {
-      Text(stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable))
-    }
-    TextButton(onClick = { presenter.remove() }, modifier = Modifier.testTag(SetDetailTestTags.REMOVE)) {
-      Text(text = stringResource(R.string.sets_sheet_remove), color = MaterialTheme.colorScheme.error)
-    }
+    )
+    // The accent this used to paint on by hand is what `.btn-ghost` *is*, so
+    // the colour goes away rather than being said twice.
+    ModernistButton(
+      text = stringResource(R.string.sets_sheet_remove),
+      onClick = { presenter.remove() },
+      kind = ModernistButtonKind.Ghost,
+      modifier = Modifier.testTag(SetDetailTestTags.REMOVE),
+    )
   }
 }
 
@@ -286,6 +309,7 @@ private fun Manage(
 private fun Export(presenter: SetDetailPresenter) {
   val state = presenter.state
   if (!state.personal) return
+  Rule()
   Column(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag(SetDetailTestTags.EXPORT),
     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -293,12 +317,12 @@ private fun Export(presenter: SetDetailPresenter) {
     Text(
       text = stringResource(R.string.sets_detail_export),
       style = MaterialTheme.typography.titleSmall,
-      fontWeight = FontWeight.Bold,
+      fontWeight = FontWeight.ExtraBold,
     )
     Text(
       text = stringResource(R.string.sets_detail_export_note),
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
     Row(
       modifier = Modifier.fillMaxWidth(),
@@ -306,13 +330,13 @@ private fun Export(presenter: SetDetailPresenter) {
       horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       LicenseChooser(state.license, presenter::choose, Modifier.weight(1f))
-      Button(
+      ModernistButton(
+        text = stringResource(R.string.sets_detail_export_do),
         onClick = { presenter.export() },
         enabled = state.canExport,
+        kind = ModernistButtonKind.Primary,
         modifier = Modifier.testTag(SetDetailTestTags.EXPORT_DO),
-      ) {
-        Text(stringResource(R.string.sets_detail_export_do))
-      }
+      )
     }
     if (state.exported) {
       Text(
@@ -326,7 +350,7 @@ private fun Export(presenter: SetDetailPresenter) {
       Text(
         text = message.toString(),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.error,
+        color = Ink.accent,
         modifier = Modifier.fillMaxWidth().testTag(SetDetailTestTags.EXPORT_PROBLEM),
       )
     }
@@ -343,6 +367,13 @@ private fun Export(presenter: SetDetailPresenter) {
  * There is no entry for "not chosen". Taking the choice back is not something
  * anybody wants to do, and an entry offering it would be the one a finger hits
  * by accident.
+ *
+ * **The one Material button left on this screen, and deliberately** —
+ * design-system-exception: OutlinedButton. It is drawn as the design system's
+ * `.input`, full width and surface-coloured with its label reading from the
+ * left edge and the menu behind it, not as a `.btn-secondary`:
+ * `ModernistButton` takes a word and centres it, which is what a button is and
+ * what a field is not.
  */
 @Composable
 private fun LicenseChooser(
@@ -354,9 +385,20 @@ private fun LicenseChooser(
   Box(modifier = modifier) {
     OutlinedButton(
       onClick = { open = true },
+      shape = Modernist.square,
+      border = BorderStroke(Modernist.hairline, MaterialTheme.colorScheme.outline),
+      colors =
+        ButtonDefaults.outlinedButtonColors(
+          containerColor = MaterialTheme.colorScheme.surface,
+          contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
       modifier = Modifier.fillMaxWidth().testTag(SetDetailTestTags.LICENSE_CHOOSER),
     ) {
-      Text(text = chosen?.label ?: stringResource(R.string.sets_detail_license_choose))
+      // An `.input` reads from its left edge, whatever Material would centre.
+      Text(
+        text = chosen?.label ?: stringResource(R.string.sets_detail_license_choose),
+        modifier = Modifier.weight(1f),
+      )
     }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
       SetLicense.entries.forEach { license ->
@@ -376,8 +418,11 @@ private fun LicenseChooser(
 /** Every die the set defines, drawn as the outline a player recognises. */
 private fun LazyListScope.dice(dice: List<Die>) {
   item {
-    Label(
-      text = stringResource(R.string.sets_detail_dice),
+    SectionKicker(
+      // The count is in the kicker, where the prototype puts it: the heading
+      // of the block is the one place it says how big the block is, and a
+      // second line saying "7 dice" would be the same fact twice.
+      text = stringResource(R.string.sets_detail_dice, dice.size),
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
   }
@@ -401,16 +446,25 @@ private fun DieLine(die: Die) {
       // faces it has — so the outline follows the solid rather than the
       // values printed on it. A d6 of skulls is still a cube.
       sides = Sides.Numeric(die.shape.faceCount),
-      fill = MaterialTheme.colorScheme.surfaceVariant,
-      ink = MaterialTheme.colorScheme.onSurfaceVariant,
+      // **The set's own colour**, which is what makes this a picture of *this*
+      // die rather than of a die. The prototype fills each shape in the grid
+      // with `{{ s.color }}` for the same reason, and the heading above says
+      // these are rendered from the set — a claim a row of identical grey
+      // outlines did not meet (`design/dInfinityPhone.dc.html`, the Dice set
+      // screen).
+      fill = Color(die.material.colorArgb),
+      // The ink the row is written in, thinned. It stays the outline rather
+      // than following the die, because a pale die on the pale ground would
+      // otherwise have no edge at all.
+      ink = Ink.muted,
       modifier = Modifier.size(32.dp),
     )
     Column(modifier = Modifier.weight(1f)) {
-      Text(text = die.id, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+      Text(text = die.id, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.ExtraBold)
       Text(
         text = pluralStringResource(R.plurals.sets_detail_faces, die.faces.size, die.faces.size),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
       )
     }
   }
@@ -428,11 +482,11 @@ private fun LazyListScope.report(report: List<ValidationMessage>) {
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      Label(stringResource(R.string.sets_detail_report))
+      SectionKicker(stringResource(R.string.sets_detail_report))
       Text(
         text = stringResource(R.string.sets_detail_report_note),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
       )
     }
   }
@@ -440,7 +494,7 @@ private fun LazyListScope.report(report: List<ValidationMessage>) {
     Text(
       text = message.toString(),
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.error,
+      color = Ink.accent,
       modifier =
         Modifier
           .fillMaxWidth()
@@ -463,6 +517,14 @@ private fun Field(
   }
 }
 
+/**
+ * The quiet name of one fact — "Author", "Licence", "Installed from".
+ *
+ * Not a [SectionKicker], although both are small: a kicker names a *part of
+ * the screen* and is the accent's one job on a page of plain text, while this
+ * names the line beside it and stays in the muted ink. The prototype's
+ * metadata grid sets these at `opacity:.6`, not in the accent.
+ */
 @Composable
 private fun Label(
   text: String,
@@ -471,7 +533,7 @@ private fun Label(
   Text(
     text = text,
     style = MaterialTheme.typography.labelSmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    color = Ink.muted,
     modifier = modifier,
   )
 }

@@ -1003,6 +1003,60 @@ The figures are reported in every PR description either way.
       boundary and does. Raising the alpha to about 55 % on the light ground
       would clear it, at the cost of heavier rules everywhere — the design
       system says 40 %, so this is the design's to answer, not a test's
+- [ ] **A neutral tag has no dark ground.** The prototype's dark override
+      (`.dz-dark` in `design/dInfinityPhone.dc.html`) **reflects each ramp
+      about its middle step** — accent 100↔900, 200↔800, 700↔300, 800↔200 and
+      neutral 200↔800, 300↔700, 400↔600, with 500 its own fixed point. Eight
+      steps are written out. `.tag-neutral` is `--color-neutral-100` filled and
+      `-800` lettered, and **neither is among them**, so on a dark page it is a
+      near-white chip with dark grey text while `tag-accent` — covered by the
+      list — flips correctly to deep red. The rule says what those two should
+      be and the app follows it, but the list does not say it, so the
+      inference is recorded in `docs/design-handover.md` rather than taken as
+      settled. `ModernistTest` asserts the eight that *are* written down, so
+      the rule itself cannot drift
+- [ ] **Statistics and History narrow their lists with a scrolling row of
+      accent words; the prototype uses a segmented control.** `Cut`
+      (`feature/stats`) draws one option of that row — no box, the chosen one
+      in the accent and bold — and both screens share it now. The prototype
+      draws the same choice as a `.seg`: one box with its options butted
+      together, the chosen one filled. `ui/common`'s `SegmentedControl` and
+      `OptionBox` between them can draw either shape, so what is missing is a
+      decision rather than a component. It is a visible redesign — a bordered
+      inverting box in place of a bare accent word — and a semantics change
+      with it (`Role.RadioButton` via `selectable`), so it wants an eye rather
+      than a refactor. The sets a player can have is unbounded, which is the
+      argument for the scrolling row and against the joined box
+- [ ] **The face designer's tool row is a set of `.seg-opt`s wearing button
+      clothes.** Every one of its twenty-one controls goes through one `Tool`
+      composable, and that composable is a two-state control: chosen is filled
+      in the accent, unchosen is the **muted** ink. That is `.seg-opt`, not
+      `.btn` — `ModernistButtonKind.Ghost` is the accent by definition, so
+      mapping unchosen onto it would print every nib, every stamp size and
+      every face of the strip in the accent at once. `SegmentedControl` draws
+      `.seg-opt`s but as one joined box of options, where this is a wrapping
+      row that mixes options (nibs, sizes, faces) with plain actions (copy,
+      paste, clear, fill with numbers). Drawing it properly means deciding
+      which of those are options and which are actions, which is a redesign
+      rather than a substitution — so the row keeps Material's `TextButton`
+      with a `design-system-exception` and the reason beside it. All twenty-one
+      call sites go through the one composable, so it is one place whenever it
+      is done
+- [ ] **A tag needs a ramp, and only two of the six accents have one.** The
+      design system ships exact ramps for `--color-accent` (vermilion) and
+      `--color-accent-2` (coral), and `.tag-accent` is built from two ends of
+      one: `-100` filled, `-800` lettered. The app lets a player choose six
+      accents, and `AccentColor` already derives what it needs for the other
+      four the way the design derives an ad-hoc accent
+      (`design/Logo.dc.html`: `color-mix(in srgb, accent 58%, text)`) — but
+      that rule makes the *deep* end only. Nothing in the design says how to
+      make the pale end, and it cannot be mixed from the accent and the
+      ground: `--color-accent-100` is `#fff2ef`, which is lighter in the red
+      channel than either. So either a tag uses the literal ramp and stops
+      following the accent the player chose, or it derives both ends and
+      stops matching the prototype for the accent the prototype was drawn in.
+      **Until this is answered the app has no filled accent tag**, which is
+      the badge that says a dice set has an update
 
 - [ ] **The picker is a list of rows; the prototype's `1u` is a grid of cards.**
       The thumbnails landed in the list that was already there — one 44 × 64 dp

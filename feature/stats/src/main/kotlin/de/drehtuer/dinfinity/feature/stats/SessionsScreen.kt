@@ -12,13 +12,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -28,8 +24,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.data.Session
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * The buckets statistics are filtered by
@@ -60,38 +62,41 @@ fun SessionsScreen(
         .testTag(SessionsTestTags.SCREEN),
   ) {
     Row(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+      modifier = Modifier.fillMaxWidth().padding(horizontal = Modernist.x4, vertical = Modernist.x2),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
     ) {
       Text(
         text = stringResource(R.string.sessions_title),
+        // `titleLarge` carries the heading weight the system asks for (800).
+        // `Bold` is 700, which is a lighter heading than the design has.
         style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.weight(1f),
       )
-      Button(
+      ModernistButton(
+        text = stringResource(R.string.sessions_new),
         onClick = { presenter.edit(SessionDraft()) },
+        kind = ModernistButtonKind.Primary,
         modifier = Modifier.testTag(SessionsTestTags.NEW),
-      ) {
-        Text(stringResource(R.string.sessions_new))
-      }
+      )
       menu()
     }
+    // The rule every screen in the prototype hangs from.
+    Rule(modifier = Modifier.testTag(SessionsTestTags.HEADER_RULE))
 
     state.editing?.let { draft -> NameSheet(draft = draft, presenter = presenter) }
 
     Text(
       text = stringResource(R.string.sessions_explanation),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+      color = Ink.muted,
+      modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x1),
     )
 
     LazyColumn(modifier = Modifier.fillMaxSize().testTag(SessionsTestTags.LIST)) {
       items(state.sessions, key = { it.id }) { session ->
-        HorizontalDivider()
+        Rule(weight = RuleWeight.Hairline)
         SessionRow(
           session = session,
           active = session.id == state.activeId,
@@ -118,9 +123,9 @@ private fun SessionRow(
         .fillMaxWidth()
         .clickable(onClick = onActivate)
         .testTag(SessionsTestTags.sessionOf(session.id))
-        .padding(horizontal = 16.dp, vertical = 10.dp),
+        .padding(horizontal = Modernist.x4, vertical = Modernist.x3),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Column(modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
       Text(
@@ -137,19 +142,25 @@ private fun SessionRow(
             pluralStringResource(R.plurals.sessions_naturals, session.naturals.toInt(), session.naturals),
           ),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.testTag(SessionsTestTags.countsOf(session.id)),
       )
     }
-    TextButton(onClick = onRename, modifier = Modifier.testTag(SessionsTestTags.renameOf(session.id))) {
-      Text(stringResource(R.string.sessions_rename))
-    }
+    ModernistButton(
+      text = stringResource(R.string.sessions_rename),
+      onClick = onRename,
+      kind = ModernistButtonKind.Ghost,
+      modifier = Modifier.testTag(SessionsTestTags.renameOf(session.id)),
+    )
     // The first session has no Delete: it is where a deleted session's rolls
     // go, so it has to be there to go to.
     if (session.deletable) {
-      TextButton(onClick = onDelete, modifier = Modifier.testTag(SessionsTestTags.deleteOf(session.id))) {
-        Text(stringResource(R.string.sessions_delete), color = MaterialTheme.colorScheme.error)
-      }
+      ModernistButton(
+        text = stringResource(R.string.sessions_delete),
+        onClick = onDelete,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(SessionsTestTags.deleteOf(session.id)),
+      )
     }
   }
 }
@@ -159,50 +170,48 @@ private fun NameSheet(
   draft: SessionDraft,
   presenter: SessionsPresenter,
 ) {
-  AlertDialog(
+  Sheet(
+    title = stringResource(if (draft.fresh) R.string.sessions_new else R.string.sessions_rename),
+    onDismiss = { presenter.edit(null) },
     modifier = Modifier.testTag(SessionsTestTags.SHEET),
-    onDismissRequest = { presenter.edit(null) },
-    title = {
-      Text(stringResource(if (draft.fresh) R.string.sessions_new else R.string.sessions_rename))
-    },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-          value = draft.name,
-          onValueChange = presenter::name,
-          singleLine = true,
-          label = { Text(stringResource(R.string.sessions_name)) },
-          placeholder = { Text(stringResource(R.string.sessions_name_hint)) },
-          keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-          modifier = Modifier.fillMaxWidth().testTag(SessionsTestTags.NAME),
-        )
-        if (draft.fresh) {
-          Text(
-            text = stringResource(R.string.sessions_new_note),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-      }
-    },
-    confirmButton = {
-      Button(
+    actions = {
+      ModernistButton(
+        text = stringResource(R.string.sessions_save),
         onClick = presenter::save,
+        kind = ModernistButtonKind.Primary,
         enabled = draft.savable,
         modifier = Modifier.testTag(SessionsTestTags.SAVE),
-      ) {
-        Text(stringResource(R.string.sessions_save))
-      }
-    },
-    dismissButton = {
-      TextButton(
+      )
+      ModernistButton(
+        text = stringResource(R.string.sessions_cancel),
         onClick = { presenter.edit(null) },
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(SessionsTestTags.CANCEL),
-      ) {
-        Text(stringResource(R.string.sessions_cancel))
-      }
+      )
     },
-  )
+  ) {
+    // The field and its note, a step closer together than the sheet spaces its
+    // blocks: the note is about the field, not a block beside it.
+    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x2)) {
+      OutlinedTextField(
+        value = draft.name,
+        onValueChange = presenter::name,
+        singleLine = true,
+        label = { Text(stringResource(R.string.sessions_name)) },
+        placeholder = { Text(stringResource(R.string.sessions_name_hint)) },
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+        shape = Modernist.square,
+        modifier = Modifier.fillMaxWidth().testTag(SessionsTestTags.NAME),
+      )
+      if (draft.fresh) {
+        Text(
+          text = stringResource(R.string.sessions_new_note),
+          style = MaterialTheme.typography.labelSmall,
+          color = Ink.muted,
+        )
+      }
+    }
+  }
 }
 
 /** What the tests reach the sessions screen by. */
@@ -214,6 +223,9 @@ object SessionsTestTags {
   const val NAME: String = "sessions:name"
   const val SAVE: String = "sessions:save"
   const val CANCEL: String = "sessions:cancel"
+
+  /** The 2 dp rule the whole screen hangs from. */
+  const val HEADER_RULE: String = "sessions:header-rule"
 
   fun sessionOf(id: String): String = "sessions:session:$id"
 

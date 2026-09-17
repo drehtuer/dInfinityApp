@@ -11,12 +11,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,10 +22,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.simulation.api.Anomaly
 import de.drehtuer.dinfinity.simulation.api.AnomalyReport
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
  * The developer screen: the anomaly log, and the two ways of throwing the last
@@ -77,8 +80,9 @@ fun DeveloperScreen(
       }
       Text(
         text = stringResource(R.string.developer_explanation),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Normal,
+        color = Ink.muted,
       )
       ReplaySection(presenter)
       AnomalySection(presenter, onShare)
@@ -101,17 +105,17 @@ private fun ReplaySection(presenter: DeveloperPresenter) {
     explanation = stringResource(R.string.developer_replay_explanation),
   ) {
     Standing(presenter.state)
-    Button(
+    ModernistButton(
+      text = stringResource(R.string.developer_replay_last),
       onClick = presenter::replayLast,
+      kind = ModernistButtonKind.Primary,
       enabled = presenter.canReplay,
       modifier =
         Modifier
           .fillMaxWidth()
           .heightIn(min = TOUCH_TARGET)
           .testTag(DeveloperTestTags.REPLAY_LAST),
-    ) {
-      Text(stringResource(R.string.developer_replay_last))
-    }
+    )
     FromASeed(presenter)
   }
 }
@@ -123,7 +127,7 @@ private fun Standing(state: ReplayState) {
     ReplayState.Nothing ->
       Line(
         text = stringResource(R.string.developer_replay_nothing),
-        colour = MaterialTheme.colorScheme.onSurfaceVariant,
+        colour = Ink.muted,
         tag = DeveloperTestTags.NOTHING,
       )
 
@@ -166,17 +170,17 @@ private fun FromASeed(presenter: DeveloperPresenter) {
         .fillMaxWidth()
         .testTag(DeveloperTestTags.SEED),
   )
-  Button(
+  ModernistButton(
+    text = stringResource(R.string.developer_replay_from_seed),
     onClick = presenter::replayFromSeed,
+    kind = ModernistButtonKind.Primary,
     enabled = presenter.canReplay && presenter.typedSeed != null,
     modifier =
       Modifier
         .fillMaxWidth()
         .heightIn(min = TOUCH_TARGET)
         .testTag(DeveloperTestTags.REPLAY_SEED),
-  ) {
-    Text(stringResource(R.string.developer_replay_from_seed))
-  }
+  )
 }
 
 /** What a replay came to, and whether it agreed with the throw it replays. */
@@ -191,7 +195,7 @@ private fun Replayed(state: ReplayState.Replayed) {
           state.faces.joinToString(separator = " "),
           state.outcome.steps,
         ),
-      style = MaterialTheme.typography.bodySmall,
+      style = MaterialTheme.typography.labelLarge,
       fontFamily = FontFamily.Monospace,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.testTag(DeveloperTestTags.RESULT),
@@ -204,7 +208,7 @@ private fun Replayed(state: ReplayState.Replayed) {
           stringResource(
             if (same) R.string.developer_replay_same else R.string.developer_replay_different,
           ),
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodyLarge,
         color = if (same) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.error,
         modifier = Modifier.testTag(DeveloperTestTags.VERDICT),
       )
@@ -221,7 +225,7 @@ private fun Line(
 ) {
   Text(
     text = text,
-    style = MaterialTheme.typography.bodyMedium,
+    style = MaterialTheme.typography.bodyLarge,
     color = colour,
     modifier = Modifier.testTag(tag),
   )
@@ -248,26 +252,26 @@ private fun AnomalySection(
     if (!presenter.hasAnomalies) {
       Text(
         text = AnomalyReport.NOTHING,
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyLarge,
+        color = Ink.muted,
         modifier = Modifier.testTag(DeveloperTestTags.NO_ANOMALIES),
       )
       return@Section
     }
     presenter.anomalies.forEach { anomaly -> AnomalyRow(anomaly) }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.developer_anomalies_share),
         onClick = { onShare(presenter.report) },
+        kind = ModernistButtonKind.Secondary,
         modifier = Modifier.heightIn(min = TOUCH_TARGET).testTag(DeveloperTestTags.SHARE),
-      ) {
-        Text(stringResource(R.string.developer_anomalies_share))
-      }
-      TextButton(
+      )
+      ModernistButton(
+        text = stringResource(R.string.developer_anomalies_clear),
         onClick = presenter::clear,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.heightIn(min = TOUCH_TARGET).testTag(DeveloperTestTags.CLEAR),
-      ) {
-        Text(stringResource(R.string.developer_anomalies_clear))
-      }
+      )
     }
   }
 }
@@ -282,9 +286,6 @@ private fun AnomalyRow(anomaly: Anomaly) {
     modifier = Modifier.testTag(DeveloperTestTags.anomalyOf(anomaly.seed)),
   )
 }
-
-/** Android's own minimum, so a button here is as pressable as one anywhere. */
-private val TOUCH_TARGET = 48.dp
 
 /** Stable handles for tests, so a wording change does not break them. */
 object DeveloperTestTags {

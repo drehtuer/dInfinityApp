@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,11 +25,15 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.stats.RollComparison
 import de.drehtuer.dinfinity.core.stats.TotalBar
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 
 /**
  * What a saved roll has actually rolled, against what it should
@@ -78,40 +80,46 @@ private fun Header(
   menu: @Composable () -> Unit,
 ) {
   Row(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = Modernist.x4, vertical = Modernist.x2),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Text(
       text = state.selected?.roll?.name ?: stringResource(R.string.savedstats_title),
+      // The heading weight is the style's own 800; `Bold` is 700.
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
+      color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(1f),
     )
     if (state.selected != null) {
-      TextButton(onClick = { presenter.close() }, modifier = Modifier.testTag(SavedStatsTestTags.BACK)) {
-        Text(stringResource(R.string.savedstats_back))
-      }
+      ModernistButton(
+        text = stringResource(R.string.savedstats_back),
+        onClick = { presenter.close() },
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(SavedStatsTestTags.BACK),
+      )
     }
     menu()
   }
+  // The rule every screen in the prototype hangs from.
+  Rule(modifier = Modifier.testTag(SavedStatsTestTags.HEADER_RULE))
 }
 
 @Composable
 private fun EmptyNote() {
   Column(
-    modifier = Modifier.fillMaxWidth().padding(16.dp).testTag(SavedStatsTestTags.EMPTY),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
+    modifier = Modifier.fillMaxWidth().padding(Modernist.x4).testTag(SavedStatsTestTags.EMPTY),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
     Text(
       text = stringResource(R.string.savedstats_empty_title),
-      style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.titleLarge,
+      color = MaterialTheme.colorScheme.onBackground,
     )
     Text(
       text = stringResource(R.string.savedstats_empty_body),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.bodyLarge,
+      color = Ink.muted,
     )
   }
 }
@@ -124,25 +132,29 @@ private fun Rolls(
   Text(
     text = stringResource(R.string.savedstats_order),
     style = MaterialTheme.typography.labelSmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    color = Ink.muted,
+    modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x1),
   )
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedStatsTestTags.LIST)) {
     items(rolls, key = SavedRoll::id) { roll ->
-      HorizontalDivider()
+      Rule(weight = RuleWeight.Hairline)
       Column(
         modifier =
           Modifier
             .fillMaxWidth()
             .clickable { presenter.select(roll.id) }
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = Modernist.x4, vertical = Modernist.x3)
             .testTag(SavedStatsTestTags.rollOf(roll.id)),
       ) {
-        Text(text = roll.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+        Text(
+          text = roll.name,
+          style = MaterialTheme.typography.titleLarge,
+          color = MaterialTheme.colorScheme.onBackground,
+        )
         Text(
           text = roll.formula,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.labelSmall,
+          color = Ink.muted,
         )
       }
     }
@@ -156,14 +168,14 @@ private fun Detail(stats: SavedRollStats) {
     modifier =
       Modifier
         .fillMaxSize()
-        .padding(horizontal = 16.dp)
+        .padding(horizontal = Modernist.x4)
         .testTag(SavedStatsTestTags.DETAIL),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Text(
       text = stats.roll.formula,
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.bodyLarge,
+      color = Ink.muted,
     )
     if (comparison.throws == 0L) {
       Text(text = stringResource(R.string.savedstats_never), modifier = Modifier.testTag(SavedStatsTestTags.NEVER))
@@ -173,8 +185,8 @@ private fun Detail(stats: SavedRollStats) {
     stats.noExpectation?.let { why ->
       Text(
         text = why,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.testTag(SavedStatsTestTags.NO_EXPECTATION),
       )
     }
@@ -191,23 +203,23 @@ private fun Numbers(
 ) {
   Column(
     modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) { },
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
     Text(
       text = pluralStringResource(R.plurals.savedstats_throws, comparison.throws.toInt(), comparison.throws.toInt()),
-      style = MaterialTheme.typography.titleMedium,
+      style = MaterialTheme.typography.titleLarge,
       modifier = Modifier.testTag(SavedStatsTestTags.THROWS),
     )
     Text(
       text = stringResource(R.string.savedstats_rolled, format(comparison.mean)),
-      style = MaterialTheme.typography.bodyMedium,
+      style = MaterialTheme.typography.bodyLarge,
       modifier = Modifier.testTag(SavedStatsTestTags.MEAN),
     )
     if (!observedOnly) {
       Text(
         text = stringResource(R.string.savedstats_expected, format(comparison.expectedMean)),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.bodyLarge,
+        color = Ink.muted,
         modifier = Modifier.testTag(SavedStatsTestTags.EXPECTED),
       )
     }
@@ -227,8 +239,8 @@ private fun Numbers(
             comparison.possible.last,
           )
         },
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
       modifier = Modifier.testTag(SavedStatsTestTags.RANGE),
     )
   }
@@ -250,8 +262,8 @@ private fun Verdict(comparison: RollComparison) {
     }
   Text(
     text = text,
-    style = MaterialTheme.typography.bodySmall,
-    color = if (comparison.worthALook) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+    style = MaterialTheme.typography.labelSmall,
+    color = if (comparison.worthALook) MaterialTheme.colorScheme.primary else Ink.muted,
     modifier = Modifier.testTag(SavedStatsTestTags.VERDICT),
   )
 }
@@ -267,7 +279,7 @@ private fun Verdict(comparison: RollComparison) {
 private fun Chart(bars: List<TotalBar>) {
   if (bars.isEmpty()) return
   val ink = MaterialTheme.colorScheme.onSurface
-  val mark = MaterialTheme.colorScheme.error
+  val mark = MaterialTheme.colorScheme.primary
   // Which rectangle is the bar and which the distribution's mark is carried by
   // colour alone, on a `Canvas` that hands a screen reader an empty rectangle.
   // What the picture claims is a count, and a count can be said out loud
@@ -303,7 +315,7 @@ private fun Chart(bars: List<TotalBar>) {
 /** Two decimals, or an em dash when there is no number. Not a composable: it composes nothing. */
 private fun format(value: Double?): String = value?.let { "%.2f".format(it) } ?: "—"
 
-private val CHART_HEIGHT = 140.dp
+private val CHART_HEIGHT = Modernist.x8 * 4
 
 /** What the tests reach for. */
 object SavedStatsTestTags {
@@ -320,6 +332,9 @@ object SavedStatsTestTags {
   const val VERDICT: String = "savedstats:verdict"
   const val NEVER: String = "savedstats:never"
   const val NO_EXPECTATION: String = "savedstats:noexpectation"
+
+  /** The 2 dp rule the whole screen hangs from. */
+  const val HEADER_RULE: String = "savedstats:header-rule"
 
   fun rollOf(id: String): String = "savedstats:roll:$id"
 }

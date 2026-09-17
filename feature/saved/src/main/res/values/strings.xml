@@ -108,4 +108,26 @@
   <string name="import_fetch">Fetch</string>
   <string name="import_fetching">Fetching %1$s…</string>
   <string name="import_unreachable">No collection came back from that link.</string>
+
+  <!-- The marks a roll or a group can wear. A mark is a picture, so what a
+       screen reader says is what the picture is of — the same name whichever
+       picker it is offered in. -->
+  <string name="mark_crossed_swords">Crossed swords</string>
+  <string name="mark_bow">Bow and arrow</string>
+  <string name="mark_fire">Fire</string>
+  <string name="mark_shield">Shield</string>
+  <string name="mark_sparkles">Sparkles</string>
+  <string name="mark_skull">Skull</string>
+  <string name="mark_dagger">Dagger</string>
+  <string name="mark_burst">Burst</string>
+  <string name="mark_dice">Dice</string>
+  <string name="mark_potion">Potion</string>
+  <string name="mark_dragon">Dragon</string>
+  <string name="mark_castle">Castle</string>
+  <string name="mark_map">Map</string>
+  <string name="mark_wizard">Wizard</string>
+  <string name="mark_tree">Tree</string>
+  <string name="mark_rocket">Rocket</string>
+  <string name="mark_book">Book</string>
+  <string name="mark_star">Star</string>
 </resources>

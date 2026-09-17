@@ -50,6 +50,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
 import java.nio.file.Files
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 /**
  * The dice-set list on screen (`design/dInfinity.dc.html`, option `5a`).
@@ -150,6 +152,35 @@ class SetsScreenTest {
   }
 
   @Test
+  fun `the screen is grouped into blocks by kickers rather than left one column`() {
+    // The design system has no cards, no shadows and no rounded containers, so
+    // an accent label over a 2 dp rule is the only thing that says where the
+    // install controls stop and the list begins
+    // (`design/dInfinityPhone.dc.html`, the Dice sets screen).
+    show()
+
+    compose.onNodeWithText("Install from a URL or file").assertIsDisplayed()
+    compose.onNodeWithText("Installed").assertIsDisplayed()
+  }
+
+  @Test
+  fun `a refusal heads its errors with how many there are`() {
+    // The prototype puts the count in the kicker over the list, because it is
+    // the one thing worth knowing before reading any of it. Beside it, the
+    // same block after an install that *worked* stays muted: warnings are not
+    // something to go and fix.
+    val presenter = show()
+
+    presenter.install(zip("runes", "format = 1\n\n[set]\nid = \"runes\"\n"))
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+
+    val refused = presenter.state.outcome as PackageInstaller.Result.Failed
+    assertTrue("the validator said nothing was wrong", refused.report.isNotEmpty())
+    val counted = if (refused.report.size == 1) "1 error" else "${refused.report.size} errors"
+    compose.onNodeWithText(counted).assertIsDisplayed()
+  }
+
+  @Test
   fun `a refusal lists every error and can be put away`() {
     val presenter = show()
     presenter.refused("that file is not a dice set")
@@ -195,7 +226,12 @@ class SetsScreenTest {
   }
 
   @Test
-  fun `a set switched off says so`() {
+  fun `a set switched off is badged, and the badge is what a row is read as saying`() {
+    // The state moved from the line under the name to a tag at the end of the
+    // row (`design/dInfinityPhone.dc.html`, lines 444-446), so the line says
+    // what the set *is* and the badge says what was done to it. It has to be
+    // **announced**: a tag that only exists as a picture is a state a screen
+    // reader cannot reach.
     write("brass", toml("brass", "Brass"))
     val presenter = show()
     compose.waitUntil(PATIENCE) { presenter.state.sets.any { it.id == "brass" } }
@@ -208,9 +244,30 @@ class SetsScreenTest {
         .not()
     }
 
-    compose
-      .onNodeWithTag(SetsTestTags.setOf("brass"))
-      .assertTextContains("Switched off", substring = true)
+    compose.onNodeWithTag(SetsTestTags.disabledOf("brass"), useUnmergedTree = true).assertExists()
+    val row = compose.onNodeWithTag(SetsTestTags.setOf("brass"))
+    // The app's own word rather than the prototype's `disabled`, which is what
+    // TalkBack says about a control that cannot be operated (`Badges`).
+    row.assertTextContains("switched off", substring = true)
+    row.assertTextContains("1 die", substring = true)
+  }
+
+  @Test
+  fun `the set a plain d20 comes from is badged, and the others are not`() {
+    // The app never said which set was the default at all
+    // (`docs/design-handover.md`). It is a state that is simply true, so it is
+    // the neutral tag — and it is on exactly one row, or it says nothing.
+    write("brass", toml("brass", "Brass"))
+    val presenter = show(default = "brass")
+    compose.waitUntil(PATIENCE) { presenter.state.sets.any { it.id == "brass" } }
+
+    val brass = presenter.state.sets.single { it.id == "brass" }
+    assertTrue("the row does not know it is the default", brass.isDefault)
+    compose.onNodeWithTag(SetsTestTags.defaultOf("brass"), useUnmergedTree = true).assertExists()
+    compose.onNodeWithTag(SetsTestTags.defaultOf("builtin"), useUnmergedTree = true).assertDoesNotExist()
+    // And it is read out with the row rather than being a chip only the eye
+    // gets (`docs/architecture.md`, "Accessibility").
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).assertTextContains("default", substring = true)
   }
 
   @Test
@@ -446,9 +503,10 @@ class SetsScreenTest {
     download: suspend (String, (PackageFetcher.Progress) -> Unit) -> FetchedPackage =
       { _, _ -> FetchedPackage.Failed("no downloader in this test") },
     latestCommit: suspend (String, String?) -> LatestCommit = { _, _ -> LatestCommit.Unknown },
+    default: String = DiceSet.BUILTIN_ID,
   ): SetsPresenter {
     val presenter =
-      SetsPresenter(library(), scope, download, latestCommit)
+      SetsPresenter(library(default), scope, download, latestCommit)
     compose.setContent { SetsScreen(presenter, onOpen = onOpen, onInstall = onInstall) }
     // The first reading of the disk is asynchronous, and every one of these
     // tests is about what the screen shows once it has happened.
@@ -720,15 +778,29 @@ class SetsScreenTest {
     )
   }
 
-  private fun library() =
+  private fun library(default: String = DiceSet.BUILTIN_ID) =
     SetLibrary(
       bundled = bundledSet(),
       installed = InstalledSets(root),
       registry = registry,
       io = Dispatchers.Unconfined,
       installer = PackageInstaller(root),
-      defaultSetId = { DiceSet.BUILTIN_ID },
+      defaultSetId = { default },
     )
+
+  /** A package as one folder inside a zip, which is what a forge hands out. */
+  private fun zip(
+    id: String,
+    toml: String,
+  ): File {
+    val file = File(temporary, "$id-${System.nanoTime()}.zip")
+    ZipOutputStream(file.outputStream()).use { out ->
+      out.putNextEntry(ZipEntry("$id-main/${DiceSetValidator.DICE_SET_FILE}"))
+      out.write(toml.encodeToByteArray())
+      out.closeEntry()
+    }
+    return file
+  }
 
   private fun write(
     id: String,

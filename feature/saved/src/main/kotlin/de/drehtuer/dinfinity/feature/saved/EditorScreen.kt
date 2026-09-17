@@ -15,14 +15,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -31,11 +27,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.ui.common.FormulaField
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.OptionBox
+import de.drehtuer.dinfinity.ui.common.OptionFill
+import de.drehtuer.dinfinity.ui.common.Rule
 
 /**
  * Writing down a saved roll (`design/dInfinity.dc.html`, options 1r and 7b).
@@ -64,18 +67,48 @@ fun EditorScreen(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
         .safeDrawingPadding()
-        .verticalScroll(rememberScrollState())
-        .padding(16.dp)
         .testTag(EditorTestTags.SCREEN),
-    verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
-    Text(
-      text = stringResource(if (state.existing) R.string.editor_title_edit else R.string.editor_title_new),
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Bold,
-      color = MaterialTheme.colorScheme.onBackground,
+    Title(existing = state.existing)
+    Form(
+      state = state,
+      presenter = presenter,
+      groups = groups,
+      onRollNow = onRollNow,
     )
+  }
 
+  NewGroup(groups = groups, onMade = { groupId -> presenter.choose { copy(groupId = groupId) } })
+
+  // Written down, or taken away: either way there is nothing left to edit.
+  // An effect rather than a call from the composition, because leaving a
+  // screen is not something to do while drawing it.
+  LaunchedEffect(state.saved, state.gone) {
+    if (state.saved || state.gone) onDone()
+  }
+}
+
+/**
+ * Everything about the roll that can be typed or chosen, under the title bar.
+ *
+ * Its own composable rather than the screen's own body: the screen is the
+ * chrome and the leaving, and the form is long enough to read on its own.
+ */
+@Composable
+private fun Form(
+  state: EditorState,
+  presenter: EditorPresenter,
+  groups: GroupPresenter,
+  onRollNow: (String) -> Unit,
+) {
+  Column(
+    modifier =
+      Modifier
+        .fillMaxSize()
+        .verticalScroll(rememberScrollState())
+        .padding(Modernist.x4),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x4),
+  ) {
     OutlinedTextField(
       value = state.name,
       onValueChange = presenter::name,
@@ -98,8 +131,8 @@ fun EditorScreen(
     if (odds != null) {
       Text(
         text = stringResource(R.string.editor_odds, "%.1f".format(odds.mean), odds.lowest, odds.highest),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelSmall,
+        color = Ink.muted,
         modifier = Modifier.testTag(EditorTestTags.ODDS),
       )
     }
@@ -118,15 +151,23 @@ fun EditorScreen(
     Favourite(on = state.favourite) { chosen -> presenter.choose { copy(favourite = chosen) } }
     Buttons(state = state, presenter = presenter, onRollNow = onRollNow)
   }
+}
 
-  NewGroup(groups = groups, onMade = { groupId -> presenter.choose { copy(groupId = groupId) } })
-
-  // Written down, or taken away: either way there is nothing left to edit.
-  // An effect rather than a call from the composition, because leaving a
-  // screen is not something to do while drawing it.
-  LaunchedEffect(state.saved, state.gone) {
-    if (state.saved || state.gone) onDone()
-  }
+/**
+ * What the screen is, over the 2 dp rule every screen in the prototype hangs
+ * from. `titleLarge` is the heading face at 800 — the system's own heading
+ * weight — where `headlineSmall` is a style the theme does not fill in and so
+ * was Material's 24 sp at 400.
+ */
+@Composable
+private fun Title(existing: Boolean) {
+  Text(
+    text = stringResource(if (existing) R.string.editor_title_edit else R.string.editor_title_new),
+    style = MaterialTheme.typography.titleLarge,
+    color = MaterialTheme.colorScheme.onBackground,
+    modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x2),
+  )
+  Rule()
 }
 
 @Composable
@@ -136,7 +177,7 @@ private fun Favourite(
 ) {
   Row(
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
     modifier =
       Modifier
         .fillMaxWidth()
@@ -146,7 +187,7 @@ private fun Favourite(
     Checkbox(checked = on, onCheckedChange = null)
     Text(
       text = stringResource(R.string.editor_favourite),
-      style = MaterialTheme.typography.bodyMedium,
+      style = MaterialTheme.typography.bodyLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
   }
@@ -165,26 +206,35 @@ private fun Buttons(
   presenter: EditorPresenter,
   onRollNow: (String) -> Unit,
 ) {
-  Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-    Button(
+  // Over a 2 dp rule, and in the prototype's three weights: the one thing to
+  // do is filled, the other is outlined, and the one that takes something away
+  // is a ghost.
+  Rule()
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    ModernistButton(
+      text = stringResource(R.string.editor_save),
       onClick = { presenter.save() },
+      kind = ModernistButtonKind.Primary,
       enabled = state.savable,
       modifier = Modifier.testTag(EditorTestTags.SAVE),
-    ) {
-      Text(stringResource(R.string.editor_save))
-    }
-    TextButton(
+    )
+    ModernistButton(
+      text = stringResource(R.string.editor_roll_now),
       onClick = { onRollNow(state.formula) },
       enabled = state.savable,
       modifier = Modifier.testTag(EditorTestTags.ROLL_NOW),
-    ) {
-      Text(stringResource(R.string.editor_roll_now))
-    }
+    )
     Text(text = "", modifier = Modifier.weight(1f))
     if (state.existing) {
-      TextButton(onClick = presenter::delete, modifier = Modifier.testTag(EditorTestTags.DELETE)) {
-        Text(stringResource(R.string.editor_delete), color = MaterialTheme.colorScheme.error)
-      }
+      ModernistButton(
+        text = stringResource(R.string.editor_delete),
+        onClick = presenter::delete,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(EditorTestTags.DELETE),
+      )
     }
   }
 }
@@ -203,12 +253,23 @@ private fun Icons(
   onPick: (String) -> Unit,
 ) {
   Field(stringResource(R.string.editor_icon)) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       ICONS.forEach { icon ->
-        FilterChip(
+        OptionBox(
+          text = icon,
           selected = icon == chosen,
           onClick = { onPick(if (icon == chosen) "" else icon) },
-          label = { Text(icon) },
+          // The ink, not the accent: a mark already prints in the accent when
+          // the roll wears one, and a red square behind a red mark is the two
+          // saying the same thing over each other.
+          fill = OptionFill.Ink,
+          square = true,
+          // Tapping the chosen mark clears it, so this is a set that can end
+          // up empty — checkboxes, not a radio group.
+          role = Role.Checkbox,
+          // The emoji is the label, and an emoji is not a name: a screen
+          // reader is told what the picture is of (`MarkNames.kt`).
+          contentDescription = markName(icon)?.let { name -> stringResource(name) },
           modifier = Modifier.testTag(EditorTestTags.iconOf(icon)),
         )
       }
@@ -230,7 +291,10 @@ private fun Colours(
   onPick: (Int?) -> Unit,
 ) {
   Field(stringResource(R.string.editor_colour)) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+      horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
       Swatch(colour = null, chosen = chosen == null, onPick = { onPick(null) }, tag = EditorTestTags.colourOf(null))
       AccentColor.entries.forEach { accent ->
         Swatch(
@@ -256,10 +320,13 @@ private fun Swatch(
       modifier =
         Modifier
           .size(SWATCH)
-          .background(colour ?: MaterialTheme.colorScheme.surfaceVariant)
+          .background(colour ?: MaterialTheme.colorScheme.surface)
+          // The prototype draws every swatch with the same 2 px border and
+          // says which one is chosen by its colour: the ink, against the
+          // divider the others wear.
           .border(
-            width = if (chosen) 3.dp else 1.dp,
-            color = if (chosen) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.outline,
+            width = Modernist.rule,
+            color = if (chosen) MaterialTheme.colorScheme.onBackground else Ink.divider,
           ).clickable(onClick = onPick)
           .testTag(tag),
     ) { }
@@ -288,18 +355,22 @@ private fun Groups(
   onNew: () -> Unit,
 ) {
   Field(stringResource(R.string.editor_group)) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       state.groups.forEach { group ->
-        FilterChip(
+        OptionBox(
+          text = group.name,
           selected = group.id == state.groupId,
           onClick = { onPick(group.id) },
-          label = { Text(group.name) },
+          fill = OptionFill.Accent,
           modifier = Modifier.testTag(EditorTestTags.groupOf(group.id)),
         )
       }
-      AssistChip(
+      // Not one of the options: making a group is an action, and a control
+      // that does something rather than standing for a choice is a button.
+      ModernistButton(
+        text = stringResource(R.string.group_new),
         onClick = onNew,
-        label = { Text(stringResource(R.string.group_new)) },
+        kind = ModernistButtonKind.Secondary,
         modifier = Modifier.testTag(EditorTestTags.NEW_GROUP),
       )
     }
@@ -319,12 +390,13 @@ private fun Tables(
   onPick: (TablePin?) -> Unit,
 ) {
   Field(stringResource(R.string.editor_table)) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       state.tables.forEach { choice ->
-        FilterChip(
+        OptionBox(
+          text = choice.name ?: stringResource(R.string.editor_table_default),
           selected = choice.pin == state.tablePin,
           onClick = { onPick(choice.pin) },
-          label = { Text(choice.name ?: stringResource(R.string.editor_table_default)) },
+          fill = OptionFill.Accent,
           modifier = Modifier.testTag(EditorTestTags.tableOf(choice.pin)),
         )
       }
@@ -332,7 +404,7 @@ private fun Tables(
     Text(
       text = stringResource(R.string.editor_table_note),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
   }
 }
@@ -342,20 +414,22 @@ private fun Field(
   label: String,
   content: @Composable () -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
     Text(
+      // `.field > label`: small, quiet, and above the thing it names.
       text = label,
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
     )
     content()
   }
 }
 
-private val SWATCH = 34.dp
+/** `width:34px;height:34px` — the prototype's own colour swatch. */
+private val SWATCH: Dp = 34.dp
 
 /** The marks on offer. Emoji, because every phone already draws them. */
-private val ICONS = listOf("⚔️", "🏹", "🔥", "🛡️", "✨", "💀", "🗡️", "💥", "🎲", "🧪")
+internal val ICONS = listOf("⚔️", "🏹", "🔥", "🛡️", "✨", "💀", "🗡️", "💥", "🎲", "🧪")
 
 /** What the tests reach the editor by. */
 object EditorTestTags {

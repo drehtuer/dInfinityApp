@@ -11,13 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +31,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
+import de.drehtuer.dinfinity.ui.common.SectionKicker
+import de.drehtuer.dinfinity.ui.common.Sheet
+import de.drehtuer.dinfinity.ui.common.Tag
+import de.drehtuer.dinfinity.ui.common.TagKind
 import kotlin.math.roundToInt
 
 /**
@@ -71,10 +78,18 @@ fun SetsScreen(
         .testTag(SetsTestTags.SCREEN),
   ) {
     Header(menu)
+    // Two kickers and one rule are the whole of the grouping on this screen:
+    // the system has no cards, no shadows and no rounded containers, so an
+    // accent label over a 2 dp line is the only thing that says where one
+    // block ends and the next begins (`design/dInfinityPhone.dc.html`, the
+    // Dice sets screen).
+    Kicker(stringResource(R.string.sets_kicker_install))
     Installing(state, onInstall)
     FromLink(state, presenter)
     Downloading(state, onCancel = presenter::cancel)
+    Rule(modifier = Modifier.padding(top = Modernist.x2))
     Updates(state, presenter)
+    Kicker(stringResource(R.string.sets_kicker_installed))
     // The note goes *above* the list rather than instead of it. The bundled
     // set is a row like any other and is always there, so replacing the list
     // would hide the one set every fallback resolves against (`5a`).
@@ -99,13 +114,15 @@ private fun Installing(
   state: SetsState,
   onInstall: () -> Unit,
 ) {
-  TextButton(
+  // A ghost: the prototype keeps "pick a file" as `btn-ghost` under the filled
+  // action beside the URL field.
+  ModernistButton(
+    text = stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install),
     onClick = onInstall,
     enabled = !state.installing,
+    kind = ModernistButtonKind.Ghost,
     modifier = Modifier.padding(horizontal = 8.dp).testTag(SetsTestTags.INSTALL),
-  ) {
-    Text(stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install))
-  }
+  )
 }
 
 /**
@@ -150,9 +167,12 @@ private fun Downloading(
         modifier = Modifier.weight(1f).semantics { contentDescription = farAlong },
       )
     }
-    TextButton(onClick = onCancel, modifier = Modifier.testTag(SetsTestTags.STOP)) {
-      Text(stringResource(R.string.sets_cancel))
-    }
+    ModernistButton(
+      text = stringResource(R.string.sets_cancel),
+      onClick = onCancel,
+      kind = ModernistButtonKind.Ghost,
+      modifier = Modifier.testTag(SetsTestTags.STOP),
+    )
   }
 }
 
@@ -184,13 +204,16 @@ private fun FromLink(
       label = { Text(stringResource(R.string.sets_link_label)) },
       modifier = Modifier.weight(1f).testTag(SetsTestTags.LINK),
     )
-    TextButton(
+    // The one filled button of the section: the prototype sets the action
+    // beside the URL field as `btn btn-primary` and leaves "pick a file" and
+    // "try this one" as ghosts beneath it.
+    ModernistButton(
+      text = stringResource(R.string.sets_fetch),
       onClick = { presenter.installFrom(url) },
       enabled = !state.installing && url.isNotBlank(),
+      kind = ModernistButtonKind.Primary,
       modifier = Modifier.testTag(SetsTestTags.FETCH),
-    ) {
-      Text(stringResource(R.string.sets_fetch))
-    }
+    )
   }
 }
 
@@ -206,28 +229,34 @@ private fun OutcomeSheet(
   outcome: PackageInstaller.Result,
   presenter: SetsPresenter,
 ) {
-  AlertDialog(
-    onDismissRequest = { presenter.dismiss() },
+  Sheet(
+    title = outcomeTitle(outcome),
+    onDismiss = { presenter.dismiss() },
     modifier = Modifier.testTag(SetsTestTags.OUTCOME),
-    title = { Text(outcomeTitle(outcome)) },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (outcome is PackageInstaller.Result.Failed) {
-          Text(
-            text = outcome.reason,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.testTag(SetsTestTags.OUTCOME_REASON),
-          )
-        }
-        Messages(outcome)
-      }
+    actions = {
+      // The only way out of the sheet is a dismissal, not a confirmation, so
+      // it is the ghost: there is nothing here to fill a button for.
+      ModernistButton(
+        text = stringResource(R.string.sets_install_close),
+        onClick = { presenter.dismiss() },
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(SetsTestTags.OUTCOME_CLOSE),
+      )
     },
-    confirmButton = {
-      TextButton(onClick = { presenter.dismiss() }, modifier = Modifier.testTag(SetsTestTags.OUTCOME_CLOSE)) {
-        Text(stringResource(R.string.sets_install_close))
+  ) {
+    // Tighter than the sheet's own spacing: the reason and the lines the
+    // validator wrote are one block of text, not three parts of the sheet.
+    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
+      if (outcome is PackageInstaller.Result.Failed) {
+        Text(
+          text = outcome.reason,
+          style = MaterialTheme.typography.bodyMedium,
+          modifier = Modifier.testTag(SetsTestTags.OUTCOME_REASON),
+        )
       }
-    },
-  )
+      Messages(outcome)
+    }
+  }
 }
 
 @Composable
@@ -253,22 +282,22 @@ private fun Messages(outcome: PackageInstaller.Result) {
     }
   if (messages.isEmpty()) return
   if (outcome is PackageInstaller.Result.Installed) {
+    // Muted, not the accent: the prototype writes the warning count over an
+    // install that *worked* at `opacity:.6` and keeps the accent for the
+    // refusal below, which is the one that needs doing something about.
     Text(
       text = stringResource(R.string.sets_install_warnings),
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
+  } else {
+    SectionKicker(text = pluralStringResource(R.plurals.sets_install_errors, messages.size, messages.size))
   }
   messages.forEach { message ->
     Text(
       text = message.toString(),
       style = MaterialTheme.typography.bodySmall,
-      color =
-        if (outcome is PackageInstaller.Result.Failed) {
-          MaterialTheme.colorScheme.error
-        } else {
-          MaterialTheme.colorScheme.onSurfaceVariant
-        },
+      color = if (outcome is PackageInstaller.Result.Failed) Ink.accent else Ink.muted,
       modifier = Modifier.testTag(SetsTestTags.OUTCOME_LINE),
     )
   }
@@ -283,8 +312,9 @@ private fun Header(menu: @Composable () -> Unit) {
   ) {
     Text(
       text = stringResource(R.string.sets_title),
+      // `titleLarge` is already the heading font at 800; a `Bold` here pulled
+      // it back to Material's 700 (`--font-heading-weight: 800`).
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
       modifier = Modifier.weight(1f),
     )
     menu()
@@ -292,8 +322,28 @@ private fun Header(menu: @Composable () -> Unit) {
   Text(
     text = stringResource(R.string.sets_order),
     style = MaterialTheme.typography.bodySmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    color = Ink.muted,
     modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+  )
+}
+
+/**
+ * A [SectionKicker] at the screen's own gutter.
+ *
+ * Only the padding is local: what a kicker *is* — ten sp, tracked out,
+ * semibold, in the accent — belongs to the design system, and a second
+ * spelling of it here is how the app drifted from the prototype in the first
+ * place (`docs/design-handover.md`).
+ */
+@Composable
+private fun Kicker(text: String) {
+  SectionKicker(
+    text = text,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(horizontal = Modernist.x4)
+        .padding(top = Modernist.x3, bottom = Modernist.x1),
   )
 }
 
@@ -306,12 +356,12 @@ private fun EmptyNote() {
     Text(
       text = stringResource(R.string.sets_empty_title),
       style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      fontWeight = FontWeight.ExtraBold,
     )
     Text(
       text = stringResource(R.string.sets_empty_body),
       style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
   }
 }
@@ -330,7 +380,9 @@ private fun Sets(
         onOpen = { onOpen(row) },
         onHold = { presenter.act(row) },
       )
-      HorizontalDivider()
+      // Between the rows of one block, so the hairline rather than the 2 dp
+      // rule that separates the sections above (`ui/common/Rule.kt`).
+      Rule(weight = RuleWeight.Hairline)
     }
   }
 }
@@ -357,13 +409,13 @@ private fun Updates(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    TextButton(
+    ModernistButton(
+      text = stringResource(if (state.checking) R.string.sets_checking else R.string.sets_check),
       onClick = { presenter.checkForUpdates() },
       enabled = !state.checking && !state.installing,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(SetsTestTags.CHECK),
-    ) {
-      Text(stringResource(if (state.checking) R.string.sets_checking else R.string.sets_check))
-    }
+    )
     state.checked?.let { checked ->
       Text(
         text =
@@ -376,7 +428,7 @@ private fun Updates(
               pluralStringResource(R.plurals.sets_check_unreachable, checked.unreachable, checked.unreachable)
           },
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.testTag(SetsTestTags.CHECKED),
       )
     }
@@ -407,43 +459,101 @@ private fun SetLine(
         }.semantics(mergeDescendants = true) { }
         .padding(horizontal = 16.dp, vertical = 12.dp)
         .testTag(SetsTestTags.setOf(row.id)),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
   ) {
     Row(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(8.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(
-        text = row.name,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
+      Column(
         modifier = Modifier.weight(1f),
-      )
-      row.version?.let { version ->
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            text = row.name,
+            // `.card-title`: the heading font at 800, which is what every name
+            // in this system is set in.
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.weight(1f),
+          )
+          row.version?.let { version ->
+            Text(
+              text = version,
+              style = MaterialTheme.typography.labelMedium,
+              color = Ink.muted,
+            )
+          }
+        }
         Text(
-          text = version,
-          style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          text = status(row),
+          style = MaterialTheme.typography.bodySmall,
+          // The accent is for the one state that needs doing something about.
+          // A set that is switched off is badged at the end of the row and is
+          // not a problem, and colouring its line like one would make every
+          // deliberate choice look like a fault.
+          color = if (row.broken) Ink.accent else Ink.muted,
         )
+        // Under the status rather than replacing it: whether a set is broken or
+        // switched off is what the player can do something about first, and
+        // "there is something newer" is true whatever else the row says.
+        if (outdated) {
+          Text(
+            text = stringResource(R.string.sets_outdated),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.testTag(SetsTestTags.outdatedOf(row.id)),
+          )
+        }
       }
+      Badges(row)
     }
-    Text(
-      text = status(row),
-      style = MaterialTheme.typography.bodySmall,
-      color = if (row.usable) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+  }
+}
+
+/**
+ * What state a row is in, at the end of it.
+ *
+ * Where the prototype puts them (`design/dInfinityPhone.dc.html`, lines
+ * 444–446): after the name and the meta line, neutral for a state that is
+ * simply true and outlined for one somebody chose. Neither is pressable — the
+ * row is the only thing on this line that does anything, and a badge that took
+ * a tap would need a touch target twice its height.
+ *
+ * **The switched-off badge does not say the prototype's word.** The prototype
+ * writes `disabled`, and it is a drawing: it does not know what a screen reader
+ * says. On Android "disabled" is the word TalkBack uses for a control that
+ * cannot be operated, and these rows are very much operable — a tap opens the
+ * set and a long press acts on it — so "Brass, 1.0.0, 5 dice, disabled" would
+ * tell a listener the row is dead. The app already says "switched off" in its
+ * own voice everywhere else, and it is unambiguous where the prototype's word
+ * is not. The divergence is deliberate: do not "correct" it back.
+ *
+ * There is no "update available" badge yet. `.tag-accent` is a pale accent
+ * fill, and the two ramp steps it is made of exist only for the two accents the
+ * design system ships where the app offers six; until that is answered the
+ * newer version says so in words under the name (`docs/design-handover.md`).
+ */
+@Composable
+private fun Badges(row: SetRow) {
+  if (row.isDefault) {
+    Tag(
+      text = stringResource(R.string.sets_tag_default),
+      kind = TagKind.Neutral,
+      modifier = Modifier.testTag(SetsTestTags.defaultOf(row.id)),
     )
-    // Under the status rather than replacing it: whether a set is broken or
-    // switched off is what the player can do something about first, and
-    // "there is something newer" is true whatever else the row says.
-    if (outdated) {
-      Text(
-        text = stringResource(R.string.sets_outdated),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.testTag(SetsTestTags.outdatedOf(row.id)),
-      )
-    }
+  }
+  if (!row.enabled) {
+    Tag(
+      text = stringResource(R.string.sets_tag_disabled),
+      kind = TagKind.Outline,
+      modifier = Modifier.testTag(SetsTestTags.disabledOf(row.id)),
+    )
   }
 }
 
@@ -457,7 +567,11 @@ private fun SetLine(
 private fun status(row: SetRow): String =
   when (row.status) {
     SetStatus.Broken -> pluralStringResource(R.plurals.sets_problems, row.problems, row.problems)
-    SetStatus.Off -> stringResource(R.string.sets_disabled)
+    // The same words a set that is on gets. Once the row carries a tag saying
+    // it is switched off, a line saying it again is the same fact twice — and
+    // the prototype's meta line is always what a set *is* rather than what has
+    // been done to it.
+    SetStatus.Off -> pluralStringResource(R.plurals.sets_dice, row.dice, row.dice)
     SetStatus.Bundled -> stringResource(R.string.sets_bundled)
     SetStatus.Ready -> pluralStringResource(R.plurals.sets_dice, row.dice, row.dice)
   }
@@ -468,58 +582,55 @@ private fun ActionSheet(
   row: SetRow,
   presenter: SetsPresenter,
 ) {
-  AlertDialog(
-    onDismissRequest = { presenter.act(null) },
+  Sheet(
+    title = row.name,
+    onDismiss = { presenter.act(null) },
     modifier = Modifier.testTag(SetsTestTags.SHEET),
-    title = { Text(row.name) },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-          text = stringResource(if (row.enabled) R.string.sets_sheet_disable_note else R.string.sets_sheet_remove_note),
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+    // The prototype's order, left to right, and its kinds with it
+    // (`design/dInfinityPhone.dc.html`, the set sheet): the toggle filled, the
+    // other real choices bordered, and the ghost kept for the way out. The
+    // sheet wraps them, which is what `flex-wrap: wrap` on the prototype's
+    // `.dialog-actions` does.
+    actions = {
+      ModernistButton(
+        text = stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable),
+        onClick = { presenter.setEnabled(row, enabled = !row.enabled) },
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(SetsTestTags.TOGGLE),
+      )
+      if (row.checkable) {
+        ModernistButton(
+          text = stringResource(R.string.sets_sheet_update),
+          // An update is a re-install from where the set came from, and
+          // saying so at the one call site beats a wrapper that has to be
+          // kept in step with it (`SetsPresenter.installFrom`).
+          onClick = { presenter.installFrom(row.meta.source.orEmpty()) },
+          kind = ModernistButtonKind.Secondary,
+          modifier = Modifier.testTag(SetsTestTags.UPDATE),
         )
       }
+      // A second real choice rather than the way out, so it is bordered and
+      // not a ghost — `btn-secondary`, as the prototype draws it.
+      ModernistButton(
+        text = stringResource(R.string.sets_sheet_remove),
+        onClick = { presenter.remove(row) },
+        kind = ModernistButtonKind.Secondary,
+        modifier = Modifier.testTag(SetsTestTags.REMOVE),
+      )
+      ModernistButton(
+        text = stringResource(R.string.sets_sheet_cancel),
+        onClick = { presenter.act(null) },
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(SetsTestTags.CANCEL),
+      )
     },
-    confirmButton = {
-      TextButton(
-        onClick = { presenter.setEnabled(row, enabled = !row.enabled) },
-        modifier = Modifier.testTag(SetsTestTags.TOGGLE),
-      ) {
-        Text(stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable))
-      }
-    },
-    dismissButton = {
-      Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (row.checkable) {
-          TextButton(
-            // An update is a re-install from where the set came from, and
-            // saying so at the one call site beats a wrapper that has to be
-            // kept in step with it (`SetsPresenter.installFrom`).
-            onClick = { presenter.installFrom(row.meta.source.orEmpty()) },
-            modifier = Modifier.testTag(SetsTestTags.UPDATE),
-          ) {
-            Text(stringResource(R.string.sets_sheet_update))
-          }
-        }
-        TextButton(
-          onClick = { presenter.remove(row) },
-          modifier = Modifier.testTag(SetsTestTags.REMOVE),
-        ) {
-          Text(
-            text = stringResource(R.string.sets_sheet_remove),
-            color = MaterialTheme.colorScheme.error,
-          )
-        }
-        TextButton(
-          onClick = { presenter.act(null) },
-          modifier = Modifier.testTag(SetsTestTags.CANCEL),
-        ) {
-          Text(stringResource(R.string.sets_sheet_cancel))
-        }
-      }
-    },
-  )
+  ) {
+    Text(
+      text = stringResource(if (row.enabled) R.string.sets_sheet_disable_note else R.string.sets_sheet_remove_note),
+      style = MaterialTheme.typography.bodySmall,
+      color = Ink.muted,
+    )
+  }
 }
 
 /** A fraction is spoken as a percentage; nobody says "nought point four one". */
@@ -534,6 +645,11 @@ object SetsTestTags {
   const val UPDATE: String = "sets:update"
 
   fun outdatedOf(setId: String): String = "sets:outdated:$setId"
+
+  /** The badges at the end of a row (`design/dInfinityPhone.dc.html`, 444–446). */
+  fun defaultOf(setId: String): String = "sets:default:$setId"
+
+  fun disabledOf(setId: String): String = "sets:disabled:$setId"
 
   const val EMPTY: String = "sets:empty"
   const val SHEET: String = "sets:sheet"

@@ -2,7 +2,6 @@ package de.drehtuer.dinfinity.feature.tables
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,20 +14,19 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -40,6 +38,13 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.designer.PhotoScaling
 import de.drehtuer.dinfinity.designer.PhotoTable
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * Which table the dice are thrown onto
@@ -85,8 +90,9 @@ fun TablesScreen(
     ) {
       Text(
         text = stringResource(R.string.tables_title),
+        // `titleLarge` is already the heading font at 800; a `Bold` here
+        // pulled it back to Material's 700 (`--font-heading-weight: 800`).
         style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.weight(1f),
       )
@@ -97,14 +103,14 @@ fun TablesScreen(
       Text(
         text = stringResource(R.string.tables_empty),
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.padding(16.dp).testTag(TablesTestTags.EMPTY),
       )
     } else {
       Text(
         text = stringResource(R.string.tables_note),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
       )
       Looks(state, presenter)
@@ -125,7 +131,7 @@ private fun Looks(
       // in a `LazyColumn` is when the player can see it. Asking again costs
       // nothing (`TablesPresenter.wants`).
       LaunchedEffect(choice.pin) { presenter.wants(choice.pin) }
-      HorizontalDivider()
+      Rule(weight = RuleWeight.Hairline)
       TableRow(
         choice = choice,
         chosen = choice.pin == state.chosen,
@@ -139,7 +145,7 @@ private fun Looks(
     }
     if (state.photosOffered) {
       item {
-        HorizontalDivider()
+        Rule(weight = RuleWeight.Hairline)
         UsePhotoRow(full = !state.roomForAPhoto, onUse = presenter::usePhoto)
       }
     }
@@ -175,14 +181,17 @@ private fun TableRow(
       Text(
         text = choice.look.name,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
+        // A card title is the heading font at 800 whatever else is true of it
+        // (`.card-title`). Which look is chosen is said in the accent beside
+        // it and in the semantics, not by thickening the name.
+        fontWeight = FontWeight.ExtraBold,
         color = MaterialTheme.colorScheme.onBackground,
       )
       if (showSet) {
         Text(
           text = choice.setName,
           style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = Ink.muted,
         )
       }
     }
@@ -197,9 +206,12 @@ private fun TableRow(
     // Only the player's own photo tables. Everything else belongs to a
     // package, and a package is removed where packages are.
     if (choice.own) {
-      TextButton(onClick = onRemove, modifier = Modifier.testTag(TablesTestTags.removeOf(choice.pin))) {
-        Text(stringResource(R.string.tables_photo_remove))
-      }
+      ModernistButton(
+        text = stringResource(R.string.tables_photo_remove),
+        onClick = onRemove,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(TablesTestTags.removeOf(choice.pin)),
+      )
     }
   }
 }
@@ -227,12 +239,25 @@ private fun UsePhotoRow(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
+    // `border:1px dashed var(--color-divider)`, and square: `--radius-*` is
+    // `0px` and nothing in this system has a rounded corner. Drawn rather than
+    // bordered because Compose's `border` has no dash.
+    val edge = MaterialTheme.colorScheme.outline
     Box(
       modifier =
         Modifier
           .size(width = TableThumbnailBox.WIDTH, height = TableThumbnailBox.HEIGHT)
-          .clip(RoundedCornerShape(6.dp))
-          .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp)),
+          .drawBehind {
+            drawRoundRect(
+              color = edge,
+              cornerRadius = CornerRadius.Zero,
+              style =
+                Stroke(
+                  width = HAIRLINE.toPx(),
+                  pathEffect = PathEffect.dashPathEffect(floatArrayOf(DASH.toPx(), DASH.toPx())),
+                ),
+            )
+          },
     )
     Column(modifier = Modifier.weight(1f)) {
       Text(
@@ -248,7 +273,7 @@ private fun UsePhotoRow(
             stringResource(R.string.tables_photo_use_hint)
           },
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
       )
     }
   }
@@ -268,26 +293,30 @@ private fun PhotoSheet(
   presenter: TablesPresenter,
   onPickPhoto: () -> Unit,
 ) {
-  AlertDialog(
-    onDismissRequest = presenter::dismissPhoto,
+  Sheet(
+    title = stringResource(R.string.tables_photo_title),
+    onDismiss = presenter::dismissPhoto,
     modifier = Modifier.testTag(TablesTestTags.PHOTO_SHEET),
-    title = { Text(stringResource(R.string.tables_photo_title)) },
-    text = { PhotoSheetBody(draft, presenter, onPickPhoto) },
-    confirmButton = {
-      TextButton(
+    actions = {
+      // `.dialog-actions` leads with the `btn-primary`; the way out beside it
+      // is the `btn-ghost`.
+      ModernistButton(
+        text = stringResource(R.string.tables_photo_confirm),
         onClick = presenter::confirmPhoto,
+        kind = ModernistButtonKind.Primary,
         enabled = draft.ready,
         modifier = Modifier.testTag(TablesTestTags.PHOTO_CONFIRM),
-      ) {
-        Text(stringResource(R.string.tables_photo_confirm))
-      }
+      )
+      ModernistButton(
+        text = stringResource(R.string.tables_photo_cancel),
+        onClick = presenter::dismissPhoto,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(TablesTestTags.PHOTO_CANCEL),
+      )
     },
-    dismissButton = {
-      TextButton(onClick = presenter::dismissPhoto, modifier = Modifier.testTag(TablesTestTags.PHOTO_CANCEL)) {
-        Text(stringResource(R.string.tables_photo_cancel))
-      }
-    },
-  )
+  ) {
+    PhotoSheetBody(draft, presenter, onPickPhoto)
+  }
 }
 
 @Composable
@@ -300,15 +329,18 @@ private fun PhotoSheetBody(
     Text(
       text = stringResource(R.string.tables_photo_body, PhotoScaling.LONGEST_SIDE.toString()),
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
-    TextButton(onClick = onPickPhoto, modifier = Modifier.testTag(TablesTestTags.PHOTO_CHOOSE)) {
-      Text(stringResource(R.string.tables_photo_choose))
-    }
+    ModernistButton(
+      text = stringResource(R.string.tables_photo_choose),
+      onClick = onPickPhoto,
+      kind = ModernistButtonKind.Ghost,
+      modifier = Modifier.testTag(TablesTestTags.PHOTO_CHOOSE),
+    )
     Text(
       text = draft.picked?.label ?: stringResource(R.string.tables_photo_none),
       style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
       modifier = Modifier.testTag(TablesTestTags.PHOTO_FILE),
     )
     OutlinedTextField(
@@ -322,7 +354,7 @@ private fun PhotoSheetBody(
       Text(
         text = stringResource(R.string.tables_photo_working),
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
         modifier = Modifier.testTag(TablesTestTags.PHOTO_WORKING),
       )
     }
@@ -335,19 +367,19 @@ private fun PhotoSheetBody(
 private fun Refusal(reasons: List<String>) {
   if (reasons.isEmpty()) return
   Column(
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
     modifier = Modifier.testTag(TablesTestTags.PHOTO_REFUSED),
   ) {
     Text(
       text = stringResource(R.string.tables_photo_refused),
       style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.error,
+      color = Ink.accent,
     )
     reasons.forEach { reason ->
       Text(
         text = reason,
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
       )
     }
   }
@@ -374,8 +406,8 @@ private fun Thumbnail(
   choice: TableChoice,
   picture: ImageBitmap?,
 ) {
-  val shape = RoundedCornerShape(6.dp)
-  val box = Modifier.size(width = TableThumbnailBox.WIDTH, height = TableThumbnailBox.HEIGHT).clip(shape)
+  // Square: `--radius-*` is `0px` throughout the system.
+  val box = Modifier.size(width = TableThumbnailBox.WIDTH, height = TableThumbnailBox.HEIGHT)
   if (picture == null) {
     Swatch(choice.look, box)
     return
@@ -412,13 +444,27 @@ private fun Swatch(
           .size(
             width = TableThumbnailBox.WIDTH - WALL * 2,
             height = TableThumbnailBox.HEIGHT - WALL * 2,
-          ).clip(RoundedCornerShape(3.dp))
-          .background(Color(look.floorColorArgb)),
+          ).background(Color(look.floorColorArgb)),
     )
   }
 }
 
-private val WALL = 7.dp
+/**
+ * How thick the wall around a tray reads, which is the table card's
+ * `border:6px` in the prototype (`design/dInfinityPhone.dc.html`, the Tables
+ * screen).
+ *
+ * Not a design-system token: 6 dp is off the spacing scale, and it is this
+ * screen's own measurement of a tray wall rather than a number any other
+ * screen shares.
+ */
+private val WALL = 6.dp
+
+/** `.table td`'s `border-bottom: 1px` — the thinnest line the system draws. */
+private val HAIRLINE = Modernist.hairline
+
+/** How long each dash of the "use a photo" placeholder's edge is. */
+private val DASH = 4.dp
 
 /** What the tests reach for. */
 object TablesTestTags {

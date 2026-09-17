@@ -21,9 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -36,7 +35,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -44,6 +42,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -53,6 +52,16 @@ import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Sheet
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
+import de.drehtuer.dinfinity.ui.common.Ink as Colours
+
+// `Colours` is `ui/common`'s `Ink`, aliased because both better names are
+// taken here: `Ink` is `designer/`'s own hex and HSV arithmetic, and
+// `Palette` is the composable below that draws the twelve colours.
 
 /**
  * Drawing the faces of a die (`design/dInfinity.dc.html`, options `1v`, `4c`
@@ -126,8 +135,9 @@ private fun Header(
   ) {
     Text(
       text = stringResource(R.string.designer_title),
+      // `titleLarge` is already the heading font at 800; a `Bold` here pulled
+      // it back to Material's 700 (`--font-heading-weight: 800`).
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(1f),
     )
@@ -136,12 +146,14 @@ private fun Header(
     // rather than dead for a die plain notation cannot name — a button that is
     // there and does nothing is worse than one that is not.
     rollable?.let { formula ->
-      TextButton(
+      // `btn btn-primary` in the prototype's footer — the one filled button
+      // on the screen, because it is the one thing the screen is for.
+      ModernistButton(
+        text = stringResource(R.string.designer_roll),
         onClick = { onRoll(formula) },
+        kind = ModernistButtonKind.Primary,
         modifier = Modifier.testTag(DesignerTestTags.ROLL),
-      ) {
-        Text(stringResource(R.string.designer_roll))
-      }
+      )
     }
     menu()
   }
@@ -177,23 +189,15 @@ private fun BaseDice(
     horizontalArrangement = Arrangement.spacedBy(4.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
+    // A `.seg` in the prototype, and so the same option treatment as every
+    // other chooser on the screen.
     state.choosable.forEach { die ->
-      TextButton(
-        onClick = { presenter.base(die) },
-        modifier = Modifier.testTag(DesignerTestTags.baseOf(die.id)),
-      ) {
-        Text(
-          text = die.id,
-          style = MaterialTheme.typography.labelMedium,
-          fontWeight = if (die.id == state.die.id) FontWeight.Bold else FontWeight.Normal,
-          color =
-            if (die.id == state.die.id) {
-              MaterialTheme.colorScheme.onBackground
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
-      }
+      Tool(
+        label = die.id,
+        chosen = die.id == state.die.id,
+        tag = DesignerTestTags.baseOf(die.id),
+        onChoose = { presenter.base(die) },
+      )
     }
   }
 }
@@ -214,7 +218,7 @@ private fun FaceCanvas(
   // lifts: the model takes a whole stroke, so that one undo is one line.
   var drawing by remember { mutableStateOf(emptyList<Dot>()) }
   val outline = state.draft.outline
-  val guideColour = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = GUIDE_ALPHA)
+  val guideColour = MaterialTheme.colorScheme.onBackground.copy(alpha = GUIDE_ALPHA)
   val edge = MaterialTheme.colorScheme.outline
 
   Canvas(
@@ -223,7 +227,9 @@ private fun FaceCanvas(
         .fillMaxWidth()
         .padding(horizontal = 24.dp)
         .aspectRatio(1f)
-        .border(1.dp, edge)
+        // `outline:2px solid var(--color-divider)`. The system draws rules,
+        // not hairlines.
+        .border(Modernist.rule, edge)
         .testTag(DesignerTestTags.CANVAS)
         .pointerInput(state.cell, state.nib, state.colorArgb, state.stamping) {
           // One gesture or the other, never both: the pens answer a drag and
@@ -264,7 +270,7 @@ private fun Warning(state: DesignerState) {
   Text(
     text = stringResource(if (state.full) R.string.designer_face_full else R.string.designer_face_nearly_full),
     style = MaterialTheme.typography.labelSmall,
-    color = MaterialTheme.colorScheme.error,
+    color = Colours.accent,
     modifier = Modifier.padding(horizontal = 24.dp).testTag(DesignerTestTags.WARNING),
   )
 }
@@ -320,6 +326,31 @@ private fun Tools(
   }
 }
 
+/**
+ * One option of a chooser, or one thing to do (`.seg-opt`, `.btn-ghost`).
+ *
+ * **Chosen is a filled option, not a coloured word.** That is what the system
+ * does everywhere a choice is shown — `.seg-opt:has(input:checked)` puts the
+ * accent behind the label and the ground in front of it — and a label that
+ * only changed colour was asking the player to compare two greys.
+ *
+ * Which of the two it is is said in the semantics as well as in the paint, so
+ * a screen reader hears "selected" rather than nothing
+ * (`docs/architecture.md`, "Accessibility"). A button that is an action rather
+ * than an option is never chosen, and so says nothing.
+ *
+ * **Not a `ModernistButton`, because it is not a `.btn`** —
+ * design-system-exception: TextButton. Chosen is the
+ * accent fill a `.btn-primary` has, but unchosen is a muted word and
+ * `.btn-ghost` is the accent by definition — drawn as a ghost, every nib,
+ * every face of the strip and every stamp size would print in the accent at
+ * once, on a screen whose accent is meant to be the one loud thing. What this
+ * really is is a `.seg-opt`, and the shared control that draws those
+ * (`ui/common/SegmentedControl.kt`) is a single joined box of options rather
+ * than a wrapping row that mixes options with actions. Drawing the tool row
+ * properly is a redesign rather than a substitution, and it is written down in
+ * `docs/TODO.md`.
+ */
 @Composable
 private fun Tool(
   label: String,
@@ -328,12 +359,22 @@ private fun Tool(
   enabled: Boolean = true,
   onChoose: () -> Unit,
 ) {
-  TextButton(onClick = onChoose, enabled = enabled, modifier = Modifier.testTag(tag)) {
-    Text(
-      text = label,
-      fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
-      color = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+  TextButton(
+    onClick = onChoose,
+    enabled = enabled,
+    shape = Modernist.square,
+    colors =
+      if (chosen) {
+        ButtonDefaults.textButtonColors(
+          containerColor = MaterialTheme.colorScheme.primary,
+          contentColor = MaterialTheme.colorScheme.background,
+        )
+      } else {
+        ButtonDefaults.textButtonColors(contentColor = Colours.muted)
+      },
+    modifier = Modifier.semantics { selected = chosen }.testTag(tag),
+  ) {
+    Text(text = label, fontWeight = FontWeight.SemiBold)
   }
 }
 
@@ -396,7 +437,7 @@ private fun StampBar(
       Text(
         text = stringResource(R.string.designer_stamp_refused),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.error,
+        color = Colours.accent,
         modifier = Modifier.testTag(DesignerTestTags.STAMP_REFUSED),
       )
     }
@@ -504,7 +545,7 @@ private fun Palette(
     Text(
       text = Ink.hex(state.colorArgb),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Colours.muted,
       modifier = Modifier.testTag(DesignerTestTags.INK_HEX),
     )
   }
@@ -523,7 +564,16 @@ private fun Palette(
 /**
  * One colour to draw with.
  *
- * The circle is as small as the design draws it and the thing a finger hits is
+ * A square, because `--radius-*` is `0px` and nothing in this system has a
+ * rounded corner — the circle this used to draw was the one shape the
+ * Modernist palette has no room for.
+ *
+ * **Which colour is in the pen is said by the edge, not by the size.** The
+ * prototype gives every swatch the same 26 px and switches its 2 px border
+ * from `--color-divider` to `--color-text`; a swatch that grew when it was
+ * chosen made the row reflow under the finger that chose it.
+ *
+ * The swatch is as small as the design draws it and the thing a finger hits is
  * not: the touch target is a full [TOUCH_TARGET] whatever the swatch inside it
  * measures, which is the floor Android asks for and the reason the row is
  * spaced rather than crowded.
@@ -548,10 +598,17 @@ private fun Swatch(
     Box(
       modifier =
         Modifier
-          .size(if (chosen) CHOSEN_SWATCH else SWATCH)
-          .clip(CircleShape)
+          .size(SWATCH)
           .background(Color(argb))
-          .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+          .border(
+            width = Modernist.rule,
+            color =
+              if (chosen) {
+                MaterialTheme.colorScheme.onBackground
+              } else {
+                MaterialTheme.colorScheme.outline
+              },
+          ),
     )
   }
 }
@@ -572,40 +629,47 @@ private fun ColourPicker(
   onChosen: (Int) -> Unit,
 ) {
   var hsv by remember { mutableStateOf(Ink.hsv(start)) }
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.designer_colour_title),
+    onDismiss = onDismiss,
     modifier = Modifier.testTag(DesignerTestTags.PICKER),
-    onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.designer_colour_title)) },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Box(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .height(TOUCH_TARGET)
-              .background(Color(hsv.argb))
-              .border(1.dp, MaterialTheme.colorScheme.outline)
-              .semantics { contentDescription = Ink.hex(hsv.argb) }
-              .testTag(DesignerTestTags.PICKER_PATCH),
-        )
-        Channel(R.string.designer_hue, hsv.hue, HUE_ROUND, DesignerTestTags.HUE) { hsv = hsv.copy(hue = it) }
-        Channel(R.string.designer_depth, hsv.saturation, 1f, DesignerTestTags.DEPTH) {
-          hsv = hsv.copy(saturation = it)
-        }
-        Channel(R.string.designer_brightness, hsv.value, 1f, DesignerTestTags.BRIGHTNESS) { hsv = hsv.copy(value = it) }
-      }
+    // Taking the colour first and leaving it after, because the sheet reads
+    // left to right and the confirming action is what it is for.
+    actions = {
+      ModernistButton(
+        text = stringResource(R.string.designer_colour_use),
+        onClick = { onChosen(hsv.argb) },
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(DesignerTestTags.PICKER_USE),
+      )
+      ModernistButton(
+        text = stringResource(R.string.designer_colour_cancel),
+        onClick = onDismiss,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL),
+      )
     },
-    confirmButton = {
-      TextButton(onClick = { onChosen(hsv.argb) }, modifier = Modifier.testTag(DesignerTestTags.PICKER_USE)) {
-        Text(stringResource(R.string.designer_colour_use))
+  ) {
+    // Tighter than the sheet's own spacing: the patch and the three sliders
+    // are one control, not four blocks of the sheet.
+    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
+      Box(
+        modifier =
+          Modifier
+            .fillMaxWidth()
+            .height(TOUCH_TARGET)
+            .background(Color(hsv.argb))
+            .border(Modernist.rule, MaterialTheme.colorScheme.outline)
+            .semantics { contentDescription = Ink.hex(hsv.argb) }
+            .testTag(DesignerTestTags.PICKER_PATCH),
+      )
+      Channel(R.string.designer_hue, hsv.hue, HUE_ROUND, DesignerTestTags.HUE) { hsv = hsv.copy(hue = it) }
+      Channel(R.string.designer_depth, hsv.saturation, 1f, DesignerTestTags.DEPTH) {
+        hsv = hsv.copy(saturation = it)
       }
-    },
-    dismissButton = {
-      TextButton(onClick = onDismiss, modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL)) {
-        Text(stringResource(R.string.designer_colour_cancel))
-      }
-    },
-  )
+      Channel(R.string.designer_brightness, hsv.value, 1f, DesignerTestTags.BRIGHTNESS) { hsv = hsv.copy(value = it) }
+    }
+  }
 }
 
 /** One of the picker's three sliders, named so a screen reader can say which. */
@@ -618,7 +682,7 @@ private fun Channel(
   onChange: (Float) -> Unit,
 ) {
   val name = stringResource(label)
-  Text(text = name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+  Text(text = name, style = MaterialTheme.typography.labelSmall, color = Colours.muted)
   Slider(
     value = value,
     onValueChange = onChange,
@@ -693,11 +757,15 @@ private const val GUIDE_ALPHA = 0.35f
 
 /** All the way round the wheel, which is where hue starts again. */
 private const val HUE_ROUND = 360f
-private val SWATCH = 28.dp
-private val CHOSEN_SWATCH = 36.dp
 
-/** What a finger is owed, whatever is drawn inside it. */
-private val TOUCH_TARGET = 48.dp
+/**
+ * How big a colour swatch is drawn (`width:26px;height:26px`).
+ *
+ * This screen's own measurement rather than a token of the design system:
+ * nothing else in the app draws a swatch, so there is nothing for it to stay
+ * equal to.
+ */
+private val SWATCH = 26.dp
 
 /** The twelve the design shows (`design/dInfinity.dc.html`, option `4c`). */
 private val PRESETS =

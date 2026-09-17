@@ -3,14 +3,14 @@ package de.drehtuer.dinfinity.feature.roll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +19,12 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 
 /**
  * The first thing a new install shows (`design/dInfinity.dc.html`, option 9a).
@@ -58,8 +64,31 @@ internal fun Welcome(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
         .safeDrawingPadding()
-        .padding(24.dp)
         .testTag(RollTestTags.WELCOME),
+  ) {
+    TheWords(what)
+    WaysOut(onRollNow = onRollNow, onDismiss = onDismiss, onImport = onImport, onAddSets = onAddSets)
+  }
+}
+
+/**
+ * The half with the words in it, at the bottom of whatever room is left
+ * (`justify-content:flex-end` in the prototype).
+ *
+ * It is this half that gives way on a screen too short for all of it, never
+ * the buttons: a welcome whose ways out have been pushed off the bottom is a
+ * welcome with no way out. `unbounded` is what makes it give way by running
+ * off the top rather than by squeezing its last lines to nothing.
+ */
+@Composable
+private fun ColumnScope.TheWords(what: WhatIsThere) {
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .weight(1f)
+        .wrapContentHeight(Alignment.Bottom, unbounded = true)
+        .padding(24.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     Text(
@@ -67,48 +96,67 @@ internal fun Welcome(
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.primary,
       fontWeight = FontWeight.SemiBold,
+      // `letter-spacing:.12em`, which is what makes a line of capitals this
+      // small readable rather than a smear.
+      letterSpacing = EYEBROW_TRACKING,
     )
     Text(
       text = stringResource(R.string.roll_welcome_title),
-      style = MaterialTheme.typography.displaySmall,
-      fontWeight = FontWeight.Bold,
+      // The system's display size in the heading face at 800. `displaySmall`
+      // is one of the slots the theme never defines, so this used to be set
+      // in Material's own face (`theme/Theme.kt`).
+      style = MaterialTheme.typography.displayLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
     Text(
       text = stringResource(R.string.roll_welcome_body),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.bodyLarge,
+      color = Ink.muted,
     )
     // What a fresh install already has, which is more than nothing and less
     // than it will be. Three counts rather than one, because two of them are
     // what the buttons below change (`design/dInfinity.dc.html`, option 9a).
+    // It sits under a rule, as it does in the prototype: it is a different
+    // kind of thing from the sentence above it.
+    Rule()
     Text(
       text = countsOf(what),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
       modifier = Modifier.testTag(RollTestTags.WELCOME_SETS),
     )
+  }
+}
 
-    Column(
-      verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Bottom),
-      modifier = Modifier.fillMaxWidth().weight(1f),
-    ) {
-      Button(
-        onClick = onRollNow,
-        modifier = Modifier.fillMaxWidth().testTag(RollTestTags.WELCOME_ROLL),
-      ) {
-        Text(stringResource(R.string.roll_welcome_roll_now))
-      }
-      // The other three are the same button three times, and written as one:
-      // going to the tray, and the two that go and fetch something.
-      ways(onDismiss = onDismiss, onImport = onImport, onAddSets = onAddSets).forEach { way ->
-        TextButton(
-          onClick = way.take,
-          modifier = Modifier.fillMaxWidth().testTag(way.tag),
-        ) {
-          Text(stringResource(way.label))
-        }
-      }
+/**
+ * The four ways on: full-bleed, under a rule of their own and divided from
+ * each other by a hairline — a block of buttons rather than four loose ones.
+ */
+@Composable
+private fun WaysOut(
+  onRollNow: () -> Unit,
+  onDismiss: () -> Unit,
+  onImport: () -> Unit,
+  onAddSets: () -> Unit,
+) {
+  Column(modifier = Modifier.fillMaxWidth()) {
+    Rule()
+    ModernistButton(
+      text = stringResource(R.string.roll_welcome_roll_now),
+      onClick = onRollNow,
+      kind = ModernistButtonKind.Primary,
+      modifier = Modifier.fillMaxWidth().testTag(RollTestTags.WELCOME_ROLL),
+    )
+    // The other three are the same button three times, and written as one:
+    // going to the tray, and the two that go and fetch something.
+    ways(onDismiss = onDismiss, onImport = onImport, onAddSets = onAddSets).forEach { way ->
+      Rule(weight = RuleWeight.Hairline)
+      ModernistButton(
+        text = stringResource(way.label),
+        onClick = way.take,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.fillMaxWidth().testTag(way.tag),
+      )
     }
   }
 }
@@ -131,6 +179,9 @@ private fun countsOf(what: WhatIsThere): String =
     pluralStringResource(R.plurals.roll_welcome_saved, what.savedRolls, what.savedRolls),
     pluralStringResource(R.plurals.roll_welcome_sessions, what.sessions, what.sessions),
   ).joinToString(stringResource(R.string.roll_welcome_counts_separator))
+
+/** `letter-spacing:.12em` on the eyebrow. */
+private val EYEBROW_TRACKING = 0.12.em
 
 /** One of the three buttons that are alike: a label, a tag and what it does. */
 private class Way(

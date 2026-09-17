@@ -56,6 +56,30 @@ class GraphGeometryTest {
   }
 
   @Test
+  fun `a bar inside one deviation of the mean is drawn in the ink`() {
+    // The prototype's own rule: `inS = bar.to >= mean - sd && bar.from <=
+    // mean + sd`. `1d6` has a mean of 3.5 and a deviation of about 1.71, so
+    // the band runs from about 1.79 to about 5.21.
+    val stats = statsOf(Pmf.uniformOver((1..6).toList()))
+
+    assertTrue(stats.within(bar(2, 2)))
+    assertTrue(stats.within(bar(5, 5)))
+    assertFalse("1 is below the band", stats.within(bar(1, 1)))
+    assertFalse("6 is above the band", stats.within(bar(6, 6)))
+  }
+
+  @Test
+  fun `a gathered bar that reaches into the band is inside it`() {
+    // A bucketed bar stands for several totals, and the chart has no way to
+    // draw half of one in each colour.
+    val stats = statsOf(Pmf.uniformOver((1..6).toList()))
+
+    assertTrue("it reaches up into the band", stats.within(bar(1, 2)))
+    assertTrue("it reaches down into the band", stats.within(bar(5, 6)))
+    assertFalse("it starts above the band", stats.within(bar(6, 8)))
+  }
+
+  @Test
   fun `a bar knows which totals it stands for`() {
     val bar = GraphBar(from = 10, to = 14, exact = 0.1, atLeast = 0.5)
 
@@ -121,6 +145,11 @@ class GraphGeometryTest {
   }
 
   private fun statsOf(pmf: Pmf): GraphStats = GraphStats.of(pmf, dice = 1)
+
+  private fun bar(
+    from: Int,
+    to: Int,
+  ): GraphBar = GraphBar(from = from, to = to, exact = 0.0, atLeast = 0.0)
 
   private companion object {
     const val HALFWAY = 0.5

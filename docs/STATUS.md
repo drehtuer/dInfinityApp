@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-09-16
+**Last updated:** 2026-09-17
 
 ## Where we are
 
@@ -21,9 +21,22 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#245**: all of Step 3, every screen of Step 4,
-the harness, and the ten-thousand-roll measurements below. Nothing is in
-flight.
+`main` has everything through **#260**: all of Step 3, every screen of Step 4,
+the harness, the ten-thousand-roll measurements below, count-and-clear rolling,
+shake-to-throw, the `3 to 21+` ceiling and the visible backstop.
+
+**In flight:** six stacked pull requests, #261–#266, from a pass over the UI
+against the prototype. In order: the hand-over to the designer; the drift put
+back and a build check so it cannot return; the design tokens moved out of
+`:app` into `ui/common`, where every screen can reach them, so six copies of
+the same scale became one; the last Material pills replaced by the square
+options and segmented controls the system actually draws; the accent kickers
+that are the only thing grouping a screen into blocks; and every dialog turned
+into the bottom sheet the prototype has always shown.
+
+Nothing in the stack changes behaviour. The one visible pixel change is the
+outcome graph's out-of-σ bars, which are a step lighter on a dark page because
+they now name the ramp step instead of thinning the ink.
 
 ## Done
 
@@ -35,33 +48,33 @@ flight.
   pull request; SonarQube blocks on its gate and JaCoCo on a function *and*
   branch floor. Dependencies pinned by SHA-256; a `vX.Y.Z` tag cuts a signed,
   immutable release.
-- **Step 3's foundations, complete.** A formula parsed and resolved against the
-  installed sets, graphed exactly, planned against the capacity rule, settled,
-  read face by face, drawn with its author's artwork over its printed labels,
-  thrown by a shake that replays to itself, and written down in one
-  transaction. A package from a stranger is validated rule by rule and
-  installed without leaving anything behind if it fails.
-- **The physics.** Jolt 5.3.0. Every *decision* about a roll is Kotlin over an
-  interface, so the rule that matters most — nothing touches a die that has
-  come to rest — is proved by JVM tests rather than sampled on a phone. Every
-  random number comes from one place.
-- **Determinism is asserted, not assumed.** Ten (seed, formula, input) cases;
-  the emulator and the Pixel 10a agree bit for bit, spawn digest included. A
-  shake-driven roll now also replays to itself on hardware.
-- **Step 5.1, the harness.** `tools/harness.sh` rolls N throws — or rolls for a
-  duration — headlessly on either tier, pulls back a JSON document and prints a
-  pass/fail table. Everything it decides is plain Kotlin, tested on the JVM.
+- **Steps 1–3, complete.** A formula parsed against the installed sets,
+  graphed exactly, planned against the capacity rule, settled on Jolt 5.3.0,
+  read face by face, drawn with its author's artwork, thrown by a shake, and
+  written down in one transaction. A package from a stranger is validated rule
+  by rule and installed without leaving anything behind if it fails.
+- **Every *decision* about a roll is Kotlin over an interface**, so the rule
+  that matters most — nothing touches a die that has come to rest — is proved
+  by JVM tests rather than sampled on a phone. Every random number comes from
+  one place, and determinism is asserted across both tiers, spawn digest
+  included.
+- **Step 5.1, the harness.** `tools/harness.sh` rolls N throws — or for a
+  duration — headlessly on either tier, pulls back a JSON document and prints
+  a pass/fail table.
 
 ## In progress
 
-**Step 4: every screen is written and connected.** What is left on each is in
-`docs/TODO.md`, and most of it is judgement with a phone in hand rather than
-code. 4.10 Settings is finished; 4.6's designer gained the glyph stamp and
-"fill all with numbers"; 4.5's table picker gained "use a photo".
+**Step 4: every screen is written and connected**, and has just had a pass
+over it against the prototype. What is left on each is in `docs/TODO.md`, and
+most of it is judgement with a phone in hand rather than code.
 
 **Step 5 is the real remaining work** — see Known risks.
 
 ## Blocked / waiting on
+
+**The phone is off the network**, so nothing in the UI stack above has been
+seen on a real screen. It needs wireless debugging switched on again and its
+new address; everything else about a device run is automatic from here.
 
 **Judgements that need a person and a phone.** All listed in `docs/TODO.md`.
 The ones added this round: whether a chain that stopped reads as a rule or a
@@ -83,29 +96,27 @@ thing feels right is still a person's call.
 - Three smaller ones in `docs/TODO.md`, Open questions: who measures a *drawn*
   frame, whether a stamp should be draggable, and `FACE_SHARE` being applied
   twice.
+- **Eight questions for the designer**, in `docs/design-handover.md`. The two
+  that block work: the dark ramp does not redefine the two steps a neutral tag
+  is made of, and the accent ramp exists for two accents where the app offers
+  six — so the app still cannot draw the badge that says a dice set has an
+  update.
 
 ## Known risks
 
-- **The correction ladder is gone, and the bar it existed for is met by
-  construction.** A roll now counts the dice that can be read, takes them off
-  the table and throws the rest again, until nothing is left to throw. Nothing
-  biases, nudges or places a die, so there is no code left that could correct
-  one. 2,000 rolls of 20d20 on the Pixel 10a:
+- **Nothing corrects a die any more, and the bar that existed for is met by
+  construction.** A roll counts the dice that can be read, takes them off the
+  table and throws the rest again until nothing is left to throw. Nothing
+  biases, nudges or places a die, so there is no code left that could. Measured
+  over 2,000 rolls of 20d20 on the Pixel 10a: **0.000 %** of dice corrected
+  against a 0.5 % budget, no die at rest on another, no post-rest correction,
+  no forced settle, nothing out of the twelve-second cap, and a median / p99
+  settle of **0.78 / 1.45 s**.
 
-  | | the ladder | counting |
-  | --- | --- | --- |
-  | dice corrected (budget 0.5 %) | 44.9 % | **0.000 %** |
-  | dice at rest on another die | 0 | **0** |
-  | post-rest corrections | 0 | **0** |
-  | forced settles | 106 | **0** |
-  | rolls out of the 12 s cap | 3 | **0** |
-  | median / p99 settle | 1.33 / 2.93 s | **0.78 / 1.45 s** |
-
-  Ten of the harness's twelve rows pass where six did. Two do not: the
-  **re-throw budget** (2.80 % against 0.05 %), which is a bar written for a
-  mechanism that no longer exists and needs re-deciding rather than hitting,
-  and the **die-into-die overlap** (9.03 mm against 0.2 mm), which is the
-  solver's own error and is unchanged in kind.
+  Ten of the harness's twelve rows pass. Two do not. The **re-throw budget**
+  (2.80 % against 0.05 %) is a bar written for a mechanism that no longer
+  exists and needs re-deciding rather than hitting. The **die-into-die overlap**
+  (9.03 mm against 0.2 mm) is the solver's own error and is unchanged in kind.
 - **One shaken throw in sixteen still runs the cap out.** Under a hard sideways
   shake, seed 9 of sixteen never settles at all — **no re-throws**, so it never
   reaches the point where anything is counted. A settling problem rather than a
@@ -125,10 +136,10 @@ thing feels right is still a person's call.
 - **The capacity constants barely bite.** It would take ~240 dice to reach the
   40 % floor and the engine stops at 100, so the refusal a player meets is the
   body cap rather than the table. Step 5.3.
-- Determinism holds across the two ABIs. Unproven across *devices* of the same
-  ABI and across time.
-- The container's emulator has no real GPU and no display, so `screencap`
-  returns black. It answers "does this run", never "does this look right".
-- **Branch coverage is ~70 % against a floor of 62**, and the drift has stopped:
+- Determinism holds across the two ABIs; unproven across *devices* of the same
+  ABI and across time. The container's emulator has no real GPU and no display,
+  so `screencap` returns black there — it answers "does this run", never "does
+  this look right".
+- **Branch coverage is ~72 % against a floor of 62**, and the drift has stopped:
   seven in ten missed branches are Compose skip branches a test can only take
   one side of. Function coverage ~92 % against a floor of 85.

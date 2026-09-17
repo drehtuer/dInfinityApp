@@ -39,6 +39,17 @@ data class GraphStats(
       return from..maxOf(from, to)
     }
 
+  /**
+   * Whether [bar] falls inside the ±1σ band, and so is drawn in the full ink
+   * rather than in the grey (`design/dInfinityPhone.dc.html`: `inS = x.k2 >=
+   * mean - sd && x.k <= mean + sd`).
+   *
+   * A bar that only *overlaps* the band counts as inside it. A bucketed bar
+   * stands for several totals, and one that is half inside the band is not a
+   * bar the chart has any way to draw half of.
+   */
+  fun within(bar: GraphBar): Boolean = bar.to >= mean - standardDeviation && bar.from <= mean + standardDeviation
+
   /** How far along the chart [total] sits, `0` to `1`. */
   fun share(total: Double): Double {
     val span = (highest - lowest).toDouble()

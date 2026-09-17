@@ -1,19 +1,25 @@
 package de.drehtuer.dinfinity.feature.saved
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
+import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
  * Collections, in and out (`docs/dice-notation.md`, "Export and import").
@@ -39,56 +45,66 @@ internal fun ExportSheet(
   modifier: Modifier = Modifier,
 ) {
   val group = state.activeGroup
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.collections_title),
+    onDismiss = onDismiss,
     modifier = modifier.testTag(ExportTestTags.SHEET),
-    onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.collections_title)) },
-    text = {
-      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-          text = stringResource(R.string.export_note),
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        if (group != null) {
-          Choice(
-            label = stringResource(R.string.export_group, group.group.name),
-            note = pluralStringResource(R.plurals.saved_group_rolls, group.rolls, group.rolls),
-            tag = ExportTestTags.GROUP,
-            onClick = { onExport(group.group.id) },
-          )
-        }
-        Choice(
-          label = stringResource(R.string.export_everything),
-          note =
-            pluralStringResource(
-              R.plurals.saved_group_rolls,
-              state.allRolls.size,
-              state.allRolls.size,
-            ),
-          tag = ExportTestTags.EVERYTHING,
-          onClick = { onExport(null) },
-        )
-        HorizontalDivider()
-        // In as well as out. The same sheet, because a file arriving and a
-        // file leaving are one idea to a player and the alternative is a
-        // second control on a bar that already has a group name in it.
-        Choice(
-          label = stringResource(R.string.import_open),
-          note = stringResource(R.string.import_note),
-          tag = ExportTestTags.IMPORT,
-          onClick = onImport,
-        )
-      }
+    actions = {
+      // The only action is the way out, and a way out is a `.btn-ghost`.
+      ModernistButton(
+        text = stringResource(R.string.group_cancel),
+        onClick = onDismiss,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(ExportTestTags.CANCEL),
+      )
     },
-    confirmButton = {
-      TextButton(onClick = onDismiss, modifier = Modifier.testTag(ExportTestTags.CANCEL)) {
-        Text(stringResource(R.string.group_cancel))
-      }
-    },
-  )
+  ) {
+    Text(
+      text = stringResource(R.string.export_note),
+      style = MaterialTheme.typography.bodyLarge,
+      color = Ink.muted,
+    )
+    if (group != null) {
+      Choice(
+        label = stringResource(R.string.export_group, group.group.name),
+        note = pluralStringResource(R.plurals.saved_group_rolls, group.rolls, group.rolls),
+        tag = ExportTestTags.GROUP,
+        onClick = { onExport(group.group.id) },
+      )
+    }
+    Choice(
+      label = stringResource(R.string.export_everything),
+      note =
+        pluralStringResource(
+          R.plurals.saved_group_rolls,
+          state.allRolls.size,
+          state.allRolls.size,
+        ),
+      tag = ExportTestTags.EVERYTHING,
+      onClick = { onExport(null) },
+    )
+    Rule(weight = RuleWeight.Hairline)
+    // In as well as out. The same sheet, because a file arriving and a
+    // file leaving are one idea to a player and the alternative is a
+    // second control on a bar that already has a group name in it.
+    Choice(
+      label = stringResource(R.string.import_open),
+      note = stringResource(R.string.import_note),
+      tag = ExportTestTags.IMPORT,
+      onClick = onImport,
+    )
+  }
 }
 
+/**
+ * One way in or out: a name, and under it how much is in it.
+ *
+ * A row rather than a button. `ModernistButton` takes a `String` because every
+ * button in this app says a word, and this says two things in two sizes — so
+ * the tap goes on the row and `Role.Button` tells a screen reader what the row
+ * is. The two lines merge into one node for the same reason a saved roll's do:
+ * "Everything, 24 rolls" is one thing to hear.
+ */
 @Composable
 private fun Choice(
   label: String,
@@ -96,15 +112,29 @@ private fun Choice(
   tag: String,
   onClick: () -> Unit,
 ) {
-  TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().testTag(tag)) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-      Text(text = label, style = MaterialTheme.typography.bodyLarge)
-      Text(
-        text = note,
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-    }
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .clickable(role = Role.Button, onClick = onClick)
+        .semantics(mergeDescendants = true) {}
+        .testTag(tag)
+        // What `TextButton` was padding it by, so the row stays a target.
+        .padding(vertical = Modernist.x2),
+  ) {
+    Text(
+      text = label,
+      style = MaterialTheme.typography.bodyLarge,
+      // Explicitly the text colour: `TextButton` was printing this in the
+      // accent, where the prototype's sheet rows are ink and only the count
+      // under them is muted.
+      color = MaterialTheme.colorScheme.onBackground,
+    )
+    Text(
+      text = note,
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
+    )
   }
 }
 

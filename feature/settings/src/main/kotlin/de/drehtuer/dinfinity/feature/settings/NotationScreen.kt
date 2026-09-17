@@ -9,14 +9,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -25,6 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.notation.NotationEntry
 import de.drehtuer.dinfinity.core.notation.NotationReference
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Rule
 
 /**
  * What you can type, looked up inside the app (`docs/dice-notation.md`;
@@ -74,9 +74,10 @@ fun NotationScreen(
     }
     Text(
       text = stringResource(R.string.notation_blurb),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.bodyLarge,
+      color = Ink.muted,
     )
+    Rule()
     // Inline rather than a `Section` composable, for the reason `Limits` gives
     // below: a `@Composable` costs skip branches per parameter whether or not
     // anything ever calls it twice, and a heading with a loop under it is not
@@ -86,14 +87,14 @@ fun NotationScreen(
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
           text = section.title,
-          style = MaterialTheme.typography.titleMedium,
-          fontWeight = FontWeight.Bold,
+          style = MaterialTheme.typography.titleLarge,
           color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
           text = section.blurb,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.labelLarge,
+          fontWeight = FontWeight.Normal,
+          color = Ink.muted,
         )
         section.entries.forEach { entry -> Entry(entry = entry, onRoll = onRoll) }
       }
@@ -118,24 +119,29 @@ private fun Entry(
     modifier =
       Modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(8.dp))
         .clickable(role = Role.Button, onClick = { onRoll(entry.example) })
-        .background(MaterialTheme.colorScheme.surfaceVariant)
-        .padding(horizontal = 12.dp, vertical = 10.dp)
+        // Square, and on the design system's own surface. It was an 8 dp
+        // rounded rectangle on `surfaceVariant` — the one corner radius in an
+        // interface whose `--radius-*` is 0, and a Material role that promises
+        // nothing about this palette where `surface` is the ground the system
+        // actually names.
+        .background(MaterialTheme.colorScheme.surface)
+        .padding(horizontal = 12.dp, vertical = 12.dp)
         .testTag(NotationTestTags.entryOf(entry.syntax)),
     horizontalArrangement = Arrangement.spacedBy(12.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Text(
       text = entry.syntax,
-      style = MaterialTheme.typography.titleSmall,
+      style = MaterialTheme.typography.labelLarge,
       fontFamily = FontFamily.Monospace,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = MaterialTheme.colorScheme.onSurface,
       modifier = Modifier.weight(SYNTAX_SHARE),
     )
     Text(
       text = entry.meaning,
-      style = MaterialTheme.typography.bodySmall,
+      style = MaterialTheme.typography.labelLarge,
+      fontWeight = FontWeight.Normal,
       color = MaterialTheme.colorScheme.onSurface,
       modifier = Modifier.weight(MEANING_SHARE),
     )
@@ -154,21 +160,21 @@ private fun Limits() {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.testTag(NotationTestTags.LIMITS)) {
     Text(
       text = stringResource(R.string.notation_limits),
-      style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.titleLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
     NotationReference.limits.forEach { limit ->
       Column {
         Text(
           text = "${limit.what}: ${limit.value}",
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurface,
+          style = MaterialTheme.typography.bodyLarge,
+          color = MaterialTheme.colorScheme.onBackground,
         )
         Text(
           text = limit.then,
-          style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.labelLarge,
+          fontWeight = FontWeight.Normal,
+          color = Ink.muted,
         )
       }
     }

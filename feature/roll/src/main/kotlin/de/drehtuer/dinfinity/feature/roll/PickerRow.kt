@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.ui.common.DieSilhouette
+import de.drehtuer.dinfinity.ui.common.SegmentedControl
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
  * Dice added by tapping rather than by typing
@@ -84,6 +85,11 @@ internal fun PickerRow(
  * as its author made it — and it does **not** change which set a bare `d20`
  * means. That is a preference and it is chosen where the sets are
  * (`docs/dice-sets.md`, design `6a`).
+ *
+ * Drawn as the design system's segmented control (`.seg`), which is what this
+ * system has for picking one of a few: one bordered box, the chosen name
+ * filled with the accent. It was a row of Material text buttons, which is
+ * three pills and no indication that they are alternatives.
  */
 @Composable
 internal fun SetChooser(
@@ -99,27 +105,15 @@ internal fun SetChooser(
         .fillMaxWidth()
         .horizontalScroll(rememberScrollState())
         .testTag(RollTestTags.SETS),
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    sets.forEach { set ->
-      TextButton(
-        onClick = { onChoose(set.id) },
-        modifier = Modifier.testTag(RollTestTags.setOf(set.id)),
-      ) {
-        Text(
-          text = set.name,
-          style = MaterialTheme.typography.labelMedium,
-          fontWeight = if (set.id == chosen) FontWeight.Bold else FontWeight.Normal,
-          color =
-            if (set.id == chosen) {
-              MaterialTheme.colorScheme.onBackground
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
-      }
-    }
+    SegmentedControl(
+      options = sets,
+      selected = sets.firstOrNull { set -> set.id == chosen } ?: sets.first(),
+      label = { set -> set.name },
+      onSelect = { set -> onChoose(set.id) },
+      tagOf = { set -> RollTestTags.setOf(set.id) },
+    )
   }
 }
 
@@ -136,7 +130,7 @@ private fun PickerDie(
   Box(
     modifier =
       Modifier
-        .sizeIn(minWidth = TARGET, minHeight = TARGET)
+        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
         .combinedClickable(
           // Spelled out for TalkBack, which otherwise announces a long press
           // as "double tap and hold" with no word about what it does.
@@ -148,12 +142,14 @@ private fun PickerDie(
   ) {
     Column(
       horizontalAlignment = Alignment.CenterHorizontally,
-      verticalArrangement = Arrangement.spacedBy(2.dp),
-      modifier = Modifier.align(Alignment.Center).padding(horizontal = 2.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+      modifier = Modifier.align(Alignment.Center).padding(horizontal = 4.dp),
     ) {
       DieSilhouette(
         sides = die.sides,
-        fill = MaterialTheme.colorScheme.surfaceVariant,
+        // `--color-surface`, named rather than reached for through
+        // `surfaceVariant`: the palette has one surface and no variant of it.
+        fill = MaterialTheme.colorScheme.surface,
         ink = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.size(SILHOUETTE),
       )
@@ -170,7 +166,8 @@ private fun PickerDie(
       Text(
         text = count.toString(),
         style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.Bold,
+        // 800, like every number the design prints on the accent.
+        fontWeight = FontWeight.ExtraBold,
         color = MaterialTheme.colorScheme.onPrimary,
         modifier =
           Modifier
@@ -183,6 +180,5 @@ private fun PickerDie(
   }
 }
 
-/** The smallest thing worth pressing, and the picture inside it. */
-private val TARGET = 48.dp
+/** The picture inside the smallest thing worth pressing. */
 private val SILHOUETTE = 26.dp

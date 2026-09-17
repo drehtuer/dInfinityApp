@@ -1,6 +1,7 @@
 // Linters and static analysis, applied by every other convention plugin so no
 // module can opt out by accident. Warnings fail the build (.claude/CLAUDE.md).
 
+import de.drehtuer.dinfinity.build.VerifyDesignSystemTask
 import de.drehtuer.dinfinity.build.VerifyTextIsAResourceTask
 import io.gitlab.arturbosch.detekt.Detekt
 
@@ -52,6 +53,23 @@ val verifyTextIsAResource =
     relativeTo.set(rootProject.layout.projectDirectory)
   }
 
+/**
+ * A screen may use the design system or argue with it, and not silently.
+ *
+ * The system ships this rule itself, as an oxlint config over the prototype's
+ * JSX — where it cannot see any Kotlin. Every screen in this app had drifted
+ * away from the zero corner radius the system states in as many words, and
+ * nothing noticed until the prototype and the app were opened side by side
+ * (`docs/design-handover.md`).
+ */
+val verifyDesignSystem =
+  tasks.register<VerifyDesignSystemTask>("verifyDesignSystem") {
+    group = "verification"
+    description = "Checks that no screen reaches past the theme for a colour or a corner."
+    sources.from(fileTree("src/main/kotlin") { include("**/*.kt") })
+    relativeTo.set(rootProject.layout.projectDirectory)
+  }
+
 tasks.named("check") {
-  dependsOn(verifyTextIsAResource)
+  dependsOn(verifyTextIsAResource, verifyDesignSystem)
 }

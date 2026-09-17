@@ -6,9 +6,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,12 +21,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +38,15 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.stats.FaceBar
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
+import de.drehtuer.dinfinity.ui.common.Sheet
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
  * What every die has done (`design/dInfinity.dc.html`, option 1w).
@@ -112,37 +117,46 @@ private fun Header(
   menu: @Composable () -> Unit,
 ) {
   Row(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = Modernist.x4, vertical = Modernist.x2),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     if (open != null) {
       // An arrow is a picture. What TalkBack reads is the label, because "left
       // arrow" is not a thing anybody wants done to their screen.
       val back = stringResource(R.string.stats_back)
-      TextButton(
+      ModernistButton(
+        text = "←",
         onClick = onClose,
+        kind = ModernistButtonKind.Ghost,
         modifier =
           Modifier
             .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
             .semantics { contentDescription = back }
             .testTag(StatsTestTags.BACK),
-      ) { Text("←") }
+      )
     }
     Text(
       text = open?.row?.name ?: stringResource(R.string.stats_title),
+      // `titleLarge` is already the heading face at 800 — the system's heading
+      // weight. Asking for `Bold` on top of it is asking for 700, which is a
+      // lighter heading than the design has.
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(1f),
     )
     if (offerExport) {
-      TextButton(onClick = onExport, modifier = Modifier.testTag(StatsTestTags.EXPORT)) {
-        Text(stringResource(R.string.stats_export))
-      }
+      ModernistButton(
+        text = stringResource(R.string.stats_export),
+        onClick = onExport,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(StatsTestTags.EXPORT),
+      )
     }
     menu()
   }
+  // Every screen in the prototype hangs from a 2 dp rule under its title.
+  Rule(modifier = Modifier.testTag(StatsTestTags.HEADER_RULE))
 }
 
 /**
@@ -163,8 +177,8 @@ private fun Orders(
       Modifier
         .fillMaxWidth()
         .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 8.dp),
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
+        .padding(horizontal = Modernist.x2),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     DieOrder.entries.forEach { order ->
@@ -225,8 +239,8 @@ private fun Sessions(
       Modifier
         .fillMaxWidth()
         .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 8.dp),
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
+        .padding(horizontal = Modernist.x2),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Cut(
@@ -265,8 +279,8 @@ private fun Cuts(
       Modifier
         .fillMaxWidth()
         .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 8.dp),
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
+        .padding(horizontal = Modernist.x2),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Cut(
@@ -300,29 +314,6 @@ private fun Cuts(
  * so TalkBack announces "selected" rather than leaving the state of the whole
  * row a guess (`docs/architecture.md`, "Accessibility").
  */
-@Composable
-private fun Cut(
-  label: String,
-  chosen: Boolean,
-  tag: String,
-  onChoose: () -> Unit,
-) {
-  TextButton(
-    onClick = onChoose,
-    modifier =
-      Modifier
-        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
-        .semantics { selected = chosen }
-        .testTag(tag),
-  ) {
-    Text(
-      text = label,
-      style = MaterialTheme.typography.labelLarge,
-      color = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-      fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
-    )
-  }
-}
 
 @Composable
 private fun Dice(
@@ -336,29 +327,29 @@ private fun Dice(
   Text(
     text = stringResource(noteFor(state)),
     style = MaterialTheme.typography.labelSmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    color = Ink.muted,
+    modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x1),
   )
   if (state.filteredToNothing) {
     Text(
       text = stringResource(R.string.stats_filtered_empty),
-      style = MaterialTheme.typography.bodyMedium,
-      modifier = Modifier.padding(16.dp).testTag(StatsTestTags.FILTERED_EMPTY),
+      style = MaterialTheme.typography.bodyLarge,
+      modifier = Modifier.padding(Modernist.x4).testTag(StatsTestTags.FILTERED_EMPTY),
     )
   }
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(StatsTestTags.LIST)) {
     items(dice, key = { "${it.setId}/${it.dieId}" }) { row ->
-      HorizontalDivider()
+      Rule(weight = RuleWeight.Hairline)
       DieLine(row = row, onOpen = { presenter.select(row.setId, row.dieId) })
     }
     item(key = "reset-everything") {
-      HorizontalDivider()
-      TextButton(
+      Rule()
+      ModernistButton(
+        text = stringResource(R.string.stats_reset_all),
         onClick = { presenter.confirm(Reset.Everything) },
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.fillMaxWidth().testTag(StatsTestTags.RESET_ALL),
-      ) {
-        Text(stringResource(R.string.stats_reset_all), color = MaterialTheme.colorScheme.error)
-      }
+      )
     }
   }
 }
@@ -375,9 +366,9 @@ private fun DieLine(
         .clickable(onClick = onOpen)
         .semantics(mergeDescendants = true) {}
         .testTag(StatsTestTags.dieOf(row.setId, row.dieId))
-        .padding(horizontal = 16.dp, vertical = 10.dp),
+        .padding(horizontal = Modernist.x4, vertical = Modernist.x3),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x3),
   ) {
     Column(modifier = Modifier.weight(1f)) {
       Text(
@@ -394,25 +385,23 @@ private fun DieLine(
             stringResource(R.string.stats_set_gone, row.setId)
           },
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.muted,
       )
     }
     Text(
       text = pluralStringResource(R.plurals.stats_throws, row.summary.throws.toInt(), row.summary.throws),
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
     )
     Text(
       text = row.summary.mean?.let { "%.2f".format(it) } ?: "—",
-      style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.titleLarge,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.testTag(StatsTestTags.meanOf(row.setId, row.dieId)),
     )
   }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Detail(
   detail: DieDetail,
@@ -423,36 +412,11 @@ private fun Detail(
       Modifier
         .fillMaxSize()
         .verticalScroll(rememberScrollState())
-        .padding(16.dp)
+        .padding(Modernist.x4)
         .testTag(StatsTestTags.DETAIL),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x3),
   ) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-      Tile(
-        label = stringResource(R.string.stats_natural_high, detail.extremes.highestValue),
-        value = detail.extremes.highs.toString(),
-        tag = StatsTestTags.HIGHS,
-      )
-      Tile(
-        label = stringResource(R.string.stats_natural_low, detail.extremes.lowestValue),
-        value = detail.extremes.lows.toString(),
-        tag = StatsTestTags.LOWS,
-      )
-      Tile(
-        label = stringResource(R.string.stats_average),
-        value =
-          detail.row.summary.mean
-            ?.let { "%.2f".format(it) } ?: "—",
-        tag = StatsTestTags.MEAN,
-      )
-      Tile(
-        label = stringResource(R.string.stats_total_throws),
-        value =
-          detail.row.summary.throws
-            .toString(),
-        tag = StatsTestTags.THROWS,
-      )
-    }
+    Tiles(detail)
 
     // Said before the bars, not after: a player should know the line is a
     // guess before they read anything into the shape.
@@ -460,22 +424,79 @@ private fun Detail(
       Text(
         text = stringResource(R.string.stats_guessed_line),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.error,
+        color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.testTag(StatsTestTags.GUESSED),
       )
     }
 
     Histogram(detail.bars)
 
-    TextButton(
+    ModernistButton(
+      text = stringResource(R.string.stats_reset_die),
       onClick = {
         presenter.confirm(Reset.OneDie(detail.setId, detail.dieId, detail.row.name))
       },
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(StatsTestTags.RESET_DIE),
-    ) {
-      Text(stringResource(R.string.stats_reset_die), color = MaterialTheme.colorScheme.error)
-    }
+    )
   }
+}
+
+/**
+ * The four numbers, drawn the way the prototype draws them: a two-column grid
+ * whose cells are divided by rules.
+ *
+ * Not four filled cards. The system has one surface colour, no rounded corner
+ * and no filled tile — what marks a cell off from the one beside it is a line
+ * (`design/dInfinityPhone.dc.html`, the Statistics screen).
+ */
+@Composable
+private fun Tiles(detail: DieDetail) {
+  Column(modifier = Modifier.fillMaxWidth()) {
+    Rule()
+    TileRow {
+      Tile(
+        label = stringResource(R.string.stats_natural_high, detail.extremes.highestValue),
+        value = detail.extremes.highs.toString(),
+        tag = StatsTestTags.HIGHS,
+        modifier = Modifier.weight(1f),
+      )
+      VerticalDivider(thickness = Modernist.hairline, color = Ink.divider)
+      Tile(
+        label = stringResource(R.string.stats_natural_low, detail.extremes.lowestValue),
+        value = detail.extremes.lows.toString(),
+        tag = StatsTestTags.LOWS,
+        modifier = Modifier.weight(1f),
+      )
+    }
+    Rule(weight = RuleWeight.Hairline)
+    TileRow {
+      Tile(
+        label = stringResource(R.string.stats_average),
+        value =
+          detail.row.summary.mean
+            ?.let { "%.2f".format(it) } ?: "—",
+        tag = StatsTestTags.MEAN,
+        modifier = Modifier.weight(1f),
+      )
+      VerticalDivider(thickness = Modernist.hairline, color = Ink.divider)
+      Tile(
+        label = stringResource(R.string.stats_total_throws),
+        value =
+          detail.row.summary.throws
+            .toString(),
+        tag = StatsTestTags.THROWS,
+        modifier = Modifier.weight(1f),
+      )
+    }
+    Rule(weight = RuleWeight.Hairline)
+  }
+}
+
+/** Two cells and the rule between them, both as tall as the taller cell. */
+@Composable
+private fun TileRow(content: @Composable RowScope.() -> Unit) {
+  Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), content = content)
 }
 
 @Composable
@@ -483,28 +504,27 @@ private fun Tile(
   label: String,
   value: String,
   tag: String,
+  modifier: Modifier = Modifier,
 ) {
   Column(
     modifier =
-      Modifier
-        .width(TILE)
-        .background(MaterialTheme.colorScheme.surfaceVariant)
+      modifier
+        .fillMaxHeight()
         // One thing, to a reader and to TalkBack alike: "3, natural 20" is a
         // fact, and two separate announcements of it are not.
         .semantics(mergeDescendants = true) {}
-        .padding(10.dp)
+        .padding(Modernist.x3)
         .testTag(tag),
   ) {
     Text(
       text = value,
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.headlineLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
     Text(
       text = label,
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = Ink.muted,
     )
   }
 }
@@ -521,7 +541,10 @@ private fun Histogram(bars: List<FaceBar>) {
   val widest = bars.maxOfOrNull { maxOf(it.share, it.fairShare) }?.takeIf { it > 0.0 } ?: 1.0
   Column(
     modifier = Modifier.fillMaxWidth().testTag(StatsTestTags.HISTOGRAM),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    // `.hr`'s own thickness, used here as the gap between two bars: the
+    // smallest space the system draws with is 4 dp, which would be a chart
+    // more gap than bar on a d100.
+    verticalArrangement = Arrangement.spacedBy(Modernist.rule),
   ) {
     bars.forEach { bar ->
       // The fair line and the bar over it are told apart by colour and by
@@ -544,12 +567,12 @@ private fun Histogram(bars: List<FaceBar>) {
             .semantics(mergeDescendants = true) { contentDescription = said }
             .testTag(StatsTestTags.barOf(bar.value)),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
       ) {
         Text(
           text = bar.value.toString(),
           style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = Ink.muted,
           modifier = Modifier.width(LABEL),
         )
         Box(modifier = Modifier.weight(1f)) {
@@ -560,7 +583,7 @@ private fun Histogram(bars: List<FaceBar>) {
               Modifier
                 .fillMaxWidth((bar.fairShare / widest).toFloat())
                 .height(BAR)
-                .background(MaterialTheme.colorScheme.outline),
+                .background(Ink.divider),
           )
           Box(
             modifier =
@@ -573,7 +596,7 @@ private fun Histogram(bars: List<FaceBar>) {
         Text(
           text = bar.count.toString(),
           style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = Ink.muted,
           modifier = Modifier.width(LABEL),
         )
       }
@@ -587,54 +610,55 @@ private fun Confirm(
   onYes: () -> Unit,
   onNo: () -> Unit,
 ) {
-  AlertDialog(
+  Sheet(
+    title = stringResource(R.string.stats_confirm_title),
+    onDismiss = onNo,
     modifier = Modifier.testTag(StatsTestTags.CONFIRM),
-    onDismissRequest = onNo,
-    title = { Text(stringResource(R.string.stats_confirm_title)) },
-    text = {
-      Text(
-        when (what) {
-          is Reset.OneDie -> stringResource(R.string.stats_confirm_die, what.name)
-          Reset.Everything -> stringResource(R.string.stats_confirm_all)
-        },
+    actions = {
+      ModernistButton(
+        text = stringResource(R.string.stats_confirm_yes),
+        onClick = onYes,
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(StatsTestTags.CONFIRM_YES),
+      )
+      ModernistButton(
+        text = stringResource(R.string.group_cancel_stats),
+        onClick = onNo,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(StatsTestTags.CONFIRM_NO),
       )
     },
-    confirmButton = {
-      Button(onClick = onYes, modifier = Modifier.testTag(StatsTestTags.CONFIRM_YES)) {
-        Text(stringResource(R.string.stats_confirm_yes))
-      }
-    },
-    dismissButton = {
-      TextButton(onClick = onNo, modifier = Modifier.testTag(StatsTestTags.CONFIRM_NO)) {
-        Text(stringResource(R.string.group_cancel_stats))
-      }
-    },
-  )
+  ) {
+    Text(
+      when (what) {
+        is Reset.OneDie -> stringResource(R.string.stats_confirm_die, what.name)
+        Reset.Everything -> stringResource(R.string.stats_confirm_all)
+      },
+    )
+  }
 }
 
 @Composable
 private fun Empty() {
   Column(
-    modifier = Modifier.fillMaxWidth().padding(24.dp).testTag(StatsTestTags.EMPTY),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    modifier = Modifier.fillMaxWidth().padding(Modernist.x6).testTag(StatsTestTags.EMPTY),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Text(
       text = stringResource(R.string.stats_empty_title),
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.headlineMedium,
       color = MaterialTheme.colorScheme.onBackground,
     )
     Text(
       text = stringResource(R.string.stats_empty_body),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.bodyLarge,
+      color = Ink.muted,
     )
   }
 }
 
-private val TILE = 150.dp
-private val LABEL = 32.dp
-private val BAR = 14.dp
+private val LABEL = Modernist.x8
+private val BAR = Modernist.x3
 
 /** What the tests reach the statistics screen by. */
 object StatsTestTags {
@@ -643,6 +667,9 @@ object StatsTestTags {
   const val DETAIL: String = "stats:detail"
   const val EMPTY: String = "stats:empty"
   const val BACK: String = "stats:back"
+
+  /** The 2 dp rule the whole screen hangs from. */
+  const val HEADER_RULE: String = "stats:header-rule"
 
   /** Also the prefix the export dialog's own tags are built from. */
   const val EXPORT: String = "stats:export"
