@@ -95,7 +95,8 @@ class RollLoopTest {
     assertEquals("nothing was corrected, because there is nothing left that could be", 0, outcome.corrections)
     assertEquals(0, outcome.postRestCorrections)
     assertEquals("a die that settled perfectly well was thrown again", 0, outcome.rethrows)
-    assertEquals("and it was counted and lifted off", listOf(0), world.removed)
+    assertEquals("it was read", 1, outcome.faces.size)
+    assertEquals("and taken off a table nothing else was going to be thrown onto", emptyList<Int>(), world.removed)
   }
 
   @Test
@@ -106,7 +107,11 @@ class RollLoopTest {
     assertTrue("something reached into the roll", world.biases.isEmpty())
     assertEquals(0, outcome.corrections)
     assertEquals("the die nobody could read was not thrown again", 1, outcome.rethrows)
-    assertEquals("and once it could be read it was counted", listOf(0), world.removed)
+    assertEquals("and once it could be read it was counted", 1, outcome.faces.size)
+    // The re-throw came *before* anything had been read, so there was nothing
+    // on the table to make room for and nothing was taken off it. The die that
+    // ended the roll is the only die there is, and it stays where it landed.
+    assertEquals("the only die in the roll was taken off the table", emptyList<Int>(), world.removed)
     assertEquals(0, outcome.stackedAtRest)
   }
 
@@ -126,6 +131,45 @@ class RollLoopTest {
     assertTrue("the die standing on another was not thrown again", world.respawns.any { it.second == 1 })
     assertEquals("a die was left standing on another", 0, outcome.stackedAtRest)
     assertEquals(2, outcome.faces.size)
+  }
+
+  @Test
+  fun `a roll that settles first time leaves every die where it landed`() {
+    // The rule the screen depends on. Reading a die and taking it off the
+    // table used to be one act, so a roll that went perfectly cleared itself
+    // off the felt and left the player looking at an empty tray with a number
+    // floating over it. Nothing is thrown again here, so nothing has to make
+    // room, so nothing comes off.
+    val world = FakeWorld(3) { _, _, _ -> FakeWorld.settled() }
+    val loop = loop(listOf(StandardDice.d6, StandardDice.d20, StandardDice.d6), world)
+
+    val outcome = loop.run()
+
+    assertEquals("a die was thrown again with nothing wrong with it", 0, outcome.rethrows)
+    assertEquals("all three were read", 3, outcome.faces.size)
+    assertEquals("a die was taken off a table nothing was going to be thrown onto", emptyList<Int>(), world.removed)
+    assertEquals("the dice are drawn as read", listOf(true, true, true), loop.countedOut)
+    assertEquals("and the renderer was told to stop drawing them", listOf(false, false, false), loop.liftedOut)
+  }
+
+  @Test
+  fun `a die comes off the table only to make room for one being thrown again`() {
+    // Two dice: one readable, one standing on it. The second has to be thrown
+    // again, and *that* is what lifts the first — the floor it is standing on
+    // is the room the re-throw needs.
+    val world =
+      FakeWorld(2) { _, index, rethrows ->
+        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
+      }
+    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world)
+
+    loop.run()
+
+    assertEquals("both dice were read", listOf(true, true), loop.countedOut)
+    // Only the first. The second was read in the pass that threw nothing
+    // again, so it had no reason to come off and stays on the table.
+    assertEquals("the wrong dice were lifted off", listOf(true, false), loop.liftedOut)
+    assertEquals("the die that made room did not come off", listOf(0), world.removed)
   }
 
   @Test

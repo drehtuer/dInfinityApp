@@ -423,6 +423,55 @@ convinces or does not: a roll has to look like dice landing, not like an
 animation of a random number. Runs first as soon as 4.1 renders, then again
 after every physics change.
 
+- [ ] **The printed numbers are drawn reflected, and no test can see it.**
+      Photographed on the Pixel 10a, debug build, at `1d20`: the glyphs on
+      every visible face are a mirror image — `18` draws as `8I`, `13` as `EI`.
+      A reflection is a reflection whichever axis it is in, and a die lands at
+      an arbitrary orientation, so **a photograph cannot tell a flipped `u`
+      from a flipped `v`**: the two differ by a half-turn, and the die supplies
+      the half-turn. That is why this needs an instrument rather than another
+      screenshot.
+
+      What has been ruled out, each by looking rather than by reasoning:
+
+      - **The atlas is upright.** Dumped `DieNumbers.fieldOf(d6)` cell by cell
+        as text: the `2` is a `2` and the `6` is a `6`, rows counted from the
+        top, exactly as `NumberField` says.
+      - **Nothing in the transform chain reflects.** `Transform.of` is an
+        orthonormal basis with a positive uniform scale, and `camera.lookAt`
+        with `forward = (sin t, 0, -cos t)`, `up = (cos t, 0, sin t)` is a
+        right-handed view whose screen-right works out at `-y`.
+      - **The mesh's own frame is right-handed too.** In `TextureFrame`,
+        `along × up = normal`, so `along` is the viewer's right seen from
+        outside the face, and `u` grows along it.
+
+      So the reflection is somewhere between the UVs leaving Kotlin and the
+      texel arriving in the shader. The first suspect is **`MaterialBuilder`'s
+      `flipUV`, which defaults to `true`** and flips `v` — against a
+      `TextureFrame` that has already turned `v` over once itself, and a
+      `setImage` that uploads `NumberField`'s top-down rows unflipped. Three
+      conventions, and the code states two of them.
+
+      There is a second, separate question this turned up and did not settle:
+      a `1d20` that reported **9** showed 14, 10, 18, 7, 12 and 13 on its
+      visible faces and no 9 — 12 being 9's opposite. That is either a die
+      drawn from the wrong side or six mirrored glyphs misread off a 130-pixel
+      die, and the same instrument answers both.
+
+      **The instrument:** an instrumented test in `render/filament` that draws
+      one die at a *known* orientation, reads the frame back through
+      `Snapshot`, and asserts where a known glyph's ink is. It is the only
+      thing that can hold this still — the whole point of `docs/architecture.md`
+      decision 40, applied to the one part of the pipeline it was not applied
+      to. It is also the regression test.
+
+- [ ] **`TrayCamera.shotOn` calls `cross(up, forward)` `right`, and it is
+      left.** Screen-right is `cross(forward, up)`; the code has the operands
+      the other way round, so the vector is negated. It is harmless today
+      because its only use is inside an `abs()` in the framing solve, which is
+      why nothing caught it. Fix it with the reflection above, since anyone
+      reading that file while hunting a handedness bug will stop here first.
+
 ### 5.1 Harness
 
 **Built, and it runs on either tier.** `tools/harness.sh` rolls N throws
@@ -613,8 +662,9 @@ more spawn bands — is a way of making corrections work better, and a correctio
 is the thing this section is named after not wanting. The answer is what a
 person does at a table when the dice land in a heap:
 
-> **Count the dice that can be read, take them off the board, and throw the
-> rest again. Repeat until every die has been counted.**
+> **Count the dice that can be read, and if anything is left to throw again,
+> take the read ones off the board first and throw the rest onto the room that
+> makes. Repeat until every die has been counted.**
 
 A die is either read or thrown again. Nothing is nudged, biased, popped apart
 or re-placed, so the correction rate stops being a number to tune and becomes
@@ -622,6 +672,14 @@ zero by construction — and "it does not look like it cheats" stops being a
 separate claim from "it does not cheat", because there is nothing left to see.
 A die taken off the board after its face is read is not *moved*: it is out of
 play, which is the one thing the honest rule allows (`docs/physics-and-rendering.md`).
+
+**Being read is not what takes a die off the board — needing room for a
+re-throw is.** A pass that has nothing left to throw lifts nothing, so a roll
+that settles first time leaves every die where it landed for the player to look
+at. That is safe because a die is only read once the whole table has stopped,
+so no reading can be knocked out of date by a die still in flight, and the only
+thing that could land where a read die stands is a re-throw — which is exactly
+what lifts them.
 
 It should also terminate quickly. Each pass reads most of the dice, so what is
 left shrinks fast, and a heap of a hundred becomes a handful within a few
