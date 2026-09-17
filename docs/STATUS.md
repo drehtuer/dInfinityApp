@@ -16,27 +16,15 @@ This is a snapshot, not a changelog — git history is the changelog.
   Pixel 10a, and the dice tumble onto a felt tray, come to rest, are felt and
   heard as they land, and their total appears. They carry real printed numbers,
   and a die whose author drew artwork now wears it.
-- **Latest release:** `v0.0.1` — the skeleton, cut to prove the release
-  pipeline. Signed, fingerprint-checked, published with its SHA-256.
+- **Latest release:** `v0.1.0` — the first one that rolls dice. Signed,
+  fingerprint-checked, published with its SHA-256. `v0.0.1` before it was the
+  skeleton, cut to prove the release pipeline and nothing else.
 
 ### Branch state
 
-`main` has everything through **#260**: all of Step 3, every screen of Step 4,
-the harness, the ten-thousand-roll measurements below, count-and-clear rolling,
-shake-to-throw, the `3 to 21+` ceiling and the visible backstop.
-
-**In flight:** six stacked pull requests, #261–#266, from a pass over the UI
-against the prototype. In order: the hand-over to the designer; the drift put
-back and a build check so it cannot return; the design tokens moved out of
-`:app` into `ui/common`, where every screen can reach them, so six copies of
-the same scale became one; the last Material pills replaced by the square
-options and segmented controls the system actually draws; the accent kickers
-that are the only thing grouping a screen into blocks; and every dialog turned
-into the bottom sheet the prototype has always shown.
-
-Nothing in the stack changes behaviour. The one visible pixel change is the
-outcome graph's out-of-σ bars, which are a step lighter on a dark page because
-they now name the ramp step instead of thinning the ink.
+`main` has everything through **#268**, and `v0.1.0` is cut from it: all of
+Step 3, every screen of Step 4, the harness, the measurements below, and a
+pass over the whole UI against the prototype. Nothing is in flight.
 
 ## Done
 
