@@ -236,7 +236,7 @@ stateDiagram-v2
     Screen --> Roll: system back
     Developer --> Roll: system back
     Menu --> Roll: system back
-    Roll --> [*]: system back leaves the app
+    Roll --> [*]: system back twice leaves the app
 ```
 
 **Every screen is now reachable, and every one of them by the same control.**
@@ -250,6 +250,22 @@ Nothing is undefined, and nothing is unreachable. `NavHost` answers back on
 every destination, `Destination.home` is where the app opens, and a route that
 does not resolve cannot be reached — `Destination.ofRoute` is the only way in
 and it is total.
+
+**Back off the roll screen is two presses, not one.** From anywhere else, back
+goes to Roll and clears the stack, which is what the diagram has always said.
+On Roll itself it *arms*: the first press raises a toast reading "Back again to
+leave dInfinity", and a second press within **two seconds** leaves. After that
+the arming lapses, so a stray swipe cannot close the app a minute later. The
+design asked for it (2026-09-17) and the reason is the screen it guards — the
+roll screen is where the app opens and where a result sits while somebody is
+still reading it, and it is also the screen with the largest gesture surface in
+the app.
+
+**A chevron in a header always goes up, never back.** It takes the player to
+the hub the screen was opened from, and from the hub to Roll, whatever path
+they took to get there. It is not a second spelling of the system's back
+button: one of them retraces steps and the other climbs, and a control that
+sometimes does each is a control nobody can predict.
 
 The menu button is **handed to each screen rather than built by it**. A screen
 that knew what the menu was would be one feature module depending on another,
@@ -1051,7 +1067,8 @@ offer a formula the app would refuse (`docs/dice-notation.md`).
 | Control | Calls | What changes |
 | --- | --- | --- |
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
-| one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
+| one of the six accent presets, or a colour from the system picker | `onAccentSelected` | the stored accent, and with it every screen at once. The six are laid out four across, so six presets and a custom swatch come out 4 + 3 with nothing orphaned |
+| Straight down / Angled | `onTableViewSelected` | how far the camera leans over the table, from the next visit to the roll screen (`docs/physics-and-rendering.md`, "Rendering") |
 | the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
 | the haptics switch | `onHapticsChanged` | whether a die landing ticks in the hand, from the next visit to the roll screen. The system's own touch-feedback setting still governs it: the effects go out under `VibrationAttributes.USAGE_TOUCH` and the app never asks whether that is on |
 | the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
@@ -1070,6 +1087,29 @@ starts buzzing half way down, an overlay appearing over a throw, or a total
 changing its arithmetic while the dice are in the air are not settings taking
 effect; they are bugs (decision 16). The developer toggle's *other* half — the
 menu row — appears at once, because a menu is not a roll.
+
+**The accent is no longer a closed palette, and the clamp is what makes that
+safe.** `AccentColor` was six entries checked against both grounds by a test,
+and its KDoc says why a free picker was refused: a slider that offers a pale
+yellow produces an app whose most important control is invisible. The design of
+2026-09-17 keeps the six as presets — **Light blue `#38a8dc`** by default, then
+Modernist red `#ec3013`, Magenta `#c2186f`, Cobalt `#1d5fd4`, Pine `#0f7a50`
+and Amber `#c07000` — and adds the system colour picker behind **a contrast
+clamp**: whatever comes back is pushed toward the ground it will be read
+against until it meets the bar, and it is the clamped value that feeds
+`--color-accent` and its ramp. The swatch and the hex label still show the
+colour the player actually chose, because a picker that silently shows
+something else is a picker nobody believes. What used to be a test over six
+fixed entries becomes a test over the clamp — which is the stronger statement,
+since it holds for every colour rather than for six.
+
+**There is no longer a sound switch in the design.** The prototype's Settings
+has Appearance, Table view, Power-saving mode, Haptics, Division and Accent
+colour, and nothing else; haptics is the only feedback toggle it offers. The
+app has a `feedback/` module that generates an impact sound per table material
+and pitches it by the die's size. Removing that is a product decision rather
+than a drawing, so the row below stays until it is taken, and the decision is
+in `docs/TODO.md`.
 
 Haptics and sound are read there rather than per throw because **both ends of
 them are built with the screen**: the thing that listens is the roll, which is

@@ -66,7 +66,7 @@ the canvas — open [design/](../design/) beside the code.
       and a total arriving from nowhere. The first device session lost twenty
       minutes to it, convinced Filament had failed, and it is the clearest case
       of the prototype being right and the app simply not having built it
-      (`docs/design-handover.md`, "What the phone showed"). The mode is read
+      (`docs/design-handover.md`, "Four the pass did not reach"). The mode is read
       when the screen opens, so the screen already knows.
 
 - [ ] **Two screens disagree about where the top of the screen is.** On the
@@ -264,6 +264,22 @@ extractor unpacks it, and the one `*.dinfinity.json` at its root goes through
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
 
+**From the design pass of 2026-09-17** (`docs/dice-notation.md`, "Saved rolls"):
+
+- [ ] **Drag the list into order, and drop pinning.** Each entry gets a grip;
+      the list reorders live under the finger, and the row that moves is the
+      one under the pointer rather than the one the drag began on. The
+      favourite flag goes, and favourites-first with it — a favourite and a
+      roll dragged to the top were solving the same problem twice, and only one
+      of them can say which favourite comes first. `sortOrder` replaces the
+      flag in storage, and the order travels in an exported collection as the
+      file's own order
+- [ ] **Twelve colour tags and a custom one**, each through the same contrast
+      clamp as the accent. The list is ink, grey, red, deep red, orange, amber,
+      pine, teal, cobalt, violet, magenta, bone
+- [ ] **The list is its own scroll box**, under a header and a group picker
+      that stay put
+
 ### 4.4 Dice sets — `feature/sets`
 
 Design `1s`, `1t`, `5a`, `6a`, `6b`, `8c`, `9h`, `9i`. Spec: `docs/dice-sets.md`.
@@ -302,6 +318,16 @@ through.
 **From the design pass of 2026-09-17** (`docs/dice-sets.md`, "Weight,
 translucency and size, as a person sets them"):
 
+- [ ] **Draw the filled accent tag — "Update available" — at last.** It was
+      the one blocked thing in the app: `.tag-accent` is a ramp's `-100` filled
+      and `-800` lettered, the design system shipped exact ramps for two
+      accents, and nothing said how to make the *pale* end for the other four.
+      The answer is that **both ends are mixed, from the accent the player
+      picked**: `color-mix(accent 16 %, bg)` for `-100`, `28 %` for `-200`, and
+      86 / 58 / 40 % toward `--color-text` for `-600` / `-700` / `-800`. The
+      mix is against `--color-text` and `--color-bg` rather than black and
+      white, which is what makes it resolve on both grounds. So the status that
+      is a line of accent prose today becomes the tag the prototype draws
 - [ ] **A `translucency` field**, per cent and clamped, in `defaults` and per
       die, through the validator and `DieMaterial` and into the die material —
       with the **numerals held opaque** whatever it is. It is the one of the
@@ -510,6 +536,26 @@ table fall back while leaving the setting alone, so re-installing the package
 restores the choice; the session falls back where a roll is *recorded*, because
 a session deleted while another screen was in front would otherwise strand
 every throw filed under it (`docs/statistics.md`, per session).
+
+**From the design pass of 2026-09-17** (`docs/architecture.md`, "Settings"):
+
+- [ ] **The accent gains the system colour picker, behind a contrast clamp**,
+      and the six presets change: Light blue `#38a8dc` as the default, then
+      Modernist red `#ec3013`, Magenta `#c2186f`, Cobalt `#1d5fd4`, Pine
+      `#0f7a50`, Amber `#c07000`. `AccentColor`'s KDoc refuses a free picker
+      because a pale yellow makes the most important control invisible; the
+      clamp is the answer to that, and it turns `AccentColorTest` from six
+      fixed entries into a property that holds for every colour. **The stored
+      ids change**, so the migration is the interesting part: an id that is no
+      longer known falls back to the default, which would silently reset
+      everybody who had picked one of the four that are going
+- [ ] **A Table view row**, straight down or angled, taking effect the next
+      time the roll screen opens like the other five
+- [ ] **Four across, not five.** Six swatches at today's size lay out 5 + 1
+      with one orphaned; at 44 dp on a four-column grid, six presets and a
+      custom swatch come out 4 + 3
+- [ ] **The two-stage back**, and the "Back again to leave dInfinity" toast
+      with it (`docs/architecture.md`, "Navigation")
 
 The **developer toggle** is the last thing on that screen, and it is the one
 setting that is off on every install. It adds a debug overlay over the tray, a
@@ -1108,6 +1154,54 @@ The figures are reported in every PR description either way.
 
 ## Open questions
 
+- [ ] **Does the sound go?** The design's Settings has Appearance, Table view,
+      Power-saving mode, Haptics, Division and Accent colour, and nothing else:
+      haptics is the only feedback toggle it offers, and the Impact sound
+      switch is gone. The app has a `feedback/` module that generates an
+      impact sound from the table's material and pitches it by the die's size,
+      with its own tests and its own place in power-saving mode
+      (`docs/physics-and-rendering.md`, "Impacts, haptics and sound"), and
+      `README.md` sells it as a feature. This is a product decision, not a
+      drawing, which is why nothing has been deleted: a prototype cannot make a
+      noise, so the prototype not having a switch for one is weak evidence
+      either way. The three answers are to take the feature out, to keep it and
+      put the row back in the design, or to keep it with no switch and let the
+      system volume be the control
+- [ ] **Does a tap on the table roll?** The design's overview says "a felt
+      table you shake or tap to roll", and the prototype's table rolls on a
+      tap. The app deliberately spends that tap on nothing
+      (`docs/physics-and-rendering.md`, "Starting a roll"): the tray's
+      one-finger touch is being kept for picking a die up and throwing it
+      again, and a surface that throws the whole formula the moment it is
+      touched has nowhere to put that. The prototype has no camera to move and
+      no die to pick up, so it has a spare gesture the app does not. Worth
+      settling before the hand re-throw is wired up, because they want the same
+      finger
+
+**The design's own six**, from its decision log of 2026-09-17. None of them
+blocks code:
+
+- [ ] **Uppercase on a session-name kicker.** Kickers are small-caps at .1em
+      tracking everywhere. A session's name is something somebody typed, and
+      `THORIN'S CAMPAIGN` is a decision about their words — the same question
+      the app's own uppercase note asks from the other side
+- [ ] **Statistics is three axes on one screen** — per die, per set, per
+      session. Split them, or keep the picker at the bottom?
+- [ ] **History is flat and reverse-chronological.** Group by day, or by saved
+      roll? The app currently emits a heading when the *session* changes, which
+      is a third answer nobody has chosen
+- [ ] **Make-default lives on a set's detail screen only.** Should the list
+      rows carry it too?
+- [ ] **The d18 is a true enneagonal trapezohedron** — geometrically right, a
+      tall pointed barrel, and busy at eighteen faces. Keep it, or stand in a
+      rounded barrel? Worth reading beside the fairness note: this app's d18 is
+      the one shape that cannot pass chi-squared, and the reason is the same
+      narrowness that makes it look busy
+- [ ] **An oversized stamp on a d4 clips at the face edge**, in the flat editor
+      and on the solid, exactly as it would on a real die. Leave it as
+      authoring feedback, or shrink it to fit?
+
+
 - [ ] **Does a refusal keep its words, or become a reason?** The sentences a
       validator and a downloader write end up on screen, and they are written
       in modules that have no resources — which is deliberate, because nothing
@@ -1187,22 +1281,6 @@ The figures are reported in every PR description either way.
       with a `design-system-exception` and the reason beside it. All twenty-one
       call sites go through the one composable, so it is one place whenever it
       is done
-- [ ] **A tag needs a ramp, and only two of the six accents have one.** The
-      design system ships exact ramps for `--color-accent` (vermilion) and
-      `--color-accent-2` (coral), and `.tag-accent` is built from two ends of
-      one: `-100` filled, `-800` lettered. The app lets a player choose six
-      accents, and `AccentColor` already derives what it needs for the other
-      four the way the design derives an ad-hoc accent
-      (`design/Logo.dc.html`: `color-mix(in srgb, accent 58%, text)`) — but
-      that rule makes the *deep* end only. Nothing in the design says how to
-      make the pale end, and it cannot be mixed from the accent and the
-      ground: `--color-accent-100` is `#fff2ef`, which is lighter in the red
-      channel than either. So either a tag uses the literal ramp and stops
-      following the accent the player chose, or it derives both ends and
-      stops matching the prototype for the accent the prototype was drawn in.
-      **Until this is answered the app has no filled accent tag**, which is
-      the badge that says a dice set has an update
-
 - [ ] **The picker is a list of rows; the prototype's `1u` is a grid of cards.**
       The thumbnails landed in the list that was already there — one 44 × 64 dp
       picture at the head of each row, in the place the swatch held — rather

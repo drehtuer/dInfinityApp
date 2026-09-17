@@ -1329,7 +1329,8 @@ The prototype used to draw this screen as a column of bands with the tray as
 one of them; the app draws one full-bleed table with the formula, the hint, the
 picker and the buttons floating on it. **The app's shape won**, and the design
 of 2026-09-17 made it a design rather than an accident
-(`design/dInfinityPhone.dc.html`, and question 8 of `docs/design-handover.md`).
+(`design/dInfinityPhone.dc.html`, and `docs/design-handover.md`, "What was
+answered").
 
 **Every control over the table is a plate**: opaque `--color-bg`, no radius, no
 border, `--shadow-sm`, 7 / 11 / 8 dp of padding, hugging its content rather
@@ -1422,7 +1423,7 @@ world, so the capacity rule is unchanged.
   anything in its place, so what a player sees is an empty tray and a total
   arriving from nowhere, which is indistinguishable from a renderer that has
   failed. The first device session mistook it for exactly that
-  (`docs/design-handover.md`, "What the phone showed").
+  (`docs/design-handover.md`, "Four the pass did not reach").
 - The simulation runs on a worker thread as fast as possible, still at
   the same fixed timestep, still with the same seed, correction logic and
   settle rules. Typical roll finishes in well under 100 ms of wall time.

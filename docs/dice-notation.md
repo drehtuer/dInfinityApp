@@ -322,7 +322,7 @@ SavedRoll {
   name ("Fireball"), icon (from icon pack or emoji),
   formula ("8d6 [Fire]"),
   colour tag,
-  favourite flag,
+  sortOrder               // the order the player dragged it into
   createdAt, lastUsedAt, useCount
 }
 ```
@@ -343,9 +343,28 @@ SavedRoll {
   long-press to edit. A tap *throws* there, unlike a tap on the saved-rolls
   list, which only puts the formula in the field: the tray is already on
   screen, and arriving at it with the throw already over would be a roll nobody
-  watched. Favourites are pinned first, the rest ordered by recent
-  use. Switching the active group is one tap in the top bar, and the active
+  watched. Switching the active group is one tap in the top bar, and the active
   group also sets the default statistics session (`docs/statistics.md`).
+- **The order is the player's, and nothing else's.** There is no pinning and no
+  favourites: each entry carries a grip, and dragging it moves it. The design
+  took the favourite flag out in the pass of 2026-09-17, and the reason is that
+  the two were solving the same problem twice — a favourite is a roll somebody
+  wants at the top, and so is a roll somebody dragged to the top, except that
+  the second one also says which of the favourites comes first. Recency is gone
+  with it: a list that reorders itself between two fights is a list nobody can
+  point at.
+
+  It reorders live under the finger rather than on release, and the row being
+  dragged is the one under the pointer rather than the one the drag started on
+  — which is what makes it work when a list is longer than a thumb. The list is
+  its own scroll box, so it scrolls under a header and a group picker that stay
+  put.
+- **A colour tag is one of twelve, or one somebody picked.** The twelve span
+  the hue circle — ink, grey, red, deep red, orange, amber, pine, teal, cobalt,
+  violet, magenta, bone — and every one of them, including a custom one, goes
+  through the same contrast clamp against the active theme that the accent does
+  (`docs/architecture.md`, "Settings"), because a roll's icon is drawn in its
+  colour and a pale yellow on paper is an icon nobody can see.
 - The formula is re-validated when displayed, because the dice set it
   references might have been uninstalled. A broken saved roll shows a warning
   badge, and tapping it puts the formula in the field like any other — where
@@ -472,10 +491,11 @@ rolls.
   everything wrong with it rather than the first thing: somebody fixing a file
   by hand wants the whole list, and each line says where in the file it is
   (`rolls[3].formula`).
-- What travels is what somebody wrote — names, formulas, marks, groups and
-  favourites. What the app made of it does not: no use counts, no timestamps,
-  no seeds, no colour tags from the app's own palette, and no table pin naming
-  a package the other phone has never heard of.
+- What travels is what somebody wrote — names, formulas, marks, groups, and
+  **the order they are in**, which is the file's own order and needs no field.
+  What the app made of it does not: no use counts, no timestamps, no seeds, no
+  colour tags from the app's own palette, and no table pin naming a package the
+  other phone has never heard of.
 - Limits: 500 rolls and 50 groups per collection, 1 MiB file (counted in
   bytes, not characters). Bigger files are rejected with a message, without
   being parsed. Names are capped at 100 characters, icons at 16 and formulas

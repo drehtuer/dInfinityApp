@@ -33,8 +33,9 @@ This is a snapshot, not a changelog — git history is the changelog.
 ### Branch state
 
 `main` has everything through **#275**. `v0.1.0` is cut from #268 and is two
-fixes behind. In flight: taking in the design pass of 2026-09-17, one PR per
-area of `docs/`.
+fixes behind. In flight: the design pass of 2026-09-17, as three stacked PRs —
+the import and the roll screen (#276), dice sets and the face designer (#277),
+saved rolls, settings and navigation (#278).
 
 ## Done
 
@@ -63,8 +64,14 @@ area of `docs/`.
 ## In progress
 
 **Step 4: every screen is written and connected**, and has just had a pass
-over it against the prototype. What is left on each is in `docs/TODO.md`, and
-most of it is judgement with a phone in hand rather than code.
+over it against the prototype. What is left on each is in `docs/TODO.md`.
+
+**It is no longer mostly judgement.** The design pass of 2026-09-17 answered
+every question the app was waiting on and decided a good deal nobody had asked
+about, so each screen's list has gained work that is code rather than an eye:
+plates over the table, a counting plate, per-set physical properties, the
+designer's Solid tab, dragged saved rolls, an accent picker behind a contrast
+clamp, and a two-stage back.
 
 **Step 5 is the real remaining work** — see Known risks.
 
