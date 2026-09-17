@@ -1,14 +1,17 @@
 package de.drehtuer.dinfinity.feature.saved
 
 import android.content.Context
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
@@ -236,6 +239,26 @@ class HomeStripTest {
     compose
       .onNodeWithTag(HomeStripTestTags.noteOf("brass"), useUnmergedTree = true)
       .assertTextContains("dice missing", substring = true)
+  }
+
+  @Test
+  fun `a tile is the size the prototype draws it`() {
+    // `width:128px;height:96px`, the same for every tile whatever its name is
+    // as long as (`design/dInfinityPhone.dc.html`, the tray's saved-roll
+    // strip). A row of cards of different heights is not a row of cards.
+    given(
+      roll("short", name = "Ax"),
+      roll("long", name = "Thorin's inherited ancestral longsword"),
+    )
+
+    show()
+
+    listOf("short", "long").forEach { id ->
+      compose
+        .onNodeWithTag(HomeStripTestTags.tileOf(id))
+        .assertWidthIsEqualTo(128.dp)
+        .assertHeightIsEqualTo(96.dp)
+    }
   }
 
   @Test

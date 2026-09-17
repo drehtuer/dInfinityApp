@@ -40,7 +40,10 @@ class SettingsScreenTest {
     }
     compose.onNodeWithTag(SettingsTestTags.SCREEN).assertIsDisplayed()
     AccentColor.entries.forEach { accent ->
-      compose.onNodeWithTag(SettingsTestTags.accentSwatch(accent)).assertIsDisplayed()
+      // Scrolled to, like every other row on this screen: six swatches on a
+      // wrapping row do not all fit above the fold of the phone the test
+      // pretends to be.
+      compose.onNodeWithTag(SettingsTestTags.accentSwatch(accent)).performScrollTo().assertIsDisplayed()
     }
   }
 

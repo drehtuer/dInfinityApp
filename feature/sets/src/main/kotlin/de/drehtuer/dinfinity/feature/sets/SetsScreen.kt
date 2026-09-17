@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -102,6 +103,7 @@ private fun Installing(
   TextButton(
     onClick = onInstall,
     enabled = !state.installing,
+    shape = Modernist.square,
     modifier = Modifier.padding(horizontal = 8.dp).testTag(SetsTestTags.INSTALL),
   ) {
     Text(stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install))
@@ -150,7 +152,7 @@ private fun Downloading(
         modifier = Modifier.weight(1f).semantics { contentDescription = farAlong },
       )
     }
-    TextButton(onClick = onCancel, modifier = Modifier.testTag(SetsTestTags.STOP)) {
+    TextButton(onClick = onCancel, shape = Modernist.square, modifier = Modifier.testTag(SetsTestTags.STOP)) {
       Text(stringResource(R.string.sets_cancel))
     }
   }
@@ -184,9 +186,13 @@ private fun FromLink(
       label = { Text(stringResource(R.string.sets_link_label)) },
       modifier = Modifier.weight(1f).testTag(SetsTestTags.LINK),
     )
-    TextButton(
+    // The one filled button of the section: the prototype sets the action
+    // beside the URL field as `btn btn-primary` and leaves "pick a file" and
+    // "try this one" as ghosts beneath it.
+    Button(
       onClick = { presenter.installFrom(url) },
       enabled = !state.installing && url.isNotBlank(),
+      shape = Modernist.square,
       modifier = Modifier.testTag(SetsTestTags.FETCH),
     ) {
       Text(stringResource(R.string.sets_fetch))
@@ -209,7 +215,8 @@ private fun OutcomeSheet(
   AlertDialog(
     onDismissRequest = { presenter.dismiss() },
     modifier = Modifier.testTag(SetsTestTags.OUTCOME),
-    title = { Text(outcomeTitle(outcome)) },
+    // `.dialog-title`: the heading font at 800, 20 px.
+    title = { Text(text = outcomeTitle(outcome), style = MaterialTheme.typography.titleLarge) },
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         if (outcome is PackageInstaller.Result.Failed) {
@@ -223,7 +230,11 @@ private fun OutcomeSheet(
       }
     },
     confirmButton = {
-      TextButton(onClick = { presenter.dismiss() }, modifier = Modifier.testTag(SetsTestTags.OUTCOME_CLOSE)) {
+      TextButton(
+        onClick = { presenter.dismiss() },
+        shape = Modernist.square,
+        modifier = Modifier.testTag(SetsTestTags.OUTCOME_CLOSE),
+      ) {
         Text(stringResource(R.string.sets_install_close))
       }
     },
@@ -256,19 +267,14 @@ private fun Messages(outcome: PackageInstaller.Result) {
     Text(
       text = stringResource(R.string.sets_install_warnings),
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
     )
   }
   messages.forEach { message ->
     Text(
       text = message.toString(),
       style = MaterialTheme.typography.bodySmall,
-      color =
-        if (outcome is PackageInstaller.Result.Failed) {
-          MaterialTheme.colorScheme.error
-        } else {
-          MaterialTheme.colorScheme.onSurfaceVariant
-        },
+      color = if (outcome is PackageInstaller.Result.Failed) wrong else muted,
       modifier = Modifier.testTag(SetsTestTags.OUTCOME_LINE),
     )
   }
@@ -283,8 +289,9 @@ private fun Header(menu: @Composable () -> Unit) {
   ) {
     Text(
       text = stringResource(R.string.sets_title),
+      // `titleLarge` is already the heading font at 800; a `Bold` here pulled
+      // it back to Material's 700 (`--font-heading-weight: 800`).
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
       modifier = Modifier.weight(1f),
     )
     menu()
@@ -292,7 +299,7 @@ private fun Header(menu: @Composable () -> Unit) {
   Text(
     text = stringResource(R.string.sets_order),
     style = MaterialTheme.typography.bodySmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    color = muted,
     modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
   )
 }
@@ -306,12 +313,12 @@ private fun EmptyNote() {
     Text(
       text = stringResource(R.string.sets_empty_title),
       style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      fontWeight = FontWeight.ExtraBold,
     )
     Text(
       text = stringResource(R.string.sets_empty_body),
       style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
     )
   }
 }
@@ -360,6 +367,7 @@ private fun Updates(
     TextButton(
       onClick = { presenter.checkForUpdates() },
       enabled = !state.checking && !state.installing,
+      shape = Modernist.square,
       modifier = Modifier.testTag(SetsTestTags.CHECK),
     ) {
       Text(stringResource(if (state.checking) R.string.sets_checking else R.string.sets_check))
@@ -376,7 +384,7 @@ private fun Updates(
               pluralStringResource(R.plurals.sets_check_unreachable, checked.unreachable, checked.unreachable)
           },
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
         modifier = Modifier.testTag(SetsTestTags.CHECKED),
       )
     }
@@ -407,7 +415,7 @@ private fun SetLine(
         }.semantics(mergeDescendants = true) { }
         .padding(horizontal = 16.dp, vertical = 12.dp)
         .testTag(SetsTestTags.setOf(row.id)),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     Row(
       modifier = Modifier.fillMaxWidth(),
@@ -416,22 +424,24 @@ private fun SetLine(
     ) {
       Text(
         text = row.name,
+        // `.card-title`: the heading font at 800, which is what every name in
+        // this system is set in.
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
+        fontWeight = FontWeight.ExtraBold,
         modifier = Modifier.weight(1f),
       )
       row.version?.let { version ->
         Text(
           text = version,
           style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = muted,
         )
       }
     }
     Text(
       text = status(row),
       style = MaterialTheme.typography.bodySmall,
-      color = if (row.usable) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
+      color = if (row.usable) muted else wrong,
     )
     // Under the status rather than replacing it: whether a set is broken or
     // switched off is what the player can do something about first, and
@@ -471,19 +481,20 @@ private fun ActionSheet(
   AlertDialog(
     onDismissRequest = { presenter.act(null) },
     modifier = Modifier.testTag(SetsTestTags.SHEET),
-    title = { Text(row.name) },
+    title = { Text(text = row.name, style = MaterialTheme.typography.titleLarge) },
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
           text = stringResource(if (row.enabled) R.string.sets_sheet_disable_note else R.string.sets_sheet_remove_note),
           style = MaterialTheme.typography.bodySmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = muted,
         )
       }
     },
     confirmButton = {
-      TextButton(
+      Button(
         onClick = { presenter.setEnabled(row, enabled = !row.enabled) },
+        shape = Modernist.square,
         modifier = Modifier.testTag(SetsTestTags.TOGGLE),
       ) {
         Text(stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable))
@@ -497,6 +508,7 @@ private fun ActionSheet(
             // saying so at the one call site beats a wrapper that has to be
             // kept in step with it (`SetsPresenter.installFrom`).
             onClick = { presenter.installFrom(row.meta.source.orEmpty()) },
+            shape = Modernist.square,
             modifier = Modifier.testTag(SetsTestTags.UPDATE),
           ) {
             Text(stringResource(R.string.sets_sheet_update))
@@ -504,15 +516,17 @@ private fun ActionSheet(
         }
         TextButton(
           onClick = { presenter.remove(row) },
+          shape = Modernist.square,
           modifier = Modifier.testTag(SetsTestTags.REMOVE),
         ) {
           Text(
             text = stringResource(R.string.sets_sheet_remove),
-            color = MaterialTheme.colorScheme.error,
+            color = wrong,
           )
         }
         TextButton(
           onClick = { presenter.act(null) },
+          shape = Modernist.square,
           modifier = Modifier.testTag(SetsTestTags.CANCEL),
         ) {
           Text(stringResource(R.string.sets_sheet_cancel))

@@ -2,26 +2,25 @@ package de.drehtuer.dinfinity.feature.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.SegmentedControl
 
 /*
  * The rows of the Settings screen, one composable each.
@@ -35,7 +34,15 @@ import de.drehtuer.dinfinity.core.model.Rounding
  * value in a test.
  */
 
-/** A heading, its explanation, and whatever the setting is. */
+/**
+ * A heading, its explanation, and whatever the setting is.
+ *
+ * Set the way the prototype sets a settings row: the name in body copy at
+ * semibold, the sentence under it small and dimmed
+ * (`design/dInfinity.dc.html`, option 1y). The two were the same weight of
+ * ink before, so every explanation shouted as loudly as the thing it
+ * explained.
+ */
 @Composable
 internal fun Section(
   heading: String,
@@ -45,13 +52,14 @@ internal fun Section(
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(
       text = heading,
-      style = MaterialTheme.typography.labelLarge,
+      style = MaterialTheme.typography.bodyLarge,
+      fontWeight = FontWeight.SemiBold,
       color = MaterialTheme.colorScheme.onBackground,
     )
     Text(
       text = explanation,
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onBackground,
+      color = Ink.muted,
     )
     content()
   }
@@ -65,7 +73,6 @@ internal fun Section(
  * that changed colour halfway through an evening's game would be doing
  * something nobody asked it to.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AppearanceSection(
   chosen: Appearance,
@@ -75,19 +82,13 @@ internal fun AppearanceSection(
     heading = stringResource(R.string.settings_appearance_heading),
     explanation = stringResource(R.string.settings_appearance_explanation),
   ) {
-    FlowRow(
-      modifier = Modifier.selectableGroup(),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      Appearance.entries.forEach { appearance ->
-        FilterChip(
-          selected = appearance == chosen,
-          onClick = { onChosen(appearance) },
-          label = { Text(stringResource(appearance.labelRes())) },
-          modifier = Modifier.testTag(SettingsTestTags.appearanceOf(appearance)),
-        )
-      }
-    }
+    SegmentedControl(
+      options = Appearance.entries,
+      selected = chosen,
+      label = { stringResource(it.labelRes()) },
+      onSelect = onChosen,
+      tagOf = SettingsTestTags::appearanceOf,
+    )
   }
 }
 
@@ -164,7 +165,6 @@ internal fun FeelSection(
  * the next roll — and every outcome graph, which is computed before any throw
  * exists — uses.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun RoundingSection(
   chosen: Rounding,
@@ -174,19 +174,13 @@ internal fun RoundingSection(
     heading = stringResource(R.string.settings_rounding_heading),
     explanation = stringResource(R.string.settings_rounding_explanation),
   ) {
-    FlowRow(
-      modifier = Modifier.selectableGroup(),
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-      Rounding.entries.forEach { rounding ->
-        FilterChip(
-          selected = rounding == chosen,
-          onClick = { onChosen(rounding) },
-          label = { Text(stringResource(rounding.labelRes())) },
-          modifier = Modifier.testTag(SettingsTestTags.roundingOf(rounding)),
-        )
-      }
-    }
+    SegmentedControl(
+      options = Rounding.entries,
+      selected = chosen,
+      label = { stringResource(it.labelRes()) },
+      onSelect = onChosen,
+      tagOf = SettingsTestTags::roundingOf,
+    )
   }
 }
 
@@ -244,18 +238,32 @@ internal fun AboutSection(
   ) {
     Text(
       text = stringResource(R.string.settings_about_version, version),
-      style = MaterialTheme.typography.bodyMedium,
+      style = MaterialTheme.typography.bodyLarge,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.testTag(SettingsTestTags.VERSION),
     )
-    TextButton(onClick = onRepository, modifier = Modifier.testTag(SettingsTestTags.REPOSITORY)) {
-      Text(stringResource(R.string.settings_about_repository))
-    }
+    ModernistButton(
+      text = stringResource(R.string.settings_about_repository),
+      onClick = onRepository,
+      kind = ModernistButtonKind.Ghost,
+      modifier = Modifier.testTag(SettingsTestTags.REPOSITORY),
+    )
   }
 }
 
+/**
+ * A setting that is on or off, drawn the way the prototype draws one: the name
+ * on the left, an Off / On segmented control on the right
+ * (`design/dInfinity.dc.html`, option 1y).
+ *
+ * The control is a **read-out**, not two buttons — the row is what carries the
+ * tap, exactly as it did when a Material `Switch` sat there, so a tap anywhere
+ * along it still flips the setting and TalkBack still reads it as a switch.
+ * What changed is only what it looks like: `Switch` is a fully round pill with
+ * a circular thumb, and this system has no rounded corner anywhere.
+ */
 @Composable
-private fun SwitchRow(
+internal fun SwitchRow(
   label: String,
   on: Boolean,
   onChanged: (Boolean) -> Unit,
@@ -272,10 +280,17 @@ private fun SwitchRow(
   ) {
     Text(
       text = label,
-      style = MaterialTheme.typography.bodyMedium,
+      style = MaterialTheme.typography.bodyLarge,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(1f),
     )
-    Switch(checked = on, onCheckedChange = null)
+    SegmentedControl(
+      options = OFF_THEN_ON,
+      selected = on,
+      label = { stringResource(if (it) R.string.settings_on else R.string.settings_off) },
+    )
   }
 }
+
+/** Off first, then On — the order the prototype's own Off / On control uses. */
+private val OFF_THEN_ON = listOf(false, true)

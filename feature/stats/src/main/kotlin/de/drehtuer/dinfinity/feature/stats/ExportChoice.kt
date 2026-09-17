@@ -38,12 +38,20 @@ internal fun ExportChoice(
     title = { Text(stringResource(R.string.export_title)) },
     text = { Text(body) },
     confirmButton = {
-      TextButton(onClick = { onChosen(ExportFormat.Json) }, modifier = Modifier.testTag("$tagPrefix:json")) {
+      TextButton(
+        onClick = { onChosen(ExportFormat.Json) },
+        shape = Modernist.square,
+        modifier = Modifier.testTag("$tagPrefix:json"),
+      ) {
         Text(stringResource(R.string.export_json))
       }
     },
     dismissButton = {
-      TextButton(onClick = { onChosen(ExportFormat.Csv) }, modifier = Modifier.testTag("$tagPrefix:csv")) {
+      TextButton(
+        onClick = { onChosen(ExportFormat.Csv) },
+        shape = Modernist.square,
+        modifier = Modifier.testTag("$tagPrefix:csv"),
+      ) {
         Text(stringResource(R.string.export_csv))
       }
     },

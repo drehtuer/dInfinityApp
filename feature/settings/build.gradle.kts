@@ -9,6 +9,12 @@ android {
 dependencies {
   api(project(":data"))
 
+  // The shared Modernist widgets: the segmented control every settings row is
+  // built from, the `.btn` variants and the rules between rows. They live in
+  // `:ui:common` because no one screen owns them (`docs/architecture.md`,
+  // Modules).
+  api(project(":ui:common"))
+
   // The developer screen replays a `ThrowSpec` and reads the anomaly log, both
   // of which live beside the simulation they describe. Pure Kotlin, so nothing
   // about a physics engine comes with it (`docs/architecture.md`, decision 40).

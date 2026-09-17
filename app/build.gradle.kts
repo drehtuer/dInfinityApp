@@ -49,3 +49,11 @@ dependencies {
   testImplementation(libs.commons.compress)
   testImplementation(libs.androidx.room.runtime)
 }
+
+// The palette is allowed to write the palette down. `ModernistTokens` is the
+// one file in the app whose job is to say what `--color-bg` and the accent ramp
+// actually are, and `Theme.kt` is where they become Material's roles — every
+// other file reads them from the theme (`docs/design-handover.md`).
+tasks.named<de.drehtuer.dinfinity.build.VerifyDesignSystemTask>("verifyDesignSystem") {
+  exempt.addAll("ModernistTokens.kt", "Theme.kt")
+}

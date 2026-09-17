@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -21,6 +20,10 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 
 /**
  * Every screen the app has, in a list (`design/dInfinity.dc.html`, option 1q).
@@ -65,6 +68,7 @@ fun MenuScreen(
           text = section.name.uppercase(),
           style = MaterialTheme.typography.labelSmall,
           fontWeight = FontWeight.SemiBold,
+          letterSpacing = SECTION_TRACKING,
           color = MaterialTheme.colorScheme.primary,
           // A section name is small, capitalised and in the accent — three
           // ways of saying "heading" that a screen reader gets none of.
@@ -77,15 +81,18 @@ fun MenuScreen(
               .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
         )
         section.entries.forEach { entry ->
-          HorizontalDivider()
+          Rule(weight = RuleWeight.Hairline)
           Entry(entry)
         }
+        // The prototype rules each section off from the next with the heavier
+        // line and separates the rows inside one with the hairline. Two
+        // weights, and the difference is what makes the grouping visible.
+        Rule()
       }
-      HorizontalDivider()
       Text(
         text = stringResource(R.string.menu_offline),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = Ink.faint,
         modifier = Modifier.padding(16.dp),
       )
     }
@@ -139,19 +146,23 @@ private fun Header(header: MenuHeader) {
         .semantics(mergeDescendants = true) { }
         .padding(start = 16.dp, end = 16.dp, top = 16.dp)
         .testTag(MenuTestTags.HEADER),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     Text(
+      // `titleLarge` is the Modernist heading at 20 sp and weight 800, which
+      // is what the prototype's bar prints the app's name at. `headlineSmall`
+      // is a slot the theme never maps, so it came out in the platform sans at
+      // weight 400 with a `Bold` override — Material's type, not this one's.
       text = header.appName,
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.titleLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
     header.session?.let { name ->
       Text(
         text = stringResource(R.string.menu_session, name),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Normal,
+        color = Ink.muted,
         modifier = Modifier.testTag(MenuTestTags.SESSION),
       )
     }
@@ -161,7 +172,7 @@ private fun Header(header: MenuHeader) {
 @Composable
 private fun Entry(entry: MenuEntry) {
   Column(
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
     modifier =
       Modifier
         .fillMaxWidth()
@@ -174,14 +185,14 @@ private fun Entry(entry: MenuEntry) {
   ) {
     Text(
       text = entry.title,
-      style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.titleLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
     Text(
       text = entry.description,
-      style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.labelLarge,
+      fontWeight = FontWeight.Normal,
+      color = Ink.muted,
     )
   }
 }
@@ -203,6 +214,9 @@ data class MenuEntry(
   val description: String,
   val open: () -> Unit,
 )
+
+/** `h6`'s tracking: a section name is spaced out as well as capitalised. */
+private val SECTION_TRACKING = 0.1.em
 
 /** Stable handles for tests. */
 object MenuTestTags {

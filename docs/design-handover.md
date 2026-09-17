@@ -84,6 +84,72 @@ These are in [TODO.md](TODO.md) in full. They are here because they are yours.
    somebody chose, or mapped at draw time, which needs the tray's aspect and the
    tray's aspect changes with the phone.
 
+## Screens whose shape differs, not just their styling
+
+These came out of going through the prototype screen by screen. None of them
+was changed — they are structure, and structure is yours. They are listed
+roughly by how much is missing.
+
+**Statistics** (`screen="stats"`) is one screen in the prototype: a set
+segmented control, a die segmented control, a grid of four figures, a vertical
+face histogram with a dashed "expected if fair" line, a streak sentence, a table
+of every die, and two buttons out. The app is *a list of dice you open one at a
+time*, with the filters as text buttons and the histogram one row per face. The
+histogram has a stated reason — a d100 is a hundred bars on a 360 dp screen, and
+the design assumes a d6 or a d20 — but the rest is a different screen.
+
+**Saved-roll statistics** (`rollstats`) likewise: the prototype has four
+figures, the totals chart, a verdict and a ranked Rolled / Mean / Expected / Δ
+table. The app has a roll list and a stack of sentences. Is the sentence form
+deliberate?
+
+**Sessions** is missing the prototype's whole lower half — the inline "New
+session" field, the note that deleting moves rolls to Unfiled, and the entire
+"Import and export" block.
+
+**Dice sets** groups itself with accent kickers over 2 dp rules ("Install from a
+URL or file", "Installed"); the app has the same controls in a different order
+with no kickers. Its rows badge state with tags — update available, default,
+disabled — where the app says all three in prose and never shows which set is
+the default at all.
+
+**Dice set details** has a two-tier header (a 20 px bar, then the set's name at
+**28 px/800**), provenance as a two-column table with rules, dice as a 4-up grid
+of rendered pictures, and a footer row of primary/secondary/ghost actions. The
+app merges the header, stacks the provenance, lists the dice and scatters the
+actions up the page. **28 px is not on the type scale** — the steps either side
+are 25 and 32. Which did you mean?
+
+**The face designer's tool row should be icons**: six 44 × 44 bordered buttons,
+the chosen one inverted. The app has nine text labels in a wrapping row, because
+there is no icon set. Undo and redo belong in the app bar with "face N of M"
+beside the title. The face strip should be 52 × 52 thumbnails of each face; the
+app shows the labels, deliberately, because a set may call a face `crit` — a
+thumbnail *and* a label would satisfy both. The app also has copy, turn, mirror
+and paste, which are not in the prototype at all, and it autosaves where the
+prototype has a Save button.
+
+## Things the design system does not yet say
+
+1. **There is no accent ramp.** `tag-accent` needs `--color-accent-100` and
+   `-800`; `tag-neutral` needs the neutral ramp. The app's tokens carry the
+   accent and three steps, so **tags cannot be built** without inventing
+   colours. The ramps are in `styles.css`; they need to reach the app.
+2. **Every sheet in the prototype is a bottom sheet** — full width, slid up,
+   with its actions aligned **left**. Material's dialog is centred, inset and
+   right-aligns them. This one is worth a single shared component rather than
+   one per screen.
+3. **The slider has no design.** Hue, depth and brightness in the designer use
+   Material's, which has a circular thumb and a rounded track, in a system with
+   no round anything.
+4. **Uppercase.** The prototype sets kickers and column headings in
+   `text-transform: uppercase` with wide tracking. The tracking is applied; the
+   case is not, because uppercasing a string changes what a screen reader says.
+   If it is wanted it belongs in a text style, not in the strings.
+5. **The designer's canvas paper is white** — a literal, not a token. Is that
+   the die's real painted ground, or chrome that should follow the theme?
+6. **`gap: 6px` in the face strip** is not on the 4/8/12 scale. Deliberate?
+
 ## Where the screens live in the code
 
 | Screen | Module |

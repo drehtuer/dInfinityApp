@@ -100,6 +100,20 @@ class SavedScreenTest {
   }
 
   @Test
+  fun `a favourite wears a star, and nothing else does`() {
+    // The star is part of the name's own text rather than a second one beside
+    // it, so that a long name ellipsises around it instead of pushing it off
+    // the row. It prints in the accent, which a test cannot see — what it can
+    // see is that it is still said.
+    given(roll("liked", name = "Fireball", favourite = true), roll("plain", name = "Magic missile"))
+
+    show()
+
+    compose.onNodeWithTag(SavedTestTags.rollOf("liked")).assertTextContains("Fireball ★", substring = true)
+    compose.onNodeWithTag(SavedTestTags.rollOf("plain")).assertTextContains("Magic missile", substring = true)
+  }
+
+  @Test
   fun `a tap rolls it`() {
     given(roll("fireball"))
     val rolled = mutableListOf<String>()

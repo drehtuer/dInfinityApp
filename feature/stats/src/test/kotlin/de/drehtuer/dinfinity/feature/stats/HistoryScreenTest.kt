@@ -82,6 +82,15 @@ class HistoryScreenTest {
   }
 
   @Test
+  fun `the title hangs from a rule`() {
+    // Every screen in the prototype does (`design/dInfinityPhone.dc.html`):
+    // a 2 dp divider under the header, and nothing between it and the title.
+    show()
+
+    compose.onNodeWithTag(HistoryTestTags.HEADER_RULE, useUnmergedTree = true).assertExists()
+  }
+
+  @Test
   fun `a history with nothing in it says so`() {
     show()
 

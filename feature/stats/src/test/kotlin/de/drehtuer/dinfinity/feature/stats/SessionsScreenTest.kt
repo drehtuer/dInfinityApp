@@ -74,6 +74,15 @@ class SessionsScreenTest {
   }
 
   @Test
+  fun `the title hangs from a rule`() {
+    // Every screen in the prototype does (`design/dInfinityPhone.dc.html`):
+    // a 2 dp divider under the header, and nothing between it and the title.
+    show()
+
+    compose.onNodeWithTag(SessionsTestTags.HEADER_RULE, useUnmergedTree = true).assertExists()
+  }
+
+  @Test
   fun `a fresh install already has the session its rolls belong to`() {
     // Every history row has carried a session id since version 1, so the first
     // session is not made by opening this screen — it is named by it.

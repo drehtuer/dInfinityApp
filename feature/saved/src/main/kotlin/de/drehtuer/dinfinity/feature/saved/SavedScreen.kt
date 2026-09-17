@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -32,9 +32,11 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.withStyle
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 
 /**
@@ -137,12 +139,16 @@ private fun ColumnScope.Rolls(
   Text(
     text = stringResource(R.string.saved_order),
     style = MaterialTheme.typography.labelSmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+    color = muted,
+    modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x2),
   )
+  // The list hangs from a rule and is ruled inside by hairlines: 2 dp says
+  // "a new thing starts here", 1 dp says "another row of the same thing"
+  // (`design/dInfinityPhone.dc.html`, the saved-rolls list).
+  HorizontalDivider(thickness = Modernist.rule, color = divider)
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedTestTags.LIST)) {
-    items(rolls, key = { it.roll.id }) { entry ->
-      HorizontalDivider()
+    itemsIndexed(rolls, key = { _, entry -> entry.roll.id }) { index, entry ->
+      if (index > 0) HorizontalDivider(thickness = Modernist.hairline, color = divider)
       SavedRow(entry = entry, onRoll = { onRoll(entry) }, onEdit = { onEdit(entry) })
     }
   }
@@ -196,16 +202,22 @@ private fun TopBar(
   menu: @Composable () -> Unit,
 ) {
   Row(
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+    modifier = Modifier.fillMaxWidth().padding(horizontal = Modernist.x2, vertical = Modernist.x1),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(4.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
     val exportLabel = stringResource(R.string.export_open)
-    TextButton(onClick = onSwitch, modifier = Modifier.testTag(SavedTestTags.SWITCHER)) {
+    TextButton(
+      onClick = onSwitch,
+      shape = Modernist.square,
+      modifier = Modifier.testTag(SavedTestTags.SWITCHER),
+    ) {
       Text(
+        // `titleLarge` is already the heading face at 800, which is the size
+        // and weight the prototype puts the group name at. Asking for `Bold`
+        // on top of it asks for 700 — a lighter heading than the design has.
         text = if (switching) "$groupName ▴" else "$groupName ▾",
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleLarge,
       )
     }
     Text(text = "", modifier = Modifier.weight(1f))
@@ -213,6 +225,7 @@ private fun TopBar(
     // may be long. The label is what TalkBack reads.
     TextButton(
       onClick = onExport,
+      shape = Modernist.square,
       modifier =
         Modifier
           .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
@@ -221,11 +234,17 @@ private fun TopBar(
     ) {
       Text("⤴")
     }
-    Button(onClick = onNew, modifier = Modifier.testTag(SavedTestTags.NEW)) {
+    Button(
+      onClick = onNew,
+      shape = Modernist.square,
+      modifier = Modifier.testTag(SavedTestTags.NEW),
+    ) {
       Text(stringResource(R.string.saved_new))
     }
     menu()
   }
+  // Every screen in the prototype hangs from a 2 dp rule under its title bar.
+  HorizontalDivider(thickness = Modernist.rule, color = divider)
 }
 
 /**
@@ -244,6 +263,7 @@ private fun EditGroup(
   val label = stringResource(R.string.group_edit_it, group.name)
   TextButton(
     onClick = onEdit,
+    shape = Modernist.square,
     modifier =
       Modifier
         .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
@@ -269,9 +289,9 @@ private fun GroupSwitcher(
   onEdit: (String) -> Unit,
   onNew: () -> Unit,
 ) {
-  Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant)) {
-    groups.forEach { entry ->
-      HorizontalDivider()
+  Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
+    groups.forEachIndexed { index, entry ->
+      if (index > 0) HorizontalDivider(thickness = Modernist.hairline, color = divider)
       val parent = groups.firstOrNull { it.group.id == entry.group.parentId }?.group?.name
       Row(
         modifier =
@@ -283,7 +303,7 @@ private fun GroupSwitcher(
               onLongClick = { onEdit(entry.group.id) },
             ).semantics(mergeDescendants = true) {}
             .testTag(SavedTestTags.groupOf(entry.group.id))
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = Modernist.x4, vertical = Modernist.x3),
         verticalAlignment = Alignment.CenterVertically,
       ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -291,32 +311,36 @@ private fun GroupSwitcher(
             Text(
               text = parent,
               style = MaterialTheme.typography.labelSmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              color = muted,
             )
           }
           Text(
             text = entry.group.name,
             style = MaterialTheme.typography.bodyLarge,
-            fontWeight = if (entry.group.id == activeId) FontWeight.Bold else FontWeight.Normal,
+            // The prototype marks the group that is open with a check in the
+            // accent; here the weight does that job, because the row already
+            // ends in a count and a way to edit it.
+            fontWeight = if (entry.group.id == activeId) FontWeight.SemiBold else FontWeight.Normal,
             color = MaterialTheme.colorScheme.onBackground,
           )
         }
         Text(
           text = pluralStringResource(R.plurals.saved_group_rolls, entry.rolls, entry.rolls),
           style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = muted,
         )
         EditGroup(group = entry.group, onEdit = { onEdit(entry.group.id) })
       }
     }
-    HorizontalDivider()
+    HorizontalDivider(thickness = Modernist.rule, color = divider)
     TextButton(
       onClick = onNew,
+      shape = Modernist.square,
       modifier = Modifier.fillMaxWidth().testTag(GroupTestTags.NEW),
     ) {
       Text(stringResource(R.string.group_new))
     }
-    HorizontalDivider()
+    HorizontalDivider(thickness = Modernist.rule, color = divider)
   }
 }
 
@@ -339,20 +363,23 @@ private fun SavedRow(
           onLongClick = onEdit,
         ).semantics(mergeDescendants = true) {}
         .testTag(SavedTestTags.rollOf(roll.id))
-        .padding(horizontal = 16.dp, vertical = 10.dp),
+        .padding(horizontal = Modernist.x4, vertical = Modernist.x3),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x3),
   ) {
     // The icon prints in the roll's own colour tag, which is the one place a
     // saved roll gets to look like itself (design option 9d).
     Text(
       text = roll.icon.ifBlank { DEFAULT_ICON },
-      style = MaterialTheme.typography.titleMedium,
+      style = MaterialTheme.typography.titleLarge,
       color = roll.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary,
     )
     Column(modifier = Modifier.weight(1f)) {
       Text(
-        text = if (roll.favourite) "${roll.name} ★" else roll.name,
+        // The star prints in the accent, as it does on the prototype's rows.
+        // Part of the same text rather than a second one, so a long name
+        // ellipsises around it instead of pushing it off the row.
+        text = starred(roll.name, roll.favourite),
         style = MaterialTheme.typography.bodyLarge,
         fontWeight = FontWeight.SemiBold,
         color = MaterialTheme.colorScheme.onBackground,
@@ -365,18 +392,32 @@ private fun SavedRow(
         Text(
           text = stringResource(R.string.saved_broken),
           style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.error,
+          color = accent,
           modifier = Modifier.testTag(SavedTestTags.brokenOf(roll.id)),
         )
       }
     }
     Text(
       text = roll.formula,
+      // The prototype's `font-size:13px` with no weight of its own: the name
+      // is what is read first, and the formula is what is checked after it.
       style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
+  }
+}
+
+/** [name], with the accent star a favourite wears after it. */
+@Composable
+private fun starred(
+  name: String,
+  favourite: Boolean,
+) = buildAnnotatedString {
+  append(name)
+  if (favourite) {
+    withStyle(SpanStyle(color = accent)) { append(" ★") }
   }
 }
 
@@ -384,21 +425,31 @@ private fun SavedRow(
 @Composable
 private fun Empty(onNew: () -> Unit) {
   Column(
-    modifier = Modifier.fillMaxWidth().padding(24.dp).testTag(SavedTestTags.EMPTY),
-    verticalArrangement = Arrangement.spacedBy(8.dp),
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(horizontal = Modernist.x4, vertical = Modernist.x6)
+        .testTag(SavedTestTags.EMPTY),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Text(
+      // The display line of the screen, at the scale's `h3`. `headlineSmall`
+      // is not one of the styles the theme fills in, so it was Material's own
+      // 24 sp at 700 — neither the size nor the weight the system has.
       text = stringResource(R.string.saved_empty_title),
-      style = MaterialTheme.typography.headlineSmall,
-      fontWeight = FontWeight.Bold,
+      style = MaterialTheme.typography.headlineMedium,
       color = MaterialTheme.colorScheme.onBackground,
     )
     Text(
       text = stringResource(R.string.saved_empty_body),
-      style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      style = MaterialTheme.typography.bodyLarge,
+      color = muted,
     )
-    Button(onClick = onNew, modifier = Modifier.padding(top = 8.dp)) {
+    Button(
+      onClick = onNew,
+      shape = Modernist.square,
+      modifier = Modifier.padding(top = Modernist.x2),
+    ) {
       Text(stringResource(R.string.saved_empty_new))
     }
   }

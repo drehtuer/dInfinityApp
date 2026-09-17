@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.saved
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -20,12 +22,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.collection.CollectionProblem
 
 /**
@@ -51,19 +52,25 @@ fun ImportScreen(
         .background(MaterialTheme.colorScheme.background)
         .safeDrawingPadding()
         .verticalScroll(rememberScrollState())
-        .padding(16.dp)
+        .padding(Modernist.x4)
         .testTag(ImportTestTags.SCREEN),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x3),
   ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    // The screen's own title bar, over the 2 dp rule every screen in the
+    // prototype hangs from. `titleLarge` is the heading face at 800.
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
       Text(
         text = stringResource(R.string.import_title),
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold,
+        style = MaterialTheme.typography.titleLarge,
         color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.weight(1f),
       )
       menu()
     }
+    HorizontalDivider(thickness = Modernist.rule, color = divider)
 
     when (val state = presenter.state) {
       is ImportState.Waiting -> {
@@ -107,7 +114,11 @@ fun ImportScreen(
 private fun Waiting(onChooseFile: () -> Unit) {
   Note(stringResource(R.string.import_explain))
   Note(stringResource(R.string.import_never_merges))
-  Button(onClick = onChooseFile, modifier = Modifier.testTag(ImportTestTags.CHOOSE)) {
+  Button(
+    onClick = onChooseFile,
+    shape = Modernist.square,
+    modifier = Modifier.testTag(ImportTestTags.CHOOSE),
+  ) {
     Text(stringResource(R.string.import_choose))
   }
 }
@@ -132,6 +143,7 @@ private fun FromLink(presenter: ImportPresenter) {
   Button(
     onClick = { presenter.fetch(url) },
     enabled = url.isNotBlank(),
+    shape = Modernist.square,
     modifier = Modifier.testTag(ImportTestTags.FETCH),
   ) {
     Text(stringResource(R.string.import_fetch))
@@ -204,8 +216,9 @@ private fun Imported(
 ) {
   Text(
     text = stringResource(R.string.import_done, state.name),
+    // The prototype sets the line that says what happened a step under the
+    // screen's own title (`.card-title`'s 17 px, the scale's step below 20).
     style = MaterialTheme.typography.titleMedium,
-    fontWeight = FontWeight.Bold,
     color = MaterialTheme.colorScheme.onBackground,
     modifier = Modifier.testTag(ImportTestTags.DONE),
   )
@@ -216,7 +229,7 @@ private fun Imported(
         pluralStringResource(R.plurals.import_groups, state.groups, state.groups),
         pluralStringResource(R.plurals.saved_group_rolls, state.rolls, state.rolls),
       ),
-    style = MaterialTheme.typography.bodyMedium,
+    style = MaterialTheme.typography.bodyLarge,
     color = MaterialTheme.colorScheme.onBackground,
     modifier = Modifier.testTag(ImportTestTags.COUNTS),
   )
@@ -226,7 +239,11 @@ private fun Imported(
     Note(pluralStringResource(R.plurals.import_warnings, state.warnings.size, state.warnings.size))
     Problems(state.warnings, ImportTestTags.WARNINGS)
   }
-  Button(onClick = onDone, modifier = Modifier.testTag(ImportTestTags.SEE)) {
+  Button(
+    onClick = onDone,
+    shape = Modernist.square,
+    modifier = Modifier.testTag(ImportTestTags.SEE),
+  ) {
     Text(stringResource(R.string.import_see))
   }
 }
@@ -238,13 +255,13 @@ private fun Problems(
 ) {
   Column(
     modifier = Modifier.fillMaxWidth().testTag(tag),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
     problems.forEach { problem ->
       Text(
         text = problem.toString(),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        style = MaterialTheme.typography.labelSmall,
+        color = muted,
       )
     }
   }
@@ -258,8 +275,9 @@ private fun Refusal(
   Text(
     text = text,
     style = MaterialTheme.typography.titleMedium,
-    fontWeight = FontWeight.Bold,
-    color = MaterialTheme.colorScheme.error,
+    // The system's one red is the accent; Material's `error` is a second one
+    // the Modernist palette does not contain (`Modernist`).
+    color = accent,
     modifier = modifier,
   )
 }
@@ -268,8 +286,8 @@ private fun Refusal(
 private fun Note(text: String) {
   Text(
     text = text,
-    style = MaterialTheme.typography.bodyMedium,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    style = MaterialTheme.typography.bodyLarge,
+    color = muted,
   )
 }
 
@@ -283,6 +301,7 @@ private fun Again(
       presenter.again()
       onChooseFile()
     },
+    shape = Modernist.square,
     modifier = Modifier.testTag(ImportTestTags.AGAIN),
   ) {
     Text(stringResource(R.string.import_again))

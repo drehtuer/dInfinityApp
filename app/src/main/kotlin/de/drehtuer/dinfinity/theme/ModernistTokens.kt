@@ -79,6 +79,12 @@ object ModernistTokens {
     val body: TextUnit = 15.sp
     val label: TextUnit = 13.sp
     val caption: TextUnit = 11.sp
+
+    /** `.card-title` — a heading a step below the subtitle. */
+    val cardTitle: TextUnit = 17.sp
+
+    /** `.btn` — the heading face at this size, not a body weight. */
+    val button: TextUnit = 14.sp
   }
 }
 

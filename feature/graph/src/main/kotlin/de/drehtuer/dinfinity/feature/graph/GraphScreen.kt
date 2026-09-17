@@ -1,17 +1,23 @@
 package de.drehtuer.dinfinity.feature.graph
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -22,6 +28,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.ui.common.FormulaField
 
@@ -49,16 +56,34 @@ fun GraphScreen(
     modifier =
       modifier
         .fillMaxSize()
+        .background(MaterialTheme.colorScheme.background)
         .safeDrawingPadding()
-        .verticalScroll(rememberScrollState())
-        .padding(16.dp)
         .testTag(GraphTestTags.SCREEN),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
+    // The screen's name over the 2 dp rule every screen in the prototype hangs
+    // from. `titleLarge` is the heading face at 800 — the system's own heading
+    // weight.
     Row(
-      modifier = Modifier.fillMaxWidth(),
-      horizontalArrangement = Arrangement.SpaceBetween,
+      modifier = Modifier.fillMaxWidth().padding(horizontal = Modernist.x4, vertical = Modernist.x2),
       verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        text = stringResource(R.string.graph_title),
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+        modifier = Modifier.weight(1f),
+      )
+      menu()
+    }
+    HorizontalDivider(thickness = Modernist.rule, color = divider)
+
+    Column(
+      modifier =
+        Modifier
+          .fillMaxSize()
+          .verticalScroll(rememberScrollState())
+          .padding(Modernist.x4),
+      verticalArrangement = Arrangement.spacedBy(Modernist.x3),
     ) {
       // The same live-validated field the tray has, squiggle and all. It is
       // `ui/common`'s, so the two screens cannot come to disagree about
@@ -69,26 +94,24 @@ fun GraphScreen(
         label = stringResource(R.string.graph_formula_label),
         hint = stringResource(R.string.graph_formula_hint),
         error = (presenter.state as? GraphState.Invalid)?.error,
-        modifier = Modifier.weight(1f),
       )
-      menu()
-    }
 
-    when (val state = presenter.state) {
-      GraphState.Empty ->
-        Note(text = stringResource(R.string.graph_empty), tag = GraphTestTags.EMPTY)
+      when (val state = presenter.state) {
+        GraphState.Empty ->
+          Note(text = stringResource(R.string.graph_empty), tag = GraphTestTags.EMPTY)
 
-      // The field says what is wrong, under the part that is wrong. Saying it
-      // twice on one screen is saying it once too often.
-      is GraphState.Invalid -> Unit
+        // The field says what is wrong, under the part that is wrong. Saying
+        // it twice on one screen is saying it once too often.
+        is GraphState.Invalid -> Unit
 
-      // Legal, and past what can be worked out exactly. Saying so is the only
-      // honest answer: an approximated curve presented as the odds would be a
-      // number somebody bets on (`docs/probability.md`).
-      is GraphState.TooLarge ->
-        Note(text = state.reason, tag = GraphTestTags.TOO_LARGE)
+        // Legal, and past what can be worked out exactly. Saying so is the
+        // only honest answer: an approximated curve presented as the odds
+        // would be a number somebody bets on (`docs/probability.md`).
+        is GraphState.TooLarge ->
+          Note(text = state.reason, tag = GraphTestTags.TOO_LARGE)
 
-      is GraphState.Graphed -> Graphed(state, presenter, onRoll, onSave)
+        is GraphState.Graphed -> Graphed(state, presenter, onRoll, onSave)
+      }
     }
   }
 }
@@ -121,29 +144,8 @@ private fun Graphed(
   }
 
   // The roll that opened this, when the chart is still about it.
-  val rolled = state.rolled
-  if (rolled != null) {
-    Text(
-      text = stringResource(R.string.graph_your_roll, rolled.value, percent(rolled.exact), percent(rolled.atLeast)),
-      style = MaterialTheme.typography.bodyMedium,
-      fontWeight = FontWeight.SemiBold,
-      color = MaterialTheme.colorScheme.primary,
-      modifier = Modifier.testTag(GraphTestTags.ROLLED),
-    )
-  }
-
-  val picked = state.picked
-  Text(
-    text =
-      if (picked == null) {
-        stringResource(R.string.graph_tap_a_bar)
-      } else {
-        stringResource(R.string.graph_picked, picked.value, percent(picked.exact), percent(picked.atLeast))
-      },
-    style = MaterialTheme.typography.bodyMedium,
-    color = MaterialTheme.colorScheme.onBackground,
-    modifier = Modifier.testTag(GraphTestTags.PICKED),
-  )
+  state.rolled?.let { rolled -> YourRoll(rolled) }
+  Picked(state.picked)
 
   Numbers(state.stats)
 
@@ -152,6 +154,56 @@ private fun Graphed(
   // formula that does not parse is not one to roll or to keep, and a button
   // that refuses is worse than one that is not there.
   Doing(formula = presenter.text, onRoll = onRoll, onSave = onSave)
+}
+
+/**
+ * The roll that opened the graph, in words as well as in ink.
+ *
+ * A band with the accent down its left edge, which is how the prototype says
+ * "this line on the chart is yours" (`design/dInfinityPhone.dc.html`:
+ * `border-left:3px solid var(--color-accent)` over a tint of it).
+ */
+@Composable
+private fun YourRoll(rolled: Reading) {
+  Row(
+    modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Box(
+      modifier =
+        Modifier
+          .width(Modernist.mark)
+          .height(BAND_HEIGHT)
+          .background(MaterialTheme.colorScheme.primary),
+    )
+    Text(
+      text = stringResource(R.string.graph_your_roll, rolled.value, percent(rolled.exact), percent(rolled.atLeast)),
+      style = MaterialTheme.typography.bodyLarge,
+      fontWeight = FontWeight.SemiBold,
+      color = MaterialTheme.colorScheme.primary,
+      modifier =
+        Modifier
+          .padding(horizontal = Modernist.x3, vertical = Modernist.x2)
+          .testTag(GraphTestTags.ROLLED),
+    )
+  }
+}
+
+/** What the bar under the finger is worth, or an invitation to tap one. */
+@Composable
+private fun Picked(picked: Reading?) {
+  Text(
+    text =
+      if (picked == null) {
+        stringResource(R.string.graph_tap_a_bar)
+      } else {
+        stringResource(R.string.graph_picked, picked.value, percent(picked.exact), percent(picked.atLeast))
+      },
+    style = MaterialTheme.typography.bodyLarge,
+    fontWeight = FontWeight.SemiBold,
+    color = MaterialTheme.colorScheme.onBackground,
+    modifier = Modifier.testTag(GraphTestTags.PICKED),
+  )
 }
 
 /**
@@ -168,19 +220,26 @@ private fun Doing(
   onRoll: (String) -> Unit,
   onSave: (String) -> Unit,
 ) {
+  // `.btn-primary` beside `.btn-secondary`, both hugging their labels: the
+  // system's buttons are sized by what is written on them, and neither of
+  // these is the screen.
   Row(
     modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     Button(
       onClick = { onRoll(formula) },
-      modifier = Modifier.weight(1f).testTag(GraphTestTags.ROLL_THIS),
+      shape = Modernist.square,
+      modifier = Modifier.testTag(GraphTestTags.ROLL_THIS),
     ) {
       Text(stringResource(R.string.graph_roll_this))
     }
     OutlinedButton(
       onClick = { onSave(formula) },
-      modifier = Modifier.weight(1f).testTag(GraphTestTags.SAVE_AS_ROLL),
+      shape = Modernist.square,
+      colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
+      border = segBorder(),
+      modifier = Modifier.testTag(GraphTestTags.SAVE_AS_ROLL),
     ) {
       Text(stringResource(R.string.graph_save_as_roll))
     }
@@ -194,7 +253,7 @@ private fun Question(
   onAsk: (GraphMode) -> Unit,
 ) {
   Row(
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
     verticalAlignment = Alignment.CenterVertically,
     modifier = Modifier.testTag(GraphTestTags.MODE),
   ) {
@@ -203,6 +262,8 @@ private fun Question(
         selected = mode == chosen,
         onClick = { onAsk(mode) },
         label = { Text(stringResource(mode.label())) },
+        colors = segColours(),
+        border = segBorder(),
         modifier = Modifier.testTag(GraphTestTags.modeOf(mode)),
       )
     }
@@ -223,48 +284,68 @@ private fun GraphMode.label(): Int =
  */
 @Composable
 private fun Numbers(stats: GraphStats) {
-  Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-    Number(MEAN, stringResource(R.string.graph_stat_mean), format(stats.mean))
-    Number(DEVIATION, stringResource(R.string.graph_stat_deviation), format(stats.standardDeviation))
-    Number(RANGE, stringResource(R.string.graph_stat_range), "${stats.lowest}–${stats.highest}")
-    Number(LOWEST, stringResource(R.string.graph_stat_chance_of, stats.lowest), percent(stats.chanceOfLowest))
-    Number(HIGHEST, stringResource(R.string.graph_stat_chance_of, stats.highest), percent(stats.chanceOfHighest))
-    Number(DICE, stringResource(R.string.graph_stat_dice), stats.dice.toString())
+  Column(modifier = Modifier.fillMaxWidth()) {
+    HorizontalDivider(thickness = Modernist.rule, color = divider)
+    Row(modifier = Modifier.fillMaxWidth()) {
+      Number(MEAN, stringResource(R.string.graph_stat_mean), format(stats.mean))
+      Number(DEVIATION, stringResource(R.string.graph_stat_deviation), format(stats.standardDeviation))
+      Number(RANGE, stringResource(R.string.graph_stat_range), "${stats.lowest}–${stats.highest}")
+    }
+    HorizontalDivider(thickness = Modernist.hairline, color = divider)
+    Row(modifier = Modifier.fillMaxWidth()) {
+      Number(LOWEST, stringResource(R.string.graph_stat_chance_of, stats.lowest), percent(stats.chanceOfLowest))
+      Number(HIGHEST, stringResource(R.string.graph_stat_chance_of, stats.highest), percent(stats.chanceOfHighest))
+      Number(DICE, stringResource(R.string.graph_stat_dice), stats.dice.toString())
+    }
+    HorizontalDivider(thickness = Modernist.hairline, color = divider)
   }
 }
 
+/**
+ * One cell of the grid: a kicker over a number in the heading face.
+ *
+ * Not a label with the value beside it. The prototype sets these as six cells
+ * of one ruled grid, which is what lets the eye go down a column of numbers
+ * instead of along six lines of prose.
+ */
 @Composable
-private fun Number(
+private fun RowScope.Number(
   tag: String,
   label: String,
   value: String,
 ) {
-  Row(
+  Column(
     // Merged, so TalkBack reads "Mean, 7.0" as one thing rather than as a
     // label somewhere near a number.
     modifier =
       Modifier
-        .fillMaxWidth()
+        .weight(1f)
         .semantics(mergeDescendants = true) {}
+        .padding(end = Modernist.x2, top = Modernist.x3, bottom = Modernist.x3)
         .testTag(GraphTestTags.statOf(tag)),
-    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
-    Quiet(label)
+    Text(
+      text = label.uppercase(),
+      style = MaterialTheme.typography.labelSmall,
+      letterSpacing = Modernist.kickerTracking,
+      color = muted,
+    )
     Text(
       text = value,
-      style = MaterialTheme.typography.bodyMedium,
-      fontWeight = FontWeight.SemiBold,
+      style = MaterialTheme.typography.titleLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
   }
 }
 
+/** The prototype's `font-size:11px;opacity:.65` — a caption under the chart. */
 @Composable
 private fun Quiet(text: String) {
   Text(
     text = text,
-    style = MaterialTheme.typography.labelMedium,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    style = MaterialTheme.typography.labelSmall,
+    color = muted,
   )
 }
 
@@ -272,12 +353,11 @@ private fun Quiet(text: String) {
 private fun Note(
   text: String,
   tag: String,
-  colour: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurfaceVariant,
 ) {
   Text(
     text = text,
-    style = MaterialTheme.typography.bodyMedium,
-    color = colour,
+    style = MaterialTheme.typography.bodyLarge,
+    color = muted,
     modifier = Modifier.testTag(tag),
   )
 }
@@ -302,7 +382,11 @@ internal fun percent(probability: Double): String {
 /** A mean or a deviation, to one decimal. */
 internal fun format(value: Double): String = "%.1f".format(value)
 
-private val CHART_HEIGHT = 200.dp
+/** `height:220px` — the chart the prototype draws. */
+private val CHART_HEIGHT: Dp = 220.dp
+
+/** The accent edge beside the roll's own line, as tall as the line it names. */
+private val BAND_HEIGHT: Dp = 40.dp
 private const val PER_CENT = 100.0
 private const val SMALLEST = 0.1
 

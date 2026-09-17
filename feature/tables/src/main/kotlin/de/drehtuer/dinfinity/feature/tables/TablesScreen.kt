@@ -2,7 +2,6 @@ package de.drehtuer.dinfinity.feature.tables
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,8 +14,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -26,9 +25,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -85,8 +87,9 @@ fun TablesScreen(
     ) {
       Text(
         text = stringResource(R.string.tables_title),
+        // `titleLarge` is already the heading font at 800; a `Bold` here
+        // pulled it back to Material's 700 (`--font-heading-weight: 800`).
         style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.weight(1f),
       )
@@ -97,14 +100,14 @@ fun TablesScreen(
       Text(
         text = stringResource(R.string.tables_empty),
         style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
         modifier = Modifier.padding(16.dp).testTag(TablesTestTags.EMPTY),
       )
     } else {
       Text(
         text = stringResource(R.string.tables_note),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
       )
       Looks(state, presenter)
@@ -175,14 +178,17 @@ private fun TableRow(
       Text(
         text = choice.look.name,
         style = MaterialTheme.typography.titleMedium,
-        fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
+        // A card title is the heading font at 800 whatever else is true of it
+        // (`.card-title`). Which look is chosen is said in the accent beside
+        // it and in the semantics, not by thickening the name.
+        fontWeight = FontWeight.ExtraBold,
         color = MaterialTheme.colorScheme.onBackground,
       )
       if (showSet) {
         Text(
           text = choice.setName,
           style = MaterialTheme.typography.labelSmall,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          color = muted,
         )
       }
     }
@@ -197,7 +203,11 @@ private fun TableRow(
     // Only the player's own photo tables. Everything else belongs to a
     // package, and a package is removed where packages are.
     if (choice.own) {
-      TextButton(onClick = onRemove, modifier = Modifier.testTag(TablesTestTags.removeOf(choice.pin))) {
+      TextButton(
+        onClick = onRemove,
+        shape = Modernist.square,
+        modifier = Modifier.testTag(TablesTestTags.removeOf(choice.pin)),
+      ) {
         Text(stringResource(R.string.tables_photo_remove))
       }
     }
@@ -227,12 +237,25 @@ private fun UsePhotoRow(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(12.dp),
   ) {
+    // `border:1px dashed var(--color-divider)`, and square: `--radius-*` is
+    // `0px` and nothing in this system has a rounded corner. Drawn rather than
+    // bordered because Compose's `border` has no dash.
+    val edge = MaterialTheme.colorScheme.outline
     Box(
       modifier =
         Modifier
           .size(width = TableThumbnailBox.WIDTH, height = TableThumbnailBox.HEIGHT)
-          .clip(RoundedCornerShape(6.dp))
-          .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(6.dp)),
+          .drawBehind {
+            drawRoundRect(
+              color = edge,
+              cornerRadius = CornerRadius.Zero,
+              style =
+                Stroke(
+                  width = HAIRLINE.toPx(),
+                  pathEffect = PathEffect.dashPathEffect(floatArrayOf(DASH.toPx(), DASH.toPx())),
+                ),
+            )
+          },
     )
     Column(modifier = Modifier.weight(1f)) {
       Text(
@@ -248,7 +271,7 @@ private fun UsePhotoRow(
             stringResource(R.string.tables_photo_use_hint)
           },
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
       )
     }
   }
@@ -271,19 +294,32 @@ private fun PhotoSheet(
   AlertDialog(
     onDismissRequest = presenter::dismissPhoto,
     modifier = Modifier.testTag(TablesTestTags.PHOTO_SHEET),
-    title = { Text(stringResource(R.string.tables_photo_title)) },
+    title = {
+      Text(
+        text = stringResource(R.string.tables_photo_title),
+        // `.dialog-title`: the heading font at 800, 20 px.
+        style = MaterialTheme.typography.titleLarge,
+      )
+    },
     text = { PhotoSheetBody(draft, presenter, onPickPhoto) },
     confirmButton = {
-      TextButton(
+      // `.dialog-actions` leads with a `btn-primary`; the way out beside it
+      // stays a `btn-ghost`, which is what a Material text button already is.
+      Button(
         onClick = presenter::confirmPhoto,
         enabled = draft.ready,
+        shape = Modernist.square,
         modifier = Modifier.testTag(TablesTestTags.PHOTO_CONFIRM),
       ) {
         Text(stringResource(R.string.tables_photo_confirm))
       }
     },
     dismissButton = {
-      TextButton(onClick = presenter::dismissPhoto, modifier = Modifier.testTag(TablesTestTags.PHOTO_CANCEL)) {
+      TextButton(
+        onClick = presenter::dismissPhoto,
+        shape = Modernist.square,
+        modifier = Modifier.testTag(TablesTestTags.PHOTO_CANCEL),
+      ) {
         Text(stringResource(R.string.tables_photo_cancel))
       }
     },
@@ -300,15 +336,19 @@ private fun PhotoSheetBody(
     Text(
       text = stringResource(R.string.tables_photo_body, PhotoScaling.LONGEST_SIDE.toString()),
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
     )
-    TextButton(onClick = onPickPhoto, modifier = Modifier.testTag(TablesTestTags.PHOTO_CHOOSE)) {
+    TextButton(
+      onClick = onPickPhoto,
+      shape = Modernist.square,
+      modifier = Modifier.testTag(TablesTestTags.PHOTO_CHOOSE),
+    ) {
       Text(stringResource(R.string.tables_photo_choose))
     }
     Text(
       text = draft.picked?.label ?: stringResource(R.string.tables_photo_none),
       style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
       modifier = Modifier.testTag(TablesTestTags.PHOTO_FILE),
     )
     OutlinedTextField(
@@ -322,7 +362,7 @@ private fun PhotoSheetBody(
       Text(
         text = stringResource(R.string.tables_photo_working),
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
         modifier = Modifier.testTag(TablesTestTags.PHOTO_WORKING),
       )
     }
@@ -335,19 +375,19 @@ private fun PhotoSheetBody(
 private fun Refusal(reasons: List<String>) {
   if (reasons.isEmpty()) return
   Column(
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
     modifier = Modifier.testTag(TablesTestTags.PHOTO_REFUSED),
   ) {
     Text(
       text = stringResource(R.string.tables_photo_refused),
       style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.error,
+      color = wrong,
     )
     reasons.forEach { reason ->
       Text(
         text = reason,
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
       )
     }
   }
@@ -374,8 +414,8 @@ private fun Thumbnail(
   choice: TableChoice,
   picture: ImageBitmap?,
 ) {
-  val shape = RoundedCornerShape(6.dp)
-  val box = Modifier.size(width = TableThumbnailBox.WIDTH, height = TableThumbnailBox.HEIGHT).clip(shape)
+  // Square: `--radius-*` is `0px` throughout the system.
+  val box = Modifier.size(width = TableThumbnailBox.WIDTH, height = TableThumbnailBox.HEIGHT)
   if (picture == null) {
     Swatch(choice.look, box)
     return
@@ -412,13 +452,19 @@ private fun Swatch(
           .size(
             width = TableThumbnailBox.WIDTH - WALL * 2,
             height = TableThumbnailBox.HEIGHT - WALL * 2,
-          ).clip(RoundedCornerShape(3.dp))
-          .background(Color(look.floorColorArgb)),
+          ).background(Color(look.floorColorArgb)),
     )
   }
 }
 
-private val WALL = 7.dp
+/** The tray's wall, as thick as the prototype draws it (`border:6px`). */
+private val WALL = Modernist.wall
+
+/** `.table td`'s `border-bottom: 1px` — the thinnest line the system draws. */
+private val HAIRLINE = 1.dp
+
+/** How long each dash of the "use a photo" placeholder's edge is. */
+private val DASH = 4.dp
 
 /** What the tests reach for. */
 object TablesTestTags {

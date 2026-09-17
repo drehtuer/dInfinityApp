@@ -13,7 +13,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 
 /**
  * Collections, in and out (`docs/dice-notation.md`, "Export and import").
@@ -42,13 +41,20 @@ internal fun ExportSheet(
   AlertDialog(
     modifier = modifier.testTag(ExportTestTags.SHEET),
     onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.collections_title)) },
+    // `.dialog`: the surface, no corner, `.dialog-title` at the scale's `h4`.
+    shape = Modernist.square,
+    title = {
+      Text(
+        text = stringResource(R.string.collections_title),
+        style = MaterialTheme.typography.titleLarge,
+      )
+    },
     text = {
-      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      Column(verticalArrangement = Arrangement.spacedBy(Modernist.x3)) {
         Text(
           text = stringResource(R.string.export_note),
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.bodyLarge,
+          color = muted,
         )
         if (group != null) {
           Choice(
@@ -69,7 +75,7 @@ internal fun ExportSheet(
           tag = ExportTestTags.EVERYTHING,
           onClick = { onExport(null) },
         )
-        HorizontalDivider()
+        HorizontalDivider(thickness = Modernist.hairline, color = divider)
         // In as well as out. The same sheet, because a file arriving and a
         // file leaving are one idea to a player and the alternative is a
         // second control on a bar that already has a group name in it.
@@ -82,7 +88,11 @@ internal fun ExportSheet(
       }
     },
     confirmButton = {
-      TextButton(onClick = onDismiss, modifier = Modifier.testTag(ExportTestTags.CANCEL)) {
+      TextButton(
+        onClick = onDismiss,
+        shape = Modernist.square,
+        modifier = Modifier.testTag(ExportTestTags.CANCEL),
+      ) {
         Text(stringResource(R.string.group_cancel))
       }
     },
@@ -96,13 +106,17 @@ private fun Choice(
   tag: String,
   onClick: () -> Unit,
 ) {
-  TextButton(onClick = onClick, modifier = Modifier.fillMaxWidth().testTag(tag)) {
+  TextButton(
+    onClick = onClick,
+    shape = Modernist.square,
+    modifier = Modifier.fillMaxWidth().testTag(tag),
+  ) {
     Column(modifier = Modifier.fillMaxWidth()) {
       Text(text = label, style = MaterialTheme.typography.bodyLarge)
       Text(
         text = note,
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
       )
     }
   }

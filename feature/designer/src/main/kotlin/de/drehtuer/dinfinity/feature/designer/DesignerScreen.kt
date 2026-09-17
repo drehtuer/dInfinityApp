@@ -21,9 +21,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
@@ -36,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -44,6 +44,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -126,8 +127,9 @@ private fun Header(
   ) {
     Text(
       text = stringResource(R.string.designer_title),
+      // `titleLarge` is already the heading font at 800; a `Bold` here pulled
+      // it back to Material's 700 (`--font-heading-weight: 800`).
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.weight(1f),
     )
@@ -136,8 +138,11 @@ private fun Header(
     // rather than dead for a die plain notation cannot name — a button that is
     // there and does nothing is worse than one that is not.
     rollable?.let { formula ->
-      TextButton(
+      // `btn btn-primary` in the prototype's footer — the one filled button
+      // on the screen, because it is the one thing the screen is for.
+      Button(
         onClick = { onRoll(formula) },
+        shape = Modernist.square,
         modifier = Modifier.testTag(DesignerTestTags.ROLL),
       ) {
         Text(stringResource(R.string.designer_roll))
@@ -177,23 +182,15 @@ private fun BaseDice(
     horizontalArrangement = Arrangement.spacedBy(4.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
+    // A `.seg` in the prototype, and so the same option treatment as every
+    // other chooser on the screen.
     state.choosable.forEach { die ->
-      TextButton(
-        onClick = { presenter.base(die) },
-        modifier = Modifier.testTag(DesignerTestTags.baseOf(die.id)),
-      ) {
-        Text(
-          text = die.id,
-          style = MaterialTheme.typography.labelMedium,
-          fontWeight = if (die.id == state.die.id) FontWeight.Bold else FontWeight.Normal,
-          color =
-            if (die.id == state.die.id) {
-              MaterialTheme.colorScheme.onBackground
-            } else {
-              MaterialTheme.colorScheme.onSurfaceVariant
-            },
-        )
-      }
+      Tool(
+        label = die.id,
+        chosen = die.id == state.die.id,
+        tag = DesignerTestTags.baseOf(die.id),
+        onChoose = { presenter.base(die) },
+      )
     }
   }
 }
@@ -214,7 +211,7 @@ private fun FaceCanvas(
   // lifts: the model takes a whole stroke, so that one undo is one line.
   var drawing by remember { mutableStateOf(emptyList<Dot>()) }
   val outline = state.draft.outline
-  val guideColour = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = GUIDE_ALPHA)
+  val guideColour = MaterialTheme.colorScheme.onBackground.copy(alpha = GUIDE_ALPHA)
   val edge = MaterialTheme.colorScheme.outline
 
   Canvas(
@@ -223,7 +220,9 @@ private fun FaceCanvas(
         .fillMaxWidth()
         .padding(horizontal = 24.dp)
         .aspectRatio(1f)
-        .border(1.dp, edge)
+        // `outline:2px solid var(--color-divider)`. The system draws rules,
+        // not hairlines.
+        .border(Modernist.rule, edge)
         .testTag(DesignerTestTags.CANVAS)
         .pointerInput(state.cell, state.nib, state.colorArgb, state.stamping) {
           // One gesture or the other, never both: the pens answer a drag and
@@ -264,7 +263,7 @@ private fun Warning(state: DesignerState) {
   Text(
     text = stringResource(if (state.full) R.string.designer_face_full else R.string.designer_face_nearly_full),
     style = MaterialTheme.typography.labelSmall,
-    color = MaterialTheme.colorScheme.error,
+    color = wrong,
     modifier = Modifier.padding(horizontal = 24.dp).testTag(DesignerTestTags.WARNING),
   )
 }
@@ -320,6 +319,19 @@ private fun Tools(
   }
 }
 
+/**
+ * One option of a chooser, or one thing to do (`.seg-opt`, `.btn-ghost`).
+ *
+ * **Chosen is a filled option, not a coloured word.** That is what the system
+ * does everywhere a choice is shown — `.seg-opt:has(input:checked)` puts the
+ * accent behind the label and the ground in front of it — and a label that
+ * only changed colour was asking the player to compare two greys.
+ *
+ * Which of the two it is is said in the semantics as well as in the paint, so
+ * a screen reader hears "selected" rather than nothing
+ * (`docs/architecture.md`, "Accessibility"). A button that is an action rather
+ * than an option is never chosen, and so says nothing.
+ */
 @Composable
 private fun Tool(
   label: String,
@@ -328,12 +340,22 @@ private fun Tool(
   enabled: Boolean = true,
   onChoose: () -> Unit,
 ) {
-  TextButton(onClick = onChoose, enabled = enabled, modifier = Modifier.testTag(tag)) {
-    Text(
-      text = label,
-      fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
-      color = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-    )
+  TextButton(
+    onClick = onChoose,
+    enabled = enabled,
+    shape = Modernist.square,
+    colors =
+      if (chosen) {
+        ButtonDefaults.textButtonColors(
+          containerColor = MaterialTheme.colorScheme.primary,
+          contentColor = MaterialTheme.colorScheme.background,
+        )
+      } else {
+        ButtonDefaults.textButtonColors(contentColor = muted)
+      },
+    modifier = Modifier.semantics { selected = chosen }.testTag(tag),
+  ) {
+    Text(text = label, fontWeight = FontWeight.SemiBold)
   }
 }
 
@@ -396,7 +418,7 @@ private fun StampBar(
       Text(
         text = stringResource(R.string.designer_stamp_refused),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.error,
+        color = wrong,
         modifier = Modifier.testTag(DesignerTestTags.STAMP_REFUSED),
       )
     }
@@ -504,7 +526,7 @@ private fun Palette(
     Text(
       text = Ink.hex(state.colorArgb),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
       modifier = Modifier.testTag(DesignerTestTags.INK_HEX),
     )
   }
@@ -523,7 +545,16 @@ private fun Palette(
 /**
  * One colour to draw with.
  *
- * The circle is as small as the design draws it and the thing a finger hits is
+ * A square, because `--radius-*` is `0px` and nothing in this system has a
+ * rounded corner — the circle this used to draw was the one shape the
+ * Modernist palette has no room for.
+ *
+ * **Which colour is in the pen is said by the edge, not by the size.** The
+ * prototype gives every swatch the same 26 px and switches its 2 px border
+ * from `--color-divider` to `--color-text`; a swatch that grew when it was
+ * chosen made the row reflow under the finger that chose it.
+ *
+ * The swatch is as small as the design draws it and the thing a finger hits is
  * not: the touch target is a full [TOUCH_TARGET] whatever the swatch inside it
  * measures, which is the floor Android asks for and the reason the row is
  * spaced rather than crowded.
@@ -548,10 +579,17 @@ private fun Swatch(
     Box(
       modifier =
         Modifier
-          .size(if (chosen) CHOSEN_SWATCH else SWATCH)
-          .clip(CircleShape)
+          .size(Modernist.swatch)
           .background(Color(argb))
-          .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+          .border(
+            width = Modernist.rule,
+            color =
+              if (chosen) {
+                MaterialTheme.colorScheme.onBackground
+              } else {
+                MaterialTheme.colorScheme.outline
+              },
+          ),
     )
   }
 }
@@ -575,7 +613,13 @@ private fun ColourPicker(
   AlertDialog(
     modifier = Modifier.testTag(DesignerTestTags.PICKER),
     onDismissRequest = onDismiss,
-    title = { Text(stringResource(R.string.designer_colour_title)) },
+    // `.dialog-title`: the heading font at 800, 20 px.
+    title = {
+      Text(
+        text = stringResource(R.string.designer_colour_title),
+        style = MaterialTheme.typography.titleLarge,
+      )
+    },
     text = {
       Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(
@@ -584,7 +628,7 @@ private fun ColourPicker(
               .fillMaxWidth()
               .height(TOUCH_TARGET)
               .background(Color(hsv.argb))
-              .border(1.dp, MaterialTheme.colorScheme.outline)
+              .border(Modernist.rule, MaterialTheme.colorScheme.outline)
               .semantics { contentDescription = Ink.hex(hsv.argb) }
               .testTag(DesignerTestTags.PICKER_PATCH),
         )
@@ -596,12 +640,20 @@ private fun ColourPicker(
       }
     },
     confirmButton = {
-      TextButton(onClick = { onChosen(hsv.argb) }, modifier = Modifier.testTag(DesignerTestTags.PICKER_USE)) {
+      Button(
+        onClick = { onChosen(hsv.argb) },
+        shape = Modernist.square,
+        modifier = Modifier.testTag(DesignerTestTags.PICKER_USE),
+      ) {
         Text(stringResource(R.string.designer_colour_use))
       }
     },
     dismissButton = {
-      TextButton(onClick = onDismiss, modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL)) {
+      TextButton(
+        onClick = onDismiss,
+        shape = Modernist.square,
+        modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL),
+      ) {
         Text(stringResource(R.string.designer_colour_cancel))
       }
     },
@@ -618,7 +670,7 @@ private fun Channel(
   onChange: (Float) -> Unit,
 ) {
   val name = stringResource(label)
-  Text(text = name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+  Text(text = name, style = MaterialTheme.typography.labelSmall, color = muted)
   Slider(
     value = value,
     onValueChange = onChange,
@@ -693,8 +745,6 @@ private const val GUIDE_ALPHA = 0.35f
 
 /** All the way round the wheel, which is where hue starts again. */
 private const val HUE_ROUND = 360f
-private val SWATCH = 28.dp
-private val CHOSEN_SWATCH = 36.dp
 
 /** What a finger is owed, whatever is drawn inside it. */
 private val TOUCH_TARGET = 48.dp

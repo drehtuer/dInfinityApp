@@ -2,15 +2,16 @@ package de.drehtuer.dinfinity.feature.saved
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -19,8 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 
@@ -60,7 +61,7 @@ fun HomeStrip(
 
   LazyRow(
     modifier = modifier.fillMaxWidth().testTag(HomeStripTestTags.STRIP),
-    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
     items(state.rolls, key = { it.roll.id }) { entry ->
       Tile(
@@ -98,8 +99,8 @@ private fun Tile(
   Column(
     modifier =
       Modifier
-        .widthIn(min = 72.dp, max = 132.dp)
-        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+        .size(width = TILE_WIDTH, height = TILE_HEIGHT)
+        .background(MaterialTheme.colorScheme.surface)
         .combinedClickable(
           onClickLabel = stringResource(R.string.saved_roll_it, roll.name),
           onLongClickLabel = stringResource(R.string.saved_edit_it, roll.name),
@@ -107,19 +108,23 @@ private fun Tile(
           onLongClick = onEdit,
         ).semantics(mergeDescendants = true) {}
         .testTag(HomeStripTestTags.tileOf(roll.id))
-        .padding(horizontal = 10.dp, vertical = 6.dp),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+        .padding(Modernist.x3),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
     Text(
       text = roll.icon.ifBlank { STRIP_ICON },
-      style = MaterialTheme.typography.bodyMedium,
+      style = MaterialTheme.typography.titleLarge,
       color = roll.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary,
     )
+    // The mark sits at the top of the tile and the words at the bottom, which
+    // is what the prototype's empty `<span style="flex:1">` between them does.
+    Spacer(modifier = Modifier.weight(1f))
     Text(
       text = roll.name,
+      // `labelLarge` is the heading face at 14 sp and 800 — the size and
+      // weight the prototype sets a tile's name in.
       style = MaterialTheme.typography.labelLarge,
-      fontWeight = FontWeight.SemiBold,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = MaterialTheme.colorScheme.onSurface,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
     )
@@ -130,8 +135,7 @@ private fun Tile(
     Text(
       text = if (entry.broken) stringResource(R.string.strip_broken) else roll.formula,
       style = MaterialTheme.typography.labelSmall,
-      color =
-        if (entry.broken) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+      color = if (entry.broken) accent else muted,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
       modifier = Modifier.testTag(HomeStripTestTags.noteOf(roll.id)),
@@ -147,24 +151,28 @@ private fun Invitation(
   Column(
     modifier =
       Modifier
-        .widthIn(min = 72.dp)
-        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(10.dp))
+        .size(width = INVITATION_WIDTH, height = TILE_HEIGHT)
+        // Outlined rather than filled: the tile beside it is a roll, and this
+        // is not one. The prototype spends the surface colour on the things
+        // that exist and gives the way to make another one a rule.
+        .border(width = Modernist.hairline, color = divider)
         .combinedClickableInvitation(onNew)
         .testTag(HomeStripTestTags.NEW)
-        .padding(horizontal = 10.dp, vertical = 6.dp),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+        .padding(Modernist.x3),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
     Text(
       text = "+",
-      style = MaterialTheme.typography.bodyMedium,
+      style = MaterialTheme.typography.titleLarge,
       color = MaterialTheme.colorScheme.primary,
     )
+    Spacer(modifier = Modifier.weight(1f))
     Text(
       text = stringResource(if (first) R.string.strip_first else R.string.strip_new),
       style = MaterialTheme.typography.labelLarge,
-      fontWeight = FontWeight.SemiBold,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = MaterialTheme.colorScheme.onBackground,
       maxLines = 2,
+      overflow = TextOverflow.Ellipsis,
     )
   }
 }
@@ -172,6 +180,18 @@ private fun Invitation(
 @OptIn(ExperimentalFoundationApi::class)
 private fun Modifier.combinedClickableInvitation(onNew: () -> Unit): Modifier =
   combinedClickable(onClick = onNew).semantics(mergeDescendants = true) {}
+
+/**
+ * The tile the prototype draws: `width:128px;height:96px`
+ * (`design/dInfinityPhone.dc.html`, the tray's saved-roll strip). A fixed size
+ * rather than one that grows with the name — the strip is a row of cards and a
+ * row of cards of different heights is not one.
+ */
+private val TILE_WIDTH: Dp = 128.dp
+private val TILE_HEIGHT: Dp = 96.dp
+
+/** The last tile is square and narrower, being a way on rather than a roll. */
+private val INVITATION_WIDTH: Dp = 96.dp
 
 /** What a roll with no mark of its own wears, small. */
 private const val STRIP_ICON = "●"

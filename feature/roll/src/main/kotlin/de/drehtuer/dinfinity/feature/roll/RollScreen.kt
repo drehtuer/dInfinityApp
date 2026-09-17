@@ -8,10 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -25,13 +23,15 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
+import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 
 /**
  * Home: the tray, the formula and the total
@@ -366,8 +366,11 @@ private fun Outcome(
       ) {
         Text(
           text = state.result.total.toString(),
-          style = MaterialTheme.typography.displayMedium,
-          fontWeight = FontWeight.Bold,
+          // The system's display size, in the heading face at 800. It used to
+          // be `displayMedium`, which the theme never defines — so the one
+          // number the whole screen exists to show was set in Material's own
+          // default face at Material's own weight (`theme/Theme.kt`).
+          style = MaterialTheme.typography.displayLarge.tabular(),
           color = MaterialTheme.colorScheme.onBackground,
           modifier = Modifier.testTag(RollTestTags.TOTAL),
         )
@@ -406,6 +409,8 @@ private fun Outcome(
     is RollState.TooMany ->
       Message(
         text = state.reason,
+        // The system has one red and the theme maps `error` onto it, so a
+        // refusal is printed in the accent (`theme/Theme.kt`).
         colour = MaterialTheme.colorScheme.error,
         tag = RollTestTags.REFUSED,
       )
@@ -420,14 +425,14 @@ private fun Outcome(
     RollState.Empty ->
       Message(
         text = stringResource(R.string.roll_hint_empty),
-        colour = MaterialTheme.colorScheme.onSurfaceVariant,
+        colour = Ink.muted,
         tag = RollTestTags.HINT,
       )
 
     is RollState.Ready ->
       Message(
         text = stringResource(R.string.roll_hint_ready),
-        colour = MaterialTheme.colorScheme.onSurfaceVariant,
+        colour = Ink.muted,
         tag = RollTestTags.HINT,
       )
   }
@@ -472,9 +477,12 @@ private fun GaveUp(
       colour = MaterialTheme.colorScheme.onBackground,
       tag = RollTestTags.STALLED,
     )
-    Button(onClick = onThrowAgain, modifier = Modifier.testTag(RollTestTags.THROW_AGAIN)) {
-      Text(text = pluralStringResource(R.plurals.roll_throw_again, unsettled, unsettled))
-    }
+    ModernistButton(
+      text = pluralStringResource(R.plurals.roll_throw_again, unsettled, unsettled),
+      onClick = onThrowAgain,
+      kind = ModernistButtonKind.Primary,
+      modifier = Modifier.testTag(RollTestTags.THROW_AGAIN),
+    )
   }
 }
 
@@ -513,7 +521,8 @@ private fun Message(
 ) {
   Text(
     text = text,
-    style = MaterialTheme.typography.bodyMedium,
+    // `bodyLarge` is the system's body: 15 sp, the prototype's own default.
+    style = MaterialTheme.typography.bodyLarge,
     color = colour,
     textAlign = TextAlign.Center,
     modifier = Modifier.testTag(tag),
@@ -523,12 +532,12 @@ private fun Message(
 /** The way to the outcome graph, for whatever is in the field right now. */
 @Composable
 private fun SeeTheOdds(onClick: () -> Unit) {
-  TextButton(
+  ModernistButton(
+    text = stringResource(R.string.roll_see_the_odds),
     onClick = onClick,
+    kind = ModernistButtonKind.Ghost,
     modifier = Modifier.testTag(RollTestTags.ODDS),
-  ) {
-    Text(stringResource(R.string.roll_see_the_odds))
-  }
+  )
 }
 
 /** The same: values in, one lambda out, so it skips when nothing has moved. */
@@ -543,16 +552,16 @@ private fun ThrowButton(
   // first mid-flight, which is not what a second tap means. A roll that has
   // landed can be thrown again, and that is one press: the presenter puts the
   // total away itself.
-  Button(
+  ModernistButton(
+    text = stringResource(if (settled) R.string.roll_again else R.string.roll_throw),
     onClick = onRoll,
+    kind = ModernistButtonKind.Primary,
     enabled = enabled,
     modifier =
       Modifier
         .fillMaxWidth()
         .testTag(RollTestTags.THROW),
-  ) {
-    Text(stringResource(if (settled) R.string.roll_again else R.string.roll_throw))
-  }
+  )
 }
 
 /** What the tests reach the screen by. */

@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,6 +30,8 @@ import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 
 /**
  * Settings. Stateless: the caller owns [AppSettings] and persists the change,
@@ -82,18 +82,32 @@ fun SettingsScreen(
       )
       menu()
     }
+    // A rule under the title and between every setting, which is how this
+    // system separates one thing from the next — it has no cards to put them
+    // in and no shadows to lift them with (`design/dInfinity.dc.html`,
+    // option 1y).
+    Rule()
     AppearanceSection(chosen = settings.appearance, onChosen = onAppearanceSelected)
+    Rule(weight = RuleWeight.Hairline)
     AccentSection(selected = settings.accentColor, onAccentSelected = onAccentSelected)
+    Rule(weight = RuleWeight.Hairline)
     ShakeSection(on = settings.shakeToRoll, onChanged = onShakeChanged)
+    Rule(weight = RuleWeight.Hairline)
     FeelSection(
       haptics = settings.haptics,
       sound = settings.sound,
       onHapticsChanged = onHapticsChanged,
       onSoundChanged = onSoundChanged,
     )
+    Rule(weight = RuleWeight.Hairline)
     RoundingSection(chosen = settings.rounding, onChosen = onRoundingSelected)
+    Rule(weight = RuleWeight.Hairline)
     PowerSection(on = settings.powerSaving, onChanged = onPowerSavingChanged)
+    // The block the prototype rules off from the settings above it: what the
+    // app is, and the tool that is not a setting.
+    Rule()
     AboutSection(version = version, onRepository = onRepository)
+    Rule(weight = RuleWeight.Hairline)
     // Last, and off on every install: it is a debugging tool rather than a
     // feature, and it belongs after the thing that says what the app is.
     DeveloperSection(on = settings.developerTools, onChanged = onDeveloperToolsChanged)
@@ -112,37 +126,16 @@ private fun PowerSection(
   on: Boolean,
   onChanged: (Boolean) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    Text(
-      text = stringResource(R.string.settings_power_heading),
-      style = MaterialTheme.typography.labelLarge,
-      color = MaterialTheme.colorScheme.onBackground,
+  Section(
+    heading = stringResource(R.string.settings_power_heading),
+    explanation = stringResource(R.string.settings_power_explanation),
+  ) {
+    SwitchRow(
+      label = stringResource(R.string.settings_power_label),
+      on = on,
+      onChanged = onChanged,
+      tag = SettingsTestTags.POWER_SAVING,
     )
-    Text(
-      text = stringResource(R.string.settings_power_explanation),
-      style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onBackground,
-    )
-    Row(
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .toggleable(
-            value = on,
-            role = Role.Switch,
-            onValueChange = onChanged,
-          ).testTag(SettingsTestTags.POWER_SAVING),
-    ) {
-      Text(
-        text = stringResource(R.string.settings_power_label),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.weight(1f),
-      )
-      Switch(checked = on, onCheckedChange = null)
-    }
   }
 }
 
@@ -151,17 +144,10 @@ private fun AccentSection(
   selected: AccentColor,
   onAccentSelected: (AccentColor) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    Text(
-      text = stringResource(R.string.settings_accent_heading),
-      style = MaterialTheme.typography.labelLarge,
-      color = MaterialTheme.colorScheme.onBackground,
-    )
-    Text(
-      text = stringResource(R.string.settings_accent_explanation),
-      style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onBackground,
-    )
+  Section(
+    heading = stringResource(R.string.settings_accent_heading),
+    explanation = stringResource(R.string.settings_accent_explanation),
+  ) {
     FlowRow(
       modifier = Modifier.selectableGroup(),
       horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -206,9 +192,10 @@ private fun AccentSwatch(
           .background(Color(accent.argb))
           .then(
             if (isSelected) {
-              Modifier.border(3.dp, MaterialTheme.colorScheme.onBackground)
+              // The system's rule weight, not a weight of this screen's own.
+              Modifier.border(RuleWeight.Block.thickness, MaterialTheme.colorScheme.onBackground)
             } else {
-              Modifier.border(1.dp, MaterialTheme.colorScheme.outline)
+              Modifier.border(RuleWeight.Hairline.thickness, MaterialTheme.colorScheme.outline)
             },
           ),
     )

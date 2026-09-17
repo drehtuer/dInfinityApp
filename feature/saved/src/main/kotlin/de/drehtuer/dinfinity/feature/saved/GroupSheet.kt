@@ -22,7 +22,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.TablePin
 
 /**
@@ -48,12 +47,17 @@ internal fun GroupSheet(
   AlertDialog(
     modifier = modifier.testTag(GroupTestTags.SHEET),
     onDismissRequest = presenter::dismiss,
+    // `.dialog`: the surface, no corner, and a title at the scale's `h4` in
+    // the heading weight. Material's own dialog title is `headlineSmall`,
+    // which is not a style the theme fills in.
+    shape = Modernist.square,
     title = {
       Text(
         text =
           stringResource(
             if (draft.fresh) R.string.group_title_new else R.string.group_title_edit,
           ),
+        style = MaterialTheme.typography.titleLarge,
       )
     },
     text = { Body(draft = draft, presenter = presenter) },
@@ -61,22 +65,29 @@ internal fun GroupSheet(
       Button(
         onClick = { presenter.save(onSaved) },
         enabled = draft.savable,
+        shape = Modernist.square,
         modifier = Modifier.testTag(GroupTestTags.SAVE),
       ) {
         Text(stringResource(R.string.group_save))
       }
     },
     dismissButton = {
-      Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+      Row(horizontalArrangement = Arrangement.spacedBy(Modernist.x2)) {
         if (draft.deletable) {
           TextButton(
             onClick = { presenter.delete() },
+            shape = Modernist.square,
             modifier = Modifier.testTag(GroupTestTags.DELETE),
           ) {
-            Text(stringResource(R.string.group_delete), color = MaterialTheme.colorScheme.error)
+            // The system's one red, which is the accent (`Modernist`).
+            Text(stringResource(R.string.group_delete), color = accent)
           }
         }
-        TextButton(onClick = presenter::dismiss, modifier = Modifier.testTag(GroupTestTags.CANCEL)) {
+        TextButton(
+          onClick = presenter::dismiss,
+          shape = Modernist.square,
+          modifier = Modifier.testTag(GroupTestTags.CANCEL),
+        ) {
           Text(stringResource(R.string.group_cancel))
         }
       }
@@ -92,7 +103,7 @@ private fun Body(
 ) {
   Column(
     modifier = Modifier.verticalScroll(rememberScrollState()),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x3),
   ) {
     OutlinedTextField(
       value = draft.name,
@@ -109,8 +120,8 @@ private fun Body(
     draft.clash?.let { taken ->
       Text(
         text = stringResource(R.string.group_name_taken, taken),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.labelSmall,
+        color = accent,
         modifier = Modifier.testTag(GroupTestTags.CLASH),
       )
     }
@@ -123,7 +134,7 @@ private fun Body(
       Text(
         text = pluralStringResource(R.plurals.group_delete_moves, draft.rolls, draft.rolls),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
         modifier = Modifier.testTag(GroupTestTags.MOVES),
       )
     }
@@ -137,14 +148,16 @@ private fun Marks(
   chosen: String,
   onPick: (String) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
     Label(stringResource(R.string.group_icon))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       GROUP_ICONS.forEach { icon ->
         FilterChip(
           selected = icon == chosen,
           onClick = { onPick(if (icon == chosen) "" else icon) },
           label = { Text(icon) },
+          colors = inkColours(),
+          border = segBorder(),
           modifier = Modifier.testTag(GroupTestTags.iconOf(icon)),
         )
       }
@@ -166,22 +179,24 @@ private fun Parents(
   draft: GroupDraft,
   onPick: (String?) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
     Label(stringResource(R.string.group_parent))
     if (!draft.nestable) {
       Text(
         text = stringResource(R.string.group_parent_has_children),
         style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
         modifier = Modifier.testTag(GroupTestTags.NO_NESTING),
       )
       return@Column
     }
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       FilterChip(
         selected = draft.parentId == null,
         onClick = { onPick(null) },
         label = { Text(stringResource(R.string.group_parent_none)) },
+        colors = segColours(),
+        border = segBorder(),
         modifier = Modifier.testTag(GroupTestTags.parentOf(null)),
       )
       draft.parents.forEach { group ->
@@ -189,6 +204,8 @@ private fun Parents(
           selected = draft.parentId == group.id,
           onClick = { onPick(group.id) },
           label = { Text(group.name) },
+          colors = segColours(),
+          border = segBorder(),
           modifier = Modifier.testTag(GroupTestTags.parentOf(group.id)),
         )
       }
@@ -210,14 +227,16 @@ private fun Tables(
   draft: GroupDraft,
   onPick: (TablePin?) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
     Label(stringResource(R.string.group_table))
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       draft.tables.forEach { choice ->
         FilterChip(
           selected = choice.pin == draft.tablePin,
           onClick = { onPick(choice.pin) },
           label = { Text(choice.name ?: stringResource(R.string.editor_table_default)) },
+          colors = segColours(),
+          border = segBorder(),
           modifier = Modifier.testTag(GroupTestTags.tableOf(choice.pin)),
         )
       }
@@ -225,7 +244,7 @@ private fun Tables(
     Text(
       text = stringResource(R.string.group_table_note),
       style = MaterialTheme.typography.labelSmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
     )
   }
 }
@@ -233,9 +252,10 @@ private fun Tables(
 @Composable
 private fun Label(text: String) {
   Text(
+    // `.field > label`: small, quiet, and above the thing it names.
     text = text,
-    style = MaterialTheme.typography.labelMedium,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    style = MaterialTheme.typography.labelSmall,
+    color = muted,
   )
 }
 

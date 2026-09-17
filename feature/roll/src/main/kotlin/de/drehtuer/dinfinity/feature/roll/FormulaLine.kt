@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.ui.common.Ink
 
 /**
  * The formula on the tray, waiting to be typed into
@@ -41,12 +42,15 @@ internal fun FormulaLine(
   modifier: Modifier = Modifier,
   wrong: Boolean = false,
 ) {
-  val ink =
-    if (wrong) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
+  // The design system has one red and the theme maps `error` onto it, so a
+  // formula that does not read is printed in the accent (`theme/Theme.kt`).
+  val ink = if (wrong) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onBackground
   Text(
     text = text.ifBlank { stringResource(R.string.roll_formula_hint) },
-    style = MaterialTheme.typography.titleMedium,
-    color = if (text.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else ink,
+    // The heading face at 800, 20 sp: the formula is the title of the tray it
+    // sits on, not a caption under it (`--font-heading`, `titleLarge`).
+    style = MaterialTheme.typography.titleLarge,
+    color = if (text.isBlank()) Ink.muted else ink,
     textAlign = TextAlign.Center,
     modifier =
       modifier
@@ -77,8 +81,12 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.underline(ink: andr
   )
 }
 
-private val UNDERLINE_INSET = 2.dp
-private val UNDERLINE_WIDTH = 1.dp
+private val UNDERLINE_INSET = 4.dp
+
+/** `border-bottom:2px dashed` — rules in this system are 2 dp, not hairlines. */
+private val UNDERLINE_WIDTH = 2.dp
 private val DASH = 4.dp
-private val GAP = 3.dp
-private const val UNDERLINE_ALPHA = 0.6f
+private val GAP = 4.dp
+
+/** `color-mix(in srgb, currentColor 45%, transparent)`. */
+private const val UNDERLINE_ALPHA = 0.45f

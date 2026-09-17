@@ -10,6 +10,8 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -122,6 +124,59 @@ class DesignerScreenTest {
     compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Broad)).performScrollTo().performClick()
 
     assertEquals(Nib.Broad, presenter.state.nib)
+  }
+
+  @Test
+  fun `the tool in hand is announced as the one that is chosen`() {
+    // The design shows a chosen option filled rather than merely recoloured
+    // (`.seg-opt:has(input:checked)`), and a screen reader hears the same fact
+    // because it is in the semantics as well as in the paint.
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Medium)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Broad)).performScrollTo().assertIsNotSelected()
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Broad)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Broad)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Medium)).performScrollTo().assertIsNotSelected()
+  }
+
+  @Test
+  fun `the die being drawn on is announced as the one that is chosen`() {
+    show(d6, choosable = listOf(d6, d4))
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d6.id)).assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).assertIsNotSelected()
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d6.id)).assertIsNotSelected()
+  }
+
+  @Test
+  fun `the face in front of the player is announced as the one that is chosen`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.faceOf(0)).performScrollTo().assertIsSelected()
+
+    compose.onNodeWithTag(DesignerTestTags.faceOf(3)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.faceOf(3)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.faceOf(0)).performScrollTo().assertIsNotSelected()
+  }
+
+  @Test
+  fun `an action is never a chosen option`() {
+    // Undo, redo, clear and "fill all with numbers" do a thing rather than
+    // stand for a state, so nothing about them is ever selected — a filled
+    // Undo would read as a mode the screen was stuck in.
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.UNDO).performScrollTo().assertIsNotSelected()
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().assertIsNotSelected()
+    compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).assertIsNotSelected()
   }
 
   @Test

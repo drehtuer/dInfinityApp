@@ -85,6 +85,15 @@ class SavedStatsScreenTest {
   }
 
   @Test
+  fun `the title hangs from a rule`() {
+    // Every screen in the prototype does (`design/dInfinityPhone.dc.html`):
+    // a 2 dp divider under the header, and nothing between it and the title.
+    show()
+
+    compose.onNodeWithTag(SavedStatsTestTags.HEADER_RULE, useUnmergedTree = true).assertExists()
+  }
+
+  @Test
   fun `a group with no saved rolls says so`() {
     show()
 

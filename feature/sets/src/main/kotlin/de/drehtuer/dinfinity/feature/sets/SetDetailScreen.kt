@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.feature.sets
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -93,15 +95,16 @@ private fun Header(
   ) {
     Text(
       text = name,
+      // `titleLarge` is already the heading font at 800; a `Bold` here pulled
+      // it back to Material's 700 (`--font-heading-weight: 800`).
       style = MaterialTheme.typography.titleLarge,
-      fontWeight = FontWeight.Bold,
       modifier = Modifier.weight(1f).testTag(SetDetailTestTags.NAME),
     )
     version?.let {
       Text(
         text = it,
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
       )
     }
     menu()
@@ -118,12 +121,12 @@ private fun Missing() {
     Text(
       text = stringResource(R.string.sets_detail_gone),
       style = MaterialTheme.typography.titleMedium,
-      fontWeight = FontWeight.Bold,
+      fontWeight = FontWeight.ExtraBold,
     )
     Text(
       text = stringResource(R.string.sets_detail_gone_body),
       style = MaterialTheme.typography.bodyMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
     )
   }
 }
@@ -203,7 +206,7 @@ private fun Source(
       Text(
         text = stringResource(R.string.sets_detail_commit, it),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
       )
     }
   }
@@ -220,7 +223,7 @@ private fun Default(presenter: SetDetailPresenter) {
   val state = presenter.state
   Column(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-    verticalArrangement = Arrangement.spacedBy(2.dp),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     if (state.isDefault) {
       Text(
@@ -230,8 +233,13 @@ private fun Default(presenter: SetDetailPresenter) {
         modifier = Modifier.testTag(SetDetailTestTags.IS_DEFAULT),
       )
     } else if (state.canBeDefault) {
-      TextButton(
+      // `btn btn-secondary` in the prototype: an outline in the divider
+      // colour with the text in the ink, not another accent-coloured ghost.
+      OutlinedButton(
         onClick = { presenter.makeDefault() },
+        shape = Modernist.square,
+        border = BorderStroke(Modernist.hairline, MaterialTheme.colorScheme.outline),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
         modifier = Modifier.testTag(SetDetailTestTags.MAKE_DEFAULT),
       ) {
         Text(stringResource(R.string.sets_detail_default))
@@ -241,7 +249,7 @@ private fun Default(presenter: SetDetailPresenter) {
       Text(
         text = stringResource(R.string.sets_detail_default_note),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
       )
     }
   }
@@ -260,12 +268,17 @@ private fun Manage(
   ) {
     TextButton(
       onClick = { presenter.setEnabled(!row.enabled) },
+      shape = Modernist.square,
       modifier = Modifier.testTag(SetDetailTestTags.TOGGLE),
     ) {
       Text(stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable))
     }
-    TextButton(onClick = { presenter.remove() }, modifier = Modifier.testTag(SetDetailTestTags.REMOVE)) {
-      Text(text = stringResource(R.string.sets_sheet_remove), color = MaterialTheme.colorScheme.error)
+    TextButton(
+      onClick = { presenter.remove() },
+      shape = Modernist.square,
+      modifier = Modifier.testTag(SetDetailTestTags.REMOVE),
+    ) {
+      Text(text = stringResource(R.string.sets_sheet_remove), color = wrong)
     }
   }
 }
@@ -293,12 +306,12 @@ private fun Export(presenter: SetDetailPresenter) {
     Text(
       text = stringResource(R.string.sets_detail_export),
       style = MaterialTheme.typography.titleSmall,
-      fontWeight = FontWeight.Bold,
+      fontWeight = FontWeight.ExtraBold,
     )
     Text(
       text = stringResource(R.string.sets_detail_export_note),
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      color = muted,
     )
     Row(
       modifier = Modifier.fillMaxWidth(),
@@ -309,6 +322,7 @@ private fun Export(presenter: SetDetailPresenter) {
       Button(
         onClick = { presenter.export() },
         enabled = state.canExport,
+        shape = Modernist.square,
         modifier = Modifier.testTag(SetDetailTestTags.EXPORT_DO),
       ) {
         Text(stringResource(R.string.sets_detail_export_do))
@@ -326,7 +340,7 @@ private fun Export(presenter: SetDetailPresenter) {
       Text(
         text = message.toString(),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.error,
+        color = wrong,
         modifier = Modifier.fillMaxWidth().testTag(SetDetailTestTags.EXPORT_PROBLEM),
       )
     }
@@ -354,9 +368,20 @@ private fun LicenseChooser(
   Box(modifier = modifier) {
     OutlinedButton(
       onClick = { open = true },
+      shape = Modernist.square,
+      border = BorderStroke(Modernist.hairline, MaterialTheme.colorScheme.outline),
+      colors =
+        ButtonDefaults.outlinedButtonColors(
+          containerColor = MaterialTheme.colorScheme.surface,
+          contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
       modifier = Modifier.fillMaxWidth().testTag(SetDetailTestTags.LICENSE_CHOOSER),
     ) {
-      Text(text = chosen?.label ?: stringResource(R.string.sets_detail_license_choose))
+      // An `.input` reads from its left edge, whatever Material would centre.
+      Text(
+        text = chosen?.label ?: stringResource(R.string.sets_detail_license_choose),
+        modifier = Modifier.weight(1f),
+      )
     }
     DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
       SetLicense.entries.forEach { license ->
@@ -376,7 +401,7 @@ private fun LicenseChooser(
 /** Every die the set defines, drawn as the outline a player recognises. */
 private fun LazyListScope.dice(dice: List<Die>) {
   item {
-    Label(
+    Kicker(
       text = stringResource(R.string.sets_detail_dice),
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
@@ -401,16 +426,18 @@ private fun DieLine(die: Die) {
       // faces it has — so the outline follows the solid rather than the
       // values printed on it. A d6 of skulls is still a cube.
       sides = Sides.Numeric(die.shape.faceCount),
-      fill = MaterialTheme.colorScheme.surfaceVariant,
-      ink = MaterialTheme.colorScheme.onSurfaceVariant,
+      // The ground the system has, not Material's lavender `surfaceVariant`,
+      // and the same ink the row is written in, thinned.
+      fill = MaterialTheme.colorScheme.surface,
+      ink = muted,
       modifier = Modifier.size(32.dp),
     )
     Column(modifier = Modifier.weight(1f)) {
-      Text(text = die.id, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+      Text(text = die.id, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.ExtraBold)
       Text(
         text = pluralStringResource(R.plurals.sets_detail_faces, die.faces.size, die.faces.size),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
       )
     }
   }
@@ -428,11 +455,11 @@ private fun LazyListScope.report(report: List<ValidationMessage>) {
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      Label(stringResource(R.string.sets_detail_report))
+      Kicker(stringResource(R.string.sets_detail_report))
       Text(
         text = stringResource(R.string.sets_detail_report_note),
         style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        color = muted,
       )
     }
   }
@@ -440,7 +467,7 @@ private fun LazyListScope.report(report: List<ValidationMessage>) {
     Text(
       text = message.toString(),
       style = MaterialTheme.typography.bodySmall,
-      color = MaterialTheme.colorScheme.error,
+      color = wrong,
       modifier =
         Modifier
           .fillMaxWidth()
@@ -471,7 +498,30 @@ private fun Label(
   Text(
     text = text,
     style = MaterialTheme.typography.labelSmall,
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    color = muted,
+    modifier = modifier,
+  )
+}
+
+/**
+ * A section heading: `h6` in the design system, which the prototype writes as
+ * `font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:accent`.
+ *
+ * Not the same thing as [Label]. A kicker names a *part of the screen* and is
+ * the accent's one job on a page of plain text; a label names the fact beside
+ * it and stays quiet.
+ */
+@Composable
+private fun Kicker(
+  text: String,
+  modifier: Modifier = Modifier,
+) {
+  Text(
+    text = text.uppercase(),
+    style = MaterialTheme.typography.labelSmall,
+    fontWeight = FontWeight.SemiBold,
+    letterSpacing = Modernist.kickerTracking,
+    color = MaterialTheme.colorScheme.primary,
     modifier = modifier,
   )
 }
