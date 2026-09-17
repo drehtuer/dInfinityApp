@@ -106,7 +106,7 @@ only thing that needs a GPU is uploading it.
 **It holds where the `6` goes as well as what it looks like**, for exactly the
 same reason. `LabelRoom` solves the biggest box of a label's proportions that
 fits inside a convex face and where on that face it sits, and `FaceLabel` says
-what a face is printed with and whether it needs a bar under it; both are asked
+what a face is printed with and whether it needs a dot after it; both are asked
 by `render/filament`'s `DieNumbers`, about the polygon its mesh draws, and by
 `designer`'s `FaceStamp`, about the polygon the canvas is masked into. What is
 left on either side is the one thing only that side knows — which polygon it
@@ -236,7 +236,7 @@ stateDiagram-v2
     Screen --> Roll: system back
     Developer --> Roll: system back
     Menu --> Roll: system back
-    Roll --> [*]: system back leaves the app
+    Roll --> [*]: system back twice leaves the app
 ```
 
 **Every screen is now reachable, and every one of them by the same control.**
@@ -250,6 +250,22 @@ Nothing is undefined, and nothing is unreachable. `NavHost` answers back on
 every destination, `Destination.home` is where the app opens, and a route that
 does not resolve cannot be reached — `Destination.ofRoute` is the only way in
 and it is total.
+
+**Back off the roll screen is two presses, not one.** From anywhere else, back
+goes to Roll and clears the stack, which is what the diagram has always said.
+On Roll itself it *arms*: the first press raises a toast reading "Back again to
+leave dInfinity", and a second press within **two seconds** leaves. After that
+the arming lapses, so a stray swipe cannot close the app a minute later. The
+design asked for it (2026-09-17) and the reason is the screen it guards — the
+roll screen is where the app opens and where a result sits while somebody is
+still reading it, and it is also the screen with the largest gesture surface in
+the app.
+
+**A chevron in a header always goes up, never back.** It takes the player to
+the hub the screen was opened from, and from the hub to Roll, whatever path
+they took to get there. It is not a second spelling of the system's back
+button: one of them retraces steps and the other climbs, and a control that
+sometimes does each is a control nobody can predict.
 
 The menu button is **handed to each screen rather than built by it**. A screen
 that knew what the menu was would be one feature module depending on another,
@@ -1051,7 +1067,8 @@ offer a formula the app would refuse (`docs/dice-notation.md`).
 | Control | Calls | What changes |
 | --- | --- | --- |
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
-| one of the six accent swatches | `onAccentSelected` | the stored accent, and with it every screen at once |
+| one of the six accent presets, or a colour from the system picker | `onAccentSelected` | the stored accent, and with it every screen at once. The six are laid out four across, so six presets and a custom swatch come out 4 + 3 with nothing orphaned |
+| Straight down / Angled | `onTableViewSelected` | how far the camera leans over the table, from the next visit to the roll screen (`docs/physics-and-rendering.md`, "Rendering") |
 | the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
 | the haptics switch | `onHapticsChanged` | whether a die landing ticks in the hand, from the next visit to the roll screen. The system's own touch-feedback setting still governs it: the effects go out under `VibrationAttributes.USAGE_TOUCH` and the app never asks whether that is on |
 | the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
@@ -1070,6 +1087,29 @@ starts buzzing half way down, an overlay appearing over a throw, or a total
 changing its arithmetic while the dice are in the air are not settings taking
 effect; they are bugs (decision 16). The developer toggle's *other* half — the
 menu row — appears at once, because a menu is not a roll.
+
+**The accent is no longer a closed palette, and the clamp is what makes that
+safe.** `AccentColor` was six entries checked against both grounds by a test,
+and its KDoc says why a free picker was refused: a slider that offers a pale
+yellow produces an app whose most important control is invisible. The design of
+2026-09-17 keeps the six as presets — **Light blue `#38a8dc`** by default, then
+Modernist red `#ec3013`, Magenta `#c2186f`, Cobalt `#1d5fd4`, Pine `#0f7a50`
+and Amber `#c07000` — and adds the system colour picker behind **a contrast
+clamp**: whatever comes back is pushed toward the ground it will be read
+against until it meets the bar, and it is the clamped value that feeds
+`--color-accent` and its ramp. The swatch and the hex label still show the
+colour the player actually chose, because a picker that silently shows
+something else is a picker nobody believes. What used to be a test over six
+fixed entries becomes a test over the clamp — which is the stronger statement,
+since it holds for every colour rather than for six.
+
+**There is no longer a sound switch in the design.** The prototype's Settings
+has Appearance, Table view, Power-saving mode, Haptics, Division and Accent
+colour, and nothing else; haptics is the only feedback toggle it offers. The
+app has a `feedback/` module that generates an impact sound per table material
+and pitches it by the die's size. Removing that is a product decision rather
+than a drawing, so the row below stays until it is taken, and the decision is
+in `docs/TODO.md`.
 
 Haptics and sound are read there rather than per throw because **both ends of
 them are built with the screen**: the thing that listens is the roll, which is
@@ -1481,7 +1521,7 @@ the archives an install is working through, and those came from a stranger.
 | 46 | Filament's materials are compiled on the device with `filamat-android`, not by `matc` at build time | Filament ships no default material: every surface needs one compiled from `.mat` source, and the two ways to get there are a host tool or the runtime compiler. `matc` would mean the devcontainer image and the CI action both gaining another pinned download, and the app build depending on a host binary — for a project whose whole build story is "it works in the container", that is a real cost. `filamat-android` is one dependency line, supports Vulkan as well as OpenGL ES and optimises what it compiles. It is paid for in APK size, because it bundles a shader compiler, and in some work at launch. If either turns out to matter on the Pixel 10a, the material source does not change — only who compiles it. It also leaves the door open to a dice set bringing its own material rather than only its own parameters, which `matc` at build time would have closed for good — but that door stays shut in v1, because a shader is code and `docs/dice-sets.md` says the app never runs anything from a package (`docs/TODO.md`, After v1) |
 | 47 | `render/filament` draws through a `Stage` interface, and one file implements it | The same line decision 40 draws through the physics, for the same reason and with the same shape. Which meshes a throw needs, how big each die is at the capacity rule's scale, which numbers its material takes, when the camera stops framing the tray and starts framing the dice — all judgement, and none of it physics or GPU. Behind the seam a JVM test can say the dice were the right size, that the camera moved when they settled and that a second roll did not land on top of the first; in front of it a device can only say a frame was drawn. `FilamentStage` and `FilamentEngine` are the files that hold a context, and — with `RollThread`, the thread they are made on and the lifetime they are kept for (decision 50) — the ones excluded from the coverage figure. They are split along what a surface owns: a swap chain and a viewport die with the surface they were made from, while the engine and the material compiled on the device do not — rebuilding those for every rotation is a recompile the player watches as a black tray |
 | 48 | A roll in progress is a `LiveRoll`: the loop steps one step at a time, and a `FrameClock` decides when. Power-saving mode is the same object with nobody calling the clock | The loop used to run to completion in one call, which meant a rendered roll could only be a second implementation of it — and two implementations of "the physics result *is* the roll" is one too many (goal 1). Splitting the loop at the step it was already taking costs nothing and buys the claim outright: normal mode asks for the time since the last frame, power-saving asks for the lot, and underneath it is one loop over one world taking the same steps in the same order. The clock is the other half. Handing a frame time to a solver would make the roll depend on the panel, the thermal state and whether the app was backgrounded, so the frame time stops at the clock: it is cut into whole fixed steps and the remainder becomes the moment a renderer interpolates at. That is also why a slow frame drops simulated *time* and never a step — the roll is unchanged, it simply arrives later. The dependency runs `simulation/jolt` → `render/headless`, the direction the data-flow diagram already showed: a renderer is handed frames and has no way back |
-| 51 | A die's printed numbers are a signed distance field built on the phone, from outlines generated at build time from a real typeface | Three ways to get a number onto a face, and only one of them survives being looked at closely. **Live text** renders in whatever font the device happens to have, which makes a die a different die on a different phone. **A rasterised atlas** is a picture of a digit at one size, and the whole point of the pinch is that the player chooses the size — four times in, a 64-pixel cell is a blur. **A distance field** is the shape rather than a picture of it: one byte per pixel saying how far that pixel is from the edge of the ink, and a `smoothstep` across one fragment's worth of it recovers a crisp edge at any magnification. It costs one extra sampler and a build-time step that runs about once in the life of the project (`tools/generate-font.py`, the same generator the mark uses). The outlines are flattened to polygons there rather than kept as curves, because the field is built once per die and a cubic on the phone would buy arithmetic nobody can see. Which faces are printed, how big each number is on the face it is on, where it sits and which ones need a bar under them are all Kotlin over plain polygons, so all of it is tested on a JVM — the same line decisions 40 and 47 draw, in the same place and for the same reason. `DieNumbers` says what a die carries and `core/glyphs`' `LabelRoom` says how much room a face has for it — asked about the polygon the mesh draws, which `FaceRoom` reads off the same texture coordinates the renderer samples, and asked again by the face designer about the polygon its canvas is masked into, so that a drawn die and a printed one put a `6` in the same place (`docs/face-designer.md`). The test that matters is the one that says no number, on any solid in the catalogue, reaches past the edge of the face it is printed on |
+| 51 | A die's printed numbers are a signed distance field built on the phone, from outlines generated at build time from a real typeface | Three ways to get a number onto a face, and only one of them survives being looked at closely. **Live text** renders in whatever font the device happens to have, which makes a die a different die on a different phone. **A rasterised atlas** is a picture of a digit at one size, and the whole point of the pinch is that the player chooses the size — four times in, a 64-pixel cell is a blur. **A distance field** is the shape rather than a picture of it: one byte per pixel saying how far that pixel is from the edge of the ink, and a `smoothstep` across one fragment's worth of it recovers a crisp edge at any magnification. It costs one extra sampler and a build-time step that runs about once in the life of the project (`tools/generate-font.py`, the same generator the mark uses). The outlines are flattened to polygons there rather than kept as curves, because the field is built once per die and a cubic on the phone would buy arithmetic nobody can see. Which faces are printed, how big each number is on the face it is on, where it sits and which ones need a dot after them are all Kotlin over plain polygons, so all of it is tested on a JVM — the same line decisions 40 and 47 draw, in the same place and for the same reason. `DieNumbers` says what a die carries and `core/glyphs`' `LabelRoom` says how much room a face has for it — asked about the polygon the mesh draws, which `FaceRoom` reads off the same texture coordinates the renderer samples, and asked again by the face designer about the polygon its canvas is masked into, so that a drawn die and a printed one put a `6` in the same place (`docs/face-designer.md`). The test that matters is the one that says no number, on any solid in the catalogue, reaches past the edge of the face it is printed on |
 | 52 | Impacts are derived in Kotlin from the change in a die's speed, not reported by the bridge; and there is one player over them with the clock as a parameter | The same line decisions 40 and 47 draw, for the third time. What an impact *is* — how hard is worth feeling, what counts as a hit rather than a slide, how many of a hundred simultaneous ones a phone can play — is judgement, and none of it is physics. Deriving it from the scalar speed the bridge already reports also keeps the wire format still: a velocity vector per die per step is three more floats crossing JNI a hundred and forty thousand times a roll, for something the scalar says. The subtraction is what makes it honest — gravity can change a free die's speed by one step's worth of its own acceleration and no more, so what it does not explain is what something else did, and a die sliding or at rest therefore reports nothing without a rule saying so. The second half is the same argument as decision 48 one level up: normal mode and power-saving mode are one list of impacts with a different spread over it, not two players, so "the recorded impacts are played back over about a second" cannot drift from what a watched tray does. It costs one branch per die per step when nothing is listening, and nothing at all when something is |
 | 50 | The roll thread and the Filament engine on it outlive a visit to the roll screen; the physics world and the scene do not | `FilamentEngine` already keeps the engine and the compiled material across every surface made from it, because compiling the dice material happens on the device for the driver that is actually there (decision 46) and costs long enough that rebuilding it per rotation *was* the black tray. A driver per visit put that cost straight back: leaving the roll screen for the menu and returning compiled the material again, and the player watched it happen. So the line is drawn one level further out — what a *visit* owns is a roll, and a roll the player walked away from never landed, so the world and the scene still go. The thread is kept with the engine rather than instead of it, because Filament only takes calls from the thread that made the engine, and an engine outliving its thread is an engine nothing may touch. What it costs is an idle thread and one engine held while the player is on another screen, against a black tray every time they come back |
 | 49 | The physics and the Filament engine share one thread, driven by that thread's own `Choreographer` | The design started with a simulation thread publishing transforms to a render thread through a lock-free double-buffer. Written down, the render side turns out to have exactly one thing it can do with a transform, which is draw it — so the buffer would be eighty entries copied across a boundary neither side wanted, and a class of bug (torn reads, a frame drawn from two different steps, a stage closed while the other thread is mid-draw) bought in exchange for overlapping a copy with a draw. Filament also insists every engine call comes from the thread that made the engine, and the physics world is single-threaded for determinism, so both halves already wanted one owner each; giving them the same owner removes the hand-off rather than synchronising it. The thread is still not the main one — eighty convex bodies at 120 Hz does not belong where the UI is drawn. What it costs is that a long physics step delays that frame, which is the same trade the frame clock's four-step catch-up cap already makes visible |

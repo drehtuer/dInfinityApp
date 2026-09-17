@@ -58,9 +58,10 @@ a tumble; everything else is real.
 
 - **Physics-based rolls** — dice are convex rigid bodies with correct mass
   distribution; results come from which face lands up, not from `random()`.
-- **3D rendering** of the tray and dice, with haptics and sound on every real
-  impact — never on a die sliding or a die at rest. The table decides what it
-  sounds like, the die's size decides the pitch, and both switch off.
+- **3D rendering** of the tray and dice, seen straight down or at an angle that
+  shows the walls — your choice — with haptics and sound on every real impact,
+  never on a die sliding or a die at rest. The table decides what it sounds
+  like, the die's size decides the pitch, and both switch off.
 - **Shake to roll** — accelerometer and gyroscope drive the throw.
 - **Power-saving mode** — same physics, no rendering; just the result. The dice
   are still heard: the impacts the throw made are played back over a second.
@@ -87,8 +88,9 @@ a tumble; everything else is real.
   never changes: it is the phone's screen, walls at the edges.
 - **Safe imports** — a broken or malicious dice set can fail to load, but it
   cannot crash the app or affect other sets.
-- **Your accent** — the one colour the interface spends is yours to choose,
-  from a palette checked for legibility on both the light and the dark ground.
+- **Your accent** — the one colour the interface spends is yours to choose: six
+  presets, or any colour your phone's picker offers, pushed toward the ground
+  it is read against until it is legible on both the light and the dark one.
 - **Readable out loud** — every screen is labelled for TalkBack, including the
   tray and the charts, which are drawings and would otherwise be silent.
   Nothing is said by a colour alone: a natural 20, a dropped die, the chosen
@@ -126,7 +128,7 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/face-designer.md](docs/face-designer.md) | Finger-drawn face textures |
 | [docs/statistics.md](docs/statistics.md) | What is tracked, how it is stored, privacy |
 | [docs/assets/README.md](docs/assets/README.md) | The logo files and the die font, how both are generated from Archivo, and the font licence |
-| [docs/design-handover.md](docs/design-handover.md) | What the app does now that the prototype does not, for the next pass over the design |
+| [docs/design-handover.md](docs/design-handover.md) | Where the app and the prototype still differ, and the questions each side is waiting on |
 | [design/README.md](design/README.md) | The prototype: what each file is, how to open it offline, how to keep it in step with `docs/` |
 | [examples/README.md](examples/README.md) | The worked dice set: a commented `diceset.toml` using every catalogue shape, and blank atlases to draw on |
 

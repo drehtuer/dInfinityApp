@@ -65,6 +65,7 @@ roughness = 0.35
 metallic = 0.0
 size_mm = 16                     # clamped to 8..40
 density = 1.2                    # g/cm³, clamped to 0.5..8
+translucency = 0                 # %, 0 solid .. 100 glass, clamped
 restitution = 0.3                # clamped to 0.0..0.8
 friction = 0.5                   # clamped to 0.1..1.0
 
@@ -135,6 +136,7 @@ sound = "felt"
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
 | `die.read` | no | `face-up` (default) or `vertex-up`. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
+| `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. It drives the body's opacity and **nothing else**: the numerals stay fully opaque whatever it is, because a face you cannot read is not a die. |
 | `die.color`, `number_color`, `roughness`, `metallic`, `size_mm`, `density`, `restitution`, `friction` | no | Per-die overrides of `defaults`. |
 | `table.*` | no | Table looks; fields and limits in `docs/tables.md`. |
 
@@ -273,6 +275,44 @@ same bounding sphere, so the d4 is the smaller solid inside it. That is how a
 real set looks — the dice are sized to sit together in a hand, not to enclose
 the same volume.
 
+### Weight, translucency and size, as a person sets them
+
+A set author writes `size_mm`, `density` and `translucency`. A player does not
+think in any of those, and the design of 2026-09-17 gives the set detail screen
+a **Physical** block that says the same three things in the words a dice shop
+uses:
+
+| Shown | Unit | Built-in | Brass & Bone | Nordic runes |
+| --- | --- | --- | --- | --- |
+| Weight | g per die | 4.2 | 6.8 | 9.1 |
+| Translucency | % | 0 | 18 | 0 |
+| Size | % of average | 100 | 108 | 115 |
+
+- **Weight is grams, not `density`.** Nobody holds a die and estimates its
+  grams per cubic centimetre. The gram figure is `density × volume`, and the
+  volume is the solid's, which is why this is not free: the hull volume is
+  something the solver computes for a body's mass and the app has never asked
+  it for. Until it does, a set has a density and a screen has nothing to print.
+- **Size is a percentage of the average die**, not millimetres, and it is
+  clamped to **50–150 %**. That is `size_mm` seen from the other end — 100 %
+  is the 16 mm the built-in set uses — and it is bounded far more tightly than
+  the format's 8–40 mm, because this is a slider somebody drags rather than a
+  number an author thought about.
+- **All three are real, none of them is metadata.** Size scales the die on the
+  table and therefore what the capacity rule counts; translucency drives the
+  body's opacity with the numerals held opaque; weight is mass, so a heavier
+  die settles sooner. What the app must **not** take from the prototype is its
+  arithmetic for the last one: `clamp(0.7, 1.05 × (4.2 / w)^0.35, 1.45)`
+  seconds is an animation standing in for a solver, and the app has a solver.
+  A 9 g die settles sooner here because it is heavier, not because a curve says
+  so.
+- **An imported set is read-only**, which is not a permission check but a fact
+  about what a set is: the numbers came out of somebody's `diceset.toml`, and
+  editing them on this phone would make `brass` mean two different things on
+  two phones. **My dice** is the set this phone wrote, so it carries −/+
+  steppers at 0.1 g, 5 % and 5 %, each reading the live value so a rapid run of
+  taps accumulates rather than fighting the last frame.
+
 ## Shapes after v1
 
 Everything in this section is **planned, not implemented**. v1 rejects
@@ -396,12 +436,24 @@ Three rules decide what a face ends up carrying when it is printed:
 | something it cannot, such as `💀` | the face's **value** | a row of blanks would make the die unreadable, and a box would be a lie about what the author wrote. The value is the one thing about a face the app can always write down, and it is what the player is about to read off it anyway |
 | empty | nothing | a blank side is a face an author asked for, and half a Fudge die is exactly that |
 
-**A number is underlined when it could be read as another number on the same
-die.** Turn the label about; if what comes out is a *different* label this die
-also carries, both get a bar. That is why a d20's `6` and `9` are barred and a
-d6's `6` is not — a d6 has no `9` for its `6` to be mistaken for, which is
-exactly what a moulded d6 does. An `8` turns into itself and a `2` turns into
-nothing readable, so neither is ever barred.
+**A number is marked when it could be read as another number on the same die.**
+Turn the label about; if what comes out is a *different* label this die also
+carries, both are marked. That is why a d20's `6` and `9` are and a d6's `6` is
+not — a d6 has no `9` for its `6` to be mistaken for, which is exactly what a
+moulded d6 does. An `8` turns into itself and a `2` turns into nothing
+readable, so neither is ever marked.
+
+**The mark is a trailing dot**, `6.` and `9.`, which is the design's
+(`design/dInfinityPhone.dc.html`, 2026-09-17) and which replaces the bar
+underneath this rule used to draw. A bar under a numeral is a second horizontal
+in a system whose dice already have edges; a dot is the one mark that cannot be
+confused with the die.
+
+The derivation is what makes the percentile pair come out right without a rule
+of its own: a d%'s units digit is `6` against `9` and is dotted, while its tens
+die carries `00`–`90`, none of which turns into another of them, so the tens
+are never dotted. A number set upright in the result sheet is not marked
+either, and for the same reason — nothing there is lying at an angle.
 
 The font is not the set's to choose. It is one built-in face, cut from Archivo
 (`docs/assets/README.md`), and a set that wants its own lettering draws it and

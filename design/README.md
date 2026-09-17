@@ -21,31 +21,45 @@ prototype's own logic — is in this folder.
 | File | What it is |
 | --- | --- |
 | `dInfinity.dc.html` | The canvas: an options board of every design turn — layouts, result-sheet densities, picker styles, graph styles, saved-roll tile styles, and one phone per screen. Open this one. |
-| `dInfinityPhone.dc.html` | The phone prototype itself, imported by the canvas once per variant with different attributes (`screen`, `formula`, `theme`, …). |
+| `dInfinityPhone.dc.html` | The phone prototype itself, imported by the canvas once per variant with different attributes. Its own tweaks — `screen`, `formula`, `rollState`, `theme`, `firstLaunch`, `editing` — reach any screen or state directly. |
 | `android-frame.jsx` | Android (Material 3) device frame: status bar, app bar, gesture nav, keyboard. Starter scaffold; intentionally uses raw values. |
 | `Logo.dc.html` | The identity: the `d∞` monogram, its lockups and the app icon. The blue there is the mark's own and is not the interface accent, which the player chooses ([docs/assets/README.md](../docs/assets/README.md)). |
 | `support.js` | Claude Design's generated runtime that renders `.dc.html` files. Do not edit. |
 | `_ds/modernist-…/` | The "Modernist" design system the prototype is built on: `styles.css` (tokens + component classes), `readme.md` (usage guide), `_ds_manifest.json`, `_ds_bundle.js`, and the adherence lint config. |
 
-The project's `.thumbnail` (a binary preview image) is not imported.
+The project's `.thumbnail`, its screenshots of each screen and its 4× logo
+exports are not imported: the pictures are captures of these files, and the
+marks are generated here from the font instead
+([../docs/assets/README.md](../docs/assets/README.md)).
 
-**The app has moved since the last sync.**
-[../docs/design-handover.md](../docs/design-handover.md) is the list of what
-moved and what it needs from the design — read it before the next pass over
-these files, because several screens now describe something the physics no
-longer does.
+**The design answered, on 2026-09-17.** The pass that came back settles every
+question [../docs/design-handover.md](../docs/design-handover.md) asked,
+including the one that was blocking: accent text at body size is
+`--color-accent-700`, and the ramp mixes toward `--color-text` / `--color-bg`
+rather than black and white, so a filled accent tag can be built for any accent
+a player picks.
 
-Since **2026-09-17** it also says what the app *looks like*, which it could not
-say before: the whole UI was written and released without ever reaching a
-screen, and a session on a Pixel 10a photographed every one of them. Its
-"What the phone showed" section is where the roll screen and this prototype
-part company hardest, and it is the first thing to read.
+What it changed, all of it in `dInfinityPhone.dc.html`:
 
-**Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, whose last
-sync from this repo was 2026-09-11. Every design decision it recorded for
-feeding back has been folded into `docs/`; what remains open is listed under
-"From the prototype, not yet in `docs/`" in
+- **The roll screen is one picture, not a column of bands.** The table is
+  full-bleed and every control is an opaque floating plate. Accent never
+  touches felt.
+- **A table view setting** — straight down, or angled with two walls.
+- **Per-set physical properties**: weight, translucency and size, all three
+  real rather than metadata.
+- **Dice land one at a time** and shove the dice already down.
+- **The face designer gained a Solid tab** — the real polyhedron, with
+  opposite-face numbering, d4 values at the corners and d6 pips.
+- **Saved rolls are dragged into the order the player wants**; pinning and
+  favourites are gone.
+- **Settings gained an accent picker and lost the sound switch.**
+
+Every one of those is folded into `docs/` — that is where a decision lives once
+it is taken. What the design left open is in
 [../docs/TODO.md](../docs/TODO.md).
+
+**Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
+2026-09-17.
 
 ## Viewing
 

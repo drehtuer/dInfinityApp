@@ -32,8 +32,10 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#274**. `v0.1.0` is cut from #268 and is two
-fixes behind. Nothing is in flight.
+`main` has everything through **#275**. `v0.1.0` is cut from #268 and is two
+fixes behind. In flight: the design pass of 2026-09-17, as three stacked PRs —
+the import and the roll screen (#276), dice sets and the face designer (#277),
+saved rolls, settings and navigation (#278).
 
 ## Done
 
@@ -62,8 +64,14 @@ fixes behind. Nothing is in flight.
 ## In progress
 
 **Step 4: every screen is written and connected**, and has just had a pass
-over it against the prototype. What is left on each is in `docs/TODO.md`, and
-most of it is judgement with a phone in hand rather than code.
+over it against the prototype. What is left on each is in `docs/TODO.md`.
+
+**It is no longer mostly judgement.** The design pass of 2026-09-17 answered
+every question the app was waiting on and decided a good deal nobody had asked
+about, so each screen's list has gained work that is code rather than an eye:
+plates over the table, a counting plate, per-set physical properties, the
+designer's Solid tab, dragged saved rolls, an accent picker behind a contrast
+clamp, and a two-stage back.
 
 **Step 5 is the real remaining work** — see Known risks.
 
@@ -103,12 +111,18 @@ thing feels right is still a person's call.
 - Three smaller ones in `docs/TODO.md`, Open questions: who measures a *drawn*
   frame, whether a stamp should be draggable, and `FACE_SHARE` being applied
   twice.
-- **Eleven questions for the designer**, in `docs/design-handover.md`. The one
-  that blocks work: the accent ramp exists for two accents where the app offers
-  six, so the app still cannot draw the badge that says a dice set has an
-  update. The four newest come from the phone session and are about the roll
-  screen, which the prototype draws as a column of bands and the app draws as
-  one full-bleed picture with the controls floating on it.
+- **The designer answered, on 2026-09-17**, and the blocking question is gone:
+  accent text at body size is `--color-accent-700` and both ends of the ramp
+  are mixed from the accent the player picked, so the filled accent tag can be
+  drawn for any of them. The roll screen is **one picture**, not bands. What
+  the pass did *not* answer — percent typography, whether a refusal keeps its
+  words, a draggable stamp, "Doodle this die", where a table look's texture says
+  its package, how a photo crops — stays open, and the design added six of its
+  own. All of them are in `docs/TODO.md`.
+- **The design removed the sound switch**, and the app has a whole `feedback/`
+  module that generates impact sounds per table material. That is a product
+  call rather than a drawing, and it is the one thing in the pass not yet
+  acted on (`docs/TODO.md`, Open questions).
 
 ## Known risks
 

@@ -21,13 +21,14 @@ import androidx.compose.ui.unit.em
  * this in prose before, and did not say which set was the default **at all**
  * (`docs/design-handover.md`).
  *
- * **Two of the design system's three tag styles, not three.** `.tag-accent` is
- * filled with `--color-accent-100` and lettered in `-800`, and those two steps
- * exist only for the two accents the system ships — the app offers six, and
- * nothing in the design says how to make the *pale* end of a ramp for the
- * other four. It is recorded as a question in `docs/design-handover.md`, and
- * until it is answered there is no filled accent tag here. [Outline] needs no
- * ramp: it is the accent itself, which every accent has.
+ * **Two of the design system's three tag styles, not three — for now.**
+ * `.tag-accent` is filled with `--color-accent-100` and lettered in `-800`,
+ * and those two steps used to exist only for the two accents the system ships,
+ * where the app offers six. The design of 2026-09-17 answered it: **both ends
+ * are mixed from the accent the player picked**, `color-mix(accent 16 %, bg)`
+ * at the pale end and 40 % toward `--color-text` at the deep one. Building the
+ * filled tag on that is `docs/TODO.md`, 4.4. [Outline] needs no ramp: it is
+ * the accent itself, which every accent has.
  */
 @Composable
 fun Tag(
