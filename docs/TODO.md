@@ -1155,6 +1155,20 @@ The figures are reported in every PR description either way.
 
 ## Open questions
 
+- [ ] **Why does a six-level cubemap not upload?** The room a polished die
+      reflects is generated on the device as a 32-pixel cubemap
+      (`render/filament`'s `RoomLight`). Level nought — six faces, 24,576
+      bytes, one `setImage` — is accepted. Level one is refused:
+      `buffer overflow: (size=3072 …) smaller than specified region
+      {{0,0,0},{16,16,6}}`, where 16 × 16 × 6 × 4 is 6,144 and the buffer
+      handed over is 6,144. Both halves of that are asserted **on the device**
+      by `RoomLightUploadTest`: the level really is 6,144 bytes and the direct
+      buffer really offers all of them, and Filament still sees half. So the
+      texture ships with one level, which for a gradient costs a few per cent
+      of one channel on a sheen. Worth an hour with Filament's JNI source
+      before it is worth anything else
+
+
 - [ ] **Does the sound go?** The design's Settings has Appearance, Table view,
       Power-saving mode, Haptics, Division and Accent colour, and nothing else:
       haptics is the only feedback toggle it offers, and the Impact sound

@@ -7,7 +7,6 @@ import com.google.android.filament.Filament
 import com.google.android.filament.IndexBuffer
 import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
-import com.google.android.filament.Material
 import com.google.android.filament.MaterialInstance
 import com.google.android.filament.RenderableManager
 import com.google.android.filament.Scene
@@ -96,8 +95,6 @@ class FilamentStage(
 
   private val camera: com.google.android.filament.Camera = engine.createCamera(cameraEntity)
 
-  private val material: Material get() = parts.material
-
   /** The white pixel every surface with no atlas samples. Shared, like the material. */
   private val blank: Texture get() = parts.blank
 
@@ -107,6 +104,9 @@ class FilamentStage(
 
   /** The room the tray sits in. Built with the lights, given back with them. */
   private var ambient: IndirectLight? = null
+
+  /** What that room looks like to a polished surface. Given back with it. */
+  private var room: Texture? = null
 
   private val instances = mutableListOf<MaterialInstance>()
 
@@ -168,7 +168,21 @@ class FilamentStage(
   override fun light() {
     addLight(intensity = KEY_LUX, direction = KEY_DIRECTION, shadows = true)
     addLight(intensity = FILL_LUX, direction = FILL_DIRECTION, shadows = false)
-    scene.indirectLight = ambient(engine).also { ambient = it }
+    val sky = environment(engine).also { room = it }
+    scene.indirectLight = ambient(engine, sky).also { ambient = it }
+    view.ambientOcclusionOptions =
+      View.AmbientOcclusionOptions().apply {
+        // The darkening where a die meets the felt and where two dice meet
+        // each other. A cast shadow says a die is *over* the table; this is
+        // what says it is *on* it, and without it every die floats a
+        // millimetre no matter how good the shadow is.
+        enabled = true
+        // Millimetres, because that is what this scene is measured in: about
+        // half a die, so the contact reads without the whole tray dimming.
+        radius = CONTACT_RADIUS_MM
+        power = CONTACT_POWER
+        quality = View.QualityLevel.LOW
+      }
   }
 
   override fun take(entity: Int) {
@@ -301,6 +315,8 @@ class FilamentStage(
     clear()
     ambient?.let(engine::destroyIndirectLight)
     ambient = null
+    room?.let(engine::destroyTexture)
+    room = null
     engine.destroyView(view)
     engine.destroyScene(scene)
     engine.destroyRenderer(frames)
@@ -333,7 +349,7 @@ class FilamentStage(
     atlas: Texture?,
     glyphs: Texture?,
   ): MaterialInstance =
-    material.createInstance().apply {
+    parts.materialFor(parameters).createInstance().apply {
       setParameter(
         "baseColor",
         parameters.colour.red.toFloat(),
@@ -354,6 +370,9 @@ class FilamentStage(
         parameters.ink.alpha.toFloat(),
       )
       setParameter("glyphs", glyphs ?: blank, glyphSampler)
+      setParameter("opacity", parameters.opacity.toFloat())
+      setParameter("clearCoat", parameters.clearCoat.toFloat())
+      setParameter("clearCoatRoughness", parameters.clearCoatRoughness.toFloat())
     }
 
   /**
@@ -489,26 +508,27 @@ class FilamentStage(
     private val KEY_DIRECTION = Vector3(-0.4, -0.3, -1.0)
 
     /**
-     * The ambient, as a constant: the same irradiance from every direction.
-     *
-     * One spherical-harmonic band, which is the constant term and nothing
-     * else. A sky-above/ground-below gradient would want three bands, and
-     * three bands would want this file to be right about which axis Filament's
-     * harmonics run along — a thing that is invisible when wrong and is not
-     * worth being clever about for a tray lit by a room
-     * (`docs/physics-and-rendering.md`).
-     */
-    private val AMBIENT_SH = floatArrayOf(1.0f, 1.0f, 1.0f)
-
-    /**
-     * How bright that room is: about a seventh of the key light.
+     * How bright the room is: about a seventh of the key light.
      *
      * Enough that a wall facing away from both lamps reads as a wall rather
      * than as a hole, and low enough that the key still casts the shadow that
      * puts a die on the table. Tuned against the Pixel 10a, which is the only
      * place it can be judged (`docs/TODO.md`, Step 5.6).
+     *
+     * It is the *average* brightness, not the brightness in any one
+     * direction. [RoomLight] says light comes down from a bright sky and up
+     * off a dim floor, and Filament's intensity multiplies both, so this is
+     * divided by the room's own average to keep the tray exactly as bright as
+     * it was when the ambient was flat. What changed is where the light comes
+     * from, which is the point.
      */
     private const val AMBIENT_LUX = 12_000.0f
+
+    /** How far a surface looks for something to shade itself against, in mm. */
+    private const val CONTACT_RADIUS_MM = 8.0f
+
+    /** How sharply that darkening comes on. Filament's own default is 1. */
+    private const val CONTACT_POWER = 1.0f
 
     /** And back the other way, across the tray, to lift the shadowed faces. */
     private val FILL_DIRECTION = Vector3(0.6, 0.5, -0.7)
@@ -524,11 +544,56 @@ class FilamentStage(
       Filament.init()
     }
 
-    private fun ambient(engine: Engine): IndirectLight =
+    private fun ambient(
+      engine: Engine,
+      environment: Texture,
+    ): IndirectLight =
       IndirectLight
         .Builder()
-        .irradiance(1, AMBIENT_SH)
-        .intensity(AMBIENT_LUX)
+        .irradiance(RoomLight.BANDS, RoomLight.irradiance())
+        .reflections(environment)
+        .intensity((AMBIENT_LUX / RoomLight.averageBrightness()).toFloat())
         .build(engine)
+
+    /**
+     * The room as a small cubemap, which is what a polished surface reflects.
+     *
+     * One level, six faces, uploaded in a single call — which is what a
+     * cubemap is: an image six deep. [RoomLight.LEVELS] says why there is only
+     * one of them.
+     */
+    private fun environment(engine: Engine): Texture {
+      val texture =
+        Texture
+          .Builder()
+          .width(RoomLight.SIZE)
+          .height(RoomLight.SIZE)
+          .depth(RoomLight.FACES)
+          .levels(RoomLight.LEVELS)
+          .format(Texture.InternalFormat.RGBA8)
+          .sampler(Texture.Sampler.SAMPLER_CUBEMAP)
+          .build(engine)
+      for (level in 0 until RoomLight.LEVELS) {
+        val side = (RoomLight.SIZE shr level).coerceAtLeast(1)
+        val pixels = RoomLight.level(level = level)
+        val buffer = ByteBuffer.allocateDirect(pixels.size).order(ByteOrder.nativeOrder())
+        buffer.put(pixels)
+        buffer.rewind()
+        // All six faces in one go: a cubemap is an image six deep, and one
+        // face with a depth of one is a buffer Filament refuses.
+        texture.setImage(
+          engine,
+          level,
+          0,
+          0,
+          0,
+          side,
+          side,
+          RoomLight.FACES,
+          Texture.PixelBufferDescriptor(buffer, Texture.Format.RGBA, Texture.Type.UBYTE),
+        )
+      }
+      return texture
+    }
   }
 }
