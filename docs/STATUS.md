@@ -25,10 +25,18 @@ This is a snapshot, not a changelog — git history is the changelog.
 the harness, the ten-thousand-roll measurements below, count-and-clear rolling,
 shake-to-throw, the `3 to 21+` ceiling and the visible backstop.
 
-**In flight:** a stack of pull requests from a pass over the UI against the
-prototype — the hand-over to the designer, the drift put back, and the design
-tokens moved out of `:app` into `ui/common` so every screen can read them
-instead of keeping its own copy.
+**In flight:** six stacked pull requests, #261–#266, from a pass over the UI
+against the prototype. In order: the hand-over to the designer; the drift put
+back and a build check so it cannot return; the design tokens moved out of
+`:app` into `ui/common`, where every screen can reach them, so six copies of
+the same scale became one; the last Material pills replaced by the square
+options and segmented controls the system actually draws; the accent kickers
+that are the only thing grouping a screen into blocks; and every dialog turned
+into the bottom sheet the prototype has always shown.
+
+Nothing in the stack changes behaviour. The one visible pixel change is the
+outcome graph's out-of-σ bars, which are a step lighter on a dark page because
+they now name the ramp step instead of thinning the ink.
 
 ## Done
 
@@ -68,6 +76,10 @@ code. 4.10 Settings is finished; 4.6's designer gained the glyph stamp and
 
 ## Blocked / waiting on
 
+**The phone is off the network**, so nothing in the UI stack above has been
+seen on a real screen. It needs wireless debugging switched on again and its
+new address; everything else about a device run is automatic from here.
+
 **Judgements that need a person and a phone.** All listed in `docs/TODO.md`.
 The ones added this round: whether a chain that stopped reads as a rule or a
 bug; whether a second shake reads as the dice answering the hand; whether a
@@ -88,6 +100,11 @@ thing feels right is still a person's call.
 - Three smaller ones in `docs/TODO.md`, Open questions: who measures a *drawn*
   frame, whether a stamp should be draggable, and `FACE_SHARE` being applied
   twice.
+- **Eight questions for the designer**, in `docs/design-handover.md`. The two
+  that block work: the dark ramp does not redefine the two steps a neutral tag
+  is made of, and the accent ramp exists for two accents where the app offers
+  six — so the app still cannot draw the badge that says a dice set has an
+  update.
 
 ## Known risks
 
