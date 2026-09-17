@@ -592,7 +592,11 @@ longer look is several captures rather than one.
 
 The run itself is `HarnessTest` in `simulation/jolt`'s `androidTest`, and it
 does nothing at all without `harness.rolls` or `harness.soak` — so it sits in
-the ordinary device suite without adding minutes to it. By hand, without the
+the ordinary device suite without adding minutes to it. It declines with
+`Assume.assumeTrue`, which the runner files in the JUnit XML as a **failure**
+rather than a skip; `DeviceTestCounts` reads the test cases rather than the
+report's own counters and tells the two apart, which is what lets the plain
+`./gradlew connectedDebugAndroidTest` pass at all. By hand, without the
 script:
 
 ```sh

@@ -59,6 +59,13 @@ One section per screen. Each is a vertical slice: state, UI, tests, and the
 device check it needs. The design option ids (`1a`, `9c`, …) are the labels on
 the canvas — open [design/](../design/) beside the code.
 
+- [ ] **Two screens disagree about where the top of the screen is.** On the
+      Pixel 10a the Roll screen's menu button sits at y≈174 px and Settings'
+      at y≈64, immediately under the status bar, with its title a few pixels
+      off the clock. Whatever `safeDrawingPadding` the roll screen applies is
+      not reaching the screens the menu opens. Seen, not measured against a
+      spec — one of them is right and the same one should be right everywhere.
+
 Every screen follows the same four steps, so they are written out once here
 rather than repeated below:
 
