@@ -121,6 +121,24 @@ class RollLoop(
     shake.add(sample)
   }
 
+  /** True once the roll has taken longer than a roll should ([SettleRule.HARD_CAP_SECONDS]). */
+  val outOfTime: Boolean get() = tracker.outOfTime()
+
+  /**
+   * True when the roll gave up: it ran too long and the dice never stopped.
+   *
+   * **There is no outcome, and that is the point.** The dice are not read off
+   * whatever face they were nearest and handed back as a result — that is
+   * making a number up, and it is what the twelve-second cap used to do. The
+   * roll says it could not finish and the player is offered the throw again
+   * (`docs/physics-and-rendering.md`).
+   */
+  var stalled: Boolean = false
+    private set
+
+  /** The dice that never came to rest and were never read. */
+  val unsettled: List<Int> get() = counted.indices.filterNot { counted[it] }
+
   /**
    * Which dice have been read and taken off the table, by index.
    *
@@ -210,13 +228,40 @@ class RollLoop(
           }
         }
 
-  /** Runs the throw to its end and reports what the dice did. */
-  fun run(): SimulationOutcome {
+  /**
+   * Runs the throw to its end and reports what the dice did.
+   *
+   * **This is the backstop for the runs nobody is watching**, and the only one
+   * left. A roll on screen is stepped a frame at a time and runs until its
+   * dice have stopped, however long that takes — a player tired of waiting
+   * leaves the screen, and that gives it up. Nothing here has a screen to
+   * leave: the harness throws thousands of these and a roll that never settled
+   * would hang the run rather than fail it.
+   *
+   * It **fails** rather than answering. A roll whose dice never stopped has no
+   * faces to report, and reading them off whatever they were nearest is making
+   * a number up — which used to be exactly what the twelve-second cap did
+   * (`.claude/CLAUDE.md`, and [SettleRule.HARD_CAP_SECONDS]).
+   */
+  fun run(): SimulationOutcome =
+    runOrGiveUp() ?: error(
+      "the dice had not settled after ${SettleRule.HARD_CAP_SECONDS} s, so there is no roll to report",
+    )
+
+  /**
+   * The same, for a caller that would rather be told than thrown at.
+   *
+   * Null when the roll gave up, with [unsettled] saying which dice never
+   * stopped. What the screen uses, and what a measurement uses: "this throw
+   * did not settle" is a result worth counting, and a test that crashed on it
+   * could not count it.
+   */
+  fun runOrGiveUp(): SimulationOutcome? {
     @Suppress("ControlFlowWithEmptyBody")
     while (advance()) {
       // Every step is the same step; there is nothing to do between them.
     }
-    return outcome()
+    return if (stalled) null else outcome()
   }
 
   /**
@@ -235,10 +280,20 @@ class RollLoop(
    * whether a caller asks for them one at a time or all at once, which is the
    * whole of why power-saving mode is the same roll (`docs/architecture.md`,
    * goal 1).
+   *
+   * Four ways out, and each is a different thing that can be true of a roll:
+   * it is over, it is finishing now, it has run too long, or it took a step.
+   * Folding any two together would hide which one happened.
    */
+  @Suppress("ReturnCount")
   fun advance(): Boolean {
-    if (result != null) return false
+    if (result != null || stalled) return false
+    // The close-out is asked first, so a roll that would have finished on this
+    // very step is allowed to — and the backstop second, because a hand holds a
+    // roll open for as long as it shakes, which is what a shake is for, but not
+    // for ever and not past what `SimulationOutcome` will describe.
     if (diceCount == 0 || nothingLeftToStep()) return closeOutOrRethrow()
+    if (outOfTime) return giveUp()
 
     val step = tracker.stepsTaken
     shake.advance(step)
@@ -255,6 +310,20 @@ class RollLoop(
   }
 
   /**
+   * Gives the roll up, and says there is nothing more to step.
+   *
+   * What could be read is read first: a die at rest showing a face is an
+   * answer the roll has, and giving up on it would throw away a die that did
+   * settle along with the ones that did not. What is left is offered back to
+   * whoever is watching (`docs/physics-and-rendering.md`).
+   */
+  private fun giveUp(): Boolean {
+    countAndClear(states, throwTheRest = false)
+    stalled = true
+    return false
+  }
+
+  /**
    * True when there is no step left to take.
    *
    * Two things have to agree and there is a third that overrules both. Dice
@@ -263,33 +332,28 @@ class RollLoop(
    * is the dice's answer and [ShakeDriver.stillShaking] is the hand's
    * (`docs/physics-and-rendering.md`, "Shake input").
    *
-   * The cap is asked first and on its own, because it is the safety valve
-   * rather than an opinion about the throw. A hand holds a roll open; it does
-   * not get to hold one open past twelve seconds, which is what a shake longer
-   * than the roll would otherwise do — the steps would go on being counted and
-   * the throw would end as an outcome `SimulationOutcome` refuses to describe.
+   * There is no third thing any more. A roll used to end when it ran out of
+   * time as well, and every die still moving was then read off whatever face
+   * it was nearest — a made-up answer to a throw that had not finished. A roll
+   * runs until its dice have stopped now, and one that cannot be finished is
+   * given up rather than answered ([SettleRule.HARD_CAP_SECONDS]).
    */
-  private fun nothingLeftToStep(): Boolean =
-    tracker.capReached() || (tracker.finished() && !shake.stillShaking(tracker.stepsTaken))
+  private fun nothingLeftToStep(): Boolean = tracker.finished() && !shake.stillShaking(tracker.stepsTaken)
 
   /**
-   * The end of a settle phase: either the roll is over, or a die has to be
+   * The end of a settle phase: either the roll is over, or dice have to be
    * thrown again and there is another phase to come.
    *
-   * Re-throws come out of the same step budget as the rest of the roll — the
-   * 12-second cap is a cap on the throw, not on each attempt at it.
+   * A die is thrown again as often as it takes. There used to be a budget of
+   * three, sized for a table with every other die still on it; a die thrown
+   * again now lands on a table the counted dice have left, so the budget was
+   * rationing the only dice that still needed the room.
    */
   private fun closeOutOrRethrow(): Boolean {
-    if (tracker.capReached()) tracker.stillMoving().forEach { forced[it] = true }
-
-    if (!tracker.capReached() && countAndClear(states)) {
+    if (countAndClear(states)) {
       states = world.readStates()
       return true
     }
-
-    // Whatever is left has run out of its throws or out of the roll's twelve
-    // seconds, and is read where it lies. Step 5 asserts this never happens.
-    readWhatIsLeft(states)
 
     result =
       SimulationOutcome(
@@ -341,7 +405,10 @@ class RollLoop(
    * been read and nothing about it can change again. That is the line the
    * honest rule draws (`docs/physics-and-rendering.md`).
    */
-  private fun countAndClear(states: List<DieState>): Boolean {
+  private fun countAndClear(
+    states: List<DieState>,
+    throwTheRest: Boolean = true,
+  ): Boolean {
     var thrown = false
     states.forEachIndexed { index, state ->
       if (counted[index]) return@forEachIndexed
@@ -352,7 +419,11 @@ class RollLoop(
       // perfectly readable: it is resting on something that is about to be
       // taken away, and a reading taken from a die that is about to fall is
       // not a reading of anything.
-      if (reading is Reading.Face && !state.supportedByDie) {
+      // At rest as well as readable. A die in mid-air can be showing a face
+      // perfectly squarely and is not showing it to anybody — that only
+      // matters when the roll gives up, because every other path here waits
+      // until the dice have stopped.
+      if (reading is Reading.Face && !state.supportedByDie && tracker.isAtRest(index)) {
         countedFace[index] = reading.index
         countedAt[index] = RestingPlace(state.position, state.orientation)
         counted[index] = true
@@ -360,7 +431,7 @@ class RollLoop(
         return@forEachIndexed
       }
 
-      if (rethrowCount[index] >= MAX_RETHROWS) return@forEachIndexed
+      if (!throwTheRest) return@forEachIndexed
       world.respawn(index, layout.rethrowPlacement(index, rethrowCount[index]))
       // The speed it has the moment after this is the re-throw rather than a
       // contact, and a sound for the app's own hand is the one noise a player
@@ -376,47 +447,7 @@ class RollLoop(
     return thrown
   }
 
-  /**
-   * Reads whatever never got counted, where it lies.
-   *
-   * A die reaching here has been thrown again as often as it is going to be,
-   * or the roll has run out of its twelve seconds — which is the safety valve
-   * firing rather than the mechanism working. It is counted as a forced settle
-   * so the harness sees it, and it reports the face that came nearest, because
-   * at that point the alternative is a roll with no answer at all. Step 5
-   * asserts this never happens.
-   */
-  private fun readWhatIsLeft(states: List<DieState>) {
-    states.forEachIndexed { index, state ->
-      if (counted[index]) return@forEachIndexed
-      countedFace[index] =
-        when (val reading = FaceReader.read(spec.dice[index].die, state.orientation)) {
-          is Reading.Face -> reading.index
-          is Reading.Cocked -> {
-            forced[index] = true
-            reading.nearestIndex
-          }
-        }
-    }
-  }
-
   companion object {
-    /**
-     * How often one die may be thrown again before the roll gives up on it.
-     *
-     * It used to be three, sized for a table with every other die still on it:
-     * letting one die loop would spend the whole step budget while the other
-     * seventy-nine sat there. That is no longer the trade. A die thrown again
-     * now lands on a table the counted dice have left, so the budget it spends
-     * is spent on the only dice that still need it.
-     *
-     * Eight because five is the most that sixteen seeds of twenty dice under a
-     * hard sideways shake ever needed — measured on the Pixel 10a — and the
-     * real backstop is the twelve-second cap rather than this. It is here to
-     * bound a die that is going nowhere, not to ration a roll.
-     */
-    const val MAX_RETHROWS: Int = 8
-
     /** A die that has not been read yet. Never reaches an outcome. */
     private const val NOT_YET = -1
 

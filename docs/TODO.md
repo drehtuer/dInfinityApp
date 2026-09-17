@@ -648,6 +648,20 @@ throws rather than a twelve-second fight with the solver.
       (settle times, the cap, forced settles) did so because a die thrown again
       lands on a table the counted dice have left.
 
+- [ ] **The re-throw budget is gone, and so is the cap.** A die is thrown again
+      as often as it takes, because a die thrown again lands on a table the
+      counted dice have left and the budget was rationing the only dice that
+      still needed the room. The twelve-second cap went with it: it ended a
+      roll by force-settling every die still moving and reading it off whatever
+      face it was nearest, which is a number nobody rolled.
+
+      What is left of the twelve seconds is a **visible backstop** — the roll
+      says it could not finish, shows how many dice never settled, and offers
+      to throw those and only those again. Measured: **2,000 rolls of 20d20 and
+      not one gave up**, so it costs nothing at ordinary loads.
+
+      The row below is therefore about something else now, and the bar wants
+      re-deciding rather than hitting:
 - [ ] **Decide what the re-throw budget means now.** 2.80 % against a 0.05 %
       bar is the one row that got worse in spirit rather than better, and the
       bar is the thing to look at rather than the number. It was written when a

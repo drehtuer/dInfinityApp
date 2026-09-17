@@ -68,6 +68,9 @@ class TrayLoop(
 
   /** Who wants to know as the dice are counted, and what they were last told. */
   private var counting: ((Map<Int, Int>) -> Unit)? = null
+
+  /** And who wants to know when a roll gave up, with the dice that never settled. */
+  private var stalling: ((List<Int>) -> Unit)? = null
   private var lastCounted: Map<Int, Int> = emptyMap()
   private var lastFrameNanos: Long? = null
   private var owed = false
@@ -198,12 +201,14 @@ class TrayLoop(
   fun roll(
     start: (Renderer) -> WatchedRoll,
     onCounted: (Map<Int, Int>) -> Unit = {},
+    onStalled: (List<Int>) -> Unit = {},
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit = { _, _ -> },
   ) {
     endRoll()
     roll = start(renderer)
     settling = onSettled
     counting = onCounted
+    stalling = onStalled
     lastFrameNanos = null
     played = 0
   }
@@ -268,12 +273,19 @@ class TrayLoop(
       val reached = live.outcome
       val drove = live.drivenBy
       val report = settling
+      // A roll that ran too long with its dice still going. There is no
+      // outcome and there is not going to be one, so what is passed on is
+      // which dice never settled — the player is offered them back rather than
+      // handed a number nobody rolled.
+      val stuck = if (live.stalled) live.unsettled else emptyList()
+      val giveUp = stalling
       endRoll()
       // The last frame of a roll is the picture that stays on screen, and the
       // one frame with nothing after it to cover for a skip. Owed until it
       // lands, like any other still picture.
       owed = true
       reached?.let { report?.invoke(it, drove) }
+      if (stuck.isNotEmpty()) giveUp?.invoke(stuck)
     }
     return wantsFrames
   }
@@ -336,6 +348,7 @@ class TrayLoop(
     roll = null
     settling = null
     counting = null
+    stalling = null
     lastCounted = emptyMap()
     lastFrameNanos = null
   }

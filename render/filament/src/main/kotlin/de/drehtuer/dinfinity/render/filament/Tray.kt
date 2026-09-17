@@ -71,6 +71,13 @@ interface Tray : AutoCloseable {
   fun roll(
     start: (Renderer) -> WatchedRoll,
     onCounted: (Map<Int, Int>) -> Unit = {},
+    /**
+     * Called instead of [onSettled] when a roll gave up: it ran too long and
+     * its dice never stopped. The list is the dice that never settled, which
+     * are what the player is offered back to throw again rather than being
+     * handed a number nobody rolled (`docs/physics-and-rendering.md`).
+     */
+    onStalled: (List<Int>) -> Unit = {},
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
   )
 

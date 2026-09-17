@@ -260,7 +260,9 @@ private fun Controls(
     verticalArrangement = Arrangement.spacedBy(12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Outcome(state, presenter.progress, onRound = presenter::round, onDoodle = onDoodle)
+    Outcome(state, presenter.progress, onThrowAgain = {
+      presenter.throwUnsettled()
+    }, onRound = presenter::round, onDoodle = onDoodle)
     // The odds for the formula in the field, with the throw that just landed
     // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
     // throw the table refuses too: that is exactly when "what would it have
@@ -352,6 +354,7 @@ private fun KeepTheScreenAwake() {
 private fun Outcome(
   state: RollState,
   progress: RollProgress?,
+  onThrowAgain: () -> Unit,
   onRound: (Rounding) -> Unit,
   onDoodle: (String) -> Unit,
 ) {
@@ -374,6 +377,11 @@ private fun Outcome(
     // An exploding die earns a throw rather than taking one, so the screen
     // asks for it. Without this the roll simply appears to stop
     // (`docs/dice-notation.md`, "Evaluation").
+    // A roll that could not finish. It says so and offers the dice back rather
+    // than reading them off whatever face they were nearest, which is the one
+    // thing this app may not do (`docs/physics-and-rendering.md`).
+    is RollState.Stalled -> GaveUp(state.unsettled, onThrowAgain)
+
     is RollState.ShakeAgain ->
       Message(
         text = stringResource(R.string.roll_shake_again),
@@ -438,8 +446,37 @@ private fun TrayReading.spoken(): String =
     is TrayReading.Ready -> pluralStringResource(R.plurals.roll_tray_ready, dice, dice)
     is TrayReading.Rolling -> pluralStringResource(R.plurals.roll_tray_rolling, dice, dice)
     is TrayReading.ShakeAgain -> pluralStringResource(R.plurals.roll_tray_shake_again, dice, dice)
+    is TrayReading.Stalled -> pluralStringResource(R.plurals.roll_tray_stalled, dice, dice)
     is TrayReading.Settled -> stringResource(R.string.roll_tray_settled, total)
   }
+
+/**
+ * A roll that could not finish, and the offer to throw what is left of it.
+ *
+ * There is no total and there is not going to be one for this throw: some of
+ * its dice never stopped. Reading them off whatever face they were nearest is
+ * the one thing this app may not do, so it says what happened and hands them
+ * back (`docs/physics-and-rendering.md`).
+ */
+@Composable
+private fun GaveUp(
+  unsettled: Int,
+  onThrowAgain: () -> Unit,
+) {
+  Column(
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Message(
+      text = pluralStringResource(R.plurals.roll_stalled, unsettled, unsettled),
+      colour = MaterialTheme.colorScheme.onBackground,
+      tag = RollTestTags.STALLED,
+    )
+    Button(onClick = onThrowAgain, modifier = Modifier.testTag(RollTestTags.THROW_AGAIN)) {
+      Text(text = pluralStringResource(R.plurals.roll_throw_again, unsettled, unsettled))
+    }
+  }
+}
 
 /** How many dice have been read, and where the total can still land. */
 @Composable
@@ -541,6 +578,10 @@ object RollTestTags {
 
   /** The chain has earned a throw and is waiting for a hand (design option 1j). */
   const val SHAKE_AGAIN: String = "roll:shake-again"
+
+  /** A roll that gave up, and the offer to throw the dice it gave up on. */
+  const val STALLED: String = "roll:stalled"
+  const val THROW_AGAIN: String = "roll:throw-again"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = FormulaTestTags.ERROR
 

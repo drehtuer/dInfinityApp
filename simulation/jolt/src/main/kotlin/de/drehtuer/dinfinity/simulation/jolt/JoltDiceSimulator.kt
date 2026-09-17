@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -32,7 +33,14 @@ class JoltDiceSimulator(
     // it is the same roll the screen would have watched, stepped by nobody
     // (`docs/physics-and-rendering.md`, "Power-saving mode"). Nothing is
     // listening: a headless run has nowhere to play an impact.
-    return start(spec, listening = false).use(LiveRoll::runToEnd)
+    return start(spec, listening = false).use { live ->
+      // A headless run has no screen to walk away from, so it gives up rather
+      // than hanging — and fails rather than answering, because a roll whose
+      // dice never stopped has no faces to report (`LiveRoll.runToEnd`).
+      live.runToEnd() ?: error(
+        "the dice had not settled after ${SettleRule.HARD_CAP_SECONDS} s, so there is no roll to report",
+      )
+    }
   }
 
   /**

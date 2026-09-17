@@ -24,10 +24,20 @@ object SettleRule {
   const val REST_DURATION_SECONDS: Double = 0.250
 
   /**
-   * The safety valve. A roll that has not settled by now has gone wrong, and
-   * every die still moving is force-settled and logged as an anomaly. It is
-   * not part of the correction ladder; it is what happens when the ladder has
-   * already failed.
+   * How long a roll may take before something watching it should give up.
+   *
+   * **It is not a settle rule any more.** It used to end a roll: every die
+   * still moving was force-settled and read off whatever face it was nearest,
+   * which is a fabricated answer to a roll that never finished. A roll now
+   * runs until every die has been read and taken off the table, because that
+   * is what makes the reading honest — and because a roll on screen is
+   * interruptible, so it cannot hold anything up for ever.
+   *
+   * What is left of it is a **backstop for the runs nobody is watching**: the
+   * headless harness throws thousands of rolls with no screen to walk away
+   * from, and a roll that never settles there would hang the run rather than
+   * fail it. Those give up at this and report that they did
+   * (`docs/build-setup.md`, "The physics harness").
    */
   const val HARD_CAP_SECONDS: Double = 12.0
 
@@ -120,12 +130,21 @@ class RestTracker(
     stillFor[index] = 0
   }
 
-  /** True when every die is at rest, or the cap has fired. */
-  fun finished(): Boolean = (0 until diceCount).all(::isAtRest) || capReached()
+  /**
+   * True when every die is at rest.
+   *
+   * **And nothing else.** A roll used to finish when it ran out of time as
+   * well, which meant a roll that had not settled still produced a result:
+   * every die still moving was read off the face it happened to be nearest.
+   * That is a made-up answer, and the one thing this app may not do is make a
+   * number up (`.claude/CLAUDE.md`). A roll now ends when the dice have
+   * stopped, and a roll nobody can finish is given up rather than answered.
+   */
+  fun finished(): Boolean = (0 until diceCount).all(::isAtRest)
 
-  /** True when the roll ran out of time rather than finishing. */
-  fun capReached(): Boolean = steps >= SettleRule.HARD_CAP_STEPS
+  /** True when the roll has run longer than [SettleRule.HARD_CAP_SECONDS]. */
+  fun outOfTime(): Boolean = steps >= SettleRule.HARD_CAP_STEPS
 
-  /** The dice that were still moving when the cap fired — every one an anomaly. */
+  /** The dice that are still moving. */
   fun stillMoving(): List<Int> = (0 until diceCount).filterNot(::isAtRest)
 }

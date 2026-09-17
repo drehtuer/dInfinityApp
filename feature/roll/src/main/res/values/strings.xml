@@ -71,6 +71,18 @@
   </plurals>
   <!-- The ceiling of a roll that can still explode: "48+" rather than "48". -->
   <string name="roll_ceiling_more">%1$d+</string>
+  <plurals name="roll_stalled">
+    <item quantity="one">A die would not settle. The roll has no total.</item>
+    <item quantity="other">%1$d dice would not settle. The roll has no total.</item>
+  </plurals>
+  <plurals name="roll_throw_again">
+    <item quantity="one">Throw it again</item>
+    <item quantity="other">Throw them again</item>
+  </plurals>
+  <plurals name="roll_tray_stalled">
+    <item quantity="one">Dice tray, %1$d die would not settle</item>
+    <item quantity="other">Dice tray, %1$d dice would not settle</item>
+  </plurals>
   <string name="roll_shake_again">Shake again to throw the die it earned</string>
   <!--
     The debug overlay, behind the developer toggle

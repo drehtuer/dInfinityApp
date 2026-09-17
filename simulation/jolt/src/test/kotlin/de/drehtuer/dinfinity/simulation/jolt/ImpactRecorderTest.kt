@@ -146,8 +146,11 @@ class ImpactRecorderTest {
     var speed = 0.0
     val world =
       FakeWorld(1) { step, _, _ ->
-        // Bouncing: fast on every fourth step, stopped in between.
-        speed = if (step % BOUNCE_EVERY == 0) 1_400.0 else 0.0
+        // Bouncing: fast on every fourth step, stopped in between — and then
+        // stopped for good, because a die that bounced for ever would be a
+        // roll that never ends and this test is about the impacts, not the
+        // settle rule.
+        speed = if (step < BOUNCING_STEPS && step % BOUNCE_EVERY == 0) 1_400.0 else 0.0
         FakeWorld.settled().copy(motion = DieMotion(speed, 0.0))
       }
     val loop = loop(listOf(StandardDice.d6), world)
@@ -182,7 +185,11 @@ class ImpactRecorderTest {
   fun `a roll driven into the corrections still gives the same faces with ears on`() {
     // Cocked and standing on another die: the ladder does everything it can do.
     val cocked = Quaternion.about(Vector3(1.0, 0.0, 0.0), PI / 4)
-    val trouble = { _: Int, _: Int, _: Int -> FakeWorld.settled(cocked, supportedByDie = true) }
+    val trouble = { _: Int, _: Int, rethrows: Int ->
+      // In trouble until it has been thrown again a few times, and then down
+      // clean. A die that never came good would be a roll that never ends.
+      if (rethrows < TRIES) FakeWorld.settled(cocked, supportedByDie = true) else FakeWorld.settled()
+    }
 
     val heard = loop(DICE, FakeWorld(DICE.size, trouble), ImpactRecorder(DICE.map { SIZE_MM })).run()
     val deaf = loop(DICE, FakeWorld(DICE.size, trouble), ImpactRecorder.deaf(DICE.size)).run()
@@ -193,7 +200,7 @@ class ImpactRecorderTest {
 
   private fun bouncing(): FakeWorld =
     FakeWorld(DICE.size) { step, index, _ ->
-      val speed = if ((step + index) % BOUNCE_EVERY == 0) 1_400.0 else 0.0
+      val speed = if (step < BOUNCING_STEPS && (step + index) % BOUNCE_EVERY == 0) 1_400.0 else 0.0
       FakeWorld.settled().copy(motion = DieMotion(speed, 0.0))
     }
 
@@ -236,6 +243,12 @@ class ImpactRecorderTest {
   }
 
   private companion object {
+    /** How long a bouncing die bounces before it stops for good. */
+    const val BOUNCING_STEPS = 40
+
+    /** Throws before a die in trouble comes good. */
+    const val TRIES = 3
+
     const val GRAVITY = 9_806.65
     const val SIZE_MM = 16.0
     const val SMALL_MM = 10.0

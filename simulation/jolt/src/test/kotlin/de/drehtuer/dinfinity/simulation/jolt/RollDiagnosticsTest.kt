@@ -53,8 +53,8 @@ class RollDiagnosticsTest {
     // Not only the same answer but the same working: the same biases, in the
     // same order, on the same steps. An overlay that drew a different roll
     // identically would pass the test above and fail this one.
-    val watching = FakeWorld(2) { step, index, _ -> troubled(step, index) }
-    val not = FakeWorld(2) { step, index, _ -> troubled(step, index) }
+    val watching = FakeWorld(2) { step, index, rethrows -> troubled(step, index, rethrows) }
+    val not = FakeWorld(2) { step, index, rethrows -> troubled(step, index, rethrows) }
 
     loop(watching).let { roll ->
       while (roll.advance()) {
@@ -123,7 +123,7 @@ class RollDiagnosticsTest {
     assertEquals(0, seen.postRestCorrections)
     // Per die as well as in total, so the overlay can point at the one that
     // needed help.
-    assertTrue(seen.dice.single().rethrows <= RollLoop.MAX_RETHROWS)
+    assertEquals(roll.outcome().rethrows, seen.dice.single().rethrows)
   }
 
   @Test
@@ -140,27 +140,30 @@ class RollDiagnosticsTest {
   }
 
   /**
-   * A die that settles into trouble and stays there: it is nudged, and then
-   * thrown again when the nudge does not help.
+   * A die that settles into trouble and is thrown again until it comes good.
+   *
+   * It has to come good: a die nobody can ever read is a roll that never ends,
+   * and what this class is about is the overlay rather than the settle rule.
    */
   private fun settlingThenStuck(
     step: Int,
     @Suppress("UNUSED_PARAMETER") index: Int,
     rethrows: Int,
-  ) = if (step < TROUBLE_STEPS || rethrows >= RollLoop.MAX_RETHROWS) {
-    FakeWorld.settling(cocked)
-  } else {
-    FakeWorld.settled(cocked)
+  ) = when {
+    rethrows >= ENOUGH_TRIES -> FakeWorld.settled()
+    step < TROUBLE_STEPS -> FakeWorld.settling(cocked)
+    else -> FakeWorld.settled(cocked)
   }
 
-  /** Two dice, one of which settles cocked and has to be helped. */
+  /** Two dice, one of which settles cocked and has to be thrown again. */
   private fun troubled(
     step: Int,
     index: Int,
-  ) = if (index == 0) FakeWorld.settled() else settlingThenStuck(step, index, rethrows = 0)
+    rethrows: Int,
+  ) = if (index == 0) FakeWorld.settled() else settlingThenStuck(step, index, rethrows)
 
   private fun run(watching: Boolean): SimulationOutcome {
-    val world = FakeWorld(2) { step, index, _ -> troubled(step, index) }
+    val world = FakeWorld(2) { step, index, rethrows -> troubled(step, index, rethrows) }
     val roll = loop(world)
     while (roll.advance()) {
       if (watching) roll.diagnostics()
@@ -193,6 +196,9 @@ class RollDiagnosticsTest {
     )
 
   private companion object {
+    /** Tries before this fake lets the die come good. */
+    const val ENOUGH_TRIES = 3
+
     const val RADIUS_MM = 8.0
     const val EPSILON = 1e-9
 

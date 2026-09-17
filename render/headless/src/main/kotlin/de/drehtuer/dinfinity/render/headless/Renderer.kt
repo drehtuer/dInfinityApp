@@ -137,6 +137,20 @@ interface WatchedRoll : AutoCloseable {
   val outcome: SimulationOutcome?
 
   /**
+   * True when the roll gave up: it ran too long and its dice never stopped.
+   *
+   * [outcome] stays null, and that is the point — the dice are not read off
+   * whatever face they were nearest and handed back as a result, because that
+   * is making a number up. A roll that ends this way is shown as one that did
+   * not finish, and the dice that never settled are offered back to the player
+   * to throw again (`docs/physics-and-rendering.md`).
+   */
+  val stalled: Boolean get() = false
+
+  /** The dice that never came to rest, for the throw the player is offered. */
+  val unsettled: List<Int> get() = emptyList()
+
+  /**
    * The faces read so far, by die index: what the roll knows already.
    *
    * A roll counts a die the moment it can be read and takes it off the table,
