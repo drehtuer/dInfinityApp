@@ -144,6 +144,30 @@ class FilamentEngine(
             .material(DiceMaterial.SOURCE)
             .shading(MaterialBuilder.Shading.LIT)
             .blending(MaterialBuilder.BlendingMode.OPAQUE)
+            // **Off, and the numbers are upside down without it.**
+            //
+            // `MaterialBuilder` defaults this to true, which makes `getUV0()`
+            // hand the shader `1 - v` instead of the `v` the mesh supplied.
+            // That is a kindness to assets authored for a bottom-left origin,
+            // and this app has none: every image in it counts rows from the
+            // top — a die's printed numbers, a package's atlas, a table's
+            // floor ([Snapshot.fromBottomUp] says so, and it is the file that
+            // had to put the *readback* the other way round for the same
+            // reason).
+            //
+            // So there were three conventions and the code stated two.
+            // `NumberField` is top-down, `setImage` uploads it as it stands so
+            // buffer row 0 is `v = 0`, and `DieMesh.TextureFrame` computes `v`
+            // growing down the image to match. The builder then turned that
+            // over a second time, and every glyph on every die came out
+            // reflected — which a screenshot cannot pin down, because a
+            // reflection in `v` and a reflection in `u` differ by a half-turn
+            // and a die lands at an arbitrary orientation.
+            //
+            // It governs the artwork atlas and the table's floor as well, and
+            // those were reflected too; nothing shipped an asymmetric one, so
+            // only the numbers showed it.
+            .flipUV(false)
             .require(MaterialBuilder.VertexAttribute.UV0)
             .require(MaterialBuilder.VertexAttribute.TANGENTS)
             .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "baseColor")

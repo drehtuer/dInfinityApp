@@ -1282,6 +1282,16 @@ impact sounds rather than a crash in the middle of a roll.
   shader recovers a crisp edge from it at whatever size the die is drawn
   (`core/glyphs`). It is built once per die rather than once per body, because
   `20d20` is twenty of the same die.
+- **Every image in this app counts its rows from the top, and the shader is
+  told so.** A die's printed numbers, a package's artwork atlas and a table's
+  floor are all built top-down, and `setImage` uploads them as they stand, so
+  buffer row 0 is `v = 0` and `DieMesh.TextureFrame` computes `v` growing down
+  the image to match. Filament's `MaterialBuilder` would otherwise turn that
+  over a second time — `flipUV` defaults to true, as a kindness to assets
+  authored for a bottom-left origin — so it is switched off explicitly. With
+  it on, every glyph on every die is drawn reflected, which is what `v0.1.0`
+  shipped. The readback goes the other way and is put right in
+  `Snapshot.fromBottomUp`, where a JVM test can hold it.
 - The font is **real Archivo outlines**, converted by `tools/generate-font.py`
   — the same source and the same licence note as the mark
   (`docs/assets/README.md`). Live text would render in whatever font the device
