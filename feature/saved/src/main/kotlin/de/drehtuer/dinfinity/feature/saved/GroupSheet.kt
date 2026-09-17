@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -21,13 +20,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
-import de.drehtuer.dinfinity.ui.common.inkColours
-import de.drehtuer.dinfinity.ui.common.segBorder
-import de.drehtuer.dinfinity.ui.common.segColours
+import de.drehtuer.dinfinity.ui.common.OptionBox
+import de.drehtuer.dinfinity.ui.common.OptionFill
 
 /**
  * Naming a group (`docs/dice-notation.md`, "Saved rolls").
@@ -157,12 +156,19 @@ private fun Marks(
     Label(stringResource(R.string.group_icon))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       GROUP_ICONS.forEach { icon ->
-        FilterChip(
+        OptionBox(
+          text = icon,
           selected = icon == chosen,
           onClick = { onPick(if (icon == chosen) "" else icon) },
-          label = { Text(icon) },
-          colors = inkColours(),
-          border = segBorder(),
+          // The ink rather than the accent, for the reason the editor's marks
+          // use it: the mark itself is what carries the accent.
+          fill = OptionFill.Ink,
+          square = true,
+          // Tapping the chosen mark clears it, so the set can end up empty.
+          role = Role.Checkbox,
+          // The emoji is the label, and an emoji is not a name: a screen
+          // reader is told what the picture is of (`MarkNames.kt`).
+          contentDescription = markName(icon)?.let { name -> stringResource(name) },
           modifier = Modifier.testTag(GroupTestTags.iconOf(icon)),
         )
       }
@@ -196,21 +202,19 @@ private fun Parents(
       return@Column
     }
     FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
-      FilterChip(
+      OptionBox(
+        text = stringResource(R.string.group_parent_none),
         selected = draft.parentId == null,
         onClick = { onPick(null) },
-        label = { Text(stringResource(R.string.group_parent_none)) },
-        colors = segColours(),
-        border = segBorder(),
+        fill = OptionFill.Accent,
         modifier = Modifier.testTag(GroupTestTags.parentOf(null)),
       )
       draft.parents.forEach { group ->
-        FilterChip(
+        OptionBox(
+          text = group.name,
           selected = draft.parentId == group.id,
           onClick = { onPick(group.id) },
-          label = { Text(group.name) },
-          colors = segColours(),
-          border = segBorder(),
+          fill = OptionFill.Accent,
           modifier = Modifier.testTag(GroupTestTags.parentOf(group.id)),
         )
       }
@@ -236,12 +240,11 @@ private fun Tables(
     Label(stringResource(R.string.group_table))
     FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       draft.tables.forEach { choice ->
-        FilterChip(
+        OptionBox(
+          text = choice.name ?: stringResource(R.string.editor_table_default),
           selected = choice.pin == draft.tablePin,
           onClick = { onPick(choice.pin) },
-          label = { Text(choice.name ?: stringResource(R.string.editor_table_default)) },
-          colors = segColours(),
-          border = segBorder(),
+          fill = OptionFill.Accent,
           modifier = Modifier.testTag(GroupTestTags.tableOf(choice.pin)),
         )
       }
@@ -265,7 +268,7 @@ private fun Label(text: String) {
 }
 
 /** The marks on offer. Emoji, for the same reason a saved roll's are. */
-private val GROUP_ICONS = listOf("🎲", "🐉", "🏰", "🗺️", "⚔️", "🧙", "🌲", "🚀", "📕", "⭐")
+internal val GROUP_ICONS = listOf("🎲", "🐉", "🏰", "🗺️", "⚔️", "🧙", "🌲", "🚀", "📕", "⭐")
 
 /** What the tests reach the group sheet by. */
 object GroupTestTags {

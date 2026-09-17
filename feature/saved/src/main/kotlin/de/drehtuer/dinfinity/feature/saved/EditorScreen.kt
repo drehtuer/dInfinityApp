@@ -15,17 +15,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -41,9 +35,11 @@ import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
-import de.drehtuer.dinfinity.ui.common.inkColours
-import de.drehtuer.dinfinity.ui.common.segBorder
-import de.drehtuer.dinfinity.ui.common.segColours
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.OptionBox
+import de.drehtuer.dinfinity.ui.common.OptionFill
+import de.drehtuer.dinfinity.ui.common.Rule
 
 /**
  * Writing down a saved roll (`design/dInfinity.dc.html`, options 1r and 7b).
@@ -214,39 +210,32 @@ private fun Buttons(
   // Over a 2 dp rule, and in the prototype's three weights: the one thing to
   // do is filled, the other is outlined, and the one that takes something away
   // is a ghost.
-  HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+  Rule()
   Row(
     horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Button(
+    ModernistButton(
+      text = stringResource(R.string.editor_save),
       onClick = { presenter.save() },
+      kind = ModernistButtonKind.Primary,
       enabled = state.savable,
-      shape = Modernist.square,
       modifier = Modifier.testTag(EditorTestTags.SAVE),
-    ) {
-      Text(stringResource(R.string.editor_save))
-    }
-    OutlinedButton(
+    )
+    ModernistButton(
+      text = stringResource(R.string.editor_roll_now),
       onClick = { onRollNow(state.formula) },
       enabled = state.savable,
-      shape = Modernist.square,
-      colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
-      border = segBorder(),
       modifier = Modifier.testTag(EditorTestTags.ROLL_NOW),
-    ) {
-      Text(stringResource(R.string.editor_roll_now))
-    }
+    )
     Text(text = "", modifier = Modifier.weight(1f))
     if (state.existing) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.editor_delete),
         onClick = presenter::delete,
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(EditorTestTags.DELETE),
-      ) {
-        // `.btn-ghost` is the accent, which is also the system's only red.
-        Text(stringResource(R.string.editor_delete), color = Ink.accent)
-      }
+      )
     }
   }
 }
@@ -267,12 +256,21 @@ private fun Icons(
   Field(stringResource(R.string.editor_icon)) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       ICONS.forEach { icon ->
-        FilterChip(
+        OptionBox(
+          text = icon,
           selected = icon == chosen,
           onClick = { onPick(if (icon == chosen) "" else icon) },
-          label = { Text(icon) },
-          colors = inkColours(),
-          border = segBorder(),
+          // The ink, not the accent: a mark already prints in the accent when
+          // the roll wears one, and a red square behind a red mark is the two
+          // saying the same thing over each other.
+          fill = OptionFill.Ink,
+          square = true,
+          // Tapping the chosen mark clears it, so this is a set that can end
+          // up empty — checkboxes, not a radio group.
+          role = Role.Checkbox,
+          // The emoji is the label, and an emoji is not a name: a screen
+          // reader is told what the picture is of (`MarkNames.kt`).
+          contentDescription = markName(icon)?.let { name -> stringResource(name) },
           modifier = Modifier.testTag(EditorTestTags.iconOf(icon)),
         )
       }
@@ -360,19 +358,20 @@ private fun Groups(
   Field(stringResource(R.string.editor_group)) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       state.groups.forEach { group ->
-        FilterChip(
+        OptionBox(
+          text = group.name,
           selected = group.id == state.groupId,
           onClick = { onPick(group.id) },
-          label = { Text(group.name) },
-          colors = segColours(),
-          border = segBorder(),
+          fill = OptionFill.Accent,
           modifier = Modifier.testTag(EditorTestTags.groupOf(group.id)),
         )
       }
-      AssistChip(
+      // Not one of the options: making a group is an action, and a control
+      // that does something rather than standing for a choice is a button.
+      ModernistButton(
+        text = stringResource(R.string.group_new),
         onClick = onNew,
-        label = { Text(stringResource(R.string.group_new)) },
-        border = segBorder(),
+        kind = ModernistButtonKind.Secondary,
         modifier = Modifier.testTag(EditorTestTags.NEW_GROUP),
       )
     }
@@ -394,12 +393,11 @@ private fun Tables(
   Field(stringResource(R.string.editor_table)) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(Modernist.x1)) {
       state.tables.forEach { choice ->
-        FilterChip(
+        OptionBox(
+          text = choice.name ?: stringResource(R.string.editor_table_default),
           selected = choice.pin == state.tablePin,
           onClick = { onPick(choice.pin) },
-          label = { Text(choice.name ?: stringResource(R.string.editor_table_default)) },
-          colors = segColours(),
-          border = segBorder(),
+          fill = OptionFill.Accent,
           modifier = Modifier.testTag(EditorTestTags.tableOf(choice.pin)),
         )
       }
@@ -432,7 +430,7 @@ private fun Field(
 private val SWATCH: Dp = 34.dp
 
 /** The marks on offer. Emoji, because every phone already draws them. */
-private val ICONS = listOf("⚔️", "🏹", "🔥", "🛡️", "✨", "💀", "🗡️", "💥", "🎲", "🧪")
+internal val ICONS = listOf("⚔️", "🏹", "🔥", "🛡️", "✨", "💀", "🗡️", "💥", "🎲", "🧪")
 
 /** What the tests reach the editor by. */
 object EditorTestTags {

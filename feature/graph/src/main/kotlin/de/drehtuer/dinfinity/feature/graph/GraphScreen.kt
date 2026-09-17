@@ -14,12 +14,7 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,8 +28,11 @@ import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
-import de.drehtuer.dinfinity.ui.common.segBorder
-import de.drehtuer.dinfinity.ui.common.segColours
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
+import de.drehtuer.dinfinity.ui.common.SegmentedControl
 
 /**
  * What a formula is likely to come to, before or after it is thrown
@@ -79,7 +77,7 @@ fun GraphScreen(
       )
       menu()
     }
-    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+    Rule()
 
     Column(
       modifier =
@@ -231,22 +229,17 @@ private fun Doing(
     modifier = Modifier.fillMaxWidth(),
     horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
   ) {
-    Button(
+    ModernistButton(
+      text = stringResource(R.string.graph_roll_this),
       onClick = { onRoll(formula) },
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Primary,
       modifier = Modifier.testTag(GraphTestTags.ROLL_THIS),
-    ) {
-      Text(stringResource(R.string.graph_roll_this))
-    }
-    OutlinedButton(
+    )
+    ModernistButton(
+      text = stringResource(R.string.graph_save_as_roll),
       onClick = { onSave(formula) },
-      shape = Modernist.square,
-      colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
-      border = segBorder(),
       modifier = Modifier.testTag(GraphTestTags.SAVE_AS_ROLL),
-    ) {
-      Text(stringResource(R.string.graph_save_as_roll))
-    }
+    )
   }
 }
 
@@ -256,22 +249,14 @@ private fun Question(
   chosen: GraphMode,
   onAsk: (GraphMode) -> Unit,
 ) {
-  Row(
-    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
-    verticalAlignment = Alignment.CenterVertically,
+  SegmentedControl(
+    options = GraphMode.entries,
+    selected = chosen,
+    label = { mode -> stringResource(mode.label()) },
+    onSelect = onAsk,
+    tagOf = GraphTestTags::modeOf,
     modifier = Modifier.testTag(GraphTestTags.MODE),
-  ) {
-    GraphMode.entries.forEach { mode ->
-      FilterChip(
-        selected = mode == chosen,
-        onClick = { onAsk(mode) },
-        label = { Text(stringResource(mode.label())) },
-        colors = segColours(),
-        border = segBorder(),
-        modifier = Modifier.testTag(GraphTestTags.modeOf(mode)),
-      )
-    }
-  }
+  )
 }
 
 private fun GraphMode.label(): Int =
@@ -289,19 +274,19 @@ private fun GraphMode.label(): Int =
 @Composable
 private fun Numbers(stats: GraphStats) {
   Column(modifier = Modifier.fillMaxWidth()) {
-    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+    Rule()
     Row(modifier = Modifier.fillMaxWidth()) {
       Number(MEAN, stringResource(R.string.graph_stat_mean), format(stats.mean))
       Number(DEVIATION, stringResource(R.string.graph_stat_deviation), format(stats.standardDeviation))
       Number(RANGE, stringResource(R.string.graph_stat_range), "${stats.lowest}–${stats.highest}")
     }
-    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+    Rule(weight = RuleWeight.Hairline)
     Row(modifier = Modifier.fillMaxWidth()) {
       Number(LOWEST, stringResource(R.string.graph_stat_chance_of, stats.lowest), percent(stats.chanceOfLowest))
       Number(HIGHEST, stringResource(R.string.graph_stat_chance_of, stats.highest), percent(stats.chanceOfHighest))
       Number(DICE, stringResource(R.string.graph_stat_dice), stats.dice.toString())
     }
-    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+    Rule(weight = RuleWeight.Hairline)
   }
 }
 
