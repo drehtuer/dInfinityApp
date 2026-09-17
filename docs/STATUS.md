@@ -12,19 +12,28 @@ This is a snapshot, not a changelog — git history is the changelog.
   all written, connected and working, and what is left on them is polish and
   judgement. **Step 5 — physics and rendering on a real phone — is where the
   remaining hard problems are**, and its harness (5.1) is now finished too.
-- **The app rolls dice on a phone.** Type a formula, tap Roll or shake the
-  Pixel 10a, and the dice tumble onto a felt tray, come to rest, are felt and
-  heard as they land, and their total appears. They carry real printed numbers,
+- **The app rolls dice on a phone, and as of #271 and #272 it looks like it.**
+  Type a formula, tap Roll or shake the Pixel 10a, and the dice tumble onto a
+  felt tray, come to rest, are felt and heard as they land, and their total
+  appears beside them. They carry real printed numbers, the right way round,
   and a die whose author drew artwork now wears it.
 - **Latest release:** `v0.1.0` — the first one that rolls dice. Signed,
   fingerprint-checked, published with its SHA-256. `v0.0.1` before it was the
   skeleton, cut to prove the release pipeline and nothing else.
 
+  **It has two faults a release after it should not.** Nothing in it had been
+  seen on a screen when it was cut, and both of them are things only a screen
+  could show: a roll that settled first time cleared its own dice off the felt
+  ([#271](https://github.com/drehtuer/dInfinityApp/pull/271)), and every glyph
+  on every die was drawn reflected
+  ([#272](https://github.com/drehtuer/dInfinityApp/pull/272)). Both are fixed
+  on `main`. Releases are immutable, so the remedy is `v0.1.1` rather than a
+  re-tag.
+
 ### Branch state
 
-`main` has everything through **#268**, and `v0.1.0` is cut from it: all of
-Step 3, every screen of Step 4, the harness, the measurements below, and a
-pass over the whole UI against the prototype. Nothing is in flight.
+`main` has everything through **#272**. `v0.1.0` is cut from #268 and is two
+fixes behind. Nothing is in flight.
 
 ## Done
 
@@ -60,9 +69,12 @@ most of it is judgement with a phone in hand rather than code.
 
 ## Blocked / waiting on
 
-**The phone is off the network**, so nothing in the UI stack above has been
-seen on a real screen. It needs wireless debugging switched on again and its
-new address; everything else about a device run is automatic from here.
+**Nothing is blocked.** The phone came back and the UI stack has now been on a
+real screen: every screen photographed through the accessibility tree,
+`:render:filament`'s 22 instrumented tests green on the device, and the two
+faults above found and fixed there. What that cost is the entry above — a
+release was cut while this section said the opposite, and it shipped both of
+them.
 
 **Judgements that need a person and a phone.** All listed in `docs/TODO.md`.
 The ones added this round: whether a chain that stopped reads as a rule or a

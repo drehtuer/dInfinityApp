@@ -11,7 +11,6 @@ import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import java.io.File
-import javax.xml.parsers.DocumentBuilderFactory
 
 /**
  * Decides whether the instrumented tests passed, by reading the JUnit XML the
@@ -31,6 +30,11 @@ import javax.xml.parsers.DocumentBuilderFactory
  * verification is real, not a rubber stamp: a failing test, an erroring test or
  * a run that produced no results at all still fails the build. Drop this task
  * and the `ignoreFailures` that goes with it once AGP compares like with like.
+ *
+ * What it counts is [DeviceTestCounts]', because the report's own root
+ * counters are wrong about one thing — a test that opted out with
+ * `Assume.assumeTrue` is filed as a failure — and that one thing was enough to
+ * stop the whole tier passing.
  */
 abstract class VerifyDeviceTestResultsTask : DefaultTask() {
   @get:InputDirectory
@@ -74,49 +78,23 @@ abstract class VerifyDeviceTestResultsTask : DefaultTask() {
       return
     }
 
-    val totals = reports.map(::readCounts)
-    val tests = totals.sumOf(Counts::tests)
-    val failures = totals.sumOf(Counts::failures)
-    val errors = totals.sumOf(Counts::errors)
-    val skipped = totals.sumOf(Counts::skipped)
+    val totals =
+      reports.fold(DeviceTestCounts.NONE) { running, report ->
+        running + DeviceTestCounts.of(report.readText())
+      }
 
-    if (failures > 0 || errors > 0) {
+    if (totals.failures > 0 || totals.errors > 0) {
       throw GradleException(
-        "$failures failing and $errors erroring instrumented tests out of $tests. " +
+        "${totals.failures} failing and ${totals.errors} erroring instrumented tests out of ${totals.tests}. " +
           "See the report at ${directory?.absolutePath}.",
       )
     }
-    if (tests == 0 && expectResults.get()) {
+    if (totals.tests == 0 && expectResults.get()) {
       throw GradleException("The instrumented test run reported no tests at all in ${modulePath.get()}.")
     }
-    logger.lifecycle("$tests instrumented tests passed on device ($skipped skipped).")
+    logger.lifecycle("${totals.tests} instrumented tests passed on device (${totals.skipped} skipped).")
   }
 
   private fun isJUnitReport(file: File): Boolean =
     file.isFile && file.name.startsWith("TEST-") && file.extension == "xml"
-
-  private fun readCounts(report: File): Counts {
-    val root =
-      DocumentBuilderFactory
-        .newInstance()
-        .apply { isNamespaceAware = false }
-        .newDocumentBuilder()
-        .parse(report)
-        .documentElement
-
-    fun attribute(name: String): Int = root.getAttribute(name).toIntOrNull() ?: 0
-    return Counts(
-      tests = attribute("tests"),
-      failures = attribute("failures"),
-      errors = attribute("errors"),
-      skipped = attribute("skipped"),
-    )
-  }
-
-  private data class Counts(
-    val tests: Int,
-    val failures: Int,
-    val errors: Int,
-    val skipped: Int,
-  )
 }
