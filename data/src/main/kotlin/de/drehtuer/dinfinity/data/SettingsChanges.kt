@@ -5,7 +5,7 @@
 
 package de.drehtuer.dinfinity.data
 
-import de.drehtuer.dinfinity.core.model.AccentColor
+import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TablePin
@@ -20,7 +20,7 @@ import de.drehtuer.dinfinity.core.model.TablePin
  */
 
 /** The colour the whole app spends (`design/dInfinity.dc.html`, option 1q). */
-suspend fun SettingsRepository.setAccentColor(accent: AccentColor) = update { it.copy(accentColor = accent) }
+suspend fun SettingsRepository.setAccentColor(accent: AccentChoice) = update { it.copy(accentColor = accent) }
 
 /** Light, dark, or whatever the phone is doing. */
 suspend fun SettingsRepository.setAppearance(appearance: Appearance) = update { it.copy(appearance = appearance) }

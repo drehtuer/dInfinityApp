@@ -265,7 +265,7 @@ private fun Icons(
  * contrast clamp** when the mark is drawn, which is what makes a free colour
  * safe here where `docs/architecture.md` decision 22 refused one: the reason a
  * picker was refused was a colour nobody could see, and a clamped colour is
- * always one somebody can (`RollColour`, `LegibleColour`).
+ * always one somebody can (`RollColour`, and `core/model`'s `AccentRamp`).
  */
 @Composable
 private fun Colours(

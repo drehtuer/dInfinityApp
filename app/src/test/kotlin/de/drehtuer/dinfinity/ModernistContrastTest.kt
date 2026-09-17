@@ -3,7 +3,9 @@ package de.drehtuer.dinfinity
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import de.drehtuer.dinfinity.core.model.AccentColor
+import de.drehtuer.dinfinity.core.model.AccentRamp
 import de.drehtuer.dinfinity.core.model.Contrast
+import de.drehtuer.dinfinity.core.model.Ground
 import de.drehtuer.dinfinity.ui.common.Modernist
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -83,16 +85,28 @@ class ModernistContrastTest {
    * `Save group`, the confirmation of a reset.
    *
    * `onPrimary` is the ground colour by design, so the label is the pale ink on
-   * the accent — and no accent in the palette reaches 4.5:1 that way on the
-   * light ground. The fix is a palette change either way (a deeper fill, or the
-   * ramp's 700 step as the fill), so this holds the floor rather than asserting
-   * a pass.
+   * the accent — and no accent reaches 4.5:1 that way on the light ground. The
+   * fix is a palette change either way (a deeper fill, or the ramp's 700 step
+   * as the fill), so this holds the floor rather than asserting a pass.
+   *
+   * **Measured on the accent as painted, which is the accent after the clamp.**
+   * Several of the presets do not clear 3:1 raw — light blue is 2.41:1 on paper
+   * — and that is not what a button is drawn in: `AccentRamp` deepens it first,
+   * and the ratio a person meets is the clamped one (`AccentRampTest`).
    */
   @Test
   fun `a filled button's label is short of 4 point 5 to 1`() {
     AccentColor.entries.forEach { accent ->
-      val onLight = Contrast.ratio(Modernist.Light.background.toArgb(), accent.argb)
-      val onDark = Contrast.ratio(Modernist.Dark.background.toArgb(), accent.argb)
+      val onLight =
+        Contrast.ratio(
+          Modernist.Light.background.toArgb(),
+          AccentRamp.clamp(accent.argb, Ground.Light),
+        )
+      val onDark =
+        Contrast.ratio(
+          Modernist.Dark.background.toArgb(),
+          AccentRamp.clamp(accent.argb, Ground.Dark),
+        )
       // Still legible as large text on both grounds, which is what keeps this
       // an open question rather than a bug to stop the release.
       assertTrue(
@@ -106,7 +120,10 @@ class ModernistContrastTest {
     }
     noWorseThan(
       "the default accent's button label on the light ground",
-      Contrast.ratio(Modernist.Light.background.toArgb(), AccentColor.Default.argb),
+      Contrast.ratio(
+        Modernist.Light.background.toArgb(),
+        AccentRamp.clamp(AccentColor.Default.argb, Ground.Light),
+      ),
       DEFAULT_BUTTON_ON_LIGHT,
     )
   }
@@ -144,7 +161,7 @@ class ModernistContrastTest {
 
     /** Measured, and written down in `docs/TODO.md`. */
     const val DIVIDER_ON_LIGHT = 2.41
-    const val DEFAULT_BUTTON_ON_LIGHT = 3.76
+    const val DEFAULT_BUTTON_ON_LIGHT = 3.65
 
     /** The floors above are the ratios as `docs/TODO.md` prints them. */
     const val ROUNDING = 0.005

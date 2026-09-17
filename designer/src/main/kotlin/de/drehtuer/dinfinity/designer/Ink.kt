@@ -38,7 +38,7 @@ data class Hsv(
  * a picker that will.
  *
  * There is no contrast rule here, and that is deliberate.
- * `core/model/AccentColor` holds every accent to 3:1 against both grounds
+ * `core/model/AccentRamp` pushes any accent to 3:1 against both grounds
  * because those grounds are the app's own: it knows what the surface behind a
  * button is. A die face is not the app's ground — the cell is transparent in
  * the atlas and the colour under it comes from the dice set — so a ratio

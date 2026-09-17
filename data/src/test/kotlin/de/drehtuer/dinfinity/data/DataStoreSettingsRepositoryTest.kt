@@ -47,8 +47,8 @@ class DataStoreSettingsRepositoryTest {
   fun `a chosen accent is read back`() =
     runTest {
       val repository = DataStoreSettingsRepository(dataStore(this))
-      repository.setAccentColor(AccentColor.Sky)
-      assertEquals(AccentColor.Sky, repository.settings.first().accentColor)
+      repository.setAccentColor(AccentColor.LightBlue)
+      assertEquals(AccentColor.LightBlue, repository.settings.first().accentColor)
     }
 
   @Test
@@ -91,8 +91,8 @@ class DataStoreSettingsRepositoryTest {
       val repository = DataStoreSettingsRepository(dataStore(this))
       repository.settings.test {
         assertEquals(AccentColor.Default, awaitItem().accentColor)
-        repository.setAccentColor(AccentColor.Violet)
-        assertEquals(AccentColor.Violet, awaitItem().accentColor)
+        repository.setAccentColor(AccentColor.Cobalt)
+        assertEquals(AccentColor.Cobalt, awaitItem().accentColor)
         cancelAndIgnoreRemainingEvents()
       }
     }

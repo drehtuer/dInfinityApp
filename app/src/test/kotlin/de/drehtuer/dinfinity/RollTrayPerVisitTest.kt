@@ -81,7 +81,7 @@ class RollTrayPerVisitTest {
 
     // The preferences file has been read, and it does not say what the
     // defaults said. This is a cold launch, every time.
-    settings = settings.copy(accentColor = AccentColor.Coral)
+    settings = settings.copy(accentColor = AccentColor.ModernistRed)
     compose.waitForIdle()
 
     assertEquals("a preference arriving built a second tray, and the surface stayed with the first", 1, built)
@@ -108,7 +108,7 @@ class RollTrayPerVisitTest {
     }
     compose.waitForIdle()
 
-    settings = settings.copy(accentColor = AccentColor.Coral)
+    settings = settings.copy(accentColor = AccentColor.ModernistRed)
     compose.waitForIdle()
     settings = settings.copy(shakeToRoll = false)
     compose.waitForIdle()

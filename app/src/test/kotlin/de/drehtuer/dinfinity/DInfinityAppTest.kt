@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import androidx.test.core.app.ApplicationProvider
+import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.feature.graph.GraphTestTags
@@ -74,7 +75,7 @@ class DInfinityAppTest {
 
   @Test
   fun `settings can be reached from the menu and reports the accent chosen there`() {
-    val chosen = mutableListOf<AccentColor>()
+    val chosen = mutableListOf<AccentChoice>()
     compose.setContent {
       DInfinityTheme {
         DInfinityApp(settings = AppSettings(), onAccentSelected = { chosen += it })
@@ -210,12 +211,12 @@ class DInfinityAppTest {
   fun `the settings screen shows the accent it was given`() {
     compose.setContent {
       DInfinityTheme {
-        DInfinityApp(settings = AppSettings(accentColor = AccentColor.Violet))
+        DInfinityApp(settings = AppSettings(accentColor = AccentColor.Cobalt))
       }
     }
     compose.onNodeWithTag(MenuTestTags.BUTTON).performClick()
     compose.onNodeWithTag(MenuTestTags.entryOf(Destination.Settings.route)).performScrollTo().performClick()
-    compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Violet)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Cobalt)).performScrollTo().assertIsSelected()
   }
 
   @Test

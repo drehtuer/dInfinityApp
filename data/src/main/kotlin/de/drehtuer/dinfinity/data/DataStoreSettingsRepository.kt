@@ -6,7 +6,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
-import de.drehtuer.dinfinity.core.model.AccentColor
+import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.DiceSet
@@ -73,7 +73,7 @@ class DataStoreSettingsRepository(
 
   private fun settingsOf(preferences: Preferences): AppSettings =
     AppSettings(
-      accentColor = AccentColor.ofId(preferences[ACCENT_COLOUR]),
+      accentColor = AccentChoice.ofId(preferences[ACCENT_COLOUR]),
       appearance = Appearance.of(preferences[APPEARANCE]),
       powerSaving = preferences[POWER_SAVING] == true,
       // Absent means on, because the default is on and a fresh install has no

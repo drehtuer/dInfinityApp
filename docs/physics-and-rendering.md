@@ -1071,11 +1071,58 @@ impact sounds rather than a crash in the middle of a roll.
 - **The ambient is not decoration.** Two directional lights and nothing else
   leave every surface facing away from both at exactly black, and the surfaces
   facing away from both are the inner walls: the tray showed its lit rim, a
-  shadow across the floor, and nothing in between casting it. It is a single
+  shadow across the floor, and nothing in between casting it. A tray is lit by
+  a room.
+- **The room has a ceiling and a floor.** It used to be one
   spherical-harmonic band — the constant term, the same irradiance from every
-  direction — rather than a sky-above/ground-below gradient, which would need
-  three bands and this code being right about which axis Filament's harmonics
-  run along. That is invisible when wrong, and a tray is lit by a room.
+  direction — which is a room with neither. It is now two bands: a cool bright
+  sky overhead, a warm dim bounce underfoot, and the linear blend between them
+  (`RoomLight`). That is what makes a die's top face brighter than its sides
+  for a reason rather than because a lamp happens to point at it, and what
+  keeps the inner wall that faces the camera from matching the one that faces
+  away.
+
+  The coefficient that carries it is the one Filament multiplies by `n.z`,
+  because this app's up is `+z` in the tray, in the physics and in the
+  renderer. **Which axis that is was the reason the gradient did not exist**,
+  and the answer is not a comment now: `RoomLightTest` evaluates the harmonic
+  the way the shader does and asserts that looking up finds the sky. A sign
+  error there is invisible in review and looks, on a screen, like a perfectly
+  plausible table lit from the floor.
+- **A polished surface reflects the room, so there is a room to reflect.** The
+  irradiance says what a matte surface integrates; it says nothing about what a
+  glossy one mirrors, and an `IndirectLight` with no reflections has dice whose
+  shine comes from two lamps in a void. So the same sky-to-ground gradient is
+  also a 32-pixel cubemap, generated rather than shipped.
+
+  **One level, not six.** A reflection's blur normally follows a surface's
+  roughness by reading a coarser level, which is worth having when the
+  environment is a room with things in it; this one is a gradient, and a
+  gradient blurred is the same gradient nearer its own average. It is also the
+  only shape of upload the Pixel 10a's driver accepts — a six-level cubemap is
+  refused at level one with a buffer overflow against a region whose arithmetic
+  checks out on both sides, and `RoomLightUploadTest` is what pins that down
+  (`docs/TODO.md`, Open questions).
+- **The ambient's brightness is an average, and it is divided out.** Filament's
+  intensity multiplies every coefficient, so a room that is bright above and
+  dim below is a *darker* room than a flat white one at the same setting. The
+  intensity is divided by the room's own average brightness, which keeps the
+  tray exactly as bright as it was when the ambient was flat and changes only
+  where the light comes from.
+- **Dice are lacquered; the table is not.** A die is a moulded thing with a
+  varnish on it, and a varnish is a thin smooth layer over a body that is not
+  smooth at all — which is exactly what a clear coat is. Without one the only
+  way to make a die shine is to make the resin itself glossy, and glossy resin
+  reflects its own colour where a varnish reflects the room. The coat is not a
+  mirror either (`DIE_COAT_ROUGHNESS` is 0.12): a die has been in a bag with
+  other dice. Felt with a clear coat is a table nobody owns, so the tray has
+  none, and the shader skips the whole path when there is none to apply.
+- **What says a die is *on* the table rather than over it** is the darkening
+  where the two meet. A cast shadow puts a die above the felt; contact occlusion
+  puts it down on it, and without it every die floats a millimetre however good
+  the shadow is. Filament's screen-space ambient occlusion does it, at a radius
+  of 8 mm — about half a die — which is enough to read as contact without the
+  whole tray dimming.
 - The tray mesh is a function of the tray's geometry and nothing else — no
   package supplies one (`docs/tables.md`). Only the **inside** is modelled:
   the floor, the inner walls up to the 60 mm rim, and a 6 mm band across the
@@ -1295,6 +1342,28 @@ impact sounds rather than a crash in the middle of a roll.
   shader recovers a crisp edge from it at whatever size the die is drawn
   (`core/glyphs`). It is built once per die rather than once per body, because
   `20d20` is twenty of the same die.
+- **A die you can see into is a second material, not a second parameter.**
+  Blending is baked into a material when Filament compiles it — a blended
+  surface is drawn in another pass, in another order, against a depth buffer it
+  does not write — so a translucent die cannot be the opaque material with its
+  alpha turned down. The same source is compiled twice, once opaque and once
+  transparent, and which one a surface gets is decided by whether its set
+  called it translucent at all (`docs/dice-sets.md`).
+
+  **Transparent rather than fade**, which is the difference between a die made
+  of clear stuff and a ghost: fade takes a surface's own lighting out in
+  proportion to how clear it is, and the sheen down a die's edge is part of the
+  picture. Filament's transparent blending wants the colour already multiplied
+  by its coverage, so the shader does that rather than leaving it to the blend
+  — a half-clear die otherwise glows wherever the felt behind it is bright.
+
+  **What is printed stays opaque.** The shader tracks how much of a pixel is
+  ink or artwork rather than body, and the coverage it writes is the die's
+  opacity where the face is bare and one where something is printed on it. Ink
+  is paint on the outside of the resin, and paint does not go clear because the
+  die did — which is the whole of `docs/dice-sets.md`'s promise that a face you
+  cannot read is not a die.
+
 - **Every image in this app counts its rows from the top, and the shader is
   told so.** A die's printed numbers, a package's artwork atlas and a table's
   floor are all built top-down, and `setImage` uploads them as they stand, so
@@ -1340,9 +1409,11 @@ the first device session found — a formula whose dashed rule ran the full widt
 of the screen, so the text read as struck through rather than underlined, and a
 bordered box of controls sitting on bare felt.
 
-**Accent never touches felt.** Accent appears only *on* a plate, which is how a
-palette of six accents and a shelf of tables stops being thirty pairs to check
-— of which "See the odds" in Moss over green felt already failed (question 10).
+**Accent never touches felt.** Accent appears only *on* a plate, which is how
+an accent the player chooses freely and a shelf of tables stop being a pair
+anybody has to check — a green accent on green felt cannot happen if the accent
+is never on the felt, and with a colour picker there is no list of pairs to
+check in the first place (question 10).
 
 | Plate | Where | What it carries |
 | --- | --- | --- |

@@ -1,7 +1,12 @@
 package de.drehtuer.dinfinity.feature.saved
 
+import de.drehtuer.dinfinity.core.model.AccentRamp
+import de.drehtuer.dinfinity.core.model.Contrast
+import de.drehtuer.dinfinity.core.model.Ground
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -88,5 +93,33 @@ class RollColourTest {
     RollColour.entries.forEach { tag ->
       assertEquals(tag.argb, RollColour.parseHex(RollColour.hexOf(tag.argb)))
     }
+  }
+
+  @Test
+  fun `every tag can be seen on both grounds, once it has been clamped`() {
+    // The twelve span the hue circle, which means two of them are nearly the
+    // page and nearly the ink: `bone` on paper and `ink` at night are each a
+    // mark that is simply not there. They go through the same clamp the accent
+    // does, so the promise holds for all twelve rather than for ten of them.
+    Ground.entries.forEach { ground ->
+      RollColour.entries.forEach { tag ->
+        val drawn = AccentRamp.clamp(tag.argb, ground)
+        assertTrue(
+          "${'$'}{tag.name} is invisible on ${'$'}ground",
+          Contrast.meets(drawn, ground.backgroundArgb, Contrast.COMPONENT),
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `a tag that already reads is drawn exactly as it was chosen`() {
+    assertEquals(RollColour.Cobalt.argb, AccentRamp.clamp(RollColour.Cobalt.argb, Ground.Light))
+  }
+
+  @Test
+  fun `and the two that do not are moved`() {
+    assertNotEquals(RollColour.Bone.argb, AccentRamp.clamp(RollColour.Bone.argb, Ground.Light))
+    assertNotEquals(RollColour.Ink.argb, AccentRamp.clamp(RollColour.Ink.argb, Ground.Dark))
   }
 }

@@ -5,7 +5,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
+import de.drehtuer.dinfinity.core.model.AccentRamp
+import de.drehtuer.dinfinity.core.model.Ground
 
 /**
  * The twelve colours a saved roll's mark can be tagged with
@@ -23,7 +25,7 @@ import androidx.compose.ui.graphics.toArgb
  * second, where naming a colour is a choice somebody has to work at.
  *
  * **No entry here is drawn as it is written.** Every one of them, and every
- * custom colour with it, goes through [LegibleColour.legibleOn] against the
+ * custom colour with it, goes through [AccentRamp.clamp] against the
  * ground it is printed on: `bone` on paper and `ink` at night are each invisible as
  * written, and a colour tag nobody can see is not a tag.
  *
@@ -122,11 +124,12 @@ enum class RollColour(
 internal fun markColour(argb: Int?): Color {
   val scheme = MaterialTheme.colorScheme
   if (argb == null) return scheme.primary
-  return Color(
-    LegibleColour.legibleOn(
-      argb = argb,
-      background = scheme.background.toArgb(),
-      towards = scheme.onBackground.toArgb(),
-    ),
-  )
+  // The same clamp the accent goes through, for the same reason: a colour a
+  // player picked is only a colour while it can be told from the page
+  // (`core/model`'s `AccentRamp`).
+  val ground = if (scheme.background.luminance() < HALF) Ground.Dark else Ground.Light
+  return Color(AccentRamp.clamp(argb, ground))
 }
+
+/** Where a light ground stops being one. */
+private const val HALF = 0.5f
