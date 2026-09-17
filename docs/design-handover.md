@@ -106,6 +106,13 @@ figures, the totals chart, a verdict and a ranked Rolled / Mean / Expected / Δ
 table. The app has a roll list and a stack of sentences. Is the sentence form
 deliberate?
 
+**History groups by session; the prototype groups by day.** The prototype's
+heading is a date and that date's roll count — `Tue 12 Mar · 14 rolls` — and
+the app emits a heading whenever the session changes instead, with no count.
+The two are not variants of one screen: a day is a fact about when, a session
+is a thing somebody named. Which one does History belong to, or does it offer
+both?
+
 **Sessions** is missing the prototype's whole lower half — the inline "New
 session" field, the note that deleting moves rolls to Unfiled, and the entire
 "Import and export" block.
@@ -161,20 +168,40 @@ prototype has a Save button.
    the rule is unambiguous where the list is silent — but it is an inference,
    and it is the one thing here that would change a drawn screen if you meant
    the other.
-2. **Every sheet in the prototype is a bottom sheet** — full width, slid up,
+2. **A tag needs both ends of a ramp, and only two accents have one.** You
+   ship exact ramps for `--color-accent` and `--color-accent-2`. The app lets
+   a player pick six accents, and derives the deep end of the other four the
+   way `design/Logo.dc.html` derives an ad-hoc one —
+   `color-mix(in srgb, accent 58%, text)`. There is no rule for the **pale**
+   end, and it cannot be mixed from the accent and the ground:
+   `--color-accent-100` is `#fff2ef`, lighter in the red channel than either
+   of them. So a filled accent tag either stops following the accent the
+   player chose, or stops matching the prototype for the accent the prototype
+   was drawn in. **The app currently draws no filled accent tag at all** —
+   which is the badge that says a dice set has an update. `tag-neutral` and
+   `tag-outline` need no ramp and are drawn.
+
+3. **Every sheet in the prototype is a bottom sheet** — full width, slid up,
    with its actions aligned **left**. Material's dialog is centred, inset and
    right-aligns them. This one is worth a single shared component rather than
    one per screen.
-3. **The slider has no design.** Hue, depth and brightness in the designer use
+4. **The slider has no design.** Hue, depth and brightness in the designer use
    Material's, which has a circular thumb and a rounded track, in a system with
    no round anything.
-4. **Uppercase.** The prototype sets kickers and column headings in
+5. **Uppercase.** The prototype sets kickers and column headings in
    `text-transform: uppercase` with wide tracking. The tracking is applied; the
-   case is not, because uppercasing a string changes what a screen reader says.
-   If it is wanted it belongs in a text style, not in the strings.
-5. **The designer's canvas paper is white** — a literal, not a token. Is that
+   case is not, because Compose has no text transform, so applying it means
+   uppercasing the string itself and changing what a screen reader says.
+
+   Until this pass the app did **both**: the dice-set screens uppercased in
+   Kotlin and every other screen did not. There is one shared kicker now and it
+   does not, so the app is at least consistent — and one reason it does not is
+   that a kicker is sometimes a name somebody typed. The History heading is a
+   session's name, and `THORIN'S CAMPAIGN` is a decision about someone else's
+   words. If uppercase is wanted, is it wanted on those too?
+6. **The designer's canvas paper is white** — a literal, not a token. Is that
    the die's real painted ground, or chrome that should follow the theme?
-6. **`gap: 6px` in the face strip** is not on the 4/8/12 scale. Deliberate?
+7. **`gap: 6px` in the face strip** is not on the 4/8/12 scale. Deliberate?
 
 ## Where the screens live in the code
 

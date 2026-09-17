@@ -165,6 +165,14 @@ object Modernist {
 
     /** `.btn` — the heading face at this size, not a body weight. */
     val button: TextUnit = 14.sp
+
+    /**
+     * `.card-kicker` — the accent line that says what a block *is*, above the
+     * block. The smallest type in the system, and the only step below
+     * [caption]: it is a label rather than something to read, which is why it
+     * can be smaller than anything the app sets a sentence in.
+     */
+    val kicker: TextUnit = 10.sp
   }
 
   /**

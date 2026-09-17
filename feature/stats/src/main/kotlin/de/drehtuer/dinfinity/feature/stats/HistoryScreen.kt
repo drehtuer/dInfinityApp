@@ -39,6 +39,8 @@ import de.drehtuer.dinfinity.data.StoredDie
 import de.drehtuer.dinfinity.data.StoredGroup
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.SectionKicker
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import kotlin.math.abs
 
@@ -263,25 +265,26 @@ private fun ForgetDialog(
 /**
  * Which session the rolls below belong to.
  *
- * A kicker over a rule, which is how the prototype heads a run of rows: the
- * accent, tracked out, with a 2 dp line under it. Not a filled grey band —
- * the system has one surface colour and does not tint a heading with it.
+ * A [SectionKicker] over a [Rule], which is how the prototype heads a run of
+ * rows (`design/dInfinityPhone.dc.html`, the History screen): the accent,
+ * tracked out, with a 2 dp line under it. Not a filled grey band — the system
+ * has one surface colour and does not tint a heading with it.
+ *
+ * It was the same idea written out by hand, a step too large at `labelSmall`'s
+ * eleven sp; the shared component is the design system's ten, so every kicker
+ * in the app is one size.
  */
 @Composable
 private fun SessionHeading(name: String) {
   Column(modifier = Modifier.fillMaxWidth().testTag(HistoryTestTags.sessionOf(name))) {
-    Text(
+    SectionKicker(
       text = name,
-      style = MaterialTheme.typography.labelSmall,
-      fontWeight = FontWeight.SemiBold,
-      letterSpacing = Modernist.kickerTracking,
-      color = MaterialTheme.colorScheme.primary,
       modifier =
         Modifier
           .fillMaxWidth()
           .padding(start = Modernist.x4, end = Modernist.x4, top = Modernist.x3, bottom = Modernist.x1),
     )
-    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+    Rule()
   }
 }
 

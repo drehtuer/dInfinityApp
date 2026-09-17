@@ -50,6 +50,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import java.io.File
 import java.nio.file.Files
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 /**
  * The dice-set list on screen (`design/dInfinity.dc.html`, option `5a`).
@@ -147,6 +149,35 @@ class SetsScreenTest {
 
     compose.waitForIdle()
     compose.onNodeWithTag(SetsTestTags.setOf("brass")).assertIsDisplayed()
+  }
+
+  @Test
+  fun `the screen is grouped into blocks by kickers rather than left one column`() {
+    // The design system has no cards, no shadows and no rounded containers, so
+    // an accent label over a 2 dp rule is the only thing that says where the
+    // install controls stop and the list begins
+    // (`design/dInfinityPhone.dc.html`, the Dice sets screen).
+    show()
+
+    compose.onNodeWithText("Install from a URL or file").assertIsDisplayed()
+    compose.onNodeWithText("Installed").assertIsDisplayed()
+  }
+
+  @Test
+  fun `a refusal heads its errors with how many there are`() {
+    // The prototype puts the count in the kicker over the list, because it is
+    // the one thing worth knowing before reading any of it. Beside it, the
+    // same block after an install that *worked* stays muted: warnings are not
+    // something to go and fix.
+    val presenter = show()
+
+    presenter.install(zip("runes", "format = 1\n\n[set]\nid = \"runes\"\n"))
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+
+    val refused = presenter.state.outcome as PackageInstaller.Result.Failed
+    assertTrue("the validator said nothing was wrong", refused.report.isNotEmpty())
+    val counted = if (refused.report.size == 1) "1 error" else "${refused.report.size} errors"
+    compose.onNodeWithText(counted).assertIsDisplayed()
   }
 
   @Test
@@ -729,6 +760,20 @@ class SetsScreenTest {
       installer = PackageInstaller(root),
       defaultSetId = { DiceSet.BUILTIN_ID },
     )
+
+  /** A package as one folder inside a zip, which is what a forge hands out. */
+  private fun zip(
+    id: String,
+    toml: String,
+  ): File {
+    val file = File(temporary, "$id-${System.nanoTime()}.zip")
+    ZipOutputStream(file.outputStream()).use { out ->
+      out.putNextEntry(ZipEntry("$id-main/${DiceSetValidator.DICE_SET_FILE}"))
+      out.write(toml.encodeToByteArray())
+      out.closeEntry()
+    }
+    return file
+  }
 
   private fun write(
     id: String,

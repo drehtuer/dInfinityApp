@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.SectionKicker
 import kotlin.math.roundToInt
 
 /**
@@ -74,10 +76,18 @@ fun SetsScreen(
         .testTag(SetsTestTags.SCREEN),
   ) {
     Header(menu)
+    // Two kickers and one rule are the whole of the grouping on this screen:
+    // the system has no cards, no shadows and no rounded containers, so an
+    // accent label over a 2 dp line is the only thing that says where one
+    // block ends and the next begins (`design/dInfinityPhone.dc.html`, the
+    // Dice sets screen).
+    Kicker(stringResource(R.string.sets_kicker_install))
     Installing(state, onInstall)
     FromLink(state, presenter)
     Downloading(state, onCancel = presenter::cancel)
+    Rule(modifier = Modifier.padding(top = Modernist.x2))
     Updates(state, presenter)
+    Kicker(stringResource(R.string.sets_kicker_installed))
     // The note goes *above* the list rather than instead of it. The bundled
     // set is a row like any other and is always there, so replacing the list
     // would hide the one set every fallback resolves against (`5a`).
@@ -266,11 +276,16 @@ private fun Messages(outcome: PackageInstaller.Result) {
     }
   if (messages.isEmpty()) return
   if (outcome is PackageInstaller.Result.Installed) {
+    // Muted, not the accent: the prototype writes the warning count over an
+    // install that *worked* at `opacity:.6` and keeps the accent for the
+    // refusal below, which is the one that needs doing something about.
     Text(
       text = stringResource(R.string.sets_install_warnings),
       style = MaterialTheme.typography.bodySmall,
       color = Ink.muted,
     )
+  } else {
+    SectionKicker(text = pluralStringResource(R.plurals.sets_install_errors, messages.size, messages.size))
   }
   messages.forEach { message ->
     Text(
@@ -303,6 +318,26 @@ private fun Header(menu: @Composable () -> Unit) {
     style = MaterialTheme.typography.bodySmall,
     color = Ink.muted,
     modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp),
+  )
+}
+
+/**
+ * A [SectionKicker] at the screen's own gutter.
+ *
+ * Only the padding is local: what a kicker *is* — ten sp, tracked out,
+ * semibold, in the accent — belongs to the design system, and a second
+ * spelling of it here is how the app drifted from the prototype in the first
+ * place (`docs/design-handover.md`).
+ */
+@Composable
+private fun Kicker(text: String) {
+  SectionKicker(
+    text = text,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(horizontal = Modernist.x4)
+        .padding(top = Modernist.x3, bottom = Modernist.x1),
   )
 }
 

@@ -1,11 +1,14 @@
 package de.drehtuer.dinfinity.feature.sets
 
 import android.content.Context
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
@@ -30,11 +33,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 import java.io.File
 import java.nio.file.Files
 
@@ -46,6 +51,9 @@ import java.nio.file.Files
  * two answers to one question.
  */
 @RunWith(RobolectricTestRunner::class)
+// The die pictures are a `Canvas`, and a test that reads a pixel back needs a
+// real rasteriser rather than Robolectric's stub one.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class SetDetailScreenTest {
   @get:Rule
   val compose = createComposeRule()
@@ -130,6 +138,50 @@ class SetDetailScreenTest {
     compose.onNodeWithText("A. Smith").assertIsDisplayed()
     compose.onNodeWithText("CC-BY-4.0").assertIsDisplayed()
     compose.onNodeWithText("Turned brass and bone.").assertIsDisplayed()
+  }
+
+  @Test
+  fun `the dice are headed by a kicker that says how many there are`() {
+    // The prototype heads the grid "Dice · N · rendered from the set"
+    // (`design/dInfinityPhone.dc.html`, the Dice set screen). The count lives
+    // in the heading because that is the one place it is said.
+    write("brass", toml("brass", "Brass"))
+
+    show("brass")
+
+    compose.onNodeWithText("Dice · 1 · rendered from the set").assertIsDisplayed()
+  }
+
+  @Test
+  fun `a die is drawn in the colour its own set gives it`() {
+    // The kicker over this grid says the dice are rendered from the set, and
+    // a row of identical grey outlines would not be. What makes each picture
+    // this die rather than a die is `[die.material] color`, which is what the
+    // prototype fills its shapes with too.
+    write("brass", coloured("brass", "Brass", "#ff0000"))
+
+    show("brass")
+
+    // The whole row, scanned: where exactly the 32 dp picture lands depends on
+    // the row's padding and on how tall its two lines of text are, and none of
+    // that is what this is about. What is: the set's colour is on the screen,
+    // which it would not be if the shape were filled with `surface` the way it
+    // was before.
+    val row = compose.onNodeWithTag(SetDetailTestTags.dieOf("d6")).captureToImage().toPixelMap()
+    val painted =
+      (0 until row.width).any { x ->
+        (0 until row.height).any { y -> row[x, y] == Color.Red }
+      }
+    assertTrue("the die was not drawn in the colour its set gives it", painted)
+  }
+
+  @Test
+  fun `the report is headed by a kicker that names it`() {
+    write("runes", "format = 1\n\n[set]\nid = \"runes\"\n")
+
+    show("runes")
+
+    compose.onNodeWithText("Validation report").assertIsDisplayed()
   }
 
   @Test
@@ -375,6 +427,13 @@ class SetDetailScreenTest {
     val folder = File(root, id).apply { mkdirs() }
     File(folder, DiceSetValidator.DICE_SET_FILE).writeText(toml)
   }
+
+  /** A package whose one die names its own colour. */
+  private fun coloured(
+    id: String,
+    name: String,
+    colour: String,
+  ) = toml(id, name) + "\ncolor = \"$colour\"\n"
 
   private fun toml(
     id: String,

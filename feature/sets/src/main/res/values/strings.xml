@@ -21,6 +21,13 @@
     <item quantity="other">%1$d problems</item>
   </plurals>
 
+  <!--
+    Section kickers: the accent line that says what the block under it is
+    (`design/dInfinityPhone.dc.html`, the Dice sets screen).
+  -->
+  <string name="sets_kicker_install">Install from a URL or file</string>
+  <string name="sets_kicker_installed">Installed</string>
+
   <!-- Installing (design option 1t). -->
   <string name="sets_install">Install from a file</string>
   <string name="sets_installing">Installing…</string>
@@ -28,6 +35,11 @@
   <string name="sets_replaced">“%1$s” was replaced with this one.</string>
   <string name="sets_install_refused">Nothing was installed.</string>
   <string name="sets_install_warnings">It installed, with notes:</string>
+  <!-- %1$d is how many things the validator refused the package over. -->
+  <plurals name="sets_install_errors">
+    <item quantity="one">1 error</item>
+    <item quantity="other">%1$d errors</item>
+  </plurals>
   <string name="sets_install_close">Close</string>
 
   <!-- Set details (design options 6a and 6b). -->
@@ -41,8 +53,9 @@
   <string name="sets_detail_default">Roll these by default</string>
   <string name="sets_detail_is_default">Rolled by default</string>
   <string name="sets_detail_default_note">“d20” with no set in front of it comes from here, falling back to the built-in dice for anything this set does not define.</string>
-  <string name="sets_detail_dice">Dice</string>
-  <string name="sets_detail_report">What is wrong with it</string>
+  <!-- %1$d is how many dice the set defines. -->
+  <string name="sets_detail_dice">Dice · %1$d · rendered from the set</string>
+  <string name="sets_detail_report">Validation report</string>
   <string name="sets_detail_export">Export as zip</string>
   <string name="sets_detail_export_note">Pick a licence before sharing; it is written into diceset.toml. The zip can be uploaded to a git repository as-is.</string>
   <string name="sets_detail_license_choose">Licence — choose one</string>

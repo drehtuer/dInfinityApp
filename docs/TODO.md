@@ -1015,6 +1015,21 @@ The figures are reported in every PR description either way.
       inference is recorded in `docs/design-handover.md` rather than taken as
       settled. `ModernistTest` asserts the eight that *are* written down, so
       the rule itself cannot drift
+- [ ] **A tag needs a ramp, and only two of the six accents have one.** The
+      design system ships exact ramps for `--color-accent` (vermilion) and
+      `--color-accent-2` (coral), and `.tag-accent` is built from two ends of
+      one: `-100` filled, `-800` lettered. The app lets a player choose six
+      accents, and `AccentColor` already derives what it needs for the other
+      four the way the design derives an ad-hoc accent
+      (`design/Logo.dc.html`: `color-mix(in srgb, accent 58%, text)`) — but
+      that rule makes the *deep* end only. Nothing in the design says how to
+      make the pale end, and it cannot be mixed from the accent and the
+      ground: `--color-accent-100` is `#fff2ef`, which is lighter in the red
+      channel than either. So either a tag uses the literal ramp and stops
+      following the accent the player chose, or it derives both ends and
+      stops matching the prototype for the accent the prototype was drawn in.
+      **Until this is answered the app has no filled accent tag**, which is
+      the badge that says a dice set has an update
 
 - [ ] **The picker is a list of rows; the prototype's `1u` is a grid of cards.**
       The thumbnails landed in the list that was already there — one 44 × 64 dp

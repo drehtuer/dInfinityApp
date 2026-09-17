@@ -185,6 +185,7 @@ class ModernistTest {
     // on a size from elsewhere, a button label at Material's own.
     assertEquals(".card-title", rule("\\.card-title"), sp(Modernist.Type.cardTitle), 0.0)
     assertEquals(".btn", rule("\\.btn"), sp(Modernist.Type.button), 0.0)
+    assertEquals(".card-kicker", rule("\\.card-kicker"), sp(Modernist.Type.kicker), 0.0)
   }
 
   @Test

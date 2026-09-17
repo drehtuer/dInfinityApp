@@ -19,7 +19,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -31,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -45,6 +45,8 @@ import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 import de.drehtuer.dinfinity.ui.common.DieSilhouette
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.SectionKicker
 
 /**
  * One dice set, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`).
@@ -144,7 +146,11 @@ private fun Body(
     item { Default(presenter) }
     item { Manage(row, presenter) }
     item { Export(presenter) }
-    item { HorizontalDivider() }
+    // The 2 dp rule, not Material's hairline. This is a boundary *between
+    // blocks* — the prototype draws it under the facts and above the dice —
+    // and `HorizontalDivider` only ever draws the 1 dp line that separates
+    // rows inside one (`ui/common/Rule.kt`).
+    item { Rule() }
     if (row.broken) report(row.report) else dice(row.set?.dice.orEmpty())
   }
 }
@@ -301,6 +307,7 @@ private fun Manage(
 private fun Export(presenter: SetDetailPresenter) {
   val state = presenter.state
   if (!state.personal) return
+  Rule()
   Column(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag(SetDetailTestTags.EXPORT),
     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -403,8 +410,11 @@ private fun LicenseChooser(
 /** Every die the set defines, drawn as the outline a player recognises. */
 private fun LazyListScope.dice(dice: List<Die>) {
   item {
-    Kicker(
-      text = stringResource(R.string.sets_detail_dice),
+    SectionKicker(
+      // The count is in the kicker, where the prototype puts it: the heading
+      // of the block is the one place it says how big the block is, and a
+      // second line saying "7 dice" would be the same fact twice.
+      text = stringResource(R.string.sets_detail_dice, dice.size),
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
   }
@@ -428,9 +438,16 @@ private fun DieLine(die: Die) {
       // faces it has — so the outline follows the solid rather than the
       // values printed on it. A d6 of skulls is still a cube.
       sides = Sides.Numeric(die.shape.faceCount),
-      // The ground the system has, not Material's lavender `surfaceVariant`,
-      // and the same ink the row is written in, thinned.
-      fill = MaterialTheme.colorScheme.surface,
+      // **The set's own colour**, which is what makes this a picture of *this*
+      // die rather than of a die. The prototype fills each shape in the grid
+      // with `{{ s.color }}` for the same reason, and the heading above says
+      // these are rendered from the set — a claim a row of identical grey
+      // outlines did not meet (`design/dInfinityPhone.dc.html`, the Dice set
+      // screen).
+      fill = Color(die.material.colorArgb),
+      // The ink the row is written in, thinned. It stays the outline rather
+      // than following the die, because a pale die on the pale ground would
+      // otherwise have no edge at all.
       ink = Ink.muted,
       modifier = Modifier.size(32.dp),
     )
@@ -457,7 +474,7 @@ private fun LazyListScope.report(report: List<ValidationMessage>) {
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      Kicker(stringResource(R.string.sets_detail_report))
+      SectionKicker(stringResource(R.string.sets_detail_report))
       Text(
         text = stringResource(R.string.sets_detail_report_note),
         style = MaterialTheme.typography.bodySmall,
@@ -492,6 +509,14 @@ private fun Field(
   }
 }
 
+/**
+ * The quiet name of one fact — "Author", "Licence", "Installed from".
+ *
+ * Not a [SectionKicker], although both are small: a kicker names a *part of
+ * the screen* and is the accent's one job on a page of plain text, while this
+ * names the line beside it and stays in the muted ink. The prototype's
+ * metadata grid sets these at `opacity:.6`, not in the accent.
+ */
 @Composable
 private fun Label(
   text: String,
@@ -501,29 +526,6 @@ private fun Label(
     text = text,
     style = MaterialTheme.typography.labelSmall,
     color = Ink.muted,
-    modifier = modifier,
-  )
-}
-
-/**
- * A section heading: `h6` in the design system, which the prototype writes as
- * `font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:accent`.
- *
- * Not the same thing as [Label]. A kicker names a *part of the screen* and is
- * the accent's one job on a page of plain text; a label names the fact beside
- * it and stays quiet.
- */
-@Composable
-private fun Kicker(
-  text: String,
-  modifier: Modifier = Modifier,
-) {
-  Text(
-    text = text.uppercase(),
-    style = MaterialTheme.typography.labelSmall,
-    fontWeight = FontWeight.SemiBold,
-    letterSpacing = Modernist.kickerTracking,
-    color = MaterialTheme.colorScheme.primary,
     modifier = modifier,
   )
 }
