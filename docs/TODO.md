@@ -1168,7 +1168,6 @@ The figures are reported in every PR description either way.
       of one channel on a sheen. Worth an hour with Filament's JNI source
       before it is worth anything else
 
-
 - [ ] **Does the sound go?** The design's Settings has Appearance, Table view,
       Power-saving mode, Haptics, Division and Accent colour, and nothing else:
       haptics is the only feedback toggle it offers, and the Impact sound
