@@ -12,23 +12,26 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.Ink
@@ -160,7 +163,6 @@ private fun Form(
     )
     Tables(state = state) { pin -> presenter.choose { copy(tablePin = pin) } }
 
-    Favourite(on = state.favourite) { chosen -> presenter.choose { copy(favourite = chosen) } }
     Buttons(state = state, presenter = presenter, onRollNow = onRollNow)
   }
 }
@@ -192,29 +194,6 @@ private fun Title(
     )
   }
   Rule()
-}
-
-@Composable
-private fun Favourite(
-  on: Boolean,
-  onChange: (Boolean) -> Unit,
-) {
-  Row(
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .toggleable(value = on, role = Role.Checkbox, onValueChange = onChange)
-        .testTag(EditorTestTags.FAVOURITE),
-  ) {
-    Checkbox(checked = on, onCheckedChange = null)
-    Text(
-      text = stringResource(R.string.editor_favourite),
-      style = MaterialTheme.typography.bodyLarge,
-      color = MaterialTheme.colorScheme.onBackground,
-    )
-  }
 }
 
 /**
@@ -304,10 +283,13 @@ private fun Icons(
 /**
  * The colour a roll's mark prints in (design option 9d).
  *
- * The same six the interface spends anywhere, plus none. A free picker would
- * let somebody choose a colour that vanishes against the ground, which is the
- * reason the accent is a fixed palette in the first place
- * (`docs/architecture.md`, decision 22).
+ * Twelve tags spanning the hue circle, none at all — which follows the accent
+ * — and one somebody types themselves. The twelve are [RollColour]'s and the
+ * custom one is a hex field beside them, and **both go through the same
+ * contrast clamp** when the mark is drawn, which is what makes a free colour
+ * safe here where `docs/architecture.md` decision 22 refused one: the reason a
+ * picker was refused was a colour nobody could see, and a clamped colour is
+ * always one somebody can (`RollColour`, and `core/model`'s `AccentRamp`).
  */
 @Composable
 private fun Colours(
@@ -315,27 +297,69 @@ private fun Colours(
   onPick: (Int?) -> Unit,
 ) {
   Field(stringResource(R.string.editor_colour)) {
-    Row(
+    FlowRow(
       horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
-      verticalAlignment = Alignment.CenterVertically,
+      verticalArrangement = Arrangement.spacedBy(Modernist.x1),
     ) {
-      Swatch(colour = null, chosen = chosen == null, onPick = { onPick(null) }, tag = EditorTestTags.colourOf(null))
-      AccentColor.entries.forEach { accent ->
+      Swatch(
+        colour = null,
+        chosen = chosen == null,
+        label = stringResource(R.string.colour_none),
+        onPick = { onPick(null) },
+        tag = EditorTestTags.colourOf(null),
+      )
+      RollColour.entries.forEach { tag ->
         Swatch(
-          colour = Color(accent.argb),
-          chosen = chosen == accent.argb,
-          onPick = { onPick(accent.argb) },
-          tag = EditorTestTags.colourOf(accent.argb),
+          // Drawn as it will be drawn on the list: a swatch showing one colour
+          // and a mark printing another would be a picker that lies.
+          colour = markColour(tag.argb),
+          chosen = chosen == tag.argb,
+          label = stringResource(tag.label),
+          onPick = { onPick(tag.argb) },
+          tag = EditorTestTags.colourOf(tag.argb),
         )
       }
     }
+    Custom(chosen = chosen, onPick = onPick)
   }
+}
+
+/**
+ * A colour of somebody's own, typed as `#rrggbb`.
+ *
+ * A field rather than a wheel because the system colour picker arrives with
+ * the accent's (`docs/TODO.md`, Step 4.9) and a hex code is what somebody
+ * copying a colour off a character sheet already has. Half-typed text simply
+ * does not choose anything — it is somebody in the middle of typing, not a
+ * mistake to shout about.
+ */
+@Composable
+private fun Custom(
+  chosen: Int?,
+  onPick: (Int?) -> Unit,
+) {
+  // A colour that is not one of the twelve is one somebody typed, and the
+  // field shows it back to them; one of the twelve leaves the field empty.
+  val own = chosen?.takeIf { RollColour.of(it) == null }
+  var typed by rememberSaveable(chosen) { mutableStateOf(own?.let(RollColour.Companion::hexOf).orEmpty()) }
+  OutlinedTextField(
+    value = typed,
+    onValueChange = { text ->
+      typed = text
+      RollColour.parseHex(text)?.let(onPick)
+    },
+    singleLine = true,
+    label = { Text(stringResource(R.string.editor_colour_custom)) },
+    placeholder = { Text(stringResource(R.string.editor_colour_custom_hint)) },
+    modifier = Modifier.fillMaxWidth().testTag(EditorTestTags.COLOUR_CUSTOM),
+  )
 }
 
 @Composable
 private fun Swatch(
   colour: Color?,
   chosen: Boolean,
+  label: String,
   onPick: () -> Unit,
   tag: String,
 ) {
@@ -351,7 +375,8 @@ private fun Swatch(
           .border(
             width = Modernist.rule,
             color = if (chosen) MaterialTheme.colorScheme.onBackground else Ink.divider,
-          ).clickable(onClick = onPick)
+          ).clickable(role = Role.RadioButton, onClickLabel = label, onClick = onPick)
+          .semantics { contentDescription = label }
           .testTag(tag),
     ) { }
   }
@@ -460,7 +485,7 @@ object EditorTestTags {
   const val SCREEN: String = "editor:screen"
   const val NAME: String = "editor:name"
   const val ODDS: String = "editor:odds"
-  const val FAVOURITE: String = "editor:favourite"
+  const val COLOUR_CUSTOM: String = "editor:colour:custom"
   const val SAVE: String = "editor:save"
   const val ROLL_NOW: String = "editor:roll-now"
   const val DELETE: String = "editor:delete"

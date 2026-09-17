@@ -13,7 +13,8 @@ package de.drehtuer.dinfinity.core.collection
  *
  * What it does not carry is as much of the point as what it does. No colours
  * of the app's choosing, no use counts, no timestamps, no seeds, no image
- * files — a collection is what somebody wrote, not what the app made of it.
+ * files, and no sort order — the rolls travel in the order they are in — a
+ * collection is what somebody wrote, not what the app made of it.
  *
  * @param format the version of this file format. Written as
  *   [CollectionLimits.FORMAT]; a file claiming any other number is refused
@@ -51,11 +52,16 @@ data class CollectionGroup(
  * @param formula text, and validated as text by the same parser the formula
  *   field uses. A set reference naming a set that is not installed is kept and
  *   flagged rather than rewritten — the set may be installed tomorrow.
+ *
+ * There is no field for where a roll sits in its group's list. **The order is
+ * the file's own order** — the rolls arrive in it and are written back in it —
+ * which is what a person editing the file by hand would expect and the one
+ * spelling that cannot disagree with itself (`docs/dice-notation.md`,
+ * "Export and import").
  */
 data class CollectionRoll(
   val group: String,
   val name: String,
   val formula: String,
   val icon: String = "",
-  val favourite: Boolean = false,
 )

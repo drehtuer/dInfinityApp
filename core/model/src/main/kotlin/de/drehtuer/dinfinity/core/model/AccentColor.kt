@@ -1,63 +1,88 @@
 package de.drehtuer.dinfinity.core.model
 
 /**
- * The accent the interface is painted with, chosen in Settings.
+ * The six accents Settings offers as swatches, of which the first is what a
+ * new install is painted with.
  *
- * It is a fixed palette rather than a free colour picker, for two reasons. The
- * Modernist system spends its colour in one place and relies on that one
- * colour carrying meaning (`design/README.md`); a slider that lets someone
- * pick a pale yellow would produce an app whose most important control is
- * invisible. And every entry here is checked against both grounds by
- * `AccentColorTest`, which a free picker could not be.
+ * They are **presets and not the whole palette**: the player may also hand the
+ * app a colour of its own ([AccentChoice.Custom]), and both go through the
+ * same clamp before anything is painted with them ([AccentRamp]). So what
+ * these six are is a shortcut to a good answer rather than a fence around a
+ * bad one — the fence is the clamp, and it holds for every colour rather than
+ * for six (`docs/architecture.md`, "Settings").
+ *
+ * Not one of them is safe on both grounds as it stands: [LightBlue] is 2.41:1
+ * on paper and [Magenta] and [Cobalt] are under 3:1 on a dark page. That is
+ * not a fault in the list — it is what the clamp is for, and it is why the six
+ * are the design's colours rather than six colours chosen for passing a test.
  *
  * The mark in the app icon does not follow this setting — it is the identity,
- * and it stays [Sky] (`design/Logo.dc.html`).
+ * and it stays the blue of the infinity in the mark (`design/Logo.dc.html`).
  *
- * @param id the stable key written to storage. Never rename one: an unknown id
- *   read back falls to [Default], so a rename silently resets everybody.
- * @param argb the accent itself, `--color-accent`.
- * @param pressedOnLightArgb the deeper step used for pressed states and for
- *   body copy on a light ground, where the accent alone reaches only 3:1.
- * @param pressedOnDarkArgb the same role on a dark ground.
- *
- * On a dark ground [Vermilion] and [Coral] deepen, because that is what their
- * ramp step in the design system is, while the derived four lighten, because
- * that is what mixing towards the text colour does there. Both read as
- * "pressed" and both stay above 3:1; the requirement is legibility, not that
- * every accent move in the same direction.
+ * @param id the stable key written to storage, which is **not** the name: two
+ *   of these carry an id from the palette they replaced, because the colour a
+ *   player chose is the same colour and re-labelling it must not move it.
+ * @param argb the colour on the swatch, before the clamp.
  */
 enum class AccentColor(
-  val id: String,
-  val argb: Int,
-  val pressedOnLightArgb: Int,
-  val pressedOnDarkArgb: Int,
-) {
-  /** `--color-accent`, with the CSS ramp's own 700 and 600 steps. */
-  Vermilion("vermilion", 0xFFEC3013.toInt(), 0xFFAE1800.toInt(), 0xFFDD2B0F.toInt()),
+  override val id: String,
+  override val argb: Int,
+) : AccentChoice {
+  /** The default, and the one the prototype's Settings opens on. */
+  LightBlue("light-blue", 0xFF38A8DC.toInt()),
 
-  /** `--color-accent-2`, likewise straight from the ramp. */
-  Coral("coral", 0xFFE15B47.toInt(), 0xFF9E3526.toInt(), 0xFFC94B39.toInt()),
+  /**
+   * The design system's own `--color-accent`, under the name the system gives
+   * it. Its id is the old palette's `vermilion` because it is the same
+   * `#EC3013`: everybody who picked it keeps it, and only the label changed.
+   */
+  ModernistRed("vermilion", 0xFFEC3013.toInt()),
 
-  // The system defines exact ramps only for the two accents above. The rest
-  // are derived the way the design derives an ad-hoc accent
-  // (`design/Logo.dc.html`): `color-mix(in srgb, accent 58%, text)`.
-  // `AccentColorTest` re-computes them, so they cannot drift by hand.
+  Magenta("magenta", 0xFFC2186F.toInt()),
 
-  /** The identity's blue — the colour of the infinity in the mark. */
-  Sky("sky", 0xFF1F92CC.toInt(), 0xFF1F6183.toInt(), 0xFF78BADC.toInt()),
+  Cobalt("cobalt", 0xFF1D5FD4.toInt()),
 
-  Moss("moss", 0xFF3F8F29.toInt(), 0xFF326024.toInt(), 0xFF8BB97D.toInt()),
+  Pine("pine", 0xFF0F7A50.toInt()),
 
-  Amber("amber", 0xFFB26A00.toInt(), 0xFF754A0C.toInt(), 0xFFCDA366.toInt()),
-
-  Violet("violet", 0xFF7A5AF8.toInt(), 0xFF54419C.toInt(), 0xFFAD9AF5.toInt()),
+  /** Deeper than the old `amber`, and keeping its id for the same reason. */
+  Amber("amber", 0xFFC07000.toInt()),
   ;
 
   companion object {
     /** What the design ships with, and what an unreadable setting falls back to. */
-    val Default: AccentColor = Vermilion
+    val Default: AccentColor = LightBlue
+
+    /**
+     * The four ids the 2026-09-17 palette dropped, each mapped to the survivor
+     * nearest it.
+     *
+     * Falling back to [Default] instead — which is what an unknown id does,
+     * and what these would have done — would silently repaint every phone that
+     * had chosen one of them, in the *same* release that changed the default.
+     * Somebody who asked for a green app would have opened a blue one and had
+     * no way of knowing why. The mapping is applied once, on read; the next
+     * write stores the survivor's id, so it costs one lookup per install and
+     * then nothing.
+     *
+     * Nearest is measured rather than eyeballed: the smallest CIE Lab distance
+     * to any surviving preset, which is unambiguous in all four cases —
+     * `coral` (`#E15B47`) is 28 from Modernist red and 35 from Amber, `sky`
+     * (`#1F92CC`) is 9 from Light blue and 46 from Cobalt, `moss` (`#3F8F29`)
+     * is 31 from Pine and 71 from Amber, and `violet` (`#7A5AF8`) is 30 from
+     * Cobalt and 73 from Magenta.
+     */
+    private val RETIRED: Map<String, AccentColor> =
+      mapOf(
+        "coral" to ModernistRed,
+        "sky" to LightBlue,
+        "moss" to Pine,
+        "violet" to Cobalt,
+      )
 
     /** Storage is a string, and strings from disk are not to be trusted. */
-    fun ofId(id: String?): AccentColor = entries.firstOrNull { it.id == id } ?: Default
+    fun ofId(id: String?): AccentColor = entries.firstOrNull { it.id == id } ?: RETIRED[id] ?: Default
+
+    /** Which preset a retired id becomes, or null if it was never one. */
+    fun retired(id: String): AccentColor? = RETIRED[id]
   }
 }

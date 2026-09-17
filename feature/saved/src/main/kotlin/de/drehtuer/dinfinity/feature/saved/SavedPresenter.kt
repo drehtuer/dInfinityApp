@@ -41,6 +41,17 @@ class SavedPresenter(
 
   private var active: String = activeGroupId
 
+  /**
+   * The order a drag has left the list in, until the database says the same.
+   *
+   * The list reorders live under the finger and is written down when the
+   * finger lifts, so between those two moments what the screen shows is not
+   * yet what the database holds. Without this, an emission arriving mid-drag —
+   * from a `used` count, an import, anything — would snap the row back under
+   * the finger that is moving it.
+   */
+  private var order: List<String>? = null
+
   init {
     scope.launch {
       library.groups.ensureUnfiled(unfiledName)
@@ -52,6 +63,9 @@ class SavedPresenter(
   /** The player chose a different group. */
   fun open(groupId: String) {
     active = groupId
+    // Another group is another list; an order held for this one means nothing
+    // there.
+    order = null
     onActiveGroup(groupId)
     state = state.copy(activeGroupId = groupId, rolls = state.allRolls.rollsOf(groupId))
     showGroups(false)
@@ -62,7 +76,34 @@ class SavedPresenter(
     state = state.copy(switching = showing)
   }
 
-  /** One more use of a roll, which moves it up the list. */
+  /**
+   * The row under the finger is [onto]; put [rollId] there.
+   *
+   * Live rather than on release, which is what makes a drag readable: the list
+   * makes room as the finger arrives rather than rearranging itself once it
+   * has gone. Nothing is written down here — [settle] does that when the drag
+   * ends, because a drag across a screenful of rolls would otherwise be thirty
+   * transactions nobody asked for.
+   */
+  fun move(
+    rollId: String,
+    onto: Int,
+  ) {
+    val shown = state.rolls
+    val moving = shown.firstOrNull { it.roll.id == rollId } ?: return
+    val next = SavedOrder.moved(shown, moving, onto)
+    if (next === shown) return
+    order = next.map { it.roll.id }
+    state = state.copy(rolls = next)
+  }
+
+  /** The finger lifted: the order the list is in is now the order it is in. */
+  fun settle() {
+    val settled = order ?: return
+    scope.launch { library.rolls.reorder(settled) }
+  }
+
+  /** One more use of a roll, which the statistics count and the order ignores. */
   fun used(rollId: String) {
     scope.launch { library.rolls.used(rollId) }
   }
@@ -78,6 +119,9 @@ class SavedPresenter(
   ) {
     // A group that has been deleted under us is not a group to keep showing.
     if (groups.none { it.id == active }) active = SavedRollGroup.UNFILED_ID
+    // Once the database reports the order a drag left, the drag is over in
+    // every sense and the override has nothing left to say.
+    if (rolls.filter { it.groupId == active }.map(SavedRoll::id) == order) order = null
     val byId = groups.associateBy(SavedRollGroup::id)
     val entries =
       rolls.map { roll ->
@@ -113,7 +157,23 @@ class SavedPresenter(
    */
   private fun resolves(formula: String): Boolean = SavedFormula.resolves(formula, catalog)
 
-  private fun List<SavedEntry>.rollsOf(groupId: String): List<SavedEntry> = filter { it.roll.groupId == groupId }
+  /**
+   * One group's rolls, in the order the database has them — or in the order a
+   * drag has left them, while that drag is still being written down.
+   *
+   * The override is dropped the moment it stops fitting: a list that has
+   * gained or lost a roll since the drag is a different list, and holding an
+   * order for it would hide whatever arrived.
+   */
+  private fun List<SavedEntry>.rollsOf(groupId: String): List<SavedEntry> {
+    val mine = filter { it.roll.groupId == groupId }
+    val places = order?.withIndex()?.associate { (at, id) -> id to at }
+    return if (places == null || mine.any { it.roll.id !in places }) {
+      mine
+    } else {
+      mine.sortedBy { places.getValue(it.roll.id) }
+    }
+  }
 }
 
 /** One saved roll as the list shows it. */

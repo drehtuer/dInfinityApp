@@ -32,10 +32,10 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#275**. `v0.1.0` is cut from #268 and is two
-fixes behind. In flight: the design pass of 2026-09-17, as three stacked PRs —
-the import and the roll screen (#276), dice sets and the face designer (#277),
-saved rolls, settings and navigation (#278).
+`main` has everything through **#278**. `v0.1.0` is cut from #268 and is two
+fixes behind. In flight: the accent, on `feature/accent` — six new presets, a
+colour of the player's own behind the contrast clamp, and the filled accent tag
+that clamp finally makes drawable.
 
 ## Done
 
@@ -70,14 +70,27 @@ over it against the prototype. What is left on each is in `docs/TODO.md`.
 every question the app was waiting on and decided a good deal nobody had asked
 about, so each screen's list has gained work that is code rather than an eye:
 plates over the table, a counting plate, per-set physical properties, the
-designer's Solid tab, dragged saved rolls and an accent picker behind a
-contrast clamp.
+designer's Solid tab, plates over the table, and a table-view setting.
+
+**The accent is done**: six presets, a colour of the player's own, and
+`AccentRamp.clamp` between the choice and the paint — which turned the
+palette's accessibility claim from six measured colours into a property that
+holds for every colour there is.
+
+**Saved rolls are done**: pinning is gone, the list is dragged into the
+player's own order and is its own scroll box, a roll wears one of twelve colour
+tags or one typed as a hex code, every colour goes through that same clamp, and
+database version 6 carries what a phone already has across — favourites first,
+then by recent use, once.
 
 **Navigation is done.** Back off the tray is two presses with the design's
 toast between them, a header chevron climbs rather than retraces, and the safe
 area is applied once by the graph instead of by each screen — which is what
 Settings had been forgetting to do under the Pixel 10a's status bar
 (`docs/architecture.md`, "Navigation" and "One safe area, applied once").
+
+**The dice are lit by a room**, reflect one, wear a lacquer and sit on the
+felt rather than over it, and a set can say how far into a die you can see.
 
 **Step 5 is the real remaining work** — see Known risks.
 
@@ -119,8 +132,8 @@ thing feels right is still a person's call.
   twice.
 - **The designer answered, on 2026-09-17**, and the blocking question is gone:
   accent text at body size is `--color-accent-700` and both ends of the ramp
-  are mixed from the accent the player picked, so the filled accent tag can be
-  drawn for any of them. The roll screen is **one picture**, not bands. What
+  are mixed from the accent the player picked. The filled accent tag is drawn —
+  it is what says "Update available" on a dice-set row. The roll screen is **one picture**, not bands. What
   the pass did *not* answer — percent typography, whether a refusal keeps its
   words, a draggable stamp, "Doodle this die", where a table look's texture says
   its package, how a photo crops — stays open, and the design added six of its

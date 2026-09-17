@@ -658,9 +658,32 @@ rolls are gone.
 
 Two things the screen does *not* decide. Whether a formula still resolves is
 re-checked every time the list is drawn rather than stored, because the set it
-names can be uninstalled between one drawing and the next; and the order —
-favourites first, then by recent use — is SQL's, because it is what the list
-*is* (`docs/dice-notation.md`, "Saved rolls").
+names can be uninstalled between one drawing and the next; and the order — the
+one the player dragged the list into, `sort_order` — is SQL's, because it is
+what the list *is* (`docs/dice-notation.md`, "Saved rolls").
+
+**A drag is the one thing the screen holds that the database does not yet.**
+The list reorders live under the finger and is written down when the finger
+lifts, so between those two moments the presenter is showing an order the
+database has not been told about; `move` keeps it and `settle` writes it, in
+one transaction. Until the database reports that order back, an emission
+arriving for any other reason — a use count, an import — is drawn in the order
+the drag left, because a row that snapped back under the finger moving it
+would be the screen arguing with the player. What a reorder *comes to* is
+`SavedOrder`, plain Kotlin with no Compose in it: the list, the row being
+dragged and where the finger is, to the list to draw. The gesture and the
+drawing are the screen's, and the row that moves is the one under the pointer
+rather than the one the drag began on.
+
+**The list is its own scroll box.** The title bar, the group switcher and the
+line above the list stay where they are; only the rolls move. A list that
+scrolled the whole screen would take the group name away exactly when somebody
+is looking for it.
+
+Reordering is offered twice, because a drag is not available to everybody: the
+grip carries **Move up** and **Move down** as custom accessibility actions, so
+a list that can be ordered with a finger can also be ordered with TalkBack
+("Accessibility", below).
 
 | Control | Calls | What changes |
 | --- | --- | --- |
@@ -994,7 +1017,7 @@ numbers beside it.
 | --- | --- | --- |
 | the name field | `name` | what it will be called; blank means the formula is its name |
 | the formula field | `formula` | the formula, its error and its odds, all from one plan |
-| icon, colour, group, table, favourite | `choose` | that one field and nothing else — none of them needs re-validating |
+| icon, colour, group, table | `choose` | that one field and nothing else — none of them needs re-validating |
 | **New group** | `GroupPresenter.create` | the group sheet opens; the group it writes becomes this roll's |
 | **Save roll** | `save` | the roll is written down, and the editor leaves |
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
@@ -1149,18 +1172,57 @@ menu row — appears at once, because a menu is not a roll.
 
 **The accent is no longer a closed palette, and the clamp is what makes that
 safe.** `AccentColor` was six entries checked against both grounds by a test,
-and its KDoc says why a free picker was refused: a slider that offers a pale
+and its KDoc said why a free picker was refused: a slider that offers a pale
 yellow produces an app whose most important control is invisible. The design of
-2026-09-17 keeps the six as presets — **Light blue `#38a8dc`** by default, then
+2026-09-17 keeps six as presets — **Light blue `#38a8dc`** by default, then
 Modernist red `#ec3013`, Magenta `#c2186f`, Cobalt `#1d5fd4`, Pine `#0f7a50`
-and Amber `#c07000` — and adds the system colour picker behind **a contrast
-clamp**: whatever comes back is pushed toward the ground it will be read
-against until it meets the bar, and it is the clamped value that feeds
-`--color-accent` and its ramp. The swatch and the hex label still show the
-colour the player actually chose, because a picker that silently shows
+and Amber `#c07000` — and adds a colour of the player's own behind **a contrast
+clamp**. `AccentRamp.clamp` pushes whatever arrives away from the ground it
+will be read against, in ten steps towards black on paper or white on a dark
+page, and stops at the first that clears 3:1; that clamped value is what feeds
+`--color-accent` and the ramp mixed from it. The swatch and the hex label still
+show the colour the player actually chose, because a picker that silently shows
 something else is a picker nobody believes. What used to be a test over six
-fixed entries becomes a test over the clamp — which is the stronger statement,
-since it holds for every colour rather than for six.
+fixed entries is a test over the clamp — the stronger statement, since it holds
+for every colour rather than for six (`AccentRampTest`).
+
+The clamp lives in the **theme** rather than in Settings, so there is no second
+path to the screen: a preset and a picked colour arrive the same way and the
+one that is too pale is deepened either way. Light blue itself is 2.41:1 on
+paper, so the presets are not exempt and are not meant to be — they are the
+design's colours, not six colours chosen for passing a test.
+
+An accent is therefore **not one colour but a ramp on a ground**:
+`color-mix(accent 16 %, bg)` and `28 %` at the pale end, `86 / 58 / 40 %`
+towards `--color-text` at the deep one. Both ends are mixed from the accent the
+player picked, against the ground's own page and ink rather than against black
+and white, which is what makes one rule resolve on both grounds — and what
+finally makes the filled accent tag drawable for an accent the design system
+ships no ramp for (`ui/common`'s `TagKind.Accent`). The consequence worth
+knowing: **Modernist red's pressed step is now the mix rather than the
+stylesheet's `#ae1800`.** One rule with an exception in it for the one accent
+that has a published ramp is a rule no test can hold, and the difference is a
+shade.
+
+**The stored ids changed, and four of the six are gone.** An unknown id falls
+back to the default, which would have repainted every phone that had chosen
+one of those four — in the same release that changed the default, with nothing
+on screen to say why. So `AccentColor` carries a map from each retired id to
+the surviving preset nearest it in CIE Lab: `coral` → Modernist red, `sky` →
+Light blue, `moss` → Pine, `violet` → Cobalt. It is applied once, on read, and
+the next write stores the survivor. The two ids that survived, `vermilion` and
+`amber`, kept their *ids* while changing their *names* — an id is storage and a
+name is language, and re-labelling a colour must not move anybody's choice.
+
+**Android has no colour picker to send anybody to.** The prototype's
+`<input type="color">` is the browser's, and there is no platform equivalent to
+borrow, so Settings draws the picker the app already has: hue, depth and
+brightness over `designer`'s `Ink`, which is what the face designer offers and
+what a JVM test already holds (`docs/face-designer.md`, "A colour beyond the
+twelve"). That is why `feature/settings` depends on `:designer` — the same
+dependency `feature/sets` and `feature/tables` already take, and for the same
+reason: a second transcription of what a hue is would be a second answer to one
+question.
 
 **There is no longer a sound switch in the design.** The prototype's Settings
 has Appearance, Table view, Power-saving mode, Haptics, Division and Accent
@@ -1296,10 +1358,15 @@ written down in `docs/TODO.md` under "Open questions" with these numbers, and
 `ModernistContrastTest` holds them at the measured value so a palette edit
 cannot deepen the shortfall without failing.
 
-Every accent in the palette clears 3:1 against both grounds, and every pressed
-step clears 4.5:1 on the light one, because that step is what body copy in the
-accent uses — that is what `AccentColorTest` has always said and now says with
-the shared arithmetic.
+**The accent's own claim is a property rather than a table**, because the
+accent is whatever the player handed the app. `AccentRampTest` asserts it over
+five hundred random colours on both grounds: what is painted clears 3:1 against
+its ground, the pressed step clears 4.5:1 because that step is what body copy
+in the accent uses, and the two ends of the ramp clear 4.5:1 *against each
+other* because that pairing is what a filled accent tag is made of. The
+measured worst cases are 5.00:1 and 6.56:1, both on `#D60000` over the dark
+ground. Clamping twice is clamping once, so any layer may do it and the theme
+always does.
 
 ### What a test cannot answer
 
@@ -1553,7 +1620,7 @@ the archives an install is working through, and those came from a stranger.
 | 19 | The verdict on an instrumented run comes from its JUnit XML, not from AGP's own pass/fail | AGP 9.4.0 cannot pass a run on a device whose adb serial contains a colon — which is every device attached over WiFi debugging — so its verdict is unusable here (`docs/build-setup.md`) |
 | 20 | Release APKs are signed v2+v3, not v1 or v4 | v3 carries the proof-of-rotation record, so a lost or compromised release key can be replaced without breaking updates for anyone who already installed the app; v1 is unread above API 24 and v4 only speeds up incremental `adb install` |
 | 21 | The submitted dependency graph covers the runtime classpaths only | A graph of every configuration also carries the build's own toolchain, producing vulnerability alerts for transitives no file in this repository declares and that Dependabot therefore cannot patch; build-tool advisories ride in on the weekly AGP and Kotlin bumps instead |
-| 22 | The accent is a fixed palette of six, not a colour picker | The Modernist system spends colour in one place and relies on that colour carrying meaning; a free picker would let someone choose an accent that vanishes against the ground. Every entry is asserted at 3:1 or better against both grounds, which a picker could not be |
+| 22 | The accent is six presets **and** any colour the player likes, with a contrast clamp between the choice and the paint | The Modernist system spends colour in one place and relies on that colour carrying meaning, and a free picker lets somebody choose an accent that vanishes against the ground — which is why this used to be a closed palette of six asserted at 3:1 by a test. The clamp answers the same worry better: `AccentRamp.clamp` pushes any colour off the ground it is read against until it clears 3:1, so the guarantee becomes a property of every colour rather than a list of six, and a property is what a test can hold. It is in the theme, so a preset and a picked colour cannot take different paths. What is *shown* stays what was chosen — a swatch that answers a tap with a different colour is a control nobody can aim — and the deepening is explained in words above the grid instead |
 | 23 | The identity's blue is fixed and does not follow the accent | The mark is the app's name, not its chrome, and a launcher icon cannot follow a runtime setting in any case (`docs/assets/README.md`) |
 | 24 | SonarQube runs as the scanner in CI, not as automatic analysis | Automatic analysis cannot ingest a coverage report at all, and it ignores `sonar.issue.ignore.*`, so a reviewed finding could only be accepted by clicking it away in the web UI. It also reads a different file, so the repository had to carry two configurations that could silently disagree — and did (`docs/build-setup.md`) |
 | 25 | Coverage is reported per module, not merged into one file | Each module has exactly one JVM test task, and SonarQube merges a list of reports itself. The Android modules' reports are built by AGP rather than by a hand-written `JacocoReport` task, so nothing depends on the paths of AGP's intermediate class directories, which are not API and have moved between versions |

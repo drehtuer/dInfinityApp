@@ -329,17 +329,37 @@ class CollectionReaderTest {
   }
 
   @Test
-  fun `a favourite flag reads`() {
+  fun `a collection written before pinning went still imports`() {
+    // The design took the favourite flag out; a file somebody exported from a
+    // version that still had it must not become unreadable for carrying it.
+    // It is read as any other file, and the flag is simply not there any more.
     val loaded =
       loaded(
-        collection(rolls = """{ "group": "a", "name": "One", "formula": "1d20", "favourite": true }"""),
+        collection(
+          rolls =
+            """{ "group": "a", "name": "One", "formula": "1d20", "favourite": true },""" +
+              """{ "group": "a", "name": "Two", "formula": "1d6" }""",
+        ),
       )
 
-    assertTrue(
-      loaded.collection.rolls
-        .single()
-        .favourite,
-    )
+    assertEquals(listOf("One", "Two"), loaded.collection.rolls.map { it.name })
+  }
+
+  @Test
+  fun `the rolls arrive in the order the file has them in`() {
+    // The file's own order is the whole of what a collection says about order
+    // (`docs/dice-notation.md`, "Export and import").
+    val loaded =
+      loaded(
+        collection(
+          rolls =
+            """{ "group": "a", "name": "Third", "formula": "1d4" },""" +
+              """{ "group": "a", "name": "First", "formula": "1d6" },""" +
+              """{ "group": "a", "name": "Second", "formula": "1d8" }""",
+        ),
+      )
+
+    assertEquals(listOf("Third", "First", "Second"), loaded.collection.rolls.map { it.name })
   }
 
   @Test

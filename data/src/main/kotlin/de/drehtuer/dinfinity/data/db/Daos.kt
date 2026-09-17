@@ -353,23 +353,35 @@ interface SavedRollGroupDao {
 @Dao
 interface SavedRollDao {
   /**
-   * The rolls of one group, favourites first and then by recent use.
+   * The rolls of one group, in the order the player dragged them into.
    *
    * The ordering is in SQL rather than in Kotlin because it is what the list
-   * is: a roll used ten minutes ago belongs above one used last month, and a
-   * favourite belongs above both. A roll that has never been used sorts last
-   * among its kind, which is what `last_used_at IS NULL` does here.
+   * *is*. Nothing about use or recency comes into it: a list that reorders
+   * itself between two fights is a list nobody can point at
+   * (`docs/dice-notation.md`, "Saved rolls"). `name` only settles two rolls
+   * that somehow share a place, which an import or a restore can produce.
    */
   @Query(
     """
     SELECT * FROM saved_roll WHERE group_id = :groupId
-    ORDER BY favourite DESC, last_used_at IS NULL, last_used_at DESC, name
+    ORDER BY sort_order, name
     """,
   )
   fun inGroup(groupId: String): Flow<List<SavedRollRow>>
 
-  @Query("SELECT * FROM saved_roll ORDER BY favourite DESC, last_used_at IS NULL, last_used_at DESC, name")
+  @Query("SELECT * FROM saved_roll ORDER BY sort_order, name")
   fun all(): Flow<List<SavedRollRow>>
+
+  /** The bottom of a group's list, so a new roll lands under what is there. */
+  @Query("SELECT MAX(sort_order) FROM saved_roll WHERE group_id = :groupId")
+  suspend fun maxSortOrder(groupId: String): Int?
+
+  /** Where one roll sits, written after a drag has ended. */
+  @Query("UPDATE saved_roll SET sort_order = :order WHERE id = :id")
+  suspend fun setSortOrder(
+    id: String,
+    order: Int,
+  )
 
   @Query("SELECT * FROM saved_roll WHERE id = :id")
   suspend fun byId(id: String): SavedRollRow?

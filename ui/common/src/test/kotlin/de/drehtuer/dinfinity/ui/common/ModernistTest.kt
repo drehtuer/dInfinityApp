@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.Ground
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -34,6 +35,23 @@ class ModernistTest {
     assertEquals(space(4), Modernist.x4)
     assertEquals(space(6), Modernist.x6)
     assertEquals(space(8), Modernist.x8)
+  }
+
+  /**
+   * `core/model`'s [Ground] is the same two pages and the same two inks.
+   *
+   * It has to be written twice: the accent's clamp and its ramp are arithmetic
+   * with no Compose in them, so they live where a JVM test can measure them,
+   * and `core/model` cannot see a `Color`. Two copies of a palette is exactly
+   * what this file exists to stop, so the second one is pinned to the first
+   * here rather than trusted.
+   */
+  @Test
+  fun `the grounds the accent is clamped against are these grounds`() {
+    assertEquals(Modernist.Light.background.toArgb(), Ground.Light.backgroundArgb)
+    assertEquals(Modernist.Light.text.toArgb(), Ground.Light.textArgb)
+    assertEquals(Modernist.Dark.background.toArgb(), Ground.Dark.backgroundArgb)
+    assertEquals(Modernist.Dark.text.toArgb(), Ground.Dark.textArgb)
   }
 
   @Test

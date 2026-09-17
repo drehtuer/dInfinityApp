@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -163,6 +164,100 @@ class SavedPresenterTest {
         .roll.useCount,
     )
   }
+
+  @Test
+  fun `a move reorders the list at once and is written down when the finger lifts`() {
+    // Live under the finger, on disk on release: a drag across a screenful of
+    // rolls is one transaction rather than thirty
+    // (`docs/dice-notation.md`, "Saved rolls").
+    given("first", "second", "third")
+    val presenter = presenter()
+
+    presenter.move("third", 0)
+
+    assertEquals(listOf("third", "first", "second"), presenter.shown())
+    assertEquals(
+      "the order was written down before the drag ended",
+      listOf("first", "second", "third"),
+      stored(),
+    )
+
+    presenter.settle()
+    presenter.await("the order was never written down") { stored() == listOf("third", "first", "second") }
+  }
+
+  @Test
+  fun `a move onto the row it started on changes nothing`() {
+    given("first", "second")
+    val presenter = presenter()
+
+    presenter.move("second", 1)
+
+    assertEquals(listOf("first", "second"), presenter.shown())
+  }
+
+  @Test
+  fun `a move of a roll that is not in the list is ignored`() {
+    given("first")
+    val presenter = presenter()
+
+    presenter.move("gone", 0)
+
+    assertEquals(listOf("first"), presenter.shown())
+  }
+
+  @Test
+  fun `settling without a drag writes nothing`() {
+    given("first", "second")
+    val presenter = presenter()
+
+    presenter.settle()
+
+    assertEquals(listOf("first", "second"), stored())
+  }
+
+  @Test
+  fun `what the database says while a drag is still in the air does not snap the row back`() {
+    // A `used` count, an import, anything: an emission mid-drag must not put
+    // the row back under the finger that is moving it.
+    given("first", "second", "third")
+    val presenter = presenter()
+    presenter.move("third", 0)
+
+    presenter.used("first")
+    presenter.await("the use was never counted") {
+      presenter.state.rolls.any { it.roll.id == "first" && it.roll.useCount == 1 }
+    }
+
+    assertEquals(listOf("third", "first", "second"), presenter.shown())
+  }
+
+  @Test
+  fun `opening another group forgets an order that was never settled`() {
+    runBlocking { groupRepository.save(SavedRollGroup(id = "thorin", name = "Thorin")) }
+    given("first", "second")
+    val presenter = presenter()
+    presenter.move("second", 0)
+
+    presenter.open("thorin")
+    presenter.open(SavedRollGroup.UNFILED_ID)
+
+    assertEquals(listOf("first", "second"), presenter.shown())
+  }
+
+  private fun given(vararg ids: String) {
+    runBlocking {
+      groupRepository.ensureUnfiled("Unfiled")
+      ids.forEach { id ->
+        repository.save(SavedRoll(id = id, groupId = SavedRollGroup.UNFILED_ID, name = id, formula = "1d20"))
+      }
+    }
+  }
+
+  private fun SavedPresenter.shown(): List<String> = state.rolls.map { it.roll.id }
+
+  private fun stored(): List<String> =
+    runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map(SavedRoll::id)
 
   private fun presenter(activeGroupId: String = SavedRollGroup.UNFILED_ID) =
     SavedPresenter(

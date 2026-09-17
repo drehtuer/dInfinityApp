@@ -18,6 +18,11 @@ package de.drehtuer.dinfinity.core.model
  * @param sizeMm the die's nominal size across, before the table's capacity rule
  *   shrinks it (`docs/tables.md`).
  * @param density grams per cm³; ~1.2 is acrylic.
+ * @param translucency how much light goes *through* the body, `0` for a solid
+ *   die and `1` for one you could read a newspaper through. It is a look
+ *   rather than a physical property — nothing in the solver reads it — and the
+ *   numbers printed on a die stay opaque whatever it is, because a face you
+ *   cannot read is not a die (`docs/dice-sets.md`).
  * @param restitution bounciness.
  * @param friction surface friction. Never zero: dice-on-dice friction is what
  *   stops a pile from behaving like ball bearings
@@ -30,6 +35,7 @@ data class DieMaterial(
   val metallic: Double = 0.0,
   val sizeMm: Double = 16.0,
   val density: Double = 1.2,
+  val translucency: Double = 0.0,
   val restitution: Double = 0.3,
   val friction: Double = 0.5,
 ) {
@@ -39,6 +45,21 @@ data class DieMaterial(
    * (`docs/tables.md`), so it is derived from [sizeMm] once, here.
    */
   val boundingRadiusMm: Double get() = sizeMm / 2.0
+
+  /**
+   * How much of what is behind this die shows through it, nought to one.
+   *
+   * The same number as [translucency] with a name the renderer thinks in: what
+   * a shader wants is the coverage it writes into the alpha channel, which is
+   * the *opposite* end of the same scale. Having both ends spelled out here
+   * keeps the subtraction in one place instead of in every surface that has to
+   * do it, and keeps `docs/dice-sets.md`'s word — translucency — the one an
+   * author writes.
+   */
+  val opacity: Double get() = 1.0 - translucency
+
+  /** True for a die light passes through at all, which is a die that must be blended. */
+  val isTranslucent: Boolean get() = translucency > 0.0
 
   /**
    * The same material with every value forced inside its range.
@@ -57,6 +78,7 @@ data class DieMaterial(
       metallic = clamp(metallic, UnitRange, DieMaterial().metallic),
       sizeMm = clamp(sizeMm, SizeMmRange, DieMaterial().sizeMm),
       density = clamp(density, DensityRange, DieMaterial().density),
+      translucency = clamp(translucency, UnitRange, DieMaterial().translucency),
       restitution = clamp(restitution, RestitutionRange, DieMaterial().restitution),
       friction = clamp(friction, FrictionRange, DieMaterial().friction),
     )

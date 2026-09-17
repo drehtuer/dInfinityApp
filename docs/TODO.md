@@ -119,8 +119,8 @@ is drawn over the table"):
       things at once: the formula's dashed rule stops running the width of the
       screen and becomes an underline again, the picker and "Save a roll" stop
       sitting on bare felt, and **accent stops touching felt anywhere**, which
-      is what makes six accents over a shelf of tables safe without checking
-      thirty pairs
+      is what makes any accent over a shelf of tables safe without checking
+      every pair
 - [ ] **Build the counting plate.** Across the bottom: `COUNTING` kicker, the
       count in tabular figures, `of 20 read`, the still-possible range
       right-aligned with a `+` in accent-700 while a chain is open, and a 3 dp
@@ -240,10 +240,19 @@ groups nest one level and nothing can make them nest deeper, a roll always has
 somewhere to be, and deleting a group moves its rolls rather than deleting
 them. What is left is the screens.
 
-The list is built: the group switcher, the row-style list in favourites-first
-order, the warning on a roll whose dice are gone, the empty state, and tapping
-a roll to send its formula to the tray. Groups can be made, renamed, moved and
-deleted, from the switcher or from the editor — the same sheet in both places.
+The list is built: the group switcher, the row-style list **in the order the
+player dragged it into**, the warning on a roll whose dice are gone, the empty
+state, and tapping a roll to send its formula to the tray. Groups can be made,
+renamed, moved and deleted, from the switcher or from the editor — the same
+sheet in both places.
+
+Pinning is gone with the design pass of 2026-09-17: each row carries a grip,
+the list reorders live under the finger and is written down when it lifts, the
+list is its own scroll box under a bar and a switcher that stay put, and a roll
+wears one of twelve colour tags or one typed as a hex code — every one of them
+through a contrast clamp. `sort_order` replaced the `favourite` column in
+database version 6, and the migration translates what a phone already has once:
+favourites first, then by recent use, numbered per group.
 
 Rolls and groups are one repository each now, joined by `SavedRollLibrary` for
 the screens that need both — the split the class size had been asking for, and
@@ -257,21 +266,39 @@ extractor unpacks it, and the one `*.dinfinity.json` at its root goes through
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
 
-**From the design pass of 2026-09-17** (`docs/dice-notation.md`, "Saved rolls"):
+**Decided while building the order and the colours**, because the design left
+the choice open:
 
-- [ ] **Drag the list into order, and drop pinning.** Each entry gets a grip;
-      the list reorders live under the finger, and the row that moves is the
-      one under the pointer rather than the one the drag began on. The
-      favourite flag goes, and favourites-first with it — a favourite and a
-      roll dragged to the top were solving the same problem twice, and only one
-      of them can say which favourite comes first. `sortOrder` replaces the
-      flag in storage, and the order travels in an exported collection as the
-      file's own order
-- [ ] **Twelve colour tags and a custom one**, each through the same contrast
-      clamp as the accent. The list is ink, grey, red, deep red, orange, amber,
-      pine, teal, cobalt, violet, magenta, bone
-- [ ] **The list is its own scroll box**, under a header and a group picker
-      that stay put
+- **A new roll lands at the bottom of its group.** It is a roll somebody has
+  just made and has not placed yet; putting it at the top would move
+  everything they *had* placed down by one.
+- **A custom colour is typed as `#rrggbb`** rather than picked off a wheel. The
+  system colour picker arrives with the accent's (4.9 below), and one picker
+  for both is worth more than two that are not quite the same; a hex code is
+  also what somebody copying a colour out of a character sheet already has.
+  Half a code chooses nothing rather than something wrong.
+- **The contrast clamp is `core/model`'s**, the same one the accent goes
+  through (`AccentRamp.clamp`). It was written twice for a few hours — once
+  here and once beside the accent, because the two were built at the same time
+  — and the local copy is gone: a colour a player picks is a colour a player
+  picks, and one of them being a saved roll's rather than the interface's is
+  not a reason for a second answer.
+- **The grip carries *move up* and *move down* as accessibility actions**, so
+  the list can be ordered without a drag. What is *not* there is auto-scroll
+  while dragging past the top or bottom of the list — a row can only be
+  dragged as far as the list is showing, and moving it further takes a second
+  drag. Worth doing if a long list turns out to be tedious; not worth guessing
+  at before somebody has one.
+
+- [ ] `design/dInfinity.dc.html`'s caption for option `1r` still lists a
+      favourite among the editor's fields, and `1o`/`1p` still describe
+      favourites-first tiles. The screens themselves (`dInfinityPhone.dc.html`)
+      are right — these are captions in the imported options catalogue, and the
+      file carries a "last synced" marker, so they want fixing in the design
+      project and re-importing rather than by hand here
+- [ ] *Judge the drag on the phone:* whether a row follows the finger closely
+      enough to feel picked up rather than nudged, and whether the grip is
+      where a thumb expects it on a list the length of a character sheet
 
 ### 4.4 Dice sets — `feature/sets`
 
@@ -311,20 +338,6 @@ through.
 **From the design pass of 2026-09-17** (`docs/dice-sets.md`, "Weight,
 translucency and size, as a person sets them"):
 
-- [ ] **Draw the filled accent tag — "Update available" — at last.** It was
-      the one blocked thing in the app: `.tag-accent` is a ramp's `-100` filled
-      and `-800` lettered, the design system shipped exact ramps for two
-      accents, and nothing said how to make the *pale* end for the other four.
-      The answer is that **both ends are mixed, from the accent the player
-      picked**: `color-mix(accent 16 %, bg)` for `-100`, `28 %` for `-200`, and
-      86 / 58 / 40 % toward `--color-text` for `-600` / `-700` / `-800`. The
-      mix is against `--color-text` and `--color-bg` rather than black and
-      white, which is what makes it resolve on both grounds. So the status that
-      is a line of accent prose today becomes the tag the prototype draws
-- [ ] **A `translucency` field**, per cent and clamped, in `defaults` and per
-      die, through the validator and `DieMaterial` and into the die material —
-      with the **numerals held opaque** whatever it is. It is the one of the
-      three that the format does not already have a spelling for
 - [ ] **The Physical block on a set's detail screen** — weight in grams,
       translucency in per cent, size as a percentage of the average die.
       Weight is `density × volume`, and the volume is the one the solver
@@ -532,22 +545,8 @@ every throw filed under it (`docs/statistics.md`, per session).
 
 **From the design pass of 2026-09-17** (`docs/architecture.md`, "Settings"):
 
-- [ ] **The accent gains the system colour picker, behind a contrast clamp**,
-      and the six presets change: Light blue `#38a8dc` as the default, then
-      Modernist red `#ec3013`, Magenta `#c2186f`, Cobalt `#1d5fd4`, Pine
-      `#0f7a50`, Amber `#c07000`. `AccentColor`'s KDoc refuses a free picker
-      because a pale yellow makes the most important control invisible; the
-      clamp is the answer to that, and it turns `AccentColorTest` from six
-      fixed entries into a property that holds for every colour. **The stored
-      ids change**, so the migration is the interesting part: an id that is no
-      longer known falls back to the default, which would silently reset
-      everybody who had picked one of the four that are going
 - [ ] **A Table view row**, straight down or angled, taking effect the next
       time the roll screen opens like the other five
-- [ ] **Four across, not five.** Six swatches at today's size lay out 5 + 1
-      with one orphaned; at 44 dp on a four-column grid, six presets and a
-      custom swatch come out 4 + 3
-
 **Navigation is finished, and three things were decided while finishing it**
 (`docs/architecture.md`, "Navigation" and "One safe area, applied once"):
 
@@ -572,6 +571,23 @@ every throw filed under it (`docs/statistics.md`, per session).
   takes its `NavHostController`, so a test can hold a 58 dp status bar over
   every destination — which is the only way this could have been caught, since
   a Robolectric window has no status bar of its own.
+
+- [ ] *Done, and the three judgement calls in it:* the accent is six presets
+      and a colour of the player's own, with `AccentRamp.clamp` between the
+      choice and the paint (`docs/architecture.md`, "Settings"). **(1) The four
+      retired ids are mapped, not dropped** — `coral` → Modernist red, `sky` →
+      Light blue, `moss` → Pine, `violet` → Cobalt, each the nearest survivor
+      in CIE Lab, applied once on read. Letting them fall to the default would
+      have repainted those phones blue in the same release that changed the
+      default. `vermilion` and `amber` keep their ids and change their names,
+      because an id is storage and a name is language. **(2) Every step of the
+      ramp is mixed, for every accent** — including Modernist red, whose
+      pressed step is therefore the mix rather than the stylesheet's `#ae1800`.
+      One rule with an exception in it for the one accent that has a published
+      ramp is a rule no test can hold, and the difference is a shade.
+      **(3) Android has no colour picker to send anybody to**, so Settings
+      draws the one the face designer already has — hue, depth and brightness
+      over `designer/Ink` — rather than a second transcription of what a hue is
 
 The **developer toggle** is the last thing on that screen, and it is the one
 setting that is off on every install. It adds a debug overlay over the tray, a
@@ -1170,6 +1186,20 @@ The figures are reported in every PR description either way.
 
 ## Open questions
 
+- [ ] **Why does a six-level cubemap not upload?** The room a polished die
+      reflects is generated on the device as a 32-pixel cubemap
+      (`render/filament`'s `RoomLight`). Level nought — six faces, 24,576
+      bytes, one `setImage` — is accepted. Level one is refused:
+      `buffer overflow: (size=3072 …) smaller than specified region
+      {{0,0,0},{16,16,6}}`, where 16 × 16 × 6 × 4 is 6,144 and the buffer
+      handed over is 6,144. Both halves of that are asserted **on the device**
+      by `RoomLightUploadTest`: the level really is 6,144 bytes and the direct
+      buffer really offers all of them, and Filament still sees half. So the
+      texture ships with one level, which for a gradient costs a few per cent
+      of one channel on a sheen. Worth an hour with Filament's JNI source
+      before it is worth anything else
+
+
 - [ ] **Does the sound go?** The design's Settings has Appearance, Table view,
       Power-saving mode, Haptics, Division and Accent colour, and nothing else:
       haptics is the only feedback toggle it offers, and the Impact sound
@@ -1238,17 +1268,22 @@ blocks code:
       `Resources`, which costs its JVM tests a context. Cheap either way, and
       only worth paying once a second language exists
 
-- [ ] **A filled button's label is 3.76:1 on its own accent, and wants 4.5:1.**
+- [ ] **A filled button's label is 3.65:1 on its own accent, and wants 4.5:1.**
       `onPrimary` is the ground colour by design, so the label on **Roll**,
       **Save group** and every other filled button is the pale ink on the
-      accent. Measured against the light ground: vermilion 3.76:1, coral
-      3.25:1, sky 3.11:1, moss 3.63:1, amber 3.79:1, violet 4.05:1 — all past
-      3:1, none at the 4.5:1 that 13 sp semi-bold text asks for. On the dark
-      ground three of the six pass. Every fix is a palette change and therefore
-      a design decision: fill with the ramp's 700 step and keep the pale label,
-      keep the fill and darken the label, or make the primary action an
-      outlined button in the accent with ink text. `ModernistContrastTest`
-      holds the floor at the measured ratios so it cannot quietly get worse
+      accent. Measured on the accent **as painted** — the clamped one, which is
+      what a person meets — against the light ground: light blue 3.65:1,
+      Modernist red 3.76:1, amber 3.38:1, pine 4.79:1, magenta 5.14:1, cobalt
+      5.16:1; against the dark one 6.17:1, 3.95:1, 4.39:1, 3.10:1, 3.29:1 and
+      3.49:1. Three of the six clear 4.5:1 on paper and one does on a dark
+      page; all twelve clear 3:1, which the clamp guarantees for any colour at
+      all — including one the player picks, which is why this cannot be
+      answered by choosing better presets. Every fix is a palette change and
+      therefore a design decision: fill with the ramp's 700 step and keep the
+      pale label, keep the fill and darken the label, or make the primary
+      action an outlined button in the accent with ink text.
+      `ModernistContrastTest` holds the floor at the measured ratio so it
+      cannot quietly get worse
 - [ ] **The divider is 2.41:1 on the light ground, and Material uses the same
       token for a control's border.** `--color-divider` is the text colour at
       40 %, which is 2.41:1 on the light ground and 3.51:1 on the dark one. As

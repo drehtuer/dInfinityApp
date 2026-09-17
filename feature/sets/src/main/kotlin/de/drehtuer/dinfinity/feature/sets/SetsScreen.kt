@@ -497,19 +497,8 @@ private fun SetLine(
           // deliberate choice look like a fault.
           color = if (row.broken) Ink.accent else Ink.muted,
         )
-        // Under the status rather than replacing it: whether a set is broken or
-        // switched off is what the player can do something about first, and
-        // "there is something newer" is true whatever else the row says.
-        if (outdated) {
-          Text(
-            text = stringResource(R.string.sets_outdated),
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.testTag(SetsTestTags.outdatedOf(row.id)),
-          )
-        }
       }
-      Badges(row)
+      Badges(row, outdated)
     }
   }
 }
@@ -532,13 +521,27 @@ private fun SetLine(
  * own voice everywhere else, and it is unambiguous where the prototype's word
  * is not. The divergence is deliberate: do not "correct" it back.
  *
- * There is no "update available" badge yet. `.tag-accent` is a pale accent
- * fill, and the two ramp steps it is made of exist only for the two accents the
- * design system ships where the app offers six; until that is answered the
- * newer version says so in words under the name (`docs/design-handover.md`).
+ * **"Update available" is the filled accent tag**, and it comes first, where
+ * the prototype puts it. It used to be a line of accent prose under the name,
+ * because `.tag-accent` is a pale accent fill and nothing said how to make the
+ * pale end of a ramp for an accent the design system ships no ramp for. The
+ * design of 2026-09-17 said: both ends are mixed from the accent the player
+ * picked ([TagKind.Accent]). It is also the only one of the three that says
+ * something to *do* rather than something that is, which is what earns it the
+ * accent — the other two are a fact and a choice.
  */
 @Composable
-private fun Badges(row: SetRow) {
+private fun Badges(
+  row: SetRow,
+  outdated: Boolean,
+) {
+  if (outdated) {
+    Tag(
+      text = stringResource(R.string.sets_outdated),
+      kind = TagKind.Accent,
+      modifier = Modifier.testTag(SetsTestTags.outdatedOf(row.id)),
+    )
+  }
   if (row.isDefault) {
     Tag(
       text = stringResource(R.string.sets_tag_default),
