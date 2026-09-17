@@ -206,11 +206,45 @@ dragged, and whether that is worth the difference is a question for a phone
 ### Fill all with numbers
 
 One tap puts every face's own number on it, in the ink in the pen: the number
-the tray would print, where the tray would print it, underlined where the tray
-would underline it — a `6` on a die that also has a `9` gets its bar, and a d6's
-`6` does not (`docs/physics-and-rendering.md`, "Rendering"). It is the starting
-point for somebody who wants a numbered die to decorate rather than a blank one
-to letter.
+the tray would print, where the tray would print it, marked where the tray
+would mark it — a `6` on a die that also has a `9` gets its **trailing dot**,
+`6.`, and a d6's `6` does not (`docs/physics-and-rendering.md`, "What is drawn
+over the table"). It is the starting point for somebody who wants a numbered
+die to decorate rather than a blank one to letter.
+
+**The numbers go on in pairs, and each pair sums to n + 1.** A real die is
+numbered so that opposite faces add up: a d6 has 2 across from 5, a d20 has 1
+across from 20, a d12 has 1 across from 12. Faces are paired by opposite
+normals — which the catalogue's face order already fixes
+(`docs/dice-sets.md`, "Face order") — and the numbering follows the pairing
+rather than the order. A tetrahedron has no opposite faces at all and keeps
+1–4 at its corners.
+
+**Where a numeral sits on its face** is the face's own centroid, at a size
+taken from that face's inradius. In the design's authored 320-unit face, as
+`[centre x, centre y, size]`:
+
+| Die | Numeral |
+| --- | --- |
+| d2 | `[160, 160, 190]` |
+| d6 | `[160, 160, 180]` |
+| d8 | `[160, 200, 118]` |
+| d10 | `[160, 146, 146]` |
+| d12 | `[160, 168, 172]` |
+| d18 | `[160, 152, 124]` |
+| d20 | `[160, 200, 104]` |
+| d% | `[160, 200, 104]` |
+
+The app does not carry that table: `LabelRoom` in `core/glyphs` solves the same
+question from the face's real geometry, which is where those numbers came from
+in the first place. It is here because it is the design's answer to "how big,
+and how far up" and because a solve that disagreed with it by much would be
+wrong.
+
+**The d10's tenth face reads `0`.** Its *value* is 10 and every total, every
+graph and every statistic says 10; what is printed on the face is the `0` a
+real d10 carries, so that a d10 beside a d10-tens reads as the percentile pair
+it is.
 
 **It leaves a stamped face alone**, so pressing it twice changes nothing and a
 face somebody has already lettered by hand is not written over. A face that was
@@ -233,6 +267,21 @@ come out in two places.
 A face an author left blank stays blank, and a face whose label the font cannot
 draw gets its **value** — the one thing about a face the app can always write
 down, which is the rule the tray already follows.
+
+### Fill all with eyes
+
+A d6 and only a d6 can be pipped instead of numbered. One tap lays the standard
+pip patterns on all six faces in the ink in the pen, on a 3 × 3 grid at
+`96 / 160 / 224` of the 320-unit face with each pip at `r = 24`. Pips are drawn
+in the flat canvas, in the solid view and in the strip's thumbnails, so a
+pipped die looks pipped everywhere before it is ever rolled.
+
+**Pips and numerals are mutually exclusive**, and filling one clears the other.
+A face carrying both is not a die anybody makes, and the two would be solved
+against the same face centre and land on top of each other.
+
+`Clear eyes` takes them off again, which is the undo for somebody who pressed
+it to see.
 
 ### The guide
 
@@ -357,6 +406,49 @@ older build one shape, which is not a trade.
 A stamp's dots are written the way every other mark's are, every ring end to
 end, with the lengths beside them; a stamp whose lengths do not add up to the
 dots it carries is not a stamp this wrote and is dropped.
+
+## The solid, not just the face
+
+Until the design pass of 2026-09-17 the answer to "what does it look like as a
+die" was **roll it**, and the hand-over recorded that as deliberate. The design
+now asks for a **Solid** tab beside the flat editor, and the reason is the one
+thing rolling cannot do: it shows you one face at a time, chosen by physics,
+and a person lettering a d20 wants to turn it over in their hand.
+
+- **The polyhedron is generated, not modelled.** Vertices per die, faces found
+  by plane detection over the convex hull, and a per-face basis whose "up"
+  depends on the shape of the face: a square face puts an *edge* up, a kite
+  puts the short tip on its own symmetry axis, and a regular face takes its
+  most upright far vertex. That is the same question the atlas grid answers
+  (`docs/dice-sets.md`, "Up is `+z`"), asked again where the answer has to hold
+  for a face being looked at rather than a cell being filled.
+- **Each authored face is mapped onto its real face** at
+  `k = min(circumradius fit, inradius fit)`, with back-face culling, so what is
+  drawn is the drawing rather than an impression of it.
+- **The whole stage is one drag surface.** Faces, numerals, pips and strokes
+  are pointer-transparent: nothing on the die is selectable, because a tap that
+  sometimes rotates and sometimes selects is a tap nobody trusts. The die spins
+  on its own until a drag takes over, and the drag unticks Spin.
+- **The selected face reads as selected** — a 4 dp `--color-accent-700` outline
+  and a 16 % accent tint in its fill — so moving between the two tabs never
+  loses the player's place.
+- **The shading is not the spec.** The prototype draws this with CSS 3D
+  transforms; the app has a renderer. The geometry and the face mapping are
+  what this section is; how it is lit is `docs/physics-and-rendering.md`'s
+  business.
+
+### Save to set
+
+The footer action is **Save to set**, and it opens a sheet rather than saving
+where it stands. The sheet lists the sets that can be written to — which is
+**My dice** and any other personal set, never an imported one
+(`docs/dice-sets.md`, "Weight, translucency and size") — plus a field that
+names a new personal set and creates it.
+
+A set created here starts at the average weight, translucency and size, and is
+in the set list, the picker and notation immediately. There is nothing to
+install and nothing to confirm: it is a package this phone wrote, and the
+validator has already seen it, like every other package this phone writes.
 
 ## Export details
 

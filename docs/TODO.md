@@ -299,6 +299,25 @@ chosen**, and the choice is written into the file and into the installed folder
 alike. What goes out is validated first, by the same validator a download goes
 through.
 
+**From the design pass of 2026-09-17** (`docs/dice-sets.md`, "Weight,
+translucency and size, as a person sets them"):
+
+- [ ] **A `translucency` field**, per cent and clamped, in `defaults` and per
+      die, through the validator and `DieMaterial` and into the die material —
+      with the **numerals held opaque** whatever it is. It is the one of the
+      three that the format does not already have a spelling for
+- [ ] **The Physical block on a set's detail screen** — weight in grams,
+      translucency in per cent, size as a percentage of the average die.
+      Weight is `density × volume`, and the volume is the one the solver
+      computes for a body's mass and nobody has ever asked it for, so this
+      needs a way to ask
+- [ ] **Steppers on "My dice"**, at 0.1 g / 5 % / 5 %, each reading the live
+      value so a rapid run of taps accumulates. Imported sets show the same
+      three figures and no steppers, because their numbers came out of somebody
+      else's `diceset.toml`
+- [ ] **Size is 50–150 % of average** where the format clamps `size_mm` to
+      8–40. The tighter bound belongs to the slider rather than to the file
+
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. A malicious **texture** is covered too, now that there is a decoder: `InstalledArtworkTest` has the paths that climb out of a package and the file over the cap, each refused before a decoder sees it, `AtlasDecoderTest` has the image refused from its bounds with nothing decoded, and `AtlasDecoderDeviceTest` has the file that passes the header check and will not decode — on a device, because Robolectric hands back a fake bitmap for bytes it cannot identify
 
 ### 4.5 Table picker — `feature/tables`
@@ -372,7 +391,34 @@ exported collection does.
       accurately somebody draws on glass; whether a loop somebody meant to
       close is treated as closed, and whether the region that fills is the one
       they meant, can only be told by drawing on a phone
-- [ ] *Confirm first:* the prototype has no 3D preview — see Open questions. Nothing here builds one
+**From the design pass of 2026-09-17** (`docs/face-designer.md`):
+
+- [ ] **Confirmed the other way: build the Solid tab.** The hand-over asked
+      whether "Roll it" was the preview and the answer is no — the design wants
+      the die in the hand, generated from the solid rather than modelled, each
+      authored face mapped onto its real face, spinning until a drag takes over,
+      the whole stage one drag surface with nothing on the die selectable, and
+      the selected face outlined in accent-700 over a 16 % tint
+- [ ] **Number the faces in opposite pairs summing to n + 1.** "Fill all with
+      numbers" follows the pairing rather than the face order, and so does the
+      built-in set. **It changes what a recorded roll reads back as**: the same
+      seed puts the same face up and that face now carries a different number,
+      so replays and per-face statistics taken before the change do not compare
+      with ones taken after
+- [ ] **The d10's tenth face prints `0`.** Its value stays 10 everywhere a
+      total, a graph or a statistic is concerned; it is what is printed that
+      changes, so a d10 beside its tens die reads as the percentile pair it is
+- [ ] **`Fill all with eyes`** on a d6 — the standard pip patterns on a 3 × 3
+      grid at `96 / 160 / 224`, `r = 24`, drawn in the canvas, the solid and the
+      strip thumbnails, mutually exclusive with numerals, with `Clear eyes` to
+      undo it
+- [ ] **`Save to set` instead of a save**: a sheet listing the writable sets —
+      never an imported one — plus a field that names a new personal set,
+      created at average weight, translucency and size and in the picker
+      immediately
+- [ ] **The trailing dot replaces the bar** under an ambiguous `6` or `9`,
+      here and on the tray. The rule that decides *which* numbers are marked is
+      unchanged and still derived (`docs/dice-sets.md`, "Labels")
 
 ### 4.7 Statistics — `feature/stats`
 
