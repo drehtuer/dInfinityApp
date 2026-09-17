@@ -791,17 +791,22 @@ throwing it again").
    throw carries enough energy that a die landing on another slides off it
    while it still has speed.
 
-2. **Counting, and clearing the table.** When the dice have stopped, every die
-   that came to rest showing a face is **read** — that reading is its answer
-   for the rest of the roll — and its body leaves the world. The floor it was
-   standing on is free from that moment, for the dice that still have to land.
+2. **Counting.** When the dice have stopped, every die that came to rest
+   showing a face is **read** — and that reading is its answer for the rest of
+   the roll. Nothing leaves the table yet.
 
    A die standing on another one is not counted even when its own face is
    perfectly readable: it is resting on something that is about to be taken
    away, and a reading taken from a die that is about to fall is not a reading
    of anything.
 
-3. **Throwing the rest again.** Whatever could not be read is picked up and
+3. **Clearing the table, but only for a throw that needs it.** If that same
+   pass has something left to throw again, every die read so far comes off
+   first — all of it, before a single placement is aimed — and the floor it was
+   standing on is free for the dice that still have to land. If the pass has
+   nothing left to throw, the roll is over and **nothing comes off at all**.
+
+4. **Throwing the rest again.** Whatever could not be read is picked up and
    thrown again, visibly, onto a table with more room on it than it had. Then
    the dice are counted again, and again, until there is nothing left to throw.
    Each pass reads most of what is on the table, so what remains shrinks fast.
@@ -814,14 +819,31 @@ cheats" stops being a separate claim from "it does not cheat".
 
 **Taking a counted die off the table is not moving it.** Its face has been read
 and nothing about it can change again; it is out of play, which is the one
-thing the rule above allows. What it is *not* allowed to be is still drawn
-where it was standing — a counted die's floor is free, so a die thrown
-afterwards may land exactly there, and a tray that kept drawing both would show
-two dice in one place. Measured on the Pixel 10a before the renderer was
-taught to take them out: 33 pairs of dice sharing a spot across 8 seeds of 20,
-the worst overlapping by 10.9 mm of a 16 mm die. So a counted die leaves the
-tray as it is read, and what the player follows is the running total rather
-than the dice (`docs/TODO.md`, Step 5.5).
+thing the rule above allows.
+
+**But being counted is not what takes it off.** A re-throw is. The two used to
+be one act, and the cost of that was a roll which went perfectly clearing
+itself off the felt: the dice were read, lifted, and the player was left
+looking at an empty tray with a total floating over it. Most rolls are one or
+two dice that settle on the first pass, so most rolls looked like that, and
+what the app is *for* is watching dice land.
+
+They are two acts now. Every die that can be read is read; only a pass that is
+going to throw something again lifts anything, and then it lifts everything
+read so far at once, before any placement is aimed at the floor it freed.
+
+Leaving them is safe precisely because of when counting happens. A die is only
+read once the whole table has settled, so no reading can be knocked out of date
+by a die still in flight. The one thing that could put a second die where a
+counted one stands is a die thrown again — and a die thrown again is exactly
+what lifts them. Measured on the Pixel 10a before the renderer took counted
+dice out at all: 33 pairs of dice sharing a spot across 8 seeds of 20, the
+worst overlapping by 10.9 mm of a 16 mm die. Every one of those rolls had
+re-throws in it, and every one of them still lifts.
+
+So a roll that settles first time leaves every die where it landed, and a roll
+that had to throw something again shows the dice of its last pass with the
+total (`docs/TODO.md`, Step 5.5).
 
 **A roll that cannot finish says so, and offers its dice back.** There used to
 be a twelve-second cap that ended a roll by force-settling every die still
@@ -1260,6 +1282,16 @@ impact sounds rather than a crash in the middle of a roll.
   shader recovers a crisp edge from it at whatever size the die is drawn
   (`core/glyphs`). It is built once per die rather than once per body, because
   `20d20` is twenty of the same die.
+- **Every image in this app counts its rows from the top, and the shader is
+  told so.** A die's printed numbers, a package's artwork atlas and a table's
+  floor are all built top-down, and `setImage` uploads them as they stand, so
+  buffer row 0 is `v = 0` and `DieMesh.TextureFrame` computes `v` growing down
+  the image to match. Filament's `MaterialBuilder` would otherwise turn that
+  over a second time — `flipUV` defaults to true, as a kindness to assets
+  authored for a bottom-left origin — so it is switched off explicitly. With
+  it on, every glyph on every die is drawn reflected, which is what `v0.1.0`
+  shipped. The readback goes the other way and is put right in
+  `Snapshot.fromBottomUp`, where a JVM test can hold it.
 - The font is **real Archivo outlines**, converted by `tools/generate-font.py`
   — the same source and the same licence note as the mark
   (`docs/assets/README.md`). Live text would render in whatever font the device
@@ -1345,8 +1377,9 @@ A panel over the tray, drawn while the roll screen is open. It shows, per
 frame:
 
 - the step the roll is on, and how many dice have come to rest;
-- how many dice have been counted and taken off the table, how many have been
-  thrown again, and how many contacts have been recorded;
+- how many dice have been counted — read, which is not the same as taken off
+  the table — how many have been thrown again, and how many contacts have been
+  recorded;
 - a **plan of the tray** with one footprint per die — its collision size at the
   scale the capacity rule threw it — filled in proportion to that die's **rest
   timer**, coloured differently for a die standing on another, and dotted where

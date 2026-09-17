@@ -53,8 +53,18 @@ class RollLoop(
   private val rethrowCount = IntArray(diceCount)
   private val forced = BooleanArray(diceCount)
 
-  /** Which dice have been read and taken off the table. */
+  /** Which dice have been read. */
   private val counted = BooleanArray(diceCount)
+
+  /**
+   * Which dice have been taken off the table, which is not the same list.
+   *
+   * A die is read when the table has settled and lifted off only when that
+   * same pass is about to throw something again — so a roll that needed no
+   * re-throw lifts nothing and leaves every die where it landed
+   * ([countAndClear]).
+   */
+  private val lifted = BooleanArray(diceCount)
 
   /** The face each counted die came to rest on, kept as it is counted. */
   private val countedFace = IntArray(diceCount) { NOT_YET }
@@ -139,15 +149,21 @@ class RollLoop(
   /** The dice that never came to rest and were never read. */
   val unsettled: List<Int> get() = counted.indices.filterNot { counted[it] }
 
-  /**
-   * Which dice have been read and taken off the table, by index.
-   *
-   * What a renderer needs in order to stop drawing them: a counted die is out
-   * of play and the floor it stood on is free, so a die thrown afterwards may
-   * land exactly there. Drawing both would be two dice in one place
-   * (`docs/TODO.md`, Step 5.5).
-   */
+  /** Which dice have been read, by index. */
   val countedOut: List<Boolean> get() = counted.toList()
+
+  /**
+   * Which dice have been taken off the table, by index.
+   *
+   * What a renderer needs in order to stop drawing them, and it is a shorter
+   * list than [countedOut]. A lifted die is out of play and the floor it stood
+   * on is free, so a die thrown afterwards may land exactly there and drawing
+   * both would be two dice in one place. Nothing is lifted unless something is
+   * about to be thrown again, so a roll that settled first time keeps every
+   * die on the table for the player to look at
+   * (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
+   */
+  val liftedOut: List<Boolean> get() = lifted.toList()
 
   /**
    * The faces read so far, by die index.
@@ -389,17 +405,30 @@ class RollLoop(
   }
 
   /**
-   * Count what can be counted, take it off the table, throw the rest again —
-   * and say whether anything was thrown.
+   * Count what can be counted, throw the rest again — taking the counted dice
+   * off the table only if there is a rest to throw — and say whether anything
+   * was thrown.
    *
    * **This is the whole of how a heap is cleared, and there is no hand in it.**
    * A die that came to rest showing a face is read, and that reading is its
-   * answer for the rest of the roll; it is then lifted off the table, which
-   * leaves the floor it was standing on free for the dice that still have to
-   * land. A die that finished cocked or standing on another one is thrown
-   * again, visibly, onto a table that now has more room on it than it had —
-   * which is what a player does when the dice land in a pile, and it is the
-   * reason this converges instead of being tuned.
+   * answer for the rest of the roll. A die that finished cocked or standing on
+   * another one is thrown again, visibly, onto a table the counted dice have
+   * left — which is what a player does when the dice land in a pile, and it is
+   * the reason this converges instead of being tuned.
+   *
+   * **The lift is the price of a re-throw, not of being counted.** Reading a
+   * die and taking it off the table used to be one act, which meant a roll
+   * that settled first time cleared itself off the screen: the dice were read,
+   * lifted, and the player was left looking at empty felt. They are two acts
+   * now. Every die is read first; only if that same pass is going to throw
+   * something again does anything come off, and then all of it comes off at
+   * once, before a single placement is aimed at the floor it freed.
+   *
+   * That ordering is what makes leaving them safe. Counting happens when the
+   * table has settled ([closeOutOrRethrow]), so no die is ever read while
+   * another is still moving and nothing can knock a reading out of date. The
+   * one thing that could put a second die where a counted one stands is a
+   * re-throw, and a re-throw is exactly what lifts them.
    *
    * Taking a counted die out of play is not *moving* it: its face has already
    * been read and nothing about it can change again. That is the line the
@@ -409,7 +438,7 @@ class RollLoop(
     states: List<DieState>,
     throwTheRest: Boolean = true,
   ): Boolean {
-    var thrown = false
+    val throwAgain = mutableListOf<Int>()
     states.forEachIndexed { index, state ->
       if (counted[index]) return@forEachIndexed
       val die = spec.dice[index].die
@@ -427,11 +456,23 @@ class RollLoop(
         countedFace[index] = reading.index
         countedAt[index] = RestingPlace(state.position, state.orientation)
         counted[index] = true
-        world.remove(index)
         return@forEachIndexed
       }
 
-      if (!throwTheRest) return@forEachIndexed
+      if (throwTheRest) throwAgain += index
+    }
+    if (throwAgain.isEmpty()) return false
+
+    // Everything that has been read comes off before anything is aimed, so a
+    // re-thrown die is placed against the table the old one measured: the
+    // floor the counted dice were standing on, free.
+    counted.indices.forEach { index ->
+      if (counted[index] && !lifted[index]) {
+        lifted[index] = true
+        world.remove(index)
+      }
+    }
+    throwAgain.forEach { index ->
       world.respawn(index, layout.rethrowPlacement(index, rethrowCount[index]))
       // The speed it has the moment after this is the re-throw rather than a
       // contact, and a sound for the app's own hand is the one noise a player
@@ -442,9 +483,8 @@ class RollLoop(
       tracker.rethrown(index)
       rethrowCount[index]++
       rethrows++
-      thrown = true
     }
-    return thrown
+    return true
   }
 
   companion object {

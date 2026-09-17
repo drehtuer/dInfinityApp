@@ -18,26 +18,39 @@ yours — the app is waiting on them.
 
 ## The one change that reaches every screen with dice on it
 
-**Dice leave the table as they are read.** A roll used to be watched until every
-die had stopped, and then read all at once. It now reads each die the moment it
-can be — the instant a die has come to rest showing a face — takes it off the
-table, and throws whatever is left again onto the room that made. It repeats
-until there is nothing left to throw.
+**A roll can clear the table in front of the player, and only sometimes does.**
+A roll used to be watched until every die had stopped, and then read all at
+once. It now works in passes: when the dice have stopped, every die showing a
+face is read, and whatever could not be read — cocked, or standing on another
+die — is thrown again onto the room the read dice make by coming off. That
+repeats until there is nothing left to throw.
 
-That is invisible in a still mock-up and very visible in the hand. By the time a
-roll ends, most of the dice are gone and the answer has been arriving for a
-second or two. So **the dice stop being the thing to watch**, and something has
-to take their place.
+The part that matters for a mock-up is **when** the table clears. A pass lifts
+the read dice only if it has something to throw again. So:
 
-What took their place is a line of text: how many dice have been read, and how
-high and low the finished roll can still come out. It is one line whether the
-throw was four dice or a hundred, which is why it was chosen over showing the
-counted dice somewhere — an overlay of ninety-nine finished dice is not a
-design, it is a problem.
+- A roll that settles first time — which is most rolls, and nearly every roll of
+  one or two dice — **leaves every die where it landed.** The player reads the
+  total off the tray with the dice still on it, which is what the prototype
+  draws and what a person expects.
+- A roll that had to throw something again shows the dice of its **last pass**
+  only. A messy throw of twenty can end with three dice on the felt and a total
+  of twenty dice.
 
-**For the designer:** the prototype has no region for this. It currently sits
-where "Rolling…" used to be, which works but was not designed. It is the most
-important unstyled thing in the app.
+So the tray is sometimes fuller than the prototype and sometimes emptier, and
+the number of dice on it at the end is not the number in the formula.
+
+Because a big roll can still empty out, there is also a line of text while a
+roll is in progress: how many dice have been read, and how high and low the
+finished roll can still come out. It is one line whether the throw was four
+dice or a hundred, which is why it was chosen over showing the counted dice
+somewhere — an overlay of ninety-nine finished dice is not a design, it is a
+problem.
+
+**For the designer:** the prototype has no region for that line. It currently
+sits where "Rolling…" used to be, which works but was not designed. It is the
+most important unstyled thing in the app. The second question is whether the
+dice of the last pass should be marked as such when the total counts more dice
+than are on the table.
 
 ## Behaviour that has moved
 

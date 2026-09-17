@@ -179,20 +179,25 @@ class LiveRoll internal constructor(
   /**
    * The dice as they are at this moment, ready to be drawn.
    *
-   * **A die that has been counted is not in it.** Its face has been read, so it
-   * is off the table and out of the simulation — and the floor it was standing
-   * on is free for the dice still to be thrown, which means a later die may
+   * **A die that has been lifted off the table is not in it** — and being
+   * counted is not what lifts one. A die comes off only when the same pass is
+   * about to throw something again, because the floor it was standing on is
+   * then free for the re-thrown die to land on, which means a later die may
    * land exactly where it was. Drawing it there anyway would put two dice in
    * one place, which is a worse thing to watch than the stacking this
    * mechanism replaced (`docs/physics-and-rendering.md`).
    *
+   * A roll that settles first time throws nothing again, so it lifts nothing:
+   * every die stays where it landed and stays drawn there, which is what a
+   * player expects to be looking at when the total appears.
+   *
    * Both halves are filtered by the same list, so a frame still has the same
-   * dice at both ends of the step it spans. A die counted during that step
+   * dice at both ends of the step it spans. A die lifted during that step
    * leaves at once rather than gliding away, which is what being lifted off
    * the table looks like.
    */
   fun frame(): RenderFrame {
-    val gone = loop.countedOut
+    val gone = loop.liftedOut
     return RenderFrame(
       previous = previous.filterNot { gone.getOrElse(it.index) { false } },
       current = current.filterNot { gone.getOrElse(it.index) { false } },

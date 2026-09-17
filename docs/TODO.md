@@ -423,6 +423,38 @@ convinces or does not: a roll has to look like dice landing, not like an
 animation of a random number. Runs first as soon as 4.1 renders, then again
 after every physics change.
 
+- [ ] **Nothing automated can see the printed numbers, and they were drawn
+      reflected for the whole of `v0.1.0`.** Fixed — `MaterialBuilder.flipUV`
+      defaults to `true` and was turning `v` over a second time — but fixed
+      with a photograph, and a photograph is not a test.
+
+      What makes this hard to test is what made it hard to find: **a
+      reflection in `u` and a reflection in `v` differ by a half-turn, and a
+      die lands at an arbitrary orientation**, so a screenshot cannot tell them
+      apart. Ruling the fix in took a dump of the atlas as text (upright), a
+      reading of the transform chain (no negative determinant anywhere) and
+      then trying it on the phone.
+
+      **The instrument this wants:** an instrumented test in `render/filament`
+      that puts one die where the camera is aimed, turns it so a chosen face's
+      normal is `-forward` and its texture-up is the camera's up — so the glyph
+      is square to the screen and centred — reads the frame back through
+      `Snapshot`, and asserts the ink is heavier in the half of the frame that
+      `DieNumbers.fieldOf` says is the heavier half of that cell. That catches
+      a flip in either axis, it needs no golden image and no projection
+      arithmetic, and it is what `docs/architecture.md` decision 40 asks for,
+      applied to the one part of the pipeline it was never applied to.
+
+      It needs a way to build a quaternion from two orthonormal frames, which
+      `Quaternion` does not have yet.
+
+- [ ] **`TrayCamera.shotOn` calls `cross(up, forward)` `right`, and it is
+      left.** Screen-right is `cross(forward, up)`; the code has the operands
+      the other way round, so the vector is negated. It is harmless today
+      because its only use is inside an `abs()` in the framing solve, which is
+      why nothing caught it. Fix it with the reflection above, since anyone
+      reading that file while hunting a handedness bug will stop here first.
+
 ### 5.1 Harness
 
 **Built, and it runs on either tier.** `tools/harness.sh` rolls N throws
@@ -613,8 +645,9 @@ more spawn bands — is a way of making corrections work better, and a correctio
 is the thing this section is named after not wanting. The answer is what a
 person does at a table when the dice land in a heap:
 
-> **Count the dice that can be read, take them off the board, and throw the
-> rest again. Repeat until every die has been counted.**
+> **Count the dice that can be read, and if anything is left to throw again,
+> take the read ones off the board first and throw the rest onto the room that
+> makes. Repeat until every die has been counted.**
 
 A die is either read or thrown again. Nothing is nudged, biased, popped apart
 or re-placed, so the correction rate stops being a number to tune and becomes
@@ -622,6 +655,14 @@ zero by construction — and "it does not look like it cheats" stops being a
 separate claim from "it does not cheat", because there is nothing left to see.
 A die taken off the board after its face is read is not *moved*: it is out of
 play, which is the one thing the honest rule allows (`docs/physics-and-rendering.md`).
+
+**Being read is not what takes a die off the board — needing room for a
+re-throw is.** A pass that has nothing left to throw lifts nothing, so a roll
+that settles first time leaves every die where it landed for the player to look
+at. That is safe because a die is only read once the whole table has stopped,
+so no reading can be knocked out of date by a die still in flight, and the only
+thing that could land where a read die stands is a re-throw — which is exactly
+what lifts them.
 
 It should also terminate quickly. Each pass reads most of the dice, so what is
 left shrinks fast, and a heap of a hundred becomes a handful within a few
