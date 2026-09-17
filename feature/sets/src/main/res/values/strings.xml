@@ -8,8 +8,20 @@
 
   <!-- Row status. -->
   <string name="sets_bundled">Built in</string>
-  <string name="sets_disabled">Switched off</string>
   <string name="sets_broken">Will not load</string>
+
+  <!--
+    The badges at the end of a row (design/dInfinityPhone.dc.html, lines
+    444-446). Lower case, as the prototype writes them: a tag is a label on a
+    row, not a sentence about it.
+
+    The prototype's second word is "disabled"; this says "switched off" on
+    purpose, because of what "disabled" means to a screen reader. The reason is
+    written where the tags are drawn, in SetsScreen.Badges.
+  -->
+  <string name="sets_tag_default">default</string>
+  <string name="sets_tag_disabled">switched off</string>
+
   <!-- %1$d is how many dice the set defines. -->
   <plurals name="sets_dice">
     <item quantity="one">1 die</item>

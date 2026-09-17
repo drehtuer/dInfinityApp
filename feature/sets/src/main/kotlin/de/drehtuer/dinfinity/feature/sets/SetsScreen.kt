@@ -41,6 +41,8 @@ import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.SectionKicker
 import de.drehtuer.dinfinity.ui.common.Sheet
+import de.drehtuer.dinfinity.ui.common.Tag
+import de.drehtuer.dinfinity.ui.common.TagKind
 import kotlin.math.roundToInt
 
 /**
@@ -455,45 +457,101 @@ private fun SetLine(
         }.semantics(mergeDescendants = true) { }
         .padding(horizontal = 16.dp, vertical = 12.dp)
         .testTag(SetsTestTags.setOf(row.id)),
-    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     Row(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(8.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(
-        text = row.name,
-        // `.card-title`: the heading font at 800, which is what every name in
-        // this system is set in.
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.ExtraBold,
+      Column(
         modifier = Modifier.weight(1f),
-      )
-      row.version?.let { version ->
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            text = row.name,
+            // `.card-title`: the heading font at 800, which is what every name
+            // in this system is set in.
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.weight(1f),
+          )
+          row.version?.let { version ->
+            Text(
+              text = version,
+              style = MaterialTheme.typography.labelMedium,
+              color = Ink.muted,
+            )
+          }
+        }
         Text(
-          text = version,
-          style = MaterialTheme.typography.labelMedium,
-          color = Ink.muted,
+          text = status(row),
+          style = MaterialTheme.typography.bodySmall,
+          // The accent is for the one state that needs doing something about.
+          // A set that is switched off is badged at the end of the row and is
+          // not a problem, and colouring its line like one would make every
+          // deliberate choice look like a fault.
+          color = if (row.broken) Ink.accent else Ink.muted,
         )
+        // Under the status rather than replacing it: whether a set is broken or
+        // switched off is what the player can do something about first, and
+        // "there is something newer" is true whatever else the row says.
+        if (outdated) {
+          Text(
+            text = stringResource(R.string.sets_outdated),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.testTag(SetsTestTags.outdatedOf(row.id)),
+          )
+        }
       }
+      Badges(row)
     }
-    Text(
-      text = status(row),
-      style = MaterialTheme.typography.bodySmall,
-      color = if (row.usable) Ink.muted else Ink.accent,
+  }
+}
+
+/**
+ * What state a row is in, at the end of it.
+ *
+ * Where the prototype puts them (`design/dInfinityPhone.dc.html`, lines
+ * 444–446): after the name and the meta line, neutral for a state that is
+ * simply true and outlined for one somebody chose. Neither is pressable — the
+ * row is the only thing on this line that does anything, and a badge that took
+ * a tap would need a touch target twice its height.
+ *
+ * **The switched-off badge does not say the prototype's word.** The prototype
+ * writes `disabled`, and it is a drawing: it does not know what a screen reader
+ * says. On Android "disabled" is the word TalkBack uses for a control that
+ * cannot be operated, and these rows are very much operable — a tap opens the
+ * set and a long press acts on it — so "Brass, 1.0.0, 5 dice, disabled" would
+ * tell a listener the row is dead. The app already says "switched off" in its
+ * own voice everywhere else, and it is unambiguous where the prototype's word
+ * is not. The divergence is deliberate: do not "correct" it back.
+ *
+ * There is no "update available" badge yet. `.tag-accent` is a pale accent
+ * fill, and the two ramp steps it is made of exist only for the two accents the
+ * design system ships where the app offers six; until that is answered the
+ * newer version says so in words under the name (`docs/design-handover.md`).
+ */
+@Composable
+private fun Badges(row: SetRow) {
+  if (row.isDefault) {
+    Tag(
+      text = stringResource(R.string.sets_tag_default),
+      kind = TagKind.Neutral,
+      modifier = Modifier.testTag(SetsTestTags.defaultOf(row.id)),
     )
-    // Under the status rather than replacing it: whether a set is broken or
-    // switched off is what the player can do something about first, and
-    // "there is something newer" is true whatever else the row says.
-    if (outdated) {
-      Text(
-        text = stringResource(R.string.sets_outdated),
-        style = MaterialTheme.typography.labelSmall,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.testTag(SetsTestTags.outdatedOf(row.id)),
-      )
-    }
+  }
+  if (!row.enabled) {
+    Tag(
+      text = stringResource(R.string.sets_tag_disabled),
+      kind = TagKind.Outline,
+      modifier = Modifier.testTag(SetsTestTags.disabledOf(row.id)),
+    )
   }
 }
 
@@ -507,7 +565,11 @@ private fun SetLine(
 private fun status(row: SetRow): String =
   when (row.status) {
     SetStatus.Broken -> pluralStringResource(R.plurals.sets_problems, row.problems, row.problems)
-    SetStatus.Off -> stringResource(R.string.sets_disabled)
+    // The same words a set that is on gets. Once the row carries a tag saying
+    // it is switched off, a line saying it again is the same fact twice — and
+    // the prototype's meta line is always what a set *is* rather than what has
+    // been done to it.
+    SetStatus.Off -> pluralStringResource(R.plurals.sets_dice, row.dice, row.dice)
     SetStatus.Bundled -> stringResource(R.string.sets_bundled)
     SetStatus.Ready -> pluralStringResource(R.plurals.sets_dice, row.dice, row.dice)
   }
@@ -581,6 +643,11 @@ object SetsTestTags {
   const val UPDATE: String = "sets:update"
 
   fun outdatedOf(setId: String): String = "sets:outdated:$setId"
+
+  /** The badges at the end of a row (`design/dInfinityPhone.dc.html`, 444–446). */
+  fun defaultOf(setId: String): String = "sets:default:$setId"
+
+  fun disabledOf(setId: String): String = "sets:disabled:$setId"
 
   const val EMPTY: String = "sets:empty"
   const val SHEET: String = "sets:sheet"

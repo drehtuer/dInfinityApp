@@ -168,6 +168,13 @@ prototype has a Save button.
    the rule is unambiguous where the list is silent — but it is an inference,
    and it is the one thing here that would change a drawn screen if you meant
    the other.
+
+   The badge is drawn on that inference now — the dice-set rows say `default`
+   — and its contrast is measured in a test rather than eyeballed: 9.3:1 on
+   paper and 11.4:1 on the dark ground, both well past the 4.5:1 a badge's
+   words need. If you meant the other reading, the chip stays legible; it just
+   stops matching every other tag on the page.
+
 2. **A tag needs both ends of a ramp, and only two accents have one.** You
    ship exact ramps for `--color-accent` and `--color-accent-2`. The app lets
    a player pick six accents, and derives the deep end of the other four the
@@ -192,7 +199,20 @@ prototype has a Save button.
    rather than nine hand-made dialogs, so this is a one-line change when you
    decide it.
 
-4. **Does a destructive action get a colour?** The prototype's set action
+4. **One tag says something other than what the prototype writes.** The
+   dice-set rows are badged now — `default` and, for a set somebody has turned
+   off, **`switched off`** where the prototype writes `disabled`
+   (`design/dInfinityPhone.dc.html`, line 446).
+
+   The reason is not a preference. On Android, "disabled" is the word a screen
+   reader says about a control that **cannot be operated**, and these rows very
+   much can be — tap to open, long-press to act. A listener hearing "Brass,
+   1.0.0, 5 dice, disabled" would take it as a dead row rather than a set that
+   is switched off. It is the one place in this pass where the app says
+   something the prototype does not, and it is flagged here so that nobody
+   "fixes" it back.
+
+5. **Does a destructive action get a colour?** The prototype's set action
    sheet draws Remove as a plain `.btn-secondary` — a bordered box with
    ordinary text, sitting between a filled toggle and a ghost Cancel
    (`design/dInfinityPhone.dc.html`, line 713). The app used to draw it as
@@ -207,10 +227,10 @@ prototype has a Save button.
    second look, because a system with one red and no other colour has only
    weight and wording left to say "careful".
 
-5. **The slider has no design.** Hue, depth and brightness in the designer use
+6. **The slider has no design.** Hue, depth and brightness in the designer use
    Material's, which has a circular thumb and a rounded track, in a system with
    no round anything.
-6. **Uppercase.** The prototype sets kickers and column headings in
+7. **Uppercase.** The prototype sets kickers and column headings in
    `text-transform: uppercase` with wide tracking. The tracking is applied; the
    case is not, because Compose has no text transform, so applying it means
    uppercasing the string itself and changing what a screen reader says.
@@ -221,9 +241,9 @@ prototype has a Save button.
    that a kicker is sometimes a name somebody typed. The History heading is a
    session's name, and `THORIN'S CAMPAIGN` is a decision about someone else's
    words. If uppercase is wanted, is it wanted on those too?
-7. **The designer's canvas paper is white** — a literal, not a token. Is that
+8. **The designer's canvas paper is white** — a literal, not a token. Is that
    the die's real painted ground, or chrome that should follow the theme?
-8. **`gap: 6px` in the face strip** is not on the 4/8/12 scale. Deliberate?
+9. **`gap: 6px` in the face strip** is not on the 4/8/12 scale. Deliberate?
 
 ## Where the screens live in the code
 

@@ -81,6 +81,17 @@ class SetLibrary(
   private var usable: List<DiceSet> = listOf(bundled)
 
   /**
+   * Which set plain notation reaches for first (`docs/dice-notation.md`;
+   * design `6a`).
+   *
+   * The setting [catalogue] is built from, said out loud so a row can be
+   * badged with it. It is asked rather than cached for the reason the
+   * catalogue is built on the way out: it is a setting somebody changes on
+   * another screen without touching a folder.
+   */
+  val defaultId: String get() = defaultSetId()
+
+  /**
    * What a formula resolves against (`docs/dice-notation.md`).
    *
    * Built on the way out rather than cached, because it has two inputs that

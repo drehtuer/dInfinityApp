@@ -47,6 +47,8 @@ import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.SectionKicker
+import de.drehtuer.dinfinity.ui.common.Tag
+import de.drehtuer.dinfinity.ui.common.TagKind
 
 /**
  * One dice set, in detail (`design/dInfinity.dc.html`, options `6a` and `6b`).
@@ -234,10 +236,13 @@ private fun Default(presenter: SetDetailPresenter) {
     verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     if (state.isDefault) {
-      Text(
+      // A badge rather than a line of accent-coloured text: being the default
+      // is a state that is simply true, and the prototype says so with a
+      // `tag-neutral` (`design/dInfinityPhone.dc.html`, line 459). Nothing
+      // about it is pressable — the button beside it is the thing that acts.
+      Tag(
         text = stringResource(R.string.sets_detail_is_default),
-        style = MaterialTheme.typography.titleSmall,
-        color = MaterialTheme.colorScheme.primary,
+        kind = TagKind.Neutral,
         modifier = Modifier.testTag(SetDetailTestTags.IS_DEFAULT),
       )
     } else if (state.canBeDefault) {

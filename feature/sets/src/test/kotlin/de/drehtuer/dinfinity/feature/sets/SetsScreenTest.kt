@@ -226,7 +226,12 @@ class SetsScreenTest {
   }
 
   @Test
-  fun `a set switched off says so`() {
+  fun `a set switched off is badged, and the badge is what a row is read as saying`() {
+    // The state moved from the line under the name to a tag at the end of the
+    // row (`design/dInfinityPhone.dc.html`, lines 444-446), so the line says
+    // what the set *is* and the badge says what was done to it. It has to be
+    // **announced**: a tag that only exists as a picture is a state a screen
+    // reader cannot reach.
     write("brass", toml("brass", "Brass"))
     val presenter = show()
     compose.waitUntil(PATIENCE) { presenter.state.sets.any { it.id == "brass" } }
@@ -239,9 +244,30 @@ class SetsScreenTest {
         .not()
     }
 
-    compose
-      .onNodeWithTag(SetsTestTags.setOf("brass"))
-      .assertTextContains("Switched off", substring = true)
+    compose.onNodeWithTag(SetsTestTags.disabledOf("brass"), useUnmergedTree = true).assertExists()
+    val row = compose.onNodeWithTag(SetsTestTags.setOf("brass"))
+    // The app's own word rather than the prototype's `disabled`, which is what
+    // TalkBack says about a control that cannot be operated (`Badges`).
+    row.assertTextContains("switched off", substring = true)
+    row.assertTextContains("1 die", substring = true)
+  }
+
+  @Test
+  fun `the set a plain d20 comes from is badged, and the others are not`() {
+    // The app never said which set was the default at all
+    // (`docs/design-handover.md`). It is a state that is simply true, so it is
+    // the neutral tag — and it is on exactly one row, or it says nothing.
+    write("brass", toml("brass", "Brass"))
+    val presenter = show(default = "brass")
+    compose.waitUntil(PATIENCE) { presenter.state.sets.any { it.id == "brass" } }
+
+    val brass = presenter.state.sets.single { it.id == "brass" }
+    assertTrue("the row does not know it is the default", brass.isDefault)
+    compose.onNodeWithTag(SetsTestTags.defaultOf("brass"), useUnmergedTree = true).assertExists()
+    compose.onNodeWithTag(SetsTestTags.defaultOf("builtin"), useUnmergedTree = true).assertDoesNotExist()
+    // And it is read out with the row rather than being a chip only the eye
+    // gets (`docs/architecture.md`, "Accessibility").
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).assertTextContains("default", substring = true)
   }
 
   @Test
@@ -477,9 +503,10 @@ class SetsScreenTest {
     download: suspend (String, (PackageFetcher.Progress) -> Unit) -> FetchedPackage =
       { _, _ -> FetchedPackage.Failed("no downloader in this test") },
     latestCommit: suspend (String, String?) -> LatestCommit = { _, _ -> LatestCommit.Unknown },
+    default: String = DiceSet.BUILTIN_ID,
   ): SetsPresenter {
     val presenter =
-      SetsPresenter(library(), scope, download, latestCommit)
+      SetsPresenter(library(default), scope, download, latestCommit)
     compose.setContent { SetsScreen(presenter, onOpen = onOpen, onInstall = onInstall) }
     // The first reading of the disk is asynchronous, and every one of these
     // tests is about what the screen shows once it has happened.
@@ -751,14 +778,14 @@ class SetsScreenTest {
     )
   }
 
-  private fun library() =
+  private fun library(default: String = DiceSet.BUILTIN_ID) =
     SetLibrary(
       bundled = bundledSet(),
       installed = InstalledSets(root),
       registry = registry,
       io = Dispatchers.Unconfined,
       installer = PackageInstaller(root),
-      defaultSetId = { DiceSet.BUILTIN_ID },
+      defaultSetId = { default },
     )
 
   /** A package as one folder inside a zip, which is what a forge hands out. */
