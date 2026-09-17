@@ -10,13 +10,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,6 +27,9 @@ import androidx.compose.ui.res.stringResource
 import de.drehtuer.dinfinity.core.collection.CollectionProblem
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
 
 /**
  * Taking a collection in (`design/dInfinity.dc.html`, options 9f and 9g).
@@ -72,7 +72,7 @@ fun ImportScreen(
       )
       menu()
     }
-    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+    Rule()
 
     when (val state = presenter.state) {
       is ImportState.Waiting -> {
@@ -116,13 +116,12 @@ fun ImportScreen(
 private fun Waiting(onChooseFile: () -> Unit) {
   Note(stringResource(R.string.import_explain))
   Note(stringResource(R.string.import_never_merges))
-  Button(
+  ModernistButton(
+    text = stringResource(R.string.import_choose),
     onClick = onChooseFile,
-    shape = Modernist.square,
+    kind = ModernistButtonKind.Primary,
     modifier = Modifier.testTag(ImportTestTags.CHOOSE),
-  ) {
-    Text(stringResource(R.string.import_choose))
-  }
+  )
 }
 
 /**
@@ -142,14 +141,13 @@ private fun FromLink(presenter: ImportPresenter) {
     label = { Text(stringResource(R.string.import_link_label)) },
     modifier = Modifier.fillMaxWidth().testTag(ImportTestTags.LINK),
   )
-  Button(
+  ModernistButton(
+    text = stringResource(R.string.import_fetch),
     onClick = { presenter.fetch(url) },
+    kind = ModernistButtonKind.Primary,
     enabled = url.isNotBlank(),
-    shape = Modernist.square,
     modifier = Modifier.testTag(ImportTestTags.FETCH),
-  ) {
-    Text(stringResource(R.string.import_fetch))
-  }
+  )
 }
 
 @Composable
@@ -241,13 +239,12 @@ private fun Imported(
     Note(pluralStringResource(R.plurals.import_warnings, state.warnings.size, state.warnings.size))
     Problems(state.warnings, ImportTestTags.WARNINGS)
   }
-  Button(
+  ModernistButton(
+    text = stringResource(R.string.import_see),
     onClick = onDone,
-    shape = Modernist.square,
+    kind = ModernistButtonKind.Primary,
     modifier = Modifier.testTag(ImportTestTags.SEE),
-  ) {
-    Text(stringResource(R.string.import_see))
-  }
+  )
 }
 
 @Composable
@@ -298,16 +295,15 @@ private fun Again(
   presenter: ImportPresenter,
   onChooseFile: () -> Unit,
 ) {
-  TextButton(
+  ModernistButton(
+    text = stringResource(R.string.import_again),
     onClick = {
       presenter.again()
       onChooseFile()
     },
-    shape = Modernist.square,
+    kind = ModernistButtonKind.Ghost,
     modifier = Modifier.testTag(ImportTestTags.AGAIN),
-  ) {
-    Text(stringResource(R.string.import_again))
-  }
+  )
 }
 
 /** What the tests reach the import screen by. */

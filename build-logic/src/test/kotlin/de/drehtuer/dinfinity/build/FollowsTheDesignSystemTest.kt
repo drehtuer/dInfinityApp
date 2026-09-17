@@ -73,4 +73,104 @@ class FollowsTheDesignSystemTest {
   fun `spacing is not checked, because a hairline is not the scale and is still right`() {
     assertEquals(emptyList<FollowsTheDesignSystem.Offence>(), FollowsTheDesignSystem.offences("Modifier.height(1.dp).padding(2.dp)"))
   }
+
+  @Test
+  fun `a Material component this system replaces is caught, and named`() {
+    // The reason each one is here is in `FollowsTheDesignSystem`'s KDoc; what
+    // matters at this level is that the message says what to use instead. A
+    // check that only says "no" is a check somebody works around.
+    val source =
+      """
+      import androidx.compose.material3.Button
+      import androidx.compose.material3.AlertDialog
+      """.trimIndent()
+
+    val found = FollowsTheDesignSystem.offences(source)
+
+    assertEquals(2, found.size)
+    assertTrue(found[0].why, found[0].why.contains("ModernistButton"))
+    assertTrue(found[1].why, found[1].why.contains("Sheet"))
+  }
+
+  @Test
+  fun `a Material component this system has no version of is left alone`() {
+    // The check is a list of replacements, not a ban on Material. `Text`,
+    // `Icon`, `Scaffold` and the rest are the framework this app is built on.
+    val source =
+      """
+      import androidx.compose.material3.Text
+      import androidx.compose.material3.Icon
+      import androidx.compose.material3.MaterialTheme
+      import androidx.compose.material3.DropdownMenu
+      """.trimIndent()
+
+    assertEquals(emptyList<FollowsTheDesignSystem.Offence>(), FollowsTheDesignSystem.offences(source))
+  }
+
+  @Test
+  fun `a local composable that shares a name with one is not caught`() {
+    // Matched on the import, not on the call. `ui/common`'s own `Rule` draws
+    // what `HorizontalDivider` could not, and a screen calling `Button(...)`
+    // that resolves to something else in its own package is not reaching past
+    // the theme.
+    val source =
+      """
+      import de.drehtuer.dinfinity.ui.common.Rule
+      Button(onClick = {}) { Text("Roll") }
+      """.trimIndent()
+
+    assertEquals(emptyList<FollowsTheDesignSystem.Offence>(), FollowsTheDesignSystem.offences(source))
+  }
+
+  @Test
+  fun `a component import can say why it is an exception, like any other line`() {
+    val source = "import androidx.compose.material3.OutlinedButton // design-system-exception: it is an .input"
+
+    assertEquals(emptyList<FollowsTheDesignSystem.Offence>(), FollowsTheDesignSystem.offences(source))
+  }
+
+  @Test
+  fun `the reason may be the comment block above the line`() {
+    // Which is where it usually is: why this control is not a button, what it
+    // is instead, and what would go wrong if somebody "fixed" it does not fit
+    // after a `//` on an import.
+    val source =
+      """
+      // design-system-exception: the licence chooser is an `.input`, not a
+      // `.btn` — full width, surface-filled, reading from its left edge with a
+      // menu behind it. ModernistButton takes a word and centres it.
+      import androidx.compose.material3.OutlinedButton
+      """.trimIndent()
+
+    assertEquals(emptyList<FollowsTheDesignSystem.Offence>(), FollowsTheDesignSystem.offences(source))
+  }
+
+  @Test
+  fun `an excuse does not reach past a line that is not a comment`() {
+    // Otherwise one exception at the top of a file would quietly cover
+    // everything under it, which is the failure mode of every exclusion list
+    // kept somewhere else.
+    val source =
+      """
+      // design-system-exception: this one is an `.input`
+      import androidx.compose.material3.OutlinedButton
+      import androidx.compose.material3.Button
+      """.trimIndent()
+
+    val found = FollowsTheDesignSystem.offences(source)
+
+    assertEquals(listOf(3), found.map { it.line })
+  }
+
+  @Test
+  fun `an excuse does not reach across a blank line`() {
+    val source =
+      """
+      // design-system-exception: about something else entirely
+
+      import androidx.compose.material3.Button
+      """.trimIndent()
+
+    assertEquals(listOf(3), FollowsTheDesignSystem.offences(source).map { it.line })
+  }
 }

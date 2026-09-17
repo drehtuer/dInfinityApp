@@ -21,10 +21,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -45,6 +44,8 @@ import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
@@ -125,15 +126,16 @@ private fun Header(
       // An arrow is a picture. What TalkBack reads is the label, because "left
       // arrow" is not a thing anybody wants done to their screen.
       val back = stringResource(R.string.stats_back)
-      TextButton(
+      ModernistButton(
+        text = "←",
         onClick = onClose,
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier =
           Modifier
             .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
             .semantics { contentDescription = back }
             .testTag(StatsTestTags.BACK),
-      ) { Text("←") }
+      )
     }
     Text(
       text = open?.row?.name ?: stringResource(R.string.stats_title),
@@ -145,22 +147,17 @@ private fun Header(
       modifier = Modifier.weight(1f),
     )
     if (offerExport) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.stats_export),
         onClick = onExport,
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(StatsTestTags.EXPORT),
-      ) {
-        Text(stringResource(R.string.stats_export))
-      }
+      )
     }
     menu()
   }
   // Every screen in the prototype hangs from a 2 dp rule under its title.
-  HorizontalDivider(
-    thickness = Modernist.rule,
-    color = Ink.divider,
-    modifier = Modifier.testTag(StatsTestTags.HEADER_RULE),
-  )
+  Rule(modifier = Modifier.testTag(StatsTestTags.HEADER_RULE))
 }
 
 /**
@@ -325,14 +322,19 @@ private fun Cut(
   tag: String,
   onChoose: () -> Unit,
 ) {
-  TextButton(
-    onClick = onChoose,
-    shape = Modernist.square,
+  // Not a [ModernistButton]: a cut is chosen or it is not, and the mark that
+  // says which is the accent on its label. `Ghost` is the accent by
+  // definition, so every cut in the row would read as the chosen one. The box
+  // below is what `Ghost` draws — nothing — with the label kept conditional.
+  Box(
+    contentAlignment = Alignment.Center,
     modifier =
       Modifier
+        .clickable(role = Role.Button, onClick = onChoose)
         .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
         .semantics { selected = chosen }
-        .testTag(tag),
+        .testTag(tag)
+        .padding(Modernist.x2),
   ) {
     Text(
       text = label,
@@ -367,18 +369,17 @@ private fun Dice(
   }
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(StatsTestTags.LIST)) {
     items(dice, key = { "${it.setId}/${it.dieId}" }) { row ->
-      HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+      Rule(weight = RuleWeight.Hairline)
       DieLine(row = row, onOpen = { presenter.select(row.setId, row.dieId) })
     }
     item(key = "reset-everything") {
-      HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
-      TextButton(
+      Rule()
+      ModernistButton(
+        text = stringResource(R.string.stats_reset_all),
         onClick = { presenter.confirm(Reset.Everything) },
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.fillMaxWidth().testTag(StatsTestTags.RESET_ALL),
-      ) {
-        Text(stringResource(R.string.stats_reset_all), color = MaterialTheme.colorScheme.primary)
-      }
+      )
     }
   }
 }
@@ -460,15 +461,14 @@ private fun Detail(
 
     Histogram(detail.bars)
 
-    TextButton(
+    ModernistButton(
+      text = stringResource(R.string.stats_reset_die),
       onClick = {
         presenter.confirm(Reset.OneDie(detail.setId, detail.dieId, detail.row.name))
       },
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(StatsTestTags.RESET_DIE),
-    ) {
-      Text(stringResource(R.string.stats_reset_die), color = MaterialTheme.colorScheme.primary)
-    }
+    )
   }
 }
 
@@ -483,7 +483,7 @@ private fun Detail(
 @Composable
 private fun Tiles(detail: DieDetail) {
   Column(modifier = Modifier.fillMaxWidth()) {
-    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+    Rule()
     TileRow {
       Tile(
         label = stringResource(R.string.stats_natural_high, detail.extremes.highestValue),
@@ -499,7 +499,7 @@ private fun Tiles(detail: DieDetail) {
         modifier = Modifier.weight(1f),
       )
     }
-    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+    Rule(weight = RuleWeight.Hairline)
     TileRow {
       Tile(
         label = stringResource(R.string.stats_average),
@@ -519,7 +519,7 @@ private fun Tiles(detail: DieDetail) {
         modifier = Modifier.weight(1f),
       )
     }
-    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+    Rule(weight = RuleWeight.Hairline)
   }
 }
 

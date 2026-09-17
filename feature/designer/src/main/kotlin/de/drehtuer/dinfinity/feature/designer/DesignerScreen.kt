@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -149,13 +148,12 @@ private fun Header(
     rollable?.let { formula ->
       // `btn btn-primary` in the prototype's footer — the one filled button
       // on the screen, because it is the one thing the screen is for.
-      Button(
+      ModernistButton(
+        text = stringResource(R.string.designer_roll),
         onClick = { onRoll(formula) },
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Primary,
         modifier = Modifier.testTag(DesignerTestTags.ROLL),
-      ) {
-        Text(stringResource(R.string.designer_roll))
-      }
+      )
     }
     menu()
   }
@@ -340,6 +338,18 @@ private fun Tools(
  * a screen reader hears "selected" rather than nothing
  * (`docs/architecture.md`, "Accessibility"). A button that is an action rather
  * than an option is never chosen, and so says nothing.
+ *
+ * **Not a `ModernistButton`, because it is not a `.btn`** —
+ * design-system-exception: TextButton. Chosen is the
+ * accent fill a `.btn-primary` has, but unchosen is a muted word and
+ * `.btn-ghost` is the accent by definition — drawn as a ghost, every nib,
+ * every face of the strip and every stamp size would print in the accent at
+ * once, on a screen whose accent is meant to be the one loud thing. What this
+ * really is is a `.seg-opt`, and the shared control that draws those
+ * (`ui/common/SegmentedControl.kt`) is a single joined box of options rather
+ * than a wrapping row that mixes options with actions. Drawing the tool row
+ * properly is a redesign rather than a substitution, and it is written down in
+ * `docs/TODO.md`.
  */
 @Composable
 private fun Tool(

@@ -12,12 +12,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +29,8 @@ import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
@@ -75,21 +74,16 @@ fun SessionsScreen(
         color = MaterialTheme.colorScheme.onBackground,
         modifier = Modifier.weight(1f),
       )
-      Button(
+      ModernistButton(
+        text = stringResource(R.string.sessions_new),
         onClick = { presenter.edit(SessionDraft()) },
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Primary,
         modifier = Modifier.testTag(SessionsTestTags.NEW),
-      ) {
-        Text(stringResource(R.string.sessions_new))
-      }
+      )
       menu()
     }
     // The rule every screen in the prototype hangs from.
-    HorizontalDivider(
-      thickness = Modernist.rule,
-      color = Ink.divider,
-      modifier = Modifier.testTag(SessionsTestTags.HEADER_RULE),
-    )
+    Rule(modifier = Modifier.testTag(SessionsTestTags.HEADER_RULE))
 
     state.editing?.let { draft -> NameSheet(draft = draft, presenter = presenter) }
 
@@ -102,7 +96,7 @@ fun SessionsScreen(
 
     LazyColumn(modifier = Modifier.fillMaxSize().testTag(SessionsTestTags.LIST)) {
       items(state.sessions, key = { it.id }) { session ->
-        HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+        Rule(weight = RuleWeight.Hairline)
         SessionRow(
           session = session,
           active = session.id == state.activeId,
@@ -152,23 +146,21 @@ private fun SessionRow(
         modifier = Modifier.testTag(SessionsTestTags.countsOf(session.id)),
       )
     }
-    TextButton(
+    ModernistButton(
+      text = stringResource(R.string.sessions_rename),
       onClick = onRename,
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(SessionsTestTags.renameOf(session.id)),
-    ) {
-      Text(stringResource(R.string.sessions_rename))
-    }
+    )
     // The first session has no Delete: it is where a deleted session's rolls
     // go, so it has to be there to go to.
     if (session.deletable) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.sessions_delete),
         onClick = onDelete,
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(SessionsTestTags.deleteOf(session.id)),
-      ) {
-        Text(stringResource(R.string.sessions_delete), color = MaterialTheme.colorScheme.primary)
-      }
+      )
     }
   }
 }

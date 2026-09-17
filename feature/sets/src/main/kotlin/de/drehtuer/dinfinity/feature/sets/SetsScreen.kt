@@ -11,13 +11,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -39,6 +36,7 @@ import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.SectionKicker
 import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.Tag
@@ -116,14 +114,15 @@ private fun Installing(
   state: SetsState,
   onInstall: () -> Unit,
 ) {
-  TextButton(
+  // A ghost: the prototype keeps "pick a file" as `btn-ghost` under the filled
+  // action beside the URL field.
+  ModernistButton(
+    text = stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install),
     onClick = onInstall,
     enabled = !state.installing,
-    shape = Modernist.square,
+    kind = ModernistButtonKind.Ghost,
     modifier = Modifier.padding(horizontal = 8.dp).testTag(SetsTestTags.INSTALL),
-  ) {
-    Text(stringResource(if (state.installing) R.string.sets_installing else R.string.sets_install))
-  }
+  )
 }
 
 /**
@@ -168,9 +167,12 @@ private fun Downloading(
         modifier = Modifier.weight(1f).semantics { contentDescription = farAlong },
       )
     }
-    TextButton(onClick = onCancel, shape = Modernist.square, modifier = Modifier.testTag(SetsTestTags.STOP)) {
-      Text(stringResource(R.string.sets_cancel))
-    }
+    ModernistButton(
+      text = stringResource(R.string.sets_cancel),
+      onClick = onCancel,
+      kind = ModernistButtonKind.Ghost,
+      modifier = Modifier.testTag(SetsTestTags.STOP),
+    )
   }
 }
 
@@ -205,14 +207,13 @@ private fun FromLink(
     // The one filled button of the section: the prototype sets the action
     // beside the URL field as `btn btn-primary` and leaves "pick a file" and
     // "try this one" as ghosts beneath it.
-    Button(
+    ModernistButton(
+      text = stringResource(R.string.sets_fetch),
       onClick = { presenter.installFrom(url) },
       enabled = !state.installing && url.isNotBlank(),
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Primary,
       modifier = Modifier.testTag(SetsTestTags.FETCH),
-    ) {
-      Text(stringResource(R.string.sets_fetch))
-    }
+    )
   }
 }
 
@@ -379,7 +380,9 @@ private fun Sets(
         onOpen = { onOpen(row) },
         onHold = { presenter.act(row) },
       )
-      HorizontalDivider()
+      // Between the rows of one block, so the hairline rather than the 2 dp
+      // rule that separates the sections above (`ui/common/Rule.kt`).
+      Rule(weight = RuleWeight.Hairline)
     }
   }
 }
@@ -406,14 +409,13 @@ private fun Updates(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    TextButton(
+    ModernistButton(
+      text = stringResource(if (state.checking) R.string.sets_checking else R.string.sets_check),
       onClick = { presenter.checkForUpdates() },
       enabled = !state.checking && !state.installing,
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(SetsTestTags.CHECK),
-    ) {
-      Text(stringResource(if (state.checking) R.string.sets_checking else R.string.sets_check))
-    }
+    )
     state.checked?.let { checked ->
       Text(
         text =

@@ -14,11 +14,9 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
@@ -44,6 +42,8 @@ import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
@@ -131,7 +131,7 @@ private fun Looks(
       // in a `LazyColumn` is when the player can see it. Asking again costs
       // nothing (`TablesPresenter.wants`).
       LaunchedEffect(choice.pin) { presenter.wants(choice.pin) }
-      HorizontalDivider()
+      Rule(weight = RuleWeight.Hairline)
       TableRow(
         choice = choice,
         chosen = choice.pin == state.chosen,
@@ -145,7 +145,7 @@ private fun Looks(
     }
     if (state.photosOffered) {
       item {
-        HorizontalDivider()
+        Rule(weight = RuleWeight.Hairline)
         UsePhotoRow(full = !state.roomForAPhoto, onUse = presenter::usePhoto)
       }
     }
@@ -206,13 +206,12 @@ private fun TableRow(
     // Only the player's own photo tables. Everything else belongs to a
     // package, and a package is removed where packages are.
     if (choice.own) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.tables_photo_remove),
         onClick = onRemove,
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(TablesTestTags.removeOf(choice.pin)),
-      ) {
-        Text(stringResource(R.string.tables_photo_remove))
-      }
+      )
     }
   }
 }
@@ -332,13 +331,12 @@ private fun PhotoSheetBody(
       style = MaterialTheme.typography.bodySmall,
       color = Ink.muted,
     )
-    TextButton(
+    ModernistButton(
+      text = stringResource(R.string.tables_photo_choose),
       onClick = onPickPhoto,
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(TablesTestTags.PHOTO_CHOOSE),
-    ) {
-      Text(stringResource(R.string.tables_photo_choose))
-    }
+    )
     Text(
       text = draft.picked?.label ?: stringResource(R.string.tables_photo_none),
       style = MaterialTheme.typography.labelMedium,

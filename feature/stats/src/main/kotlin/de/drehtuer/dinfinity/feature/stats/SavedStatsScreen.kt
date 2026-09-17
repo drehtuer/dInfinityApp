@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +30,10 @@ import de.drehtuer.dinfinity.core.stats.RollComparison
 import de.drehtuer.dinfinity.core.stats.TotalBar
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 
 /**
  * What a saved roll has actually rolled, against what it should
@@ -90,22 +92,17 @@ private fun Header(
       modifier = Modifier.weight(1f),
     )
     if (state.selected != null) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.savedstats_back),
         onClick = { presenter.close() },
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(SavedStatsTestTags.BACK),
-      ) {
-        Text(stringResource(R.string.savedstats_back))
-      }
+      )
     }
     menu()
   }
   // The rule every screen in the prototype hangs from.
-  HorizontalDivider(
-    thickness = Modernist.rule,
-    color = Ink.divider,
-    modifier = Modifier.testTag(SavedStatsTestTags.HEADER_RULE),
-  )
+  Rule(modifier = Modifier.testTag(SavedStatsTestTags.HEADER_RULE))
 }
 
 @Composable
@@ -140,7 +137,7 @@ private fun Rolls(
   )
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedStatsTestTags.LIST)) {
     items(rolls, key = SavedRoll::id) { roll ->
-      HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+      Rule(weight = RuleWeight.Hairline)
       Column(
         modifier =
           Modifier

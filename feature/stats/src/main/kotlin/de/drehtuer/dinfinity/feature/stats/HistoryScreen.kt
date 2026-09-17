@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,10 +14,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -41,6 +41,7 @@ import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.SectionKicker
 import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
@@ -117,7 +118,7 @@ fun HistoryScreen(
           item(key = "session:${roll.id}") { SessionHeading(roll.sessionId) }
         }
         item(key = roll.id) {
-          HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+          Rule(weight = RuleWeight.Hairline)
           Entry(
             roll = roll,
             open = state.openId == roll.id,
@@ -160,34 +161,28 @@ private fun Header(
     // Only when there is something to export. A button that writes an empty
     // file is a button that lies about having done something.
     if (offerExport) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.history_export),
         onClick = onExport,
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(HistoryTestTags.EXPORT),
-      ) {
-        Text(stringResource(R.string.history_export))
-      }
+      )
     }
     // Beside Export and only with a filter on, because the two are the same
     // act on the same rolls: keep a copy of what you are looking at, or be rid
     // of it.
     if (offerForget) {
-      TextButton(
+      ModernistButton(
+        text = stringResource(R.string.history_forget),
         onClick = onForget,
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Ghost,
         modifier = Modifier.testTag(HistoryTestTags.FORGET),
-      ) {
-        Text(stringResource(R.string.history_forget), color = MaterialTheme.colorScheme.primary)
-      }
+      )
     }
     menu()
   }
   // The rule every screen in the prototype hangs from.
-  HorizontalDivider(
-    thickness = Modernist.rule,
-    color = Ink.divider,
-    modifier = Modifier.testTag(HistoryTestTags.HEADER_RULE),
-  )
+  Rule(modifier = Modifier.testTag(HistoryTestTags.HEADER_RULE))
 }
 
 /**
@@ -543,16 +538,21 @@ private fun Choice(
   tag: String,
   onChoose: () -> Unit,
 ) {
-  TextButton(
-    onClick = onChoose,
-    shape = Modernist.square,
+  // Not a [ModernistButton]: a cut is chosen or it is not, and the mark that
+  // says which is the accent on its label. `Ghost` is the accent by
+  // definition, so every cut in the row would read as the chosen one. The box
+  // below is what `Ghost` draws — nothing — with the label kept conditional.
+  Box(
+    contentAlignment = Alignment.Center,
     modifier =
       Modifier
+        .clickable(role = Role.Button, onClick = onChoose)
         .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
         // The accent and the bold are marks only an eye reads; this is the
         // same fact in the semantics tree.
         .semantics { selected = chosen }
-        .testTag(tag),
+        .testTag(tag)
+        .padding(Modernist.x2),
   ) {
     Text(
       text = label,
@@ -577,13 +577,12 @@ private fun FilteredToNothing(presenter: HistoryPresenter) {
     verticalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
     Text(text = stringResource(R.string.history_filtered_empty), style = MaterialTheme.typography.bodyLarge)
-    TextButton(
+    ModernistButton(
+      text = stringResource(R.string.history_clear_filter),
       onClick = { presenter.filterBy(HistoryFilter.Everything) },
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(HistoryTestTags.CLEAR_FILTER),
-    ) {
-      Text(stringResource(R.string.history_clear_filter))
-    }
+    )
   }
 }
 

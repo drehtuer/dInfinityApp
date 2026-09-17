@@ -65,8 +65,9 @@ abstract class VerifyDesignSystemTask : DefaultTask() {
       throw GradleException(
         "These reach past the design system rather than using it:\n" +
           complaints.joinToString("\n") +
-          "\nUse the theme's tokens, or say why not by putting " +
-          "\"design-system-exception\" on the line. See docs/design-handover.md.",
+          "\nUse the theme's tokens and ui/common's components, or say why not: " +
+          "write \"design-system-exception\" on the line, or in the comment " +
+          "directly above it, with the reason. See docs/design-handover.md.",
       )
     }
     logger.lifecycle("Design: ${sources.files.size} files follow the system (${excused.size} excused).")

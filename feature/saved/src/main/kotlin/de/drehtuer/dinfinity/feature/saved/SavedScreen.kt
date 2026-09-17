@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.feature.saved
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,16 +10,14 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,7 +29,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -40,6 +39,11 @@ import androidx.compose.ui.text.withStyle
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.ModernistIconButton
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
@@ -148,10 +152,10 @@ private fun ColumnScope.Rolls(
   // The list hangs from a rule and is ruled inside by hairlines: 2 dp says
   // "a new thing starts here", 1 dp says "another row of the same thing"
   // (`design/dInfinityPhone.dc.html`, the saved-rolls list).
-  HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+  Rule()
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SavedTestTags.LIST)) {
     itemsIndexed(rolls, key = { _, entry -> entry.roll.id }) { index, entry ->
-      if (index > 0) HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+      if (index > 0) Rule(weight = RuleWeight.Hairline)
       SavedRow(entry = entry, onRoll = { onRoll(entry) }, onEdit = { onEdit(entry) })
     }
   }
@@ -209,53 +213,56 @@ private fun TopBar(
     verticalAlignment = Alignment.CenterVertically,
     horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
-    val exportLabel = stringResource(R.string.export_open)
-    TextButton(
-      onClick = onSwitch,
-      shape = Modernist.square,
-      modifier = Modifier.testTag(SavedTestTags.SWITCHER),
-    ) {
-      Text(
-        // `titleLarge` is already the heading face at 800, which is the size
-        // and weight the prototype puts the group name at. Asking for `Bold`
-        // on top of it asks for 700 — a lighter heading than the design has.
-        text = if (switching) "$groupName ▴" else "$groupName ▾",
-        style = MaterialTheme.typography.titleLarge,
-      )
-    }
-    Text(text = "", modifier = Modifier.weight(1f))
-    // A mark rather than a word, because the bar has a group name in it that
-    // may be long. The label is what TalkBack reads.
-    TextButton(
-      onClick = onExport,
-      shape = Modernist.square,
+    // A heading with a tap on it rather than a button with a heading in it.
+    // `titleLarge` is already the heading face at 800, which is the size and
+    // weight the prototype puts the group name at, and no button in this
+    // system prints at that size — the prototype says so itself, drawing this
+    // one as a `.btn-ghost` with `color:inherit;font-size:20px` to undo both.
+    // So the type stays and the tap is put on it; `Role.Button` is what tells
+    // a screen reader it is pressable.
+    Text(
+      text = if (switching) "$groupName ▴" else "$groupName ▾",
+      style = MaterialTheme.typography.titleLarge,
+      color = MaterialTheme.colorScheme.onBackground,
       modifier =
         Modifier
-          .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
-          .semantics { contentDescription = exportLabel }
-          .testTag(ExportTestTags.OPEN),
+          .clickable(role = Role.Button, onClick = onSwitch)
+          // `TextButton` was quietly supplying Android's 48 dp target; a bare
+          // `Text` is only as tall as its line, so it is given back by hand.
+          .heightIn(min = TOUCH_TARGET)
+          .wrapContentHeight(Alignment.CenterVertically)
+          .testTag(SavedTestTags.SWITCHER),
+    )
+    Text(text = "", modifier = Modifier.weight(1f))
+    // A mark rather than a word, because the bar has a group name in it that
+    // may be long. The name is what TalkBack reads, and `ModernistIconButton`
+    // is where a button whose label is a picture lives.
+    ModernistIconButton(
+      contentDescription = stringResource(R.string.export_open),
+      onClick = onExport,
+      modifier = Modifier.testTag(ExportTestTags.OPEN),
     ) {
       Text("⤴")
     }
-    Button(
+    ModernistButton(
+      text = stringResource(R.string.saved_new),
       onClick = onNew,
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Primary,
       modifier = Modifier.testTag(SavedTestTags.NEW),
-    ) {
-      Text(stringResource(R.string.saved_new))
-    }
+    )
     menu()
   }
   // Every screen in the prototype hangs from a 2 dp rule under its title bar.
-  HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+  Rule()
 }
 
 /**
  * A second way into the group sheet, because a long press is not discoverable
  * and the switcher is the only place a group is ever seen.
  *
- * An ellipsis is a picture, so the label is what TalkBack reads; and a button
- * the size of one glyph is not a target, so it is given one
+ * An ellipsis is a picture, so the name is what TalkBack reads and the target
+ * around it is the platform's 48 dp rather than the glyph's — both of which
+ * `ModernistIconButton` is the place for
  * (`docs/architecture.md`, "Accessibility").
  */
 @Composable
@@ -263,15 +270,10 @@ private fun EditGroup(
   group: SavedRollGroup,
   onEdit: () -> Unit,
 ) {
-  val label = stringResource(R.string.group_edit_it, group.name)
-  TextButton(
+  ModernistIconButton(
+    contentDescription = stringResource(R.string.group_edit_it, group.name),
     onClick = onEdit,
-    shape = Modernist.square,
-    modifier =
-      Modifier
-        .sizeIn(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET)
-        .semantics { contentDescription = label }
-        .testTag(GroupTestTags.editOf(group.id)),
+    modifier = Modifier.testTag(GroupTestTags.editOf(group.id)),
   ) {
     Text("…")
   }
@@ -294,7 +296,7 @@ private fun GroupSwitcher(
 ) {
   Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
     groups.forEachIndexed { index, entry ->
-      if (index > 0) HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+      if (index > 0) Rule(weight = RuleWeight.Hairline)
       val parent = groups.firstOrNull { it.group.id == entry.group.parentId }?.group?.name
       Row(
         modifier =
@@ -335,15 +337,14 @@ private fun GroupSwitcher(
         EditGroup(group = entry.group, onEdit = { onEdit(entry.group.id) })
       }
     }
-    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
-    TextButton(
+    Rule()
+    ModernistButton(
+      text = stringResource(R.string.group_new),
       onClick = onNew,
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.fillMaxWidth().testTag(GroupTestTags.NEW),
-    ) {
-      Text(stringResource(R.string.group_new))
-    }
-    HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+    )
+    Rule()
   }
 }
 
@@ -448,13 +449,12 @@ private fun Empty(onNew: () -> Unit) {
       style = MaterialTheme.typography.bodyLarge,
       color = Ink.muted,
     )
-    Button(
+    ModernistButton(
+      text = stringResource(R.string.saved_empty_new),
       onClick = onNew,
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Primary,
       modifier = Modifier.padding(top = Modernist.x2),
-    ) {
-      Text(stringResource(R.string.saved_empty_new))
-    }
+    )
   }
 }
 

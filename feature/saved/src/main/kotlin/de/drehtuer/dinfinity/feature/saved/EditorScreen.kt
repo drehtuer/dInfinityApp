@@ -16,7 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -168,7 +167,7 @@ private fun Title(existing: Boolean) {
     color = MaterialTheme.colorScheme.onBackground,
     modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x2),
   )
-  HorizontalDivider(thickness = Modernist.rule, color = Ink.divider)
+  Rule()
 }
 
 @Composable

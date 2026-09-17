@@ -1,20 +1,24 @@
 package de.drehtuer.dinfinity.feature.saved
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.Sheet
 
 /**
@@ -79,7 +83,7 @@ internal fun ExportSheet(
       tag = ExportTestTags.EVERYTHING,
       onClick = { onExport(null) },
     )
-    HorizontalDivider(thickness = Modernist.hairline, color = Ink.divider)
+    Rule(weight = RuleWeight.Hairline)
     // In as well as out. The same sheet, because a file arriving and a
     // file leaving are one idea to a player and the alternative is a
     // second control on a bar that already has a group name in it.
@@ -92,6 +96,15 @@ internal fun ExportSheet(
   }
 }
 
+/**
+ * One way in or out: a name, and under it how much is in it.
+ *
+ * A row rather than a button. `ModernistButton` takes a `String` because every
+ * button in this app says a word, and this says two things in two sizes — so
+ * the tap goes on the row and `Role.Button` tells a screen reader what the row
+ * is. The two lines merge into one node for the same reason a saved roll's do:
+ * "Everything, 24 rolls" is one thing to hear.
+ */
 @Composable
 private fun Choice(
   label: String,
@@ -99,19 +112,29 @@ private fun Choice(
   tag: String,
   onClick: () -> Unit,
 ) {
-  TextButton(
-    onClick = onClick,
-    shape = Modernist.square,
-    modifier = Modifier.fillMaxWidth().testTag(tag),
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .clickable(role = Role.Button, onClick = onClick)
+        .semantics(mergeDescendants = true) {}
+        .testTag(tag)
+        // What `TextButton` was padding it by, so the row stays a target.
+        .padding(vertical = Modernist.x2),
   ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-      Text(text = label, style = MaterialTheme.typography.bodyLarge)
-      Text(
-        text = note,
-        style = MaterialTheme.typography.labelSmall,
-        color = Ink.muted,
-      )
-    }
+    Text(
+      text = label,
+      style = MaterialTheme.typography.bodyLarge,
+      // Explicitly the text colour: `TextButton` was printing this in the
+      // accent, where the prototype's sheet rows are ink and only the count
+      // under them is muted.
+      color = MaterialTheme.colorScheme.onBackground,
+    )
+    Text(
+      text = note,
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
+    )
   }
 }
 

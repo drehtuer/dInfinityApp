@@ -1015,6 +1015,21 @@ The figures are reported in every PR description either way.
       inference is recorded in `docs/design-handover.md` rather than taken as
       settled. `ModernistTest` asserts the eight that *are* written down, so
       the rule itself cannot drift
+- [ ] **The face designer's tool row is a set of `.seg-opt`s wearing button
+      clothes.** Every one of its twenty-one controls goes through one `Tool`
+      composable, and that composable is a two-state control: chosen is filled
+      in the accent, unchosen is the **muted** ink. That is `.seg-opt`, not
+      `.btn` — `ModernistButtonKind.Ghost` is the accent by definition, so
+      mapping unchosen onto it would print every nib, every stamp size and
+      every face of the strip in the accent at once. `SegmentedControl` draws
+      `.seg-opt`s but as one joined box of options, where this is a wrapping
+      row that mixes options (nibs, sizes, faces) with plain actions (copy,
+      paste, clear, fill with numbers). Drawing it properly means deciding
+      which of those are options and which are actions, which is a redesign
+      rather than a substitution — so the row keeps Material's `TextButton`
+      with a `design-system-exception` and the reason beside it. All twenty-one
+      call sites go through the one composable, so it is one place whenever it
+      is done
 - [ ] **A tag needs a ramp, and only two of the six accents have one.** The
       design system ships exact ramps for `--color-accent` (vermilion) and
       `--color-accent-2` (coral), and `.tag-accent` is built from two ends of

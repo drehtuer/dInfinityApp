@@ -15,14 +15,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,6 +43,8 @@ import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
 import de.drehtuer.dinfinity.ui.common.DieSilhouette
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.SectionKicker
 import de.drehtuer.dinfinity.ui.common.Tag
@@ -248,15 +248,12 @@ private fun Default(presenter: SetDetailPresenter) {
     } else if (state.canBeDefault) {
       // `btn btn-secondary` in the prototype: an outline in the divider
       // colour with the text in the ink, not another accent-coloured ghost.
-      OutlinedButton(
+      ModernistButton(
+        text = stringResource(R.string.sets_detail_default),
         onClick = { presenter.makeDefault() },
-        shape = Modernist.square,
-        border = BorderStroke(Modernist.hairline, MaterialTheme.colorScheme.outline),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onBackground),
+        kind = ModernistButtonKind.Secondary,
         modifier = Modifier.testTag(SetDetailTestTags.MAKE_DEFAULT),
-      ) {
-        Text(stringResource(R.string.sets_detail_default))
-      }
+      )
     }
     if (state.isDefault || state.canBeDefault) {
       Text(
@@ -279,20 +276,20 @@ private fun Manage(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(4.dp),
   ) {
-    TextButton(
+    ModernistButton(
+      text = stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable),
       onClick = { presenter.setEnabled(!row.enabled) },
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(SetDetailTestTags.TOGGLE),
-    ) {
-      Text(stringResource(if (row.enabled) R.string.sets_sheet_disable else R.string.sets_sheet_enable))
-    }
-    TextButton(
+    )
+    // The accent this used to paint on by hand is what `.btn-ghost` *is*, so
+    // the colour goes away rather than being said twice.
+    ModernistButton(
+      text = stringResource(R.string.sets_sheet_remove),
       onClick = { presenter.remove() },
-      shape = Modernist.square,
+      kind = ModernistButtonKind.Ghost,
       modifier = Modifier.testTag(SetDetailTestTags.REMOVE),
-    ) {
-      Text(text = stringResource(R.string.sets_sheet_remove), color = Ink.accent)
-    }
+    )
   }
 }
 
@@ -333,14 +330,13 @@ private fun Export(presenter: SetDetailPresenter) {
       horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       LicenseChooser(state.license, presenter::choose, Modifier.weight(1f))
-      Button(
+      ModernistButton(
+        text = stringResource(R.string.sets_detail_export_do),
         onClick = { presenter.export() },
         enabled = state.canExport,
-        shape = Modernist.square,
+        kind = ModernistButtonKind.Primary,
         modifier = Modifier.testTag(SetDetailTestTags.EXPORT_DO),
-      ) {
-        Text(stringResource(R.string.sets_detail_export_do))
-      }
+      )
     }
     if (state.exported) {
       Text(
@@ -371,6 +367,13 @@ private fun Export(presenter: SetDetailPresenter) {
  * There is no entry for "not chosen". Taking the choice back is not something
  * anybody wants to do, and an entry offering it would be the one a finger hits
  * by accident.
+ *
+ * **The one Material button left on this screen, and deliberately** —
+ * design-system-exception: OutlinedButton. It is drawn as the design system's
+ * `.input`, full width and surface-coloured with its label reading from the
+ * left edge and the menu behind it, not as a `.btn-secondary`:
+ * `ModernistButton` takes a word and centres it, which is what a button is and
+ * what a field is not.
  */
 @Composable
 private fun LicenseChooser(
