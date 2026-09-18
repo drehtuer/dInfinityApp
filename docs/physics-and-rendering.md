@@ -219,8 +219,19 @@ draws mid-roll, asked of a throw that has read no dice at all; the average is
 `core/probability`'s exact distribution (`docs/probability.md`). A formula too
 large to graph exactly keeps its range and loses only its average.
 
-The same line is repeated under the breakdown on the result sheet, so the total
-is a number in a range rather than a number on its own.
+**It is on the screen for as long as a shake is the next thing that happens**,
+and in exactly one place at a time. Before the throw it is on the ready plate;
+while the dice are moving it is the counting plate's live range; on the two
+plates a roll can wait on — a chain that earned a throw, a throw that gave up
+— it is that same live range under a `STILL TO COME` kicker; and once the dice
+have landed it is in the **result sheet's grip**, beside the total, where it
+survives the sheet being pushed down.
+
+That last move is the fix for what the second device session found: during a
+chain of re-rolls the figures appeared for an instant and were then covered by
+the result. They were under the breakdown, so they went away with it, and a
+player deciding whether to shake again was left with nothing to decide with
+(see "What is drawn over the table").
 
 ## Picking a die up and throwing it again
 
@@ -1670,10 +1681,12 @@ It is one component, `ui/common`'s `Plate`, because a plate is a token rather
 than a layout: six of them on one screen, each drawing its own shadow and its
 own padding, is six chances for the numbers to drift.
 
-**The top of the screen is a column of three things, and the bottom is two.**
-That is the layout the second device session asked for, and the whole of what
-it is for is the felt: with the straight-down table view, a plate over the
-tray is a place a die can land and not be seen.
+**The top of the screen is a column of three things, and the bottom is two
+pull-ups and a plate.** That is the layout the second device session asked
+for, and the whole of what it is for is the felt: with the straight-down
+table view, a plate over the tray is a place a die can land and not be seen.
+Everything that is not being used is therefore *put away* — behind a
+pull-down, behind a tab or below the bottom edge — rather than shrunk.
 
 Along the top, 14 dp in and 12 dp down, in one column that pushes downwards as
 it opens:
@@ -1687,21 +1700,38 @@ it opens:
    about.
 2. **The menu button**, in the same row, at the end of it. The room it takes
    is the row rather than a constant the formula had to remember to leave.
-3. **The formula**, under the menu button and aligned to the same edge, as an
-   expanding menu of the same kind. Shut, it is the line somebody has written
-   with a dashed rule under it, hugging its words. Open, it fills the width
-   and is the field, the squiggle and the keyboard — *what* is wrong with a
-   formula is said in there, because that is where it can be acted on.
+3. **The formula**, under the menu button and aligned to the same edge, as a
+   **tab with a drawer behind it**. Shut, it is a plate carrying the word
+   `Formula` and a chevron pointing inwards, mirroring `Dice` at the other
+   end of the corner — *the formula itself is not drawn at all*. Pressed, the
+   drawer slides **in from the right-hand edge** and is the field, the
+   squiggle, the one-tap fix and the keyboard; the chevron turns round and
+   pushes it back out.
 
-**Only one of the two can be open.** Both hang off the top edge and both push
-what is under them down, so two open at once is the top half of the table
-covered, which is the thing this layout exists to stop. Opening either shuts
-the other, in the screen rather than in each control.
+**The formula used to be on the felt**, as a line of type with a dashed rule
+under it, in every state whether or not anybody was editing it. The second
+device session asked for it to be out of the way entirely and to arrive from
+the side rather than dropping down, and both halves of that are the point: a
+formula is a thing somebody has already written, and a line of it over a
+table read straight down is one more block a die can land behind.
 
-What is left along the bottom is the saved-rolls strip, and only that. The
-picker has gone to the top, the two things to do with a result have gone onto
-the result itself (below), and the Roll button is gone altogether — a shake is
-the throw ("Starting a roll").
+**The shut tab is red when the formula does not read.** That is the one thing
+it still says about a formula it no longer prints, and it has to say it — a
+mistake behind a door nobody has a reason to open is a mistake nobody finds.
+*What* is wrong is still said inside, under the squiggle, because that is
+where it can be acted on; red is not something a screen reader can say, so the
+tab's state description says it in words.
+
+**Only one of the two can be open.** The dice pull-down pushes what is under
+it down and the formula comes in over the table, so two open at once is the
+top half of the table covered — which is the thing this layout exists to stop.
+Opening either shuts the other, in the screen rather than in each control.
+
+What is left along the bottom is **one plate and two pull-ups**: the plate
+that says what the roll is doing, the saved rolls, and the result. The picker
+has gone to the top, the two things to do with a result have gone onto the
+result itself (below), and the Roll button is gone altogether — a shake is the
+throw ("Starting a roll").
 
 **Accent never touches felt.** Accent appears only *on* a plate, which is how
 an accent the player chooses freely and a shelf of tables stop being a pair
@@ -1723,11 +1753,21 @@ filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
 | Plate | Where | What it carries |
 | --- | --- | --- |
 | Dice | top left, 14 / 12 dp in | the word, the count and a chevron; the picker row and the set chooser behind it |
-| Formula | top right, under the menu button | the formula, dashed underline as wide as the text, tap to edit; the field and the squiggle behind it |
-| Hint | bottom left, 13 dp / 600 | only while the table is idle |
-| Counting | across the bottom | how far through the reading a roll is |
-| Another throw earned | across the bottom | a chain that stopped, and the shake it wants |
-| Could not settle | across the bottom | how many dice never stopped, and what to do about them |
+| Formula | top right, under the menu button | a tab: the word and a chevron, red when the formula does not read; the field and the squiggle slide in behind it |
+| Ready | across the bottom | that a shake rolls, and what the throw is expected to come to |
+| Counting | across the bottom | how far through the reading a roll is, and the range it can still come out in |
+| Another throw earned | across the bottom | a chain that stopped, the shake it wants, and what is still to come |
+| Could not settle | across the bottom | how many dice never stopped, what is still to come, and what to do about them |
+
+**There is no plate at all on an empty tray.** `Type a formula, or open Dice
+at the top.` stood there and the second device session asked for it to go: it
+pointed at a formula that is no longer on the table and at a menu that says
+`Dice` on its own head, and it was a block over the felt in the one state
+where the felt is all there is. An empty tray is an empty tray, with the two
+doors along the top — and, on a fresh install, the first-launch screen — to
+say what to do. `Shake the phone to roll.` stays, on the ready plate: shaking
+is the one thing nobody would guess at, and there is no button left to say
+it.
 
 **The result is a pull-up sheet, not a plate in the stack**
 (`design/dInfinity.dc.html`, options 1e–1g; the prototype draws it as
@@ -1746,16 +1786,24 @@ Three things are fixed about it:
   rolled, so the sheet slides up from below the bottom edge as soon as there is
   a total.
 - **It never goes away while the roll is on the screen.** Pushed all the way
-  down it still shows its grip — the 2 dp top rule, the handle and the total —
-  so the number stays readable and the sheet stays grabbable. A result that
-  could be dismissed is a result somebody can lose, and the only way back to it
-  would be to throw the dice again, which is the one act this app cannot undo.
-  There is therefore no close button, where the prototype has one.
-- **The column of controls is lifted by the parked height**, so the Roll
-  button and the saved rolls sit above a sheet that has been pushed down
-  rather than under it. Up, the sheet covers them, which is what the
-  prototype does too: a result being read is the thing in front of the player,
-  and it is one push out of the way.
+  down it still shows its grip — the 2 dp top rule, the handle, the total and
+  **what the throw was expected to come to** — so the number stays readable
+  and the sheet stays grabbable. A result that could be dismissed is a result
+  somebody can lose, and the only way back to it would be to throw the dice
+  again, which is the one act this app cannot undo. There is therefore no
+  close button, where the prototype has one.
+- **The expected range is in the grip, not under the breakdown.** That is the
+  fourth thing the second device session found: during a chain of re-rolls the
+  lowest, the highest and the average flashed past with the ready plate and
+  were then covered by the result. What a player is deciding at that moment is
+  whether to shake again, and the range is the whole of the answer — so it
+  sits beside the total, in the half of the sheet that survives a push down,
+  and there is exactly one of it on the screen at a time.
+- **Everything above it is lifted by the parked height**, so the saved rolls
+  and the outcome plate sit above a sheet that has been pushed down rather
+  than under it. Up, the sheet covers them, which is what the prototype does
+  too: a result being read is the thing in front of the player, and it is one
+  push out of the way.
 - **What is done with a result is on the result.** `See the odds` and `Save
   as roll` sit at the foot of the breakdown, which is what the second device
   session asked for. They are in the sheet's **body** and not in its grip,
@@ -1787,6 +1835,41 @@ at the bottom edge from an inch below the top means down — and "a flick" is
 measured in sheet heights per second rather than pixels, so it is the same
 gesture on every phone and for a one-line breakdown as for a twenty-die one.
 
+### Two pull-ups, one bottom edge
+
+**The saved rolls are a pull-up as well** (`design/dInfinity.dc.html`, option
+1c). They were the last plate standing across the bottom of the felt, in
+every state, whether or not anybody wanted one — so they are parked by
+default, showing a grip with `SAVED ROLLS` on it, and a pull brings the strip
+out. It is the same component as the result: one `PullUpSheet` over one
+`SheetSlide`, with the two rests, the drag, the flick and the measuring in one
+place rather than two. The only differences are that the saved rolls do **not**
+arrive by themselves — they have nothing to announce — and that they start
+parked.
+
+Which leaves the question the two of them raise together, and it is settled
+in one place:
+
+- **They are never both up.** Opening either parks the other, which is the
+  same rule the two menus along the top keep, for the same reason.
+- **A result that lands takes the edge.** Nobody should have to reach for the
+  number they have just rolled, and a sheet arriving under a strip somebody is
+  reading is a number nobody sees. So the saved rolls give way to a result and
+  not the other way about: a total is the thing that cannot be got back
+  without throwing the dice again, and a strip of saved rolls is one pull away
+  for ever.
+- **Parked is not gone, for either of them.** The grips stack on the edge —
+  the result's on the edge itself, the saved rolls' directly above it — so
+  neither is ever more than one touch away. While the result is *up* it covers
+  both, which is what "up" means.
+- **A roll put away leaves the saved rolls where the player left them.** A
+  strip that sprang open every time a total went away would be a strip that
+  opens itself once per throw.
+
+The rule is `feature/roll`'s `BottomEdge`: plain Kotlin, under JVM tests,
+with the invariant asked of every order the two controls can be pressed in
+rather than of the two the screen happens to reach first.
+
 **The counting plate is the home the running readout did not have.** It was the
 most important unstyled thing in the app: one line of text, sitting where
 "Rolling…" used to be because there was nowhere else. It is now a plate across
@@ -1817,6 +1900,17 @@ any of these plates. Both are reachable in the prototype through its
 Neither is a new state. They are `RollState.ShakeAgain` and `RollState.Stalled`
 — which the roll has reached all along, with one line of text between them —
 and what was missing was the drawing.
+
+**Both carry the range the roll can still come out in**, under a `STILL TO
+COME` kicker and drawn by the same component the counting plate draws it
+with. That is the other half of the range fault: the figures went away the
+moment the dice stopped, so the plate a chain waits on said nothing about the
+numbers and a player deciding whether to shake had nothing to decide with. So
+`RollPresenter.progress` now **outlives the dice coming to rest when the roll
+is not over** — it is cleared by a roll that finished, by `Cancel the roll`
+and by a fresh throw, and by nothing else. The range is the live one,
+tightened by every die already read, rather than the formula's pre-throw
+ends.
 
 **Both wait for the same shake.** The plates used to carry `Throw 3 more` and
 `Throw those 3 again`, and both are gone with the Roll button: a throw is a

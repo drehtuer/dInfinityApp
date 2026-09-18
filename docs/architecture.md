@@ -462,16 +462,22 @@ file.
 
 ### What each state puts on screen
 
-| State | Total | Message | Sheet | A shake | Formula field |
+| State | Total | Message | Sheet | A shake | Formula drawer |
 | --- | --- | --- | --- | --- | --- |
-| `Empty` | — | what to do next | — | throws nothing | live |
-| `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | throws nothing | live, in error |
-| `TooMany` | — | how many were asked for and how many fit | — | throws nothing | live, in error |
+| `Empty` | — | nothing at all | — | throws nothing | live |
+| `Invalid` | — | the squiggle and why, inside the drawer; the tab is red | — | throws nothing | live, in error |
+| `TooMany` | — | how many were asked for and how many fit; the tab is red | — | throws nothing | live, in error |
 | `Ready` | — | that a shake rolls, and what the throw is expected to come to | — | **throws the formula** | live |
 | `Rolling` | — | how many dice have been read, and the range they can still come to | — | joins the roll in the air | live |
-| `ShakeAgain` | — | how many dice the chain earned | — | **throws them** | live |
-| `Stalled` | — | how many never stopped, and `Cancel the roll` | — | **throws them again** | live |
-| `Settled` | the total | — | breakdown, what it was expected to come to, and rounding if the formula divides | **throws the formula again** | live |
+| `ShakeAgain` | — | how many dice the chain earned, and what is still to come | — | **throws them** | live |
+| `Stalled` | — | how many never stopped, what is still to come, and `Cancel the roll` | — | **throws them again** | live |
+| `Settled` | the total, in the sheet's grip | — | the grip carries the total and what the throw was expected to come to; the body carries the breakdown and rounding if the formula divides | **throws the formula again** | live |
+
+**`Empty` says nothing, and that is deliberate.** `Type a formula, or open
+Dice at the top.` stood in that row and the second device session asked for
+it to go (`docs/physics-and-rendering.md`, "What is drawn over the table").
+An empty tray is now an empty tray with two doors along the top, and a fresh
+install still gets the first-launch screen.
 
 There is no Roll button column any more, because there is no Roll button: a
 shake is the throw (`docs/physics-and-rendering.md`, "Starting a roll"). The
@@ -503,21 +509,24 @@ repositories rather than from presenters: a sessions presenter would make the
 default session as a side effect, and saying hello is not a reason to write to
 a database.
 
-**The formula sits on the tray as text, not as a field.** A dashed rule under
-it says it can be typed into; a tap brings the field and the keyboard up, and
-the keyboard's action key rolls (`design/dInfinity.dc.html`, option 2a). A
-field is a thing to fill in and this is a thing somebody has written. The hint
-stands in when nothing has been typed, so there is always something to tap, and
-the line is marked when the formula does not read — *what* is wrong is said in
-the editor, under the squiggle, because that is where somebody can fix it.
-Whether the editor is open is the screen's, remembered across a rotation, and
-`RollMachine` knows nothing about it.
+**The formula is not on the tray at all until it is asked for.** What is on
+the tray is a tab at the right-hand edge — the word `Formula` and a chevron —
+and pressing it slides the drawer in from the side: the field, the squiggle,
+the one-tap fix and the keyboard, whose action key rolls
+(`design/dInfinity.dc.html`, option 2a). It used to be a line of type with a
+dashed rule under it, on screen in every state; the second device session
+asked for it to be put away and to arrive from the side, and both halves are
+about the felt. The tab is **red when the formula does not read**, which is
+the one thing it still says about a formula it no longer prints — *what* is
+wrong is said inside, under the squiggle, because that is where somebody can
+fix it. Whether the drawer is in is the screen's, remembered across a
+rotation, and `RollMachine` knows nothing about it.
 
-**Two menus hang off the top edge, and only one of them can be open.** The
+**Two controls hang off the top edge, and only one of them can be open.** The
 formula is one of them, on the right under the menu button; the dice picker is
-the other, on the left. Both push what is under them down rather than floating
-over it, so two open at once would be the top half of the table covered —
-which is the thing the layout exists to stop
+the other, on the left. The picker pushes what is under it down and the
+formula comes in over the table, so two open at once would be the top half of
+the table covered — which is the thing the layout exists to stop
 (`docs/physics-and-rendering.md`, "What is drawn over the table"). Which is
 open is two booleans on the screen, remembered across a rotation, and opening
 either shuts the other in one place rather than in each control.
@@ -531,8 +540,18 @@ so a shut menu still says what is in the throw.
 Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
-- **the formula line** opens the editor, and **the editor** calls `type` on
-  every keystroke and `roll` on the action key;
+- **the formula's tab** brings the drawer in and takes it away again, and
+  **the field inside it** calls `type` on every keystroke and `roll` on the
+  action key;
+- **the saved rolls' handle** moves that pull-up between its two rests, and
+  the strip inside it calls `type` or `typeSaved`. Neither decides anything
+  about the roll: a tap on a saved roll fills the field and waits for a shake
+  like every other way in;
+- **the result sheet's handle** moves that pull-up between its two rests, and
+  a result never leaves the screen while the roll is on it. The two sheets
+  share the bottom edge and may not both be up; which yields is `BottomEdge`,
+  plain Kotlin with its own tests
+  (`docs/physics-and-rendering.md`, "Two pull-ups, one bottom edge");
 - **the dice pull-down** puts the picker on screen and takes it away again,
   and decides nothing about the roll;
 - **the dice picker row** calls `add` on a tap and `remove` on a long press,
@@ -929,8 +948,11 @@ to migrate.
 
 ### The saved-roll strip on the tray
 
-The active group's rolls sit above the dice picker, as tiles: a roll somebody
-named comes before a die they have to assemble.
+The active group's rolls, as tiles, **behind a pull-up on the bottom edge**:
+parked by default so the whole table is visible, pulled up when somebody wants
+one (`docs/physics-and-rendering.md`, "Two pull-ups, one bottom edge"). It was
+a plate standing across the felt in every state, which is one more place a die
+could land and not be seen.
 
 **A tap here fills the formula field**, exactly as a tap on the saved-rolls
 list does, and the throw is the shake that follows

@@ -23,8 +23,8 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 `main` has everything through **#306**, which cut `v0.1.1`.
 
-**In flight: a stack of ten answering the second and third device sessions**,
-plus one standalone fix for the documentation site. In order:
+**In flight: a stack of nine answering the second device session**, plus one
+standalone fix for the documentation site. In order:
 
 | | |
 | --- | --- |
@@ -36,11 +36,13 @@ plus one standalone fix for the documentation site. In order:
 | `fix/d4-corner-numbers` | a d4's corners read off the solid, so every edge agrees |
 | `feature/shake-is-the-roll` | the shake is the only way to throw |
 | `feature/designer-icons-and-save` | the designer's tools are pictures, and the die you drew is the die that rolls |
-| `feature/signed-fudge-totals` | a Fudge total carries its sign |
-| `fix/rerolls-wait-and-clear` | a re-roll lands on floor nothing is standing on |
+| `feature/roll-screen-overlays` | the formula is behind a tab that slides in, the saved rolls are a pull-up, the empty hint is gone, and the expected range stays readable through a chain of re-rolls |
 | `fix/docs-site-build` | **off `main`, not in the stack** — the published site has been stale since 18 September |
 
-**The whole device tier has been run on the Pixel 10a over the merged stack.**
+**The whole device tier has been run on the Pixel 10a over the merged stack**,
+up to and including `feature/designer-icons-and-save`. The overlays branch on
+top of it has not been on a phone: what it changes is where things sit, so
+what it needs is an eye rather than a suite (`docs/TODO.md`).
 
 ## Done
 
@@ -76,19 +78,13 @@ only spelling that says the same thing about one die as about four
 
 **Nothing is blocked.**
 
-**Three things need a person with the phone**, and they are judgement rather
+**Two things need a person with the phone**, and they are judgement rather
 than execution — every one of them is in `docs/TODO.md`:
 
 1. Whether the roll screen still reads as a thing to shake now that no button
    says so, and whether the dice pull-down reads as "the dice are in there".
 2. Whether the dice now *look* like they tumble. The figure says they turn
    1.52 times after landing against 0.89 before, but a number is not an eye.
-3. Whether an exploding chain ever still looks as though a die passed through
-   one lying there. Two ways it could have are closed on
-   `fix/rerolls-wait-and-clear`; what is unexplained is why the session saw it
-   **only on the first throws**, and the one candidate — the frame clock
-   dropping steps while the engine and the material are still being built — is
-   a number nothing shows yet (`LiveRoll.droppedSteps`).
 
 **One thing needs the repository owner**, not a branch: **AGP 9.4.1 was
 published on 18 September**, and Android Lint treats a newer AGP as an error
@@ -106,13 +102,8 @@ because dependencies are pinned by SHA-256. Dependabot covers Gradle weekly.
 - **Two harness bars still fail, and both fail by less than they did.** The
   re-throw share is 2.20 % against 0.05 % — a bar written for a mechanism that
   no longer exists and which needs re-deciding rather than hitting — and the
-  die-into-die overlap is 5.04 mm against 0.2 mm. That was called the solver's
-  own discrete-detection error and nothing else; it is now known that part of
-  it was a spawn, because a pass that threw several dice again dropped each of
-  them at a point drawn blind from the whole tray and two could start inside
-  each other. Fixed on `fix/rerolls-wait-and-clear`; **the figure has not been
-  re-measured on the phone**, and that run is what says how much of the 5.04 mm
-  was this.
+  die-into-die overlap is 5.04 mm against 0.2 mm, which is the solver's own
+  discrete-detection error and nothing else now.
 - **The d18 is a known limitation, decided and written down.** It cannot pass
   chi-squared at a hundred thousand rolls — its resting basins are narrow
   enough that the float32 hull's own rounding biases it. Held to the

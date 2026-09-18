@@ -116,6 +116,41 @@ is drawn over the table"):
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
 
+**Decided while putting the formula and the saved rolls away**, answering the
+second device session (`docs/physics-and-rendering.md`, "What is drawn over
+the table"):
+
+- **The shut formula is a tab, not a shrunken line.** The word `Formula` and a
+  chevron on a plate, mirroring `Dice` at the other end of the corner, and
+  **red when the formula does not read** — a mistake behind a door nobody has
+  a reason to open is a mistake nobody finds. An icon alone would have been
+  smaller and would have said nothing.
+- **The drawer slides, and only horizontally.** No fade and no expansion: the
+  fault being fixed is a menu that dropped down, and something that grew into
+  place is the same arrival under a different name.
+- **The saved rolls reuse the result's pull-up rather than getting one of
+  their own.** `PullUpSheet` over `SheetSlide`, with the rest hoisted — two
+  sheets on one edge is a rule about the pair of them, so neither may hold it.
+- **A result takes the bottom edge; the saved rolls yield.** A total cannot be
+  got back without throwing the dice again and a strip of saved rolls is one
+  pull away for ever, so `BottomEdge.resultArrives` parks the strip and not
+  the other way about. Parked, the two grips stack rather than overlap.
+- **The expected range moved into the result sheet's grip**, and left the
+  breakdown. One copy on the screen at a time, and it is in the half that
+  survives a push down — which is the whole of the complaint.
+- **`RollPresenter.progress` outlives the dice stopping when the roll is not
+  over**, so the earned and stalled plates can draw the live range. It is
+  cleared by a roll that finished, by `Cancel the roll` and by a fresh throw.
+- **`roll_hint_empty` is deleted rather than reworded.** It pointed at a
+  formula that is no longer on the table and at a menu that says `Dice` on its
+  own head. `roll_hint_ready` stays: shaking is the one thing nobody would
+  guess at.
+- **A pull-up's test tag goes inside `Modifier.offset`.** A semantics node
+  outside it reports the place the sheet would be if it had never slid, so a
+  tag applied through the caller's modifier makes every position assertion
+  quietly pass. It cost half an hour; it is written down so it costs nobody
+  else one.
+
 **Decided while making the result a pull-up**, where the brief left a choice
 (`docs/physics-and-rendering.md`, "What is drawn over the table"):
 
@@ -203,6 +238,25 @@ is drawn over the table"):
       parked sheet leaves enough felt to see a die that landed at the bottom
       edge. Where it rests and what a flick settles to are JVM-tested; the feel
       is not (`docs/physics-and-rendering.md`, "What is drawn over the table")
+- [ ] *Judge the two pull-ups sharing the bottom edge on the phone:* with a
+      result down there are two grips stacked on the edge, and the questions
+      are whether that reads as two things or as one confusing one, whether
+      `SAVED ROLLS` is needed on the lower grip or the bar alone would do, and
+      whether a result arriving while the saved rolls are up reads as the
+      total answering the roll or as the strip being snatched away
+      (`docs/physics-and-rendering.md`, "Two pull-ups, one bottom edge")
+- [ ] *Judge the formula tab on the phone:* whether a tab at the right edge
+      reads as "the formula is in there", whether the slide from the side is
+      quick enough to feel like a drawer rather than an animation, and —
+      the one that matters — whether **not being able to see the formula**
+      costs more than the felt it gives back. The dice menu's head carries a
+      count for the same question; the formula tab carries only its colour
+      (`design/dInfinity.dc.html`, option 2a)
+- [ ] *Judge the empty tray on the phone:* `Type a formula, or open Dice at the
+      top.` is gone at the session's request, so a tray somebody has just
+      cleared now says nothing at all. On a fresh install the welcome still
+      does. Whether the silence reads as calm or as broken is an eye's
+      question (`docs/design-handover.md`, question 6)
 - [ ] *Judge the dice pull-down on the phone:* the dice are behind a head reading `Dice` at the top of the table now, and the row inside it still scrolls — the built-in set offers ten dice and ten at a touch target worth pressing do not fit across a 360 dp screen. Three things need eyes. Does a shut menu read as "the dice are in there" or as "there are no dice"? Does the count on the head answer that? And does the scrolling row read as "there are more dice over there" or as "the d20 is missing" — the d20 being the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] *Judge the tray with no shadow of its own on the phone:* the wall and the rim no longer cast, and the dice still do. What is left to see is whether the join between the wall and the floor still reads as a corner — the contact darkening there is screen-space ambient occlusion rather than a cast shadow, and it cannot be turned off per renderable without taking the dice's contact with it (`docs/physics-and-rendering.md`, "Rendering (normal mode)")
 - [ ] **Decided: braced notation, so a set's own dice can be typed and picked.**

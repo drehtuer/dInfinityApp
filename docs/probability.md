@@ -15,8 +15,10 @@ The graph is available even for formulas the table cannot physically roll
 
 The same arithmetic says what an ordinary formula is expected to come to
 before it is thrown — the lowest, the highest and the exact average, on the
-tray before the shake and again on the result sheet
-(`docs/physics-and-rendering.md`, "What the screen says before the throw").
+ready plate before the shake and afterwards in the result sheet's **grip**,
+beside the total and above the bottom edge, so a player deciding whether to
+throw again can still read it
+(`docs/physics-and-rendering.md`, "What is drawn over the table").
 A formula past the limits below keeps its range, which costs nothing, and
 loses only its average.
 
