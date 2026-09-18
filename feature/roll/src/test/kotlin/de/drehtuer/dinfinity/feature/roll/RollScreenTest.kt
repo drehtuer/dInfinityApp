@@ -596,7 +596,7 @@ class RollScreenTest {
       )
     }
     typeFormula("3d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
 
     compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).performClick()
 
@@ -817,7 +817,7 @@ class RollScreenTest {
     val presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0)))
     compose.setContent { RollScreen(presenter = presenter) }
     typeFormula("1d20")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
 
     compose.onNodeWithTag(RollTestTags.ODDS).performClick()
     compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).performClick()
