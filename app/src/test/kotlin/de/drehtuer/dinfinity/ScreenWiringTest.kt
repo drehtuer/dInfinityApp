@@ -59,6 +59,36 @@ class ScreenWiringTest {
     assertNotNull("the dice sets", presenters.diceSets())
     assertNotNull("the table picker", presenters.tables())
     assertNotNull("the face designer", presenters.faceDesigner(""))
+    assertNotNull("the developer screen", presenters.developer())
+  }
+
+  @Test
+  fun `the designer is wired to a formula and to somewhere to save`() {
+    // Both are lambdas the factory hands over, so building the presenter
+    // proves nothing about either: a `notationOf` closed over the wrong
+    // catalogue and a designer with no library behind it both look exactly
+    // like a designer that works until one of them is called
+    // (`docs/face-designer.md`, "Flow", step 4).
+    val designer = wiring().presenters().faceDesigner("d20")
+
+    assertEquals("1d20", designer.rollable)
+    assertEquals(
+      listOf(
+        de.drehtuer.dinfinity.core.model.DiceSet
+          .PERSONAL_ID,
+      ),
+      designer.writable.map { it.id },
+    )
+  }
+
+  @Test
+  fun `the designer offers the shapes to draw on and not the drawings`() {
+    // A die of "My dice" is a drawing already, and offering it beside the
+    // plain die of that shape is offering the same choice twice.
+    val designer = wiring().presenters().faceDesigner("")
+
+    val ids = designer.state.choosable.map { it.id }
+    assertEquals("a die is offered twice", ids.size, ids.distinct().size)
   }
 
   @Test

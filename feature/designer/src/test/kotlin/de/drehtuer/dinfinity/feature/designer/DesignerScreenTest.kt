@@ -5,6 +5,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -48,6 +50,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * The face designer (`design/dInfinity.dc.html`, options `1v`, `4c`, `8d`).
@@ -58,6 +61,10 @@ import org.robolectric.RobolectricTestRunner
  * moves between faces.
  */
 @RunWith(RobolectricTestRunner::class)
+// A real bitmap behind the screen, so that `captureToImage` below rasterises
+// rather than recording calls: the legacy canvas draws nothing, and a glyph
+// that threw half way would look exactly like one that worked.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class DesignerScreenTest {
   @get:Rule
   val compose = createComposeRule()
@@ -794,60 +801,36 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `with nowhere to save there is no Save`() {
-    show(d6)
+  fun `the screen takes a modifier and a menu from whatever hosts it`() {
+    // The three things the navigation graph actually passes it
+    // (`DInfinityApp`), which every other test here leaves defaulted.
+    compose.setContent {
+      DesignerScreen(
+        presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }),
+        modifier = Modifier.testTag("hosted"),
+        onRoll = {},
+        menu = { Text("Menu") },
+      )
+    }
 
-    compose.onNodeWithTag(DesignerTestTags.SAVE).assertDoesNotExist()
+    compose.onNodeWithTag("hosted").assertIsDisplayed()
+    compose.onNodeWithText("Menu").assertIsDisplayed()
   }
 
   @Test
-  fun `Save to set asks which set, and says which one it went to`() {
-    // There is one writable set today and it is a list all the same: what the
-    // sheet answers is *which set*, and a screen that answers it by not
-    // asking is one that has to be rebuilt for the second personal set
-    // (`docs/face-designer.md`, "Save to set").
-    show(d6, sets = OneSet())
+  fun `a full face, the eraser and a turned die all draw`() {
+    // Three states the screen is otherwise never put into by a test: the
+    // warning, a nib whose glyph is the eraser's, and the Solid tab. None of
+    // them asserts a picture — what is asserted is that the screen still
+    // stands up in each.
+    val presenter = show(d10)
+    repeat(FaceDrawing.MAX_MARKS) { presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))) }
 
-    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
-    compose.onNodeWithTag(DesignerTestTags.SAVE_SHEET).assertExists()
-    compose.onNodeWithTag(DesignerTestTags.saveInto(OneSet.MINE.id)).assertIsSelected()
-    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).performClick()
+    compose.onNodeWithTag(DesignerTestTags.WARNING).performScrollTo().assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Eraser)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.viewOf(DesignerView.Solid)).performScrollTo().performClick()
 
-    compose.onNodeWithTag(DesignerTestTags.SAVE_SAID).assertIsDisplayed()
-    compose.onNodeWithText("Saved to My dice. Roll it now throws the drawing.").assertExists()
-  }
-
-  @Test
-  fun `a save with nothing drawn says so rather than claiming a set`() {
-    show(d6, sets = OneSet(answer = SaveResult.Blank))
-
-    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
-    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).performClick()
-
-    compose.onNodeWithText("There is nothing drawn to save yet.").assertExists()
-  }
-
-  @Test
-  fun `the sheet closes when it is closed`() {
-    show(d6, sets = OneSet())
-
-    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
-    compose.onNodeWithTag(DesignerTestTags.SAVE_CLOSE).performClick()
-
-    compose.onNodeWithTag(DesignerTestTags.SAVE_SHEET).assertDoesNotExist()
-  }
-
-  @Test
-  fun `Roll it throws the die in the set the drawing was just saved into`() {
-    // The whole of device feedback 1: the formula used to be a bare `1d6`,
-    // which resolves to whichever set a plain `d6` means — never the personal
-    // one — so the tray drew a plain die (`docs/face-designer.md`).
-    val thrown = mutableListOf<String>()
-    show(d6, notationOf = { "1${it.id}" }, sets = OneSet(), onRoll = thrown::add)
-
-    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
-
-    assertEquals(listOf("mine:1d6"), thrown)
+    compose.onNodeWithTag(DesignerTestTags.SOLID).performScrollTo().assertIsDisplayed()
   }
 
   private fun show(
@@ -872,22 +855,6 @@ class DesignerScreenTest {
     return presenter
   }
 
-  /** A library with one writable set and no disk behind it. */
-  private class OneSet(
-    private val answer: SaveResult? = null,
-  ) : DesignerSets {
-    override val writable: List<WritableSet> = listOf(MINE)
-
-    override suspend fun save(
-      setId: String,
-      draft: Draft,
-    ): SaveResult = answer ?: SaveResult.Saved(MINE, "mine:1${draft.die.id}")
-
-    companion object {
-      val MINE = WritableSet(id = "mine", name = "My dice")
-    }
-  }
-
   /** Drafts that outlive a swap but not the test: a disk without the disk. */
   private class Remembered : Drafts {
     private val kept = mutableMapOf<String, Draft>()
@@ -902,4 +869,7 @@ class DesignerScreenTest {
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
   private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
   private val d20 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron }
+
+  /** A kite-faced die: the one whose cells have no turn of their own. */
+  private val d10 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron }
 }

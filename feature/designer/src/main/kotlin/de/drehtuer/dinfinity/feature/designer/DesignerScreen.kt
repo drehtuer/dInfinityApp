@@ -353,7 +353,7 @@ private fun SaveSheet(
     }
     saving.done?.let { done ->
       Text(
-        text = sentenceFor(done),
+        text = stringResource(sentenceOf(done), (done as? SaveResult.Saved)?.set?.name.orEmpty()),
         style = MaterialTheme.typography.bodyMedium,
         color = if (done is SaveResult.Saved) MaterialTheme.colorScheme.onSurface else Ink.accent,
         modifier = Modifier.testTag(DesignerTestTags.SAVE_SAID),
@@ -362,13 +362,21 @@ private fun SaveSheet(
   }
 }
 
-/** What a save came to, in words (`docs/face-designer.md`, "Save to set"). */
-@Composable
-private fun sentenceFor(done: SaveResult): String =
+/**
+ * Which sentence a save came to (`docs/face-designer.md`, "Save to set").
+ *
+ * Plain Kotlin rather than a composable that looks three strings up, which is
+ * the line this module draws everywhere: what can be *wrong* is which of the
+ * three is said, and that is a `when` a unit test reads
+ * (`docs/architecture.md`, "The decision, then the drawing"). Every one of
+ * them takes the set's name, so the one that has no set to name is handed an
+ * empty string it does not print.
+ */
+internal fun sentenceOf(done: SaveResult): Int =
   when (done) {
-    is SaveResult.Saved -> stringResource(R.string.designer_save_done, done.set.name)
-    SaveResult.Blank -> stringResource(R.string.designer_save_blank)
-    SaveResult.Refused -> stringResource(R.string.designer_save_refused)
+    is SaveResult.Saved -> R.string.designer_save_done
+    SaveResult.Blank -> R.string.designer_save_blank
+    SaveResult.Refused -> R.string.designer_save_refused
   }
 
 /**
@@ -913,13 +921,7 @@ private fun FaceThumbnail(
         .semantics(mergeDescendants = true) { contentDescription = name }
         .testTag(DesignerTestTags.faceOf(cell)),
   ) {
-    Canvas(modifier = Modifier.size(THUMBNAIL).border(Modernist.rule, edge)) {
-      val face = Path().apply { follow(outline, size.width, size.height) }
-      clipPath(face) {
-        drawRect(color = Color.White)
-        marks.forEach { mark -> drawMark(mark) }
-      }
-    }
+    Canvas(modifier = Modifier.size(THUMBNAIL).border(Modernist.rule, edge)) { drawFace(outline, marks) }
     Text(
       text = label,
       style = MaterialTheme.typography.labelSmall,

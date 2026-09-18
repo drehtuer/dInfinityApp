@@ -461,9 +461,16 @@ class DesignerPresenter(
     }
   }
 
-  /** The sheet was opened, on the set it was last aimed at or the first writable one. */
+  /**
+   * The sheet was opened, on the first writable set.
+   *
+   * On the first one every time rather than on the one it was last aimed at:
+   * a sheet is opened to *choose*, and the choice that matters is the one
+   * made with the sheet in front of you. Null only when there is nowhere to
+   * save, which is a sheet the screen never offers.
+   */
   fun offerSave() {
-    state = state.copy(saving = Saving(into = state.saving?.into ?: sets.writable.firstOrNull()?.id))
+    state = state.copy(saving = Saving(into = sets.writable.firstOrNull()?.id))
   }
 
   /** Another set was chosen in the sheet. The last answer goes with it: it was about the other set. */

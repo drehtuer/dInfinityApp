@@ -1,15 +1,21 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -128,5 +134,49 @@ class ModernistIconButtonTest {
 
     compose.onNodeWithTag("more").assertWidthIsAtLeast(TOUCH_TARGET)
     compose.onNodeWithTag("more").assertHeightIsAtLeast(TOUCH_TARGET)
+  }
+
+  @Test
+  fun `it survives a recomposition that changes nothing about it`() {
+    // A row of these sits inside a screen that redraws for something else
+    // entirely — a stroke on a canvas — so the ordinary case is a
+    // recomposition with the same arguments, and it must not lose the glyph.
+    var tick by mutableStateOf(0)
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        ModernistIconButton(
+          contentDescription = "Undo",
+          onClick = {},
+          modifier = Modifier.testTag("undo"),
+        ) { Text("↶") }
+      }
+    }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag("undo").assertHasClickAction()
+  }
+
+  @Test
+  fun `it follows the state it is drawn from`() {
+    // The other half: an action's name and whether there is anything to do
+    // both change under it — undo becomes pressable the moment a line is
+    // drawn, and the guide's button says the opposite thing once it is off.
+    var drawn by mutableStateOf(false)
+    compose.setContent {
+      ModernistIconButton(
+        contentDescription = if (drawn) "Undo the line" else "Undo",
+        onClick = {},
+        enabled = drawn,
+        modifier = Modifier.testTag("undo"),
+      ) { Text("↶") }
+    }
+    compose.onNodeWithTag("undo").assertIsNotEnabled()
+
+    compose.runOnIdle { drawn = true }
+
+    compose.onNodeWithContentDescription("Undo the line").assertHasClickAction()
   }
 }

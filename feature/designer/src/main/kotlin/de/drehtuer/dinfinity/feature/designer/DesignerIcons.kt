@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -127,16 +126,22 @@ internal object DesignerIcons {
 internal fun Glyph(
   path: String,
   tint: Color,
-  modifier: Modifier = Modifier,
-  size: Dp = GLYPH,
   ink: Float = DesignerIcons.INK,
 ) {
   val drawn = remember(path) { PathParser().parsePathString(path).toPath() }
-  Canvas(modifier = modifier.size(size)) { strokeGlyph(drawn, tint, ink) }
+  Canvas(modifier = Modifier.size(GLYPH)) { strokeGlyph(drawn, tint, ink) }
 }
 
-/** The 24-unit box, scaled onto whatever room the canvas has. */
-private fun DrawScope.strokeGlyph(
+/**
+ * The 24-unit box, scaled onto whatever room the canvas has.
+ *
+ * Apart from [Glyph] and not private, for the reason `FaceInk`'s drawing half
+ * is: a draw lambda inside a composable that is never laid out answers
+ * nothing, and what has to be asserted about a glyph is that it *runs to the
+ * end* on a real canvas — a path the parser accepted and the renderer then
+ * choked on would be a button with no face on it.
+ */
+internal fun DrawScope.strokeGlyph(
   path: Path,
   tint: Color,
   ink: Float,
@@ -150,5 +155,10 @@ private fun DrawScope.strokeGlyph(
   }
 }
 
-/** How big a tool glyph is drawn inside its box, the design's own `.btn-icon` measure over again. */
+/**
+ * How big a tool glyph is drawn inside its box.
+ *
+ * One number rather than a parameter: every glyph on the screen is this size,
+ * and a size nobody ever passes is a knob with nothing on the other end of it.
+ */
 private val GLYPH = 22.dp
