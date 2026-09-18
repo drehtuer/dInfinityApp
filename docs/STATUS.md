@@ -32,9 +32,15 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#278**. In flight: fourteen stacked pull
-requests, #280 through #293, which are the design pass of 2026-09-17 folded
+`main` has everything through **#278**. In flight: fifteen stacked pull
+requests, #280 through #294, which are the design pass of 2026-09-17 folded
 into `docs/` and then built. They merge in order, each on the one below it.
+
+**The last device run covered #280–#290**: the whole tier on the Pixel 10a,
+87 tests, 1 skipped, 0 failed, 7m 47s. What came after it — the plates, the
+power-saving panel, the Settings rows and the Solid tab — is verified on the
+JVM and by Robolectric only, because the phone went off the network while it
+was being built.
 
 `v0.1.0` is cut from #268 and is now a long way behind — two faults a user sees
 were fixed before any of this, and the remedy is `v0.1.1` whenever somebody
