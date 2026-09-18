@@ -306,8 +306,8 @@ sheet in both places.
 Pinning is gone with the design pass of 2026-09-17: each row carries a grip,
 the list reorders live under the finger and is written down when it lifts, the
 list is its own scroll box under a bar and a switcher that stay put, and a roll
-wears one of twelve colour tags or one typed as a hex code — every one of them
-through a contrast clamp. `sort_order` replaced the `favourite` column in
+wears one of twelve colour tags or one picked on the app's own colour picker —
+every one of them through a contrast clamp. `sort_order` replaced the `favourite` column in
 database version 6, and the migration translates what a phone already has once:
 favourites first, then by recent use, numbered per group.
 
@@ -329,11 +329,6 @@ the choice open:
 - **A new roll lands at the bottom of its group.** It is a roll somebody has
   just made and has not placed yet; putting it at the top would move
   everything they *had* placed down by one.
-- **A custom colour is typed as `#rrggbb`** rather than picked off a wheel. The
-  system colour picker arrives with the accent's (4.9 below), and one picker
-  for both is worth more than two that are not quite the same; a hex code is
-  also what somebody copying a colour out of a character sheet already has.
-  Half a code chooses nothing rather than something wrong.
 - **The contrast clamp is `core/model`'s**, the same one the accent goes
   through (`AccentRamp.clamp`). It was written twice for a few hours — once
   here and once beside the accent, because the two were built at the same time
@@ -474,8 +469,9 @@ pixels — the smallest closed stroke the tap is inside, or the face — and fil
 sink under the ink; **copy and paste** merge a turned or mirrored copy onto
 another face in one undoable step, the turn being a whole step of the cell's
 own symmetry; the **colour picker** goes past the twelve presets in hue, depth
-and brightness, and the ink it makes is opaque and round-trips through the
-draft file (`docs/face-designer.md`). **Drafts are on disk** — one file per
+and brightness — `ui/common`'s, shared with Settings and the saved-roll editor
+— and the ink it makes is opaque and round-trips through the draft file
+(`docs/face-designer.md`). **Drafts are on disk** — one file per
 die, written after every stroke and read back when the die is opened — so a
 drawing outlives the screen and each die keeps its own. That made the "start
 over?" question unnecessary and it is gone: changing die no longer loses
@@ -735,9 +731,11 @@ every throw filed under it (`docs/statistics.md`, per session).
       pressed step is therefore the mix rather than the stylesheet's `#ae1800`.
       One rule with an exception in it for the one accent that has a published
       ramp is a rule no test can hold, and the difference is a shade.
-      **(3) Android has no colour picker to send anybody to**, so Settings
-      draws the one the face designer already has — hue, depth and brightness
-      over `designer/Ink` — rather than a second transcription of what a hue is
+      **(3) Android has no colour picker to send anybody to**, so the app
+      draws its own — hue, depth and brightness — rather than a second
+      transcription of what a hue is. There is now exactly one of it, in
+      `ui/common`, opened by Settings, the face designer and the saved-roll
+      editor, over `core/model`'s `Hsv` (`docs/architecture.md`, decision 63)
 
 **Every setting is one row now** — name and sentence on the left, the control
 on the right and centred against them — because that is how the design draws

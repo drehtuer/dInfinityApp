@@ -43,7 +43,7 @@ so that everything above it can be tested without an engine at all.
 build-logic/         Gradle convention plugins — every module's build config lives here, once
 app/                 Application: single activity, theme, navigation graph
 core/
-  model/             Die, DiceSet, Face, the shape catalogue and its atlas layout, a decoded atlas and which of its cells are empty, RollPlan, RollResult, SavedRoll — pure Kotlin, no Android deps
+  model/             Die, DiceSet, Face, the shape catalogue and its atlas layout, a decoded atlas and which of its cells are empty, RollPlan, RollResult, SavedRoll, and the colour arithmetic every picked colour goes through (Contrast, AccentRamp, Hsv, Hex) — pure Kotlin, no Android deps
   notation/          Formula parser + evaluator (docs/dice-notation.md)
   probability/       Exact PMF computation (docs/probability.md)
   stats/             Statistics aggregation logic
@@ -66,7 +66,7 @@ feedback/            Impacts → haptic ticks and impact sounds (docs/physics-an
 designer/            The personal package, "My dice": the drawing model behind the face designer (marks, drafts on disk, cell outlines), the die turned over in the hand (the projection, the culling and the depth sort behind the Solid tab), the photographs somebody has made tables of, and the export that turns both into an installable package (docs/face-designer.md, docs/tables.md)
 data/                Room database, DAOs, DataStore
 ui/
-  common/            The design system's tokens, and the screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes, the button, the rule, the segmented control
+  common/            The design system's tokens, and the screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes, the button, the rule, the segmented control, the sheet, the colour picker
 feature/             One module per screen group; see docs/TODO.md Step 4
   roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
@@ -125,12 +125,24 @@ the one module most likely to be looked at beside the first (decision 35).
 
 `ui/common` is **not** a feature and is not a place for anything that is
 merely shared. Nothing in it knows what screen it is on, and it depends on
-`core/notation` and nothing else — so a piece of furniture cannot reach a
-database, a simulator or the navigation graph. It exists because three screens
-take a formula, validate it on every keystroke and have to say the same thing
-about the same mistake: the tray, the outcome graph and the saved-roll editor.
-Two copies of "the same thing" is one copy too many, and the disagreement
-would eventually be about whether somebody's formula is valid.
+`core/notation` and `core/model` and nothing else — so a piece of furniture
+cannot reach a database, a simulator or the navigation graph. It exists
+because three screens take a formula, validate it on every keystroke and have
+to say the same thing about the same mistake: the tray, the outcome graph and
+the saved-roll editor. Two copies of "the same thing" is one copy too many,
+and the disagreement would eventually be about whether somebody's formula is
+valid.
+
+**The colour picker is the same argument, and it is the one that got away
+first.** Three screens ask for a colour — Settings' accent, the face
+designer's ink, the saved-roll editor's tag — and the sheet was written twice
+before it was written here, each copy private to its own feature module and
+each with its own slider row. `ui/common` may not depend on a feature's
+engine, so what the picker is built on went the other way: the HSV arithmetic
+is `core/model`'s `Hsv`, beside `AccentRamp` and `Contrast`, where it is plain
+Kotlin under a JVM test and low enough in the graph for furniture to reach.
+`Hex` went with it, because the accent's label, the designer's readout and a
+saved roll's tag each wrote the same six digits their own way.
 
 The rule for putting something in it is the same rule: **more than one screen
 needs it, and it needs no screen.** A control that navigates does not go in —
@@ -1049,6 +1061,7 @@ numbers beside it.
 | the name field | `name` | what it will be called; blank means the formula is its name |
 | the formula field | `formula` | the formula, its error and its odds, all from one plan |
 | icon, colour, group, table | `choose` | that one field and nothing else — none of them needs re-validating |
+| the thirteenth swatch | *(opens `ui/common`'s `ColourPicker`)* | nothing until **Use it**, which reports a colour into `choose` like one of the twelve |
 | **New group** | `GroupPresenter.create` | the group sheet opens; the group it writes becomes this roll's |
 | **Save roll** | `save` | the roll is written down, and the editor leaves |
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
@@ -1314,14 +1327,26 @@ the next write stores the survivor. The two ids that survived, `vermilion` and
 name is language, and re-labelling a colour must not move anybody's choice.
 
 **Android has no colour picker to send anybody to.** The prototype's
-`<input type="color">` is the browser's, and there is no platform equivalent to
-borrow, so Settings draws the picker the app already has: hue, depth and
-brightness over `designer`'s `Ink`, which is what the face designer offers and
-what a JVM test already holds (`docs/face-designer.md`, "A colour beyond the
-twelve"). That is why `feature/settings` depends on `:designer` — the same
-dependency `feature/sets` and `feature/tables` already take, and for the same
-reason: a second transcription of what a hue is would be a second answer to one
-question.
+`<input type="color">` is the browser's, and there is no platform equivalent
+to borrow, so the app draws its own: `ui/common`'s `ColourPicker`, a sheet
+with a patch of colour and three sliders — hue, depth and brightness rather
+than red, green and blue, because dragging one of three colour channels
+changes all three of the things somebody is looking at.
+
+**There is one of it, and three screens open it**: Settings' accent, the face
+designer's ink and the saved-roll editor's colour tag. It was written twice
+before it was written once — each copy private to its screen, each with its
+own slider row — which is the duplication this module layout exists to
+prevent, and which both copies' own comments had already noticed. The
+arithmetic under it is `core/model`'s `Hsv`, beside `AccentRamp` and
+`Contrast`: plain Kotlin, so a JVM test holds what a hue is, and low enough in
+the graph that `ui/common` can reach it without depending on a feature's
+engine. `Hex` is there too, and is the one way a colour is written `#RRGGBB` —
+the accent's label, the designer's ink readout and a saved roll's tag each had
+their own before, and two of them took the default locale with them.
+
+`feature/settings` no longer depends on `:designer` at all; it took that
+dependency only for the picker's arithmetic.
 
 **There is no longer a sound switch in the design.** The prototype's Settings
 has Appearance, Table view, Power-saving mode, Haptics, Division and Accent
@@ -1721,7 +1746,7 @@ the archives an install is working through, and those came from a stranger.
 | 19 | The verdict on an instrumented run comes from its JUnit XML, not from AGP's own pass/fail | AGP 9.4.0 cannot pass a run on a device whose adb serial contains a colon — which is every device attached over WiFi debugging — so its verdict is unusable here (`docs/build-setup.md`) |
 | 20 | Release APKs are signed v2+v3, not v1 or v4 | v3 carries the proof-of-rotation record, so a lost or compromised release key can be replaced without breaking updates for anyone who already installed the app; v1 is unread above API 24 and v4 only speeds up incremental `adb install` |
 | 21 | The submitted dependency graph covers the runtime classpaths only | A graph of every configuration also carries the build's own toolchain, producing vulnerability alerts for transitives no file in this repository declares and that Dependabot therefore cannot patch; build-tool advisories ride in on the weekly AGP and Kotlin bumps instead |
-| 22 | The accent is six presets **and** any colour the player likes, with a contrast clamp between the choice and the paint | The Modernist system spends colour in one place and relies on that colour carrying meaning, and a free picker lets somebody choose an accent that vanishes against the ground — which is why this used to be a closed palette of six asserted at 3:1 by a test. The clamp answers the same worry better: `AccentRamp.clamp` pushes any colour off the ground it is read against until it clears 3:1, so the guarantee becomes a property of every colour rather than a list of six, and a property is what a test can hold. It is in the theme, so a preset and a picked colour cannot take different paths. What is *shown* stays what was chosen — a swatch that answers a tap with a different colour is a control nobody can aim — and the deepening is explained in words above the grid instead |
+| 22 | The accent is six presets **and** any colour the player likes, with a contrast clamp between the choice and the paint | The Modernist system spends colour in one place and relies on that colour carrying meaning, and a free picker lets somebody choose an accent that vanishes against the ground — which is why this used to be a closed palette of six asserted at 3:1 by a test. The clamp answers the same worry better: `AccentRamp.clamp` pushes any colour off the ground it is read against until it clears 3:1, so the guarantee becomes a property of every colour rather than a list of six, and a property is what a test can hold. It is in the theme, so a preset and a picked colour cannot take different paths. What is *shown* stays what was chosen — a swatch that answers a tap with a different colour is a control nobody can aim — and the deepening is explained in words above the grid instead. **The same answer now covers a saved roll's colour tag**, which is the other place in the app where a player picks a colour the app will print words in: twelve presets, any colour beyond them, and `AccentRamp.clamp` between the choice and the mark. What it did *not* extend to is a die's face, and deliberately — the ground behind a die's artwork belongs to the dice set, so there is no ratio to clamp against (`core/model`'s `Hsv`) |
 | 23 | The identity's blue is fixed and does not follow the accent | The mark is the app's name, not its chrome, and a launcher icon cannot follow a runtime setting in any case (`docs/assets/README.md`) |
 | 24 | SonarQube runs as the scanner in CI, not as automatic analysis | Automatic analysis cannot ingest a coverage report at all, and it ignores `sonar.issue.ignore.*`, so a reviewed finding could only be accepted by clicking it away in the web UI. It also reads a different file, so the repository had to carry two configurations that could silently disagree — and did (`docs/build-setup.md`) |
 | 25 | Coverage is reported per module, not merged into one file | Each module has exactly one JVM test task, and SonarQube merges a list of reports itself. The Android modules' reports are built by AGP rather than by a hand-written `JacocoReport` task, so nothing depends on the paths of AGP's intermediate class directories, which are not API and have moved between versions |
@@ -1761,4 +1786,5 @@ the archives an install is working through, and those came from a stranger.
 | 59 | Every die is printed, and its artwork is composited over the printing by alpha | `docs/dice-sets.md` has always promised that an atlas may leave a cell transparent and the label shows through, and the old material could not keep it: `baseColor *= atlas` over a transparent pixel is black, not the die, and the printed field was suppressed for any die with a `texture` at all. Deciding it per *cell* instead would mean the renderer knowing which cells came out empty, which is a fact about pixels that live on the far side of `Stage` — so it is decided per *pixel*, in the material, where the alpha already is. The cost is a distance field built for dice that may not need one, which is cached per die and is eighty kilobytes; what it buys is that a die with no artwork and a die whose artwork covers every face are the same code path with different alpha, rather than two. Where the artwork is opaque the result is the old multiply exactly, which is what keeps a table's floor tinted by its floor colour |
 | 60 | The table picker's thumbnails are drawn by the roll screen's renderer, on the roll screen's thread and engine; everything that decides what one is a picture of is plain Kotlin | It is the first thing in the app to want the renderer somewhere that is not the tray, and there were three ways to get it and only one that keeps the promises already made. A private engine on the main thread is simply wrong — Filament takes calls only from the thread that made the engine (decision 49). A second engine on a second thread works and pays, again, the cost decision 50 exists to avoid: the dice material is compiled on the device for the driver that is actually there (decision 46) and takes long enough to watch, so a second one is that compile twice over and two graphics contexts held for one app. `RollThread` already outlives every visit to every screen and already has one engine on it, and a handler serialises what reaches it, so the picker posts. What a thumbnail owns is a swap chain and a scene, and both are given back before the post returns. The other half is decision 40 and 47 applied again: how big a picture is, what tray it is a tray of, where the camera stands, which face of the die is up, how high that leaves the die sitting, which looks are kept and which are dropped are all arithmetic and judgement, and all of them fail as *a slightly odd picture* rather than as an error — so all of them are `ThumbnailPlan` and `ThumbnailCache`, with JVM tests, and only the draw call and the buffer of pixels are behind `Stage`. The seam back out is the same one `TablePhotos` uses: `feature/tables` asks for a picture of a look and cannot name an engine, `render/filament` draws a frame and cannot name a bitmap, and `:app` joins them. The fallback is the screen's existing swatch, kept for exactly that — an engine that will not open, a driver that will not read a frame back, and power-saving mode, which promises that no engine is created *at all* |
 | 61 | Every word a screen says is a string resource, and a check of the project's own — not Android Lint's — is what keeps it that way | Lint has the rule and cannot apply it: `HardcodedText` reads layout XML, and there is no layout in this app to read. Left at that, "nothing prevents a translation" would be a claim maintained by whoever last remembered it, which is the kind of rule that decays quietly — a caption typed into a `Text(` is invisible in review and invisible in CI. So the rule is enforced by `verifyTextIsAResource`, which reads what a composable is *handed*. It is a heuristic over source text rather than a type-resolved analysis, and that shapes what it asks: only the handful of call sites that put words on a screen, and only literals with words of their own in them, so that a test tag, a route, a `require` message and `"%.1f"` are all left alone. The gaps are the two plain-Kotlin modules that write English on purpose — the notation reference beside its parser, and the validator that may not depend on Android — and they are exempted by file name in their own build scripts rather than by a directory nothing looks in, so the hole stays visible and small |
+| 63 | There is **one** colour picker, in `ui/common`, and the arithmetic under it is in `core/model` | Three screens ask for a colour and the sheet had been written twice, each copy private to its feature module, each with its own slider row and its own duplicate of what a hue is — and the second copy's own comment already said that two pickers disagreeing about a hue would be one too many, which is a note somebody wrote instead of fixing it. The rule for `ui/common` answers it exactly: more than one screen needs it, and it needs no screen. What forced the second half is the dependency arrow — `ui/common` may not depend on a feature's engine, so the arithmetic could not stay in `:designer` and moving it *up* was the only direction left. `core/model` is where it belongs anyway: it sits beside `AccentRamp` and `Contrast`, which are the other things every picked colour goes through, it is plain Kotlin so a JVM test holds what a hue is rather than a Robolectric one, and it is low enough that nothing has to take a screen's dependency to write a colour down. `feature/settings` had taken `:designer` for the arithmetic alone and no longer depends on it; `feature/designer`'s alias of `ui/common`'s `Ink` went with the name clash that forced it. The tags are derived from one string rather than declared seven times per screen, because twenty-one constants is twenty-one chances to spell a suffix two ways |
 | 62 | Which die a finger is on is arithmetic in `render/filament`, the inverse of the camera; whether that die may be thrown again is arithmetic in `core/notation`, over the breakdown | The same line decisions 40 and 47 draw, applied to the only gesture the tray had left. A touch point becomes a die by a ray through the frustum `TrayCamera` framed, against the ball around each die at the scale the capacity rule threw it — so it belongs beside that camera, where a JVM test can project a die through the picture it was drawn in and ask for it back, and not inside a `pointerInput` lambda where the only test is a person tapping a phone and the only symptom is a die they did not touch. The second half is a different question and deliberately not in the same place: *may* a die be thrown again is about the **formula**, not about the physics or the picture. A die that another die was thrown because of is spent — `8d6!` threw a seventh die because the sixth came up six — and throwing it again would leave the roll holding a die nothing asks for, which can only be resolved by taking a die off the table or keeping one whose reason has gone. Both are the app moving dice behind the player, which is what the whole stacking ladder exists to avoid. So the rule sits beside `GroupRoller`, which is what builds the chains, and it is coarse on purpose: a group carrying `!` or `r n` offers nothing at all rather than a per-die guess reconstructed from a flat list the chains were flattened out of. A die it refuses is a die the player throws again by pressing **Roll**; a die it wrongly allowed would be a roll the app had rearranged |

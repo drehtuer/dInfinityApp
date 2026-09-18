@@ -386,6 +386,12 @@ next to the row, so what is in the pen can be read off rather than guessed at,
 and the chosen colour is stored per stroke, so it round-trips through the draft
 file like any other ink.
 
+**The picker is not this screen's own.** It is `ui/common`'s `ColourPicker`,
+the one sheet Settings' accent and the saved-roll editor open too, over
+`core/model`'s `Hsv` (`docs/architecture.md`, "Modules" and decision 63). This
+screen supplies the title, the colour it opens on and what to do with the
+answer, and nothing else — what a hue is has one definition in this app.
+
 **Ink is always opaque.** Alpha is forced rather than offered: a
 half-transparent stroke is a stroke whose colour depends on what is behind it,
 and what is behind it is the die's own material, which the set decides and the

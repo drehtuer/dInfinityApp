@@ -381,10 +381,15 @@ SavedRoll {
   a colour towards the ground's own text colour until it can be seen and stops
   there, so a tag that is already legible is drawn exactly as it was chosen —
   and `ink` at night and `bone` on paper, each invisible as written, are not.
-  A custom colour is **typed as a hex code** (`#2b5aa8`) until the system
-  colour picker arrives with the accent's; half a code chooses nothing rather
-  than something wrong. A tag is stored as the colour itself, so one of the
-  twelve and one somebody typed are the same kind of thing in storage.
+  A colour beyond the twelve is **picked**, on a thirteenth swatch that opens
+  the app's one colour picker — hue, depth and brightness, the same sheet the
+  face designer and the accent open (`docs/architecture.md`, "Modules"). It
+  used to be a hex code typed into a field, which is what a phone found
+  awkward. The hex is still *printed* under the swatches, because a hex code
+  is what somebody copying a colour onto a character sheet has in front of
+  them and a swatch is a picture. A tag is stored as the colour itself, so one
+  of the twelve and one somebody picked are the same kind of thing in
+  storage.
 - **Adding a roll starts on the last formula thrown.** The "+" on the home
   strip and **New** on the saved-rolls list open the editor with the formula of
   the most recent throw already in the field, because that is what somebody has

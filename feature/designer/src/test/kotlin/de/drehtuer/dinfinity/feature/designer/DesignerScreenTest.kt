@@ -509,9 +509,9 @@ class DesignerScreenTest {
 
     compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
     compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertExists()
-    compose.onNodeWithTag(DesignerTestTags.PICKER.hue).performSemanticsAction(SemanticsActions.SetProgress) { it(150f) }
-    compose.onNodeWithTag(DesignerTestTags.PICKER.depth).performSemanticsAction(SemanticsActions.SetProgress) { it(0.6f) }
-    compose.onNodeWithTag(DesignerTestTags.PICKER.brightness).performSemanticsAction(SemanticsActions.SetProgress) { it(0.8f) }
+    slide(DesignerTestTags.PICKER.hue, 150f)
+    slide(DesignerTestTags.PICKER.depth, 0.6f)
+    slide(DesignerTestTags.PICKER.brightness, 0.8f)
     compose.onNodeWithTag(DesignerTestTags.PICKER.use).performClick()
 
     assertEquals(Hsv(150f, 0.6f, 0.8f).argb, presenter.state.colorArgb)
@@ -533,7 +533,7 @@ class DesignerScreenTest {
     val before = presenter.state.colorArgb
 
     compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.PICKER.hue).performSemanticsAction(SemanticsActions.SetProgress) { it(300f) }
+    slide(DesignerTestTags.PICKER.hue, 300f)
     compose.onNodeWithTag(DesignerTestTags.PICKER.cancel).performClick()
 
     assertEquals(before, presenter.state.colorArgb)
@@ -713,6 +713,12 @@ class DesignerScreenTest {
         .none { it is Eyes },
     )
   }
+
+  /** One of the picker's three sliders, dragged to a value. */
+  private fun slide(
+    tag: String,
+    to: Float,
+  ) = compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.SetProgress) { it(to) }
 
   private fun show(
     die: Die,

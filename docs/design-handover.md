@@ -98,6 +98,18 @@ Three questions for the next pass over the prototype:
    wording is the wording it uses everywhere else for those two acts; the
    prototype's is shorter. One of them should give.
 
+### One that has been closed
+
+**The saved-roll editor's colour tag.** The prototype `1r` has always drawn
+thirteen swatches — the twelve tags and a custom one that opens the browser's
+own colour picker — with the hex printed beside them. The app had a hex
+*field* there instead, which is what a phone found awkward on v0.1.1. It is
+the prototype's shape now: a thirteenth swatch opening `ui/common`'s
+`ColourPicker`, and the hex as a readout rather than an input. What is left of
+the difference is where the hex sits — the prototype keeps it inline at the
+end of the swatch row, the app puts it on the line below, because thirteen
+48 dp targets already wrap on a phone.
+
 ## Screens whose shape still differs
 
 None of these was changed by either side. They are structure, and structure is
