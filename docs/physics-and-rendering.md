@@ -1257,15 +1257,35 @@ impact sounds rather than a crash in the middle of a roll.
   closes in on its own, not even when the dice settle: a camera on the dice
   takes the table away, and a player cannot then tell four dice from two.
   Looking closer is theirs to do — **pinch to zoom, two fingers to pan** — and
-  what that produces is a `TrayView`, which cannot leave the table. At the
-  whole tray there is nowhere to pan to; every step closer earns exactly as
-  much room to move as it took away, so a fling cannot end up looking at the
-  void beside the tray. A new throw goes back to the whole table, because the
-  dice can land anywhere in it. A rotation does not: where the player was
-  looking is part of the picture that is rebuilt. One finger is left alone, for
-  picking a die up and for the tap that deliberately does not roll — and
-  which die a finger is on is `TrayPick`, the inverse of this camera
-  ("Picking a die up and throwing it again").
+  what that produces is a `TrayView`, which cannot leave the table.
+
+  **At the whole tray there is nowhere to pan to, and the room to move grows
+  with the zoom until, at `TrayView.CLOSEST`, the middle of the screen reaches
+  the corner of the floor.** Every millimetre of table can therefore be
+  brought to the middle of the screen, which is where somebody who has pinched
+  in to settle an argument about a face is looking. The limit used to keep the
+  whole *frame* inside the tray, `side / 2 · (1 − 1/zoom)`, and the cost of
+  that was the dice nearest the walls: they could be seen only at the extreme
+  edge of the picture and never looked at properly. The rule is the same shape
+  divided by what it allowed at `CLOSEST`, so it is still nothing at the whole
+  tray, still continuous and still monotonic — it simply goes further. What it
+  shows past the old limit is the tray's own wall rising beyond the edge of the
+  floor, which is a picture of the table rather than of the void beside it, and
+  a fling still cannot leave the table.
+
+  **A pinch happens about the point the fingers are gathered at**, not about
+  the middle of the screen, so a player can pinch *into* the corner they have
+  spotted a die in rather than towards the middle and out of it.
+
+  A new throw goes back to the whole table, because the dice can land anywhere
+  in it — and the gesture reads where the camera is from the screen rather
+  than remembering it, so the first touch after a throw carries on from the
+  whole tray instead of snapping back to the corner the last roll was read in.
+  A rotation does not go back: where the player was looking is part of the
+  picture that is rebuilt. One finger moves the camera not at all and consumes
+  nothing; it is left for picking a die up and for the tap that deliberately
+  does not roll — and which die a finger is on is `TrayPick`, the inverse of
+  this camera ("Picking a die up and throwing it again").
 - **How far it leans is the player's, and it leans less than it did.**
   `TrayCamera.TILT_DEGREES` was 22° and not a setting. It is **Table view** in
   Settings now, with two positions: *straight down*, which is the **default**

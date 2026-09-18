@@ -11,12 +11,12 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Phase:** implementation. Steps 1, 2 and **3 are done**; Step 4's screens are
   all written, connected and working, and what is left on them is polish and
   judgement. **Step 5 — physics and rendering on a real phone — is where the
-  remaining hard problems are**, and its harness (5.1) is now finished too.
-- **The app rolls dice on a phone, and as of #271 and #272 it looks like it.**
-  Type a formula, tap Roll or shake the Pixel 10a, and the dice tumble onto a
-  felt tray, come to rest, are felt and heard as they land, and their total
-  appears beside them. They carry real printed numbers, the right way round,
-  and a die whose author drew artwork now wears it.
+  remaining hard problems are**, and its harness (5.1) is finished too.
+- **The app rolls dice on a phone, and it looks like it.** Type a formula, tap
+  Roll or shake the Pixel 10a, and the dice tumble onto a felt tray, come to
+  rest, are felt and heard as they land, and their total appears beside them.
+  They carry real printed numbers, the right way round, and a die whose author
+  drew artwork wears it.
 - **Latest release:** `v0.1.1` — the first one whose every screen has been
   looked at on a phone. Signed, fingerprint-checked, published with its
   SHA-256.
@@ -29,19 +29,14 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#306**, which cut `v0.1.1`. In flight: a
-stack answering the second device session, of which the roll screen's layout
-is one — the dice pull-down, the formula menu, the two result actions and the
-tray's own shadow.
+`main` has everything through **#306**, which cut `v0.1.1`. In flight: a stack
+answering the second device session — the physics that makes the dice tumble,
+the roll screen's layout, and the table camera's two-finger pan.
 
-**The last device run covered the stack through #290**: the whole tier on the
-Pixel 10a, 87 tests, 1 skipped, 0 failed, 7m 47s. What came after it — the
-plate that hugs, the power-saving panel, the formula in the corner, the
-Settings rows and the Solid tab — is verified on the JVM and by Robolectric
-only, because the phone went off the network while it was being built. **That
-is the next thing a phone should be pointed at.**
-
-`v0.1.1` is cut from here.
+**The last device run covered the stack through #290** — the whole tier on the
+Pixel 10a, 87 tests, 1 skipped, 0 failed, 7m 47s. Everything merged since is
+verified on the JVM and by Robolectric only. **That is the next thing a phone
+should be pointed at.**
 
 ## Done
 
@@ -66,11 +61,27 @@ is the next thing a phone should be pointed at.**
 - **Step 5.1, the harness.** `tools/harness.sh` rolls N throws — or for a
   duration — headlessly on either tier, pulls back a JSON document and prints
   a pass/fail table.
+- **Step 4's screens and the design round.** Plates over the table and no
+  accent on felt, the pull-up result sheet, the accent picker with
+  `AccentRamp.clamp` between choice and paint, saved rolls in the player's own
+  order with colour tags, Settings as single rows, Table view as a setting,
+  thumbnails drawn from real trays, a set's Physical block, the face
+  designer's Solid tab, dice lit by a room, and navigation with one safe area
+  applied once. Git history has the detail.
 
 ## In progress
 
-**Step 4: every screen is written and connected**, and has just had a pass
-over it against the prototype. What is left on each is in `docs/TODO.md`.
+**The roll screen's table camera** (`fix/tray-gestures`), from device testing
+of `v0.1.1`. Two fingers pan rather than one, so the single finger is free
+again for picking a die up; the pan limit grows with the zoom until, at
+`TrayView.CLOSEST`, the middle of the screen reaches the corner of the floor,
+so a die lying against a wall can be brought to where somebody is looking; a
+pinch happens about the fingers rather than the middle of the screen; and the
+gesture reads where the camera is from the screen, so the first touch after a
+throw no longer snaps it back to the last roll's corner. JVM and Robolectric
+only so far — what the looser limit trades away is that the frame shows wall
+beyond the floor's edge, and whether that reads as the table or as having
+fallen off it is a phone's answer (`docs/TODO.md`).
 
 **The design pass is built.** It answered every question the app was waiting on
 and decided a good deal nobody had asked about, and the round that followed
@@ -159,29 +170,29 @@ say (`docs/architecture.md`, "Settings").
 
 **Step 5 is the real remaining work** — see Known risks.
 
+**The table camera takes two fingers.** One finger no longer pans and consumes
+nothing, so it is free for the pick-up that `TrayPick` already has the
+arithmetic for; a pinch zooms about the fingers rather than the middle of the
+screen; and the pan limit grows with the zoom until, at the closest the camera
+may get, any point of the table — the corners included — can be brought to the
+middle. What that gives up is that past the old limit the frame shows the wall
+rising beyond the floor's edge, which is a picture of the table rather than the
+void beside it. The table thumbnails keep their old framing, asked for
+explicitly rather than inherited. A stale-view bug went with it: the first
+touch after a throw used to snap the camera back to where it had been.
+**Nobody has had a finger on it yet** (`docs/TODO.md`, 5.6).
+
 ## Blocked / waiting on
 
-**Nothing is blocked.** The phone came back and the UI stack has now been on a
-real screen: every screen photographed through the accessibility tree, and the
-two faults above found and fixed there. What that cost is the entry above — a
-release was cut while this section said the opposite, and it shipped both of
-them.
-
-**The whole device tier runs, and until #274 it could not.** `./gradlew
+**Nothing is blocked.** The whole device tier runs — `./gradlew
 connectedDebugAndroidTest` across every module on the Pixel 10a: **87 tests, 1
-skipped, 0 failed**, 7m 47s, run on the whole of #280–#290 merged together. It used to fail however green the tests were,
-because `HarnessTest` declines to run without `harness.rolls` and the runner
-files an assumption as a failure. So the command `.claude/CLAUDE.md` asks a
-developer to run before a PR was one nobody could pass — which is the third
-thing this round found by running it rather than reasoning about it.
+skipped, 0 failed** — and until #274 it could not, because `HarnessTest`
+declines to run without `harness.rolls` and the runner files an assumption as a
+failure.
 
-**Judgements that need a person and a phone.** All listed in `docs/TODO.md`.
-The ones added this round: whether a chain that stopped reads as a rule or a
-bug; whether a second shake reads as the dice answering the hand; whether a
-blank face on a drawn die shows its printed number rather than a washed-out
-patch; whether six photo tables is the right cap. None of them blocks anything
-else. `screencap` on the phone answers what a screen *contains*; whether a
-thing feels right is still a person's call.
+**Judgements that need a person and a phone** are all listed in
+`docs/TODO.md`. None of them blocks anything else. `screencap` answers what a
+screen *contains*; whether a thing feels right is still a person's call.
 
 ## Decisions pending
 
@@ -192,24 +203,19 @@ thing feels right is still a person's call.
 - Where a **table look's** texture says which package it came from. A die's
   artwork is addressed by package and path now; a table's is a bare path, so a
   photo table still draws as its colours. Nothing ships one yet.
-- Three smaller ones in `docs/TODO.md`, Open questions: who measures a *drawn*
-  frame, whether a stamp should be draggable, and `FACE_SHARE` being applied
-  twice.
-- **What the design pass did not answer** — percent typography, whether a
-  refusal keeps its words, a draggable stamp, "Doodle this die", where a table
-  look's texture says its package, how a photo crops — is still open, and the
-  design added six questions of its own. All of them are in `docs/TODO.md`.
-- **Three things the round found and did not fix**, each written down with its
-  numbers rather than worked around: a six-level cubemap that this driver
+- **Whether the sound switch stays.** The design removed it and the app has a
+  whole `feedback/` module behind it. A product call, and the one thing in the
+  pass not yet acted on.
+- Everything else is in `docs/TODO.md`, "Open questions": percent typography,
+  whether a refusal keeps its words, a draggable stamp, "Doodle this die", how
+  a photo crops, who measures a *drawn* frame, and `FACE_SHARE` applied twice.
+- **Three things the design round found and did not fix**, each written down
+  with its numbers rather than worked around: a six-level cubemap this driver
   refuses at level one against arithmetic that checks out on both sides; the
   atlas exporter turning a cell differently from the canvas, by up to 60° on a
   d20, which cannot be corrected without repainting every published die; and
   opposite-face numbering meaning a seed recorded before it reads back a
   different number after.
-- **The design removed the sound switch**, and the app has a whole `feedback/`
-  module that generates impact sounds per table material. That is a product
-  call rather than a drawing, and it is the one thing in the pass not yet
-  acted on (`docs/TODO.md`, Open questions).
 
 ## Known risks
 

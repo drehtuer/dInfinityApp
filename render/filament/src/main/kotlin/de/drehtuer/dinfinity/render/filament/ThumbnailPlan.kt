@@ -73,7 +73,7 @@ data class ThumbnailDie(
  * true, and a picture of nothing. At [TrayView.CLOSEST] the die is a quarter
  * of the frame, two walls and the rounded corner between them are in shot, and
  * a floor texture is at a size somebody can see repeat. The view is the same
- * [TrayView] a pinch produces and is clamped by the same rule, so the camera
+ * [TrayView] a pinch produces, framed by the same arithmetic, so the camera
  * cannot be asked for somewhere the tray is not.
  *
  * @param widthPx how wide the picture is, in pixels of the screen it will be
@@ -98,18 +98,19 @@ data class ThumbnailPlan(
   /**
    * Where the player is standing: the far corner, as close as the camera goes.
    *
-   * Asked for as "further than there is tray" and brought back to the edge by
-   * [TrayView.within], rather than worked out here — the rule for how much
-   * room a zoom earns is [TrayView]'s and is already tested there. Two
-   * descriptions of it would be two chances to disagree.
+   * Asked for by name rather than worked out here — [TrayView.inTheCorner] is
+   * the one description of "the frame flush inside the corner" and it is
+   * tested there. Two descriptions of it would be two chances to disagree.
+   *
+   * It used to be asked for as "further than there is tray" and brought back
+   * by [TrayView.within], which was the same picture only as long as the pan
+   * limit and the corner framing were the same number. They are not any more:
+   * the limit now lets a player stand the middle of the screen *on* the
+   * corner, which is right for a hand looking for a die and wrong for a
+   * thumbnail, where it would spend half the picture on the rim and the void
+   * past it. A thumbnail is a picture of a table.
    */
-  val view: TrayView
-    get() =
-      TrayView(
-        zoom = TrayView.CLOSEST,
-        panAlongMm = geometry.longSideMm,
-        panAcrossMm = geometry.shortSideMm,
-      ).within(geometry)
+  val view: TrayView get() = TrayView.inTheCorner(geometry)
 
   /**
    * The throw this picture is of — which is not a throw at all.

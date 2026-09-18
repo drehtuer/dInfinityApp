@@ -12,6 +12,7 @@ import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.render.filament.Tray
+import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
@@ -38,8 +39,8 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * @param toTheScreen how work gets back to the thread Compose reads on.
  *
  * The class carries a function-count suppression for the same reason
- * [RollMachine] does: ten of its methods are one thing a screen can do each,
- * and the eleventh is the loop that hands the tray a throw and then the throw
+ * [RollMachine] does: eleven of its methods are one thing a screen can do
+ * each, and the twelfth is the loop that hands the tray a throw and then the throw
  * after it, which a roll that adds dice to itself needs and which nothing else
  * can be folded into.
  */
@@ -108,6 +109,22 @@ class RollPresenter(
   val tray: Tray get() = driver
 
   /**
+   * Where the player has moved the camera to.
+   *
+   * Held here rather than inside the gesture because the gesture is not what
+   * decides it: a new throw is watched from the whole table, and a view
+   * remembered under the fingers would still be the one the player left when
+   * the next touch arrived — the camera snapping back to a corner nobody is
+   * looking at any more, which is what the phone showed.
+   *
+   * It is the near side of one decision, not a second one. The tray's renderer
+   * frames the whole table on a new throw as well, so [throwIt] and it say the
+   * same thing about the same event and cannot drift apart.
+   */
+  var looking: TrayView by mutableStateOf(TrayView.Whole)
+    private set
+
+  /**
    * Whether this visit draws the debug overlay at all
    * (`docs/physics-and-rendering.md`, "Debug tooling").
    *
@@ -161,6 +178,18 @@ class RollPresenter(
     // is not what a dice tray looks like (`docs/TODO.md`, Step 4.1).
     driver.table(machine.geometry, machine.table)
     showing = machine.table
+  }
+
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * Written down here *and* told to the tray, in that order, so that the next
+   * touch starts from the view the last one produced rather than from
+   * whatever the gesture happened to be holding.
+   */
+  fun look(view: TrayView) {
+    looking = view
+    driver.look(view)
   }
 
   /** The formula field changed. Re-validated on every keystroke. */
@@ -237,6 +266,11 @@ class RollPresenter(
    * differently (`docs/architecture.md`, goal 1).
    */
   private fun throwIt(spec: ThrowSpec) {
+    // A throw is watched from the whole table — the dice can land anywhere in
+    // it — which is what the renderer does to its own copy of the view when a
+    // throw begins. This is the same rule on the screen's side of the thread,
+    // so the next gesture starts from where the camera actually is.
+    looking = TrayView.Whole
     driver.roll(
       start = { watcher -> rolls.start(spec, watcher) },
       onCounted = { counted ->

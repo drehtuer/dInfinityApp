@@ -532,6 +532,11 @@ private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
     // on the table is said here or nowhere at all (`docs/architecture.md`,
     // "Accessibility").
     describing = TrayReading.of(presenter.state).spoken(),
+    // Where the camera is pointed belongs to the presenter, because a new
+    // throw puts it back at the whole table and the gesture is not what knows
+    // a throw has started ([RollPresenter.looking]).
+    view = presenter.looking,
+    onLook = presenter::look,
   )
 }
 

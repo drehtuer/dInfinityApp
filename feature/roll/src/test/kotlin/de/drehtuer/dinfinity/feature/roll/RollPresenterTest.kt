@@ -277,6 +277,41 @@ class RollPresenterTest {
   }
 
   @Test
+  fun `looking somewhere else is written down as well as told to the tray`() {
+    // Both, in that order: the tray aims the camera, and what is written down
+    // is where the next gesture carries on from ([DiceTray]).
+    val tray = DirectTray()
+    val presenter = presenterOn(tray)
+    val closer = TrayView(zoom = 2.0, panAlongMm = 10.0)
+
+    presenter.look(closer)
+
+    assertEquals(closer, presenter.looking)
+    assertEquals(listOf(closer), tray.looked)
+  }
+
+  @Test
+  fun `a throw puts the camera back at the whole table`() {
+    // The dice can land anywhere in it, so a throw is watched from all of it —
+    // and a gesture that went on from the corner the last roll was read in is
+    // the camera snapping the moment a finger lands ([DiceTray]).
+    val tray = DirectTray()
+    val presenter =
+      RollPresenter(
+        machine = machine(),
+        driver = tray,
+        rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5)),
+        toTheScreen = { it() },
+      )
+    presenter.look(TrayView(zoom = TrayView.CLOSEST, panAlongMm = 50.0))
+
+    presenter.type("2d6")
+    presenter.roll()
+
+    assertEquals(TrayView.Whole, presenter.looking)
+  }
+
+  @Test
   fun `tapping a saved roll that pins a table puts that table under the dice`() {
     // The tray is built when the screen opens, so a pinned table has to reach
     // it afterwards or the dice land on one table and are drawn on another
