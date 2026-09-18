@@ -385,6 +385,16 @@ SavedRoll {
   colour picker arrives with the accent's; half a code chooses nothing rather
   than something wrong. A tag is stored as the colour itself, so one of the
   twelve and one somebody typed are the same kind of thing in storage.
+- **Adding a roll starts on the last formula thrown.** The "+" on the home
+  strip and **New** on the saved-rolls list open the editor with the formula of
+  the most recent throw already in the field, because that is what somebody has
+  just decided is worth keeping. It is a starting point and nothing more: it is
+  typed over like any other text, it is validated like any other formula, and
+  an editor opened when nothing has ever been thrown — a fresh install, or
+  after the history has been cleared (`docs/statistics.md`) — opens blank
+  rather than guessing. "Save as roll" on the outcome graph still carries the
+  formula that was being read; a formula somebody chose is not replaced by one
+  they happened to throw.
 - The formula is re-validated when displayed, because the dice set it
   references might have been uninstalled. A broken saved roll shows a warning
   badge, and tapping it puts the formula in the field like any other — where

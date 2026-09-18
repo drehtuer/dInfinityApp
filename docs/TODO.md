@@ -252,6 +252,18 @@ is drawn over the table"):
       breakdown, the history, saved rolls and every collection file anybody has
       already written
 
+- [ ] **Decide what a one-die Fudge roll prints as its total.** Device
+      feedback on `v0.1.1` reads "rolling the dF shows `−1`; it should just
+      show `−`". The die and the breakdown chip already print `−` — the
+      bundled `df` is labelled with U+2212 and the built-in font draws it — so
+      what the report is about is the big number on the result sheet
+      (`PullUpResult`'s `Grip`), which is the *total*, and a total of one dF
+      really is −1. Printing the die's label there instead is what the words
+      ask for and is **not obviously right**: `1d10` on the units die would
+      then read `0` for a face worth ten. So this is a decision, not a fix —
+      either the total stays a number, or "a roll of exactly one die with no
+      arithmetic prints what the die says" becomes a rule with its own line in
+      `docs/dice-notation.md` and an answer for the d10 case
 - [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the dice menu and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
@@ -583,6 +595,16 @@ what stays as well as what goes. No replay and no
 seed, which the types enforce rather than the screen remembering — the export
 is built from `HistoryEntry`, which has none to write. Pruning at 50,000 rows
 was already done and tested in `StatisticsRepository`.
+
+- [ ] **The face histogram prints a face's value, not its label.** A dF's
+      rows read `-1`, `0`, `1` where the die says `−`, blank and `+`, and
+      TalkBack says "Face -1 came up three times"
+      (`StatsScreen`, `FaceHistogram`'s `FaceBar`). The tallies are keyed by
+      face *value* in the database and `FaceBar` carries no label at all, so
+      the fix is a label plumbed from the installed die at read time — and a
+      decision about the CSV and JSON exports, which write the value too
+      (`HistoryExport`, `DiceExport`). The value is the right thing for a
+      machine to read; a screen is a different question
 
 ### 4.9 Sessions — `feature/stats`
 

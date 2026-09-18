@@ -62,7 +62,9 @@ a tumble; everything else is real.
   shows the walls — your choice — with haptics and sound on every real impact,
   never on a die sliding or a die at rest. The table decides what it sounds
   like, the die's size decides the pitch, and both switch off.
-- **Shake to roll** — accelerometer and gyroscope drive the throw.
+- **Shake to roll** — accelerometer and gyroscope drive the throw. The
+  display stays on while the tray is in front, because a shake takes both
+  hands and puts neither of them on the glass.
 - **Power-saving mode** — same physics, no rendering; just the result. The dice
   are still heard: the impacts the throw made are played back over a second.
 - **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on.

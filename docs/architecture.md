@@ -1054,6 +1054,27 @@ numbers beside it.
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
 | **Delete** | `delete` | the roll is taken away, and the editor leaves |
 
+**A new roll opened from nothing starts on the last formula that was thrown.**
+There are three ways in and they carry different things. The outcome graph's
+"Save as roll" carries the formula that was being read, and that one wins —
+somebody chose it. The tray's strip "+" and the saved list's **New** carry
+nothing, and an empty field there asks for what the app watched somebody type a
+moment earlier, because "add a roll" is pressed just after throwing the thing
+worth keeping. Editing a roll that already exists is untouched by this: it
+opens on its own formula, and `Editing` makes any other answer unsayable rather
+than merely forbidden.
+
+What fills the gap is the **history**, read once — `HistoryRepository.recent(1)`
+in `SavedWiring`, handed to the presenter as a suspending lambda. Not a new
+`AppSettings` field: "the formula used for the last roll" is literally what a
+history row is, and a second copy in the settings file would be a second answer
+to the same question, one that needs a migration to add and that would go on
+answering after somebody cleared their history (`docs/statistics.md`). The read
+happens on the editor's own scope beside the groups, so nothing waits on the
+database before the screen draws, and a player who beats it to the first
+keystroke keeps what they typed. The formula that arrives is validated like any
+other, so one whose dice set has since gone says so instead of being saved.
+
 The editor leaves by **climbing**, not by going back: saving, deleting and the
 chevron in its header all land on the saved-rolls list. It is a detour from
 that list however it was opened — from the list, from the tray's strip, from

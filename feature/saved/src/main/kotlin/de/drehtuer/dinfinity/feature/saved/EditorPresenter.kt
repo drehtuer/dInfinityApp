@@ -31,7 +31,21 @@ import kotlinx.coroutines.launch
  * Saving is refused while the formula does not read. A saved roll that cannot
  * be thrown is a button that fails when it is pressed, and the failure would
  * arrive weeks later in the middle of somebody's game.
+ *
+ * A **new** roll opened from nothing starts on the last formula that was
+ * thrown rather than on a blank field, because "add a roll" is what somebody
+ * presses just after throwing the thing they want to keep (`lastRolled`). It
+ * is a starting point and not a decision: it is typed over like anything else,
+ * and it goes through the same validation, so a formula whose dice set has
+ * since gone says so instead of being saved.
+ *
+ * **Seven parameters**, and four of them are seams rather than state: the
+ * library it reads, the scope its watching lives on, the id generator a test
+ * pins and the history read the wiring supplies. A parameter object would put
+ * them all behind one name and hide the one a caller actually has to think
+ * about, which is [Editing].
  */
+@Suppress("LongParameterList")
 class EditorPresenter(
   private val library: SavedRollLibrary,
   private val catalog: DiceCatalog,
@@ -43,6 +57,25 @@ class EditorPresenter(
   },
   opening: Editing = Editing.New(),
   defaultGroupId: String = SavedRollGroup.UNFILED_ID,
+  /**
+   * The formula of the last roll that was actually thrown, for a new roll that
+   * arrived with nothing to start from.
+   *
+   * "Add a roll" is pressed straight after throwing something worth keeping,
+   * and an empty field there asks somebody to type again what the app watched
+   * them type a moment ago. It is *the last throw* rather than a remembered
+   * draft because that is the thing the player means by "that one".
+   *
+   * Suspending and read on the editor's own scope, next to the groups, so no
+   * frame waits on a database: the field draws empty and fills in with the
+   * rest of the screen's state. A player who beat it to the first keystroke
+   * keeps what they typed.
+   *
+   * Empty when nothing has ever been thrown, which is a blank field — the
+   * right answer for a fresh install and for anybody who has cleared the
+   * history (`docs/statistics.md`, "Export and reset").
+   */
+  private val lastRolled: suspend () -> String = { "" },
 ) {
   /** What the screen draws. */
   var state: EditorState by mutableStateOf(
@@ -56,10 +89,14 @@ class EditorPresenter(
     scope.launch {
       val known = library.groups.all.first()
       val roll = opening.existingId?.let { library.rolls.byId(it) }
+      // Only asked for when there is a gap to fill: an existing roll has its
+      // own formula, and one the graph handed over was chosen deliberately.
+      // Neither is a reason to go to the database.
+      val instead = if (roll == null && state.formula.isEmpty()) lastRolled() else ""
       state =
         state.copy(
           name = roll?.name ?: state.name,
-          formula = roll?.formula ?: state.formula,
+          formula = roll?.formula ?: state.formula.ifEmpty { instead },
           icon = roll?.icon ?: state.icon,
           colourArgb = roll?.colorArgb,
           groupId = roll?.groupId ?: state.groupId,
@@ -225,7 +262,9 @@ sealed interface Editing {
    *
    * @param formula what it starts from — what the outcome graph's "Save as
    *   roll" carries, so somebody who has been reading a formula's odds does
-   *   not have to type it again. Empty for a roll started from nothing.
+   *   not have to type it again. Empty for a roll started from nothing, which
+   *   is the "+" on the tray's strip and "New" on the saved list; those fall
+   *   back to the last formula thrown ([EditorPresenter]'s `lastRolled`).
    */
   data class New(
     val formula: String = "",

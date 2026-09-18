@@ -2,10 +2,18 @@ package de.drehtuer.dinfinity
 
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.TableView
+import de.drehtuer.dinfinity.data.FinishedRoll
+import de.drehtuer.dinfinity.data.RollContext
+import de.drehtuer.dinfinity.feature.saved.Editing
+import de.drehtuer.dinfinity.feature.saved.EditorPresenter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -100,6 +108,52 @@ class ScreenWiringTest {
   }
 
   @Test
+  fun `a new roll with nothing to start from opens on the last formula thrown`() {
+    // The one place the real read runs. `EditorPresenter` is handed a lambda
+    // and tested against a fake one; that a lambda reaching the history is
+    // what the app actually passes is only true here.
+    runBlocking {
+      app.statistics.record(thrown("4d6dl1"))
+
+      val editor = wiring().presenters().savedRollEditor(Editing.New())
+
+      assertEquals("4d6dl1", editor.loaded().formula)
+    }
+  }
+
+  @Test
+  fun `nothing thrown yet leaves the editor blank rather than guessing`() {
+    // A fresh install has no history, and `recent(1)` on an empty table is an
+    // empty list rather than a failure.
+    runBlocking {
+      val editor = wiring().presenters().savedRollEditor(Editing.New())
+
+      assertEquals("", editor.loaded().formula)
+    }
+  }
+
+  /** The smallest roll the history will take: a formula, a total and a time. */
+  private fun thrown(formula: String) =
+    FinishedRoll(
+      result = RollResult(formula = formula, total = 13, rolledAtEpochMs = 1_000),
+      dice = emptyMap(),
+      context = RollContext(sessionId = "tuesday"),
+    )
+
+  /**
+   * The editor's state once its own launch has finished.
+   *
+   * It reads the groups, the roll and the history off the database, which
+   * answers on its own executor — imperceptible on a phone, and this in a
+   * test.
+   */
+  private suspend fun EditorPresenter.loaded() =
+    withTimeout(PATIENCE) {
+      while (!state.loaded) delay(POLL)
+      state
+    }
+
+  @Test
   fun `a set's details are built for a set that is installed and for one that is not`() {
     // The id comes out of a route, so it can name anything at all.
     val presenters = wiring().presenters()
@@ -133,6 +187,10 @@ class ScreenWiringTest {
 
   private companion object {
     const val UNFILED = "Unfiled"
+
+    /** How long a database answer is waited for before the test gives up. */
+    const val PATIENCE = 2_000L
+    const val POLL = 5L
   }
 
   private fun wiring(settings: AppSettings = AppSettings()) =

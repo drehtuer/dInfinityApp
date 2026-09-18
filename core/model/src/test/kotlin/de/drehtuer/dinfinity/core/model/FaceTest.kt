@@ -12,7 +12,28 @@ class FaceTest {
 
   @Test
   fun `a negative value prints its sign, as a fudge die needs`() {
-    assertEquals("-1", Face.labelled(index = 0, value = -1).label)
+    // A typographic minus, not the hyphen `toString` writes: a hyphen is drawn
+    // short, high and thin, and beside the `+` on the next face of the same
+    // die it does not read as the other half of a pair. The built-in font
+    // carries both, so this is a choice rather than a limit.
+    assertEquals("\u22121", Face.labelled(index = 0, value = -1).label)
+    assertEquals('\u2212', Face.labelled(index = 0, value = -1).label.first())
+  }
+
+  @Test
+  fun `the hyphen a keyboard has is not the minus a die is printed with`() {
+    // Worth saying out loud, because the two are indistinguishable in a diff
+    // and the wrong one is what `Int.toString` hands you.
+    assertEquals(false, Face.printed(-4).contains('-'))
+    assertEquals("\u22129999", Face.printed(-9999))
+  }
+
+  @Test
+  fun `a value that is not negative is written exactly as the number is`() {
+    // No sign, no padding, no cleverness: `0` is `0` and `10` is `10`.
+    assertEquals("0", Face.printed(0))
+    assertEquals("10", Face.printed(10))
+    assertEquals("9999", Face.printed(9999))
   }
 
   @Test

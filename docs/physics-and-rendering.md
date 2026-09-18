@@ -369,6 +369,17 @@ look like a regression in how a shaken roll reads.
   `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go
   when it is not — an accelerometer running behind a backgrounded app is a
   battery bill for nothing.
+- **The roll screen holds the display on while it is in front.** A shake takes
+  both hands and puts neither of them on the glass, and reading the dice
+  afterwards puts nothing on it either, so the display timeout counts a throw
+  as idle and blanks mid-roll. `KeepTheScreenAwake` (`HoldTheScreenStill.kt`)
+  sets `View.keepScreenOn` for as long as the screen is composed and clears it
+  on the way out — the view's flag rather than the window's, so leaving the
+  screen gives it back by itself. Only this screen: the rest of the app is
+  reading and scrolling, which is what the system timeout is for. It is not a
+  wake lock, needs no permission, and does not keep the display on once the
+  app is not in front. There is no setting for it, because the only thing a
+  setting could offer is a display that goes out in the middle of a throw.
 - **The display's rotation has to stay truthful, which is why the roll screen
   is not pinned to one.** `PhoneAxes` maps a sensor vector into the tray using
   `Display.getRotation()`, so a screen held at the rotation it opened at

@@ -338,6 +338,63 @@ class EditorScreenTest {
     assertTrue("rolling it saved it", runBlocking { repository.all.first() }.isEmpty())
   }
 
+  @Test
+  fun `a new roll with nothing to start from opens on the last formula thrown`() {
+    // "Add a roll" is pressed straight after throwing the thing worth keeping,
+    // and an empty field there asks for what the app just watched somebody
+    // type.
+    val presenter = show(lastRolled = "4d6dl1")
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    assertEquals("4d6dl1", presenter.state.formula)
+    compose.onNodeWithTag(FormulaTestTags.FIELD).assertTextContains("4d6dl1", substring = true)
+  }
+
+  @Test
+  fun `the last formula thrown is checked like any other, so its odds are there`() {
+    // It is a starting point, not a decision: the same validation runs, so the
+    // editor can be saved straight away rather than after a keystroke.
+    val presenter = show(lastRolled = "2d6 + 3")
+
+    compose.waitUntil(PATIENCE) { presenter.state.odds != null }
+
+    assertNull("a formula the app itself threw was called bad", presenter.state.error)
+  }
+
+  @Test
+  fun `a formula the roll was opened with beats the last one thrown`() {
+    // The graph's "Save as roll" carries a formula somebody chose on purpose.
+    // Replacing it with whatever was thrown last would throw that choice away.
+    val presenter = show(startingFormula = "1d4", lastRolled = "4d6dl1")
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    assertEquals("1d4", presenter.state.formula)
+  }
+
+  @Test
+  fun `an existing roll keeps its own formula, whatever was thrown last`() {
+    // Editing a saved roll is not a place to be handed somebody else's
+    // formula: it would rewrite the roll by being opened.
+    given(SavedRoll(id = "fireball", groupId = UNFILED, name = "Fireball", formula = "8d6"))
+    val presenter = show(editing = "fireball", lastRolled = "4d6dl1")
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    assertEquals("8d6", presenter.state.formula)
+  }
+
+  @Test
+  fun `nothing thrown yet is a blank field, not a guess`() {
+    // A fresh install, and anybody who has cleared their history.
+    val presenter = show(lastRolled = "")
+
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    assertEquals("", presenter.state.formula)
+  }
+
   private fun given(vararg rolls: SavedRoll) {
     runBlocking { rolls.forEach { repository.save(it) } }
   }
@@ -401,9 +458,11 @@ class EditorScreenTest {
       scope = scope,
     )
 
+  @Suppress("LongParameterList")
   private fun show(
     editing: String? = null,
     startingFormula: String = "",
+    lastRolled: String = "",
     onDone: () -> Unit = {},
     onRollNow: (String) -> Unit = {},
     onUp: () -> Unit = {},
@@ -415,6 +474,7 @@ class EditorScreenTest {
         scope = scope,
         ids = { "made-up" },
         opening = editing?.let(Editing::Existing) ?: Editing.New(startingFormula),
+        lastRolled = { lastRolled },
       )
     val groups =
       GroupPresenter(

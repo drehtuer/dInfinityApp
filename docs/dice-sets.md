@@ -519,6 +519,17 @@ Three rules decide what a face ends up carrying when it is printed:
 | something it cannot, such as `💀` | the face's **value** | a row of blanks would make the die unreadable, and a box would be a lie about what the author wrote. The value is the one thing about a face the app can always write down, and it is what the player is about to read off it anyway |
 | empty | nothing | a blank side is a face an author asked for, and half a Fudge die is exactly that |
 
+**A value printed as a label is written with a typographic minus**, U+2212,
+and not with the hyphen on a keyboard. That is the character the bundled set
+labels its Fudge die with, the one the notation help writes `−1, 0 or +1`
+with, and the one the built-in font draws at the width of the `+` on the next
+face of the same die; a hyphen is a word-joiner, drawn short, high and thin,
+and it does not read as the other half of a pair. It applies in the two places
+the app chooses the text itself — a `faces` entry with no `labels` beside it,
+and the fallback in the table above — and nowhere else. `labels` is printed
+exactly as the author wrote it, hyphen and all: the app does not correct
+somebody's typography, and `Face.printed` is a default rather than a filter.
+
 **A number is marked when it could be read as another number on the same die.**
 Turn the label about; if what comes out is a *different* label this die also
 carries, both are marked. That is why a d20's `6` and `9` are and a d6's `6` is

@@ -22,7 +22,9 @@ object FaceLabel {
    * blanks would make the die unreadable and printing a box would be a lie
    * about what the author wrote, so the *value* is printed — the one thing
    * about that face the app can always write down, and the thing the player is
-   * about to read off it anyway (`docs/dice-sets.md`).
+   * about to read off it anyway (`docs/dice-sets.md`). It is written the way
+   * an unlabelled face is written, [Face.printed], so a negative value comes
+   * out with the same minus the rest of the app prints.
    *
    * An **empty** label is different and is left empty: a face with nothing on
    * it is a face an author asked for, and a blank side is what half a Fudge
@@ -35,7 +37,11 @@ object FaceLabel {
       // the app arguing with the set file.
       at.label.isEmpty() -> ""
       BuiltinFont.canDraw(at.label) -> at.label
-      else -> at.value.toString()
+      // The value written the way a set file that gave no label would have had
+      // it written ([Face.printed]) — a typographic minus and not the hyphen
+      // `toString` produces. A die that fell back to its values should read
+      // like a die that was never labelled, not like a different die.
+      else -> Face.printed(at.value)
     }
 
   /**
