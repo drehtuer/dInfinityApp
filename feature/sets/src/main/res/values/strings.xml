@@ -66,6 +66,52 @@
   <string name="sets_detail_is_default">Rolled by default</string>
   <string name="sets_detail_default_note">“d20” with no set in front of it comes from here, falling back to the built-in dice for anything this set does not define.</string>
   <!-- %1$d is how many dice the set defines. -->
+  <!--
+    The Physical block (design/dInfinityPhone.dc.html, the Dice set details
+    screen; docs/dice-sets.md, "Weight, translucency and size, as a person sets
+    them"). A set file writes density, translucency and size_mm; these are the
+    same three said the way a dice shop says them.
+  -->
+  <string name="sets_detail_physical">Physical</string>
+  <string name="sets_detail_weight">Weight</string>
+  <string name="sets_detail_weight_note">Per die, as the set declares it. Heavier dice come to rest sooner on the table.</string>
+  <string name="sets_detail_translucency">Translucency</string>
+  <string name="sets_detail_translucency_note">numerals stay solid so a read is never in doubt.</string>
+  <string name="sets_detail_opaque">Opaque</string>
+  <string name="sets_detail_see_through">Lets the table through</string>
+  <string name="sets_detail_size">Size</string>
+  <!-- Not a format string: the two per-cent signs are what it says, not where a number goes. -->
+  <string name="sets_detail_size_note" formatted="false">50 % to 150 % of an average die. Affects how many fit the table.</string>
+  <string name="sets_detail_size_average">Average</string>
+  <!-- %1$s is how far over or under the average die these are, as a per cent. -->
+  <string name="sets_detail_size_over">%1$.0f %% over average</string>
+  <string name="sets_detail_size_under">%1$.0f %% under average</string>
+  <!-- A word about the figure, then the sentence under it. -->
+  <string name="sets_detail_note_joined">%1$s · %2$s</string>
+  <!--
+    The figures themselves. A set is a bag of dice and they need not agree — a
+    d4 and a d20 of one size are never the same weight — so each is printed as
+    a range whenever its ends differ.
+  -->
+  <string name="sets_detail_grams">%1$.1f g</string>
+  <string name="sets_detail_grams_range">%1$.1f–%2$.1f g</string>
+  <string name="sets_detail_percent">%1$.0f %%</string>
+  <string name="sets_detail_percent_range">%1$.0f–%2$.0f %%</string>
+  <!--
+    The steppers, which only "My dice" has. The glyphs are the prototype's; the
+    names are what a screen reader says, because a button whose label is a
+    picture has no words of its own.
+  -->
+  <string name="sets_detail_step_down">−</string>
+  <string name="sets_detail_step_up">+</string>
+  <string name="sets_detail_lighter">Lighter</string>
+  <string name="sets_detail_heavier">Heavier</string>
+  <string name="sets_detail_less_translucent">Less translucent</string>
+  <string name="sets_detail_more_translucent">More translucent</string>
+  <string name="sets_detail_smaller">Smaller</string>
+  <string name="sets_detail_bigger">Bigger</string>
+  <string name="sets_detail_physical_fixed">Declared in the set\'s diceset.toml — an imported set is read-only. Draw your own dice to set these yourself.</string>
+
   <string name="sets_detail_dice">Dice · %1$d · rendered from the set</string>
   <string name="sets_detail_report">Validation report</string>
   <string name="sets_detail_export">Export as zip</string>

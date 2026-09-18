@@ -16,12 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableView
+import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.RuleWeight
 
@@ -45,6 +46,7 @@ fun SettingsScreen(
   onHapticsChanged: (Boolean) -> Unit = {},
   onSoundChanged: (Boolean) -> Unit = {},
   onRoundingSelected: (Rounding) -> Unit = {},
+  onTableViewSelected: (TableView) -> Unit = {},
   onDeveloperToolsChanged: (Boolean) -> Unit = {},
   onRepository: () -> Unit = {},
   version: String = "",
@@ -58,9 +60,14 @@ fun SettingsScreen(
         // Scrolls, because the list only grows, and a setting below the fold
         // on a short phone is a setting nobody can reach.
         .verticalScroll(rememberScrollState())
-        .padding(24.dp)
+        // The prototype's own `padding: 12px 16px` on a settings row, hoisted
+        // to the screen because every rule on it runs the full width.
+        .padding(horizontal = Modernist.x4, vertical = Modernist.x3)
         .testTag(SettingsTestTags.SCREEN),
-    verticalArrangement = Arrangement.spacedBy(24.dp),
+    // 12 dp above and below each rule is the 24 dp the design leaves between
+    // one row's words and the next. It was 24 — twice the drawing — which is
+    // most of why the screen ran to twice the length.
+    verticalArrangement = Arrangement.spacedBy(Modernist.x3),
   ) {
     Row(
       modifier = Modifier.fillMaxWidth(),
@@ -80,6 +87,10 @@ fun SettingsScreen(
     // option 1y).
     Rule()
     AppearanceSection(chosen = settings.appearance, onChosen = onAppearanceSelected)
+    Rule(weight = RuleWeight.Hairline)
+    // Second, which is where the design's own list of rows puts it — right
+    // under Appearance, above everything about what the app *does*.
+    TableViewSection(chosen = settings.tableView, onChosen = onTableViewSelected)
     Rule(weight = RuleWeight.Hairline)
     AccentSection(selected = settings.accentColor, onAccentSelected = onAccentSelected)
     Rule(weight = RuleWeight.Hairline)
@@ -118,17 +129,13 @@ private fun PowerSection(
   on: Boolean,
   onChanged: (Boolean) -> Unit,
 ) {
-  Section(
-    heading = stringResource(R.string.settings_power_heading),
+  SwitchRow(
+    label = stringResource(R.string.settings_power_heading),
     explanation = stringResource(R.string.settings_power_explanation),
-  ) {
-    SwitchRow(
-      label = stringResource(R.string.settings_power_label),
-      on = on,
-      onChanged = onChanged,
-      tag = SettingsTestTags.POWER_SAVING,
-    )
-  }
+    on = on,
+    onChanged = onChanged,
+    tag = SettingsTestTags.POWER_SAVING,
+  )
 }
 
 /** Stable handles for tests, so a wording change does not break them. */
@@ -171,6 +178,9 @@ object SettingsTestTags {
   fun appearanceOf(appearance: Appearance): String = "settings:appearance:${appearance.id}"
 
   fun roundingOf(rounding: Rounding): String = "settings:rounding:${rounding.id}"
+
+  /** One position of the camera's lean (design: the Table view row). */
+  fun tableViewOf(view: TableView): String = "settings:table-view:${view.id}"
 
   /** One of the six presets. The custom swatch is [ACCENT_CUSTOM]. */
   fun accentSwatch(accent: AccentColor): String = "settings:accent:${accent.id}"

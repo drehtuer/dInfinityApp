@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -27,7 +28,24 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  */
 class FilamentDiceRenderer(
   private val stage: Stage,
+  /**
+   * How far the camera leans over the table — the player's **Table view**
+   * setting (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+   *
+   * Given when this is made and never changed, because it is read when the
+   * roll screen opens: a camera that moved under a roll in progress is not a
+   * setting taking effect (`docs/architecture.md`, decision 16). A rotation
+   * makes a new renderer with the same answer, which is why [TrayRenderer]
+   * carries it rather than this.
+   *
+   * [TableView.Angled] when nobody says, which is the shot this drew before
+   * the lean was a setting. What a player who has chosen nothing gets is
+   * `AppSettings.tableView`, and that is straight down.
+   */
+  private val tableView: TableView = TableView.Angled,
 ) : Renderer {
+  /** The lean in degrees, worked out once rather than per frame. */
+  private val tilt: Double = TrayCamera.tiltDegreesOf(tableView)
   private var dice: List<Int> = emptyList()
 
   /** Which dice are in the scene right now, so one leaves it exactly once. */
@@ -57,7 +75,7 @@ class FilamentDiceRenderer(
     dice = emptyList()
     stage.light()
     addTray(geometry, look)
-    stage.aim(TrayCamera.framingTheTray(geometry, aspectRatio(), view))
+    stage.aim(TrayCamera.framingTheTray(geometry, aspectRatio(), view, tilt))
   }
 
   /**
@@ -70,7 +88,7 @@ class FilamentDiceRenderer(
    */
   fun look(view: TrayView) {
     val framing = geometry ?: return
-    stage.aim(TrayCamera.framingTheTray(framing, aspectRatio(), view))
+    stage.aim(TrayCamera.framingTheTray(framing, aspectRatio(), view, tilt))
   }
 
   /**

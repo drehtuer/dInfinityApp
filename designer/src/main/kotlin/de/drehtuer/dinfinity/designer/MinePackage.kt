@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 
 /**
@@ -63,13 +64,20 @@ object MinePackage {
    *   and its picture, and they are last in the parameter list because they
    *   arrived last — a package of nothing but photos is as ordinary as a
    *   package of nothing but dice.
+   * @param physical what the dice are made of, written as the `[defaults]`
+   *   table every die of the package inherits. It is the one material the
+   *   package *does* declare, because it is the one somebody set on purpose
+   *   (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
+   *   them").
    */
+  @Suppress("LongParameterList")
   fun of(
     drawings: List<Draft>,
     license: String,
     author: String?,
     painter: AtlasPainter,
     photos: List<TablePhoto> = emptyList(),
+    physical: DieMaterial = DieMaterial(),
   ): Map<String, ByteArray> {
     val files = mutableMapOf<String, ByteArray>()
     val dice =
@@ -93,7 +101,7 @@ object MinePackage {
         dice = dice,
         tables = tables,
       )
-    return files + (DiceSetValidator.DICE_SET_FILE to DiceSetToml.write(set).encodeToByteArray())
+    return files + (DiceSetValidator.DICE_SET_FILE to DiceSetToml.write(set, physical).encodeToByteArray())
   }
 
   /**

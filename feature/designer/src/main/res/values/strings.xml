@@ -2,6 +2,19 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <string name="designer_roll">Roll it</string>
   <string name="designer_title">Face designer</string>
+  <!-- The flat editor, where a face is drawn one at a time. -->
+  <string name="designer_view_face">Face</string>
+  <!-- The die itself, turned over in the hand. -->
+  <string name="designer_view_solid">Solid</string>
+  <!-- Whether the die turns on its own. Dragging it turns this off. -->
+  <string name="designer_spin">Spin</string>
+  <!-- What the die on the Solid tab is: %1$s is a die's name, like "d20", %2$d how many faces it has. -->
+  <plurals name="designer_solid_stage">
+    <item quantity="one">%1$s, %2$d face. Drag to turn it.</item>
+    <item quantity="other">%1$s, %2$d faces. Drag to turn it.</item>
+  </plurals>
+  <!-- Said beside the turning die: what the Solid tab shows of a drawing, and what it does not. -->
+  <string name="designer_solid_note">Backgrounds, numbers and pips, on the real solid. Pen strokes are on the Face tab.</string>
   <string name="designer_nib_fine">Fine</string>
   <string name="designer_nib_medium">Medium</string>
   <string name="designer_nib_broad">Broad</string>
@@ -16,6 +29,10 @@
   <string name="designer_stamp_refused">The built-in font draws 0–9 and a few signs. Anything else has to be drawn by hand.</string>
   <!-- One tap that puts every face's own number on it, as a starting point. -->
   <string name="designer_fill_numbers">Fill all with numbers</string>
+  <!-- One tap that puts the standard pips on all six faces of a d6. "Eyes" is what the dots on a die are called. -->
+  <string name="designer_fill_eyes">Fill all with eyes</string>
+  <!-- Takes those pips off again. -->
+  <string name="designer_clear_eyes">Clear eyes</string>
   <string name="designer_undo">Undo</string>
   <string name="designer_redo">Redo</string>
   <string name="designer_clear">Clear</string>

@@ -2,4 +2,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <!-- Offered when a mistake has an obvious reading. %1$s is a formula. -->
   <string name="formula_suggestion">Did you mean %1$s?</string>
+  <!--
+    What the chevron in a screen's header does. "Up", not "Back": it climbs to
+    the screen this one hangs off rather than retracing where the player has
+    been (`docs/architecture.md`, "Navigation"). A screen reader reads this
+    instead of the drawing, which has no words.
+  -->
+  <string name="up">Up</string>
 </resources>

@@ -53,6 +53,21 @@ class SectionKickerTest {
   }
 
   @Test
+  fun `a kicker can be set in an ink of its own`() {
+    // Two of them are: `COUNTING` is the label of a readout and is the ink at
+    // 65 %, and the roll screen's two asking plates want the accent's 700 step
+    // because a 10 dp line is small text
+    // (`docs/physics-and-rendering.md`, "What is drawn over the table").
+    compose.setContent {
+      SectionKicker("Counting", color = Ink.muted, modifier = Modifier.testTag("kicker:muted"))
+      SectionKicker("Could not settle", color = Ink.accentDeep, modifier = Modifier.testTag("kicker:deep"))
+    }
+
+    compose.onNodeWithTag("kicker:muted").assertExists()
+    compose.onNodeWithTag("kicker:deep").assertExists()
+  }
+
+  @Test
   fun `a kicker is smaller than anything the app sets a sentence in`() {
     // The point of the step: it is a label, and a label that competed with
     // body copy for size would be a second heading rather than a kicker.

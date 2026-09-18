@@ -196,7 +196,7 @@ class FilamentEngine(
             //
             // So there were three conventions and the code stated two.
             // `NumberField` is top-down, `setImage` uploads it as it stands so
-            // buffer row 0 is `v = 0`, and `DieMesh.TextureFrame` computes `v`
+            // buffer row 0 is `v = 0`, and `SolidFace.cellOf` computes `v`
             // growing down the image to match. The builder then turned that
             // over a second time, and every glyph on every die came out
             // reflected — which a screenshot cannot pin down, because a

@@ -63,7 +63,7 @@ class EditorPresenter(
           icon = roll?.icon ?: state.icon,
           colourArgb = roll?.colorArgb,
           groupId = roll?.groupId ?: state.groupId,
-          favourite = roll?.favourite ?: false,
+          sortOrder = roll?.sortOrder ?: 0,
           tablePin = roll?.tablePin,
           groups = known,
           existing = roll != null,
@@ -90,9 +90,9 @@ class EditorPresenter(
 
   /**
    * Everything that is a choice rather than a keystroke: the icon, the colour
-   * tag, the group, the favourite flag and the table pin.
+   * tag, the group and the table pin.
    *
-   * One function rather than five because none of them needs re-validating —
+   * One function rather than four because none of them needs re-validating —
    * a formula does, and it has its own. Five identical one-line setters would
    * be five places for the next one to be written slightly differently.
    */
@@ -134,7 +134,10 @@ class EditorPresenter(
       formula = state.formula,
       icon = state.icon,
       colorArgb = state.colourArgb,
-      favourite = state.favourite,
+      // Carried rather than recomputed: the editor is not where the list's
+      // order is decided, and a roll saved from here has to come back where
+      // the player dragged it (`docs/dice-notation.md`, "Saved rolls").
+      sortOrder = state.sortOrder,
       tablePin = state.tablePin,
     )
 
@@ -244,7 +247,8 @@ data class EditorState(
   val icon: String = "",
   val colourArgb: Int? = null,
   val groupId: String = SavedRollGroup.UNFILED_ID,
-  val favourite: Boolean = false,
+  /** Where it sits in its group's list; the editor keeps it rather than sets it. */
+  val sortOrder: Int = 0,
   val tablePin: TablePin? = null,
   val groups: List<SavedRollGroup> = emptyList(),
   val tables: List<TableChoice> = emptyList(),

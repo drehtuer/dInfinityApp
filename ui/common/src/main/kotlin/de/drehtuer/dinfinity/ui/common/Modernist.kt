@@ -138,6 +138,29 @@ object Modernist {
    */
   val hairline: Dp = 1.dp
 
+  /**
+   * `--shadow-sm` and `--shadow-md`, as the one number Compose draws a shadow
+   * with.
+   *
+   * The CSS shadows are three lengths and a tint; `Modifier.shadow` takes an
+   * elevation and derives the rest. The **blur** is the length that says how
+   * far the shadow reaches, so that is what is transcribed — `0 1px 2px`
+   * becomes 2 dp and `0 3px 10px` becomes 10 dp. [ModernistTest] reads both
+   * out of the stylesheet, so re-importing the system with a softer elevation
+   * moves these rather than leaving them behind.
+   *
+   * There are only two. `--shadow-lg` is in the stylesheet and nothing in this
+   * app is lifted that far off the page; a token nothing uses is a number
+   * waiting to be used for the wrong thing.
+   */
+  object Shadow {
+    /** `--shadow-sm`: what a plate over the table is lifted by. */
+    val sm: Dp = 2.dp
+
+    /** `--shadow-md`: what floats over a screen — the toast, a menu. */
+    val md: Dp = 10.dp
+  }
+
   /** `--radius-*` is 0 on purpose. Nothing in this system has a rounded corner. */
   val radius: Dp = 0.dp
 

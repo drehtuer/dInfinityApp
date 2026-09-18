@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.FaceRead
@@ -106,6 +107,63 @@ class DiceSetTomlTest {
     val back = read(DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(faceUpTetrahedron)))
 
     assertEquals(FaceRead.FaceUp, back.dice.single().read)
+  }
+
+  @Test
+  fun `what the dice are made of goes out as a defaults table, and comes back`() {
+    // The three a person sets on the details screen, written once for the
+    // whole package rather than once per die (`docs/dice-sets.md`, "Weight,
+    // translucency and size, as a person sets them").
+    val heavy = DieMaterial(sizeMm = 20.0, density = 2.4, translucency = 0.2)
+
+    val text = DiceSetToml.write(DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(d6)), heavy)
+    val back = read(DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(d6)), heavy)
+
+    // Per cent in the file, a fraction in the model: the one key a set file
+    // writes on a different scale from the one the renderer wants.
+    assertTrue(text.contains("translucency = 20.0"))
+    assertEquals(
+      20.0,
+      back.dice
+        .single()
+        .material.sizeMm,
+      1e-12,
+    )
+    assertEquals(
+      2.4,
+      back.dice
+        .single()
+        .material.density,
+      1e-12,
+    )
+    assertEquals(
+      0.2,
+      back.dice
+        .single()
+        .material.translucency,
+      1e-12,
+    )
+  }
+
+  @Test
+  fun `a defaults table nobody moved off the defaults is not written at all`() {
+    val text = DiceSetToml.write(DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(d6)))
+
+    assertFalse(text.contains("[defaults]"))
+  }
+
+  @Test
+  fun `only the number that moved is written`() {
+    val text =
+      DiceSetToml.write(
+        DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(d6)),
+        DieMaterial(density = 3.0),
+      )
+
+    assertTrue(text.contains("[defaults]"))
+    assertTrue(text.contains("density = 3.0"))
+    assertFalse(text.contains("size_mm"))
+    assertFalse(text.contains("translucency"))
   }
 
   @Test
@@ -238,8 +296,11 @@ class DiceSetTomlTest {
   }
 
   /** The written file, through the real validator, as the set it describes. */
-  private fun read(set: DiceSet): DiceSet {
-    val result = DiceSetValidator.validate(PackageFiles.ofDiceSetToml(DiceSetToml.write(set)))
+  private fun read(
+    set: DiceSet,
+    defaults: DieMaterial = DieMaterial(),
+  ): DiceSet {
+    val result = DiceSetValidator.validate(PackageFiles.ofDiceSetToml(DiceSetToml.write(set, defaults)))
     assertTrue("$result", result is ValidationResult.Valid)
     return (result as ValidationResult.Valid).set
   }

@@ -127,17 +127,17 @@ class FaceStampTest {
     // The same solve over the same outline: what the designer draws and what
     // the tray prints cannot be two different answers.
     val stamped = FaceStamp.numbers(d20, cell = 5, colorArgb = Drawings.INK).single() as Stamp
-    val placement = requireNotNull(LabelRoom.centred(middle(FaceOutline.Triangle), "6", underlined = true))
+    val placement = requireNotNull(LabelRoom.centred(middle(FaceOutline.Triangle), "6", marked = true))
     val drawn = requireNotNull(FaceStamp.of("6", placement, Drawings.INK))
 
     assertEquals(drawn, stamped)
   }
 
   @Test
-  fun `underlines a six on a die that also has a nine`() {
-    // The bar is a ring of its own, so the stamped `6` carries one more than
-    // the same `6` would without it. A d6 has no `9` and gets no bar, which is
-    // what a moulded d6 does.
+  fun `marks a six on a die that also has a nine`() {
+    // The mark is a trailing full stop, which is a ring of its own — so the
+    // stamped `6` carries one more than the same `6` would without it. A d6
+    // has no `9` and is left alone, which is what a moulded d6 does.
     val onD20 = (FaceStamp.numbers(d20, cell = 5, colorArgb = Drawings.INK).single() as Stamp).rings.size
     val onD6 = (FaceStamp.numbers(d6, cell = 5, colorArgb = Drawings.INK).single() as Stamp).rings.size
 

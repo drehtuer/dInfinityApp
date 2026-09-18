@@ -3,18 +3,22 @@ package de.drehtuer.dinfinity.feature.sets
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.DiceSet
@@ -23,7 +27,15 @@ import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
+import de.drehtuer.dinfinity.designer.BitmapAtlas
+import de.drehtuer.dinfinity.designer.Dot
+import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.DraftStore
+import de.drehtuer.dinfinity.designer.MineSets
+import de.drehtuer.dinfinity.designer.PhotoStore
+import de.drehtuer.dinfinity.designer.PhysicalStore
 import de.drehtuer.dinfinity.designer.SetLicense
+import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
@@ -119,12 +131,12 @@ class SetDetailScreenTest {
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
 
     compose.onNodeWithTag(SetDetailTestTags.NAME).assertTextContains("Brass and Bone")
-    compose.onNodeWithTag(SetDetailTestTags.dieOf("d6")).assertIsDisplayed()
-    compose.onNodeWithTag(SetDetailTestTags.dieOf("d6")).assertTextContains("6 faces", substring = true)
+    at(SetDetailTestTags.dieOf("d6")).assertIsDisplayed()
+    at(SetDetailTestTags.dieOf("d6")).assertTextContains("6 faces", substring = true)
 
     // And tapping the source with nothing wired to it does nothing, rather
     // than taking the screen down.
-    compose.onNodeWithTag(SetDetailTestTags.SOURCE).performClick()
+    at(SetDetailTestTags.SOURCE).performClick()
     compose.waitForIdle()
     compose.onNodeWithTag(SetDetailTestTags.NAME).assertIsDisplayed()
   }
@@ -149,7 +161,7 @@ class SetDetailScreenTest {
 
     show("brass")
 
-    compose.onNodeWithText("Dice · 1 · rendered from the set").assertIsDisplayed()
+    atText("Dice · 1 · rendered from the set").assertIsDisplayed()
   }
 
   @Test
@@ -167,7 +179,7 @@ class SetDetailScreenTest {
     // that is what this is about. What is: the set's colour is on the screen,
     // which it would not be if the shape were filled with `surface` the way it
     // was before.
-    val row = compose.onNodeWithTag(SetDetailTestTags.dieOf("d6")).captureToImage().toPixelMap()
+    val row = at(SetDetailTestTags.dieOf("d6")).captureToImage().toPixelMap()
     val painted =
       (0 until row.width).any { x ->
         (0 until row.height).any { y -> row[x, y] == Color.Red }
@@ -258,10 +270,10 @@ class SetDetailScreenTest {
     write("brass", toml("brass", "Brass"))
     val presenter = show("brass")
 
-    compose.onNodeWithTag(SetDetailTestTags.TOGGLE).performClick()
+    at(SetDetailTestTags.TOGGLE).performClick()
 
     compose.waitUntil(PATIENCE) { presenter.state.row?.enabled == false }
-    compose.onNodeWithTag(SetDetailTestTags.TOGGLE).assertTextContains("Switch on", substring = true)
+    at(SetDetailTestTags.TOGGLE).assertTextContains("Switch on", substring = true)
   }
 
   @Test
@@ -270,7 +282,7 @@ class SetDetailScreenTest {
     var left = 0
     show("brass", onGone = { left++ })
 
-    compose.onNodeWithTag(SetDetailTestTags.REMOVE).performClick()
+    at(SetDetailTestTags.REMOVE).performClick()
 
     compose.waitUntil(PATIENCE) { left > 0 }
     assertEquals(false, File(root, "brass").exists())
@@ -320,7 +332,7 @@ class SetDetailScreenTest {
     write("brass", toml("brass", "Brass"))
     val presenter = show("brass")
 
-    compose.onNodeWithTag(SetDetailTestTags.TOGGLE).performClick()
+    at(SetDetailTestTags.TOGGLE).performClick()
     compose.waitUntil(PATIENCE) { presenter.state.row?.enabled == false }
 
     compose.onNodeWithTag(SetDetailTestTags.MAKE_DEFAULT).assertIsNotDisplayed()
@@ -344,6 +356,57 @@ class SetDetailScreenTest {
   }
 
   @Test
+  fun `the physical block says the three things a dice shop says`() {
+    // Design of 2026-09-17: a label, a unit and a value per row
+    // (`design/dInfinityPhone.dc.html`, the Dice set details screen).
+    write("brass", toml("brass", "Brass", extra = "\n[defaults]\nsize_mm = 20\ndensity = 2.4\ntranslucency = 20"))
+
+    show("brass")
+
+    at(SetDetailTestTags.PHYSICAL).assertIsDisplayed()
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.WEIGHT)).assertTextContains("3.7 g")
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.TRANSLUCENCY)).assertTextContains("20 %")
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.SIZE)).assertTextContains("125 %")
+    compose.onNodeWithText("25 % over average", substring = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `somebody else's set says where its numbers came from instead of offering steppers`() {
+    write("brass", toml("brass", "Brass"))
+
+    show("brass")
+
+    at(SetDetailTestTags.PHYSICAL_FIXED).assertIsDisplayed()
+    compose.onNodeWithTag(SetDetailTestTags.stepOf(SetDetailTestTags.WEIGHT, up = true)).assertDoesNotExist()
+    compose.onNodeWithTag(SetDetailTestTags.stepOf(SetDetailTestTags.SIZE, up = false)).assertDoesNotExist()
+  }
+
+  @Test
+  fun `My dice carries the steppers, and a tap moves the figure`() {
+    val presenter = show(MINE, personal = mine())
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.WEIGHT)).assertTextContains("0.9 g")
+
+    repeat(2) { at(SetDetailTestTags.stepOf(SetDetailTestTags.WEIGHT, up = true)).performClick() }
+    compose.waitUntil(PATIENCE) { presenter.state.declared?.density != 1.2 }
+
+    // 0.95 g and two tenths of a gram: the value on the screen is the one the
+    // taps left behind, not the one the last reading of the folder found.
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.WEIGHT)).assertTextContains("1.1 g")
+    compose.onNodeWithTag(SetDetailTestTags.PHYSICAL_FIXED).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a tap on the size stepper is five per cent of an average die`() {
+    val presenter = show(MINE, personal = mine())
+
+    at(SetDetailTestTags.stepOf(SetDetailTestTags.SIZE, up = true)).performClick()
+    compose.waitUntil(PATIENCE) { presenter.state.declared?.sizeMm != 16.0 }
+
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.SIZE)).assertTextContains("105 %")
+    compose.onNodeWithText("5 % over average", substring = true).assertIsDisplayed()
+  }
+
+  @Test
   fun `a package that came from somewhere else is offered no export`() {
     write("brass", toml("brass", "Brass and Bone"))
 
@@ -359,11 +422,11 @@ class SetDetailScreenTest {
 
     show(MINE)
 
-    compose.onNodeWithTag(SetDetailTestTags.EXPORT).assertIsDisplayed()
+    at(SetDetailTestTags.EXPORT).assertIsDisplayed()
     // The gate (design `8c`): the chooser says nothing has been chosen, and
     // the button will not go.
-    compose.onNodeWithTag(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("choose one", substring = true)
-    compose.onNodeWithTag(SetDetailTestTags.EXPORT_DO).assertIsNotEnabled()
+    at(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("choose one", substring = true)
+    at(SetDetailTestTags.EXPORT_DO).assertIsNotEnabled()
   }
 
   @Test
@@ -371,13 +434,13 @@ class SetDetailScreenTest {
     write(MINE, toml(MINE, "My dice"))
     val presenter = show(MINE)
 
-    compose.onNodeWithTag(SetDetailTestTags.LICENSE_CHOOSER).performClick()
+    at(SetDetailTestTags.LICENSE_CHOOSER).performClick()
     compose.onNodeWithTag(SetDetailTestTags.licenseOf(SetLicense.Attribution)).performClick()
     compose.waitForIdle()
 
     assertEquals(SetLicense.Attribution, presenter.state.license)
-    compose.onNodeWithTag(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("CC BY 4.0")
-    compose.onNodeWithTag(SetDetailTestTags.EXPORT_DO).assertIsEnabled()
+    at(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("CC BY 4.0")
+    at(SetDetailTestTags.EXPORT_DO).assertIsEnabled()
   }
 
   @Test
@@ -387,16 +450,62 @@ class SetDetailScreenTest {
 
     show(MINE)
 
-    compose.onNodeWithTag(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("MIT")
-    compose.onNodeWithTag(SetDetailTestTags.EXPORT_DO).assertIsEnabled()
+    at(SetDetailTestTags.LICENSE_CHOOSER).assertTextContains("MIT")
+    at(SetDetailTestTags.EXPORT_DO).assertIsEnabled()
   }
 
+  /**
+   * "My dice" with the records it is built from behind it, which is what makes
+   * its three physical numbers this phone's to change.
+   */
+  private fun mine(): MineSets {
+    val drafts = DraftStore(File(temporary, "drafts"))
+    drafts.save(
+      Draft(die = Die.standard(id = "d6", shape = DieShape.Cube)).onFace(0) {
+        it.draw(Stroke(dots = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)), colorArgb = INK, width = 0.05f))
+      },
+    )
+    return MineSets(
+      drafts = drafts,
+      root = root,
+      painter = BitmapAtlas(),
+      dice = { listOf(Die.standard(id = "d6", shape = DieShape.Cube)) },
+      photos = PhotoStore(File(temporary, "table-photos")),
+      physical = PhysicalStore(File(temporary, PhysicalStore.FILE_NAME)),
+    )
+  }
+
+  /**
+   * The row under [tag], scrolled into view first.
+   *
+   * The details screen is a list and is taller than a phone: the Physical
+   * block alone is three rows, so the dice, the export and the buttons under
+   * them are below the fold. A finger scrolls to them and so does a test.
+   */
+  private fun at(tag: String): SemanticsNodeInteraction {
+    compose.onNodeWithTag(SetDetailTestTags.LIST).performScrollToNode(hasTestTag(tag))
+    compose.waitForIdle()
+    return compose.onNodeWithTag(tag)
+  }
+
+  /** The same, for a line of text rather than a tag. */
+  private fun atText(text: String): SemanticsNodeInteraction {
+    compose.onNodeWithTag(SetDetailTestTags.LIST).performScrollToNode(hasText(text))
+    compose.waitForIdle()
+    return compose.onNodeWithText(text)
+  }
+
+  // Six ways the screen can be wired and one set to show on it. Every one of
+  // them is a different test, and a holder for them would be a type that
+  // exists to make a counter smaller.
+  @Suppress("LongParameterList")
   private fun show(
     id: String,
     onSource: (String) -> Unit = {},
     onGone: () -> Unit = {},
     default: String = "",
     onDefault: (String) -> Unit = {},
+    personal: MineSets? = null,
   ): SetDetailPresenter {
     val presenter =
       SetDetailPresenter(
@@ -409,6 +518,7 @@ class SetDetailScreenTest {
             io = Dispatchers.Unconfined,
             installer = PackageInstaller(root),
             defaultSetId = { DiceSet.BUILTIN_ID },
+            personal = personal,
           ),
         scope = scope,
         onGone = onGone,
@@ -472,6 +582,9 @@ class SetDetailScreenTest {
 
     /** The personal package's id, which is the only thing the screen keys off. */
     const val MINE = "mine"
+
+    /** The ink a drawn face is drawn in, so that "My dice" has a die in it. */
+    const val INK = 0xFF202020.toInt()
 
     const val PATIENCE = 5_000L
   }

@@ -91,13 +91,18 @@ a tumble; everything else is real.
 - **Your accent** — the one colour the interface spends is yours to choose: six
   presets, or any colour your phone's picker offers, pushed toward the ground
   it is read against until it is legible on both the light and the dark one.
+- **Your view of the table** — look straight down at the tray, or lean the
+  camera over and see the top and left walls. Straight down is what a new
+  install rolls with, because on a tall phone a leaning shot spends more of the
+  frame on the wooden rim than on the felt. It is a camera either way: the dice
+  are still drawn in perspective and still cast their shadows.
 - **Readable out loud** — every screen is labelled for TalkBack, including the
   tray and the charts, which are drawings and would otherwise be silent.
   Nothing is said by a colour alone: a natural 20, a dropped die, the chosen
   filter and the line a fair die would draw all say so in words as well. Touch
   targets are 48 dp and the palette's contrast is measured in a test rather
   than eyeballed.
-- **Face designer** — draw die faces with your finger and roll them.
+- **Face designer** — draw die faces with your finger, turn the die over and roll it.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
   natural 7. It still matters.

@@ -14,12 +14,14 @@ package de.drehtuer.dinfinity.core.model
  *   file — collections travel as JSON and carry no binaries.
  * @param colorArgb the roll's colour tag, used for its icon in the list, or
  *   `null` to use the accent.
- * @param favourite favourites are pinned above the rest, which are ordered by
- *   recent use.
+ * @param sortOrder where the player dragged it in its group's list, low
+ *   first. It is the only thing that orders the list: there is no pinning, no
+ *   favourites and no recency, because a list that reorders itself between two
+ *   fights is a list nobody can point at (`docs/dice-notation.md`).
  * @param tablePin the table this roll is always thrown on, or `null` to follow
  *   the group's pin and then the app default (`docs/tables.md`).
- * @param useCount how often it has been rolled; drives the ordering and the
- *   per-roll statistics.
+ * @param useCount how often it has been rolled. It feeds the per-roll
+ *   statistics and nothing else — ordering is [sortOrder]'s alone.
  */
 data class SavedRoll(
   val id: String,
@@ -28,7 +30,7 @@ data class SavedRoll(
   val formula: String,
   val icon: String = "",
   val colorArgb: Int? = null,
-  val favourite: Boolean = false,
+  val sortOrder: Int = 0,
   val tablePin: TablePin? = null,
   val createdAtEpochMs: Long = 0L,
   val lastUsedAtEpochMs: Long? = null,

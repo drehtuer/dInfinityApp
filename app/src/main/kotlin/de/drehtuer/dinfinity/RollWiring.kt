@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.RollRecording
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
@@ -149,6 +150,11 @@ class RollWiring(
    *   appearing or vanishing under a roll in progress is not a setting taking
    *   effect, it is a bug. Turning it on takes effect the next time the screen
    *   is opened (`design/dInfinity.dc.html`, option 1z).
+   * @param tableView how far the camera leans over the table. Read here for
+   *   the same reason and with the same effect: the tray is made when the
+   *   screen opens, and a camera that moved under a roll in progress is not a
+   *   setting taking effect (`docs/physics-and-rendering.md`, "Rendering
+   *   (normal mode)").
    * @param haptics whether a die landing is felt, and [sound] whether it is
    *   heard. Read here for the same reason and with the same effect: both the
    *   thing that listens — the roll — and the thing that plays are made when
@@ -160,6 +166,7 @@ class RollWiring(
   fun presenter(
     powerSaving: Boolean = false,
     rounding: Rounding = Rounding.Default,
+    tableView: TableView = TableView.Default,
     haptics: Boolean = true,
     sound: Boolean = true,
     developerTools: Boolean = false,
@@ -177,7 +184,7 @@ class RollWiring(
           look = ::table,
           defaultRounding = rounding,
         ),
-      driver = tray(powerSaving, feedback(haptics, sound), relay ?: DebugWatch.NONE),
+      driver = tray(powerSaving, feedback(haptics, sound), relay ?: DebugWatch.NONE, tableView),
       // A roll records where the dice hit something only when something is
       // going to play it. Both settings off is the one thing those two
       // switches actually save: nothing is measured, rather than measured and
@@ -281,6 +288,7 @@ class RollWiring(
     powerSaving: Boolean,
     impacts: Impacts,
     debug: DebugWatch,
+    tableView: TableView,
   ): Tray =
     if (powerSaving) {
       // No overlay in power-saving mode, because there is no tray to draw it
@@ -288,7 +296,7 @@ class RollWiring(
       // blank screen would be describing something nobody can see.
       PowerSavingTray(impacts = impacts)
     } else {
-      TrayDriver(shared = rollThread, impacts = impacts, debug = debug)
+      TrayDriver(shared = rollThread, impacts = impacts, debug = debug, tableView = tableView)
     }
 
   /**

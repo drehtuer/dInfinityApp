@@ -171,10 +171,11 @@ any other, and there is no privileged path for it:
   `textures/<die-id>.png` per drawn die at 256 px per atlas cell with cells
   nobody drew on left out so they stay transparent, and one
   `tables/<table-id>.webp` per photo table.
-- It is **built, not accumulated.** The drafts and the photos are the record;
-  the folder is a view of them, rebuilt whenever either has moved on. So a
-  drawing deleted is a die gone at the next reading, and nothing can drift out
-  of step with anything.
+- It is **built, not accumulated.** The drafts, the photos and the three
+  physical numbers ("Weight, translucency and size, as a person sets them") are
+  the record; the folder is a view of them, rebuilt whenever any of the three
+  has moved on. So a drawing deleted is a die gone at the next reading, and
+  nothing can drift out of step with anything.
 - A package of nothing but tables is as ordinary as one of nothing but dice: a
   phone with photos and no drawings has a `mine` that is a table pack.
 - It goes through **the validator** before it is written to `dicesets/` and
@@ -253,8 +254,46 @@ orientation downwards, and anticlockwise around each ring starting from the
 is a choice rather than a law, but it is a fixed one — it is the order `faces`
 is read in and the order the atlas fills its cells, so changing it would
 silently repaint every die of every set ever published. `simulation/api` owns
-it, and the renderer and the physics hull are built from the same arithmetic
-rather than from a model somebody exported.
+it — and with it which corners make up which face (`SolidFaces`) — and the
+renderer, the physics hull and the face designer's Solid tab are all built from
+that same arithmetic rather than from a model somebody exported.
+
+### Numbering
+
+**Opposite faces add up.** A moulded die is numbered so that the pair across
+from each other sums to one more than the face count: 2 against 5 on a d6, 1
+against 20 on a d20, 1 against 12 on a d12. The numbering therefore follows the
+*pairing* rather than the face order — the lowest number goes on the first face
+that has not been numbered, the highest on the face across from it, then the
+next lowest and the next highest — so the bundled package's `faces` lists are
+not `1, 2, 3, …` down the order.
+
+Which face is across from which is **geometry, not a convention**: it is read
+off the same normals the die is scored from, in `simulation/api`'s
+`ShapeGeometry.oppositesOf`, and `FaceNumbering` lays a set of values out along
+them. Nothing hand-writes a table per shape, because a table would be a second
+description of the face order and the two would come apart the first time
+either was touched. The bundled `diceset.toml` carries the answer written out —
+a set file is data and cannot compute anything — and a test in
+`dicesets/builtin` holds it to what the solids say.
+
+It is the same rule for values that are not `1..n`. A Fudge die's
+`−1, −1, 0, 0, 1, 1` comes out a minus across from a plus and a blank across
+from a blank; a tens d10's `0`–`90` comes out `0` across from `90`.
+
+**A tetrahedron is the exception**, and not by special case: no two of its
+readable positions face opposite ways, so there is no pair to make and a d4
+keeps 1–4 at its corners.
+
+A set author is not obliged to follow any of this. `faces` is whatever the
+author writes and the app prints it where the order says; the rule is what the
+*bundled* set does and what the face designer's "fill all with numbers" starts
+from (`docs/face-designer.md`).
+
+> **A die that was rolled before this rule is not a die that was rolled after
+> it.** The same seed puts the same *face* up and that face now carries a
+> different number, so a replayed roll and a per-face statistic taken before
+> the change do not compare with ones taken after (`docs/statistics.md`).
 
 ### Size
 
@@ -290,14 +329,30 @@ uses:
 
 - **Weight is grams, not `density`.** Nobody holds a die and estimates its
   grams per cubic centimetre. The gram figure is `density × volume`, and the
-  volume is the solid's, which is why this is not free: the hull volume is
-  something the solver computes for a body's mass and the app has never asked
-  it for. Until it does, a set has a density and a screen has nothing to print.
+  volume is the solid's. The solver computes one for a body's mass, out of the
+  hull it collides, and nothing on the JVM can ask it for one — so the app does
+  not ask. Every catalogue shape is a *known* solid, so its volume is a
+  constant times the cube of the die's circumradius, and the constants are
+  derived from the solids themselves in `core/model`'s `DieVolume`: `8/(9√3)`
+  for a tetrahedron, `8/(3√3)` for a cube, `4/3` for an octahedron, and so on.
+  The two trapezohedra have no textbook constant and are still exact — the
+  solid is cut into an antiprism, whose volume the prismatoid rule gives
+  exactly, and a pyramid over each ring. A coin is the prism its rim is
+  *collided* as, not the cylinder it is drawn as. Because the same circumradius
+  scales the hull the solver is handed, the grams on the screen are the mass of
+  the body that is thrown rather than an estimate of it.
+- **A set whose dice differ is quoted as a range.** "0.3–1.6 g" rather than one
+  figure, and a single figure only when both ends print the same. A set is a
+  bag of dice and they need not agree — in fact they *never* agree about
+  weight, because a d4 and a d20 of one `size_mm` and one `density` are not the
+  same amount of material (see "Size"). A commonest value would be a claim
+  about one die printed as though it spoke for the rest.
 - **Size is a percentage of the average die**, not millimetres, and it is
   clamped to **50–150 %**. That is `size_mm` seen from the other end — 100 %
   is the 16 mm the built-in set uses — and it is bounded far more tightly than
   the format's 8–40 mm, because this is a slider somebody drags rather than a
-  number an author thought about.
+  number an author thought about. 50–150 % of 16 mm is 8–24 mm, so everything
+  the stepper can reach is a size the file format already accepts.
 - **All three are real, none of them is metadata.** Size scales the die on the
   table and therefore what the capacity rule counts; translucency drives the
   body's opacity with the numerals held opaque; weight is mass, so a heavier
@@ -311,7 +366,35 @@ uses:
   editing them on this phone would make `brass` mean two different things on
   two phones. **My dice** is the set this phone wrote, so it carries −/+
   steppers at 0.1 g, 5 % and 5 %, each reading the live value so a rapid run of
-  taps accumulates rather than fighting the last frame.
+  taps accumulates rather than fighting the last frame. The state the finger is
+  moving is the screen's; the record is written under it, and the folder
+  catches up at the next reading.
+- **What a weight stepper moves is the `density`**, because that is what a set
+  file keeps and what the solver is given. A gram is a fact about one die of
+  one shape, so a tenth of a gram only means something against a reference
+  solid, and the reference is **a d6 of the set's current size** — the die the
+  design's own figures quote and the one die nearly every set defines. A set of
+  nothing but d20s therefore moves by a little over a tenth of a gram per tap,
+  and the screen says what its dice actually weigh rather than what the tap was
+  called. The density stays inside the format's 0.5–8, so a run of taps stops
+  at balsa and at brass.
+- **Where My dice keeps them.** In a record of its own beside the drafts and
+  the photographs (`filesDir/mine-physical.txt`, `designer`'s `PhysicalStore`),
+  never in `dicesets/mine/diceset.toml`. That file is a *view*: the package is
+  **built, not accumulated**, so a number written only into it would be
+  rewritten away by the next stroke somebody drew. The three go out as the
+  package's `[defaults]` table — the one material "My dice" declares, because
+  it is the one somebody set on purpose — and come back through the ordinary
+  validator, which is how the details screen reads them again.
+- **The design's own figures are a dice shop's, and the app's are this app's.**
+  The table above quotes 4.2 g for a built-in d6, which is what a *nominal*
+  16 mm d6 weighs — a dice maker quotes the **edge**. This format's `size_mm`
+  is the width across the corners ("Size"), so a 16 mm d6 here is a 9.2 mm
+  cube, and the block prints **0.9 g** for it. That is not a rounding
+  disagreement, it is the same disagreement "Size" already settles, and it is
+  settled the same way: the screen says what the die that is thrown weighs. A
+  set that wants shop-sized dice writes `size_mm = 28`, and its d6 then weighs
+  the 4.9 g a solid acrylic cube that size weighs.
 
 ## Shapes after v1
 

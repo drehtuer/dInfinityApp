@@ -358,6 +358,13 @@ It is the first thing in the app to want the renderer on a screen that is not
 the tray, and that is the whole of what is new here
 (`docs/architecture.md`, decision 60).
 
+**A thumbnail does not follow the Table view setting.** It is a picture of a
+table rather than a roll in progress, and the leaning shot is the one that
+shows a look's walls — a straight-down thumbnail of an oak tray is a rectangle
+of felt. So the renderer a thumbnail is drawn with is built without a
+table view and takes this module's own default, which is the angled shot
+(`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+
 ```mermaid
 flowchart TD
   row["A row comes on screen<br/>(TablesScreen)"] --> wants["TablesPresenter.wants(pin),<br/>asked once per look"]

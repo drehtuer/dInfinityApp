@@ -311,6 +311,56 @@ class DraftTest {
     refuses { Stamp(rings = emptyList(), colorArgb = 0) }
   }
 
+  @Test
+  fun `a swap takes some marks off and puts others on, in one step`() {
+    val before = FaceDrawing().draw(stroke()).draw(stamp())
+    val after = before.swap({ it is Stamp }, listOf(stroke()))
+
+    assertEquals(2, after.marks.size)
+    assertFalse(after.marks.any { it is Stamp })
+    assertEquals("one press of a button is one press of undo", before.marks, after.undo().marks)
+  }
+
+  @Test
+  fun `a swap that would change nothing is not a step`() {
+    val drawn = FaceDrawing().draw(stroke())
+
+    assertEquals(drawn, drawn.swap({ it is Stamp }))
+  }
+
+  @Test
+  fun `a swap that would not fit is refused whole`() {
+    val full = (0 until FaceDrawing.MAX_MARKS).fold(FaceDrawing()) { drawing, _ -> drawing.draw(stroke()) }
+
+    assertEquals(full, full.swap({ it is Stamp }, listOf(stamp())))
+  }
+
+  @Test
+  fun `a swap leaves the fills under the ink where they were`() {
+    val before = FaceDrawing().draw(stroke()).draw(Fill(dots = FaceFill.FACE, colorArgb = 0))
+    val after = before.swap({ false }, listOf(stamp()))
+
+    assertTrue("a fill came out over the ink", after.marks.first() is Fill)
+  }
+
+  @Test
+  fun `pips are one mark however many of them there are, and sit with the ink`() {
+    val pips = requireNotNull(FaceEyes.of(6, 0))
+
+    assertEquals(1, FaceDrawing().draw(pips).marks.size)
+    assertTrue(FaceDrawing.sunk(listOf(pips, Fill(dots = FaceFill.FACE, colorArgb = 0))).last() is Eyes)
+  }
+
+  @Test
+  fun `pips with a ring of fewer than three dots cannot be made`() {
+    try {
+      Eyes(rings = listOf(listOf(Dot(0f, 0f))), colorArgb = 0)
+      fail("pips were made out of rings that enclose nothing")
+    } catch (refused: IllegalArgumentException) {
+      assertTrue(refused.message.orEmpty().contains("closed rings"))
+    }
+  }
+
   /** A shape that cannot be drawn is better made impossible than documented. */
   private fun refuses(make: () -> Stamp) {
     try {

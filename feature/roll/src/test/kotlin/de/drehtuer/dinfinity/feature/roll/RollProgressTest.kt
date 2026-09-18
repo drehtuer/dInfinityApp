@@ -26,6 +26,25 @@ class RollProgressTest {
   private val oak = TableLook(id = "oak", name = "Oak")
   private val catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set))
 
+  /** A range the filled-share tests do not care about. */
+  private val nothing = RollRange(lowest = 0, highest = 0)
+
+  @Test
+  fun `the progress rule is filled by the share of dice that have been read`() {
+    assertEquals(0f, RollProgress(read = 0, of = 20, onTheTable = 0, range = nothing).filled, 0f)
+    assertEquals(0.5f, RollProgress(read = 10, of = 20, onTheTable = 0, range = nothing).filled, 0f)
+    assertEquals(1f, RollProgress(read = 20, of = 20, onTheTable = 0, range = nothing).filled, 0f)
+  }
+
+  @Test
+  fun `a rule is never drawn past its own end, or divided by no dice at all`() {
+    // Both edges are real. A chain adds dice to itself as it goes, so more can
+    // be read than the formula planned; and a throw of nothing would divide by
+    // zero. A rule drawn past its own end is a rule drawn outside the plate.
+    assertEquals(1f, RollProgress(read = 24, of = 20, onTheTable = 0, range = nothing).filled, 0f)
+    assertEquals(0f, RollProgress(read = 0, of = 0, onTheTable = 0, range = nothing).filled, 0f)
+  }
+
   @Test
   fun `a roll that gave up says so, and keeps the dice to offer back`() {
     val machine = machine()

@@ -136,17 +136,18 @@ object DieNumbers {
         corners = FaceRoom.cornersOf(surface, grid, cell),
         text = text,
         face = face,
-        underlined = isAmbiguous(text, die),
+        marked = isAmbiguous(text, die),
       ) ?: return emptyList()
     return listOf(Mark(text, placement))
   }
 
   /**
-   * Whether [text] has to be underlined to be told from what it becomes when
-   * the die is the other way up — a `6` on a die that also has a `9`.
+   * Whether [text] has to be marked to be told from what it becomes when the
+   * die is the other way up — a `6` on a die that also has a `9`, printed
+   * `6.`.
    *
    * The rule is `core/glyphs`' ([FaceLabel.isAmbiguous]), because the face
-   * designer draws the same bar under the same numbers.
+   * designer puts the same dot after the same numbers.
    */
   fun isAmbiguous(
     text: String,
@@ -187,7 +188,7 @@ object DieNumbers {
           corner = uv.u * grid.columns - column to uv.v * grid.rows - row,
           text = text,
           face = face,
-          underlined = isAmbiguous(text, die),
+          marked = isAmbiguous(text, die),
         )?.let { Mark(text = text, placement = it) }
     }
   }

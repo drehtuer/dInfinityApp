@@ -358,13 +358,27 @@ SavedRoll {
   dragged is the one under the pointer rather than the one the drag started on
   — which is what makes it work when a list is longer than a thumb. The list is
   its own scroll box, so it scrolls under a header and a group picker that stay
-  put.
+  put. The order is written down when the finger lifts, in one go, rather than
+  at every step of the drag.
+
+  **A new roll lands at the bottom of its group's list.** It is a thing
+  somebody has just made and not yet placed; putting it at the top would move
+  everything they *had* placed down by one. The grip also carries *move up* and
+  *move down* as accessibility actions, because a list that can only be ordered
+  by dragging is a list somebody using a screen reader cannot order at all.
 - **A colour tag is one of twelve, or one somebody picked.** The twelve span
   the hue circle — ink, grey, red, deep red, orange, amber, pine, teal, cobalt,
   violet, magenta, bone — and every one of them, including a custom one, goes
   through the same contrast clamp against the active theme that the accent does
   (`docs/architecture.md`, "Settings"), because a roll's icon is drawn in its
-  colour and a pale yellow on paper is an icon nobody can see.
+  colour and a pale yellow on paper is an icon nobody can see. The clamp moves
+  a colour towards the ground's own text colour until it can be seen and stops
+  there, so a tag that is already legible is drawn exactly as it was chosen —
+  and `ink` at night and `bone` on paper, each invisible as written, are not.
+  A custom colour is **typed as a hex code** (`#2b5aa8`) until the system
+  colour picker arrives with the accent's; half a code chooses nothing rather
+  than something wrong. A tag is stored as the colour itself, so one of the
+  twelve and one somebody typed are the same kind of thing in storage.
 - The formula is re-validated when displayed, because the dice set it
   references might have been uninstalled. A broken saved roll shows a warning
   badge, and tapping it puts the formula in the field like any other — where

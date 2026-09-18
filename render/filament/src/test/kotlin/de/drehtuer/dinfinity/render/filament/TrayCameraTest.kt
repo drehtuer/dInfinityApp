@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.render.filament
 
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import de.drehtuer.dinfinity.simulation.api.cross
@@ -65,6 +66,91 @@ class TrayCameraTest {
     assertEquals("straight down is a diagram, not a dice tray", TrayCamera.TILT_DEGREES, tilt, TOLERANCE)
     assertTrue("the camera is below the rim it is looking over", shot.position.z > geometry.wallHeightMm)
     assertTrue("the camera should stand off the near end of the tray", shot.position.x < 0.0)
+  }
+
+  @Test
+  fun `straight down stands the camera over the middle of the tray`() {
+    // The setting's default position: no lean at all, every die square to the
+    // screen, and no wall in shot (`docs/physics-and-rendering.md`).
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = STRAIGHT_DOWN)
+    val down = Vector3(0.0, 0.0, -1.0)
+
+    val lean = Math.toDegrees(acos(shot.forward dot down))
+
+    assertEquals("a camera that is not leaning looks straight down", 0.0, lean, TOLERANCE)
+    assertEquals("and stands over the middle of the table", 0.0, shot.position.x, TOLERANCE)
+    assertEquals(0.0, shot.position.y, TOLERANCE)
+    assertTrue("above the rim it is looking into", shot.position.z > geometry.wallHeightMm)
+  }
+
+  @Test
+  fun `leaning stands the camera off the tray instead of over it`() {
+    // The other position, and the difference between the two: the angled shot
+    // is behind the near end of the table rather than above its middle, which
+    // is what puts the top and left wall in the picture.
+    val flat = TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = STRAIGHT_DOWN)
+    val angled = TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = TrayCamera.TILT_DEGREES)
+
+    assertTrue("the leaning camera should stand off the near end", angled.position.x < 0.0)
+    assertTrue("and further off than the one that does not lean", angled.position.x < flat.position.x)
+    assertEquals(
+      "the lean is the setting's, to the degree",
+      TrayCamera.TILT_DEGREES,
+      Math.toDegrees(acos(angled.forward dot Vector3(0.0, 0.0, -1.0))),
+      TOLERANCE,
+    )
+  }
+
+  @Test
+  fun `both positions hold the whole tray, with the same air around it`() {
+    // What must not change with the setting: the table is framed either way,
+    // at every shape of phone, and neither shot is looser than the other. The
+    // fullest corner of the tray sits just inside the edge of the picture in
+    // both, because the only air in either is MARGIN.
+    ASPECTS.forEach { aspect ->
+      val fills =
+        TILTS.map { tilt ->
+          val shot = TrayCamera.framingTheTray(geometry, aspect, tiltDegrees = tilt)
+          trayCorners().forEach { corner ->
+            assertTrue("the tray is clipped at $aspect leaning $tilt", shot.holds(corner, aspect))
+          }
+          trayCorners().maxOf { corner -> shot.fills(corner, aspect) }
+        }
+      fills.forEach { fill ->
+        assertTrue("the tray fills $fill of the frame, which is the camera standing too far back", fill > TIGHT)
+      }
+      assertEquals("one position frames the tray more loosely than the other", fills.first(), fills.last(), SAME_AIR)
+    }
+  }
+
+  @Test
+  fun `each position of the setting is a number of degrees`() {
+    assertEquals(0.0, TrayCamera.tiltDegreesOf(TableView.StraightDown), TOLERANCE)
+    assertEquals(TrayCamera.TILT_DEGREES, TrayCamera.tiltDegreesOf(TableView.Angled), TOLERANCE)
+    // The angled shot is what this file drew before the lean was a setting, so
+    // a caller that says nothing still gets it.
+    assertEquals(
+      TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = TrayCamera.tiltDegreesOf(TableView.Angled)),
+      TrayCamera.framingTheTray(geometry, PORTRAIT),
+    )
+  }
+
+  @Test
+  fun `up the screen is still up with no lean at all`() {
+    // The arithmetic that would fall over if the camera's up were the world's:
+    // a camera looking along its own up vector has no frame at all. This one
+    // rotates its up with the lean, so straight down is an ordinary case.
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = STRAIGHT_DOWN)
+
+    assertEquals("a camera whose up is not square to its view is a shear", 0.0, shot.up dot shot.forward, TOLERANCE)
+    assertEquals(1.0, shot.up.length, TOLERANCE)
+    assertTrue("the tray's long side runs up the screen", shot.up.x > 0.0)
+    // Screen-right is `cross(forward, up)`, and with the tray's long side up
+    // the screen and `+y` across it that comes out **−y** — which is the whole
+    // point of the operands being this way round: `+y` is the *left* wall, and
+    // the left wall is exactly what the angled shot is documented to show.
+    assertEquals("screen-right is across the tray and nowhere else", 0.0, cross(shot.forward, shot.up).x, TOLERANCE)
+    assertTrue("+y across the tray is screen-left, not screen-right", cross(shot.forward, shot.up).y < 0.0)
   }
 
   @Test
@@ -180,6 +266,22 @@ class TrayCameraTest {
       abs(offset dot up) <= upward * along + TOLERANCE
   }
 
+  /**
+   * How much of the frame [point] reaches: 1.0 is exactly on the edge of the
+   * picture, and more than that is outside it.
+   */
+  private fun CameraShot.fills(
+    point: Vector3,
+    aspectRatio: Double,
+  ): Double {
+    val upward = tan(Math.toRadians(verticalFieldOfViewDegrees / 2))
+    val across = upward * aspectRatio
+    val right = cross(forward, up)
+    val offset = point - position
+    val along = offset dot forward
+    return maxOf(abs(offset dot right) / (across * along), abs(offset dot up) / (upward * along))
+  }
+
   /** The eight corners of the tray, floor and rim. */
   private fun trayCorners(): List<Vector3> =
     listOf(-1.0, 1.0).flatMap { x ->
@@ -201,6 +303,20 @@ class TrayCameraTest {
   private companion object {
     const val TOLERANCE = 1e-9
     const val RADIUS_MM = 14.0
+
+    /** The two positions of the Table view setting, in degrees. */
+    const val STRAIGHT_DOWN = 0.0
+    val TILTS = listOf(STRAIGHT_DOWN, TrayCamera.TILT_DEGREES)
+
+    /**
+     * How full of tray the picture has to be, and how alike the two positions
+     * have to be about it. A shot with MARGIN and nothing else fills about
+     * 0.94 of its frame, so a camera that had quietly stood further back would
+     * fall through the first of these and a lean that reframed would fall
+     * through the second.
+     */
+    const val TIGHT = 0.9
+    const val SAME_AIR = 0.02
 
     /** A Pixel 10a held upright, and two shapes of screen well either side of it. */
     const val PORTRAIT = 0.45

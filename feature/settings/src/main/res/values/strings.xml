@@ -18,7 +18,6 @@
   <!-- Power saving (design option 1z). -->
   <string name="settings_power_heading">Power saving</string>
   <string name="settings_power_explanation">Roll without drawing the dice. The same roll, decided the same way — the result just appears.</string>
-  <string name="settings_power_label">Do not draw the dice</string>
 
   <!--
     The six presets, in the order the swatch grid draws them. A name is
@@ -52,7 +51,16 @@
   <string name="settings_sound_label">Hear the dice land</string>
   <string name="settings_shake_heading">Shake</string>
   <string name="settings_shake_explanation">Off means the motion sensors are never switched on at all, which is the one setting here that saves any power.</string>
-  <string name="settings_shake_label">Shake the phone to throw</string>
+  <!--
+    Table view: how far the camera leans over the table
+    (docs/physics-and-rendering.md, "Rendering (normal mode)"). The explanation
+    is the design's own copy, plus what every setting on this screen that the
+    roll screen reads has to say.
+  -->
+  <string name="settings_table_view_heading">Table view</string>
+  <string name="settings_table_view_explanation">Straight down keeps every die square to the screen. Angled shows the top and left wall. It takes effect the next time the roll screen opens.</string>
+  <string name="table_view_straight_down">Straight down</string>
+  <string name="table_view_angled">Angled</string>
   <!-- Division rounding (docs/dice-notation.md). -->
   <string name="settings_rounding_heading">Division</string>
   <string name="settings_rounding_explanation">Which way a division rounds. The result sheet can re-round the throw in front of you; that choice is not remembered.</string>
@@ -72,7 +80,6 @@
   -->
   <string name="settings_developer_heading">Developer tools</string>
   <string name="settings_developer_explanation">For debugging the physics. It adds an overlay on the tray and a Developer screen to the menu, and nothing else in the app changes — your history still has no replay and still never shows a seed. The overlay appears the next time the roll screen opens.</string>
-  <string name="settings_developer_label">Show the debugging tools</string>
   <!-- The developer screen itself. Developer-facing English; not a player's screen. -->
   <string name="developer_title">Developer</string>
   <string name="developer_explanation">Debugging tools for the physics. Nothing here is reachable with the toggle off, and nothing here is written to your history or your exports.</string>

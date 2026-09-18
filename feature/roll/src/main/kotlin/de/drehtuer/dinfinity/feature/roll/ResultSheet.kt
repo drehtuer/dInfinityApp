@@ -88,7 +88,11 @@ internal fun ResultSheet(
 
     // One row per group rather than one per die: `3d6 + 1d20` is two things a
     // player asked for, and the dice under each are how it came out.
-    result.groups.forEach { group -> GroupRow(group, onDoodle) }
+    //
+    // Their subtotals are drawn unless the only one of them is the total
+    // itself, which would be the roll's number printed twice ([Subtotals]).
+    val subtotals = Subtotals.shownOn(result)
+    result.groups.forEach { group -> GroupRow(group, subtotals, onDoodle) }
 
     // And a row per number the formula adds, so the rows on screen add up to
     // the total. Absent for a formula whose total cannot be read off them —
@@ -190,6 +194,7 @@ private fun Rounding.label(): Int =
 @Composable
 private fun GroupRow(
   group: RolledGroup,
+  subtotal: Boolean,
   onDoodle: (String) -> Unit,
 ) {
   Column(modifier = Modifier.fillMaxWidth()) {
@@ -203,12 +208,14 @@ private fun GroupRow(
         style = MaterialTheme.typography.labelLarge.tabular(),
         color = MaterialTheme.colorScheme.onBackground,
       )
-      Text(
-        text = group.subtotal.toString(),
-        style = MaterialTheme.typography.titleLarge.tabular(),
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.testTag(RollTestTags.subtotalOf(group.id)),
-      )
+      if (subtotal) {
+        Text(
+          text = group.subtotal.toString(),
+          style = MaterialTheme.typography.titleLarge.tabular(),
+          color = MaterialTheme.colorScheme.onBackground,
+          modifier = Modifier.testTag(RollTestTags.subtotalOf(group.id)),
+        )
+      }
     }
 
     // A roll that could not have the set it asked for says so here rather than

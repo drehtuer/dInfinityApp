@@ -30,6 +30,15 @@ restitution = 0.3
 friction = 0.5
 
 # --- dice ------------------------------------------------------------
+#
+# `faces` is read in the catalogue's face order (docs/dice-sets.md, "Face
+# order"), and these lists are not 1, 2, 3, … down it: every die is numbered
+# the way a moulded one is, with **opposite faces adding up** — 2 across from 5
+# on a d6, 1 across from 20 on a d20, a minus across from a plus on a fudge
+# die. Which face is across from which is geometry rather than a convention, so
+# these lists are checked against `simulation/api`'s `FaceNumbering` by
+# `BuiltinDiceSetTest` instead of being trusted because they are written down
+# here. A tetrahedron has no opposite faces and keeps 1-4 at its corners.
 
 # A real d2 is a coin, not a cube. A set without one falls back to a d6
 # labelled 1,2,1,2,1,2 (docs/dice-notation.md, "d2"); this one need not.
@@ -49,12 +58,12 @@ faces = [1, 2, 3, 4]
 [[die]]
 id = "d6"
 shape = "cube"
-faces = [1, 2, 3, 4, 5, 6]
+faces = [1, 2, 3, 5, 4, 6]
 
 [[die]]
 id = "d8"
 shape = "octahedron"
-faces = [1, 2, 3, 4, 5, 6, 7, 8]
+faces = [1, 2, 3, 4, 5, 7, 6, 8]
 
 # Scores 1 to 10, but is printed the way a real one is moulded: 1 to 9 and
 # then 0. As the units half of a percentile pair the 10 reads as the 0 the
@@ -62,36 +71,37 @@ faces = [1, 2, 3, 4, 5, 6, 7, 8]
 [[die]]
 id = "d10"
 shape = "pentagonal-trapezohedron"
-faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-labels = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+faces = [1, 2, 3, 4, 5, 7, 6, 8, 9, 10]
+labels = ["1", "2", "3", "4", "5", "7", "6", "8", "9", "0"]
 
 [[die]]
 id = "d10-tens"
 shape = "pentagonal-trapezohedron"
-faces = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
-labels = ["00", "10", "20", "30", "40", "50", "60", "70", "80", "90"]
+faces = [0, 10, 20, 30, 40, 60, 50, 70, 80, 90]
+labels = ["00", "10", "20", "30", "40", "60", "50", "70", "80", "90"]
 
 [[die]]
 id = "d12"
 shape = "dodecahedron"
-faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+faces = [1, 2, 3, 4, 5, 6, 9, 8, 7, 11, 10, 12]
 
 [[die]]
 id = "d18"
 shape = "enneagonal-trapezohedron"
-faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 10, 12, 13, 14, 15, 16, 17, 18]
 
 [[die]]
 id = "d20"
 shape = "icosahedron"
-faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 13, 12, 11, 16, 15, 14, 18, 17, 19, 20]
 
-# The fudge die: two minuses, two blanks, two pluses.
+# The fudge die: two minuses, two blanks, two pluses — paired the way the rest
+# are, so a minus is across from a plus and a blank across from a blank.
 [[die]]
 id = "df"
 shape = "cube"
-faces = [-1, -1, 0, 0, 1, 1]
-labels = ["−", "−", "0", "0", "+", "+"]
+faces = [-1, -1, 0, 1, 0, 1]
+labels = ["−", "−", "0", "+", "0", "+"]
 
 # --- tables ----------------------------------------------------------
 #

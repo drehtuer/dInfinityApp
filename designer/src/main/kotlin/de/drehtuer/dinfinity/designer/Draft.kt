@@ -16,15 +16,15 @@ data class Dot(
 )
 
 /**
- * One thing on a face: a line of the pen, a region the bucket coloured in, or
- * a glyph the stamp put down.
+ * One thing on a face: a line of the pen, a region the bucket coloured in, a
+ * glyph the stamp put down, or the pips of a pipped d6.
  *
- * A sealed set rather than one class with flags, because the three carry
- * different things — a stroke has a nib width and can be the eraser, a fill
- * has neither, a stamp is closed rings with holes in them — and a combination
- * that cannot be drawn is better made impossible than documented. All three
- * are dots in fractions of the canvas, which is what lets a paste turn or
- * mirror any of them with the same arithmetic (`FaceTransform`).
+ * A sealed set rather than one class with flags, because they carry different
+ * things — a stroke has a nib width and can be the eraser, a fill has neither,
+ * a stamp is closed rings with holes in them — and a combination that cannot
+ * be drawn is better made impossible than documented. All of them are dots in
+ * fractions of the canvas, which is what lets a paste turn or mirror any of
+ * them with the same arithmetic (`FaceTransform`).
  */
 sealed interface Mark {
   /** The ink. */
@@ -35,6 +35,25 @@ sealed interface Mark {
 
   /** The same mark with its dots somewhere else — what a turn and a mirror are made of. */
   fun at(dots: List<Dot>): Mark
+}
+
+/**
+ * A mark made of closed rings, drawn as one shape under the even-odd rule.
+ *
+ * Two things are: a [Stamp], whose rings are a glyph's outline and the
+ * counters that leave the hole in a `0` open, and [Eyes], whose rings are the
+ * pips of a pipped d6. They are drawn, exported, turned and written to the
+ * draft file identically, so everything that only cares about the ink asks for
+ * this rather than for either of them (`feature/designer`'s `FaceInk`,
+ * `BitmapAtlas`, `DraftFile`).
+ *
+ * What tells them apart is what they *mean*: pips and numerals are mutually
+ * exclusive on a face, so filling one has to be able to find the other and
+ * take it off (`docs/face-designer.md`, "Fill all with eyes").
+ */
+sealed interface Rings : Mark {
+  /** The outlines, each closing itself, in fractions of the canvas. */
+  val rings: List<List<Dot>>
 }
 
 /**
@@ -98,9 +117,9 @@ data class Fill(
  *   stroke does ([FaceDrawing.sunk]).
  */
 data class Stamp(
-  val rings: List<List<Dot>>,
+  override val rings: List<List<Dot>>,
   override val colorArgb: Int,
-) : Mark {
+) : Rings {
   init {
     require(rings.isNotEmpty() && rings.all { it.size >= CORNERS_OF_A_RING }) {
       "a stamp is closed rings of at least $CORNERS_OF_A_RING dots, not ${rings.map { it.size }}"
@@ -125,7 +144,7 @@ data class Stamp(
    * than cut up wrongly.
    */
   override fun at(dots: List<Dot>): Stamp =
-    if (dots.size != this.dots.size) this else copy(rings = cut(rings.map { it.size }, dots))
+    if (dots.size != this.dots.size) this else copy(rings = cutRings(rings.map { it.size }, dots))
 
   companion object {
     /**
@@ -142,25 +161,69 @@ data class Stamp(
       lengths: List<Int>,
       dots: List<Dot>,
       colorArgb: Int,
-    ): Stamp? =
-      if (lengths.isEmpty() || lengths.any { it < CORNERS_OF_A_RING } || lengths.sum() != dots.size) {
-        null
-      } else {
-        Stamp(rings = cut(lengths, dots), colorArgb = colorArgb)
-      }
+    ): Stamp? = if (!areRings(lengths, dots)) null else Stamp(rings = cutRings(lengths, dots), colorArgb = colorArgb)
+  }
+}
 
-    /** [dots] in runs of these [lengths], which is what a stamp's rings are. */
-    private fun cut(
+/**
+ * The pips of one face of a pipped d6 (`docs/face-designer.md`, "Fill all with
+ * eyes").
+ *
+ * One ring per pip and **one mark for the face**, for the same reason a
+ * stamped `10` is one mark: what a finger put down in one press comes off in
+ * one press of undo, counts once against the two hundred, and is carried whole
+ * by a turn or a mirror. The rings are disjoint circles, so the even-odd rule
+ * that keeps the hole in a `0` open fills every one of them.
+ *
+ * @param rings each pip's outline, in fractions of the canvas.
+ * @param colorArgb the ink the pen was holding. Pips are ink and sit over the
+ *   paper like a stroke does ([FaceDrawing.sunk]).
+ */
+data class Eyes(
+  override val rings: List<List<Dot>>,
+  override val colorArgb: Int,
+) : Rings {
+  init {
+    require(rings.isNotEmpty() && rings.all { it.size >= CORNERS_OF_A_RING }) {
+      "pips are closed rings of at least $CORNERS_OF_A_RING dots, not ${rings.map { it.size }}"
+    }
+  }
+
+  override val dots: List<Dot> = rings.flatten()
+
+  override fun at(dots: List<Dot>): Eyes =
+    if (dots.size != this.dots.size) this else copy(rings = cutRings(rings.map { it.size }, dots))
+
+  companion object {
+    /**
+     * The pips [dots] make when they are cut into rings of these [lengths], or
+     * null when they are not those rings — what reads them back off a draft
+     * file (`DraftFile`).
+     */
+    fun of(
       lengths: List<Int>,
       dots: List<Dot>,
-    ): List<List<Dot>> {
-      val starts = lengths.runningFold(0) { at, ring -> at + ring }
-      return lengths.mapIndexed { ring, length -> dots.subList(starts[ring], starts[ring] + length).toList() }
-    }
-
-    /** Three corners is the fewest that can enclose anything. */
-    private const val CORNERS_OF_A_RING = 3
+      colorArgb: Int,
+    ): Eyes? = if (!areRings(lengths, dots)) null else Eyes(rings = cutRings(lengths, dots), colorArgb = colorArgb)
   }
+}
+
+/** Three corners is the fewest that can enclose anything. */
+private const val CORNERS_OF_A_RING = 3
+
+/** Whether [lengths] cut [dots] into rings that each enclose something. */
+private fun areRings(
+  lengths: List<Int>,
+  dots: List<Dot>,
+): Boolean = lengths.isNotEmpty() && lengths.all { it >= CORNERS_OF_A_RING } && lengths.sum() == dots.size
+
+/** [dots] in runs of these [lengths], which is what a ring mark's rings are. */
+private fun cutRings(
+  lengths: List<Int>,
+  dots: List<Dot>,
+): List<List<Dot>> {
+  val starts = lengths.runningFold(0) { at, ring -> at + ring }
+  return lengths.mapIndexed { ring, length -> dots.subList(starts[ring], starts[ring] + length).toList() }
 }
 
 /**
@@ -227,6 +290,31 @@ data class FaceDrawing(
 
   /** Takes everything off this face, in one step that can be taken back. */
   fun clear(): FaceDrawing = if (blank) this else step(emptyList())
+
+  /**
+   * Every mark [taking] is true of taken off and [added] put on, **in one
+   * step**.
+   *
+   * What pips and numerals need of each other: the two are mutually exclusive
+   * on a face, so putting one on takes the other off
+   * (`docs/face-designer.md`, "Fill all with eyes"). One step rather than a
+   * clear and a paste, because one press of a button is one press of undo —
+   * a face that needed undoing twice to get back to where it was would be a
+   * button that did two things.
+   *
+   * A swap that would change nothing is not a step, so pressing a fill twice
+   * leaves the undo stack alone, and one that would carry the face past the
+   * limit is refused whole, exactly as a paste is.
+   */
+  fun swap(
+    taking: (Mark) -> Boolean,
+    added: List<Mark> = emptyList(),
+  ): FaceDrawing {
+    val kept = marks.filterNot(taking)
+    if (kept.size == marks.size && added.isEmpty()) return this
+    if (kept.size + added.size > MAX_MARKS) return this
+    return step(sunk(kept + added))
+  }
 
   fun undo(): FaceDrawing =
     if (!canUndo) {

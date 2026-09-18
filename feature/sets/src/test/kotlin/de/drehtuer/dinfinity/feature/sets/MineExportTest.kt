@@ -5,6 +5,8 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieMaterial
+import de.drehtuer.dinfinity.core.model.DiePhysical
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
@@ -17,6 +19,7 @@ import de.drehtuer.dinfinity.designer.MinePackage
 import de.drehtuer.dinfinity.designer.MineSets
 import de.drehtuer.dinfinity.designer.PackageFile
 import de.drehtuer.dinfinity.designer.PhotoStore
+import de.drehtuer.dinfinity.designer.PhysicalStore
 import de.drehtuer.dinfinity.designer.SetLicense
 import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
@@ -60,6 +63,7 @@ class MineExportTest {
   private val root = File(temporary, "dicesets")
   private val drafts = DraftStore(File(temporary, "drafts"))
   private val photos = PhotoStore(File(temporary, "table-photos"))
+  private val physical = PhysicalStore(File(temporary, PhysicalStore.FILE_NAME))
   private val scope = CoroutineScope(Dispatchers.Unconfined)
   private lateinit var database: DInfinityDatabase
   private lateinit var registry: InstalledSetRepository
@@ -189,6 +193,57 @@ class MineExportTest {
   }
 
   @Test
+  fun `my dice carries the steppers, and a run of taps accumulates`() {
+    // The design of 2026-09-17: 0.1 g a tap, each one reading the live value
+    // so a rapid run adds up rather than fighting the last frame
+    // (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
+    // them").
+    draw()
+    val presenter = detail(MinePackage.ID)
+    assertTrue(presenter.state.editable)
+    val before =
+      presenter.state.physical
+        ?.weightG
+        ?.low ?: error("a package with a die has a weight")
+
+    repeat(3) { presenter.weigh(1) }
+
+    val after =
+      presenter.state.physical
+        ?.weightG
+        ?.low ?: error("a package with a die has a weight")
+    assertEquals(before + 3 * DiePhysical.WEIGHT_STEP_G, after, 1e-9)
+  }
+
+  @Test
+  fun `what the steppers set is what the package on disk says afterwards`() {
+    draw()
+    val presenter = detail(MinePackage.ID)
+
+    presenter.weigh(2)
+    presenter.seeThrough(4)
+    presenter.resize(1)
+
+    val declared = presenter.state.declared ?: error("my dice was given nothing to edit")
+    // A second library, so the package really is rebuilt from the records
+    // rather than remembered: this is the path a drawn face takes too.
+    val die = runBlocking { library().one(MinePackage.ID) }?.set?.dice?.single() ?: error("the package went missing")
+    assertEquals(declared.density, die.material.density, 1e-9)
+    assertEquals(0.2, die.material.translucency, 1e-9)
+    assertEquals(105.0, DiePhysical.sizePercentOf(die.material.sizeMm), 1e-9)
+  }
+
+  @Test
+  fun `the numbers are kept between one visit and the next`() {
+    draw()
+    detail(MinePackage.ID).weigh(1)
+
+    val again = detail(MinePackage.ID)
+
+    assertEquals(DiePhysical.weighted(DieMaterial(), 1).density, again.state.declared?.density ?: 0.0, 1e-9)
+  }
+
+  @Test
   fun `somebody else's package is not offered an export`() {
     write("brass")
 
@@ -242,6 +297,7 @@ class MineExportTest {
           painter = BitmapAtlas(),
           dice = { listOf(d6) },
           photos = photos,
+          physical = physical,
         ),
     )
 

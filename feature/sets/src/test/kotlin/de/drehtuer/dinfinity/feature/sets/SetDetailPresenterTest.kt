@@ -201,6 +201,56 @@ class SetDetailPresenterTest {
     assertTrue(presenter.state.row?.bundled == true)
   }
 
+  @Test
+  fun `the physical block says what the set file declares, in the units a shop quotes`() {
+    // 20 mm dice of something twice as dense as acrylic, a fifth see-through
+    // (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
+    // them").
+    write("brass", toml("brass", "Brass", extra = "\n[defaults]\nsize_mm = 20\ndensity = 2.4\ntranslucency = 20"))
+
+    val physical = loaded("brass").state.physical ?: error("a set with a die has a weight")
+
+    assertEquals(125.0, physical.sizePercent.low, 1e-9)
+    assertEquals(20.0, physical.translucencyPercent.low, 1e-9)
+    // A 20 mm cube across the corners is 1.54 cm³, and at 2.4 g/cm³ that is
+    // 3.7 g — density times the volume of the solid, which is the mass the
+    // solver gives the body.
+    assertEquals(3.696, physical.weightG.low, 0.001)
+  }
+
+  @Test
+  fun `a set whose dice differ is quoted as a range rather than as one of them`() {
+    write("mixed", toml("mixed", "Mixed", extra = D20))
+
+    val physical = loaded("mixed").state.physical ?: error("a set with dice has a weight")
+
+    assertTrue("a d4 and a d20 do not weigh the same", physical.weightG.low < physical.weightG.high)
+    // They agree about the other two, because nothing in the file moved them.
+    assertTrue(physical.sizePercent.isOne(1.0))
+  }
+
+  @Test
+  fun `somebody else's set is read-only, and a tap on it changes nothing`() {
+    write("brass", toml("brass", "Brass"))
+    val presenter = loaded("brass")
+    val before = presenter.state.physical
+
+    presenter.weigh(1)
+    presenter.seeThrough(1)
+    presenter.resize(-1)
+
+    assertFalse("an imported set offered its numbers for editing", presenter.state.editable)
+    assertNull("an imported set was given a material to edit", presenter.state.declared)
+    assertEquals(before, presenter.state.physical)
+  }
+
+  @Test
+  fun `a package that will not load has nothing to weigh`() {
+    write("runes", "format = 1\n\n[set]\nid = \"runes\"\n")
+
+    assertNull(loaded("runes").state.physical)
+  }
+
   private fun loaded(
     id: String,
     onGone: () -> Unit = {},
@@ -275,6 +325,16 @@ class SetDetailPresenterTest {
       author = "A. Smith"
       license = "CC-BY-4.0"
       description = "Turned brass and bone."
+      """.trimIndent()
+
+    /** A second die, of another solid, so the set's dice do not weigh the same. */
+    val D20 =
+      """
+
+      [[die]]
+      id = "d20"
+      shape = "icosahedron"
+      faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
       """.trimIndent()
 
     const val PATIENCE_MS = 5_000L

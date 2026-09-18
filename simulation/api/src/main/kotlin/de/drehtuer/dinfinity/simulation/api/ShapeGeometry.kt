@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.api
 
+import de.drehtuer.dinfinity.core.model.CoinShape
 import de.drehtuer.dinfinity.core.model.DieShape
 
 /**
@@ -21,8 +22,15 @@ import de.drehtuer.dinfinity.core.model.DieShape
  * would silently repaint every die of every set ever published.
  */
 object ShapeGeometry {
-  /** How thick a coin is, as a fraction of its width. */
-  const val COIN_THICKNESS_RATIO: Double = 0.25
+  /**
+   * How thick a coin is, as a fraction of its width.
+   *
+   * The catalogue's, not this object's: a disc is the one solid whose
+   * proportions are a decision rather than a name, and the volume a weight is
+   * worked out from has to be the volume of the hull built here
+   * ([CoinShape]).
+   */
+  const val COIN_THICKNESS_RATIO: Double = CoinShape.THICKNESS_RATIO
 
   /**
    * The outward direction of every readable position of [shape], in the
@@ -47,6 +55,29 @@ object ShapeGeometry {
    * degree apart.
    */
   fun verticesOf(shape: DieShape): List<Vector3> = SOLIDS.getValue(shape).vertices
+
+  /**
+   * Which readable position of [shape] faces the opposite way to each of
+   * them, in the catalogue's face order, or null for a position that has no
+   * opposite at all.
+   *
+   * What pairs the faces of a die that is numbered the way a real one is: 2
+   * across from 5 on a d6, 1 across from 20 on a d20
+   * (`docs/dice-sets.md`, "Numbering"). It is read off the same directions
+   * the die is scored from rather than written down as a table per shape,
+   * because a table would be a second description of the face order and the
+   * two would come apart the first time either was touched.
+   *
+   * **A tetrahedron has none.** Its four positions are corners rather than
+   * faces and no two of them point opposite ways, so every entry is null and
+   * a d4 keeps 1–4 at its corners.
+   */
+  fun oppositesOf(shape: DieShape): List<Int?> {
+    val directions = directionsOf(shape).map(Vector3::normalised)
+    return directions.map { direction ->
+      directions.indices.firstOrNull { (directions[it] + direction).length < FACING_BACK }
+    }
+  }
 
   /**
    * The hull of [die] in millimetres, at [scale].
@@ -161,6 +192,16 @@ object ShapeGeometry {
           vertices = Solids.icosahedronVertices(),
         ),
     )
+
+  /**
+   * How near two directions have to be to opposite before they are called
+   * opposite.
+   *
+   * Every catalogue solid either has an exact opposite for each position or
+   * nothing within half a radian of one, so the number only has to be small
+   * enough to be arithmetic slack rather than a judgement about geometry.
+   */
+  private const val FACING_BACK = 1e-6
 
   private const val PENTAGONAL = 5.0
   private const val ENNEAGONAL = 9.0

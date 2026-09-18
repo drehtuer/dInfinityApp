@@ -877,4 +877,16 @@ data class RollProgress(
 ) {
   /** True once every die is read, when the range has collapsed onto the total. */
   val complete: Boolean get() = read >= of && range.lowest == range.highest
+
+  /**
+   * How far along the counting plate's rule is filled, from 0 to 1.
+   *
+   * Here rather than in the composable that draws it, because it is
+   * arithmetic with two edges on it and neither belongs behind a screen: a
+   * throw of no dice would divide by zero, and a chain that has added dice to
+   * itself can report more read than were thrown — [of] is the dice the
+   * *formula* planned, and an explosion's extra dice are counted as they land.
+   * A rule drawn past its own end is a rule drawn outside the plate.
+   */
+  val filled: Float get() = if (of <= 0) 0f else (read.toFloat() / of).coerceIn(0f, 1f)
 }

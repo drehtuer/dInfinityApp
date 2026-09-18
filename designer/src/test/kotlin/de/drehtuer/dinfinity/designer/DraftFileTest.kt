@@ -216,6 +216,41 @@ class DraftFileTest {
     assertEquals(1, back.face(0).marks.size)
   }
 
+  @Test
+  fun `pips come back as pips rather than as a stamp of circles`() {
+    // The rings alone cannot say which it is, and the difference matters:
+    // `Clear eyes` and "fill all with numbers" both look for pips
+    // (`docs/face-designer.md`, "Fill all with eyes").
+    val pips = requireNotNull(FaceEyes.of(3, RED))
+    val drawn = Draft(die = d6).onFace(2) { it.draw(pips) }
+
+    val back = requireNotNull(DraftFile.read(DraftFile.write(drawn), d6))
+
+    assertEquals(pips, back.face(2).marks.single())
+  }
+
+  @Test
+  fun `pips are told from a stamp by a field a stamp never carries`() {
+    val eyes = DraftFile.write(Draft(die = d6).onFace(0) { it.draw(requireNotNull(FaceEyes.of(1, INK))) })
+    val glyph = DraftFile.write(Draft(die = d6).onFace(0) { it.draw(stamp()) })
+
+    assertTrue("pips went out without saying they were pips", eyes.contains(""""eyes":true"""))
+    assertTrue("a stamp went out claiming to be pips", !glyph.contains(""""eyes""""))
+  }
+
+  @Test
+  fun `pips whose rings do not add up are dropped, and the drawing kept`() {
+    val mangled =
+      DraftFile
+        .write(Draft(die = d6).onFace(0) { it.draw(requireNotNull(FaceEyes.of(1, INK))).draw(stroke()) })
+        .replace(""""rings":[24]""", """"rings":[23]""")
+
+    val back = requireNotNull(DraftFile.read(mangled, d6))
+
+    assertEquals(1, back.face(0).marks.size)
+    assertTrue(back.face(0).marks.single() is Stroke)
+  }
+
   private fun stroke() = Stroke(dots = listOf(Dot(0.1f, 0.2f), Dot(0.3f, 0.4f)), colorArgb = INK, width = 0.02f)
 
   /** A glyph with a hole in it: an outer ring and a counter. */

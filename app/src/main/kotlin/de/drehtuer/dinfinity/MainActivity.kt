@@ -24,6 +24,7 @@ import de.drehtuer.dinfinity.data.setPowerSaving
 import de.drehtuer.dinfinity.data.setRounding
 import de.drehtuer.dinfinity.data.setShakeToRoll
 import de.drehtuer.dinfinity.data.setSound
+import de.drehtuer.dinfinity.data.setTableView
 import de.drehtuer.dinfinity.data.setWelcomeSeen
 import de.drehtuer.dinfinity.feature.saved.R
 import de.drehtuer.dinfinity.feature.settings.MenuHeader
@@ -160,6 +161,9 @@ class MainActivity : ComponentActivity() {
       onRoundingSelected = { rounding ->
         lifecycleScope.launch { repository.setRounding(rounding) }
       },
+      onTableViewSelected = { view ->
+        lifecycleScope.launch { repository.setTableView(view) }
+      },
       onDeveloperToolsChanged = { on ->
         lifecycleScope.launch { repository.setDeveloperTools(on) }
       },
@@ -171,6 +175,11 @@ class MainActivity : ComponentActivity() {
       onRepository = { openRepository() },
       version = installedVersion(),
       onWelcomeSeen = { lifecycleScope.launch { repository.setWelcomeSeen() } },
+      // The second press of back on the roll screen, inside two seconds
+      // (`docs/architecture.md`, "Navigation"). `finish` rather than anything
+      // cleverer: an app that closes is closed, and the next launch opens on
+      // the tray like the first one did.
+      onLeave = { finish() },
       menuHeader = menuHeader(app, settings),
       screens = ScreenWiring(app, settings, repository, saved, lifecycleScope).presenters(),
       onSource = { url -> open(url) },

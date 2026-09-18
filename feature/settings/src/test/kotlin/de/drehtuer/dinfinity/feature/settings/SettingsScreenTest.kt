@@ -5,7 +5,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
@@ -26,6 +31,7 @@ import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Assert.assertEquals
@@ -34,6 +40,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
 class SettingsScreenTest {
@@ -404,6 +411,42 @@ class SettingsScreenTest {
   }
 
   @Test
+  fun `both table views are offered, and the chosen one is chosen`() {
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(tableView = TableView.Angled), onAccentSelected = {})
+    }
+
+    TableView.entries.forEach { view ->
+      compose.onNodeWithTag(SettingsTestTags.tableViewOf(view)).performScrollTo().assertExists()
+    }
+    compose.onNodeWithTag(SettingsTestTags.tableViewOf(TableView.Angled)).assertIsSelected()
+  }
+
+  @Test
+  fun `a fresh install shows the table straight down`() {
+    // The default the design asks for, read off the row rather than off the
+    // model: this is the screen saying it.
+    compose.setContent { SettingsScreen(settings = AppSettings(), onAccentSelected = {}) }
+
+    compose
+      .onNodeWithTag(SettingsTestTags.tableViewOf(TableView.StraightDown))
+      .performScrollTo()
+      .assertIsSelected()
+  }
+
+  @Test
+  fun `choosing a table view says which`() {
+    val chosen = mutableListOf<TableView>()
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {}, onTableViewSelected = chosen::add)
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.tableViewOf(TableView.Angled)).performScrollTo().performClick()
+
+    assertEquals(listOf(TableView.Angled), chosen)
+  }
+
+  @Test
   fun `the version on screen is the one it was handed`() {
     // Read from the installed package rather than a generated constant, so it
     // is what is on the phone rather than what a build thought it was making.
@@ -427,6 +470,83 @@ class SettingsScreenTest {
     compose.onNodeWithTag(SettingsTestTags.REPOSITORY).performScrollTo().performClick()
 
     assertTrue(asked)
+  }
+
+  /**
+   * The row is two columns, and this is the test that fails if it ever goes
+   * back to three stacked blocks.
+   *
+   * The design draws every setting as one row — name and sentence on the left,
+   * the segmented control on the right, centred against the text — and the app
+   * drew the control underneath, which made the screen twice as long as it is
+   * drawn (`docs/architecture.md`, "Settings").
+   *
+   * At a real phone's width, because Robolectric's own screen is 320 dp and no
+   * phone the app ships on is: below about 300 dp the row legitimately stacks,
+   * and that rule has its own test in [SettingRowTest].
+   */
+  @Test
+  @Config(qualifiers = "w411dp-h891dp")
+  fun `a setting's control sits beside its text rather than under it`() {
+    var heading = ""
+    compose.setContent {
+      heading = stringResource(R.string.settings_appearance_heading)
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {})
+    }
+
+    val text = compose.onNodeWithText(heading).getUnclippedBoundsInRoot()
+    val control = compose.onNodeWithTag(SettingsTestTags.appearanceOf(Appearance.System)).getUnclippedBoundsInRoot()
+
+    assertTrue("the control is under the text rather than beside it", control.left >= text.right)
+    assertTrue(
+      "the control is not level with the text it belongs to",
+      control.top < text.bottom && text.top < control.bottom,
+    )
+  }
+
+  @Test
+  fun `a setting's name and its sentence are read as one thing`() {
+    // One stop for a screen reader, not two: on a row whose control sits beside
+    // the text, the order between the name and the sentence is not even top to
+    // bottom any more.
+    var heading = ""
+    var explanation = ""
+    compose.setContent {
+      heading = stringResource(R.string.settings_appearance_heading)
+      explanation = stringResource(R.string.settings_appearance_explanation)
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {})
+    }
+
+    compose.onNodeWithText(heading).assertTextContains(explanation)
+  }
+
+  @Test
+  fun `an option of a picker is still a radio button, and still big enough to hit`() {
+    // What the row change must not have cost: the semantics the segmented
+    // control carries, and Android's 48 dp floor under each of its options.
+    compose.setContent { SettingsScreen(settings = AppSettings(), onAccentSelected = {}) }
+
+    compose
+      .onNodeWithTag(SettingsTestTags.roundingOf(Rounding.Down))
+      .performScrollTo()
+      .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
+      .assertHeightIsAtLeast(TOUCH_TARGET)
+  }
+
+  @Test
+  fun `a switch is still the whole row, sentence and all`() {
+    // The boolean settings are rows like every other now — the name on the
+    // left, Off / On on the right — so the tap has to cover the sentence too.
+    var explanation = ""
+    compose.setContent {
+      explanation = stringResource(R.string.settings_power_explanation)
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {})
+    }
+
+    compose
+      .onNodeWithTag(SettingsTestTags.POWER_SAVING)
+      .assertHasClickAction()
+      .assertTextContains(explanation)
   }
 
   /** One of the picker's sliders, moved to [to]. */

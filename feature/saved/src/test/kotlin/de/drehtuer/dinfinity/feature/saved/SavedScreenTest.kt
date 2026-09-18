@@ -1,11 +1,15 @@
 package de.drehtuer.dinfinity.feature.saved
 
 import android.content.Context
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
@@ -25,6 +29,7 @@ import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -101,17 +106,75 @@ class SavedScreenTest {
   }
 
   @Test
-  fun `a favourite wears a star, and nothing else does`() {
-    // The star is part of the name's own text rather than a second one beside
-    // it, so that a long name ellipsises around it instead of pushing it off
-    // the row. It prints in the accent, which a test cannot see — what it can
-    // see is that it is still said.
-    given(roll("liked", name = "Fireball", favourite = true), roll("plain", name = "Magic missile"))
+  fun `no row wears a star, because there is no pinning left to show`() {
+    // The design took the favourite flag out in the pass of 2026-09-17: a
+    // favourite and a roll dragged to the top were solving the same problem
+    // twice (`docs/dice-notation.md`, "Saved rolls").
+    given(roll("fireball", name = "Fireball"), roll("plain", name = "Magic missile"))
 
     show()
 
-    compose.onNodeWithTag(SavedTestTags.rollOf("liked")).assertTextContains("Fireball ★", substring = true)
-    compose.onNodeWithTag(SavedTestTags.rollOf("plain")).assertTextContains("Magic missile", substring = true)
+    compose.onNodeWithTag(SavedTestTags.rollOf("fireball")).assertTextContains("Fireball", substring = true)
+    compose.onNodeWithTag(SavedTestTags.rollOf("fireball")).assert(hasText("★", substring = true).not())
+  }
+
+  @Test
+  fun `every row carries a grip, and it is a target a thumb can hit`() {
+    given(roll("fireball", name = "Fireball"))
+
+    show()
+
+    val grip = compose.onNodeWithTag(SavedTestTags.gripOf("fireball"), useUnmergedTree = true)
+    grip.assertContentDescriptionEquals("Reorder Fireball")
+    grip.assertWidthIsAtLeast(TOUCH_TARGET)
+    grip.assertHeightIsAtLeast(TOUCH_TARGET)
+  }
+
+  @Test
+  fun `the grip moves a row without a drag, for somebody who cannot drag one`() {
+    // The same move by the route a screen reader has. A list that can only be
+    // ordered by dragging is a list TalkBack cannot order at all
+    // (`docs/architecture.md`, "Accessibility").
+    given(roll("first"), roll("second"), roll("third"))
+    show()
+
+    compose
+      .onNodeWithTag(SavedTestTags.gripOf("third"), useUnmergedTree = true)
+      .fetchSemanticsNode()
+      .config[SemanticsActions.CustomActions]
+      .first { action -> action.label == "Move up" }
+      .action()
+    compose.waitForIdle()
+
+    assertEquals(
+      listOf("first", "third", "second"),
+      runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id },
+    )
+  }
+
+  @Test
+  fun `a drag down the grip reorders the list and writes it down`() {
+    given(roll("first"), roll("second"), roll("third"))
+    show()
+    val row =
+      compose
+        .onNodeWithTag(SavedTestTags.rollOf("first"))
+        .fetchSemanticsNode()
+        .size.height
+        .toFloat()
+
+    compose.onNodeWithTag(SavedTestTags.gripOf("first"), useUnmergedTree = true).performTouchInput {
+      down(center)
+      // Two rows down, in steps, the way a finger arrives rather than teleports.
+      moveBy(Offset(0f, row))
+      moveBy(Offset(0f, row))
+      up()
+    }
+
+    assertEquals(
+      listOf("second", "third", "first"),
+      runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id },
+    )
   }
 
   @Test
@@ -215,18 +278,16 @@ class SavedScreenTest {
   }
 
   @Test
-  fun `the order is favourites first, then the most recently used`() {
-    given(roll("old"), roll("recent"), roll("liked", favourite = true))
-    runBlocking {
-      repository.used("old")
-      repository.used("recent")
-    }
-
+  fun `rolling something does not move it, because the order is the player's`() {
+    given(roll("first"), roll("second"), roll("third"))
     show()
 
-    // The rows are in the list in that order; the list's own order is SQL's.
-    compose.onNodeWithTag(SavedTestTags.rollOf("liked")).assertIsDisplayed()
-    compose.onNodeWithTag(SavedTestTags.rollOf("recent")).assertIsDisplayed()
+    compose.onNodeWithTag(SavedTestTags.rollOf("third")).performClick()
+
+    assertEquals(
+      listOf("first", "second", "third"),
+      runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id },
+    )
   }
 
   private fun given(vararg rolls: SavedRoll) {
@@ -266,8 +327,7 @@ class SavedScreenTest {
     groupId: String = SavedRollGroup.UNFILED_ID,
     name: String = id,
     formula: String = "1d20",
-    favourite: Boolean = false,
-  ) = SavedRoll(id = id, groupId = groupId, name = name, formula = formula, favourite = favourite)
+  ) = SavedRoll(id = id, groupId = groupId, name = name, formula = formula)
 
   private companion object {
     const val NOW = 1_000L

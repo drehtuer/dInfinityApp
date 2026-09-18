@@ -16,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -116,7 +115,7 @@ private fun Tile(
     Text(
       text = roll.icon.ifBlank { STRIP_ICON },
       style = MaterialTheme.typography.titleLarge,
-      color = roll.colorArgb?.let { Color(it) } ?: MaterialTheme.colorScheme.primary,
+      color = markColour(roll.colorArgb),
     )
     // The mark sits at the top of the tile and the words at the bottom, which
     // is what the prototype's empty `<span style="flex:1">` between them does.

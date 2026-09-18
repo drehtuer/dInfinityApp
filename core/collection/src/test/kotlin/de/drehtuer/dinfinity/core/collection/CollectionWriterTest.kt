@@ -128,7 +128,7 @@ class CollectionWriterTest {
               formula = "1d12",
               icon = "🪓",
               colorArgb = 0xFF0000,
-              favourite = true,
+              sortOrder = 3,
               tablePin = TablePin("brass", "green-felt"),
               createdAtEpochMs = 1_000,
               lastUsedAtEpochMs = 2_000,
@@ -142,9 +142,32 @@ class CollectionWriterTest {
     assertTrue("47" !in written, "the use count travelled")
     assertTrue("green-felt" !in written, "the table pin travelled")
     assertTrue("colour" !in written, "the colour tag travelled")
+    assertTrue("favourite" !in written, "the flag the design took out travelled")
+    assertTrue("sortOrder" !in written && "sort_order" !in written, "the sort order travelled as a field")
     // What somebody wrote does travel.
     assertTrue("🪓" in written)
-    assertTrue("favourite" in written)
+  }
+
+  @Test
+  fun `the rolls are written in the order they were handed over`() {
+    // The order is the file's own order and needs no field: what the list
+    // shows is what the file says (`docs/dice-notation.md`).
+    val written =
+      CollectionWriter.write(
+        CollectionWriter.collect(
+          groups = listOf(group("dnd", "D&D")),
+          rolls =
+            listOf(
+              SavedRoll(id = "a", groupId = "dnd", name = "Axe", formula = "1d12", sortOrder = 0),
+              SavedRoll(id = "b", groupId = "dnd", name = "Bow", formula = "1d8", sortOrder = 1),
+              SavedRoll(id = "c", groupId = "dnd", name = "Club", formula = "1d6", sortOrder = 2),
+            ),
+          name = "D&D",
+        ),
+      )
+
+    assertTrue(written.indexOf("Axe") < written.indexOf("Bow"), "the list order was not kept")
+    assertTrue(written.indexOf("Bow") < written.indexOf("Club"), "the list order was not kept")
   }
 
   @Test
