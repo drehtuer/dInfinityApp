@@ -74,6 +74,14 @@
     for `Type a formula, or open Dice at the top.` to go, and with the formula
     behind a tab of its own there is nothing on the felt for it to point at.
   -->
+
+  <!--
+    The way back, for a throw that came from the face designer's "Roll it"
+    (docs/face-designer.md). The second line is also what a screen reader is
+    told the banner does, so it has to read as an action on its own.
+  -->
+  <string name="roll_testing_your_die">Testing the die you drew</string>
+  <string name="roll_back_to_designer">Back to the face designer</string>
   <string name="roll_hint_ready">Shake the phone to roll.</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->
   <string name="roll_picker_add">Add a %1$s</string>

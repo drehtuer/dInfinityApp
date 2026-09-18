@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity
 
 import android.content.Context
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -301,6 +302,67 @@ class DInfinityScreensTest {
           ?.getString(GraphArgument.FORMULA)
       },
     )
+    // And the die it was drawing goes with the formula, which is what puts
+    // the way back on the tray (`feature/roll`'s `BackToDesigner`).
+    assertEquals(
+      "d6",
+      compose.runOnIdle {
+        navigation.currentBackStackEntry
+          ?.arguments
+          ?.getString(DesignerArgument.DIE)
+      },
+    )
+  }
+
+  @Test
+  fun `and the tray it opens offers the way back to the designer`() {
+    // The device session: "testing a roll from the face designer offers no
+    // way back to the face designer". It is a round trip now, and the way
+    // back opens the designer on the die being tested rather than on
+    // whichever one it last opened (`docs/face-designer.md`, "Flow", step 4).
+    val navigation = app()
+    go(navigation, Destination.FaceDesigner)
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.Roll
+    }
+    // The welcome is a full-screen takeover over everything on the tray, so
+    // the banner under it is not a banner anybody can press yet.
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
+
+    compose.onNodeWithTag(RollTestTags.BACK_TO_DESIGNER).assertIsDisplayed().performClick()
+
+    compose.waitUntil(PATIENCE) {
+      compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==
+        Destination.FaceDesigner
+    }
+    assertEquals(
+      "d6",
+      compose.runOnIdle {
+        navigation.currentBackStackEntry
+          ?.arguments
+          ?.getString(DesignerArgument.DIE)
+      },
+    )
+    // It climbed rather than retraced: the tray is under the designer, which
+    // is the stack opening the designer from the tray would leave ([climbTo]).
+    assertEquals(
+      Destination.home.pattern,
+      compose.runOnIdle { navigation.previousBackStackEntry?.destination?.route },
+    )
+  }
+
+  @Test
+  fun `a tray nobody came to from the designer has no way back to it`() {
+    // The banner is about *this* visit. Every other way into the tray — the
+    // menu, a saved roll, an example on the notation screen — leaves it off,
+    // because there is nothing behind it to go back to.
+    val navigation = app()
+    go(navigation, Destination.Roll)
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
+
+    compose.onAllNodesWithTag(RollTestTags.BACK_TO_DESIGNER).assertCountEquals(0)
   }
 
   @Test

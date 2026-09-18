@@ -102,6 +102,15 @@ fun RollScreen(
    * another (`docs/architecture.md`, "Modules").
    */
   onDoodle: (String) -> Unit = {},
+  /**
+   * The way back to the face designer, or null for a visit that did not come
+   * from it ([BackToDesigner]).
+   *
+   * Nullable rather than a flag and a callback, because "there is a way back"
+   * and "here is where it goes" are one fact: a visit that came from the
+   * designer has both and every other visit has neither.
+   */
+  onBackToDesigner: (() -> Unit)? = null,
   menu: @Composable () -> Unit = {},
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit = {},
   shakeToRoll: Boolean = true,
@@ -163,6 +172,7 @@ fun RollScreen(
       onEditing = { open -> editing = open.also { if (it) picking = false } },
       picking = picking,
       onPicking = { open -> picking = open.also { if (it) editing = false } },
+      onBackToDesigner = onBackToDesigner,
       modifier = Modifier.align(Alignment.TopStart),
     )
 
@@ -581,6 +591,7 @@ private fun AlongTheTop(
   onEditing: (Boolean) -> Unit,
   picking: Boolean,
   onPicking: (Boolean) -> Unit,
+  onBackToDesigner: (() -> Unit)? = null,
   modifier: Modifier = Modifier,
 ) {
   Column(
@@ -639,6 +650,13 @@ private fun AlongTheTop(
         presenter.roll()
       },
     )
+
+    // Last in the column, so it sits between the formula it explains and the
+    // tray it is about. It is the bottom of the chrome rather than the top
+    // for the same reason the prototype puts it there: what a player reaches
+    // for first is the die, and the way back is what they want *after*
+    // (`design/dInfinityPhone.dc.html`).
+    onBackToDesigner?.let { BackToDesigner(onBack = it) }
   }
 }
 
@@ -921,6 +939,12 @@ object RollTestTags {
 
   /** The column of controls along the top edge: dice, menu, formula. */
   const val TOP: String = "roll:top"
+
+  /**
+   * The way back to the face designer, on a visit that came from it
+   * ([BackToDesigner]).
+   */
+  const val BACK_TO_DESIGNER: String = "roll:back-to-designer"
 
   /**
    * The dice pull-down's head, and the count of dice printed on it
