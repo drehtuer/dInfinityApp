@@ -167,11 +167,17 @@ data class ShakeSample(
  *   (`docs/TODO.md`, Step 5.4). It comes from the engine's own contact
  *   manifolds, which is the only place it exists — nothing upstream can work
  *   it out from positions.
- * @param restingAt where each die stopped, keyed like [faces]. A roll whose
- *   formula explodes or rerolls is not over when its dice stop: the throw that
- *   comes next has to be aimed at the floor this one left clear, and drawn
- *   among the dice it left standing there
- *   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
+ * @param restingAt where each die **still on the table** stopped, keyed like
+ *   [faces]. A roll whose formula explodes or rerolls is not over when its
+ *   dice stop: the throw that comes next has to be aimed at the floor this one
+ *   left clear, and drawn among the dice it left standing there
+ *   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+ *   adds"). It is therefore a **shorter** map than [faces] whenever the throw
+ *   had to throw a die again: reading a die is what lets it be lifted off, and
+ *   a die that has been lifted off has left the table and left its floor free
+ *   for the die that was thrown again. Its face is still in [faces] — it is
+ *   part of the result — but it is not somewhere the next throw may draw a die
+ *   or must avoid dropping one.
  * @param medianTurnsAfterLanding how far the middle die turned after it first
  *   touched the table, in whole turns. Settle time cannot tell a die that
  *   tumbled from one that landed flat and slid, and only one of those reads as

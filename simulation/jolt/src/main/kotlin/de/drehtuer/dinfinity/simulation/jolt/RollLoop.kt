@@ -396,10 +396,21 @@ class RollLoop(
         // the dice standing on the rest of it, and neither is something the
         // screen could work out for itself
         // (`docs/physics-and-rendering.md`).
+        //
+        // **The dice that were lifted off are not in it**, because they are
+        // not on the table any more. A die is lifted exactly to free the
+        // floor it stood on for a die being thrown again, so that floor is
+        // where the re-thrown die may well have landed — and handing the
+        // lifted one on would tell the next throw two untrue things at once:
+        // draw a die where another die is standing, and treat as taken the
+        // room the lift made. That is what put two dice in one place when an
+        // exploding roll came back for its next die ([liftedOut]).
         restingAt =
-          countedAt.indices.associateWith { index ->
-            countedAt[index] ?: RestingPlace(states[index].position, states[index].orientation)
-          },
+          countedAt.indices
+            .filterNot { lifted[it] }
+            .associateWith { index ->
+              countedAt[index] ?: RestingPlace(states[index].position, states[index].orientation)
+            },
         steps = tracker.stepsTaken,
         // Zero, and not by luck. There is no correction left in this loop to
         // count: a die is either read and lifted off or thrown again where the

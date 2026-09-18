@@ -185,8 +185,42 @@ class RollLoopTest {
 
     val outcome = loop(listOf(StandardDice.d6, StandardDice.d6), world).run()
 
-    assertEquals("a counted die lost the place it was counted at", 2, outcome.restingAt.size)
+    // One, not two. Die 0 was counted *and* lifted off to make the room die 1
+    // was thrown again into, so it is no longer on the table and is not
+    // offered to the throw that follows. Its **face** is kept all the same,
+    // which is what this test is about.
+    assertEquals("a counted die that is still down lost the place it was counted at", 1, outcome.restingAt.size)
     assertTrue("a counted die has no face", outcome.faces.values.all { it >= 0 })
+  }
+
+  @Test
+  fun `a die lifted off the table is not offered to the throw that follows`() {
+    // The same two dice, asked the other question: what is the *next* throw
+    // of the chain told is on the table. Die 0 is read and lifted off to make
+    // room, and die 1 is thrown again onto the floor that freed — the same
+    // spot, because that is where the room was.
+    //
+    // `restingAt` is what an explosion's throw is drawn among and aimed
+    // around (`RollMachine.earnedThrow`, `ClearSpace`). A die that is no
+    // longer on the table must not be in it: drawn back it puts two dice in
+    // one place, and counted as floor it hides the room it left
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    val world =
+      FakeWorld(2) { _, index, rethrows ->
+        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
+      }
+    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world)
+
+    val outcome = loop.run()
+
+    assertEquals("both dice were read", 2, outcome.faces.size)
+    assertEquals("the wrong dice were lifted off", listOf(true, false), loop.liftedOut)
+    assertEquals(
+      "a die that had been taken off the table was handed to the next throw",
+      setOf(1),
+      outcome.restingAt.keys,
+    )
   }
 
   @Test
