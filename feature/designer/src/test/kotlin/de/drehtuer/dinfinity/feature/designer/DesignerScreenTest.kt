@@ -872,4 +872,10 @@ class DesignerScreenTest {
 
   /** A kite-faced die: the one whose cells have no turn of their own. */
   private val d10 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron }
+
+  /** One of the picker's sliders, moved to [to]. */
+  private fun slide(
+    tag: String,
+    to: Float,
+  ) = compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.SetProgress) { it(to) }
 }
