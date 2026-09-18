@@ -4,13 +4,14 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.Face
 
 /**
- * What a face has written on it, and whether it needs a bar under it.
+ * What a face has written on it, and whether it needs a mark to tell it from
+ * what it reads as upside down.
  *
  * Here rather than in the renderer because two things ask it now: the tray
  * prints a die that has no artwork (`render/filament`'s `DieNumbers`), and the
  * face designer fills a die's faces with the same numbers
  * (`docs/face-designer.md`, "The stamp"). A drawn `6` and a printed `6` that
- * disagreed about the bar under them would be the same die reading two ways.
+ * disagreed about the dot after them would be the same die reading two ways.
  */
 object FaceLabel {
   /**
@@ -38,18 +39,22 @@ object FaceLabel {
     }
 
   /**
-   * Whether [text] has to be underlined to be told from what it becomes when
-   * the die is the other way up.
+   * Whether [text] has to be marked to be told from what it becomes when the
+   * die is the other way up.
    *
    * The rule a real die follows, written down rather than hard-coded to `6`
    * and `9`: turn the label about, and if what comes out is a *different*
    * label that this same die also carries, a player cannot tell the two apart
-   * and both get a bar. A d6 has no `9`, so its `6` needs no underline — which
-   * is exactly what a moulded d6 does, and why the rule is worth stating this
-   * way rather than as two characters by name.
+   * and both are marked. A d6 has no `9`, so its `6` is left alone — which is
+   * exactly what a moulded d6 does, and why the rule is worth stating this way
+   * rather than as two characters by name.
    *
    * An `8` turns into itself and a `2` turns into nothing readable, so neither
-   * is ever underlined.
+   * is ever marked.
+   *
+   * **What the mark is** is not decided here: it is a trailing full stop,
+   * `6.` and `9.`, and it is [Typesetter.MARK] because that is where the
+   * writing happens (`docs/dice-sets.md`, "Labels").
    */
   fun isAmbiguous(
     text: String,

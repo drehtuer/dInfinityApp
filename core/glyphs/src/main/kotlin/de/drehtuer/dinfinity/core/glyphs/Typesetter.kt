@@ -20,18 +20,20 @@ import kotlin.math.sin
  * @param turns how far the text is turned anticlockwise, in whole turns. Zero
  *   for every face-read solid; a d4's three numbers each face their own corner
  *   (`docs/dice-sets.md`, "The d4").
- * @param underlined whether a bar is drawn under the text and the text is
- *   lifted to make room for it. What a real die does to a `6` so that it is
- *   not a `9`; who decides which faces need one is
- *   `render/filament`'s `DieNumbers`, because it is the only thing that knows
- *   what else is printed on the same die.
+ * @param marked whether a full stop is printed after the text, so that a
+ *   number which could be read as another number on the same die cannot be —
+ *   `6.` against `9.`. What decides which faces need it is
+ *   [FaceLabel.isAmbiguous], which is the only thing that knows what else is
+ *   printed on the same die. It is the *text* that grows rather than a second
+ *   shape drawn beside it, so a marked numeral is measured, centred and turned
+ *   as one piece of writing.
  */
 data class Placement(
   val centreX: Double,
   val centreY: Double,
   val height: Double,
   val turns: Double = 0.0,
-  val underlined: Boolean = false,
+  val marked: Boolean = false,
 ) {
   init {
     require(height > 0) { "text of height $height would draw nothing" }
@@ -58,16 +60,38 @@ object Typesetter {
     at: Placement,
     face: Typeface = BuiltinFont.face,
   ): List<DoubleArray> {
-    val glyphs = glyphsOf(text, face)
+    val glyphs = glyphsOf(printed(text, at.marked), face)
     val pens = pensOf(glyphs)
     val line = Line.of(glyphs, pens, at, face) ?: return emptyList()
 
-    val letters =
-      glyphs.flatMapIndexed { index, glyph ->
-        glyph.contours.map { points -> line.place(points, pens[index]) }
-      }
-    return if (at.underlined) letters + line.rule() else letters
+    return glyphs.flatMapIndexed { index, glyph ->
+      glyph.contours.map { points -> line.place(points, pens[index]) }
+    }
   }
+
+  /**
+   * The mark on a number that could be read as another number on the same die.
+   *
+   * A trailing full stop rather than the bar underneath this used to draw
+   * (`docs/dice-sets.md`, "Labels"): a bar is a second horizontal in a system
+   * whose dice already have edges, and a dot is the one mark that cannot be
+   * confused with the die. It is in the built-in font like any other character
+   * (`docs/assets/README.md`), so nothing here draws a shape of its own.
+   */
+  const val MARK: String = "."
+
+  /**
+   * What is actually written for [text] when it is [marked], which is what
+   * everything measuring or laying it out has to ask.
+   *
+   * One answer rather than a `+ "."` in four places: a `6.` is wider than a
+   * `6`, and the room it needs on its face is solved from this
+   * ([LabelRoom.centred]).
+   */
+  fun printed(
+    text: String,
+    marked: Boolean,
+  ): String = if (marked) text + MARK else text
 
   /**
    * The glyphs of [text], or nothing at all when the font is missing any of
@@ -131,9 +155,9 @@ object Typesetter {
    * One line of text being laid out: everything about it that is the same for
    * every contour of every glyph in it.
    *
-   * A class rather than seven arguments handed down, because that is what the
-   * arguments were — a scale, a turn, where the middle of the ink sits, how far
-   * the whole line is lifted to make room for a bar, and where it all lands.
+   * A class rather than six arguments handed down, because that is what the
+   * arguments were — a scale, a turn, where the middle of the ink sits, and
+   * where it all lands.
    */
   private class Line(
     private val ink: Glyph.Bounds,
@@ -145,14 +169,6 @@ object Typesetter {
     private val cosine = cos(at.turns * FULL_TURN)
     private val sine = sin(at.turns * FULL_TURN)
 
-    /**
-     * How far the whole line is lifted to make room for its bar.
-     *
-     * The bar goes below the baseline, so the block is taller than the text
-     * and sits low unless the text is lifted by half of what it added.
-     */
-    private val lift = if (at.underlined) (RULE_GAP + RULE_THICKNESS) * figureHeight / 2 else 0.0
-
     /** [points], in font space, put where this line goes in the cell. */
     fun place(
       points: DoubleArray,
@@ -163,7 +179,7 @@ object Typesetter {
       while (index < points.size) {
         // Font space, with the line's middle brought to the origin.
         val x = (points[index] + pen - ink.centreX) * scale
-        val y = (points[index + 1] - figureHeight / 2 + lift) * scale
+        val y = (points[index + 1] - figureHeight / 2) * scale
         // Turned anticlockwise as seen on the face, which is clockwise in
         // image coordinates because they count downwards.
         out[index] = at.centreX + x * cosine - y * sine
@@ -171,19 +187,6 @@ object Typesetter {
         index += 2
       }
       return out
-    }
-
-    /**
-     * The bar under an underlined number.
-     *
-     * As wide as the ink above it rather than as wide as the advance, because
-     * a rule under `6` that ran the width of the character box would be wider
-     * than the digit and read as a fraction.
-     */
-    fun rule(): DoubleArray {
-      val top = -RULE_GAP * figureHeight
-      val bottom = top - RULE_THICKNESS * figureHeight
-      return place(doubleArrayOf(ink.minX, bottom, ink.maxX, bottom, ink.maxX, top, ink.minX, top), pen = 0.0)
     }
 
     companion object {
@@ -196,12 +199,6 @@ object Typesetter {
       ): Line? = inkOf(glyphs, pens)?.let { Line(ink = it, at = at, face = face) }
     }
   }
-
-  /** How thick an underline is, as a fraction of the figure height. */
-  const val RULE_THICKNESS: Double = 0.10
-
-  /** How far under the baseline it sits, in the same units. */
-  const val RULE_GAP: Double = 0.10
 
   private const val FULL_TURN = 2 * Math.PI
 }

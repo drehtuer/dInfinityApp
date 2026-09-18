@@ -111,6 +111,21 @@ class BitmapAtlasTest {
   }
 
   @Test
+  fun `a pipped face is painted pip for pip, and the paper between them left alone`() {
+    // Pips are rings like a glyph's, so the exporter paints them without being
+    // told what a pip is (`docs/face-designer.md`, "Fill all with eyes"). A
+    // `4` has its ink in the corners and nothing in the middle.
+    val four = FaceEyes.of(4, Drawings.RED) ?: error("no pattern for a four")
+    val drawn = Draft(die = Drawings.die(DieShape.Cube)).onFace(0) { it.draw(four) }
+
+    val bitmap = paint(Atlas.plan(drawn) ?: error("nothing to paint"))
+
+    val near = (FaceEyes.NEAR * Atlas.CELL_PIXELS).toInt()
+    assertEquals("the pip in the corner", Drawings.RED, bitmap.getPixel(near, near))
+    assertEquals("the paper between the pips", TRANSPARENT, bitmap.getPixel(HALF_CELL, HALF_CELL))
+  }
+
+  @Test
   fun `every catalogue shape paints`() {
     DieShape.entries.forEach { shape -> assertNotNull(shape.id, painter.png(planFor(shape))) }
   }

@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** What a face is printed with, and when it needs a bar under it. */
+/** What a face is printed with, and when it needs a dot after it. */
 class FaceLabelTest {
   private val d6 = Die.standard("d6", DieShape.Cube)
   private val d20 = Die.standard("d20", DieShape.Icosahedron)
@@ -36,7 +36,7 @@ class FaceLabelTest {
   }
 
   @Test
-  fun `underlines a six on a die that also has a nine`() {
+  fun `marks a six on a die that also has a nine`() {
     assertTrue(FaceLabel.isAmbiguous("6", d20))
     assertTrue(FaceLabel.isAmbiguous("9", d20))
   }
@@ -47,7 +47,7 @@ class FaceLabelTest {
   }
 
   @Test
-  fun `never underlines what turns into itself, or into nothing`() {
+  fun `never marks what turns into itself, or into nothing`() {
     assertFalse(FaceLabel.isAmbiguous("8", d20))
     assertFalse(FaceLabel.isAmbiguous("2", d20))
   }

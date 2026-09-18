@@ -693,13 +693,21 @@ private fun Channel(
 }
 
 /**
- * Which face is in front of the player, and the one tap that numbers them all
- * (`docs/face-designer.md`, "Flow" and "The stamp").
+ * Which face is in front of the player, and the taps that letter them all
+ * (`docs/face-designer.md`, "Flow", "The stamp" and "Fill all with eyes").
  *
- * The button sits beside the strip rather than in it, and outside the scroll:
- * "fill all with numbers" is about every face, which is what the strip is
- * about, and a control that scrolls away with the twentieth face is one nobody
- * finds (`design/dInfinity.dc.html`, option `1v`).
+ * The buttons sit beside the strip rather than in it, and outside the scroll:
+ * they are about every face, which is what the strip is about, and a control
+ * that scrolls away with the twentieth face is one nobody finds
+ * (`design/dInfinity.dc.html`, option `1v`).
+ *
+ * **The eyes are offered only where they mean something.** A pip pattern
+ * writes one to six and nothing else, so the two eye buttons are on the screen
+ * for a d6 and absent for every other die, rather than there and refusing —
+ * which is the answer "Roll it" already gives for a die notation cannot name.
+ * `Clear eyes` is disabled until there is something to clear, so pressing it
+ * on a die nobody has pipped cannot fill the undo stack with steps that
+ * changed nothing.
  */
 @Composable
 private fun FaceStrip(
@@ -731,6 +739,21 @@ private fun FaceStrip(
       tag = DesignerTestTags.FILL_NUMBERS,
       onChoose = presenter::fillNumbers,
     )
+    if (state.canPip) {
+      Tool(
+        label = stringResource(R.string.designer_fill_eyes),
+        chosen = false,
+        tag = DesignerTestTags.FILL_EYES,
+        onChoose = presenter::fillEyes,
+      )
+      Tool(
+        label = stringResource(R.string.designer_clear_eyes),
+        chosen = false,
+        enabled = state.pipped,
+        tag = DesignerTestTags.CLEAR_EYES,
+        onChoose = presenter::clearEyes,
+      )
+    }
   }
 }
 
@@ -801,6 +824,8 @@ object DesignerTestTags {
   const val STAMP_BAR: String = "designer:stamp"
   const val STAMP_TEXT: String = "designer:stamp:text"
   const val STAMP_REFUSED: String = "designer:stamp:refused"
+  const val FILL_EYES: String = "designer:eyes"
+  const val CLEAR_EYES: String = "designer:eyes-clear"
   const val FILL_NUMBERS: String = "designer:stamp:fill"
   const val MORE_COLOURS: String = "designer:colour:more"
   const val INK_HEX: String = "designer:colour:hex"

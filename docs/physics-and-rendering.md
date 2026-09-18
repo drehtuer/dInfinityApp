@@ -1451,14 +1451,20 @@ and a `pass 2` label in the slot the `dropped` marker already uses, and the
 number on the felt stops looking like a mistake.
 
 **6 and 9 carry a trailing dot.** A die on a table lies at whatever angle it
-landed at, and `6` and `9` are the same glyph turned over. The app prints a bar
-under the ambiguous one (`docs/face-designer.md`); the design prints `6.` and
-`9.` instead, on the felt and in the designer both. A d% reads its units digit
-dotted and its tens pair undotted, because the tens pair is `10`–`90` and
-cannot be misread; a number set upright in the result sheet is not dotted at
-all, because nothing there is ambiguous. **This is a change to what is printed
-on a die**, so it lands in `core/glyphs` and the built-in set rather than in a
-Compose layout.
+landed at, and `6` and `9` are the same glyph turned over, so the ambiguous one
+is marked — `6.` and `9.`, on the felt and in the designer both. It replaces
+the bar underneath this used to draw: a bar is a second horizontal in a system
+whose dice already have edges. Which numbers are marked is unchanged and still
+derived (`docs/dice-sets.md`, "Labels"), so a d% reads its units digit dotted
+and its tens pair undotted, and a number set upright in the result sheet is not
+dotted at all because nothing there is ambiguous.
+
+**It is what is printed on a die**, so it is in `core/glyphs` rather than in a
+Compose layout, and in the one solve the tray and the designer share: the mark
+is a character of the built-in font that `Typesetter` writes after the label,
+and `LabelRoom` measures the numeral *with its dot on*, because `6.` is wider
+than `6` and a `6` sized as though it were bare would hang its dot over the
+edge of its face.
 
 **The dice arrive one at a time.** Each falls from above where it lands, 85 ms
 after the one before it, and the result sheet waits for the last of them:

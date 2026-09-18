@@ -16,6 +16,10 @@
   <string name="designer_stamp_refused">The built-in font draws 0–9 and a few signs. Anything else has to be drawn by hand.</string>
   <!-- One tap that puts every face's own number on it, as a starting point. -->
   <string name="designer_fill_numbers">Fill all with numbers</string>
+  <!-- One tap that puts the standard pips on all six faces of a d6. "Eyes" is what the dots on a die are called. -->
+  <string name="designer_fill_eyes">Fill all with eyes</string>
+  <!-- Takes those pips off again. -->
+  <string name="designer_clear_eyes">Clear eyes</string>
   <string name="designer_undo">Undo</string>
   <string name="designer_redo">Redo</string>
   <string name="designer_clear">Clear</string>

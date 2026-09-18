@@ -214,11 +214,12 @@ die to decorate rather than a blank one to letter.
 
 **The numbers go on in pairs, and each pair sums to n + 1.** A real die is
 numbered so that opposite faces add up: a d6 has 2 across from 5, a d20 has 1
-across from 20, a d12 has 1 across from 12. Faces are paired by opposite
-normals — which the catalogue's face order already fixes
-(`docs/dice-sets.md`, "Face order") — and the numbering follows the pairing
-rather than the order. A tetrahedron has no opposite faces at all and keeps
-1–4 at its corners.
+across from 20, a d12 has 1 across from 12. That is a fact about the *die*
+rather than about this button — the pairing is worked out from the shape's own
+normals and the bundled set's `faces` lists are written from it
+(`docs/dice-sets.md`, "Numbering") — so the stamp gets it right by copying the
+face's own number, which is all it has ever done. A tetrahedron has no opposite
+faces at all and keeps 1–4 at its corners.
 
 **Where a numeral sits on its face** is the face's own centroid, at a size
 taken from that face's inradius. In the design's authored 320-unit face, as
@@ -272,16 +273,35 @@ down, which is the rule the tray already follows.
 
 A d6 and only a d6 can be pipped instead of numbered. One tap lays the standard
 pip patterns on all six faces in the ink in the pen, on a 3 × 3 grid at
-`96 / 160 / 224` of the 320-unit face with each pip at `r = 24`. Pips are drawn
-in the flat canvas, in the solid view and in the strip's thumbnails, so a
-pipped die looks pipped everywhere before it is ever rolled.
+`96 / 160 / 224` of the 320-unit face with each pip at `r = 24`. `Clear eyes`
+takes them off again, which is the undo for somebody who pressed it to see, and
+is dead until there is something to clear.
 
-**Pips and numerals are mutually exclusive**, and filling one clears the other.
-A face carrying both is not a die anybody makes, and the two would be solved
-against the same face centre and land on top of each other.
+**A pip is a mark like any other** — closed rings drawn under the even-odd
+rule, the way a stamped glyph is (`designer`'s `Eyes`). That is what makes a
+pipped die look pipped everywhere without anything being taught what a pip is:
+the canvas, the exported atlas and everything later built over the same
+drawing — the strip's thumbnails, the Solid tab — draw the marks a face
+carries, and the pips are among them. One face's pips are **one mark**: one
+press of undo, one against the two hundred, one thing a turn or a mirror
+carries whole.
 
-`Clear eyes` takes them off again, which is the undo for somebody who pressed
-it to see.
+**A d6 and only a d6**, and the test is what the die *scores* rather than what
+solid it is. A pip pattern is a way of writing one to six and there is no
+pattern for a 7, for a d20's 17 or for a Fudge die's minus — so the two buttons
+are on the screen for a cube carrying exactly 1–6 and **absent** for everything
+else, which is the answer "Roll it" already gives for a die notation cannot
+name.
+
+**Pips and numerals are mutually exclusive**, and filling one clears the other,
+in the same step. A face carrying both is not a die anybody makes, and the two
+are solved against the same face centre and would land on top of each other.
+One press of a button is one press of undo, so the swap is one step and not a
+clear and a fill.
+
+Like "fill all with numbers" it is **one undoable step per face**, it leaves a
+face that already has what it would put there alone, and it lands *over* a
+drawing rather than taking it away.
 
 ### The guide
 
@@ -291,7 +311,7 @@ inside a `Canvas` wants a measurer, and the screen had no reason to hold one.
 `core/glyphs` is that measurer — it holds the outlines the tray prints with and
 `LabelRoom` solves how big a number may be on a face and where on that face it
 sits — so the guide is now the very shape "fill all with numbers" would put
-down, at the same size, in the same place, with the same bar under a `6` that
+down, at the same size, in the same place, with the same dot after a `6` that
 needs one.
 
 That is the point of it rather than a nicety. A guide and a stamp that were

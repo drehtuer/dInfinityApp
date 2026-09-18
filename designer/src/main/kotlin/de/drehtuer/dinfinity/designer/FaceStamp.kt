@@ -199,7 +199,7 @@ object FaceStamp {
         corners = corners(FaceOutline.of(die.shape)),
         text = text,
         face = face,
-        underlined = FaceLabel.isAmbiguous(text, die),
+        marked = FaceLabel.isAmbiguous(text, die),
       ) ?: return emptyList()
     return listOf(Numbering(face = cell, spot = GuideSpot.Middle, text = text, at = placement))
   }
@@ -221,7 +221,7 @@ object FaceStamp {
           corner = corner.x.toDouble() to corner.y.toDouble(),
           text = text,
           face = face,
-          underlined = FaceLabel.isAmbiguous(text, die),
+          marked = FaceLabel.isAmbiguous(text, die),
         )?.let { Numbering(face = index, spot = spot, text = text, at = it) }
     }
   }
@@ -238,6 +238,11 @@ object FaceStamp {
    * belongs to the face it was made on (`FaceDrawing`), so the number comes
    * off the face in front of the player with one press and off the rest as
    * they are reached.
+   *
+   * **It takes the pips off the faces it fills.** Pips and numerals are
+   * mutually exclusive — the two are solved against the same face centre, and
+   * a face carrying both is not a die anybody makes — so a numbered face stops
+   * being a pipped one, in the same step (`FaceEyes`).
    */
   fun fill(
     draft: Draft,
@@ -245,10 +250,11 @@ object FaceStamp {
     face: Typeface = BuiltinFont.face,
   ): Draft =
     draft.die.faces.indices.fold(draft) { so, cell ->
-      if (so.face(cell).marks.any { it is Stamp }) {
+      val numbers = numbers(draft.die, cell, colorArgb, face)
+      if (numbers.isEmpty() || so.face(cell).marks.any { it is Stamp }) {
         so
       } else {
-        so.onFace(cell) { it.paste(numbers(draft.die, cell, colorArgb, face)) }
+        so.onFace(cell) { it.swap({ mark -> mark is Eyes }, numbers) }
       }
     }
 

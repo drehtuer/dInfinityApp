@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
+import de.drehtuer.dinfinity.designer.Eyes
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.FaceFill
 import de.drehtuer.dinfinity.designer.FaceTransform
@@ -483,7 +484,51 @@ class DesignerPresenterTest {
 
     assertEquals("1", presenter.state.stamping)
     presenter.show(4)
-    assertEquals("5", presenter.state.stamping)
+    // Cell 4 of a d6, not the fifth number: a die is numbered in opposite
+    // pairs, so the face across from the 3 carries the 4 (`docs/dice-sets.md`,
+    // "Numbering").
+    assertEquals("4", presenter.state.stamping)
+  }
+
+  @Test
+  fun `a d6 can be pipped and a d20 cannot, which is what puts the buttons there`() {
+    assertTrue(DesignerPresenter(d6).state.canPip)
+    assertFalse(DesignerPresenter(d20).state.canPip)
+  }
+
+  @Test
+  fun `filling with eyes pips every face and says so, and clearing takes them off`() {
+    val presenter = DesignerPresenter(d6, drafts = Remembered())
+
+    assertFalse(presenter.state.pipped)
+    presenter.fillEyes()
+    assertTrue(presenter.state.pipped)
+    assertEquals(
+      6,
+      (0 until 6).count { cell ->
+        presenter.state.draft
+          .face(cell)
+          .marks
+          .any { it is Eyes }
+      },
+    )
+
+    presenter.clearEyes()
+    assertFalse(presenter.state.pipped)
+  }
+
+  @Test
+  fun `a pipped die is written down as it is pipped, not when the screen is left`() {
+    val drafts = Remembered()
+    DesignerPresenter(d6, drafts = drafts).fillEyes()
+
+    assertTrue(
+      drafts
+        .load(d6)
+        .face(0)
+        .marks
+        .any { it is Eyes },
+    )
   }
 
   @Test
@@ -588,6 +633,7 @@ class DesignerPresenterTest {
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
   private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
+  private val d20 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron }
   private val d10 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron }
 
   private companion object {

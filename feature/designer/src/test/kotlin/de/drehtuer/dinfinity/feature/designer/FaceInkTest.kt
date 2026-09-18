@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import de.drehtuer.dinfinity.designer.Dot
+import de.drehtuer.dinfinity.designer.FaceEyes
 import de.drehtuer.dinfinity.designer.FaceOutline
 import de.drehtuer.dinfinity.designer.Fill
 import de.drehtuer.dinfinity.designer.GuideMark
@@ -105,6 +106,7 @@ class FaceInkTest {
         Stroke(dots = listOf(Dot(0.2f, 0.2f)), width = 0.05f, colorArgb = INK, erases = true),
         Fill(dots = listOf(Dot(0f, 0f), Dot(1f, 0f), Dot(1f, 1f)), colorArgb = INK),
         Stamp(rings = listOf(listOf(Dot(0.1f, 0.1f), Dot(0.9f, 0.1f), Dot(0.5f, 0.9f))), colorArgb = INK),
+        requireNotNull(FaceEyes.of(5, INK)),
       )
 
     assertTrue("nothing was drawn", inked(onACanvas { marks.forEach { mark -> drawMark(mark) } }))
@@ -120,6 +122,7 @@ class FaceInkTest {
         "a pen stroke" to Stroke(listOf(Dot(0.1f, 0.1f), Dot(0.9f, 0.9f)), width = 0.05f, colorArgb = INK),
         "a filled region" to Fill(listOf(Dot(0f, 0f), Dot(1f, 0f), Dot(1f, 1f)), colorArgb = INK),
         "a stamped glyph" to Stamp(listOf(listOf(Dot(0.1f, 0.1f), Dot(0.9f, 0.1f), Dot(0.5f, 0.9f))), INK),
+        "a face of pips" to requireNotNull(FaceEyes.of(6, INK)),
       )
 
     kinds.forEach { (what, mark) ->

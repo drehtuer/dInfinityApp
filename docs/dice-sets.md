@@ -256,6 +256,43 @@ silently repaint every die of every set ever published. `simulation/api` owns
 it, and the renderer and the physics hull are built from the same arithmetic
 rather than from a model somebody exported.
 
+### Numbering
+
+**Opposite faces add up.** A moulded die is numbered so that the pair across
+from each other sums to one more than the face count: 2 against 5 on a d6, 1
+against 20 on a d20, 1 against 12 on a d12. The numbering therefore follows the
+*pairing* rather than the face order — the lowest number goes on the first face
+that has not been numbered, the highest on the face across from it, then the
+next lowest and the next highest — so the bundled package's `faces` lists are
+not `1, 2, 3, …` down the order.
+
+Which face is across from which is **geometry, not a convention**: it is read
+off the same normals the die is scored from, in `simulation/api`'s
+`ShapeGeometry.oppositesOf`, and `FaceNumbering` lays a set of values out along
+them. Nothing hand-writes a table per shape, because a table would be a second
+description of the face order and the two would come apart the first time
+either was touched. The bundled `diceset.toml` carries the answer written out —
+a set file is data and cannot compute anything — and a test in
+`dicesets/builtin` holds it to what the solids say.
+
+It is the same rule for values that are not `1..n`. A Fudge die's
+`−1, −1, 0, 0, 1, 1` comes out a minus across from a plus and a blank across
+from a blank; a tens d10's `0`–`90` comes out `0` across from `90`.
+
+**A tetrahedron is the exception**, and not by special case: no two of its
+readable positions face opposite ways, so there is no pair to make and a d4
+keeps 1–4 at its corners.
+
+A set author is not obliged to follow any of this. `faces` is whatever the
+author writes and the app prints it where the order says; the rule is what the
+*bundled* set does and what the face designer's "fill all with numbers" starts
+from (`docs/face-designer.md`).
+
+> **A die that was rolled before this rule is not a die that was rolled after
+> it.** The same seed puts the same *face* up and that face now carries a
+> different number, so a replayed roll and a per-face statistic taken before
+> the change do not compare with ones taken after (`docs/statistics.md`).
+
 ### Size
 
 `size_mm` is **how wide the die is**: the diameter of the sphere its corners

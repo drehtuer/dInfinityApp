@@ -28,6 +28,7 @@ import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
+import de.drehtuer.dinfinity.designer.Eyes
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.Fill
 import de.drehtuer.dinfinity.designer.Ink
@@ -614,6 +615,72 @@ class DesignerScreenTest {
     assertEquals(6, (0 until 6).count { cell -> draft.face(cell).marks.any { it is Stamp } })
   }
 
+  @Test
+  fun `fill all with eyes pips every face of a d6, and clear eyes takes them off`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.FILL_EYES).assertIsDisplayed().performClick()
+    assertEquals(
+      6,
+      (0 until 6).count { cell ->
+        presenter.state.draft
+          .face(cell)
+          .marks
+          .any { it is Eyes }
+      },
+    )
+
+    compose.onNodeWithTag(DesignerTestTags.CLEAR_EYES).assertIsEnabled().performClick()
+    assertEquals(
+      0,
+      (0 until 6).count { cell ->
+        presenter.state.draft
+          .face(cell)
+          .marks
+          .any { it is Eyes }
+      },
+    )
+  }
+
+  @Test
+  fun `clear eyes is dead until there is something to clear`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.CLEAR_EYES).assertIsNotEnabled()
+  }
+
+  @Test
+  fun `a die that is not a d6 is offered no eyes at all`() {
+    // A pip pattern writes one to six and nothing else, so the buttons are
+    // absent rather than there and refusing (`docs/face-designer.md`).
+    show(d20)
+
+    compose.onNodeWithTag(DesignerTestTags.FILL_EYES).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.CLEAR_EYES).assertDoesNotExist()
+  }
+
+  @Test
+  fun `pips and numerals are never both on a face`() {
+    val presenter = show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).performClick()
+    compose.onNodeWithTag(DesignerTestTags.FILL_EYES).performClick()
+    assertTrue(
+      presenter.state.draft
+        .face(0)
+        .marks
+        .none { it is Stamp },
+    )
+
+    compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).performClick()
+    assertTrue(
+      presenter.state.draft
+        .face(0)
+        .marks
+        .none { it is Eyes },
+    )
+  }
+
   private fun show(
     die: Die,
     choosable: List<Die> = emptyList(),
@@ -639,4 +706,5 @@ class DesignerScreenTest {
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
   private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
+  private val d20 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron }
 }

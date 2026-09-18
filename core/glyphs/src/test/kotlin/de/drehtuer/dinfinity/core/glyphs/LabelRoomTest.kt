@@ -144,10 +144,29 @@ class LabelRoomTest {
   }
 
   @Test
-  fun `draws the bar when it is asked for, and not otherwise`() {
-    assertTrue(assertNotNull(LabelRoom.centred(square, "6", underlined = true)).underlined)
-    assertTrue(!assertNotNull(LabelRoom.centred(square, "6")).underlined)
-    assertTrue(assertNotNull(LabelRoom.cornered(triangle, triangle[0], "6", underlined = true)).underlined)
+  fun `marks the label when it is asked to, and not otherwise`() {
+    assertTrue(assertNotNull(LabelRoom.centred(square, "6", marked = true)).marked)
+    assertTrue(!assertNotNull(LabelRoom.centred(square, "6")).marked)
+    assertTrue(assertNotNull(LabelRoom.cornered(triangle, triangle[0], "6", marked = true)).marked)
+  }
+
+  @Test
+  fun `a marked numeral is given room for its dot rather than sized as a bare one`() {
+    // `6.` is wider than `6`, so it has to be measured with the dot on — a
+    // numeral sized as though it were bare would hang its dot over the edge
+    // (`docs/dice-sets.md`, "Labels").
+    val bare = assertNotNull(LabelRoom.centred(triangle, "6")).height
+    val marked = assertNotNull(LabelRoom.centred(triangle, "6", marked = true)).height
+    assertTrue(marked < bare, "a marked 6 was given $marked, the same room as a bare one's $bare")
+    assertEquals(assertNotNull(LabelRoom.centred(triangle, "6.")).height, marked, 1e-9)
+  }
+
+  @Test
+  fun `a marked number at a corner is measured with its dot too`() {
+    val bare = assertNotNull(LabelRoom.cornered(triangle, triangle[0], "6"))
+    val marked = assertNotNull(LabelRoom.cornered(triangle, triangle[0], "6", marked = true))
+    assertTrue(marked.height <= bare.height, "${marked.height} against ${bare.height}")
+    assertEquals(bare.centreX, marked.centreX, 1e-9)
   }
 
   @Test

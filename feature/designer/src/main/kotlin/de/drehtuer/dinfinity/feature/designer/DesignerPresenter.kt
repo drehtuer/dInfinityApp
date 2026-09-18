@@ -9,6 +9,7 @@ import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
+import de.drehtuer.dinfinity.designer.FaceEyes
 import de.drehtuer.dinfinity.designer.FaceFill
 import de.drehtuer.dinfinity.designer.FaceStamp
 import de.drehtuer.dinfinity.designer.FaceTransform
@@ -161,6 +162,20 @@ data class DesignerState(
    * (`BuiltinFont.canDraw`).
    */
   val canStamp: Boolean get() = BuiltinFont.canDraw(stamping)
+
+  /**
+   * True when this die can be pipped instead of numbered, which is a d6 and
+   * only a d6 (`FaceEyes.canBePipped`).
+   *
+   * What decides whether the two eye buttons are on the screen at all. A pip
+   * pattern is a way of writing one to six and there is no pattern for a 7 or
+   * for a Fudge die's minus, so the offer is withheld rather than made and
+   * refused.
+   */
+  val canPip: Boolean get() = FaceEyes.canBePipped(draft.die)
+
+  /** True when some face is carrying pips, which is what `Clear eyes` is for. */
+  val pipped: Boolean get() = FaceEyes.pipped(draft)
 
   val canUndo: Boolean get() = face.canUndo
   val canRedo: Boolean get() = face.canRedo
@@ -381,6 +396,26 @@ class DesignerPresenter(
    */
   fun fillNumbers() {
     state = state.copy(draft = FaceStamp.fill(state.draft, state.colorArgb))
+    drafts.save(state.draft)
+  }
+
+  /**
+   * Lays the standard pips on all six faces of a d6, in one tap
+   * (`docs/face-designer.md`, "Fill all with eyes").
+   *
+   * The other half of "fill all with numbers", and its opposite: a face
+   * carries pips or a numeral and never both, so this takes the numerals off
+   * as it goes. A die that cannot be pipped is left alone, and no button
+   * offers it one ([DesignerState.canPip]).
+   */
+  fun fillEyes() {
+    state = state.copy(draft = FaceEyes.fill(state.draft, state.colorArgb))
+    drafts.save(state.draft)
+  }
+
+  /** Takes the pips off again, which is the undo for somebody who pressed it to see. */
+  fun clearEyes() {
+    state = state.copy(draft = FaceEyes.clear(state.draft))
     drafts.save(state.draft)
   }
 

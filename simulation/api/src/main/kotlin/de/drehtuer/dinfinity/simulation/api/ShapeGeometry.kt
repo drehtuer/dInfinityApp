@@ -49,6 +49,29 @@ object ShapeGeometry {
   fun verticesOf(shape: DieShape): List<Vector3> = SOLIDS.getValue(shape).vertices
 
   /**
+   * Which readable position of [shape] faces the opposite way to each of
+   * them, in the catalogue's face order, or null for a position that has no
+   * opposite at all.
+   *
+   * What pairs the faces of a die that is numbered the way a real one is: 2
+   * across from 5 on a d6, 1 across from 20 on a d20
+   * (`docs/dice-sets.md`, "Numbering"). It is read off the same directions
+   * the die is scored from rather than written down as a table per shape,
+   * because a table would be a second description of the face order and the
+   * two would come apart the first time either was touched.
+   *
+   * **A tetrahedron has none.** Its four positions are corners rather than
+   * faces and no two of them point opposite ways, so every entry is null and
+   * a d4 keeps 1–4 at its corners.
+   */
+  fun oppositesOf(shape: DieShape): List<Int?> {
+    val directions = directionsOf(shape).map(Vector3::normalised)
+    return directions.map { direction ->
+      directions.indices.firstOrNull { (directions[it] + direction).length < FACING_BACK }
+    }
+  }
+
+  /**
    * The hull of [die] in millimetres, at [scale].
    *
    * Every catalogue solid has all its corners on one sphere, so the hull is
@@ -161,6 +184,16 @@ object ShapeGeometry {
           vertices = Solids.icosahedronVertices(),
         ),
     )
+
+  /**
+   * How near two directions have to be to opposite before they are called
+   * opposite.
+   *
+   * Every catalogue solid either has an exact opposite for each position or
+   * nothing within half a radian of one, so the number only has to be small
+   * enough to be arithmetic slack rather than a judgement about geometry.
+   */
+  private const val FACING_BACK = 1e-6
 
   private const val PENTAGONAL = 5.0
   private const val ENNEAGONAL = 9.0
