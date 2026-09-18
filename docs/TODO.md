@@ -1396,7 +1396,11 @@ The figures are reported in every PR description either way.
       one-finger touch is being kept for picking a die up and throwing it
       again, and a surface that throws the whole formula the moment it is
       touched has nowhere to put that. The prototype has no camera to move and
-      no die to pick up, so it has a spare gesture the app does not. Worth
+      no die to pick up, so it has a spare gesture the app does not. **The
+      Roll button going makes this the last open question about how a throw
+      starts**, and it pulls both ways: the tap is the obvious stand-in for a
+      hand that cannot shake, and the tray's accessibility action already is
+      one. Worth
       settling before the hand re-throw is wired up, because they want the same
       finger
 
