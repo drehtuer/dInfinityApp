@@ -50,6 +50,11 @@ installed by other users like any other set.
    set is the default and so would throw a plain die. A save that comes to
    nothing still throws: the plain spelling is a die the tray can throw, and
    what is lost is the artwork rather than the roll.
+
+   **And it is a round trip.** The throw carries the die it was drawing, and
+   the tray draws a banner over the table that goes back to the designer on
+   *that* die (`design/dInfinityPhone.dc.html`, the `fromDesigner` banner;
+   "The way back" below).
 5. **Save to set.** Every drawing is a draft on disk the moment the finger
    lifts, so nothing is ever *lost*; what the footer's other action does is
    turn the drafts into the installed package ("Save to set" below). It is
@@ -130,11 +135,53 @@ the die in that package (Flow, step 4). It is **absent rather than dead** for a
 die plain notation cannot name: a set's own `skull-d6` has no spelling a
 formula could carry (`docs/architecture.md`, decision 31).
 
-One distortion is left, and it is the exporter's rather than this seam's: the
-atlas draws a cell with the face's up taken as `+z` flattened onto it while
-the canvas masks every cell into one canonical outline, so a drawing comes out
-turned on every shape but the d6 — up to sixty degrees on a d20. The artwork
-reaches the tray; which way round it lands is `docs/TODO.md`, 4.6.
+**And it lands the right way round.** The exporter used to copy the canvas
+into the cell square on, while the die samples that cell in the face's own
+frame with its up taken as `+z` flattened onto it (`docs/dice-sets.md`, "Up
+is `+z`"). Those are not the same polygon — the canvas outline is turned by
+15° on a d4, 36° on a d12, 60° on a d8 and a d20, 154° on a d10 and 166° on
+a d18, and drawn at 0.96 of the size the die shows — so a drawing came out
+turned and a fill of a whole face came out covering part of it, with the
+printed number showing through the rest. Each cell now carries its own turn
+and size, from the same solve the Solid tab uses (`FaceOnSolid`), and the
+two halves of the designer show the same die. What is left of it is the kite,
+under "The way back" below and in `docs/TODO.md`, 4.6.
+
+## The way back
+
+> **Design:** the `fromDesigner` banner over the roll screen of the
+> [phone prototype](../design/dInfinityPhone.dc.html).
+
+**Roll it is a round trip.** It used to be a one-way street: the button took
+the player to the tray and left them there, and the only route back was the
+menu's *Customise → Face designer*, which opens on whichever die the designer
+last opened rather than on the one being tested. A device session's verdict
+was that testing a roll from the face designer offers no way back to the face
+designer.
+
+The throw therefore carries the die it was drawing, as a `die` argument on
+the tray's own route beside the formula (`docs/architecture.md`,
+"Navigation"). A tray opened with one draws a banner over the table saying
+what is being tested, and a press on it opens the designer on that die.
+
+**A banner rather than a header chevron**, and the reason is this app's
+navigation rule rather than taste. A chevron *climbs*: the same control lands
+on the same screen every time, whatever path was taken to it. The tray is
+home, so it has no up and can never grow one, and a chevron that appeared
+only on some visits and led somewhere different each time would be the one
+control in the app nobody could predict. A banner is the other kind of
+control — it belongs to *this* visit, it is only drawn because this visit
+came from the designer, and it can say so in words.
+
+The press itself still climbs. What it leaves behind is the tray with the
+designer on it, which is the stack opening the designer from the tray would
+leave — rather than the pile of tray, designer, tray, designer that going
+back and forth by navigating would build up.
+
+It is drawn on a plate like every other run of words on the tray, rather than
+in the prototype's accent tint: the table is lit and its colour is the
+player's, and the accent is never drawn on it
+(`docs/physics-and-rendering.md`, "What is drawn over the table").
 
 **The Solid tab is built**, and with it the designer's other half: the real
 polyhedron generated from the same solid the solver collides, each authored
@@ -724,6 +771,23 @@ validator has already seen it, like every other package this phone writes.
   from the set defaults, so the same drawing works on a black or a white die.
   **A cell nobody drew on is not written at all**, which is what lets the
   printed label show through it.
+- **Each cell is painted with its own turn and size.** The canvas masks every
+  face into one canonical outline — a triangle on its point, a square on an
+  edge, a kite with its short tip up — and the die samples the cell in the
+  face's own frame, which is that outline turned by however the solid's
+  construction left the face (`docs/dice-sets.md`, "Up is `+z`"). The
+  exporter asks `FaceOnSolid` for the turn and the size that carry one onto
+  the other, which is the same solve the Solid tab draws with, so the flat
+  editor, the solid and the tray agree. **It moves the drawing, not the
+  atlas**: which cell a face is and how a cell is read are the file format's
+  and cannot change, because every published set is painted to them.
+- The size is the one that **covers** the face rather than the one that fits
+  it best. For every outline but the kite those are the same number, the
+  canvas being the face's own shape. A kite is not — the d10's and the d18's
+  faces are differently proportioned kites and the canvas draws one shape for
+  both — so a best fit would leave a rim of bare resin round every face with
+  the printed number showing through it, and covering instead costs a drawing
+  that is a little large and clipped at the tip (`docs/TODO.md`, 4.6).
 - Strokes are rasterised with anti-aliasing from the vector draft, clipped to
   the **face outline** rather than to the cell — a turned paste puts marks
   outside the outline on purpose, and what falls outside belongs to no face.

@@ -519,7 +519,32 @@ with the bundled set first, so it kept the untextured `d20` and dropped the
 personal one — the chooser now leaves the personal set out altogether, because
 a die of "My dice" is a drawing rather than a shape to draw on. Roll it is
 still absent rather than dead for a die plain notation cannot name
-(decision 31).
+(decision 31). **It is a round trip now**: the throw carries the die it was
+drawing and the tray draws a banner back to the designer on that die, which
+climbs rather than piling the two screens up (`docs/face-designer.md`, "The
+way back").
+
+**A drawn face lands where the die shows it.** The exporter used to copy the
+canvas into the cell square on while the die samples that cell in the face's
+own frame, so a drawing came out turned — 15° on a d4, 36° on a d12, 60° on a
+d8 and a d20, 154° on a d10, 166° on a d18 — and drawn at 0.96 of the size the
+die shows, which is why a whole-face fill left a third of a d20's face bare
+with the printed number showing through. Each cell now carries the turn and
+size that carry the canvas onto the real polygon, from the same `FaceOnSolid`
+solve the Solid tab draws with. What holds it is an end-to-end test over the
+real chain — painted on a device, packaged, validated, installed, read back
+through the renderer's own `AtlasKey` — and what that test asserts is the
+promise rather than the bug: every point the die shows of a filled face
+carries the fill.
+
+**Drawn dice score what the dice they were drawn on score**, and there are
+seven tests saying so over every bundled die: the values, the labels, the
+indices, a die drawn on one face of twenty, the opposite-face pairing kept
+and not invented, two hundred turns of each die read drawn and plain, and
+every face of a d20 reachable exactly once. The device session's worry — that
+the designer's dice might not roll fair because faces are assigned after the
+physics — had no bug behind it, and the tests are there so nobody has to take
+that on trust again.
 
 **The tools are pictures**, taken verbatim from the prototype's own sprite and
 held to it by a test that reads `design/dInfinityPhone.dc.html`. The
@@ -568,28 +593,35 @@ the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
       drag of a stage-width per 176° is the rate a finger expects; and whether
       a face carrying only its background and its number reads as a face
       somebody drew or as a face that lost their drawing
-- [ ] *Judgement, on a phone:* the drawing now reaches the tray, and nobody
-      has seen one there. Whether a face somebody drew with a finger reads as
-      *their drawing* at tray distance or as a smudge; whether the exporter's
-      turn (below) is the only thing wrong with how it lands; whether eight
+- [ ] *Judgement, on a phone:* the drawing reaches the tray the right way
+      round now, and nobody has seen one there since. Whether a face somebody
+      drew with a finger reads as *their drawing* at tray distance or as a
+      smudge; whether a d10's drawing, which is painted 1.2× large and clipped
+      at the tip (below), reads as their drawing at all; whether eight
       44 dp glyphs in a wrapping row read as tools without their words, or
       whether the bucket and the stamp need a caption after all; and whether a
       52 dp thumbnail of a face is a face or a grey square
-- [ ] **The atlas's turn of a cell is not the canvas's.** The exporter draws
-      every cell with the face's up taken as `+z` flattened onto it while the
-      canvas masks every cell into one canonical outline, and the two are not
-      the same turn — an octahedron's top face is fifteen degrees off the
-      triangle the canvas draws, a d20's up to sixty and a d12's up to
-      thirty-six, while a d6's square lands exactly. So a drawing comes out
-      of the exporter turned, and clipped where it runs past the real polygon.
-      The Solid tab shows the drawing the canvas's way and says so; which of
-      the two should move is the open question, and it is not a small one —
-      changing the atlas's rule repaints every die of every set ever published
-      (`docs/dice-sets.md`, "Up is `+z`"). **The d4's corner numbers are not
-      part of this any more**: which corner of a cell carries which number is
-      read off the solid and is right whatever the turn works out to be
-      (`docs/face-designer.md`, "The d4 rule is derived, not checked"). What
-      is left here is the turn of the *drawing*
+- [ ] *Judgement, on a phone:* the way back from a test throw. Whether the
+      banner over the tray reads as "you are testing this" or as something in
+      the way of the table, and whether coming back to the designer on the die
+      being tested is what a hand expects (`docs/face-designer.md`, "The way
+      back")
+- [ ] **The canvas draws one kite for two different ones.** `FaceOutline.Kite`
+      is a kite somebody chose the proportions of, and it is used for both the
+      d10 and the d18, whose faces are differently proportioned kites — so no
+      turn and no size lands the canvas exactly on either. The exporter covers
+      instead of fitting, which leaves the face wholly coloured at the cost of
+      a drawing a little large and clipped at the tip: measured over the
+      catalogue, the covering size is 1.20× the best fit on a d10 and 1.37× on
+      a d18, and exactly the best fit on every other shape. Closing it
+      properly means the canvas outline being the face's own
+      polygon, which needs `FaceOutline` to stop being one enum value per
+      family — and changes the shape somebody draws on, so drawings already on
+      disk are masked differently (`docs/face-designer.md`, "Export details").
+      **The turn itself is done**: each cell is painted with the turn and size
+      that carry the canvas onto the polygon the die shows, from the same
+      solve the Solid tab uses, and every sampled point of every face of every
+      catalogue shape is covered
 - [ ] **Whether the Solid tab should draw pen strokes too**, as thin filled
       outlines rather than as lines of a width. What it costs is a stroke
       turned into a polygon per mark per face per frame; what it buys is a

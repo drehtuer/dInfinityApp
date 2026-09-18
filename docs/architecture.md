@@ -245,6 +245,8 @@ stateDiagram-v2
     Roll --> Graph: See the odds, off the result sheet
     Roll --> Editor: Save as roll, off the result sheet
     Roll --> Menu: the menu button
+    Screen --> Roll: Roll it, carrying the die being drawn
+    Roll --> Screen: back to the designer, on that die
     Screen --> Editor: a saved roll, or New
     Editor --> Screen: saved, deleted, or the chevron
     Editor --> Roll: Roll now
@@ -268,6 +270,17 @@ other screen is two presses away. Choosing a row takes the menu *off* the back
 stack with it, so back from what it opened goes where the menu was opened
 from — a menu you have to press back through twice reads as a detour. Choosing
 the screen you are already on does not stack a second copy of it.
+
+**One control climbs to somewhere the menu does not go**, and it is the one
+exception worth naming. A throw asked for by the face designer's **Roll it**
+carries the die it was drawing on the tray's own route, and a tray opened
+that way draws a banner going back to the designer on that die
+(`docs/face-designer.md`, "The way back"). It is a banner rather than a
+chevron because a chevron climbs to a destination's `up` — the same screen
+every time — and the tray is home and has none; a control that appeared on
+some visits and not on others could not be that. The press itself uses the
+same `climbTo` a chevron does, so what it leaves behind is the tray with the
+designer on it rather than a pile of both twice.
 
 Nothing is undefined, and nothing is unreachable. `NavHost` answers back on
 every destination, `Destination.home` is where the app opens, and a route that

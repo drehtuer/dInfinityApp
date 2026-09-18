@@ -228,6 +228,14 @@ straight up or straight down has no such part, and those two are turned by
 `+y` instead. The face's own circle fills the cell, so a triangle and a
 pentagon both touch its edges and a strip of cells is drawn at one size.
 
+This is the file format's rule and it does not move: every published set is
+painted to it, and changing it would repaint all of them. What *does* have to
+follow it is anything that writes an atlas, and the app's own face designer
+did not — it copied its canvas into the cell square on, so a drawing came out
+turned by up to sixty degrees on a d20 and clipped where it ran past the real
+polygon. It turns each cell to this rule now (`docs/face-designer.md`,
+"Export details").
+
 ### The d4
 
 The one shape where a cell and a readable position are different things. A
