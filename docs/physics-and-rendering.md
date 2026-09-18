@@ -1265,12 +1265,12 @@ impact sounds rather than a crash in the middle of a roll.
   perspective and still cast their shadows" — is kept by construction and not
   by remembering.
 
-  Two things are **not** the tray's cast shadow and are deliberately left
-  alone. The contact darkening where a die meets the felt is screen-space
-  ambient occlusion (below), which has no per-renderable switch in Filament
-  and is what stops every die floating a millimetre; and the wall being
-  darker than the floor is the lighting, not a shadow — a surface turned away
-  from the key light is simply less lit.
+  **Stopping the tray casting was not the whole of it.** A device session
+  reported the rim's shadow still on the felt afterwards, and it was right:
+  what was left was ambient occlusion, which is not a cast shadow and so was
+  untouched by any of this (below). The wall being darker than the floor is
+  neither — that is the lighting, and a surface turned away from the key light
+  is simply less lit.
 
 - **The shadow map is given the tray, not five metres of nothing.** A
   directional shadow map covers the camera's whole frustum, and this camera can
@@ -1286,12 +1286,25 @@ impact sounds rather than a crash in the middle of a roll.
   it, because they are in world units too and Filament's default normal bias
   of 1.0 is a whole millimetre of push on a die 16 mm across.
 
-- **What says a die is *on* the table rather than over it** is the darkening
-  where the two meet. A cast shadow puts a die above the felt; contact occlusion
-  puts it down on it, and without it every die floats a millimetre however good
-  the shadow is. Filament's screen-space ambient occlusion does it, at a radius
-  of 8 mm — about half a die — which is enough to read as contact without the
-  whole tray dimming.
+- **There is no ambient occlusion, because the table may not shade itself.**
+  It was here for the darkening where a die meets the felt — a cast shadow puts
+  a die *above* the table and contact occlusion puts it *down on* it — and that
+  argument is sound. It is not what this scene needed.
+
+  Occlusion darkens every concave corner it can see, and the largest one in
+  the tray is the tray: the join where the wall meets its own floor, running
+  the whole way round. The felt wore a soft dark band hugging the wall, and a
+  band along the rim reads as **the rim throwing a shadow** — which is the one
+  thing a table must not do. Filament's occlusion is a property of the view
+  rather than of a renderable, so it cannot be asked for on the dice and not
+  on the tray.
+
+  It was settled by rendering the tray both ways on the Pixel 10a and looking,
+  rather than by argument: with occlusion the felt carries the band; without
+  it the felt is clean **and the die keeps the cast shadow it always had**,
+  which turns out to be what was doing the work. A die reads as being on the
+  table because of the shadow under it, not because of the darkening around
+  it.
 - The tray mesh is a function of the tray's geometry and nothing else — no
   package supplies one (`docs/tables.md`). Only the **inside** is modelled:
   the floor, the inner walls up to the 60 mm rim, and a 6 mm band across the

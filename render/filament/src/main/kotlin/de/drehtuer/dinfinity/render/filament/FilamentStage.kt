@@ -170,19 +170,28 @@ class FilamentStage(
     addLight(intensity = FILL_LUX, direction = FILL_DIRECTION, shadows = false)
     val sky = environment(engine).also { room = it }
     scene.indirectLight = ambient(engine, sky).also { ambient = it }
-    view.ambientOcclusionOptions =
-      View.AmbientOcclusionOptions().apply {
-        // The darkening where a die meets the felt and where two dice meet
-        // each other. A cast shadow says a die is *over* the table; this is
-        // what says it is *on* it, and without it every die floats a
-        // millimetre no matter how good the shadow is.
-        enabled = true
-        // Millimetres, because that is what this scene is measured in: about
-        // half a die, so the contact reads without the whole tray dimming.
-        radius = CONTACT_RADIUS_MM
-        power = CONTACT_POWER
-        quality = View.QualityLevel.LOW
-      }
+    // **No ambient occlusion, because the table must not shade itself.**
+    //
+    // It was here for the darkening where a die meets the felt: a cast shadow
+    // says a die is *over* the table, and contact occlusion is what says it is
+    // *on* it. That argument is sound and it is not what this scene needed.
+    //
+    // Occlusion darkens every concave corner it can see, and the biggest one
+    // in the tray is the tray — the join where the wall meets its own floor,
+    // which runs the whole way round. So the felt wore a soft dark band
+    // hugging the wall, and a band along the rim reads as the rim throwing a
+    // shadow. Stopping the tray *casting* (`FilamentDiceRenderer.addTray`)
+    // did not touch it, because it was never a cast shadow; the second
+    // device session reported it still there, correctly.
+    //
+    // Filament's occlusion is a property of the view, not of a renderable, so
+    // there is no way to ask for it on the dice and not on the tray. What
+    // settled it was rendering the tray both ways on the Pixel 10a and
+    // looking: with occlusion the felt carries the band, without it the felt
+    // is clean **and the die keeps the cast shadow it always had**, which is
+    // the thing that was doing the work all along
+    // (`docs/physics-and-rendering.md`, "Rendering").
+    view.ambientOcclusionOptions = View.AmbientOcclusionOptions().apply { enabled = false }
   }
 
   override fun take(entity: Int) {
@@ -529,9 +538,6 @@ class FilamentStage(
      */
     private const val AMBIENT_LUX = 12_000.0f
 
-    /** How far a surface looks for something to shade itself against, in mm. */
-    private const val CONTACT_RADIUS_MM = 8.0f
-
     /**
      * How the key light's shadow is drawn.
      *
@@ -580,9 +586,6 @@ class FilamentStage(
 
     /** And the constant part, in the depth buffer's own units rather than in mm. */
     private const val SHADOW_CONSTANT_BIAS = 0.0005f
-
-    /** How sharply that darkening comes on. Filament's own default is 1. */
-    private const val CONTACT_POWER = 1.0f
 
     /** And back the other way, across the tray, to lift the shadowed faces. */
     private val FILL_DIRECTION = Vector3(0.6, 0.5, -0.7)
