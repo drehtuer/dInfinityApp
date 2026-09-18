@@ -2,8 +2,11 @@ package de.drehtuer.dinfinity.feature.roll
 
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -18,13 +21,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * The three plates that sit across the bottom of the tray
+ * The four plates that sit across the bottom of the tray
  * (`docs/physics-and-rendering.md`, "What is drawn over the table").
  *
- * What is worth asserting is that each of them says the thing it exists to say
- * and that its buttons reach the presenter: a plate that drew beautifully and
- * offered a dead button would look exactly like one that worked. The colours
- * and the tracking are the design system's and are held in `ui/common`.
+ * What is worth asserting is that each of them says the thing it exists to
+ * say, and that the one button left on any of them reaches the presenter: a
+ * plate that drew beautifully and offered a dead button would look exactly
+ * like one that worked. The colours and the tracking are the design system's
+ * and are held in `ui/common`.
  */
 @RunWith(RobolectricTestRunner::class)
 class TrayPlatesTest {
@@ -76,55 +80,105 @@ class TrayPlatesTest {
   }
 
   @Test
-  fun `an earned throw is offered rather than taken`() {
-    // An exploding six earns another throw; the app does not make it
-    // (`docs/dice-notation.md`, "Evaluation").
-    var thrown = 0
-    var stopped = 0
-    compose.setContent { EarnedPlate(waiting = 3, onThrow = { thrown++ }, onStop = { stopped++ }) }
+  fun `an earned throw is asked for and has no button to press`() {
+    // An exploding six earns another throw; the app does not make it, and
+    // there is nothing here to press that would
+    // (`docs/dice-notation.md`, "Evaluation";
+    // `docs/physics-and-rendering.md`, "Starting a roll").
+    compose.setContent { EarnedPlate(waiting = 3) }
 
     compose.onNodeWithTag(RollTestTags.SHAKE_AGAIN).assertIsDisplayed()
     compose.onNodeWithText("ANOTHER THROW EARNED", useUnmergedTree = true).assertExists()
-    compose.onNodeWithText("Throw 3 more", useUnmergedTree = true).assertExists()
-
-    compose.onNodeWithTag(RollTestTags.EARNED_THROW).performClick()
-    compose.onNodeWithTag(RollTestTags.EARNED_STOP).performClick()
-
-    assertEquals("the earned throw was not made", 1, thrown)
-    assertEquals("the chain could not be stopped", 1, stopped)
+    compose
+      .onNodeWithText(
+        "3 dice rolled their highest face and earned a throw. " +
+          "The dice that are down stay down \u2014 shake to throw the 3 they earned.",
+        useUnmergedTree = true,
+      ).assertExists()
+    compose.onAllNodes(hasClickAction()).assertCountEquals(0)
   }
 
   @Test
   fun `one earned die asks for it in the singular`() {
-    compose.setContent { EarnedPlate(waiting = 1, onThrow = {}, onStop = {}) }
+    compose.setContent { EarnedPlate(waiting = 1) }
 
-    compose.onNodeWithText("Throw it", useUnmergedTree = true).assertExists()
+    compose
+      .onNodeWithText(
+        "A die rolled its highest face and earned a throw. " +
+          "The dice that are down stay down \u2014 shake to throw the one they earned.",
+        useUnmergedTree = true,
+      ).assertExists()
   }
 
   @Test
-  fun `a roll that could not settle names the dice and offers both ways out`() {
-    var again = 0
+  fun `a roll that could not settle names the dice and offers the one way out that is not a shake`() {
+    // `Throw those 3 again` is gone with every other throw button: the dice
+    // go back in the air with a shake. Cancelling is not throwing, so it
+    // stays (`docs/physics-and-rendering.md`, "Starting a roll").
     var cancelled = 0
-    compose.setContent {
-      StalledPlate(unsettled = 3, read = 17, onThrowAgain = { again++ }, onCancel = { cancelled++ })
-    }
+    compose.setContent { StalledPlate(unsettled = 3, read = 17, onCancel = { cancelled++ }) }
 
     compose.onNodeWithTag(RollTestTags.STALLED).assertIsDisplayed()
     compose.onNodeWithText("COULD NOT SETTLE", useUnmergedTree = true).assertExists()
-    compose.onNodeWithText("Throw those 3 again", useUnmergedTree = true).assertExists()
+    compose.onNodeWithText("Throw those 3 again", useUnmergedTree = true).assertDoesNotExist()
 
-    compose.onNodeWithTag(RollTestTags.THROW_AGAIN).performClick()
     compose.onNodeWithTag(RollTestTags.STALLED_CANCEL).performClick()
 
-    assertEquals("the dice were not thrown again", 1, again)
     assertEquals("the roll could not be cancelled", 1, cancelled)
+  }
+
+  @Test
+  fun `the ready plate says what a shake would be worth`() {
+    // What the Roll button's label used to be spent on ([Expectation]).
+    compose.setContent {
+      ReadyPlate(expected = Expectation(range = RollRange(lowest = 3, highest = 18), mean = 10.5))
+    }
+
+    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Shake the phone to roll.")
+    compose
+      .onNodeWithTag(RollTestTags.EXPECTED)
+      .assertContentDescriptionEquals("Expected 3 to 18, average avg 10.5")
+  }
+
+  @Test
+  fun `a chain that can still climb says so after the ceiling`() {
+    // The same `+` the counting plate draws, from the same `RollRange.more`.
+    compose.setContent {
+      ReadyPlate(expected = Expectation(range = RollRange(lowest = 3, highest = 21, more = true), mean = 12.25))
+    }
+
+    compose
+      .onNodeWithTag(RollTestTags.EXPECTED)
+      .assertContentDescriptionEquals("Expected 3 to 21+, average avg 12.2")
+  }
+
+  @Test
+  fun `a formula with no average keeps its range`() {
+    // `OutcomeGraph` declines past a point; the ends do not
+    // (`docs/probability.md`, limits).
+    compose.setContent {
+      ReadyPlate(expected = Expectation(range = RollRange(lowest = 30, highest = 3_000), mean = null))
+    }
+
+    compose
+      .onNodeWithTag(RollTestTags.EXPECTED)
+      .assertContentDescriptionEquals("Expected 30 to 3000")
+    compose.onNodeWithTag(RollTestTags.EXPECTED_AVERAGE, useUnmergedTree = true).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a formula that does not read has a hint and nothing to expect`() {
+    compose.setContent { ReadyPlate(expected = null) }
+
+    compose.onNodeWithTag(RollTestTags.HINT).assertExists()
+    compose.onNodeWithTag(RollTestTags.EXPECTED).assertDoesNotExist()
   }
 
   @Test
   fun `the refusal says how many of how many never stopped`() {
     // Three of twenty, seventeen counted — the numbers are what makes it an
     // account of a roll rather than an apology.
-    compose.setContent { StalledPlate(unsettled = 3, read = 17, onThrowAgain = {}, onCancel = {}) }
+    compose.setContent { StalledPlate(unsettled = 3, read = 17, onCancel = {}) }
 
     compose
       .onNodeWithText(
@@ -140,7 +194,7 @@ class TrayPlatesTest {
     // no icon set — so it is drawn. Captured rather than asserted on
     // semantics, because a drawing is the one thing the semantics tree cannot
     // show: what this catches is a mark that stopped being painted at all.
-    compose.setContent { StalledPlate(unsettled = 3, read = 17, onThrowAgain = {}, onCancel = {}) }
+    compose.setContent { StalledPlate(unsettled = 3, read = 17, onCancel = {}) }
 
     val painted = compose.onNodeWithTag(RollTestTags.STALLED).captureToImage().toPixelMap()
     val ink = (0 until painted.height).any { y -> (0 until painted.width).any { x -> painted[x, y] != painted[0, 0] } }

@@ -39,18 +39,23 @@ import de.drehtuer.dinfinity.ui.common.Plate
 import de.drehtuer.dinfinity.ui.common.SectionKicker
 
 /*
- * The three things that can sit across the bottom of the tray while a roll is
- * happening (`docs/physics-and-rendering.md`, "What is drawn over the table").
+ * The four things that can sit across the bottom of the tray
+ * (`docs/physics-and-rendering.md`, "What is drawn over the table").
  *
- * One plate, three states, and they are mutually exclusive because they are
- * three answers to the same question — what is the roll doing and what, if
- * anything, does it want: `CountingPlate` while the dice are still being read,
- * `EarnedPlate` when a chain has stopped one throw short, and `StalledPlate`
- * when dice never came to rest and there is no total.
+ * One plate, four states, and they are mutually exclusive because they are
+ * four answers to the same question — what is the roll doing and what, if
+ * anything, does it want: `ReadyPlate` before a hand has touched the phone,
+ * `CountingPlate` while the dice are still being read, `EarnedPlate` when a
+ * chain has stopped one throw short, and `StalledPlate` when dice never came
+ * to rest and there is no total.
  *
- * None of them invents a state. `RollState.Rolling` with a `RollProgress`,
- * `RollState.ShakeAgain` and `RollState.Stalled` are what the machine already
- * reaches; this is the drawing that was missing.
+ * None of them invents a state. `RollState.Ready`, `RollState.Rolling` with a
+ * `RollProgress`, `RollState.ShakeAgain` and `RollState.Stalled` are what the
+ * machine already reaches; this is the drawing.
+ *
+ * Only one of the four carries a button, and it is `Cancel the roll`. Throwing
+ * is a shake — there is no Roll button, no `Throw it` and no `Throw those
+ * again` (`docs/physics-and-rendering.md`, "Starting a roll").
  */
 
 /**
@@ -197,24 +202,105 @@ private fun ProgressRule(filled: Float) {
 }
 
 /**
- * A chain stopped one throw short, and the two ways on
- * (`design/dInfinityPhone.dc.html`, the `earned` block).
+ * Waiting to be shaken, and what a shake is worth
+ * (`design/dInfinityPhone.dc.html`, the hint block over the tray).
+ *
+ * **This is what stands where the Roll button stood.** Shaking is the only way
+ * to throw (`docs/physics-and-rendering.md`, "Starting a roll"), so the one
+ * thing the screen owes a player before they shake is the shape of the throw:
+ * the lowest it can come to, the highest, and the average in between. A button
+ * said "Roll"; this says what rolling would get them.
+ *
+ * The range is drawn by the same [Range] the counting plate uses mid-roll, so
+ * the figures a player reads before the throw and the figures they watch close
+ * during it are one calculation seen twice ([Expectation]).
+ *
+ * @param expected null for a formula that does not read, which is when there
+ *   is a hint to give and nothing to expect.
+ */
+@Composable
+internal fun ReadyPlate(
+  expected: Expectation?,
+  modifier: Modifier = Modifier,
+) {
+  Plate(modifier = modifier) {
+    Column(verticalArrangement = Arrangement.spacedBy(ROW_GAP)) {
+      Text(
+        text = stringResource(R.string.roll_hint_ready),
+        style = MaterialTheme.typography.bodyLarge,
+        color = Ink.muted,
+        modifier = Modifier.testTag(RollTestTags.HINT),
+      )
+      if (expected != null) Expected(expected)
+    }
+  }
+}
+
+/**
+ * The lowest, the highest and the average, on one line.
+ *
+ * Said once to a screen reader rather than three times, for the reason the
+ * counting plate is: a row of figures an eye takes in at a glance is a handful
+ * of loose numbers read aloud (`docs/architecture.md`, "Accessibility").
+ *
+ * The average is missing for a formula past what the outcome graph computes
+ * exactly. The range is still drawn — a throw whose ends are known and whose
+ * middle is not is better described by the ends than by nothing
+ * (`docs/probability.md`, limits).
+ */
+@Composable
+internal fun Expected(
+  expected: Expectation,
+  modifier: Modifier = Modifier,
+) {
+  val range = expected.range
+  val ceiling =
+    if (range.more) stringResource(R.string.roll_ceiling_more, range.highest) else range.highest.toString()
+  val average = expected.mean?.let { stringResource(R.string.roll_expected_average, it) }
+  val spoken =
+    if (average == null) {
+      stringResource(R.string.roll_expected_spoken, range.lowest, ceiling)
+    } else {
+      stringResource(R.string.roll_expected_spoken_average, range.lowest, ceiling, average)
+    }
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
+    verticalAlignment = Alignment.Bottom,
+    modifier =
+      modifier
+        .semantics(mergeDescendants = true) { contentDescription = spoken }
+        .testTag(RollTestTags.EXPECTED),
+  ) {
+    SectionKicker(text = stringResource(R.string.roll_expected_kicker), color = Ink.muted)
+    Range(range = range)
+    if (average != null) {
+      Text(
+        text = average,
+        style = MaterialTheme.typography.bodyMedium.tabular(),
+        color = Ink.muted,
+        modifier = Modifier.testTag(RollTestTags.EXPECTED_AVERAGE),
+      )
+    }
+  }
+}
+
+/**
+ * A chain stopped one throw short (`design/dInfinityPhone.dc.html`, the
+ * `earned` block).
  *
  * **The app does not throw the die an explosion earned.** A six earns another
  * throw and a throw is something a hand does, so the dice that are down stay
- * down and this asks (`docs/dice-notation.md`, "Evaluation"). Before this
- * plate the roll simply appeared to stop, with one line of text saying to
- * shake.
+ * down and this says so (`docs/dice-notation.md`, "Evaluation").
  *
- * `Stop the chain` puts the roll away without a total rather than scoring what
- * is on the table, and that is a limitation rather than a decision — see
- * `docs/TODO.md`, Step 4.1.
+ * No buttons at all. It had two — one to throw the earned die and one to stop
+ * the chain — and both are gone: throwing is a shake now, and `Stop the chain`
+ * put the roll away with no total, which is a roll thrown away rather than a
+ * roll finished. What is left is a sentence, which is all this ever was
+ * (`docs/physics-and-rendering.md`, "Starting a roll").
  */
 @Composable
 internal fun EarnedPlate(
   waiting: Int,
-  onThrow: () -> Unit,
-  onStop: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
   Plate(modifier = modifier.fillMaxWidth().testTag(RollTestTags.SHAKE_AGAIN)) {
@@ -225,20 +311,6 @@ internal fun EarnedPlate(
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onBackground,
       )
-      Row(horizontalArrangement = Arrangement.spacedBy(BUTTON_GAP)) {
-        ModernistButton(
-          text = pluralStringResource(R.plurals.roll_earned_throw, waiting, waiting),
-          onClick = onThrow,
-          kind = ModernistButtonKind.Primary,
-          modifier = Modifier.testTag(RollTestTags.EARNED_THROW),
-        )
-        ModernistButton(
-          text = stringResource(R.string.roll_earned_stop),
-          onClick = onStop,
-          kind = ModernistButtonKind.Ghost,
-          modifier = Modifier.testTag(RollTestTags.EARNED_STOP),
-        )
-      }
     }
   }
 }
@@ -251,12 +323,15 @@ internal fun EarnedPlate(
  * its dice never stopped. Reading them off whatever face they were nearest is
  * the one thing this app may not do, so it says what happened and hands them
  * back (`docs/physics-and-rendering.md`).
+ *
+ * Handing them back is a shake, not a button. `Throw those N again` was the
+ * last throw in the app that a hand could not make, and it is gone; `Cancel
+ * the roll` stays, because giving up is not throwing.
  */
 @Composable
 internal fun StalledPlate(
   unsettled: Int,
   read: Int,
-  onThrowAgain: () -> Unit,
   onCancel: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -274,20 +349,12 @@ internal fun StalledPlate(
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onBackground,
       )
-      Row(horizontalArrangement = Arrangement.spacedBy(BUTTON_GAP)) {
-        ModernistButton(
-          text = pluralStringResource(R.plurals.roll_throw_again, unsettled, unsettled),
-          onClick = onThrowAgain,
-          kind = ModernistButtonKind.Primary,
-          modifier = Modifier.testTag(RollTestTags.THROW_AGAIN),
-        )
-        ModernistButton(
-          text = stringResource(R.string.roll_stalled_cancel),
-          onClick = onCancel,
-          kind = ModernistButtonKind.Ghost,
-          modifier = Modifier.testTag(RollTestTags.STALLED_CANCEL),
-        )
-      }
+      ModernistButton(
+        text = stringResource(R.string.roll_stalled_cancel),
+        onClick = onCancel,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(RollTestTags.STALLED_CANCEL),
+      )
     }
   }
 }

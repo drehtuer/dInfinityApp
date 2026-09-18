@@ -336,11 +336,11 @@ private fun Roll(
     // The active group's saved rolls, handed to the tray as a slot: the roll
     // screen does not know what a saved roll is, and does not have to
     // (`design/dInfinity.dc.html`, option 9a).
-    strip = { rollIt ->
+    strip = { fill ->
       if (saved != null) {
         HomeStrip(
           presenter = saved,
-          onRoll = { formula, source -> rollIt(formula, source) },
+          onPick = { formula, source -> fill(formula, source) },
           onEdit = { rollId -> navController.navigate(editorRoute(rollId)) },
           onNew = { navController.navigate(editorRoute(null)) },
         )

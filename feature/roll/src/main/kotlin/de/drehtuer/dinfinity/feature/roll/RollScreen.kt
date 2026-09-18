@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -27,6 +29,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Rounding
@@ -37,7 +42,9 @@ import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.ModernistToast
 import de.drehtuer.dinfinity.ui.common.Plate
+import de.drehtuer.dinfinity.ui.common.ToastTestTags
 
 /**
  * Home: the tray, the formula and the total
@@ -197,6 +204,12 @@ fun RollScreen(
       modifier = Modifier.align(Alignment.BottomCenter),
     )
 
+    // And, when the roll is waiting on a hand, a line of words that says so
+    // and goes away again. The plate behind it says the same thing and stays,
+    // but a plate is somewhere a player has to look — the toast is a polite
+    // live region, so a shake that is being waited for is *announced*.
+    WaitingForAShake(presenter.state, modifier = Modifier.align(Alignment.BottomCenter))
+
     if (firstLaunch) FirstLaunch(presenter, whatIsThere, onWelcomeSeen, onImportCollection, onAddSets)
   }
 }
@@ -224,7 +237,8 @@ fun RollScreen(
  * @param onParked how much of the sheet stays on the bottom edge when it is
  *   pushed all the way down. Measured rather than known: it is the height of a
  *   grip with a number in it. The screen lifts its column of controls by it, so
- *   the Roll button is never under a sheet that has been parked.
+ *   the picker and the saved rolls are never under a sheet that has been
+ *   parked.
  */
 @Composable
 private fun TheResult(
@@ -239,6 +253,7 @@ private fun TheResult(
   PullUpResult(
     result = settled.result,
     divides = settled.divides,
+    expected = presenter.expected,
     onRound = presenter::round,
     // The formula as it is in the field rather than as the result recorded
     // it: the odds and the editor are both about the roll somebody is about
@@ -252,6 +267,82 @@ private fun TheResult(
 }
 
 /**
+ * The notice that the roll is waiting to be shaken
+ * (`ui/common`'s `ModernistToast`).
+ *
+ * Two states reach it and they mean different things: dice that never settled
+ * are dice to *throw again*, and an exploding chain's are dice the roll has
+ * *earned*. Both wait for the same hand, so both say how many — a player who
+ * shakes and sees two dice go up wants to have been told it would be two.
+ *
+ * The toast takes itself away after 2.6 s while the state it announced is
+ * still there; that is the point. The plate under it is the thing that stays,
+ * and a notice that never left would sit over the tray for as long as nobody
+ * shook.
+ */
+@Composable
+private fun WaitingForAShake(
+  state: RollState,
+  modifier: Modifier = Modifier,
+) {
+  val awaiting = state.awaiting()
+  // What was announced, or null once the words have had their time. A count
+  // of its own rather than a flag, because the state stays and the toast does
+  // not: reading it back off [state] would raise the words again on the next
+  // recomposition.
+  var said by remember { mutableStateOf<Awaiting?>(null) }
+  // Which wait this is. A roll that stalls, is shaken, and stalls again on
+  // the same number of dice is a new thing to say, and without this it would
+  // be the tail of the last toast (`TwoStageBack`).
+  var round by remember { mutableIntStateOf(0) }
+  LaunchedEffect(awaiting) {
+    said = awaiting
+    if (awaiting != null) round++
+  }
+  said?.let { waiting ->
+    key(round) {
+      ModernistToast(
+        text =
+          pluralStringResource(
+            if (waiting.stalled) R.plurals.roll_toast_stalled else R.plurals.roll_toast_earned,
+            waiting.count,
+            waiting.count,
+          ),
+        onDismissed = { said = null },
+        // The prototype's `bottom: 18px`, clear of the system's own bar.
+        modifier = modifier.safeDrawingPadding().padding(bottom = ABOVE_THE_EDGE),
+      )
+    }
+  }
+}
+
+/**
+ * What the next shake would throw, and whether those dice are being thrown
+ * again or for the first time.
+ *
+ * A value rather than two nullable fields on the screen, and out here rather
+ * than inside the composable, so the mapping from state to sentence is
+ * arithmetic a plain JVM test can read (`TrayReading` is the same idea for
+ * what the tray says).
+ */
+internal data class Awaiting(
+  val count: Int,
+  /** True for dice a roll gave up on, false for dice a chain earned. */
+  val stalled: Boolean,
+)
+
+/** Null for every state that is not waiting on a hand. */
+internal fun RollState.awaiting(): Awaiting? =
+  when (this) {
+    is RollState.Stalled -> Awaiting(count = unsettled, stalled = true)
+    is RollState.ShakeAgain -> Awaiting(count = waiting, stalled = false)
+    else -> null
+  }
+
+/** The prototype's `bottom: 18px`, which is where a toast sits. */
+private val ABOVE_THE_EDGE = 18.dp
+
+/**
  * The first-launch screen, over the tray, until it is pressed past
  * (`design/dInfinity.dc.html`, option 9a).
  *
@@ -260,9 +351,12 @@ private fun TheResult(
  * survives a rotation, because a welcome that reappeared when the phone turned
  * would be a welcome that looked broken.
  *
- * Its d20 is thrown for real: `1d20` is typed into the field and the roll is
- * asked for, which is what the player would have done. There is no
- * demonstration path and no canned number (`docs/architecture.md`, goal 1).
+ * Its d20 is **put on the table, not thrown**: `1d20` is typed into the field
+ * and the welcome gets out of the way, and the throw is the shake the player
+ * makes. A welcome that rolled for them would be teaching the one thing this
+ * app does not do (`docs/physics-and-rendering.md`, "Starting a roll"). There
+ * is no demonstration path and no canned number (`docs/architecture.md`,
+ * goal 1).
  */
 @Composable
 private fun FirstLaunch(
@@ -282,7 +376,6 @@ private fun FirstLaunch(
       welcomed = true
       onWelcomeSeen()
       presenter.type(FIRST_ROLL)
-      presenter.roll()
     },
     onDismiss = {
       welcomed = true
@@ -296,20 +389,22 @@ private fun FirstLaunch(
   )
 }
 
-/** What the first-launch screen offers to throw. One die, and the famous one. */
+/** What the first-launch screen puts on the table. One die, and the famous one. */
 private const val FIRST_ROLL = "1d20"
 
 /**
- * Everything below the tray: what the roll has to say, the saved rolls and the
- * button.
+ * Everything below the tray: what the roll has to say, and the saved rolls.
  *
  * One stack at the bottom of the screen, because the tray is the screen and
  * these sit on it rather than beside it — but a **short** one. It was four
  * plates high, which on a phone with the straight-down table view covered a
  * good part of the felt, and the whole of that view's point is being able to
- * see where a die landed. Two of the four have gone somewhere better: the
- * dice are a pull-down at the top ([DiceMenu]) and "See the odds" is on the
- * result sheet, which is where a result's actions belong.
+ * see where a die landed. Three of the four have gone: the dice are a
+ * pull-down at the top ([DiceMenu]), "See the odds" is on the result sheet
+ * where a result's actions belong, and the Roll button is gone altogether.
+ *
+ * **Nothing left in it throws.** A shake is the throw
+ * (`docs/physics-and-rendering.md`, "Starting a roll").
  */
 @Composable
 private fun Controls(
@@ -319,9 +414,9 @@ private fun Controls(
   /**
    * How much of the result sheet is parked on the bottom edge, in pixels.
    *
-   * The column is lifted by it, so the Roll button and the saved rolls are
-   * above a sheet that has been pushed down rather than under it. Zero
-   * whenever there is no sheet, which is every state but a settled roll.
+   * The column is lifted by it, so the saved rolls sit above a sheet that has
+   * been pushed down rather than under it. Zero whenever there is no sheet,
+   * which is every state but a settled roll.
    */
   parked: Float = 0f,
 ) {
@@ -339,21 +434,15 @@ private fun Controls(
     Outcome(
       state = state,
       progress = presenter.progress,
-      onThrowMore = { presenter.roll() },
-      onThrowAgain = { presenter.throwUnsettled() },
+      expected = presenter.expected,
       onGiveUp = presenter::clear,
     )
     SavedRollsPlate(presenter, strip)
-    // The Roll button is filled in the accent, so it is on a plate: accent
-    // never touches felt (`docs/physics-and-rendering.md`, "What is drawn
-    // over the table").
-    Plate(modifier = Modifier.fillMaxWidth()) {
-      ThrowButton(
-        enabled = state is RollState.Ready || state is RollState.Settled,
-        settled = state is RollState.Settled,
-        onRoll = { presenter.roll() },
-      )
-    }
+    // And nothing after the saved rolls. The Roll button stood here and is
+    // gone: shaking the phone is the only way to throw, so a button that
+    // threw was a second way in that quietly made the shake optional
+    // (`docs/physics-and-rendering.md`, "Starting a roll"). The dice picker
+    // stood here too and is now a pull-down at the top ([DiceMenu]).
   }
 }
 
@@ -378,8 +467,13 @@ private fun SavedRollsPlate(
     strip { formula, from ->
       // A tap on the strip is a formula *and* which roll put it there, so the
       // throw can be recorded as that roll's. Typed formulas come with none.
+      //
+      // It **fills and stops**. It used to throw as well, which made the strip
+      // the one control in the app that rolled without a hand — tap a saved
+      // roll and the dice were already down. Every other way in fills the
+      // field and waits for a shake, and now so does this
+      // (`docs/physics-and-rendering.md`, "Starting a roll").
       if (from == null) presenter.type(formula) else presenter.typeSaved(formula, from)
-      presenter.roll()
     }
   }
 }
@@ -490,8 +584,16 @@ private fun FormulaPlate(
         hint = stringResource(R.string.roll_formula_hint),
         error = (state as? RollState.Invalid)?.error,
         wrong = wrong,
-        // Enter rolls. It closes the editor first, so what the dice land on is
-        // not behind a keyboard.
+        // Enter rolls, and **stays** now that the Roll button has gone. It is
+        // not a button: it is what the key on a keyboard already means, and a
+        // player typing a formula with a hardware keyboard is a player whose
+        // other hand is not free to shake the phone. Together with the tray's
+        // custom accessibility action it is what keeps the screen operable
+        // without a hand that can shake (`docs/architecture.md`,
+        // "Accessibility").
+        //
+        // It closes the editor first, so what the dice land on is not behind
+        // a keyboard.
         onSubmit = {
           onEditing(false)
           presenter.roll()
@@ -519,14 +621,25 @@ private fun FormulaPlate(
  */
 @Composable
 private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
+  // Throwing is a shake, and a shake is not something every hand can make.
+  // So the table carries a custom accessibility action that throws — not a
+  // click, because a tap on the tray deliberately does not roll and a
+  // semantic click is a tap to anything that walks the tree
+  // (`docs/architecture.md`, "Accessibility";
+  // `docs/physics-and-rendering.md`, "Starting a roll").
+  //
+  // On the power-saving panel as well as on the tray, because the panel
+  // stands *instead of* the table: a mode with no surface is still a mode
+  // somebody has to be able to roll in.
+  val throwThem = throwAction(presenter)
   if (!presenter.draws) {
-    PowerSavingPanel()
+    PowerSavingPanel(modifier = throwThem)
     return
   }
   DiceTray(
     driver = presenter.tray,
     geometry = presenter.geometry,
-    modifier = Modifier.fillMaxSize(),
+    modifier = Modifier.fillMaxSize().then(throwThem),
     // A surface has nothing under it for a screen reader to find, so what is
     // on the table is said here or nowhere at all (`docs/architecture.md`,
     // "Accessibility").
@@ -537,6 +650,22 @@ private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
     view = presenter.looking,
     onLook = presenter::look,
   )
+}
+
+/**
+ * The one way to throw that is not a hand.
+ *
+ * It calls exactly what a shake calls — `RollPresenter.roll` with no samples,
+ * which is what an added die is thrown with anyway — so there is no second
+ * path to a number and nothing here that a shake does not also reach
+ * (`docs/architecture.md`, goal 1).
+ */
+@Composable
+private fun throwAction(presenter: RollPresenter): Modifier {
+  val label = stringResource(R.string.roll_throw_action)
+  return Modifier.semantics {
+    customActions = listOf(CustomAccessibilityAction(label) { presenter.roll() })
+  }
 }
 
 /**
@@ -588,18 +717,16 @@ private val EDGE = 14.dp
  * showed its highest face — and accent never touches felt
  * (`docs/physics-and-rendering.md`, "What is drawn over the table").
  *
- * @param onThrowMore throws the die a chain earned. The same act the Roll
- *   button and a shake are: the presenter continues the chain rather than
- *   starting a throw.
- * @param onGiveUp puts the roll away with no total — what `Stop the chain` and
- *   `Cancel the roll` both do (`docs/TODO.md`, Step 4.1).
+ * @param expected what the formula in the field is worth, for the state where
+ *   nothing has been thrown yet ([ReadyPlate]).
+ * @param onGiveUp puts the roll away with no total — what `Cancel the roll`
+ *   does, and the only button left on any of these plates.
  */
 @Composable
 private fun Outcome(
   state: RollState,
   progress: RollProgress?,
-  onThrowMore: () -> Unit,
-  onThrowAgain: () -> Unit,
+  expected: Expectation?,
   onGiveUp: () -> Unit,
 ) {
   when (state) {
@@ -616,15 +743,13 @@ private fun Outcome(
       StalledPlate(
         unsettled = state.unsettled,
         read = state.read,
-        onThrowAgain = onThrowAgain,
         onCancel = onGiveUp,
       )
 
     // An exploding die earns a throw rather than taking one, so the screen
     // asks for it. Without this the roll simply appears to stop
     // (`docs/dice-notation.md`, "Evaluation").
-    is RollState.ShakeAgain ->
-      EarnedPlate(waiting = state.waiting, onThrow = onThrowMore, onStop = onGiveUp)
+    is RollState.ShakeAgain -> EarnedPlate(waiting = state.waiting)
 
     // While the dice are in the air the dice are not what to look at: each one
     // is read and taken off the table as it lands, so this is what is left to
@@ -653,9 +778,9 @@ private fun Outcome(
     // (`ui/common`'s `FormulaField`), so an invalid formula says nothing here.
     is RollState.Invalid -> Unit
 
-    // Not a blank: a tray with nothing on it and a button that does nothing is
-    // a screen with no way in, and shaking is the part nobody would guess
-    // (`design/dInfinity.dc.html`, option 9a).
+    // Not a blank: an empty tray with nothing under it is a screen with no way
+    // in, and now that there is no button at all the words are the only thing
+    // that says what to do (`design/dInfinity.dc.html`, option 9a).
     RollState.Empty ->
       Message(
         text = stringResource(R.string.roll_hint_empty),
@@ -663,12 +788,8 @@ private fun Outcome(
         tag = RollTestTags.HINT,
       )
 
-    is RollState.Ready ->
-      Message(
-        text = stringResource(R.string.roll_hint_ready),
-        colour = Ink.muted,
-        tag = RollTestTags.HINT,
-      )
+    // Ready to be shaken, and what shaking would be worth.
+    is RollState.Ready -> ReadyPlate(expected = expected)
   }
 }
 
@@ -715,30 +836,6 @@ private fun Message(
   }
 }
 
-/** The same: values in, one lambda out, so it skips when nothing has moved. */
-@Composable
-private fun ThrowButton(
-  enabled: Boolean,
-  settled: Boolean,
-  onRoll: () -> Unit,
-) {
-  // Rolling is blocked while the formula is invalid or the table is too small,
-  // and while the dice are still in the air — a second throw would replace the
-  // first mid-flight, which is not what a second tap means. A roll that has
-  // landed can be thrown again, and that is one press: the presenter puts the
-  // total away itself.
-  ModernistButton(
-    text = stringResource(if (settled) R.string.roll_again else R.string.roll_throw),
-    onClick = onRoll,
-    kind = ModernistButtonKind.Primary,
-    enabled = enabled,
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .testTag(RollTestTags.THROW),
-  )
-}
-
 /** What the tests reach the screen by. */
 
 object RollTestTags {
@@ -757,9 +854,16 @@ object RollTestTags {
 
   /** The formula as it sits on the tray, before anybody taps it (option 2a). */
   const val FORMULA_LINE: String = "roll:formula-line"
-  const val THROW: String = "roll:throw"
   const val TOTAL: String = "roll:total"
   const val ROLLING: String = "roll:rolling"
+
+  /**
+   * What the throw is expected to come to, and its average
+   * ([Expectation]). On the ready plate before the shake, and on the result
+   * sheet beside what the dice actually did.
+   */
+  const val EXPECTED: String = "roll:expected"
+  const val EXPECTED_AVERAGE: String = "roll:expected:average"
 
   /** The counting plate, while the dice are being read (design option 1j). */
   const val COUNTING: String = "roll:counting"
@@ -770,15 +874,18 @@ object RollTestTags {
 
   /** The chain has earned a throw and is waiting for a hand (design option 1j). */
   const val SHAKE_AGAIN: String = "roll:shake-again"
-  const val EARNED_THROW: String = "roll:earned:throw"
-  const val EARNED_STOP: String = "roll:earned:stop"
 
-  /** A roll that gave up, and the two ways out of it. */
+  /** A roll that gave up, and the one way out of it that is not a shake. */
   const val STALLED: String = "roll:stalled"
-  const val THROW_AGAIN: String = "roll:throw-again"
   const val STALLED_CANCEL: String = "roll:stalled:cancel"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = FormulaTestTags.ERROR
+
+  /**
+   * The notice that says how many dice are waiting to be thrown again
+   * (`ui/common`'s `ModernistToast`).
+   */
+  const val TOAST: String = ToastTestTags.TOAST
 
   /** The one-tap fix, shown only when the mistake has an obvious reading. */
   const val SUGGESTION: String = FormulaTestTags.SUGGESTION

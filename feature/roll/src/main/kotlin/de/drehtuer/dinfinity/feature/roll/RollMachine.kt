@@ -178,6 +178,19 @@ class RollMachine(
   private var stuck: List<Int>? = null
   private var scored: Pair<Formula, RollResult>? = null
 
+  /**
+   * What the formula in the field is expected to come to, or null when it does
+   * not read at all.
+   *
+   * Computed when the formula is planned rather than when a throw is made, and
+   * **kept across the throw**: it is what the result sheet compares the total
+   * against, and it is still the right sentence once the dice are down. A
+   * refused formula keeps it too — "what would it have been" is exactly the
+   * question a refusal leaves behind (`Expectation`).
+   */
+  var expected: Expectation? = null
+    private set
+
   /** What the screen draws. */
   var state: RollState = RollState.Empty
     private set
@@ -250,6 +263,7 @@ class RollMachine(
     prepared = null
     inFlight = null
     scored = null
+    expected = null
 
     state =
       when (val parsed = FormulaParser.parse(typed)) {
@@ -714,6 +728,9 @@ class RollMachine(
         is PlanResult.Failed -> return RollState.Invalid(planned.error)
         is PlanResult.Planned -> planned.plan
       }
+    // Before the capacity check, because a formula the table refuses is still
+    // a formula worth knowing the shape of.
+    expected = Expectation.of(parsed, plan, defaultRounding)
     return when (val room = TableCapacity.check(plan, geometry)) {
       is CapacityVerdict.Refused -> RollState.TooMany(room.diceCount, room.largestThatFits, room.reason)
       is CapacityVerdict.Fits -> {

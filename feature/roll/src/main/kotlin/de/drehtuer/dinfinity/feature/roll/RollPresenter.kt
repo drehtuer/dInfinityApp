@@ -90,6 +90,17 @@ class RollPresenter(
   var text: String by mutableStateOf(machine.text)
     private set
 
+  /**
+   * What the formula in the field is expected to come to, or null when it does
+   * not read.
+   *
+   * On the screen before the throw and again on the result sheet, because
+   * there is no Roll button any more to say what a shake would do
+   * (`Expectation`; `docs/physics-and-rendering.md`, "Starting a roll").
+   */
+  var expected: Expectation? by mutableStateOf(machine.expected)
+    private set
+
   /** How many of each of [pickable] the formula is asking for. */
   var counts: Map<PickableDie, Int> by mutableStateOf(machine.counts)
     private set
@@ -221,7 +232,9 @@ class RollPresenter(
    * what the dice came to, and that is posted to the screen's own thread
    * before the machine is touched.
    *
-   * @param shake what the phone did, or empty for a tap.
+   * @param shake what the phone did, or empty for the accessibility action on
+   *   the tray, which is the one way into this that is not a hand
+   *   (`docs/architecture.md`, "Accessibility").
    * @return whether dice were actually thrown. False when there is nothing to
    *   throw — a formula that does not read, a throw the table cannot hold, or
    *   **a roll already in the air**, which is what a second shake at tumbling
@@ -238,6 +251,12 @@ class RollPresenter(
       throwIt(earned)
       return true
     }
+
+    // And so are the dice a throw gave up on. They used to wait for a button
+    // of their own, which made them the one re-throw in the app a shake could
+    // not reach — so a player who had been told to shake stood over a tray
+    // that ignored them (`docs/physics-and-rendering.md`, "Starting a roll").
+    if (throwUnsettled(shake)) return true
 
     // A roll that has landed is a roll that is over. Throwing again is one act
     // — one press, one shake — not "put the total away" followed by "now
@@ -333,8 +352,12 @@ class RollPresenter(
    * way, and throwing them again would throw away answers the roll already
    * has. What goes back in the air is only what never settled
    * (`docs/physics-and-rendering.md`).
+   *
+   * Private, and reached only through [roll]. There is one way to throw dice
+   * in this app and it is a shake; a second entry point would be a second way
+   * in with its own rules about what is waiting.
    */
-  fun throwUnsettled(shake: List<ShakeSample> = emptyList()): Boolean {
+  private fun throwUnsettled(shake: List<ShakeSample> = emptyList()): Boolean {
     val again = machine.throwUnsettled(shake) ?: return false
     publish()
     throwIt(again)
@@ -401,6 +424,7 @@ class RollPresenter(
     }
     state = machine.state
     text = machine.text
+    expected = machine.expected
     counts = machine.counts
     pickable = machine.pickable
     pickingFrom = machine.pickingFrom

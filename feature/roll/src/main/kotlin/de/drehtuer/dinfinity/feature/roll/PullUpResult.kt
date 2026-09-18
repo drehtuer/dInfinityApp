@@ -94,15 +94,18 @@ import kotlin.math.roundToInt
  * They are in [SheetSlide] instead, and what is left here is small enough not
  * to need a state holder.
  *
+ * @param expected what the formula was expected to come to, printed under the
+ *   breakdown so the total has something to be read against ([Expectation]).
  * @param onParked the height of the grip, in pixels, as it is measured. The
- *   screen pads its column of controls by it, so the Roll button is never
- *   under a sheet that has been pushed down.
+ *   screen pads its column of controls by it, so the picker and the saved
+ *   rolls are never under a sheet that has been pushed down.
  */
 @Composable
 internal fun PullUpResult(
   result: RollResult,
   modifier: Modifier = Modifier,
   divides: Boolean = false,
+  expected: Expectation? = null,
   onRound: (Rounding) -> Unit = {},
   onDoodle: (String) -> Unit = {},
   /**
@@ -181,6 +184,7 @@ internal fun PullUpResult(
     ResultSheet(
       result = result,
       divides = divides,
+      expected = expected,
       onRound = onRound,
       onDoodle = onDoodle,
       onSeeTheOdds = onSeeTheOdds,

@@ -2,6 +2,10 @@ package de.drehtuer.dinfinity.feature.saved
 
 import android.content.Context
 import androidx.compose.ui.test.assertHeightIsEqualTo
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsEqualTo
@@ -93,16 +97,30 @@ class HomeStripTest {
   }
 
   @Test
-  fun `a tap throws it, which is what a saved roll is for`() {
-    // Different from the saved-rolls list, which only fills the field: this is
-    // the one place the tray is already on screen to roll it on.
+  fun `a tap fills the field, exactly as the saved-rolls list does`() {
+    // It used to throw as well, which made the strip the one control in the
+    // app that rolled without a hand. The throw is the shake that follows
+    // (`docs/physics-and-rendering.md`, "Starting a roll").
     given(roll("fireball", formula = "8d6"))
-    val thrown = mutableListOf<Pair<String, SavedRollSource>>()
-    show(onRoll = { formula, source -> thrown += formula to source })
+    val picked = mutableListOf<Pair<String, SavedRollSource>>()
+    show(onPick = { formula, source -> picked += formula to source })
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
-    assertEquals(listOf("8d6" to SavedRollSource("fireball", SavedRollGroup.UNFILED_ID)), thrown)
+    assertEquals(listOf("8d6" to SavedRollSource("fireball", SavedRollGroup.UNFILED_ID)), picked)
+  }
+
+  @Test
+  fun `and says so, rather than telling a screen reader it rolls`() {
+    // The label was "Roll Fireball" while the tap threw. A label that
+    // promises a throw and fills a field is worse than no label at all
+    // (`docs/architecture.md`, "Accessibility").
+    given(roll("fireball", name = "Fireball"))
+    show()
+
+    compose
+      .onNodeWithTag(HomeStripTestTags.tileOf("fireball"))
+      .assert(hasClickLabel("Put Fireball in the formula"))
   }
 
   @Test
@@ -114,7 +132,7 @@ class HomeStripTest {
     given(roll("fireball", groupId = "thorin", formula = "8d6"))
     val thrown = mutableListOf<Pair<String, SavedRollSource>>()
     show(
-      onRoll = { formula, source -> thrown += formula to source },
+      onPick = { formula, source -> thrown += formula to source },
       activeGroupId = "thorin",
     )
 
@@ -130,7 +148,7 @@ class HomeStripTest {
     // throw carries the answer (`docs/tables.md`, "Selecting a table").
     given(roll("fireball", formula = "8d6").copy(tablePin = TablePin("builtin", "felt-black")))
     val thrown = mutableListOf<Pair<String, SavedRollSource>>()
-    show(onRoll = { formula, source -> thrown += formula to source })
+    show(onPick = { formula, source -> thrown += formula to source })
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
@@ -144,7 +162,7 @@ class HomeStripTest {
     }
     given(roll("fireball", groupId = "strahd", formula = "8d6"))
     val thrown = mutableListOf<Pair<String, SavedRollSource>>()
-    show(onRoll = { formula, source -> thrown += formula to source }, activeGroupId = "strahd")
+    show(onPick = { formula, source -> thrown += formula to source }, activeGroupId = "strahd")
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
@@ -157,7 +175,7 @@ class HomeStripTest {
     // is the roll screen's to know (`RollWiring`).
     given(roll("fireball", formula = "8d6"))
     val thrown = mutableListOf<Pair<String, SavedRollSource>>()
-    show(onRoll = { formula, source -> thrown += formula to source })
+    show(onPick = { formula, source -> thrown += formula to source })
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 
@@ -175,11 +193,11 @@ class HomeStripTest {
   }
 
   @Test
-  fun `a long press edits it, and is not also a throw`() {
+  fun `a long press edits it, and does not also fill the field`() {
     given(roll("fireball"))
     val thrown = mutableListOf<String>()
     val edited = mutableListOf<String>()
-    show(onRoll = { formula, _ -> thrown += formula }, onEdit = edited::add)
+    show(onPick = { formula, _ -> thrown += formula }, onEdit = edited::add)
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performTouchInput { longClick() }
 
@@ -287,7 +305,7 @@ class HomeStripTest {
   }
 
   private fun show(
-    onRoll: (String, SavedRollSource) -> Unit = { _, _ -> },
+    onPick: (String, SavedRollSource) -> Unit = { _, _ -> },
     onEdit: (String) -> Unit = {},
     onNew: () -> Unit = {},
     activeGroupId: String = SavedRollGroup.UNFILED_ID,
@@ -301,7 +319,7 @@ class HomeStripTest {
         activeGroupId = activeGroupId,
       )
     compose.setContent {
-      HomeStrip(presenter = presenter, onRoll = onRoll, onEdit = onEdit, onNew = onNew)
+      HomeStrip(presenter = presenter, onPick = onPick, onEdit = onEdit, onNew = onNew)
     }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
   }
@@ -317,3 +335,12 @@ class HomeStripTest {
     const val PATIENCE = 2_000L
   }
 }
+
+/**
+ * What the label on a tap says, which is the only thing a screen reader has
+ * to go on before it commits to one.
+ */
+private fun hasClickLabel(label: String): SemanticsMatcher =
+  SemanticsMatcher("click label is \"$label\"") { node ->
+    node.config.getOrNull(SemanticsActions.OnClick)?.label == label
+  }

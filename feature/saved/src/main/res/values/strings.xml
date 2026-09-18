@@ -10,8 +10,16 @@
     <item quantity="one">%1$d roll</item>
     <item quantity="other">%1$d rolls</item>
   </plurals>
-  <!-- %1$s is the roll's name, for TalkBack. -->
-  <string name="saved_roll_it">Roll %1$s</string>
+  <!--
+    %1$s is the roll's name, for TalkBack. Neither of these throws anything:
+    a tap on the strip fills the formula and a tap on the list carries it to
+    the tray, and the throw is the shake that follows
+    (`docs/physics-and-rendering.md`, "Starting a roll"). They said "Roll
+    %1$s", which was true of the strip until it was not and was never true of
+    the list.
+  -->
+  <string name="saved_pick_it">Put %1$s in the formula</string>
+  <string name="saved_take_it">Take %1$s to the tray</string>
   <string name="saved_edit_it">Edit %1$s</string>
   <!-- The grip at the left of a row, and the two ways to use it without a
        drag, for a screen reader. %1$s is the roll's name. -->
