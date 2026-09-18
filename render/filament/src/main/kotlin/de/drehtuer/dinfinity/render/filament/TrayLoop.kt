@@ -113,8 +113,15 @@ class TrayLoop(
    * A still picture is the other half, and it does need somewhere to draw: an
    * empty table is worth one frame, but Filament may decline the one it is
    * offered, so the asking goes on until a frame actually lands.
+   *
+   * And a die the player has just added is falling onto the board, which is
+   * neither: it is a picture that moves and has no simulation under it. It
+   * wants frames for the fifth of a second it takes to land and none before or
+   * after, and it wants them only when there is somewhere to draw — nobody is
+   * owed an animation they cannot see (`docs/physics-and-rendering.md`, "The
+   * dice waiting to be thrown").
    */
-  val wantsFrames: Boolean get() = roll != null || (stage != null && owed)
+  val wantsFrames: Boolean get() = roll != null || (stage != null && (owed || renderer.falling))
 
   /** True while a roll is in progress, watched or not. */
   val rolling: Boolean get() = roll != null
@@ -156,11 +163,12 @@ class TrayLoop(
   }
 
   /**
-   * Puts the dice that are waiting to be thrown on the table.
+   * Puts the dice that are waiting to be thrown on the table, with the ones
+   * the player has just added falling into it.
    *
-   * A still picture like the empty table is, and owed a frame for the same
-   * reason: nothing else here would produce one, so without it the dice would
-   * not appear until something else happened to draw.
+   * Owed a frame like the empty table is, because nothing else here would
+   * produce one; and for as long as a die is still coming down it is owed
+   * another every frame, which [frame] gives it and [wantsFrames] asks for.
    *
    * A roll already in the air is left alone. The board is what a player
    * arranges *between* throws, and a formula edited while the dice are still
@@ -169,6 +177,10 @@ class TrayLoop(
   fun waiting(spec: ThrowSpec) {
     if (roll != null) return
     renderer.waiting(spec)
+    // The fall starts now, so the frame this is drawn on is worth no time at
+    // all — the same rule the first frame of a roll follows, and for the same
+    // reason: there is no frame before it to measure against.
+    lastFrameNanos = null
     owed = true
   }
 
@@ -253,6 +265,13 @@ class TrayLoop(
   fun frame(nanos: Long): Boolean {
     val live = roll
     if (live == null) {
+      // A die the player added is on its way down. It is not a roll and there
+      // is nothing to step: the board is asked where its dice are at this
+      // moment and drawn there, and the moment is the only thing that moved.
+      if (stage != null && renderer.falling) {
+        renderer.fall(secondsSince(nanos))
+        owed = true
+      }
       // Nothing is moving, but something may not have been drawn yet: the
       // table before the first throw, or a landed roll on a surface that has
       // just arrived. One frame settles it — and only a frame that actually
@@ -262,14 +281,7 @@ class TrayLoop(
       return wantsFrames
     }
 
-    val previous = lastFrameNanos
-    lastFrameNanos = nanos
-
-    // A frame clock that jumped backwards — a different clock source, or a
-    // counter that wrapped — is worth no time rather than a negative amount,
-    // which the frame clock would refuse outright.
-    val elapsed = if (previous == null) 0.0 else ((nanos - previous).coerceAtLeast(0)) / NANOS_PER_SECOND
-    live.advance(elapsed)
+    live.advance(secondsSince(nanos))
     hear(live)
     watch(live)
     count(live)
@@ -352,6 +364,23 @@ class TrayLoop(
    */
   private fun watch(live: WatchedRoll) {
     if (debug.watching) debug.saw(live.diagnostics)
+  }
+
+  /**
+   * How much time this frame is worth, and remembers it for the next one.
+   *
+   * **The first frame of anything is worth no time at all.** There is no frame
+   * before it to measure against, and measuring from zero would hand the clock
+   * however long the device has been awake. A clock that jumped backwards — a
+   * different clock source, or a counter that wrapped — is worth no time
+   * either, rather than a negative amount that the frame clock would refuse
+   * outright.
+   */
+  private fun secondsSince(nanos: Long): Double {
+    val previous = lastFrameNanos
+    lastFrameNanos = nanos
+    if (previous == null) return 0.0
+    return (nanos - previous).coerceAtLeast(0) / NANOS_PER_SECOND
   }
 
   private fun endRoll() {
