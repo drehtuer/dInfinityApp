@@ -120,9 +120,10 @@ class InterruptedRollTest {
       compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
       compose.waitForIdle()
     }
-    // The field is not the line: tapping the line is what opens the keyboard,
-    // and the field cannot be typed into before it does.
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+    // The field is behind the tab: the formula is put away until it is asked
+    // for, and pressing the tab is what slides it in and brings the keyboard
+    // up (`docs/physics-and-rendering.md`, "What is drawn over the table").
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(FORMULA)
     shake()
     compose.waitUntil(SETTLE) { showing(RollTestTags.ROLLING) || landed() }
