@@ -37,31 +37,33 @@ tasks.withType<Test>().configureEach {
 // violations in code nobody wrote. Neither a path filter nor overriding the
 // tasks' source kept it off them. The CLI takes explicit patterns instead, so
 // it sees the hand-written files and nothing else.
-val ktlintCli: Configuration by configurations.creating
+val ktlintCli: Configuration = configurations.create("ktlintCli")
 
 dependencies {
   ktlintCli(libs.ktlint.cli)
 }
 
-val ktlintCheckConventions by tasks.registering(JavaExec::class) {
-  group = "verification"
-  description = "Runs ktlint over the convention plugins."
-  classpath = ktlintCli
-  mainClass.set("com.pinterest.ktlint.Main")
-  // ktlint resolves .editorconfig from the working directory upwards, and this
-  // is a separate build, so it finds build-logic/.editorconfig.
-  workingDir = layout.projectDirectory.asFile
-  args("src/main/kotlin/**/*.kt", "src/main/kotlin/**/*.kts", "*.kts")
-}
+val ktlintCheckConventions =
+  tasks.register<JavaExec>("ktlintCheckConventions") {
+    group = "verification"
+    description = "Runs ktlint over the convention plugins."
+    classpath = ktlintCli
+    mainClass.set("com.pinterest.ktlint.Main")
+    // ktlint resolves .editorconfig from the working directory upwards, and this
+    // is a separate build, so it finds build-logic/.editorconfig.
+    workingDir = layout.projectDirectory.asFile
+    args("src/main/kotlin/**/*.kt", "src/main/kotlin/**/*.kts", "*.kts")
+  }
 
-val ktlintFormatConventions by tasks.registering(JavaExec::class) {
-  group = "formatting"
-  description = "Fixes what ktlint can fix in the convention plugins."
-  classpath = ktlintCli
-  mainClass.set("com.pinterest.ktlint.Main")
-  workingDir = layout.projectDirectory.asFile
-  args("--format", "src/main/kotlin/**/*.kt", "src/main/kotlin/**/*.kts", "*.kts")
-}
+val ktlintFormatConventions =
+  tasks.register<JavaExec>("ktlintFormatConventions") {
+    group = "formatting"
+    description = "Fixes what ktlint can fix in the convention plugins."
+    classpath = ktlintCli
+    mainClass.set("com.pinterest.ktlint.Main")
+    workingDir = layout.projectDirectory.asFile
+    args("--format", "src/main/kotlin/**/*.kt", "src/main/kotlin/**/*.kts", "*.kts")
+  }
 
 tasks.named("check") {
   dependsOn(ktlintCheckConventions)

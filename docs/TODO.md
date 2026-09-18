@@ -33,11 +33,12 @@ Step 5 and stay off CI.
       it cannot give a false positive, which the file listing can
 - [ ] *Optional:* add a `DEPENDABOT_METADATA_TOKEN` Dependabot secret so the metadata commit starts the checks by itself. Without it the automation still works, and the pull request shows an *Approve workflows to run* banner to press (`docs/build-setup.md`)
 - [ ] Drop `VerifyDeviceTestResultsTask` and the `ignoreFailures` on `connectedDebugAndroidTest` once AGP stops failing runs on devices whose adb serial contains a colon (`docs/build-setup.md`)
+- [ ] Drop the note about detekt's `ReportingExtension.file(String)` deprecation from `docs/build-setup.md` once detekt releases a build that stops calling it. It is the only warning left on `./gradlew help --warning-mode all`, it fires once per module, and Gradle 10 removes the method — so the day it becomes an error is detekt's deadline, not ours
 
 **Done.** A pull request shows a green check per concern, Sonar decorates it
 with coverage, and `v0.0.1` produced a signed `dInfinityApp-0.0.1.apk`. The
-three boxes above are not blocking anything: two wait on other projects and one
-is optional.
+four boxes above are not blocking anything: three wait on other projects and
+one is optional.
 
 ## Step 3 — Foundations
 
