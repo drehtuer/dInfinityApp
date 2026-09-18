@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -106,7 +107,7 @@ class InterruptedRollTest {
     compose.onNodeWithTag(RollTestTags.SCREEN).assertIsDisplayed()
     compose.onNodeWithTag(RollTestTags.TRAY).assertIsDisplayed()
     // Throwable again, which a screen wedged on "Rolling…" would not be.
-    compose.waitUntil(SETTLE) { compose.onAllNodes(hasTag(RollTestTags.THROW)).fetchSemanticsNodes().isNotEmpty() }
+    compose.waitUntil(SETTLE) { throwable() }
   }
 
   /** Types a formula and throws it, leaving the dice in the air. */
@@ -123,9 +124,35 @@ class InterruptedRollTest {
     // and the field cannot be typed into before it does.
     compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(FORMULA)
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
     compose.waitUntil(SETTLE) { showing(RollTestTags.ROLLING) || landed() }
   }
+
+  /**
+   * Throws the dice the only way the screen offers that is not a hand: the
+   * table's custom accessibility action.
+   *
+   * There is no Roll button any more, and an instrumented test cannot shake a
+   * phone, so this is how the suite throws. It is the same call the shake
+   * source makes (`docs/architecture.md`, "Accessibility").
+   */
+  private fun shake() {
+    val throwThem =
+      compose
+        .onNodeWithTag(RollTestTags.TRAY)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.CustomActions]
+        .single()
+    compose.runOnUiThread { throwThem.action() }
+    compose.waitForIdle()
+  }
+
+  /** True once the table will take another throw, which is what a usable screen is. */
+  private fun throwable(): Boolean =
+    compose
+      .onAllNodes(hasTag(RollTestTags.TRAY))
+      .fetchSemanticsNodes()
+      .any { node -> node.config.getOrElse(SemanticsActions.CustomActions) { emptyList() }.isNotEmpty() }
 
   private fun showing(tag: String): Boolean = compose.onAllNodes(hasTag(tag)).fetchSemanticsNodes().isNotEmpty()
 
