@@ -131,10 +131,53 @@ Every die is a **convex** rigid body:
 
 ### The simulation clock
 
-A roll is a loop over fixed steps, and the only question is who turns it. That
-is the whole difference between a roll on screen and a roll in power-saving
-mode; there is no other one.
+A roll is a loop over fixed steps, and the only questions are who turns it and
+how fast. That is the whole difference between a roll on screen and a roll in
+power-saving mode; there is no other one.
 
+- **A watched roll does not run at real time.** `RollPace` scales the time a
+  frame is worth before `FrameClock` sees it, so the same roll is shown over
+  more wall clock than the physics took: `RollPace.WATCHED` of a second of real
+  time per second of simulated time, which at the current **0.5** means a roll
+  takes twice as long to watch as it takes to happen.
+
+  It is a presentation change and nothing else. The seed, the steps, their
+  order, the corrections, the re-throws and the faces are all exactly what they
+  were; what changes is when the steps are asked for. Nothing here reaches the
+  solver.
+
+  It exists because the physics has nothing left to give. Measured on the
+  Pixel 10a over 200 rolls of 20d20, the die/table friction pair moves the
+  median settle from 0.73 s (0.34/0.42) through 0.81 s (0.5/0.6, what is
+  shipped) to 0.85 s (0.7/0.85), and the turns a die makes after landing from
+  1.45 to 1.59 — and the high end also pushes the dice into one another, from
+  5.04 mm of overlap to 5.59 mm. Twenty d20 in a tray the size of a phone
+  genuinely stop in under a second. Two or three seconds of tumbling would mean
+  energy a hand does not put into dice, and would push `100d4` further into the
+  twelve-second cap.
+
+  **`RollPace.WATCHED` is one constant and the only one.** There is no easing
+  curve and no per-phase exception: a pace that changed while the dice were in
+  view would be indistinguishable from a phone dropping frames, and would make
+  the roll's own smoothness unmeasurable. The one place the speed changes is
+  the moment the hand lets go, which is a moment the player caused and at which
+  the dice's motion changes character anyway — the tray stops hauling them
+  about and there is nothing but gravity left. A slower roll is also a slower
+  *answer*, so the number is meant to be judged on a phone and changed.
+- **A roll being driven is never paced.** While a hand is throwing the dice the
+  player is not watching the roll, they are steering it, and dice that answer a
+  hand a beat late are the only way this could make the app worse. The question
+  asked is `WatchedRoll.driven`, which is `ShakeDriver.stillShaking` — the same
+  question the roll asks before it is allowed to end. So the part of a roll
+  that may not be declared over because the hand is on it is exactly the part
+  that is not slowed down for somebody to look at, and the two can never
+  disagree. A tap-to-roll throw has no hand on it at any point and is paced
+  from its first step.
+- **The pace is applied where real time becomes simulated time**, which is
+  `TrayLoop.frame` and nowhere else. Power-saving mode asks for a fixed helping
+  of simulated time and has no frame clock at all, so it never passes through
+  that line and cannot be paced by accident — a stronger promise than a flag
+  somebody has to remember to clear ("Power-saving mode").
 - **A frame time never reaches the solver.** `FrameClock` accumulates the time
   a frame actually took, cuts it into whole 1/120 s steps and carries the
   remainder to the next frame, where it becomes the interpolation a renderer
@@ -448,14 +491,21 @@ look like a regression in how a shaken roll reads.
 - **The dice are spawned when the shake begins**, and every moment after that
   reaches them while they are already in the air. What the player sees is dice
   answering their hand, not dice thrown once the hand has stopped.
-- That works without a clock between the two because the samples name their
-  own step. `ShakeRecorder` counts steps from the start of the shake at the
-  simulation's own 120 Hz, and the frame clock never runs the simulation
-  *faster* than real time — it drops steps when it falls behind and never
-  gains any. So the step a sample names is always still ahead of the step the
-  world is on: every sample is in place before it is needed, and replaying the
-  record afterwards drives exactly the same steps. No gate, no waiting, and the
-  live roll and its replay are the same roll.
+- **A live sample drives the step the world is about to take**, whatever its
+  own clock says. `ShakeRecorder` counts steps from the start of the shake at
+  the simulation's own 120 Hz, which is a *wall* clock; the world counts the
+  steps it has actually taken. The two are not the same clock — a watched roll
+  is paced ("The simulation clock"), and a frame that ran long drops steps
+  either way — so `ShakeDriver.add` files each arriving sample on the step the
+  world will take next and **rewrites the sample to that step**. The record it
+  hands back is therefore what actually drove the roll, and replaying it drives
+  exactly the same steps. No gate, no waiting, and the live roll and its replay
+  are the same roll.
+- Filing them by arrival is what makes the hand immediate rather than merely
+  eventual. A sample kept on the recorder's number would reach the dice as late
+  as the two clocks had drifted, and once the world had gone past that number
+  it would never reach them at all — which is what shaking a phone at tumbling
+  dice used to do.
 - **A second shake at dice still in the air keeps them moving.** A hand that
   shakes again has not waited for the dice to stop, so that shake starts no
   throw: nothing is spawned, nothing replaces the roll in progress, and its
@@ -463,17 +513,23 @@ look like a regression in how a shaken roll reads.
   while it lasts, because the settle rule waits on the last sample and there is
   now a later one.
 
-  The mechanism is one thing, and it is the thing that was wrong. A sample's
-  step index is counted from the first moment its recorder saw, and that moment
-  is when the dice were spawned — so **the recorder's clock is the roll's
-  clock**. A second shake that restarted that clock numbered its moments from
-  zero, naming steps the running roll had taken a second earlier, and
-  `ShakeDriver` never reached them: shaking the phone at moving dice did
-  nothing at all. So a shake that begins while a roll is running goes on
-  numbering from where the first one left off, and only a shake that actually
-  throws dice starts the clock over. `SensorShakeSource` is told which it is —
-  whether a roll is in the air is the app's question, asked per sample because
-  a roll may settle between two readings.
+  The mechanism is one thing, and it is the thing that was wrong. A second
+  shake that numbered its moments from zero named steps the running roll had
+  taken a second earlier, and `ShakeDriver` never reached them: shaking the
+  phone at moving dice did nothing at all. Two things keep it reaching them
+  now. A shake that begins while a roll is running goes on numbering from
+  where the first one left off, and only a shake that actually throws dice
+  starts the clock over — `SensorShakeSource` is told which it is, asked per
+  sample because a roll may settle between two readings. And the driver files
+  every arriving sample on the step the world is about to take, whatever
+  number it came with, so no amount of drift between the two clocks can put
+  the hand out of reach.
+
+  **The pace comes off the moment the hand is back.** A roll being watched is
+  slowed so the dice can be seen to land; a roll being driven is not, and a
+  second shake makes it driven again on the frame it starts
+  ("The simulation clock"). The dice answer the hand immediately, and the slow
+  motion returns a tenth of a second after the last reading.
 
   What it deliberately does **not** do is replace the roll. The dice are the
   ones already tumbling; a second shake is more of the same throw, which is
@@ -1722,6 +1778,17 @@ impact sounds rather than a crash in the middle of a roll.
   and blends them itself: positions in a straight line, turns spherically and
   the short way round. The arithmetic is on `RenderFrame` rather than in each
   renderer, so two of them cannot disagree about where the same die was.
+- **What is drawn is the roll slowed down, not a slower roll.** A watched roll
+  is stepped at `RollPace.WATCHED` of real time once the hand has let go
+  ("The simulation clock"), so 120 Hz of physics arrives at 60 steps of wall
+  clock a second and every frame in between is an interpolated one. Nothing
+  blurs and nothing stutters — there are *more* frames per simulation step than
+  before, not fewer — and the dice are seen to turn down onto a face instead of
+  being on one by the time the eye arrives. A 20d20 throw that the solver
+  finishes in 0.81 s takes about 1.6 s to watch.
+- While the phone is being shaken the roll runs at real time, so the dice on
+  screen answer the hand on the frame it moved. The change of pace when the
+  hand lets go is the one the player caused.
 - Results are overlaid as labels near each die once settled; tap a die to
   highlight its contribution in the breakdown.
 
@@ -2080,6 +2147,14 @@ world, so the capacity rule is unchanged.
 - The simulation runs on a worker thread as fast as possible, still at
   the same fixed timestep, still with the same seed, correction logic and
   settle rules. Typical roll finishes in well under 100 ms of wall time.
+- **It is not paced, and it cannot be.** `RollPace` exists so a player can
+  watch the dice land, and there is nothing here to watch. `PowerSavingTray`
+  asks for a fixed helping of *simulated* time rather than measuring a frame,
+  so it never crosses the line where real time becomes simulated time and
+  there is no factor in its path to set wrongly ("The simulation clock"). A
+  paced roll and this one take the same steps and come to the same faces; only
+  the wall clock over them differs, and here it is as short as the processor
+  can make it.
 - The mode is read **once, when the roll screen opens**, and not watched. A
   renderer appearing or vanishing under a roll in progress is not a setting
   taking effect, it is a bug; turning it on takes effect the next time the

@@ -23,8 +23,8 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 `main` has everything through **#306**, which cut `v0.1.1`.
 
-**In flight: a stack answering the second and third device sessions**, plus two
-standalone fixes off `main`. In order:
+**In flight: a stack of twelve answering the second and third device sessions**,
+plus one standalone fix for the documentation site. In order:
 
 | | |
 | --- | --- |
@@ -38,15 +38,9 @@ standalone fixes off `main`. In order:
 | `feature/designer-icons-and-save` | the designer's tools are pictures, and the die you drew is the die that rolls |
 | `feature/signed-fudge-totals` | a Fudge total carries its sign |
 | `fix/rerolls-wait-and-clear` | a re-roll lands on floor nothing is standing on |
-| `chore/agp-9-4-1` | **the base** — AGP 9.4.1 and its checksums, without which every branch above fails `lint` |
-| `fix/no-shadow-from-the-table` | the tray stops shading its own felt |
-| `fix/rerolls-wait-and-clear` | a re-roll lands on floor nothing is standing on |
-| `fix/drag-the-table-with-the-finger` | two fingers take the table the way they went |
-| `feature/roll-screen-overlays` | the formula slides in from the edge, the saved rolls are a pull-up |
-| `chore/ignore-claude-worktrees` | a worktree under `.claude/` is ignored by git and by the linters |
-| `feature/dice-fall-in-when-added` | a die the picker adds falls onto the board instead of appearing |
-| `fix/docs-site-build` | **off `main`** — the published site has been stale since 18 September |
-| `fix/a-roll-that-gives-up-does-not-crash` | **off `main`** — `100d4` killed the app; the fault is in `v0.1.1` |
+| `fix/drag-the-table-with-the-finger` | the table follows the finger |
+| `feature/watch-the-dice-land` | the roll is shown at half speed once the hand lets go |
+| `fix/docs-site-build` | **off `main`, not in the stack** — the published site has been stale since 18 September |
 
 **The whole device tier has been run on the Pixel 10a over the merged stack.**
 
@@ -84,18 +78,20 @@ only spelling that says the same thing about one die as about four
 
 **Nothing is blocked.**
 
-**Four things need a person with the phone**, and they are judgement rather
+**Three things need a person with the phone**, and they are judgement rather
 than execution — every one of them is in `docs/TODO.md`:
 
 1. Whether the roll screen still reads as a thing to shake now that no button
    says so, and whether the dice pull-down reads as "the dice are in there".
-2. Whether the dice now *look* like they tumble. The figure says they turn
-   1.52 times after landing against 0.89 before, but a number is not an eye.
-3. Whether a die the picker adds now reads as being *dropped* on the table.
-   It falls 60 mm and tumbles to a stop in about a fifth of a second, which is
-   what a real die does from that height and may still be too quick to see;
-   `FallingIn.DROP_HEIGHT_MM` is the one number to turn if it is.
-4. Whether an exploding chain ever still looks as though a die passed through
+2. **Whether the roll is now the right speed.** The tumble was judged better
+   but too fast, and the physics has nothing left: friction moves the median
+   settle of 20d20 only from 0.73 s to 0.85 s and its top end pushes the dice
+   into one another. So the roll is *shown* at half speed once the hand lets
+   go — same seed, same steps, same faces, `RollPace.WATCHED = 0.5`. What a
+   person has to say is whether 1.6 s reads as dice landing, whether `1d20`
+   forty times still feels prompt, and whether a second shake at tumbling
+   dice is still answered on the frame.
+3. Whether an exploding chain ever still looks as though a die passed through
    one lying there. Two ways it could have are closed on
    `fix/rerolls-wait-and-clear`; what is unexplained is why the session saw it
    **only on the first throws**, and the one candidate — the frame clock
