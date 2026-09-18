@@ -144,7 +144,11 @@ class LiveRoll internal constructor(
       step()
     }
     present()
-    return requireNotNull(outcome)
+    // Null for a roll that gave up, which is what the nullable return has
+    // always been for: [running] goes false on a stall as well as on an
+    // outcome, and requiring one here crashed power-saving mode on exactly
+    // the throws that need the answer most ([stalled], [unsettled]).
+    return outcome
   }
 
   /**
@@ -227,7 +231,15 @@ class LiveRoll internal constructor(
   private fun step() {
     val before = loop.stepsTaken
     if (!loop.advance()) {
-      outcome = loop.outcome()
+      // **The loop stops for two different reasons and only one of them has a
+      // number in it.** A roll that finished has an outcome; a roll that gave
+      // up has none at all, on purpose — its dice never stopped, so there is
+      // nothing to read and making one up is the thing this app exists not to
+      // do (`docs/physics-and-rendering.md`, "Settling and reading the
+      // result"). Asking for it anyway threw `the roll has not finished yet`
+      // off the roll thread, which is a crash rather than an exception
+      // anybody could catch: a hundred d4 on a phone did it every time.
+      if (!loop.stalled) outcome = loop.outcome()
       return
     }
 

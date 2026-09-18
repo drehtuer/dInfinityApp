@@ -16,6 +16,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -40,6 +41,33 @@ class LiveRollTest {
 
   /** A cube turned 45° about x: no face within 15° of up, so it reads cocked. */
   private val cocked = Quaternion.about(Vector3(1.0, 0.0, 0.0), PI / 4)
+
+  @Test
+  fun `a roll that gives up is a roll without an answer, not a crash`() {
+    // A hundred d4 did this on a phone every time: the dice never stop, the
+    // loop gives up at the cap, and the frame that noticed asked for an
+    // outcome that does not exist — `the roll has not finished yet`, thrown
+    // off the roll thread, which no caller can catch.
+    liveOver(FakeWorld(DICE, neverSettling())).use { live ->
+      repeat(SettleRule.HARD_CAP_STEPS + FRAMES_PER_SECOND) { live.advance(1.0 / FRAMES_PER_SECOND) }
+
+      assertTrue("the roll never gave up, so this proves nothing", live.stalled)
+      assertFalse("a roll that gave up reported an answer anyway", live.running)
+      assertNull("a roll whose dice never stopped invented a result", live.outcome)
+      assertEquals("every die was still moving, so every die is unsettled", DICE, live.unsettled.size)
+    }
+  }
+
+  @Test
+  fun `and run straight through it hands back nothing rather than requiring one`() {
+    // The same fault on the other path: power-saving mode runs the roll to the
+    // end in one go, and `running` goes false on a stall exactly as it does on
+    // an answer.
+    liveOver(FakeWorld(DICE, neverSettling())).use { live ->
+      assertNull("a roll that gave up was made to produce an outcome", live.runToEnd { false })
+      assertTrue(live.stalled)
+    }
+  }
 
   @Test
   fun `a roll stepped from a clock comes to what the same roll run straight through came to`() {
@@ -409,6 +437,9 @@ class LiveRollTest {
         else -> FakeWorld.settled()
       }
     }
+
+  /** Dice that never stop, which is what a roll that gives up is made of. */
+  private fun neverSettling(): FakeWorld.States = FakeWorld.States { _, _, _ -> FakeWorld.tumbling(cocked) }
 
   private fun tumblingThenSettling(): FakeWorld.States =
     FakeWorld.States { step, _, _ ->
