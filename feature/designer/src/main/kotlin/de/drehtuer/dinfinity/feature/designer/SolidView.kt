@@ -13,6 +13,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -55,8 +56,18 @@ internal fun SolidPane(
   val stage = state.stage
   val colours =
     SolidColours(
-      paper = MaterialTheme.colorScheme.surface,
-      shade = MaterialTheme.colorScheme.onSurface,
+      // **The die's paper, not the screen's.** The flat editor draws every
+      // face on white (`DesignerScreen`'s canvas), so a solid drawn on the
+      // theme's surface is the same drawing in two different colours — and on
+      // a dark page it is black ink on a dark grey face, which is a numeral
+      // nobody can read. A die is a white thing in a room, whichever page it
+      // is being drawn on. The question of whether the *canvas* should follow
+      // the theme is open either way (`docs/design-handover.md`); what this
+      // fixes is the two of them disagreeing.
+      paper = PAPER,
+      // And a face turned away from the lamp is its paper in shadow, which is
+      // darker rather than the colour of the page's ink.
+      shade = SHADE,
       edge = MaterialTheme.colorScheme.outline,
       chosen = Colours.accentDeep,
       tint = Colours.accent.copy(alpha = SELECTED_TINT),
@@ -114,3 +125,9 @@ private const val SELECTED_TINT = 0.16f
 
 /** How much light the band round the outside of a coin catches. */
 private const val RIM_LIGHT = 0.2f
+
+/** The paper every face of the flat editor is drawn on, and so every face here. */
+private val PAPER = Color.White
+
+/** What the lamp leaves of it on a face turned away. */
+private val SHADE = Color.Black
