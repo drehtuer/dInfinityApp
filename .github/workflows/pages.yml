@@ -40,12 +40,24 @@ jobs:
       # downloads. Adding the block here rather than to every document keeps it
       # out of the repository, where it would be noise in every diff and would
       # show up in the files GitHub renders.
+      #
+      # Front matter also hands the document to Liquid, which runs before
+      # Markdown and pays no attention to code spans or fences: a document
+      # quoting `{{…}}` in an error message is a Liquid variable as far as the
+      # build is concerned, and an unterminated one fails the whole build
+      # (docs/TODO.md quoting Filament's `{{0,0,0},{16,16,6}}` did exactly
+      # that). The documents are prose, never templates, so both openers are
+      # escaped into the Liquid that prints them literally. Escaping here
+      # rather than in the documents keeps the sources readable on GitHub —
+      # and keeps the next author from having to know any of this.
       - name: Give every document front matter
         run: |
           set -euo pipefail
           count=0
           while IFS= read -r -d '' document; do
-            printf -- '---\n---\n' | cat - "$document" > "${document}.tmp"
+            { printf -- '---\n---\n'
+              sed -e 's/{{/{{ "{{" }}/g' -e 's/{%/{{ "{%" }}/g' "$document"
+            } > "${document}.tmp"
             mv "${document}.tmp" "$document"
             count=$((count + 1))
           done < <({ find . -maxdepth 1 -name '*.md' -print0
