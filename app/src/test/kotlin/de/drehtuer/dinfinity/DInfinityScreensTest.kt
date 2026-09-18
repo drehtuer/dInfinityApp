@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity
 
 import android.content.Context
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -49,6 +50,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -332,7 +334,10 @@ class DInfinityScreensTest {
     // rather than on the die.
     compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
 
+    // The tap fills the field; the shake is the throw
+    // (`docs/physics-and-rendering.md`, "Starting a roll").
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).assertIsDisplayed().performClick()
+    shake()
     compose.waitUntil(PATIENCE) {
       compose.onAllNodesWithTag(RollTestTags.dieAt(0)).fetchSemanticsNodes().isNotEmpty()
     }
@@ -359,7 +364,7 @@ class DInfinityScreensTest {
   }
 
   @Test
-  fun `a throw from the strip is written down as that saved roll's`() {
+  fun `a throw from a formula the strip filled is written down as that saved roll's`() {
     // The chain this is about runs through four modules and two lambdas, and
     // it was broken the whole time: every roll went down with no saved roll
     // and no group against it, so the history's saved-roll filter found
@@ -373,14 +378,19 @@ class DInfinityScreensTest {
     val navigation = app(recorder = { thrown -> recorded += thrown })
     go(navigation, Destination.Roll)
 
-    // Past the welcome first, for the reason the quick-mode test above gives:
+    // Past the welcome first, for the reason the quick-mode test goes past it:
     // it is a full-screen takeover whose buttons run to the bottom edge, and
-    // the strip now sits lower than it did — the picker and the odds have
-    // left the column of controls, so a tap meant for a saved roll landed on
-    // `Add somebody else's dice` instead.
+    // the strip now sits lower than it did — the picker and the odds have left
+    // the column of controls. One of those buttons also puts a d20 in the
+    // field rather than throwing it now, so a tap that lands on it looks
+    // exactly like a tap on a saved roll that has lost its name.
     compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
 
+    // Which roll the formula came from survives the wait for a hand: the tap
+    // fills the field and the shake that follows is still Fireball's throw.
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+    assertTrue("the strip threw the roll rather than filling the field", recorded.isEmpty())
+    shake()
 
     compose.waitUntil(PATIENCE) { recorded.isNotEmpty() }
     assertEquals("fireball", recorded.single().savedRollId)
@@ -421,6 +431,24 @@ class DInfinityScreensTest {
     destination: Destination,
   ) {
     compose.runOnIdle { navigation.navigate(destination.route) }
+  }
+
+  /**
+   * Throws the dice the only way the app offers that is not a hand: the
+   * table's custom accessibility action (`RollScreen`).
+   *
+   * There is no Roll button and Robolectric has no accelerometer, so this is
+   * how a test shakes the phone (`docs/architecture.md`, "Accessibility").
+   */
+  private fun shake() {
+    val throwThem =
+      compose
+        .onNodeWithTag(RollTestTags.TRAY)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.CustomActions]
+        .single()
+    compose.runOnUiThread { throwThem.action() }
+    compose.waitForIdle()
   }
 
   /** The disk and the database joined, as the application does it. */
