@@ -46,6 +46,10 @@
     // the repository a second time, and linting a file twice reports every
     // fault twice — with the second copy's path, which is not where anybody
     // would fix it. CI lints a clean checkout and never sees one.
-    "!**/.worktrees/**"
+    "!**/.worktrees/**",
+    // And the ones Claude Code makes, which live under `.claude/`. Without
+    // this every document is linted once per worktree and every fault is
+    // reported at a path nobody would fix.
+    "!**/.claude/worktrees/**"
   ]
 }

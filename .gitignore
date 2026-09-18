@@ -44,4 +44,10 @@ __pycache__/
 # worked on in parallel. They live inside the repository because the
 # devcontainer mounts the repository and nothing else, so a checkout outside it
 # is one Gradle cannot reach.
+#
+# Two paths, because tooling picks its own: a worktree made by hand goes in the
+# first, and Claude Code puts its own in the second. Missing the second is not
+# cosmetic — an unignored worktree is a repository inside the repository, and
+# `git add -A` will happily commit it as a gitlink.
 .worktrees/
+.claude/worktrees/
