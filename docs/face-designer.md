@@ -60,6 +60,14 @@ steered from. The tool, clipboard and colour rows **wrap** rather than scroll
 sideways: a tool hidden off the edge of a row is a tool nobody finds. Only the
 face strip scrolls sideways, because twenty faces have to go somewhere.
 
+**The strip has that row to itself.** The three "fill all with…" buttons used
+to share it, and a row shared between a scroller and three buttons gives the
+scroller whatever is left — which on a phone is about one face of a d20, so the
+control for choosing a face was a scroller the width of a thumb. They wrap onto
+the row below now. They stay *outside* the scroll either way, because they are
+about every face and a control that scrolls away with the twentieth one is a
+control nobody finds.
+
 The toolbar the design asks for is there: the **fill bucket**, **copy face →
 paste with a turn and a mirror**, a **colour picker past the twelve presets**
 (`4c`), and the **stamp** with the "fill all with numbers" beside the face
@@ -159,7 +167,8 @@ the draft file with its region and its colour.
 ### The stamp
 
 > **Design:** the stamp is in the tool row of option `1v` and "fill all with
-> numbers" sits beside the face strip, which is where the prototype puts them.
+> numbers" sits under the face strip — "the strip scrolls on its own; the
+> global actions sit in a non-scrolling wrapping row below it".
 
 **The font is the tray's, and so is the placement.** `core/glyphs` holds the
 outlines a die with no artwork is printed with, and `LabelRoom` solves how big

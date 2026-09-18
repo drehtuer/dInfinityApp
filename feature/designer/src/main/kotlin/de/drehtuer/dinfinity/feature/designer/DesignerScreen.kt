@@ -757,10 +757,16 @@ private fun Channel(
  * Which face is in front of the player, and the taps that letter them all
  * (`docs/face-designer.md`, "Flow", "The stamp" and "Fill all with eyes").
  *
- * The buttons sit beside the strip rather than in it, and outside the scroll:
- * they are about every face, which is what the strip is about, and a control
- * that scrolls away with the twentieth face is one nobody finds
- * (`design/dInfinity.dc.html`, option `1v`).
+ * **The strip has the row to itself and the buttons have the next one.** They
+ * used to share a line, with the strip given whatever the three buttons left —
+ * which on a phone is about one face of a d20, so the control for choosing a
+ * face was a scroller the width of a thumb. The buttons are still outside the
+ * scroll, because they are about *every* face and a control that scrolls away
+ * with the twentieth one is a control nobody finds; they simply wrap onto
+ * their own row now, the way the tool row above them does
+ * (`design/dInfinity.dc.html`, option `1v`, and the design's own hand-over:
+ * "the strip scrolls on its own; the global actions sit in a non-scrolling
+ * wrapping row below it").
  *
  * **The eyes are offered only where they mean something.** A pip pattern
  * writes one to six and nothing else, so the two eye buttons are on the screen
@@ -770,17 +776,18 @@ private fun Channel(
  * on a die nobody has pipped cannot fill the undo stack with steps that
  * changed nothing.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FaceStrip(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
-  Row(
+  Column(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-    verticalAlignment = Alignment.CenterVertically,
+    verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Row(
-      modifier = Modifier.weight(1f).horizontalScroll(rememberScrollState()),
+      modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
       horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       state.draft.die.faces.forEach { face ->
@@ -794,26 +801,35 @@ private fun FaceStrip(
         )
       }
     }
-    Tool(
-      label = stringResource(R.string.designer_fill_numbers),
-      chosen = false,
-      tag = DesignerTestTags.FILL_NUMBERS,
-      onChoose = presenter::fillNumbers,
-    )
-    if (state.canPip) {
+    // Wrapping rather than scrolling, like the tool row: there are at most
+    // three of these and they are about *every* face, so they are not
+    // something to go looking for.
+    FlowRow(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
       Tool(
-        label = stringResource(R.string.designer_fill_eyes),
+        label = stringResource(R.string.designer_fill_numbers),
         chosen = false,
-        tag = DesignerTestTags.FILL_EYES,
-        onChoose = presenter::fillEyes,
+        tag = DesignerTestTags.FILL_NUMBERS,
+        onChoose = presenter::fillNumbers,
       )
-      Tool(
-        label = stringResource(R.string.designer_clear_eyes),
-        chosen = false,
-        enabled = state.pipped,
-        tag = DesignerTestTags.CLEAR_EYES,
-        onChoose = presenter::clearEyes,
-      )
+      if (state.canPip) {
+        Tool(
+          label = stringResource(R.string.designer_fill_eyes),
+          chosen = false,
+          tag = DesignerTestTags.FILL_EYES,
+          onChoose = presenter::fillEyes,
+        )
+        Tool(
+          label = stringResource(R.string.designer_clear_eyes),
+          chosen = false,
+          enabled = state.pipped,
+          tag = DesignerTestTags.CLEAR_EYES,
+          onChoose = presenter::clearEyes,
+        )
+      }
     }
   }
 }
