@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.roll
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.DraggableState
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -159,22 +161,46 @@ internal fun PullUpSheet(
         .background(MaterialTheme.colorScheme.background)
         .navigationBarsPadding(),
   ) {
-    Column(
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .draggable(
-            state = drag,
-            orientation = Orientation.Vertical,
-            onDragStopped = { velocity -> settle(SheetSlide.settledAt(offset.value, velocity, travel)) },
-          ).onSizeChanged {
-            parked = it.height.toFloat()
-            onParked(parked)
-          },
+    Grabbable(
+      drag = drag,
+      onLetGo = { velocity -> settle(SheetSlide.settledAt(offset.value, velocity, travel)) },
+      onParked = {
+        parked = it
+        onParked(it)
+      },
     ) {
       grip { settle(rest.other()) }
     }
     body()
+  }
+}
+
+/**
+ * The band a thumb takes hold of.
+ *
+ * The drag is on the whole of it rather than on the bar the eye sees: the bar
+ * is 4 dp of ink and a thumb is not, so a target the size of the drawing
+ * would be a target nobody hits.
+ *
+ * Its measured height is the sheet's promise about never disappearing — what
+ * [SheetSlide.travelOf] subtracts, and what everything stacked above the
+ * sheet is lifted by.
+ */
+@Composable
+private fun Grabbable(
+  drag: DraggableState,
+  onLetGo: suspend CoroutineScope.(Float) -> Unit,
+  onParked: (Float) -> Unit,
+  content: @Composable () -> Unit,
+) {
+  Column(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .draggable(state = drag, orientation = Orientation.Vertical, onDragStopped = onLetGo)
+        .onSizeChanged { onParked(it.height.toFloat()) },
+  ) {
+    content()
   }
 }
 

@@ -124,43 +124,9 @@ fun RollScreen(
   var editing by rememberSaveable { mutableStateOf(false) }
   var picking by rememberSaveable { mutableStateOf(false) }
 
-  // Which of the two pull-ups along the bottom edge is up, if either. The
-  // rule that they are never both up is [BottomEdge]'s, which is arithmetic
-  // rather than two composables each remembering to shut the other.
-  var edge by remember { mutableStateOf(BottomEdge()) }
+  val edges = rememberEdges(landed = presenter.state is RollState.Settled)
 
-  // How much of each of them stays on the bottom edge, measured rather than
-  // known. What is stacked above one is lifted by it, so nothing on the
-  // screen ends up under a sheet that has been pushed down.
-  var resultParked by remember { mutableFloatStateOf(0f) }
-  var savedParked by remember { mutableFloatStateOf(0f) }
-
-  // A total arriving takes the edge, and the saved rolls get out of its way;
-  // a roll put away leaves them where the player left them.
-  val landed = presenter.state is RollState.Settled
-  LaunchedEffect(landed) {
-    edge = if (landed) edge.resultArrives() else edge.resultGone()
-    if (!landed) resultParked = 0f
-  }
-
-  ShakeToRoll(presenter, enabled = shakeToRoll)
-  KeepTheScreenAwake()
-  LockTheOrientation()
-
-  // Leaving the screen gives up the physics world and the scene. The roll does
-  // not survive it and is not meant to: a throw the player walked away from
-  // never landed, so there is nothing to score. The thread and the Filament
-  // engine underneath are not given up with them — rebuilding those is a black
-  // tray on the way back (`docs/architecture.md`, decision 50).
-  //
-  // Here rather than in [DiceTray], which is where it used to be. That
-  // composable is on the screen only when there is something to draw, and a
-  // power-saving tray draws nothing — so in that mode nothing closed the tray
-  // at all, and a roll the player walked out on ran to the end and was written
-  // into the history for a screen nobody was on (`docs/TODO.md`, Step 5.3).
-  DisposableEffect(presenter.tray) {
-    onDispose { presenter.tray.close() }
-  }
+  WhileTheScreenIsUp(presenter, shakeToRoll)
 
   Box(
     modifier =
@@ -174,16 +140,16 @@ fun RollScreen(
     WhatTheRollIsDoing(
       presenter = presenter,
       modifier = Modifier.align(Alignment.BottomCenter),
-      lifted = resultParked + savedParked,
+      lifted = edges.lifted,
     )
 
     TheSavedRolls(
       presenter = presenter,
       strip = strip,
-      rest = edge.saved,
-      onRest = { edge = edge.savedTo(it) },
-      onParked = { savedParked = it },
-      lifted = resultParked,
+      rest = edges.edge.saved,
+      onRest = { edges.edge = edges.edge.savedTo(it) },
+      onParked = { edges.savedParked = it },
+      lifted = edges.resultParked,
       modifier = Modifier.align(Alignment.BottomCenter),
     )
 
@@ -200,30 +166,16 @@ fun RollScreen(
       modifier = Modifier.align(Alignment.TopStart),
     )
 
-    // Over the tray, under the welcome, and only behind the developer toggle
-    // (`docs/physics-and-rendering.md`, "Debug tooling"). It draws what the
-    // roll is doing and cannot change it, which is the same promise the
-    // renderer makes (`docs/architecture.md`, decision 38).
-    if (presenter.showsDebug) {
-      DebugOverlay(
-        diagnostics = presenter.diagnostics,
-        geometry = presenter.geometry,
-        modifier =
-          Modifier
-            .align(Alignment.TopStart)
-            .safeDrawingPadding()
-            .padding(8.dp),
-      )
-    }
+    TheDebugOverlay(presenter = presenter, modifier = Modifier.align(Alignment.TopStart))
 
     TheResult(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
       onSaveAsRoll = onSaveAsRoll,
       onDoodle = onDoodle,
-      rest = edge.result,
-      onRest = { edge = edge.resultTo(it) },
-      onParked = { resultParked = it },
+      rest = edges.result,
+      onRest = { edges.edge = edges.edge.resultTo(it) },
+      onParked = { edges.resultParked = it },
       modifier = Modifier.align(Alignment.BottomCenter),
     )
 
@@ -235,6 +187,60 @@ fun RollScreen(
 
     if (firstLaunch) FirstLaunch(presenter, whatIsThere, onWelcomeSeen, onImportCollection, onAddSets)
   }
+}
+
+/**
+ * The three things that are true for as long as the screen is, and the one
+ * that has to be undone when it is not.
+ *
+ * Together because they are one answer to one question — what a *visit* to
+ * this screen costs — rather than four unrelated effects at the top of a
+ * composable.
+ *
+ * Leaving gives up the physics world and the scene. The roll does not survive
+ * it and is not meant to: a throw the player walked away from never landed,
+ * so there is nothing to score. The thread and the Filament engine underneath
+ * are not given up with them — rebuilding those is a black tray on the way
+ * back (`docs/architecture.md`, decision 50).
+ *
+ * The tray is closed here rather than in [DiceTray], which is where it used
+ * to be. That composable is on the screen only when there is something to
+ * draw, and a power-saving tray draws nothing — so in that mode nothing
+ * closed the tray at all, and a roll the player walked out on ran to the end
+ * and was written into the history for a screen nobody was on.
+ */
+@Composable
+private fun WhileTheScreenIsUp(
+  presenter: RollPresenter,
+  shakeToRoll: Boolean,
+) {
+  ShakeToRoll(presenter, enabled = shakeToRoll)
+  KeepTheScreenAwake()
+  LockTheOrientation()
+  DisposableEffect(presenter.tray) {
+    onDispose { presenter.tray.close() }
+  }
+}
+
+/**
+ * What the roll is doing underneath, for whoever turned the toggle on
+ * (`docs/physics-and-rendering.md`, "Debug tooling").
+ *
+ * Over the tray and under the welcome. It draws what the roll is doing and
+ * cannot change it, which is the same promise the renderer makes
+ * (`docs/architecture.md`, decision 38).
+ */
+@Composable
+private fun TheDebugOverlay(
+  presenter: RollPresenter,
+  modifier: Modifier = Modifier,
+) {
+  if (!presenter.showsDebug) return
+  DebugOverlay(
+    diagnostics = presenter.diagnostics,
+    geometry = presenter.geometry,
+    modifier = modifier.safeDrawingPadding().padding(8.dp),
+  )
 }
 
 /**
@@ -344,6 +350,47 @@ private fun WaitingForAShake(
       )
     }
   }
+}
+
+/**
+ * The two pull-ups along the bottom edge, and how much of the edge they have
+ * between them.
+ *
+ * A holder rather than four `remember`s in the screen, because they are one
+ * thing: which sheet is up is a question about the pair ([BottomEdge]), and
+ * the heights are what everything stacked above them is lifted by. What is
+ * left in the screen is where the two of them are drawn.
+ */
+private class Edges {
+  var edge: BottomEdge by mutableStateOf(BottomEdge())
+
+  /** Where the result rests, which is also where it arrives. */
+  val result: SheetRest get() = edge.result
+
+  /** How much of each grip stays on the bottom edge, in pixels. */
+  var resultParked: Float by mutableFloatStateOf(0f)
+  var savedParked: Float by mutableFloatStateOf(0f)
+
+  /** The two of them together, which is what rides above both. */
+  val lifted: Float get() = resultParked + savedParked
+}
+
+/**
+ * [Edges], with the one thing that happens to them on its own: a total
+ * arriving takes the edge, and the saved rolls get out of its way.
+ *
+ * A roll put away leaves them where the player left them — a strip that
+ * sprang open every time a total went away would be a strip that opens
+ * itself once per throw.
+ */
+@Composable
+private fun rememberEdges(landed: Boolean): Edges {
+  val edges = remember { Edges() }
+  LaunchedEffect(landed) {
+    edges.edge = if (landed) edges.edge.resultArrives() else edges.edge.resultGone()
+    if (!landed) edges.resultParked = 0f
+  }
+  return edges
 }
 
 /**
