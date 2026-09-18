@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 
 /**
@@ -29,11 +30,20 @@ import androidx.compose.ui.text.font.FontWeight
  * reader says, and is a decision recorded as an open question in
  * `docs/TODO.md` rather than taken here. The tracking, which is what makes
  * uppercase readable, is applied either way.
+ *
+ * @param color which ink it is set in. The accent by default, because that is
+ *   what a kicker is nearly always for. The two exceptions are both on the
+ *   roll screen's plates: `COUNTING` is the *label* of a readout rather than
+ *   an accent line and is set in the ink at 65 %, and the two plates that do
+ *   want the accent want its **700 step** ([Ink.accentDeep]) — a kicker is
+ *   10 dp, which is small text, and the accent itself only clears the bar for
+ *   large (`docs/physics-and-rendering.md`, "What is drawn over the table").
  */
 @Composable
 fun SectionKicker(
   text: String,
   modifier: Modifier = Modifier,
+  color: Color = Ink.accent,
 ) {
   Text(
     text = text,
@@ -41,7 +51,7 @@ fun SectionKicker(
     fontSize = Modernist.Type.kicker,
     fontWeight = FontWeight.SemiBold,
     letterSpacing = Modernist.kickerTracking,
-    color = Ink.accent,
+    color = color,
     modifier = modifier,
   )
 }

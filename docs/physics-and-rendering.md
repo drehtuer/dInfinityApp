@@ -1409,11 +1409,28 @@ the first device session found — a formula whose dashed rule ran the full widt
 of the screen, so the text read as struck through rather than underlined, and a
 bordered box of controls sitting on bare felt.
 
+It is one component, `ui/common`'s `Plate`, because a plate is a token rather
+than a layout: six of them on one screen, each drawing its own shadow and its
+own padding, is six chances for the numbers to drift. **The app's plates are
+one column at the bottom of the tray** rather than four blocks in the
+prototype's corners — the controls have always been one stack, and where they
+sit is a separate question from what they stand on.
+
 **Accent never touches felt.** Accent appears only *on* a plate, which is how
 an accent the player chooses freely and a shelf of tables stop being a pair
 anybody has to check — a green accent on green felt cannot happen if the accent
 is never on the felt, and with a colour picker there is no list of pairs to
-check in the first place (question 10).
+check in the first place (question 10). So the Roll button, "See the odds", a
+refusal, the result sheet and both asking plates are each on one, and the
+pairing that has to be legible is accent-on-`--color-bg`: one pairing rather
+than a matrix.
+
+Where a plate wants the accent it wants its **700 step**, because a kicker is
+10 dp and a `+` is 13 and the accent as chosen only clears the contrast bar for
+large text. That step is *mixed* from the accent in use rather than looked up —
+`ui/common`'s `Ink.accentDeep`, over `AccentRamp`, which is the same rule the
+filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
+"Settings").
 
 | Plate | Where | What it carries |
 | --- | --- | --- |
@@ -1436,6 +1453,11 @@ An open exploding chain puts a `+` at the top of the range in
 the `+` is accent, at body size, on a plate, so it is the 700 step like every
 other accent-coloured run of text at 10–14 dp.
 
+It says the whole line **once** to a screen reader rather than four times. A
+row of figures an eye takes in at a glance is four disconnected fragments read
+aloud, so the plate carries one sentence of its own and merges what is under it
+(`docs/architecture.md`, "Accessibility").
+
 **Two states the prototype did not have live on that same plate.** *Another
 throw earned* is a chain that has stopped and is one shake short: an
 accent-700 kicker, a line of copy, `Throw 3 more` as the primary and `Stop the
@@ -1443,6 +1465,27 @@ chain` as a ghost. *Could not settle* is the refusal: an alert icon, an
 accent-700 kicker, copy naming how many dice never stopped, then `Throw those 3
 again` and `Cancel the roll`. Both are reachable in the prototype through its
 `rollState` tweak, which is the quickest way to see them.
+
+Neither is a new state. They are `RollState.ShakeAgain` and `RollState.Stalled`
+— which the roll has reached all along, with one line of text between them —
+and what was missing was the drawing. `Throw 3 more` is the throw the Roll
+button and a shake already make, so a chain is continued by the same call
+whichever of the three asks for it.
+
+**`Stop the chain` puts the roll away with no total**, which is what `Cancel
+the roll` does and is not what the button says. Scoring what is on the table
+instead needs a reason a chain ended that is not the tray's: `RunningScore`
+stops one only when there is no room for another die, and the breakdown then
+says so in as many words. Giving the player's own refusal a note of its own is
+`core/notation` work and is on the list (`docs/TODO.md`, Step 4.1).
+
+**The total is drawn once.** The result sheet keeps a subtotal per group,
+because that is how its rows add up to the total — but a formula with one group
+and nothing added to it has a subtotal that *is* the total, and printing it put
+the roll's number at the display size in the middle of the screen and again at
+20 dp hard against the right edge, where the first device session read it as
+clipped. So a subtotal is drawn unless it is the whole of the result
+(`Subtotals`, and `docs/design-handover.md`).
 
 **A die from a later pass says so.** A roll that had to throw something again
 shows the dice of its last pass only, so a total counting twenty dice can stand
