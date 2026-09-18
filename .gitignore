@@ -39,3 +39,9 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Git worktrees, when several branches are checked out at once so they can be
+# worked on in parallel. They live inside the repository because the
+# devcontainer mounts the repository and nothing else, so a checkout outside it
+# is one Gradle cannot reach.
+.worktrees/

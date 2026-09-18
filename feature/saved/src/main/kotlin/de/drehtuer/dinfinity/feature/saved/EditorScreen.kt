@@ -280,10 +280,15 @@ private fun Icons(
 /**
  * The colour a roll's mark prints in (design option 9d).
  *
- * The same six the interface spends anywhere, plus none. A free picker would
- * let somebody choose a colour that vanishes against the ground, which is the
- * reason the accent is a fixed palette in the first place
- * (`docs/architecture.md`, decision 22).
+ * The same six the interface offers as accent presets, plus none.
+ *
+ * It is a list here and not a picker, and that is now a decision of its own
+ * rather than an inheritance: the accent stopped being a closed palette when
+ * `AccentRamp.clamp` made any colour safe (`docs/architecture.md`,
+ * decision 22), and the twelve tags and a custom one that the design asks for
+ * go through the same clamp when they are built (`docs/TODO.md`, 4.3). Until
+ * then this stays the six, because six colours that are known to read are
+ * better than a picker with nothing behind it.
  */
 @Composable
 private fun Colours(

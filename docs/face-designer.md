@@ -357,7 +357,7 @@ and what is behind it is the die's own material, which the set decides and the
 designer never sees.
 
 **There is no contrast rule on ink, and that is deliberate.**
-`core/model/AccentColor` holds every accent to 3:1 against both grounds because
+`core/model/AccentRamp` pushes any accent to 3:1 against both grounds because
 those grounds are the app's own — it knows what the surface behind a button is.
 A die face is not the app's ground: the cell is transparent in the atlas and
 the colour under it comes from the dice set, so a ratio computed against the

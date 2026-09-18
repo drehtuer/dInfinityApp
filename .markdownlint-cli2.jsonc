@@ -41,6 +41,11 @@
     // thing the local run exists to stop.
     "!**/.cxx/**",
     // Gradle's own, for the same reason.
-    "!**/.gradle/**"
+    "!**/.gradle/**",
+    // A second branch checked out beside this one. It holds every document in
+    // the repository a second time, and linting a file twice reports every
+    // fault twice — with the second copy's path, which is not where anybody
+    // would fix it. CI lints a clean checkout and never sees one.
+    "!**/.worktrees/**"
   ]
 }

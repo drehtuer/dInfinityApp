@@ -125,7 +125,7 @@ class EditorScreenTest {
     compose.onNodeWithTag(EditorTestTags.NAME).performTextInput("Fireball")
     compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("8d6 [Fire]")
     compose.onNodeWithTag(EditorTestTags.iconOf("🔥")).performScrollTo().performClick()
-    compose.onNodeWithTag(EditorTestTags.colourOf(AccentColor.Vermilion.argb)).performScrollTo().performClick()
+    compose.onNodeWithTag(EditorTestTags.colourOf(AccentColor.ModernistRed.argb)).performScrollTo().performClick()
     compose.onNodeWithTag(EditorTestTags.FAVOURITE).performScrollTo().performClick()
 
     compose.onNodeWithTag(EditorTestTags.SAVE).performScrollTo().performClick()
@@ -135,7 +135,7 @@ class EditorScreenTest {
     assertEquals("Fireball", saved.name)
     assertEquals("8d6 [Fire]", saved.formula)
     assertEquals("🔥", saved.icon)
-    assertEquals(AccentColor.Vermilion.argb, saved.colorArgb)
+    assertEquals(AccentColor.ModernistRed.argb, saved.colorArgb)
     assertTrue(saved.favourite)
   }
 

@@ -8,12 +8,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import de.drehtuer.dinfinity.core.model.AccentRamp
+import de.drehtuer.dinfinity.core.model.Ground
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
@@ -82,6 +85,71 @@ class TagTest {
     assertTrue("an outlined tag was not edged in the theme's accent", edge)
   }
 
+  /**
+   * The filled accent tag, which is the whole reason the ramp is mixed rather
+   * than looked up: both ends of it are made from the accent the player
+   * picked, so the pairing has to be measured for a colour nobody chose in
+   * advance.
+   */
+  @Test
+  fun `an accent tag reads on both grounds`() {
+    listOf(Ground.Light, Ground.Dark).forEach { ground ->
+      ACCENTS.forEach { accent ->
+        val ramp = AccentRamp.of(accent, ground)
+        val ratio = contrast(Color(ramp.v800), Color(ramp.v100))
+        assertTrue("an accent tag on $ground is ${"%.2f".format(ratio)}:1", ratio >= BODY_TEXT)
+      }
+    }
+  }
+
+  @Test
+  fun `an accent tag is filled with the pale end of the chosen accent's ramp`() {
+    val accent = Color(0xFF0F7A50)
+    compose.setContent {
+      MaterialTheme(
+        colorScheme =
+          lightColorScheme(background = Modernist.Light.background, primary = accent),
+      ) {
+        Tag("update available", kind = TagKind.Accent, modifier = Modifier.testTag("accent"))
+      }
+    }
+
+    // Mixed from the accent, not a colour of the tag's own: a hard-coded pale
+    // red here would be a red chip on a pine app, which is exactly the bug
+    // that kept this tag unbuilt.
+    assertEquals(Color(AccentRamp.of(accent.toArgb(), Ground.Light).v100), corner("accent"))
+  }
+
+  @Test
+  fun `an accent tag darkens with the page`() {
+    val accent = Color(0xFF0F7A50)
+    compose.setContent {
+      MaterialTheme(
+        colorScheme = darkColorScheme(background = Modernist.Dark.background, primary = accent),
+      ) {
+        Tag("update available", kind = TagKind.Accent, modifier = Modifier.testTag("accent"))
+      }
+    }
+
+    val fill = corner("accent")
+    assertEquals(Color(AccentRamp.of(accent.toArgb(), Ground.Dark).v100), fill)
+    assertTrue("an accent tag stayed pale on a dark page", fill.luminance() < HALF)
+  }
+
+  @Test
+  fun `the three kinds do not look the same`() {
+    compose.setContent {
+      Row {
+        Tag("default", kind = TagKind.Neutral, modifier = Modifier.testTag("neutral"))
+        Tag("disabled", kind = TagKind.Outline, modifier = Modifier.testTag("outline"))
+        Tag("update available", kind = TagKind.Accent, modifier = Modifier.testTag("accent"))
+      }
+    }
+
+    val chips = listOf(corner("neutral"), corner("outline"), corner("accent"))
+    assertEquals("two of the three tag kinds are the same chip", chips.size, chips.toSet().size)
+  }
+
   @Test
   fun `a tag prints its words and follows them when they change`() {
     val state = mutableStateOf("default")
@@ -147,6 +215,15 @@ class TagTest {
   private companion object {
     /** WCAG's floor for body text. A badge's words are body text. */
     const val BODY_TEXT = 4.5
+
+    /**
+     * The six presets, plus the two colours a clamp has the most work to do
+     * with. The tag has to be legible in any of them, because the accent is
+     * whatever the player handed the app (`core/model/AccentRamp`).
+     */
+    val ACCENTS =
+      listOf(0xFF38A8DC, 0xFFEC3013, 0xFFC2186F, 0xFF1D5FD4, 0xFF0F7A50, 0xFFC07000, 0xFFFFFF00, 0xFF000000)
+        .map { it.toInt() }
 
     /** Halfway up the luminance range: what divides a dark page from a light one. */
     const val HALF = 0.5f

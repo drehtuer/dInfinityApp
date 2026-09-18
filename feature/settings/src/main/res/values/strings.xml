@@ -8,7 +8,7 @@
   <string name="settings_off">Off</string>
   <string name="settings_on">On</string>
   <string name="settings_accent_heading">Accent colour</string>
-  <string name="settings_accent_explanation">The one colour the interface spends. It does not change the app icon.</string>
+  <string name="settings_accent_explanation">The one colour the interface spends. It does not change the app icon. A colour too pale to read against the page is deepened until it can be — the swatch stays the colour you picked.</string>
 
   <!-- The menu (design option 1q). -->
   <string name="menu_open">Menu</string>
@@ -20,12 +20,25 @@
   <string name="settings_power_explanation">Roll without drawing the dice. The same roll, decided the same way — the result just appears.</string>
   <string name="settings_power_label">Do not draw the dice</string>
 
-  <string name="accent_vermilion">Vermilion</string>
-  <string name="accent_coral">Coral</string>
-  <string name="accent_sky">Sky</string>
-  <string name="accent_moss">Moss</string>
+  <!--
+    The six presets, in the order the swatch grid draws them. A name is
+    language and the id under it is storage, so two of these are not called
+    what their id is called (`core/model/AccentColor`).
+  -->
+  <string name="accent_light_blue">Light blue</string>
+  <string name="accent_modernist_red">Modernist red</string>
+  <string name="accent_magenta">Magenta</string>
+  <string name="accent_cobalt">Cobalt</string>
+  <string name="accent_pine">Pine</string>
   <string name="accent_amber">Amber</string>
-  <string name="accent_violet">Violet</string>
+  <!-- The seventh swatch, and the sheet behind it. -->
+  <string name="accent_custom">Your own colour</string>
+  <string name="settings_accent_picker_title">Your own colour</string>
+  <string name="settings_accent_picker_use">Use it</string>
+  <string name="settings_accent_picker_cancel">Cancel</string>
+  <string name="settings_accent_hue">Hue</string>
+  <string name="settings_accent_depth">Depth</string>
+  <string name="settings_accent_brightness">Brightness</string>
   <!-- Appearance (design option 1q). -->
   <string name="settings_appearance_heading">Appearance</string>
   <string name="settings_appearance_explanation">Light, dark, or whatever the phone is doing.</string>

@@ -20,22 +20,22 @@ class AppSettingsTest {
 
   @Test
   fun `settings with the same accent are equal and hash alike`() {
-    val one = AppSettings(accentColor = AccentColor.Sky)
-    val other = AppSettings(accentColor = AccentColor.Sky)
+    val one = AppSettings(accentColor = AccentColor.LightBlue)
+    val other = AppSettings(accentColor = AccentColor.LightBlue)
     assertEquals(one, other)
     assertEquals(one.hashCode(), other.hashCode())
   }
 
   @Test
   fun `a different accent makes different settings`() {
-    assertNotEquals(AppSettings(AccentColor.Sky), AppSettings(AccentColor.Moss))
+    assertNotEquals(AppSettings(AccentColor.LightBlue), AppSettings(AccentColor.Pine))
   }
 
   @Test
   fun `copy changes the accent and nothing else`() {
     val before = AppSettings(accentColor = AccentColor.Amber)
-    val after = before.copy(accentColor = AccentColor.Violet)
-    assertEquals(AccentColor.Violet, after.accentColor)
+    val after = before.copy(accentColor = AccentColor.Cobalt)
+    assertEquals(AccentColor.Cobalt, after.accentColor)
     assertEquals(AccentColor.Amber, before.accentColor)
   }
 
@@ -66,6 +66,6 @@ class AppSettingsTest {
   /** Only so a log line or a test failure names the accent rather than an address. */
   @Test
   fun `toString names the accent`() {
-    assertTrue(AppSettings(AccentColor.Moss).toString().contains("Moss"))
+    assertTrue(AppSettings(AccentColor.Pine).toString().contains("Pine"))
   }
 }

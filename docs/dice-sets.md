@@ -530,7 +530,9 @@ The app never runs anything from the repository. No scripts, no build steps.
 
 Updates: **"Check for updates" re-resolves the ref** and compares the commit
 with the one recorded at install. A set whose forge has moved on is badged on
-the list, and updating it is a re-install from the source the install recorded
+the list — the filled accent tag, which is the one of the three badges that
+says something to *do* rather than something that is — and updating it is a
+re-install from the source the install recorded
 — through the same validator, over the top of the folder that is there. An
 update that is refused costs nothing, because a package that fails validation
 leaves the one already installed alone.

@@ -89,6 +89,14 @@ metallic = 0.0              # 0.0 (dielectric) .. 1.0 (metal)
 size_mm = 16
 
 density = 1.2               # g/cm³, 0.5 .. 8.0. 1.2 is about acrylic
+
+# How much light goes through the body, as a per cent: 0 is a solid die and
+# 100 is one you could read a newspaper through. The numbers printed on a die
+# stay opaque whatever this is — a face you cannot read is not a die — and
+# nothing in the physics reads it, so a clear die and a solid one of the same
+# size and density roll exactly alike.
+translucency = 0            # %, 0 .. 100
+
 restitution = 0.3           # bounce, 0.0 .. 0.8
 friction = 0.5              # 0.1 .. 1.0
 
@@ -211,7 +219,8 @@ texture = "textures/enneagonal-trapezohedron.png"
 
 # Every `[defaults]` key can be overridden here, on one die, without touching
 # the others. This one is ink-coloured with bone numerals — the set's defaults
-# swapped round — and a shade heavier and bouncier than the rest.
+# swapped round — a shade heavier and bouncier than the rest, and the one die
+# in the set you can see a little way into.
 # Atlas: 20 cells, 5x4.
 [[die]]
 id = "d20"
@@ -224,6 +233,7 @@ roughness = 0.25
 metallic = 0.0
 size_mm = 18
 density = 1.4
+translucency = 35
 restitution = 0.35
 friction = 0.45
 

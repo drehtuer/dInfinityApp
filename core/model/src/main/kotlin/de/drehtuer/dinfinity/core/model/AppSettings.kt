@@ -8,7 +8,16 @@ package de.drehtuer.dinfinity.core.model
  * another stream to plumb through.
  */
 data class AppSettings(
-  val accentColor: AccentColor = AccentColor.Default,
+  /**
+   * The one colour the interface spends: a preset, or a colour from the
+   * phone's picker (`docs/architecture.md`, "Settings").
+   *
+   * An [AccentChoice] rather than an [AccentColor], because the list of
+   * presets is a convenience and the accent is whatever the player handed the
+   * app. What is painted is this colour after [AccentRamp.clamp]; this is what
+   * they chose.
+   */
+  val accentColor: AccentChoice = AccentColor.Default,
   /**
    * Light, dark, or whatever the phone is doing
    * (`design/dInfinity.dc.html`, option 1q).

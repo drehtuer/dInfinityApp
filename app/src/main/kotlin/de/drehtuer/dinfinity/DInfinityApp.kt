@@ -30,7 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import de.drehtuer.dinfinity.core.model.AccentColor
+import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
@@ -105,7 +105,7 @@ import java.io.File
 @Composable
 fun DInfinityApp(
   settings: AppSettings = AppSettings(),
-  onAccentSelected: (AccentColor) -> Unit = {},
+  onAccentSelected: (AccentChoice) -> Unit = {},
   onAppearanceSelected: (Appearance) -> Unit = {},
   onShakeChanged: (Boolean) -> Unit = {},
   onHapticsChanged: (Boolean) -> Unit = {},
@@ -597,7 +597,7 @@ private fun chrome(
   entry: NavBackStackEntry,
   navController: NavHostController,
   settings: AppSettings,
-  onAccentSelected: (AccentColor) -> Unit,
+  onAccentSelected: (AccentChoice) -> Unit,
   onAppearanceSelected: (Appearance) -> Unit,
   onPowerSavingChanged: (Boolean) -> Unit,
   onShakeChanged: (Boolean) -> Unit,
