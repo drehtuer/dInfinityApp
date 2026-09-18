@@ -172,6 +172,11 @@ data class ShakeSample(
  *   comes next has to be aimed at the floor this one left clear, and drawn
  *   among the dice it left standing there
  *   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds").
+ * @param medianTurnsAfterLanding how far the middle die turned after it first
+ *   touched the table, in whole turns. Settle time cannot tell a die that
+ *   tumbled from one that landed flat and slid, and only one of those reads as
+ *   a die being thrown, so this is the figure a throw is judged honest by
+ *   ([Tumble]). A reading, never an input.
  */
 data class SimulationOutcome(
   val faces: Map<Int, Int>,
@@ -183,6 +188,7 @@ data class SimulationOutcome(
   val stackedAtRest: Int = 0,
   val deepestDiePenetrationMm: Double = 0.0,
   val restingAt: Map<Int, RestingPlace> = emptyMap(),
+  val medianTurnsAfterLanding: Double = 0.0,
 ) {
   /** How many dice were in the throw. */
   val diceCount: Int get() = faces.size
@@ -194,5 +200,6 @@ data class SimulationOutcome(
     require(steps <= SettleRule.HARD_CAP_STEPS) { "a roll cannot run past the ${SettleRule.HARD_CAP_SECONDS}s cap" }
     require(stackedAtRest <= faces.size) { "$stackedAtRest of ${faces.size} dice cannot be stacked" }
     require(deepestDiePenetrationMm >= 0.0) { "an overlap of $deepestDiePenetrationMm mm is not a depth" }
+    require(medianTurnsAfterLanding >= 0.0) { "$medianTurnsAfterLanding turns is not an amount of turning" }
   }
 }

@@ -38,7 +38,7 @@ data class HarnessReport(
      * loads — nothing but this module ever reads it — so it may move freely;
      * what it may not do is move silently.
      */
-    const val SCHEMA: Int = 2
+    const val SCHEMA: Int = 3
 
     /**
      * A report over [records], summarised and scored in one go.
@@ -167,6 +167,10 @@ data class DeviceFacts(
  * @param stackedAtRest dice that came to rest standing on another die.
  * @param deepestDiePenetrationMm the deepest die-into-die overlap the solver
  *   reported at any step of this roll.
+ * @param medianTurnsAfterLanding how far the middle die of this roll turned
+ *   after it first touched the table, in whole turns. The figure that says the
+ *   dice were thrown rather than placed, and the one thing settle time cannot
+ *   tell you (`Tumble`).
  */
 data class RollRecord(
   val index: Int,
@@ -179,6 +183,7 @@ data class RollRecord(
   val forcedSettles: Int,
   val stackedAtRest: Int,
   val deepestDiePenetrationMm: Double,
+  val medianTurnsAfterLanding: Double = 0.0,
   /**
    * True when this roll gave up: it ran longer than a roll should and its dice
    * never stopped, so it has no faces to report.
@@ -249,6 +254,7 @@ data class RollRecord(
         forcedSettles = outcome.forcedSettles,
         stackedAtRest = outcome.stackedAtRest,
         deepestDiePenetrationMm = outcome.deepestDiePenetrationMm,
+        medianTurnsAfterLanding = outcome.medianTurnsAfterLanding,
       )
   }
 }
@@ -293,6 +299,7 @@ data class HarnessSummary(
   val stackedAtRest: Long,
   val capsReached: Int,
   val deepestDiePenetrationMm: Double,
+  val turnsAfterLanding: Distribution = Distribution.of(emptyList()),
   val frames: FrameSummary? = null,
 ) {
   /** The share of dice that needed any correction at all. */
@@ -326,6 +333,7 @@ data class HarnessSummary(
         stackedAtRest = records.sumOf { it.stackedAtRest.toLong() },
         capsReached = records.count(RollRecord::gaveUp),
         deepestDiePenetrationMm = records.maxOfOrNull { it.deepestDiePenetrationMm } ?: 0.0,
+        turnsAfterLanding = Distribution.of(records.map(RollRecord::medianTurnsAfterLanding)),
         frames = frames.summary(),
       )
   }

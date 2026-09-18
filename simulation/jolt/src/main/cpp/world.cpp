@@ -139,10 +139,16 @@ struct World::Impl : public ContactListener {
     // to mean (`docs/architecture.md`, decision 41). The two exceptions are
     // below.
     //
-    // Restitution: Jolt stops bouncing below 1 unit/s, which is a centimetre a
-    // second — far slower than the point at which a real die on felt has
-    // stopped bouncing. Fifteen is about where a die lands and stays.
-    settings.mMinVelocityForRestitution = 15.0f;
+    // Restitution: Jolt's own default, and it is back because the number that
+    // replaced it was chosen for the wrong reason. Fifteen units a second —
+    // 150 mm/s — was picked as "about where a die lands and stays", which it
+    // is; what it also does is give every contact after the first landing a
+    // restitution of exactly zero, so a die had one bounce and then dead-
+    // dropped. That was half of why v0.1.1's dice did not tumble. Measured on
+    // the Pixel 10a: it takes the deepest die-into-die overlap from 9.0 mm to
+    // 8.4 mm and the re-throw share from 3.2 % to 1.8 % on its own
+    // (`docs/physics-and-rendering.md`).
+    settings.mMinVelocityForRestitution = 1.0f;
     // The app decides when a die has stopped, not the engine. Jolt's own
     // sleeping would freeze a body at its thresholds rather than at the ones
     // `SettleRule` documents, and two rules for the same question is one too
@@ -388,10 +394,20 @@ void World::SetGravity(float x, float y, float z) { impl_->system.SetGravity(Vec
 
 void World::Step(float dt) {
   for (auto& flags : impl_->contacts) flags = 0u;
-  // One collision step per simulation step: the timestep is already fixed and
-  // small, and sub-stepping it would make the roll depend on a number nobody
-  // has written down (`docs/physics-and-rendering.md`).
-  impl_->system.Update(dt, 1, &impl_->temp_allocator, &impl_->job_system);
+  // Two collision steps per simulation step. It used to be one, on the
+  // grounds that sub-stepping would make the dice pack — the popping-apart of
+  // overlapping dice was doing the spreading, so resolving collisions better
+  // would leave them in a heap.
+  //
+  // That is now measured rather than reasoned about, because there is a
+  // figure for it: 200 rolls of 20d20 on the Pixel 10a take the deepest
+  // die-into-die overlap from 9.9 mm to 6.6 mm and the re-throw share from
+  // 3.1 % to 2.8 %, and cost 17 % of the middle die's turning after it lands
+  // (1.72 to 1.43 turns) — which the throw itself buys back. Nothing was left
+  // standing on another die either way, so the packing the old comment feared
+  // does not happen at this count. A step costs 0.35 ms against a budget of
+  // 8.33 (`docs/physics-and-rendering.md`, `Tumble`).
+  impl_->system.Update(dt, 2, &impl_->temp_allocator, &impl_->job_system);
 }
 
 void World::ReadStates(float* out) const {

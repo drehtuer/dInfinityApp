@@ -233,6 +233,7 @@ class HarnessTargetsTest {
       stackedAtRest = 0,
       capsReached = 0,
       deepestDiePenetrationMm = 0.01,
+      turnsAfterLanding = Distribution(median = 1.8, p99 = 4.0, worst = 5.2),
     )
 
   /** What a paced run measured, with everything else about it already perfect. */
@@ -271,6 +272,6 @@ class HarnessTargetsTest {
 
   private companion object {
     /** How many bars Step 5 sets. A row that disappears is a target nobody is checking. */
-    const val TARGET_COUNT = 12
+    const val TARGET_COUNT = 13
   }
 }

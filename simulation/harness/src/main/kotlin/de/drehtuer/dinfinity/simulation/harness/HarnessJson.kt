@@ -156,6 +156,7 @@ object HarnessJson {
       put("forcedSettles", record.forcedSettles)
       put("stackedAtRest", record.stackedAtRest)
       put("deepestDiePenetrationMm", record.deepestDiePenetrationMm)
+      put("medianTurnsAfterLanding", record.medianTurnsAfterLanding)
     }
 
   private fun readRoll(json: JsonObject): RollRecord =
@@ -170,6 +171,7 @@ object HarnessJson {
       forcedSettles = json.wholeNumber("forcedSettles").toInt(),
       stackedAtRest = json.wholeNumber("stackedAtRest").toInt(),
       deepestDiePenetrationMm = json.number("deepestDiePenetrationMm"),
+      medianTurnsAfterLanding = json.number("medianTurnsAfterLanding"),
     )
 
   private fun summary(summary: HarnessSummary): JsonObject =
@@ -186,6 +188,7 @@ object HarnessJson {
       put("stackedAtRest", summary.stackedAtRest)
       put("capsReached", summary.capsReached)
       put("deepestDiePenetrationMm", summary.deepestDiePenetrationMm)
+      put("turnsAfterLanding", distribution(summary.turnsAfterLanding))
       // Absent, not zero, for a run that measured no frames. A reader of the
       // file sees the same thing the scorecard says: nothing was measured.
       summary.frames?.let { put("frames", frames(it)) }
@@ -209,6 +212,7 @@ object HarnessJson {
       stackedAtRest = json.wholeNumber("stackedAtRest"),
       capsReached = json.wholeNumber("capsReached").toInt(),
       deepestDiePenetrationMm = json.number("deepestDiePenetrationMm"),
+      turnsAfterLanding = readDistribution(json.obj("turnsAfterLanding")),
       frames = json["frames"]?.let { readFrames(json.obj("frames")) },
     )
 

@@ -27,6 +27,14 @@ import java.util.Locale
  * sense `CorrectionLadder.withinBudget` already uses, and one comparison for
  * every row is worth more than arguing each one separately.
  *
+ * **[leastTurnsAfterLanding] is the one bar that is a floor**, and it is here
+ * because every other row can be met by a die that never rolls. Dice that drop
+ * dead on the felt settle fast, never stack, never overlap and never run out
+ * the cap — a perfect scorecard for a throw that reads as a number being
+ * placed rather than thrown. It is still a limit in the sense above; it is the
+ * direction that differs, and it is named so that nobody reading the table
+ * takes a small number for a good one.
+ *
  * @param stackedAtRest dice left standing on another die, over the whole run.
  *   Zero (Step 5.5).
  * @param postRestCorrections dice touched after they had come to rest. Zero,
@@ -53,6 +61,11 @@ import java.util.Locale
  *   [TargetOutcome.NotMeasured] against it rather than passing it — the one
  *   rule that keeps a headless run from quietly claiming a frame rate
  *   ([FrameTimes]).
+ * @param leastTurnsAfterLanding how far the middle die must turn after it
+ *   first touches the table, in whole turns — **a floor, not a ceiling**. One
+ *   whole turn is the bar because that is about what it takes to see a die
+ *   topple from the face it landed on onto the one it is read from; below it a
+ *   die is arriving and stopping rather than rolling (`Tumble`).
  * @param droppedSteps steps a late frame never paid for, over a paced run.
  *   Zero: the roll comes to the same faces either way, so what this catches is
  *   a frame that could not keep up, which is what Step 5.7 is about
@@ -70,6 +83,7 @@ data class HarnessTargets(
   val deepestDiePenetrationMm: Double = DEEPEST_PENETRATION_MM,
   val p99StepWallMillis: Double = SettleRule.TIMESTEP_SECONDS * MILLIS_PER_SECOND,
   val p99FrameMillis: Double = P99_FRAME_MILLIS,
+  val leastTurnsAfterLanding: Double = LEAST_TURNS_AFTER_LANDING,
   val droppedSteps: Long = 0,
 ) {
   /**
@@ -96,6 +110,7 @@ data class HarnessTargets(
         // brought one back would show up here rather than pass unnoticed.
         atMost("forced settles", summary.forcedSettles, forcedSettles),
         millimetres("deepest die-die overlap", summary.deepestDiePenetrationMm, deepestDiePenetrationMm),
+        atLeast("turns after landing", summary.turnsAfterLanding.median, leastTurnsAfterLanding),
         millis("p99 step time", summary.stepWallMillis.p99, p99StepWallMillis),
         frameTime(summary.frames),
         dropped(summary.frames),
@@ -143,6 +158,23 @@ data class HarnessTargets(
     measured: Long,
     bar: Long,
   ): TargetResult = TargetResult(name, bar.toString(), measured.toString(), TargetOutcome.of(measured <= bar))
+
+  /**
+   * The one row scored the other way up, with its bar written so it reads as
+   * one: `>= 1.00` rather than `1.00`, because a column of ceilings with a
+   * single floor hidden in it is a table that lies to whoever skims it.
+   */
+  private fun atLeast(
+    name: String,
+    measured: Double,
+    bar: Double,
+  ): TargetResult =
+    TargetResult(
+      name,
+      written(">= %.2f", bar),
+      written("%.2f", measured),
+      TargetOutcome.of(measured >= bar),
+    )
 
   private fun share(
     name: String,
@@ -205,6 +237,17 @@ data class HarnessTargets(
 
     /** A sixtieth of a second, which is Step 5.7's frame budget at twenty dice. */
     const val P99_FRAME_MILLIS: Double = 16.6
+
+    /**
+     * How far the middle die must turn once it is down, in whole turns.
+     *
+     * One turn, because that is roughly what it takes to watch a die topple
+     * off the face it landed on onto the one it is read from. It is a
+     * judgement about what a thrown die looks like rather than a measurement
+     * of what this engine does, which is the same footing every other bar
+     * here is on.
+     */
+    const val LEAST_TURNS_AFTER_LANDING: Double = 1.0
 
     /** What the frame rows are called, in one place so the table and its tests agree. */
     const val FRAME_TIME: String = "p99 frame time"

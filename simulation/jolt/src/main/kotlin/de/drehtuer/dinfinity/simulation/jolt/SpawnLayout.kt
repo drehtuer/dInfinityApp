@@ -297,8 +297,16 @@ class SpawnLayout(
   }
 
   companion object {
-    /** How far above the tray floor the lowest band of dice is let go. */
-    const val DROP_HEIGHT_MM: Double = 40.0
+    /**
+     * How far above the tray floor the lowest band of dice is let go.
+     *
+     * Raised from 40 mm, which gave a die about 90 ms of air — less than half
+     * a turn at the spin it was thrown with, so it arrived barely rotated and
+     * the felt took the rest. Measured on the Pixel 10a as part of the change
+     * that took the middle die from 0.89 turns after landing to 1.69
+     * (`Tumble`, `docs/physics-and-rendering.md`).
+     */
+    const val DROP_HEIGHT_MM: Double = 60.0
 
     /**
      * And how much higher each band above it is — enough that two dice in
@@ -322,11 +330,26 @@ class SpawnLayout(
     /** And the fastest. */
     const val THROW_DOWN_MAX_MM_PER_SECOND: Double = 700.0
 
-    /** How much sideways a die carries out of the hand. */
-    const val THROW_LATERAL_MM_PER_SECOND: Double = 250.0
+    /**
+     * How much sideways a die carries out of the hand.
+     *
+     * **This is the constant that decides whether dice roll.** At the 250 mm/s
+     * it used to be, a die travelled about 34 mm before it landed — it came
+     * down roughly where it was let go, with nothing to convert into
+     * tumbling, which is what "they get stuck on the table" was. It is a
+     * throw across the felt now, so a die reaches a wall and comes off it.
+     */
+    const val THROW_LATERAL_MM_PER_SECOND: Double = 1100.0
 
-    /** Enough spin that the starting orientation tells you nothing. */
-    const val SPAWN_SPIN_RADIANS_PER_SECOND: Double = 30.0
+    /**
+     * Enough spin that the starting orientation tells you nothing.
+     *
+     * Well under the body's own 200 rad/s cap, so this is a choice rather
+     * than a ceiling being met. Raised with [THROW_LATERAL_MM_PER_SECOND]: on
+     * its own more spin is mostly spent in the air, and it is the pair that
+     * moves the figure that matters.
+     */
+    const val SPAWN_SPIN_RADIANS_PER_SECOND: Double = 75.0
 
     /** And a floor under it, so "random" never comes out as "barely turning". */
     const val SPIN_FLOOR_SHARE: Double = 0.5
