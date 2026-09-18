@@ -170,6 +170,14 @@ the prototype has a Save button.
 7. **The designer's canvas paper is white** — a literal, not a token. Is that
    the die's real painted ground, or chrome that should follow the theme?
 8. **`gap: 6px` in the face strip** is not on the 4/8/12 scale. Deliberate?
+9. **A settings row has no narrow state.** It is a flex row of a
+   `min-width: 0` text column and a `flex: none` segmented control, which in a
+   browser means the control keeps its width and the page overflows sideways.
+   A phone has nowhere to overflow to, so the app puts the control **under**
+   the text once less than 120 dp is left for the sentence
+   (`docs/architecture.md`, "Settings"). It is the one place on that screen
+   where the app answers a question the drawing does not ask, and it is worth
+   drawing so that nobody invents a third answer.
 
 ## Where the screens live in the code
 

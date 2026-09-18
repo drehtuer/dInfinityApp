@@ -1156,6 +1156,49 @@ on it. Every example on it is a button that puts that formula in the tray's
 field, and `NotationReferenceTest` parses all of them, so the screen cannot
 offer a formula the app would refuse (`docs/dice-notation.md`).
 
+**Every setting is one row.** Its name and the sentence under it on the left,
+the control on the right and centred against the text, a hairline between rows
+and a 2 dp rule between blocks — which is what the design draws
+(`design/dInfinityPhone.dc.html`, the Settings screen: a flex row of a
+`min-width: 0` text column and a `flex: none` segmented control). The app used
+to stack the three, so every setting was three blocks tall and the screen ran
+to twice the length of the drawing. Where the app and the design disagree about
+how something looks, the design wins. `SettingRow` is that layout — a two-slot
+`Layout` rather than a `Row`, because the decision it makes cannot be made with
+weights.
+
+**The decision the drawing does not make is what happens when the control will
+not fit beside the text.** A browser can let `flex: none` overflow the viewport
+and a phone cannot, so the control goes **under** the text, at the left edge,
+and the row grows. The threshold is the text column's own floor, 120 dp: the
+control is measured first, at its natural width, because it is the half that
+cannot be squeezed, and if what is left is narrower than that floor the row
+stacks. The two alternatives are both worse — a sentence set in 60 dp is a
+column of single words, and a squeezed control either clips an option's label
+or drops it under the 48 dp touch target. The consequence worth knowing: below
+roughly 300 dp of room *every* row stacks, so the screen degrades to what it
+used to be rather than to something broken. That is narrower than any phone the
+app ships against and is exactly what a split-screen pane is.
+
+**Two things stay blocks rather than rows.** The accent grid is four columns of
+swatches and would have nothing left of itself in half a row, and About is not
+a control at all. Haptics and sound is the third shape — a section heading and
+sentence with **two** rows under it — because the sentence is about both
+switches, and because the design has no sound switch at all (`docs/TODO.md`,
+"Does the sound go?").
+
+**A boolean setting is a row like any other**, with the Off / On segmented
+read-out where a picker has its options. The whole row is `toggleable`, so the
+tap covers the sentence too. Its heading is its label now, which cost the three
+switches that stood alone a second label each: "Power saving" above "Do not
+draw the dice" was one row saying the same thing twice, and a screen reader
+read both. What is left of that in the code is `SettingRow`'s `readAsOne`: the
+name and the sentence are merged into one stop for a screen reader, **except**
+where the row itself already merges, because a merging node inside a merging
+node is withheld from it rather than joined to it — which made the power
+switch announce its state without ever saying which setting it was. That is a
+thing a test can see, and one does.
+
 | Control | Calls | What changes |
 | --- | --- | --- |
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |

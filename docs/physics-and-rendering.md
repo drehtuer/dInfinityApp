@@ -1442,10 +1442,15 @@ bordered box of controls sitting on bare felt.
 
 It is one component, `ui/common`'s `Plate`, because a plate is a token rather
 than a layout: six of them on one screen, each drawing its own shadow and its
-own padding, is six chances for the numbers to drift. **The app's plates are
-one column at the bottom of the tray** rather than four blocks in the
-prototype's corners — the controls have always been one stack, and where they
-sit is a separate question from what they stand on.
+own padding, is six chances for the numbers to drift.
+
+**The formula is in the top left corner**, 14 dp in and 12 dp down, where the
+design puts it and where a person writes down what they are about to throw. It
+used to be the last thing in a stack of controls at the bottom, and on a phone
+that meant the felt was a strip above a wall of plates. The rest of the
+controls — the saved rolls, the picker, the Roll button — are still that stack,
+which is a divergence from the design rather than an agreement with it, and it
+is written down in `docs/TODO.md` with what the phone showed.
 
 **Accent never touches felt.** Accent appears only *on* a plate, which is how
 an accent the player chooses freely and a shelf of tables stop being a pair
