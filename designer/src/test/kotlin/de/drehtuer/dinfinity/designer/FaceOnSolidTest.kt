@@ -224,8 +224,14 @@ class FaceOnSolidTest {
 
     val fit = FaceOnSolid.cellFitOf(face, FaceOutline.Circle)
 
-    assertEquals(CellFit.SQUARE_ON, fit)
-    assertEquals(Dot(0.25f, 0.75f), fit.of(Dot(0.25f, 0.75f)))
+    assertEquals(1.0, fit.scale, NEARLY)
+    assertEquals(1.0, fit.across, NEARLY)
+    assertEquals(0.0, fit.twist, NEARLY)
+    assertEquals(Dot(HALF, HALF), fit.origin)
+    listOf(Dot(0.25f, 0.75f), Dot(0.9f, 0.1f), Dot(0f, 1f)).forEach { dot ->
+      assertEquals(dot.x.toDouble(), fit.of(dot).x.toDouble(), NEARLY)
+      assertEquals(dot.y.toDouble(), fit.of(dot).y.toDouble(), NEARLY)
+    }
   }
 
   @Test
@@ -239,6 +245,31 @@ class FaceOnSolidTest {
 
     assertEquals(0.0, fit.twist, NEARLY)
     assertEquals(1 / 0.96, fit.scale, NEARLY)
+  }
+
+  @Test
+  fun `covering does not care which way round the boundary is wound`() {
+    // The catalogue's own outlines are all wound one way, so the other way is
+    // a claim in a comment unless something asks. An outward normal picked
+    // the wrong way round would make every ratio negative and every mask
+    // collapse to nothing.
+    val square = listOf(1.0 to -1.0, 1.0 to 1.0, -1.0 to 1.0, -1.0 to -1.0)
+    val corners = listOf(2.0 to 0.0, 0.0 to -2.0)
+
+    assertEquals(2.0, FaceOnSolid.covering(square, corners), NEARLY)
+    assertEquals(2.0, FaceOnSolid.covering(square.reversed(), corners), NEARLY)
+  }
+
+  @Test
+  fun `and an edge through the middle of its own polygon is skipped, not divided by`() {
+    // No outline of any catalogue face is degenerate, and a divisor that
+    // reaches nought is still worth not dividing by: what comes back is the
+    // answer the remaining edges give rather than an infinity.
+    val flat = listOf(1.0 to 0.0, -1.0 to 0.0, 0.0 to 1.0)
+
+    val needed = FaceOnSolid.covering(flat, listOf(0.0 to 2.0))
+
+    assertTrue("a degenerate edge was divided by: $needed", needed.isFinite())
   }
 
   /** How far a place in a cell is from a point on the canvas put into one. */

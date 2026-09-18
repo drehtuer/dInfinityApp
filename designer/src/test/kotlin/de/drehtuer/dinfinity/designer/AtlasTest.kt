@@ -66,6 +66,25 @@ class AtlasTest {
   }
 
   @Test
+  fun `every cell carries the turn and size that put it on its own face`() {
+    // Not the grid's business and not one answer for the die: face 7 of a d20
+    // sits at its own angle on the solid, so the canvas has to be turned by
+    // its own amount to land on it (`FaceOnSolid.cellFitOf`).
+    val plan = Atlas.plan(Drawings.drawn(Drawings.die(DieShape.Icosahedron), 0, 7))
+    val fits = plan?.cells?.map(AtlasCell::fit).orEmpty()
+
+    assertEquals(2, fits.size)
+    fits.forEach { fit ->
+      // 1/0.96: the canvas draws its outline at 0.48 and a cell's half is 0.5.
+      assertEquals(1 / 0.96, fit.scale, 1e-6)
+    }
+    assertTrue(
+      "two faces of a d20 are turned the same way, which they are not on the solid",
+      fits[0].across != fits[1].across,
+    )
+  }
+
+  @Test
   fun `a cell nobody drew on is not in the plan, so it stays transparent`() {
     val plan = Atlas.plan(Drawings.drawn(Drawings.die(DieShape.Cube), 0, 3))
 

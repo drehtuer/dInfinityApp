@@ -842,6 +842,28 @@ class RollScreenTest {
     return presenter
   }
 
+  @Test
+  fun `the way back to the designer is on the tray only when there is one`() {
+    // The banner itself is `BackToDesignerTest`'s; what this asks is that the
+    // screen draws it at all, and that every other way onto the tray has no
+    // banner on it (`docs/face-designer.md`, "The way back").
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        onBackToDesigner = {},
+      )
+    }
+
+    compose.onNodeWithTag(RollTestTags.BACK_TO_DESIGNER).assertIsDisplayed()
+  }
+
+  @Test
+  fun `and every other way onto the tray has none`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.BACK_TO_DESIGNER).assertDoesNotExist()
+  }
+
   private fun presenter(
     tray: Tray,
     rolls: Rolls,

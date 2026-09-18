@@ -43,17 +43,18 @@ import de.drehtuer.dinfinity.ui.common.Plate
  * prototype's colour was carrying — "this is not an ordinary tray" — the
  * kicker line carries instead.
  *
+ * It takes no `modifier`. It is drawn in exactly one place — the bottom of
+ * the tray's column of controls — and a slot for the caller to place it with
+ * would be a slot with one caller and one value in it.
+ *
  * @param onBack where it goes: the designer, on the die being tested.
  */
 @Composable
-internal fun BackToDesigner(
-  onBack: () -> Unit,
-  modifier: Modifier = Modifier,
-) {
+internal fun BackToDesigner(onBack: () -> Unit) {
   val said = stringResource(R.string.roll_back_to_designer)
   Plate(
     modifier =
-      modifier
+      Modifier
         .clickable(onClick = onBack)
         .semantics { contentDescription = said }
         .testTag(RollTestTags.BACK_TO_DESIGNER),

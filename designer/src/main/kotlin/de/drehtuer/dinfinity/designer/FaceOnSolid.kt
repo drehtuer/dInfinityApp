@@ -45,11 +45,14 @@ class FaceBasis(
  * into the other would distort every line somebody drew rather than leave a
  * margin (`docs/TODO.md`, 4.6).
  *
+ * Not a `data class`, for the reason [FaceBasis] is not one: it is a frame a
+ * drawing is put through, never a value anything compares, copies or prints.
+ *
  * @param across how far one whole canvas width goes across the cell.
  * @param twist and how far it goes down it, which is the turn.
  * @param origin the canvas point that sits in the middle of the cell.
  */
-data class CellFit(
+class CellFit(
   val across: Double,
   val twist: Double,
   val origin: Dot,
@@ -196,8 +199,12 @@ object FaceOnSolid {
    * edges. How far *past* an edge a corner reaches is the ratio of the two
    * supports along that edge's normal, and the size needed is the largest
    * such ratio over every corner and every edge.
+   *
+   * Internal rather than private so that the two cases the catalogue's own
+   * polygons never produce — a boundary wound the other way, and an edge that
+   * passes through the middle — are a test rather than a claim in a comment.
    */
-  private fun covering(
+  internal fun covering(
     drawn: List<Pair<Double, Double>>,
     real: List<Pair<Double, Double>>,
   ): Double {
