@@ -243,24 +243,17 @@ class RollPresenter(
    *   than starting a new one (`docs/physics-and-rendering.md`, "Shake input").
    */
   fun roll(shake: List<ShakeSample> = emptyList()): Boolean {
-    // A chain that is waiting is continued rather than restarted: the shake in
-    // the player's hand is for the die the explosion earned, and throwing a
-    // fresh formula instead would drop the dice already down.
-    machine.throwEarned(shake)?.let { earned ->
+    // A roll that is waiting on a hand is continued rather than restarted.
+    val more = waiting(shake)
+    if (more != null) {
       publish()
-      throwIt(earned)
+      throwIt(more)
       return true
     }
 
-    // And so are the dice a throw gave up on. They used to wait for a button
-    // of their own, which made them the one re-throw in the app a shake could
-    // not reach — so a player who had been told to shake stood over a tray
-    // that ignored them (`docs/physics-and-rendering.md`, "Starting a roll").
-    if (throwUnsettled(shake)) return true
-
     // A roll that has landed is a roll that is over. Throwing again is one act
-    // — one press, one shake — not "put the total away" followed by "now
-    // throw", which is what a shake could never have expressed anyway.
+    // — one shake — not "put the total away" followed by "now throw", which is
+    // what a shake could never have expressed anyway.
     if (state is RollState.Settled) machine.clear()
 
     val spec = machine.throwDice(shake) ?: return false
@@ -268,6 +261,26 @@ class RollPresenter(
     throwIt(spec)
     return true
   }
+
+  /**
+   * The throw this roll is part-way through, or null when there is none.
+   *
+   * Two ways a roll can be waiting on a hand, and a shake answers both:
+   *
+   * - **a chain earned a throw.** The shake is for the die the explosion
+   *   earned, and throwing a fresh formula instead would drop the dice
+   *   already down.
+   * - **a throw gave up on some of its dice.** These used to wait for a
+   *   button of their own, which made them the one re-throw in the app a
+   *   shake could not reach — so a player who had been told to shake stood
+   *   over a tray that ignored them
+   *   (`docs/physics-and-rendering.md`, "Starting a roll").
+   *
+   * They cannot both be true: a throw either lands and is scored, which is
+   * where a chain earns its next die, or it gives up and is not scored at all.
+   */
+  private fun waiting(shake: List<ShakeSample>): ThrowSpec? =
+    machine.throwEarned(shake) ?: machine.throwUnsettled(shake)
 
   /**
    * Hands one throw to the tray, and hands the tray the one after it.
@@ -355,25 +368,6 @@ class RollPresenter(
         }
       },
     )
-  }
-
-  /**
-   * Throws the dice a roll gave up on, and nothing else.
-   *
-   * The dice that were read are read: they are off the table and out of the
-   * way, and throwing them again would throw away answers the roll already
-   * has. What goes back in the air is only what never settled
-   * (`docs/physics-and-rendering.md`).
-   *
-   * Private, and reached only through [roll]. There is one way to throw dice
-   * in this app and it is a shake; a second entry point would be a second way
-   * in with its own rules about what is waiting.
-   */
-  private fun throwUnsettled(shake: List<ShakeSample> = emptyList()): Boolean {
-    val again = machine.throwUnsettled(shake) ?: return false
-    publish()
-    throwIt(again)
-    return true
   }
 
   /**

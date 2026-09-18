@@ -384,43 +384,7 @@ class RollMachine(
     rounding: Rounding = defaultRounding,
   ): Landed? {
     val flight = inFlight ?: return null
-
-    val adding = flight.adding
-    val replacing = flight.replacing
-    when {
-      adding.isEmpty() -> {
-        flight.faces = outcome.faces
-        flight.drivenBy = drivenBy
-        flight.cameToRest(flight.prepared.plan.dice, outcome)
-      }
-      // The dice a roll gave up on, come back. They are the plan's own dice,
-      // so their faces go to the indices they were thrown for rather than
-      // onto the end of the added ones — the roll is the same roll and the
-      // dice that were already read keep the faces they were read on.
-      replacing.isNotEmpty() -> {
-        flight.faces =
-          flight.faces +
-            replacing.mapIndexed { at, index ->
-              index to
-                requireNotNull(outcome.faces[at]) {
-                  "the re-thrown ${adding[at].die.id} was thrown and reported no face"
-                }
-            }
-        flight.cameToRest(adding, outcome)
-      }
-      // In the order they were asked for, which is the order they were thrown
-      // in: the scoring is re-run from the beginning over these faces, and a
-      // face that went to the wrong chain would be a different roll.
-      else -> {
-        adding.forEachIndexed { at, die ->
-          flight.added +=
-            requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
-        }
-        flight.cameToRest(adding, outcome)
-      }
-    }
-    flight.adding = emptyList()
-    flight.replacing = emptyList()
+    readInto(flight, outcome, drivenBy)
 
     val scoring =
       RunningScore.of(
@@ -466,6 +430,59 @@ class RollMachine(
       }
       is Scoring.Scored -> Landed.Complete(complete(flight, scoring.result))
     }
+  }
+
+  /**
+   * Files the faces a throw came to, which is a different thing for each of
+   * the three kinds of throw a roll is made of.
+   *
+   * - **The first throw** is the one the plan describes, so its faces *are*
+   *   the roll's, and the hand that made it is the hand the record keeps.
+   * - **Dice a roll gave up on, come back.** They are the plan's own dice, so
+   *   their faces go to the indices they were thrown for rather than onto the
+   *   end of the added ones — it is the same roll, and the dice that were
+   *   already read keep the faces they were read on.
+   * - **Dice a chain earned** are dice the plan never mentioned, and they are
+   *   replayed by position, in the order they were asked for. A face that
+   *   went to the wrong chain would be a different roll.
+   *
+   * The middle case used to be the last one, which left the plan's own dice
+   * with no face at all and made scoring a re-thrown roll throw.
+   */
+  private fun readInto(
+    flight: InFlight,
+    outcome: SimulationOutcome,
+    drivenBy: List<ShakeSample>,
+  ) {
+    val adding = flight.adding
+    val replacing = flight.replacing
+    when {
+      adding.isEmpty() -> {
+        flight.faces = outcome.faces
+        flight.drivenBy = drivenBy
+        flight.cameToRest(flight.prepared.plan.dice, outcome)
+      }
+      replacing.isNotEmpty() -> {
+        flight.faces =
+          flight.faces +
+          replacing.mapIndexed { at, index ->
+            index to
+              requireNotNull(outcome.faces[at]) {
+                "the re-thrown ${adding[at].die.id} was thrown and reported no face"
+              }
+          }
+        flight.cameToRest(adding, outcome)
+      }
+      else -> {
+        adding.forEachIndexed { at, die ->
+          flight.added +=
+            requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
+        }
+        flight.cameToRest(adding, outcome)
+      }
+    }
+    flight.adding = emptyList()
+    flight.replacing = emptyList()
   }
 
   /**
