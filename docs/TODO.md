@@ -128,9 +128,9 @@ is drawn over the table"):
       is most of a wall.** The formula has moved to the corner the design puts
       it in and the felt is clear again above the controls; what is left below
       is the saved rolls, the picker and the Roll button.
-      Seen on the Pixel 10a with the straight-down table view: the result, the
-      odds, the saved rolls, the picker and the button are five plates one
-      above another, and between them they cover something like half the felt —
+      Seen on the Pixel 10a with the straight-down table view: the odds, the
+      saved rolls, the picker and the button are four plates one above another,
+      and between them they cover a good deal of the felt —
       which is the banded column the tray stopped being, drawn in shadow
       instead of in rules. The design puts four small plates in the corners of
       a clear table (formula top left, hint bottom left, the counting plate
@@ -139,11 +139,37 @@ is drawn over the table"):
       right and this is the divergence to close**, and it is a layout change
       rather than a plate change — which is why it is here rather than in the
       change that made the plates
-- [ ] **Where the result goes, now that the table is worth looking at.** The
-      settled result is a full-width plate across the middle, and a die can
-      land under it. It did not matter when the tray was a leaning shot with a
-      small patch of felt; it matters now. The design's answer is a sheet that
-      comes up from the bottom, which is also where the thumb is
+
+**Decided while making the result a pull-up**, where the brief left a choice
+(`docs/physics-and-rendering.md`, "What is drawn over the table"):
+
+- **A second component rather than an extension of `ui/common`'s `Sheet`.**
+  That one is the design's *modal* sheet: a `Dialog` with a scrim, a title and
+  a row of actions, dismissed by a tap outside or by Back. This one is none of
+  those things — it is part of the screen, it has no scrim, it cannot be
+  dismissed at all, and the thing it does that matters is being draggable. The
+  two share a silhouette and nothing else, and bending the modal one into both
+  would have put a `Dialog` behind the tray.
+- **Two rests, not three.** Up and parked. A half-way stop is a position
+  nobody can aim at on a phone and a third answer for every test to make; the
+  whole table is visible at the parked rest, which is what the request asked
+  for.
+- **The grip drags, the handle taps.** A 4 dp bar is a thing to look at rather
+  than a thing to hit, so the band carrying the handle *and* the total takes
+  the drag, and the handle alone is the 48 dp button. A tap on the total would
+  be a control sitting on the one number the screen exists to show.
+- **`Modifier.draggable` over an `Animatable`, not `AnchoredDraggableState`.**
+  The anchored-draggable API holds the same two positions, but it is still
+  experimental and it would swallow exactly the decisions worth testing. They
+  are in `SheetSlide` instead — plain Kotlin, JVM tests — and what is left in
+  Compose is a drag and a spring.
+- **No close button**, where the prototype has one: see the doc.
+- **The arrival waits for the measurement inside the coroutine**, not in the
+  effect's key. An effect keyed on "has it been measured yet" is started
+  *before* the measurement and restarted after it, so the slide began on the
+  first run and was cancelled by the second — which parked the sheet below the
+  bottom edge with no way back. It cost an afternoon; it is written down so it
+  costs nobody else one.
 
 **Decided while building the plates**, where the design left the app a choice:
 
@@ -190,6 +216,20 @@ is drawn over the table"):
 - [ ] *Judge a second shake on the phone:* a shake at dice still in the air now keeps them moving rather than doing nothing — it starts no throw, and its moments are numbered on the running roll's clock so they reach it at all, which is what was actually broken (`docs/physics-and-rendering.md`, "Shake input"). Decided along the way: a second shake is **more of the same roll**, not a throw that replaces it, because the dice are the ones already tumbling. Whether that reads as the dice answering the hand, and whether a roll can now be kept going longer than anybody wants, needs a phone
 - [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
 - [ ] **Wire the one-finger touch to a hand re-throw.** The two decisions underneath it are built and tested: `TrayPick` (`render/filament`) says which die a finger is on, and `PickUp` (`core/notation`) says which dice a hand may go near — a group carrying `!` or `r n` offers none, because a die another die was thrown because of cannot be thrown again without the roll holding a die nothing asks for. The throw itself is the one an explosion already makes (`ThrowSpec.among`), so there is no second path to a number to build. What is missing is not code: it is **what the history says about a roll a die was thrown again in**, under "Open questions" below. Until that is answered the gesture stays unspent (`docs/physics-and-rendering.md`, "Picking a die up and throwing it again")
+- [ ] **The welcome and the result sheet share the bottom edge.** The
+      first-launch screen is a full-screen takeover whose four buttons run to
+      the bottom of the phone, and that is exactly where the result comes up
+      now — so a roll thrown from the saved-roll strip while the welcome is
+      still up puts the breakdown under `Add somebody else's dice`. Found by a
+      test rather than by an eye, and nothing is lost (the welcome is dismissed
+      by any of its buttons), but the screen should probably not draw a result
+      behind a takeover at all
+- [ ] *Judge the pull-up on the phone:* whether the result arriving by itself
+      reads as the sheet answering the roll rather than as something landing on
+      the table, whether the grip is where a thumb already is, and whether the
+      parked sheet leaves enough felt to see a die that landed at the bottom
+      edge. Where it rests and what a flick settles to are JVM-tested; the feel
+      is not (`docs/physics-and-rendering.md`, "What is drawn over the table")
 - [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] **Decided: braced notation, so a set's own dice can be typed and picked.**
       Plain notation spells `dN`, `d%` and `dF`, so `skull-d6` has nothing a

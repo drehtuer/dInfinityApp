@@ -1457,9 +1457,10 @@ an accent the player chooses freely and a shelf of tables stop being a pair
 anybody has to check — a green accent on green felt cannot happen if the accent
 is never on the felt, and with a colour picker there is no list of pairs to
 check in the first place (question 10). So the Roll button, "See the odds", a
-refusal, the result sheet and both asking plates are each on one, and the
-pairing that has to be legible is accent-on-`--color-bg`: one pairing rather
-than a matrix.
+refusal and both asking plates are each on one — and the result sheet, which is
+not a plate but an opaque surface of its own, keeps the same rule for the same
+reason. The pairing that has to be legible is accent-on-`--color-bg`: one
+pairing rather than a matrix.
 
 Where a plate wants the accent it wants its **700 step**, because a kicker is
 10 dp and a `+` is 13 and the accent as chosen only clears the contrast bar for
@@ -1475,6 +1476,51 @@ filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
 | Counting | across the bottom | how far through the reading a roll is |
 | Another throw earned | across the bottom | a chain that stopped, and the shake it wants |
 | Could not settle | across the bottom | how many dice never stopped, and what to do about them |
+
+**The result is a pull-up sheet, not a plate in the stack**
+(`design/dInfinity.dc.html`, options 1e–1g; the prototype draws it as
+`position:absolute;bottom:0` with `animation:dz-up`). It comes up from the
+bottom edge by itself once the dice have been read, can be pushed back down
+until the whole table is visible, and can be pulled up again.
+
+It used to be the first plate of the column of controls: a full-width band
+across the middle of the tray that nothing could move. That did not matter when
+the tray was a leaning shot with a small patch of felt; with the straight-down
+table view it is most of the table, and **a die can land under it**.
+
+Three things are fixed about it:
+
+- **It arrives on its own.** Nobody reaches for the number they have just
+  rolled, so the sheet slides up from below the bottom edge as soon as there is
+  a total.
+- **It never goes away while the roll is on the screen.** Pushed all the way
+  down it still shows its grip — the 2 dp top rule, the handle and the total —
+  so the number stays readable and the sheet stays grabbable. A result that
+  could be dismissed is a result somebody can lose, and the only way back to it
+  would be to throw the dice again, which is the one act this app cannot undo.
+  There is therefore no close button, where the prototype has one.
+- **The column of controls is lifted by the parked height**, so the Roll
+  button, the picker and the saved rolls sit above a sheet that has been pushed
+  down rather than under it. Up, the sheet covers them, which is what the
+  prototype does too: a result being read is the thing in front of the player,
+  and it is one push out of the way.
+
+**What is dragged is the grip; what is tapped is the handle.** The bar is 4 dp
+of ink and a thumb is not, so the whole band above the breakdown takes the
+drag. The tap is narrower on purpose — the total is the one number the screen
+exists to show, and a tap on it moving the sheet would be a control nobody
+asked for sitting on top of the result. So the handle alone is the button, 48
+dp tall and the width of the sheet, and every rest is reachable from it without
+a drag: a gesture is not an interface. It carries its own name, the label of
+what a tap will do and which rest the sheet is in, because the bar looks
+identical up and down and a screen reader has nothing else to go on.
+
+Where the sheet rests, what a drag does to that and what a flick settles to are
+arithmetic in `feature/roll`'s `SheetSlide`, under JVM tests; Compose is left
+with the gesture and the drawing. A flick wins over a position — a sheet thrown
+at the bottom edge from an inch below the top means down — and "a flick" is
+measured in sheet heights per second rather than pixels, so it is the same
+gesture on every phone and for a one-line breakdown as for a twenty-die one.
 
 **The counting plate is the home the running readout did not have.** It was the
 most important unstyled thing in the app: one line of text, sitting where

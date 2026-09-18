@@ -14,12 +14,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -102,6 +105,9 @@ fun RollScreen(
   // to the tray (`design/dInfinity.dc.html`, option 2a).
   var editing by rememberSaveable { mutableStateOf(false) }
 
+  // How much of the result sheet stays on the bottom edge ([TheResult]).
+  var parked by remember { mutableFloatStateOf(0f) }
+
   ShakeToRoll(presenter, enabled = shakeToRoll)
   KeepTheScreenAwake()
   LockTheOrientation()
@@ -133,9 +139,9 @@ fun RollScreen(
     Controls(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
-      onDoodle = onDoodle,
       strip = strip,
       modifier = Modifier.align(Alignment.BottomCenter),
+      parked = parked,
     )
 
     // The formula in the top left corner of the table, which is where the
@@ -182,8 +188,45 @@ fun RollScreen(
       )
     }
 
+    TheResult(presenter, onDoodle, onParked = { parked = it }, modifier = Modifier.align(Alignment.BottomCenter))
+
     if (firstLaunch) FirstLaunch(presenter, whatIsThere, onWelcomeSeen, onImportCollection, onAddSets)
   }
+}
+
+/**
+ * What the dice came to, over everything at the bottom of the screen and not in
+ * the column with the controls ([PullUpResult]).
+ *
+ * A result is read and then pushed out of the way. While it was a plate in that
+ * column there was no way to see the felt under it, which with the
+ * straight-down table view is where a die may well have landed
+ * (`docs/physics-and-rendering.md`, "What is drawn over the table").
+ *
+ * Nothing at all in every other state: a roll that has not landed has no total
+ * to carry, and what those states say is the [Outcome] plate's.
+ *
+ * @param onParked how much of the sheet stays on the bottom edge when it is
+ *   pushed all the way down. Measured rather than known: it is the height of a
+ *   grip with a number in it. The screen lifts its column of controls by it, so
+ *   the Roll button is never under a sheet that has been parked.
+ */
+@Composable
+private fun TheResult(
+  presenter: RollPresenter,
+  onDoodle: (String) -> Unit,
+  onParked: (Float) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val settled = presenter.state as? RollState.Settled ?: return
+  PullUpResult(
+    result = settled.result,
+    divides = settled.divides,
+    onRound = presenter::round,
+    onDoodle = onDoodle,
+    onParked = onParked,
+    modifier = modifier,
+  )
 }
 
 /**
@@ -245,9 +288,16 @@ private const val FIRST_ROLL = "1d20"
 private fun Controls(
   presenter: RollPresenter,
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
-  onDoodle: (String) -> Unit,
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
   modifier: Modifier = Modifier,
+  /**
+   * How much of the result sheet is parked on the bottom edge, in pixels.
+   *
+   * The column is lifted by it, so the Roll button, the picker and the saved
+   * rolls are above a sheet that has been pushed down rather than under it.
+   * Zero whenever there is no sheet, which is every state but a settled roll.
+   */
+  parked: Float = 0f,
 ) {
   val state = presenter.state
   Column(
@@ -255,7 +305,8 @@ private fun Controls(
       modifier
         .fillMaxWidth()
         .safeDrawingPadding()
-        .padding(EDGE),
+        .padding(EDGE)
+        .padding(bottom = with(LocalDensity.current) { parked.toDp() }),
     verticalArrangement = Arrangement.spacedBy(12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
@@ -265,8 +316,6 @@ private fun Controls(
       onThrowMore = { presenter.roll() },
       onThrowAgain = { presenter.throwUnsettled() },
       onGiveUp = presenter::clear,
-      onRound = presenter::round,
-      onDoodle = onDoodle,
     )
     // The odds for the formula in the field, with the throw that just landed
     // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
@@ -504,29 +553,13 @@ private fun Outcome(
   onThrowMore: () -> Unit,
   onThrowAgain: () -> Unit,
   onGiveUp: () -> Unit,
-  onRound: (Rounding) -> Unit,
-  onDoodle: (String) -> Unit,
 ) {
   when (state) {
-    is RollState.Settled ->
-      Plate(modifier = Modifier.fillMaxWidth()) {
-        Column(
-          horizontalAlignment = Alignment.CenterHorizontally,
-          verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-          Text(
-            text = state.result.total.toString(),
-            // The system's display size, in the heading face at 800. It used
-            // to be `displayMedium`, which the theme never defines — so the
-            // one number the whole screen exists to show was set in Material's
-            // own default face at Material's own weight (`theme/Theme.kt`).
-            style = MaterialTheme.typography.displayLarge.tabular(),
-            color = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier.testTag(RollTestTags.TOTAL),
-          )
-          ResultSheet(result = state.result, divides = state.divides, onRound = onRound, onDoodle = onDoodle)
-        }
-      }
+    // Nothing here. A settled roll is a sheet that comes up from the bottom
+    // edge and can be pushed back down ([PullUpResult]) — it used to be the
+    // first plate of this column, which made it a band across the middle of
+    // the tray that nothing could move.
+    is RollState.Settled -> Unit
 
     // A roll that could not finish. It says so and offers the dice back rather
     // than reading them off whatever face they were nearest, which is the one
@@ -742,7 +775,14 @@ object RollTestTags {
   /** The Down / Nearest / Up control, shown only for a formula that divides. */
   const val ROUNDING: String = "roll:sheet:rounding"
 
-  fun roundingOf(rounding: de.drehtuer.dinfinity.core.model.Rounding): String = "roll:sheet:rounding:${rounding.id}"
+  fun roundingOf(rounding: Rounding): String = "roll:sheet:rounding:${rounding.id}"
+
+  /**
+   * The result as a pull-up: the sheet itself, and the handle that moves it
+   * between its two rests (`design/dInfinity.dc.html`, options 1e–1g).
+   */
+  const val PULL_UP: String = "roll:pull-up"
+  const val RESULT_HANDLE: String = "roll:pull-up:handle"
 
   /** The breakdown under the total (`design/dInfinity.dc.html`, option 1f). */
   const val SHEET: String = "roll:sheet"

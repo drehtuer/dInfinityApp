@@ -326,11 +326,21 @@ class DInfinityScreensTest {
     }
     val navigation = app()
     go(navigation, Destination.Roll)
+    // Past the welcome first. It is a full-screen takeover whose buttons run to
+    // the bottom edge, which is where the result sheet comes up now — so a long
+    // press on a die in the breakdown would land on `Add somebody else's dice`
+    // rather than on the die.
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
     compose.waitUntil(PATIENCE) {
       compose.onAllNodesWithTag(RollTestTags.dieAt(0)).fetchSemanticsNodes().isNotEmpty()
     }
+    // And then for the sheet carrying it to stop moving. The result comes up
+    // from the bottom edge (`PullUpResult`), so a breakdown that exists is not
+    // yet a breakdown standing still — and a long press on a chip that slides
+    // out from under the finger is a drag, which cancels it.
+    compose.waitForIdle()
     compose.onNodeWithTag(RollTestTags.dieAt(0)).performTouchInput { longClick() }
     compose.onNodeWithTag(RollTestTags.doodleOf(0)).performClick()
 
