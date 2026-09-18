@@ -315,7 +315,11 @@ private fun SavedRollsPlate(
   presenter: RollPresenter,
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
 ) {
-  Plate(modifier = Modifier.fillMaxWidth()) {
+  // Hugging rather than filling: what is inside is either a row of saved rolls
+  // or the one "Save a roll" box, and a plate the width of the screen with a
+  // box in the corner of it is a band, which is the thing the tray stopped
+  // being (`docs/physics-and-rendering.md`, "What is drawn over the table").
+  Plate {
     strip { formula, from ->
       // A tap on the strip is a formula *and* which roll put it there, so the
       // throw can be recorded as that roll's. Typed formulas come with none.

@@ -134,6 +134,24 @@ is drawn over the table"):
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
 
+- [ ] **The plates are a stack at the bottom, and on a phone that is a wall.**
+      Seen on the Pixel 10a with the straight-down table view: the result, the
+      odds, the saved rolls, the picker and the button are five plates one
+      above another, and between them they cover something like half the felt —
+      which is the banded column the tray stopped being, drawn in shadow
+      instead of in rules. The design puts four small plates in the corners of
+      a clear table (formula top left, hint bottom left, the counting plate
+      across the bottom) and puts the dice picker in a strip under the app bar,
+      with no button at all: you shake, or you tap the table. **The design is
+      right and this is the divergence to close**, and it is a layout change
+      rather than a plate change — which is why it is here rather than in the
+      change that made the plates
+- [ ] **Where the result goes, now that the table is worth looking at.** The
+      settled result is a full-width plate across the middle, and a die can
+      land under it. It did not matter when the tray was a leaning shot with a
+      small patch of felt; it matters now. The design's answer is a sheet that
+      comes up from the bottom, which is also where the thumb is
+
 **Decided while building the plates**, where the design left the app a choice:
 
 - The plates are **one column at the bottom of the tray**, not four blocks
