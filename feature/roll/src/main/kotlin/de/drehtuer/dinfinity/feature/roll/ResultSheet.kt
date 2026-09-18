@@ -68,17 +68,6 @@ internal fun ResultSheet(
   result: RollResult,
   modifier: Modifier = Modifier,
   divides: Boolean = false,
-  /**
-   * What the formula was expected to come to: the lowest, the highest and the
-   * average ([Expectation]).
-   *
-   * Under the breakdown rather than beside the total, because it is context
-   * and the total is the answer. A number with nothing to read it against is
-   * the commonest complaint a dice roller gets — "is 14 good?" — and this is
-   * the line that answers it. Null for a throw whose formula has since been
-   * typed over.
-   */
-  expected: Expectation? = null,
   onRound: (Rounding) -> Unit = {},
   /**
    * Quick mode: the die under a long press, to be drawn on
@@ -133,10 +122,6 @@ internal fun ResultSheet(
     // Offered only for a throw it could change. `Down`, `Nearest` and `Up` all
     // give the same answer to `3d6 + 4`.
     if (divides) RoundingControl(chosen = result.rounding, onRound = onRound)
-
-    // And what it was expected to come to, so the total is a number in a
-    // range rather than a number on its own.
-    if (expected != null) Expected(expected)
 
     Doing(onSeeTheOdds = onSeeTheOdds, onSaveAsRoll = onSaveAsRoll)
   }

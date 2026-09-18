@@ -36,9 +36,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
-import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
-import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistToast
 import de.drehtuer.dinfinity.ui.common.Plate
@@ -126,8 +124,24 @@ fun RollScreen(
   var editing by rememberSaveable { mutableStateOf(false) }
   var picking by rememberSaveable { mutableStateOf(false) }
 
-  // How much of the result sheet stays on the bottom edge ([TheResult]).
-  var parked by remember { mutableFloatStateOf(0f) }
+  // Which of the two pull-ups along the bottom edge is up, if either. The
+  // rule that they are never both up is [BottomEdge]'s, which is arithmetic
+  // rather than two composables each remembering to shut the other.
+  var edge by remember { mutableStateOf(BottomEdge()) }
+
+  // How much of each of them stays on the bottom edge, measured rather than
+  // known. What is stacked above one is lifted by it, so nothing on the
+  // screen ends up under a sheet that has been pushed down.
+  var resultParked by remember { mutableFloatStateOf(0f) }
+  var savedParked by remember { mutableFloatStateOf(0f) }
+
+  // A total arriving takes the edge, and the saved rolls get out of its way;
+  // a roll put away leaves them where the player left them.
+  val landed = presenter.state is RollState.Settled
+  LaunchedEffect(landed) {
+    edge = if (landed) edge.resultArrives() else edge.resultGone()
+    if (!landed) resultParked = 0f
+  }
 
   ShakeToRoll(presenter, enabled = shakeToRoll)
   KeepTheScreenAwake()
@@ -157,11 +171,20 @@ fun RollScreen(
   ) {
     TheTableOrANoticeThatThereIsNone(presenter)
 
-    Controls(
+    WhatTheRollIsDoing(
+      presenter = presenter,
+      modifier = Modifier.align(Alignment.BottomCenter),
+      lifted = resultParked + savedParked,
+    )
+
+    TheSavedRolls(
       presenter = presenter,
       strip = strip,
+      rest = edge.saved,
+      onRest = { edge = edge.savedTo(it) },
+      onParked = { savedParked = it },
+      lifted = resultParked,
       modifier = Modifier.align(Alignment.BottomCenter),
-      parked = parked,
     )
 
     AlongTheTop(
@@ -198,7 +221,9 @@ fun RollScreen(
       onSeeTheOdds = onSeeTheOdds,
       onSaveAsRoll = onSaveAsRoll,
       onDoodle = onDoodle,
-      onParked = { parked = it },
+      rest = edge.result,
+      onRest = { edge = edge.resultTo(it) },
+      onParked = { resultParked = it },
       modifier = Modifier.align(Alignment.BottomCenter),
     )
 
@@ -234,9 +259,12 @@ fun RollScreen(
  *
  * @param onParked how much of the sheet stays on the bottom edge when it is
  *   pushed all the way down. Measured rather than known: it is the height of a
- *   grip with a number in it. The screen lifts its column of controls by it, so
- *   the picker and the saved rolls are never under a sheet that has been
- *   parked.
+ *   grip with a number in it. Everything above the sheet is lifted by it, so
+ *   the saved rolls and the outcome plate are never under a sheet that has
+ *   been parked.
+ * @param rest where the sheet is, held by the screen because the saved rolls
+ *   are a pull-up on the same edge and the two may not both be up
+ *   ([BottomEdge]).
  */
 @Composable
 private fun TheResult(
@@ -244,6 +272,8 @@ private fun TheResult(
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
   onSaveAsRoll: (formula: String) -> Unit,
   onDoodle: (String) -> Unit,
+  rest: SheetRest,
+  onRest: (SheetRest) -> Unit,
   onParked: (Float) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -252,6 +282,8 @@ private fun TheResult(
     result = settled.result,
     divides = settled.divides,
     expected = presenter.expected,
+    rest = rest,
+    onRest = onRest,
     onRound = presenter::round,
     // The formula as it is in the field rather than as the result recorded
     // it: the odds and the editor are both about the roll somebody is about
@@ -391,77 +423,74 @@ private fun FirstLaunch(
 private const val FIRST_ROLL = "1d20"
 
 /**
- * Everything below the tray: what the roll has to say, and the saved rolls.
+ * What the roll has to say, on a plate above the bottom edge.
  *
- * One stack at the bottom of the screen, because the tray is the screen and
- * these sit on it rather than beside it — but a **short** one. It was four
- * plates high, which on a phone with the straight-down table view covered a
- * good part of the felt, and the whole of that view's point is being able to
- * see where a die landed. Three of the four have gone: the dice are a
- * pull-down at the top ([DiceMenu]), "See the odds" is on the result sheet
- * where a result's actions belong, and the Roll button is gone altogether.
+ * **One plate, and nothing else down here any more.** It was four, then two:
+ * the dice are a pull-down at the top ([DiceMenu]), "See the odds" is on the
+ * result sheet where a result's actions belong, the Roll button is gone
+ * altogether, and now the saved rolls are a pull-up of their own
+ * ([PullUpSavedRolls]). What is left is the one plate that says what the roll
+ * is doing, and in half the states it says nothing at all — which is the
+ * point: with the straight-down table view every band over the felt is a
+ * place a die can land and not be seen.
  *
  * **Nothing left in it throws.** A shake is the throw
  * (`docs/physics-and-rendering.md`, "Starting a roll").
+ *
+ * @param lifted how much of the bottom edge the two pull-ups have between
+ *   them, in pixels. The plate rides above both of them.
  */
 @Composable
-private fun Controls(
+private fun WhatTheRollIsDoing(
   presenter: RollPresenter,
-  strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
   modifier: Modifier = Modifier,
-  /**
-   * How much of the result sheet is parked on the bottom edge, in pixels.
-   *
-   * The column is lifted by it, so the saved rolls sit above a sheet that has
-   * been pushed down rather than under it. Zero whenever there is no sheet,
-   * which is every state but a settled roll.
-   */
-  parked: Float = 0f,
+  lifted: Float = 0f,
 ) {
-  val state = presenter.state
-  Column(
+  Box(
     modifier =
       modifier
         .fillMaxWidth()
         .safeDrawingPadding()
         .padding(EDGE)
-        .padding(bottom = with(LocalDensity.current) { parked.toDp() }),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
+        .padding(bottom = with(LocalDensity.current) { lifted.toDp() }),
+    contentAlignment = Alignment.Center,
   ) {
     Outcome(
-      state = state,
+      state = presenter.state,
       progress = presenter.progress,
       expected = presenter.expected,
       onGiveUp = presenter::clear,
     )
-    SavedRollsPlate(presenter, strip)
-    // And nothing after the saved rolls. The Roll button stood here and is
-    // gone: shaking the phone is the only way to throw, so a button that
-    // threw was a second way in that quietly made the shake optional
-    // (`docs/physics-and-rendering.md`, "Starting a roll"). The dice picker
-    // stood here too and is now a pull-down at the top ([DiceMenu]).
   }
 }
 
 /**
- * The active group's saved rolls, above the loose dice: a roll somebody named
- * comes before a die they have to assemble
- * (`design/dInfinity.dc.html`, option 9a).
+ * The active group's saved rolls, behind a pull-up on the bottom edge
+ * (`design/dInfinity.dc.html`, option 1c).
  *
  * Handed in as a slot, so this module does not have to know what a saved roll
  * is (`docs/architecture.md`, "Modules").
+ *
+ * @param lifted the result sheet's parked height. The saved rolls' grip sits
+ *   directly above it rather than under it, so the two grips stack on the
+ *   edge and neither is ever out of reach.
  */
 @Composable
-private fun SavedRollsPlate(
+private fun TheSavedRolls(
   presenter: RollPresenter,
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
+  rest: SheetRest,
+  onRest: (SheetRest) -> Unit,
+  onParked: (Float) -> Unit,
+  modifier: Modifier = Modifier,
+  lifted: Float = 0f,
 ) {
-  // Hugging rather than filling: what is inside is either a row of saved rolls
-  // or the one "Save a roll" box, and a plate the width of the screen with a
-  // box in the corner of it is a band, which is the thing the tray stopped
-  // being (`docs/physics-and-rendering.md`, "What is drawn over the table").
-  Plate {
+  PullUpSavedRolls(
+    rest = rest,
+    onRest = onRest,
+    onParked = onParked,
+    modifier = modifier.padding(bottom = with(LocalDensity.current) { lifted.toDp() }),
+  ) {
     strip { formula, from ->
       // A tap on the strip is a formula *and* which roll put it there, so the
       // throw can be recorded as that roll's. Typed formulas come with none.
@@ -485,11 +514,13 @@ private fun SavedRollsPlate(
  * in the first row and the dice pull-down is beside it, so the room the
  * burger takes is the layout rather than a constant somebody has to remember
  * — which is what `MENU_ROOM` used to be. The formula hangs under the burger,
- * on the right, where the device session asked for it.
+ * on the right, where the device session asked for it — as a **tab** now,
+ * with the formula itself behind it ([FormulaDrawer]).
  *
- * **Everything below an open menu moves down.** A pull-down that floated
- * would cover the control under it, and the two things under these are the
- * formula and the table.
+ * **Everything below the open dice menu moves down.** A pull-down that
+ * floated would cover the control under it, and the thing under it is the
+ * formula's tab. The formula goes the other way, in from the side, so the
+ * two never argue about the same space.
  *
  * The column fills the width but draws nothing of its own, so the felt
  * between the plates is still felt and still takes a pinch
@@ -539,72 +570,28 @@ private fun AlongTheTop(
       menu()
     }
 
-    // The formula, under the burger and on the right. It is an expanding
-    // menu of the same kind as the dice: shut, it is the line somebody has
-    // written with a dashed rule under it; open, it is the field and the
-    // keyboard. What is wrong with a formula is said inside the open one,
-    // under the squiggle, because that is where it can be acted on.
-    FormulaMenu(
-      presenter = presenter,
-      editing = editing,
-      onEditing = onEditing,
+    // The formula, under the burger and on the right. Shut it is a tab at the
+    // edge and the formula is not on the table at all; open it slides in from
+    // the side and is the field, the squiggle and the keyboard. What is wrong
+    // with a formula is said inside, under the squiggle, because that is
+    // where it can be acted on ([FormulaDrawer]).
+    val state = presenter.state
+    FormulaDrawer(
+      text = presenter.text,
+      onChange = presenter::type,
+      open = editing,
+      onOpen = onEditing,
+      error = (state as? RollState.Invalid)?.error,
+      // A throw the table cannot hold is a formula that reads perfectly well,
+      // so the tab marks that too — the words for it are the outcome plate's.
+      wrong = state is RollState.Invalid || state is RollState.TooMany,
+      // It closes the drawer first, so what the dice land on is not behind a
+      // keyboard.
+      onSubmit = {
+        onEditing(false)
+        presenter.roll()
+      },
     )
-  }
-}
-
-/**
- * The formula, as text with a dashed rule under it until it is tapped
- * (`design/dInfinity.dc.html`, option 2a).
- *
- * A field is a thing to fill in and this is a thing somebody has written, so
- * the keyboard comes up on a tap rather than standing under the dice all the
- * time. A throw the table cannot hold is a formula that reads perfectly well,
- * so both states mark it; *what* is wrong is said in the editor, under the
- * squiggle, and where the total goes.
- */
-
-@Composable
-private fun FormulaPlate(
-  presenter: RollPresenter,
-  state: RollState,
-  editing: Boolean,
-  onEditing: (Boolean) -> Unit,
-) {
-  val wrong = state is RollState.Invalid || state is RollState.TooMany
-  if (editing) {
-    // The editor fills the width, because a field is a thing to type into and
-    // a field the width of what was last typed is a field that jumps.
-    Plate(modifier = Modifier.fillMaxWidth()) {
-      FormulaField(
-        text = presenter.text,
-        onChange = presenter::type,
-        label = stringResource(R.string.roll_formula_label),
-        hint = stringResource(R.string.roll_formula_hint),
-        error = (state as? RollState.Invalid)?.error,
-        wrong = wrong,
-        // Enter rolls, and **stays** now that the Roll button has gone. It is
-        // not a button: it is what the key on a keyboard already means, and a
-        // player typing a formula with a hardware keyboard is a player whose
-        // other hand is not free to shake the phone. Together with the tray's
-        // custom accessibility action it is what keeps the screen operable
-        // without a hand that can shake (`docs/architecture.md`,
-        // "Accessibility").
-        //
-        // It closes the editor first, so what the dice land on is not behind
-        // a keyboard.
-        onSubmit = {
-          onEditing(false)
-          presenter.roll()
-        },
-        takeFocus = true,
-      )
-    }
-  } else {
-    // **This plate hugs**, and that is the whole of the fault it fixes. The
-    // formula's rule is dashed and used to be drawn the width of the screen
-    // with the words centred in it, which reads as a formula struck through
-    // rather than one waiting to be edited.
-    Plate { FormulaLine(text = presenter.text, onEdit = { onEditing(true) }, wrong = wrong) }
   }
 }
 
@@ -666,38 +653,6 @@ private fun Modifier.throwing(presenter: RollPresenter): Modifier {
 }
 
 /**
- * The formula, as an expanding menu on the right under the burger.
- *
- * Its own composable rather than a `Box` in the middle of the screen's own,
- * because where a thing sits and what it is are two questions and the screen
- * only has to answer the first.
- *
- * Shut, it hugs and sits at the end of its row, so it reads as a line hanging
- * off the menu button rather than as a band across the table. Open, it fills
- * the width — a field is a thing to type into, and a field as wide as what
- * was last typed is a field that jumps.
- */
-@Composable
-private fun FormulaMenu(
-  presenter: RollPresenter,
-  editing: Boolean,
-  onEditing: (Boolean) -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  Row(
-    modifier = modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.End,
-  ) {
-    FormulaPlate(
-      presenter = presenter,
-      state = presenter.state,
-      editing = editing,
-      onEditing = onEditing,
-    )
-  }
-}
-
-/**
  * How far in from the edge of the screen the plates sit.
  *
  * The prototype's blocks over the tray are inset `14px`; the app's stack is
@@ -741,12 +696,16 @@ private fun Outcome(
         unsettled = state.unsettled,
         read = state.read,
         onCancel = onGiveUp,
+        // What the roll can still come out at once those dice have been
+        // thrown again, which is what somebody standing over this plate is
+        // deciding with (`RollPresenter.progress`).
+        range = progress?.range,
       )
 
     // An exploding die earns a throw rather than taking one, so the screen
     // asks for it. Without this the roll simply appears to stop
     // (`docs/dice-notation.md`, "Evaluation").
-    is RollState.ShakeAgain -> EarnedPlate(waiting = state.waiting)
+    is RollState.ShakeAgain -> EarnedPlate(waiting = state.waiting, range = progress?.range)
 
     // While the dice are in the air the dice are not what to look at: each one
     // is read and taken off the table as it lands, so this is what is left to
@@ -775,15 +734,14 @@ private fun Outcome(
     // (`ui/common`'s `FormulaField`), so an invalid formula says nothing here.
     is RollState.Invalid -> Unit
 
-    // Not a blank: an empty tray with nothing under it is a screen with no way
-    // in, and now that there is no button at all the words are the only thing
-    // that says what to do (`design/dInfinity.dc.html`, option 9a).
-    RollState.Empty ->
-      Message(
-        text = stringResource(R.string.roll_hint_empty),
-        colour = Ink.muted,
-        tag = RollTestTags.HINT,
-      )
+    // Nothing. `Type a formula, or open Dice at the top.` stood here and the
+    // second device session asked for it to go: it pointed at a formula that
+    // is no longer on the table and at a menu that says `Dice` on itself, and
+    // it was a plate over the felt in the one state where the felt is all
+    // there is. An empty tray is now an empty tray, with the two doors along
+    // the top and the welcome on a fresh install to say so
+    // (`design/dInfinity.dc.html`, option 9a).
+    RollState.Empty -> Unit
 
     // Ready to be shaken, and what shaking would be worth.
     is RollState.Ready -> ReadyPlate(expected = expected)
@@ -849,15 +807,17 @@ object RollTestTags {
    */
   const val FORMULA: String = FormulaTestTags.FIELD
 
-  /** The formula as it sits on the tray, before anybody taps it (option 2a). */
-  const val FORMULA_LINE: String = "roll:formula-line"
+  /** The tab at the right-hand edge, and the drawer behind it (option 2a). */
+  const val FORMULA_TAB: String = "roll:formula-tab"
+  const val FORMULA_DRAWER: String = "roll:formula-drawer"
   const val TOTAL: String = "roll:total"
   const val ROLLING: String = "roll:rolling"
 
   /**
-   * What the throw is expected to come to, and its average
-   * ([Expectation]). On the ready plate before the shake, and on the result
-   * sheet beside what the dice actually did.
+   * What the throw is expected to come to, and its average ([Expectation]).
+   * On the ready plate before the shake, and in the result sheet's **grip**
+   * afterwards — where it stays on the bottom edge beside the total rather
+   * than going away with the breakdown.
    */
   const val EXPECTED: String = "roll:expected"
   const val EXPECTED_AVERAGE: String = "roll:expected:average"
@@ -868,6 +828,12 @@ object RollTestTags {
   /** The `+` on a range a chain can still climb past, and the progress rule. */
   const val COUNTING_MORE: String = "roll:counting:more"
   const val COUNTING_RULE: String = "roll:counting:rule"
+
+  /**
+   * Where a roll that is waiting on a hand can still come out, on the earned
+   * and stalled plates (`TrayPlates`).
+   */
+  const val STILL_TO_COME: String = "roll:still"
 
   /** The chain has earned a throw and is waiting for a hand (design option 1j). */
   const val SHAKE_AGAIN: String = "roll:shake-again"
@@ -887,7 +853,7 @@ object RollTestTags {
   /** The one-tap fix, shown only when the mistake has an obvious reading. */
   const val SUGGESTION: String = FormulaTestTags.SUGGESTION
 
-  /** What to do next, when there is no result and nothing wrong. */
+  /** That a shake rolls — the one thing nobody would guess at. */
   const val HINT: String = "roll:hint"
 
   /**
@@ -939,6 +905,10 @@ object RollTestTags {
    */
   const val PULL_UP: String = "roll:pull-up"
   const val RESULT_HANDLE: String = "roll:pull-up:handle"
+
+  /** The saved rolls as the other pull-up on the same edge (option 1c). */
+  const val SAVED_PULL_UP: String = "roll:saved"
+  const val SAVED_HANDLE: String = "roll:saved:handle"
 
   /** The breakdown under the total (`design/dInfinity.dc.html`, option 1f). */
   const val SHEET: String = "roll:sheet"

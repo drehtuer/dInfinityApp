@@ -49,21 +49,31 @@
   <string name="roll_welcome_dismiss">Just show me the tray</string>
   <string name="roll_welcome_import">Import saved rolls from a file or a link</string>
   <string name="roll_welcome_sets_add">Add somebody else\'s dice</string>
-  <!-- The hint on an empty tray, and on one with a throw ready (design option 9a). -->
   <!-- A number the formula adds or takes away, itemised on the result sheet. -->
   <string name="roll_sheet_plus">plus</string>
   <string name="roll_sheet_minus">minus</string>
-  <!-- The result sheet's handle: what it is, what a tap on it does, and where
-       the sheet is now. Said rather than drawn, because the bar looks the same
+  <!-- The two pull-ups' handles: what each is, what a tap on it does, and
+       where it is now. Said rather than drawn, because the bar looks the same
        in both rests and a screen reader has nothing else to go on. -->
   <string name="roll_result_handle">Result sheet</string>
   <string name="roll_result_push_down">Push the result down to see the table</string>
   <string name="roll_result_pull_up">Pull the result up to see the breakdown</string>
   <string name="roll_result_is_up">Showing the breakdown</string>
   <string name="roll_result_is_down">Pushed down</string>
+  <string name="roll_saved_handle">Saved rolls</string>
+  <string name="roll_saved_kicker">SAVED ROLLS</string>
+  <string name="roll_saved_pull_up">Pull the saved rolls up</string>
+  <string name="roll_saved_push_down">Put the saved rolls away</string>
+  <string name="roll_saved_is_up">Showing the saved rolls</string>
+  <string name="roll_saved_is_down">Put away</string>
   <!-- Quick mode: what a long press on a die in the breakdown offers (docs/face-designer.md). -->
   <string name="roll_die_doodle">Doodle this die</string>
-  <string name="roll_hint_empty">Type a formula, or open Dice at the top.</string>
+  <!--
+    The hint on a tray with a throw ready (design option 9a). There is no
+    matching one for an empty tray any more: the second device session asked
+    for `Type a formula, or open Dice at the top.` to go, and with the formula
+    behind a tab of its own there is nothing on the felt for it to point at.
+  -->
   <string name="roll_hint_ready">Shake the phone to roll.</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->
   <string name="roll_picker_add">Add a %1$s</string>
@@ -79,6 +89,17 @@
   <string name="roll_dice_menu_close">Put the dice away</string>
   <string name="roll_dice_menu_is_open">Open</string>
   <string name="roll_dice_menu_is_shut">Closed</string>
+  <!--
+    The formula's tab at the right-hand edge (design option 2a): what is behind
+    it, what a press does, and what state it is in. The last of those has a
+    third reading, because the shut tab turns red for a formula that does not
+    read and red is not something a screen reader can say.
+  -->
+  <string name="roll_formula_open">Bring the formula in</string>
+  <string name="roll_formula_close">Put the formula away</string>
+  <string name="roll_formula_is_open">Open</string>
+  <string name="roll_formula_is_shut">Closed</string>
+  <string name="roll_formula_is_shut_wrong">Closed, and the formula does not read</string>
   <!-- The two ways on from a result, at the foot of the sheet (options 7a, 3b). -->
   <string name="roll_see_the_odds">See the odds</string>
   <string name="roll_save_as_roll">Save as roll</string>
@@ -130,6 +151,14 @@
     <item quantity="one">%1$d of %2$d die read · %3$d to %4$s</item>
     <item quantity="other">%1$d of %2$d dice read · %3$d to %4$s</item>
   </plurals>
+  <!--
+    Where a roll that is waiting on a hand can still come out: on the plate a
+    chain waits on and on the one a roll that gave up waits on. The same
+    figures the counting plate draws while the dice are moving, kept on screen
+    for as long as the roll is owed a shake.
+  -->
+  <string name="roll_still_kicker">STILL TO COME</string>
+  <string name="roll_still_spoken">Still to come, %1$d to %2$s</string>
   <!--
     A chain that has stopped and is one throw short. The dice that are down
     stay down; the app does not throw the die an explosion earned
