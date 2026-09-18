@@ -112,6 +112,27 @@ data class Quaternion(
       .normalised()
   }
 
+  /**
+   * [other] first, then this one.
+   *
+   * The Hamilton product, in the order the two turns are *applied* rather than
+   * the order they are written: `a * b` turns a point by `b` and then by `a`,
+   * which is what makes `about(axis, angle) * turn` mean "turn as before, then
+   * swing about that axis" — the axis being the one the *reader* is looking
+   * along rather than one the die carries with it
+   * (`designer`'s `SolidTurn`).
+   *
+   * Written out rather than derived from matrices because it is four lines and
+   * a matrix round-trip is sixteen numbers and a normalisation.
+   */
+  operator fun times(other: Quaternion): Quaternion =
+    Quaternion(
+      w = w * other.w - x * other.x - y * other.y - z * other.z,
+      x = w * other.x + x * other.w + y * other.z - z * other.y,
+      y = w * other.y - x * other.z + y * other.w + z * other.x,
+      z = w * other.z + x * other.y - y * other.x + z * other.w,
+    )
+
   /** How closely this turn agrees with [other]; `±1` when they are the same. */
   infix fun dot(other: Quaternion): Double = w * other.w + x * other.x + y * other.y + z * other.z
 

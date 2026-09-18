@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -73,6 +74,32 @@ class DesignerScreenTest {
     show(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron })
 
     compose.onNodeWithTag(DesignerTestTags.faceOf(19)).assertExists()
+  }
+
+  @Test
+  fun `the strip has its row to itself, and the fill buttons the next one`() {
+    // What this is the fix for: the two shared a line, so the strip got
+    // whatever three buttons left — about one face of a d20 on a phone. The
+    // buttons are still outside the scroll, which is the other half of it:
+    // they are about every face, so scrolling to the twentieth must not take
+    // them off the screen.
+    show(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron })
+
+    val strip = compose.onNodeWithTag(DesignerTestTags.faceOf(0)).getUnclippedBoundsInRoot()
+    val fill = compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).getUnclippedBoundsInRoot()
+
+    assertTrue("the fill buttons are still on the strip's row", fill.top >= strip.bottom)
+  }
+
+  @Test
+  fun `scrolling to the last face leaves the fill buttons where they were`() {
+    show(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron })
+
+    val before = compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).getUnclippedBoundsInRoot()
+    compose.onNodeWithTag(DesignerTestTags.faceOf(19)).performScrollTo()
+    val after = compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).getUnclippedBoundsInRoot()
+
+    assertEquals("the fill buttons scrolled away with the faces", before.left, after.left)
   }
 
   @Test
@@ -566,10 +593,13 @@ class DesignerScreenTest {
     compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Stamp)).performScrollTo().performClick()
 
     compose.onNodeWithTag(DesignerTestTags.stampSizeOf(StampSize.Small)).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+    // Scrolled to before it is pressed, like everything else on this screen:
+    // the column is taller than a phone and a tap lands on the middle of the
+    // node, which is off the window when the canvas is only half in it.
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performScrollTo().performClick()
     compose.onNodeWithTag(DesignerTestTags.faceOf(1)).performScrollTo().performClick()
     compose.onNodeWithTag(DesignerTestTags.stampSizeOf(StampSize.Large)).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performScrollTo().performClick()
 
     assertEquals(StampSize.Large, presenter.state.stampSize)
     assertTrue("the large stamp is no larger than the small one", tall(presenter, 1) > tall(presenter, 0))
@@ -608,7 +638,7 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `fill all with numbers is beside the strip, and numbers every face`() {
+  fun `fill all with numbers is under the strip, and numbers every face`() {
     val presenter = show(d6)
 
     compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).assertIsDisplayed().performClick()

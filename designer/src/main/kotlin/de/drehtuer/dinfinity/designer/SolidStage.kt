@@ -18,50 +18,69 @@ import kotlin.math.sqrt
  * the one view in which a polyhedron disappears.
  */
 data class SolidTurn(
-  val pitch: Float = TILTED,
-  val yaw: Float = 0f,
+  val held: Quaternion = TILTED,
 ) {
-  /** Turned by a drag of [across] and [down], both in fractions of the stage. */
+  /**
+   * Turned by a drag of [across] and [down], both in fractions of the stage.
+   *
+   * About the **reader's** axes rather than the die's: across swings it about
+   * the upright of the screen and down tips it about the horizontal, wherever
+   * the die happens to be pointing. That is what makes a drag do the same
+   * thing twice — with the die's own axes, a die already turned a quarter
+   * round answers a sideways drag by rolling.
+   */
   fun dragged(
     across: Float,
     down: Float,
-  ): SolidTurn =
-    SolidTurn(
-      pitch = (pitch + down * SWEEP).coerceIn(-LEAN, LEAN),
-      yaw = wrapped(yaw + across * SWEEP),
-    )
+  ): SolidTurn = SolidTurn(swing(across * SWEEP) * tip(down * SWEEP) * held)
 
-  /** Turned by [seconds] of the spin the die does on its own. */
-  fun spun(seconds: Float): SolidTurn = copy(yaw = wrapped(yaw + seconds * SPIN))
+  /**
+   * Turned by [seconds] of the spin the die does on its own.
+   *
+   * **About the upright of the screen, always, and from wherever the die has
+   * been left.** The two halves of that are one line: composing on the left
+   * means the axis is the reader's, and composing *onto* [held] means the spin
+   * carries on from the orientation a drag put the die in rather than from
+   * some pose of its own.
+   *
+   * It used to be a yaw angle applied before a lean, which is the same thing
+   * as spinning about an axis carried by the die: lean the die towards you and
+   * its spin axis leaned too, so a die tipped right over span like a coin on a
+   * table rather than turning in the hand.
+   */
+  fun spun(seconds: Float): SolidTurn = SolidTurn(swing(seconds * SPIN) * held)
 
   /** [point] where this turn puts it. */
-  fun turnedTo(point: Vector3): Vector3 = leaning.rotate(turning.rotate(point))
+  fun turnedTo(point: Vector3): Vector3 = held.rotate(point)
 
-  /** Round the die's own up, which is the tray's. */
-  private val turning: Quaternion get() = Quaternion.about(Vector3.Up, radiansOf(yaw))
+  /** About the upright of the screen, which is the tray's `+z`. */
+  private fun swing(degrees: Float): Quaternion = Quaternion.about(Vector3.Up, radiansOf(degrees))
 
-  /** Towards the viewer, about the axis across the stage, which is the tray's `+x`. */
-  private val leaning: Quaternion get() = Quaternion.about(Vector3(1.0, 0.0, 0.0), radiansOf(pitch))
+  /** And about the horizontal of the screen, which is the tray's `+x`. */
+  private fun tip(degrees: Float): Quaternion = Quaternion.about(ACROSS, radiansOf(degrees))
 
-  private companion object {
-    /** Where the die stands before anybody has touched it: looked at slightly from above. */
-    const val TILTED = 16f
+  companion object {
+    /** The horizontal of the screen, which is the tray's `+x`. */
+    private val ACROSS = Vector3(1.0, 0.0, 0.0)
 
-    /** How far the die may be leaned before it is being looked at edge-on. */
-    const val LEAN = 85f
+    /** How far from level a die is looked at before anybody has touched it. */
+    private const val LOOKED_DOWN_ON = 16.0
+
+    /**
+     * Where the die stands before anybody has touched it: looked at slightly
+     * from above.
+     */
+    val TILTED: Quaternion = Quaternion.about(ACROSS, LOOKED_DOWN_ON * Math.PI / HALF_TURN)
 
     /** How far a drag across the whole stage turns the die. */
-    const val SWEEP = 176f
+    private const val SWEEP = 176f
 
     /** Degrees a second of the turn the die makes on its own: once round in sixteen seconds. */
-    const val SPIN = 360f / 16
+    private const val SPIN = 360f / 16
 
-    fun wrapped(degrees: Float): Float = ((degrees % FULL) + FULL) % FULL
+    private fun radiansOf(degrees: Float): Double = degrees * Math.PI / HALF_TURN
 
-    fun radiansOf(degrees: Float): Double = degrees * Math.PI / HALF_TURN
-
-    const val FULL = 360f
-    const val HALF_TURN = 180.0
+    private const val HALF_TURN = 180.0
   }
 }
 
