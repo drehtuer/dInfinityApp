@@ -1,8 +1,8 @@
 # Single source of dependency versions. Every version here was checked against
-# the upstream repository on 2026-09-12.
+# the upstream repository on 2026-09-12, and `agp` again on 2026-09-18.
 
 [versions]
-agp = "9.4.0"
+agp = "9.4.1"
 kotlin = "2.4.20"
 coroutines = "1.11.0"
 composeBom = "2026.09.00"
