@@ -2,6 +2,8 @@ package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieMaterial
+import de.drehtuer.dinfinity.core.model.DiePhysical
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.TableLook
 import java.util.Locale
@@ -16,9 +18,11 @@ import java.util.Locale
  * caught by the same code that catches a stranger's mistakes rather than by a
  * reviewer. The app's own output is not a privileged path.
  *
- * Only the fields a drawn set actually has are written. There is no reason to
- * emit a `[defaults]` table full of the numbers the app would have used anyway
- * — a key nobody wrote is a key nobody has to keep true.
+ * Only the fields a drawn set actually has are written. A `[defaults]` table
+ * full of the numbers the app would have used anyway is a key nobody has to
+ * keep true, so the three physical ones appear only once somebody has moved
+ * them off the defaults (`docs/dice-sets.md`, "Weight, translucency and size,
+ * as a person sets them").
  */
 object DiceSetToml {
   /** The schema version everything the app writes declares. */
@@ -30,8 +34,14 @@ object DiceSetToml {
   /** Where a die's atlas goes inside the package. */
   fun texturePathOf(dieId: String): String = "$TEXTURES/$dieId.png"
 
-  /** [set] as the text of its `diceset.toml`. */
-  fun write(set: DiceSet): String =
+  /**
+   * [set] as the text of its `diceset.toml`, with [defaults] as the material
+   * every die of it inherits.
+   */
+  fun write(
+    set: DiceSet,
+    defaults: DieMaterial = DieMaterial(),
+  ): String =
     buildString {
       appendLine("format = $FORMAT")
       appendLine()
@@ -42,6 +52,7 @@ object DiceSetToml {
       set.author?.let { appendLine("author = ${quoted(it)}") }
       set.license?.let { appendLine("license = ${quoted(it)}") }
       set.description?.let { appendLine("description = ${quoted(it)}") }
+      appendDefaults(defaults)
       set.dice.forEach { die ->
         appendLine()
         appendDie(die)
@@ -110,6 +121,35 @@ object DiceSetToml {
     // a formatter on a phone set to German would write a decimal comma, and a
     // decimal comma is not TOML.
     appendLine("$key = $value")
+  }
+
+  /**
+   * The `[defaults]` table, and only the keys that are not what a reader would
+   * have used anyway.
+   *
+   * Three of them can be here, because three of them are what a person sets on
+   * the details screen. `translucency` goes out as the **per cent** a set file
+   * is written in rather than as the fraction the model holds, which is the
+   * one place the two scales meet on the way out (`MaterialReader` is where
+   * they meet on the way in).
+   */
+  private fun StringBuilder.appendDefaults(defaults: DieMaterial) {
+    val standard = DieMaterial()
+    if (defaults.sizeMm == standard.sizeMm &&
+      defaults.density == standard.density &&
+      defaults.translucency == standard.translucency
+    ) {
+      return
+    }
+    appendLine()
+    appendLine("[defaults]")
+    number("size_mm", defaults.sizeMm, standard.sizeMm)
+    number("density", defaults.density, standard.density)
+    number(
+      "translucency",
+      DiePhysical.translucencyPercentOf(defaults.translucency),
+      DiePhysical.translucencyPercentOf(standard.translucency),
+    )
   }
 
   private fun StringBuilder.appendDie(die: Die) {

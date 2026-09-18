@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
@@ -88,6 +89,38 @@ internal fun AppearanceSection(
       label = { stringResource(it.labelRes()) },
       onSelect = onChosen,
       tagOf = SettingsTestTags::appearanceOf,
+    )
+  }
+}
+
+/**
+ * How far the camera leans over the table
+ * (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+ *
+ * Two positions and no slider: the shot either leans or it does not, and a
+ * dial of degrees would be asking a player to art-direct a camera. Straight
+ * down is the default, because a leaning shot on a tall phone spends a large
+ * share of the frame on the wooden rim.
+ *
+ * It takes effect the next time the roll screen opens, like power saving, the
+ * shake, the haptics and the sound, and for the same reason
+ * (`docs/architecture.md`, decision 16).
+ */
+@Composable
+internal fun TableViewSection(
+  chosen: TableView,
+  onChosen: (TableView) -> Unit,
+) {
+  Section(
+    heading = stringResource(R.string.settings_table_view_heading),
+    explanation = stringResource(R.string.settings_table_view_explanation),
+  ) {
+    SegmentedControl(
+      options = TableView.entries,
+      selected = chosen,
+      label = { stringResource(it.labelRes()) },
+      onSelect = onChosen,
+      tagOf = SettingsTestTags::tableViewOf,
     )
   }
 }

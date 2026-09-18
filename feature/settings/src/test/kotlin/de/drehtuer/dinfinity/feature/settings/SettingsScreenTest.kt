@@ -26,6 +26,7 @@ import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Assert.assertEquals
@@ -401,6 +402,42 @@ class SettingsScreenTest {
     compose.onNodeWithTag(SettingsTestTags.roundingOf(Rounding.Nearest)).performScrollTo().performClick()
 
     assertEquals(listOf(Rounding.Nearest), chosen)
+  }
+
+  @Test
+  fun `both table views are offered, and the chosen one is chosen`() {
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(tableView = TableView.Angled), onAccentSelected = {})
+    }
+
+    TableView.entries.forEach { view ->
+      compose.onNodeWithTag(SettingsTestTags.tableViewOf(view)).performScrollTo().assertExists()
+    }
+    compose.onNodeWithTag(SettingsTestTags.tableViewOf(TableView.Angled)).assertIsSelected()
+  }
+
+  @Test
+  fun `a fresh install shows the table straight down`() {
+    // The default the design asks for, read off the row rather than off the
+    // model: this is the screen saying it.
+    compose.setContent { SettingsScreen(settings = AppSettings(), onAccentSelected = {}) }
+
+    compose
+      .onNodeWithTag(SettingsTestTags.tableViewOf(TableView.StraightDown))
+      .performScrollTo()
+      .assertIsSelected()
+  }
+
+  @Test
+  fun `choosing a table view says which`() {
+    val chosen = mutableListOf<TableView>()
+    compose.setContent {
+      SettingsScreen(settings = AppSettings(), onAccentSelected = {}, onTableViewSelected = chosen::add)
+    }
+
+    compose.onNodeWithTag(SettingsTestTags.tableViewOf(TableView.Angled)).performScrollTo().performClick()
+
+    assertEquals(listOf(TableView.Angled), chosen)
   }
 
   @Test

@@ -339,6 +339,7 @@ class FilamentStage(
       .intensity(intensity)
       .direction(direction.x.toFloat(), direction.y.toFloat(), direction.z.toFloat())
       .castShadows(shadows)
+      .apply { if (shadows) shadowOptions(trayShadows()) }
       .build(engine, entity)
     scene.addEntity(entity)
     entities += entity
@@ -526,6 +527,55 @@ class FilamentStage(
 
     /** How far a surface looks for something to shade itself against, in mm. */
     private const val CONTACT_RADIUS_MM = 8.0f
+
+    /**
+     * How the key light's shadow is drawn.
+     *
+     * The defaults are wrong here for one reason: **this scene is measured in
+     * millimetres and the camera can see five metres**. A directional
+     * shadow map covers the camera's whole frustum, so by default a
+     * 1,024-pixel map was spread over 5,000 mm of nothing to hold a 240 mm
+     * tray — a texel about 5 mm across, which on a 16 mm die is a third of a
+     * face. What that produced on a phone was a wall shadow with a visibly
+     * stepped edge, standing a few millimetres clear of the wall that cast it,
+     * which is the classic look of a shadow biased away from its own caster.
+     *
+     * So: four times the map, and a shadow distance that stops just past the
+     * tray instead of at the camera's far plane. That is about a twentieth of
+     * a millimetre per texel, and the biases come down with it — they are in
+     * world units too, and a normal bias of Filament's default 1.0 is a whole
+     * millimetre of push on a die 16 mm across.
+     */
+    private fun trayShadows(): LightManager.ShadowOptions =
+      LightManager.ShadowOptions().apply {
+        mapSize = SHADOW_MAP_PIXELS
+        // Just past the far end of the largest tray a phone can be, plus the
+        // height the camera stands off it. Everything further away is out of
+        // shot anyway (`TrayCamera`).
+        shadowFar = SHADOW_FAR_MM
+        normalBias = SHADOW_NORMAL_BIAS_MM
+        constantBias = SHADOW_CONSTANT_BIAS
+      }
+
+    /** Four times Filament's default, which a 240 mm tray earns back at once. */
+    private const val SHADOW_MAP_PIXELS = 2048
+
+    /** The tray's long side and the room above it, and nothing beyond. */
+    private const val SHADOW_FAR_MM = 900.0f
+
+    /**
+     * How far along its own normal a surface is pushed before it is measured
+     * against the shadow map, in millimetres.
+     *
+     * Small, because a millimetre is a real distance here: Filament's default
+     * of 1.0 is what stood the wall's shadow clear of the wall. Not nought,
+     * because a surface measured against a depth map at exactly its own depth
+     * shadows itself in stripes.
+     */
+    private const val SHADOW_NORMAL_BIAS_MM = 0.15f
+
+    /** And the constant part, in the depth buffer's own units rather than in mm. */
+    private const val SHADOW_CONSTANT_BIAS = 0.0005f
 
     /** How sharply that darkening comes on. Filament's own default is 1. */
     private const val CONTACT_POWER = 1.0f

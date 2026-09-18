@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.api
 
+import de.drehtuer.dinfinity.core.model.CoinShape
 import kotlin.math.PI
 import kotlin.math.sqrt
 
@@ -134,8 +135,8 @@ private fun apexHeight(n: Int): Double = apexRatio(n) * ringHeight(n)
 /** How many times higher than the ring the apex sits, for the faces to be flat. */
 private fun apexRatio(n: Int): Double = TWO / (1 - Exact.cos(PI / n)) - 1
 
-/** How many sides a coin's rim is drawn and collided with. */
-private const val COIN_SEGMENTS = 24
+/** How many sides a coin's rim is drawn and collided with ([CoinShape]). */
+private const val COIN_SEGMENTS = CoinShape.RIM_SEGMENTS
 
 /**
  * Unit vectors in the catalogue's face order: from the top of the reference

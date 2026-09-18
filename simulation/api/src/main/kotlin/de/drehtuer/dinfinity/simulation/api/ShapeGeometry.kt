@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.api
 
+import de.drehtuer.dinfinity.core.model.CoinShape
 import de.drehtuer.dinfinity.core.model.DieShape
 
 /**
@@ -21,8 +22,15 @@ import de.drehtuer.dinfinity.core.model.DieShape
  * would silently repaint every die of every set ever published.
  */
 object ShapeGeometry {
-  /** How thick a coin is, as a fraction of its width. */
-  const val COIN_THICKNESS_RATIO: Double = 0.25
+  /**
+   * How thick a coin is, as a fraction of its width.
+   *
+   * The catalogue's, not this object's: a disc is the one solid whose
+   * proportions are a decision rather than a name, and the volume a weight is
+   * worked out from has to be the volume of the hull built here
+   * ([CoinShape]).
+   */
+  const val COIN_THICKNESS_RATIO: Double = CoinShape.THICKNESS_RATIO
 
   /**
    * The outward direction of every readable position of [shape], in the

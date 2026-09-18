@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.sets
 
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.designer.ExportResult
@@ -182,6 +183,31 @@ class SetLibrary(
    */
   suspend fun exportPersonal(license: SetLicense): ExportResult =
     withContext(io) { personal?.export(license) ?: ExportResult.Empty }
+
+  /**
+   * What the dice of "My dice" are made of — weight, translucency and size
+   * (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
+   * them").
+   *
+   * Null for a library with no designer behind it, and that is not the same
+   * as the defaults: there is nowhere to write a change to, so the details
+   * screen shows the figures a package declares and offers no steppers, which
+   * is what it does for everybody else's sets too.
+   */
+  suspend fun personalPhysical(): DieMaterial? = withContext(io) { personal?.physical() }
+
+  /**
+   * Sets them.
+   *
+   * It writes the *record*, not the folder. The package is built from the
+   * records whenever it is read ([all], [one]), so the next reading is what
+   * puts the new weight into `dicesets/mine/diceset.toml` — the same path a
+   * newly drawn face takes, and the reason there is nothing here to keep in
+   * step by hand.
+   */
+  suspend fun setPersonalPhysical(material: DieMaterial) {
+    withContext(io) { personal?.setPhysical(material) }
+  }
 
   /**
    * Switches a set on or off.

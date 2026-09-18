@@ -65,25 +65,71 @@
   <string name="roll_throw">Roll</string>
   <string name="roll_again">Roll again</string>
   <string name="roll_rolling">Rolling…</string>
+  <!--
+    The counting plate, across the bottom of the tray while the dice are still
+    being read (`docs/physics-and-rendering.md`, "What is drawn over the
+    table"). The kicker is upper case in the string rather than transformed,
+    because Compose has no text transform and uppercasing a string changes what
+    a screen reader says.
+  -->
+  <string name="roll_counting_kicker">COUNTING</string>
+  <plurals name="roll_counting_read">
+    <item quantity="one">of %1$d read</item>
+    <item quantity="other">of %1$d read</item>
+  </plurals>
+  <!-- Where the finished roll can still come out, ordered low to high. -->
+  <string name="roll_counting_range">%1$d to %2$d</string>
+  <!--
+    A chain that has not stopped can still earn dice nobody has thrown, so the
+    ceiling is what the throw can reach without earning another one and this
+    says it can go higher. An operator rather than a word.
+  -->
+  <string name="roll_counting_more" translatable="false">+</string>
+  <!-- The ceiling of a roll that can still explode: "48+" rather than "48". -->
+  <string name="roll_ceiling_more">%1$d+</string>
+  <!--
+    The whole plate, for a screen reader: it is a row of numbers an eye reads
+    at a glance and a listener would otherwise hear as four loose fragments.
+  -->
   <plurals name="roll_counting">
     <item quantity="one">%1$d of %2$d die read · %3$d to %4$s</item>
     <item quantity="other">%1$d of %2$d dice read · %3$d to %4$s</item>
   </plurals>
-  <!-- The ceiling of a roll that can still explode: "48+" rather than "48". -->
-  <string name="roll_ceiling_more">%1$d+</string>
+  <!--
+    A chain that has stopped and is one throw short. The dice that are down
+    stay down; the app does not throw the die an explosion earned
+    (`docs/dice-notation.md`, "Evaluation").
+  -->
+  <string name="roll_earned_kicker">ANOTHER THROW EARNED</string>
+  <plurals name="roll_earned_body">
+    <item quantity="one">A die rolled its highest face and earned a throw. The dice that are down stay down — shake, or throw it here.</item>
+    <item quantity="other">%1$d dice rolled their highest face and earned a throw. The dice that are down stay down — shake, or throw them here.</item>
+  </plurals>
+  <plurals name="roll_earned_throw">
+    <item quantity="one">Throw it</item>
+    <item quantity="other">Throw %1$d more</item>
+  </plurals>
+  <string name="roll_earned_stop">Stop the chain</string>
+  <!--
+    A roll that could not finish. It says how many dice never stopped and hands
+    them back, rather than reading them off whatever face they were nearest
+    (`docs/physics-and-rendering.md`).
+  -->
+  <string name="roll_stalled_kicker">COULD NOT SETTLE</string>
+  <string name="roll_stalled_alert">Warning</string>
   <plurals name="roll_stalled">
-    <item quantity="one">A die would not settle. The roll has no total.</item>
-    <item quantity="other">%1$d dice would not settle. The roll has no total.</item>
+    <item quantity="one">A die never stopped, so the roll has no total yet — %3$d of %2$d read and counted.</item>
+    <item quantity="other">%1$d dice never stopped, so the roll has no total yet — %3$d of %2$d read and counted.</item>
   </plurals>
   <plurals name="roll_throw_again">
-    <item quantity="one">Throw it again</item>
-    <item quantity="other">Throw them again</item>
+    <item quantity="one">Throw that one again</item>
+    <item quantity="other">Throw those %1$d again</item>
   </plurals>
+  <string name="roll_stalled_cancel">Cancel the roll</string>
   <plurals name="roll_tray_stalled">
     <item quantity="one">Dice tray, %1$d die would not settle</item>
     <item quantity="other">Dice tray, %1$d dice would not settle</item>
   </plurals>
-  <string name="roll_shake_again">Shake again to throw the die it earned</string>
   <!--
     The debug overlay, behind the developer toggle
     (`docs/physics-and-rendering.md`, "Debug tooling"). Developer-facing and

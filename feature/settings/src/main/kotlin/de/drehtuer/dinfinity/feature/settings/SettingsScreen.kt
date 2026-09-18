@@ -22,6 +22,7 @@ import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.RuleWeight
 
@@ -45,6 +46,7 @@ fun SettingsScreen(
   onHapticsChanged: (Boolean) -> Unit = {},
   onSoundChanged: (Boolean) -> Unit = {},
   onRoundingSelected: (Rounding) -> Unit = {},
+  onTableViewSelected: (TableView) -> Unit = {},
   onDeveloperToolsChanged: (Boolean) -> Unit = {},
   onRepository: () -> Unit = {},
   version: String = "",
@@ -80,6 +82,10 @@ fun SettingsScreen(
     // option 1y).
     Rule()
     AppearanceSection(chosen = settings.appearance, onChosen = onAppearanceSelected)
+    Rule(weight = RuleWeight.Hairline)
+    // Second, which is where the design's own list of rows puts it — right
+    // under Appearance, above everything about what the app *does*.
+    TableViewSection(chosen = settings.tableView, onChosen = onTableViewSelected)
     Rule(weight = RuleWeight.Hairline)
     AccentSection(selected = settings.accentColor, onAccentSelected = onAccentSelected)
     Rule(weight = RuleWeight.Hairline)
@@ -171,6 +177,9 @@ object SettingsTestTags {
   fun appearanceOf(appearance: Appearance): String = "settings:appearance:${appearance.id}"
 
   fun roundingOf(rounding: Rounding): String = "settings:rounding:${rounding.id}"
+
+  /** One position of the camera's lean (design: the Table view row). */
+  fun tableViewOf(view: TableView): String = "settings:table-view:${view.id}"
 
   /** One of the six presets. The custom swatch is [ACCENT_CUSTOM]. */
   fun accentSwatch(accent: AccentColor): String = "settings:accent:${accent.id}"

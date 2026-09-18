@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.format.PackageFiles
@@ -93,18 +94,31 @@ sealed interface PhotoResult {
  *   is turned back into a die; a draft whose die is not installed is not in
  *   the package, and its file is kept (`docs/face-designer.md`).
  * @param author what to write in the `author` field, or null for none.
+ * There are three records and each of them has a way in and a way out, which
+ * is what carries this class past detekt's count: the functions are a package
+ * being built, a photo being added or forgotten, an export, and the three
+ * numbers being read and set. Grouping any of them behind a type would be a
+ * type whose only purpose is to make a counter smaller.
+ *
  * @param photos the photographs somebody has made tables of. The second record
  *   this package is built from, beside the drafts, and kept apart from the
  *   folder for the same reason they are: the package is a view of both
  *   (`docs/tables.md`, "Your own photo").
+ * @param physical what the dice are made of — weight, translucency and size,
+ *   as the steppers on the details screen set them. The third record, kept
+ *   apart from the folder for exactly the reason the other two are: a number
+ *   written only into `dicesets/mine/diceset.toml` would be rewritten away by
+ *   the next stroke somebody drew (`docs/dice-sets.md`, "Weight, translucency
+ *   and size, as a person sets them").
  */
-@Suppress("LongParameterList")
+@Suppress("LongParameterList", "TooManyFunctions")
 class MineSets(
   private val drafts: DraftStore,
   private val root: File,
   private val painter: AtlasPainter,
   private val dice: () -> List<Die>,
   private val photos: PhotoStore,
+  private val physical: Physicals = Physicals.NONE,
   private val author: () -> String? = { null },
 ) {
   /**
@@ -210,12 +224,12 @@ class MineSets(
   }
 
   /**
-   * One number over both records.
+   * One number over all three records.
    *
    * Multiplied rather than added, so that a stroke drawn and a photo deleted
    * in the same moment cannot cancel each other out into "nothing changed".
    */
-  private fun stamp(): Long = drafts.stamp() * STAMP_MIX + photos.stamp()
+  private fun stamp(): Long = (drafts.stamp() * STAMP_MIX + photos.stamp()) * STAMP_MIX + physical.stamp()
 
   /**
    * The personal package as a zip, under [license] (design `8c`).
@@ -270,12 +284,29 @@ class MineSets(
     if (DiceSetValidator.validate(PackageFiles.of(files)) is ValidationResult.Valid) into.install(files)
   }
 
-  /** The package's files, from both records at once. */
+  /** The package's files, from all three records at once. */
   private fun files(
     drawings: List<Draft>,
     pictures: List<TablePhoto>,
     license: String,
-  ): Map<String, ByteArray> = MinePackage.of(drawings, license, author(), painter, pictures)
+  ): Map<String, ByteArray> = MinePackage.of(drawings, license, author(), painter, pictures, physical.material())
+
+  /**
+   * What the dice are made of, as the details screen shows and sets it
+   * (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
+   * them").
+   *
+   * Reading goes to the record rather than to the folder, because the record
+   * is what the folder is built from; writing only touches the record, and the
+   * package catches up at the next reading like every other change to a
+   * drawing does.
+   */
+  fun physical(): DieMaterial = physical.material()
+
+  /** Sets what the dice are made of. The package is rebuilt when it is next read. */
+  fun setPhysical(material: DieMaterial) {
+    physical.set(material)
+  }
 
   private companion object {
     /** No reading of the drafts can produce this, so the first one always rebuilds. */

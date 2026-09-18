@@ -107,6 +107,10 @@ class TrayThumbnails(
     if (refusedBecause != null) return null
     return try {
       stages().use { stage ->
+        // No table view given, so the angled shot: a thumbnail is a picture
+        // of a table rather than a roll in progress, and straight down would
+        // make an oak tray a rectangle of felt (`docs/tables.md`,
+        // "Thumbnails").
         val renderer = FilamentDiceRenderer(stage)
         paint(renderer, look, die)
         val picture = stage.capture()

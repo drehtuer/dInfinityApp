@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
@@ -36,7 +37,21 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * a GPU — so it sits on the near side of [Stage] and is tested on a JVM
  * (`docs/architecture.md`, decision 47).
  */
-class TrayRenderer : Renderer {
+class TrayRenderer(
+  /**
+   * How far the camera leans over the table — the player's **Table view**
+   * setting (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+   *
+   * Held here rather than in [FilamentDiceRenderer] because this is the thing
+   * that outlives a surface: a rotation builds a new drawing renderer, and it
+   * has to be built with the same answer or the phone would come back from a
+   * turn looking at the table from somewhere else.
+   *
+   * Read when the roll screen opens and never watched, like power saving and
+   * the rest (`docs/architecture.md`, decision 16).
+   */
+  private val tableView: TableView = TableView.Angled,
+) : Renderer {
   private var drawing: FilamentDiceRenderer? = null
   private var canvas: Stage? = null
   private var scene: Scene? = null
@@ -57,7 +72,7 @@ class TrayRenderer : Renderer {
    */
   fun stage(stage: Stage?) {
     canvas = stage
-    drawing = stage?.let(::FilamentDiceRenderer)
+    drawing = stage?.let { FilamentDiceRenderer(it, tableView) }
     val renderer = drawing ?: return
     val showing = scene ?: return
 

@@ -9,6 +9,7 @@ import app.cash.turbine.test
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableView
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
@@ -128,6 +129,7 @@ class DataStoreSettingsRepositoryTest {
           "haptics" to true,
           "sound" to true,
           "rounding" to "down",
+          "table_view" to "straight_down",
           "developer_tools" to false,
           "welcome_seen" to false,
           "active_group" to "unfiled",
@@ -234,6 +236,20 @@ class DataStoreSettingsRepositoryTest {
     }
 
   @Test
+  fun `how far the table leans comes back`() =
+    runTest {
+      val repository = DataStoreSettingsRepository(dataStore(this))
+
+      assertEquals(TableView.StraightDown, repository.settings.first().tableView)
+
+      repository.setTableView(TableView.Angled)
+      assertEquals(TableView.Angled, repository.settings.first().tableView)
+
+      repository.setTableView(TableView.StraightDown)
+      assertEquals(TableView.StraightDown, repository.settings.first().tableView)
+    }
+
+  @Test
   fun `two settings changed one after the other both survive`() =
     runTest {
       // The whole reason `update` reads and writes together: a write that only
@@ -256,11 +272,13 @@ class DataStoreSettingsRepositoryTest {
       store.edit { preferences ->
         preferences[stringPreferencesKey("appearance")] = "sepia"
         preferences[stringPreferencesKey("rounding")] = "sideways"
+        preferences[stringPreferencesKey("table_view")] = "isometric"
       }
 
       val settings = DataStoreSettingsRepository(store).settings.first()
       assertEquals(Appearance.System, settings.appearance)
       assertEquals(Rounding.Default, settings.rounding)
+      assertEquals(TableView.Default, settings.tableView)
     }
 
   private suspend fun settingsOf(repository: DataStoreSettingsRepository) = repository.settings.first()

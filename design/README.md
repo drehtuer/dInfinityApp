@@ -44,7 +44,9 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
 - **The roll screen is one picture, not a column of bands.** The table is
   full-bleed and every control is an opaque floating plate. Accent never
   touches felt.
-- **A table view setting** — straight down, or angled with two walls.
+- **A table view setting** — straight down, or angled with two walls
+  ([../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
+  "Rendering (normal mode)").
 - **Per-set physical properties**: weight, translucency and size, all three
   real rather than metadata.
 - **Dice land one at a time** and shove the dice already down.

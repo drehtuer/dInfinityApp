@@ -91,6 +91,11 @@ a tumble; everything else is real.
 - **Your accent** — the one colour the interface spends is yours to choose: six
   presets, or any colour your phone's picker offers, pushed toward the ground
   it is read against until it is legible on both the light and the dark one.
+- **Your view of the table** — look straight down at the tray, or lean the
+  camera over and see the top and left walls. Straight down is what a new
+  install rolls with, because on a tall phone a leaning shot spends more of the
+  frame on the wooden rim than on the felt. It is a camera either way: the dice
+  are still drawn in perspective and still cast their shadows.
 - **Readable out loud** — every screen is labelled for TalkBack, including the
   tray and the charts, which are drawings and would otherwise be silent.
   Nothing is said by a colour alone: a natural 20, a dropped die, the chosen

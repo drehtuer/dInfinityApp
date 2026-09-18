@@ -24,6 +24,7 @@ import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.MineSets
 import de.drehtuer.dinfinity.designer.PhotoStore
+import de.drehtuer.dinfinity.designer.PhysicalStore
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledArtwork
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
@@ -240,8 +241,21 @@ class DInfinityApplication : Application() {
       painter = BitmapAtlas(),
       dice = { drawableDice() },
       photos = photoStore,
+      physical = physicalStore,
     )
   }
+
+  /**
+   * What the dice of "My dice" are made of, as the details screen's steppers
+   * set them (`docs/dice-sets.md`, "Weight, translucency and size, as a person
+   * sets them").
+   *
+   * The third record the personal package is built from, and under the app's
+   * own files beside the drafts for the reason the photographs are: everything
+   * in `dicesets/` is scanned as a package, and a loose file in it would be
+   * listed as a dice set that does not validate.
+   */
+  private val physicalStore: PhysicalStore by lazy { PhysicalStore(File(filesDir, PhysicalStore.FILE_NAME)) }
 
   /**
    * The photographs somebody has made tables of (`docs/tables.md`, "Your own

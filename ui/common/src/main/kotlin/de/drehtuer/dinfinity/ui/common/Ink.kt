@@ -3,7 +3,12 @@ package de.drehtuer.dinfinity.ui.common
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import de.drehtuer.dinfinity.core.model.AccentRamp
+import de.drehtuer.dinfinity.core.model.Ground
 
 /**
  * The colours a screen reaches for that Material has no role of its own for.
@@ -68,4 +73,32 @@ object Ink {
     @Composable
     @ReadOnlyComposable
     get() = MaterialTheme.colorScheme.primary
+
+  /**
+   * `--color-accent-700`: the accent deep enough to print small words in.
+   *
+   * [accent] itself reaches only 3:1 against the ground, which is enough for
+   * chrome and for large text and not enough for a kicker at 10 dp or a `+`
+   * at 13. The design system's answer is the ramp's 700 step, and the app's
+   * answer to a *freely chosen* accent is to mix that step rather than look it
+   * up — which is what [AccentRamp] is, and what [Tag] already does for the
+   * ramp's other two ends.
+   *
+   * Mixed from the theme's `primary`, which is the player's colour **after**
+   * the clamp, against the ground it will be read on. Clamping an already
+   * clamped colour returns it untouched, so going through [AccentRamp.of]
+   * again costs nothing and keeps one rule rather than two.
+   */
+  val accentDeep: Color
+    @Composable
+    get() {
+      val accent = MaterialTheme.colorScheme.primary
+      val dark = MaterialTheme.colorScheme.background.luminance() < HALF
+      return remember(accent, dark) {
+        Color(AccentRamp.of(accent.toArgb(), if (dark) Ground.Dark else Ground.Light).v700)
+      }
+    }
 }
+
+/** Halfway up the luminance range: what divides a dark page from a light one. */
+private const val HALF = 0.5f

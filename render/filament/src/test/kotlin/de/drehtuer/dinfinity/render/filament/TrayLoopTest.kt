@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.render.filament
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableSound
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
@@ -36,6 +37,27 @@ import org.junit.Test
 class TrayLoopTest {
   private val geometry = TableGeometry.referenceDevice()
   private val look = TableLook(id = "plain", name = "Plain")
+
+  @Test
+  fun `the table view this visit opened with reaches the renderer`() {
+    // One visit to the roll screen is one loop, so the lean it was built with
+    // is the lean it draws — which is what "takes effect the next time the
+    // screen opens" is, in code (`docs/architecture.md`, decision 16).
+    val stage = FakeStage()
+    val loop = TrayLoop(tableView = TableView.StraightDown)
+    loop.stage(stage)
+
+    loop.table(geometry, look)
+
+    assertEquals(
+      TrayCamera.framingTheTray(
+        geometry,
+        stage.width.toDouble() / stage.height,
+        tiltDegrees = TrayCamera.NO_TILT_DEGREES,
+      ),
+      stage.shots.last(),
+    )
+  }
 
   @Test
   fun `the first frame of a roll is worth no time at all`() {
