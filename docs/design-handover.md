@@ -110,6 +110,42 @@ the difference is where the hex sits — the prototype keeps it inline at the
 end of the swatch row, the app puts it on the line below, because thirteen
 48 dp targets already wrap on a phone.
 
+## The shake is the throw, and the prototype half-says so
+
+The Roll button is gone from the app: shaking the phone is the only way to
+throw (`docs/physics-and-rendering.md`, "Starting a roll"). The prototype was
+already close — it has no Roll button either, and a tap on the tray stands in
+for the shake a browser cannot make — so most of the change was deleting
+things.
+
+**Hand-edited, and in step:** the `earned` plate has lost `Throw {{ n }} more`
+and `Stop the chain` and now says to shake again; the `stuck` plate has lost
+`Throw those {{ n }} again` and keeps `Cancel the roll`; and the result sheet
+has lost `Again` (compact) and `Roll again` (poster). Its `rollAgain` handler
+is left in the script, unreferenced, rather than unpicked by hand.
+
+**Not done, and wanted from the design:**
+
+- **What the ready plate says now.** The button's label was the only place the
+  screen said what a throw would be worth, and the app has put the expected
+  range there instead: a kicker, the low-to-high range with its `+` for an
+  open chain, and `avg 10.5`. It is the counting plate's own `Range` reused,
+  so the figures before the throw and the figures during it are one
+  calculation — but the *plate* is the app's invention and the prototype has
+  no such block. What should it look like, and should the hint and the range
+  share one plate or sit in two?
+- **The same line on the result sheet.** The app prints it under the
+  breakdown, so the total is a number in a range. The prototype's poster sheet
+  has no equivalent and has just lost a button from that action row.
+- **A toast that says how many dice a shake will throw.** It is the
+  back-arming toast's component, over the tray, raised when a chain earns a
+  throw and when a roll gives up. The prototype has the component and does not
+  raise it here.
+- **The prototype's tray tap is not the app's.** Tapping the tray in the app
+  deliberately does *not* roll — that gesture is kept for picking a die up —
+  so the prototype's stand-in reads as a specification it is not. Worth a word
+  on the board saying it is a browser's substitute for a shake.
+
 ## Screens whose shape still differs
 
 None of these was changed by either side. They are structure, and structure is
