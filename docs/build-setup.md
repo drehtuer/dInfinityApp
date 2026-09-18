@@ -129,7 +129,7 @@ the first on every configuration. They are gone.
 Nothing is lost with them, because `false` is what all three now default to:
 
 | Feature | What it generates | Used here |
-|---|---|---|
+| --- | --- | --- |
 | `buildConfig` | the `BuildConfig` class, with `DEBUG`, `VERSION_NAME` and any `buildConfigField` | no — the version reaches the app through `versionName`, and nothing reads `BuildConfig` |
 | `resValues` | resources declared in the DSL with `resValue(...)` | no — every string a screen says is a real resource in `res/values` |
 | `shaders` | GLSL under `src/main/shaders`, compiled by `glslc` | no — Filament compiles its materials on the device (`docs/architecture.md`, decision 46) |
