@@ -126,6 +126,12 @@ positions, straight down by default, read when the roll screen opens like the
 other six. The tilt is an argument to `TrayCamera` rather than a constant, so
 both positions are framed by the same JVM-tested arithmetic.
 
+**Settings is rows, not stacks**: each setting is the design's single row now —
+name and sentence on the left, the control on the right and centred against
+them — which halves the length of the screen. Where the control has no room
+beside the text it goes under it, which is the one thing the drawing does not
+say (`docs/architecture.md`, "Settings").
+
 **Step 5 is the real remaining work** — see Known risks.
 
 ## Blocked / waiting on

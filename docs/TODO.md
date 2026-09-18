@@ -658,6 +658,33 @@ every throw filed under it (`docs/statistics.md`, per session).
       draws the one the face designer already has — hue, depth and brightness
       over `designer/Ink` — rather than a second transcription of what a hue is
 
+**Every setting is one row now** — name and sentence on the left, the control
+on the right and centred against them — because that is how the design draws
+the screen and the app was drawing three stacked blocks instead
+(`docs/architecture.md`, "Settings"). Three things were left undone rather than
+done half way:
+
+- [ ] **The design's Settings has two rows the app does not.** *Example dice
+      set on GitHub* is nowhere in the app, and *Reset statistics for
+      «session»…* is on the Statistics screen, next to the thing it resets.
+      Neither is a drawing problem: the question is whether Settings is where a
+      person looks for them, and the answer decides whether the app grows two
+      rows or the prototype loses them
+- [ ] **The accent's hex is on a line of its own, not at the end of the
+      sentence.** The design writes it inline, in tabular numerals, as the last
+      words of the description. That is an `AnnotatedString` with a
+      `fontFeatureSettings` span rather than a second `Text`, and it is worth
+      doing when the accent block itself is reconsidered — it is the one
+      setting that is not a row, because a four-column grid of swatches has
+      nothing left of itself in half of one. Doing only the hex would leave the
+      block half converted
+- [ ] **Judgement, on the phone:** a row whose control has no room beside the
+      text stacks — the control drops under the sentence, at the left edge,
+      which is the app's answer to a thing a browser solves by overflowing
+      sideways. Nothing on the Pixel 10a's Settings should reach it, so what is
+      worth looking at is a **split screen**: whether a stacked row still reads
+      as one setting there, or as the old three blocks come back
+
 The **developer toggle** is the last thing on that screen, and it is the one
 setting that is off on every install. It adds a debug overlay over the tray, a
 Developer row in the menu, and behind that row an anomaly log and two ways of
