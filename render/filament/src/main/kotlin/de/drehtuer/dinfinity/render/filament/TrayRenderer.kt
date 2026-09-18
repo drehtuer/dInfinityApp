@@ -36,7 +36,14 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * Every line of this is a decision about when to draw what, and none of it is
  * a GPU — so it sits on the near side of [Stage] and is tested on a JVM
  * (`docs/architecture.md`, decision 47).
+ *
+ * The class carries a function-count suppression for the reason [TrayLoop] and
+ * [TrayDriver] do: most of these are one per thing that can happen to a
+ * picture — a stage arrives, a table is named, a throw begins, a frame lands,
+ * a roll ends, the board changes, a die falling on it moves — and folding two
+ * of them together would hide which is which rather than shorten anything.
  */
+@Suppress("TooManyFunctions")
 class TrayRenderer(
   /**
    * How far the camera leans over the table — the player's **Table view**

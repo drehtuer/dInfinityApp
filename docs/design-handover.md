@@ -52,6 +52,20 @@ its true shape, and whether an oversized stamp on a d4 shrinks to fit.
    each refusal a typed reason the screen phrases is a design change as much as
    a code one, and it is what translation waits on.
 
+### One the prototype cannot draw
+
+**A die the picker adds falls onto the table.** Tapping a d6 used to put one
+there; it now drops 60 mm and tumbles to a stop in about a fifth of a second,
+and the dice already down do not move
+(`docs/physics-and-rendering.md`, "The dice waiting to be thrown"). The
+prototype's tray is a still picture of a board, so it shows where the dice end
+up and cannot show them arriving — the two are not in conflict, and the still
+picture is still right: the board after the fall is the board the prototype
+draws, because the fall ends exactly where the die would otherwise have been
+stood. What is missing from `design/` is the motion, and the only decision in
+it is how long the drop should read as taking. That needs a hand rather than a
+drawing, and it is in `docs/TODO.md` under 5.6.
+
 ### Five the pass did not reach
 
 - **The table picker is a list of rows**, where the prototype `1u` is a

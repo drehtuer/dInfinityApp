@@ -461,7 +461,10 @@ class TrayRendererTest {
     renderer.table(geometry, look)
     renderer.waiting(spec(dice = 1))
     renderer.fall(A_WHOLE_FALL)
-    val standing = stage.placed.values.single().copyOf()
+    val standing =
+      stage.placed.values
+        .single()
+        .copyOf()
 
     renderer.waiting(spec(dice = 2))
 

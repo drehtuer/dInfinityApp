@@ -309,8 +309,15 @@ formula and never throws one away":
   not take a die away from it without silently changing what `dl1` drops.
   Dice inside brackets and dice being subtracted are likewise not the
   picker's to change.
+- **A tap drops a die onto the table**, and the dice already on it do not move
+  (`docs/physics-and-rendering.md`, "The dice waiting to be thrown"). The board
+  under the formula is what the throw will be, so adding to the formula is
+  adding to the board — and the new die falls in and tumbles to a stop rather
+  than appearing, because that is what putting a die on a table looks like. It
+  is not a roll and nothing about it is read.
 - **A long press takes one die off**, and takes the group away with it when it
-  was the last one. A press with nothing to remove does nothing. It is the
+  was the last one. A press with nothing to remove does nothing. The dice that
+  are left stay exactly where they were standing. It is the
   whole of what a long press on this row means: the face designer's "Doodle
   this die" is offered on the dice in the *breakdown* instead, so that taking
   a die off stays one gesture rather than a gesture and a menu

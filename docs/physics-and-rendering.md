@@ -1040,6 +1040,75 @@ That is a settling problem rather than a counting one, the same family as
 `100d4`, and it is bounded in the device suite at today's worst case so that
 the next change to the shake or the settle rule improves it or is noticed.
 
+## The dice waiting to be thrown
+
+Tapping a saved roll, or a die in the picker, puts dice **on** the table rather
+than throwing them. The board follows the formula as it is typed and as the
+picker adds to it, so what a player is looking at before they shake is what
+they are about to throw (`docs/dice-notation.md`, "Picking dice without
+typing").
+
+**A die that is new to the board falls onto it and tumbles to a stop.** It used
+to appear, laid flat where it belonged, which is not what putting a die on a
+table looks like. It is let go 60 mm above its place, turns between three
+quarters and one and three fifths of a turn about an axis of its own on the way
+down, bounces three times at 35 % and is down in about a fifth of a second.
+
+**And none of it is a roll.** This is the one thing that has to be true, so it
+is true by construction rather than by care:
+
+- **Every fall ends square on** — `Quaternion.Identity`, the same turn for
+  every die, every seed and every board. The orientation a die comes to rest in
+  is decided before it is released, so there is no face here to read even if
+  something wanted one. It is the tumble that varies, and by the time the die
+  is standing the tumble is over.
+- **There is no body and no world.** `FallingIn` is closed-form arithmetic over
+  a clock — free fall, three bounces, an eased turn — evaluated wherever the
+  frame callback asks. Nothing is stepped, nothing is solved, and a frame that
+  arrives late finds the dice exactly where a frame that arrived on time would
+  have, so the board looks the same at 60 Hz and at 120.
+- **Its randomness is its own.** The axis, the turn and the release height come
+  through `Seeds.WAITING`, a purpose no throw uses. A board built between two
+  throws therefore cannot move a number in either of them, and the golden
+  fixture does not shift under a feature that decides nothing ("Timestep and
+  determinism").
+- **It ends where the die would simply have been stood.** `RestingPlaces` still
+  says where each die belongs and still says the same thing it always did, so
+  the board a player taps twice is the same board twice. The fall changed how a
+  die arrives and nothing about where.
+
+**A die already standing does not move.** The dice on the board are handed to
+the next board as floor that is taken, and no place is computed for them again
+— the same `ClearSpace` question an added die asks inside a roll, asked one
+level up. So a tap adds one die falling into the gaps between the ones that are
+down, and a long press takes one off and disturbs nothing. Which dice carry
+over is matched by what each die *is* rather than by where it sits in the
+formula, so taking the d6 out of `2d6 + 1d20` leaves the d20 where it was. A
+board whose dice have been shrunk by the capacity rule is the one case where
+they all move, because every place on it has moved (`docs/tables.md`,
+"Capacity rule").
+
+**And a die still in the air when the next tap arrives goes on falling.** Its
+release is carried onto the new board's clock rather than restarted. Tapping
+out `8d6` builds eight boards in a row and leaves nothing running behind any of
+them: a board is a list and a number, not a thread and not a world, and there
+is never more than one.
+
+The frames it costs are the only frames it costs. A board that is falling wants
+one per vsync and a board that has settled wants none, which is what
+`TrayLoop.wantsFrames` says; and a fall with nowhere to draw wants none either,
+because nobody is owed an animation they cannot see. A throw takes the board
+away when it starts — the dice that were waiting have been thrown, and a
+half-finished fall belongs to a board that no longer exists.
+
+What is still open is a question only a hand can answer: whether 60 mm and a
+fifth of a second read as a die being dropped on a table, or as a die that
+blinks into place a moment late. The height is the number to turn
+(`FallingIn.DROP_HEIGHT_MM`), and it is deliberately higher than the 25 mm an
+added die is dropped from — that drop happens among dice whose faces are being
+read and should not upstage them, and this one *is* the thing the player is
+looking at.
+
 ## The dice an explosion or a reroll adds
 
 `8d6!` does not know how many dice it is until the first eight have landed, and
