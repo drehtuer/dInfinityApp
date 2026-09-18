@@ -321,6 +321,12 @@ private fun Roll(
     onAddSets = { navController.navigate(Destination.DiceSets.route) },
     shakeToRoll = settings.shakeToRoll,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
+    // The other way on from a result: the editor, with the formula already
+    // typed. The same route the outcome graph's "Save as roll" takes, because
+    // it is the same act — a roll screen that knew what a saved roll is would
+    // be one feature module depending on another
+    // (`docs/architecture.md`, "Modules").
+    onSaveAsRoll = { formula -> navController.navigate(editorRoute(rollId = null, formula = formula)) },
     // Quick mode: a long press on a die that landed opens the designer on that
     // die (`docs/face-designer.md`, "Quick mode"). The tray is left behind
     // like any other way off this screen, and back comes to it again — which
@@ -330,11 +336,11 @@ private fun Roll(
     // The active group's saved rolls, handed to the tray as a slot: the roll
     // screen does not know what a saved roll is, and does not have to
     // (`design/dInfinity.dc.html`, option 9a).
-    strip = { rollIt ->
+    strip = { fill ->
       if (saved != null) {
         HomeStrip(
           presenter = saved,
-          onRoll = { formula, source -> rollIt(formula, source) },
+          onPick = { formula, source -> fill(formula, source) },
           onEdit = { rollId -> navController.navigate(editorRoute(rollId)) },
           onNew = { navController.navigate(editorRoute(null)) },
         )

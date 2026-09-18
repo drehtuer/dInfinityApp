@@ -111,7 +111,7 @@ object DicePicker {
 private fun standard(id: String): PickableDie? =
   when {
     id == PERCENTILE_HALF -> PickableDie("d%", Sides.Percentile)
-    id == FUDGE -> PickableDie("dF", Sides.Fudge)
+    id == DieResolver.FUDGE_DIE_ID -> PickableDie("dF", Sides.Fudge)
     // `d10` is offered as itself; the tens die is what turns it into `d%`.
     id.startsWith('d') -> id.drop(1).toIntOrNull()?.let { PickableDie(id, Sides.Numeric(it)) }
     else -> null
@@ -270,7 +270,6 @@ private fun tidied(text: String): String {
 private val SUM_OPERATORS = setOf(BinaryOperator.Plus, BinaryOperator.Minus)
 private val SPACE_RUN = Regex("\\s+")
 private const val PERCENTILE_HALF = "d10-tens"
-private const val FUDGE = "df"
 
 /**
  * One die on the picker row.

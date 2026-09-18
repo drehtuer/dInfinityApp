@@ -5,8 +5,12 @@ import de.drehtuer.dinfinity.core.glyphs.Typeface
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.FaceRead
+import de.drehtuer.dinfinity.simulation.api.SolidFace
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import kotlin.math.PI
+import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.sin
 
 /**
@@ -77,9 +81,17 @@ data class GuideMark(
  * the same value at each end — because the value belongs to the corner rather
  * than to either cell. `docs/TODO.md` asks for that to be "hard to do by
  * accident, not a warning afterwards", so **it is derived rather than
- * checked**: the guide for a cell is computed from the corner values, and
- * there is no way to express a d4 whose cells disagree. A wrong one cannot be
- * drawn because it cannot be said.
+ * checked**, and derived *from the solid*: [SolidFaces] says which corner of
+ * cell `i`'s real triangle is which readable position, and the guide puts
+ * that position's number there ([cornersOf]). Two cells meeting along an edge
+ * are asking about the same two corners of one tetrahedron, so there is no
+ * second copy to disagree with. A wrong one cannot be drawn because it cannot
+ * be said.
+ *
+ * Deriving it from the *index order* instead — the three faces that are not
+ * this cell's, handed to the three corners as they come — is what this used
+ * to do, and it is the kind of rule that is right often enough to look right:
+ * it agrees with the tetrahedron on one edge in six.
  */
 object FaceGuide {
   /**
@@ -156,14 +168,28 @@ object FaceGuide {
   }
 
   /**
-   * Which catalogue face each corner of cell [cell] reads, in corner order.
+   * Which catalogue face each corner of cell [cell] reads, in spot order.
    *
    * Cell `i` is the triangle *opposite* corner `i`, so its corners are the
    * three that are not `i`, and each carries that corner's own face —
    * `faces[c]`, because a vertex-read die indexes its faces by vertex.
    *
-   * Two cells sharing an edge share two corners, and both read those corners'
-   * values from the same place. There is no second copy to disagree with.
+   * **Which of the three goes where is read off the solid, not off the index
+   * order.** It used to be the latter: the remaining three face indices handed
+   * to the three spots as they came, which is a rule about arithmetic rather
+   * than about a tetrahedron. It agrees with the solid on one of the six edges
+   * and puts the other two corners the wrong way round on half the cells, so a
+   * d4 drawn from the guide met its neighbour's number along one edge and two
+   * strangers along the rest — which is what a phone showed
+   * (`docs/face-designer.md`, "The d4 rule is derived, not checked").
+   *
+   * So it asks `simulation/api` instead. [SolidFaces] says which corner of the
+   * real polygon is which readable position ([SolidFace.cornerReads]) — the
+   * same answer the tray prints from — and where that corner lands in the cell
+   * ([SolidFace.cellOf]), which is the cell the canvas is copied into whole
+   * ([AtlasCell.at]). Pairing those against the canvas's own corners is all
+   * that is left, and two cells sharing an edge cannot disagree along it
+   * because they are asking about the same two corners of one solid.
    *
    * The faces rather than their values, because what is *printed* at a corner
    * is the face's label and only the guide reduces it to a number
@@ -172,16 +198,45 @@ object FaceGuide {
   fun cornersOf(
     die: Die,
     cell: Int,
-  ): List<Pair<Int, GuideSpot>> =
-    if (!isCornerRead(die) || cell !in die.faces.indices) {
-      emptyList()
-    } else {
-      die.faces.indices
-        .filter { it != cell }
-        .mapIndexed { position, corner -> corner to SPOTS[position] }
+  ): List<Pair<Int, GuideSpot>> {
+    if (!isCornerRead(die) || cell !in die.faces.indices) return emptyList()
+    val surface = SolidFaces.of(die.shape)[cell]
+    val places = SPOTS.map { FaceShapes.corner(FaceOutline.of(die.shape), it) }
+    val wound = surface.corners.indices.sortedBy { round(surface.cellOf(surface.corners[it])) }
+    val turn = alignment(wound.map { surface.cellOf(surface.corners[it]) }, places)
+    return SPOTS.mapIndexed { at, spot -> surface.cornerReads[wound[(at + turn) % wound.size]] to spot }
+  }
+
+  /**
+   * How far round the cell's corners have to be stepped to sit on the canvas's.
+   *
+   * Both lists are already in the same turning order — [round] sorts the
+   * cell's corners the way a canvas outline's are written down — so all that
+   * is unknown is where one starts against the other, and the answer is the
+   * step that leaves the corners nearest their places. A whole step is a third
+   * of a turn and the cells of a tetrahedron are within a sixteenth of one, so
+   * nothing here is a close call; a rotation is chosen rather than each corner
+   * taking whatever place is nearest so that three corners always land in
+   * three different places, however far out a future shape's cell is turned.
+   */
+  private fun alignment(
+    corners: List<Pair<Double, Double>>,
+    places: List<Dot>,
+  ): Int =
+    corners.indices.minBy { turn ->
+      places.indices.sumOf { at ->
+        val (u, v) = corners[(at + turn) % corners.size]
+        hypot(u - places[at].x, v - places[at].y)
+      }
     }
 
+  /** Where a point in the cell sits around its middle, for putting corners in turning order. */
+  private fun round(cell: Pair<Double, Double>): Double = atan2(cell.second - MIDDLE, cell.first - MIDDLE)
+
   private val SPOTS = listOf(GuideSpot.FirstCorner, GuideSpot.SecondCorner, GuideSpot.ThirdCorner)
+
+  /** The middle of a cell, which is the middle of the canvas copied into it. */
+  private const val MIDDLE = 0.5
 
   /** How big the dot is, as a fraction of the canvas — what the screen drew before. */
   private const val DOT_RADIUS = 0.05

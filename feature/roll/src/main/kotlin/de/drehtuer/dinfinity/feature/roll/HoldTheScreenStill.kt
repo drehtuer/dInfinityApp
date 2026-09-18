@@ -13,10 +13,12 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 
-// The two ways the phone gets in the way of somebody shaking it
-// (`docs/TODO.md`, Step 4.1). Both are the same thing underneath: a player
-// waving a phone about is not holding it the careful way they hold it to read
-// something, and the system takes the difference as input.
+// The three ways the phone gets in the way of somebody rolling dice on it
+// (`docs/TODO.md`, Step 4.1). All of them are the same thing underneath: a
+// player waving a phone about, or watching dice settle without touching it, is
+// not using the phone the careful way the system assumes — a quarter turn, a
+// swipe in from an edge and the display timeout are all the system taking that
+// difference for input, or for the absence of it.
 
 /**
  * Keeps the roll screen in the *shape* it was opened in — and no stiller than
@@ -152,6 +154,35 @@ private fun gripBands(
     Rect(0, top, EDGE_PIXELS, top + band),
     Rect(width - EDGE_PIXELS, top, width, top + band),
   )
+}
+
+/**
+ * Holds the screen on while the roll screen is in front.
+ *
+ * A dice tray is something a table looks at between turns, and rolling is the
+ * one thing this app does that involves no touching: a shake takes both hands
+ * and puts none of them on the glass, and reading the dice afterwards puts
+ * none on it either. A display that blanks after fifteen seconds of that is a
+ * display that goes out mid-throw and has to be poked before anybody can read
+ * what landed (`docs/physics-and-rendering.md`, "Shake input").
+ *
+ * Held only here. The rest of the app is ordinary reading and scrolling, which
+ * is exactly what the system timeout is tuned for, and an app that kept the
+ * screen on everywhere would be a battery complaint rather than a feature.
+ *
+ * `View.keepScreenOn` rather than `FLAG_KEEP_SCREEN_ON` on the window: the
+ * view's flag is scoped to the view, so leaving the screen takes it away by
+ * itself instead of by somebody remembering to clear it. It is still released
+ * explicitly on dispose, because the composition may outlive the screen's turn
+ * in front of the player.
+ */
+@Composable
+internal fun KeepTheScreenAwake() {
+  val view = LocalView.current
+  DisposableEffect(view) {
+    view.keepScreenOn = true
+    onDispose { view.keepScreenOn = false }
+  }
 }
 
 private tailrec fun Context.activity(): Activity? =

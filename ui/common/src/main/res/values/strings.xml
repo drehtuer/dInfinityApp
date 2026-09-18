@@ -9,4 +9,18 @@
     instead of the drawing, which has no words.
   -->
   <string name="up">Up</string>
+  <!--
+    The colour picker every screen that asks for a colour draws: the face
+    designer's ink, Settings' accent and a saved roll's tag (`ColourPicker`).
+    The sheet's *title* is the caller's, because only it knows what is being
+    coloured; what is inside it is the same words wherever it is opened.
+  -->
+  <string name="colour_picker_use">Use it</string>
+  <string name="colour_picker_cancel">Cancel</string>
+  <!-- Round the colour wheel: red, through yellow and green, back to red. -->
+  <string name="colour_picker_hue">Hue</string>
+  <!-- How far the colour is from grey. "Saturation" is the word for people who already know the word. -->
+  <string name="colour_picker_depth">Depth</string>
+  <!-- How far the colour is from black. -->
+  <string name="colour_picker_brightness">Brightness</string>
 </resources>

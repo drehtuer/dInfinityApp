@@ -32,12 +32,12 @@
   <string name="accent_amber">Amber</string>
   <!-- The seventh swatch, and the sheet behind it. -->
   <string name="accent_custom">Your own colour</string>
+  <!--
+    What the shared colour picker is called when it is the accent being
+    chosen. Only the title is this screen's; everything inside the sheet is
+    `ui/common`'s, because a hue is a hue on every screen.
+  -->
   <string name="settings_accent_picker_title">Your own colour</string>
-  <string name="settings_accent_picker_use">Use it</string>
-  <string name="settings_accent_picker_cancel">Cancel</string>
-  <string name="settings_accent_hue">Hue</string>
-  <string name="settings_accent_depth">Depth</string>
-  <string name="settings_accent_brightness">Brightness</string>
   <!-- Appearance (design option 1q). -->
   <string name="settings_appearance_heading">Appearance</string>
   <string name="settings_appearance_explanation">Light, dark, or whatever the phone is doing.</string>

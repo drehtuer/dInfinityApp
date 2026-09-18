@@ -80,7 +80,8 @@ class PowerSavingTray(
     // worker thread in well under a tenth of a second, with no frames to pace
     // it, so a running total would be a number that appeared and was replaced
     // by the real one in the same breath (`docs/physics-and-rendering.md`,
-    // "Power-saving mode").
+    // "Power-saving mode"). The one time it is called is on the way to giving
+    // up, where it is the only report the faces already read will ever get.
     onCounted: (Map<Int, Int>) -> Unit,
     onStalled: (List<Int>) -> Unit,
     onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
@@ -101,6 +102,7 @@ class PowerSavingTray(
       // are records it holds.
       var heard: List<Impact> = emptyList()
       var stuck: List<Int> = emptyList()
+      var read: Map<Int, Int> = emptyMap()
       val (outcome, drove) =
         roll.use { throwing ->
           val reached = runOut(throwing)
@@ -109,7 +111,16 @@ class PowerSavingTray(
           // has no frames, so it reaches the backstop in a fraction of a second
           // rather than in twelve — but a roll that cannot finish still says so
           // rather than answering.
-          if (throwing.stalled) stuck = throwing.unsettled
+          if (throwing.stalled) {
+            stuck = throwing.unsettled
+            // And what it *did* read, which is the one thing a stalled throw
+            // has to hand on: a roll that gave up reports no outcome, so
+            // without this the dice that settled are forgotten and the throw
+            // that brings the rest of them back has nothing to score them
+            // against (`RollMachine.gaveUp`). It is reported here rather than
+            // frame by frame because this mode has no frames.
+            read = throwing.countedSoFar
+          }
           reached to throwing.drivenBy
         }
       live = null
@@ -120,6 +131,7 @@ class PowerSavingTray(
         impacts.play(heard, Impacts.REPLAY_SECONDS)
         onSettled(outcome, drove)
       } else if (stuck.isNotEmpty()) {
+        if (read.isNotEmpty()) onCounted(read)
         onStalled(stuck)
       }
     }

@@ -43,7 +43,7 @@ so that everything above it can be tested without an engine at all.
 build-logic/         Gradle convention plugins — every module's build config lives here, once
 app/                 Application: single activity, theme, navigation graph
 core/
-  model/             Die, DiceSet, Face, the shape catalogue and its atlas layout, a decoded atlas and which of its cells are empty, RollPlan, RollResult, SavedRoll — pure Kotlin, no Android deps
+  model/             Die, DiceSet, Face, the shape catalogue and its atlas layout, a decoded atlas and which of its cells are empty, RollPlan, RollResult, SavedRoll, and the colour arithmetic every picked colour goes through (Contrast, AccentRamp, Hsv, Hex) — pure Kotlin, no Android deps
   notation/          Formula parser + evaluator (docs/dice-notation.md)
   probability/       Exact PMF computation (docs/probability.md)
   stats/             Statistics aggregation logic
@@ -66,7 +66,7 @@ feedback/            Impacts → haptic ticks and impact sounds (docs/physics-an
 designer/            The personal package, "My dice": the drawing model behind the face designer (marks, drafts on disk, cell outlines), the die turned over in the hand (the projection, the culling and the depth sort behind the Solid tab), the photographs somebody has made tables of, and the export that turns both into an installable package (docs/face-designer.md, docs/tables.md)
 data/                Room database, DAOs, DataStore
 ui/
-  common/            The design system's tokens, and the screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes, the button, the rule, the segmented control
+  common/            The design system's tokens, and the screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes, the button, the rule, the segmented control, the sheet, the colour picker
 feature/             One module per screen group; see docs/TODO.md Step 4
   roll/              Roll screen: tray, dice picker, formula field, result sheet, shake to roll
   graph/             Outcome graph
@@ -125,12 +125,24 @@ the one module most likely to be looked at beside the first (decision 35).
 
 `ui/common` is **not** a feature and is not a place for anything that is
 merely shared. Nothing in it knows what screen it is on, and it depends on
-`core/notation` and nothing else — so a piece of furniture cannot reach a
-database, a simulator or the navigation graph. It exists because three screens
-take a formula, validate it on every keystroke and have to say the same thing
-about the same mistake: the tray, the outcome graph and the saved-roll editor.
-Two copies of "the same thing" is one copy too many, and the disagreement
-would eventually be about whether somebody's formula is valid.
+`core/notation` and `core/model` and nothing else — so a piece of furniture
+cannot reach a database, a simulator or the navigation graph. It exists
+because three screens take a formula, validate it on every keystroke and have
+to say the same thing about the same mistake: the tray, the outcome graph and
+the saved-roll editor. Two copies of "the same thing" is one copy too many,
+and the disagreement would eventually be about whether somebody's formula is
+valid.
+
+**The colour picker is the same argument, and it is the one that got away
+first.** Three screens ask for a colour — Settings' accent, the face
+designer's ink, the saved-roll editor's tag — and the sheet was written twice
+before it was written here, each copy private to its own feature module and
+each with its own slider row. `ui/common` may not depend on a feature's
+engine, so what the picker is built on went the other way: the HSV arithmetic
+is `core/model`'s `Hsv`, beside `AccentRamp` and `Contrast`, where it is plain
+Kotlin under a JVM test and low enough in the graph for furniture to reach.
+`Hex` went with it, because the accent's label, the designer's readout and a
+saved roll's tag each wrote the same six digits their own way.
 
 The rule for putting something in it is the same rule: **more than one screen
 needs it, and it needs no screen.** A control that navigates does not go in —
@@ -230,7 +242,8 @@ stateDiagram-v2
     Editor: Saved roll editor
     Developer: Developer<br/>(only while the toggle is on)
 
-    Roll --> Graph: See the odds
+    Roll --> Graph: See the odds, off the result sheet
+    Roll --> Editor: Save as roll, off the result sheet
     Roll --> Menu: the menu button
     Screen --> Editor: a saved roll, or New
     Editor --> Screen: saved, deleted, or the chevron
@@ -384,6 +397,8 @@ stateDiagram-v2
     TooMany: TooMany<br/>asked for N, M fit
     Ready: Ready<br/>diceCount, scale
     Rolling: Rolling<br/>dice in the air
+    ShakeAgain: ShakeAgain<br/>a chain earned throws
+    Stalled: Stalled<br/>dice that never stopped
     Settled: Settled<br/>result, divides
 
     Empty --> Ready: type a formula that reads and fits
@@ -400,17 +415,24 @@ stateDiagram-v2
     Ready --> Empty: clear the field
     Ready --> Invalid: type
     Ready --> TooMany: type
-    Ready --> Rolling: Roll, or a shake
+    Ready --> Rolling: a shake
 
     Rolling --> Rolling: an explosion or a reroll adds a die<br/>(thrown once the last has landed)
+    Rolling --> ShakeAgain: a chain earned a throw
+    Rolling --> Stalled: the roll gave up on some dice
     Rolling --> Settled: the last die comes to rest
     Rolling --> Ready: type<br/>(abandons the throw)
     Rolling --> Invalid: type
     Rolling --> TooMany: type
     Rolling --> Empty: clear the field
 
+    ShakeAgain --> Rolling: a shake<br/>(throws the dice it earned)
+    ShakeAgain --> Ready: type<br/>(abandons the roll)
+    Stalled --> Rolling: a shake<br/>(throws the ones that never stopped)
+    Stalled --> Ready: Cancel the roll, or type
+
     Settled --> Settled: Down / Nearest / Up<br/>(rescored, dice never move)
-    Settled --> Rolling: Roll, or a shake
+    Settled --> Rolling: a shake
     Settled --> Ready: type
     Settled --> Invalid: type
     Settled --> TooMany: type
@@ -440,25 +462,31 @@ file.
 
 ### What each state puts on screen
 
-| State | Total | Message | Sheet | Roll button | Formula field |
+| State | Total | Message | Sheet | A shake | Formula field |
 | --- | --- | --- | --- | --- | --- |
-| `Empty` | — | what to do next | — | disabled | live |
-| `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | disabled | live, in error |
-| `TooMany` | — | how many were asked for and how many fit | — | disabled | live, in error |
-| `Ready` | — | that shaking also rolls | — | **enabled** | live |
-| `Rolling` | — | "Rolling…" | — | disabled | live |
-| `Settled` | the total | — | breakdown, and rounding if the formula divides | **enabled** (throws again) | live |
+| `Empty` | — | what to do next | — | throws nothing | live |
+| `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | throws nothing | live, in error |
+| `TooMany` | — | how many were asked for and how many fit | — | throws nothing | live, in error |
+| `Ready` | — | that a shake rolls, and what the throw is expected to come to | — | **throws the formula** | live |
+| `Rolling` | — | how many dice have been read, and the range they can still come to | — | joins the roll in the air | live |
+| `ShakeAgain` | — | how many dice the chain earned | — | **throws them** | live |
+| `Stalled` | — | how many never stopped, and `Cancel the roll` | — | **throws them again** | live |
+| `Settled` | the total | — | breakdown, what it was expected to come to, and rounding if the formula divides | **throws the formula again** | live |
 
-Neither blank cell in the first two rows is an accident: a tray with nothing
-on it and a button that does nothing is a screen with no way in, and shaking —
-the one input nobody would guess at — has nowhere else to be announced.
+There is no Roll button column any more, because there is no Roll button: a
+shake is the throw (`docs/physics-and-rendering.md`, "Starting a roll"). The
+column that replaces it is the only one a player can act on, which is why the
+message column carries so much — with nothing to press, the words are the
+whole of the affordance, and shaking is the one input nobody would guess at.
 
 **Over all of it, once**, a new install shows the first-launch screen
 (`design/dInfinity.dc.html`, option 9a). It is not a state of `RollState`: the
 machine underneath is `Empty` like any other new screen, and the welcome is a
-sheet on top with four ways out, all of them forward. Its "roll a d20 now"
-types `1d20` into the field and asks for a roll — there is no demonstration
-path and no canned number. That it has been seen is remembered on disk, and
+sheet on top with four ways out, all of them forward. Its "put a d20 on the
+table" types `1d20` into the field and gets out of the way; the throw is the
+shake the player makes, because a welcome that rolled for them would be
+teaching the one thing this app does not do. There is no demonstration path
+and no canned number. That it has been seen is remembered on disk, and
 also in the composition, so the screen changes when the button is pressed
 rather than when a write comes back.
 
@@ -485,22 +513,41 @@ the editor, under the squiggle, because that is where somebody can fix it.
 Whether the editor is open is the screen's, remembered across a rotation, and
 `RollMachine` knows nothing about it.
 
-The picker row is not in that table because it is on screen, and live, in
+**Two menus hang off the top edge, and only one of them can be open.** The
+formula is one of them, on the right under the menu button; the dice picker is
+the other, on the left. Both push what is under them down rather than floating
+over it, so two open at once would be the top half of the table covered —
+which is the thing the layout exists to stop
+(`docs/physics-and-rendering.md`, "What is drawn over the table"). Which is
+open is two booleans on the screen, remembered across a rotation, and opening
+either shuts the other in one place rather than in each control.
+
+The picker row is not in that table because it is reachable, and live, in
 every state — for the same reason the formula is, and in fact for exactly that
-reason: it is the formula edited with a thumb.
+reason: it is the formula edited with a thumb. It is *put away* rather than
+absent: the pull-down's head carries the count of dice the formula asks for,
+so a shut menu still says what is in the throw.
 
 Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
 - **the formula line** opens the editor, and **the editor** calls `type` on
   every keystroke and `roll` on the action key;
+- **the dice pull-down** puts the picker on screen and takes it away again,
+  and decides nothing about the roll;
 - **the dice picker row** calls `add` on a tap and `remove` on a long press,
   and both are `type` underneath — a tap *is* an edit to the formula, so it
   re-validates, re-checks the table's capacity and abandons a throw in the air
   exactly as a keystroke does (`docs/dice-notation.md`);
-- **the Roll button** calls `roll`, which is one press for one throw — a
-  settled roll is put away by the presenter rather than by a second press;
-- **a shake** calls the same `roll`, which is why it had to be one act;
+- **a shake** calls `roll`, which is one shake for one throw — a settled roll
+  is put away by the presenter rather than by a separate act, and a roll that
+  is waiting on a hand is continued rather than restarted, whether it is
+  waiting for the dice a chain earned or for the ones a throw gave up on;
+- **the table's custom accessibility action**, and the editor's action key,
+  call the same `roll` with no samples. They are the two ways in that are not
+  a hand, and they exist because a shake is not a gesture every hand can make
+  ("Accessibility", below; `docs/physics-and-rendering.md`, "Starting a
+  roll");
 - **Down / Nearest / Up** call `round`, which rescores from subtotals that
   already landed and never moves a die;
 - **the one-tap fix under an error** calls `type` with the formula the parser
@@ -508,23 +555,32 @@ and none of them decides anything itself:
   correction typed by hand;
 - **pinch and two-finger drag** call `look`, which moves the camera and is not
   a state change at all — where a player is standing is not what the dice did;
-- **See the odds** is the one control that leaves the screen. It navigates and
-  changes no state here at all, carrying the formula as typed and, for a throw
-  that has landed, its total (`design/dInfinity.dc.html`, option 7a). Offered
-  in `Ready`, `TooMany` and `Settled` — including the refusal, because a throw
-  the table cannot hold is exactly when "what would it have been" is the only
-  answer there is.
+- **See the odds** and **Save as roll** are the two controls that leave the
+  screen. Neither changes any state here at all: the first carries the formula
+  as typed and the total that landed (`design/dInfinity.dc.html`, option 7a),
+  the second carries the formula alone to the saved-roll editor (option 3b).
+  Both live at the foot of the result sheet, so both are offered in `Settled`
+  and in no other state — a device session asked for them to be part of the
+  result rather than plates standing on the felt. **That is a narrowing**: the
+  odds used to be offered in `Ready` and `TooMany` as well, and the refusal
+  was the case with the best argument, because a throw the table cannot hold
+  is exactly when "what would it have been" is the only answer there is. What
+  is left for that case is the menu, which reaches the graph from anywhere.
+  Neither callback knows where it goes, because `feature/roll` may not depend
+  on `feature/graph` or `feature/saved`.
 
 In power-saving mode the tray is not there at all, and the list is otherwise
 unchanged: the dice are thrown by the same `roll`, stepped by the same loop,
 and the total arrives in the same `Settled`. Only pinch and pan have nothing
 to move (`design/dInfinity.dc.html`, option 1z).
 
-The tray is not in that list on purpose. It draws what the roll is doing and
-has no way to change it: `Renderer` has no method that returns anything
-(decision 48), so drawing a roll cannot alter one, and a one-finger tap on the
-tray deliberately does nothing yet (`docs/physics-and-rendering.md`, "Starting
-a roll").
+The tray is in that list once and only once, for its accessibility action.
+Otherwise it draws what the roll is doing and has no way to change it:
+`Renderer` has no method that returns anything (decision 48), so drawing a roll
+cannot alter one, and a one-finger tap on the tray deliberately does nothing
+yet (`docs/physics-and-rendering.md`, "Starting a roll"). The action is a
+*custom* action rather than a click for exactly that reason — a semantic click
+is a tap to anything walking the tree.
 
 ### While the phone is being shaken
 
@@ -876,17 +932,22 @@ to migrate.
 The active group's rolls sit above the dice picker, as tiles: a roll somebody
 named comes before a die they have to assemble.
 
-**A tap here throws**, where a tap on the saved-rolls list only puts the
-formula in the field. The two are not inconsistent. A saved roll *is* a named
-formula rolled with one tap, and this is the one place in the app where the
-tray is already on screen to roll it on; from the list you are somewhere else,
-and arriving at the tray with a throw already finished would be a roll nobody
-watched.
+**A tap here fills the formula field**, exactly as a tap on the saved-rolls
+list does, and the throw is the shake that follows
+(`docs/physics-and-rendering.md`, "Starting a roll"). It used to throw, which
+made the strip the one control in the app that rolled without a hand: a saved
+roll brushed by a thumb was dice already on the table, and the throw nobody
+watched was the throw that counted.
+
+What the strip hands back is the formula **and which saved roll put it there**,
+and that survives the wait for a hand — so the throw is still recorded as that
+roll's, and the saved-roll statistics still have something to count
+(`docs/statistics.md`).
 
 It is handed to the roll screen as a **slot**, the same way the menu button is,
 and for the same reason: a roll screen that knew what a saved roll was would be
 one feature module depending on another. The slot is given the callback that
-rolls a formula, so the strip hands back text and the roll screen does the rest
+fills the field, so the strip hands back text and the roll screen does the rest
 — through the same `type` a keystroke goes through.
 
 The invitation tile is last and is the only thing there when the group is
@@ -1028,10 +1089,32 @@ numbers beside it.
 | the name field | `name` | what it will be called; blank means the formula is its name |
 | the formula field | `formula` | the formula, its error and its odds, all from one plan |
 | icon, colour, group, table | `choose` | that one field and nothing else — none of them needs re-validating |
+| the thirteenth swatch | *(opens `ui/common`'s `ColourPicker`)* | nothing until **Use it**, which reports a colour into `choose` like one of the twelve |
 | **New group** | `GroupPresenter.create` | the group sheet opens; the group it writes becomes this roll's |
 | **Save roll** | `save` | the roll is written down, and the editor leaves |
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
 | **Delete** | `delete` | the roll is taken away, and the editor leaves |
+
+**A new roll opened from nothing starts on the last formula that was thrown.**
+There are three ways in and they carry different things. The outcome graph's
+"Save as roll" carries the formula that was being read, and that one wins —
+somebody chose it. The tray's strip "+" and the saved list's **New** carry
+nothing, and an empty field there asks for what the app watched somebody type a
+moment earlier, because "add a roll" is pressed just after throwing the thing
+worth keeping. Editing a roll that already exists is untouched by this: it
+opens on its own formula, and `Editing` makes any other answer unsayable rather
+than merely forbidden.
+
+What fills the gap is the **history**, read once — `HistoryRepository.recent(1)`
+in `SavedWiring`, handed to the presenter as a suspending lambda. Not a new
+`AppSettings` field: "the formula used for the last roll" is literally what a
+history row is, and a second copy in the settings file would be a second answer
+to the same question, one that needs a migration to add and that would go on
+answering after somebody cleared their history (`docs/statistics.md`). The read
+happens on the editor's own scope beside the groups, so nothing waits on the
+database before the screen draws, and a player who beats it to the first
+keystroke keeps what they typed. The formula that arrives is validated like any
+other, so one whose dice set has since gone says so instead of being saved.
 
 The editor leaves by **climbing**, not by going back: saving, deleting and the
 chevron in its header all land on the saved-rolls list. It is a detour from
@@ -1272,14 +1355,26 @@ the next write stores the survivor. The two ids that survived, `vermilion` and
 name is language, and re-labelling a colour must not move anybody's choice.
 
 **Android has no colour picker to send anybody to.** The prototype's
-`<input type="color">` is the browser's, and there is no platform equivalent to
-borrow, so Settings draws the picker the app already has: hue, depth and
-brightness over `designer`'s `Ink`, which is what the face designer offers and
-what a JVM test already holds (`docs/face-designer.md`, "A colour beyond the
-twelve"). That is why `feature/settings` depends on `:designer` — the same
-dependency `feature/sets` and `feature/tables` already take, and for the same
-reason: a second transcription of what a hue is would be a second answer to one
-question.
+`<input type="color">` is the browser's, and there is no platform equivalent
+to borrow, so the app draws its own: `ui/common`'s `ColourPicker`, a sheet
+with a patch of colour and three sliders — hue, depth and brightness rather
+than red, green and blue, because dragging one of three colour channels
+changes all three of the things somebody is looking at.
+
+**There is one of it, and three screens open it**: Settings' accent, the face
+designer's ink and the saved-roll editor's colour tag. It was written twice
+before it was written once — each copy private to its screen, each with its
+own slider row — which is the duplication this module layout exists to
+prevent, and which both copies' own comments had already noticed. The
+arithmetic under it is `core/model`'s `Hsv`, beside `AccentRamp` and
+`Contrast`: plain Kotlin, so a JVM test holds what a hue is, and low enough in
+the graph that `ui/common` can reach it without depending on a feature's
+engine. `Hex` is there too, and is the one way a colour is written `#RRGGBB` —
+the accent's label, the designer's ink readout and a saved roll's tag each had
+their own before, and two of them took the default locale with them.
+
+`feature/settings` no longer depends on `:designer` at all; it took that
+dependency only for the picker's arithmetic.
 
 **There is no longer a sound switch in the design.** The prototype's Settings
 has Appearance, Table view, Power-saving mode, Haptics, Division and Accent
@@ -1375,9 +1470,46 @@ says what it contains rather than nothing:
   no idea how far is the state people give up in.
 
 A control drawn as one glyph is labelled and given a target: the menu button,
-the export mark, a group's **…**, the back arrow out of a die. Rows that are
-one fact are merged with `mergeDescendants` so they arrive as one
-announcement rather than three.
+the export mark, a group's **…**, the back arrow out of a die, and every tool
+of the face designer. Rows that are one fact are merged with
+`mergeDescendants` so they arrive as one announcement rather than three — a
+face of the designer's strip is a thumbnail and a label and arrives as "Face
+crit", not as a picture followed by a word.
+
+**The designer is where the rule cost the most and paid the most.** Twenty-one
+controls lost their words at once (`docs/face-designer.md`, "The tools are
+pictures"), and not one string resource was deleted: each became the name its
+control is announced by, so the words moved from the face of the button to the
+`contentDescription` and a translator still reaches every one of them. A
+two-state tool says its state in the semantics as well as in the paint — a
+nib is `selected`, the guide is a `Role.Checkbox` because a tap turns it back
+off — and a tool that merely *does* something is a `Role.Button` with no
+chosen-ness to report at all, rather than one reporting that it is not chosen.
+
+### A gesture is not an affordance
+
+**Shaking the phone is the only way to throw dice** (`docs/physics-and-
+rendering.md`, "Starting a roll"), and a shake is not a gesture every hand can
+make. Two things therefore stand in for it, and neither is a button on the
+screen:
+
+- **a custom accessibility action on the table**, labelled *Throw the dice*,
+  and on the power-saving panel that stands instead of the table. A custom
+  action rather than a click: a tap on the tray deliberately does not roll,
+  and a semantic click *is* a tap to anything walking the tree.
+- **the action key in the formula editor.** That is what the key already
+  means, and somebody typing a formula on a hardware keyboard has no hand
+  free to shake the phone.
+
+Both call the same `roll` a shake calls, with no samples, so there is no
+second path to a number (goal 1).
+
+**A roll that is waiting on a hand announces itself.** A chain that earned a
+throw, and a throw that gave up on dice that never stopped, both put a plate
+over the tray saying how many dice the next shake will throw — and a toast
+with the same count, which is a polite live region, so it is read when it
+arrives rather than when somebody swipes onto it. A notice nobody is told
+about is a notice that did not happen.
 
 ### Touch targets
 
@@ -1679,7 +1811,7 @@ the archives an install is working through, and those came from a stranger.
 | 19 | The verdict on an instrumented run comes from its JUnit XML, not from AGP's own pass/fail | AGP 9.4.0 cannot pass a run on a device whose adb serial contains a colon — which is every device attached over WiFi debugging — so its verdict is unusable here (`docs/build-setup.md`) |
 | 20 | Release APKs are signed v2+v3, not v1 or v4 | v3 carries the proof-of-rotation record, so a lost or compromised release key can be replaced without breaking updates for anyone who already installed the app; v1 is unread above API 24 and v4 only speeds up incremental `adb install` |
 | 21 | The submitted dependency graph covers the runtime classpaths only | A graph of every configuration also carries the build's own toolchain, producing vulnerability alerts for transitives no file in this repository declares and that Dependabot therefore cannot patch; build-tool advisories ride in on the weekly AGP and Kotlin bumps instead |
-| 22 | The accent is six presets **and** any colour the player likes, with a contrast clamp between the choice and the paint | The Modernist system spends colour in one place and relies on that colour carrying meaning, and a free picker lets somebody choose an accent that vanishes against the ground — which is why this used to be a closed palette of six asserted at 3:1 by a test. The clamp answers the same worry better: `AccentRamp.clamp` pushes any colour off the ground it is read against until it clears 3:1, so the guarantee becomes a property of every colour rather than a list of six, and a property is what a test can hold. It is in the theme, so a preset and a picked colour cannot take different paths. What is *shown* stays what was chosen — a swatch that answers a tap with a different colour is a control nobody can aim — and the deepening is explained in words above the grid instead |
+| 22 | The accent is six presets **and** any colour the player likes, with a contrast clamp between the choice and the paint | The Modernist system spends colour in one place and relies on that colour carrying meaning, and a free picker lets somebody choose an accent that vanishes against the ground — which is why this used to be a closed palette of six asserted at 3:1 by a test. The clamp answers the same worry better: `AccentRamp.clamp` pushes any colour off the ground it is read against until it clears 3:1, so the guarantee becomes a property of every colour rather than a list of six, and a property is what a test can hold. It is in the theme, so a preset and a picked colour cannot take different paths. What is *shown* stays what was chosen — a swatch that answers a tap with a different colour is a control nobody can aim — and the deepening is explained in words above the grid instead. **The same answer now covers a saved roll's colour tag**, which is the other place in the app where a player picks a colour the app will print words in: twelve presets, any colour beyond them, and `AccentRamp.clamp` between the choice and the mark. What it did *not* extend to is a die's face, and deliberately — the ground behind a die's artwork belongs to the dice set, so there is no ratio to clamp against (`core/model`'s `Hsv`) |
 | 23 | The identity's blue is fixed and does not follow the accent | The mark is the app's name, not its chrome, and a launcher icon cannot follow a runtime setting in any case (`docs/assets/README.md`) |
 | 24 | SonarQube runs as the scanner in CI, not as automatic analysis | Automatic analysis cannot ingest a coverage report at all, and it ignores `sonar.issue.ignore.*`, so a reviewed finding could only be accepted by clicking it away in the web UI. It also reads a different file, so the repository had to carry two configurations that could silently disagree — and did (`docs/build-setup.md`) |
 | 25 | Coverage is reported per module, not merged into one file | Each module has exactly one JVM test task, and SonarQube merges a list of reports itself. The Android modules' reports are built by AGP rather than by a hand-written `JacocoReport` task, so nothing depends on the paths of AGP's intermediate class directories, which are not API and have moved between versions |
@@ -1692,7 +1824,7 @@ the archives an install is working through, and those came from a stranger.
 | 32 | Everything a roll can fail on that does not need dice is decided at plan time | A roll is watched. A formula that turns out mid-throw to divide by zero, keep four of two dice or explode for ever would have to fail with dice on the table and nothing to show. `ResultBounds` proves the 64-bit promise the same way, which is also what lets the evaluator add in plain `Long` with no overflow checks |
 | 33 | A dice set is parsed by tomlj and read field by field into plain data classes | Parsing TOML is the kind of thing that should not be hand-rolled, and this parser is the one that carries the line and column of every key — without which the validation report could not say `file:line` at all (`docs/dice-sets.md`). Its deserializer is never used: a downloaded file reaches a document tree and nothing else |
 | 34 | A texture's dimensions are read from its own header, in plain Kotlin, before any decoder sees it | Refusing a 30,000-pixel image is only safe if the refusal happens before the decode, because the decoder is the part with the attack surface. It also means `dicesets/format` stays a JVM module and can be tested without an emulator |
-| 35 | Every catalogue solid is computed from its closed form in `simulation/api`, and the hull, the mesh, the face reading and the face designer's Solid tab all come from that one place | Three descriptions of the same solid are three chances to be a hundredth of a degree apart, and the one that would show is a die whose printed face and scored face disagree. Face 0 is the face that is up in the reference orientation, which is what both the atlas and a settled reading expect. **Which corners make up which face** is part of that one place rather than of whoever needs it: `SolidFaces` groups the corners onto the face planes once, and both `render/filament`'s `DieMesh` and `designer`'s `SolidStage` are built from it — the grouping used to live in the mesh, and a second copy of it in the designer would have been decision 35 broken in the one place it is easiest to break it, since the two pictures of face 7 would look right until somebody changed a solid |
+| 35 | Every catalogue solid is computed from its closed form in `simulation/api`, and the hull, the mesh, the face reading and the face designer's Solid tab all come from that one place | Three descriptions of the same solid are three chances to be a hundredth of a degree apart, and the one that would show is a die whose printed face and scored face disagree. Face 0 is the face that is up in the reference orientation, which is what both the atlas and a settled reading expect. **Which corners make up which face** is part of that one place rather than of whoever needs it: `SolidFaces` groups the corners onto the face planes once, and both `render/filament`'s `DieMesh` and `designer`'s `SolidStage` are built from it — the grouping used to live in the mesh, and a second copy of it in the designer would have been decision 35 broken in the one place it is easiest to break it, since the two pictures of face 7 would look right until somebody changed a solid. **Which corner of a face is which readable position** is part of it too (`SolidFace.cornerReads`): a d4's numbers belong to its corners, and the renderer derived that from the mesh while the face designer derived it from the face order, which agrees with the tetrahedron on one edge in six — so a printed d4 and a drawn one numbered the same corner differently until the derivation moved here |
 | 36 | `size_mm` is a die's nominal size — the edge length for a polyhedron, the diameter for the coin — not its bounding diameter | It is what a dice maker quotes, so "a d6 of 16 mm" means the same thing to an author as to the app. It is also the reading the capacity rule in `docs/tables.md` was worked out under: a 16 mm d6 covers 6.03 cm², and eighty of them are exactly what a phone-sized tray holds |
 | 37 | Jolt Physics 5.3.0, not Bullet — decided by building both against the toolchain the app actually uses | Goal 4 is determinism, and Jolt offers cross-platform determinism as a supported build mode (`CROSS_PLATFORM_DETERMINISTIC=ON`) while Bullet offers no such guarantee at all. The spike settled the rest on evidence: Jolt configures and builds clean with the SDK's CMake 4.1.2 and NDK 30's Clang 21 in about three seconds, and a real slice of it — a convex-hull die, a box tray and fixed 1/120 s stepping — links to a 2.0 MB stripped `arm64-v8a` library. Bullet 3.25 does not configure at all: its `cmake_minimum_required(VERSION 2.4.3)` is below what CMake 4 still supports. An engine the build cannot even configure is not a fallback (`docs/build-setup.md`) |
 | 38 | The `Renderer` contract lives in `render/headless`, and `render/filament` depends on it rather than the other way round | "No Filament engine is created at all" in power-saving mode is a claim about a whole dependency, and it is only true if the headless path can be built without that dependency present. A headless mode made out of the real renderer with the drawing switched off would still hold a GPU context and would quietly stop being free the first time somebody allocated in the wrong place. The contract also returns nothing anywhere, so a renderer cannot act on the simulation it is watching |
@@ -1719,4 +1851,5 @@ the archives an install is working through, and those came from a stranger.
 | 59 | Every die is printed, and its artwork is composited over the printing by alpha | `docs/dice-sets.md` has always promised that an atlas may leave a cell transparent and the label shows through, and the old material could not keep it: `baseColor *= atlas` over a transparent pixel is black, not the die, and the printed field was suppressed for any die with a `texture` at all. Deciding it per *cell* instead would mean the renderer knowing which cells came out empty, which is a fact about pixels that live on the far side of `Stage` — so it is decided per *pixel*, in the material, where the alpha already is. The cost is a distance field built for dice that may not need one, which is cached per die and is eighty kilobytes; what it buys is that a die with no artwork and a die whose artwork covers every face are the same code path with different alpha, rather than two. Where the artwork is opaque the result is the old multiply exactly, which is what keeps a table's floor tinted by its floor colour |
 | 60 | The table picker's thumbnails are drawn by the roll screen's renderer, on the roll screen's thread and engine; everything that decides what one is a picture of is plain Kotlin | It is the first thing in the app to want the renderer somewhere that is not the tray, and there were three ways to get it and only one that keeps the promises already made. A private engine on the main thread is simply wrong — Filament takes calls only from the thread that made the engine (decision 49). A second engine on a second thread works and pays, again, the cost decision 50 exists to avoid: the dice material is compiled on the device for the driver that is actually there (decision 46) and takes long enough to watch, so a second one is that compile twice over and two graphics contexts held for one app. `RollThread` already outlives every visit to every screen and already has one engine on it, and a handler serialises what reaches it, so the picker posts. What a thumbnail owns is a swap chain and a scene, and both are given back before the post returns. The other half is decision 40 and 47 applied again: how big a picture is, what tray it is a tray of, where the camera stands, which face of the die is up, how high that leaves the die sitting, which looks are kept and which are dropped are all arithmetic and judgement, and all of them fail as *a slightly odd picture* rather than as an error — so all of them are `ThumbnailPlan` and `ThumbnailCache`, with JVM tests, and only the draw call and the buffer of pixels are behind `Stage`. The seam back out is the same one `TablePhotos` uses: `feature/tables` asks for a picture of a look and cannot name an engine, `render/filament` draws a frame and cannot name a bitmap, and `:app` joins them. The fallback is the screen's existing swatch, kept for exactly that — an engine that will not open, a driver that will not read a frame back, and power-saving mode, which promises that no engine is created *at all* |
 | 61 | Every word a screen says is a string resource, and a check of the project's own — not Android Lint's — is what keeps it that way | Lint has the rule and cannot apply it: `HardcodedText` reads layout XML, and there is no layout in this app to read. Left at that, "nothing prevents a translation" would be a claim maintained by whoever last remembered it, which is the kind of rule that decays quietly — a caption typed into a `Text(` is invisible in review and invisible in CI. So the rule is enforced by `verifyTextIsAResource`, which reads what a composable is *handed*. It is a heuristic over source text rather than a type-resolved analysis, and that shapes what it asks: only the handful of call sites that put words on a screen, and only literals with words of their own in them, so that a test tag, a route, a `require` message and `"%.1f"` are all left alone. The gaps are the two plain-Kotlin modules that write English on purpose — the notation reference beside its parser, and the validator that may not depend on Android — and they are exempted by file name in their own build scripts rather than by a directory nothing looks in, so the hole stays visible and small |
+| 63 | There is **one** colour picker, in `ui/common`, and the arithmetic under it is in `core/model` | Three screens ask for a colour and the sheet had been written twice, each copy private to its feature module, each with its own slider row and its own duplicate of what a hue is — and the second copy's own comment already said that two pickers disagreeing about a hue would be one too many, which is a note somebody wrote instead of fixing it. The rule for `ui/common` answers it exactly: more than one screen needs it, and it needs no screen. What forced the second half is the dependency arrow — `ui/common` may not depend on a feature's engine, so the arithmetic could not stay in `:designer` and moving it *up* was the only direction left. `core/model` is where it belongs anyway: it sits beside `AccentRamp` and `Contrast`, which are the other things every picked colour goes through, it is plain Kotlin so a JVM test holds what a hue is rather than a Robolectric one, and it is low enough that nothing has to take a screen's dependency to write a colour down. `feature/settings` had taken `:designer` for the arithmetic alone and no longer depends on it; `feature/designer`'s alias of `ui/common`'s `Ink` went with the name clash that forced it. The tags are derived from one string rather than declared seven times per screen, because twenty-one constants is twenty-one chances to spell a suffix two ways |
 | 62 | Which die a finger is on is arithmetic in `render/filament`, the inverse of the camera; whether that die may be thrown again is arithmetic in `core/notation`, over the breakdown | The same line decisions 40 and 47 draw, applied to the only gesture the tray had left. A touch point becomes a die by a ray through the frustum `TrayCamera` framed, against the ball around each die at the scale the capacity rule threw it — so it belongs beside that camera, where a JVM test can project a die through the picture it was drawn in and ask for it back, and not inside a `pointerInput` lambda where the only test is a person tapping a phone and the only symptom is a die they did not touch. The second half is a different question and deliberately not in the same place: *may* a die be thrown again is about the **formula**, not about the physics or the picture. A die that another die was thrown because of is spent — `8d6!` threw a seventh die because the sixth came up six — and throwing it again would leave the roll holding a die nothing asks for, which can only be resolved by taking a die off the table or keeping one whose reason has gone. Both are the app moving dice behind the player, which is what the whole stacking ladder exists to avoid. So the rule sits beside `GroupRoller`, which is what builds the chains, and it is coarse on purpose: a group carrying `!` or `r n` offers nothing at all rather than a per-die guess reconstructed from a flat list the chains were flattened out of. A die it refuses is a die the player throws again by pressing **Roll**; a die it wrongly allowed would be a roll the app had rearranged |

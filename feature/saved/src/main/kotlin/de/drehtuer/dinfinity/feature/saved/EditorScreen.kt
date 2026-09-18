@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -20,11 +21,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -33,6 +35,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.ui.common.ColourPicker
+import de.drehtuer.dinfinity.ui.common.ColourPickerTags
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
@@ -41,6 +45,7 @@ import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.OptionBox
 import de.drehtuer.dinfinity.ui.common.OptionFill
 import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import de.drehtuer.dinfinity.ui.common.UpButton
 
 /**
@@ -281,21 +286,39 @@ private fun Icons(
 }
 
 /**
- * The colour a roll's mark prints in (design option 9d).
+ * The colour a roll's mark prints in (design option 9d;
+ * `design/dInfinityPhone.dc.html`, the saved-roll editor).
  *
  * Twelve tags spanning the hue circle, none at all — which follows the accent
- * — and one somebody types themselves. The twelve are [RollColour]'s and the
- * custom one is a hex field beside them, and **both go through the same
- * contrast clamp** when the mark is drawn, which is what makes a free colour
- * safe here where `docs/architecture.md` decision 22 refused one: the reason a
- * picker was refused was a colour nobody could see, and a clamped colour is
- * always one somebody can (`RollColour`, and `core/model`'s `AccentRamp`).
+ * — and a thirteenth swatch that opens a colour picker. The twelve are
+ * [RollColour]'s and stay the fast path, because twelve colours a finger can
+ * hit is a choice somebody makes in a second where naming a colour is a
+ * choice somebody has to work at.
+ *
+ * **All thirteen go through the same contrast clamp** when the mark is drawn,
+ * which is what makes a free colour safe here: `AccentRamp.clamp` pushes any
+ * colour off the ground it is read against until it clears 3:1, so the
+ * guarantee is a property of every colour rather than a list of twelve —
+ * which is the same answer the accent reached (`docs/architecture.md`,
+ * decision 22), and `markColour` is where it is applied.
+ *
+ * The hex under the swatches is a **readout, not a field**. It used to be
+ * where a colour of somebody's own was typed, which is what the picker
+ * replaced; it is still printed because a hex code is what somebody copying a
+ * colour out of a character sheet has in front of them, and because a swatch
+ * with no words is a colour a screen reader cannot repeat.
  */
 @Composable
 private fun Colours(
   chosen: Int?,
   onPick: (Int?) -> Unit,
 ) {
+  var picking by remember { mutableStateOf(false) }
+  // The colour the picker opens on: the tag already chosen, or — for a roll
+  // with none — the colour its mark is printing in anyway, which is the
+  // accent. Opening on a colour nobody chose would make every visit start by
+  // undoing one.
+  val start = chosen ?: MaterialTheme.colorScheme.primary.toArgb()
   Field(stringResource(R.string.editor_colour)) {
     FlowRow(
       horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
@@ -319,42 +342,89 @@ private fun Colours(
           tag = EditorTestTags.colourOf(tag.argb),
         )
       }
+      Own(chosen = chosen, onOpen = { picking = true })
     }
-    Custom(chosen = chosen, onPick = onPick)
+    Chosen(chosen = chosen)
+  }
+  if (picking) {
+    ColourPicker(
+      start = start,
+      title = stringResource(R.string.editor_colour_picker_title),
+      tags = EditorTestTags.COLOUR_PICKER,
+      onDismiss = { picking = false },
+      onChosen = { argb ->
+        picking = false
+        onPick(argb)
+      },
+    )
   }
 }
 
 /**
- * A colour of somebody's own, typed as `#rrggbb`.
+ * The thirteenth swatch: a colour of somebody's own, and the way to it.
  *
- * A field rather than a wheel because the system colour picker arrives with
- * the accent's (`docs/TODO.md`, Step 4.9) and a hex code is what somebody
- * copying a colour off a character sheet already has. Half-typed text simply
- * does not choose anything — it is somebody in the middle of typing, not a
- * mistake to shout about.
+ * It is a swatch rather than a button because it is one more colour to choose
+ * among twelve, and it wears the colour it would choose — the one already
+ * picked, when that is not one of the twelve, and the surface when it is.
+ * Empty rather than a plausible colour waiting to be confirmed, for the same
+ * reason Settings' seventh swatch is: a swatch showing a colour nobody chose
+ * is a swatch that will be tapped by somebody expecting to get *that*.
+ *
+ * **A button that does something is not a radio option**, so this one opens a
+ * sheet and says so, where the twelve announce themselves as a choice.
  */
 @Composable
-private fun Custom(
+private fun Own(
   chosen: Int?,
-  onPick: (Int?) -> Unit,
+  onOpen: () -> Unit,
 ) {
-  // A colour that is not one of the twelve is one somebody typed, and the
-  // field shows it back to them; one of the twelve leaves the field empty.
   val own = chosen?.takeIf { RollColour.of(it) == null }
-  var typed by rememberSaveable(chosen) { mutableStateOf(own?.let(RollColour.Companion::hexOf).orEmpty()) }
-  OutlinedTextField(
-    value = typed,
-    onValueChange = { text ->
-      typed = text
-      RollColour.parseHex(text)?.let(onPick)
-    },
-    singleLine = true,
-    label = { Text(stringResource(R.string.editor_colour_custom)) },
-    placeholder = { Text(stringResource(R.string.editor_colour_custom_hint)) },
-    modifier = Modifier.fillMaxWidth().testTag(EditorTestTags.COLOUR_CUSTOM),
+  Swatch(
+    colour = own?.let { markColour(it) },
+    chosen = own != null,
+    label = stringResource(R.string.editor_colour_own),
+    role = Role.Button,
+    onPick = onOpen,
+    tag = EditorTestTags.COLOUR_OWN,
   )
 }
 
+/**
+ * The chosen colour written out, `#RRGGBB`.
+ *
+ * What the hex field left behind. A colour is the one thing on this form that
+ * cannot be read back off the screen — a swatch is a picture, and two of the
+ * twelve are a shade apart — so the exact six digits are printed under them,
+ * for somebody copying a colour onto a character sheet and for a screen
+ * reader that has just been told "Cobalt" and nothing more.
+ *
+ * It is the colour as **chosen**, not as painted: the clamp may deepen it on
+ * the page it is read against, and a readout that quietly said something else
+ * would be a readout nobody could use to write the colour down again.
+ */
+@Composable
+private fun Chosen(chosen: Int?) {
+  Text(
+    text = chosen?.let(RollColour.Companion::hexOf) ?: stringResource(R.string.colour_none),
+    style = MaterialTheme.typography.labelSmall,
+    color = Ink.muted,
+    modifier = Modifier.testTag(EditorTestTags.COLOUR_HEX),
+  )
+}
+
+/**
+ * One colour to tag a roll with, in a target a finger can hit.
+ *
+ * The swatch is the 34 px the prototype draws and the thing a finger hits is
+ * not: the target is a full [TOUCH_TARGET] around it, which is Android's floor
+ * for anything pressable (`ui/common/TOUCH_TARGET`).
+ *
+ * @param colour what it is drawn in, or the surface for a swatch standing for
+ *   no colour at all.
+ * @param role [Role.RadioButton] for the thirteen that *are* a choice, and
+ *   [Role.Button] for the one that opens a sheet — a control that does
+ *   something is not an option.
+ */
 @Composable
 private fun Swatch(
   colour: Color?,
@@ -362,9 +432,18 @@ private fun Swatch(
   label: String,
   onPick: () -> Unit,
   tag: String,
+  role: Role = Role.RadioButton,
 ) {
-  Column(horizontalAlignment = Alignment.CenterHorizontally) {
-    Row(
+  Box(
+    modifier =
+      Modifier
+        .size(TOUCH_TARGET)
+        .clickable(role = role, onClickLabel = label, onClick = onPick)
+        .semantics { contentDescription = label }
+        .testTag(tag),
+    contentAlignment = Alignment.Center,
+  ) {
+    Box(
       modifier =
         Modifier
           .size(SWATCH)
@@ -375,10 +454,8 @@ private fun Swatch(
           .border(
             width = Modernist.rule,
             color = if (chosen) MaterialTheme.colorScheme.onBackground else Ink.divider,
-          ).clickable(role = Role.RadioButton, onClickLabel = label, onClick = onPick)
-          .semantics { contentDescription = label }
-          .testTag(tag),
-    ) { }
+          ),
+    )
   }
 }
 
@@ -485,7 +562,15 @@ object EditorTestTags {
   const val SCREEN: String = "editor:screen"
   const val NAME: String = "editor:name"
   const val ODDS: String = "editor:odds"
-  const val COLOUR_CUSTOM: String = "editor:colour:custom"
+
+  /** The thirteenth swatch, which opens the picker. */
+  const val COLOUR_OWN: String = "editor:colour:own"
+
+  /** The chosen colour written out, for reading rather than for typing. */
+  const val COLOUR_HEX: String = "editor:colour:hex"
+
+  /** The shared colour picker, and the six controls on it. */
+  val COLOUR_PICKER: ColourPickerTags = ColourPickerTags("editor:colour:picker")
   const val SAVE: String = "editor:save"
   const val ROLL_NOW: String = "editor:roll-now"
   const val DELETE: String = "editor:delete"

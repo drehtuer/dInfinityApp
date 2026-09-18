@@ -91,7 +91,10 @@ internal class DieReader(
     }
     val labels = labels(table, values.size, where)
     return values.mapIndexed { index, value ->
-      Face(index = index, value = value.toInt(), label = labels?.getOrNull(index) ?: value.toString())
+      // The same default the face designer's "fill with numbers" uses, so a
+      // set file with no `labels` and one the designer wrote come out the same
+      // die (`Face.printed`).
+      Face(index = index, value = value.toInt(), label = labels?.getOrNull(index) ?: Face.printed(value.toInt()))
     }
   }
 

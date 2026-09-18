@@ -13,6 +13,11 @@ import de.drehtuer.dinfinity.core.model.FaceRead
  * @param normal which way the surface faces, outward, one unit long.
  * @param corners the corners on that surface, anticlockwise as seen from
  *   outside, one unit from the middle of the solid.
+ * @param cornerReads which readable position of the solid each of [corners]
+ *   is, in the same order — so a corner and the value printed at it are one
+ *   list apart and cannot be paired up by anything's own reckoning
+ *   ([SolidFaces.readsOf]). **Empty for a face-read solid**, which has no such
+ *   answer: a cube's corner is exactly as far from three of its faces.
  * @param along which way `u` increases across the cell — the face's "right".
  * @param up which way the cell is drawn up: `+z` flattened onto the face
  *   (`docs/dice-sets.md`, "Up is `+z`").
@@ -21,9 +26,16 @@ data class SolidFace(
   val index: Int,
   val normal: Vector3,
   val corners: List<Vector3>,
+  val cornerReads: List<Int>,
   val along: Vector3,
   val up: Vector3,
 ) {
+  init {
+    require(cornerReads.isEmpty() || cornerReads.size == corners.size) {
+      "a face reads one position per corner or none at all, not ${cornerReads.size} for ${corners.size}"
+    }
+  }
+
   /** The middle of the face: the mean of its corners. */
   val centre: Vector3 = corners.reduce(Vector3::plus) * (1.0 / corners.size)
 
@@ -74,6 +86,12 @@ data class SolidFace(
  * the face designer turns over (`designer`'s `SolidStage`) are built from
  * this, so face *i* is the same polygon in both by construction rather than by
  * inspection.
+ *
+ * For the same reason it owns *which corner a corner is*
+ * ([SolidFace.cornerReads]) rather than leaving each side to work it out: a
+ * d4's numbers belong to its corners, and a second account of which corner is
+ * which is how the tray came to print one thing and the designer's guide
+ * another (`docs/face-designer.md`, "The d4 rule is derived, not checked").
  *
  * It is plain arithmetic over closed forms, so it is worked out once per shape
  * and kept: a die being spun on the designer's stage asks for it every frame.
@@ -129,14 +147,50 @@ object SolidFaces {
     val up = flattened(Vector3.Up, normal) ?: flattened(SIDEWAYS, normal) ?: error("no frame for $normal")
     val along = cross(up, normal)
     val middle = onPlane.reduce(Vector3::plus) * (1.0 / onPlane.size)
+    val wound = onPlane.sortedBy { corner -> angleOf(corner - middle, along, up) }
     return SolidFace(
       index = index,
       normal = normal,
-      corners = onPlane.sortedBy { corner -> angleOf(corner - middle, along, up) },
+      corners = wound,
+      cornerReads = readsOf(shape, wound),
       along = along,
       up = up,
     )
   }
+
+  /**
+   * Which readable position of [shape] each of [corners] is.
+   *
+   * **This is the whole of the d4 rule, and it is here so that there is one of
+   * it.** A tetrahedron is read from the corner pointing up, so every corner
+   * of every cell carries a value and the value is the one belonging to the
+   * corner it *is* — which two cells meeting along an edge cannot disagree
+   * about, because they are the same two corners of the same solid. Both the
+   * tray, which prints those numbers ([SolidFace.cornerReads] through the
+   * renderer's mesh), and the face designer, which draws the guide somebody
+   * traces, ask this rather than working it out from a face's index: a
+   * combinatorial answer — "the three faces that are not this one, in order" —
+   * looks right and is right for one edge in six (`docs/face-designer.md`,
+   * "The d4 rule is derived, not checked").
+   *
+   * A face-read solid has no answer and gets none. Its corners are not
+   * readable positions at all, and the nearest direction to a cube's corner is
+   * a three-way tie.
+   */
+  private fun readsOf(
+    shape: DieShape,
+    corners: List<Vector3>,
+  ): List<Int> =
+    when (shape.naturalRead) {
+      FaceRead.FaceUp -> emptyList()
+      FaceRead.VertexUp -> {
+        val directions = ShapeGeometry.directionsOf(shape).map(Vector3::normalised)
+        corners.map { corner ->
+          val unit = corner.normalised()
+          directions.indices.minBy { (directions[it] - unit).length }
+        }
+      }
+    }
 
   /** Where [offset] sits around the face, for winding its polygon. */
   private fun angleOf(

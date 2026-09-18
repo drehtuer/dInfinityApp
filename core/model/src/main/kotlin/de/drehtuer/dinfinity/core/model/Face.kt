@@ -33,6 +33,28 @@ data class Face(
     fun labelled(
       index: Int,
       value: Int,
-    ): Face = Face(index = index, value = value, label = value.toString())
+    ): Face = Face(index = index, value = value, label = printed(value))
+
+    /**
+     * How [value] is written on a face when the set file gave no label.
+     *
+     * The digits, and a **typographic minus** (U+2212) rather than the hyphen
+     * `Int.toString` produces. A hyphen is a word-joiner: it is drawn short,
+     * high and thin, and beside the `+` on the next face of the same die it
+     * does not read as the other half of a pair — which is the whole of what a
+     * Fudge die is. The built-in font carries both characters, so this is a
+     * choice about which one to print and not about what can be printed
+     * (`docs/assets/README.md`). The bundled set writes its own labels this
+     * way already, and so does the notation help; this is the same answer for
+     * a set file that left `labels` out (`docs/dice-sets.md`, "Labels").
+     *
+     * It is only ever a **default**. A set that writes `labels` gets exactly
+     * what it wrote, hyphen and all — the app does not correct an author's
+     * typography.
+     */
+    fun printed(value: Int): String = if (value < 0) "$MINUS${-value}" else value.toString()
+
+    /** U+2212, the minus a die is printed with. Not the hyphen on a keyboard. */
+    const val MINUS: Char = '\u2212'
   }
 }

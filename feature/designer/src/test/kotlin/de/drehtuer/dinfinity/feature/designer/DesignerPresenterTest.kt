@@ -144,8 +144,25 @@ class DesignerPresenterTest {
     val presenter = DesignerPresenter(d6)
 
     presenter.show(99)
-
     assertEquals(0, presenter.state.cell)
+
+    // The other end of the same range. A cell comes off a route or a strip
+    // built from a die that may have been swapped underneath, so neither end
+    // is a case the screen can promise never to ask for.
+    presenter.show(3)
+    presenter.show(-1)
+    assertEquals(3, presenter.state.cell)
+  }
+
+  @Test
+  fun `a gesture that left nothing behind is not a mark, whatever is in hand`() {
+    // The bucket and the stamp both answer a tap, and both read the *first*
+    // dot of one — so a gesture that arrives with no dots at all has to be
+    // nothing rather than a region or a glyph at an imaginary point.
+    val state = DesignerState(draft = Draft(die = d6))
+
+    assertNull("the bucket filled from nowhere", state.copy(nib = Nib.Bucket).markOf(emptyList()))
+    assertNull("the stamp landed nowhere", state.copy(nib = Nib.Stamp).markOf(emptyList()))
   }
 
   @Test

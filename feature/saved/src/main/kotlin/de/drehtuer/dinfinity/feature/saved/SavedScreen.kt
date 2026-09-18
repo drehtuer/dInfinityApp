@@ -513,7 +513,7 @@ private fun SavedRow(
       Modifier
         .fillMaxWidth()
         .combinedClickable(
-          onClickLabel = stringResource(R.string.saved_roll_it, roll.name),
+          onClickLabel = stringResource(R.string.saved_take_it, roll.name),
           onLongClickLabel = stringResource(R.string.saved_edit_it, roll.name),
           onClick = onRoll,
           onLongClick = onEdit,

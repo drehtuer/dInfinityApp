@@ -24,6 +24,13 @@ dependencies {
   // in this module's dependency and testable without one.
   implementation(project(":input:shake"))
 
+  // Every roll says what it is expected to come to before it is thrown, and
+  // the average is the half of that which needs the exact distribution. The
+  // ends come from `core/notation`'s `RollBounds`, which this module already
+  // uses mid-roll; this is the same dependency the saved-roll editor takes for
+  // the same sentence (`Expectation`, `docs/probability.md`).
+  implementation(project(":core:probability"))
+
   // Sensors are registered while the screen is resumed and let go when it is
   // not: an accelerometer left running in the background is a battery bill.
   implementation(libs.androidx.lifecycle.runtime.compose)

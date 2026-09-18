@@ -7,6 +7,7 @@ import de.drehtuer.dinfinity.feature.saved.GroupPresenter
 import de.drehtuer.dinfinity.feature.saved.ImportPresenter
 import de.drehtuer.dinfinity.feature.saved.SavedPresenter
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.first
 
 /**
  * The four screens that are about saved rolls, put together in one place.
@@ -65,7 +66,7 @@ class SavedWiring(
       download = CollectionDownload(app.cacheDir)::fetch,
     )
 
-  /** Writing one saved roll down, or a new one when [editing] is null. */
+  /** Writing one saved roll down, or a new one when [opening] is [Editing.New]. */
   fun editor(
     opening: Editing,
     defaultGroupId: String,
@@ -76,5 +77,27 @@ class SavedWiring(
       scope = scope,
       opening = opening,
       defaultGroupId = defaultGroupId,
+      lastRolled = ::lastRolled,
     )
+
+  /**
+   * The formula of the most recent throw, or empty when there has not been one.
+   *
+   * Read out of the history rather than kept as a setting of its own. "The
+   * formula used for the last roll" is literally what a history row is, so a
+   * second copy in the settings file would be a second answer to the same
+   * question — one that can drift, needs a schema migration to add, and would
+   * still be wrong for anybody who cleared their history
+   * (`docs/statistics.md`, "History").
+   *
+   * One row: `recent(1)` is an indexed `ORDER BY ... LIMIT 1`, and it is read
+   * once when an editor is built rather than watched.
+   */
+  private suspend fun lastRolled(): String =
+    app.history
+      .recent(limit = 1)
+      .first()
+      .firstOrNull()
+      ?.formula
+      .orEmpty()
 }

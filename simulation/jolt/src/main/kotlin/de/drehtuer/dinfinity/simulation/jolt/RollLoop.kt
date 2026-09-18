@@ -14,6 +14,7 @@ import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.api.Tumble
 
 /**
  * One roll, from the first step to the reading — the correction ladder made
@@ -73,6 +74,15 @@ class RollLoop(
   private val countedAt = arrayOfNulls<RestingPlace>(diceCount)
 
   private var rethrows = 0
+
+  /**
+   * How far each die turns once it is on the table.
+   *
+   * A reading, like [RollDiagnostics]: nothing here reaches the solver, and
+   * the roll comes to the same faces whether or not it is counted
+   * ([Tumble]).
+   */
+  private val tumble = Tumble(diceCount)
 
   /**
    * How wide each die is at the scale the capacity rule threw it
@@ -322,6 +332,13 @@ class RollLoop(
     // the step waits for.
     recorder.step(step, states, shake.gravity.length)
     tracker.step(states.map(DieState::motion))
+    states.forEachIndexed { index, state ->
+      tumble.step(
+        index = index,
+        orientation = state.orientation,
+        touching = state.touchingFloor || state.touchingWall || state.supportedByDie,
+      )
+    }
     return true
   }
 
@@ -395,6 +412,9 @@ class RollLoop(
         // simulation had to finish for, not two.
         forcedSettles = forced.count { it },
         postRestCorrections = 0,
+        // What says the dice rolled rather than were placed: the middle die's
+        // turns after it first touched the table ([Tumble]).
+        medianTurnsAfterLanding = tumble.medianTurns,
         // A die counted and taken off the table cannot be stood on, so this
         // counts only what was left standing on something when the roll ran
         // out of throws — which is the number Step 5.5 wants at zero.
@@ -456,6 +476,9 @@ class RollLoop(
         countedFace[index] = reading.index
         countedAt[index] = RestingPlace(state.position, state.orientation)
         counted[index] = true
+        // Its turning is a fact about the throw that was read; the rest of
+        // the roll belongs to the dice still going.
+        tumble.settled(index)
         return@forEachIndexed
       }
 
@@ -481,6 +504,8 @@ class RollLoop(
       // The tracker still has it down as settled from a moment ago, and a die
       // in mid-air is not settled.
       tracker.rethrown(index)
+      // The turns it made on the throw nobody will read are not this roll's.
+      tumble.rethrown(index)
       rethrowCount[index]++
       rethrows++
     }

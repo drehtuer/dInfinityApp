@@ -44,8 +44,9 @@ account or sign-in of any kind.
 
 It is not a picture of the app: the notation parser, the table capacity rule
 and the exact outcome graph all run, following the specification in `docs/`.
-Tap dice to build a formula, press Roll to throw them, type `500d6` to see it
-refused, `2d20kh1 + 6` for advantage. Physics is faked with a random face and
+Tap dice to build a formula and shake the phone to throw them — in the
+prototype, the tray's own control stands in for the shake. Type `500d6` to see
+it refused, `2d20kh1 + 6` for advantage. Physics is faked with a random face and
 a tumble; everything else is real.
 
 | | |
@@ -62,7 +63,13 @@ a tumble; everything else is real.
   shows the walls — your choice — with haptics and sound on every real impact,
   never on a die sliding or a die at rest. The table decides what it sounds
   like, the die's size decides the pitch, and both switch off.
-- **Shake to roll** — accelerometer and gyroscope drive the throw.
+- **Shake to roll** — accelerometer and gyroscope drive the throw, and it is
+  the *only* way to throw. There is no Roll button: the table carries an
+  accessibility action for hands that cannot shake, and the formula editor's
+  action key still rolls. The display stays on while the tray is in front,
+  because a shake takes both hands and puts neither of them on the glass.
+- **Says what a throw is worth** — the lowest, the highest and the exact
+  average, before you shake and again beside the total.
 - **Power-saving mode** — same physics, no rendering; just the result. The dice
   are still heard: the impacts the throw made are played back over a second.
 - **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on.
@@ -71,7 +78,7 @@ a tumble; everything else is real.
 - **Does the math** — the total, the modifiers and the per-die breakdown are
   shown the moment the dice stop. No counting pips in the middle of a fight.
 - **Saved rolls** — name a formula, give it an icon ("Fireball", "Sneak
-  Attack"), roll it with one tap. Group them per game, per character, however
+  Attack"), put it in the field with one tap and shake. Group them per game, per character, however
   you like; export and import them as files, from a URL, or from a git
   repository holding one.
 - **Outcome graph** — see the exact probability distribution before you roll,
@@ -102,7 +109,8 @@ a tumble; everything else is real.
   filter and the line a fair die would draw all say so in words as well. Touch
   targets are 48 dp and the palette's contrast is measured in a test rather
   than eyeballed.
-- **Face designer** — draw die faces with your finger, turn the die over and roll it.
+- **Face designer** — draw die faces with your finger, turn the die over, save
+  the lot as a dice set of your own, and roll the die you drew.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
   natural 7. It still matters.

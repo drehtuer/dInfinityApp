@@ -323,10 +323,17 @@ class DInfinityApplication : Application() {
   val drafts: Drafts by lazy { SavedDrafts(draftStore, background) }
 
   /**
-   * The drafts on disk, which two things read: the designer, through [drafts],
-   * and the exporter, which builds the personal package out of all of them.
+   * The drafts on disk, which three things read: the designer, through
+   * [drafts]; the exporter, which builds the personal package out of all of
+   * them; and `DrawnSets`, which writes the drawing on the canvas down
+   * **before** the package is rebuilt from it.
+   *
+   * That third reader is why it is not private. [drafts] launches its writes
+   * and does not wait for them (`SavedDrafts`), which is right for a stroke
+   * and wrong for a save: a package built from the files a moment before the
+   * last stroke reached them is a package missing that stroke.
    */
-  private val draftStore: DraftStore by lazy { DraftStore(File(filesDir, DraftStore.DIRECTORY)) }
+  val draftStore: DraftStore by lazy { DraftStore(File(filesDir, DraftStore.DIRECTORY)) }
 
   private val background = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 

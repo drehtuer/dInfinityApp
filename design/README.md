@@ -54,6 +54,20 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   opposite-face numbering, d4 values at the corners and d6 pips. Built:
   [../docs/face-designer.md](../docs/face-designer.md), "The solid, not just
   the face".
+- **The face designer's tools are the phone frame's own sprite** — the app
+  draws `#ic-pencil`, `#ic-eraser`, `#ic-bucket`, `#ic-type`, `#ic-image`,
+  `#ic-undo`, `#ic-redo`, `#ic-x` and `#ic-copy` from
+  [dInfinityPhone.dc.html](dInfinityPhone.dc.html) and a test holds the two
+  equal, so **editing a `<symbol>` in the prototype fails the build until the
+  app is edited with it**. The paste and the mirror have no symbol yet:
+  [../docs/design-handover.md](../docs/design-handover.md), "Five the pass did
+  not reach". Built:
+  [../docs/face-designer.md](../docs/face-designer.md), "The tools are
+  pictures".
+- **The face designer has a Save to set** where it used to autosave silently,
+  and **Roll it throws the drawing** rather than a plain die of that shape.
+  Built: [../docs/face-designer.md](../docs/face-designer.md), "Save to set"
+  and "Flow", step 4.
 - **Saved rolls are dragged into the order the player wants**; pinning and
   favourites are gone.
 - **Settings gained an accent picker and lost the sound switch.**
@@ -61,6 +75,17 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
 Every one of those is folded into `docs/` — that is where a decision lives once
 it is taken. What the design left open is in
 [../docs/TODO.md](../docs/TODO.md).
+
+**The roll screen's top has moved on since this was imported.** A device
+session asked for the dice to be a pull-down at the top of the table and the
+formula to be an expanding menu on the right under the menu button, and the
+app does that now; the prototype still draws an always-out picker strip and
+the formula in the left corner. The tray also casts no shadow on its own felt
+any more. The whole difference is tabulated in
+[../docs/design-handover.md](../docs/design-handover.md), "The roll screen's
+top, after the second device session", with the three questions the next pass
+over the prototype has to answer. It is written down rather than drawn
+because this file is generated — see **Editing**, below.
 
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
 2026-09-17.

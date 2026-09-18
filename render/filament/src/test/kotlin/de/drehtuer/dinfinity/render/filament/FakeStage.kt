@@ -15,6 +15,15 @@ class FakeStage(
   /** Every mesh added since the last [clear], with what it is drawn with. */
   val added = mutableListOf<Pair<GpuMesh, DiceMaterial.Parameters>>()
 
+  /**
+   * Which of [added] were built to throw a shadow, in the same order.
+   *
+   * A list beside it rather than a third element of the pair: every test in
+   * this module reads `added[i].second`, and one question about shadows is
+   * not worth rewriting all of them.
+   */
+  val casting = mutableListOf<Boolean>()
+
   /** Where each entity was last put. */
   val placed = mutableMapOf<Int, FloatArray>()
 
@@ -54,9 +63,11 @@ class FakeStage(
   override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,
+    casts: Boolean,
   ): Int {
     if (mesh == refuse) return Stage.NOTHING
     added += mesh to parameters
+    casting += casts
     return added.size
   }
 
@@ -116,6 +127,7 @@ class FakeStage(
   override fun clear() {
     clears++
     added.clear()
+    casting.clear()
     placed.clear()
     lit = false
   }

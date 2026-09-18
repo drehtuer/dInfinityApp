@@ -180,6 +180,7 @@ private class PaintedStage(
   override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,
+    casts: Boolean,
   ): Int = ++entities
 
   override fun place(

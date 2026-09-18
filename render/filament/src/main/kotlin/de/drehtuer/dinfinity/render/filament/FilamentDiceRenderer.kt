@@ -173,11 +173,18 @@ class FilamentDiceRenderer(
     val tray = TrayMesh.of(geometry, look)
     val floor = DiceMaterial.floorOf(look)
     val wall = DiceMaterial.wallOf(look)
-    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Floor)), floor)
-    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Wall)), wall)
+    // **No part of the tray casts a shadow.** The one shadow-casting light
+    // stands off to one side, so the wall and the six millimetres of rim on
+    // top of it threw a band across their own felt — a hard-edged stripe
+    // down the inside of the table that reads as a smear rather than as a
+    // rim, and the thing the device session asked to be rid of. The dice go
+    // on casting theirs, which is the promise the README makes and the only
+    // shadow that says anything (`docs/physics-and-rendering.md`).
+    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Floor)), floor, casts = false)
+    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Wall)), wall, casts = false)
     // The rim is the wall seen end-on, so it takes the wall's colour and none
     // of its texture: six millimetres is not where anybody looks.
-    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Rim)), wall.copy(texturePath = null))
+    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Rim)), wall.copy(texturePath = null), casts = false)
   }
 
   /**

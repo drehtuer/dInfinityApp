@@ -180,6 +180,29 @@ class FaceInkTest {
     }
   }
 
+  @Test
+  fun `a whole face is its outline, its paper and its marks`() {
+    // What the canvas draws and what a square of the face strip draws, in one
+    // place so that a thumbnail cannot mask or paper a face differently from
+    // the canvas it is a thumbnail of (`DesignerScreen`'s `FaceThumbnail`).
+    val stroke = Stroke(dots = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)), colorArgb = INK, width = 0.1f)
+
+    assertTrue(
+      "a drawn face put nothing down",
+      inked(onACanvas { drawFace(FaceOutline.Triangle, listOf(stroke)) }),
+    )
+  }
+
+  @Test
+  fun `a face nobody drew on is still paper rather than nothing`() {
+    // The strip has to tell an undrawn face from a drawn one at a glance, and
+    // a transparent square would read as a hole in the row.
+    assertTrue(
+      "a blank face drew nothing at all",
+      inked(onACanvas { drawFace(FaceOutline.Square, emptyList()) }),
+    )
+  }
+
   /**
    * Runs [drawing] against a real canvas.
    *

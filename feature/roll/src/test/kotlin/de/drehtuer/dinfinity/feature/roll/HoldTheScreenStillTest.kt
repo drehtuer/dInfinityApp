@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.feature.roll
 
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -19,11 +21,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * The roll screen holding still while somebody waves the phone about.
+ * The roll screen holding still while somebody waves the phone about — and
+ * holding the display on while nobody touches it at all.
  *
- * Both of these exist because a player shaking a phone is not holding it the
- * careful way they hold it to read something, and the system takes the
- * difference as input (`docs/TODO.md`, Step 4.1).
+ * All three exist because a player rolling dice is not using the phone the
+ * careful way they use it to read something, and the system takes the
+ * difference — a quarter turn, a swipe in from an edge, fifteen seconds with
+ * no touch — as input, or as the absence of it
+ * (`docs/physics-and-rendering.md`, "Shake input").
  */
 @RunWith(RobolectricTestRunner::class)
 class HoldTheScreenStillTest {
@@ -162,6 +167,56 @@ class HoldTheScreenStillTest {
     }
     assertEquals("the bands are not on opposite sides", 0, bands.minOf { it.left })
     assertEquals(requireNotNull(view).width, bands.maxOf { it.right })
+  }
+
+  @Test
+  fun `the screen is held on while the roll screen is composed`() {
+    // A shake takes both hands and puts none of them on the glass, so the
+    // display would otherwise time out in the middle of a throw.
+    var view: android.view.View? = null
+    compose.setContent {
+      view = LocalView.current
+      KeepTheScreenAwake()
+    }
+    compose.waitForIdle()
+
+    assertTrue("the display was left to time out mid-roll", requireNotNull(view).keepScreenOn)
+  }
+
+  @Test
+  fun `leaving the roll screen lets the display time out again`() {
+    // Held only here. An app that kept the screen on everywhere is a battery
+    // complaint rather than a feature.
+    val onScreen = mutableStateOf(true)
+    var view: android.view.View? = null
+    compose.setContent {
+      view = LocalView.current
+      if (onScreen.value) KeepTheScreenAwake()
+    }
+    compose.waitForIdle()
+    assertTrue(requireNotNull(view).keepScreenOn)
+
+    onScreen.value = false
+    compose.waitForIdle()
+
+    assertFalse("the screen was still being held on after the tray went", requireNotNull(view).keepScreenOn)
+  }
+
+  @Test
+  fun `the flag is the view's, so it goes with the view rather than with the window`() {
+    // `View.keepScreenOn` rather than `FLAG_KEEP_SCREEN_ON`: the window flag
+    // outlives the screen unless somebody remembers to clear it, and the
+    // window here is one activity for the whole app. Asserting that the
+    // activity's window never took the flag is what says this is scoped.
+    compose.setContent { KeepTheScreenAwake() }
+    compose.waitForIdle()
+
+    val flags = compose.activity.window.attributes.flags
+    assertEquals(
+      "the whole window was pinned awake, not just the tray",
+      0,
+      flags and WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+    )
   }
 
   private fun excluded(view: android.view.View?): List<android.graphics.Rect> =

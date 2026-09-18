@@ -388,7 +388,12 @@ take it (`TrayView.CLOSEST`): framing the whole 240 mm would put a 16 mm die
 across a twentieth of a picture 44 dp wide, which is true and is a picture of
 nothing. Close in, the die is a quarter of the frame, two walls and the rounded
 corner between them are in shot, and a floor texture is at a size somebody can
-see repeat. The die shows its **best** face — the highest value, read from the
+see repeat. "The far corner" is the frame sitting *flush inside* it
+(`TrayView.inTheCorner`), which is nearer the middle than the furthest a
+**player** may pan: a player may stand the middle of the screen on the corner,
+which is what lets them read a die lying against a wall, and half of that
+frame is rim (`docs/physics-and-rendering.md`, "Rendering"). A thumbnail is a
+picture of a table, so it stops at the wall. The die shows its **best** face — the highest value, read from the
 die's own faces rather than from its face count, so a d20 numbered 0–19 shows
 its `19` — and it is the bundled package's d20, or another package's when the
 bundled one is not there. A package with no twenty-sided die at all gets the

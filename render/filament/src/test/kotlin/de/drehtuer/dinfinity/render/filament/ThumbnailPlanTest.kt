@@ -101,13 +101,19 @@ class ThumbnailPlanTest {
   }
 
   @Test
-  fun `and it is in the far corner, as far as the tray allows and no further`() {
+  fun `and it is in the far corner, with the whole frame still on the table`() {
     val view = plan.view
+    val geometry = plan.geometry
 
-    // The rule for how much room a zoom earns is TrayView's; what is asserted
-    // here is that the plan asked for the corner and was given the edge of it
-    // rather than somewhere off the table.
-    assertEquals(view, view.within(plan.geometry))
+    // A thumbnail is a picture of a table, so the frame stops at the wall: its
+    // far edge lands exactly on the tray's, and none of the picture is spent
+    // on what is beyond one. The *pan limit* is looser than this now — a
+    // player may stand the middle of the screen on the corner to read a die
+    // lying against a wall — which is why this is asked for by name rather
+    // than taken from whatever `within` happens to allow.
+    assertEquals(geometry.longSideMm / 2, view.panAlongMm + geometry.longSideMm / 2 / view.zoom, TOLERANCE)
+    assertEquals(geometry.shortSideMm / 2, view.panAcrossMm + geometry.shortSideMm / 2 / view.zoom, TOLERANCE)
+    assertEquals(view, view.within(geometry))
     assertTrue("the view has not moved along the tray", view.panAlongMm > 0.0)
     assertTrue("the view has not moved across the tray", view.panAcrossMm > 0.0)
   }

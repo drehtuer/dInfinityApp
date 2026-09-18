@@ -4,6 +4,7 @@ import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.Exact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.Seeds
+import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import kotlin.math.PI
@@ -52,6 +53,7 @@ class SpawnLayout(
     val random = randomFor(index, Seeds.SPAWN)
     val grid = Grid.covering(count, geometry, dieRadiusMm)
     val cell = grid.cellOf(index)
+    val lateral = lateralFor(count)
 
     return Placement(
       position =
@@ -61,17 +63,41 @@ class SpawnLayout(
           z = dropHeightMm(cell) + random.nextDouble(0.0, HEIGHT_JITTER_MM),
         ),
       rotation = randomRotation(random),
-      // Down and sideways: the "drop from the hand" throw. The sideways part
-      // is what makes a die that lands on another slide off it while it still
-      // has speed to slide with.
+      // Down and sideways: the throw. The sideways part is what makes a die
+      // that lands on another slide off it while it still has speed to slide
+      // with, and it is what turns a landing into a tumble ([lateralFor]).
       linearVelocity =
         Vector3(
-          x = random.nextDouble(-THROW_LATERAL_MM_PER_SECOND, THROW_LATERAL_MM_PER_SECOND),
-          y = random.nextDouble(-THROW_LATERAL_MM_PER_SECOND, THROW_LATERAL_MM_PER_SECOND),
+          x = random.nextDouble(-lateral, lateral),
+          y = random.nextDouble(-lateral, lateral),
           z = -random.nextDouble(THROW_DOWN_MIN_MM_PER_SECOND, THROW_DOWN_MAX_MM_PER_SECOND),
         ),
       angularVelocity = randomSpin(random, SPAWN_SPIN_RADIANS_PER_SECOND),
     )
+  }
+
+  /**
+   * How hard a die may be thrown sideways when it is one of [count].
+   *
+   * **A handful is thrown; a hundred is tipped in.** A hard sideways throw is
+   * what makes a die tumble rather than land and stick, but it needs floor to
+   * tumble across. At the engine's cap the dice already fill the tray, and
+   * throwing each of a hundred of them at a metre a second piles them against
+   * a wall — a hundred coins, the flattest shape there is, stacked 28 deep
+   * when this was a flat constant.
+   *
+   * The measure is the count against [TableCapacity.MAX_DICE], not the room
+   * in a die's cell. Cell slack sounds like the better measure and is not:
+   * twenty d20 have barely a third of a radius of slack each and throw
+   * perfectly well, so tapering on slack throttled the ordinary roll to under
+   * half speed — 1.69 turns after landing back to 1.43 — while a hundred
+   * coins, whose slack is a rounding error, stayed on the wrong side of it
+   * either way. What distinguishes the two cases is how many dice are in the
+   * tray, so that is what this reads.
+   */
+  private fun lateralFor(count: Int): Double {
+    val full = (count.toDouble() / TableCapacity.MAX_DICE).coerceIn(0.0, 1.0)
+    return THROW_LATERAL_MM_PER_SECOND * (1.0 - (1.0 - CROWDED_SHARE) * full)
   }
 
   /** Where each die of an added round was put, filled in as they are asked for. */
@@ -297,8 +323,16 @@ class SpawnLayout(
   }
 
   companion object {
-    /** How far above the tray floor the lowest band of dice is let go. */
-    const val DROP_HEIGHT_MM: Double = 40.0
+    /**
+     * How far above the tray floor the lowest band of dice is let go.
+     *
+     * Raised from 40 mm, which gave a die about 90 ms of air — less than half
+     * a turn at the spin it was thrown with, so it arrived barely rotated and
+     * the felt took the rest. Measured on the Pixel 10a as part of the change
+     * that took the middle die from 0.89 turns after landing to 1.69
+     * (`Tumble`, `docs/physics-and-rendering.md`).
+     */
+    const val DROP_HEIGHT_MM: Double = 60.0
 
     /**
      * And how much higher each band above it is — enough that two dice in
@@ -322,14 +356,35 @@ class SpawnLayout(
     /** And the fastest. */
     const val THROW_DOWN_MAX_MM_PER_SECOND: Double = 700.0
 
-    /** How much sideways a die carries out of the hand. */
-    const val THROW_LATERAL_MM_PER_SECOND: Double = 250.0
+    /**
+     * How much sideways a die carries out of the hand.
+     *
+     * **This is the constant that decides whether dice roll.** At the 250 mm/s
+     * it used to be, a die travelled about 34 mm before it landed — it came
+     * down roughly where it was let go, with nothing to convert into
+     * tumbling, which is what "they get stuck on the table" was. It is a
+     * throw across the felt now, so a die reaches a wall and comes off it.
+     */
+    const val THROW_LATERAL_MM_PER_SECOND: Double = 1100.0
 
-    /** Enough spin that the starting orientation tells you nothing. */
-    const val SPAWN_SPIN_RADIANS_PER_SECOND: Double = 30.0
+    /**
+     * Enough spin that the starting orientation tells you nothing.
+     *
+     * Well under the body's own 200 rad/s cap, so this is a choice rather
+     * than a ceiling being met. Raised with [THROW_LATERAL_MM_PER_SECOND]: on
+     * its own more spin is mostly spent in the air, and it is the pair that
+     * moves the figure that matters.
+     */
+    const val SPAWN_SPIN_RADIANS_PER_SECOND: Double = 75.0
 
     /** And a floor under it, so "random" never comes out as "barely turning". */
     const val SPIN_FLOOR_SHARE: Double = 0.5
+
+    /**
+     * What share of the sideways throw a die gets when the tray is as full as
+     * the capacity rule allows ([lateralFor]).
+     */
+    const val CROWDED_SHARE: Double = 0.25
 
     /** A re-thrown die is dropped from here, where the player can see it. */
     const val RETHROW_HEIGHT_MM: Double = 25.0

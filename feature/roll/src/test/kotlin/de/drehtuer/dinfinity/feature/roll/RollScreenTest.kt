@@ -10,9 +10,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -46,6 +46,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -74,7 +75,7 @@ class RollScreenTest {
     typeFormula("3d6 +")
 
     compose.onNodeWithTag(RollTestTags.INVALID).assertExists()
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
+    assertFalse("a formula that does not read was thrown", shake())
   }
 
   @Test
@@ -84,14 +85,14 @@ class RollScreenTest {
     typeFormula("500d6")
 
     compose.onNodeWithTag(RollTestTags.REFUSED).assertExists()
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
+    assertFalse("a throw the table cannot hold was thrown", shake())
   }
 
   @Test
   fun `there is nothing to throw until something has been typed`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
+    assertFalse("an empty field threw something", shake())
   }
 
   @Test
@@ -99,37 +100,38 @@ class RollScreenTest {
     show(faces = mapOf(0 to 5, 1 to 5, 2 to 5))
 
     typeFormula("3d6 + 4")
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    assertTrue("a formula that reads was not thrown", shake())
 
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
   }
 
   @Test
-  fun `while the dice are in the air the screen says so and the button is dead`() {
+  fun `while the dice are in the air the screen says so and a second shake throws nothing`() {
+    // A second throw would replace the first mid-flight, which is not what a
+    // second shake means — those moments go to the dice already in the air
+    // (`docs/physics-and-rendering.md`, "Shake input").
     show(land = false)
 
     typeFormula("3d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
 
     compose.onNodeWithTag(RollTestTags.ROLLING).assertExists()
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
+    assertFalse("a second shake replaced a roll in the air", shake())
   }
 
   @Test
-  fun `after a total one press throws the same formula again`() {
-    // One press, one roll. Putting the total away and then throwing was two
-    // presses for one act, and a shake could never have expressed the first of
-    // them anyway.
+  fun `after a total one shake throws the same formula again`() {
+    // One shake, one roll. Putting the total away and then throwing was two
+    // acts for one, and a shake could never have expressed the first of them
+    // anyway.
     show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
     typeFormula("3d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
 
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    assertTrue("a settled roll could not be thrown again", shake())
 
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
   }
 
   @Test
@@ -140,7 +142,7 @@ class RollScreenTest {
     // (`docs/face-designer.md`, "Quick mode"; `PullUpResult`).
     show(faces = mapOf(0 to 0))
     typeFormula("1d20")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
     compose.onNodeWithTag(RollTestTags.TOTAL).assertIsDisplayed()
 
     compose.onNodeWithTag(RollTestTags.dieAt(0)).performTouchInput { longClick() }
@@ -154,18 +156,20 @@ class RollScreenTest {
     // what comes out is a formula somebody could have typed
     // (`docs/architecture.md`, decision 31).
     show(faces = mapOf(0 to 0))
+    openDice()
 
     // Scrolled to first, because ten dice at a touch target worth pressing do
     // not fit across a phone — which is why the row scrolls.
     compose.onNodeWithTag(RollTestTags.pickerDie("d20")).performScrollTo().performClick()
 
     compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("1d20")
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
+    assertTrue("the die the row typed could not be thrown", shake())
   }
 
   @Test
   fun `tapping twice asks for two of them and the badge says so`() {
     show()
+    openDice()
 
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
@@ -177,12 +181,13 @@ class RollScreenTest {
   @Test
   fun `a long press takes the last one off and empties the field`() {
     show()
+    openDice()
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
 
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performTouchInput { longClick() }
 
     compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsNotEnabled()
+    assertFalse("an empty field threw something", shake())
   }
 
   @Test
@@ -190,6 +195,10 @@ class RollScreenTest {
     show()
 
     typeFormula("4d6 + 1d20")
+    // The editor and the dice cannot both be open, so this is also the check
+    // that opening one puts the other away.
+    openDice()
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
 
     compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("4")
     compose.onNodeWithTag(RollTestTags.pickerCount("d20"), useUnmergedTree = true).assertTextEquals("1")
@@ -232,7 +241,7 @@ class RollScreenTest {
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
 
     typeFormula("4d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
 
     compose.onNodeWithTag(RollTestTags.COUNTING).assertExists()
   }
@@ -243,38 +252,63 @@ class RollScreenTest {
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
 
     typeFormula("4d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
 
     compose.onNodeWithTag(RollTestTags.ROLLING).assertExists()
     compose.onNodeWithTag(RollTestTags.COUNTING).assertDoesNotExist()
   }
 
   @Test
-  fun `a roll that gave up says so on screen and offers the dice back`() {
+  fun `a roll that gave up says so on screen and asks for a shake`() {
     // Rather than reading them off whatever face they were nearest, which is
     // the one thing this app may not do (`docs/physics-and-rendering.md`).
+    // There is no button on the plate any more: the dice go back in the air
+    // the same way they went into it.
     val tray = StallingTray(unsettled = listOf(1, 2))
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
 
     typeFormula("4d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
 
     compose.onNodeWithTag(RollTestTags.STALLED).assertExists()
-    compose.onNodeWithTag(RollTestTags.THROW_AGAIN).assertExists()
     compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
   }
 
   @Test
-  fun `the offer throws the dice that never settled`() {
+  fun `and says how many of them, in words that go away again`() {
+    // The plate stays and says it too; the toast is the part a screen reader
+    // is told about without being asked (`ModernistToast`).
+    val tray = StallingTray(unsettled = listOf(1, 2))
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+
+    typeFormula("4d6")
+    shake()
+
+    compose.onNodeWithTag(RollTestTags.TOAST).assertTextEquals("Shake to throw those 2 dice again.")
+  }
+
+  @Test
+  fun `one die that never settled is one die, not one dice`() {
+    val tray = StallingTray(unsettled = listOf(1))
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+
+    typeFormula("4d6")
+    shake()
+
+    compose.onNodeWithTag(RollTestTags.TOAST).assertTextEquals("Shake to throw that die again.")
+  }
+
+  @Test
+  fun `a shake throws the dice that never settled`() {
     val tray = StallingTray(unsettled = listOf(1, 2))
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
     typeFormula("4d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
     val thrown = tray.throws
 
-    compose.onNodeWithTag(RollTestTags.THROW_AGAIN).performClick()
+    assertTrue("the stalled dice would not go back in the air", shake())
 
-    assertEquals("the offer threw nothing", thrown + 1, tray.throws)
+    assertEquals("the shake threw nothing", thrown + 1, tray.throws)
   }
 
   @Test
@@ -285,7 +319,7 @@ class RollScreenTest {
     val tray = StallingTray(unsettled = listOf(1, 2))
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
     typeFormula("4d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
     val thrown = tray.throws
 
     compose.onNodeWithTag(RollTestTags.STALLED_CANCEL).performClick()
@@ -293,7 +327,7 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.STALLED).assertDoesNotExist()
     // Cancelled, not re-thrown: the formula is back on the tray ready to go.
     assertEquals("cancelling threw something", thrown, tray.throws)
-    compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
+    compose.onNodeWithTag(RollTestTags.HINT).assertExists()
   }
 
   @Test
@@ -361,7 +395,7 @@ class RollScreenTest {
     }
 
     typeFormula("3d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake(RollTestTags.POWER_SAVING)
 
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
   }
@@ -383,9 +417,10 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the welcome's d20 is thrown for real, and is remembered as seen`() {
+  fun `the welcome's d20 is put on the table, and the welcome is remembered as seen`() {
     // Not a demonstration and not a canned number: it types `1d20` into the
-    // field and presses Roll, which is what the player would have done.
+    // field and gets out of the way, and the throw is the shake the player
+    // makes (`docs/physics-and-rendering.md`, "Starting a roll").
     val seen = mutableListOf<Unit>()
     compose.setContent {
       RollScreen(
@@ -399,8 +434,12 @@ class RollScreenTest {
 
     compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("1d20")
-    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
     assertEquals(1, seen.size)
+
+    // And it is a real throw when the hand comes: there is no other path.
+    shake()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
   }
 
   @Test
@@ -425,17 +464,43 @@ class RollScreenTest {
   fun `an empty field says what to do rather than nothing`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Type a formula, or tap a die below.")
+    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Type a formula, or open Dice at the top.")
   }
 
   @Test
   fun `a throw that is ready says the part nobody would guess`() {
-    // Shaking is not discoverable. The button is right there and says Roll.
+    // Shaking is not discoverable, and now that the button has gone it is the
+    // only way in — so the words are the whole of the affordance.
     show()
 
     typeFormula("1d20")
 
-    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Shake the phone, or press Roll.")
+    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Shake the phone to roll.")
+  }
+
+  @Test
+  fun `and what the throw is expected to come to, before it is made`() {
+    // What the Roll button's label used to be spent on. A player about to
+    // shake wants the shape of the throw, not the word "Roll" (`Expectation`).
+    show()
+
+    typeFormula("3d6 + 4")
+
+    compose
+      .onNodeWithTag(RollTestTags.EXPECTED)
+      .assertContentDescriptionEquals("Expected 7 to 22, average avg 14.5")
+  }
+
+  @Test
+  fun `the result sheet says what the throw was expected to come to`() {
+    // A total with nothing to read it against is the commonest complaint a
+    // dice roller gets. The sheet answers it.
+    show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
+    typeFormula("3d6")
+
+    shake()
+
+    compose.onNodeWithTag(RollTestTags.EXPECTED).assertExists()
   }
 
   @Test
@@ -443,7 +508,7 @@ class RollScreenTest {
     show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
     typeFormula("3d6")
 
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
 
     compose.onNodeWithTag(RollTestTags.HINT).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
@@ -459,7 +524,7 @@ class RollScreenTest {
       )
     }
     typeFormula("3d6")
-    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    shake()
 
     compose.onNodeWithTag(RollTestTags.ODDS).performClick()
 
@@ -467,21 +532,37 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the odds are offered for a throw the table refuses, which is when they matter most`() {
-    // `500d6` cannot be rolled here. "What would it have been" is then the only
-    // answer there is (`docs/probability.md`).
-    val asked = mutableListOf<Pair<String, Long?>>()
+  fun `the result also offers to save the formula as a roll`() {
+    // `:feature:roll` does not know what a saved roll is, so what goes out is
+    // the formula and nothing else (`docs/architecture.md`, "Modules").
+    val asked = mutableListOf<String>()
     compose.setContent {
       RollScreen(
-        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
-        onSeeTheOdds = { formula, total -> asked += formula to total },
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0, 1 to 0, 2 to 0))),
+        onSaveAsRoll = { formula -> asked += formula },
       )
     }
-    typeFormula("500d6")
+    typeFormula("3d6")
+    shake()
 
-    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+    compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).performClick()
 
-    assertEquals(listOf("500d6" to null), asked)
+    assertEquals(listOf("3d6"), asked)
+  }
+
+  @Test
+  fun `neither is offered until a throw has landed, because both are the result's`() {
+    // They used to be plates in the column of controls, offered from `Ready`
+    // and from a refusal as well. They are the result sheet's now, which is
+    // what the device session asked for — and a sheet only exists once the
+    // dice have been read (`docs/physics-and-rendering.md`, "What is drawn
+    // over the table").
+    show()
+
+    typeFormula("3d6")
+
+    compose.onNodeWithTag(RollTestTags.ODDS).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).assertDoesNotExist()
   }
 
   @Test
@@ -516,6 +597,7 @@ class RollScreenTest {
     // A chooser with one entry is furniture, which is the rule every other
     // chooser in the app follows.
     show()
+    openDice()
 
     compose.onNodeWithTag(RollTestTags.SETS).assertDoesNotExist()
   }
@@ -523,6 +605,7 @@ class RollScreenTest {
   @Test
   fun `with two sets installed the row says which one it is offering`() {
     val presenter = show(catalog = twoSets())
+    openDice()
 
     compose.onNodeWithTag(RollTestTags.SETS).assertExists()
     compose.onNodeWithTag(RollTestTags.setOf(BRASS)).performScrollTo().performClick()
@@ -533,19 +616,25 @@ class RollScreenTest {
   }
 
   @Test
-  fun `a tap on the strip throws that saved roll, and says which one it was`() {
+  fun `a tap on the strip fills the field and throws nothing`() {
     // The slot is how the roll screen is handed saved rolls without knowing
     // what one is. What it hands back is the formula *and* which roll put it
-    // there, so the throw can be recorded as that roll's
+    // there, so the throw that follows can be recorded as that roll's
     // (`docs/statistics.md`, per saved roll and per group).
+    //
+    // **It used to throw.** That made the strip the one control in the app
+    // that rolled without a hand, and a saved roll brushed by a thumb was
+    // dice already on the table (`docs/physics-and-rendering.md`, "Starting
+    // a roll").
     lateinit var presenter: RollPresenter
+    val tray = DirectTray()
     compose.setContent {
-      presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
+      presenter = remember { presenter(tray, LandingRolls(mapOf(0 to 0))) }
       RollScreen(
         presenter = presenter,
-        strip = { rollIt ->
+        strip = { fill ->
           Button(
-            onClick = { rollIt("1d20", SavedRollSource(rollId = "fireball", groupId = "thorin")) },
+            onClick = { fill("1d20", SavedRollSource(rollId = "fireball", groupId = "thorin")) },
             modifier = Modifier.testTag(STRIP_TAG),
           ) { Text("Fireball") }
         },
@@ -554,12 +643,38 @@ class RollScreenTest {
 
     compose.onNodeWithTag(STRIP_TAG).performClick()
 
+    assertEquals("1d20", presenter.text)
+    assertTrue("the strip threw the roll rather than filling the field", presenter.state is RollState.Ready)
+    assertEquals("the strip threw something", 0, tray.throws)
+  }
+
+  @Test
+  fun `and the shake after it is the throw`() {
+    // The formula reached the field with the saved roll behind it, so the
+    // throw the hand makes is still that roll's.
+    lateinit var presenter: RollPresenter
+    compose.setContent {
+      presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
+      RollScreen(
+        presenter = presenter,
+        strip = { fill ->
+          Button(
+            onClick = { fill("1d20", SavedRollSource(rollId = "fireball", groupId = "thorin")) },
+            modifier = Modifier.testTag(STRIP_TAG),
+          ) { Text("Fireball") }
+        },
+      )
+    }
+    compose.onNodeWithTag(STRIP_TAG).performClick()
+
+    shake()
+
     compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
     assertEquals("1d20", presenter.text)
   }
 
   @Test
-  fun `a typed formula thrown from the slot belongs to no saved roll`() {
+  fun `a typed formula from the slot belongs to no saved roll`() {
     // The other side of the slot: a caller with nothing to attribute passes
     // none, and the screen takes the ordinary path.
     lateinit var presenter: RollPresenter
@@ -567,13 +682,14 @@ class RollScreenTest {
       presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
       RollScreen(
         presenter = presenter,
-        strip = { rollIt ->
-          Button(onClick = { rollIt("1d6", null) }, modifier = Modifier.testTag(STRIP_TAG)) { Text("Two") }
+        strip = { fill ->
+          Button(onClick = { fill("1d6", null) }, modifier = Modifier.testTag(STRIP_TAG)) { Text("Two") }
         },
       )
     }
 
     compose.onNodeWithTag(STRIP_TAG).performClick()
+    shake()
 
     compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
     assertEquals("1d6", presenter.text)
@@ -644,12 +760,14 @@ class RollScreenTest {
   }
 
   @Test
-  fun `and its odds button goes nowhere rather than failing`() {
+  fun `and the result's two buttons go nowhere rather than failing`() {
     val presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0)))
     compose.setContent { RollScreen(presenter = presenter) }
     typeFormula("1d20")
+    shake()
 
     compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+    compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).performClick()
 
     compose.onNodeWithTag(RollTestTags.ODDS).assertIsDisplayed()
   }
@@ -722,6 +840,18 @@ class RollScreenTest {
   }
 
   /**
+   * Pulls the dice menu down, the way a player does.
+   *
+   * The dice are put away until somebody asks for them
+   * (`docs/physics-and-rendering.md`, "What is drawn over the table"), so
+   * every test that taps a die goes through the head — which is also the only
+   * way the head stays tested.
+   */
+  private fun openDice() {
+    compose.onNodeWithTag(RollTestTags.DICE_MENU).performClick()
+  }
+
+  /**
    * Types a formula the way a player does: tap the line, then type.
    *
    * The field is not on the tray until somebody asks for it
@@ -731,6 +861,31 @@ class RollScreenTest {
   private fun typeFormula(text: String) {
     compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(text)
+  }
+
+  /**
+   * Throws the dice the only way the screen offers one that is not a hand:
+   * the table's custom accessibility action.
+   *
+   * There is no Roll button any more, and Robolectric has no accelerometer,
+   * so this is how a test shakes the phone. It is the same call the shake
+   * source makes — `RollPresenter.roll` with no samples — and it hands back
+   * the same answer, which is what says whether anything was thrown
+   * (`docs/architecture.md`, "Accessibility").
+   *
+   * @param tag the table, or the power-saving panel that stands instead of
+   *   it: the action is on whichever of the two is on the screen.
+   */
+  private fun shake(tag: String = RollTestTags.TRAY): Boolean {
+    val throwThem =
+      compose
+        .onNodeWithTag(tag)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.CustomActions]
+        .single()
+    val threw = compose.runOnUiThread { throwThem.action() }
+    compose.waitForIdle()
+    return threw
   }
 
   private fun show(
@@ -802,6 +957,10 @@ class RollScreenTest {
     var closes = 0
       private set
 
+    /** How many throws this tray has been handed. */
+    var throws = 0
+      private set
+
     /** Every board this tray has been asked to show, in order. */
     val boards = mutableListOf<List<DieInstance>>()
 
@@ -825,6 +984,7 @@ class RollScreenTest {
       onStalled: (List<Int>) -> Unit,
       onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
     ) {
+      throws++
       val live = start(HeadlessRenderer())
       while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
       live.outcome?.let { onSettled(it, live.drivenBy) }

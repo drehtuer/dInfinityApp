@@ -30,6 +30,17 @@ class FaceLabelTest {
   }
 
   @Test
+  fun `a negative value falls back to the minus a die is printed with`() {
+    // The skull rule again, on a face whose value is below zero: what is
+    // printed is the value, and the value is written the way an unlabelled
+    // face would have been written — U+2212, not the hyphen `toString`
+    // produces. The built-in font carries both, so a hyphen here would be a
+    // die that reads differently from the one beside it rather than a die
+    // that could not be drawn.
+    assertEquals("\u22121", FaceLabel.textOf(Face(index = 0, value = -1, label = "💀")))
+  }
+
+  @Test
   fun `leaves a blank face blank`() {
     // Half a Fudge die is a face an author asked for.
     assertEquals("", FaceLabel.textOf(Face(index = 0, value = 0, label = "")))

@@ -31,12 +31,13 @@ import de.drehtuer.dinfinity.ui.common.Modernist
  * (`design/dInfinity.dc.html`, option 9a; `docs/dice-notation.md`:
  * "the home screen shows the active group as tiles").
  *
- * **A tap here throws**, where a tap on the saved-rolls list only puts the
- * formula in the field. The two are not inconsistent: a saved roll *is* a
- * named formula rolled with one tap, and this is the one place in the app
- * where the tray is already on screen to roll it on. From the list you are
- * somewhere else, and arriving at the tray with a throw already finished would
- * be a roll nobody watched.
+ * **A tap here fills the field and stops**, exactly as a tap on the
+ * saved-rolls list does. It used to throw as well, which made the strip the
+ * one control in the app that rolled without a hand — a saved roll brushed by
+ * a thumb was dice already on the table, and the throw nobody watched was the
+ * throw that counted. A saved roll is a named formula, not a roll waiting to
+ * happen; the throw is the shake that follows, which is the only way to throw
+ * anything (`docs/physics-and-rendering.md`, "Starting a roll").
  *
  * Tiles rather than rows, and one line of them: the tray is the screen, and
  * every millimetre this takes is table a player is not looking at. Long-press
@@ -51,7 +52,8 @@ import de.drehtuer.dinfinity.ui.common.Modernist
 fun HomeStrip(
   presenter: SavedPresenter,
   modifier: Modifier = Modifier,
-  onRoll: (String, SavedRollSource) -> Unit = { _, _ -> },
+  /** The formula, and which saved roll put it there. It fills; it does not throw. */
+  onPick: (String, SavedRollSource) -> Unit = { _, _ -> },
   onEdit: (String) -> Unit = {},
   onNew: () -> Unit = {},
 ) {
@@ -67,15 +69,15 @@ fun HomeStrip(
     items(state.rolls, key = { it.roll.id }) { entry ->
       Tile(
         entry = entry,
-        onRoll = {
+        onPick = {
           presenter.used(entry.roll.id)
           // Which roll, which group it is in and the table it lands on. The
-          // first two so the throw can be recorded as that roll's — a throw
-          // that belongs to nothing is one the saved-roll statistics can never
-          // count (`docs/statistics.md`) — and the third because the pin that
-          // wins was decided where the roll and its group were both in hand
-          // (`docs/tables.md`).
-          onRoll(entry.roll.formula, entry.source)
+          // first two so the throw that follows can be recorded as that
+          // roll's — a throw that belongs to nothing is one the saved-roll
+          // statistics can never count (`docs/statistics.md`) — and the third
+          // because the pin that wins was decided where the roll and its
+          // group were both in hand (`docs/tables.md`).
+          onPick(entry.roll.formula, entry.source)
         },
         onEdit = { onEdit(entry.roll.id) },
       )
@@ -93,7 +95,7 @@ fun HomeStrip(
 @Composable
 private fun Tile(
   entry: SavedEntry,
-  onRoll: () -> Unit,
+  onPick: () -> Unit,
   onEdit: () -> Unit,
 ) {
   val roll = entry.roll
@@ -103,9 +105,9 @@ private fun Tile(
         .size(width = TILE_WIDTH, height = TILE_HEIGHT)
         .background(MaterialTheme.colorScheme.surface)
         .combinedClickable(
-          onClickLabel = stringResource(R.string.saved_roll_it, roll.name),
+          onClickLabel = stringResource(R.string.saved_pick_it, roll.name),
           onLongClickLabel = stringResource(R.string.saved_edit_it, roll.name),
-          onClick = onRoll,
+          onClick = onPick,
           onLongClick = onEdit,
         ).semantics(mergeDescendants = true) {}
         .testTag(HomeStripTestTags.tileOf(roll.id))

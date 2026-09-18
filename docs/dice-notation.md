@@ -66,7 +66,7 @@ To keep the simulation and the probability graph tractable:
 | Limit | Value | Behaviour when exceeded |
 | --- | --- | --- |
 | Dice per formula (parse) | 1,000 | Parse error, shown inline. This bound exists so the outcome graph stays cheap. |
-| Dice per *roll* | table capacity (`docs/tables.md`), hard cap 100 | Roll button disabled with the reason; the graph still works |
+| Dice per *roll* | table capacity (`docs/tables.md`), hard cap 100 | A shake throws nothing and the screen says how many would fit; the graph still works |
 | Sides per die | must exist in a set | Parse error naming the missing die |
 | Explosion depth | 20 | Further explosions ignored, noted in breakdown |
 | Dice in the tray, including the ones explosions add | table capacity, hard cap 100 | The chain stops there, noted in the breakdown. An added die is dropped into clear floor, and a tray with none left cannot take one (`docs/tables.md`) |
@@ -157,8 +157,20 @@ Modifiers take effect in this order whatever order they were written in, so
 
    **The app does not throw the earned dice. The player shakes again.** An
    exploding six earns a throw, and a throw is something a hand does — so the
-   dice that are down stay down, the screen says a shake is owed, and the next
-   shake throws them.
+   dice that are down stay down, the screen says how many a shake is owed, and
+   the next shake throws them. There is no button for it: a shake is the only
+   way anything is thrown (`docs/physics-and-rendering.md`, "Starting a roll").
+
+   **A chain cannot be stopped short.** There was a `Stop the chain` option
+   beside it, and it put the roll away with no total — a roll thrown away
+   rather than a roll finished, which is not what the words promised. Scoring
+   what is on the table instead would need a reason a chain ended that is not
+   the tray's, so rather than invent one the option was deleted. A chain that
+   has earned a throw is finished by throwing it.
+
+   **Advantage earns nothing.** `2d20kh1` is one throw of two dice followed by
+   a selection, so there is no second throw to wait for and no shake is owed.
+   Only `!` and `r n` earn a later throw.
 
    **Every chain that earned a die is owed one at the same moment**, and one
    shake throws the lot. Three sixes in `8d6!` are three dice, thrown together,
@@ -177,6 +189,20 @@ Modifiers take effect in this order whatever order they were written in, so
 4. **`kh` / `kl` / `dh` / `dl`** — whole chains are kept or dropped, ranked by
    what each chain came to together. A percentile pair counts as one unit, so
    `2d%kh1` keeps the better of two 1–100 results.
+
+### What the screen says before the dice are thrown
+
+Every roll shows what it is expected to come to: **the lowest, the highest and
+the average**. It is on the plate over the tray before the shake, where the
+Roll button's label used to be the only thing saying what a throw was worth,
+and again under the breakdown on the result sheet, so the total is a number in
+a range rather than a number on its own.
+
+The ends are the same reckoning the live range uses, asked of a throw that has
+read no dice at all — so the figures a player reads before the throw and the
+figures they watch close during it are one calculation seen twice. The average
+is the exact mean of the distribution (`docs/probability.md`), and a formula
+too large to graph exactly keeps its range and loses only its average.
 
 ### What the screen says while the dice are still landing
 
@@ -247,9 +273,15 @@ comes out is a formula somebody could have typed — which is what makes the
 outcome graph, the breakdown and statistics identical either way. A picked
 roll can be turned into a saved roll with one tap.
 
-**Which set the row offers** is chosen under it, once there is a second set
-installed — one entry is furniture, so the chooser is not drawn until it has
-something to choose between. It is not the same question as the default set:
+**It is a pull-down at the top of the table**, headed `Dice` and carrying the
+count of dice the formula asks for, so a menu that is shut still says what is
+in the throw. The row inside scrolls sideways: ten dice at a touch target
+worth pressing do not fit across a 360 dp phone
+(`docs/physics-and-rendering.md`, "What is drawn over the table").
+
+**Which set the row offers** is chosen inside that same pull-down, under the
+row, once there is a second set installed — one entry is furniture, so the
+chooser is not drawn until it has something to choose between. It is not the same question as the default set:
 which set a bare `d20` means is a preference chosen where the sets are
 (`docs/dice-sets.md`, design `6a`), and somebody whose default is their own set
 still reaches for a borrowed d20. A die taken from a set that is *not* the
@@ -306,6 +338,28 @@ also define a true 100-face die but it is never chosen by `d100` implicitly.
 `d2` uses the set's coin if present, otherwise a d6 with face values
 `1,2,1,2,1,2`. Which one was used is visible in the breakdown.
 
+## dF, and the sign a Fudge total carries
+
+A Fudge die's faces are a minus, a blank and a plus — worth −1, 0 and +1 —
+and the bundled `df` is labelled `− − 0 + 0 +` (`docs/dice-sets.md`,
+"Numbering"). The faces and the breakdown print those symbols.
+
+**A total of Fudge dice is written with its sign**: `+2`, `−1`, `0`. That is
+how a Fate result is written, and it is the only spelling that says the same
+thing about one die as about four. The minus is U+2212, the one the faces
+carry, rather than a hyphen — a total set beside the dice that made it should
+use the same glyph they do.
+
+It applies when **every** die in the roll is a Fudge die, and to a group's
+subtotal on the same rule. `1dF + 1d6` is a count, because a d6 is a count and
+a count plus a sign is a count. Exports are unaffected: a file is read by a
+machine (`docs/statistics.md`).
+
+The alternative was to print the die's own label — `−`, `+`, `0` — for a roll
+of exactly one die. It was refused because it only works for one: `4dF` has no
+single face to quote, and a d10, whose tenth face is printed `0` and is worth
+ten, would read `0` for its best roll.
+
 ## Saved rolls
 
 A saved roll is a named formula with an icon, living in a group:
@@ -339,12 +393,16 @@ SavedRoll {
   make that refusal arbitrary.
 - Deleting a group never deletes a roll. Its rolls move to Unfiled and its
   child groups are lifted to the top level.
-- The home screen shows the **active group** as tiles; tap to roll,
-  long-press to edit. A tap *throws* there, unlike a tap on the saved-rolls
-  list, which only puts the formula in the field: the tray is already on
-  screen, and arriving at it with the throw already over would be a roll nobody
-  watched. Switching the active group is one tap in the top bar, and the active
-  group also sets the default statistics session (`docs/statistics.md`).
+- The home screen shows the **active group** as tiles; tap to fill the
+  formula field, long-press to edit. A tap *fills* there, exactly as a tap on
+  the saved-rolls list does, and the throw is the shake that follows
+  (`docs/physics-and-rendering.md`, "Starting a roll"). It used to throw, which
+  made the strip the one control in the app that rolled without a hand — a
+  saved roll brushed by a thumb was dice already on the table, and the throw
+  nobody watched was the throw that counted. Which roll the formula came from
+  is carried across the wait, so the throw is still recorded as that roll's
+  (`docs/statistics.md`). Switching the active group is one tap in the top bar,
+  and the active group also sets the default statistics session.
 - **The order is the player's, and nothing else's.** There is no pinning and no
   favourites: each entry carries a grip, and dragging it moves it. The design
   took the favourite flag out in the pass of 2026-09-17, and the reason is that
@@ -375,10 +433,25 @@ SavedRoll {
   a colour towards the ground's own text colour until it can be seen and stops
   there, so a tag that is already legible is drawn exactly as it was chosen —
   and `ink` at night and `bone` on paper, each invisible as written, are not.
-  A custom colour is **typed as a hex code** (`#2b5aa8`) until the system
-  colour picker arrives with the accent's; half a code chooses nothing rather
-  than something wrong. A tag is stored as the colour itself, so one of the
-  twelve and one somebody typed are the same kind of thing in storage.
+  A colour beyond the twelve is **picked**, on a thirteenth swatch that opens
+  the app's one colour picker — hue, depth and brightness, the same sheet the
+  face designer and the accent open (`docs/architecture.md`, "Modules"). It
+  used to be a hex code typed into a field, which is what a phone found
+  awkward. The hex is still *printed* under the swatches, because a hex code
+  is what somebody copying a colour onto a character sheet has in front of
+  them and a swatch is a picture. A tag is stored as the colour itself, so one
+  of the twelve and one somebody picked are the same kind of thing in
+  storage.
+- **Adding a roll starts on the last formula thrown.** The "+" on the home
+  strip and **New** on the saved-rolls list open the editor with the formula of
+  the most recent throw already in the field, because that is what somebody has
+  just decided is worth keeping. It is a starting point and nothing more: it is
+  typed over like any other text, it is validated like any other formula, and
+  an editor opened when nothing has ever been thrown — a fresh install, or
+  after the history has been cleared (`docs/statistics.md`) — opens blank
+  rather than guessing. "Save as roll" on the outcome graph still carries the
+  formula that was being read; a formula somebody chose is not replaced by one
+  they happened to throw.
 - The formula is re-validated when displayed, because the dice set it
   references might have been uninstalled. A broken saved roll shows a warning
   badge, and tapping it puts the formula in the field like any other — where

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -37,12 +38,17 @@ import androidx.compose.ui.unit.dp
  *
  * @param contentDescription what pressing it does. Not optional: a button
  *   with no words and no name is a button nobody can use.
+ * @param enabled false for an action there is nothing to do — undo on a face
+ *   nobody has drawn on. **Dead rather than absent**, because a row whose
+ *   buttons move about as the drawing changes is a row nobody learns, and
+ *   `.btn:disabled` is a fixed part of the system ([Modernist.DISABLED]).
  */
 @Composable
 fun ModernistIconButton(
   contentDescription: String,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
+  enabled: Boolean = true,
   content: @Composable () -> Unit,
 ) {
   Box(
@@ -50,7 +56,8 @@ fun ModernistIconButton(
     modifier =
       modifier
         .semantics(mergeDescendants = true) { this.contentDescription = contentDescription }
-        .clickable(role = Role.Button, onClick = onClick)
+        .alpha(if (enabled) 1f else Modernist.DISABLED)
+        .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
         // `.btn-icon` is 36 px, and Android's smallest pressable thing is 48.
         // The box is the design's size; the target around it is the platform's.
         .defaultMinSize(minWidth = TOUCH_TARGET, minHeight = TOUCH_TARGET),

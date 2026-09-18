@@ -11,6 +11,13 @@ dependencies {
   // No data, no simulator, no navigation — a screen's furniture should not be
   // able to reach a database (`docs/architecture.md`, Modules).
   api(project(":core:notation"))
+
+  // The colour arithmetic the shared pieces are built on: `AccentRamp` and
+  // `Contrast` behind `Ink`'s deep accent, and `Hsv` and `Hex` behind the
+  // colour picker. It arrives transitively through `:core:notation` already;
+  // named here because a module should not depend on something by accident of
+  // somebody else's dependency graph.
+  api(project(":core:model"))
 }
 
 // The design system is allowed to write the design system down. `Modernist.kt`

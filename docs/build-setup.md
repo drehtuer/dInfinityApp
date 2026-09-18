@@ -589,6 +589,25 @@ same name and overwrote the last one; `-l` and `--soak`, which names itself,
 make the folder accumulate — which is the point of keeping them, and the reason
 the verdict may not go looking in there.
 
+### Turns after landing, the one bar that is a floor
+
+Every other row in the table is a limit not to exceed. `turns after landing`
+is the opposite: it is how far the middle die of a roll turned **after it
+first touched the table**, and it has to reach one whole turn.
+
+It is there because the rest of the scorecard can be met perfectly by dice
+that never roll. A die that lands flat and slides to a halt settles quickly,
+never stacks, never overlaps and never runs out the cap — a clean sheet for a
+throw that looks like a number being placed on the felt. The bar is written
+`>= 1.00` in the table so that nobody skimming a column of ceilings reads a
+small number as a good one (`docs/physics-and-rendering.md`, "How hard the
+dice are thrown, and how anyone can tell").
+
+A run's JSON carries it per roll as `medianTurnsAfterLanding` and per run as
+the `turnsAfterLanding` distribution. Adding them took the document's schema
+from 2 to 3, so a `harness-*.json` written before this change is refused by
+the reader rather than half understood.
+
 ### Soak mode
 
 `--soak 5m` is the same runner given a duration rather than a roll count, and

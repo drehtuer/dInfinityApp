@@ -17,17 +17,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,28 +39,28 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.Dot
+import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.FaceTransform
-import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
+import de.drehtuer.dinfinity.ui.common.ColourPicker
+import de.drehtuer.dinfinity.ui.common.ColourPickerTags
+import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.ModernistIconButton
+import de.drehtuer.dinfinity.ui.common.OptionBox
 import de.drehtuer.dinfinity.ui.common.SegmentedControl
 import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
-import de.drehtuer.dinfinity.ui.common.Ink as Colours
-
-// `Colours` is `ui/common`'s `Ink`, aliased because both better names are
-// taken here: `Ink` is `designer/`'s own hex and HSV arithmetic, and
-// `Palette` is the composable below that draws the twelve colours.
 
 /**
  * Drawing the faces of a die (`design/dInfinity.dc.html`, options `1v`, `4c`
@@ -71,11 +68,22 @@ import de.drehtuer.dinfinity.ui.common.Ink as Colours
  *
  * One face at a time on a square canvas, with the face's outline masked in and
  * its number under the drawing as something to trace or turn off. The strip at
- * the bottom moves between faces.
+ * the bottom moves between faces, and each of its squares is the face itself
+ * rather than a word for it.
  *
  * **A d4 shows three numbers, one at each corner**, because its values belong
  * to corners rather than faces. That is not a special case in this file: the
  * guide is a list, and a list of three draws three (`FaceGuide`).
+ *
+ * **The tools are pictures.** Every glyph on the screen is one of the
+ * prototype's own (`DesignerIcons`), and what draws them is the design
+ * system's two shapes for the two kinds of control there are: an option that
+ * inverts when it is chosen (`OptionBox` — the pens, the eraser, the bucket,
+ * the stamp, the guide) and an action that simply happens
+ * (`ModernistIconButton` — undo, redo, clear, copy, paste). Deciding which of
+ * the twenty-one controls was which is what the row needed before it could be
+ * drawn at all; it is why there was a `design-system-exception` here for as
+ * long as there was, and why there is none now.
  */
 @Composable
 fun DesignerScreen(
@@ -93,7 +101,7 @@ fun DesignerScreen(
         .testTag(DesignerTestTags.SCREEN),
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Header(rollable = presenter.rollable, onRoll = onRoll, menu = menu)
+    Header(state, presenter, menu)
 
     Column(
       // Everything above the strip scrolls, as the body does in the prototype:
@@ -110,7 +118,9 @@ fun DesignerScreen(
     // screen is steered from, and a steering wheel that scrolls away is not
     // one.
     FaceStrip(state, presenter)
+    Footer(presenter, onRoll)
   }
+  if (state.saving != null) SaveSheet(state.saving, presenter)
 }
 
 /**
@@ -176,47 +186,198 @@ private fun Editor(
 }
 
 /**
- * The title, the way out to the tray, and the menu.
+ * The title, which face is in front of the player, the taking-back, and the
+ * menu (`docs/design-handover.md`: "undo and redo belong in the app bar with
+ * *face N of M* beside the title").
  *
- * Its own composable for the reason `BaseDice` is: folded in, `DesignerScreen`
- * runs past detekt's length limit, and a screen that can be read in one
- * sitting is worth more than a skip branch.
+ * **Undo and redo are up here rather than in the tool row**, and that is the
+ * design's decision rather than a tidy-up: they are not tools, they are what
+ * undoes a tool, and a row that mixed the two is what the row was before. It
+ * also buys the six pens and brushes a row of their own, which is what the
+ * design draws.
+ *
+ * "Face 3 of 20" sits under the title rather than beside it. Beside it is
+ * where the design puts it, and beside it on a 360 dp phone is a title, a
+ * count and three 48 dp targets on one line — so the header is two tiers, the
+ * way the dice-set details header already is.
  */
 @Composable
 private fun Header(
-  rollable: String?,
-  onRoll: (String) -> Unit,
+  state: DesignerState,
+  presenter: DesignerPresenter,
   menu: @Composable () -> Unit,
 ) {
+  val ink = MaterialTheme.colorScheme.onBackground
   Row(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text(
-      text = stringResource(R.string.designer_title),
-      // `titleLarge` is already the heading font at 800; a `Bold` here pulled
-      // it back to Material's 700 (`--font-heading-weight: 800`).
-      style = MaterialTheme.typography.titleLarge,
-      color = MaterialTheme.colorScheme.onBackground,
-      modifier = Modifier.weight(1f),
-    )
-    // Step 4 of the flow, and the only one the prototype has instead of a 3D
-    // preview: throw the die and watch it (`docs/face-designer.md`). Absent
-    // rather than dead for a die plain notation cannot name — a button that is
-    // there and does nothing is worse than one that is not.
-    rollable?.let { formula ->
-      // `btn btn-primary` in the prototype's footer — the one filled button
-      // on the screen, because it is the one thing the screen is for.
-      ModernistButton(
-        text = stringResource(R.string.designer_roll),
-        onClick = { onRoll(formula) },
-        kind = ModernistButtonKind.Primary,
-        modifier = Modifier.testTag(DesignerTestTags.ROLL),
+    Column(modifier = Modifier.weight(1f)) {
+      Text(
+        text = stringResource(R.string.designer_title),
+        // `titleLarge` is already the heading font at 800; a `Bold` here pulled
+        // it back to Material's 700 (`--font-heading-weight: 800`).
+        style = MaterialTheme.typography.titleLarge,
+        color = ink,
       )
+      Text(
+        text = stringResource(R.string.designer_which_face, state.label, state.draft.cells),
+        style = MaterialTheme.typography.labelSmall,
+        color = Ink.muted,
+        modifier = Modifier.testTag(DesignerTestTags.WHICH_FACE),
+      )
+    }
+    ModernistIconButton(
+      contentDescription = stringResource(R.string.designer_undo),
+      onClick = { presenter.take(Step.Back) },
+      enabled = state.canUndo,
+      modifier = Modifier.testTag(DesignerTestTags.UNDO),
+    ) {
+      Glyph(DesignerIcons.UNDO, ink)
+    }
+    ModernistIconButton(
+      contentDescription = stringResource(R.string.designer_redo),
+      onClick = { presenter.take(Step.Forward) },
+      enabled = state.canRedo,
+      modifier = Modifier.testTag(DesignerTestTags.REDO),
+    ) {
+      Glyph(DesignerIcons.REDO, ink)
     }
     menu()
   }
 }
+
+/**
+ * The two ways out of the screen, on the bottom edge where the prototype puts
+ * them (`design/dInfinity.dc.html`, option `1v`: a footer with one filled
+ * button in it).
+ *
+ * **Roll it** is the filled one, because it is the one thing the screen is
+ * for; it is absent rather than dead for a die plain notation cannot name — a
+ * button that is there and does nothing is worse than one that is not.
+ * **Save to set** is beside it, and absent when there is nowhere to save.
+ */
+@Composable
+private fun Footer(
+  presenter: DesignerPresenter,
+  onRoll: (String) -> Unit,
+) {
+  val rollable = presenter.rollable
+  if (rollable == null && presenter.writable.isEmpty()) return
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    if (presenter.writable.isNotEmpty()) {
+      ModernistButton(
+        text = stringResource(R.string.designer_save),
+        onClick = presenter::offerSave,
+        kind = ModernistButtonKind.Secondary,
+        modifier = Modifier.testTag(DesignerTestTags.SAVE),
+      )
+    }
+    if (rollable != null) {
+      // `btn btn-primary` in the prototype's footer — the one filled button
+      // on the screen. What it hands up is the presenter's to decide, because
+      // making the drawing real is part of throwing it (`DesignerPresenter.roll`).
+      ModernistButton(
+        text = stringResource(R.string.designer_roll),
+        onClick = { presenter.roll(onRoll) },
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(DesignerTestTags.ROLL),
+      )
+    }
+  }
+}
+
+/**
+ * Where the drawings go (`docs/face-designer.md`, "Save to set").
+ *
+ * It lists the sets that can be **written to**, which is a set this phone
+ * built and never one somebody installed. There is one of those today — "My
+ * dice" — and the sheet is a list rather than a single button all the same,
+ * because what it is answering is *which set*, and a screen that answers that
+ * question by not asking it is a screen that has to be rebuilt when the second
+ * personal set arrives (`docs/TODO.md`, 4.6).
+ *
+ * **It stays open on the answer.** A save that was refused has a reason worth
+ * reading and one that worked has a set worth naming; "something happened" is
+ * not what somebody pressing Save is asking.
+ */
+@Composable
+private fun SaveSheet(
+  saving: Saving,
+  presenter: DesignerPresenter,
+) {
+  Sheet(
+    title = stringResource(R.string.designer_save_title),
+    onDismiss = presenter::stopSaving,
+    modifier = Modifier.testTag(DesignerTestTags.SAVE_SHEET),
+    actions = {
+      ModernistButton(
+        text = stringResource(R.string.designer_save_do),
+        onClick = presenter::save,
+        kind = ModernistButtonKind.Primary,
+        enabled = saving.into != null && !saving.busy,
+        modifier = Modifier.testTag(DesignerTestTags.SAVE_DO),
+      )
+      ModernistButton(
+        text = stringResource(R.string.designer_save_close),
+        onClick = presenter::stopSaving,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(DesignerTestTags.SAVE_CLOSE),
+      )
+    },
+  ) {
+    Text(
+      text = stringResource(R.string.designer_save_where),
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
+    )
+    presenter.writable.forEach { set ->
+      OptionBox(
+        text = set.name,
+        selected = set.id == saving.into,
+        onClick = { presenter.saveInto(set.id) },
+        modifier = Modifier.fillMaxWidth().testTag(DesignerTestTags.saveInto(set.id)),
+      )
+    }
+    if (saving.busy) {
+      Text(
+        text = stringResource(R.string.designer_save_busy),
+        style = MaterialTheme.typography.labelSmall,
+        color = Ink.muted,
+        modifier = Modifier.testTag(DesignerTestTags.SAVE_BUSY),
+      )
+    }
+    saving.done?.let { done ->
+      Text(
+        text = stringResource(sentenceOf(done), (done as? SaveResult.Saved)?.set?.name.orEmpty()),
+        style = MaterialTheme.typography.bodyMedium,
+        color = if (done is SaveResult.Saved) MaterialTheme.colorScheme.onSurface else Ink.accent,
+        modifier = Modifier.testTag(DesignerTestTags.SAVE_SAID),
+      )
+    }
+  }
+}
+
+/**
+ * Which sentence a save came to (`docs/face-designer.md`, "Save to set").
+ *
+ * Plain Kotlin rather than a composable that looks three strings up, which is
+ * the line this module draws everywhere: what can be *wrong* is which of the
+ * three is said, and that is a `when` a unit test reads
+ * (`docs/architecture.md`, "The decision, then the drawing"). Every one of
+ * them takes the set's name, so the one that has no set to name is handed an
+ * empty string it does not print.
+ */
+internal fun sentenceOf(done: SaveResult): Int =
+  when (done) {
+    is SaveResult.Saved -> R.string.designer_save_done
+    SaveResult.Blank -> R.string.designer_save_blank
+    SaveResult.Refused -> R.string.designer_save_refused
+  }
 
 /**
  * Which die is being drawn on (`docs/face-designer.md`, "Flow").
@@ -230,7 +391,8 @@ private fun Header(
  * be read in one sitting is worth more than two skip branches.
  *
  * It scrolls: a set may define a dozen dice and a name is as long as its author
- * made it.
+ * made it. A die's id is its own word and there is no picture of a `d18`, so
+ * these stay lettered where the tool row does not.
  */
 @Composable
 private fun BaseDice(
@@ -248,14 +410,12 @@ private fun BaseDice(
     horizontalArrangement = Arrangement.spacedBy(4.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    // A `.seg` in the prototype, and so the same option treatment as every
-    // other chooser on the screen.
     state.choosable.forEach { die ->
-      Tool(
-        label = die.id,
-        chosen = die.id == state.die.id,
-        tag = DesignerTestTags.baseOf(die.id),
-        onChoose = { presenter.base(die) },
+      OptionBox(
+        text = die.id,
+        selected = die.id == state.die.id,
+        onClick = { presenter.base(die) },
+        modifier = Modifier.testTag(DesignerTestTags.baseOf(die.id)),
       )
     }
   }
@@ -329,111 +489,73 @@ private fun Warning(state: DesignerState) {
   Text(
     text = stringResource(if (state.full) R.string.designer_face_full else R.string.designer_face_nearly_full),
     style = MaterialTheme.typography.labelSmall,
-    color = Colours.accent,
+    color = Ink.accent,
     modifier = Modifier.padding(horizontal = 24.dp).testTag(DesignerTestTags.WARNING),
   )
 }
 
+/**
+ * What the next touch does, as six pictures (`docs/design-handover.md`: "six
+ * 44 × 44 dp bordered buttons, the chosen one inverted").
+ *
+ * Six because that is how many there are: three pens, the eraser, the bucket
+ * and the stamp. Every one of them is an **option** — the state the canvas is
+ * in until somebody chooses another — so every one of them is an `OptionBox`,
+ * and the chosen one inverts. Clear and the guide are on the end: clear is an
+ * action, the guide is a two-state thing that is not a pen, and both of them
+ * say so by being drawn as what they are.
+ *
+ * The three pens are one glyph at three widths, which is the honest picture:
+ * what separates them is how wide they draw.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Tools(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
+  val ink = MaterialTheme.colorScheme.onBackground
   // Wrapping rather than scrolling sideways: a tool hidden off the edge of a
-  // row is a tool nobody finds, and there are nine of them.
+  // row is a tool nobody finds, and there are eight of them.
   FlowRow(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
     horizontalArrangement = Arrangement.spacedBy(4.dp),
     verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
     Nib.entries.forEach { nib ->
-      Tool(
-        label = stringResource(labelOf(nib)),
-        chosen = state.nib == nib,
-        tag = DesignerTestTags.nibOf(nib),
-        onChoose = { presenter.use(nib) },
-      )
+      OptionBox(
+        contentDescription = stringResource(labelOf(nib)),
+        selected = state.nib == nib,
+        onClick = { presenter.use(nib) },
+        modifier = Modifier.testTag(DesignerTestTags.nibOf(nib)),
+      ) { tint ->
+        Glyph(glyphOf(nib), tint, ink = inkOf(nib))
+      }
     }
-    Tool(
-      label = stringResource(R.string.designer_undo),
-      chosen = false,
-      tag = DesignerTestTags.UNDO,
-      enabled = state.canUndo,
-      onChoose = { presenter.take(Step.Back) },
-    )
-    Tool(
-      label = stringResource(R.string.designer_redo),
-      chosen = false,
-      tag = DesignerTestTags.REDO,
-      enabled = state.canRedo,
-      onChoose = { presenter.take(Step.Forward) },
-    )
-    Tool(
-      label = stringResource(R.string.designer_clear),
-      chosen = false,
-      tag = DesignerTestTags.CLEAR,
+    ModernistIconButton(
+      contentDescription = stringResource(R.string.designer_clear),
+      onClick = { presenter.take(Step.Clear) },
       enabled = !state.face.blank,
-      onChoose = { presenter.take(Step.Clear) },
-    )
-    Tool(
-      label = stringResource(if (state.guideShown) R.string.designer_guide_off else R.string.designer_guide_on),
-      chosen = false,
-      tag = DesignerTestTags.GUIDE,
-      onChoose = { presenter.showGuide(!state.guideShown) },
-    )
-  }
-}
-
-/**
- * One option of a chooser, or one thing to do (`.seg-opt`, `.btn-ghost`).
- *
- * **Chosen is a filled option, not a coloured word.** That is what the system
- * does everywhere a choice is shown — `.seg-opt:has(input:checked)` puts the
- * accent behind the label and the ground in front of it — and a label that
- * only changed colour was asking the player to compare two greys.
- *
- * Which of the two it is is said in the semantics as well as in the paint, so
- * a screen reader hears "selected" rather than nothing
- * (`docs/architecture.md`, "Accessibility"). A button that is an action rather
- * than an option is never chosen, and so says nothing.
- *
- * **Not a `ModernistButton`, because it is not a `.btn`** —
- * design-system-exception: TextButton. Chosen is the
- * accent fill a `.btn-primary` has, but unchosen is a muted word and
- * `.btn-ghost` is the accent by definition — drawn as a ghost, every nib,
- * every face of the strip and every stamp size would print in the accent at
- * once, on a screen whose accent is meant to be the one loud thing. What this
- * really is is a `.seg-opt`, and the shared control that draws those
- * (`ui/common/SegmentedControl.kt`) is a single joined box of options rather
- * than a wrapping row that mixes options with actions. Drawing the tool row
- * properly is a redesign rather than a substitution, and it is written down in
- * `docs/TODO.md`.
- */
-@Composable
-private fun Tool(
-  label: String,
-  chosen: Boolean,
-  tag: String,
-  enabled: Boolean = true,
-  onChoose: () -> Unit,
-) {
-  TextButton(
-    onClick = onChoose,
-    enabled = enabled,
-    shape = Modernist.square,
-    colors =
-      if (chosen) {
-        ButtonDefaults.textButtonColors(
-          containerColor = MaterialTheme.colorScheme.primary,
-          contentColor = MaterialTheme.colorScheme.background,
-        )
-      } else {
-        ButtonDefaults.textButtonColors(contentColor = Colours.muted)
-      },
-    modifier = Modifier.semantics { selected = chosen }.testTag(tag),
-  ) {
-    Text(text = label, fontWeight = FontWeight.SemiBold)
+      modifier = Modifier.testTag(DesignerTestTags.CLEAR),
+    ) {
+      Glyph(DesignerIcons.CLEAR, ink)
+    }
+    OptionBox(
+      // The name a screen reader says is what the press *does*, which is what
+      // the words on it used to be — the resources did not go anywhere when
+      // the words came off the face.
+      contentDescription =
+        stringResource(if (state.guideShown) R.string.designer_guide_off else R.string.designer_guide_on),
+      selected = state.guideShown,
+      onClick = { presenter.showGuide(!state.guideShown) },
+      // A tap turns it back off again, so it is a checkbox rather than one
+      // option of a set: saying "radio button" would promise a choice that
+      // cannot be unmade.
+      role = Role.Checkbox,
+      modifier = Modifier.testTag(DesignerTestTags.GUIDE),
+    ) { tint ->
+      Glyph(DesignerIcons.IMAGE, tint)
+    }
   }
 }
 
@@ -447,6 +569,11 @@ private fun Tool(
  * The field opens on the face's own number and follows the face until somebody
  * types — so the commonest stamp of all is one tap, and an edit of it survives
  * moving to the next face.
+ *
+ * The three sizes keep their words. Small, medium and large are *the same
+ * picture* at three sizes, and three boxes of one glyph differing by a few
+ * pixels is a row nobody can read at arm's length — where three pens differing
+ * by a few pixels of *stroke* is exactly what a pen row looks like.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -481,11 +608,11 @@ private fun StampBar(
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
       StampSize.entries.forEach { size ->
-        Tool(
-          label = stringResource(labelOf(size)),
-          chosen = state.stampSize == size,
-          tag = DesignerTestTags.stampSizeOf(size),
-          onChoose = { presenter.stamp(size = size) },
+        OptionBox(
+          text = stringResource(labelOf(size)),
+          selected = state.stampSize == size,
+          onClick = { presenter.stamp(size = size) },
+          modifier = Modifier.testTag(DesignerTestTags.stampSizeOf(size)),
         )
       }
     }
@@ -496,7 +623,7 @@ private fun StampBar(
       Text(
         text = stringResource(R.string.designer_stamp_refused),
         style = MaterialTheme.typography.labelSmall,
-        color = Colours.accent,
+        color = Ink.accent,
         modifier = Modifier.testTag(DesignerTestTags.STAMP_REFUSED),
       )
     }
@@ -510,12 +637,15 @@ private fun StampBar(
  * The turn and the mirror are the **screen's** state rather than the
  * presenter's: they are how the next press of Paste will behave, like the pen
  * width is how the next stroke will, and nothing on the die changes until
- * something is pasted.
+ * something is pasted. So copy and paste are actions and the two between them
+ * are options, and the row is drawn as the two kinds of thing it is.
  *
  * The turn is a whole step of the cell's own symmetry, so a die whose cells
  * have no turn — the d10 and the d18, whose faces are kites — is offered the
  * mirror and no turn at all. It is *disabled* rather than absent, because a
  * row whose buttons move about as the base die changes is a row nobody learns.
+ * It also keeps its words, because `Turn 3/4` is a **count**: a picture of a
+ * rotation cannot say which of four turns the next paste will land on.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -525,6 +655,7 @@ private fun Clipboard(
 ) {
   var transform by remember { mutableStateOf(FaceTransform()) }
   val steps = state.turnsOffered
+  val ink = MaterialTheme.colorScheme.onBackground
   FlowRow(
     modifier =
       Modifier
@@ -534,33 +665,39 @@ private fun Clipboard(
     horizontalArrangement = Arrangement.spacedBy(4.dp),
     verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
-    Tool(
-      label = stringResource(R.string.designer_copy),
-      chosen = false,
-      tag = DesignerTestTags.COPY,
+    ModernistIconButton(
+      contentDescription = stringResource(R.string.designer_copy),
+      onClick = presenter::copyFace,
       enabled = state.canCopy,
-      onChoose = presenter::copyFace,
-    )
-    Tool(
-      label = stringResource(R.string.designer_turn, transform.turns + 1, steps),
-      chosen = transform.turns != 0,
-      tag = DesignerTestTags.TURN,
+      modifier = Modifier.testTag(DesignerTestTags.COPY),
+    ) {
+      Glyph(DesignerIcons.COPY, ink)
+    }
+    OptionBox(
+      text = stringResource(R.string.designer_turn, transform.turns + 1, steps),
+      selected = transform.turns != 0,
+      onClick = { transform = transform.copy(turns = (transform.turns + 1) % steps) },
       enabled = steps > 1,
-      onChoose = { transform = transform.copy(turns = (transform.turns + 1) % steps) },
+      role = Role.Checkbox,
+      modifier = Modifier.testTag(DesignerTestTags.TURN),
     )
-    Tool(
-      label = stringResource(R.string.designer_mirror),
-      chosen = transform.mirrored,
-      tag = DesignerTestTags.MIRROR,
-      onChoose = { transform = transform.copy(mirrored = !transform.mirrored) },
-    )
-    Tool(
-      label = stringResource(R.string.designer_paste),
-      chosen = false,
-      tag = DesignerTestTags.PASTE,
+    OptionBox(
+      contentDescription = stringResource(R.string.designer_mirror),
+      selected = transform.mirrored,
+      onClick = { transform = transform.copy(mirrored = !transform.mirrored) },
+      role = Role.Checkbox,
+      modifier = Modifier.testTag(DesignerTestTags.MIRROR),
+    ) { tint ->
+      Glyph(DesignerIcons.MIRROR, tint)
+    }
+    ModernistIconButton(
+      contentDescription = stringResource(R.string.designer_paste),
+      onClick = { presenter.paste(transform) },
       enabled = state.canPaste,
-      onChoose = { presenter.paste(transform) },
-    )
+      modifier = Modifier.testTag(DesignerTestTags.PASTE),
+    ) {
+      Glyph(DesignerIcons.PASTE, ink)
+    }
   }
 }
 
@@ -589,7 +726,7 @@ private fun Palette(
       Swatch(
         argb = argb,
         chosen = state.colorArgb == argb && !state.nib.erases,
-        label = stringResource(R.string.designer_ink, Ink.hex(argb)),
+        label = stringResource(R.string.designer_ink, Hex.of(argb)),
         tag = DesignerTestTags.colourOf(argb),
         onChoose = { presenter.ink(argb) },
       )
@@ -597,20 +734,22 @@ private fun Palette(
     Swatch(
       argb = state.colorArgb,
       chosen = state.colorArgb !in PRESETS && !state.nib.erases,
-      label = stringResource(R.string.designer_colour_more, Ink.hex(state.colorArgb)),
+      label = stringResource(R.string.designer_colour_more, Hex.of(state.colorArgb)),
       tag = DesignerTestTags.MORE_COLOURS,
       onChoose = { picking = true },
     )
     Text(
-      text = Ink.hex(state.colorArgb),
+      text = Hex.of(state.colorArgb),
       style = MaterialTheme.typography.labelSmall,
-      color = Colours.muted,
+      color = Ink.muted,
       modifier = Modifier.testTag(DesignerTestTags.INK_HEX),
     )
   }
   if (picking) {
     ColourPicker(
       start = state.colorArgb,
+      title = stringResource(R.string.designer_colour_title),
+      tags = DesignerTestTags.PICKER,
       onDismiss = { picking = false },
       onChosen = {
         presenter.ink(it)
@@ -673,108 +812,30 @@ private fun Swatch(
 }
 
 /**
- * A colour beyond the twelve (`docs/face-designer.md`, "A colour beyond the
- * twelve").
- *
- * Hue, depth and brightness rather than red, green and blue: three sliders a
- * finger can move one at a time and mean something by. The arithmetic behind
- * them is `Ink`, which is where it can be tested — what is left here is three
- * sliders and a patch of the colour they make.
- */
-@Composable
-private fun ColourPicker(
-  start: Int,
-  onDismiss: () -> Unit,
-  onChosen: (Int) -> Unit,
-) {
-  var hsv by remember { mutableStateOf(Ink.hsv(start)) }
-  Sheet(
-    title = stringResource(R.string.designer_colour_title),
-    onDismiss = onDismiss,
-    modifier = Modifier.testTag(DesignerTestTags.PICKER),
-    // Taking the colour first and leaving it after, because the sheet reads
-    // left to right and the confirming action is what it is for.
-    actions = {
-      ModernistButton(
-        text = stringResource(R.string.designer_colour_use),
-        onClick = { onChosen(hsv.argb) },
-        kind = ModernistButtonKind.Primary,
-        modifier = Modifier.testTag(DesignerTestTags.PICKER_USE),
-      )
-      ModernistButton(
-        text = stringResource(R.string.designer_colour_cancel),
-        onClick = onDismiss,
-        kind = ModernistButtonKind.Ghost,
-        modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL),
-      )
-    },
-  ) {
-    // Tighter than the sheet's own spacing: the patch and the three sliders
-    // are one control, not four blocks of the sheet.
-    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
-      Box(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .height(TOUCH_TARGET)
-            .background(Color(hsv.argb))
-            .border(Modernist.rule, MaterialTheme.colorScheme.outline)
-            .semantics { contentDescription = Ink.hex(hsv.argb) }
-            .testTag(DesignerTestTags.PICKER_PATCH),
-      )
-      Channel(R.string.designer_hue, hsv.hue, HUE_ROUND, DesignerTestTags.HUE) { hsv = hsv.copy(hue = it) }
-      Channel(R.string.designer_depth, hsv.saturation, 1f, DesignerTestTags.DEPTH) {
-        hsv = hsv.copy(saturation = it)
-      }
-      Channel(R.string.designer_brightness, hsv.value, 1f, DesignerTestTags.BRIGHTNESS) { hsv = hsv.copy(value = it) }
-    }
-  }
-}
-
-/** One of the picker's three sliders, named so a screen reader can say which. */
-@Composable
-private fun Channel(
-  label: Int,
-  value: Float,
-  most: Float,
-  tag: String,
-  onChange: (Float) -> Unit,
-) {
-  val name = stringResource(label)
-  Text(text = name, style = MaterialTheme.typography.labelSmall, color = Colours.muted)
-  Slider(
-    value = value,
-    onValueChange = onChange,
-    valueRange = 0f..most,
-    modifier =
-      Modifier
-        .semantics { contentDescription = name }
-        .testTag(tag),
-  )
-}
-
-/**
  * Which face is in front of the player, and the taps that letter them all
  * (`docs/face-designer.md`, "Flow", "The stamp" and "Fill all with eyes").
  *
+ * **Each face is the face, not a word for it** (`docs/design-handover.md`:
+ * "the face strip should be 52 × 52 dp thumbnails"). A strip of twenty `3`s
+ * and `17`s tells somebody which face they are going to, and a strip of twenty
+ * *drawings* tells them which they have drawn — which is the question the
+ * strip is actually asked. The label stays under the picture, because a set
+ * may call a face `crit` and no thumbnail says that; the design's own
+ * hand-over asked for exactly this pairing.
+ *
  * **The strip has the row to itself and the buttons have the next one.** They
  * used to share a line, with the strip given whatever the three buttons left —
- * which on a phone is about one face of a d20, so the control for choosing a
- * face was a scroller the width of a thumb. The buttons are still outside the
+ * which on a phone is about one face of a d20. The buttons are outside the
  * scroll, because they are about *every* face and a control that scrolls away
- * with the twentieth one is a control nobody finds; they simply wrap onto
- * their own row now, the way the tool row above them does
- * (`design/dInfinity.dc.html`, option `1v`, and the design's own hand-over:
- * "the strip scrolls on its own; the global actions sit in a non-scrolling
- * wrapping row below it").
+ * with the twentieth one is a control nobody finds.
  *
  * **The eyes are offered only where they mean something.** A pip pattern
  * writes one to six and nothing else, so the two eye buttons are on the screen
- * for a d6 and absent for every other die, rather than there and refusing —
- * which is the answer "Roll it" already gives for a die notation cannot name.
- * `Clear eyes` is disabled until there is something to clear, so pressing it
- * on a die nobody has pipped cannot fill the undo stack with steps that
- * changed nothing.
+ * for a d6 and absent for every other die, rather than there and refusing.
+ * `Clear eyes` is disabled until there is something to clear.
+ *
+ * The three keep their words. They are sentences about every face at once —
+ * "fill all with numbers" is not a thing there is a picture of.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -791,46 +852,81 @@ private fun FaceStrip(
       horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
       state.draft.die.faces.forEach { face ->
-        Tool(
-          // The label rather than the value: a set may label a face `crit`, and
-          // the strip is how somebody finds the face they mean.
+        FaceThumbnail(
+          draft = state.draft,
+          cell = face.index,
           label = face.label,
           chosen = face.index == state.cell,
-          tag = DesignerTestTags.faceOf(face.index),
           onChoose = { presenter.show(face.index) },
         )
       }
     }
-    // Wrapping rather than scrolling, like the tool row: there are at most
-    // three of these and they are about *every* face, so they are not
-    // something to go looking for.
     FlowRow(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(4.dp),
       verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-      Tool(
-        label = stringResource(R.string.designer_fill_numbers),
-        chosen = false,
-        tag = DesignerTestTags.FILL_NUMBERS,
-        onChoose = presenter::fillNumbers,
+      ModernistButton(
+        text = stringResource(R.string.designer_fill_numbers),
+        onClick = presenter::fillNumbers,
+        modifier = Modifier.testTag(DesignerTestTags.FILL_NUMBERS),
       )
       if (state.canPip) {
-        Tool(
-          label = stringResource(R.string.designer_fill_eyes),
-          chosen = false,
-          tag = DesignerTestTags.FILL_EYES,
-          onChoose = presenter::fillEyes,
+        ModernistButton(
+          text = stringResource(R.string.designer_fill_eyes),
+          onClick = presenter::fillEyes,
+          modifier = Modifier.testTag(DesignerTestTags.FILL_EYES),
         )
-        Tool(
-          label = stringResource(R.string.designer_clear_eyes),
-          chosen = false,
+        ModernistButton(
+          text = stringResource(R.string.designer_clear_eyes),
+          onClick = presenter::clearEyes,
           enabled = state.pipped,
-          tag = DesignerTestTags.CLEAR_EYES,
-          onChoose = presenter::clearEyes,
+          modifier = Modifier.testTag(DesignerTestTags.CLEAR_EYES),
         )
       }
     }
+  }
+}
+
+/**
+ * One face of the strip: the drawing on it, at the size of a thumb.
+ *
+ * The same three steps the canvas takes — mask to the outline, paper, marks —
+ * at a fiftieth of the area, which is what makes it *the* face rather than a
+ * picture of one. The guide is left off: a faint number to trace means nothing
+ * at 52 dp, and a strip in which every undrawn face carried its numeral would
+ * be a strip that could not be told from a drawn one at a glance.
+ *
+ * The whole thing is one node to a screen reader — the picture has no words
+ * and the label under it is part of the same control, not a caption beside it.
+ */
+@Composable
+private fun FaceThumbnail(
+  draft: Draft,
+  cell: Int,
+  label: String,
+  chosen: Boolean,
+  onChoose: () -> Unit,
+) {
+  val name = stringResource(R.string.designer_face, label)
+  val edge = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+  val marks = draft.face(cell).marks
+  val outline = draft.outline
+  Column(
+    horizontalAlignment = Alignment.CenterHorizontally,
+    verticalArrangement = Arrangement.spacedBy(2.dp),
+    modifier =
+      Modifier
+        .selectable(selected = chosen, role = Role.RadioButton, onClick = onChoose)
+        .semantics(mergeDescendants = true) { contentDescription = name }
+        .testTag(DesignerTestTags.faceOf(cell)),
+  ) {
+    Canvas(modifier = Modifier.size(THUMBNAIL).border(Modernist.rule, edge)) { drawFace(outline, marks) }
+    Text(
+      text = label,
+      style = MaterialTheme.typography.labelSmall,
+      color = if (chosen) MaterialTheme.colorScheme.primary else Ink.muted,
+    )
   }
 }
 
@@ -857,13 +953,40 @@ private fun labelOf(size: StampSize): Int =
     StampSize.Large -> R.string.designer_stamp_large
   }
 
+/** Which of the prototype's glyphs stands for a tool (`DesignerIcons`). */
+private fun glyphOf(nib: Nib): String =
+  when (nib) {
+    Nib.Fine, Nib.Medium, Nib.Broad -> DesignerIcons.PENCIL
+    Nib.Eraser -> DesignerIcons.ERASER
+    Nib.Bucket -> DesignerIcons.BUCKET
+    Nib.Stamp -> DesignerIcons.TYPE
+  }
+
+/**
+ * How wide a pen's own glyph is drawn, in the sprite's 24-unit box.
+ *
+ * The one thing that separates three pens is how wide they draw, so it is the
+ * one thing that separates their pictures. [DesignerIcons.INK] is the
+ * prototype's own width and belongs to the medium pen; everything that is not
+ * a pen keeps it too.
+ */
+private fun inkOf(nib: Nib): Float =
+  when (nib) {
+    Nib.Fine -> FINE_INK
+    Nib.Broad -> BROAD_INK
+    else -> DesignerIcons.INK
+  }
+
 private const val GUIDE_ALPHA = 0.35f
+
+/** The fine pen's glyph, thinner than the sprite's own stroke. */
+private const val FINE_INK = 1.1f
+
+/** The broad pen's, thicker. */
+private const val BROAD_INK = 3.4f
 
 /** Nanoseconds in a second, which is what a frame's stamp is counted in. */
 private const val NANOS_A_SECOND = 1_000_000_000f
-
-/** All the way round the wheel, which is where hue starts again. */
-private const val HUE_ROUND = 360f
 
 /**
  * How big a colour swatch is drawn (`width:26px;height:26px`).
@@ -873,6 +996,9 @@ private const val HUE_ROUND = 360f
  * equal to.
  */
 private val SWATCH = 26.dp
+
+/** How big a face of the strip is drawn (`docs/design-handover.md`: 52 × 52 dp). */
+private val THUMBNAIL = 52.dp
 
 /** The twelve the design shows (`design/dInfinity.dc.html`, option `4c`). */
 private val PRESETS =
@@ -898,6 +1024,7 @@ object DesignerTestTags {
   const val SOLID: String = "designer:solid"
   const val SOLID_NOTE: String = "designer:solid:note"
   const val SPIN: String = "designer:solid:spin"
+  const val WHICH_FACE: String = "designer:which-face"
   const val UNDO: String = "designer:undo"
   const val REDO: String = "designer:redo"
   const val CLEAR: String = "designer:clear"
@@ -905,6 +1032,12 @@ object DesignerTestTags {
   const val WARNING: String = "designer:warning"
   const val BASES: String = "designer:bases"
   const val ROLL: String = "designer:roll"
+  const val SAVE: String = "designer:save"
+  const val SAVE_SHEET: String = "designer:save:sheet"
+  const val SAVE_DO: String = "designer:save:do"
+  const val SAVE_CLOSE: String = "designer:save:close"
+  const val SAVE_BUSY: String = "designer:save:busy"
+  const val SAVE_SAID: String = "designer:save:said"
   const val CLIPBOARD: String = "designer:clipboard"
   const val COPY: String = "designer:copy"
   const val PASTE: String = "designer:paste"
@@ -918,13 +1051,15 @@ object DesignerTestTags {
   const val FILL_NUMBERS: String = "designer:stamp:fill"
   const val MORE_COLOURS: String = "designer:colour:more"
   const val INK_HEX: String = "designer:colour:hex"
-  const val PICKER: String = "designer:picker"
-  const val PICKER_PATCH: String = "designer:picker:patch"
-  const val PICKER_USE: String = "designer:picker:use"
-  const val PICKER_CANCEL: String = "designer:picker:cancel"
-  const val HUE: String = "designer:picker:hue"
-  const val DEPTH: String = "designer:picker:depth"
-  const val BRIGHTNESS: String = "designer:picker:brightness"
+
+  /**
+   * The shared colour picker, and the six controls in it.
+   *
+   * One tag rather than seven: the sheet is `ui/common`'s now and derives its
+   * own children's tags from this one, so there is nowhere for a suffix to be
+   * spelled two ways (`ColourPickerTags`).
+   */
+  val PICKER: ColourPickerTags = ColourPickerTags("designer:picker")
 
   fun viewOf(view: DesignerView): String = "designer:view:${view.name.lowercase()}"
 
@@ -937,4 +1072,6 @@ object DesignerTestTags {
   fun colourOf(argb: Int): String = "designer:colour:$argb"
 
   fun faceOf(cell: Int): String = "designer:face:$cell"
+
+  fun saveInto(setId: String): String = "designer:save:into:$setId"
 }

@@ -80,8 +80,8 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 `docs/physics-and-rendering.md`.
 
 The screen rolls. A formula is typed, validated on every keystroke, refused if
-the table cannot hold it, thrown from the Roll button or a shake, simulated and drawn on
-the Pixel 10a, and its total read off the faces. The picker row offers a chosen
+the table cannot hold it, **thrown by a shake and by nothing else**, simulated
+and drawn on the Pixel 10a, and its total read off the faces. The picker row offers a chosen
 set's dice, with a chooser under it once there is a second set installed — and
 a die taken from a set that is not the default is written `brass:1d20`, so the
 row can only ever write a formula that rolls what it showed.
@@ -91,9 +91,9 @@ with a dashed rule under it, a tap brings the field and the keyboard up, and
 Enter rolls. The squiggle and the error line are in the editor where they can
 be acted on; the line itself is marked in red (`6f`, `9c`).
 
-**First launch offers all three ways in** (`9a`): throw a d20 now, go straight
-to the tray, bring saved rolls in from a file or a link, or add somebody else's
-dice. The last two do not dismiss it — somebody who goes to fetch something
+**First launch offers all three ways in** (`9a`): put a d20 on the table, go
+straight to the tray, bring saved rolls in from a file or a link, or add
+somebody else's dice. The last two do not dismiss it — somebody who goes to fetch something
 comes back to a welcome whose count line has something new to say, and that
 line now counts the sets, the saved rolls and the sessions there really are
 rather than a sentence with a zero written into it.
@@ -106,15 +106,6 @@ is drawn over the table"):
 - [ ] **Mark the dice of a later pass** — 4 dp accent-700 outline and a
       `pass 2` label in the `dropped` slot — so a total counting twenty dice
       over a table holding three explains itself on the felt
-- [ ] **Score a chain the player stopped.** `Stop the chain` on the earned
-      plate puts the roll away with no total, which is honest but is not what
-      the button says. Scoring what is on the table needs `core/notation` to
-      have a *reason* a chain ended that is not the tray's: `RunningScore`
-      stops one only when `AddedDice.room` says no, and `GroupRoller` writes
-      `DieNote.TrayFull` when it does — so a player-stopped chain would print
-      "The tray had no room for another die" over a tray with plenty. The work
-      is a `DieNote` of its own, a way for `ExtraThrow` to say which refusal it
-      is, a `ChainLimit` entry and a line in `docs/dice-notation.md`
 - [ ] **Stagger the spawn**, 85 ms between dice, with the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** to be ported: a settled die moved by another
@@ -124,22 +115,6 @@ is drawn over the table"):
       digit is dotted and its tens pair is not; an upright number in the result
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
-
-- [ ] **The rest of the plates are a stack at the bottom, and on a phone that
-      is most of a wall.** The formula has moved to the corner the design puts
-      it in and the felt is clear again above the controls; what is left below
-      is the saved rolls, the picker and the Roll button.
-      Seen on the Pixel 10a with the straight-down table view: the odds, the
-      saved rolls, the picker and the button are four plates one above another,
-      and between them they cover a good deal of the felt —
-      which is the banded column the tray stopped being, drawn in shadow
-      instead of in rules. The design puts four small plates in the corners of
-      a clear table (formula top left, hint bottom left, the counting plate
-      across the bottom) and puts the dice picker in a strip under the app bar,
-      with no button at all: you shake, or you tap the table. **The design is
-      right and this is the divergence to close**, and it is a layout change
-      rather than a plate change — which is why it is here rather than in the
-      change that made the plates
 
 **Decided while making the result a pull-up**, where the brief left a choice
 (`docs/physics-and-rendering.md`, "What is drawn over the table"):
@@ -189,9 +164,6 @@ is drawn over the table"):
   That is the "draw the total once" item: the design's sheet keeps subtotals
   because they are how the rows add up, and for `1d20` there is nothing to add
   up — one group, no modifier, and the number printed twice.
-- **`Cancel the roll` and `Stop the chain` are the same act today**: the roll
-  is put away with no total. That is right for the refusal and wrong for the
-  chain, which is the open item above.
 - **The kickers are upper case in `strings.xml`.** Compose has no text
   transform, and uppercasing in Kotlin changes what a screen reader says —
   which is the open question `SectionKicker` already records.
@@ -215,8 +187,8 @@ is drawn over the table"):
 - [ ] **Freeze the dice that are down and let the player re-roll the ones that are not.** The user's proposal for unstacking, and worth taking seriously: a die that has landed cleanly is finished and could be lifted off the mat and shown as an overlay, leaving only the stuck ones in the tray to be thrown again. It keeps the honest rule — a settled die is never *moved*, only taken out of play once its face is read — and it turns the worst case from "the app fixes it invisibly" into "you roll again", which is what a person does at a table. Needs the design for how ninety-nine finished dice are shown; the mechanism can be decided first (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice")
 - [ ] *Confirm on the phone:* a roll stranded by losing its surface is fixed (a roll now asks for frames with nowhere to draw), but whether that was what left `100d4` on "Rolling…" for ever is unproven — the physics settles that throw headlessly on eight seeds, so the hang was never in the engine
 - [ ] *Judge a second shake on the phone:* a shake at dice still in the air now keeps them moving rather than doing nothing — it starts no throw, and its moments are numbered on the running roll's clock so they reach it at all, which is what was actually broken (`docs/physics-and-rendering.md`, "Shake input"). Decided along the way: a second shake is **more of the same roll**, not a throw that replaces it, because the dice are the ones already tumbling. Whether that reads as the dice answering the hand, and whether a roll can now be kept going longer than anybody wants, needs a phone
-- [ ] Judge the pinch and the pan on a phone: whether `TrayView.CLOSEST` (four times in) is far enough to settle an argument about a face and near enough that the table has not gone, and whether a two-finger drag feels like moving the table rather than the camera. The arithmetic is tested; the feel is not testable (`docs/physics-and-rendering.md`)
-- [ ] **Wire the one-finger touch to a hand re-throw.** The two decisions underneath it are built and tested: `TrayPick` (`render/filament`) says which die a finger is on, and `PickUp` (`core/notation`) says which dice a hand may go near — a group carrying `!` or `r n` offers none, because a die another die was thrown because of cannot be thrown again without the roll holding a die nothing asks for. The throw itself is the one an explosion already makes (`ThrowSpec.among`), so there is no second path to a number to build. What is missing is not code: it is **what the history says about a roll a die was thrown again in**, under "Open questions" below. Until that is answered the gesture stays unspent (`docs/physics-and-rendering.md`, "Picking a die up and throwing it again")
+- [ ] *Judge the pinch and the pan on a phone, again:* the two faults the last phone found are fixed — one finger no longer pans (two are needed, and the single finger is back to being reserved for picking a die up), the pan limit now grows with the zoom so that at `TrayView.CLOSEST` the middle of the screen reaches the corner of the floor and a die against a wall can be brought to the middle, and a pinch happens about the fingers rather than the middle of the screen. What is left is feel, and all of it needs a hand: whether four times in is far enough to settle an argument about a face and near enough that the table has not gone; whether a two-finger drag reads as moving the table rather than the camera; whether pinching into a corner goes where the fingers are; and **whether the wall rising past the floor's edge at the far end of the pan reads as the table or as having fallen off it** — that is the thing the looser limit trades away and the one judgement only an eye can make (`docs/physics-and-rendering.md`, "Rendering")
+- [ ] **Wire the one-finger touch to a hand re-throw.** The two decisions underneath it are built and tested: `TrayPick` (`render/filament`) says which die a finger is on, and `PickUp` (`core/notation`) says which dice a hand may go near — a group carrying `!` or `r n` offers none, because a die another die was thrown because of cannot be thrown again without the roll holding a die nothing asks for. The throw itself is the one an explosion already makes (`ThrowSpec.among`), so there is no second path to a number to build. What is missing is not code: it is **what the history says about a roll a die was thrown again in**, under "Open questions" below. Until that is answered the gesture stays unspent — and it is genuinely free now: the camera takes two fingers and consumes nothing while only one is down, so a single finger reaches the tray unclaimed (`docs/physics-and-rendering.md`, "Picking a die up and throwing it again")
 - [ ] **The welcome and the result sheet share the bottom edge.** The
       first-launch screen is a full-screen takeover whose four buttons run to
       the bottom of the phone, and that is exactly where the result comes up
@@ -231,7 +203,8 @@ is drawn over the table"):
       parked sheet leaves enough felt to see a die that landed at the bottom
       edge. Where it rests and what a flick settles to are JVM-tested; the feel
       is not (`docs/physics-and-rendering.md`, "What is drawn over the table")
-- [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
+- [ ] *Judge the dice pull-down on the phone:* the dice are behind a head reading `Dice` at the top of the table now, and the row inside it still scrolls — the built-in set offers ten dice and ten at a touch target worth pressing do not fit across a 360 dp screen. Three things need eyes. Does a shut menu read as "the dice are in there" or as "there are no dice"? Does the count on the head answer that? And does the scrolling row read as "there are more dice over there" or as "the d20 is missing" — the d20 being the die most people want (`design/dInfinity.dc.html`, option 1h)
+- [ ] *Judge the tray with no shadow of its own on the phone:* the wall and the rim no longer cast, and the dice still do. What is left to see is whether the join between the wall and the floor still reads as a corner — the contact darkening there is screen-space ambient occlusion rather than a cast shadow, and it cannot be turned off per renderable without taking the dice's contact with it (`docs/physics-and-rendering.md`, "Rendering (normal mode)")
 - [ ] **Decided: braced notation, so a set's own dice can be typed and picked.**
       Plain notation spells `dN`, `d%` and `dF`, so `skull-d6` has nothing a
       formula could carry and `DicePicker.offeredBy` filters the row down to
@@ -267,7 +240,7 @@ is drawn over the table"):
       breakdown, the history, saved rolls and every collection file anybody has
       already written
 
-- [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
+- [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the dice menu and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -309,8 +282,8 @@ sheet in both places.
 Pinning is gone with the design pass of 2026-09-17: each row carries a grip,
 the list reorders live under the finger and is written down when it lifts, the
 list is its own scroll box under a bar and a switcher that stay put, and a roll
-wears one of twelve colour tags or one typed as a hex code — every one of them
-through a contrast clamp. `sort_order` replaced the `favourite` column in
+wears one of twelve colour tags or one picked on the app's own colour picker —
+every one of them through a contrast clamp. `sort_order` replaced the `favourite` column in
 database version 6, and the migration translates what a phone already has once:
 favourites first, then by recent use, numbered per group.
 
@@ -332,11 +305,6 @@ the choice open:
 - **A new roll lands at the bottom of its group.** It is a roll somebody has
   just made and has not placed yet; putting it at the top would move
   everything they *had* placed down by one.
-- **A custom colour is typed as `#rrggbb`** rather than picked off a wheel. The
-  system colour picker arrives with the accent's (4.9 below), and one picker
-  for both is worth more than two that are not quite the same; a hex code is
-  also what somebody copying a colour out of a character sheet already has.
-  Half a code chooses nothing rather than something wrong.
 - **The contrast clamp is `core/model`'s**, the same one the accent goes
   through (`AccentRamp.clamp`). It was written twice for a few hours — once
   here and once beside the accent, because the two were built at the same time
@@ -477,17 +445,37 @@ pixels — the smallest closed stroke the tap is inside, or the face — and fil
 sink under the ink; **copy and paste** merge a turned or mirrored copy onto
 another face in one undoable step, the turn being a whole step of the cell's
 own symmetry; the **colour picker** goes past the twelve presets in hue, depth
-and brightness, and the ink it makes is opaque and round-trips through the
-draft file (`docs/face-designer.md`). **Drafts are on disk** — one file per
+and brightness — `ui/common`'s, shared with Settings and the saved-roll editor
+— and the ink it makes is opaque and round-trips through the draft file
+(`docs/face-designer.md`). **Drafts are on disk** — one file per
 die, written after every stroke and read back when the die is opened — so a
 drawing outlives the screen and each die keeps its own. That made the "start
 over?" question unnecessary and it is gone: changing die no longer loses
-anything. **Roll it** hands the tray the die being drawn — the die as its set
-defines it, since nothing puts an atlas on one yet, and absent rather than dead
-for a die plain notation cannot name (decision 31). The d4's
-three-numbers-per-corner rule is **derived rather than checked** — a cell's
-numbers are read from the corners it meets, so two cells sharing an edge cannot
-be made to disagree along it.
+anything. The d4's three-numbers-per-corner rule is **derived rather than
+checked** — a cell's numbers are read from the corners it meets, so two cells
+sharing an edge cannot be made to disagree along it.
+
+**Roll it throws the drawing**, and **Save to set** is the same step offered on
+its own. Both write the draft down, rebuild `dicesets/mine/` from every drawing
+and re-scan it, and Roll it then names the die **in the set that now carries
+it** (`mine:1d20`). That was three faults compounding: nothing outside the sets
+list ever called `bringUpToDate`, a bare formula resolves to the default set
+rather than the personal one, and the base-die chooser took dice by distinct id
+with the bundled set first, so it kept the untextured `d20` and dropped the
+personal one — the chooser now leaves the personal set out altogether, because
+a die of "My dice" is a drawing rather than a shape to draw on. Roll it is
+still absent rather than dead for a die plain notation cannot name
+(decision 31).
+
+**The tools are pictures**, taken verbatim from the prototype's own sprite and
+held to it by a test that reads `design/dInfinityPhone.dc.html`. The
+twenty-one controls are split by what they are — options inverting in a
+bordered square, actions as icon buttons, sentences as lettered buttons — which
+is what the row needed before it could be drawn, and it retires the
+`design-system-exception` it carried. Undo and redo moved to the app bar with
+"face N of M" under the title, and the face strip is 52 dp thumbnails of the
+faces themselves with their labels kept under them
+(`docs/face-designer.md`, "The tools are pictures").
 
 **The export is built.** A drawing becomes an atlas at 256 px per cell in the
 shape catalogue's own grid, with the cells nobody drew on left out so they stay
@@ -526,6 +514,13 @@ the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
       drag of a stage-width per 176° is the rate a finger expects; and whether
       a face carrying only its background and its number reads as a face
       somebody drew or as a face that lost their drawing
+- [ ] *Judgement, on a phone:* the drawing now reaches the tray, and nobody
+      has seen one there. Whether a face somebody drew with a finger reads as
+      *their drawing* at tray distance or as a smudge; whether the exporter's
+      turn (below) is the only thing wrong with how it lands; whether eight
+      44 dp glyphs in a wrapping row read as tools without their words, or
+      whether the bucket and the stamp need a caption after all; and whether a
+      52 dp thumbnail of a face is a face or a grey square
 - [ ] **The atlas's turn of a cell is not the canvas's.** The exporter draws
       every cell with the face's up taken as `+z` flattened onto it while the
       canvas masks every cell into one canonical outline, and the two are not
@@ -536,7 +531,11 @@ the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
       The Solid tab shows the drawing the canvas's way and says so; which of
       the two should move is the open question, and it is not a small one —
       changing the atlas's rule repaints every die of every set ever published
-      (`docs/dice-sets.md`, "Up is `+z`")
+      (`docs/dice-sets.md`, "Up is `+z`"). **The d4's corner numbers are not
+      part of this any more**: which corner of a cell carries which number is
+      read off the solid and is right whatever the turn works out to be
+      (`docs/face-designer.md`, "The d4 rule is derived, not checked"). What
+      is left here is the turn of the *drawing*
 - [ ] **Whether the Solid tab should draw pen strokes too**, as thin filled
       outlines rather than as lines of a width. What it costs is a stroke
       turned into a polygon per mark per face per frame; what it buys is a
@@ -555,10 +554,16 @@ the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
       grid at `96 / 160 / 224`, `r = 24`, drawn in the canvas, the solid and the
       strip thumbnails, mutually exclusive with numerals, with `Clear eyes` to
       undo it
-- [ ] **`Save to set` instead of a save**: a sheet listing the writable sets —
-      never an imported one — plus a field that names a new personal set,
-      created at average weight, translucency and size and in the picker
-      immediately
+- [ ] **More than one personal set.** `Save to set` is built — a footer action
+      opening a sheet over the writable sets, which writes the drafts into the
+      chosen one and says what came of it — but `MinePackage.ID` is fixed to
+      `mine` and `MineSets` is built on one folder, so the sheet lists exactly
+      one set and there is no field that names a new one. What is left is the
+      *model*: an id per personal set, a `MineSets` per folder, drafts keyed by
+      set as well as by die, and an export and a physical record each. A set
+      created that way starts at the average weight, translucency and size and
+      is in the list, the picker and notation immediately — there is nothing to
+      install and nothing to confirm (`docs/face-designer.md`, "Save to set")
 - [ ] **The trailing dot replaces the bar** under an ambiguous `6` or `9`,
       here and on the tray. The rule that decides *which* numbers are marked is
       unchanged and still derived (`docs/dice-sets.md`, "Labels")
@@ -598,6 +603,16 @@ what stays as well as what goes. No replay and no
 seed, which the types enforce rather than the screen remembering — the export
 is built from `HistoryEntry`, which has none to write. Pruning at 50,000 rows
 was already done and tested in `StatisticsRepository`.
+
+- [ ] **The face histogram prints a face's value, not its label.** A dF's
+      rows read `-1`, `0`, `1` where the die says `−`, blank and `+`, and
+      TalkBack says "Face -1 came up three times"
+      (`StatsScreen`, `FaceHistogram`'s `FaceBar`). The tallies are keyed by
+      face *value* in the database and `FaceBar` carries no label at all, so
+      the fix is a label plumbed from the installed die at read time — and a
+      decision about the CSV and JSON exports, which write the value too
+      (`HistoryExport`, `DiceExport`). The value is the right thing for a
+      machine to read; a screen is a different question
 
 ### 4.9 Sessions — `feature/stats`
 
@@ -728,9 +743,11 @@ every throw filed under it (`docs/statistics.md`, per session).
       pressed step is therefore the mix rather than the stylesheet's `#ae1800`.
       One rule with an exception in it for the one accent that has a published
       ramp is a rule no test can hold, and the difference is a shade.
-      **(3) Android has no colour picker to send anybody to**, so Settings
-      draws the one the face designer already has — hue, depth and brightness
-      over `designer/Ink` — rather than a second transcription of what a hue is
+      **(3) Android has no colour picker to send anybody to**, so the app
+      draws its own — hue, depth and brightness — rather than a second
+      transcription of what a hue is. There is now exactly one of it, in
+      `ui/common`, opened by Settings, the face designer and the saved-roll
+      editor, over `core/model`'s `Hsv` (`docs/architecture.md`, decision 63)
 
 **Every setting is one row now** — name and sentence on the left, the control
 on the right and centred against them — because that is how the design draws
@@ -958,7 +975,13 @@ a die fairer than the plastic one in their hand, is not worth a warning
 
 ### 5.4 Collisions
 
-- [ ] **Dice go 9 mm into each other, and the bar is 0.2 mm.** Measured on the Pixel 10a the first time the harness ran: 200 throws of 20 d20s, deepest die–die overlap **9.019 mm** against a target of 0.2, on dice 16 mm across. More than half a die. It is the number the plan asked for and nobody had ever had, and it is almost certainly the same fault as the correction rate below rather than a second one: dice are spawned or corrected into each other and the solver pushes them apart afterwards, which is what a 45 % correction rate looks like from the collision side. Prevention (5.5) is where it is fixed; this is where it is measured
+- [ ] **Dice go 5 mm into each other, and the bar is 0.2 mm.** Measured on the Pixel 10a the first time the harness ran: 200 throws of 20 d20s, deepest die–die overlap **9.019 mm** against a target of 0.2, on dice 16 mm across. More than half a die. It is the number the plan asked for and nobody had ever had, and it is almost certainly the same fault as the correction rate below rather than a second one: dice are spawned or corrected into each other and the solver pushes them apart afterwards, which is what a 45 % correction rate looks like from the collision side. Prevention (5.5) is where it is fixed; this is where it is measured.
+
+      **Updated 2026-09-18: 5.041 mm.** Two collision sub-steps and a throw
+      that tapers with the dice count took it from 9.019, and the correction
+      rate it was attributed to no longer exists — so the remaining depth is
+      the solver's own discrete-detection error and nothing else. Still a
+      factor of twenty-five above the bar
 - [ ] **Done, on the Pixel 10a, and the old check was too kind twice over.**
       `ContainmentTest` asks the tray's own bounds — half a side, not a whole
       one, which is what `JoltBridgeTest` allowed and is twice as far out as the
@@ -1237,6 +1260,17 @@ throws rather than a twelve-second fight with the solver.
       spreading force, and what a sustained sideways shake *should* do to a
       tray of dice is the open question in 5.6 that has to be answered first.
       The numbers above are the starting point; nothing in the code changed
+
+      **Partly overtaken, 2026-09-18.** The bias no longer exists, so the
+      43.55 % correction rate and the "waiting 400 ms" row are history rather
+      than options — the measured rate is 0.000 % because there is no code
+      that could correct a die. **Two collision sub-steps have now shipped**,
+      and the packing this entry feared was measured rather than assumed: at
+      20 d20 it costs 17 % of how far the middle die turns after landing and
+      leaves nothing standing on another die, which the harness's new `turns
+      after landing` row can now see. Deepest overlap is **5.04 mm**, down
+      from 9.019. Four and eight sub-steps remain untried against the throw as
+      it is now, and are the obvious next thing here
 - [ ] Tune prevention (spawn spread and stagger, dice-on-dice friction, throw energy, scale) until the numbers above hold without leaning on corrections. **Where it starts:** 20 d20s at the capacity rule's scale settle in 89–132 steps on the Pixel 10a, with 9 of the 20 corrected, 0–1 re-thrown and **zero** post-rest corrections. The last figure is the one that must stay at zero and does; the correction rate is 45 % against a 0.5 % budget, and bringing it down is what this task is
 - [ ] *Measured, on the Pixel 10a:* 200 throws of 20 d20s, base seed 1. **43.55 %** of dice corrected against a 0.5 % budget, **3.50 %** re-thrown against 0.05 %. What passes on the same run is every honesty bar and every timing one: **zero** dice at rest on another die, **zero** post-rest corrections, zero forced settles, no throw near the twelve-second cap, median settle 0.81 s and p99 1.83 s against 2 s and 4 s, and a p99 step of 1.00 ms against the 8.33 ms a 120 Hz step has. The engine is fast and honest and leans on corrections far too hard, which is what the rest of this section is about
 - [ ] **The corrections are visible at 100 dice, and they look like popcorn.** Seen on the Pixel 10a: dice stack against a wall and then *pop* apart to unstack, and individual dice jump to find a better spot. Every one of those lands while the die is still moving, so the honest rule holds and nothing touches a die at rest — but "it does not cheat" and "it does not look like it cheats" are different claims, and this is the second one failing. It is the 45 %-against-0.5 % correction rate above, seen rather than counted, and it is the argument for prevention over correction rather than a separate task
@@ -1247,7 +1281,6 @@ throws rather than a twelve-second fight with the solver.
 - [ ] Dice respond to a shake within ~100 ms, and they move the way the hand did — the tray itself never moves, because it is the screen (`docs/physics-and-rendering.md`). The direction and the dropped-force stutter are both fixed; what is left to judge is the *start*, which read as a lag on the Pixel 10a: the dice are already travelling fast when the shake begins to reach them, so the hand seems to be catching up with dice that left without it. The 100 ms start threshold and the spawn impulse are the two numbers in it
 - [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling. **Not yet:** on the Pixel 10a the dice do not travel far enough and the tumble does not read as dice being thrown. Throw energy and spawn spread are where that is tuned (5.5), and this is the judgement that says when it is right
 - [ ] *Judge the formula editor on the phone:* whether a dashed rule under the formula reads as "you can type here", and whether a keyboard over the lower half of the tray is right or wants the tray to shift up while the editor is open (`design/dInfinity.dc.html`, option 2a)
-- [ ] The rim's shadow still looks wrong — the band across the top of the wall casts something that does not read as a rim. Lighting and the shadow map, not geometry, on present evidence
 - [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
 - [ ] **Do the haptics land?** They fire on real impacts only and the rule is asserted rather than tuned: a change in a die's speed that the step's own gravity explains is never reported, so a die sliding and a die at rest are silent by construction. What a phone has to answer is the *feel* — whether a die hitting the tray reads as a knock rather than a rattle, whether one die landing among twenty is still felt, and whether the 45 ms rate limit turns a hundred dice into a handful of distinct knocks or into one long buzz. Listen for: a single d20 landing, then `20d6`, then `100d6`
 - [ ] **Do the five tables sound like their materials?** The sounds are generated rather than recorded (`docs/physics-and-rendering.md`), so this is the first time anybody hears them. Roll the same `5d6` on `felt-green`, `oak`, `dark-glass` and `plain` and say whether each reads as its surface; then roll `2d20` and `20d6` on one table and say whether the pitch difference between a big die and a shrunk one reads as dice of different sizes or as an effect. If a preset is wrong, the four numbers behind it are in `ImpactWaveform`
@@ -1382,7 +1415,11 @@ The figures are reported in every PR description either way.
       one-finger touch is being kept for picking a die up and throwing it
       again, and a surface that throws the whole formula the moment it is
       touched has nowhere to put that. The prototype has no camera to move and
-      no die to pick up, so it has a spare gesture the app does not. Worth
+      no die to pick up, so it has a spare gesture the app does not. **The
+      Roll button going makes this the last open question about how a throw
+      starts**, and it pulls both ways: the tap is the obvious stand-in for a
+      hand that cannot shake, and the tray's accessibility action already is
+      one. Worth
       settling before the hand re-throw is wired up, because they want the same
       finger
 
@@ -1478,21 +1515,6 @@ blocks code:
       with it (`Role.RadioButton` via `selectable`), so it wants an eye rather
       than a refactor. The sets a player can have is unbounded, which is the
       argument for the scrolling row and against the joined box
-- [ ] **The face designer's tool row is a set of `.seg-opt`s wearing button
-      clothes.** Every one of its twenty-one controls goes through one `Tool`
-      composable, and that composable is a two-state control: chosen is filled
-      in the accent, unchosen is the **muted** ink. That is `.seg-opt`, not
-      `.btn` — `ModernistButtonKind.Ghost` is the accent by definition, so
-      mapping unchosen onto it would print every nib, every stamp size and
-      every face of the strip in the accent at once. `SegmentedControl` draws
-      `.seg-opt`s but as one joined box of options, where this is a wrapping
-      row that mixes options (nibs, sizes, faces) with plain actions (copy,
-      paste, clear, fill with numbers). Drawing it properly means deciding
-      which of those are options and which are actions, which is a redesign
-      rather than a substitution — so the row keeps Material's `TextButton`
-      with a `design-system-exception` and the reason beside it. All twenty-one
-      call sites go through the one composable, so it is one place whenever it
-      is done
 - [ ] **The picker is a list of rows; the prototype's `1u` is a grid of cards.**
       The thumbnails landed in the list that was already there — one 44 × 64 dp
       picture at the head of each row, in the place the swatch held — rather
@@ -1617,13 +1639,13 @@ blocks code:
       `docs/face-designer.md`)
 - [ ] **A photo table is in the package before the tray can draw it.** "Use a
       photo" writes a valid, exportable `[[table]]` with its picture, and the
-      tray shows it as its colours until something fills the `atlases` seam
-      (Step 3, above) — which is the same state a *drawn* die's artwork is in,
-      so the alternative was holding the feature until the renderer loads
-      textures. I chose to ship it: the package, the validator path and the
-      export are the hard parts and they are done, and the picture appearing is
-      one seam away for dice and tables alike. Worth confirming that is the
-      right order (`docs/tables.md`, "Your own photo")
+      tray shows the table in its own colours because a `TableLook`'s texture
+      path says nothing about which package it came from (above). A *drawn
+      die's* artwork no longer waits with it — the designer builds the package
+      and names the die in it, so a drawn die arrives at the tray textured —
+      which leaves the photo table the one thing in the personal package whose
+      picture the tray does not draw. Worth confirming that is the right order
+      (`docs/tables.md`, "Your own photo")
 - [ ] **How should a photo sit on the tray?** The prototype's upload sheet
       offers three fits — centre, fit width, fit height (`1u`) — and none is
       implemented: a photo table is written with `floor_tiling = [1, 1]`, which
@@ -1634,7 +1656,6 @@ blocks code:
       photo at import (which loses pixels somebody chose) and mapping it at
       draw time (which needs the tray's aspect, and the tray's aspect changes
       with the phone's rotation)
-- [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
 - [ ] A collection imported from a git repository records nothing about where
       it came from, so there is no "check for updates" for one the way there is

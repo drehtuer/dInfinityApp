@@ -1,17 +1,29 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -150,5 +162,205 @@ class OptionBoxTest {
     compose.onNodeWithTag("chosen").performClick()
 
     compose.runOnIdle { assertEquals(true, cleared) }
+  }
+
+  @Test
+  fun `an option drawn as a picture is still an option, and still has a name`() {
+    // The slot form: the border, the inversion, the target and the semantics
+    // are the lettered form's, because an option drawn as an icon is the same
+    // control. What changes is only what is inside the box — and a picture
+    // has no words, so the name is not optional.
+    compose.setContent {
+      Row {
+        OptionBox(
+          contentDescription = "Eraser",
+          selected = true,
+          onClick = {},
+          modifier = Modifier.testTag("eraser"),
+        ) { Box(Modifier.size(GLYPH)) }
+        OptionBox(
+          contentDescription = "Fill",
+          selected = false,
+          onClick = {},
+          modifier = Modifier.testTag("fill"),
+        ) { Box(Modifier.size(GLYPH)) }
+      }
+    }
+
+    compose.onNodeWithContentDescription("Eraser").assertIsSelected()
+    compose.onNodeWithTag("fill").assertIsNotSelected()
+    compose.onNodeWithTag("eraser").assertWidthIsAtLeast(TOUCH_TARGET)
+    compose.onNodeWithTag("eraser").assertHeightIsAtLeast(TOUCH_TARGET)
+  }
+
+  @Test
+  fun `the ink the content is handed inverts with the box`() {
+    // A glyph that decided its own colour would be invisible on the chosen
+    // one, which is filled. The box has already made that decision, so it
+    // hands it over rather than leaving the content to guess.
+    val inks = mutableListOf<Color>()
+    compose.setContent {
+      Row {
+        OptionBox(contentDescription = "Chosen", selected = true, onClick = {}) { inks += it }
+        OptionBox(contentDescription = "Not", selected = false, onClick = {}) { inks += it }
+      }
+    }
+
+    compose.runOnIdle { assertEquals("both were drawn in the same ink", 2, inks.distinct().size) }
+  }
+
+  @Test
+  fun `an option this die has no use for is dead rather than absent`() {
+    // The paste turn on a kite, whose cells have no turn. A set of options
+    // that moved about under the finger choosing from it would be worse than
+    // one with a dim member.
+    var chosen = 0
+    compose.setContent {
+      OptionBox(
+        text = "Turn 1/1",
+        selected = false,
+        onClick = { chosen++ },
+        enabled = false,
+        modifier = Modifier.testTag("turn"),
+      )
+    }
+
+    compose.onNodeWithTag("turn").assertIsNotEnabled()
+    compose.onNodeWithTag("turn").performClick()
+
+    compose.runOnIdle { assertEquals("a disabled option was chosen", 0, chosen) }
+  }
+
+  @Test
+  fun `a picture inverts to the ink too, and can be dead`() {
+    // The slot form's other fill and its other state, for the same reasons
+    // the lettered form has both: a set whose content carries the accent
+    // inverts to the text colour, and an option this die has no use for stays
+    // put and says it cannot be chosen.
+    var chosen = 0
+    compose.setContent {
+      Row {
+        OptionBox(
+          contentDescription = "Mirror",
+          selected = true,
+          onClick = {},
+          fill = OptionFill.Ink,
+          role = Role.Checkbox,
+          modifier = Modifier.testTag("mirror"),
+        ) { Box(Modifier.size(GLYPH)) }
+        OptionBox(
+          contentDescription = "Turn",
+          selected = false,
+          onClick = { chosen++ },
+          enabled = false,
+          modifier = Modifier.testTag("turn"),
+        ) { Box(Modifier.size(GLYPH)) }
+      }
+    }
+
+    compose.onNodeWithTag("mirror").assertIsSelected()
+    compose.onNodeWithTag("turn").assertIsNotEnabled()
+    compose.onNodeWithTag("turn").performClick()
+
+    compose.runOnIdle { assertEquals(0, chosen) }
+  }
+
+  @Test
+  fun `an option survives a recomposition that changes nothing about it`() {
+    // A set of these usually sits in a row that redraws for something else
+    // entirely — a stroke on a canvas, a name typed into a field — so the
+    // ordinary case is a recomposition with the same arguments.
+    var tick by mutableStateOf(0)
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        OptionBox(text = "Fine", selected = true, onClick = {}, modifier = Modifier.testTag("lettered"))
+        OptionBox(
+          contentDescription = "Eraser",
+          selected = false,
+          onClick = {},
+          modifier = Modifier.testTag("pictured"),
+        ) { Box(Modifier.size(GLYPH)) }
+      }
+    }
+
+    compose.runOnIdle { tick++ }
+
+    compose.onNodeWithText("tick 1").assertIsDisplayed()
+    compose.onNodeWithTag("lettered").assertIsSelected()
+    compose.onNodeWithTag("pictured").assertIsNotSelected()
+  }
+
+  @Test
+  fun `an option follows the state it is drawn from, in both forms`() {
+    // The other half of the recomposition case above: a set of options is
+    // usually redrawn *because* the choice moved, so the arguments change
+    // rather than staying put — the chosen one has to become the other one,
+    // and a label that follows the state has to follow it.
+    var chosen by mutableStateOf(true)
+    compose.setContent {
+      Column {
+        OptionBox(
+          text = if (chosen) "Show guide" else "Hide guide",
+          selected = chosen,
+          onClick = {},
+          modifier = Modifier.testTag("lettered"),
+        )
+        OptionBox(
+          contentDescription = if (chosen) "Show guide" else "Hide guide",
+          selected = !chosen,
+          onClick = {},
+          enabled = chosen,
+          modifier = Modifier.testTag("pictured"),
+        ) { Box(Modifier.size(GLYPH)) }
+      }
+    }
+    compose.onNodeWithTag("lettered").assertIsSelected()
+    compose.onNodeWithText("Show guide").assertIsDisplayed()
+
+    compose.runOnIdle { chosen = false }
+
+    compose.onNodeWithTag("lettered").assertIsNotSelected()
+    compose.onNodeWithTag("pictured").assertIsSelected()
+    compose.onNodeWithTag("pictured").assertIsNotEnabled()
+    compose.onNodeWithText("Hide guide").assertIsDisplayed()
+  }
+
+  @Test
+  fun `both forms take every argument there is`() {
+    // Every screen leaves most of these defaulted, so nothing else here shows
+    // that the ones nobody passes still mean what they say when they are.
+    compose.setContent {
+      Row {
+        OptionBox(
+          text = "d18",
+          selected = false,
+          onClick = {},
+          modifier = Modifier.testTag("lettered"),
+          fill = OptionFill.Ink,
+          square = false,
+          contentDescription = "An eighteen-sided die",
+          role = Role.Checkbox,
+          enabled = true,
+        )
+        OptionBox(
+          contentDescription = "Broad",
+          selected = true,
+          onClick = {},
+          modifier = Modifier.testTag("pictured"),
+          fill = OptionFill.Accent,
+          enabled = true,
+          role = Role.RadioButton,
+        ) { Box(Modifier.size(GLYPH)) }
+      }
+    }
+
+    compose.onNodeWithContentDescription("An eighteen-sided die").assertIsNotSelected()
+    compose.onNodeWithTag("pictured").assertIsSelected()
+  }
+
+  private companion object {
+    /** Something to put in the slot that is not a word. */
+    val GLYPH = 22.dp
   }
 }

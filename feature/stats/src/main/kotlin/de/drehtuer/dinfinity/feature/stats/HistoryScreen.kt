@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import de.drehtuer.dinfinity.core.notation.FudgeTotal
 import de.drehtuer.dinfinity.data.HistoryEntry
 import de.drehtuer.dinfinity.data.StoredDie
 import de.drehtuer.dinfinity.data.StoredGroup
@@ -329,7 +330,7 @@ private fun Entry(
       // (`docs/architecture.md`, "Accessibility").
       val natural = stringResource(R.string.history_natural_max, roll.total)
       Text(
-        text = roll.total.toString(),
+        text = FudgeTotal.write(roll.total, roll.groups.flatMap { g -> g.dice.map { it.dieId } }),
         style = MaterialTheme.typography.titleLarge,
         color =
           if (roll.hasNaturalMax) {
@@ -426,7 +427,7 @@ private fun Group(group: StoredGroup) {
       modifier = Modifier.weight(2f),
     )
     Text(
-      text = group.subtotal.toString(),
+      text = FudgeTotal.write(group.subtotal, group.dice.map { it.dieId }),
       style = MaterialTheme.typography.labelLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )

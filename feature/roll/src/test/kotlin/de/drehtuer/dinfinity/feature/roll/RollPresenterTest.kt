@@ -26,6 +26,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -277,6 +278,41 @@ class RollPresenterTest {
   }
 
   @Test
+  fun `looking somewhere else is written down as well as told to the tray`() {
+    // Both, in that order: the tray aims the camera, and what is written down
+    // is where the next gesture carries on from ([DiceTray]).
+    val tray = DirectTray()
+    val presenter = presenterOn(tray)
+    val closer = TrayView(zoom = 2.0, panAlongMm = 10.0)
+
+    presenter.look(closer)
+
+    assertEquals(closer, presenter.looking)
+    assertEquals(listOf(closer), tray.looked)
+  }
+
+  @Test
+  fun `a throw puts the camera back at the whole table`() {
+    // The dice can land anywhere in it, so a throw is watched from all of it —
+    // and a gesture that went on from the corner the last roll was read in is
+    // the camera snapping the moment a finger lands ([DiceTray]).
+    val tray = DirectTray()
+    val presenter =
+      RollPresenter(
+        machine = machine(),
+        driver = tray,
+        rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5)),
+        toTheScreen = { it() },
+      )
+    presenter.look(TrayView(zoom = TrayView.CLOSEST, panAlongMm = 50.0))
+
+    presenter.type("2d6")
+    presenter.roll()
+
+    assertEquals(TrayView.Whole, presenter.looking)
+  }
+
+  @Test
   fun `tapping a saved roll that pins a table puts that table under the dice`() {
     // The tray is built when the screen opens, so a pinned table has to reach
     // it afterwards or the dice land on one table and are drawn on another
@@ -312,6 +348,121 @@ class RollPresenterTest {
     presenter.type("2d20 + 1")
 
     assertEquals("the tray was rebuilt for a table that never changed", 1, tray.tabled.size)
+  }
+
+  @Test
+  fun `the dice a roll gave up on wait for a shake, like the die an explosion earns`() {
+    // The gap this closes: after `gaveUp` the machine has no prepared throw,
+    // so `roll` used to answer "nothing to throw" and a shake at a stalled
+    // tray did nothing at all. The dice waited for a button instead, which
+    // made them the one re-throw in the app a hand could not make
+    // (`docs/physics-and-rendering.md`, "Starting a roll").
+    val rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5, 2 to 5, 3 to 5))
+    val presenter =
+      presenter(
+        rolls,
+        tray = StallingTray(read = mapOf(0 to 5, 1 to 5), unsettled = listOf(2, 3)),
+      )
+
+    presenter.type("4d6")
+    presenter.roll()
+
+    assertTrue("the roll did not give up", presenter.state is RollState.Stalled)
+
+    assertTrue("a shake at a stalled tray threw nothing", presenter.roll())
+
+    assertEquals("the dice that never stopped were not thrown again", 2, rolls.started.size)
+    assertEquals(
+      "the dice that were read went back in the air too",
+      2,
+      rolls.started
+        .last()
+        .dice.size,
+    )
+  }
+
+  @Test
+  fun `and the dice that were read keep the faces they were read on`() {
+    // The re-thrown dice are the plan's own, so their faces go back to the
+    // indices they were thrown for. Filing them as dice an explosion added
+    // left the plan's own dice with no face at all, and scoring threw
+    // (`RollMachine.settled`).
+    val rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5, 2 to 5, 3 to 5), then = listOf(mapOf(0 to 0, 1 to 0)))
+    val presenter =
+      presenter(
+        rolls,
+        tray = StallingTray(read = mapOf(0 to 5, 1 to 5), unsettled = listOf(2, 3)),
+      )
+
+    presenter.type("4d6")
+    presenter.roll()
+    presenter.roll()
+
+    val settled = presenter.state as RollState.Settled
+    assertEquals("two sixes that were read and two ones that came back", 14L, settled.result.total)
+  }
+
+  @Test
+  fun `a stalled roll says it is rolling again while its dice are in the air`() {
+    // It said `Stalled` all the way through the re-throw, so the plate that
+    // asks for a shake stayed up while the dice it asked for were already
+    // tumbling.
+    val rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5), landImmediately = false)
+    val presenter =
+      presenter(rolls, tray = StallingTray(read = mapOf(0 to 5), unsettled = listOf(1), landLater = false))
+
+    presenter.type("2d6")
+    presenter.roll()
+    presenter.roll()
+
+    assertTrue("the stalled plate stayed up over a roll in the air", presenter.state is RollState.Rolling)
+  }
+
+  @Test
+  fun `a shake with nothing stalled and nothing earned throws the formula`() {
+    // The other side of the branch: `roll` asks the chain, then the stalled
+    // dice, and only then starts a throw of its own.
+    val rolls = RecordingRolls(faces = mapOf(0 to 5))
+    val presenter = presenter(rolls)
+
+    presenter.type("1d6")
+
+    assertTrue(presenter.roll())
+    assertEquals(1, rolls.started.size)
+  }
+
+  @Test
+  fun `what the formula is expected to come to reaches the screen`() {
+    // The Roll button's label used to be the only thing on the screen that
+    // said what a shake was worth ([Expectation]).
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)))
+
+    presenter.type("1d6")
+
+    val expected = requireNotNull(presenter.expected)
+    assertEquals(1L, expected.range.lowest)
+    assertEquals(6L, expected.range.highest)
+    assertEquals(3.5, requireNotNull(expected.mean), 1e-9)
+  }
+
+  @Test
+  fun `and survives the throw, so the result sheet has something to read the total against`() {
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)))
+
+    presenter.type("1d6")
+    presenter.roll()
+
+    assertTrue("the roll did not land", presenter.state is RollState.Settled)
+    assertEquals(6L, requireNotNull(presenter.expected).range.highest)
+  }
+
+  @Test
+  fun `a formula that does not read has nothing to expect`() {
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)))
+
+    presenter.type("3d6 +")
+
+    assertNull("a formula that does not read was given a range", presenter.expected)
   }
 
   private fun presenterOn(tray: DirectTray) =
@@ -552,6 +703,67 @@ class RollPresenterTest {
     override fun look(view: TrayView) {
       looked += view
     }
+
+    override fun clear() = Unit
+
+    override fun close() = Unit
+
+    private companion object {
+      const val MOST_FRAMES = 64
+    }
+  }
+
+  /**
+   * A tray whose dice never all stop.
+   *
+   * The first throw gives up on [unsettled]; every throw after it lands, so
+   * the shake that follows is a throw that finishes.
+   */
+  private class StallingTray(
+    private val read: Map<Int, Int>,
+    private val unsettled: List<Int>,
+    /** Whether the throw that follows the stall lands, or stays in the air. */
+    private val landLater: Boolean = true,
+  ) : Tray {
+    private var thrown = 0
+
+    override fun surfaceAvailable(
+      surface: Surface,
+      width: Int,
+      height: Int,
+    ) = Unit
+
+    override fun surfaceLost() = Unit
+
+    override fun roll(
+      start: (Renderer) -> WatchedRoll,
+      onCounted: (Map<Int, Int>) -> Unit,
+      onStalled: (List<Int>) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
+    ) {
+      val roll = start(HeadlessRenderer())
+      if (thrown++ == 0) {
+        // What the roll did read before it gave up, which is the one thing a
+        // stalled throw has to hand on: there is no outcome
+        // (`TrayLoop`, `PowerSavingTray`).
+        onCounted(read)
+        onStalled(unsettled)
+      } else if (landLater) {
+        var frames = 0
+        while (roll.running && frames++ < MOST_FRAMES) roll.advance(SettleRule.TIMESTEP_SECONDS)
+        roll.outcome?.let { onSettled(it, roll.drivenBy) }
+      }
+      roll.close()
+    }
+
+    override fun shake(sample: ShakeSample) = Unit
+
+    override fun table(
+      geometry: TableGeometry,
+      look: TableLook,
+    ) = Unit
+
+    override fun look(view: TrayView) = Unit
 
     override fun clear() = Unit
 

@@ -20,6 +20,9 @@ import de.drehtuer.dinfinity.designer.SolidTurn
 import de.drehtuer.dinfinity.designer.Stage
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * How wide each nib draws, as a fraction of the canvas — so a stroke drawn on
@@ -124,6 +127,23 @@ enum class DesignerView {
   Solid,
 }
 
+/**
+ * The Save-to-set sheet, while it is open (`docs/face-designer.md`, "Save to
+ * set").
+ *
+ * @param into which set the drawings would go to. Null only when there is
+ *   nowhere to save, which is a sheet that is never opened.
+ * @param busy true while the package is being built. Building it rasterises
+ *   every drawn face of every die, so it is not instant and the sheet says so
+ *   rather than looking like a button that did nothing.
+ * @param done what the last press came to, or null before the first one.
+ */
+data class Saving(
+  val into: String?,
+  val busy: Boolean = false,
+  val done: SaveResult? = null,
+)
+
 /** What the designer is showing. */
 data class DesignerState(
   val draft: Draft,
@@ -167,6 +187,16 @@ data class DesignerState(
    * shows anything but its front face is a die nobody turns over.
    */
   val spinning: Boolean = true,
+  /**
+   * The Save-to-set sheet while it is open, and null the rest of the time
+   * (`docs/face-designer.md`, "Save to set").
+   *
+   * One nullable field rather than four flags, because the four only ever mean
+   * anything together: which set is chosen, whether the write is running and
+   * what it came to are all about one sheet, and a `saved` that outlived the
+   * sheet would be an answer to a question nobody is looking at.
+   */
+  val saving: Saving? = null,
 ) {
   /** The die being drawn on. */
   val die: Die get() = draft.die
@@ -176,6 +206,20 @@ data class DesignerState(
 
   /** The drawing on the face in front of the player. */
   val face: FaceDrawing get() = draft.face(cell)
+
+  /**
+   * What that face is *called* — the number the tray would print, or the word
+   * a set gave it.
+   *
+   * The label rather than the index, because "face 3 of 20" is a fact about a
+   * list and "face crit of 20" is a fact about this die. A cell no face
+   * answers to falls back to its place in the list, which is a state no real
+   * die reaches.
+   */
+  val label: String get() =
+    draft.die.faces
+      .getOrNull(cell)
+      ?.label ?: (cell + 1).toString()
 
   /**
    * The die as the Solid tab sees it, turned by [turn].
@@ -341,6 +385,29 @@ class DesignerPresenter(
    * offered for one rather than offered and broken.
    */
   private val notationOf: (Die) -> String? = { null },
+  /**
+   * Where a drawing becomes a dice set ([DesignerSets]).
+   *
+   * [DesignerSets.NONE] by default, which is a designer with nowhere to save:
+   * no Save is offered and **Roll it** falls back to naming the plain die. It
+   * is what the tests use, and what the screen would do if nothing gave it a
+   * library.
+   */
+  private val sets: DesignerSets = DesignerSets.NONE,
+  /**
+   * Where a save runs.
+   *
+   * Building the personal package rasterises every drawn face, so it cannot
+   * happen on the thread the canvas draws on — but *which* thread it does
+   * happen on belongs to the wiring, and [DesignerSets] is where that decision
+   * is made. What this scope is for is only the waiting.
+   *
+   * [Dispatchers.Unconfined] by default, so a presenter with
+   * [DesignerSets.NONE] behind it does its nothing there and then: an
+   * unwired designer behaves exactly as it did before there was anything to
+   * save.
+   */
+  private val scope: CoroutineScope = CoroutineScope(Dispatchers.Unconfined),
 ) {
   /** What the screen draws. */
   var state: DesignerState by mutableStateOf(
@@ -351,13 +418,89 @@ class DesignerPresenter(
   /**
    * The formula that throws the die being drawn, or null when there is none.
    *
-   * **The die, not the drawing.** The tray throws the base die as its set
-   * defines it; the strokes on the canvas are not on it, because nothing puts
-   * an atlas on a die yet (`docs/TODO.md`, Step 3). What it answers today is
-   * what the prototype asks it to — how the solid looks in motion, which is
-   * the preview the designer has instead of a 3D one.
+   * What it decides is whether **Roll it** is on the screen at all — absent
+   * rather than dead for a die plain notation cannot name, since a set's own
+   * `skull-d6` has no spelling a formula could carry (`docs/architecture.md`,
+   * decision 31). The formula actually thrown is [roll]'s, which is not
+   * necessarily this one: saving the drawing first is what lets the tray be
+   * handed `mine:1d20` — the die **with the drawing on it** — rather than the
+   * plain `1d20` of whichever set a bare `d20` happens to mean.
    */
   val rollable: String? get() = notationOf(state.draft.die)
+
+  /** The sets a drawing can be saved into, which is what decides whether Save is offered. */
+  val writable: List<WritableSet> get() = sets.writable
+
+  /**
+   * **Roll it**: make the drawing real, then hand [go] the formula that throws
+   * it (`docs/face-designer.md`, "Flow", step 4).
+   *
+   * The save is not a courtesy, it is the whole of why the tray shows a
+   * drawing at all. The drafts are the record and `dicesets/mine/` is a *view*
+   * of them, and until that view is written there is no package for a formula
+   * to name and no atlas for the renderer to sample — which is exactly how
+   * pressing this used to produce a plain die. So the order is: write the
+   * drawing down, build the package, and name the die **in the set that now
+   * carries it**.
+   *
+   * A save that comes to nothing is not a dead end. The plain spelling is
+   * still a die the tray can throw, so the throw happens either way and what
+   * is lost is the artwork rather than the roll.
+   */
+  fun roll(go: (String) -> Unit) {
+    val die = state.draft.die
+    val into = sets.writable.firstOrNull()
+    if (into == null) {
+      notationOf(die)?.let(go)
+      return
+    }
+    scope.launch {
+      val outcome = sets.save(into.id, state.draft)
+      val formula = (outcome as? SaveResult.Saved)?.rollable ?: notationOf(die)
+      formula?.let(go)
+    }
+  }
+
+  /**
+   * The sheet was opened, on the first writable set.
+   *
+   * On the first one every time rather than on the one it was last aimed at:
+   * a sheet is opened to *choose*, and the choice that matters is the one
+   * made with the sheet in front of you. Null only when there is nowhere to
+   * save, which is a sheet the screen never offers.
+   */
+  fun offerSave() {
+    state = state.copy(saving = Saving(into = sets.writable.firstOrNull()?.id))
+  }
+
+  /** Another set was chosen in the sheet. The last answer goes with it: it was about the other set. */
+  fun saveInto(setId: String) {
+    state = state.copy(saving = Saving(into = setId))
+  }
+
+  /** The sheet was dismissed. */
+  fun stopSaving() {
+    state = state.copy(saving = null)
+  }
+
+  /**
+   * **Save to set**: write the drawings into the chosen set
+   * (`docs/face-designer.md`, "Save to set").
+   *
+   * The sheet stays open on the answer rather than closing on the press: a
+   * save that was refused has a reason worth reading, and a save that worked
+   * has a set worth naming — "it went somewhere" is not what somebody pressing
+   * Save is asking.
+   */
+  fun save() {
+    val into = state.saving?.into ?: return
+    if (state.saving?.busy == true) return
+    state = state.copy(saving = Saving(into = into, busy = true))
+    scope.launch {
+      val outcome = sets.save(into, state.draft)
+      state = state.copy(saving = state.saving?.copy(busy = false, done = outcome))
+    }
+  }
 
   /**
    * Draw on a different die (`docs/face-designer.md`, "Flow").

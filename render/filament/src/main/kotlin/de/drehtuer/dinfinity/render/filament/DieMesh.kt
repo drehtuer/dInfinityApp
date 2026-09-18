@@ -64,6 +64,7 @@ data class DieMesh(
       return MeshFace(
         index = solid.index,
         positions = solid.corners,
+        reads = solid.cornerReads,
         normal = solid.normal,
         tangent = solid.along,
         uvs =
@@ -152,6 +153,11 @@ data class DieMesh(
  *   painted from and the entry of the set file's `faces` list it scores
  *   (`docs/dice-sets.md`). Null for a coin's rim, which is none of those.
  * @param positions the corners, in winding order, one unit from the middle.
+ * @param reads which readable position of the solid each of [positions] is,
+ *   in the same order — `simulation/api`'s answer, carried here so that what
+ *   is printed at a corner is chosen by the same list the corner came from
+ *   ([de.drehtuer.dinfinity.simulation.api.SolidFace.cornerReads]). Empty for
+ *   a face-read solid and for a rim, neither of which reads from a corner.
  * @param normal which way the surface faces. For a face-read solid this is
  *   exactly the direction `simulation/api` reads that face from.
  * @param tangent which way the texture runs across the surface — `u`
@@ -169,10 +175,14 @@ data class MeshFace(
   override val tangent: Vector3,
   override val uvs: List<TextureCoordinate>,
   override val triangles: List<Int>,
+  val reads: List<Int> = emptyList(),
 ) : Surface {
   init {
     require(uvs.isEmpty() || uvs.size == positions.size) {
       "a face has a texture coordinate per corner or none at all, not ${uvs.size} for ${positions.size}"
+    }
+    require(reads.isEmpty() || reads.size == positions.size) {
+      "a face reads one position per corner or none at all, not ${reads.size} for ${positions.size}"
     }
   }
 }

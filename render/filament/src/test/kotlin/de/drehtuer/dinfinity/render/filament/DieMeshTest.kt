@@ -7,6 +7,7 @@ import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import de.drehtuer.dinfinity.simulation.api.cross
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
@@ -247,6 +248,42 @@ class DieMeshTest {
         drawn.toSet(),
       )
     }
+  }
+
+  @Test
+  fun `a d4's mesh carries which corner each of its corners is`() {
+    // What `DieNumbers` prints a corner's number from. It is
+    // `simulation/api`'s answer carried through rather than worked out again
+    // here, so the guide in the face designer and the number on the die name
+    // the same corner (`docs/architecture.md`, decision 35).
+    val corners = ShapeGeometry.directionsOf(DieShape.Tetrahedron).map { it.normalised() }
+
+    DieMesh.of(DieShape.Tetrahedron).faces.forEach { face ->
+      assertEquals("cell ${face.index} reads a corner it does not have", face.positions.size, face.reads.size)
+      face.positions.forEachIndexed { corner, position ->
+        assertTrue(
+          "cell ${face.index} calls corner $corner position ${face.reads[corner]}, which it is not",
+          corners[face.reads[corner]].approximates(position, TOLERANCE),
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `a face reads one position per corner or none at all`() {
+    val face = DieMesh.of(DieShape.Tetrahedron).faces.first()
+
+    assertThrows(IllegalArgumentException::class.java) { face.copy(reads = listOf(0)) }
+  }
+
+  @Test
+  fun `a face-read solid's mesh reads nothing from its corners, and nor does a rim`() {
+    DieMesh.of(DieShape.Cube).faces.forEach { assertTrue("a cube's corner is no face", it.reads.isEmpty()) }
+    DieMesh
+      .of(DieShape.Coin)
+      .faces
+      .filter { it.index == null }
+      .forEach { assertTrue("a rim reads nothing", it.reads.isEmpty()) }
   }
 
   @Test

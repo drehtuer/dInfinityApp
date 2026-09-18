@@ -12,6 +12,7 @@ import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.render.filament.Tray
+import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
@@ -38,8 +39,8 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * @param toTheScreen how work gets back to the thread Compose reads on.
  *
  * The class carries a function-count suppression for the same reason
- * [RollMachine] does: ten of its methods are one thing a screen can do each,
- * and the eleventh is the loop that hands the tray a throw and then the throw
+ * [RollMachine] does: eleven of its methods are one thing a screen can do
+ * each, and the twelfth is the loop that hands the tray a throw and then the throw
  * after it, which a roll that adds dice to itself needs and which nothing else
  * can be folded into.
  */
@@ -89,6 +90,17 @@ class RollPresenter(
   var text: String by mutableStateOf(machine.text)
     private set
 
+  /**
+   * What the formula in the field is expected to come to, or null when it does
+   * not read.
+   *
+   * On the screen before the throw and again on the result sheet, because
+   * there is no Roll button any more to say what a shake would do
+   * (`Expectation`; `docs/physics-and-rendering.md`, "Starting a roll").
+   */
+  var expected: Expectation? by mutableStateOf(machine.expected)
+    private set
+
   /** How many of each of [pickable] the formula is asking for. */
   var counts: Map<PickableDie, Int> by mutableStateOf(machine.counts)
     private set
@@ -106,6 +118,22 @@ class RollPresenter(
 
   /** The tray to hand a surface to. */
   val tray: Tray get() = driver
+
+  /**
+   * Where the player has moved the camera to.
+   *
+   * Held here rather than inside the gesture because the gesture is not what
+   * decides it: a new throw is watched from the whole table, and a view
+   * remembered under the fingers would still be the one the player left when
+   * the next touch arrived — the camera snapping back to a corner nobody is
+   * looking at any more, which is what the phone showed.
+   *
+   * It is the near side of one decision, not a second one. The tray's renderer
+   * frames the whole table on a new throw as well, so [throwIt] and it say the
+   * same thing about the same event and cannot drift apart.
+   */
+  var looking: TrayView by mutableStateOf(TrayView.Whole)
+    private set
 
   /**
    * Whether this visit draws the debug overlay at all
@@ -163,6 +191,18 @@ class RollPresenter(
     showing = machine.table
   }
 
+  /**
+   * The player is looking somewhere else, or closer.
+   *
+   * Written down here *and* told to the tray, in that order, so that the next
+   * touch starts from the view the last one produced rather than from
+   * whatever the gesture happened to be holding.
+   */
+  fun look(view: TrayView) {
+    looking = view
+    driver.look(view)
+  }
+
   /** The formula field changed. Re-validated on every keystroke. */
   fun type(typed: String) {
     machine.type(typed)
@@ -192,7 +232,9 @@ class RollPresenter(
    * what the dice came to, and that is posted to the screen's own thread
    * before the machine is touched.
    *
-   * @param shake what the phone did, or empty for a tap.
+   * @param shake what the phone did, or empty for the accessibility action on
+   *   the tray, which is the one way into this that is not a hand
+   *   (`docs/architecture.md`, "Accessibility").
    * @return whether dice were actually thrown. False when there is nothing to
    *   throw — a formula that does not read, a throw the table cannot hold, or
    *   **a roll already in the air**, which is what a second shake at tumbling
@@ -201,18 +243,17 @@ class RollPresenter(
    *   than starting a new one (`docs/physics-and-rendering.md`, "Shake input").
    */
   fun roll(shake: List<ShakeSample> = emptyList()): Boolean {
-    // A chain that is waiting is continued rather than restarted: the shake in
-    // the player's hand is for the die the explosion earned, and throwing a
-    // fresh formula instead would drop the dice already down.
-    machine.throwEarned(shake)?.let { earned ->
+    // A roll that is waiting on a hand is continued rather than restarted.
+    val more = waiting(shake)
+    if (more != null) {
       publish()
-      throwIt(earned)
+      throwIt(more)
       return true
     }
 
     // A roll that has landed is a roll that is over. Throwing again is one act
-    // — one press, one shake — not "put the total away" followed by "now
-    // throw", which is what a shake could never have expressed anyway.
+    // — one shake — not "put the total away" followed by "now throw", which is
+    // what a shake could never have expressed anyway.
     if (state is RollState.Settled) machine.clear()
 
     val spec = machine.throwDice(shake) ?: return false
@@ -220,6 +261,26 @@ class RollPresenter(
     throwIt(spec)
     return true
   }
+
+  /**
+   * The throw this roll is part-way through, or null when there is none.
+   *
+   * Two ways a roll can be waiting on a hand, and a shake answers both:
+   *
+   * - **a chain earned a throw.** The shake is for the die the explosion
+   *   earned, and throwing a fresh formula instead would drop the dice
+   *   already down.
+   * - **a throw gave up on some of its dice.** These used to wait for a
+   *   button of their own, which made them the one re-throw in the app a
+   *   shake could not reach — so a player who had been told to shake stood
+   *   over a tray that ignored them
+   *   (`docs/physics-and-rendering.md`, "Starting a roll").
+   *
+   * They cannot both be true: a throw either lands and is scored, which is
+   * where a chain earns its next die, or it gives up and is not scored at all.
+   */
+  private fun waiting(shake: List<ShakeSample>): ThrowSpec? =
+    machine.throwEarned(shake) ?: machine.throwUnsettled(shake)
 
   /**
    * Hands one throw to the tray, and hands the tray the one after it.
@@ -237,16 +298,33 @@ class RollPresenter(
    * differently (`docs/architecture.md`, goal 1).
    */
   private fun throwIt(spec: ThrowSpec) {
+    // A throw is watched from the whole table — the dice can land anywhere in
+    // it — which is what the renderer does to its own copy of the view when a
+    // throw begins. This is the same rule on the screen's side of the thread,
+    // so the next gesture starts from where the camera actually is.
+    looking = TrayView.Whole
+
+    // The faces this throw has reported so far.
+    //
+    // Kept here because a throw that gives up reports **no outcome at all** —
+    // `onStalled` carries which dice never stopped and nothing about the ones
+    // that did. Without this the dice that were read would be forgotten, and
+    // the throw that brings the rest of them back would have nothing to score
+    // them against (`RollMachine.gaveUp`).
+    var read: Map<Int, Int> = emptyMap()
     driver.roll(
       start = { watcher -> rolls.start(spec, watcher) },
       onCounted = { counted ->
         // On the screen's thread: this arrives from wherever the roll is
         // stepped, once per die read, and the state it sets is Compose's.
-        toTheScreen { progress = machine.progress(counted) }
+        toTheScreen {
+          read = counted
+          progress = machine.progress(counted)
+        }
       },
       onStalled = { unsettled ->
         toTheScreen {
-          if (machine.gaveUp(unsettled)) {
+          if (machine.gaveUp(unsettled, read)) {
             progress = null
             publish()
           }
@@ -290,21 +368,6 @@ class RollPresenter(
         }
       },
     )
-  }
-
-  /**
-   * Throws the dice a roll gave up on, and nothing else.
-   *
-   * The dice that were read are read: they are off the table and out of the
-   * way, and throwing them again would throw away answers the roll already
-   * has. What goes back in the air is only what never settled
-   * (`docs/physics-and-rendering.md`).
-   */
-  fun throwUnsettled(shake: List<ShakeSample> = emptyList()): Boolean {
-    val again = machine.throwUnsettled(shake) ?: return false
-    publish()
-    throwIt(again)
-    return true
   }
 
   /**
@@ -367,6 +430,7 @@ class RollPresenter(
     }
     state = machine.state
     text = machine.text
+    expected = machine.expected
     counts = machine.counts
     pickable = machine.pickable
     pickingFrom = machine.pickingFrom

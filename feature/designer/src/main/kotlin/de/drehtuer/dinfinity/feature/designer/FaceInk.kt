@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.FaceOutline
 import de.drehtuer.dinfinity.designer.FaceShapes
@@ -50,6 +51,29 @@ internal fun Path.follow(
     if (index == 0) moveTo(x, y) else lineTo(x, y)
   }
   close()
+}
+
+/**
+ * A whole face, at whatever size there is: the outline as a mask, the paper
+ * under it, and the marks on it.
+ *
+ * The three steps the canvas takes, in one place because the face strip takes
+ * exactly the same three at a fiftieth of the area (`DesignerScreen`'s
+ * `FaceThumbnail`) — a thumbnail that masked or papered a face differently
+ * from the canvas would be a picture of a face rather than the face.
+ *
+ * The **mask is the rule** rather than a hint about it: anything outside the
+ * outline is on a part of the atlas no face shows.
+ */
+internal fun DrawScope.drawFace(
+  outline: FaceOutline,
+  marks: List<Mark>,
+) {
+  val face = Path().apply { follow(outline, size.width, size.height) }
+  clipPath(face) {
+    drawRect(color = Color.White)
+    marks.forEach { mark -> drawMark(mark) }
+  }
 }
 
 /**

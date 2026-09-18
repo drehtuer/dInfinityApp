@@ -159,8 +159,11 @@ object DiceSetToml {
     appendLine("faces = [${die.faces.joinToString(", ") { it.value.toString() }}]")
     // Only when a face says something its value cannot. `labels` defaults to
     // the face values as text, so writing them out again would be a line of
-    // the file that can only ever repeat the line above it.
-    if (die.faces.any { it.label != it.value.toString() }) {
+    // the file that can only ever repeat the line above it. The comparison is
+    // against the *reader's* default ([Face.printed]) and not against
+    // `toString`, or a negative face would carry a `labels` line saying
+    // exactly what leaving it out already says.
+    if (die.faces.any { it.label != Face.printed(it.value) }) {
       appendLine("labels = [${die.faces.joinToString(", ") { quoted(it.label.take(Face.MAX_LABEL_LENGTH)) }}]")
     }
     // Only when it is not what the solid does anyway: a `read` that repeats

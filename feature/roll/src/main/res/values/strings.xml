@@ -30,7 +30,7 @@
        from English still reads. %1$d is the count in every one of them. -->
   <string name="roll_welcome_eyebrow">FIRST LAUNCH</string>
   <string name="roll_welcome_title">Nothing to set up.</string>
-  <string name="roll_welcome_body">The dice are installed and the table is laid out. Shake the phone to roll, or press the button. Everything else — saved rolls, your own dice, statistics — waits in the menu until you want it.</string>
+  <string name="roll_welcome_body">The dice are installed and the table is laid out. Shake the phone to roll — that is the only way to throw, and it is the one thing nobody would guess. Everything else — saved rolls, your own dice, statistics — waits in the menu until you want it.</string>
   <plurals name="roll_welcome_sets">
     <item quantity="one">%1$d dice set</item>
     <item quantity="other">%1$d dice sets</item>
@@ -45,7 +45,7 @@
   </plurals>
   <!-- Quoted: Android strips the spaces around it otherwise. -->
   <string name="roll_welcome_counts_separator" translatable="false">" · "</string>
-  <string name="roll_welcome_roll_now">Roll a d20 now</string>
+  <string name="roll_welcome_roll_now">Put a d20 on the table</string>
   <string name="roll_welcome_dismiss">Just show me the tray</string>
   <string name="roll_welcome_import">Import saved rolls from a file or a link</string>
   <string name="roll_welcome_sets_add">Add somebody else\'s dice</string>
@@ -63,15 +63,32 @@
   <string name="roll_result_is_down">Pushed down</string>
   <!-- Quick mode: what a long press on a die in the breakdown offers (docs/face-designer.md). -->
   <string name="roll_die_doodle">Doodle this die</string>
-  <string name="roll_hint_empty">Type a formula, or tap a die below.</string>
-  <string name="roll_hint_ready">Shake the phone, or press Roll.</string>
+  <string name="roll_hint_empty">Type a formula, or open Dice at the top.</string>
+  <string name="roll_hint_ready">Shake the phone to roll.</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->
   <string name="roll_picker_add">Add a %1$s</string>
   <string name="roll_picker_remove">Take a %1$s off</string>
-  <!-- The way to the outcome graph (design option 7a). -->
+  <!--
+    The dice pull-down at the top of the tray (design option 1h): what it is,
+    what a press does, and whether it is open. The last two are said rather
+    than drawn, because a chevron is a picture and a screen reader has nothing
+    else to go on.
+  -->
+  <string name="roll_dice_menu">Dice</string>
+  <string name="roll_dice_menu_open">Open the dice</string>
+  <string name="roll_dice_menu_close">Put the dice away</string>
+  <string name="roll_dice_menu_is_open">Open</string>
+  <string name="roll_dice_menu_is_shut">Closed</string>
+  <!-- The two ways on from a result, at the foot of the sheet (options 7a, 3b). -->
   <string name="roll_see_the_odds">See the odds</string>
-  <string name="roll_throw">Roll</string>
-  <string name="roll_again">Roll again</string>
+  <string name="roll_save_as_roll">Save as roll</string>
+  <!--
+    The tray's custom accessibility action. Shaking is the only way to throw
+    and a shake is not a gesture every hand can make, so the table carries the
+    throw as an action a screen reader can offer (`docs/architecture.md`,
+    "Accessibility").
+  -->
+  <string name="roll_throw_action">Throw the dice</string>
   <string name="roll_rolling">Rolling…</string>
   <!--
     The counting plate, across the bottom of the tray while the dice are still
@@ -96,6 +113,16 @@
   <!-- The ceiling of a roll that can still explode: "48+" rather than "48". -->
   <string name="roll_ceiling_more">%1$d+</string>
   <!--
+    What a throw is expected to come to, before it is made and again beside
+    what it actually did (`Expectation`, `docs/probability.md`). The average is
+    exact rather than sampled, and is missing for a formula past what the
+    outcome graph computes — which is why the two spoken forms exist.
+  -->
+  <string name="roll_expected_kicker">EXPECTED</string>
+  <string name="roll_expected_average">avg %1$.1f</string>
+  <string name="roll_expected_spoken">Expected %1$d to %2$s</string>
+  <string name="roll_expected_spoken_average">Expected %1$d to %2$s, average %3$s</string>
+  <!--
     The whole plate, for a screen reader: it is a row of numbers an eye reads
     at a glance and a listener would otherwise hear as four loose fragments.
   -->
@@ -110,14 +137,9 @@
   -->
   <string name="roll_earned_kicker">ANOTHER THROW EARNED</string>
   <plurals name="roll_earned_body">
-    <item quantity="one">A die rolled its highest face and earned a throw. The dice that are down stay down — shake, or throw it here.</item>
-    <item quantity="other">%1$d dice rolled their highest face and earned a throw. The dice that are down stay down — shake, or throw them here.</item>
+    <item quantity="one">A die rolled its highest face and earned a throw. The dice that are down stay down — shake to throw the one they earned.</item>
+    <item quantity="other">%1$d dice rolled their highest face and earned a throw. The dice that are down stay down — shake to throw the %1$d they earned.</item>
   </plurals>
-  <plurals name="roll_earned_throw">
-    <item quantity="one">Throw it</item>
-    <item quantity="other">Throw %1$d more</item>
-  </plurals>
-  <string name="roll_earned_stop">Stop the chain</string>
   <!--
     A roll that could not finish. It says how many dice never stopped and hands
     them back, rather than reading them off whatever face they were nearest
@@ -129,11 +151,20 @@
     <item quantity="one">A die never stopped, so the roll has no total yet — %3$d of %2$d read and counted.</item>
     <item quantity="other">%1$d dice never stopped, so the roll has no total yet — %3$d of %2$d read and counted.</item>
   </plurals>
-  <plurals name="roll_throw_again">
-    <item quantity="one">Throw that one again</item>
-    <item quantity="other">Throw those %1$d again</item>
-  </plurals>
   <string name="roll_stalled_cancel">Cancel the roll</string>
+  <!--
+    Said over the tray the moment a roll starts waiting on a hand, and gone
+    again 2.6 s later. The plate says the same thing and stays; this is the
+    part a screen reader is told about without being asked (`ModernistToast`).
+  -->
+  <plurals name="roll_toast_stalled">
+    <item quantity="one">Shake to throw that die again.</item>
+    <item quantity="other">Shake to throw those %1$d dice again.</item>
+  </plurals>
+  <plurals name="roll_toast_earned">
+    <item quantity="one">Shake to throw the die it earned.</item>
+    <item quantity="other">Shake to throw the %1$d dice they earned.</item>
+  </plurals>
   <plurals name="roll_tray_stalled">
     <item quantity="one">Dice tray, %1$d die would not settle</item>
     <item quantity="other">Dice tray, %1$d dice would not settle</item>

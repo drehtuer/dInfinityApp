@@ -65,7 +65,11 @@ Every die is a **convex** rigid body:
   Standard sets use realistic sizes (a d6 of 16 mm) and density (~1.2 g/cm³,
   roughly acrylic).
 - Restitution around 0.3, friction around 0.5. These are tunable per die in
-  the set file within clamped ranges.
+  the set file within clamped ranges. The solver stops applying restitution
+  below 1 unit/s, which is Jolt's own default and a centimetre a second here.
+  It was 150 mm/s for a while, chosen as "about where a die lands and stays" —
+  which it is, and which also gave every contact after the first landing a
+  restitution of exactly zero, so a die bounced once and then dead-dropped.
 - Rounded edges: shapes with sharp corners (d4 especially) get a hull margin of
   3 % of the die's nominal size, so they tumble instead of catching on the
   floor. A share rather than a fixed millimetre, so a die shrunk by the
@@ -158,26 +162,65 @@ mode; there is no other one.
 
 ## Starting a roll
 
-Two ways to start, and only two:
+**A shake is the throw.** It is the only way to put dice in the air, and every
+other control in the app stops at filling the formula field. The dice are
+spawned when the shake begins and are driven by the phone's motion until the
+hand stops, then released ("Shake input", below).
 
-1. **The Roll button.** Dice are spawned in a cluster above the tray with a
-   randomised (seeded) orientation, angular velocity and a modest downward
-   plus lateral impulse. This is the "drop from the hand" throw.
-2. **Shake.** See below. The dice are spawned when the shake begins and are
-   driven by the phone's motion until the user stops shaking, then released.
+There was a Roll button, and it is gone. It was not a second way to throw so
+much as a way of making the shake optional: a tap on a saved roll threw, the
+button threw, the welcome threw, and a player could use the app for a week
+without discovering the thing it is for. The button also owned the one line of
+the screen that said what a throw would be worth, which is now the ready plate
+(see "What the screen says before the throw").
 
-In both cases the initial angular velocity is large enough that the outcome is
-not predictable from the starting orientation. (A die dropped from 2 cm with
-no spin *would* be predictable. We do not do that.)
+The initial angular velocity is large enough that the outcome is not
+predictable from the starting orientation. (A die dropped from 2 cm with no
+spin *would* be predictable. We do not do that.)
+
+**A shake finishes what it starts.** Two states leave a roll part-way through —
+a chain that earned a throw, and a throw that gave up on dice that never
+stopped — and the same shake answers both. Neither has a button, and the screen
+says how many dice the next shake will throw, both on the plate over the tray
+and in a toast that announces itself to a screen reader.
 
 **Tapping the tray does not roll.** It is the largest target on the screen and
 the most tempting one, which is exactly why it is not spent here: the tray is
-where the camera will be moved and where individual dice will be picked up and
-re-thrown, and a surface that throws the whole formula the moment it is touched
+where the camera is moved and where individual dice will be picked up and
+re-thrown, and a surface that threw the whole formula the moment it is touched
 has nowhere left to put either. A roll is also not something to start by
-accident — it replaces a result somebody may still be reading. Two deliberate
-gestures, one of them a button and the other a shake of the whole phone, are
-enough.
+accident — it replaces a result somebody may still be reading.
+
+### The two ways in that are not a hand
+
+Shaking is not a gesture every hand can make, and every screen has to be
+operable (`docs/architecture.md`, "Accessibility"). Two affordances therefore
+stay, and neither is a button on the screen:
+
+- **a custom accessibility action on the table**, labelled *Throw the dice*. A
+  custom action rather than a click, because a tap on the tray deliberately
+  does not roll and a semantic click *is* a tap to anything walking the
+  semantics tree. It sits on the power-saving panel too, which stands instead
+  of the table.
+- **Enter in the formula editor.** That is what the key already means, and
+  somebody typing a formula on a hardware keyboard has no hand free to shake
+  the phone.
+
+Both call the same entry point a shake does, with no samples — which is what an
+added die is thrown with anyway — so there is still one path to a number
+(`docs/architecture.md`, goal 1).
+
+### What the screen says before the throw
+
+A button said "Roll". With no button, the plate in its place says what rolling
+would get you: **the lowest the formula can come to, the highest, and the exact
+average**. The ends are `RollBounds`, the same calculation the counting plate
+draws mid-roll, asked of a throw that has read no dice at all; the average is
+`core/probability`'s exact distribution (`docs/probability.md`). A formula too
+large to graph exactly keeps its range and loses only its average.
+
+The same line is repeated under the breakdown on the result sheet, so the total
+is a number in a range rather than a number on its own.
 
 ## Picking a die up and throwing it again
 
@@ -215,9 +258,10 @@ back where the simulation left them and never moves them again.
 
 ```mermaid
 flowchart LR
-  button["Roll button"] --> spec["ThrowSpec"]
-  shake["Shake"] --> spec
+  shake["Shake"] --> spec["ThrowSpec"]
+  action["The table's accessibility action,<br/>and Enter in the editor"] --> spec
   chain["An explosion or a reroll<br/>(ThrowSpec.among)"] --> spec
+  stalled["Dice a throw gave up on<br/>(ThrowSpec.among)"] --> spec
   hand["A hand picking a die up<br/>(ThrowSpec.among)"] --> spec
   spec --> sim["DiceSimulator"]
   sim --> faces["The faces, and where each die stopped"]
@@ -337,8 +381,19 @@ spread by a hand nobody can see.
 The second is the solver's own error. At 1/120 s a die travelling a metre a
 second crosses half its own width between collision checks, so two dice are
 first seen already deep inside each other and are pushed apart hard. Resolve
-collision in sub-steps and that stops happening — and the dice pack, because the
-popping apart was doing the spreading.
+collision in sub-steps and that stops happening — and the dice were expected to
+pack, because the popping apart was doing the spreading.
+
+**That expectation has now been measured, and it was too pessimistic.** The
+solver takes two collision steps per simulation step, and on 200 rolls of
+20d20 on the Pixel 10a it costs nothing that shows: no die is left standing on
+another either way, and what it buys is the deepest die-into-die overlap
+falling from 9.9 mm to 6.6 mm and the re-throw share from 3.1 % to 2.8 %. It
+does take 17 % off how far the middle die turns after it lands — 1.72 turns to
+1.43 — which is the packing the old reasoning feared, showing up as less
+tumbling rather than as a heap. The throw buys that back
+("How hard the dice are thrown" below). A step costs 0.37 ms against a budget
+of 8.33.
 
 Both are measured, with numbers, in `docs/TODO.md` (Step 5.5). The point for
 anyone changing this file is that **the correction rate and the overlap depth
@@ -354,6 +409,17 @@ look like a regression in how a shaken roll reads.
   `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go
   when it is not — an accelerometer running behind a backgrounded app is a
   battery bill for nothing.
+- **The roll screen holds the display on while it is in front.** A shake takes
+  both hands and puts neither of them on the glass, and reading the dice
+  afterwards puts nothing on it either, so the display timeout counts a throw
+  as idle and blanks mid-roll. `KeepTheScreenAwake` (`HoldTheScreenStill.kt`)
+  sets `View.keepScreenOn` for as long as the screen is composed and clears it
+  on the way out — the view's flag rather than the window's, so leaving the
+  screen gives it back by itself. Only this screen: the rest of the app is
+  reading and scrolling, which is what the system timeout is for. It is not a
+  wake lock, needs no permission, and does not keep the display on once the
+  app is not in front. There is no setting for it, because the only thing a
+  setting could offer is a display that goes out in the middle of a throw.
 - **The display's rotation has to stay truthful, which is why the roll screen
   is not pinned to one.** `PhoneAxes` maps a sensor vector into the tray using
   `Display.getRotation()`, so a screen held at the rotation it opened at
@@ -513,6 +579,74 @@ look like a regression in how a shaken roll reads.
   against the gravity of the step, and under a hand that is throwing four
   gravities at the dice only real slams get through ("Impacts, haptics and
   sound").
+
+## How hard the dice are thrown, and how anyone can tell
+
+A roll is only honest if the dice *roll*. `v0.1.1`'s did not: they arrived,
+gripped the felt and stopped, which reads as a number being placed on the
+table rather than thrown onto it.
+
+**Nothing could see it, and that was the real fault.** Every bar the harness
+scored was met by those rolls — they settled fast, never stacked, never ran
+out the cap — because settle time cannot tell a die that tumbled from a die
+that landed flat and slid to a halt. So the measurement came first.
+
+`Tumble` (`simulation/api`) counts how far a die turns **after it first
+touches the table**, in whole turns, and the harness scores the middle die of
+each roll against a floor of one turn — its only target that is a floor rather
+than a ceiling, for the reason above. The spin a die is given in the air is a
+constant somebody chose, so counting that would be marking our own homework;
+what nobody sets directly is how much of it survives the landing. One turn is
+the bar because that is about what it takes to watch a die topple off the face
+it landed on onto the one it is read from.
+
+Like `RollDiagnostics`, it is **a reading and never an input**: nothing it
+computes reaches the solver, so the same seed comes to the same faces whether
+or not anybody is counting turns. A die thrown again starts again, and a die
+that has been read and lifted off stops counting, so one slow neighbour cannot
+make a throw look worse than it was.
+
+**And it is a throw, not a drop.** A die leaves the hand at up to 1100 mm/s
+sideways with 30–75 rad/s of spin, from 60 mm above the floor. Those numbers
+were chosen against the figure above rather than by eye: at the 250 mm/s it
+used to be, a die travelled about 34 mm before it landed — it came down
+roughly where it was let go, with nothing left to turn into tumbling.
+
+**A handful is thrown; a hundred is tipped in.** The sideways speed tapers
+with how many dice are in the tray, from the full throw at one die to a
+quarter of it at the capacity rule's hundred. A tray that is already full has
+no floor to tumble across, and throwing each of a hundred dice at a metre a
+second piles them against a wall: a hundred coins, the flattest shape in the
+catalogue, stacked 28 deep at a bound of 10 before the taper existed.
+
+The taper reads the **count**, not the room in a die's cell, and that was
+measured the wrong way round first. Cell slack sounds like the better
+measure, because it is what actually says whether a die has anywhere to go;
+but twenty d20 have barely a third of a radius of slack each and throw
+perfectly well, so tapering on slack throttled the ordinary roll to under
+half speed and gave back most of the tumbling, while a hundred coins — whose
+slack is a rounding error — stayed stacked either way. What separates the two
+cases is how many dice are in the tray.
+
+Measured on the Pixel 10a, 200 rolls of 20d20, before and after the four
+changes (the throw, the taper, the restitution floor and two collision steps):
+
+| | `v0.1.1` | now |
+| --- | --- | --- |
+| turns after landing (middle die) | 0.89 | 1.52 |
+| deepest die-into-die overlap | 9.02 mm | 5.04 mm |
+| dice re-thrown | 3.20 % | 2.20 % |
+| median settle | 0.78 s | 0.81 s |
+| p99 settle | 1.48 s | 1.47 s |
+| p99 step time | 0.32 ms | 0.37 ms |
+
+Every bar is better than it was or unchanged; the dice simply roll now. The
+two that still fail — the re-throw share and the overlap depth — fail by less
+than they did, and both were failing before any of this.
+
+None of it touches a die that has come to rest. What changed is what a die is
+given *before* it lands and how well the solver resolves what happens after —
+which is the only half of this the app is allowed to work on.
 
 ## Settling and reading the result
 
@@ -1068,6 +1202,7 @@ impact sounds rather than a crash in the middle of a roll.
 
 - Filament scene: tray mesh, one renderable per die, a key directional light
   casting soft shadows, a dimmer fill from the other side, and a flat ambient.
+  The dice cast; the tray does not (below). Everything receives.
 - **The ambient is not decoration.** Two directional lights and nothing else
   leave every surface facing away from both at exactly black, and the surfaces
   facing away from both are the inner walls: the tray showed its lit rim, a
@@ -1117,6 +1252,26 @@ impact sounds rather than a crash in the middle of a roll.
   mirror either (`DIE_COAT_ROUGHNESS` is 0.12): a die has been in a bag with
   other dice. Felt with a clear coat is a table nobody owns, so the tray has
   none, and the shader skips the whole path when there is none to apply.
+- **Only the dice cast a shadow.** The one shadow-casting light stands off to
+  one side, so the wall and the six-millimetre band of rim on top of it threw
+  a hard-edged stripe down the inside of their own felt — and a stripe down
+  the table is not a rim, it is a smear. The first device session said so
+  twice, and the second said it again: *there should be no shadow on the
+  table.* So the three tray renderables are built with `castShadows(false)`
+  and every die with `castShadows(true)`; **everything still receives**,
+  because a die's shadow on the felt is the only shadow that says anything.
+  It is a flag per renderable (`Stage.add`'s `casts`) rather than a setting
+  on the scene, so the promise the app makes — "the dice are still drawn in
+  perspective and still cast their shadows" — is kept by construction and not
+  by remembering.
+
+  Two things are **not** the tray's cast shadow and are deliberately left
+  alone. The contact darkening where a die meets the felt is screen-space
+  ambient occlusion (below), which has no per-renderable switch in Filament
+  and is what stops every die floating a millimetre; and the wall being
+  darker than the floor is the lighting, not a shadow — a surface turned away
+  from the key light is simply less lit.
+
 - **The shadow map is given the tray, not five metres of nothing.** A
   directional shadow map covers the camera's whole frustum, and this camera can
   see 5,000 mm because a `far` plane has to be somewhere. The tray is 240 mm
@@ -1153,15 +1308,35 @@ impact sounds rather than a crash in the middle of a roll.
   closes in on its own, not even when the dice settle: a camera on the dice
   takes the table away, and a player cannot then tell four dice from two.
   Looking closer is theirs to do — **pinch to zoom, two fingers to pan** — and
-  what that produces is a `TrayView`, which cannot leave the table. At the
-  whole tray there is nowhere to pan to; every step closer earns exactly as
-  much room to move as it took away, so a fling cannot end up looking at the
-  void beside the tray. A new throw goes back to the whole table, because the
-  dice can land anywhere in it. A rotation does not: where the player was
-  looking is part of the picture that is rebuilt. One finger is left alone, for
-  picking a die up and for the tap that deliberately does not roll — and
-  which die a finger is on is `TrayPick`, the inverse of this camera
-  ("Picking a die up and throwing it again").
+  what that produces is a `TrayView`, which cannot leave the table.
+
+  **At the whole tray there is nowhere to pan to, and the room to move grows
+  with the zoom until, at `TrayView.CLOSEST`, the middle of the screen reaches
+  the corner of the floor.** Every millimetre of table can therefore be
+  brought to the middle of the screen, which is where somebody who has pinched
+  in to settle an argument about a face is looking. The limit used to keep the
+  whole *frame* inside the tray, `side / 2 · (1 − 1/zoom)`, and the cost of
+  that was the dice nearest the walls: they could be seen only at the extreme
+  edge of the picture and never looked at properly. The rule is the same shape
+  divided by what it allowed at `CLOSEST`, so it is still nothing at the whole
+  tray, still continuous and still monotonic — it simply goes further. What it
+  shows past the old limit is the tray's own wall rising beyond the edge of the
+  floor, which is a picture of the table rather than of the void beside it, and
+  a fling still cannot leave the table.
+
+  **A pinch happens about the point the fingers are gathered at**, not about
+  the middle of the screen, so a player can pinch *into* the corner they have
+  spotted a die in rather than towards the middle and out of it.
+
+  A new throw goes back to the whole table, because the dice can land anywhere
+  in it — and the gesture reads where the camera is from the screen rather
+  than remembering it, so the first touch after a throw carries on from the
+  whole tray instead of snapping back to the corner the last roll was read in.
+  A rotation does not go back: where the player was looking is part of the
+  picture that is rebuilt. One finger moves the camera not at all and consumes
+  nothing; it is left for picking a die up and for the tap that deliberately
+  does not roll — and which die a finger is on is `TrayPick`, the inverse of
+  this camera ("Picking a die up and throwing it again").
 - **How far it leans is the player's, and it leans less than it did.**
   `TrayCamera.TILT_DEGREES` was 22° and not a setting. It is **Table view** in
   Settings now, with two positions: *straight down*, which is the **default**
@@ -1444,22 +1619,47 @@ It is one component, `ui/common`'s `Plate`, because a plate is a token rather
 than a layout: six of them on one screen, each drawing its own shadow and its
 own padding, is six chances for the numbers to drift.
 
-**The formula is in the top left corner**, 14 dp in and 12 dp down, where the
-design puts it and where a person writes down what they are about to throw. It
-used to be the last thing in a stack of controls at the bottom, and on a phone
-that meant the felt was a strip above a wall of plates. The rest of the
-controls — the saved rolls, the picker, the Roll button — are still that stack,
-which is a divergence from the design rather than an agreement with it, and it
-is written down in `docs/TODO.md` with what the phone showed.
+**The top of the screen is a column of three things, and the bottom is two.**
+That is the layout the second device session asked for, and the whole of what
+it is for is the felt: with the straight-down table view, a plate over the
+tray is a place a die can land and not be seen.
+
+Along the top, 14 dp in and 12 dp down, in one column that pushes downwards as
+it opens:
+
+1. **Dice**, a pull-down. Shut, it is one plate with the word `Dice`, the
+   count of dice the formula is asking for, and a chevron. Open, it is the
+   picker row and the set chooser on a plate under it. The row scrolls
+   sideways and has nothing under it — ten dice at a touch target worth
+   pressing do not fit across a 360 dp phone, and a row that reflowed to two
+   lines when a set defined one more die would be a row whose dice move
+   about.
+2. **The menu button**, in the same row, at the end of it. The room it takes
+   is the row rather than a constant the formula had to remember to leave.
+3. **The formula**, under the menu button and aligned to the same edge, as an
+   expanding menu of the same kind. Shut, it is the line somebody has written
+   with a dashed rule under it, hugging its words. Open, it fills the width
+   and is the field, the squiggle and the keyboard — *what* is wrong with a
+   formula is said in there, because that is where it can be acted on.
+
+**Only one of the two can be open.** Both hang off the top edge and both push
+what is under them down, so two open at once is the top half of the table
+covered, which is the thing this layout exists to stop. Opening either shuts
+the other, in the screen rather than in each control.
+
+What is left along the bottom is the saved-rolls strip, and only that. The
+picker has gone to the top, the two things to do with a result have gone onto
+the result itself (below), and the Roll button is gone altogether — a shake is
+the throw ("Starting a roll").
 
 **Accent never touches felt.** Accent appears only *on* a plate, which is how
 an accent the player chooses freely and a shelf of tables stop being a pair
 anybody has to check — a green accent on green felt cannot happen if the accent
 is never on the felt, and with a colour picker there is no list of pairs to
-check in the first place (question 10). So the Roll button, "See the odds", a
-refusal and both asking plates are each on one — and the result sheet, which is
+check in the first place (question 10). So "See the odds", a refusal and every
+asking plate are each on one — and the result sheet, which is
 not a plate but an opaque surface of its own, keeps the same rule for the same
-reason. The pairing that has to be legible is accent-on-`--color-bg`: one
+reason, which is what lets "See the odds" and "Save as roll" sit on it. The pairing that has to be legible is accent-on-`--color-bg`: one
 pairing rather than a matrix.
 
 Where a plate wants the accent it wants its **700 step**, because a kicker is
@@ -1471,7 +1671,8 @@ filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
 
 | Plate | Where | What it carries |
 | --- | --- | --- |
-| Formula | top left, 14 / 12 dp in | the formula, dashed underline as wide as the text, tap to edit |
+| Dice | top left, 14 / 12 dp in | the word, the count and a chevron; the picker row and the set chooser behind it |
+| Formula | top right, under the menu button | the formula, dashed underline as wide as the text, tap to edit; the field and the squiggle behind it |
 | Hint | bottom left, 13 dp / 600 | only while the table is idle |
 | Counting | across the bottom | how far through the reading a roll is |
 | Another throw earned | across the bottom | a chain that stopped, and the shake it wants |
@@ -1500,10 +1701,23 @@ Three things are fixed about it:
   would be to throw the dice again, which is the one act this app cannot undo.
   There is therefore no close button, where the prototype has one.
 - **The column of controls is lifted by the parked height**, so the Roll
-  button, the picker and the saved rolls sit above a sheet that has been pushed
-  down rather than under it. Up, the sheet covers them, which is what the
+  button and the saved rolls sit above a sheet that has been pushed down
+  rather than under it. Up, the sheet covers them, which is what the
   prototype does too: a result being read is the thing in front of the player,
   and it is one push out of the way.
+- **What is done with a result is on the result.** `See the odds` and `Save
+  as roll` sit at the foot of the breakdown, which is what the second device
+  session asked for. They are in the sheet's **body** and not in its grip,
+  and that is the whole of the difference between the two halves: the grip is
+  what survives a push down, so anything in it is a plate over the felt for as
+  long as a total lasts. `See the odds` used to be a plate of its own in the
+  column of controls, offered in `Ready` and in a refusal as well as after a
+  throw; it is now offered once the dice have landed and not before. `Save as
+  roll` is new here and is the pair the outcome graph already offers at the
+  foot of its bars — the two screens are about the same formula, so they end
+  the same way. Neither knows where it goes: the roll screen may not depend on
+  `feature/saved`, so both are callbacks `:app` fills in
+  (`docs/architecture.md`, "Modules").
 
 **What is dragged is the grip; what is tapped is the handle.** The bar is 4 dp
 of ink and a thumb is not, so the whole band above the breakdown takes the
@@ -1540,26 +1754,42 @@ row of figures an eye takes in at a glance is four disconnected fragments read
 aloud, so the plate carries one sentence of its own and merges what is under it
 (`docs/architecture.md`, "Accessibility").
 
-**Two states the prototype did not have live on that same plate.** *Another
-throw earned* is a chain that has stopped and is one shake short: an
-accent-700 kicker, a line of copy, `Throw 3 more` as the primary and `Stop the
-chain` as a ghost. *Could not settle* is the refusal: an alert icon, an
-accent-700 kicker, copy naming how many dice never stopped, then `Throw those 3
-again` and `Cancel the roll`. Both are reachable in the prototype through its
+**Two states the prototype did not have live on that same plate, and neither
+of them has a button to press.** *Another throw earned* is a chain that has
+stopped and is one shake short: an accent-700 kicker and a line of copy saying
+how many dice it earned. *Could not settle* is the refusal: an alert icon, an
+accent-700 kicker, copy naming how many dice never stopped, and `Cancel the
+roll` — which is a way out rather than a way on, and is the only button left on
+any of these plates. Both are reachable in the prototype through its
 `rollState` tweak, which is the quickest way to see them.
 
 Neither is a new state. They are `RollState.ShakeAgain` and `RollState.Stalled`
 — which the roll has reached all along, with one line of text between them —
-and what was missing was the drawing. `Throw 3 more` is the throw the Roll
-button and a shake already make, so a chain is continued by the same call
-whichever of the three asks for it.
+and what was missing was the drawing.
 
-**`Stop the chain` puts the roll away with no total**, which is what `Cancel
-the roll` does and is not what the button says. Scoring what is on the table
-instead needs a reason a chain ended that is not the tray's: `RunningScore`
-stops one only when there is no room for another die, and the breakdown then
-says so in as many words. Giving the player's own refusal a note of its own is
-`core/notation` work and is on the list (`docs/TODO.md`, Step 4.1).
+**Both wait for the same shake.** The plates used to carry `Throw 3 more` and
+`Throw those 3 again`, and both are gone with the Roll button: a throw is a
+throw whether it is the first of a roll or the last, and a button that made
+one was a button that made the shake optional. What is drawn instead is the
+count, so a player who shakes knows how many dice are about to go up — on the
+plate, and in a toast over the tray that is a polite live region, so a screen
+reader is *told* rather than having to be swiped onto it.
+
+**`Stop the chain` is gone too.** It put the roll away with no total, which is
+what `Cancel the roll` does and was not what the button said — a roll thrown
+away rather than a roll finished. Scoring what is on the table instead would
+need a reason a chain ended that is not the tray's, and rather than invent one
+the option was deleted: a chain that has earned a throw is finished by
+throwing it.
+
+**A stalled roll that comes back keeps what it already read.** The dice that
+settled are not thrown again — throwing them would throw away answers the roll
+already has — so only the unsettled ones go back in the air, and their faces
+return to the plan indices they were thrown for. A throw that gives up reports
+no outcome at all, so the faces read before it gave up are carried across
+separately (`RollMachine.gaveUp`); in power-saving mode, where there are no
+frames to pace a running readout, that one report is the only time the tray
+says what it counted.
 
 **The total is drawn once.** The result sheet keeps a subtotal per group,
 because that is how its rows add up to the total — but a formula with one group

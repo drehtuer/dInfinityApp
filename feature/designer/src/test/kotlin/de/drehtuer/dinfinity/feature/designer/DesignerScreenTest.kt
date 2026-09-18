@@ -5,7 +5,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -26,13 +31,14 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.Hex
+import de.drehtuer.dinfinity.core.model.Hsv
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.Eyes
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.Fill
-import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
@@ -44,6 +50,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 /**
  * The face designer (`design/dInfinity.dc.html`, options `1v`, `4c`, `8d`).
@@ -54,6 +61,10 @@ import org.robolectric.RobolectricTestRunner
  * moves between faces.
  */
 @RunWith(RobolectricTestRunner::class)
+// A real bitmap behind the screen, so that `captureToImage` below rasterises
+// rather than recording calls: the legacy canvas draws nothing, and a glyph
+// that threw half way would look exactly like one that worked.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class DesignerScreenTest {
   @get:Rule
   val compose = createComposeRule()
@@ -121,8 +132,61 @@ class DesignerScreenTest {
     presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
 
     compose.onNodeWithTag(DesignerTestTags.UNDO).assertIsEnabled()
-    compose.onNodeWithTag(DesignerTestTags.UNDO).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.UNDO).performClick()
     compose.onNodeWithTag(DesignerTestTags.REDO).assertIsEnabled()
+  }
+
+  @Test
+  fun `undo and redo are in the header, above the scroll, with which face beside them`() {
+    // The design puts them in the app bar with "face N of M"
+    // (`docs/design-handover.md`), and it is not only tidiness: they are not
+    // tools, and a taking-back that scrolls away with the canvas is one
+    // nobody reaches while they are drawing. No `performScrollTo` above
+    // proves the first half; this proves the second.
+    show(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron })
+
+    val undo = compose.onNodeWithTag(DesignerTestTags.UNDO).getUnclippedBoundsInRoot()
+    val canvas = compose.onNodeWithTag(DesignerTestTags.CANVAS).getUnclippedBoundsInRoot()
+
+    assertTrue("undo is not above the canvas", undo.bottom <= canvas.top)
+    compose.onNodeWithTag(DesignerTestTags.WHICH_FACE).assertIsDisplayed()
+    compose.onNodeWithText("Face ${d20.faces.first().label} of 20").assertExists()
+  }
+
+  @Test
+  fun `which face it is follows the strip`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.faceOf(3)).performScrollTo().performClick()
+
+    compose.onNodeWithText("Face ${d6.faces[3].label} of 6").assertExists()
+    compose.onNodeWithText("Face ${d6.faces[0].label} of 6").assertDoesNotExist()
+  }
+
+  @Test
+  fun `every tool says what it is, so a picture is never a nameless button`() {
+    // The words came off the faces of the buttons; they did not go anywhere.
+    // Each is now what a screen reader says, which is the whole of why the
+    // resources are still there (`docs/face-designer.md`, "Drawing tools").
+    show(d6)
+
+    listOf("Fine", "Medium", "Broad", "Eraser", "Fill", "Stamp", "Undo", "Redo", "Clear", "Hide guide")
+      .forEach { compose.onNodeWithContentDescription(it).assertExists() }
+  }
+
+  @Test
+  fun `a face of the strip is the face rather than a word for it`() {
+    // 52 x 52 dp thumbnails with the label kept under them: the picture says
+    // which face has been drawn on, the label says which face it is, and a
+    // set may call one `crit` (`docs/design-handover.md`).
+    show(d6)
+
+    compose
+      .onNodeWithTag(DesignerTestTags.faceOf(2))
+      .performScrollTo()
+      .assertWidthIsAtLeast(52.dp)
+      .assertHeightIsAtLeast(52.dp)
+    compose.onNodeWithContentDescription("Face 3").assertExists()
   }
 
   @Test
@@ -196,15 +260,38 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `an action is never a chosen option`() {
-    // Undo, redo, clear and "fill all with numbers" do a thing rather than
-    // stand for a state, so nothing about them is ever selected — a filled
-    // Undo would read as a mode the screen was stuck in.
+  fun `an action is never an option at all`() {
+    // Undo, redo, clear, copy, paste and "fill all with numbers" do a thing
+    // rather than stand for a state, so they are buttons and not options —
+    // they have no chosen-ness to report, rather than reporting that they are
+    // not chosen. That is the split the row was redrawn around
+    // (`docs/face-designer.md`, "Drawing tools").
     show(d6)
 
-    compose.onNodeWithTag(DesignerTestTags.UNDO).performScrollTo().assertIsNotSelected()
-    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().assertIsNotSelected()
-    compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).assertIsNotSelected()
+    listOf(
+      DesignerTestTags.UNDO,
+      DesignerTestTags.REDO,
+      DesignerTestTags.CLEAR,
+      DesignerTestTags.COPY,
+      DesignerTestTags.PASTE,
+      DesignerTestTags.FILL_NUMBERS,
+    ).forEach { tag ->
+      compose
+        .onNodeWithTag(tag)
+        .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
+    }
+  }
+
+  @Test
+  fun `a tool is an option, and says which one is in hand`() {
+    // The other side of the same split: a nib, the guide and the mirror are
+    // states the canvas is in, so each of them is selectable and exactly one
+    // nib is chosen.
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Medium)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.GUIDE).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.MIRROR).performScrollTo().assertIsNotSelected()
   }
 
   @Test
@@ -337,7 +424,7 @@ class DesignerScreenTest {
     // It used to ask before throwing the drawing away, and now there is
     // nothing to throw away: each die keeps its own (`docs/face-designer.md`,
     // "Drawing tools").
-    val presenter = show(d6, choosable = listOf(d6, d4), drafts = Remembered())
+    val presenter = showRemembering(d6, choosable = listOf(d6, d4))
     presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
 
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
@@ -499,7 +586,7 @@ class DesignerScreenTest {
     compose.onNodeWithTag(DesignerTestTags.colourOf(0xFF4A90D9.toInt())).performScrollTo().performClick()
 
     assertEquals(0xFF4A90D9.toInt(), presenter.state.colorArgb)
-    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertDoesNotExist()
   }
 
   @Test
@@ -507,14 +594,14 @@ class DesignerScreenTest {
     val presenter = show(d6)
 
     compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.PICKER).assertExists()
-    compose.onNodeWithTag(DesignerTestTags.HUE).performSemanticsAction(SemanticsActions.SetProgress) { it(150f) }
-    compose.onNodeWithTag(DesignerTestTags.DEPTH).performSemanticsAction(SemanticsActions.SetProgress) { it(0.6f) }
-    compose.onNodeWithTag(DesignerTestTags.BRIGHTNESS).performSemanticsAction(SemanticsActions.SetProgress) { it(0.8f) }
-    compose.onNodeWithTag(DesignerTestTags.PICKER_USE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertExists()
+    slide(DesignerTestTags.PICKER.hue, 150f)
+    slide(DesignerTestTags.PICKER.depth, 0.6f)
+    slide(DesignerTestTags.PICKER.brightness, 0.8f)
+    compose.onNodeWithTag(DesignerTestTags.PICKER.use).performClick()
 
-    assertEquals(Ink.argb(150f, 0.6f, 0.8f), presenter.state.colorArgb)
-    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+    assertEquals(Hsv(150f, 0.6f, 0.8f).argb, presenter.state.colorArgb)
+    compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertDoesNotExist()
   }
 
   @Test
@@ -532,11 +619,11 @@ class DesignerScreenTest {
     val before = presenter.state.colorArgb
 
     compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.HUE).performSemanticsAction(SemanticsActions.SetProgress) { it(300f) }
-    compose.onNodeWithTag(DesignerTestTags.PICKER_CANCEL).performClick()
+    slide(DesignerTestTags.PICKER.hue, 300f)
+    compose.onNodeWithTag(DesignerTestTags.PICKER.cancel).performClick()
 
     assertEquals(before, presenter.state.colorArgb)
-    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertDoesNotExist()
   }
 
   @Test
@@ -544,7 +631,7 @@ class DesignerScreenTest {
     val presenter = show(d6)
 
     compose.onNodeWithTag(DesignerTestTags.INK_HEX).performScrollTo().assertIsDisplayed()
-    compose.onNodeWithText(Ink.hex(presenter.state.colorArgb)).assertExists()
+    compose.onNodeWithText(Hex.of(presenter.state.colorArgb)).assertExists()
   }
 
   @Test
@@ -713,14 +800,57 @@ class DesignerScreenTest {
     )
   }
 
+  @Test
+  fun `the screen takes a modifier and a menu from whatever hosts it`() {
+    // The three things the navigation graph actually passes it
+    // (`DInfinityApp`), which every other test here leaves defaulted.
+    compose.setContent {
+      DesignerScreen(
+        presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }),
+        modifier = Modifier.testTag("hosted"),
+        onRoll = {},
+        menu = { Text("Menu") },
+      )
+    }
+
+    compose.onNodeWithTag("hosted").assertIsDisplayed()
+    compose.onNodeWithText("Menu").assertIsDisplayed()
+  }
+
+  @Test
+  fun `a full face, the eraser and a turned die all draw`() {
+    // Three states the screen is otherwise never put into by a test: the
+    // warning, a nib whose glyph is the eraser's, and the Solid tab. None of
+    // them asserts a picture — what is asserted is that the screen still
+    // stands up in each.
+    val presenter = show(d10)
+    repeat(FaceDrawing.MAX_MARKS) { presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))) }
+
+    compose.onNodeWithTag(DesignerTestTags.WARNING).performScrollTo().assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Eraser)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.viewOf(DesignerView.Solid)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.SOLID).performScrollTo().assertIsDisplayed()
+  }
+
   private fun show(
     die: Die,
     choosable: List<Die> = emptyList(),
-    drafts: Drafts = Drafts.NONE,
     notationOf: (Die) -> String? = { null },
+    sets: DesignerSets = DesignerSets.NONE,
+    onRoll: (String) -> Unit = {},
+  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Drafts.NONE, notationOf, sets), onRoll)
+
+  /** The one case that needs a drawing to outlive a change of die. */
+  private fun showRemembering(
+    die: Die,
+    choosable: List<Die>,
+  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Remembered()))
+
+  private fun shown(
+    presenter: DesignerPresenter,
     onRoll: (String) -> Unit = {},
   ): DesignerPresenter {
-    val presenter = DesignerPresenter(die, choosable, drafts, notationOf)
     compose.setContent { DesignerScreen(presenter = presenter, onRoll = onRoll) }
     return presenter
   }
@@ -739,4 +869,13 @@ class DesignerScreenTest {
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
   private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
   private val d20 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron }
+
+  /** A kite-faced die: the one whose cells have no turn of their own. */
+  private val d10 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron }
+
+  /** One of the picker's sliders, moved to [to]. */
+  private fun slide(
+    tag: String,
+    to: Float,
+  ) = compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.SetProgress) { it(to) }
 }

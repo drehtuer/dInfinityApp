@@ -125,10 +125,19 @@ internal class DieResolver(
     val role: DieRole,
   )
 
-  private companion object {
+  companion object {
+    /**
+     * The Fudge die's id, which more than this resolver needs to know.
+     *
+     * [FudgeTotal] asks whether a roll is all Fudge dice, and [DicePicker]
+     * asks whether a die is the one that spells `dF`. It was written out
+     * three times before, which is three chances to disagree about what a
+     * Fudge die is.
+     */
     const val FUDGE_DIE_ID = "df"
-    const val UNITS_DIE_ID = "d10"
-    const val TENS_DIE_ID = "d10-tens"
+
+    internal const val UNITS_DIE_ID = "d10"
+    internal const val TENS_DIE_ID = "d10-tens"
   }
 }
 

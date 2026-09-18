@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.notation.FudgeTotal
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.Rule
@@ -94,17 +95,27 @@ import kotlin.math.roundToInt
  * They are in [SheetSlide] instead, and what is left here is small enough not
  * to need a state holder.
  *
+ * @param expected what the formula was expected to come to, printed under the
+ *   breakdown so the total has something to be read against ([Expectation]).
  * @param onParked the height of the grip, in pixels, as it is measured. The
- *   screen pads its column of controls by it, so the Roll button is never
- *   under a sheet that has been pushed down.
+ *   screen pads its column of controls by it, so the picker and the saved
+ *   rolls are never under a sheet that has been pushed down.
  */
 @Composable
 internal fun PullUpResult(
   result: RollResult,
   modifier: Modifier = Modifier,
   divides: Boolean = false,
+  expected: Expectation? = null,
   onRound: (Rounding) -> Unit = {},
   onDoodle: (String) -> Unit = {},
+  /**
+   * The two ways on from a result, drawn at the foot of the breakdown by
+   * [ResultSheet] — so they go down with it rather than standing on the felt
+   * for as long as a total does.
+   */
+  onSeeTheOdds: () -> Unit = {},
+  onSaveAsRoll: () -> Unit = {},
   onParked: (Float) -> Unit = {},
 ) {
   // No keys on any of these: this composable is on the screen only while a
@@ -160,7 +171,7 @@ internal fun PullUpResult(
         .testTag(RollTestTags.PULL_UP),
   ) {
     Grip(
-      total = result.total,
+      written = FudgeTotal.writeRoll(result.total, result.groups.flatMap { it.dice }),
       rest = rest,
       onToggle = { settle(rest.other()) },
       drag = drag,
@@ -174,8 +185,11 @@ internal fun PullUpResult(
     ResultSheet(
       result = result,
       divides = divides,
+      expected = expected,
       onRound = onRound,
       onDoodle = onDoodle,
+      onSeeTheOdds = onSeeTheOdds,
+      onSaveAsRoll = onSaveAsRoll,
       modifier = Modifier.padding(start = PLATE_EDGE, end = PLATE_EDGE, bottom = PLATE_EDGE),
     )
   }
@@ -192,7 +206,7 @@ internal fun PullUpResult(
  */
 @Composable
 private fun Grip(
-  total: Long,
+  written: String,
   rest: SheetRest,
   onToggle: () -> Unit,
   drag: DraggableState,
@@ -211,7 +225,7 @@ private fun Grip(
     Rule()
     Handle(rest = rest, onToggle = onToggle)
     Text(
-      text = total.toString(),
+      text = written,
       style = MaterialTheme.typography.displayLarge.tabular(),
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.padding(bottom = Modernist.x1).testTag(RollTestTags.TOTAL),
