@@ -112,6 +112,31 @@ the image cannot start at all, with `unable to find user dev`.
 Both land in `app/build/outputs/named-apk/`. The version comes from
 `version.txt` at the repository root — the only place it is written down.
 
+### Android build features
+
+AGP's optional build features are **off unless a module turns them on**, and a
+module turns them on in its own `buildFeatures { }` block. The only one this
+project uses is `compose = true`, set once in `dinfinity.android-app` and once
+in `dinfinity.android-feature`.
+
+`gradle.properties` used to carry the project-wide defaults for three of them —
+`android.defaults.buildfeatures.buildconfig`, `.resvalues` and `.shaders`, all
+set to `false`. **AGP 9 removed those properties.** They were still in the file
+and still doing nothing, which is worse than absent: the build read as though it
+were switching three features off, while AGP ignored all three and warned about
+the first on every configuration. They are gone.
+
+Nothing is lost with them, because `false` is what all three now default to:
+
+| Feature | What it generates | Used here |
+| --- | --- | --- |
+| `buildConfig` | the `BuildConfig` class, with `DEBUG`, `VERSION_NAME` and any `buildConfigField` | no — the version reaches the app through `versionName`, and nothing reads `BuildConfig` |
+| `resValues` | resources declared in the DSL with `resValue(...)` | no — every string a screen says is a real resource in `res/values` |
+| `shaders` | GLSL under `src/main/shaders`, compiled by `glslc` | no — Filament compiles its materials on the device (`docs/architecture.md`, decision 46) |
+
+A module that ever needs one says so where it is configured. Do not put it back
+in `gradle.properties`; there is no project-wide switch any more.
+
 ## The native build
 
 `simulation/jolt` is C++ compiled by the NDK, and it is part of the ordinary
@@ -1040,6 +1065,37 @@ accessors into that build's main source set — tens of thousands of violations 
 code nobody wrote, and neither a path filter nor overriding the tasks' source
 would keep it off them. The CLI takes explicit file patterns, so it sees the
 hand-written files and nothing else.
+
+## Known build warnings
+
+`./gradlew help --warning-mode all` is clean apart from one line, and that one
+is not this project's to fix:
+
+```text
+The ReportingExtension.file(String) method has been deprecated. This is
+scheduled to be removed in Gradle 10.
+```
+
+It comes from **detekt**, not from anything in this repository — its plugin
+calls `ReportingExtension.file` while it is being applied:
+
+```text
+at org.gradle.api.reporting.ReportingExtension.file(ReportingExtension.java:98)
+at io.gitlab.arturbosch.detekt.DetektPlugin.apply(DetektPlugin.kt:28)
+```
+
+`dinfinity.quality` applies detekt, so it fires once per module that has the
+convention plugin. Nothing here can avoid it short of dropping detekt; it goes
+away when detekt releases a build against Gradle's replacement API. Rerun the
+trace with `./gradlew help --warning-mode all -Dorg.gradle.deprecation.trace=true`
+if it ever needs checking again — the stack frame above is the whole answer.
+
+**The build scripts themselves use `tasks.register("name")`, never
+`val name by tasks.registering`**, and `configurations.create("name")` rather
+than `by configurations.creating`. The delegated forms are deprecated and go in
+Gradle 10. They also hide the task's name inside a property name, which matters
+here: `docs/build-setup.md` and `.github/workflows/` call these tasks by string,
+so the name is an interface and belongs where it can be read.
 
 ## Editor settings
 

@@ -11,7 +11,7 @@ plugins {
  * Forgetting the `include(...)` line produces a module that silently never
  * builds and never runs its tests, which is worse than a broken build.
  */
-val verifyModuleGraph by tasks.registering {
+val verifyModuleGraph = tasks.register("verifyModuleGraph") {
   group = "verification"
   description = "Checks that the modules on disk and the modules in settings.gradle.kts agree."
 
@@ -50,7 +50,7 @@ val verifyModuleGraph by tasks.registering {
  * `.claude/CLAUDE.md` requires every document in `docs/` to be linked from the
  * table in `README.md`. That rule is easier to enforce than to remember.
  */
-val verifyDocsIndex by tasks.registering {
+val verifyDocsIndex = tasks.register("verifyDocsIndex") {
   group = "verification"
   description = "Checks that README.md links every document in docs/, plus SECURITY.md and LICENSE."
 
@@ -87,7 +87,7 @@ val verifyDocsIndex by tasks.registering {
  * `build`. The repository still built for everyone who already had the file,
  * which is exactly what makes the failure worth a check rather than care.
  */
-val verifySourcesTracked by tasks.registering {
+val verifySourcesTracked = tasks.register("verifySourcesTracked") {
   group = "verification"
   description = "Checks that git does not ignore any Kotlin source file."
 
@@ -156,7 +156,7 @@ val verifySourcesTracked by tasks.registering {
  * its own copy of this check and does not depend on this task, so nothing can
  * reach `main` unlinted either way.
  */
-val markdownLint by tasks.registering {
+val markdownLint = tasks.register("markdownLint") {
   group = "verification"
   description = "Lints every Markdown document, as CI does."
 
@@ -195,7 +195,7 @@ val markdownLint by tasks.registering {
   }
 }
 
-val verifyDocsLinks by tasks.registering {
+val verifyDocsLinks = tasks.register("verifyDocsLinks") {
   group = "verification"
   description = "Checks that every relative Markdown link points at something that exists."
 
@@ -287,7 +287,7 @@ val coverageReportFiles: List<File> =
       }
   }
 
-val verifyCoverage by tasks.registering {
+val verifyCoverage = tasks.register("verifyCoverage") {
   group = "verification"
   description = "Checks that function and branch coverage stay at or above the floor."
 
