@@ -1354,6 +1354,13 @@ impact sounds rather than a crash in the middle of a roll.
   Looking closer is theirs to do — **pinch to zoom, two fingers to pan** — and
   what that produces is a `TrayView`, which cannot leave the table.
 
+  **The table comes with the fingers**: two fingers dragged up carry the felt
+  up with them, as though a hand were on the cloth. It is the table that
+  moves, not the camera, which is the only one of the two a player is
+  thinking about. The pinch is anchored the other way round, at the place on
+  the screen the fingers are closing on rather than at a movement of them, so
+  the corner somebody is pinching into is the corner they get.
+
   **At the whole tray there is nowhere to pan to, and the room to move grows
   with the zoom until, at `TrayView.CLOSEST`, the middle of the screen reaches
   the corner of the floor.** Every millimetre of table can therefore be
