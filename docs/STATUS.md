@@ -23,8 +23,8 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 `main` has everything through **#306**, which cut `v0.1.1`.
 
-**In flight: a stack of eleven answering the second and third device sessions**,
-plus one standalone fix for the documentation site. In order:
+**In flight: a stack answering the second and third device sessions**, plus two
+standalone fixes off `main`. In order:
 
 | | |
 | --- | --- |
@@ -38,8 +38,15 @@ plus one standalone fix for the documentation site. In order:
 | `feature/designer-icons-and-save` | the designer's tools are pictures, and the die you drew is the die that rolls |
 | `feature/signed-fudge-totals` | a Fudge total carries its sign |
 | `fix/rerolls-wait-and-clear` | a re-roll lands on floor nothing is standing on |
+| `chore/agp-9-4-1` | **the base** — AGP 9.4.1 and its checksums, without which every branch above fails `lint` |
+| `fix/no-shadow-from-the-table` | the tray stops shading its own felt |
+| `fix/rerolls-wait-and-clear` | a re-roll lands on floor nothing is standing on |
+| `fix/drag-the-table-with-the-finger` | two fingers take the table the way they went |
+| `feature/roll-screen-overlays` | the formula slides in from the edge, the saved rolls are a pull-up |
+| `chore/ignore-claude-worktrees` | a worktree under `.claude/` is ignored by git and by the linters |
 | `feature/dice-fall-in-when-added` | a die the picker adds falls onto the board instead of appearing |
-| `fix/docs-site-build` | **off `main`, not in the stack** — the published site has been stale since 18 September |
+| `fix/docs-site-build` | **off `main`** — the published site has been stale since 18 September |
+| `fix/a-roll-that-gives-up-does-not-crash` | **off `main`** — `100d4` killed the app; the fault is in `v0.1.1` |
 
 **The whole device tier has been run on the Pixel 10a over the merged stack.**
 
