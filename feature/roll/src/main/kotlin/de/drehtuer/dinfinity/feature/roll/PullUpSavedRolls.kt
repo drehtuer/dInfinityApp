@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.ui.common.Ink
@@ -53,7 +52,8 @@ internal fun PullUpSavedRolls(
     rest = rest,
     onRest = onRest,
     onParked = onParked,
-    modifier = modifier.testTag(RollTestTags.SAVED_PULL_UP),
+    tag = RollTestTags.SAVED_PULL_UP,
+    modifier = modifier,
     grip = { toggle ->
       Column(modifier = Modifier.fillMaxWidth()) {
         Rule()

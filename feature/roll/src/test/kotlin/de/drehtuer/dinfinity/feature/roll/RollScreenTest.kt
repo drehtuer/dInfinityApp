@@ -11,6 +11,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -162,7 +163,7 @@ class RollScreenTest {
     // not fit across a phone — which is why the row scrolls.
     compose.onNodeWithTag(RollTestTags.pickerDie("d20")).performScrollTo().performClick()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("1d20")
+    theFormula().assertTextContains("1d20")
     assertTrue("the die the row typed could not be thrown", shake())
   }
 
@@ -174,8 +175,8 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("2d6")
     compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("2")
+    theFormula().assertTextContains("2d6")
   }
 
   @Test
@@ -433,8 +434,9 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.WELCOME_ROLL).performClick()
 
     compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("1d20")
     compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
+    theFormula().assertTextContains("1d20")
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
     assertEquals(1, seen.size)
 
     // And it is a real throw when the hand comes: there is no other path.
@@ -461,10 +463,15 @@ class RollScreenTest {
   }
 
   @Test
-  fun `an empty field says what to do rather than nothing`() {
+  fun `an empty tray says nothing at all, and draws nothing over the felt`() {
+    // `Type a formula, or open Dice at the top.` stood here and is gone: it
+    // pointed at a formula that is no longer on the table, and it was a plate
+    // over the felt in the one state where the felt is all there is.
     show()
 
-    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Type a formula, or open Dice at the top.")
+    compose.onNodeWithTag(RollTestTags.HINT).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.DICE_MENU).assertIsDisplayed()
   }
 
   @Test
@@ -756,7 +763,7 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
 
     compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertIsDisplayed()
   }
 
   @Test
@@ -773,31 +780,36 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the tray shows the formula rather than a field, until it is tapped`() {
-    // A field is a thing to fill in; the formula is a thing somebody has
-    // written (`design/dInfinity.dc.html`, option 2a).
+  fun `the tray shows a tab rather than the formula, until it is asked for`() {
+    // The second device session asked for the formula to be out of the way
+    // entirely: what is left on the felt is the door, not what is behind it
+    // (`design/dInfinity.dc.html`, option 2a).
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA_DRAWER).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
   }
 
   @Test
-  fun `and there is always something to tap, even with nothing typed`() {
-    // Without the hint standing in, a fresh install shows a tray, a row of
-    // dice and a blank space where the formula goes.
+  fun `and there is always a tab to press, even with nothing typed`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("3d6", substring = true)
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertTextContains("Formula", substring = true)
   }
 
   @Test
-  fun `tapping it brings the field up`() {
+  fun `pressing it brings the drawer in, and pressing it again takes it away`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
 
+    compose.onNodeWithTag(RollTestTags.FORMULA_DRAWER).assertIsDisplayed()
     compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
   }
 
   @Test
@@ -829,14 +841,21 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the line is marked when the formula does not read`() {
-    // The badge `9c` asks for. What exactly is wrong is said in the editor,
-    // under the squiggle, because that is where somebody can fix it.
+  fun `the tab is marked when the formula does not read`() {
+    // The badge `9c` asks for, and the one thing the shut tab still says
+    // about a formula it does not print. What exactly is wrong is said in the
+    // drawer, under the squiggle, because that is where somebody can fix it.
     show()
     typeFormula("3d6 +")
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.INVALID).assertIsDisplayed()
+
+    // And shut again, the tab is still there to say something is behind it —
+    // what it says to a screen reader is [FormulaDrawerTest]'s.
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
   }
 
   /**
@@ -852,15 +871,26 @@ class RollScreenTest {
   }
 
   /**
-   * Types a formula the way a player does: tap the line, then type.
+   * Types a formula the way a player does: bring the drawer in, then type.
    *
-   * The field is not on the tray until somebody asks for it
+   * The formula is not on the tray at all until somebody asks for it
    * (`design/dInfinity.dc.html`, option 2a), so every test that types goes
-   * through the tap — which is also the only way the tap stays tested.
+   * through the tab — which is also the only way the tab stays tested.
    */
   private fun typeFormula(text: String) {
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(text)
+  }
+
+  /**
+   * The field, which is now the only place the formula is written at all.
+   *
+   * It brings the drawer in first: the tray no longer prints the formula, so
+   * "what does the field say" is a question that starts with a press.
+   */
+  private fun theFormula(): SemanticsNodeInteraction {
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
+    return compose.onNodeWithTag(RollTestTags.FORMULA)
   }
 
   /**

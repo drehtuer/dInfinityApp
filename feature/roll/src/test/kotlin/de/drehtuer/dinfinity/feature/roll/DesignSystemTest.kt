@@ -112,10 +112,10 @@ class DesignSystemTest {
 
   @Test
   @GraphicsMode(GraphicsMode.Mode.NATIVE)
-  fun `the formula on the tray is a heading, not a caption`() {
-    compose.setContent { Modernist { FormulaLine(text = "3d6 + 4", onEdit = {}) } }
+  fun `the formula's tab is a heading, not a caption`() {
+    compose.setContent { Modernist { FormulaDrawer(text = "3d6 + 4", onChange = {}, open = false, onOpen = {}) } }
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertHeightIsAtLeast(TITLE)
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertHeightIsAtLeast(TITLE)
   }
 
   @Test

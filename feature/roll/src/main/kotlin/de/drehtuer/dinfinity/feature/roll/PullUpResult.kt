@@ -91,7 +91,8 @@ internal fun PullUpResult(
     onRest = onRest,
     arrives = true,
     onParked = onParked,
-    modifier = modifier.testTag(RollTestTags.PULL_UP),
+    tag = RollTestTags.PULL_UP,
+    modifier = modifier,
     grip = { toggle ->
       Grip(
         written = FudgeTotal.writeRoll(result.total, result.groups.flatMap { it.dice }),

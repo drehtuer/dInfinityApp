@@ -63,6 +63,10 @@ import kotlin.math.roundToInt
  * screen share one edge and may not both be up — which is a rule about the
  * pair of them and so cannot live inside either ([BottomEdge]).
  *
+ * @param tag what a test reaches the panel by. A parameter rather than
+ *   something the caller puts on [modifier], because the tag has to sit
+ *   *inside* `Modifier.offset` to move with the sheet: a semantics node
+ *   outside it reports the place the sheet would be if it had never slid.
  * @param arrives true for a panel that slides up from below the bottom edge
  *   the first time it is drawn, which is what a result does: nobody should
  *   have to reach for the number they have just rolled. False for one that is
@@ -81,6 +85,7 @@ import kotlin.math.roundToInt
 internal fun PullUpSheet(
   rest: SheetRest,
   onRest: (SheetRest) -> Unit,
+  tag: String,
   modifier: Modifier = Modifier,
   arrives: Boolean = false,
   onParked: (Float) -> Unit = {},
@@ -144,6 +149,7 @@ internal fun PullUpSheet(
       modifier
         .fillMaxWidth()
         .offset { IntOffset(x = 0, y = offset.value.roundToInt()) }
+        .testTag(tag)
         .onSizeChanged { height = it.height.toFloat() }
         .alpha(if (laidOut) 1f else 0f)
         // `Shadow.md` — what floats over a screen, rather than the `sm` a plate

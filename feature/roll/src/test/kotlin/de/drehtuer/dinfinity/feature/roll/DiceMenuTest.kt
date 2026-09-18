@@ -84,9 +84,9 @@ class DiceMenuTest {
 
   @Test
   fun `opening the dice puts the formula editor away, and the other way round`() {
-    // Both hang off the top edge and both push what is under them down. Two
-    // open at once is the whole top half of the table covered, which is the
-    // thing this layout exists to stop.
+    // One comes down and one comes in from the side, and two open at once is
+    // the whole top half of the table covered — which is the thing this
+    // layout exists to stop.
     show()
 
     typeFormula("1d20")
@@ -96,7 +96,7 @@ class DiceMenuTest {
     compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.PICKER).assertIsDisplayed()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
 
     compose.onNodeWithTag(RollTestTags.PICKER).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
@@ -107,9 +107,9 @@ class DiceMenuTest {
     compose.onNodeWithTag(RollTestTags.DICE_MENU).performClick()
   }
 
-  /** Types a formula the way a player does: tap the line, then type. */
+  /** Types a formula the way a player does: bring the drawer in, then type. */
   private fun typeFormula(text: String) {
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(text)
   }
 
