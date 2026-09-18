@@ -358,7 +358,11 @@ class RollPresenterTest {
     // made them the one re-throw in the app a hand could not make
     // (`docs/physics-and-rendering.md`, "Starting a roll").
     val rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5, 2 to 5, 3 to 5))
-    val presenter = presenter(rolls, tray = StallingTray(unsettled = listOf(2, 3)))
+    val presenter =
+      presenter(
+        rolls,
+        tray = StallingTray(read = mapOf(0 to 5, 1 to 5), unsettled = listOf(2, 3)),
+      )
 
     presenter.type("4d6")
     presenter.roll()
@@ -375,6 +379,43 @@ class RollPresenterTest {
         .last()
         .dice.size,
     )
+  }
+
+  @Test
+  fun `and the dice that were read keep the faces they were read on`() {
+    // The re-thrown dice are the plan's own, so their faces go back to the
+    // indices they were thrown for. Filing them as dice an explosion added
+    // left the plan's own dice with no face at all, and scoring threw
+    // (`RollMachine.settled`).
+    val rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5, 2 to 5, 3 to 5), then = listOf(mapOf(0 to 0, 1 to 0)))
+    val presenter =
+      presenter(
+        rolls,
+        tray = StallingTray(read = mapOf(0 to 5, 1 to 5), unsettled = listOf(2, 3)),
+      )
+
+    presenter.type("4d6")
+    presenter.roll()
+    presenter.roll()
+
+    val settled = presenter.state as RollState.Settled
+    assertEquals("two sixes that were read and two ones that came back", 14L, settled.result.total)
+  }
+
+  @Test
+  fun `a stalled roll says it is rolling again while its dice are in the air`() {
+    // It said `Stalled` all the way through the re-throw, so the plate that
+    // asks for a shake stayed up while the dice it asked for were already
+    // tumbling.
+    val rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5), landImmediately = false)
+    val presenter =
+      presenter(rolls, tray = StallingTray(read = mapOf(0 to 5), unsettled = listOf(1), landLater = false))
+
+    presenter.type("2d6")
+    presenter.roll()
+    presenter.roll()
+
+    assertTrue("the stalled plate stayed up over a roll in the air", presenter.state is RollState.Rolling)
   }
 
   @Test
@@ -679,7 +720,10 @@ class RollPresenterTest {
    * the shake that follows is a throw that finishes.
    */
   private class StallingTray(
+    private val read: Map<Int, Int>,
     private val unsettled: List<Int>,
+    /** Whether the throw that follows the stall lands, or stays in the air. */
+    private val landLater: Boolean = true,
   ) : Tray {
     private var thrown = 0
 
@@ -699,8 +743,12 @@ class RollPresenterTest {
     ) {
       val roll = start(HeadlessRenderer())
       if (thrown++ == 0) {
+        // What the roll did read before it gave up, which is the one thing a
+        // stalled throw has to hand on: there is no outcome
+        // (`TrayLoop`, `PowerSavingTray`).
+        onCounted(read)
         onStalled(unsettled)
-      } else {
+      } else if (landLater) {
         var frames = 0
         while (roll.running && frames++ < MOST_FRAMES) roll.advance(SettleRule.TIMESTEP_SECONDS)
         roll.outcome?.let { onSettled(it, roll.drivenBy) }
