@@ -591,7 +591,7 @@ private fun AlongTheTop(
   onEditing: (Boolean) -> Unit,
   picking: Boolean,
   onPicking: (Boolean) -> Unit,
-  onBackToDesigner: (() -> Unit)? = null,
+  onBackToDesigner: (() -> Unit)?,
   modifier: Modifier = Modifier,
 ) {
   Column(
