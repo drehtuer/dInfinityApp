@@ -894,6 +894,38 @@ reuses that build instead of paying for a second one. It is skipped when
 `SONAR_TOKEN` is absent — what a pull request from a fork looks like — because a
 missing token should not read as a failed build.
 
+### The documentation site
+
+`pages.yml` publishes the specification — `README.md`, `docs/` and the
+prototype in `design/` — to <https://drehtuer.github.io/dInfinityApp/> on every
+push to `main` that touches one of them. The documents in the repository stay
+plain Markdown: the workflow does three things to its *copy* of them as it
+builds, so nothing about publishing has to be carried in the files, where it
+would be noise in every diff and would show in what GitHub renders.
+
+- **Every document is given front matter.** Jekyll renders a Markdown file
+  only if it opens with a front-matter block and copies it verbatim
+  otherwise — a site of raw `.md` downloads. The workflow prepends an empty
+  block; `_config.yml` supplies the layout that goes with it.
+- **Liquid's two openers are escaped.** Front matter also hands the document
+  to Liquid, which runs before Markdown and pays no attention to code spans or
+  fences: a document quoting `{{` in an error message holds a Liquid variable
+  as far as the build is concerned, and one that never closes fails the whole
+  build rather than the page it is on. `{{` and `{%` are therefore rewritten
+  into the Liquid that prints them literally, so a document can quote a
+  template or a driver's complaint without its author knowing any of this.
+  Exactly that broke the site for a day, over Filament's
+  `{{0,0,0},{16,16,6}}` in `docs/TODO.md`.
+- **`README.md` is copied to `index.md`.** Jekyll would otherwise publish it
+  as `README.html` and leave the root of the site a 404.
+
+The build then checks that the prototype actually arrived — both screens, its
+support script, one document and the index — and that the design system's
+styles came with it. `design/_ds` begins with an underscore, and Jekyll skips
+those unless `include:` in `_config.yml` names it, which it does; without the
+check, the prototype would publish unstyled and nobody would hear about it for
+weeks.
+
 ## Repository invariants
 
 Rules that are easy to break are checked by the build rather than by memory,
