@@ -58,7 +58,11 @@ class DesignerIconsTest {
     val start = sprite.indexOf("id=\"$symbol\"")
     assertTrue("#$symbol is not in the prototype", start >= 0)
     val end = sprite.indexOf("</symbol>", start)
-    return DRAWN.find(sprite.substring(start, end))?.groupValues?.get(1).orEmpty()
+    return DRAWN
+      .find(sprite.substring(start, end))
+      ?.groupValues
+      ?.get(1)
+      .orEmpty()
   }
 
   private companion object {

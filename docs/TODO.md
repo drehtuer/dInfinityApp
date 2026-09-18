@@ -463,13 +463,31 @@ and brightness — `ui/common`'s, shared with Settings and the saved-roll editor
 die, written after every stroke and read back when the die is opened — so a
 drawing outlives the screen and each die keeps its own. That made the "start
 over?" question unnecessary and it is gone: changing die no longer loses
-anything. **Roll it** hands the tray the die being drawn — the die as its set
-defines it, since nothing puts an atlas on one yet, and absent rather than dead
-for a die plain notation cannot name (decision 31). The d4's
-three-numbers-per-corner rule is **derived rather than checked**, and derived
-from the solid: `SolidFaces` names the readable position each corner of a cell
-is, and the guide, the stamp and the tray all read that one answer, so two
-cells sharing an edge cannot be made to disagree along it.
+anything. The d4's three-numbers-per-corner rule is **derived rather than
+checked** — a cell's numbers are read from the corners it meets, so two cells
+sharing an edge cannot be made to disagree along it.
+
+**Roll it throws the drawing**, and **Save to set** is the same step offered on
+its own. Both write the draft down, rebuild `dicesets/mine/` from every drawing
+and re-scan it, and Roll it then names the die **in the set that now carries
+it** (`mine:1d20`). That was three faults compounding: nothing outside the sets
+list ever called `bringUpToDate`, a bare formula resolves to the default set
+rather than the personal one, and the base-die chooser took dice by distinct id
+with the bundled set first, so it kept the untextured `d20` and dropped the
+personal one — the chooser now leaves the personal set out altogether, because
+a die of "My dice" is a drawing rather than a shape to draw on. Roll it is
+still absent rather than dead for a die plain notation cannot name
+(decision 31).
+
+**The tools are pictures**, taken verbatim from the prototype's own sprite and
+held to it by a test that reads `design/dInfinityPhone.dc.html`. The
+twenty-one controls are split by what they are — options inverting in a
+bordered square, actions as icon buttons, sentences as lettered buttons — which
+is what the row needed before it could be drawn, and it retires the
+`design-system-exception` it carried. Undo and redo moved to the app bar with
+"face N of M" under the title, and the face strip is 52 dp thumbnails of the
+faces themselves with their labels kept under them
+(`docs/face-designer.md`, "The tools are pictures").
 
 **The export is built.** A drawing becomes an atlas at 256 px per cell in the
 shape catalogue's own grid, with the cells nobody drew on left out so they stay
@@ -508,6 +526,13 @@ the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
       drag of a stage-width per 176° is the rate a finger expects; and whether
       a face carrying only its background and its number reads as a face
       somebody drew or as a face that lost their drawing
+- [ ] *Judgement, on a phone:* the drawing now reaches the tray, and nobody
+      has seen one there. Whether a face somebody drew with a finger reads as
+      *their drawing* at tray distance or as a smudge; whether the exporter's
+      turn (below) is the only thing wrong with how it lands; whether eight
+      44 dp glyphs in a wrapping row read as tools without their words, or
+      whether the bucket and the stamp need a caption after all; and whether a
+      52 dp thumbnail of a face is a face or a grey square
 - [ ] **The atlas's turn of a cell is not the canvas's.** The exporter draws
       every cell with the face's up taken as `+z` flattened onto it while the
       canvas masks every cell into one canonical outline, and the two are not
@@ -541,10 +566,16 @@ the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
       grid at `96 / 160 / 224`, `r = 24`, drawn in the canvas, the solid and the
       strip thumbnails, mutually exclusive with numerals, with `Clear eyes` to
       undo it
-- [ ] **`Save to set` instead of a save**: a sheet listing the writable sets —
-      never an imported one — plus a field that names a new personal set,
-      created at average weight, translucency and size and in the picker
-      immediately
+- [ ] **More than one personal set.** `Save to set` is built — a footer action
+      opening a sheet over the writable sets, which writes the drafts into the
+      chosen one and says what came of it — but `MinePackage.ID` is fixed to
+      `mine` and `MineSets` is built on one folder, so the sheet lists exactly
+      one set and there is no field that names a new one. What is left is the
+      *model*: an id per personal set, a `MineSets` per folder, drafts keyed by
+      set as well as by die, and an export and a physical record each. A set
+      created that way starts at the average weight, translucency and size and
+      is in the list, the picker and notation immediately — there is nothing to
+      install and nothing to confirm (`docs/face-designer.md`, "Save to set")
 - [ ] **The trailing dot replaces the bar** under an ambiguous `6` or `9`,
       here and on the tray. The rule that decides *which* numbers are marked is
       unchanged and still derived (`docs/dice-sets.md`, "Labels")
@@ -1496,21 +1527,6 @@ blocks code:
       with it (`Role.RadioButton` via `selectable`), so it wants an eye rather
       than a refactor. The sets a player can have is unbounded, which is the
       argument for the scrolling row and against the joined box
-- [ ] **The face designer's tool row is a set of `.seg-opt`s wearing button
-      clothes.** Every one of its twenty-one controls goes through one `Tool`
-      composable, and that composable is a two-state control: chosen is filled
-      in the accent, unchosen is the **muted** ink. That is `.seg-opt`, not
-      `.btn` — `ModernistButtonKind.Ghost` is the accent by definition, so
-      mapping unchosen onto it would print every nib, every stamp size and
-      every face of the strip in the accent at once. `SegmentedControl` draws
-      `.seg-opt`s but as one joined box of options, where this is a wrapping
-      row that mixes options (nibs, sizes, faces) with plain actions (copy,
-      paste, clear, fill with numbers). Drawing it properly means deciding
-      which of those are options and which are actions, which is a redesign
-      rather than a substitution — so the row keeps Material's `TextButton`
-      with a `design-system-exception` and the reason beside it. All twenty-one
-      call sites go through the one composable, so it is one place whenever it
-      is done
 - [ ] **The picker is a list of rows; the prototype's `1u` is a grid of cards.**
       The thumbnails landed in the list that was already there — one 44 × 64 dp
       picture at the head of each row, in the place the swatch held — rather
@@ -1635,13 +1651,13 @@ blocks code:
       `docs/face-designer.md`)
 - [ ] **A photo table is in the package before the tray can draw it.** "Use a
       photo" writes a valid, exportable `[[table]]` with its picture, and the
-      tray shows it as its colours until something fills the `atlases` seam
-      (Step 3, above) — which is the same state a *drawn* die's artwork is in,
-      so the alternative was holding the feature until the renderer loads
-      textures. I chose to ship it: the package, the validator path and the
-      export are the hard parts and they are done, and the picture appearing is
-      one seam away for dice and tables alike. Worth confirming that is the
-      right order (`docs/tables.md`, "Your own photo")
+      tray shows the table in its own colours because a `TableLook`'s texture
+      path says nothing about which package it came from (above). A *drawn
+      die's* artwork no longer waits with it — the designer builds the package
+      and names the die in it, so a drawn die arrives at the tray textured —
+      which leaves the photo table the one thing in the personal package whose
+      picture the tray does not draw. Worth confirming that is the right order
+      (`docs/tables.md`, "Your own photo")
 - [ ] **How should a photo sit on the tray?** The prototype's upload sheet
       offers three fits — centre, fit width, fit height (`1u`) — and none is
       implemented: a photo table is written with `floor_tiling = [1, 1]`, which
@@ -1652,7 +1668,6 @@ blocks code:
       photo at import (which loses pixels somebody chose) and mapping it at
       draw time (which needs the tray's aspect, and the tray's aspect changes
       with the phone's rotation)
-- [ ] The face designer has no 3D preview in the prototype — "Roll it" is the preview. Confirm, then fix `docs/face-designer.md` (4.6)
 - [ ] The dice picker remembers the last set per saved-roll group — confirm, then add to `docs/dice-notation.md`
 - [ ] A collection imported from a git repository records nothing about where
       it came from, so there is no "check for updates" for one the way there is

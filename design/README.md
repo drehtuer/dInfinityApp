@@ -54,6 +54,20 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   opposite-face numbering, d4 values at the corners and d6 pips. Built:
   [../docs/face-designer.md](../docs/face-designer.md), "The solid, not just
   the face".
+- **The face designer's tools are the phone frame's own sprite** — the app
+  draws `#ic-pencil`, `#ic-eraser`, `#ic-bucket`, `#ic-type`, `#ic-image`,
+  `#ic-undo`, `#ic-redo`, `#ic-x` and `#ic-copy` from
+  [dInfinityPhone.dc.html](dInfinityPhone.dc.html) and a test holds the two
+  equal, so **editing a `<symbol>` in the prototype fails the build until the
+  app is edited with it**. The paste and the mirror have no symbol yet:
+  [../docs/design-handover.md](../docs/design-handover.md), "Five the pass did
+  not reach". Built:
+  [../docs/face-designer.md](../docs/face-designer.md), "The tools are
+  pictures".
+- **The face designer has a Save to set** where it used to autosave silently,
+  and **Roll it throws the drawing** rather than a plain die of that shape.
+  Built: [../docs/face-designer.md](../docs/face-designer.md), "Save to set"
+  and "Flow", step 4.
 - **Saved rolls are dragged into the order the player wants**; pinning and
   favourites are gone.
 - **Settings gained an accent picker and lost the sound switch.**

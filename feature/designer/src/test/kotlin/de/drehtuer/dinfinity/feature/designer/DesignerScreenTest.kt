@@ -417,7 +417,7 @@ class DesignerScreenTest {
     // It used to ask before throwing the drawing away, and now there is
     // nothing to throw away: each die keeps its own (`docs/face-designer.md`,
     // "Drawing tools").
-    val presenter = show(d6, choosable = listOf(d6, d4), drafts = Remembered())
+    val presenter = showRemembering(d6, choosable = listOf(d6, d4))
     presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
 
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
@@ -853,12 +853,21 @@ class DesignerScreenTest {
   private fun show(
     die: Die,
     choosable: List<Die> = emptyList(),
-    drafts: Drafts = Drafts.NONE,
     notationOf: (Die) -> String? = { null },
     sets: DesignerSets = DesignerSets.NONE,
     onRoll: (String) -> Unit = {},
+  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Drafts.NONE, notationOf, sets), onRoll)
+
+  /** The one case that needs a drawing to outlive a change of die. */
+  private fun showRemembering(
+    die: Die,
+    choosable: List<Die>,
+  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Remembered()))
+
+  private fun shown(
+    presenter: DesignerPresenter,
+    onRoll: (String) -> Unit = {},
   ): DesignerPresenter {
-    val presenter = DesignerPresenter(die, choosable, drafts, notationOf, sets)
     compose.setContent { DesignerScreen(presenter = presenter, onRoll = onRoll) }
     return presenter
   }

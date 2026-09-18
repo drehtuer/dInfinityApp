@@ -216,7 +216,10 @@ data class DesignerState(
    * answers to falls back to its place in the list, which is a state no real
    * die reaches.
    */
-  val label: String get() = draft.die.faces.getOrNull(cell)?.label ?: (cell + 1).toString()
+  val label: String get() =
+    draft.die.faces
+      .getOrNull(cell)
+      ?.label ?: (cell + 1).toString()
 
   /**
    * The die as the Solid tab sees it, turned by [turn].

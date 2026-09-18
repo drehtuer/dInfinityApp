@@ -24,6 +24,7 @@ here any more — this table is only a map from the question to its home.
 | Six accent swatches wrap 5 + 1 | Four across, 44 dp: six presets and a custom swatch come out 4 + 3 | `docs/architecture.md`, "Settings" |
 | A filled accent tag needs both ends of a ramp | Both ends are mixed from the accent the player picked, against text and ground rather than black and white. Built: `ui/common`'s `TagKind.Accent`, and it is what says "Update available" on a dice-set row | `docs/architecture.md`, "Settings" |
 | Is there a 3D preview in the designer? | There is now: a **Solid** tab | `docs/face-designer.md`, "The solid, not just the face" |
+| The designer's tool row should be icons, undo and redo in the app bar, the strip 52 dp thumbnails | All three, from the prototype's own sprite; the thumbnail keeps its label, which is the pairing this suggested | `docs/face-designer.md`, "The tools are pictures" |
 | Where does the total go, and how many times? | Once, in the result sheet | `docs/TODO.md`, 4.1 |
 
 The pass also decided a good deal nobody had asked about — per-set weight,
@@ -51,7 +52,7 @@ its true shape, and whether an oversized stamp on a d4 shrinks to fit.
    each refusal a typed reason the screen phrases is a design change as much as
    a code one, and it is what translation waits on.
 
-### Three the pass did not reach
+### Five the pass did not reach
 
 - **The table picker is a list of rows**, where the prototype `1u` is a
   two-column grid of cards. Deliberate — a row fits a 44 × 64 dp thumbnail and
@@ -63,6 +64,20 @@ its true shape, and whether an oversized stamp on a d4 shrinks to fit.
 - **Does the picker row grow a brace form?** A set's own dice (`skull-d6`) are
   becoming typable as `3{skull-d6}kh1`; the row still offers only the ten
   standard dice.
+- **The sprite has no paste and no mirror.** The face designer has copy, turn,
+  mirror and paste, and none of the four is in the prototype at all. Copy is
+  `#ic-copy` and the turn keeps its words, because `Turn 3/4` is a count. The
+  other two are drawn in the sprite's own idiom — a 24 × 24 box,
+  `stroke-width: 2`, round caps and joins — as a clipboard with its clip and
+  as an axis with a shape either side of it. They are the two glyphs in the
+  app that the prototype cannot confirm, and they are in
+  `feature/designer`'s `DesignerIcons` marked as such. Adopt them, replace
+  them, or say the controls do not belong.
+- **Does "Save to set" want a glyph?** The footer's two actions are lettered,
+  because the prototype's footer is a lettered `.btn-primary` and because
+  `ModernistButton` takes a word by design. `#ic-download` is the sprite's
+  "out of the app" mark and would fit a save; whether a footer action should
+  carry one is the design's call.
 
 ### The roll screen's top, after the second device session
 
@@ -180,15 +195,6 @@ of rendered pictures, and a footer row of primary/secondary/ghost actions. The
 app merges the header, stacks the provenance, lists the dice and scatters the
 actions up the page. **28 dp is not on the type scale** — the steps either side
 are 25 and 32. Which did you mean?
-
-**The face designer's tool row should be icons**: six 44 × 44 dp bordered
-buttons, the chosen one inverted. The app has nine text labels in a wrapping
-row, because there is no icon set. Undo and redo belong in the app bar with
-"face N of M" beside the title. The face strip should be 52 × 52 dp thumbnails;
-the app shows the labels, deliberately, because a set may call a face `crit` —
-a thumbnail *and* a label would satisfy both. The app also has copy, turn,
-mirror and paste, which are not in the prototype at all, and it autosaves where
-the prototype has a Save button.
 
 ## Things the design system does not yet say
 

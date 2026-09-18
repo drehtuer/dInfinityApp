@@ -1470,9 +1470,21 @@ says what it contains rather than nothing:
   no idea how far is the state people give up in.
 
 A control drawn as one glyph is labelled and given a target: the menu button,
-the export mark, a group's **…**, the back arrow out of a die. Rows that are
-one fact are merged with `mergeDescendants` so they arrive as one
-announcement rather than three.
+the export mark, a group's **…**, the back arrow out of a die, and every tool
+of the face designer. Rows that are one fact are merged with
+`mergeDescendants` so they arrive as one announcement rather than three — a
+face of the designer's strip is a thumbnail and a label and arrives as "Face
+crit", not as a picture followed by a word.
+
+**The designer is where the rule cost the most and paid the most.** Twenty-one
+controls lost their words at once (`docs/face-designer.md`, "The tools are
+pictures"), and not one string resource was deleted: each became the name its
+control is announced by, so the words moved from the face of the button to the
+`contentDescription` and a translator still reaches every one of them. A
+two-state tool says its state in the semantics as well as in the paint — a
+nib is `selected`, the guide is a `Role.Checkbox` because a tap turns it back
+off — and a tool that merely *does* something is a `Role.Button` with no
+chosen-ness to report at all, rather than one reporting that it is not chosen.
 
 ### A gesture is not an affordance
 

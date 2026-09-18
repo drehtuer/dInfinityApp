@@ -35,16 +35,26 @@ installed by other users like any other set.
 3. **Turn it over.** The **Solid** tab beside the flat editor shows the real
    polyhedron with each authored face on the face it was drawn for, turning on
    its own until a drag takes over ("The solid, not just the face").
-4. **Roll it.** `Roll it` takes the die to the tray to see how it looks in
-   motion (`docs/physics-and-rendering.md`, "Starting a roll"). It opens the
-   tray with the die in the formula field and **does not throw it**: the
-   throw is the shake the player makes, which is the same answer every other
-   way into the tray gives.
-5. **It is already saved.** Every drawing is a draft on disk, and the drafts
-   together *are* the personal set ("My dice", id `mine`): the folder is
-   written with a generated `diceset.toml` and one atlas PNG per drawn die,
-   and run through the standard validator like any import. There is no Save
-   button because there is nothing a Save button would do.
+4. **Roll it.** The footer's filled button throws the die into the tray to see
+   how it looks in motion (`docs/physics-and-rendering.md`, "Starting a
+   roll"). It opens the tray with the die in the formula field and **does not
+   throw it**: the throw is the player's to make, which is the same answer
+   every other way into the tray gives.
+
+   **It saves before it names.** The drafts are the record and
+   `dicesets/mine/` is a *view* of them, so until that view is written there
+   is no package for a formula to name and no atlas for the renderer to
+   sample. Pressing Roll it therefore writes the drawing down, builds the
+   personal package, and hands the tray the die **in the set that now carries
+   it** — `mine:1d20` rather than a bare `1d20`, which would mean whichever
+   set is the default and so would throw a plain die. A save that comes to
+   nothing still throws: the plain spelling is a die the tray can throw, and
+   what is lost is the artwork rather than the roll.
+5. **Save to set.** Every drawing is a draft on disk the moment the finger
+   lifts, so nothing is ever *lost*; what the footer's other action does is
+   turn the drafts into the installed package ("Save to set" below). It is
+   the same step Roll it takes, offered on its own for somebody who wants the
+   set without the throw.
 
 ## What is built
 
@@ -54,13 +64,17 @@ face, the twelve presets, and the strip that moves between faces. Strokes are
 vectors in fractions of the canvas, so they survive a rotation and can be
 re-rendered at export resolution.
 
-**The body scrolls and the strip stays.** A square canvas and three rows of
-controls do not fit above the fold on a short phone, so everything from the
-base-die chooser down to the palette scrolls, and the face strip is pinned to
-the bottom — which face is in front of the player is where the screen is
-steered from. The tool, clipboard and colour rows **wrap** rather than scroll
-sideways: a tool hidden off the edge of a row is a tool nobody finds. Only the
-face strip scrolls sideways, because twenty faces have to go somewhere.
+**The body scrolls; the header, the strip and the footer stay.** A square
+canvas and three rows of controls do not fit above the fold on a short phone,
+so everything from the base-die chooser down to the palette scrolls. Three
+things are pinned: the app bar at the top (the title, which face is in front
+of the player, undo and redo, the menu), the face strip above the footer —
+which face is in front of the player is where the screen is steered from —
+and the footer with **Save to set** and **Roll it** in it, which is where the
+prototype puts the one filled button on the screen. The tool, clipboard and
+colour rows **wrap** rather than scroll sideways: a tool hidden off the edge
+of a row is a tool nobody finds. Only the face strip scrolls sideways, because
+twenty faces have to go somewhere.
 
 **The strip has that row to itself.** The three "fill all with…" buttons used
 to share it, and a row shared between a scroller and three buttons gives the
@@ -108,26 +122,38 @@ The pen, its colour and whether the guide is showing all stay put across the
 change: those are how somebody is working rather than what they are working
 on.
 
-**Roll it** is there: the button hands the tray the die being drawn and follows
-the chooser, so it throws the die in front of the player rather than the one
-the screen opened on. Two things about it are worth knowing. It throws the
-**die, not the drawing** — the strokes are not on it, because nothing puts an
-atlas on a die yet (`docs/TODO.md`, Step 3) — so what it answers is how the
-solid looks in motion rather than how the drawing looks on it; the Solid tab is
-what answers that. And it is **absent rather than dead** for a die plain
-notation cannot name: a set's own `skull-d6` has no spelling a formula could
-carry (`docs/architecture.md`, decision 31).
+**Roll it throws the drawing.** The button hands the tray the die being drawn
+and follows the chooser, so it throws the die in front of the player rather
+than the one the screen opened on — and the die it throws is the one with the
+atlas on it, because pressing it builds the personal package first and names
+the die in that package (Flow, step 4). It is **absent rather than dead** for a
+die plain notation cannot name: a set's own `skull-d6` has no spelling a
+formula could carry (`docs/architecture.md`, decision 31).
+
+One distortion is left, and it is the exporter's rather than this seam's: the
+atlas draws a cell with the face's up taken as `+z` flattened onto it while
+the canvas masks every cell into one canonical outline, so a drawing comes out
+turned on every shape but the d6 — up to sixty degrees on a d20. The artwork
+reaches the tray; which way round it lands is `docs/TODO.md`, 4.6.
 
 **The Solid tab is built**, and with it the designer's other half: the real
 polyhedron generated from the same solid the solver collides, each authored
 face on the face it was drawn for, spinning until a drag takes over ("The
 solid, not just the face").
 
-Which set the formula names is decided by what would resolve, not by where the
-die came from — the chooser lists dice by id across every installed set and so
-has no answer to "which set is this one". A bare `1d20` when the set a plain
-`d20` already means has one, and `brass:1d18` when it does not and `brass`
-does.
+**Which set the formula names.** Ordinarily it is decided by what would
+resolve, not by where the die came from — the chooser lists dice by id across
+every installed set and so has no answer to "which set is this one": a bare
+`1d20` when the set a plain `d20` already means has one, and `brass:1d18` when
+it does not and `brass` does. **Roll it is the exception**, and asks for the
+personal set by name, because the whole point of the press is to throw the
+drawing (Flow, step 4).
+
+**The chooser does not offer the personal set.** A die of "My dice" is not a
+shape to draw *on* — it is a drawing already, the same `d20` with an atlas over
+it. It used to be offered *instead* of the plain one: the bundled set comes
+first in the catalogue, so taking dice by distinct id kept the untextured copy
+and silently dropped the personal one.
 
 The export is built: "My dice" is a real installed package, and the details
 screen behind it offers it as a zip once a licence has been chosen ("Export
@@ -145,6 +171,52 @@ Deliberately small:
 - Stamp: place a digit or a sign from the built-in font, in three sizes, so
   people who cannot draw a legible "8" still get an "8" — and "fill all with
   numbers", the one tap that puts every face's own number on it ("The stamp")
+
+### The tools are pictures
+
+The glyph on each tool is the **prototype's own**
+([`design/dInfinityPhone.dc.html`](../design/dInfinityPhone.dc.html), the
+inline sprite of `<symbol>`s at the head of the phone frame). The `d`
+attribute is copied across verbatim and parsed at run time, and a test reads
+the prototype to hold the two equal — the same bargain the design tokens
+strike with the stylesheet. Re-import the sprite with a different pencil and
+the test fails, rather than the app going on drawing an older one.
+
+**Which shape a control is drawn in is decided by what it is**, and deciding
+that for all twenty-one of them is what the row needed before it could be
+drawn at all:
+
+| Kind | Drawn as | Which ones |
+| --- | --- | --- |
+| Option — the state the canvas is in | a bordered square that inverts when chosen | three pens, eraser, bucket, stamp; the guide; the paste mirror and turn; the stamp sizes; the base die |
+| Action — a thing that happens | an icon button, dead when there is nothing to do | undo, redo, clear, copy, paste |
+| Sentence about every face | a lettered button | fill all with numbers, fill all with eyes, clear eyes, Save to set, Roll it |
+
+The three pens are **one glyph at three widths** — what separates three pens
+is how wide they draw, so it is the one thing that separates their pictures,
+and the medium pen is the sprite's `#ic-pencil` exactly as drawn.
+
+**Four controls keep their words on purpose.** `Turn 3/4` is a count and a
+picture of a rotation cannot say which of four turns the next paste lands on;
+Small / Medium / Large are the same picture at three sizes and three boxes
+differing by a few pixels is a row nobody reads at arm's length; a die's id
+(`d18`) is its own word; and "fill all with numbers" is a sentence there is no
+picture of.
+
+**Every picture is named.** The words that came off the faces are the labels a
+screen reader now says — the resources did not go anywhere — and every control
+is at least a 48 dp target whatever the glyph inside it measures.
+
+**Undo and redo are in the app bar**, with "face 3 of 20" under the title.
+They are not tools, they are what undoes a tool, and a taking-back that
+scrolls away with the canvas is one nobody reaches while they are drawing.
+
+**The face strip is 52 × 52 dp thumbnails**, each the face itself — the same
+three steps the canvas takes (mask to the outline, paper, marks) at a
+fiftieth of the area. The label stays under the picture: a set may call a face
+`crit` and no thumbnail says that. The guide is left off, because a strip in
+which every undrawn face carried its numeral could not be told from a drawn
+one at a glance.
 
 ### The fill bucket
 
@@ -603,12 +675,34 @@ written down as one (`docs/TODO.md`).
 The footer action is **Save to set**, and it opens a sheet rather than saving
 where it stands. The sheet lists the sets that can be written to — which is
 **My dice** and any other personal set, never an imported one
-(`docs/dice-sets.md`, "Weight, translucency and size") — plus a field that
-names a new personal set and creates it.
+(`docs/dice-sets.md`, "Weight, translucency and size").
 
-A set created here starts at the average weight, translucency and size, and is
-in the set list, the picker and notation immediately. There is nothing to
-install and nothing to confirm: it is a package this phone wrote, and the
+**What a save actually does** is turn the drafts into the installed package:
+the drawing on the canvas is written to disk where the caller waits — every
+other write is launched and not waited for, and a package built from the files
+a moment before the last stroke reached them is a package missing that stroke
+— and then `dicesets/mine/` is rebuilt from every drawing and re-scanned. That
+is the only thing that builds it, and before this existed nothing outside the
+sets list ever did.
+
+**The sheet stays open on the answer.** A save that was refused has a reason
+worth reading and one that worked has a set worth naming; "something happened"
+is not what somebody pressing Save is asking. There are three answers: the set
+it went into, *nothing drawn yet*, and *could not be written* — the last
+meaning the package did not validate or the disk refused, with nothing left
+half-done either way.
+
+There is **one writable set today**. `MinePackage.ID` is fixed to `mine` and
+the exporter is built on one folder, so several personal sets is a change to
+the model rather than to this screen — and with it the field that names a new
+one. The sheet is a list all the same, because what it answers is *which set*,
+and a screen that answers that by not asking is one that has to be rebuilt
+when the second set arrives. The rest of the item stands in `docs/TODO.md`,
+4.6.
+
+A set created here will start at the average weight, translucency and size,
+and be in the set list, the picker and notation immediately. There is nothing
+to install and nothing to confirm: it is a package this phone wrote, and the
 validator has already seen it, like every other package this phone writes.
 
 ## Export details
