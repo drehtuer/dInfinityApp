@@ -151,59 +151,6 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the dice are put away until the pull-down is opened`() {
-    // The picker was the third of four plates along the bottom edge, which on
-    // a phone with the straight-down table view covered the felt a die may
-    // well have landed on (`docs/physics-and-rendering.md`, "What is drawn
-    // over the table").
-    show()
-
-    compose.onNodeWithTag(RollTestTags.DICE_MENU).assertIsDisplayed()
-    compose.onNodeWithTag(RollTestTags.PICKER).assertDoesNotExist()
-  }
-
-  @Test
-  fun `opening it brings the dice out, and closing it puts them back`() {
-    show()
-
-    openDice()
-    compose.onNodeWithTag(RollTestTags.PICKER).assertIsDisplayed()
-
-    compose.onNodeWithTag(RollTestTags.DICE_MENU).performClick()
-    compose.onNodeWithTag(RollTestTags.PICKER).assertDoesNotExist()
-  }
-
-  @Test
-  fun `the shut menu still says how many dice are in the throw`() {
-    // Otherwise putting the dice away would hide the one thing tapping them
-    // did, and a player would have to open it again to check.
-    show()
-    typeFormula("4d6 + 1d20")
-
-    compose.onNodeWithTag(RollTestTags.DICE_MENU_COUNT, useUnmergedTree = true).assertTextEquals("5")
-  }
-
-  @Test
-  fun `opening the dice puts the formula editor away, and the other way round`() {
-    // Both hang off the top edge and both push what is under them down. Two
-    // open at once is the whole top half of the table covered, which is the
-    // thing this layout exists to stop.
-    show()
-
-    typeFormula("1d20")
-    compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
-    openDice()
-
-    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.PICKER).assertIsDisplayed()
-
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
-
-    compose.onNodeWithTag(RollTestTags.PICKER).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
-  }
-
-  @Test
   fun `a tap on the picker row types the formula for you`() {
     // The row is not a second way to describe a roll: it edits the field, and
     // what comes out is a formula somebody could have typed

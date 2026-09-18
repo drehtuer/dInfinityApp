@@ -40,8 +40,6 @@ import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
-import de.drehtuer.dinfinity.ui.common.ModernistButton
-import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.ModernistToast
 import de.drehtuer.dinfinity.ui.common.Plate
 import de.drehtuer.dinfinity.ui.common.ToastTestTags
