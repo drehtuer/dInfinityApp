@@ -38,6 +38,7 @@ import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.notation.FudgeTotal
 import de.drehtuer.dinfinity.core.notation.NotationLimits
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
@@ -285,7 +286,7 @@ private fun GroupRow(
       )
       if (subtotal) {
         Text(
-          text = group.subtotal.toString(),
+          text = FudgeTotal.writeRoll(group.subtotal, group.dice),
           style = MaterialTheme.typography.titleLarge.tabular(),
           color = MaterialTheme.colorScheme.onBackground,
           modifier = Modifier.testTag(RollTestTags.subtotalOf(group.id)),

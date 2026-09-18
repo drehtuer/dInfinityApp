@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.notation.FudgeTotal
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.Rule
@@ -170,7 +171,7 @@ internal fun PullUpResult(
         .testTag(RollTestTags.PULL_UP),
   ) {
     Grip(
-      total = result.total,
+      written = FudgeTotal.writeRoll(result.total, result.groups.flatMap { it.dice }),
       rest = rest,
       onToggle = { settle(rest.other()) },
       drag = drag,
@@ -205,7 +206,7 @@ internal fun PullUpResult(
  */
 @Composable
 private fun Grip(
-  total: Long,
+  written: String,
   rest: SheetRest,
   onToggle: () -> Unit,
   drag: DraggableState,
@@ -224,7 +225,7 @@ private fun Grip(
     Rule()
     Handle(rest = rest, onToggle = onToggle)
     Text(
-      text = total.toString(),
+      text = written,
       style = MaterialTheme.typography.displayLarge.tabular(),
       color = MaterialTheme.colorScheme.onBackground,
       modifier = Modifier.padding(bottom = Modernist.x1).testTag(RollTestTags.TOTAL),

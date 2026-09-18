@@ -338,6 +338,28 @@ also define a true 100-face die but it is never chosen by `d100` implicitly.
 `d2` uses the set's coin if present, otherwise a d6 with face values
 `1,2,1,2,1,2`. Which one was used is visible in the breakdown.
 
+## dF, and the sign a Fudge total carries
+
+A Fudge die's faces are a minus, a blank and a plus — worth −1, 0 and +1 —
+and the bundled `df` is labelled `− − 0 + 0 +` (`docs/dice-sets.md`,
+"Numbering"). The faces and the breakdown print those symbols.
+
+**A total of Fudge dice is written with its sign**: `+2`, `−1`, `0`. That is
+how a Fate result is written, and it is the only spelling that says the same
+thing about one die as about four. The minus is U+2212, the one the faces
+carry, rather than a hyphen — a total set beside the dice that made it should
+use the same glyph they do.
+
+It applies when **every** die in the roll is a Fudge die, and to a group's
+subtotal on the same rule. `1dF + 1d6` is a count, because a d6 is a count and
+a count plus a sign is a count. Exports are unaffected: a file is read by a
+machine (`docs/statistics.md`).
+
+The alternative was to print the die's own label — `−`, `+`, `0` — for a roll
+of exactly one die. It was refused because it only works for one: `4dF` has no
+single face to quote, and a d10, whose tenth face is printed `0` and is worth
+ten, would read `0` for its best roll.
+
 ## Saved rolls
 
 A saved roll is a named formula with an icon, living in a group:

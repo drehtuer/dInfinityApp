@@ -64,11 +64,11 @@ standalone fix for the documentation site. In order:
 **Step 4's screens are all built.** What is left on each is judgement, and it
 is listed in `docs/TODO.md`.
 
-**The second device session is answered by the stack above.** The one thing it
-asked for that is *not* built is a decision rather than an omission: whether a
-roll of exactly one die prints what the die says instead of what it is worth
-(`docs/TODO.md`, 4.1 — a total of one dF really is −1, and `1d10` would then
-read `0` for a face worth ten).
+**The second device session is answered in full by the stack above.** The last
+open question in it — what a Fudge roll prints — is settled: a total of Fudge
+dice carries its sign (`+2`, `−1`, `0`), which is how Fate writes one and the
+only spelling that says the same thing about one die as about four
+(`docs/dice-notation.md`, "dF, and the sign a Fudge total carries").
 
 ## Blocked / waiting on
 
@@ -118,8 +118,6 @@ because dependencies are pinned by SHA-256. Dependabot covers Gradle weekly.
 
 ## Decisions pending
 
-- Whether a roll of exactly one die prints the die's label rather than its
-  value (above, and `docs/TODO.md`, 4.1).
 - Whether the too-many-dice refusal keeps a way through to the outcome graph.
   "See the odds" is offered only once a roll has landed now, and the argument
   for offering it on a refusal is still in `docs/architecture.md`.
