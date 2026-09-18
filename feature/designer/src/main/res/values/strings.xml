@@ -2,6 +2,23 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <string name="designer_roll">Roll it</string>
   <string name="designer_title">Face designer</string>
+  <!-- Under the title: which face is on the canvas. %1$s is a face's label, like "3" or "crit", %2$d how many the die has. -->
+  <string name="designer_which_face">Face %1$s of %2$d</string>
+  <!-- What a screen reader says for one square of the face strip. %1$s is the face's label. -->
+  <string name="designer_face">Face %1$s</string>
+  <!-- The footer action that writes the drawings into a dice set. -->
+  <string name="designer_save">Save to set</string>
+  <string name="designer_save_title">Save to set</string>
+  <!-- Why the list is as short as it is: an installed set belongs to whoever wrote it. -->
+  <string name="designer_save_where">Only a set this phone made can be written to.</string>
+  <string name="designer_save_do">Save</string>
+  <string name="designer_save_close">Close</string>
+  <!-- Building the set draws every face of every die, which takes a moment. -->
+  <string name="designer_save_busy">Drawing the set…</string>
+  <!-- %1$s is the set's name, like "My dice". -->
+  <string name="designer_save_done">Saved to %1$s. Roll it now throws the drawing.</string>
+  <string name="designer_save_blank">There is nothing drawn to save yet.</string>
+  <string name="designer_save_refused">That could not be written, and nothing was changed.</string>
   <!-- The flat editor, where a face is drawn one at a time. -->
   <string name="designer_view_face">Face</string>
   <!-- The die itself, turned over in the hand. -->

@@ -12,6 +12,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -61,6 +63,10 @@ import androidx.compose.ui.text.style.TextAlign
  *   *off* again — the marks, where tapping the chosen one clears it — is a set
  *   of checkboxes, and saying "radio button" of one would promise a choice
  *   that cannot be unmade.
+ * @param enabled false for an option this die or this drawing has no use for —
+ *   the paste turn on a kite, whose cells have no turn. Dead rather than
+ *   absent, so a set of options does not move about under the finger choosing
+ *   from it, and dimmed by `.btn:disabled`'s own [Modernist.DISABLED].
  */
 @Composable
 fun OptionBox(
@@ -72,6 +78,76 @@ fun OptionBox(
   square: Boolean = false,
   contentDescription: String? = null,
   role: Role = Role.RadioButton,
+  enabled: Boolean = true,
+) {
+  OptionBox(
+    selected = selected,
+    onClick = onClick,
+    modifier = modifier,
+    fill = fill,
+    square = square,
+    contentDescription = contentDescription,
+    role = role,
+    enabled = enabled,
+  ) { ink ->
+    Text(
+      text = text,
+      style = MaterialTheme.typography.labelLarge,
+      textAlign = TextAlign.Center,
+      color = ink,
+    )
+  }
+}
+
+/**
+ * The same option with a **picture** in it rather than a word.
+ *
+ * The one thing that changes is what is inside the box: the border, the
+ * inversion, the touch target and the semantics are the text form's, because
+ * an option drawn as an icon is the same control and must read as the same
+ * control. The ink the content is handed is the one the box has decided on —
+ * the ground once it is chosen, the ink until then — so a glyph inverts with
+ * its box instead of drawing its own conclusion about the theme.
+ *
+ * A [contentDescription] is not optional here. A picture has no words, and the
+ * box is the node a screen reader lands on ([Role.RadioButton] with a name).
+ */
+@Composable
+fun OptionBox(
+  contentDescription: String,
+  selected: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  fill: OptionFill = OptionFill.Accent,
+  enabled: Boolean = true,
+  role: Role = Role.RadioButton,
+  content: @Composable (Color) -> Unit,
+) {
+  OptionBox(
+    selected = selected,
+    onClick = onClick,
+    modifier = modifier,
+    fill = fill,
+    square = true,
+    contentDescription = contentDescription,
+    role = role,
+    enabled = enabled,
+    content = content,
+  )
+}
+
+/** What both forms above are: a box that inverts, with something in the middle. */
+@Composable
+private fun OptionBox(
+  selected: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier,
+  fill: OptionFill,
+  square: Boolean,
+  contentDescription: String?,
+  role: Role,
+  enabled: Boolean,
+  content: @Composable (Color) -> Unit,
 ) {
   val chosen =
     when (fill) {
@@ -82,24 +158,20 @@ fun OptionBox(
     contentAlignment = Alignment.Center,
     modifier =
       modifier
-        .selectable(selected = selected, role = role, onClick = onClick)
+        .selectable(selected = selected, enabled = enabled, role = role, onClick = onClick)
         .then(
           if (contentDescription == null) {
             Modifier
           } else {
             Modifier.semantics { this.contentDescription = contentDescription }
           },
-        ).then(if (square) Modifier.size(TOUCH_TARGET) else Modifier.defaultMinSize(minHeight = TOUCH_TARGET))
+        ).alpha(if (enabled) 1f else Modernist.DISABLED)
+        .then(if (square) Modifier.size(TOUCH_TARGET) else Modifier.defaultMinSize(minHeight = TOUCH_TARGET))
         .border(Modernist.hairline, if (selected) chosen else Ink.divider)
         .then(if (selected) Modifier.background(chosen) else Modifier)
         .then(if (square) Modifier else Modifier.padding(horizontal = Modernist.x3, vertical = Modernist.x2)),
   ) {
-    Text(
-      text = text,
-      style = MaterialTheme.typography.labelLarge,
-      textAlign = TextAlign.Center,
-      color = if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground,
-    )
+    content(if (selected) MaterialTheme.colorScheme.background else MaterialTheme.colorScheme.onBackground)
   }
 }
 

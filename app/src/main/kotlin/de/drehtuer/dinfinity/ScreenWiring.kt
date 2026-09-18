@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity
 
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
@@ -166,11 +167,7 @@ internal class ScreenWiring(
    */
   private fun faceDesigner(wanted: String): DesignerPresenter {
     val catalogue = app.setLibrary.catalogue
-    // Every die of every usable set, so somebody else's d18 can be drawn on as
-    // readily as the bundled d6 (`docs/face-designer.md`, "Flow"). Two sets
-    // may both define a `d20`, so the chooser is built from distinct ids:
-    // a row with the same name on it twice is a row nobody can choose from.
-    val everything = catalogue.installed.flatMap { it.dice }.distinctBy { it.id }
+    val everything = basesIn(catalogue)
     val fromDefault = catalogue.set(catalogue.defaultSetId)?.dice.orEmpty()
     return DesignerPresenter(
       // Null only when nothing at all is installed, which no install is: the
@@ -181,6 +178,16 @@ internal class ScreenWiring(
       // its own (`docs/face-designer.md`, "Drawing tools").
       drafts = app.drafts,
       notationOf = { die -> spellingOf(die, catalogue) },
+      // What turns the drawings into a package, and what lets **Roll it**
+      // name the die that carries them (`DrawnSets`).
+      sets =
+        DrawnSets(
+          library = app.setLibrary,
+          store = app.draftStore,
+          catalogue = { app.setLibrary.catalogue },
+          io = Dispatchers.IO,
+        ),
+      scope = scope,
     )
   }
 
@@ -277,6 +284,31 @@ internal class ScreenWiring(
 }
 
 /**
+ * The dice a drawing may be started from (`docs/face-designer.md`, "Flow":
+ * any catalogue shape or any installed die).
+ *
+ * Every die of every usable set, so somebody else's d18 can be drawn on as
+ * readily as the bundled d6. Two sets may both define a `d20`, so the chooser
+ * is built from distinct ids: a row with the same name on it twice is a row
+ * nobody can choose from.
+ *
+ * **The personal set is left out**, and that is not a tidy-up. A die of "My
+ * dice" is not a shape to draw *on* — it is a drawing already, the same
+ * `d20` with an atlas over it, and offering it beside the plain one is
+ * offering the same choice twice. Worse, it used to be offered *instead*: the
+ * bundled set comes first in the catalogue, so `distinctBy` kept the plain
+ * `d20` and dropped the personal one, and the chooser handed the designer a
+ * die whose `texturePath` was null while claiming to list everything.
+ * Excluding the view of the drawings from the list of things to draw on says
+ * what was meant and leaves nothing to a list's order.
+ */
+internal fun basesIn(catalogue: DiceCatalog): List<Die> =
+  catalogue.installed
+    .filterNot { it.id == DiceSet.PERSONAL_ID }
+    .flatMap { it.dice }
+    .distinctBy { it.id }
+
+/**
  * How [die] is written in a formula, or null when notation cannot name it.
  *
  * Through the same picker the roll screen's row uses, so **Roll it** and a tap
@@ -291,15 +323,28 @@ internal class ScreenWiring(
  * and `brass:1d18` when it does not and `brass` does. A bare `1d18` in the
  * second case would be a formula that refuses to resolve, which is a worse
  * answer to "roll this" than no button at all.
+ *
+ * @param preferred a set to name **ahead of** what a bare formula would
+ *   resolve to, if it has the die. This is how a drawing reaches the tray: a
+ *   bare `1d20` means whichever set is the default, which is not the set the
+ *   drawing was just saved into, so the artwork would be on a die nobody
+ *   threw. A die found this way is always spelled with its set — that is the
+ *   point of asking for it (`DrawnSets`; `docs/face-designer.md`, "Flow",
+ *   step 4).
  */
 internal fun spellingOf(
   die: Die,
   catalogue: DiceCatalog,
+  preferred: String? = null,
 ): String? {
+  val wanted = preferred?.let(catalogue::set)?.takeIf { it.die(die.id) != null }
   val default = catalogue.set(catalogue.defaultSetId)?.takeIf { it.die(die.id) != null }
-  val set = default ?: catalogue.installed.firstOrNull { it.die(die.id) != null } ?: return null
+  val set = wanted ?: default ?: catalogue.installed.firstOrNull { it.die(die.id) != null } ?: return null
+  // Bare only when nobody asked for a particular set and the one plain
+  // notation already means is the one that has the die.
+  val bare = wanted == null && default != null
   return DicePicker
-    .offeredBy(set, setRef = set.id.takeIf { default == null })
+    .offeredBy(set, setRef = set.id.takeIf { !bare })
     .firstOrNull { it.notation == die.id }
     ?.notation(1)
 }

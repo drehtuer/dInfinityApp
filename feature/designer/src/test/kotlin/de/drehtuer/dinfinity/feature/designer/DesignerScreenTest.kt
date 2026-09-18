@@ -6,6 +6,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
@@ -122,8 +125,61 @@ class DesignerScreenTest {
     presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
 
     compose.onNodeWithTag(DesignerTestTags.UNDO).assertIsEnabled()
-    compose.onNodeWithTag(DesignerTestTags.UNDO).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.UNDO).performClick()
     compose.onNodeWithTag(DesignerTestTags.REDO).assertIsEnabled()
+  }
+
+  @Test
+  fun `undo and redo are in the header, above the scroll, with which face beside them`() {
+    // The design puts them in the app bar with "face N of M"
+    // (`docs/design-handover.md`), and it is not only tidiness: they are not
+    // tools, and a taking-back that scrolls away with the canvas is one
+    // nobody reaches while they are drawing. No `performScrollTo` above
+    // proves the first half; this proves the second.
+    show(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron })
+
+    val undo = compose.onNodeWithTag(DesignerTestTags.UNDO).getUnclippedBoundsInRoot()
+    val canvas = compose.onNodeWithTag(DesignerTestTags.CANVAS).getUnclippedBoundsInRoot()
+
+    assertTrue("undo is not above the canvas", undo.bottom <= canvas.top)
+    compose.onNodeWithTag(DesignerTestTags.WHICH_FACE).assertIsDisplayed()
+    compose.onNodeWithText("Face ${d20.faces.first().label} of 20").assertExists()
+  }
+
+  @Test
+  fun `which face it is follows the strip`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.faceOf(3)).performScrollTo().performClick()
+
+    compose.onNodeWithText("Face ${d6.faces[3].label} of 6").assertExists()
+    compose.onNodeWithText("Face ${d6.faces[0].label} of 6").assertDoesNotExist()
+  }
+
+  @Test
+  fun `every tool says what it is, so a picture is never a nameless button`() {
+    // The words came off the faces of the buttons; they did not go anywhere.
+    // Each is now what a screen reader says, which is the whole of why the
+    // resources are still there (`docs/face-designer.md`, "Drawing tools").
+    show(d6)
+
+    listOf("Fine", "Medium", "Broad", "Eraser", "Fill", "Stamp", "Undo", "Redo", "Clear", "Hide guide")
+      .forEach { compose.onNodeWithContentDescription(it).assertExists() }
+  }
+
+  @Test
+  fun `a face of the strip is the face rather than a word for it`() {
+    // 52 x 52 dp thumbnails with the label kept under them: the picture says
+    // which face has been drawn on, the label says which face it is, and a
+    // set may call one `crit` (`docs/design-handover.md`).
+    show(d6)
+
+    compose
+      .onNodeWithTag(DesignerTestTags.faceOf(2))
+      .performScrollTo()
+      .assertWidthIsAtLeast(52.dp)
+      .assertHeightIsAtLeast(52.dp)
+    compose.onNodeWithContentDescription("Face 3").assertExists()
   }
 
   @Test
@@ -197,15 +253,38 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `an action is never a chosen option`() {
-    // Undo, redo, clear and "fill all with numbers" do a thing rather than
-    // stand for a state, so nothing about them is ever selected — a filled
-    // Undo would read as a mode the screen was stuck in.
+  fun `an action is never an option at all`() {
+    // Undo, redo, clear, copy, paste and "fill all with numbers" do a thing
+    // rather than stand for a state, so they are buttons and not options —
+    // they have no chosen-ness to report, rather than reporting that they are
+    // not chosen. That is the split the row was redrawn around
+    // (`docs/face-designer.md`, "Drawing tools").
     show(d6)
 
-    compose.onNodeWithTag(DesignerTestTags.UNDO).performScrollTo().assertIsNotSelected()
-    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().assertIsNotSelected()
-    compose.onNodeWithTag(DesignerTestTags.FILL_NUMBERS).assertIsNotSelected()
+    listOf(
+      DesignerTestTags.UNDO,
+      DesignerTestTags.REDO,
+      DesignerTestTags.CLEAR,
+      DesignerTestTags.COPY,
+      DesignerTestTags.PASTE,
+      DesignerTestTags.FILL_NUMBERS,
+    ).forEach { tag ->
+      compose
+        .onNodeWithTag(tag)
+        .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected))
+    }
+  }
+
+  @Test
+  fun `a tool is an option, and says which one is in hand`() {
+    // The other side of the same split: a nib, the guide and the mirror are
+    // states the canvas is in, so each of them is selectable and exactly one
+    // nib is chosen.
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Medium)).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.GUIDE).performScrollTo().assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.MIRROR).performScrollTo().assertIsNotSelected()
   }
 
   @Test
@@ -714,22 +793,90 @@ class DesignerScreenTest {
     )
   }
 
-  /** One of the picker's three sliders, dragged to a value. */
-  private fun slide(
-    tag: String,
-    to: Float,
-  ) = compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.SetProgress) { it(to) }
+  @Test
+  fun `with nowhere to save there is no Save`() {
+    show(d6)
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).assertDoesNotExist()
+  }
+
+  @Test
+  fun `Save to set asks which set, and says which one it went to`() {
+    // There is one writable set today and it is a list all the same: what the
+    // sheet answers is *which set*, and a screen that answers it by not
+    // asking is one that has to be rebuilt for the second personal set
+    // (`docs/face-designer.md`, "Save to set").
+    show(d6, sets = OneSet())
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_SHEET).assertExists()
+    compose.onNodeWithTag(DesignerTestTags.saveInto(OneSet.MINE.id)).assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE_SAID).assertIsDisplayed()
+    compose.onNodeWithText("Saved to My dice. Roll it now throws the drawing.").assertExists()
+  }
+
+  @Test
+  fun `a save with nothing drawn says so rather than claiming a set`() {
+    show(d6, sets = OneSet(answer = SaveResult.Blank))
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).performClick()
+
+    compose.onNodeWithText("There is nothing drawn to save yet.").assertExists()
+  }
+
+  @Test
+  fun `the sheet closes when it is closed`() {
+    show(d6, sets = OneSet())
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_CLOSE).performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE_SHEET).assertDoesNotExist()
+  }
+
+  @Test
+  fun `Roll it throws the die in the set the drawing was just saved into`() {
+    // The whole of device feedback 1: the formula used to be a bare `1d6`,
+    // which resolves to whichever set a plain `d6` means — never the personal
+    // one — so the tray drew a plain die (`docs/face-designer.md`).
+    val thrown = mutableListOf<String>()
+    show(d6, notationOf = { "1${it.id}" }, sets = OneSet(), onRoll = thrown::add)
+
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+
+    assertEquals(listOf("mine:1d6"), thrown)
+  }
 
   private fun show(
     die: Die,
     choosable: List<Die> = emptyList(),
     drafts: Drafts = Drafts.NONE,
     notationOf: (Die) -> String? = { null },
+    sets: DesignerSets = DesignerSets.NONE,
     onRoll: (String) -> Unit = {},
   ): DesignerPresenter {
-    val presenter = DesignerPresenter(die, choosable, drafts, notationOf)
+    val presenter = DesignerPresenter(die, choosable, drafts, notationOf, sets)
     compose.setContent { DesignerScreen(presenter = presenter, onRoll = onRoll) }
     return presenter
+  }
+
+  /** A library with one writable set and no disk behind it. */
+  private class OneSet(
+    private val answer: SaveResult? = null,
+  ) : DesignerSets {
+    override val writable: List<WritableSet> = listOf(MINE)
+
+    override suspend fun save(
+      setId: String,
+      draft: Draft,
+    ): SaveResult = answer ?: SaveResult.Saved(MINE, "mine:1${draft.die.id}")
+
+    companion object {
+      val MINE = WritableSet(id = "mine", name = "My dice")
+    }
   }
 
   /** Drafts that outlive a swap but not the test: a disk without the disk. */
