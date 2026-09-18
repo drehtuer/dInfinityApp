@@ -102,7 +102,7 @@ a tumble; everything else is real.
   filter and the line a fair die would draw all say so in words as well. Touch
   targets are 48 dp and the palette's contrast is measured in a test rather
   than eyeballed.
-- **Face designer** — draw die faces with your finger and roll them.
+- **Face designer** — draw die faces with your finger, turn the die over and roll it.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
   natural 7. It still matters.

@@ -254,8 +254,9 @@ orientation downwards, and anticlockwise around each ring starting from the
 is a choice rather than a law, but it is a fixed one — it is the order `faces`
 is read in and the order the atlas fills its cells, so changing it would
 silently repaint every die of every set ever published. `simulation/api` owns
-it, and the renderer and the physics hull are built from the same arithmetic
-rather than from a model somebody exported.
+it — and with it which corners make up which face (`SolidFaces`) — and the
+renderer, the physics hull and the face designer's Solid tab are all built from
+that same arithmetic rather than from a model somebody exported.
 
 ### Numbering
 

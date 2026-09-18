@@ -54,7 +54,7 @@ dicesets/
   install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage, reading back what is installed, and decoding a die's artwork out of the package it was installed with (docs/dice-sets.md, "Textures"). The fetching and the extraction are shared with saved-roll collections (docs/dice-notation.md)
   builtin/           The bundled standard set and default tables as a normal package (eats its own dog food)
 simulation/
-  api/               DiceSimulator interface, table geometry + capacity check, settle/face-read logic, the frame clock
+  api/               DiceSimulator interface, the catalogue's solids — corners, face directions and which corners make up which face — table geometry + capacity check, settle/face-read logic, the frame clock
   jolt/              Jolt JNI bridge (C++), the roll loop and the roll in progress
   harness/           The Step 5 device harness off the device: what a run is asked for — a count of throws or a length of time — its JSON document, what it may say about frames, and the targets it is scored against (docs/TODO.md, Step 5.1)
 render/
@@ -63,7 +63,7 @@ render/
 input/
   shake/             Sensor fusion → throw impulses
 feedback/            Impacts → haptic ticks and impact sounds (docs/physics-and-rendering.md)
-designer/            The personal package, "My dice": the drawing model behind the face designer (marks, drafts on disk, cell outlines), the photographs somebody has made tables of, and the export that turns both into an installable package (docs/face-designer.md, docs/tables.md)
+designer/            The personal package, "My dice": the drawing model behind the face designer (marks, drafts on disk, cell outlines), the die turned over in the hand (the projection, the culling and the depth sort behind the Solid tab), the photographs somebody has made tables of, and the export that turns both into an installable package (docs/face-designer.md, docs/tables.md)
 data/                Room database, DAOs, DataStore
 ui/
   common/            The design system's tokens, and the screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes, the button, the rule, the segmented control
@@ -112,6 +112,16 @@ by `render/filament`'s `DieNumbers`, about the polygon its mesh draws, and by
 left on either side is the one thing only that side knows — which polygon it
 is. Two solves would eventually disagree, and the disagreement would be a die
 drawn from its own numbers that did not match the same die printed.
+
+**`designer` depends on `:simulation:api`**, which looks like a drawing screen
+reaching for a physics module and is the same argument one more time. The
+designer's Solid tab turns the real polyhedron over, and `simulation/api` is
+where a catalogue solid *is* — its corners, the direction of each readable
+position, the face order every set file is read in and which corners make up
+which face (`SolidFaces`). Nothing of the simulator comes with it: the
+dependency is on the closed forms, which are plain Kotlin with no engine
+behind them, and the alternative is a second account of a die's geometry in
+the one module most likely to be looked at beside the first (decision 35).
 
 `ui/common` is **not** a feature and is not a place for anything that is
 merely shared. Nothing in it knows what screen it is on, and it depends on
@@ -1639,7 +1649,7 @@ the archives an install is working through, and those came from a stranger.
 | 32 | Everything a roll can fail on that does not need dice is decided at plan time | A roll is watched. A formula that turns out mid-throw to divide by zero, keep four of two dice or explode for ever would have to fail with dice on the table and nothing to show. `ResultBounds` proves the 64-bit promise the same way, which is also what lets the evaluator add in plain `Long` with no overflow checks |
 | 33 | A dice set is parsed by tomlj and read field by field into plain data classes | Parsing TOML is the kind of thing that should not be hand-rolled, and this parser is the one that carries the line and column of every key — without which the validation report could not say `file:line` at all (`docs/dice-sets.md`). Its deserializer is never used: a downloaded file reaches a document tree and nothing else |
 | 34 | A texture's dimensions are read from its own header, in plain Kotlin, before any decoder sees it | Refusing a 30,000-pixel image is only safe if the refusal happens before the decode, because the decoder is the part with the attack surface. It also means `dicesets/format` stays a JVM module and can be tested without an emulator |
-| 35 | Every catalogue solid is computed from its closed form in `simulation/api`, and the hull, the mesh and the face reading all come from that one place | Three descriptions of the same solid are three chances to be a hundredth of a degree apart, and the one that would show is a die whose printed face and scored face disagree. Face 0 is the face that is up in the reference orientation, which is what both the atlas and a settled reading expect |
+| 35 | Every catalogue solid is computed from its closed form in `simulation/api`, and the hull, the mesh, the face reading and the face designer's Solid tab all come from that one place | Three descriptions of the same solid are three chances to be a hundredth of a degree apart, and the one that would show is a die whose printed face and scored face disagree. Face 0 is the face that is up in the reference orientation, which is what both the atlas and a settled reading expect. **Which corners make up which face** is part of that one place rather than of whoever needs it: `SolidFaces` groups the corners onto the face planes once, and both `render/filament`'s `DieMesh` and `designer`'s `SolidStage` are built from it — the grouping used to live in the mesh, and a second copy of it in the designer would have been decision 35 broken in the one place it is easiest to break it, since the two pictures of face 7 would look right until somebody changed a solid |
 | 36 | `size_mm` is a die's nominal size — the edge length for a polyhedron, the diameter for the coin — not its bounding diameter | It is what a dice maker quotes, so "a d6 of 16 mm" means the same thing to an author as to the app. It is also the reading the capacity rule in `docs/tables.md` was worked out under: a 16 mm d6 covers 6.03 cm², and eighty of them are exactly what a phone-sized tray holds |
 | 37 | Jolt Physics 5.3.0, not Bullet — decided by building both against the toolchain the app actually uses | Goal 4 is determinism, and Jolt offers cross-platform determinism as a supported build mode (`CROSS_PLATFORM_DETERMINISTIC=ON`) while Bullet offers no such guarantee at all. The spike settled the rest on evidence: Jolt configures and builds clean with the SDK's CMake 4.1.2 and NDK 30's Clang 21 in about three seconds, and a real slice of it — a convex-hull die, a box tray and fixed 1/120 s stepping — links to a 2.0 MB stripped `arm64-v8a` library. Bullet 3.25 does not configure at all: its `cmake_minimum_required(VERSION 2.4.3)` is below what CMake 4 still supports. An engine the build cannot even configure is not a fallback (`docs/build-setup.md`) |
 | 38 | The `Renderer` contract lives in `render/headless`, and `render/filament` depends on it rather than the other way round | "No Filament engine is created at all" in power-saving mode is a claim about a whole dependency, and it is only true if the headless path can be built without that dependency present. A headless mode made out of the real renderer with the drawing switched off would still hold a GPU context and would quietly stop being free the first time somebody allocated in the wrong place. The contract also returns nothing anywhere, so a renderer cannot act on the simulation it is watching |

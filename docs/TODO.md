@@ -460,14 +460,44 @@ exported collection does.
       accurately somebody draws on glass; whether a loop somebody meant to
       close is treated as closed, and whether the region that fills is the one
       they meant, can only be told by drawing on a phone
-**From the design pass of 2026-09-17** (`docs/face-designer.md`):
+**The Solid tab is built.** A Face / Solid pair on the designer screen, and the
+flat editor untouched under the first of them. The polyhedron is generated
+rather than modelled: `simulation/api` now owns which corners make up which
+face (`SolidFaces`) and the renderer's mesh is built from the same grouping, so
+there is one account of a die's geometry rather than two (decision 35). The
+picture is Compose — turn, project, drop the faces pointing away, sort what is
+left furthest-first and fill it — with all of that in plain Kotlin where a JVM
+test holds it. The whole stage is one drag surface with nothing on the die
+selectable, the die spins until a drag takes over and the drag unticks Spin,
+and the face being drawn on wears a 4 dp accent-700 outline over a 16 % tint.
+It draws each face's background, numerals and pips and **not** the strokes of
+the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
+"What the Solid view shows, and what it does not".
 
-- [ ] **Confirmed the other way: build the Solid tab.** The hand-over asked
-      whether "Roll it" was the preview and the answer is no — the design wants
-      the die in the hand, generated from the solid rather than modelled, each
-      authored face mapped onto its real face, spinning until a drag takes over,
-      the whole stage one drag surface with nothing on the die selectable, and
-      the selected face outlined in accent-700 over a 16 % tint
+- [ ] *Judgement, on a screen:* the Solid tab has never been looked at. Whether
+      a d20 at a turn every sixteen seconds reads as a die being turned over or
+      as a thing fidgeting; whether one lamp and a floor under it is enough to
+      tell twenty triangles apart, in both themes; whether the 4 dp accent
+      outline finds the selected face when it is edge-on at the back; whether a
+      drag of a stage-width per 176° is the rate a finger expects; and whether
+      a face carrying only its background and its number reads as a face
+      somebody drew or as a face that lost their drawing
+- [ ] **The atlas's turn of a cell is not the canvas's.** The exporter draws
+      every cell with the face's up taken as `+z` flattened onto it while the
+      canvas masks every cell into one canonical outline, and the two are not
+      the same turn — an octahedron's top face is fifteen degrees off the
+      triangle the canvas draws, a d20's up to sixty and a d12's up to
+      thirty-six, while a d6's square lands exactly. So a drawing comes out
+      of the exporter turned, and clipped where it runs past the real polygon.
+      The Solid tab shows the drawing the canvas's way and says so; which of
+      the two should move is the open question, and it is not a small one —
+      changing the atlas's rule repaints every die of every set ever published
+      (`docs/dice-sets.md`, "Up is `+z`")
+- [ ] **Whether the Solid tab should draw pen strokes too**, as thin filled
+      outlines rather than as lines of a width. What it costs is a stroke
+      turned into a polygon per mark per face per frame; what it buys is a
+      hand-drawn face that is not blank on the tab that is meant to show it.
+      Today the tab says what it does not draw instead
 - [ ] **Number the faces in opposite pairs summing to n + 1.** "Fill all with
       numbers" follows the pairing rather than the face order, and so does the
       built-in set. **It changes what a recorded roll reads back as**: the same

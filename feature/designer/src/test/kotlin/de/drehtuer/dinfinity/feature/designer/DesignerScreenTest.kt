@@ -204,7 +204,9 @@ class DesignerScreenTest {
 
     repeat(FaceDrawing.MAX_MARKS - 1) { presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f))) }
 
-    compose.onNodeWithTag(DesignerTestTags.WARNING).assertIsDisplayed()
+    // Reached rather than looked at: the body scrolls, and the tab pair above
+    // the canvas takes the last row on a short screen below the fold.
+    compose.onNodeWithTag(DesignerTestTags.WARNING).performScrollTo().assertIsDisplayed()
   }
 
   @Test

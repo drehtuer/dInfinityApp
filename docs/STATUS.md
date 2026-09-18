@@ -72,7 +72,18 @@ over it against the prototype. What is left on each is in `docs/TODO.md`.
 **It is no longer mostly judgement.** The design pass of 2026-09-17 answered
 every question the app was waiting on and decided a good deal nobody had asked
 about, so each screen's list has gained work that is code rather than an eye:
-the designer's Solid tab, staggered spawns, and a trailing dot on `6` and `9`.
+staggered spawns and a trailing dot on `6` and `9` are still on it.
+
+**The face designer has a Solid tab.** A Face / Solid pair on the screen, the
+flat editor unchanged under the first of them and the real polyhedron under the
+second — generated from `simulation/api`'s own solids rather than modelled, and
+from the same grouping of corners onto faces the renderer's mesh is now built
+from, so there is one account of a die's geometry instead of two. The picture is
+Compose: turn, project, drop the faces pointing away, sort the rest
+furthest-first and fill them, all of it plain Kotlin under a JVM test. It draws
+each face's background, numerals and pips and says plainly that it does not draw
+pen strokes. **Nobody has looked at it on a screen yet** — the phone is off the
+network — and what needs an eye is written down in `docs/TODO.md`, 4.6.
 
 **The roll screen's controls are on plates.** `ui/common`'s `Plate` is the
 opaque `--color-bg` ground with `--shadow-sm` that every control over the table

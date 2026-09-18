@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.feature.designer
 
+import androidx.compose.animation.core.withInfiniteAnimationFrameNanos
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +29,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +56,7 @@ import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.SegmentedControl
 import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import de.drehtuer.dinfinity.ui.common.Ink as Colours
@@ -100,18 +103,76 @@ fun DesignerScreen(
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
       BaseDice(state, presenter)
-      FaceCanvas(state = state, onStroke = presenter::drew)
-      Warning(state)
-      Tools(state, presenter)
-      StampBar(state, presenter)
-      Clipboard(state, presenter)
-      Palette(state, presenter)
+      ViewTabs(state, presenter)
+      if (state.view == DesignerView.Face) Editor(state, presenter) else SolidPane(state, presenter)
     }
     // The strip stays: which face is in front of the player is where the
     // screen is steered from, and a steering wheel that scrolls away is not
     // one.
     FaceStrip(state, presenter)
   }
+}
+
+/**
+ * The two ways of looking at the die being drawn
+ * (`docs/face-designer.md`, "The solid, not just the face").
+ *
+ * A segmented control rather than a Material tab row: this system's answer to
+ * a choice of a fixed few is a single box with its options butted together,
+ * and a tab row is an underline and a ripple.
+ */
+@Composable
+private fun ViewTabs(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  // The die turns on its own while the Solid tab is open, a frame at a time
+  // rather than as an animation of its own: what it turns by is the
+  // presenter's arithmetic over how long the frame took, so it is the same
+  // turn on a 60 Hz panel and on a 120 Hz one (`SolidTurn`).
+  //
+  // `withInfiniteAnimationFrameNanos` rather than `withFrameNanos`, because
+  // this turn has no end: it is what says so, so a test waiting for the screen
+  // to settle is not waiting for a die to stop.
+  LaunchedEffect(state.view, state.spinning) {
+    if (state.view != DesignerView.Solid || !state.spinning) return@LaunchedEffect
+    var last = 0L
+    while (true) {
+      withInfiniteAnimationFrameNanos { now ->
+        if (last != 0L) presenter.spun((now - last) / NANOS_A_SECOND)
+        last = now
+      }
+    }
+  }
+  Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+    SegmentedControl(
+      options = DesignerView.entries,
+      selected = state.view,
+      label = { view -> stringResource(labelOf(view)) },
+      onSelect = presenter::look,
+      tagOf = DesignerTestTags::viewOf,
+    )
+  }
+}
+
+/**
+ * The flat editor: the canvas, the taking-back and the ink
+ * (`design/dInfinity.dc.html`, option `1v`).
+ *
+ * Its own composable so that the Solid tab is one line beside it rather than a
+ * six-branch `if` in the middle of the screen.
+ */
+@Composable
+private fun Editor(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  FaceCanvas(state = state, onStroke = presenter::drew)
+  Warning(state)
+  Tools(state, presenter)
+  StampBar(state, presenter)
+  Clipboard(state, presenter)
+  Palette(state, presenter)
 }
 
 /**
@@ -757,6 +818,12 @@ private fun FaceStrip(
   }
 }
 
+private fun labelOf(view: DesignerView): Int =
+  when (view) {
+    DesignerView.Face -> R.string.designer_view_face
+    DesignerView.Solid -> R.string.designer_view_solid
+  }
+
 private fun labelOf(nib: Nib): Int =
   when (nib) {
     Nib.Fine -> R.string.designer_nib_fine
@@ -775,6 +842,9 @@ private fun labelOf(size: StampSize): Int =
   }
 
 private const val GUIDE_ALPHA = 0.35f
+
+/** Nanoseconds in a second, which is what a frame's stamp is counted in. */
+private const val NANOS_A_SECOND = 1_000_000_000f
 
 /** All the way round the wheel, which is where hue starts again. */
 private const val HUE_ROUND = 360f
@@ -809,6 +879,9 @@ private val PRESETS =
 object DesignerTestTags {
   const val SCREEN: String = "designer:screen"
   const val CANVAS: String = "designer:canvas"
+  const val SOLID: String = "designer:solid"
+  const val SOLID_NOTE: String = "designer:solid:note"
+  const val SPIN: String = "designer:solid:spin"
   const val UNDO: String = "designer:undo"
   const val REDO: String = "designer:redo"
   const val CLEAR: String = "designer:clear"
@@ -836,6 +909,8 @@ object DesignerTestTags {
   const val HUE: String = "designer:picker:hue"
   const val DEPTH: String = "designer:picker:depth"
   const val BRIGHTNESS: String = "designer:picker:brightness"
+
+  fun viewOf(view: DesignerView): String = "designer:view:${view.name.lowercase()}"
 
   fun baseOf(dieId: String): String = "designer:base:$dieId"
 

@@ -2,6 +2,19 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
   <string name="designer_roll">Roll it</string>
   <string name="designer_title">Face designer</string>
+  <!-- The flat editor, where a face is drawn one at a time. -->
+  <string name="designer_view_face">Face</string>
+  <!-- The die itself, turned over in the hand. -->
+  <string name="designer_view_solid">Solid</string>
+  <!-- Whether the die turns on its own. Dragging it turns this off. -->
+  <string name="designer_spin">Spin</string>
+  <!-- What the die on the Solid tab is: %1$s is a die's name, like "d20", %2$d how many faces it has. -->
+  <plurals name="designer_solid_stage">
+    <item quantity="one">%1$s, %2$d face. Drag to turn it.</item>
+    <item quantity="other">%1$s, %2$d faces. Drag to turn it.</item>
+  </plurals>
+  <!-- Said beside the turning die: what the Solid tab shows of a drawing, and what it does not. -->
+  <string name="designer_solid_note">Backgrounds, numbers and pips, on the real solid. Pen strokes are on the Face tab.</string>
   <string name="designer_nib_fine">Fine</string>
   <string name="designer_nib_medium">Medium</string>
   <string name="designer_nib_broad">Broad</string>

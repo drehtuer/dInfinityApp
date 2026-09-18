@@ -15,6 +15,16 @@ dependencies {
   // (`docs/face-designer.md`, "The stamp").
   api(project(":core:glyphs"))
 
+  // The Solid tab turns the real polyhedron over, and `simulation/api` already
+  // owns every catalogue solid: its corners, the direction of each readable
+  // position, the face order the whole app agrees on and — since the Solid tab
+  // — which corners make up which face (`SolidFaces`). A second description of
+  // a die's geometry is the thing `docs/dice-sets.md` warns comes apart the
+  // first time either is touched, so there is one and the renderer's mesh is
+  // built from it too (`docs/face-designer.md`, "The solid, not just the
+  // face").
+  api(project(":simulation:api"))
+
   // A draft on disk is JSON, read through its DOM with every field taken by
   // hand — the same way `core/collection` reads a collection. A draft is the
   // app's own file rather than a stranger's, so the reason here is the other

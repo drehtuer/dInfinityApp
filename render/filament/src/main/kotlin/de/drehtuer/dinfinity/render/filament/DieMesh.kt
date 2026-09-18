@@ -1,10 +1,9 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieShape
-import de.drehtuer.dinfinity.core.model.FaceRead
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
-import de.drehtuer.dinfinity.simulation.api.Exact
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
+import de.drehtuer.dinfinity.simulation.api.SolidFace
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import de.drehtuer.dinfinity.simulation.api.cross
 
@@ -16,9 +15,12 @@ import de.drehtuer.dinfinity.simulation.api.cross
  * a degree apart, and the one that would show is a die whose printed face and
  * scored face disagree — the worst bug this app could have, because it looks
  * like the physics cheating. So the mesh is not a model somebody exported: it
- * is `ShapeGeometry`'s corners, grouped onto `ShapeGeometry`'s face
- * directions, and face *i* of this mesh is face *i* of the catalogue by
- * construction.
+ * is `simulation/api`'s [de.drehtuer.dinfinity.simulation.api.SolidFaces] —
+ * `ShapeGeometry`'s corners grouped onto `ShapeGeometry`'s face directions —
+ * and face *i* of this mesh is face *i* of the catalogue by construction. The
+ * grouping lives there rather than here because the face designer's Solid tab
+ * turns the same polyhedron over and a second account of it would come apart
+ * the first time either was touched (`docs/face-designer.md`).
  *
  * Everything here is one unit from the middle — the corners of a catalogue
  * solid all sit on one sphere, so a die of any size is this mesh times its
@@ -34,69 +36,42 @@ data class DieMesh(
   val positions: List<Vector3> get() = faces.flatMap(MeshFace::positions)
 
   companion object {
-    /**
-     * Two corners of a unit solid count as the same plane when their heights
-     * above it agree to this much. The catalogue's closed forms are exact to
-     * the last few bits of a double, so this is generous by a wide margin and
-     * still nowhere near the gap to the next ring of corners.
-     */
-    const val PLANE_TOLERANCE: Double = 1e-9
-
     /** The mesh of [shape], one unit from the middle to every corner. */
     fun of(shape: DieShape): DieMesh {
-      val corners = ShapeGeometry.verticesOf(shape)
       val grid = ShapeAtlas.gridFor(shape)
-      val faces =
-        outwardNormals(shape).mapIndexed { index, normal ->
-          face(shape, index, normal, corners, grid)
-        }
+      val faces = SolidFaces.of(shape).map { solid -> face(shape, solid, grid) }
       return DieMesh(shape, faces + rimOf(shape, faces))
     }
 
     /**
-     * Which way each of the shape's [ShapeAtlas] cells faces.
+     * One catalogue face as something a renderer can pour into a buffer.
      *
-     * For a face-read solid that is the direction the face is read from, and
-     * the two are the same thing. For a tetrahedron they are not: a d4 is read
-     * from the corner pointing up, so the catalogue's directions are corners,
-     * and the flat surface that carries cell *i* is the face **opposite**
-     * corner *i* — the triangle whose corners are the three that are not *i*
-     * (`docs/dice-sets.md`, "The d4").
-     *
-     * That pairing is what lets a d4's numbers stay with its corners. Each
-     * cell carries the values of its three corners, each drawn at its own
-     * corner, so the number at the top of a settled d4 appears on all three
-     * faces you can see and two faces sharing an edge agree along it.
+     * The polygon and its frame are `simulation/api`'s
+     * ([SolidFaces]) — the same grouping of corners onto faces the face
+     * designer's stage is built from, so there is one answer to "which corners
+     * make up face 7" rather than two that could drift
+     * (`docs/architecture.md`, decision 35). What is added here is the only
+     * thing a mesh needs and a solid does not: where each corner sits in the
+     * *atlas*, which is its place in its own cell shifted into that cell's
+     * square of the grid.
      */
-    private fun outwardNormals(shape: DieShape): List<Vector3> =
-      ShapeGeometry.directionsOf(shape).map { direction ->
-        when (shape.naturalRead) {
-          FaceRead.FaceUp -> direction.normalised()
-          FaceRead.VertexUp -> -direction.normalised()
-        }
-      }
-
     private fun face(
       shape: DieShape,
-      index: Int,
-      normal: Vector3,
-      corners: List<Vector3>,
+      solid: SolidFace,
       grid: ShapeAtlas.Grid,
     ): MeshFace {
-      val height = corners.maxOf { it dot normal }
-      val onPlane = corners.filter { (it dot normal) >= height - PLANE_TOLERANCE }
-      check(onPlane.size >= TRIANGLE) {
-        "${shape.id} face $index has ${onPlane.size} corners on its plane, which is not a polygon"
-      }
-      val frame = TextureFrame.on(normal, onPlane)
-      val ordered = onPlane.sortedBy(frame::angleOf)
+      val (column, row) = ShapeAtlas.cellOf(shape, solid.index)
       return MeshFace(
-        index = index,
-        positions = ordered,
-        normal = normal,
-        tangent = frame.along,
-        uvs = ordered.map { frame.cell(it, grid, ShapeAtlas.cellOf(shape, index)) },
-        triangles = fan(ordered.size),
+        index = solid.index,
+        positions = solid.corners,
+        normal = solid.normal,
+        tangent = solid.along,
+        uvs =
+          solid.corners.map { corner ->
+            val (u, v) = solid.cellOf(corner)
+            TextureCoordinate(u = (column + u) / grid.columns, v = (row + v) / grid.rows)
+          },
+        triangles = fan(solid.corners.size),
       )
     }
 
@@ -166,8 +141,6 @@ data class DieMesh(
 
     /** A convex polygon of [corners] corners as a triangle fan from its first. */
     private fun fan(corners: Int): List<Int> = (1 until corners - 1).flatMap { listOf(0, it, it + 1) }
-
-    private const val TRIANGLE = 3
   }
 }
 
@@ -209,77 +182,3 @@ data class TextureCoordinate(
   val u: Double,
   val v: Double,
 )
-
-/**
- * The two directions that make a face's texture the right way up.
- *
- * A cell is drawn with the face's "up" matching the shape's reference
- * orientation (`docs/dice-sets.md`), and up is `+z` — one right-handed
- * coordinate system shared by the tray, the solver and the renderer, so
- * nothing is turned over on the way between them. Up on a *face* is that up
- * flattened onto it: the part of `+z` that lies in the plane. A face pointing
- * straight up or straight down has no such part, and for those two the tray's
- * `+y` is used instead — which is the same rule the catalogue's own face order
- * leans on, where a ring is walked anticlockwise from the `+x` side.
- */
-private class TextureFrame(
-  val along: Vector3,
-  private val up: Vector3,
-  private val middle: Vector3,
-  private val radius: Double,
-) {
-  /** Where [corner] sits around the face, for ordering its polygon. */
-  fun angleOf(corner: Vector3): Double {
-    val offset = corner - middle
-    return Exact.atan2(offset dot up, offset dot along)
-  }
-
-  /** [corner] as a point in the atlas, inside [cell] of [grid]. */
-  fun cell(
-    corner: Vector3,
-    grid: ShapeAtlas.Grid,
-    cell: Pair<Int, Int>,
-  ): TextureCoordinate {
-    val offset = corner - middle
-    val (column, row) = cell
-    return TextureCoordinate(
-      u = (column + HALF + (offset dot along) / (2 * radius)) / grid.columns,
-      // Down the image is the way the rows are counted, and up the face is the
-      // way the die is drawn, so one of them has to be turned over.
-      v = (row + HALF - (offset dot up) / (2 * radius)) / grid.rows,
-    )
-  }
-
-  companion object {
-    fun on(
-      normal: Vector3,
-      corners: List<Vector3>,
-    ): TextureFrame {
-      val up = flattened(Vector3.Up, normal) ?: flattened(SIDEWAYS, normal) ?: error("no frame for $normal")
-      val middle = corners.reduce(Vector3::plus) * (1.0 / corners.size)
-      return TextureFrame(
-        along = cross(up, normal),
-        up = up,
-        middle = middle,
-        // The face's own circle, so every cell is filled the same way whatever
-        // the polygon in it is: a triangle and a pentagon both touch the edges.
-        radius = corners.maxOf { (it - middle).length },
-      )
-    }
-
-    /** [direction] with the part along [normal] taken out, or null if nothing is left. */
-    private fun flattened(
-      direction: Vector3,
-      normal: Vector3,
-    ): Vector3? {
-      val flat = direction - normal * (direction dot normal)
-      return if (flat.length > FLAT_TOLERANCE) flat.normalised() else null
-    }
-
-    /** What a face pointing straight up or down is turned by instead. */
-    private val SIDEWAYS = Vector3(0.0, 1.0, 0.0)
-
-    private const val FLAT_TOLERANCE = 1e-6
-    private const val HALF = 0.5
-  }
-}
