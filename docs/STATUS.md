@@ -107,7 +107,6 @@ Settings had been forgetting to do under the Pixel 10a's status bar
 **The dice are lit by a room**, reflect one, wear a lacquer and sit on the
 felt rather than over it, and a set can say how far into a die you can see.
 
-<<<<<<< HEAD
 **The Physical block is done**: a set's detail screen quotes what a dice shop
 quotes — grams a die, translucency as a per cent, size as a percentage of an
 average die — from the `density`, `translucency` and `size_mm` its file
@@ -118,12 +117,11 @@ numbers in a record of its own beside the drafts; every other set is read-only,
 because its numbers came out of somebody else's `diceset.toml`. One thing to
 decide: the built-in dice are 16 mm **across the corners** and so weigh 0.9 g
 where a shop would say 4.2 — `docs/TODO.md`, 4.4.
-=======
+
 **Table view is done**: the camera's 22° lean is a Settings row with two
 positions, straight down by default, read when the roll screen opens like the
 other six. The tilt is an argument to `TrayCamera` rather than a constant, so
 both positions are framed by the same JVM-tested arithmetic.
->>>>>>> feature/tableview
 
 **Step 5 is the real remaining work** — see Known risks.
 
