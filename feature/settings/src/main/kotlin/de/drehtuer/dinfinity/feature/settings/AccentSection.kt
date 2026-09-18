@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,11 +31,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AccentColor
-import de.drehtuer.dinfinity.designer.Ink
+import de.drehtuer.dinfinity.ui.common.ColourPicker
 import de.drehtuer.dinfinity.ui.common.Modernist
-import de.drehtuer.dinfinity.ui.common.ModernistButton
-import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
-import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 
 /**
@@ -108,8 +104,15 @@ internal fun AccentSection(
     }
   }
   if (picking) {
-    AccentPicker(
+    // `ui/common`'s picker, which is the one the face designer and the
+    // saved-roll editor open too. **The patch shows the colour as chosen**:
+    // what the app paints may be deeper, the sentence above the grid says so,
+    // and a patch showing the clamped colour would make the slider look
+    // broken (`ColourPicker`).
+    ColourPicker(
       start = selected.argb,
+      title = stringResource(R.string.settings_accent_picker_title),
+      tags = SettingsTestTags.ACCENT_PICKER,
       onDismiss = { picking = false },
       onChosen = {
         picking = false
@@ -208,98 +211,8 @@ private fun RowScope.Swatch(
   }
 }
 
-/**
- * A colour of the player's own.
- *
- * Android has no colour-picker intent to send them to — the prototype's
- * `<input type="color">` is the browser's, and there is no Android equivalent
- * to borrow — so the app draws the one it already has: hue, depth and
- * brightness over `designer/Ink`, which is the picker the face designer offers
- * and the arithmetic a JVM test already holds (`docs/face-designer.md`, "A
- * colour beyond the twelve"). Two pickers in one app that disagreed about what
- * a hue is would be one too many.
- *
- * The patch shows the colour as chosen. What the app will actually paint may
- * be deeper, and the sentence above the grid says so; showing the clamped
- * colour here would make the slider look broken.
- */
-@Composable
-private fun AccentPicker(
-  start: Int,
-  onDismiss: () -> Unit,
-  onChosen: (Int) -> Unit,
-) {
-  var hsv by remember { mutableStateOf(Ink.hsv(start)) }
-  Sheet(
-    title = stringResource(R.string.settings_accent_picker_title),
-    onDismiss = onDismiss,
-    modifier = Modifier.testTag(SettingsTestTags.ACCENT_PICKER),
-    actions = {
-      ModernistButton(
-        text = stringResource(R.string.settings_accent_picker_use),
-        onClick = { onChosen(hsv.argb) },
-        kind = ModernistButtonKind.Primary,
-        modifier = Modifier.testTag(SettingsTestTags.ACCENT_PICKER_USE),
-      )
-      ModernistButton(
-        text = stringResource(R.string.settings_accent_picker_cancel),
-        onClick = onDismiss,
-        kind = ModernistButtonKind.Ghost,
-        modifier = Modifier.testTag(SettingsTestTags.ACCENT_PICKER_CANCEL),
-      )
-    },
-  ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
-      Box(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .height(TOUCH_TARGET)
-            .background(Color(hsv.argb))
-            .border(Modernist.rule, MaterialTheme.colorScheme.outline)
-            .semantics { contentDescription = Ink.hex(hsv.argb) }
-            .testTag(SettingsTestTags.ACCENT_PICKER_PATCH),
-      )
-      Channel(R.string.settings_accent_hue, hsv.hue, HUE_ROUND, SettingsTestTags.ACCENT_HUE) {
-        hsv = hsv.copy(hue = it)
-      }
-      Channel(R.string.settings_accent_depth, hsv.saturation, 1f, SettingsTestTags.ACCENT_DEPTH) {
-        hsv = hsv.copy(saturation = it)
-      }
-      Channel(R.string.settings_accent_brightness, hsv.value, 1f, SettingsTestTags.ACCENT_BRIGHTNESS) {
-        hsv = hsv.copy(value = it)
-      }
-    }
-  }
-}
-
-/** One of the picker's three sliders, named so a screen reader can say which. */
-@Composable
-private fun Channel(
-  label: Int,
-  value: Float,
-  most: Float,
-  tag: String,
-  onChange: (Float) -> Unit,
-) {
-  val name = stringResource(label)
-  Text(text = name, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-  Slider(
-    value = value,
-    onValueChange = onChange,
-    valueRange = 0f..most,
-    modifier =
-      Modifier
-        .semantics { contentDescription = name }
-        .testTag(tag),
-  )
-}
-
 /** Four across (`docs/design-handover.md`). */
 private const val COLUMNS = 4
 
 /** The prototype's `height: 44px`. */
 private val SWATCH = 44.dp
-
-/** Degrees round the wheel — the hue slider's range, not a colour of its own. */
-private const val HUE_ROUND = 360f

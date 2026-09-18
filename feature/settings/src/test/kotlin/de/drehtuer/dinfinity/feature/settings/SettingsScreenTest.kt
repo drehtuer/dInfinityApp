@@ -30,9 +30,9 @@ import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
+import de.drehtuer.dinfinity.core.model.Hsv
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableView
-import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -217,16 +217,16 @@ class SettingsScreenTest {
       SettingsScreen(settings = AppSettings(), onAccentSelected = { chosen += it })
     }
 
-    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER).assertDoesNotExist()
+    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER.sheet).assertDoesNotExist()
     compose.onNodeWithTag(SettingsTestTags.ACCENT_CUSTOM).performScrollTo().performClick()
-    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER).assertExists()
-    slide(SettingsTestTags.ACCENT_HUE, 150f)
-    slide(SettingsTestTags.ACCENT_DEPTH, 0.6f)
-    slide(SettingsTestTags.ACCENT_BRIGHTNESS, 0.8f)
-    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER_USE).performClick()
+    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER.sheet).assertExists()
+    slide(SettingsTestTags.ACCENT_PICKER.hue, 150f)
+    slide(SettingsTestTags.ACCENT_PICKER.depth, 0.6f)
+    slide(SettingsTestTags.ACCENT_PICKER.brightness, 0.8f)
+    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER.use).performClick()
 
-    assertEquals(listOf(AccentChoice.Custom(Ink.argb(150f, 0.6f, 0.8f))), chosen)
-    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER).assertDoesNotExist()
+    assertEquals(listOf(AccentChoice.Custom(Hsv(150f, 0.6f, 0.8f).argb)), chosen)
+    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER.sheet).assertDoesNotExist()
   }
 
   @Test
@@ -237,11 +237,11 @@ class SettingsScreenTest {
     }
 
     compose.onNodeWithTag(SettingsTestTags.ACCENT_CUSTOM).performScrollTo().performClick()
-    slide(SettingsTestTags.ACCENT_HUE, 300f)
-    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER_CANCEL).performClick()
+    slide(SettingsTestTags.ACCENT_PICKER.hue, 300f)
+    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER.cancel).performClick()
 
     assertTrue("a cancelled picker still chose something", chosen.isEmpty())
-    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER).assertDoesNotExist()
+    compose.onNodeWithTag(SettingsTestTags.ACCENT_PICKER.sheet).assertDoesNotExist()
   }
 
   @Test

@@ -26,13 +26,14 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.Hex
+import de.drehtuer.dinfinity.core.model.Hsv
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.Eyes
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.Fill
-import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
@@ -499,7 +500,7 @@ class DesignerScreenTest {
     compose.onNodeWithTag(DesignerTestTags.colourOf(0xFF4A90D9.toInt())).performScrollTo().performClick()
 
     assertEquals(0xFF4A90D9.toInt(), presenter.state.colorArgb)
-    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertDoesNotExist()
   }
 
   @Test
@@ -507,14 +508,14 @@ class DesignerScreenTest {
     val presenter = show(d6)
 
     compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.PICKER).assertExists()
-    compose.onNodeWithTag(DesignerTestTags.HUE).performSemanticsAction(SemanticsActions.SetProgress) { it(150f) }
-    compose.onNodeWithTag(DesignerTestTags.DEPTH).performSemanticsAction(SemanticsActions.SetProgress) { it(0.6f) }
-    compose.onNodeWithTag(DesignerTestTags.BRIGHTNESS).performSemanticsAction(SemanticsActions.SetProgress) { it(0.8f) }
-    compose.onNodeWithTag(DesignerTestTags.PICKER_USE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertExists()
+    compose.onNodeWithTag(DesignerTestTags.PICKER.hue).performSemanticsAction(SemanticsActions.SetProgress) { it(150f) }
+    compose.onNodeWithTag(DesignerTestTags.PICKER.depth).performSemanticsAction(SemanticsActions.SetProgress) { it(0.6f) }
+    compose.onNodeWithTag(DesignerTestTags.PICKER.brightness).performSemanticsAction(SemanticsActions.SetProgress) { it(0.8f) }
+    compose.onNodeWithTag(DesignerTestTags.PICKER.use).performClick()
 
-    assertEquals(Ink.argb(150f, 0.6f, 0.8f), presenter.state.colorArgb)
-    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+    assertEquals(Hsv(150f, 0.6f, 0.8f).argb, presenter.state.colorArgb)
+    compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertDoesNotExist()
   }
 
   @Test
@@ -532,11 +533,11 @@ class DesignerScreenTest {
     val before = presenter.state.colorArgb
 
     compose.onNodeWithTag(DesignerTestTags.MORE_COLOURS).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.HUE).performSemanticsAction(SemanticsActions.SetProgress) { it(300f) }
-    compose.onNodeWithTag(DesignerTestTags.PICKER_CANCEL).performClick()
+    compose.onNodeWithTag(DesignerTestTags.PICKER.hue).performSemanticsAction(SemanticsActions.SetProgress) { it(300f) }
+    compose.onNodeWithTag(DesignerTestTags.PICKER.cancel).performClick()
 
     assertEquals(before, presenter.state.colorArgb)
-    compose.onNodeWithTag(DesignerTestTags.PICKER).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.PICKER.sheet).assertDoesNotExist()
   }
 
   @Test
@@ -544,7 +545,7 @@ class DesignerScreenTest {
     val presenter = show(d6)
 
     compose.onNodeWithTag(DesignerTestTags.INK_HEX).performScrollTo().assertIsDisplayed()
-    compose.onNodeWithText(Ink.hex(presenter.state.colorArgb)).assertExists()
+    compose.onNodeWithText(Hex.of(presenter.state.colorArgb)).assertExists()
   }
 
   @Test

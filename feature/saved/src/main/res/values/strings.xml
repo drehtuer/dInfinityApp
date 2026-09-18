@@ -34,8 +34,13 @@
   <string name="editor_odds">mean %1$s · %2$d to %3$d</string>
   <string name="editor_icon">Icon</string>
   <string name="editor_colour">Colour tag</string>
-  <string name="editor_colour_custom">Or a colour of your own</string>
-  <string name="editor_colour_custom_hint">#2B5AA8</string>
+  <!--
+    The thirteenth swatch, which opens the shared colour picker, and what that
+    sheet is called here. A screen reader reads the first of these, because a
+    swatch is a picture.
+  -->
+  <string name="editor_colour_own">A colour of your own</string>
+  <string name="editor_colour_picker_title">A colour of your own</string>
   <string name="editor_group">Group</string>
   <string name="editor_table">Table for this roll</string>
   <string name="editor_table_default">Default</string>

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -25,7 +24,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,23 +45,20 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.FaceTransform
-import de.drehtuer.dinfinity.designer.Ink
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
+import de.drehtuer.dinfinity.ui.common.ColourPicker
+import de.drehtuer.dinfinity.ui.common.ColourPickerTags
+import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.SegmentedControl
-import de.drehtuer.dinfinity.ui.common.Sheet
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
-import de.drehtuer.dinfinity.ui.common.Ink as Colours
-
-// `Colours` is `ui/common`'s `Ink`, aliased because both better names are
-// taken here: `Ink` is `designer/`'s own hex and HSV arithmetic, and
-// `Palette` is the composable below that draws the twelve colours.
 
 /**
  * Drawing the faces of a die (`design/dInfinity.dc.html`, options `1v`, `4c`
@@ -329,7 +324,7 @@ private fun Warning(state: DesignerState) {
   Text(
     text = stringResource(if (state.full) R.string.designer_face_full else R.string.designer_face_nearly_full),
     style = MaterialTheme.typography.labelSmall,
-    color = Colours.accent,
+    color = Ink.accent,
     modifier = Modifier.padding(horizontal = 24.dp).testTag(DesignerTestTags.WARNING),
   )
 }
@@ -429,7 +424,7 @@ private fun Tool(
           contentColor = MaterialTheme.colorScheme.background,
         )
       } else {
-        ButtonDefaults.textButtonColors(contentColor = Colours.muted)
+        ButtonDefaults.textButtonColors(contentColor = Ink.muted)
       },
     modifier = Modifier.semantics { selected = chosen }.testTag(tag),
   ) {
@@ -496,7 +491,7 @@ private fun StampBar(
       Text(
         text = stringResource(R.string.designer_stamp_refused),
         style = MaterialTheme.typography.labelSmall,
-        color = Colours.accent,
+        color = Ink.accent,
         modifier = Modifier.testTag(DesignerTestTags.STAMP_REFUSED),
       )
     }
@@ -589,7 +584,7 @@ private fun Palette(
       Swatch(
         argb = argb,
         chosen = state.colorArgb == argb && !state.nib.erases,
-        label = stringResource(R.string.designer_ink, Ink.hex(argb)),
+        label = stringResource(R.string.designer_ink, Hex.of(argb)),
         tag = DesignerTestTags.colourOf(argb),
         onChoose = { presenter.ink(argb) },
       )
@@ -597,20 +592,22 @@ private fun Palette(
     Swatch(
       argb = state.colorArgb,
       chosen = state.colorArgb !in PRESETS && !state.nib.erases,
-      label = stringResource(R.string.designer_colour_more, Ink.hex(state.colorArgb)),
+      label = stringResource(R.string.designer_colour_more, Hex.of(state.colorArgb)),
       tag = DesignerTestTags.MORE_COLOURS,
       onChoose = { picking = true },
     )
     Text(
-      text = Ink.hex(state.colorArgb),
+      text = Hex.of(state.colorArgb),
       style = MaterialTheme.typography.labelSmall,
-      color = Colours.muted,
+      color = Ink.muted,
       modifier = Modifier.testTag(DesignerTestTags.INK_HEX),
     )
   }
   if (picking) {
     ColourPicker(
       start = state.colorArgb,
+      title = stringResource(R.string.designer_colour_title),
+      tags = DesignerTestTags.PICKER,
       onDismiss = { picking = false },
       onChosen = {
         presenter.ink(it)
@@ -670,87 +667,6 @@ private fun Swatch(
           ),
     )
   }
-}
-
-/**
- * A colour beyond the twelve (`docs/face-designer.md`, "A colour beyond the
- * twelve").
- *
- * Hue, depth and brightness rather than red, green and blue: three sliders a
- * finger can move one at a time and mean something by. The arithmetic behind
- * them is `Ink`, which is where it can be tested — what is left here is three
- * sliders and a patch of the colour they make.
- */
-@Composable
-private fun ColourPicker(
-  start: Int,
-  onDismiss: () -> Unit,
-  onChosen: (Int) -> Unit,
-) {
-  var hsv by remember { mutableStateOf(Ink.hsv(start)) }
-  Sheet(
-    title = stringResource(R.string.designer_colour_title),
-    onDismiss = onDismiss,
-    modifier = Modifier.testTag(DesignerTestTags.PICKER),
-    // Taking the colour first and leaving it after, because the sheet reads
-    // left to right and the confirming action is what it is for.
-    actions = {
-      ModernistButton(
-        text = stringResource(R.string.designer_colour_use),
-        onClick = { onChosen(hsv.argb) },
-        kind = ModernistButtonKind.Primary,
-        modifier = Modifier.testTag(DesignerTestTags.PICKER_USE),
-      )
-      ModernistButton(
-        text = stringResource(R.string.designer_colour_cancel),
-        onClick = onDismiss,
-        kind = ModernistButtonKind.Ghost,
-        modifier = Modifier.testTag(DesignerTestTags.PICKER_CANCEL),
-      )
-    },
-  ) {
-    // Tighter than the sheet's own spacing: the patch and the three sliders
-    // are one control, not four blocks of the sheet.
-    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x1)) {
-      Box(
-        modifier =
-          Modifier
-            .fillMaxWidth()
-            .height(TOUCH_TARGET)
-            .background(Color(hsv.argb))
-            .border(Modernist.rule, MaterialTheme.colorScheme.outline)
-            .semantics { contentDescription = Ink.hex(hsv.argb) }
-            .testTag(DesignerTestTags.PICKER_PATCH),
-      )
-      Channel(R.string.designer_hue, hsv.hue, HUE_ROUND, DesignerTestTags.HUE) { hsv = hsv.copy(hue = it) }
-      Channel(R.string.designer_depth, hsv.saturation, 1f, DesignerTestTags.DEPTH) {
-        hsv = hsv.copy(saturation = it)
-      }
-      Channel(R.string.designer_brightness, hsv.value, 1f, DesignerTestTags.BRIGHTNESS) { hsv = hsv.copy(value = it) }
-    }
-  }
-}
-
-/** One of the picker's three sliders, named so a screen reader can say which. */
-@Composable
-private fun Channel(
-  label: Int,
-  value: Float,
-  most: Float,
-  tag: String,
-  onChange: (Float) -> Unit,
-) {
-  val name = stringResource(label)
-  Text(text = name, style = MaterialTheme.typography.labelSmall, color = Colours.muted)
-  Slider(
-    value = value,
-    onValueChange = onChange,
-    valueRange = 0f..most,
-    modifier =
-      Modifier
-        .semantics { contentDescription = name }
-        .testTag(tag),
-  )
 }
 
 /**
@@ -862,9 +778,6 @@ private const val GUIDE_ALPHA = 0.35f
 /** Nanoseconds in a second, which is what a frame's stamp is counted in. */
 private const val NANOS_A_SECOND = 1_000_000_000f
 
-/** All the way round the wheel, which is where hue starts again. */
-private const val HUE_ROUND = 360f
-
 /**
  * How big a colour swatch is drawn (`width:26px;height:26px`).
  *
@@ -918,13 +831,15 @@ object DesignerTestTags {
   const val FILL_NUMBERS: String = "designer:stamp:fill"
   const val MORE_COLOURS: String = "designer:colour:more"
   const val INK_HEX: String = "designer:colour:hex"
-  const val PICKER: String = "designer:picker"
-  const val PICKER_PATCH: String = "designer:picker:patch"
-  const val PICKER_USE: String = "designer:picker:use"
-  const val PICKER_CANCEL: String = "designer:picker:cancel"
-  const val HUE: String = "designer:picker:hue"
-  const val DEPTH: String = "designer:picker:depth"
-  const val BRIGHTNESS: String = "designer:picker:brightness"
+
+  /**
+   * The shared colour picker, and the six controls in it.
+   *
+   * One tag rather than seven: the sheet is `ui/common`'s now and derives its
+   * own children's tags from this one, so there is nowhere for a suffix to be
+   * spelled two ways (`ColourPickerTags`).
+   */
+  val PICKER: ColourPickerTags = ColourPickerTags("designer:picker")
 
   fun viewOf(view: DesignerView): String = "designer:view:${view.name.lowercase()}"
 

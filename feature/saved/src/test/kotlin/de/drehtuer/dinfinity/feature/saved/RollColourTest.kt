@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.saved
 import de.drehtuer.dinfinity.core.model.AccentRamp
 import de.drehtuer.dinfinity.core.model.Contrast
 import de.drehtuer.dinfinity.core.model.Ground
+import de.drehtuer.dinfinity.core.model.Hex
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -67,32 +68,23 @@ class RollColourTest {
   }
 
   @Test
-  fun `a hex colour is read as typed, long or short, with or without the hash`() {
-    assertEquals(0xFF123456.toInt(), RollColour.parseHex("#123456"))
-    assertEquals(0xFF123456.toInt(), RollColour.parseHex("123456"))
-    assertEquals(0xFFAABBCC.toInt(), RollColour.parseHex("#abc"))
-    assertEquals(0xFFFFFFFF.toInt(), RollColour.parseHex("#ffffff"))
-    assertEquals(0xFF000000.toInt(), RollColour.parseHex("  #000000  "))
-  }
-
-  @Test
-  fun `what is not a colour chooses nothing`() {
-    // Half-typed is somebody in the middle of typing, not a mistake to shout
-    // about — so it is null and the tag simply does not change yet.
-    assertNull(RollColour.parseHex(""))
-    assertNull(RollColour.parseHex("#"))
-    assertNull(RollColour.parseHex("#12"))
-    assertNull(RollColour.parseHex("#12345"))
-    assertNull(RollColour.parseHex("#1234567"))
-    assertNull(RollColour.parseHex("#12345g"))
-    assertNull(RollColour.parseHex("cobalt"))
-  }
-
-  @Test
-  fun `a colour written out reads back as itself`() {
+  fun `a colour written out is the six digits the picker's own readout shows`() {
+    // The editor prints a tag as `#RRGGBB` beside the swatches, for somebody
+    // copying it onto a character sheet. It is the one description of a
+    // colour that is exact, and it is `core/model`'s rather than a fourth
+    // copy of six digits.
     RollColour.entries.forEach { tag ->
-      assertEquals(tag.argb, RollColour.parseHex(RollColour.hexOf(tag.argb)))
+      assertEquals(Hex.of(tag.argb), RollColour.hexOf(tag.argb))
     }
+    assertEquals("#1D5FD4", RollColour.hexOf(RollColour.Cobalt.argb))
+  }
+
+  @Test
+  fun `a colour of somebody's own is written out the same way as one of the twelve`() {
+    // A tag is stored as the colour itself, so a colour off the picker and
+    // one off the palette are the same kind of thing all the way down.
+    assertEquals("#123456", RollColour.hexOf(0xFF123456.toInt()))
+    assertNull("a colour nobody offered is a custom one", RollColour.of(0xFF123456.toInt()))
   }
 
   @Test

@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import de.drehtuer.dinfinity.core.model.AccentRamp
 import de.drehtuer.dinfinity.core.model.Ground
+import de.drehtuer.dinfinity.core.model.Hex
 
 /**
  * The twelve colours a saved roll's mark can be tagged with
@@ -20,9 +21,11 @@ import de.drehtuer.dinfinity.core.model.Ground
  * *this roll is the attack and that one is the damage* and there have to be
  * enough of them to tell a character sheet apart at a glance.
  *
- * Twelve of them and not only a field to type one in ([parseHex] is offered
- * beside them) because twelve named colours are a choice somebody makes in a
- * second, where naming a colour is a choice somebody has to work at.
+ * Twelve of them, with a thirteenth swatch that opens the shared colour
+ * picker beside them (`ui/common`'s `ColourPicker`), because twelve named
+ * colours are a choice somebody makes in a second where naming a colour is a
+ * choice somebody has to work at. The twelve are the fast path and the picker
+ * is the way past them.
  *
  * **No entry here is drawn as it is written.** Every one of them, and every
  * custom colour with it, goes through [AccentRamp.clamp] against the
@@ -65,48 +68,17 @@ enum class RollColour(
     fun of(argb: Int?): RollColour? = entries.firstOrNull { it.argb == argb }
 
     /**
-     * `#rrggbb` or `#rgb`, as an opaque colour, or null when it is not one.
+     * [argb] written out, so the editor can print what was chosen.
      *
-     * Typed rather than picked from a wheel: the system colour picker arrives
-     * with the accent's own picker (`docs/TODO.md`, Step 4.9), and until then
-     * a hex field is the one way of naming a colour that costs nothing and
-     * that somebody copying a colour out of a character sheet already has.
-     *
-     * Anything else is null rather than a guess. A half-typed colour is a
-     * thing somebody is in the middle of typing, not an error to shout about.
+     * `core/model`'s [Hex], not a fourth copy of six digits: the accent's
+     * label, the face designer's ink readout and this one used to write the
+     * same string three different ways, and two of them reached
+     * `String.format` with the default locale in tow. Named here rather than
+     * reached for directly so the call sites in this module say *a colour
+     * tag*, and so this enum owns the one thing it is: what a saved roll's
+     * colour looks like written down.
      */
-    fun parseHex(typed: String): Int? {
-      val hex = typed.trim().removePrefix("#")
-      val full =
-        when (hex.length) {
-          SHORT -> hex.map { "$it$it" }.joinToString("")
-          LONG -> hex
-          else -> return null
-        }
-      if (!full.all { it.isDigit() || it.lowercaseChar() in 'a'..'f' }) return null
-      return OPAQUE or full.toInt(HEX)
-    }
-
-    /**
-     * [argb] written the way it is typed, so the field shows what was chosen.
-     *
-     * Built rather than formatted, because `String.format` takes the default
-     * locale with it and a hex colour is not a number anybody's locale has an
-     * opinion about.
-     */
-    fun hexOf(argb: Int): String =
-      "#" +
-        (argb and RGB)
-          .toString(HEX)
-          .padStart(DIGITS, '0')
-          .uppercase()
-
-    private const val SHORT = 3
-    private const val LONG = 6
-    private const val DIGITS = 6
-    private const val HEX = 16
-    private const val OPAQUE = 0xFF shl 24
-    private const val RGB = 0xFFFFFF
+    fun hexOf(argb: Int): String = Hex.of(argb)
   }
 }
 

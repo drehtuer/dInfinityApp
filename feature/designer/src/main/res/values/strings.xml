@@ -48,10 +48,10 @@
   <!-- The label a screen reader reads for one colour of the palette. -->
   <string name="designer_ink">Ink %1$s</string>
   <string name="designer_colour_more">More colours, now %1$s</string>
+  <!--
+    What the shared colour picker is called when it is the pen being coloured.
+    The sheet's title is this screen's word for it; everything inside the sheet
+    is `ui/common`'s, because a hue is a hue on every screen.
+  -->
   <string name="designer_colour_title">Pick a colour</string>
-  <string name="designer_colour_use">Use it</string>
-  <string name="designer_colour_cancel">Cancel</string>
-  <string name="designer_hue">Hue</string>
-  <string name="designer_depth">Depth</string>
-  <string name="designer_brightness">Brightness</string>
 </resources>

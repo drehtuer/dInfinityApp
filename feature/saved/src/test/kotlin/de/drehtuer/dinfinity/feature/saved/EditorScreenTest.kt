@@ -1,18 +1,24 @@
 package de.drehtuer.dinfinity.feature.saved
 
 import android.content.Context
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import de.drehtuer.dinfinity.core.model.Hsv
 import de.drehtuer.dinfinity.core.model.SavedRoll
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.model.TablePin
@@ -23,6 +29,7 @@ import de.drehtuer.dinfinity.data.SavedRollRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
+import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import de.drehtuer.dinfinity.ui.common.UpTestTags
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -150,28 +157,105 @@ class EditorScreenTest {
   }
 
   @Test
-  fun `a colour of somebody's own is taken as typed`() {
+  fun `a colour of somebody's own is picked, and it is the colour the sliders made`() {
+    // The device feedback on v0.1.1: a picker rather than a hex field. What
+    // it must still do is what the field did — put a colour nobody offered on
+    // the roll, stored exactly the way one of the twelve is.
     val presenter = show()
     compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("1d20")
 
-    compose.onNodeWithTag(EditorTestTags.COLOUR_CUSTOM).performScrollTo().performTextInput("#123456")
+    compose.onNodeWithTag(EditorTestTags.COLOUR_OWN).performScrollTo().performClick()
+    compose.onNodeWithTag(EditorTestTags.COLOUR_PICKER.sheet).assertExists()
+    slide(EditorTestTags.COLOUR_PICKER.hue, 150f)
+    slide(EditorTestTags.COLOUR_PICKER.depth, 0.6f)
+    slide(EditorTestTags.COLOUR_PICKER.brightness, 0.8f)
+    compose.onNodeWithTag(EditorTestTags.COLOUR_PICKER.use).performClick()
     compose.onNodeWithTag(EditorTestTags.SAVE).performScrollTo().performClick()
     presenter.written()
 
-    assertEquals(0xFF123456.toInt(), runBlocking { repository.all.first().single() }.colorArgb)
+    assertEquals(Hsv(150f, 0.6f, 0.8f).argb, runBlocking { repository.all.first().single() }.colorArgb)
+    compose.onNodeWithTag(EditorTestTags.COLOUR_PICKER.sheet).assertDoesNotExist()
   }
 
   @Test
-  fun `half a colour chooses nothing rather than something wrong`() {
-    // Somebody in the middle of typing is not somebody making a mistake.
+  fun `a picker that is cancelled chooses nothing rather than something wrong`() {
+    // What the half-typed hex code used to prove: leaving the colour alone is
+    // a thing somebody can do, and the way out that changes nothing exists.
     val presenter = show()
     compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("1d20")
 
-    compose.onNodeWithTag(EditorTestTags.COLOUR_CUSTOM).performScrollTo().performTextInput("#12")
+    compose.onNodeWithTag(EditorTestTags.COLOUR_OWN).performScrollTo().performClick()
+    slide(EditorTestTags.COLOUR_PICKER.hue, 300f)
+    compose.onNodeWithTag(EditorTestTags.COLOUR_PICKER.cancel).performClick()
     compose.onNodeWithTag(EditorTestTags.SAVE).performScrollTo().performClick()
     presenter.written()
 
     assertNull(runBlocking { repository.all.first().single() }.colorArgb)
+    compose.onNodeWithTag(EditorTestTags.COLOUR_PICKER.sheet).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the twelve are still the fast path, and do not open anything`() {
+    // Twelve colours a finger can hit is a choice somebody makes in a second.
+    // A preset that went through a sheet would be the picker charging the
+    // twelve for its own convenience.
+    val presenter = show()
+
+    compose.onNodeWithTag(EditorTestTags.colourOf(RollColour.Teal.argb)).performScrollTo().performClick()
+
+    assertEquals(RollColour.Teal.argb, presenter.state.colourArgb)
+    compose.onNodeWithTag(EditorTestTags.COLOUR_PICKER.sheet).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the chosen colour is written out, so it can be copied onto a character sheet`() {
+    // What the hex field left behind: a swatch is a picture, and two of the
+    // twelve are a shade apart. The readout is the colour as chosen, not as
+    // the clamp will paint it.
+    show()
+
+    compose.onNodeWithTag(EditorTestTags.colourOf(RollColour.Cobalt.argb)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(EditorTestTags.COLOUR_HEX).assertTextContains("#1D5FD4")
+  }
+
+  @Test
+  fun `the picker opens on the colour the roll already wears`() {
+    // Opening on a colour nobody chose would make every visit start by
+    // undoing one, so the patch shows the tag that is already on the roll.
+    given(
+      SavedRoll(
+        id = "fireball",
+        groupId = UNFILED,
+        name = "Fireball",
+        formula = "8d6",
+        colorArgb = 0xFF2B5AA8.toInt(),
+      ),
+    )
+    val presenter = show(editing = "fireball")
+    compose.waitUntil(PATIENCE) { presenter.state.loaded }
+
+    compose.onNodeWithTag(EditorTestTags.COLOUR_OWN).performScrollTo().performClick()
+
+    compose.onNodeWithTag(EditorTestTags.COLOUR_PICKER.patch).assertContentDescriptionEquals("#2B5AA8")
+  }
+
+  @Test
+  fun `every colour on the form is big enough to hit`() {
+    // A 34 px swatch in Android's 48 dp floor — the thirteenth included,
+    // because the way past the twelve may not be the hardest one to press.
+    show()
+
+    compose
+      .onNodeWithTag(EditorTestTags.colourOf(null))
+      .performScrollTo()
+      .assertWidthIsAtLeast(TOUCH_TARGET)
+      .assertHeightIsAtLeast(TOUCH_TARGET)
+    compose
+      .onNodeWithTag(EditorTestTags.COLOUR_OWN)
+      .performScrollTo()
+      .assertWidthIsAtLeast(TOUCH_TARGET)
+      .assertHeightIsAtLeast(TOUCH_TARGET)
   }
 
   @Test
@@ -398,6 +482,12 @@ class EditorScreenTest {
   private fun given(vararg rolls: SavedRoll) {
     runBlocking { rolls.forEach { repository.save(it) } }
   }
+
+  /** One of the picker's three sliders, dragged to a value. */
+  private fun slide(
+    tag: String,
+    to: Float,
+  ) = compose.onNodeWithTag(tag).performSemanticsAction(SemanticsActions.SetProgress) { it(to) }
 
   @Test
   fun `two new rolls made without being told an id do not collide`() {

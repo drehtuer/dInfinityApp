@@ -22,6 +22,7 @@ import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableView
+import de.drehtuer.dinfinity.ui.common.ColourPickerTags
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.RuleWeight
@@ -162,14 +163,17 @@ object SettingsTestTags {
   /** The chosen colour written out — what was picked, not what is painted. */
   const val ACCENT_HEX: String = "settings:accent:hex"
 
-  /** The sheet behind the custom swatch, and the three sliders on it. */
-  const val ACCENT_PICKER: String = "settings:accent:picker"
-  const val ACCENT_PICKER_PATCH: String = "settings:accent:picker:patch"
-  const val ACCENT_PICKER_USE: String = "settings:accent:picker:use"
-  const val ACCENT_PICKER_CANCEL: String = "settings:accent:picker:cancel"
-  const val ACCENT_HUE: String = "settings:accent:hue"
-  const val ACCENT_DEPTH: String = "settings:accent:depth"
-  const val ACCENT_BRIGHTNESS: String = "settings:accent:brightness"
+  /**
+   * The sheet behind the custom swatch, and the six controls on it.
+   *
+   * One tag rather than seven: the sheet is `ui/common`'s now — the same one
+   * the face designer and the saved-roll editor open — and it derives its
+   * children's tags from this one, so there is nowhere for a suffix to be
+   * spelled two ways (`ColourPickerTags`). The three sliders moved from
+   * `settings:accent:hue` to `settings:accent:picker:hue` with it, which is
+   * where they always belonged: they are the sheet's, not the section's.
+   */
+  val ACCENT_PICKER: ColourPickerTags = ColourPickerTags("settings:accent:picker")
 
   /** What this is and where it came from (design option 2d). */
   const val VERSION: String = "settings:version"
