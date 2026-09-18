@@ -230,7 +230,8 @@ stateDiagram-v2
     Editor: Saved roll editor
     Developer: Developer<br/>(only while the toggle is on)
 
-    Roll --> Graph: See the odds
+    Roll --> Graph: See the odds, off the result sheet
+    Roll --> Editor: Save as roll, off the result sheet
     Roll --> Menu: the menu button
     Screen --> Editor: a saved roll, or New
     Editor --> Screen: saved, deleted, or the chevron
@@ -485,15 +486,28 @@ the editor, under the squiggle, because that is where somebody can fix it.
 Whether the editor is open is the screen's, remembered across a rotation, and
 `RollMachine` knows nothing about it.
 
-The picker row is not in that table because it is on screen, and live, in
+**Two menus hang off the top edge, and only one of them can be open.** The
+formula is one of them, on the right under the menu button; the dice picker is
+the other, on the left. Both push what is under them down rather than floating
+over it, so two open at once would be the top half of the table covered —
+which is the thing the layout exists to stop
+(`docs/physics-and-rendering.md`, "What is drawn over the table"). Which is
+open is two booleans on the screen, remembered across a rotation, and opening
+either shuts the other in one place rather than in each control.
+
+The picker row is not in that table because it is reachable, and live, in
 every state — for the same reason the formula is, and in fact for exactly that
-reason: it is the formula edited with a thumb.
+reason: it is the formula edited with a thumb. It is *put away* rather than
+absent: the pull-down's head carries the count of dice the formula asks for,
+so a shut menu still says what is in the throw.
 
 Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
 - **the formula line** opens the editor, and **the editor** calls `type` on
   every keystroke and `roll` on the action key;
+- **the dice pull-down** puts the picker on screen and takes it away again,
+  and decides nothing about the roll;
 - **the dice picker row** calls `add` on a tap and `remove` on a long press,
   and both are `type` underneath — a tap *is* an edit to the formula, so it
   re-validates, re-checks the table's capacity and abandons a throw in the air
@@ -508,12 +522,19 @@ and none of them decides anything itself:
   correction typed by hand;
 - **pinch and two-finger drag** call `look`, which moves the camera and is not
   a state change at all — where a player is standing is not what the dice did;
-- **See the odds** is the one control that leaves the screen. It navigates and
-  changes no state here at all, carrying the formula as typed and, for a throw
-  that has landed, its total (`design/dInfinity.dc.html`, option 7a). Offered
-  in `Ready`, `TooMany` and `Settled` — including the refusal, because a throw
-  the table cannot hold is exactly when "what would it have been" is the only
-  answer there is.
+- **See the odds** and **Save as roll** are the two controls that leave the
+  screen. Neither changes any state here at all: the first carries the formula
+  as typed and the total that landed (`design/dInfinity.dc.html`, option 7a),
+  the second carries the formula alone to the saved-roll editor (option 3b).
+  Both live at the foot of the result sheet, so both are offered in `Settled`
+  and in no other state — a device session asked for them to be part of the
+  result rather than plates standing on the felt. **That is a narrowing**: the
+  odds used to be offered in `Ready` and `TooMany` as well, and the refusal
+  was the case with the best argument, because a throw the table cannot hold
+  is exactly when "what would it have been" is the only answer there is. What
+  is left for that case is the menu, which reaches the graph from anywhere.
+  Neither callback knows where it goes, because `feature/roll` may not depend
+  on `feature/graph` or `feature/saved`.
 
 In power-saving mode the tray is not there at all, and the list is otherwise
 unchanged: the dice are thrown by the same `roll`, stepped by the same loop,

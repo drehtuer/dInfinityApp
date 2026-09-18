@@ -63,13 +63,25 @@
   <string name="roll_result_is_down">Pushed down</string>
   <!-- Quick mode: what a long press on a die in the breakdown offers (docs/face-designer.md). -->
   <string name="roll_die_doodle">Doodle this die</string>
-  <string name="roll_hint_empty">Type a formula, or tap a die below.</string>
+  <string name="roll_hint_empty">Type a formula, or open Dice at the top.</string>
   <string name="roll_hint_ready">Shake the phone, or press Roll.</string>
   <!-- The dice picker row (design option 1h). %1$s is a die, e.g. "d20". -->
   <string name="roll_picker_add">Add a %1$s</string>
   <string name="roll_picker_remove">Take a %1$s off</string>
-  <!-- The way to the outcome graph (design option 7a). -->
+  <!--
+    The dice pull-down at the top of the tray (design option 1h): what it is,
+    what a press does, and whether it is open. The last two are said rather
+    than drawn, because a chevron is a picture and a screen reader has nothing
+    else to go on.
+  -->
+  <string name="roll_dice_menu">Dice</string>
+  <string name="roll_dice_menu_open">Open the dice</string>
+  <string name="roll_dice_menu_close">Put the dice away</string>
+  <string name="roll_dice_menu_is_open">Open</string>
+  <string name="roll_dice_menu_is_shut">Closed</string>
+  <!-- The two ways on from a result, at the foot of the sheet (options 7a, 3b). -->
   <string name="roll_see_the_odds">See the odds</string>
+  <string name="roll_save_as_roll">Save as roll</string>
   <string name="roll_throw">Roll</string>
   <string name="roll_again">Roll again</string>
   <string name="roll_rolling">Rolling…</string>

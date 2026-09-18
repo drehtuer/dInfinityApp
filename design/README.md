@@ -62,6 +62,17 @@ Every one of those is folded into `docs/` — that is where a decision lives onc
 it is taken. What the design left open is in
 [../docs/TODO.md](../docs/TODO.md).
 
+**The roll screen's top has moved on since this was imported.** A device
+session asked for the dice to be a pull-down at the top of the table and the
+formula to be an expanding menu on the right under the menu button, and the
+app does that now; the prototype still draws an always-out picker strip and
+the formula in the left corner. The tray also casts no shadow on its own felt
+any more. The whole difference is tabulated in
+[../docs/design-handover.md](../docs/design-handover.md), "The roll screen's
+top, after the second device session", with the three questions the next pass
+over the prototype has to answer. It is written down rather than drawn
+because this file is generated — see **Editing**, below.
+
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
 2026-09-17.
 

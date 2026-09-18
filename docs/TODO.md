@@ -125,22 +125,6 @@ is drawn over the table"):
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
 
-- [ ] **The rest of the plates are a stack at the bottom, and on a phone that
-      is most of a wall.** The formula has moved to the corner the design puts
-      it in and the felt is clear again above the controls; what is left below
-      is the saved rolls, the picker and the Roll button.
-      Seen on the Pixel 10a with the straight-down table view: the odds, the
-      saved rolls, the picker and the button are four plates one above another,
-      and between them they cover a good deal of the felt —
-      which is the banded column the tray stopped being, drawn in shadow
-      instead of in rules. The design puts four small plates in the corners of
-      a clear table (formula top left, hint bottom left, the counting plate
-      across the bottom) and puts the dice picker in a strip under the app bar,
-      with no button at all: you shake, or you tap the table. **The design is
-      right and this is the divergence to close**, and it is a layout change
-      rather than a plate change — which is why it is here rather than in the
-      change that made the plates
-
 **Decided while making the result a pull-up**, where the brief left a choice
 (`docs/physics-and-rendering.md`, "What is drawn over the table"):
 
@@ -231,7 +215,8 @@ is drawn over the table"):
       parked sheet leaves enough felt to see a die that landed at the bottom
       edge. Where it rests and what a flick settles to are JVM-tested; the feel
       is not (`docs/physics-and-rendering.md`, "What is drawn over the table")
-- [ ] *Judge the picker row on the phone:* the built-in set offers ten dice, and ten at a touch target worth pressing do not fit across a 360 dp screen, so the row scrolls. Whether that reads as "there are more dice over there" or as "the d20 is missing" is not something a test can answer — and the d20 is the die most people want (`design/dInfinity.dc.html`, option 1h)
+- [ ] *Judge the dice pull-down on the phone:* the dice are behind a head reading `Dice` at the top of the table now, and the row inside it still scrolls — the built-in set offers ten dice and ten at a touch target worth pressing do not fit across a 360 dp screen. Three things need eyes. Does a shut menu read as "the dice are in there" or as "there are no dice"? Does the count on the head answer that? And does the scrolling row read as "there are more dice over there" or as "the d20 is missing" — the d20 being the die most people want (`design/dInfinity.dc.html`, option 1h)
+- [ ] *Judge the tray with no shadow of its own on the phone:* the wall and the rim no longer cast, and the dice still do. What is left to see is whether the join between the wall and the floor still reads as a corner — the contact darkening there is screen-space ambient occlusion rather than a cast shadow, and it cannot be turned off per renderable without taking the dice's contact with it (`docs/physics-and-rendering.md`, "Rendering (normal mode)")
 - [ ] **Decided: braced notation, so a set's own dice can be typed and picked.**
       Plain notation spells `dN`, `d%` and `dF`, so `skull-d6` has nothing a
       formula could carry and `DicePicker.offeredBy` filters the row down to
@@ -267,7 +252,7 @@ is drawn over the table"):
       breakdown, the history, saved rolls and every collection file anybody has
       already written
 
-- [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the picker and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
+- [ ] *Judge power-saving on the phone:* it throws and reports with no tray on screen, but the screen it leaves behind is the formula, the dice menu and a total with nothing above them. The design shows a short progress indicator and a result sheet in the tray's place (`1z`); whether the gap reads as "instant" or as "broken" needs eyes
 - [ ] *Device:* the whole of Step 5 hangs off this screen
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
@@ -1264,7 +1249,6 @@ throws rather than a twelve-second fight with the solver.
 - [ ] Dice respond to a shake within ~100 ms, and they move the way the hand did — the tray itself never moves, because it is the screen (`docs/physics-and-rendering.md`). The direction and the dropped-force stutter are both fixed; what is left to judge is the *start*, which read as a lag on the Pixel 10a: the dice are already travelling fast when the shake begins to reach them, so the hand seems to be catching up with dice that left without it. The 100 ms start threshold and the spawn impulse are the two numbers in it
 - [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling. **Not yet:** on the Pixel 10a the dice do not travel far enough and the tumble does not read as dice being thrown. Throw energy and spawn spread are where that is tuned (5.5), and this is the judgement that says when it is right
 - [ ] *Judge the formula editor on the phone:* whether a dashed rule under the formula reads as "you can type here", and whether a keyboard over the lower half of the tray is right or wants the tray to shift up while the editor is open (`design/dInfinity.dc.html`, option 2a)
-- [ ] The rim's shadow still looks wrong — the band across the top of the wall casts something that does not read as a rim. Lighting and the shadow map, not geometry, on present evidence
 - [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
 - [ ] **Do the haptics land?** They fire on real impacts only and the rule is asserted rather than tuned: a change in a die's speed that the step's own gravity explains is never reported, so a die sliding and a die at rest are silent by construction. What a phone has to answer is the *feel* — whether a die hitting the tray reads as a knock rather than a rattle, whether one die landing among twenty is still felt, and whether the 45 ms rate limit turns a hundred dice into a handful of distinct knocks or into one long buzz. Listen for: a single d20 landing, then `20d6`, then `100d6`
 - [ ] **Do the five tables sound like their materials?** The sounds are generated rather than recorded (`docs/physics-and-rendering.md`), so this is the first time anybody hears them. Roll the same `5d6` on `felt-green`, `oak`, `dark-glass` and `plain` and say whether each reads as its surface; then roll `2d20` and `20d6` on one table and say whether the pitch difference between a big die and a shrunk one reads as dice of different sizes or as an effect. If a preset is wrong, the four numbers behind it are in `ImpactWaveform`

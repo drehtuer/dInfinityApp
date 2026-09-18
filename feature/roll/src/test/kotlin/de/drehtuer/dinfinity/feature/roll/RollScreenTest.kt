@@ -149,11 +149,65 @@ class RollScreenTest {
   }
 
   @Test
+  fun `the dice are put away until the pull-down is opened`() {
+    // The picker was the third of four plates along the bottom edge, which on
+    // a phone with the straight-down table view covered the felt a die may
+    // well have landed on (`docs/physics-and-rendering.md`, "What is drawn
+    // over the table").
+    show()
+
+    compose.onNodeWithTag(RollTestTags.DICE_MENU).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.PICKER).assertDoesNotExist()
+  }
+
+  @Test
+  fun `opening it brings the dice out, and closing it puts them back`() {
+    show()
+
+    openDice()
+    compose.onNodeWithTag(RollTestTags.PICKER).assertIsDisplayed()
+
+    compose.onNodeWithTag(RollTestTags.DICE_MENU).performClick()
+    compose.onNodeWithTag(RollTestTags.PICKER).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the shut menu still says how many dice are in the throw`() {
+    // Otherwise putting the dice away would hide the one thing tapping them
+    // did, and a player would have to open it again to check.
+    show()
+    typeFormula("4d6 + 1d20")
+
+    compose.onNodeWithTag(RollTestTags.DICE_MENU_COUNT, useUnmergedTree = true).assertTextEquals("5")
+  }
+
+  @Test
+  fun `opening the dice puts the formula editor away, and the other way round`() {
+    // Both hang off the top edge and both push what is under them down. Two
+    // open at once is the whole top half of the table covered, which is the
+    // thing this layout exists to stop.
+    show()
+
+    typeFormula("1d20")
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
+    openDice()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.PICKER).assertIsDisplayed()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+
+    compose.onNodeWithTag(RollTestTags.PICKER).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
+  }
+
+  @Test
   fun `a tap on the picker row types the formula for you`() {
     // The row is not a second way to describe a roll: it edits the field, and
     // what comes out is a formula somebody could have typed
     // (`docs/architecture.md`, decision 31).
     show(faces = mapOf(0 to 0))
+    openDice()
 
     // Scrolled to first, because ten dice at a touch target worth pressing do
     // not fit across a phone — which is why the row scrolls.
@@ -166,6 +220,7 @@ class RollScreenTest {
   @Test
   fun `tapping twice asks for two of them and the badge says so`() {
     show()
+    openDice()
 
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
@@ -177,6 +232,7 @@ class RollScreenTest {
   @Test
   fun `a long press takes the last one off and empties the field`() {
     show()
+    openDice()
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
 
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performTouchInput { longClick() }
@@ -190,6 +246,10 @@ class RollScreenTest {
     show()
 
     typeFormula("4d6 + 1d20")
+    // The editor and the dice cannot both be open, so this is also the check
+    // that opening one puts the other away.
+    openDice()
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
 
     compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("4")
     compose.onNodeWithTag(RollTestTags.pickerCount("d20"), useUnmergedTree = true).assertTextEquals("1")
@@ -425,7 +485,7 @@ class RollScreenTest {
   fun `an empty field says what to do rather than nothing`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Type a formula, or tap a die below.")
+    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Type a formula, or open Dice at the top.")
   }
 
   @Test
@@ -467,21 +527,37 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the odds are offered for a throw the table refuses, which is when they matter most`() {
-    // `500d6` cannot be rolled here. "What would it have been" is then the only
-    // answer there is (`docs/probability.md`).
-    val asked = mutableListOf<Pair<String, Long?>>()
+  fun `the result also offers to save the formula as a roll`() {
+    // `:feature:roll` does not know what a saved roll is, so what goes out is
+    // the formula and nothing else (`docs/architecture.md`, "Modules").
+    val asked = mutableListOf<String>()
     compose.setContent {
       RollScreen(
-        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
-        onSeeTheOdds = { formula, total -> asked += formula to total },
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0, 1 to 0, 2 to 0))),
+        onSaveAsRoll = { formula -> asked += formula },
       )
     }
-    typeFormula("500d6")
+    typeFormula("3d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
-    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+    compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).performClick()
 
-    assertEquals(listOf("500d6" to null), asked)
+    assertEquals(listOf("3d6"), asked)
+  }
+
+  @Test
+  fun `neither is offered until a throw has landed, because both are the result's`() {
+    // They used to be plates in the column of controls, offered from `Ready`
+    // and from a refusal as well. They are the result sheet's now, which is
+    // what the device session asked for — and a sheet only exists once the
+    // dice have been read (`docs/physics-and-rendering.md`, "What is drawn
+    // over the table").
+    show()
+
+    typeFormula("3d6")
+
+    compose.onNodeWithTag(RollTestTags.ODDS).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).assertDoesNotExist()
   }
 
   @Test
@@ -516,6 +592,7 @@ class RollScreenTest {
     // A chooser with one entry is furniture, which is the rule every other
     // chooser in the app follows.
     show()
+    openDice()
 
     compose.onNodeWithTag(RollTestTags.SETS).assertDoesNotExist()
   }
@@ -523,6 +600,7 @@ class RollScreenTest {
   @Test
   fun `with two sets installed the row says which one it is offering`() {
     val presenter = show(catalog = twoSets())
+    openDice()
 
     compose.onNodeWithTag(RollTestTags.SETS).assertExists()
     compose.onNodeWithTag(RollTestTags.setOf(BRASS)).performScrollTo().performClick()
@@ -644,12 +722,14 @@ class RollScreenTest {
   }
 
   @Test
-  fun `and its odds button goes nowhere rather than failing`() {
+  fun `and the result's two buttons go nowhere rather than failing`() {
     val presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0)))
     compose.setContent { RollScreen(presenter = presenter) }
     typeFormula("1d20")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
 
     compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+    compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).performClick()
 
     compose.onNodeWithTag(RollTestTags.ODDS).assertIsDisplayed()
   }
@@ -719,6 +799,18 @@ class RollScreenTest {
 
     compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.INVALID).assertIsDisplayed()
+  }
+
+  /**
+   * Pulls the dice menu down, the way a player does.
+   *
+   * The dice are put away until somebody asks for them
+   * (`docs/physics-and-rendering.md`, "What is drawn over the table"), so
+   * every test that taps a die goes through the head — which is also the only
+   * way the head stays tested.
+   */
+  private fun openDice() {
+    compose.onNodeWithTag(RollTestTags.DICE_MENU).performClick()
   }
 
   /**

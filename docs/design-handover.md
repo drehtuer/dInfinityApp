@@ -64,6 +64,40 @@ its true shape, and whether an oversized stamp on a d4 shrinks to fit.
   becoming typable as `3{skull-d6}kh1`; the row still offers only the ten
   standard dice.
 
+### The roll screen's top, after the second device session
+
+The app has moved ahead of the prototype here, on a device session's word
+rather than a drawing's, and the prototype has not been re-imported since. The
+divergence is written down rather than drawn because the prototype is
+generated: it is edited in the Claude Design project and re-imported whole
+("Editing", `design/README.md`), so a hand edit to
+`design/dInfinityPhone.dc.html` would be undone by the next sync.
+
+What the app does now, and what the prototype still draws
+(`docs/physics-and-rendering.md`, "What is drawn over the table"):
+
+| | The app | `dInfinityPhone.dc.html` |
+| --- | --- | --- |
+| The dice | a pull-down at the top of the table: a `Dice` head with the count and a chevron, opening onto the picker row | the picker strip, always out, in the slot at `order:{{ pickerOrder }}` |
+| The set chooser | folded inside that pull-down | a dropdown off the strip's **Set** button (`setMenuOpen`) — the same idea, one level further in |
+| The formula | an expanding menu on the right, under the menu button | a plate in the top **left** corner, `plateLeft` / `plateTop` |
+| The tray's own shadow | none: the wall and the rim cast nothing, the dice cast | the fake bezel, `trayBorder: 6px solid {{ tbl.wall }}` |
+| `See the odds`, `Save as roll` | at the foot of the result sheet | already at the foot of the result sheet, as `Graph` and `Save` — **the app has caught up here**, and only the wording differs |
+
+Three questions for the next pass over the prototype:
+
+1. **Is a pull-down right for the dice at all?** The design's strip is always
+   out; the device session asked for it to be put away. The count on the head
+   is the app's answer to "then how do I know what is in the throw" — is it
+   enough?
+2. **The formula moved from the left corner to the right.** It is under the
+   menu button because that is where the session asked for it, which leaves
+   the left corner to the dice. Two menus hanging off one edge is a shape the
+   prototype does not draw.
+3. **`Graph` and `Save` against "See the odds" and "Save as roll".** The app's
+   wording is the wording it uses everywhere else for those two acts; the
+   prototype's is shorter. One of them should give.
+
 ## Screens whose shape still differs
 
 None of these was changed by either side. They are structure, and structure is

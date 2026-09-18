@@ -321,6 +321,12 @@ private fun Roll(
     onAddSets = { navController.navigate(Destination.DiceSets.route) },
     shakeToRoll = settings.shakeToRoll,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
+    // The other way on from a result: the editor, with the formula already
+    // typed. The same route the outcome graph's "Save as roll" takes, because
+    // it is the same act — a roll screen that knew what a saved roll is would
+    // be one feature module depending on another
+    // (`docs/architecture.md`, "Modules").
+    onSaveAsRoll = { formula -> navController.navigate(editorRoute(rollId = null, formula = formula)) },
     // Quick mode: a long press on a die that landed opens the designer on that
     // die (`docs/face-designer.md`, "Quick mode"). The tray is left behind
     // like any other way off this screen, and back comes to it again — which

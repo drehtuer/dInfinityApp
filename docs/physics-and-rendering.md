@@ -1151,6 +1151,7 @@ impact sounds rather than a crash in the middle of a roll.
 
 - Filament scene: tray mesh, one renderable per die, a key directional light
   casting soft shadows, a dimmer fill from the other side, and a flat ambient.
+  The dice cast; the tray does not (below). Everything receives.
 - **The ambient is not decoration.** Two directional lights and nothing else
   leave every surface facing away from both at exactly black, and the surfaces
   facing away from both are the inner walls: the tray showed its lit rim, a
@@ -1200,6 +1201,26 @@ impact sounds rather than a crash in the middle of a roll.
   mirror either (`DIE_COAT_ROUGHNESS` is 0.12): a die has been in a bag with
   other dice. Felt with a clear coat is a table nobody owns, so the tray has
   none, and the shader skips the whole path when there is none to apply.
+- **Only the dice cast a shadow.** The one shadow-casting light stands off to
+  one side, so the wall and the six-millimetre band of rim on top of it threw
+  a hard-edged stripe down the inside of their own felt — and a stripe down
+  the table is not a rim, it is a smear. The first device session said so
+  twice, and the second said it again: *there should be no shadow on the
+  table.* So the three tray renderables are built with `castShadows(false)`
+  and every die with `castShadows(true)`; **everything still receives**,
+  because a die's shadow on the felt is the only shadow that says anything.
+  It is a flag per renderable (`Stage.add`'s `casts`) rather than a setting
+  on the scene, so the promise the app makes — "the dice are still drawn in
+  perspective and still cast their shadows" — is kept by construction and not
+  by remembering.
+
+  Two things are **not** the tray's cast shadow and are deliberately left
+  alone. The contact darkening where a die meets the felt is screen-space
+  ambient occlusion (below), which has no per-renderable switch in Filament
+  and is what stops every die floating a millimetre; and the wall being
+  darker than the floor is the lighting, not a shadow — a surface turned away
+  from the key light is simply less lit.
+
 - **The shadow map is given the tray, not five metres of nothing.** A
   directional shadow map covers the camera's whole frustum, and this camera can
   see 5,000 mm because a `far` plane has to be somewhere. The tray is 240 mm
@@ -1527,22 +1548,46 @@ It is one component, `ui/common`'s `Plate`, because a plate is a token rather
 than a layout: six of them on one screen, each drawing its own shadow and its
 own padding, is six chances for the numbers to drift.
 
-**The formula is in the top left corner**, 14 dp in and 12 dp down, where the
-design puts it and where a person writes down what they are about to throw. It
-used to be the last thing in a stack of controls at the bottom, and on a phone
-that meant the felt was a strip above a wall of plates. The rest of the
-controls — the saved rolls, the picker, the Roll button — are still that stack,
-which is a divergence from the design rather than an agreement with it, and it
-is written down in `docs/TODO.md` with what the phone showed.
+**The top of the screen is a column of three things, and the bottom is two.**
+That is the layout the second device session asked for, and the whole of what
+it is for is the felt: with the straight-down table view, a plate over the
+tray is a place a die can land and not be seen.
+
+Along the top, 14 dp in and 12 dp down, in one column that pushes downwards as
+it opens:
+
+1. **Dice**, a pull-down. Shut, it is one plate with the word `Dice`, the
+   count of dice the formula is asking for, and a chevron. Open, it is the
+   picker row and the set chooser on a plate under it. The row scrolls
+   sideways and has nothing under it — ten dice at a touch target worth
+   pressing do not fit across a 360 dp phone, and a row that reflowed to two
+   lines when a set defined one more die would be a row whose dice move
+   about.
+2. **The menu button**, in the same row, at the end of it. The room it takes
+   is the row rather than a constant the formula had to remember to leave.
+3. **The formula**, under the menu button and aligned to the same edge, as an
+   expanding menu of the same kind. Shut, it is the line somebody has written
+   with a dashed rule under it, hugging its words. Open, it fills the width
+   and is the field, the squiggle and the keyboard — *what* is wrong with a
+   formula is said in there, because that is where it can be acted on.
+
+**Only one of the two can be open.** Both hang off the top edge and both push
+what is under them down, so two open at once is the top half of the table
+covered, which is the thing this layout exists to stop. Opening either shuts
+the other, in the screen rather than in each control.
+
+What is left along the bottom is the saved-rolls strip and the Roll button.
+The picker has gone to the top, and the two things to do with a result have
+gone onto the result itself (below).
 
 **Accent never touches felt.** Accent appears only *on* a plate, which is how
 an accent the player chooses freely and a shelf of tables stop being a pair
 anybody has to check — a green accent on green felt cannot happen if the accent
 is never on the felt, and with a colour picker there is no list of pairs to
-check in the first place (question 10). So the Roll button, "See the odds", a
+check in the first place (question 10). So the Roll button, a
 refusal and both asking plates are each on one — and the result sheet, which is
 not a plate but an opaque surface of its own, keeps the same rule for the same
-reason. The pairing that has to be legible is accent-on-`--color-bg`: one
+reason, which is what lets "See the odds" and "Save as roll" sit on it. The pairing that has to be legible is accent-on-`--color-bg`: one
 pairing rather than a matrix.
 
 Where a plate wants the accent it wants its **700 step**, because a kicker is
@@ -1554,7 +1599,8 @@ filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
 
 | Plate | Where | What it carries |
 | --- | --- | --- |
-| Formula | top left, 14 / 12 dp in | the formula, dashed underline as wide as the text, tap to edit |
+| Dice | top left, 14 / 12 dp in | the word, the count and a chevron; the picker row and the set chooser behind it |
+| Formula | top right, under the menu button | the formula, dashed underline as wide as the text, tap to edit; the field and the squiggle behind it |
 | Hint | bottom left, 13 dp / 600 | only while the table is idle |
 | Counting | across the bottom | how far through the reading a roll is |
 | Another throw earned | across the bottom | a chain that stopped, and the shake it wants |
@@ -1583,10 +1629,23 @@ Three things are fixed about it:
   would be to throw the dice again, which is the one act this app cannot undo.
   There is therefore no close button, where the prototype has one.
 - **The column of controls is lifted by the parked height**, so the Roll
-  button, the picker and the saved rolls sit above a sheet that has been pushed
-  down rather than under it. Up, the sheet covers them, which is what the
+  button and the saved rolls sit above a sheet that has been pushed down
+  rather than under it. Up, the sheet covers them, which is what the
   prototype does too: a result being read is the thing in front of the player,
   and it is one push out of the way.
+- **What is done with a result is on the result.** `See the odds` and `Save
+  as roll` sit at the foot of the breakdown, which is what the second device
+  session asked for. They are in the sheet's **body** and not in its grip,
+  and that is the whole of the difference between the two halves: the grip is
+  what survives a push down, so anything in it is a plate over the felt for as
+  long as a total lasts. `See the odds` used to be a plate of its own in the
+  column of controls, offered in `Ready` and in a refusal as well as after a
+  throw; it is now offered once the dice have landed and not before. `Save as
+  roll` is new here and is the pair the outcome graph already offers at the
+  foot of its bars — the two screens are about the same formula, so they end
+  the same way. Neither knows where it goes: the roll screen may not depend on
+  `feature/saved`, so both are callbacks `:app` fills in
+  (`docs/architecture.md`, "Modules").
 
 **What is dragged is the grip; what is tapped is the handle.** The bar is 4 dp
 of ink and a thumb is not, so the whole band above the breakdown takes the

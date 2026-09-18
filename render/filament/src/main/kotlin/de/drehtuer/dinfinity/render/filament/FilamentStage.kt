@@ -193,6 +193,7 @@ class FilamentStage(
   override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,
+    casts: Boolean,
   ): Int {
     // Nought is Filament's word for "no entity", and a mesh with nothing in it
     // is not worth one.
@@ -208,7 +209,10 @@ class FilamentStage(
       .boundingBox(boundsOf(mesh))
       .geometry(0, RenderableManager.PrimitiveType.TRIANGLES, vertices, triangles)
       .material(0, instance)
-      .castShadows(true)
+      // The dice cast; the tray does not. Everything receives, including the
+      // tray — a die's shadow on the felt is the whole point of having one
+      // (`docs/physics-and-rendering.md`, "What is drawn over the table").
+      .castShadows(casts)
       .receiveShadows(true)
       .build(engine, entity)
 

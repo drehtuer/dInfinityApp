@@ -247,9 +247,15 @@ comes out is a formula somebody could have typed — which is what makes the
 outcome graph, the breakdown and statistics identical either way. A picked
 roll can be turned into a saved roll with one tap.
 
-**Which set the row offers** is chosen under it, once there is a second set
-installed — one entry is furniture, so the chooser is not drawn until it has
-something to choose between. It is not the same question as the default set:
+**It is a pull-down at the top of the table**, headed `Dice` and carrying the
+count of dice the formula asks for, so a menu that is shut still says what is
+in the throw. The row inside scrolls sideways: ten dice at a touch target
+worth pressing do not fit across a 360 dp phone
+(`docs/physics-and-rendering.md`, "What is drawn over the table").
+
+**Which set the row offers** is chosen inside that same pull-down, under the
+row, once there is a second set installed — one entry is furniture, so the
+chooser is not drawn until it has something to choose between. It is not the same question as the default set:
 which set a bare `d20` means is a preference chosen where the sets are
 (`docs/dice-sets.md`, design `6a`), and somebody whose default is their own set
 still reaches for a borrowed d20. A die taken from a set that is *not* the

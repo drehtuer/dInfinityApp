@@ -31,10 +31,20 @@ interface Stage : AutoCloseable {
    * The atlas a surface samples is named in [parameters] rather than passed
    * as a texture, so that deciding *which* artwork a die wears stays on this
    * side of the line and loading it stays on the other.
+   *
+   * @param casts whether this surface throws a shadow of its own. True for a
+   *   die, because a shadow under a die is what says it is on the table
+   *   rather than over it. **False for the tray**, whose rim and wall cast a
+   *   band across their own felt that reads as a smear rather than as a rim
+   *   (`docs/physics-and-rendering.md`, "What is drawn over the table"). The
+   *   two are one decision per renderable rather than one for the scene,
+   *   because the promise the app makes is about the dice and not about the
+   *   furniture they land on.
    */
   fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,
+    casts: Boolean = true,
   ): Int
 
   /** Moves an entity already in the scene. [matrix] is what [Transform] built. */

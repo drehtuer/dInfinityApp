@@ -105,6 +105,13 @@ internal fun PullUpResult(
   divides: Boolean = false,
   onRound: (Rounding) -> Unit = {},
   onDoodle: (String) -> Unit = {},
+  /**
+   * The two ways on from a result, drawn at the foot of the breakdown by
+   * [ResultSheet] — so they go down with it rather than standing on the felt
+   * for as long as a total does.
+   */
+  onSeeTheOdds: () -> Unit = {},
+  onSaveAsRoll: () -> Unit = {},
   onParked: (Float) -> Unit = {},
 ) {
   // No keys on any of these: this composable is on the screen only while a
@@ -176,6 +183,8 @@ internal fun PullUpResult(
       divides = divides,
       onRound = onRound,
       onDoodle = onDoodle,
+      onSeeTheOdds = onSeeTheOdds,
+      onSaveAsRoll = onSaveAsRoll,
       modifier = Modifier.padding(start = PLATE_EDGE, end = PLATE_EDGE, bottom = PLATE_EDGE),
     )
   }

@@ -332,7 +332,7 @@ class DInfinityScreensTest {
     // rather than on the die.
     compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
 
-    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
+    compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).assertIsDisplayed().performClick()
     compose.waitUntil(PATIENCE) {
       compose.onAllNodesWithTag(RollTestTags.dieAt(0)).fetchSemanticsNodes().isNotEmpty()
     }
@@ -372,6 +372,13 @@ class DInfinityScreensTest {
     val recorded = mutableListOf<FinishedThrow>()
     val navigation = app(recorder = { thrown -> recorded += thrown })
     go(navigation, Destination.Roll)
+
+    // Past the welcome first, for the reason the quick-mode test above gives:
+    // it is a full-screen takeover whose buttons run to the bottom edge, and
+    // the strip now sits lower than it did — the picker and the odds have
+    // left the column of controls, so a tap meant for a saved roll landed on
+    // `Add somebody else's dice` instead.
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
 
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
 

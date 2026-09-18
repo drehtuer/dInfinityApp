@@ -21,23 +21,18 @@ This is a snapshot, not a changelog — git history is the changelog.
   looked at on a phone. Signed, fingerprint-checked, published with its
   SHA-256.
 
-  **It is what `v0.1.0` should have been.** That release was cut without
-  anything in it having reached a screen, and it shipped two faults only a
-  screen could show: a roll that settled first time cleared its own dice off
-  the felt ([#271](https://github.com/drehtuer/dInfinityApp/pull/271)), and
-  every glyph on every die was drawn reflected
-  ([#272](https://github.com/drehtuer/dInfinityApp/pull/272)). Releases are
-  immutable, so this is the remedy rather than a re-tag — and between the two
-  came the whole design round, so it also carries the plates, the pull-up
-  result, the accent picker, dragged saved rolls, the Solid tab and a tray lit
-  by a room.
+  It is what `v0.1.0` should have been: that one was cut before anything in it
+  had reached a screen, and it shipped two faults only a screen could show —
+  a roll that cleared its own dice off the felt, and every glyph on every die
+  drawn reflected. Releases are immutable, so this is the remedy rather than
+  a re-tag.
 
 ### Branch state
 
-`main` has everything through **#297**, which is the whole design round:
-fifteen stacked pull requests, #280 through #294, and the one that carried the
-eleven of them that had landed on each other rather than on `main`. Nothing is
-in flight.
+`main` has everything through **#306**, which cut `v0.1.1`. In flight: a
+stack answering the second device session, of which the roll screen's layout
+is one — the dice pull-down, the formula menu, the two result actions and the
+tray's own shadow.
 
 **The last device run covered the stack through #290**: the whole tier on the
 Pixel 10a, 87 tests, 1 skipped, 0 failed, 7m 47s. What came after it — the
@@ -81,10 +76,18 @@ over it against the prototype. What is left on each is in `docs/TODO.md`.
 and decided a good deal nobody had asked about, and the round that followed
 built almost all of it. What it decided and this has *not* done is in
 `docs/TODO.md`: the dice still arrive all at once rather than one at a time,
-the controls other than the formula are still a stack at the bottom where the
-design has a strip under an app bar, and the sound switch the design removed is
-still there, because taking a feature out is a product call rather than a
-drawing.
+and the sound switch the design removed is still there, because taking a
+feature out is a product call rather than a drawing.
+
+**The roll screen's layout answers the second device session**, and the stack
+of plates along the bottom is gone with it. (Every control over the table is
+still one of `ui/common`'s plates, and no accent is drawn on felt anywhere.) The dice are a pull-down at the
+top with the set chooser folded inside them; the formula is an expanding menu
+on the right under the menu button; `See the odds` and `Save as roll` are at
+the foot of the result sheet, so they go down with it; and the tray casts no
+shadow on its own felt any more, while the dice still cast theirs. What is
+left along the bottom is the saved rolls and the Roll button. **Nobody has
+seen it on a phone yet** — what needs an eye is in `docs/TODO.md`, 5.6.
 
 **The face designer has a Solid tab.** A Face / Solid pair on the screen, the
 flat editor unchanged under the first of them and the real polyhedron under the
@@ -106,17 +109,6 @@ and stay there until the next throw. Where it rests, what a drag does to that
 and what a flick settles to are plain Kotlin under JVM tests (`SheetSlide`);
 Compose has the gesture and the drawing. **Nobody has seen it on a phone yet** —
 what needs an eye is in `docs/TODO.md`, 4.1.
-
-**The roll screen's controls are on plates.** `ui/common`'s `Plate` is the
-opaque `--color-bg` ground with `--shadow-sm` that every control over the table
-now stands on, so the formula's dashed rule hugs its words instead of crossing
-them and **no accent is drawn on felt anywhere**. The running readout has
-become the counting plate — kicker, count, `of 20 read`, the still-possible
-range with its `+` in the accent's 700 step, and a progress rule — and the two
-states that had no drawing, *another throw earned* and *could not settle*, are
-on that same plate with their buttons wired to the roll the machine already
-reached. The total is drawn once (`docs/physics-and-rendering.md`, "What is
-drawn over the table").
 
 **A set says what its dice weigh**, in grams a player can hold rather than in
 the density a file carries, with translucency and size beside it and steppers

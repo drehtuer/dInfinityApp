@@ -142,6 +142,40 @@ class FilamentDiceRendererTest {
   }
 
   @Test
+  fun `no part of the tray throws a shadow, and every die does`() {
+    // The device session's complaint: the rim's band across the top of the
+    // wall cast a stripe down its own felt. What a shadow is for here is
+    // saying a die is on the table rather than over it, and the furniture
+    // says nothing (`docs/physics-and-rendering.md`, "What is drawn over the
+    // table").
+    renderer.begin(spec(), geometry, look)
+
+    assertEquals(
+      "the floor, the wall or the rim was still casting",
+      List(TRAY_PARTS) { false },
+      stage.casting.take(TRAY_PARTS),
+    )
+    assertEquals(
+      "a die stopped casting its shadow with the tray",
+      List(spec().dice.size) { true },
+      stage.casting.drop(TRAY_PARTS),
+    )
+  }
+
+  @Test
+  fun `and the tray is still shadowless once it has been rebuilt`() {
+    // A second throw — and a die an explosion adds — throws the scene away
+    // and builds it again, so the flag has to travel with the mesh rather
+    // than be something the first build happened to do.
+    renderer.begin(spec(), geometry, look)
+
+    renderer.begin(spec(), geometry, look)
+
+    assertEquals(List(TRAY_PARTS) { false }, stage.casting.take(TRAY_PARTS))
+    assertTrue("a die was rebuilt shadowless", stage.casting.drop(TRAY_PARTS).all { it })
+  }
+
+  @Test
   fun `a roll starts with the whole tray in shot`() {
     renderer.begin(spec(), geometry, look)
 

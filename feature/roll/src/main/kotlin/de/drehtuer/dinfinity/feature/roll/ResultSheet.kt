@@ -40,6 +40,9 @@ import de.drehtuer.dinfinity.core.model.RolledGroup
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.notation.NotationLimits
 import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
+import de.drehtuer.dinfinity.ui.common.ModernistButton
+import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.SegmentedControl
 import kotlin.math.abs
 
@@ -74,6 +77,21 @@ internal fun ResultSheet(
    * is the designer's question and `:app`'s to answer.
    */
   onDoodle: (String) -> Unit = {},
+  /**
+   * The two things to do with the roll that has just landed, at the foot of
+   * the breakdown (`design/dInfinity.dc.html`, options 7a and 3b).
+   *
+   * They are **here rather than in the grip**, and that is the difference
+   * between the two halves of this sheet: the grip is what stays on the
+   * bottom edge when the result is pushed away, so anything in it is a plate
+   * over the felt for as long as a total lasts. Two buttons that cannot be
+   * put down are two of the four the device session asked to be rid of.
+   *
+   * Both default to doing nothing, so a preview or a test of the breakdown
+   * alone draws them without wiring anything.
+   */
+  onSeeTheOdds: () -> Unit = {},
+  onSaveAsRoll: () -> Unit = {},
 ) {
   Column(
     modifier = modifier.fillMaxWidth().testTag(RollTestTags.SHEET),
@@ -103,6 +121,48 @@ internal fun ResultSheet(
     // Offered only for a throw it could change. `Down`, `Nearest` and `Up` all
     // give the same answer to `3d6 + 4`.
     if (divides) RoundingControl(chosen = result.rounding, onRound = onRound)
+
+    Doing(onSeeTheOdds = onSeeTheOdds, onSaveAsRoll = onSaveAsRoll)
+  }
+}
+
+/**
+ * What to do with the roll that has just landed.
+ *
+ * "See the odds" is the distribution behind it, with this throw's total
+ * marked on it (`design/dInfinity.dc.html`, option 7a). "Save as roll" opens
+ * the editor with the formula already typed, which is the same pair the
+ * outcome graph offers at the foot of its own bars — the two screens are
+ * about the same formula, so they end the same way.
+ *
+ * Neither does the thing itself: where those go is the navigation graph's,
+ * and that belongs to `:app` (`docs/architecture.md`, "Modules").
+ *
+ * Both are on the sheet, which is an opaque surface of its own and keeps the
+ * rule a plate keeps — accent never touches felt
+ * (`docs/physics-and-rendering.md`, "What is drawn over the table").
+ */
+@Composable
+private fun Doing(
+  onSeeTheOdds: () -> Unit,
+  onSaveAsRoll: () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
+  ) {
+    ModernistButton(
+      text = stringResource(R.string.roll_see_the_odds),
+      onClick = onSeeTheOdds,
+      kind = ModernistButtonKind.Ghost,
+      modifier = Modifier.testTag(RollTestTags.ODDS),
+    )
+    ModernistButton(
+      text = stringResource(R.string.roll_save_as_roll),
+      onClick = onSaveAsRoll,
+      kind = ModernistButtonKind.Secondary,
+      modifier = Modifier.testTag(RollTestTags.SAVE_AS_ROLL),
+    )
   }
 }
 

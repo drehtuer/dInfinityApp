@@ -32,6 +32,15 @@ The graph is available even for formulas the table cannot physically roll
   for: a formula that does not parse is not one to roll or to keep, and a
   button that refuses is worse than one that is not there.
 
+**The way in from the tray is on the result.** `See the odds` sits at the foot
+of the result sheet, beside `Save as roll`, and carries the formula in the
+field along with the total that just landed so the graph can mark it. It used
+to be a plate of its own in the roll screen's column of controls, offered
+before a throw and for a throw the table refused as well; a device session
+asked for it to be part of the result, so it is offered once the dice have
+landed and not before. A refusal reaches the graph through the menu
+(`docs/physics-and-rendering.md`, "What is drawn over the table").
+
 The distribution is bell-shaped for sums of many dice (central limit
 theorem), but it is **not** computed as a normal approximation — that would be
 wrong for a single d20 and visibly wrong for `2d6`. We compute the exact
