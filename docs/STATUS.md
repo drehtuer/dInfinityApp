@@ -17,18 +17,20 @@ This is a snapshot, not a changelog — git history is the changelog.
   felt tray, come to rest, are felt and heard as they land, and their total
   appears beside them. They carry real printed numbers, the right way round,
   and a die whose author drew artwork now wears it.
-- **Latest release:** `v0.1.0` — the first one that rolls dice. Signed,
-  fingerprint-checked, published with its SHA-256. `v0.0.1` before it was the
-  skeleton, cut to prove the release pipeline and nothing else.
+- **Latest release:** `v0.1.1` — the first one whose every screen has been
+  looked at on a phone. Signed, fingerprint-checked, published with its
+  SHA-256.
 
-  **It has two faults a release after it should not.** Nothing in it had been
-  seen on a screen when it was cut, and both of them are things only a screen
-  could show: a roll that settled first time cleared its own dice off the felt
-  ([#271](https://github.com/drehtuer/dInfinityApp/pull/271)), and every glyph
-  on every die was drawn reflected
-  ([#272](https://github.com/drehtuer/dInfinityApp/pull/272)). Both are fixed
-  on `main`. Releases are immutable, so the remedy is `v0.1.1` rather than a
-  re-tag.
+  **It is what `v0.1.0` should have been.** That release was cut without
+  anything in it having reached a screen, and it shipped two faults only a
+  screen could show: a roll that settled first time cleared its own dice off
+  the felt ([#271](https://github.com/drehtuer/dInfinityApp/pull/271)), and
+  every glyph on every die was drawn reflected
+  ([#272](https://github.com/drehtuer/dInfinityApp/pull/272)). Releases are
+  immutable, so this is the remedy rather than a re-tag — and between the two
+  came the whole design round, so it also carries the plates, the pull-up
+  result, the accent picker, dragged saved rolls, the Solid tab and a tray lit
+  by a room.
 
 ### Branch state
 
@@ -44,9 +46,7 @@ Settings rows and the Solid tab — is verified on the JVM and by Robolectric
 only, because the phone went off the network while it was being built. **That
 is the next thing a phone should be pointed at.**
 
-`v0.1.0` is cut from #268 and is now a long way behind — two faults a user sees
-were fixed before any of this, and the remedy is `v0.1.1` whenever somebody
-wants one.
+`v0.1.1` is cut from here.
 
 ## Done
 
