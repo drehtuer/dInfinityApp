@@ -44,12 +44,16 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
 - **The roll screen is one picture, not a column of bands.** The table is
   full-bleed and every control is an opaque floating plate. Accent never
   touches felt.
-- **A table view setting** — straight down, or angled with two walls.
+- **A table view setting** — straight down, or angled with two walls
+  ([../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
+  "Rendering (normal mode)").
 - **Per-set physical properties**: weight, translucency and size, all three
   real rather than metadata.
 - **Dice land one at a time** and shove the dice already down.
 - **The face designer gained a Solid tab** — the real polyhedron, with
-  opposite-face numbering, d4 values at the corners and d6 pips.
+  opposite-face numbering, d4 values at the corners and d6 pips. Built:
+  [../docs/face-designer.md](../docs/face-designer.md), "The solid, not just
+  the face".
 - **Saved rolls are dragged into the order the player wants**; pinning and
   favourites are gone.
 - **Settings gained an accent picker and lost the sound switch.**

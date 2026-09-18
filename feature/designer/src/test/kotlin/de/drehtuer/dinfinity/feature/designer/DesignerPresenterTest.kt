@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
+import de.drehtuer.dinfinity.designer.Eyes
 import de.drehtuer.dinfinity.designer.FaceDrawing
 import de.drehtuer.dinfinity.designer.FaceFill
 import de.drehtuer.dinfinity.designer.FaceTransform
@@ -483,7 +484,51 @@ class DesignerPresenterTest {
 
     assertEquals("1", presenter.state.stamping)
     presenter.show(4)
-    assertEquals("5", presenter.state.stamping)
+    // Cell 4 of a d6, not the fifth number: a die is numbered in opposite
+    // pairs, so the face across from the 3 carries the 4 (`docs/dice-sets.md`,
+    // "Numbering").
+    assertEquals("4", presenter.state.stamping)
+  }
+
+  @Test
+  fun `a d6 can be pipped and a d20 cannot, which is what puts the buttons there`() {
+    assertTrue(DesignerPresenter(d6).state.canPip)
+    assertFalse(DesignerPresenter(d20).state.canPip)
+  }
+
+  @Test
+  fun `filling with eyes pips every face and says so, and clearing takes them off`() {
+    val presenter = DesignerPresenter(d6, drafts = Remembered())
+
+    assertFalse(presenter.state.pipped)
+    presenter.fillEyes()
+    assertTrue(presenter.state.pipped)
+    assertEquals(
+      6,
+      (0 until 6).count { cell ->
+        presenter.state.draft
+          .face(cell)
+          .marks
+          .any { it is Eyes }
+      },
+    )
+
+    presenter.clearEyes()
+    assertFalse(presenter.state.pipped)
+  }
+
+  @Test
+  fun `a pipped die is written down as it is pipped, not when the screen is left`() {
+    val drafts = Remembered()
+    DesignerPresenter(d6, drafts = drafts).fillEyes()
+
+    assertTrue(
+      drafts
+        .load(d6)
+        .face(0)
+        .marks
+        .any { it is Eyes },
+    )
   }
 
   @Test
@@ -575,6 +620,80 @@ class DesignerPresenterTest {
     assertTrue("the number would not come off", presenter.state.face.blank)
   }
 
+  @Test
+  fun `it opens on the flat editor, with the die turning on its own`() {
+    val presenter = DesignerPresenter(d6)
+
+    assertEquals(DesignerView.Face, presenter.state.view)
+    assertTrue("a die nobody has touched does not turn", presenter.state.spinning)
+  }
+
+  @Test
+  fun `moving between the tabs keeps the face in front of the player`() {
+    val presenter = DesignerPresenter(d20)
+    presenter.show(7)
+
+    presenter.look(DesignerView.Solid)
+    assertEquals("the solid opened on a different face", 7, presenter.state.cell)
+    assertEquals(DesignerView.Solid, presenter.state.view)
+
+    presenter.look(DesignerView.Face)
+    assertEquals("coming back lost the player's place", 7, presenter.state.cell)
+  }
+
+  @Test
+  fun `a drag turns the die and unticks Spin`() {
+    val presenter = DesignerPresenter(d6)
+    val before = presenter.state.turn
+
+    presenter.turned(across = 0.2f, down = 0.1f)
+
+    assertTrue("the drag did not turn the die", presenter.state.turn != before)
+    assertFalse("the die went on turning under the finger holding it", presenter.state.spinning)
+  }
+
+  @Test
+  fun `the die turns on its own until it is taken hold of, and again when it is let go`() {
+    val presenter = DesignerPresenter(d6)
+    val start = presenter.state.turn
+
+    presenter.spun(A_MOMENT)
+    val turned = presenter.state.turn
+    assertTrue("the die did not turn on its own", turned != start)
+
+    presenter.spin(false)
+    presenter.spun(A_MOMENT)
+    assertEquals("the die turned after Spin was unticked", turned, presenter.state.turn)
+
+    presenter.spin(true)
+    presenter.spun(A_MOMENT)
+    assertTrue("the die did not start turning again", presenter.state.turn != turned)
+  }
+
+  @Test
+  fun `changing die keeps the tab and the way the die is held`() {
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d20))
+    presenter.look(DesignerView.Solid)
+    presenter.turned(across = 0.3f, down = 0f)
+
+    val held = presenter.state.turn
+    presenter.base(d20)
+
+    assertEquals("the tab was lost with the die", DesignerView.Solid, presenter.state.view)
+    assertEquals("the die was put back in its box between dice", held, presenter.state.turn)
+    assertFalse("the new die started turning on its own", presenter.state.spinning)
+  }
+
+  @Test
+  fun `the stage shows the die being drawn and nothing else`() {
+    val presenter = DesignerPresenter(d20)
+
+    val stage = presenter.state.stage
+
+    assertTrue("the stage is empty", stage.faces.isNotEmpty())
+    assertTrue("the stage shows faces that are pointing away", stage.faces.size < d20.faces.size)
+  }
+
   /** Drafts that outlive a presenter but not the test: a disk without the disk. */
   private class Remembered : Drafts {
     private val kept = mutableMapOf<String, Draft>()
@@ -588,9 +707,13 @@ class DesignerPresenterTest {
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
   private val d4 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron }
+  private val d20 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Icosahedron }
   private val d10 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.PentagonalTrapezohedron }
 
   private companion object {
     const val RED = 0xFFEC3013.toInt()
+
+    /** Long enough for the die to have visibly turned. */
+    const val A_MOMENT = 0.5f
   }
 }

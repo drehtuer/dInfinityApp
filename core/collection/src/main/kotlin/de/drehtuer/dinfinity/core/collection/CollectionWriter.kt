@@ -19,11 +19,12 @@ import kotlinx.serialization.json.JsonPrimitive
  * one with the tests that matter.
  *
  * What travels is what somebody wrote: names, formulas, marks, which group
- * things are in, and which rolls are favourites. What does not is everything
- * the app made of it — use counts, timestamps, colour tags of the app's own
- * palette, table pins naming packages the other phone has never heard of, and
- * ids that mean nothing outside this database. A collection somebody opens in
- * a text editor should read like a list of their rolls, not like a dump.
+ * things are in, and **the order they are in** — which is the file's own
+ * order and needs no field for it. What does not is everything the app made of
+ * it — use counts, timestamps, colour tags of the app's own palette, table
+ * pins naming packages the other phone has never heard of, and ids that mean
+ * nothing outside this database. A collection somebody opens in a text editor
+ * should read like a list of their rolls, not like a dump.
  */
 object CollectionWriter {
   private val json = Json { prettyPrint = true }
@@ -37,6 +38,10 @@ object CollectionWriter {
    *   be refused by the reader that has to take it back.
    * @param name what the collection is called — a file name, a character, a
    *   campaign.
+   *
+   * [rolls] are written in the order they arrive in, because that order *is*
+   * what the file says about order: the caller hands them over as the list
+   * shows them, and the importer reads them back the same way.
    */
   fun collect(
     groups: List<SavedRollGroup>,
@@ -78,7 +83,6 @@ object CollectionWriter {
               name = roll.name.take(CollectionLimits.MAX_NAME),
               formula = roll.formula.take(CollectionLimits.MAX_FORMULA),
               icon = roll.icon.take(CollectionLimits.MAX_ICON),
-              favourite = roll.favourite,
             )
           },
     )
@@ -139,7 +143,6 @@ object CollectionWriter {
         put("name", JsonPrimitive(roll.name))
         if (roll.icon.isNotEmpty()) put("icon", JsonPrimitive(roll.icon))
         put("formula", JsonPrimitive(roll.formula))
-        if (roll.favourite) put("favourite", JsonPrimitive(true))
       },
     )
 }

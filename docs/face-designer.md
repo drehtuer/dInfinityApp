@@ -30,8 +30,9 @@ installed by other users like any other set.
    otherwise reads as a different number depending on which way it is looked
    at, which the designer should make hard to do by accident rather than
    merely warn about afterwards.
-3. **Preview.** A 3D preview of the die with the drawn atlas applied, rotatable
-   by drag, updated live.
+3. **Turn it over.** The **Solid** tab beside the flat editor shows the real
+   polyhedron with each authored face on the face it was drawn for, turning on
+   its own until a drag takes over ("The solid, not just the face").
 4. **Roll it.** The Roll button throws the die into the tray to see how it
    looks in motion (`docs/physics-and-rendering.md`, "Starting a roll"). It
    opens the tray with the die in the formula field and **does not throw it**:
@@ -90,11 +91,16 @@ on.
 the chooser, so it throws the die in front of the player rather than the one
 the screen opened on. Two things about it are worth knowing. It throws the
 **die, not the drawing** — the strokes are not on it, because nothing puts an
-atlas on a die yet (`docs/TODO.md`, Step 3) — so what it answers today is how
-the solid looks in motion, which is the preview this designer has instead of a
-3D one. And it is **absent rather than dead** for a die plain notation cannot
-name: a set's own `skull-d6` has no spelling a formula could carry
-(`docs/architecture.md`, decision 31).
+atlas on a die yet (`docs/TODO.md`, Step 3) — so what it answers is how the
+solid looks in motion rather than how the drawing looks on it; the Solid tab is
+what answers that. And it is **absent rather than dead** for a die plain
+notation cannot name: a set's own `skull-d6` has no spelling a formula could
+carry (`docs/architecture.md`, decision 31).
+
+**The Solid tab is built**, and with it the designer's other half: the real
+polyhedron generated from the same solid the solver collides, each authored
+face on the face it was drawn for, spinning until a drag takes over ("The
+solid, not just the face").
 
 Which set the formula names is decided by what would resolve, not by where the
 die came from — the chooser lists dice by id across every installed set and so
@@ -214,11 +220,12 @@ die to decorate rather than a blank one to letter.
 
 **The numbers go on in pairs, and each pair sums to n + 1.** A real die is
 numbered so that opposite faces add up: a d6 has 2 across from 5, a d20 has 1
-across from 20, a d12 has 1 across from 12. Faces are paired by opposite
-normals — which the catalogue's face order already fixes
-(`docs/dice-sets.md`, "Face order") — and the numbering follows the pairing
-rather than the order. A tetrahedron has no opposite faces at all and keeps
-1–4 at its corners.
+across from 20, a d12 has 1 across from 12. That is a fact about the *die*
+rather than about this button — the pairing is worked out from the shape's own
+normals and the bundled set's `faces` lists are written from it
+(`docs/dice-sets.md`, "Numbering") — so the stamp gets it right by copying the
+face's own number, which is all it has ever done. A tetrahedron has no opposite
+faces at all and keeps 1–4 at its corners.
 
 **Where a numeral sits on its face** is the face's own centroid, at a size
 taken from that face's inradius. In the design's authored 320-unit face, as
@@ -272,16 +279,35 @@ down, which is the rule the tray already follows.
 
 A d6 and only a d6 can be pipped instead of numbered. One tap lays the standard
 pip patterns on all six faces in the ink in the pen, on a 3 × 3 grid at
-`96 / 160 / 224` of the 320-unit face with each pip at `r = 24`. Pips are drawn
-in the flat canvas, in the solid view and in the strip's thumbnails, so a
-pipped die looks pipped everywhere before it is ever rolled.
+`96 / 160 / 224` of the 320-unit face with each pip at `r = 24`. `Clear eyes`
+takes them off again, which is the undo for somebody who pressed it to see, and
+is dead until there is something to clear.
 
-**Pips and numerals are mutually exclusive**, and filling one clears the other.
-A face carrying both is not a die anybody makes, and the two would be solved
-against the same face centre and land on top of each other.
+**A pip is a mark like any other** — closed rings drawn under the even-odd
+rule, the way a stamped glyph is (`designer`'s `Eyes`). That is what makes a
+pipped die look pipped everywhere without anything being taught what a pip is:
+the canvas, the exported atlas and everything later built over the same
+drawing — the strip's thumbnails, the Solid tab — draw the marks a face
+carries, and the pips are among them. One face's pips are **one mark**: one
+press of undo, one against the two hundred, one thing a turn or a mirror
+carries whole.
 
-`Clear eyes` takes them off again, which is the undo for somebody who pressed
-it to see.
+**A d6 and only a d6**, and the test is what the die *scores* rather than what
+solid it is. A pip pattern is a way of writing one to six and there is no
+pattern for a 7, for a d20's 17 or for a Fudge die's minus — so the two buttons
+are on the screen for a cube carrying exactly 1–6 and **absent** for everything
+else, which is the answer "Roll it" already gives for a die notation cannot
+name.
+
+**Pips and numerals are mutually exclusive**, and filling one clears the other,
+in the same step. A face carrying both is not a die anybody makes, and the two
+are solved against the same face centre and would land on top of each other.
+One press of a button is one press of undo, so the swap is one step and not a
+clear and a fill.
+
+Like "fill all with numbers" it is **one undoable step per face**, it leaves a
+face that already has what it would put there alone, and it lands *over* a
+drawing rather than taking it away.
 
 ### The guide
 
@@ -291,7 +317,7 @@ inside a `Canvas` wants a measurer, and the screen had no reason to hold one.
 `core/glyphs` is that measurer — it holds the outlines the tray prints with and
 `LabelRoom` solves how big a number may be on a face and where on that face it
 sits — so the guide is now the very shape "fill all with numbers" would put
-down, at the same size, in the same place, with the same bar under a `6` that
+down, at the same size, in the same place, with the same dot after a `6` that
 needs one.
 
 That is the point of it rather than a nicety. A guide and a stamp that were
@@ -409,33 +435,110 @@ dots it carries is not a stamp this wrote and is dropped.
 
 ## The solid, not just the face
 
+> **Design:** the Solid tab is in the designer of the
+> [phone prototype](../design/dInfinityPhone.dc.html) (`design/`), beside the
+> flat editor of option `1v`.
+
 Until the design pass of 2026-09-17 the answer to "what does it look like as a
 die" was **roll it**, and the hand-over recorded that as deliberate. The design
-now asks for a **Solid** tab beside the flat editor, and the reason is the one
-thing rolling cannot do: it shows you one face at a time, chosen by physics,
-and a person lettering a d20 wants to turn it over in their hand.
+asked the other way and it is built: a **Solid** tab beside the flat editor,
+for the one thing rolling cannot do — a roll shows you one face at a time,
+chosen by physics, and a person lettering a d20 wants to turn it over.
 
-- **The polyhedron is generated, not modelled.** Vertices per die, faces found
-  by plane detection over the convex hull, and a per-face basis whose "up"
-  depends on the shape of the face: a square face puts an *edge* up, a kite
-  puts the short tip on its own symmetry axis, and a regular face takes its
-  most upright far vertex. That is the same question the atlas grid answers
-  (`docs/dice-sets.md`, "Up is `+z`"), asked again where the answer has to hold
-  for a face being looked at rather than a cell being filled.
-- **Each authored face is mapped onto its real face** at
-  `k = min(circumradius fit, inradius fit)`, with back-face culling, so what is
-  drawn is the drawing rather than an impression of it.
-- **The whole stage is one drag surface.** Faces, numerals, pips and strokes
-  are pointer-transparent: nothing on the die is selectable, because a tap that
-  sometimes rotates and sometimes selects is a tap nobody trusts. The die spins
-  on its own until a drag takes over, and the drag unticks Spin.
-- **The selected face reads as selected** — a 4 dp `--color-accent-700` outline
-  and a 16 % accent tint in its fill — so moving between the two tabs never
-  loses the player's place.
-- **The shading is not the spec.** The prototype draws this with CSS 3D
-  transforms; the app has a renderer. The geometry and the face mapping are
-  what this section is; how it is lit is `docs/physics-and-rendering.md`'s
-  business.
+The two tabs are two views of one drawing. The base-die chooser, the face strip
+and the way out to the tray are the same underneath both; which face is in
+front of the player, which die is being drawn on, how the die is turned and
+where the pen was all survive moving between them, and so does a change of base
+die.
+
+**The polyhedron is generated, not modelled.** `simulation/api` already owned
+every catalogue solid — its corners, the direction of each readable position
+and the face order the whole app agrees on — and now owns the one thing that
+was written down twice: **which corners make up which face**. `SolidFaces`
+groups the corners onto the face planes, winds each polygon anticlockwise as
+seen from outside and hands back the frame its atlas cell is drawn in. The
+renderer's mesh is built from it and so is this stage, so face 7 is the same
+polygon in the tray and in the hand by construction rather than by inspection
+(`docs/architecture.md`, decision 35).
+
+**The picture is drawn in Compose, not in the renderer.** This is a drawing of
+a die on a drawing screen; the engine belongs to the roll screen. The corners
+are turned, projected through one eye, the faces pointing away are dropped and
+what is left is sorted furthest-first and filled — all of it plain Kotlin in
+`designer`'s `SolidStage`, where a JVM test holds it, with nothing left in the
+draw lambda but paths and colours (`docs/architecture.md`, decision 55).
+
+**The die is the size it is, whatever way up it is.** How much of the stage a
+die radius reaches is worked out from the widest a point of a unit sphere can
+ever project to rather than tried until it stopped clipping, so a die turning
+is a die turning rather than a die breathing.
+
+**The silhouette is drawn under the faces**, and for one solid it is the only
+thing there: a coin's rim belongs to no face at all, so without it a d2 leaned
+over would be a disc with nothing behind it. For every other shape the faces
+cover it exactly.
+
+**The whole stage is one drag surface.** Faces, numerals, pips and strokes are
+pointer-transparent: nothing on the die is selectable, because a tap that
+sometimes rotates and sometimes selects is a tap nobody trusts. The face strip
+is how a face is chosen, on this tab exactly as on the other. The die spins on
+its own at a turn every sixteen seconds until a drag takes over, and **the drag
+unticks Spin** — a die that went on turning under the finger holding it would
+be a die fighting back. The tick puts it back.
+
+**The selected face reads as selected** — a 4 dp outline in the accent's deep
+step and a 16 % accent tint in its fill — so moving between the two tabs never
+loses the player's place.
+
+**The shading is not the spec.** One lamp over the viewer's left shoulder and a
+floor under it, mixed out of the screen's own paper and ink so that a die in a
+dark theme is lit by the same rule as one in a light theme. How a die is really
+lit is `docs/physics-and-rendering.md`'s business.
+
+### What the Solid view shows, and what it does not
+
+Where the drawing goes on the face is one solve, `designer`'s `FaceOnSolid`:
+the turn and the size that carry the canvas's own outline onto the real polygon
+with the least left over. The design describes that answer shape by shape — "a
+square face puts an edge up, a kite puts the short tip on its own symmetry
+axis, a regular face takes its most upright far vertex" — and every one of
+those falls out of matching the two polygons corner for corner. A square's
+edges land on edges because that is the turn that fits; a kite's tip lands on
+the tip because a kite is the one outline here whose corners are not all the
+same distance from the middle; a regular face has no such handle and every turn
+of it fits equally well, so the tie goes to the one that stands the drawing
+most upright. The disc of a d2 has no corners at all and is laid on the face's
+own frame.
+
+It draws:
+
+- **the face itself**, its real polygon, shaded by which way it is pointing;
+- **its background** — every region the bucket coloured in, including a fill of
+  the whole face, clipped to the outline;
+- **its numerals and its pips** — a stamp and a face of eyes alike, in the ink
+  they were put down in, at the place and the size they were put down at.
+
+It does not draw **the strokes of the pen**. The line is drawn here: a fill, a
+stamped numeral and a face of pips are *closed shapes*, and a closed shape
+under a projection is still a closed shape with its corners where they belong,
+so what the stage puts down is the mark itself rather than an impression of it.
+A stroke is not a shape but a line of a *width*, and a width on a tilted face is
+wider one way than the other; a `Canvas` draws a line of one width, so drawing
+one would be the picture telling a lie about the die. The tab says so in as many
+words under the stage rather than leaving somebody to wonder where their line
+went, and the flat editor is where a stroke is looked at. Whether it is worth
+drawing strokes as thin filled outlines instead is an open question
+(`docs/TODO.md`).
+
+**Nor does it promise the atlas's own turn of a cell.** The atlas draws every
+cell with the face's up taken as `+z` flattened onto it (`docs/dice-sets.md`,
+"Up is `+z`") while the canvas masks every cell into one canonical outline, and
+those two are not the same turn — an octahedron's top face sits fifteen degrees
+off the triangle the canvas draws, a d20's faces up to sixty, a d12's up to
+thirty-six, and a d6's not at all. What the Solid tab shows is
+the drawing the way the canvas shows it, put on the face it belongs to; which
+way round it will come out of the exporter is the other question, and it is
+written down as one (`docs/TODO.md`).
 
 ### Save to set
 
@@ -508,6 +611,14 @@ table of is written into the same package, as a `[[table]]` entry and a
 `tables/<id>.webp` beside the atlases (`docs/tables.md`, "Your own photo") —
 so the same package is rebuilt from two records rather than one, and a phone
 with photos and no drawings has a `mine` that is a table pack.
+
+The third record is **what the dice are made of**: the weight, translucency and
+size the details screen's steppers set, kept in `filesDir/mine-physical.txt`
+and written into the package as its `[defaults]` table (`docs/dice-sets.md`,
+"Weight, translucency and size, as a person sets them"). It is a record rather
+than a line in the generated `diceset.toml` for the same reason the drafts are:
+the folder is a view, and a number kept only there would be rewritten away by
+the next stroke.
 
 A draft whose die is not installed is not in the package, and its file is kept:
 re-installing the package that defines the die brings the drawing back.

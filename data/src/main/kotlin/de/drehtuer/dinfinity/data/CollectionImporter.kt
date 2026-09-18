@@ -103,15 +103,22 @@ class CollectionImporter(
         )
       }
       val now = clock()
+      // The file's own order is what a collection says about order, so the
+      // rolls are numbered as they are read — per group, because the list is
+      // per group (`docs/dice-notation.md`, "Export and import").
+      val places = mutableMapOf<String, Int>()
       collection.rolls.forEach { roll ->
+        val groupId = given.getValue(roll.group)
+        val place = places.getOrDefault(groupId, 0)
+        places[groupId] = place + 1
         database.savedRolls().upsert(
           SavedRollRow(
             id = ids(),
-            groupId = given.getValue(roll.group),
+            groupId = groupId,
             name = roll.name,
             formula = roll.formula,
             icon = roll.icon,
-            favourite = roll.favourite,
+            sortOrder = place,
             createdAtEpochMs = now,
           ),
         )

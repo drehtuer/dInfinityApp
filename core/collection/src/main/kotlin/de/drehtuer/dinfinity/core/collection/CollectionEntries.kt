@@ -57,7 +57,10 @@ internal fun roll(
     group = group,
     name = name,
     formula = formula,
+    // A `favourite` written by a version that still had the flag is simply
+    // not read. The design took pinning out and the order a file is in is now
+    // the whole of what it says about order, so an older collection still
+    // imports — its rolls just arrive in the order they were written in.
     icon = obj.optionalText("icon", "$at.icon", errors, CollectionLimits.MAX_ICON),
-    favourite = obj.flag("favourite"),
   )
 }

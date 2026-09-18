@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.format.PackageFiles
@@ -37,6 +38,8 @@ class MineSetsTest {
   private lateinit var root: File
   private lateinit var photos: PhotoStore
 
+  private lateinit var physical: PhysicalStore
+
   private fun mine(
     painter: AtlasPainter = Drawings.headers(),
     author: String? = null,
@@ -44,14 +47,68 @@ class MineSetsTest {
     drafts = DraftStore(temporary.newFolder("drafts"))
     root = temporary.newFolder("dicesets")
     photos = PhotoStore(temporary.newFolder("photos"))
+    physical = PhysicalStore(File(temporary.newFolder("physical"), PhysicalStore.FILE_NAME))
     return MineSets(
       drafts = drafts,
       root = root,
       painter = painter,
       dice = { listOf(cube, d20) },
       photos = photos,
+      physical = physical,
       author = { author },
     )
+  }
+
+  @Test
+  fun `what the dice are made of is written into the package the drawings make`() {
+    val sets = mine()
+    drafts.save(Drawings.drawn(cube, 0))
+    sets.bringUpToDate()
+
+    sets.setPhysical(DieMaterial(sizeMm = 20.0, density = 2.4, translucency = 0.2))
+    sets.bringUpToDate()
+
+    val die = installed().dice.single()
+    assertEquals(20.0, die.material.sizeMm, 1e-12)
+    assertEquals(2.4, die.material.density, 1e-12)
+    assertEquals(0.2, die.material.translucency, 1e-12)
+  }
+
+  @Test
+  fun `a weight somebody set survives the next stroke they draw`() {
+    // The whole reason it is a record of its own: the folder is rebuilt from
+    // the records, so a number kept only in `dicesets/mine/diceset.toml` would
+    // be written away by the next drawing.
+    val sets = mine()
+    drafts.save(Drawings.drawn(cube, 0))
+    sets.setPhysical(DieMaterial(density = 2.4))
+    sets.bringUpToDate()
+
+    drafts.save(Drawings.drawn(d20, 0))
+    sets.bringUpToDate()
+
+    assertEquals(listOf("d20", "d6"), installed().dice.map(Die::id))
+    assertTrue(installed().dice.all { it.material.density == 2.4 })
+  }
+
+  @Test
+  fun `setting a weight is enough on its own to have the package rebuilt`() {
+    val sets = mine()
+    drafts.save(Drawings.drawn(cube, 0))
+    sets.bringUpToDate()
+
+    sets.setPhysical(DieMaterial(density = 3.0))
+    sets.bringUpToDate()
+
+    assertEquals(
+      3.0,
+      installed()
+        .dice
+        .single()
+        .material.density,
+      1e-12,
+    )
+    assertEquals(3.0, sets.physical().density, 1e-12)
   }
 
   @Test

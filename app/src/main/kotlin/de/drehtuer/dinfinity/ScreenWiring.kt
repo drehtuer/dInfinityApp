@@ -67,6 +67,7 @@ internal class ScreenWiring(
         app.rolls.presenter(
           powerSaving = settings.powerSaving,
           rounding = settings.rounding,
+          tableView = settings.tableView,
           haptics = settings.haptics,
           sound = settings.sound,
           developerTools = settings.developerTools,

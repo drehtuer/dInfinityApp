@@ -48,6 +48,48 @@ class TypesetterTest {
   }
 
   @Test
+  fun `a marked number is the number with a full stop after it`() {
+    // The mark is a trailing dot rather than a bar underneath
+    // (`docs/dice-sets.md`, "Labels"), and it is written rather than drawn —
+    // so what comes out is exactly what `6.` comes out as.
+    val marked = Typesetter.lay("6", middle.copy(marked = true))
+    val written = Typesetter.lay("6.", middle)
+
+    assertEquals(written.size, marked.size)
+    marked.forEachIndexed { ring, points -> assertTrue(points.contentEquals(written[ring]), "ring $ring") }
+  }
+
+  @Test
+  fun `a marked number carries one ring more than the bare one, and is wider`() {
+    val bare = bounds(Typesetter.lay("6", middle))
+    val marked = bounds(Typesetter.lay("6", middle.copy(marked = true)))
+
+    assertEquals(Typesetter.lay("6", middle).size + 1, Typesetter.lay("6", middle.copy(marked = true)).size)
+    assertTrue(marked.width > bare.width, "${marked.width} against ${bare.width}")
+    // The dot sits on the baseline, so it adds nothing to the height — which
+    // is what the bar it replaces used to do.
+    assertTrue(abs(marked.height - bare.height) < 0.005, "${marked.height} against ${bare.height}")
+  }
+
+  @Test
+  fun `a mark does not move the text up or down`() {
+    // The bar hung below the baseline and the whole line was lifted to make
+    // room for it. Nothing is lifted now, so a marked `6` sits exactly where
+    // the bare one did.
+    val bare = bounds(Typesetter.lay("6", middle))
+    val marked = bounds(Typesetter.lay("6", middle.copy(marked = true)))
+
+    assertTrue(abs(marked.centreY - bare.centreY) < 0.005, "${marked.centreY} against ${bare.centreY}")
+  }
+
+  @Test
+  fun `what is printed says whether the mark is on`() {
+    assertEquals("6.", Typesetter.printed("6", marked = true))
+    assertEquals("6", Typesetter.printed("6", marked = false))
+    assertEquals(".", Typesetter.MARK)
+  }
+
+  @Test
   fun `moves the text with the placement`() {
     val ink = bounds(Typesetter.lay("8", Placement(centreX = 0.25, centreY = 0.75, height = 0.2)))
     assertTrue(abs(ink.centreX - 0.25) < 0.01, "across: ${ink.centreX}")

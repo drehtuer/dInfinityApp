@@ -59,23 +59,6 @@ One section per screen. Each is a vertical slice: state, UI, tests, and the
 device check it needs. The design option ids (`1a`, `9c`, …) are the labels on
 the canvas — open [design/](../design/) beside the code.
 
-- [ ] **Power-saving mode says nothing, and reads as a broken renderer.** The
-      prototype has a panel for it — grey, "Power-saving mode" over "Same
-      physics, no rendering. The result is identical to what the tray would
-      show." The app draws no panel and no surface, so a player sees empty felt
-      and a total arriving from nowhere. The first device session lost twenty
-      minutes to it, convinced Filament had failed, and it is the clearest case
-      of the prototype being right and the app simply not having built it
-      (`docs/design-handover.md`, "Four the pass did not reach"). The mode is read
-      when the screen opens, so the screen already knows.
-
-- [ ] **Two screens disagree about where the top of the screen is.** On the
-      Pixel 10a the Roll screen's menu button sits at y≈174 px and Settings'
-      at y≈64, immediately under the status bar, with its title a few pixels
-      off the clock. Whatever `safeDrawingPadding` the roll screen applies is
-      not reaching the screens the menu opens. Seen, not measured against a
-      spec — one of them is right and the same one should be right everywhere.
-
 Every screen follows the same four steps, so they are written out once here
 rather than repeated below:
 
@@ -119,30 +102,18 @@ What is below is what it does not have yet.
 **From the design pass of 2026-09-17** (`docs/physics-and-rendering.md`, "What
 is drawn over the table"):
 
-- [ ] **Put the controls on plates.** The screen keeps its shape — one
-      full-bleed table, everything floating on it — and every control over it
-      becomes an opaque `--color-bg` plate with `--shadow-sm`, no radius, no
-      border, 7 / 11 / 8 dp of padding, hugging its content. That fixes three
-      things at once: the formula's dashed rule stops running the width of the
-      screen and becomes an underline again, the picker and "Save a roll" stop
-      sitting on bare felt, and **accent stops touching felt anywhere**, which
-      is what makes any accent over a shelf of tables safe without checking
-      every pair
-- [ ] **Build the counting plate.** Across the bottom: `COUNTING` kicker, the
-      count in tabular figures, `of 20 read`, the still-possible range
-      right-aligned with a `+` in accent-700 while a chain is open, and a 3 dp
-      progress rule. It replaces the line of text currently sitting where
-      "Rolling…" used to be — the most important unstyled thing in the app
-- [ ] **Two roll states on that same plate**: *another throw earned* (`Throw 3
-      more` / `Stop the chain`) and *could not settle* (`Throw those 3 again` /
-      `Cancel the roll`). Both are states the screen already reaches and
-      neither has a design until now; `rollState` in the prototype shows them
 - [ ] **Mark the dice of a later pass** — 4 dp accent-700 outline and a
       `pass 2` label in the `dropped` slot — so a total counting twenty dice
       over a table holding three explains itself on the felt
-- [ ] **Draw the total once.** Today the result is the total at ~42 dp centred
-      on the felt *and* again at the right edge at x ≈ 376 dp of 411, where it
-      looks clipped. The design has one result sheet; the second copy goes
+- [ ] **Score a chain the player stopped.** `Stop the chain` on the earned
+      plate puts the roll away with no total, which is honest but is not what
+      the button says. Scoring what is on the table needs `core/notation` to
+      have a *reason* a chain ended that is not the tray's: `RunningScore`
+      stops one only when `AddedDice.room` says no, and `GroupRoller` writes
+      `DieNote.TrayFull` when it does — so a player-stopped chain would print
+      "The tray had no room for another die" over a tray with plenty. The work
+      is a `DieNote` of its own, a way for `ExtraThrow` to say which refusal it
+      is, a `ChainLimit` entry and a line in `docs/dice-notation.md`
 - [ ] **Stagger the spawn**, 85 ms between dice, with the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** to be ported: a settled die moved by another
@@ -152,10 +123,51 @@ is drawn over the table"):
       digit is dotted and its tens pair is not; an upright number in the result
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
-- [ ] **Table view becomes a setting**, straight down by default and 22° on
-      *angled*. The camera arithmetic is already a function of one constant;
-      what is new is reading a setting and re-framing without restarting a roll
-      (`docs/physics-and-rendering.md`, "Rendering")
+
+- [ ] **The rest of the plates are a stack at the bottom, and on a phone that
+      is most of a wall.** The formula has moved to the corner the design puts
+      it in and the felt is clear again above the controls; what is left below
+      is the saved rolls, the picker and the Roll button.
+      Seen on the Pixel 10a with the straight-down table view: the result, the
+      odds, the saved rolls, the picker and the button are five plates one
+      above another, and between them they cover something like half the felt —
+      which is the banded column the tray stopped being, drawn in shadow
+      instead of in rules. The design puts four small plates in the corners of
+      a clear table (formula top left, hint bottom left, the counting plate
+      across the bottom) and puts the dice picker in a strip under the app bar,
+      with no button at all: you shake, or you tap the table. **The design is
+      right and this is the divergence to close**, and it is a layout change
+      rather than a plate change — which is why it is here rather than in the
+      change that made the plates
+- [ ] **Where the result goes, now that the table is worth looking at.** The
+      settled result is a full-width plate across the middle, and a die can
+      land under it. It did not matter when the tray was a leaning shot with a
+      small patch of felt; it matters now. The design's answer is a sheet that
+      comes up from the bottom, which is also where the thumb is
+
+**Decided while building the plates**, where the design left the app a choice:
+
+- The plates are **one column at the bottom of the tray**, not four blocks
+  placed at the prototype's corners. The design puts the formula top-left and
+  the hint bottom-left; the app's controls have always been one stack and
+  moving them is a separate change from giving them a ground to stand on. What
+  the plates fix is what they were put on the list for — the dashed rule, the
+  bare felt, and accent never touching either.
+- **The accent's 700 step is mixed rather than looked up**, in `ui/common` as
+  `Ink.accentDeep`, from the theme's `primary` against the ground it is read
+  on. A feature module cannot see `:app`'s `LocalModernistColors`, and the
+  player picks any colour they like, so there is no pigment to name — it is
+  the same rule `Tag` already mixes the ramp's other two ends by.
+- **A group's subtotal is not drawn when it is the whole total** (`Subtotals`).
+  That is the "draw the total once" item: the design's sheet keeps subtotals
+  because they are how the rows add up, and for `1d20` there is nothing to add
+  up — one group, no modifier, and the number printed twice.
+- **`Cancel the roll` and `Stop the chain` are the same act today**: the roll
+  is put away with no total. That is right for the refusal and wrong for the
+  chain, which is the open item above.
+- **The kickers are upper case in `strings.xml`.** Compose has no text
+  transform, and uppercasing in Kotlin changes what a screen reader says —
+  which is the open question `SectionKicker` already records.
 
 - [ ] **Revisited against the device data, and left alone deliberately.** The
       two constants do different jobs: `FLOOR_SHARE` *shrinks* and `MIN_SCALE`
@@ -247,10 +259,19 @@ groups nest one level and nothing can make them nest deeper, a roll always has
 somewhere to be, and deleting a group moves its rolls rather than deleting
 them. What is left is the screens.
 
-The list is built: the group switcher, the row-style list in favourites-first
-order, the warning on a roll whose dice are gone, the empty state, and tapping
-a roll to send its formula to the tray. Groups can be made, renamed, moved and
-deleted, from the switcher or from the editor — the same sheet in both places.
+The list is built: the group switcher, the row-style list **in the order the
+player dragged it into**, the warning on a roll whose dice are gone, the empty
+state, and tapping a roll to send its formula to the tray. Groups can be made,
+renamed, moved and deleted, from the switcher or from the editor — the same
+sheet in both places.
+
+Pinning is gone with the design pass of 2026-09-17: each row carries a grip,
+the list reorders live under the finger and is written down when it lifts, the
+list is its own scroll box under a bar and a switcher that stay put, and a roll
+wears one of twelve colour tags or one typed as a hex code — every one of them
+through a contrast clamp. `sort_order` replaced the `favourite` column in
+database version 6, and the migration translates what a phone already has once:
+favourites first, then by recent use, numbered per group.
 
 Rolls and groups are one repository each now, joined by `SavedRollLibrary` for
 the screens that need both — the split the class size had been asking for, and
@@ -264,21 +285,39 @@ extractor unpacks it, and the one `*.dinfinity.json` at its root goes through
 
 - [ ] The editor offers ten emoji as icons. The design has an icon pack; whether one is worth drawing, or emoji is the answer, is a decision rather than an omission (`docs/dice-notation.md` says "an emoji or a name from the built-in icon pack")
 
-**From the design pass of 2026-09-17** (`docs/dice-notation.md`, "Saved rolls"):
+**Decided while building the order and the colours**, because the design left
+the choice open:
 
-- [ ] **Drag the list into order, and drop pinning.** Each entry gets a grip;
-      the list reorders live under the finger, and the row that moves is the
-      one under the pointer rather than the one the drag began on. The
-      favourite flag goes, and favourites-first with it — a favourite and a
-      roll dragged to the top were solving the same problem twice, and only one
-      of them can say which favourite comes first. `sortOrder` replaces the
-      flag in storage, and the order travels in an exported collection as the
-      file's own order
-- [ ] **Twelve colour tags and a custom one**, each through the same contrast
-      clamp as the accent. The list is ink, grey, red, deep red, orange, amber,
-      pine, teal, cobalt, violet, magenta, bone
-- [ ] **The list is its own scroll box**, under a header and a group picker
-      that stay put
+- **A new roll lands at the bottom of its group.** It is a roll somebody has
+  just made and has not placed yet; putting it at the top would move
+  everything they *had* placed down by one.
+- **A custom colour is typed as `#rrggbb`** rather than picked off a wheel. The
+  system colour picker arrives with the accent's (4.9 below), and one picker
+  for both is worth more than two that are not quite the same; a hex code is
+  also what somebody copying a colour out of a character sheet already has.
+  Half a code chooses nothing rather than something wrong.
+- **The contrast clamp is `core/model`'s**, the same one the accent goes
+  through (`AccentRamp.clamp`). It was written twice for a few hours — once
+  here and once beside the accent, because the two were built at the same time
+  — and the local copy is gone: a colour a player picks is a colour a player
+  picks, and one of them being a saved roll's rather than the interface's is
+  not a reason for a second answer.
+- **The grip carries *move up* and *move down* as accessibility actions**, so
+  the list can be ordered without a drag. What is *not* there is auto-scroll
+  while dragging past the top or bottom of the list — a row can only be
+  dragged as far as the list is showing, and moving it further takes a second
+  drag. Worth doing if a long list turns out to be tedious; not worth guessing
+  at before somebody has one.
+
+- [ ] `design/dInfinity.dc.html`'s caption for option `1r` still lists a
+      favourite among the editor's fields, and `1o`/`1p` still describe
+      favourites-first tiles. The screens themselves (`dInfinityPhone.dc.html`)
+      are right — these are captions in the imported options catalogue, and the
+      file carries a "last synced" marker, so they want fixing in the design
+      project and re-importing rather than by hand here
+- [ ] *Judge the drag on the phone:* whether a row follows the finger closely
+      enough to feel picked up rather than nudged, and whether the grip is
+      where a thumb expects it on a list the length of a character sheet
 
 ### 4.4 Dice sets — `feature/sets`
 
@@ -315,20 +354,41 @@ chosen**, and the choice is written into the file and into the installed folder
 alike. What goes out is validated first, by the same validator a download goes
 through.
 
-**From the design pass of 2026-09-17** (`docs/dice-sets.md`, "Weight,
-translucency and size, as a person sets them"):
+**The Physical block is built** (`docs/dice-sets.md`, "Weight, translucency and
+size, as a person sets them"), and four things were decided in the building:
 
-- [ ] **The Physical block on a set's detail screen** — weight in grams,
-      translucency in per cent, size as a percentage of the average die.
-      Weight is `density × volume`, and the volume is the one the solver
-      computes for a body's mass and nobody has ever asked it for, so this
-      needs a way to ask
-- [ ] **Steppers on "My dice"**, at 0.1 g / 5 % / 5 %, each reading the live
-      value so a rapid run of taps accumulates. Imported sets show the same
-      three figures and no steppers, because their numbers came out of somebody
-      else's `diceset.toml`
-- [ ] **Size is 50–150 % of average** where the format clamps `size_mm` to
-      8–40. The tighter bound belongs to the slider rather than to the file
+- **The volume is arithmetic, not a measurement.** `core/model`'s `DieVolume`
+  holds one constant per catalogue solid, each a multiple of the cube of the
+  die's circumradius and each derived from the solid in its KDoc. The two
+  trapezohedra have no textbook constant; they are cut into an antiprism (whose
+  volume the prismatoid rule gives exactly) and two pyramids, and the test
+  checks that against a tetrahedron sum over the real corners. A coin is the
+  24-gon prism its rim is collided as, and `CoinShape` now holds the two
+  numbers that say so, so `simulation/api` and the volume cannot disagree.
+- **A set whose dice differ is quoted as a range** — "0.3–1.6 g" — and as one
+  figure only where both ends print the same. Chosen over the commonest value
+  because a range is true of every die in the set, where a commonest value is a
+  claim about one die presented as the set's. Dice essentially always differ in
+  weight, since a d4 and a d20 of one `size_mm` are not the same solid.
+- **A weight stepper moves the `density`**, by the amount that changes a **d6
+  of the set's current size** by 0.1 g. A gram is a fact about one die of one
+  shape, so a step needs a reference solid, and the d6 is the one the design's
+  own figures quote and the one nearly every set defines.
+- **"My dice" keeps the three numbers in a record of its own**
+  (`filesDir/mine-physical.txt`, `designer`'s `PhysicalStore`), beside the
+  drafts and the photos, and they go out as the package's `[defaults]` table.
+  The package is *built* from its records, so a number written only into
+  `dicesets/mine/diceset.toml` would be rewritten away by the next stroke.
+
+**Open, and for the design rather than the code:** the built-in dice are
+smaller than a dice shop's. `size_mm` is the width across the corners
+(`docs/dice-sets.md`, "Size"), so the built-in 16 mm d6 is a 9.2 mm cube and
+the block honestly prints **0.9 g** where the design pass quotes 4.2 g — which
+is what a *nominal* 16 mm d6 (a 16 mm **edge**) weighs. The arithmetic is not
+in doubt; what is, is whether the built-in set should declare something nearer
+`size_mm = 28` so that its dice weigh what a player expects to feel. Changing
+it moves every built-in die's mass and how many fit a table, so it is a
+decision to take on purpose rather than a constant to tweak.
 
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. A malicious **texture** is covered too, now that there is a decoder: `InstalledArtworkTest` has the paths that climb out of a package and the file over the cap, each refused before a decoder sees it, `AtlasDecoderTest` has the image refused from its bounds with nothing decoded, and `AtlasDecoderDeviceTest` has the file that passes the header check and will not decode — on a device, because Robolectric hands back a fake bitmap for bytes it cannot identify
 
@@ -403,14 +463,44 @@ exported collection does.
       accurately somebody draws on glass; whether a loop somebody meant to
       close is treated as closed, and whether the region that fills is the one
       they meant, can only be told by drawing on a phone
-**From the design pass of 2026-09-17** (`docs/face-designer.md`):
+**The Solid tab is built.** A Face / Solid pair on the designer screen, and the
+flat editor untouched under the first of them. The polyhedron is generated
+rather than modelled: `simulation/api` now owns which corners make up which
+face (`SolidFaces`) and the renderer's mesh is built from the same grouping, so
+there is one account of a die's geometry rather than two (decision 35). The
+picture is Compose — turn, project, drop the faces pointing away, sort what is
+left furthest-first and fill it — with all of that in plain Kotlin where a JVM
+test holds it. The whole stage is one drag surface with nothing on the die
+selectable, the die spins until a drag takes over and the drag unticks Spin,
+and the face being drawn on wears a 4 dp accent-700 outline over a 16 % tint.
+It draws each face's background, numerals and pips and **not** the strokes of
+the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
+"What the Solid view shows, and what it does not".
 
-- [ ] **Confirmed the other way: build the Solid tab.** The hand-over asked
-      whether "Roll it" was the preview and the answer is no — the design wants
-      the die in the hand, generated from the solid rather than modelled, each
-      authored face mapped onto its real face, spinning until a drag takes over,
-      the whole stage one drag surface with nothing on the die selectable, and
-      the selected face outlined in accent-700 over a 16 % tint
+- [ ] *Judgement, on a screen:* the Solid tab has never been looked at. Whether
+      a d20 at a turn every sixteen seconds reads as a die being turned over or
+      as a thing fidgeting; whether one lamp and a floor under it is enough to
+      tell twenty triangles apart, in both themes; whether the 4 dp accent
+      outline finds the selected face when it is edge-on at the back; whether a
+      drag of a stage-width per 176° is the rate a finger expects; and whether
+      a face carrying only its background and its number reads as a face
+      somebody drew or as a face that lost their drawing
+- [ ] **The atlas's turn of a cell is not the canvas's.** The exporter draws
+      every cell with the face's up taken as `+z` flattened onto it while the
+      canvas masks every cell into one canonical outline, and the two are not
+      the same turn — an octahedron's top face is fifteen degrees off the
+      triangle the canvas draws, a d20's up to sixty and a d12's up to
+      thirty-six, while a d6's square lands exactly. So a drawing comes out
+      of the exporter turned, and clipped where it runs past the real polygon.
+      The Solid tab shows the drawing the canvas's way and says so; which of
+      the two should move is the open question, and it is not a small one —
+      changing the atlas's rule repaints every die of every set ever published
+      (`docs/dice-sets.md`, "Up is `+z`")
+- [ ] **Whether the Solid tab should draw pen strokes too**, as thin filled
+      outlines rather than as lines of a width. What it costs is a stroke
+      turned into a polygon per mark per face per frame; what it buys is a
+      hand-drawn face that is not blank on the tab that is meant to show it.
+      Today the tab says what it does not draw instead
 - [ ] **Number the faces in opposite pairs summing to n + 1.** "Fill all with
       numbers" follows the pairing rather than the face order, and so does the
       built-in set. **It changes what a recorded roll reads back as**: the same
@@ -523,12 +613,66 @@ restores the choice; the session falls back where a roll is *recorded*, because
 a session deleted while another screen was in front would otherwise strand
 every throw filed under it (`docs/statistics.md`, per session).
 
-**From the design pass of 2026-09-17** (`docs/architecture.md`, "Settings"):
+**Table view is built, and four things were decided while building it**
+(`docs/architecture.md`, "Settings"; `docs/physics-and-rendering.md`,
+"Rendering (normal mode)"):
 
-- [ ] **A Table view row**, straight down or angled, taking effect the next
-      time the roll screen opens like the other five
-- [ ] **The two-stage back**, and the "Back again to leave dInfinity" toast
-      with it (`docs/architecture.md`, "Navigation")
+- **The lean is an argument, not a second camera.** `TrayCamera.TILT_DEGREES`
+  stopped being the only answer and became the *angled* one, with 0° beside it
+  and `tiltDegreesOf` mapping the setting onto degrees. Everything else about
+  the shot is the arithmetic that was already there, so both positions are
+  tested on a JVM: straight down stands over the middle of the tray, angled
+  stands off its near end, and the two frame the whole table with the same
+  margin.
+- **`render/filament` still defaults to the shot it always took.** A caller
+  that says nothing — a thumbnail, a pick built for a test — gets 22°, because
+  that keeps the module's behaviour a function of what it is asked for rather
+  than of a preference it cannot see. The *player's* default is the other way
+  round and lives in `AppSettings.tableView`, which is straight down. The one
+  consequence worth naming: the **table picker's thumbnails do not follow the
+  setting**. They are pictures of a table rather than a roll in progress, and
+  the angled shot is the one that shows a look's walls.
+- **The camera is read when the screen opens, like the other six.** The tray a
+  visit is given is built with one answer and a rotation rebuilds the picture
+  with the same one, so nothing moves under a roll (decision 16). `TrayPick`
+  takes the same lean, so a finger is read against the shot the screen is
+  actually taking — it is not wired to a gesture yet, which is why the
+  parameter is there before the caller is.
+- **`shotOn`'s `right` really is right now**, which is the item that used to be
+  in Step 5 here: it was `cross(up, forward)`, which is screen-*left*, and it
+  is `cross(forward, up)`. It stays harmless either way — the vector's one use
+  is inside an `abs()` — so nothing about the framing changed, and the reason
+  to fix it while touching the file is that a 0° lean is exactly when somebody
+  will come here hunting a handedness bug. **The degenerate case does not
+  arise**: the camera's up rotates with the lean rather than being the world's,
+  so at 0° it looks along `−z` with up `+x` and the frame is as square as it is
+  at 22°. A test says so, and says that `+y` across the tray is screen-*left* —
+  which is the wall the angled shot is documented to show.
+
+**Navigation is finished, and three things were decided while finishing it**
+(`docs/architecture.md`, "Navigation" and "One safe area, applied once"):
+
+- **The toast outlives its window by six tenths of a second.** The design gives
+  the toast 2.6 s and the arming 2 s, so a press in the gap arms again rather
+  than leaving. Kept as the design wrote it: the failure that stays open is one
+  press from closing, and the one that closes is gone. `LeavingTheApp` holds
+  the window and takes its clock as an argument, so both edges are JVM tests
+  rather than a two-second sleep.
+- **The chevron is drawn on one screen, not on all of them.** The prototype
+  puts one in every header; the app puts a menu button there instead, which
+  reaches every screen rather than one. The editor is the exception because it
+  has no menu button — it is about a roll rather than a subject — and had no
+  way out but saving, deleting or system back. `Destination.up` and
+  `NavHostController.climb` are the rule for all of them either way, and the
+  three screens that are about *one* of something climb to the list of them
+  rather than to the menu. The `←` on Statistics is not a chevron: it closes a
+  detail on the screen it is drawn on.
+- **The safe area is the graph's, not each screen's.** The fourteen
+  `safeDrawingPadding` calls are gone; `Destination.fullBleed` is the single
+  exception and only the tray takes it. `DInfinityApp` takes its insets like it
+  takes its `NavHostController`, so a test can hold a 58 dp status bar over
+  every destination — which is the only way this could have been caught, since
+  a Robolectric window has no status bar of its own.
 
 - [ ] *Done, and the three judgement calls in it:* the accent is six presets
       and a colour of the player's own, with `AccentRamp.clamp` between the
@@ -546,6 +690,33 @@ every throw filed under it (`docs/statistics.md`, per session).
       **(3) Android has no colour picker to send anybody to**, so Settings
       draws the one the face designer already has — hue, depth and brightness
       over `designer/Ink` — rather than a second transcription of what a hue is
+
+**Every setting is one row now** — name and sentence on the left, the control
+on the right and centred against them — because that is how the design draws
+the screen and the app was drawing three stacked blocks instead
+(`docs/architecture.md`, "Settings"). Three things were left undone rather than
+done half way:
+
+- [ ] **The design's Settings has two rows the app does not.** *Example dice
+      set on GitHub* is nowhere in the app, and *Reset statistics for
+      «session»…* is on the Statistics screen, next to the thing it resets.
+      Neither is a drawing problem: the question is whether Settings is where a
+      person looks for them, and the answer decides whether the app grows two
+      rows or the prototype loses them
+- [ ] **The accent's hex is on a line of its own, not at the end of the
+      sentence.** The design writes it inline, in tabular numerals, as the last
+      words of the description. That is an `AnnotatedString` with a
+      `fontFeatureSettings` span rather than a second `Text`, and it is worth
+      doing when the accent block itself is reconsidered — it is the one
+      setting that is not a row, because a four-column grid of swatches has
+      nothing left of itself in half of one. Doing only the hex would leave the
+      block half converted
+- [ ] **Judgement, on the phone:** a row whose control has no room beside the
+      text stacks — the control drops under the sentence, at the left edge,
+      which is the app's answer to a thing a browser solves by overflowing
+      sideways. Nothing on the Pixel 10a's Settings should reach it, so what is
+      worth looking at is a **split screen**: whether a stacked row still reads
+      as one setting there, or as the old three blocks come back
 
 The **developer toggle** is the last thing on that screen, and it is the one
 setting that is off on every install. It adds a debug overlay over the tray, a
@@ -587,13 +758,6 @@ after every physics change.
 
       It needs a way to build a quaternion from two orthonormal frames, which
       `Quaternion` does not have yet.
-
-- [ ] **`TrayCamera.shotOn` calls `cross(up, forward)` `right`, and it is
-      left.** Screen-right is `cross(forward, up)`; the code has the operands
-      the other way round, so the vector is negated. It is harmless today
-      because its only use is inside an `abs()` in the framing solve, which is
-      why nothing caught it. Fix it with the reflection above, since anyone
-      reading that file while hunting a handedness bug will stop here first.
 
 ### 5.1 Harness
 

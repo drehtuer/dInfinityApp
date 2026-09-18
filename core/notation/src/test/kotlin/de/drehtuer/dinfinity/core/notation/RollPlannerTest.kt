@@ -121,8 +121,11 @@ class RollPlannerTest {
 
   @Test
   fun `the units half of a pair reads its ten as a zero, as a real d10 does`() {
+    // In the catalogue's face order, which is a numbering in opposite pairs
+    // rather than a count (`docs/dice-sets.md`, "Numbering"): the ten is still
+    // the last face, and it is the one that reads nought.
     assertEquals(
-      listOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 0),
+      listOf(1, 2, 3, 4, 5, 7, 6, 8, 9, 0),
       planned("1d%", catalog)
         .dice
         .last()
@@ -138,8 +141,10 @@ class RollPlannerTest {
 
   @Test
   fun `dF resolves to the set's fudge die`() {
+    // A minus across from a plus and a blank across from a blank, which is how
+    // a real fudge die is moulded (`docs/dice-sets.md`, "Numbering").
     assertEquals(
-      listOf(-1, -1, 0, 0, 1, 1),
+      listOf(-1, -1, 0, 1, 0, 1),
       planned("4dF", catalog)
         .dice
         .first()

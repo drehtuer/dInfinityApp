@@ -246,6 +246,7 @@ die_summary(set_id, die_id, sides, throws, sum, sum_sq, hi_streak, hi_streak_max
 saved_roll_group(id, name, icon, parent_id?, sort_order, table_set_id?, table_id?)
 saved_roll(id, group_id, name, formula, icon, colour_argb?, favourite,
            table_set_id?, table_id?, created_at, last_used_at?, use_count)
+                                                     -- re-shaped in v6
 
 -- version 3 (per session, below)
 session(id, name, started_at)
@@ -256,6 +257,11 @@ installed_set(id, enabled)
 -- version 5 (per session, above): die_stats grows a session and is re-keyed
 die_stats(set_id, die_id, session_id, sides, face_value, count, dropped_count,
           PRIMARY KEY(set_id, die_id, session_id, face_value))
+
+-- version 6 (docs/dice-notation.md, "Saved rolls"): pinning goes, the
+-- player's own order takes its place
+saved_roll(id, group_id, name, formula, icon, colour_argb?, sort_order,
+           table_set_id?, table_id?, created_at, last_used_at?, use_count)
 ```
 
 Version 5 is the first migration to reshape a table somebody already has rows
@@ -265,6 +271,13 @@ existing row becomes a row of the **first session** — not a default standing i
 for something unknown, but because the rolls those counts came from are already
 filed there in `roll_history`, so it is the same answer written in a second
 place. `die_summary` is untouched.
+
+Version 6 is the same dance for the same reason: `favourite` goes and
+`sort_order` arrives in its place. The translation is done **once, in the
+migration**, and the order it writes is the order the list was in before it —
+favourites first, then by recent use — numbered per group. After that nothing
+computes an order again; it is a column, and only a drag changes it
+(`docs/dice-notation.md`, "Saved rolls").
 
 `installed_set` is the one table that is **not** a list of anything. Which dice
 sets exist is the `dicesets/` folder's answer, read and revalidated on every

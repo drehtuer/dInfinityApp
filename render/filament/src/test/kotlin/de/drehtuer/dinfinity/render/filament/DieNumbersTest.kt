@@ -209,8 +209,8 @@ class DieNumbersTest {
   }
 
   @Test
-  fun `underlines a six only when the die also carries a nine`() {
-    // What a moulded die does: a d20's 6 and 9 are barred and a d6's 6 is not,
+  fun `marks a six only when the die also carries a nine`() {
+    // What a moulded die does: a d20's 6 and 9 are dotted and a d6's 6 is not,
     // because a d6 has nothing its 6 could be mistaken for.
     assertTrue(DieNumbers.isAmbiguous("6", d20))
     assertTrue(DieNumbers.isAmbiguous("9", d20))
@@ -222,9 +222,22 @@ class DieNumbersTest {
   }
 
   @Test
-  fun `underlines what it says it underlines`() {
-    val barred = DieNumbers.plan(d20).filter { cell -> cell.marks.any { it.placement.underlined } }
-    assertEquals(setOf("6", "9"), barred.flatMap { cell -> cell.marks.map { it.text } }.toSet())
+  fun `marks what it says it marks`() {
+    val dotted = DieNumbers.plan(d20).filter { cell -> cell.marks.any { it.placement.marked } }
+    assertEquals(setOf("6", "9"), dotted.flatMap { cell -> cell.marks.map { it.text } }.toSet())
+  }
+
+  @Test
+  fun `a marked six is printed with a trailing dot, which is a ring more than a bare one`() {
+    // The mark replaces the bar this used to draw underneath
+    // (`docs/dice-sets.md`, "Labels"). It is written rather than drawn, so the
+    // extra ring is the full stop's own.
+    val six = DieNumbers.plan(d20).flatMap { it.marks }.first { it.text == "6" }
+    assertTrue(six.placement.marked)
+    assertEquals(
+      Typesetter.lay("6.", six.placement.copy(marked = false)).size,
+      Typesetter.lay(six.text, six.placement).size,
+    )
   }
 
   @Test

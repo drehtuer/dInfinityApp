@@ -19,6 +19,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -30,8 +31,10 @@ import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
 import de.drehtuer.dinfinity.ui.common.Ink
+import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.Plate
 
 /**
  * Home: the tray, the formula and the total
@@ -125,29 +128,27 @@ fun RollScreen(
         .background(MaterialTheme.colorScheme.background)
         .testTag(RollTestTags.SCREEN),
   ) {
-    // No surface at all in power-saving mode, rather than one nothing draws
-    // to: a surface is a buffer the compositor keeps, and the claim that mode
-    // makes is that none of it exists (`docs/architecture.md`, decision 38).
-    if (presenter.draws) {
-      DiceTray(
-        driver = presenter.tray,
-        geometry = presenter.geometry,
-        modifier = Modifier.fillMaxSize(),
-        // A surface has nothing under it for a screen reader to find, so what
-        // is on the table is said here or nowhere at all
-        // (`docs/architecture.md`, "Accessibility").
-        describing = TrayReading.of(presenter.state).spoken(),
-      )
-    }
+    TheTableOrANoticeThatThereIsNone(presenter)
 
     Controls(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
       onDoodle = onDoodle,
       strip = strip,
+      modifier = Modifier.align(Alignment.BottomCenter),
+    )
+
+    // The formula in the top left corner of the table, which is where the
+    // design puts it and where somebody writes down what they are about to
+    // throw (`design/dInfinityPhone.dc.html`; `docs/physics-and-rendering.md`,
+    // "What is drawn over the table"). It used to be at the bottom of the
+    // stack of controls, which on a phone meant the felt was a strip above a
+    // wall of plates.
+    FormulaCorner(
+      presenter = presenter,
       editing = editing,
       onEditing = { editing = it },
-      modifier = Modifier.align(Alignment.BottomCenter),
+      modifier = Modifier.align(Alignment.TopStart),
     )
 
     // Over the tray rather than in a bar above it: the tray is the screen, and
@@ -246,8 +247,6 @@ private fun Controls(
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
   onDoodle: (String) -> Unit,
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
-  editing: Boolean,
-  onEditing: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state = presenter.state
@@ -256,52 +255,124 @@ private fun Controls(
       modifier
         .fillMaxWidth()
         .safeDrawingPadding()
-        .padding(24.dp),
+        .padding(EDGE),
     verticalArrangement = Arrangement.spacedBy(12.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
   ) {
-    Outcome(state, presenter.progress, onThrowAgain = {
-      presenter.throwUnsettled()
-    }, onRound = presenter::round, onDoodle = onDoodle)
+    Outcome(
+      state = state,
+      progress = presenter.progress,
+      onThrowMore = { presenter.roll() },
+      onThrowAgain = { presenter.throwUnsettled() },
+      onGiveUp = presenter::clear,
+      onRound = presenter::round,
+      onDoodle = onDoodle,
+    )
     // The odds for the formula in the field, with the throw that just landed
     // marked on them (`design/dInfinity.dc.html`, option 7a). Offered for a
     // throw the table refuses too: that is exactly when "what would it have
     // been" is the only answer there is (`docs/probability.md`).
+    //
+    // On a plate because it is a ghost button, and a ghost button is a whole
+    // line of text in the accent. Accent never touches felt
+    // (`docs/physics-and-rendering.md`, "What is drawn over the table").
     if (state is RollState.Ready || state is RollState.TooMany || state is RollState.Settled) {
-      SeeTheOdds(
-        onClick = { onSeeTheOdds(presenter.text, (state as? RollState.Settled)?.result?.total) },
+      Plate {
+        SeeTheOdds(
+          onClick = { onSeeTheOdds(presenter.text, (state as? RollState.Settled)?.result?.total) },
+        )
+      }
+    }
+    SavedRollsPlate(presenter, strip)
+    PickerPlate(presenter)
+    // The Roll button is filled in the accent, so it is on a plate for the
+    // same reason "See the odds" is.
+    Plate(modifier = Modifier.fillMaxWidth()) {
+      ThrowButton(
+        enabled = state is RollState.Ready || state is RollState.Settled,
+        settled = state is RollState.Settled,
+        onRoll = { presenter.roll() },
       )
     }
-    // The active group's saved rolls, above the loose dice: a roll somebody
-    // named comes before a die they have to assemble. Handed in as a slot, so
-    // this module does not have to know what a saved roll is
-    // (`design/dInfinity.dc.html`, option 9a).
+  }
+}
+
+/**
+ * The active group's saved rolls, above the loose dice: a roll somebody named
+ * comes before a die they have to assemble
+ * (`design/dInfinity.dc.html`, option 9a).
+ *
+ * Handed in as a slot, so this module does not have to know what a saved roll
+ * is (`docs/architecture.md`, "Modules").
+ */
+@Composable
+private fun SavedRollsPlate(
+  presenter: RollPresenter,
+  strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
+) {
+  // Hugging rather than filling: what is inside is either a row of saved rolls
+  // or the one "Save a roll" box, and a plate the width of the screen with a
+  // box in the corner of it is a band, which is the thing the tray stopped
+  // being (`docs/physics-and-rendering.md`, "What is drawn over the table").
+  Plate {
     strip { formula, from ->
       // A tap on the strip is a formula *and* which roll put it there, so the
       // throw can be recorded as that roll's. Typed formulas come with none.
       if (from == null) presenter.type(formula) else presenter.typeSaved(formula, from)
       presenter.roll()
     }
-    PickerRow(
-      dice = presenter.pickable,
-      counts = presenter.counts,
-      onAdd = presenter::add,
-      onRemove = presenter::remove,
-    )
-    SetChooser(
-      sets = presenter.choosableSets,
-      chosen = presenter.pickingFrom,
-      onChoose = presenter::pickFrom,
-    )
-    // The formula sits on the tray as text with a dashed rule under it, and a
-    // tap brings the keyboard up — a field is a thing to fill in, and this is
-    // a thing somebody has written (`design/dInfinity.dc.html`, option 2a).
-    //
-    // A throw the table cannot hold is a formula that reads perfectly well, so
-    // both states mark it; *what* is wrong is said in the editor, under the
-    // squiggle, and where the total goes.
-    val wrong = state is RollState.Invalid || state is RollState.TooMany
-    if (editing) {
+  }
+}
+
+/**
+ * The dice a tap adds, and which set they come from
+ * (`design/dInfinity.dc.html`, options 1h and 4a).
+ *
+ * One plate rather than two: they are one control — these dice, from that set
+ * — and a band of felt between them would read as two.
+ */
+@Composable
+private fun PickerPlate(presenter: RollPresenter) {
+  Plate(modifier = Modifier.fillMaxWidth()) {
+    Column(verticalArrangement = Arrangement.spacedBy(Modernist.x2)) {
+      PickerRow(
+        dice = presenter.pickable,
+        counts = presenter.counts,
+        onAdd = presenter::add,
+        onRemove = presenter::remove,
+      )
+      SetChooser(
+        sets = presenter.choosableSets,
+        chosen = presenter.pickingFrom,
+        onChoose = presenter::pickFrom,
+      )
+    }
+  }
+}
+
+/**
+ * The formula, as text with a dashed rule under it until it is tapped
+ * (`design/dInfinity.dc.html`, option 2a).
+ *
+ * A field is a thing to fill in and this is a thing somebody has written, so
+ * the keyboard comes up on a tap rather than standing under the dice all the
+ * time. A throw the table cannot hold is a formula that reads perfectly well,
+ * so both states mark it; *what* is wrong is said in the editor, under the
+ * squiggle, and where the total goes.
+ */
+
+@Composable
+private fun FormulaPlate(
+  presenter: RollPresenter,
+  state: RollState,
+  editing: Boolean,
+  onEditing: (Boolean) -> Unit,
+) {
+  val wrong = state is RollState.Invalid || state is RollState.TooMany
+  if (editing) {
+    // The editor fills the width, because a field is a thing to type into and
+    // a field the width of what was last typed is a field that jumps.
+    Plate(modifier = Modifier.fillMaxWidth()) {
       FormulaField(
         text = presenter.text,
         onChange = presenter::type,
@@ -317,16 +388,79 @@ private fun Controls(
         },
         takeFocus = true,
       )
-    } else {
-      FormulaLine(text = presenter.text, onEdit = { onEditing(true) }, wrong = wrong)
     }
-    ThrowButton(
-      enabled = state is RollState.Ready || state is RollState.Settled,
-      settled = state is RollState.Settled,
-      onRoll = { presenter.roll() },
+  } else {
+    // **This plate hugs**, and that is the whole of the fault it fixes. The
+    // formula's rule is dashed and used to be drawn the width of the screen
+    // with the words centred in it, which reads as a formula struck through
+    // rather than one waiting to be edited.
+    Plate { FormulaLine(text = presenter.text, onEdit = { onEditing(true) }, wrong = wrong) }
+  }
+}
+
+/**
+ * The table, or — in power-saving mode — the notice that there is not one.
+ *
+ * No surface at all in that mode, rather than one nothing draws to: a surface
+ * is a buffer the compositor keeps, and the claim the mode makes is that none
+ * of it exists (`docs/architecture.md`, decision 38). Something has to say so,
+ * because an empty screen with a total arriving on it is what a broken
+ * renderer looks like ([PowerSavingPanel]).
+ */
+@Composable
+private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
+  if (!presenter.draws) {
+    PowerSavingPanel()
+    return
+  }
+  DiceTray(
+    driver = presenter.tray,
+    geometry = presenter.geometry,
+    modifier = Modifier.fillMaxSize(),
+    // A surface has nothing under it for a screen reader to find, so what is
+    // on the table is said here or nowhere at all (`docs/architecture.md`,
+    // "Accessibility").
+    describing = TrayReading.of(presenter.state).spoken(),
+  )
+}
+
+/**
+ * The formula, in the top left corner of the table.
+ *
+ * Its own composable rather than a `Box` in the middle of the screen's own,
+ * because where a thing sits and what it is are two questions and the screen
+ * only has to answer the first.
+ */
+@Composable
+private fun FormulaCorner(
+  presenter: RollPresenter,
+  editing: Boolean,
+  onEditing: (Boolean) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Box(
+    modifier =
+      modifier
+        .safeDrawingPadding()
+        .padding(start = CORNER_ACROSS, top = CORNER_DOWN, end = MENU_ROOM),
+  ) {
+    FormulaPlate(
+      presenter = presenter,
+      state = presenter.state,
+      editing = editing,
+      onEditing = onEditing,
     )
   }
 }
+
+/**
+ * How far in from the edge of the screen the plates sit.
+ *
+ * The prototype's blocks over the tray are inset `14px`; the app's stack is
+ * one column rather than four absolutely-placed blocks, so it is the column
+ * that carries the inset.
+ */
+private val EDGE = 14.dp
 
 /**
  * Holds the screen on while the tray is up.
@@ -349,53 +483,72 @@ private fun KeepTheScreenAwake() {
   }
 }
 
-/** The total, or why there is not one. */
+/**
+ * The total, or why there is not one.
+ *
+ * Every branch of it is on a [Plate]. That is not decoration: this is the one
+ * place on the screen where the accent is printed — a refusal, a die that
+ * showed its highest face — and accent never touches felt
+ * (`docs/physics-and-rendering.md`, "What is drawn over the table").
+ *
+ * @param onThrowMore throws the die a chain earned. The same act the Roll
+ *   button and a shake are: the presenter continues the chain rather than
+ *   starting a throw.
+ * @param onGiveUp puts the roll away with no total — what `Stop the chain` and
+ *   `Cancel the roll` both do (`docs/TODO.md`, Step 4.1).
+ */
 @Composable
 private fun Outcome(
   state: RollState,
   progress: RollProgress?,
+  onThrowMore: () -> Unit,
   onThrowAgain: () -> Unit,
+  onGiveUp: () -> Unit,
   onRound: (Rounding) -> Unit,
   onDoodle: (String) -> Unit,
 ) {
   when (state) {
     is RollState.Settled ->
-      Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-      ) {
-        Text(
-          text = state.result.total.toString(),
-          // The system's display size, in the heading face at 800. It used to
-          // be `displayMedium`, which the theme never defines — so the one
-          // number the whole screen exists to show was set in Material's own
-          // default face at Material's own weight (`theme/Theme.kt`).
-          style = MaterialTheme.typography.displayLarge.tabular(),
-          color = MaterialTheme.colorScheme.onBackground,
-          modifier = Modifier.testTag(RollTestTags.TOTAL),
-        )
-        ResultSheet(result = state.result, divides = state.divides, onRound = onRound, onDoodle = onDoodle)
+      Plate(modifier = Modifier.fillMaxWidth()) {
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+          Text(
+            text = state.result.total.toString(),
+            // The system's display size, in the heading face at 800. It used
+            // to be `displayMedium`, which the theme never defines — so the
+            // one number the whole screen exists to show was set in Material's
+            // own default face at Material's own weight (`theme/Theme.kt`).
+            style = MaterialTheme.typography.displayLarge.tabular(),
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.testTag(RollTestTags.TOTAL),
+          )
+          ResultSheet(result = state.result, divides = state.divides, onRound = onRound, onDoodle = onDoodle)
+        }
       }
+
+    // A roll that could not finish. It says so and offers the dice back rather
+    // than reading them off whatever face they were nearest, which is the one
+    // thing this app may not do (`docs/physics-and-rendering.md`).
+    is RollState.Stalled ->
+      StalledPlate(
+        unsettled = state.unsettled,
+        read = state.read,
+        onThrowAgain = onThrowAgain,
+        onCancel = onGiveUp,
+      )
 
     // An exploding die earns a throw rather than taking one, so the screen
     // asks for it. Without this the roll simply appears to stop
     // (`docs/dice-notation.md`, "Evaluation").
-    // A roll that could not finish. It says so and offers the dice back rather
-    // than reading them off whatever face they were nearest, which is the one
-    // thing this app may not do (`docs/physics-and-rendering.md`).
-    is RollState.Stalled -> GaveUp(state.unsettled, onThrowAgain)
-
     is RollState.ShakeAgain ->
-      Message(
-        text = stringResource(R.string.roll_shake_again),
-        colour = MaterialTheme.colorScheme.onBackground,
-        tag = RollTestTags.SHAKE_AGAIN,
-      )
+      EarnedPlate(waiting = state.waiting, onThrow = onThrowMore, onStop = onGiveUp)
 
     // While the dice are in the air the dice are not what to look at: each one
     // is read and taken off the table as it lands, so this is what is left to
     // follow (`docs/TODO.md`, Step 5.5).
-    is RollState.Rolling if progress != null -> Counting(requireNotNull(progress))
+    is RollState.Rolling if progress != null -> CountingPlate(requireNotNull(progress))
 
     is RollState.Rolling ->
       Message(
@@ -456,77 +609,29 @@ private fun TrayReading.spoken(): String =
   }
 
 /**
- * A roll that could not finish, and the offer to throw what is left of it.
+ * One line over the table: the hint, "Rolling…", or a refusal.
  *
- * There is no total and there is not going to be one for this throw: some of
- * its dice never stopped. Reading them off whatever face they were nearest is
- * the one thing this app may not do, so it says what happened and hands them
- * back (`docs/physics-and-rendering.md`).
+ * On a plate like everything else over the felt, and hugging its words rather
+ * than filling the width — the prototype's hint block is exactly this, inset
+ * from the bottom-left corner with a shadow under it
+ * (`design/dInfinityPhone.dc.html`).
  */
-@Composable
-private fun GaveUp(
-  unsettled: Int,
-  onThrowAgain: () -> Unit,
-) {
-  Column(
-    horizontalAlignment = Alignment.CenterHorizontally,
-    verticalArrangement = Arrangement.spacedBy(8.dp),
-  ) {
-    Message(
-      text = pluralStringResource(R.plurals.roll_stalled, unsettled, unsettled),
-      colour = MaterialTheme.colorScheme.onBackground,
-      tag = RollTestTags.STALLED,
-    )
-    ModernistButton(
-      text = pluralStringResource(R.plurals.roll_throw_again, unsettled, unsettled),
-      onClick = onThrowAgain,
-      kind = ModernistButtonKind.Primary,
-      modifier = Modifier.testTag(RollTestTags.THROW_AGAIN),
-    )
-  }
-}
-
-/** How many dice have been read, and where the total can still land. */
-@Composable
-private fun Counting(progress: RollProgress) {
-  // A ceiling a chain can still climb past is marked rather than guessed at: a
-  // six earns another throw, and the number that counted those was attainable
-  // and useless (`docs/dice-notation.md`).
-  val ceiling =
-    if (progress.range.more) {
-      stringResource(R.string.roll_ceiling_more, progress.range.highest)
-    } else {
-      progress.range.highest.toString()
-    }
-  Message(
-    text =
-      pluralStringResource(
-        R.plurals.roll_counting,
-        progress.of,
-        progress.read,
-        progress.of,
-        progress.range.lowest,
-        ceiling,
-      ),
-    colour = MaterialTheme.colorScheme.onBackground,
-    tag = RollTestTags.COUNTING,
-  )
-}
-
 @Composable
 private fun Message(
   text: String,
-  colour: androidx.compose.ui.graphics.Color,
+  colour: Color,
   tag: String,
 ) {
-  Text(
-    text = text,
-    // `bodyLarge` is the system's body: 15 sp, the prototype's own default.
-    style = MaterialTheme.typography.bodyLarge,
-    color = colour,
-    textAlign = TextAlign.Center,
-    modifier = Modifier.testTag(tag),
-  )
+  Plate {
+    Text(
+      text = text,
+      // `bodyLarge` is the system's body: 15 sp, the prototype's own default.
+      style = MaterialTheme.typography.bodyLarge,
+      color = colour,
+      textAlign = TextAlign.Center,
+      modifier = Modifier.testTag(tag),
+    )
+  }
 }
 
 /** The way to the outcome graph, for whatever is in the field right now. */
@@ -565,9 +670,13 @@ private fun ThrowButton(
 }
 
 /** What the tests reach the screen by. */
+
 object RollTestTags {
   const val SCREEN: String = "roll:screen"
   const val TRAY: String = "roll:tray"
+
+  /** What stands where the tray would be when the pictures are off. */
+  const val POWER_SAVING: String = "roll:power-saving"
 
   /**
    * The formula field and its squiggle, which are `ui/common`'s and shared
@@ -582,15 +691,22 @@ object RollTestTags {
   const val TOTAL: String = "roll:total"
   const val ROLLING: String = "roll:rolling"
 
-  /** The running count and range, while the dice are being read (design option 1j). */
+  /** The counting plate, while the dice are being read (design option 1j). */
   const val COUNTING: String = "roll:counting"
+
+  /** The `+` on a range a chain can still climb past, and the progress rule. */
+  const val COUNTING_MORE: String = "roll:counting:more"
+  const val COUNTING_RULE: String = "roll:counting:rule"
 
   /** The chain has earned a throw and is waiting for a hand (design option 1j). */
   const val SHAKE_AGAIN: String = "roll:shake-again"
+  const val EARNED_THROW: String = "roll:earned:throw"
+  const val EARNED_STOP: String = "roll:earned:stop"
 
-  /** A roll that gave up, and the offer to throw the dice it gave up on. */
+  /** A roll that gave up, and the two ways out of it. */
   const val STALLED: String = "roll:stalled"
   const val THROW_AGAIN: String = "roll:throw-again"
+  const val STALLED_CANCEL: String = "roll:stalled:cancel"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = FormulaTestTags.ERROR
 
@@ -650,3 +766,18 @@ object RollTestTags {
   /** "Doodle this die", offered by a long press on one (`docs/face-designer.md`, "Quick mode"). */
   fun doodleOf(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex:doodle"
 }
+
+/** `left: 14px` — how far in from the side of the table a corner plate sits. */
+private val CORNER_ACROSS = 14.dp
+
+/** And `top: 12px`, which is tighter, because a line of type sits high in its box. */
+private val CORNER_DOWN = 12.dp
+
+/**
+ * What the formula leaves for the menu button beside it.
+ *
+ * It only bites while the formula is being edited, because a plate hugs its
+ * content otherwise — but a field that ran under the menu button would be a
+ * field whose last character is behind a control.
+ */
+private val MENU_ROOM = 56.dp

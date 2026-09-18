@@ -4,7 +4,7 @@
   <string name="saved_loading">Saved rolls</string>
   <string name="saved_unfiled">Unfiled</string>
   <string name="saved_new">New</string>
-  <string name="saved_order">Favourites first, then by recent use. Tap to roll, long-press to edit.</string>
+  <string name="saved_order">Your order. Tap to roll, long-press to edit, drag the grip to move.</string>
   <!-- %1$d is how many rolls are in that group. -->
   <plurals name="saved_group_rolls">
     <item quantity="one">%1$d roll</item>
@@ -13,6 +13,11 @@
   <!-- %1$s is the roll's name, for TalkBack. -->
   <string name="saved_roll_it">Roll %1$s</string>
   <string name="saved_edit_it">Edit %1$s</string>
+  <!-- The grip at the left of a row, and the two ways to use it without a
+       drag, for a screen reader. %1$s is the roll's name. -->
+  <string name="saved_move_it">Reorder %1$s</string>
+  <string name="saved_move_up">Move up</string>
+  <string name="saved_move_down">Move down</string>
   <string name="saved_broken">Its dice are not installed — it will fall back</string>
   <!-- The empty state (design option 9b). -->
   <string name="saved_empty_title">Nothing saved yet.</string>
@@ -29,11 +34,12 @@
   <string name="editor_odds">mean %1$s · %2$d to %3$d</string>
   <string name="editor_icon">Icon</string>
   <string name="editor_colour">Colour tag</string>
+  <string name="editor_colour_custom">Or a colour of your own</string>
+  <string name="editor_colour_custom_hint">#2B5AA8</string>
   <string name="editor_group">Group</string>
   <string name="editor_table">Table for this roll</string>
   <string name="editor_table_default">Default</string>
   <string name="editor_table_note">“Default” follows the group’s pinned table, then the app’s.</string>
-  <string name="editor_favourite">Favourite — pinned first in the list</string>
   <string name="editor_save">Save roll</string>
   <string name="editor_roll_now">Roll now</string>
   <string name="editor_delete">Delete</string>
@@ -112,6 +118,22 @@
   <!-- The marks a roll or a group can wear. A mark is a picture, so what a
        screen reader says is what the picture is of — the same name whichever
        picker it is offered in. -->
+  <!-- The twelve colour tags a roll's mark can wear. A swatch is a picture,
+       so its name is what a screen reader says. -->
+  <string name="colour_none">No colour — follow the accent</string>
+  <string name="colour_ink">Ink</string>
+  <string name="colour_grey">Grey</string>
+  <string name="colour_red">Red</string>
+  <string name="colour_deep_red">Deep red</string>
+  <string name="colour_orange">Orange</string>
+  <string name="colour_amber">Amber</string>
+  <string name="colour_pine">Pine</string>
+  <string name="colour_teal">Teal</string>
+  <string name="colour_cobalt">Cobalt</string>
+  <string name="colour_violet">Violet</string>
+  <string name="colour_magenta">Magenta</string>
+  <string name="colour_bone">Bone</string>
+
   <string name="mark_crossed_swords">Crossed swords</string>
   <string name="mark_bow">Bow and arrow</string>
   <string name="mark_fire">Fire</string>

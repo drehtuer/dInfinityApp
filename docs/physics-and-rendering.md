@@ -1117,6 +1117,20 @@ impact sounds rather than a crash in the middle of a roll.
   mirror either (`DIE_COAT_ROUGHNESS` is 0.12): a die has been in a bag with
   other dice. Felt with a clear coat is a table nobody owns, so the tray has
   none, and the shader skips the whole path when there is none to apply.
+- **The shadow map is given the tray, not five metres of nothing.** A
+  directional shadow map covers the camera's whole frustum, and this camera can
+  see 5,000 mm because a `far` plane has to be somewhere. The tray is 240 mm
+  long. So Filament's default 1,024-pixel map was spread over twenty times the
+  scene, at about 5 mm a texel — a third of a die's face — and what a phone
+  showed was a wall's shadow with a visibly stepped edge standing a few
+  millimetres clear of the wall that cast it, which is what a shadow biased
+  away from its own caster looks like.
+
+  Four times the map, and a shadow distance that stops just past the tray,
+  puts a texel at about a twentieth of a millimetre. The biases come down with
+  it, because they are in world units too and Filament's default normal bias
+  of 1.0 is a whole millimetre of push on a die 16 mm across.
+
 - **What says a die is *on* the table rather than over it** is the darkening
   where the two meet. A cast shadow puts a die above the felt; contact occlusion
   puts it down on it, and without it every die floats a millimetre however good
@@ -1149,18 +1163,34 @@ impact sounds rather than a crash in the middle of a roll.
   which die a finger is on is `TrayPick`, the inverse of this camera
   ("Picking a die up and throwing it again").
 - **How far it leans is the player's, and it leans less than it did.**
-  `TrayCamera.TILT_DEGREES` was 22° and not a setting. The design makes it
-  **Table view** in Settings, with two positions: *straight down*, which is the
-  default and puts every die square to the screen, and *angled*, which is the
-  22° shot and shows the top and left walls. The reason is what a phone
-  showed: at 411 × 923 dp a 22° shot spends a large share of the frame on the
-  rim and leaves the felt a tall trapezoid inside it, and the furniture is not
-  what anybody is looking at. The argument the other way is in `TrayCamera`'s
-  own KDoc and still holds — straight down is a diagram, and the point of
-  rolling real dice is watching them tumble — which is exactly why it is two
-  positions rather than a new constant. **It is a camera, not a projection:**
-  straight down still draws the dice in perspective and still casts their
-  shadows, it just stops leaning.
+  `TrayCamera.TILT_DEGREES` was 22° and not a setting. It is **Table view** in
+  Settings now, with two positions: *straight down*, which is the **default**
+  and puts every die square to the screen, and *angled*, which is the 22° shot
+  and shows the top and left walls. The reason is what a phone showed: at
+  411 × 923 dp a 22° shot spends a large share of the frame on the rim and
+  leaves the felt a tall trapezoid inside it, and the furniture is not what
+  anybody is looking at. The argument the other way is in `TrayCamera`'s own
+  KDoc and still holds — straight down is a diagram, and the point of rolling
+  real dice is watching them tumble — which is exactly why it is two positions
+  rather than a new constant. **It is a camera, not a projection:** straight
+  down still draws the dice in perspective and still casts their shadows, it
+  just stops leaning; the tray is framed with the same margin either way, and
+  at 0° the camera stands directly over the middle of the table instead of off
+  its near end.
+
+  The lean is an argument to the framing rather than a constant in it, so
+  `TrayCamera` stays what it was — arithmetic about a frustum, tested on a JVM
+  at both positions. It is read **when the roll screen opens** and never
+  watched, like power saving, the shake, the haptics, the sound and the
+  rounding (`docs/architecture.md`, decision 16): the tray a visit is given is
+  built with one answer, a rotation rebuilds the picture with the same one, and
+  changing it while dice are in the air changes nothing until the next visit.
+  A finger is read against the shot the screen is actually taking —
+  `TrayPick.through` takes the same lean — because a pick worked out against
+  the other one lands on the die next door. What does *not* follow the setting
+  is the table picker's thumbnails: those are pictures of a table rather than a
+  roll in progress, and the angled shot is what shows a look's walls
+  (`docs/tables.md`, "Thumbnails").
 - **The table is drawn before anything is thrown onto it, and after.** A tray
   is a table, not a roll: the screen says *there is a table* as soon as it
   opens, and the floor, the walls and the rim are built and drawn with nothing
@@ -1298,10 +1328,11 @@ impact sounds rather than a crash in the middle of a roll.
   along the short side as often as it asks for that, and a corner takes the
   rate of whichever it is nearer — so a change of rate stretches the pattern
   rather than cutting it.
-- Camera looks down at the tray at a slight angle — 22° off straight down,
-  40° field of view, standing off the near end of the tray. Straight down is a
-  diagram, and the point of rolling real dice is watching them tumble. While a
-  roll is running it frames the whole tray, because a die can be anywhere in
+- Camera looks down at the tray straight or at a slight angle — **Table view**
+  decides, 0° or 22° off straight down, 40° field of view, and at 22° it stands
+  off the near end of the tray ("How far it leans is the player's"). Straight
+  down is the default and a leaning shot is the one that shows the walls. While
+  a roll is running it frames the whole tray, because a die can be anywhere in
   it; once the dice settle it frames *them* — each as the box around its
   bounding sphere, so a die at the edge of the group is wholly in shot rather
   than centred and clipped — and eases in with a smoothstep, because a camera
@@ -1409,11 +1440,33 @@ the first device session found — a formula whose dashed rule ran the full widt
 of the screen, so the text read as struck through rather than underlined, and a
 bordered box of controls sitting on bare felt.
 
+It is one component, `ui/common`'s `Plate`, because a plate is a token rather
+than a layout: six of them on one screen, each drawing its own shadow and its
+own padding, is six chances for the numbers to drift.
+
+**The formula is in the top left corner**, 14 dp in and 12 dp down, where the
+design puts it and where a person writes down what they are about to throw. It
+used to be the last thing in a stack of controls at the bottom, and on a phone
+that meant the felt was a strip above a wall of plates. The rest of the
+controls — the saved rolls, the picker, the Roll button — are still that stack,
+which is a divergence from the design rather than an agreement with it, and it
+is written down in `docs/TODO.md` with what the phone showed.
+
 **Accent never touches felt.** Accent appears only *on* a plate, which is how
 an accent the player chooses freely and a shelf of tables stop being a pair
 anybody has to check — a green accent on green felt cannot happen if the accent
 is never on the felt, and with a colour picker there is no list of pairs to
-check in the first place (question 10).
+check in the first place (question 10). So the Roll button, "See the odds", a
+refusal, the result sheet and both asking plates are each on one, and the
+pairing that has to be legible is accent-on-`--color-bg`: one pairing rather
+than a matrix.
+
+Where a plate wants the accent it wants its **700 step**, because a kicker is
+10 dp and a `+` is 13 and the accent as chosen only clears the contrast bar for
+large text. That step is *mixed* from the accent in use rather than looked up —
+`ui/common`'s `Ink.accentDeep`, over `AccentRamp`, which is the same rule the
+filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
+"Settings").
 
 | Plate | Where | What it carries |
 | --- | --- | --- |
@@ -1436,6 +1489,11 @@ An open exploding chain puts a `+` at the top of the range in
 the `+` is accent, at body size, on a plate, so it is the 700 step like every
 other accent-coloured run of text at 10–14 dp.
 
+It says the whole line **once** to a screen reader rather than four times. A
+row of figures an eye takes in at a glance is four disconnected fragments read
+aloud, so the plate carries one sentence of its own and merges what is under it
+(`docs/architecture.md`, "Accessibility").
+
 **Two states the prototype did not have live on that same plate.** *Another
 throw earned* is a chain that has stopped and is one shake short: an
 accent-700 kicker, a line of copy, `Throw 3 more` as the primary and `Stop the
@@ -1444,6 +1502,27 @@ accent-700 kicker, copy naming how many dice never stopped, then `Throw those 3
 again` and `Cancel the roll`. Both are reachable in the prototype through its
 `rollState` tweak, which is the quickest way to see them.
 
+Neither is a new state. They are `RollState.ShakeAgain` and `RollState.Stalled`
+— which the roll has reached all along, with one line of text between them —
+and what was missing was the drawing. `Throw 3 more` is the throw the Roll
+button and a shake already make, so a chain is continued by the same call
+whichever of the three asks for it.
+
+**`Stop the chain` puts the roll away with no total**, which is what `Cancel
+the roll` does and is not what the button says. Scoring what is on the table
+instead needs a reason a chain ended that is not the tray's: `RunningScore`
+stops one only when there is no room for another die, and the breakdown then
+says so in as many words. Giving the player's own refusal a note of its own is
+`core/notation` work and is on the list (`docs/TODO.md`, Step 4.1).
+
+**The total is drawn once.** The result sheet keeps a subtotal per group,
+because that is how its rows add up to the total — but a formula with one group
+and nothing added to it has a subtotal that *is* the total, and printing it put
+the roll's number at the display size in the middle of the screen and again at
+20 dp hard against the right edge, where the first device session read it as
+clipped. So a subtotal is drawn unless it is the whole of the result
+(`Subtotals`, and `docs/design-handover.md`).
+
 **A die from a later pass says so.** A roll that had to throw something again
 shows the dice of its last pass only, so a total counting twenty dice can stand
 over a table holding three. Those dice get a 4 dp `--color-accent-700` outline
@@ -1451,14 +1530,20 @@ and a `pass 2` label in the slot the `dropped` marker already uses, and the
 number on the felt stops looking like a mistake.
 
 **6 and 9 carry a trailing dot.** A die on a table lies at whatever angle it
-landed at, and `6` and `9` are the same glyph turned over. The app prints a bar
-under the ambiguous one (`docs/face-designer.md`); the design prints `6.` and
-`9.` instead, on the felt and in the designer both. A d% reads its units digit
-dotted and its tens pair undotted, because the tens pair is `10`–`90` and
-cannot be misread; a number set upright in the result sheet is not dotted at
-all, because nothing there is ambiguous. **This is a change to what is printed
-on a die**, so it lands in `core/glyphs` and the built-in set rather than in a
-Compose layout.
+landed at, and `6` and `9` are the same glyph turned over, so the ambiguous one
+is marked — `6.` and `9.`, on the felt and in the designer both. It replaces
+the bar underneath this used to draw: a bar is a second horizontal in a system
+whose dice already have edges. Which numbers are marked is unchanged and still
+derived (`docs/dice-sets.md`, "Labels"), so a d% reads its units digit dotted
+and its tens pair undotted, and a number set upright in the result sheet is not
+dotted at all because nothing there is ambiguous.
+
+**It is what is printed on a die**, so it is in `core/glyphs` rather than in a
+Compose layout, and in the one solve the tray and the designer share: the mark
+is a character of the built-in font that `Typesetter` writes after the label,
+and `LabelRoom` measures the numeral *with its dot on*, because `6.` is wider
+than `6` and a `6` sized as though it were bare would hang its dot over the
+edge of its face.
 
 **The dice arrive one at a time.** Each falls from above where it lands, 85 ms
 after the one before it, and the result sheet waits for the last of them:
@@ -1487,14 +1572,21 @@ world, so the capacity rule is unchanged.
   surface nothing draws to: a surface is a buffer the compositor keeps, and
   what this mode claims is that none of it exists. `PowerSavingTray` is the
   other implementation of `Tray`, and there is no Filament type in it.
-- **Nothing says so on the screen, and it should.** The prototype has a panel
-  for this mode — grey, with "Power-saving mode" over "Same physics, no
-  rendering. The result is identical to what the tray would show."
-  (`design/dInfinityPhone.dc.html`). The app draws neither the panel nor
-  anything in its place, so what a player sees is an empty tray and a total
-  arriving from nowhere, which is indistinguishable from a renderer that has
-  failed. The first device session mistook it for exactly that
-  (`docs/design-handover.md`, "Four the pass did not reach").
+- **It says so, where the table would be.** A grey panel with "Power-saving
+  mode" over "Same physics, no rendering. The result is identical to what the
+  tray would show." — the prototype's panel and the prototype's words
+  (`design/dInfinityPhone.dc.html`, option `1z`). It has to be said, because
+  the alternative was an empty screen with a total arriving on it, which is
+  indistinguishable from a renderer that has failed: the first device session
+  spent twenty minutes believing that was what it was looking at.
+
+  The sentence that matters is the second one. A player who thinks this mode is
+  a cheaper *kind* of roll is a player who will not use it, and the whole claim
+  of the mode is that the number is the same one the pictures would have shown.
+
+  It is not a plate. A plate is a ground for a control drawn **over** the
+  table; this stands **instead of** it, which is why it fills the space the
+  tray would and carries the tray's own grey rather than the page's colour.
 - The simulation runs on a worker thread as fast as possible, still at
   the same fixed timestep, still with the same seed, correction logic and
   settle rules. Typical roll finishes in well under 100 ms of wall time.

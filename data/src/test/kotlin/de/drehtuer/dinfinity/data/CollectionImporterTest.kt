@@ -79,8 +79,49 @@ class CollectionImporterTest {
       val roll = repository.all.first().first { it.name == "Longsword" }
       assertEquals("1d20 + 7 [Attack]", roll.formula)
       assertEquals("🗡️", roll.icon)
-      assertTrue(roll.favourite)
       assertEquals(NOW, roll.createdAtEpochMs)
+    }
+
+  @Test
+  fun `the rolls keep the order the file had them in`() =
+    runTest {
+      // The file's own order is the whole of what a collection says about
+      // order, so what comes in is numbered as it is read — per group, because
+      // the list is per group (`docs/dice-notation.md`, "Export and import").
+      importer.import(
+        DiceCollection(
+          name = "Ordered",
+          groups = listOf(group("a", "Alpha"), group("b", "Beta")),
+          rolls =
+            listOf(
+              roll("a", "Third"),
+              roll("b", "Beta first"),
+              roll("a", "First"),
+              roll("a", "Second"),
+            ),
+        ),
+        UNFILED,
+      )
+
+      val alpha =
+        repository.all
+          .first()
+          .first { it.name == "Beta first" }
+          .groupId
+      assertEquals(
+        listOf("Third", "First", "Second"),
+        repository.all
+          .first()
+          .filterNot { it.groupId == alpha }
+          .map { it.name },
+      )
+      assertEquals(
+        listOf(0, 1, 2),
+        repository.all
+          .first()
+          .filterNot { it.groupId == alpha }
+          .map { it.sortOrder },
+      )
     }
 
   @Test
@@ -253,7 +294,7 @@ class CollectionImporterTest {
       groups = listOf(group("thorin", "Thorin", icon = "⚔️")),
       rolls =
         listOf(
-          roll("thorin", "Longsword", formula = "1d20 + 7 [Attack]", icon = "🗡️", favourite = true),
+          roll("thorin", "Longsword", formula = "1d20 + 7 [Attack]", icon = "🗡️"),
           roll("thorin", "Fireball", formula = "8d6 [Fire]"),
         ),
     )
@@ -270,8 +311,7 @@ class CollectionImporterTest {
     name: String,
     formula: String = "1d20",
     icon: String = "",
-    favourite: Boolean = false,
-  ) = CollectionRoll(group = group, name = name, formula = formula, icon = icon, favourite = favourite)
+  ) = CollectionRoll(group = group, name = name, formula = formula, icon = icon)
 
   private companion object {
     const val NOW = 1_000L

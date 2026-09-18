@@ -10,26 +10,28 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.ui.common.FormulaField
 import de.drehtuer.dinfinity.ui.common.Ink
@@ -39,6 +41,7 @@ import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
 import de.drehtuer.dinfinity.ui.common.OptionBox
 import de.drehtuer.dinfinity.ui.common.OptionFill
 import de.drehtuer.dinfinity.ui.common.Rule
+import de.drehtuer.dinfinity.ui.common.UpButton
 
 /**
  * Writing down a saved roll (`design/dInfinity.dc.html`, options 1r and 7b).
@@ -59,6 +62,19 @@ fun EditorScreen(
   modifier: Modifier = Modifier,
   onDone: () -> Unit = {},
   onRollNow: (String) -> Unit = {},
+  /**
+   * Where the chevron in the header goes.
+   *
+   * A lambda rather than a destination: this module does not know what the
+   * navigation graph is, and the rule that the chevron *climbs* rather than
+   * retraces belongs to the graph (`docs/architecture.md`, "Navigation").
+   *
+   * It matters more here than anywhere else, because this is the one screen
+   * with no menu button: the editor is about a roll rather than a subject, so
+   * without a way out of its own it could only be left by saving, deleting or
+   * the system's own back.
+   */
+  onUp: () -> Unit = {},
 ) {
   val state = presenter.state
   Column(
@@ -66,10 +82,9 @@ fun EditorScreen(
       modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.background)
-        .safeDrawingPadding()
         .testTag(EditorTestTags.SCREEN),
   ) {
-    Title(existing = state.existing)
+    Title(existing = state.existing, onUp = onUp)
     Form(
       state = state,
       presenter = presenter,
@@ -148,7 +163,6 @@ private fun Form(
     )
     Tables(state = state) { pin -> presenter.choose { copy(tablePin = pin) } }
 
-    Favourite(on = state.favourite) { chosen -> presenter.choose { copy(favourite = chosen) } }
     Buttons(state = state, presenter = presenter, onRollNow = onRollNow)
   }
 }
@@ -160,37 +174,26 @@ private fun Form(
  * was Material's 24 sp at 400.
  */
 @Composable
-private fun Title(existing: Boolean) {
-  Text(
-    text = stringResource(if (existing) R.string.editor_title_edit else R.string.editor_title_new),
-    style = MaterialTheme.typography.titleLarge,
-    color = MaterialTheme.colorScheme.onBackground,
-    modifier = Modifier.padding(horizontal = Modernist.x4, vertical = Modernist.x2),
-  )
-  Rule()
-}
-
-@Composable
-private fun Favourite(
-  on: Boolean,
-  onChange: (Boolean) -> Unit,
+private fun Title(
+  existing: Boolean,
+  onUp: () -> Unit,
 ) {
+  // The chevron, then the name of what is being written down — the header the
+  // prototype draws on every screen it can be left from
+  // (`design/dInfinityPhone.dc.html`, the editor).
   Row(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = Modernist.x2, vertical = Modernist.x1),
     verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .toggleable(value = on, role = Role.Checkbox, onValueChange = onChange)
-        .testTag(EditorTestTags.FAVOURITE),
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
   ) {
-    Checkbox(checked = on, onCheckedChange = null)
+    UpButton(onUp = onUp)
     Text(
-      text = stringResource(R.string.editor_favourite),
-      style = MaterialTheme.typography.bodyLarge,
+      text = stringResource(if (existing) R.string.editor_title_edit else R.string.editor_title_new),
+      style = MaterialTheme.typography.titleLarge,
       color = MaterialTheme.colorScheme.onBackground,
     )
   }
+  Rule()
 }
 
 /**
@@ -280,15 +283,13 @@ private fun Icons(
 /**
  * The colour a roll's mark prints in (design option 9d).
  *
- * The same six the interface offers as accent presets, plus none.
- *
- * It is a list here and not a picker, and that is now a decision of its own
- * rather than an inheritance: the accent stopped being a closed palette when
- * `AccentRamp.clamp` made any colour safe (`docs/architecture.md`,
- * decision 22), and the twelve tags and a custom one that the design asks for
- * go through the same clamp when they are built (`docs/TODO.md`, 4.3). Until
- * then this stays the six, because six colours that are known to read are
- * better than a picker with nothing behind it.
+ * Twelve tags spanning the hue circle, none at all — which follows the accent
+ * — and one somebody types themselves. The twelve are [RollColour]'s and the
+ * custom one is a hex field beside them, and **both go through the same
+ * contrast clamp** when the mark is drawn, which is what makes a free colour
+ * safe here where `docs/architecture.md` decision 22 refused one: the reason a
+ * picker was refused was a colour nobody could see, and a clamped colour is
+ * always one somebody can (`RollColour`, and `core/model`'s `AccentRamp`).
  */
 @Composable
 private fun Colours(
@@ -296,27 +297,69 @@ private fun Colours(
   onPick: (Int?) -> Unit,
 ) {
   Field(stringResource(R.string.editor_colour)) {
-    Row(
+    FlowRow(
       horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
-      verticalAlignment = Alignment.CenterVertically,
+      verticalArrangement = Arrangement.spacedBy(Modernist.x1),
     ) {
-      Swatch(colour = null, chosen = chosen == null, onPick = { onPick(null) }, tag = EditorTestTags.colourOf(null))
-      AccentColor.entries.forEach { accent ->
+      Swatch(
+        colour = null,
+        chosen = chosen == null,
+        label = stringResource(R.string.colour_none),
+        onPick = { onPick(null) },
+        tag = EditorTestTags.colourOf(null),
+      )
+      RollColour.entries.forEach { tag ->
         Swatch(
-          colour = Color(accent.argb),
-          chosen = chosen == accent.argb,
-          onPick = { onPick(accent.argb) },
-          tag = EditorTestTags.colourOf(accent.argb),
+          // Drawn as it will be drawn on the list: a swatch showing one colour
+          // and a mark printing another would be a picker that lies.
+          colour = markColour(tag.argb),
+          chosen = chosen == tag.argb,
+          label = stringResource(tag.label),
+          onPick = { onPick(tag.argb) },
+          tag = EditorTestTags.colourOf(tag.argb),
         )
       }
     }
+    Custom(chosen = chosen, onPick = onPick)
   }
+}
+
+/**
+ * A colour of somebody's own, typed as `#rrggbb`.
+ *
+ * A field rather than a wheel because the system colour picker arrives with
+ * the accent's (`docs/TODO.md`, Step 4.9) and a hex code is what somebody
+ * copying a colour off a character sheet already has. Half-typed text simply
+ * does not choose anything — it is somebody in the middle of typing, not a
+ * mistake to shout about.
+ */
+@Composable
+private fun Custom(
+  chosen: Int?,
+  onPick: (Int?) -> Unit,
+) {
+  // A colour that is not one of the twelve is one somebody typed, and the
+  // field shows it back to them; one of the twelve leaves the field empty.
+  val own = chosen?.takeIf { RollColour.of(it) == null }
+  var typed by rememberSaveable(chosen) { mutableStateOf(own?.let(RollColour.Companion::hexOf).orEmpty()) }
+  OutlinedTextField(
+    value = typed,
+    onValueChange = { text ->
+      typed = text
+      RollColour.parseHex(text)?.let(onPick)
+    },
+    singleLine = true,
+    label = { Text(stringResource(R.string.editor_colour_custom)) },
+    placeholder = { Text(stringResource(R.string.editor_colour_custom_hint)) },
+    modifier = Modifier.fillMaxWidth().testTag(EditorTestTags.COLOUR_CUSTOM),
+  )
 }
 
 @Composable
 private fun Swatch(
   colour: Color?,
   chosen: Boolean,
+  label: String,
   onPick: () -> Unit,
   tag: String,
 ) {
@@ -332,7 +375,8 @@ private fun Swatch(
           .border(
             width = Modernist.rule,
             color = if (chosen) MaterialTheme.colorScheme.onBackground else Ink.divider,
-          ).clickable(onClick = onPick)
+          ).clickable(role = Role.RadioButton, onClickLabel = label, onClick = onPick)
+          .semantics { contentDescription = label }
           .testTag(tag),
     ) { }
   }
@@ -441,7 +485,7 @@ object EditorTestTags {
   const val SCREEN: String = "editor:screen"
   const val NAME: String = "editor:name"
   const val ODDS: String = "editor:odds"
-  const val FAVOURITE: String = "editor:favourite"
+  const val COLOUR_CUSTOM: String = "editor:colour:custom"
   const val SAVE: String = "editor:save"
   const val ROLL_NOW: String = "editor:roll-now"
   const val DELETE: String = "editor:delete"

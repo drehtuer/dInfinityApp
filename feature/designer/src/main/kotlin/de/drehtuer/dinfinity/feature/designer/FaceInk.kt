@@ -13,7 +13,7 @@ import de.drehtuer.dinfinity.designer.FaceShapes
 import de.drehtuer.dinfinity.designer.Fill
 import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Mark
-import de.drehtuer.dinfinity.designer.Stamp
+import de.drehtuer.dinfinity.designer.Rings
 import de.drehtuer.dinfinity.designer.Stroke
 import androidx.compose.ui.graphics.drawscope.Stroke as DrawStroke
 
@@ -63,18 +63,21 @@ internal fun DrawScope.drawMark(mark: Mark) {
   when (mark) {
     is Stroke -> drawStroke(mark)
     is Fill -> drawFill(mark)
-    is Stamp -> drawStamp(mark)
+    is Rings -> drawStamp(mark)
   }
 }
 
 /**
- * A stamped glyph: every ring of it as one shape, under the even-odd rule.
+ * A stamped glyph or a face of pips: every ring of it as one shape, under the
+ * even-odd rule.
  *
  * Even-odd is what leaves the hole in a `0` open — the rings of a glyph are
  * wound against each other, and a counter drawn as a shape of its own would be
- * a blob where the hole is (`designer`'s `Stamp`).
+ * a blob where the hole is (`designer`'s `Stamp`). A pipped face's rings are
+ * disjoint circles, which the same rule fills one and all (`FaceEyes`), so
+ * there is nothing here that has to know which it was handed.
  */
-internal fun DrawScope.drawStamp(stamp: Stamp) = drawRings(stamp.rings, Color(stamp.colorArgb))
+internal fun DrawScope.drawStamp(stamp: Rings) = drawRings(stamp.rings, Color(stamp.colorArgb))
 
 /**
  * Closed rings as one filled shape.

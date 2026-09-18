@@ -3,6 +3,9 @@ package de.drehtuer.dinfinity.feature.sets
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import de.drehtuer.dinfinity.core.model.DicePhysical
+import de.drehtuer.dinfinity.core.model.DieMaterial
+import de.drehtuer.dinfinity.core.model.DiePhysical
 import de.drehtuer.dinfinity.designer.ExportResult
 import de.drehtuer.dinfinity.designer.PackageFile
 import de.drehtuer.dinfinity.designer.SetLicense
@@ -38,6 +41,18 @@ data class SetDetailState(
    * drawing that produces an invalid set is a bug, and the lines say which.
    */
   val exportProblem: List<ValidationMessage> = emptyList(),
+  /**
+   * What the dice of "My dice" are declared to be made of, or null for a set
+   * this phone did not write (`docs/dice-sets.md`, "Weight, translucency and
+   * size, as a person sets them").
+   *
+   * **The live value the steppers read and write.** It is kept across a
+   * refresh for the reason [license] is: a tap changes a record, the folder is
+   * rebuilt from the records at the next reading, and a run of taps must
+   * accumulate rather than each one being undone by the frame the last reading
+   * finished in.
+   */
+  val declared: DieMaterial? = null,
 ) {
   /**
    * Whether this set can be made the default.
@@ -59,6 +74,39 @@ data class SetDetailState(
 
   /** True for "My dice", which is the only set with anything to export (`8c`). */
   val personal: Boolean get() = row?.personal == true
+
+  /**
+   * The **Physical** block: weight per die, translucency and size, over the
+   * dice this set defines.
+   *
+   * Null for a package with no dice — one that is only tables, or one that
+   * stopped validating — because there is then nothing to weigh, and a block
+   * of dashes would be three answers to a question nobody asked.
+   *
+   * For "My dice" it is worked out from [declared] rather than from the
+   * `diceset.toml` on disk: that file is a *view* of the records the package
+   * is built from, and it catches up a reading later than the finger does.
+   */
+  val physical: DicePhysical?
+    get() {
+      val dice = row?.set?.dice.orEmpty()
+      val material = declared ?: return DicePhysical.of(dice)
+      return DicePhysical.of(
+        dice.map { die ->
+          die.copy(
+            material =
+              die.material.copy(
+                sizeMm = material.sizeMm,
+                density = material.density,
+                translucency = material.translucency,
+              ),
+          )
+        },
+      )
+    }
+
+  /** True where the three figures are this phone's to change (`docs/dice-sets.md`). */
+  val editable: Boolean get() = personal && declared != null
 
   /**
    * Whether the share may happen.
@@ -143,7 +191,50 @@ class SetDetailPresenter(
           // A licence already written into the package is the choice somebody
           // made last time, so the chooser opens on it rather than on nothing.
           license = state.license ?: SetLicense.ofId(row?.set?.license),
+          // Only ever read once. What is in hand is what the steppers have
+          // been moving, and the folder is behind it by a reading.
+          declared = state.declared ?: if (row?.personal == true) library.personalPhysical() else null,
         )
+    }
+  }
+
+  /**
+   * The weight stepper: one tap is a tenth of a gram
+   * (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
+   * them").
+   *
+   * What moves is the density, because that is what a set file keeps and what
+   * the solver is given; the grams follow from it and the die's own volume
+   * ([DiePhysical.weighted]).
+   */
+  fun weigh(steps: Int) = change { DiePhysical.weighted(it, steps) }
+
+  /** The translucency stepper: one tap is five per cent. */
+  fun seeThrough(steps: Int) = change { DiePhysical.seenThrough(it, steps) }
+
+  /** The size stepper: one tap is five per cent of the average die. */
+  fun resize(steps: Int) = change { DiePhysical.sized(it, steps) }
+
+  /**
+   * One tap of one stepper.
+   *
+   * The state moves first and the disk after it. That order is the whole of
+   * what "reading the live value" means: a second tap works from what the
+   * first one produced rather than from the folder, which has not been
+   * rebuilt yet and will not be until something reads it.
+   *
+   * An imported set has no [SetDetailState.declared] and so cannot get here.
+   * That is not a permission check but a fact about what a set is: its numbers
+   * came out of somebody else's `diceset.toml` (`docs/dice-sets.md`).
+   */
+  private fun change(by: (DieMaterial) -> DieMaterial) {
+    val now = state.declared?.takeIf { state.personal } ?: return
+    val next = by(now)
+    if (next == now) return
+    state = state.copy(declared = next)
+    scope.launch {
+      library.setPersonalPhysical(next)
+      refresh()
     }
   }
 

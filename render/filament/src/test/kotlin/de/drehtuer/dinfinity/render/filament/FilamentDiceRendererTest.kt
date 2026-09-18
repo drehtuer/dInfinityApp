@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
@@ -145,6 +146,43 @@ class FilamentDiceRendererTest {
     renderer.begin(spec(), geometry, look)
 
     assertEquals(TrayCamera.framingTheTray(geometry, ASPECT), stage.shots.single())
+  }
+
+  @Test
+  fun `a renderer told to look straight down looks straight down`() {
+    // The player's **Table view**, carried as far as the one line that aims
+    // the camera. Everything else about the scene is the same: this is a
+    // camera, not a projection (`docs/physics-and-rendering.md`).
+    val flatStage = FakeStage()
+    val flat = FilamentDiceRenderer(flatStage, TableView.StraightDown)
+
+    flat.begin(spec(), geometry, look)
+    renderer.begin(spec(), geometry, look)
+
+    assertEquals(
+      TrayCamera.framingTheTray(geometry, ASPECT, tiltDegrees = TrayCamera.NO_TILT_DEGREES),
+      flatStage.shots.single(),
+    )
+    assertTrue("the two positions took the same shot", flatStage.shots.single() != stage.shots.single())
+    assertEquals("the same table, with the same things in it", stage.added.size, flatStage.added.size)
+    assertTrue("a scene with no lights in it is a black picture", flatStage.lit)
+  }
+
+  @Test
+  fun `looking closer keeps the lean the player chose`() {
+    // Pinching in is the player moving, not the setting changing: the shot is
+    // still the straight-down one, closer.
+    val flatStage = FakeStage()
+    val flat = FilamentDiceRenderer(flatStage, TableView.StraightDown)
+    val closer = TrayView(zoom = 2.0).within(geometry)
+    flat.begin(spec(), geometry, look)
+
+    flat.look(closer)
+
+    assertEquals(
+      TrayCamera.framingTheTray(geometry, ASPECT, closer, TrayCamera.NO_TILT_DEGREES),
+      flatStage.shots.last(),
+    )
   }
 
   @Test

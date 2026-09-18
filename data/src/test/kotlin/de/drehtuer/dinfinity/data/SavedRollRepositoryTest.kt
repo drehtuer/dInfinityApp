@@ -68,7 +68,6 @@ class SavedRollRepositoryTest {
           formula = "8d6 [Fire]",
           icon = "🔥",
           colorArgb = 0x00FF0000,
-          favourite = true,
           tablePin = TablePin(setId = "builtin", tableId = "felt-green"),
         )
 
@@ -115,19 +114,80 @@ class SavedRollRepositoryTest {
     }
 
   @Test
-  fun `favourites come first, then the most recently used`() =
+  fun `the list is in the order the player put it in, whatever has been rolled`() =
     runTest {
       groups.ensureUnfiled("Unfiled")
-      repository.save(roll("old"))
-      repository.save(roll("recent"))
-      repository.save(roll("liked", favourite = true))
-      now = 2_000L
-      repository.used("old")
+      repository.save(roll("first"))
+      repository.save(roll("second"))
+      repository.save(roll("third"))
       now = 3_000L
-      repository.used("recent")
+      // Rolling the last one does not move it: recency is gone with pinning,
+      // because a list that reorders itself between two fights is a list
+      // nobody can point at (`docs/dice-notation.md`).
+      repository.used("third")
 
       assertEquals(
-        listOf("liked", "recent", "old"),
+        listOf("first", "second", "third"),
+        repository.inGroup(SavedRollGroup.UNFILED_ID).first().map(SavedRoll::id),
+      )
+    }
+
+  @Test
+  fun `a new roll lands under what is already there`() =
+    runTest {
+      groups.ensureUnfiled("Unfiled")
+      repository.save(roll("first"))
+      repository.save(roll("second"))
+
+      assertEquals(
+        listOf(0, 1),
+        repository.inGroup(SavedRollGroup.UNFILED_ID).first().map(SavedRoll::sortOrder),
+      )
+    }
+
+  @Test
+  fun `saving a roll again leaves it where it is`() =
+    runTest {
+      groups.ensureUnfiled("Unfiled")
+      repository.save(roll("first"))
+      repository.save(roll("second"))
+      val second = repository.byId("second")!!
+
+      repository.save(second.copy(name = "Renamed"))
+
+      assertEquals(
+        listOf("first", "Renamed"),
+        repository.inGroup(SavedRollGroup.UNFILED_ID).first().map(SavedRoll::name),
+      )
+    }
+
+  @Test
+  fun `a reorder is written down, top first`() =
+    runTest {
+      groups.ensureUnfiled("Unfiled")
+      repository.save(roll("first"))
+      repository.save(roll("second"))
+      repository.save(roll("third"))
+
+      repository.reorder(listOf("third", "first", "second"))
+
+      assertEquals(
+        listOf("third", "first", "second"),
+        repository.inGroup(SavedRollGroup.UNFILED_ID).first().map(SavedRoll::id),
+      )
+    }
+
+  @Test
+  fun `a reorder of nothing changes nothing`() =
+    runTest {
+      groups.ensureUnfiled("Unfiled")
+      repository.save(roll("first"))
+      repository.save(roll("second"))
+
+      repository.reorder(emptyList())
+
+      assertEquals(
+        listOf("first", "second"),
         repository.inGroup(SavedRollGroup.UNFILED_ID).first().map(SavedRoll::id),
       )
     }
@@ -176,12 +236,10 @@ class SavedRollRepositoryTest {
   private fun roll(
     id: String,
     groupId: String = SavedRollGroup.UNFILED_ID,
-    favourite: Boolean = false,
   ) = SavedRoll(
     id = id,
     groupId = groupId,
     name = id,
     formula = "1d20",
-    favourite = favourite,
   )
 }

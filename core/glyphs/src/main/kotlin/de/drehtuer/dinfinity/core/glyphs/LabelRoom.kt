@@ -69,23 +69,28 @@ object LabelRoom {
    * has always done and what the size on the Pixel 10a was judged against, so
    * it is kept rather than quietly corrected here; whether to apply it once
    * and re-judge the fraction is open (`docs/TODO.md`, "Open questions").
+   *
+   * **A [marked] number is measured with its mark on.** `6.` is wider than
+   * `6`, so the room it is given is solved for the whole of what is printed —
+   * a `6` sized as though it were bare and then given a dot would be a `6`
+   * whose dot hangs over the edge of its face.
    */
   fun centred(
     corners: List<Pair<Double, Double>>,
     text: String,
     face: Typeface = BuiltinFont.face,
-    underlined: Boolean = false,
+    marked: Boolean = false,
     share: Double = FACE_SHARE,
   ): Placement? {
     if (text.isEmpty()) return null
-    val room = on(corners, Typesetter.inkWidth(text, 1.0, face), share)
+    val room = on(corners, Typesetter.inkWidth(Typesetter.printed(text, marked), 1.0, face), share)
     val height = share * room.height
     if (height <= 0) return null
     return Placement(
       centreX = room.centreX,
       centreY = room.centreY,
       height = height,
-      underlined = underlined,
+      marked = marked,
     )
   }
 
@@ -104,7 +109,7 @@ object LabelRoom {
     corner: Pair<Double, Double>,
     text: String,
     face: Typeface = BuiltinFont.face,
-    underlined: Boolean = false,
+    marked: Boolean = false,
   ): Placement? {
     if (text.isEmpty()) return null
     val (outX, outY) = inside(corner)
@@ -112,7 +117,11 @@ object LabelRoom {
     // is nearer two edges than anything in the middle is, and a d4 whose
     // numbers ran over its own edges would be the one die in the set that
     // could not be read.
-    val height = minOf(CORNER_HEIGHT, heightAt(corners, Typesetter.inkWidth(text, 1.0, face), outX, outY))
+    val height =
+      minOf(
+        CORNER_HEIGHT,
+        heightAt(corners, Typesetter.inkWidth(Typesetter.printed(text, marked), 1.0, face), outX, outY),
+      )
     if (height <= 0) return null
     return Placement(
       centreX = outX,
@@ -122,7 +131,7 @@ object LabelRoom {
       // rather than the platform's, which is `simulation/api`'s `Exact` for
       // the same reason: the same answer on every phone.
       turns = StrictMath.atan2(-(outX - HALF), -(outY - HALF)) / FULL_TURN,
-      underlined = underlined,
+      marked = marked,
     )
   }
 

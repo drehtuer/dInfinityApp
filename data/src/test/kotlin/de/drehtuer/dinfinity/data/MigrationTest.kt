@@ -187,6 +187,121 @@ class MigrationTest {
       }
     }
 
+  @Test
+  fun `the saved rolls of a phone that had favourites come back favourites first`() =
+    runTest {
+      // Version 6 takes the flag out and puts the player's own order in its
+      // place, so somebody upgrading has to be given an order they recognise.
+      // The one the list was in was favourites first and then by recent use,
+      // and that is what is written down here — once, never computed again
+      // (`docs/dice-notation.md`, "Saved rolls").
+      writeVersion(5) { db ->
+        db.execSQL(
+          "INSERT INTO saved_roll_group (id, name, icon, sort_order) VALUES ('thorin', 'Thorin', '', 0)",
+        )
+        savedRoll(db, id = "old", favourite = 0, lastUsedAt = "1000")
+        savedRoll(db, id = "never", favourite = 0, lastUsedAt = "NULL")
+        savedRoll(db, id = "recent", favourite = 0, lastUsedAt = "5000")
+        savedRoll(db, id = "liked", favourite = 1, lastUsedAt = "2000")
+      }
+
+      withDatabase { database ->
+        assertEquals(
+          listOf("liked", "recent", "old", "never"),
+          database
+            .savedRolls()
+            .inGroup("thorin")
+            .first()
+            .map { it.id },
+        )
+        assertEquals(
+          listOf(0, 1, 2, 3),
+          database
+            .savedRolls()
+            .inGroup("thorin")
+            .first()
+            .map { it.sortOrder },
+        )
+      }
+    }
+
+  @Test
+  fun `the migration numbers each group's list of its own`() =
+    runTest {
+      // Two groups' lists are two lists. Numbering across the table would put
+      // one group's rolls after another's for no reason anybody could see.
+      writeVersion(5) { db ->
+        db.execSQL("INSERT INTO saved_roll_group (id, name, icon, sort_order) VALUES ('thorin', 'Thorin', '', 0)")
+        db.execSQL("INSERT INTO saved_roll_group (id, name, icon, sort_order) VALUES ('ezren', 'Ezren', '', 1)")
+        savedRoll(db, id = "a", favourite = 0, lastUsedAt = "1000")
+        savedRoll(db, id = "b", favourite = 0, lastUsedAt = "2000")
+        savedRoll(db, id = "c", favourite = 0, lastUsedAt = "3000", group = "ezren")
+      }
+
+      withDatabase { database ->
+        assertEquals(
+          listOf(0, 1),
+          database
+            .savedRolls()
+            .inGroup("thorin")
+            .first()
+            .map { it.sortOrder },
+        )
+        assertEquals(
+          listOf(0),
+          database
+            .savedRolls()
+            .inGroup("ezren")
+            .first()
+            .map { it.sortOrder },
+        )
+      }
+    }
+
+  @Test
+  fun `what a saved roll carried besides the flag survives version 6`() =
+    runTest {
+      // The whole row is copied into the new table, so a migration that got
+      // the column list wrong would lose a formula or a table pin quietly.
+      writeVersion(5) { db ->
+        db.execSQL("INSERT INTO saved_roll_group (id, name, icon, sort_order) VALUES ('thorin', 'Thorin', '', 0)")
+        db.execSQL(
+          """
+          INSERT INTO saved_roll
+            (id, group_id, name, formula, icon, colour_argb, favourite,
+             table_set_id, table_id, created_at, last_used_at, use_count)
+          VALUES ('fireball', 'thorin', 'Fireball', '8d6 [Fire]', '🔥', 255, 1,
+             'brass', 'oak', 900, 1000, 47)
+          """.trimIndent(),
+        )
+      }
+
+      withDatabase { database ->
+        val roll = requireNotNull(database.savedRolls().byId("fireball"))
+        assertEquals("8d6 [Fire]", roll.formula)
+        assertEquals("🔥", roll.icon)
+        assertEquals(255, roll.colourArgb)
+        assertEquals("brass", roll.tableSetId)
+        assertEquals("oak", roll.tableId)
+        assertEquals(47, roll.useCount)
+      }
+    }
+
+  /** One version-5 saved roll, written the way version 5 spelled one. */
+  private fun savedRoll(
+    db: SQLiteDatabase,
+    id: String,
+    favourite: Int,
+    lastUsedAt: String,
+    group: String = "thorin",
+  ) {
+    db.execSQL(
+      "INSERT INTO saved_roll (id, group_id, name, formula, icon, colour_argb, favourite, " +
+        "table_set_id, table_id, created_at, last_used_at, use_count) VALUES " +
+        "('$id', '$group', '$id', '1d20', '', NULL, $favourite, NULL, NULL, 0, $lastUsedAt, 0)",
+    )
+  }
+
   /**
    * The app's own way of opening it: the real builder, the real migrations.
    *
@@ -207,14 +322,20 @@ class MigrationTest {
     }
   }
 
+  /** A database exactly as version 1 left it. */
+  private fun writeVersion1(fill: (SQLiteDatabase) -> Unit = {}) = writeVersion(1, fill)
+
   /**
-   * A database exactly as version 1 left it, built from version 1's schema.
+   * A database exactly as [version] left it, built from that version's schema.
    *
-   * Not hand-written DDL: a copy of the old schema in a test is a copy that
+   * Not hand-written DDL: a copy of an old schema in a test is a copy that
    * drifts, and the one in `data/schemas/` is what actually shipped.
    */
-  private fun writeVersion1(fill: (SQLiteDatabase) -> Unit = {}) {
-    val schema = JSONObject(schemaFile(1).readText()).getJSONObject("database")
+  private fun writeVersion(
+    version: Int,
+    fill: (SQLiteDatabase) -> Unit = {},
+  ) {
+    val schema = JSONObject(schemaFile(version).readText()).getJSONObject("database")
     val database = SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(NAME), null)
     val entities = schema.getJSONArray("entities")
     repeat(entities.length()) { index ->

@@ -13,6 +13,7 @@ import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollGroup
 import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.core.model.TableView
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -51,6 +52,7 @@ class DataStoreSettingsRepository(
       preferences[HAPTICS] = changed.haptics
       preferences[SOUND] = changed.sound
       preferences[ROUNDING] = changed.rounding.id
+      preferences[TABLE_VIEW] = changed.tableView.id
       preferences[DEVELOPER_TOOLS] = changed.developerTools
       preferences[WELCOME_SEEN] = changed.welcomeSeen
       preferences[ACTIVE_GROUP] = changed.activeGroupId
@@ -84,6 +86,10 @@ class DataStoreSettingsRepository(
       haptics = preferences[HAPTICS] ?: true,
       sound = preferences[SOUND] ?: true,
       rounding = Rounding.ofId(preferences[ROUNDING]),
+      // An id nobody wrote — a key that is not there, or a value from a
+      // version that called the positions something else — is straight down,
+      // which is what a new install gets.
+      tableView = TableView.ofId(preferences[TABLE_VIEW]),
       // Absent means off, which is what every install starts at and what a
       // debugging tool should take a deliberate act to reach.
       developerTools = preferences[DEVELOPER_TOOLS] == true,
@@ -109,6 +115,7 @@ class DataStoreSettingsRepository(
     private val HAPTICS = booleanPreferencesKey("haptics")
     private val SOUND = booleanPreferencesKey("sound")
     private val ROUNDING = stringPreferencesKey("rounding")
+    private val TABLE_VIEW = stringPreferencesKey("table_view")
     private val DEVELOPER_TOOLS = booleanPreferencesKey("developer_tools")
     private val WELCOME_SEEN = booleanPreferencesKey("welcome_seen")
     private val ACTIVE_GROUP = stringPreferencesKey("active_group")

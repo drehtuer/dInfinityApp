@@ -56,12 +56,27 @@ class ResultSheetTest {
   }
 
   @Test
-  fun `the group's subtotal is shown, so nobody adds the dice up themselves`() {
-    compose.setContent { ResultSheet(fourD6DropLowest()) }
+  fun `a group's subtotal is shown, so nobody adds the dice up themselves`() {
+    // `4d6dl1 + 4`: the rows have to add up to nineteen, and they cannot do
+    // that without the fifteen the dice came to.
+    compose.setContent { ResultSheet(fourD6DropLowest().plus(4)) }
 
     compose.onNodeWithTag(RollTestTags.subtotalOf(0)).assertIsDisplayed()
     // 5 + 4 + 6, with the 1 dropped.
     compose.onNodeWithText("15").assertIsDisplayed()
+  }
+
+  @Test
+  fun `a subtotal that is the whole total is not drawn a second time`() {
+    // The design has one total. `4d6dl1` is one group with nothing added to
+    // it, so its subtotal *is* the total — and drawing it put the roll's
+    // number at the display size in the middle of the screen and again at
+    // 20 dp hard against the right edge ([Subtotals], `docs/TODO.md`, 4.1).
+    compose.setContent { ResultSheet(fourD6DropLowest()) }
+
+    compose.onNodeWithTag(RollTestTags.subtotalOf(0)).assertDoesNotExist()
+    // The dice are all still there; it is the repeat of the total that goes.
+    compose.onNodeWithTag(RollTestTags.dieAt(0)).assertIsDisplayed()
   }
 
   @Test

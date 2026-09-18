@@ -54,7 +54,7 @@ dicesets/
   install/           Fetch from git forges / https archives / local files, verification, extraction into sandboxed storage, reading back what is installed, and decoding a die's artwork out of the package it was installed with (docs/dice-sets.md, "Textures"). The fetching and the extraction are shared with saved-roll collections (docs/dice-notation.md)
   builtin/           The bundled standard set and default tables as a normal package (eats its own dog food)
 simulation/
-  api/               DiceSimulator interface, table geometry + capacity check, settle/face-read logic, the frame clock
+  api/               DiceSimulator interface, the catalogue's solids — corners, face directions and which corners make up which face — table geometry + capacity check, settle/face-read logic, the frame clock
   jolt/              Jolt JNI bridge (C++), the roll loop and the roll in progress
   harness/           The Step 5 device harness off the device: what a run is asked for — a count of throws or a length of time — its JSON document, what it may say about frames, and the targets it is scored against (docs/TODO.md, Step 5.1)
 render/
@@ -63,7 +63,7 @@ render/
 input/
   shake/             Sensor fusion → throw impulses
 feedback/            Impacts → haptic ticks and impact sounds (docs/physics-and-rendering.md)
-designer/            The personal package, "My dice": the drawing model behind the face designer (marks, drafts on disk, cell outlines), the photographs somebody has made tables of, and the export that turns both into an installable package (docs/face-designer.md, docs/tables.md)
+designer/            The personal package, "My dice": the drawing model behind the face designer (marks, drafts on disk, cell outlines), the die turned over in the hand (the projection, the culling and the depth sort behind the Solid tab), the photographs somebody has made tables of, and the export that turns both into an installable package (docs/face-designer.md, docs/tables.md)
 data/                Room database, DAOs, DataStore
 ui/
   common/            The design system's tokens, and the screen furniture more than one screen needs: the formula field and its squiggle, the die silhouettes, the button, the rule, the segmented control
@@ -112,6 +112,16 @@ by `render/filament`'s `DieNumbers`, about the polygon its mesh draws, and by
 left on either side is the one thing only that side knows — which polygon it
 is. Two solves would eventually disagree, and the disagreement would be a die
 drawn from its own numbers that did not match the same die printed.
+
+**`designer` depends on `:simulation:api`**, which looks like a drawing screen
+reaching for a physics module and is the same argument one more time. The
+designer's Solid tab turns the real polyhedron over, and `simulation/api` is
+where a catalogue solid *is* — its corners, the direction of each readable
+position, the face order every set file is read in and which corners make up
+which face (`SolidFaces`). Nothing of the simulator comes with it: the
+dependency is on the closed forms, which are plain Kotlin with no engine
+behind them, and the alternative is a second account of a die's geometry in
+the one module most likely to be looked at beside the first (decision 35).
 
 `ui/common` is **not** a feature and is not a place for anything that is
 merely shared. Nothing in it knows what screen it is on, and it depends on
@@ -223,7 +233,7 @@ stateDiagram-v2
     Roll --> Graph: See the odds
     Roll --> Menu: the menu button
     Screen --> Editor: a saved roll, or New
-    Editor --> Screen: saved, deleted, or back
+    Editor --> Screen: saved, deleted, or the chevron
     Editor --> Roll: Roll now
     Graph --> Menu: the menu button
     Screen --> Menu: the menu button
@@ -261,11 +271,67 @@ roll screen is where the app opens and where a result sits while somebody is
 still reading it, and it is also the screen with the largest gesture surface in
 the app.
 
+The rule is `LeavingTheApp`, a state machine over "back was pressed at time
+*t*" with **the clock handed in**, and it knows nothing about Compose. A timer
+inside a composable would make the behaviour something only a phone could
+observe, and the case that matters most — the press that arrives a millisecond
+too late — would be a two-second sleep in a suite that runs on every commit.
+What the screen adds is the press, the words and `finish()`; the handler is in
+the composition only while the tray is, so it cannot fire on a screen it was
+not written for. There is **no "closed app" screen**: the prototype draws one
+because a web page cannot close, and an app that closes is closed.
+
+The toast is `ui/common`'s `ModernistToast` — the design's inverted plate,
+`--color-text` ground and `--color-bg` letters, `8`/`14` dp of padding and
+`--shadow-md` — and it takes itself away after **2.6 s**. That is six tenths of
+a second longer than the window it names, so a press in the gap arms again
+rather than leaving. It is the failure worth having: an app that stays open
+when it was asked twice is one press from closing, and one that closes when it
+was asked once is gone.
+
 **A chevron in a header always goes up, never back.** It takes the player to
 the hub the screen was opened from, and from the hub to Roll, whatever path
 they took to get there. It is not a second spelling of the system's back
 button: one of them retraces steps and the other climbs, and a control that
 sometimes does each is a control nobody can predict.
+
+Where up *is* is `Destination.up`, and it is total: the menu for everything the
+menu lists, the list it belongs to for the three screens that are about one of
+something — the editor and an import go to Saved rolls, a set's details to Dice
+sets — the tray from the menu, and nowhere from the tray, where leaving is back
+twice. `NavHostController.climb` is the only way it is used, and it never pops:
+it navigates, leaving the tray at the bottom of the stack and the screen
+climbed to on top of it. So the editor opened from the tray's strip and the
+same editor opened from the list leave by the same chevron to the same place,
+which a `popBackStack` could not do.
+
+Today one screen draws the chevron: the **saved-roll editor**, which is the
+only screen with no menu button — it is about a roll rather than about a
+subject — so without it the only ways out were saving, deleting and the
+system's own back. Saving and deleting climb the same way. The `←` on
+Statistics and the `Back` on saved-roll statistics are *not* chevrons in this
+sense and do not navigate: they close a detail on the screen they are drawn on.
+
+### One safe area, applied once
+
+The window goes edge to edge, and what the system covers — the status bar, the
+gesture bar, a cutout — is applied by the navigation graph, **once**, around
+whatever it is about to draw.
+
+It used to be each screen's own job, which works exactly as long as nobody
+forgets. Settings forgot: on the Pixel 10a its title and menu button sat under
+the clock, 58 dp above where the tray's menu button sat, and nothing could have
+caught it because every screen's own test draws that screen in a window with no
+status bar, where inset and not-inset look identical. A screen should not have
+to know the window has edges.
+
+`Destination.fullBleed` is the one way out and the tray is the one destination
+that takes it: it is a single full-bleed table with everything floating on it,
+and felt inset by 58 dp would be a grey stripe across the top of the screen.
+The tray insets its *controls* instead — the menu button, the debug overlay,
+the stack of controls along the bottom. Window-inset padding consumes what it
+applies, so a screen that still insets something inside itself gets nothing
+twice.
 
 The menu button is **handed to each screen rather than built by it**. A screen
 that knew what the menu was would be one feature module depending on another,
@@ -602,9 +668,32 @@ rolls are gone.
 
 Two things the screen does *not* decide. Whether a formula still resolves is
 re-checked every time the list is drawn rather than stored, because the set it
-names can be uninstalled between one drawing and the next; and the order —
-favourites first, then by recent use — is SQL's, because it is what the list
-*is* (`docs/dice-notation.md`, "Saved rolls").
+names can be uninstalled between one drawing and the next; and the order — the
+one the player dragged the list into, `sort_order` — is SQL's, because it is
+what the list *is* (`docs/dice-notation.md`, "Saved rolls").
+
+**A drag is the one thing the screen holds that the database does not yet.**
+The list reorders live under the finger and is written down when the finger
+lifts, so between those two moments the presenter is showing an order the
+database has not been told about; `move` keeps it and `settle` writes it, in
+one transaction. Until the database reports that order back, an emission
+arriving for any other reason — a use count, an import — is drawn in the order
+the drag left, because a row that snapped back under the finger moving it
+would be the screen arguing with the player. What a reorder *comes to* is
+`SavedOrder`, plain Kotlin with no Compose in it: the list, the row being
+dragged and where the finger is, to the list to draw. The gesture and the
+drawing are the screen's, and the row that moves is the one under the pointer
+rather than the one the drag began on.
+
+**The list is its own scroll box.** The title bar, the group switcher and the
+line above the list stay where they are; only the rolls move. A list that
+scrolled the whole screen would take the group name away exactly when somebody
+is looking for it.
+
+Reordering is offered twice, because a drag is not available to everybody: the
+grip carries **Move up** and **Move down** as custom accessibility actions, so
+a list that can be ordered with a finger can also be ordered with TalkBack
+("Accessibility", below).
 
 | Control | Calls | What changes |
 | --- | --- | --- |
@@ -912,7 +1001,7 @@ one made here.
 | **Fetch** a link | `fetch`, then `CollectionDownload` in `:app` | a file or a repository is downloaded, and becomes text or a refusal |
 | *(not a control)* the file's text | `offer` | the state, to one of the four above |
 | **Choose another file** | `again`, then the picker | back to `Waiting` |
-| **See the rolls** | *(navigation)* | the saved-rolls list, with the import taken off the back stack |
+| **See the rolls** | *(navigation)* | climbs to the saved-rolls list, leaving the import behind |
 
 The picker is in `:app` rather than on the screen, because a content URI is the
 application's business. The screen takes text; the permission, the **bounded**
@@ -938,14 +1027,17 @@ numbers beside it.
 | --- | --- | --- |
 | the name field | `name` | what it will be called; blank means the formula is its name |
 | the formula field | `formula` | the formula, its error and its odds, all from one plan |
-| icon, colour, group, table, favourite | `choose` | that one field and nothing else — none of them needs re-validating |
+| icon, colour, group, table | `choose` | that one field and nothing else — none of them needs re-validating |
 | **New group** | `GroupPresenter.create` | the group sheet opens; the group it writes becomes this roll's |
 | **Save roll** | `save` | the roll is written down, and the editor leaves |
 | **Roll now** | *(navigation)* | the tray, with this formula, **without saving** |
 | **Delete** | `delete` | the roll is taken away, and the editor leaves |
 
-The editor leaves by going *back* rather than forward: it is a detour from the
-list, and finishing one is arriving back where it started.
+The editor leaves by **climbing**, not by going back: saving, deleting and the
+chevron in its header all land on the saved-rolls list. It is a detour from
+that list however it was opened — from the list, from the tray's strip, from
+the outcome graph's "Save as roll" — and finishing one is arriving at it
+("Navigation").
 
 ### Sessions
 
@@ -1064,11 +1156,54 @@ on it. Every example on it is a button that puts that formula in the tray's
 field, and `NotationReferenceTest` parses all of them, so the screen cannot
 offer a formula the app would refuse (`docs/dice-notation.md`).
 
+**Every setting is one row.** Its name and the sentence under it on the left,
+the control on the right and centred against the text, a hairline between rows
+and a 2 dp rule between blocks — which is what the design draws
+(`design/dInfinityPhone.dc.html`, the Settings screen: a flex row of a
+`min-width: 0` text column and a `flex: none` segmented control). The app used
+to stack the three, so every setting was three blocks tall and the screen ran
+to twice the length of the drawing. Where the app and the design disagree about
+how something looks, the design wins. `SettingRow` is that layout — a two-slot
+`Layout` rather than a `Row`, because the decision it makes cannot be made with
+weights.
+
+**The decision the drawing does not make is what happens when the control will
+not fit beside the text.** A browser can let `flex: none` overflow the viewport
+and a phone cannot, so the control goes **under** the text, at the left edge,
+and the row grows. The threshold is the text column's own floor, 120 dp: the
+control is measured first, at its natural width, because it is the half that
+cannot be squeezed, and if what is left is narrower than that floor the row
+stacks. The two alternatives are both worse — a sentence set in 60 dp is a
+column of single words, and a squeezed control either clips an option's label
+or drops it under the 48 dp touch target. The consequence worth knowing: below
+roughly 300 dp of room *every* row stacks, so the screen degrades to what it
+used to be rather than to something broken. That is narrower than any phone the
+app ships against and is exactly what a split-screen pane is.
+
+**Two things stay blocks rather than rows.** The accent grid is four columns of
+swatches and would have nothing left of itself in half a row, and About is not
+a control at all. Haptics and sound is the third shape — a section heading and
+sentence with **two** rows under it — because the sentence is about both
+switches, and because the design has no sound switch at all (`docs/TODO.md`,
+"Does the sound go?").
+
+**A boolean setting is a row like any other**, with the Off / On segmented
+read-out where a picker has its options. The whole row is `toggleable`, so the
+tap covers the sentence too. Its heading is its label now, which cost the three
+switches that stood alone a second label each: "Power saving" above "Do not
+draw the dice" was one row saying the same thing twice, and a screen reader
+read both. What is left of that in the code is `SettingRow`'s `readAsOne`: the
+name and the sentence are merged into one stop for a screen reader, **except**
+where the row itself already merges, because a merging node inside a merging
+node is withheld from it rather than joined to it — which made the power
+switch announce its state without ever saying which setting it was. That is a
+thing a test can see, and one does.
+
 | Control | Calls | What changes |
 | --- | --- | --- |
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
 | one of the six accent presets, or a colour from the system picker | `onAccentSelected` | the stored accent, and with it every screen at once. The six are laid out four across, so six presets and a custom swatch come out 4 + 3 with nothing orphaned |
-| Straight down / Angled | `onTableViewSelected` | how far the camera leans over the table, from the next visit to the roll screen (`docs/physics-and-rendering.md`, "Rendering") |
+| Straight down / Angled | `onTableViewSelected` | how far the camera leans over the table, from the next visit to the roll screen. Straight down is the default (`docs/physics-and-rendering.md`, "Rendering (normal mode)") |
 | the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
 | the haptics switch | `onHapticsChanged` | whether a die landing ticks in the hand, from the next visit to the roll screen. The system's own touch-feedback setting still governs it: the effects go out under `VibrationAttributes.USAGE_TOUCH` and the app never asks whether that is on |
 | the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
@@ -1079,14 +1214,18 @@ offer a formula the app would refuse (`docs/dice-notation.md`).
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
 
-Six of those take effect **when the roll screen next opens** rather than where
-they are pressed — power saving, the shake, haptics, sound, the default
-rounding and the debug overlay half of the developer toggle. A renderer
-appearing under a roll in progress, sensors registering mid-throw, a roll that
-starts buzzing half way down, an overlay appearing over a throw, or a total
-changing its arithmetic while the dice are in the air are not settings taking
-effect; they are bugs (decision 16). The developer toggle's *other* half — the
-menu row — appears at once, because a menu is not a roll.
+Seven of those take effect **when the roll screen next opens** rather than
+where they are pressed — power saving, the shake, haptics, sound, the default
+rounding, the table view and the debug overlay half of the developer toggle. A
+renderer appearing under a roll in progress, sensors registering mid-throw, a
+roll that starts buzzing half way down, an overlay appearing over a throw, a
+camera leaning over while the dice are still moving, or a total changing its
+arithmetic while the dice are in the air are not settings taking effect; they
+are bugs (decision 16). The camera is the clearest of them: the tray a visit is
+given is built with one answer and a rotation rebuilds the picture with the
+same one, so the lean is fixed for as long as the screen is. The developer
+toggle's *other* half — the menu row — appears at once, because a menu is not a
+roll.
 
 **The accent is no longer a closed palette, and the clamp is what makes that
 safe.** `AccentColor` was six entries checked against both grounds by a test,
@@ -1492,6 +1631,8 @@ to re-run (decision 13).
   drafts/…                    in-progress face drawings, one file per die
   table-photos/…              photographs made into tables: <id>.webp and <id>.name, two files each
                               (deliberately not inside dicesets/, where a loose folder would be scanned as a package)
+  mine-physical.txt           what "My dice" is made of: size_mm, density, translucency, one per line
+                              (the third record mine/ is built from; docs/dice-sets.md)
   savedrolls/
     imports/…                 imported collections kept for "re-import / diff"
 <cacheDir>/
@@ -1551,7 +1692,7 @@ the archives an install is working through, and those came from a stranger.
 | 32 | Everything a roll can fail on that does not need dice is decided at plan time | A roll is watched. A formula that turns out mid-throw to divide by zero, keep four of two dice or explode for ever would have to fail with dice on the table and nothing to show. `ResultBounds` proves the 64-bit promise the same way, which is also what lets the evaluator add in plain `Long` with no overflow checks |
 | 33 | A dice set is parsed by tomlj and read field by field into plain data classes | Parsing TOML is the kind of thing that should not be hand-rolled, and this parser is the one that carries the line and column of every key — without which the validation report could not say `file:line` at all (`docs/dice-sets.md`). Its deserializer is never used: a downloaded file reaches a document tree and nothing else |
 | 34 | A texture's dimensions are read from its own header, in plain Kotlin, before any decoder sees it | Refusing a 30,000-pixel image is only safe if the refusal happens before the decode, because the decoder is the part with the attack surface. It also means `dicesets/format` stays a JVM module and can be tested without an emulator |
-| 35 | Every catalogue solid is computed from its closed form in `simulation/api`, and the hull, the mesh and the face reading all come from that one place | Three descriptions of the same solid are three chances to be a hundredth of a degree apart, and the one that would show is a die whose printed face and scored face disagree. Face 0 is the face that is up in the reference orientation, which is what both the atlas and a settled reading expect |
+| 35 | Every catalogue solid is computed from its closed form in `simulation/api`, and the hull, the mesh, the face reading and the face designer's Solid tab all come from that one place | Three descriptions of the same solid are three chances to be a hundredth of a degree apart, and the one that would show is a die whose printed face and scored face disagree. Face 0 is the face that is up in the reference orientation, which is what both the atlas and a settled reading expect. **Which corners make up which face** is part of that one place rather than of whoever needs it: `SolidFaces` groups the corners onto the face planes once, and both `render/filament`'s `DieMesh` and `designer`'s `SolidStage` are built from it — the grouping used to live in the mesh, and a second copy of it in the designer would have been decision 35 broken in the one place it is easiest to break it, since the two pictures of face 7 would look right until somebody changed a solid |
 | 36 | `size_mm` is a die's nominal size — the edge length for a polyhedron, the diameter for the coin — not its bounding diameter | It is what a dice maker quotes, so "a d6 of 16 mm" means the same thing to an author as to the app. It is also the reading the capacity rule in `docs/tables.md` was worked out under: a 16 mm d6 covers 6.03 cm², and eighty of them are exactly what a phone-sized tray holds |
 | 37 | Jolt Physics 5.3.0, not Bullet — decided by building both against the toolchain the app actually uses | Goal 4 is determinism, and Jolt offers cross-platform determinism as a supported build mode (`CROSS_PLATFORM_DETERMINISTIC=ON`) while Bullet offers no such guarantee at all. The spike settled the rest on evidence: Jolt configures and builds clean with the SDK's CMake 4.1.2 and NDK 30's Clang 21 in about three seconds, and a real slice of it — a convex-hull die, a box tray and fixed 1/120 s stepping — links to a 2.0 MB stripped `arm64-v8a` library. Bullet 3.25 does not configure at all: its `cmake_minimum_required(VERSION 2.4.3)` is below what CMake 4 still supports. An engine the build cannot even configure is not a fallback (`docs/build-setup.md`) |
 | 38 | The `Renderer` contract lives in `render/headless`, and `render/filament` depends on it rather than the other way round | "No Filament engine is created at all" in power-saving mode is a claim about a whole dependency, and it is only true if the headless path can be built without that dependency present. A headless mode made out of the real renderer with the drawing switched off would still hold a GPU context and would quietly stop being free the first time somebody allocated in the wrong place. The contract also returns nothing anywhere, so a renderer cannot act on the simulation it is watching |

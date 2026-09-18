@@ -8,6 +8,8 @@ import de.drehtuer.dinfinity.core.model.TableSound
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
 import de.drehtuer.dinfinity.dicesets.format.ValidationResult
 import de.drehtuer.dinfinity.fixtures.StandardDice
+import de.drehtuer.dinfinity.simulation.api.FaceNumbering
+import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -74,34 +76,68 @@ class BuiltinDiceSetTest {
   }
 
   @Test
-  fun `every plain die runs one up to its face count`() {
+  fun `every plain die carries one up to its face count, once each`() {
     listOf("d2", "d4", "d6", "d8", "d10", "d12", "d18", "d20").forEach { id ->
       val die = requireNotNull(set.die(id))
-      assertEquals(id, (1..die.shape.faceCount).toList(), die.values())
+      assertEquals(id, (1..die.shape.faceCount).toList(), die.values().sorted())
     }
   }
 
   @Test
-  fun `a d10 is printed the way a real one is moulded`() {
-    assertEquals(
-      listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
-      set.die("d10")?.faces?.map { it.label },
-    )
+  fun `every die is numbered in opposite pairs, which is what the geometry says`() {
+    // The file is data and cannot compute anything; this is what stops it
+    // saying something the solids do not (`docs/dice-sets.md`, "Numbering").
+    set.dice.forEach { die ->
+      assertEquals(die.id, FaceNumbering.paired(die.shape, die.values()), die.values())
+    }
+  }
+
+  @Test
+  fun `opposite faces of every even-faced die sum to one more than its face count`() {
+    listOf("d2", "d6", "d8", "d10", "d12", "d18", "d20").forEach { id ->
+      val die = requireNotNull(set.die(id))
+      ShapeGeometry.oppositesOf(die.shape).forEachIndexed { face, across ->
+        assertNotNull("$id face $face faces nothing", across)
+        assertEquals(
+          "$id faces $face and $across",
+          die.shape.faceCount + 1,
+          die.faces[face].value + die.faces[requireNotNull(across)].value,
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `a d4 keeps one to four at its corners, having no opposite faces to pair`() {
+    assertEquals(listOf(1, 2, 3, 4), requireNotNull(set.die("d4")).values())
+  }
+
+  @Test
+  fun `a d10 is printed the way a real one is moulded, its tenth face a nought`() {
+    val units = requireNotNull(set.die("d10"))
+    // Every label is the value's last digit, so the ten prints `0` — which is
+    // what makes a d10 beside its tens die read as the percentile pair it is
+    // (`docs/dice-sets.md`, "Labels"). The value is still ten.
+    assertEquals(units.values().map { "${it % 10}" }, units.faces.map { it.label })
+    assertEquals("0", units.faces.first { it.value == 10 }.label)
   }
 
   @Test
   fun `a tens d10 scores and prints in tens`() {
     val tens = requireNotNull(set.die("d10-tens"))
-    assertEquals((0..9).map { it * 10 }, tens.values())
+    assertEquals((0..9).map { it * 10 }, tens.values().sorted())
+    assertEquals(tens.values().map { "%02d".format(it) }, tens.faces.map { it.label })
     assertEquals("00", tens.faces.first().label)
-    assertEquals("90", tens.faces.last().label)
   }
 
   @Test
-  fun `a fudge die is two minuses, two blanks and two pluses`() {
+  fun `a fudge die is two minuses, two blanks and two pluses, a minus across from a plus`() {
     val fudge = requireNotNull(set.die("df"))
-    assertEquals(listOf(-1, -1, 0, 0, 1, 1), fudge.values())
-    assertEquals(listOf("−", "−", "0", "0", "+", "+"), fudge.faces.map { it.label })
+    assertEquals(listOf(-1, -1, 0, 0, 1, 1), fudge.values().sorted())
+    assertEquals(listOf("−", "−", "0", "+", "0", "+"), fudge.faces.map { it.label })
+    ShapeGeometry.oppositesOf(fudge.shape).forEachIndexed { face, across ->
+      assertEquals("faces $face and $across", 0, fudge.faces[face].value + fudge.faces[requireNotNull(across)].value)
+    }
   }
 
   @Test

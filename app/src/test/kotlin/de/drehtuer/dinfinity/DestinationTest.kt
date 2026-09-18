@@ -127,4 +127,52 @@ class DestinationTest {
     val used = Destination.inTheMenu.map { it.group }.toSet()
     assertEquals(MenuGroup.entries.toSet(), used)
   }
+
+  @Test
+  fun `every screen has somewhere up, and only the tray has not`() {
+    Destination.entries.forEach { destination ->
+      if (destination == Destination.home) {
+        assertNull("the tray is home; leaving is back's job", destination.up)
+      } else {
+        assertNotNull("${destination.route} has no way up", destination.up)
+      }
+    }
+  }
+
+  @Test
+  fun `climbing from anywhere reaches the tray, and cannot go round`() {
+    // Totality rather than a table of expected parents: what matters is that
+    // every chevron eventually arrives at the screen the app opens on, and
+    // that no two screens are each other's "up".
+    Destination.entries.forEach { destination ->
+      val climbed = generateSequence(destination) { it.up }.take(Destination.entries.size + 1).toList()
+      assertTrue(
+        "${destination.route} does not climb to the tray: ${climbed.map { it.route }}",
+        climbed.last() == Destination.home,
+      )
+      assertEquals("${destination.route} climbs in a circle", climbed.size, climbed.toSet().size)
+    }
+  }
+
+  @Test
+  fun `a screen about one of something climbs to the list of them, not to the menu`() {
+    // The three that are not in the menu are not in it for this reason: they
+    // are about one roll, one import, one set (`docs/architecture.md`,
+    // "Navigation").
+    assertEquals(Destination.SavedRolls, Destination.SavedRollEditor.up)
+    assertEquals(Destination.SavedRolls, Destination.CollectionImport.up)
+    assertEquals(Destination.DiceSets, Destination.SetDetail.up)
+    assertEquals(Destination.Roll, Destination.Menu.up)
+    assertEquals(Destination.Menu, Destination.Settings.up)
+  }
+
+  @Test
+  fun `the tray is the one screen drawn to the edge of the glass`() {
+    assertTrue(Destination.home.fullBleed)
+    assertEquals(
+      "only the tray is full-bleed",
+      listOf(Destination.home),
+      Destination.entries.filter { it.fullBleed },
+    )
+  }
 }

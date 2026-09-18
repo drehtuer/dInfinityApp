@@ -9,11 +9,15 @@ import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.FaceDrawing
+import de.drehtuer.dinfinity.designer.FaceEyes
 import de.drehtuer.dinfinity.designer.FaceFill
 import de.drehtuer.dinfinity.designer.FaceStamp
 import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Mark
+import de.drehtuer.dinfinity.designer.SolidStage
+import de.drehtuer.dinfinity.designer.SolidTurn
+import de.drehtuer.dinfinity.designer.Stage
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
 
@@ -103,6 +107,23 @@ enum class Step {
   Clear,
 }
 
+/**
+ * Which of the two halves of the designer is in front of the player
+ * (`docs/face-designer.md`, "The solid, not just the face").
+ *
+ * The flat editor is where a face is drawn and the solid is where the die is
+ * turned over. They are two views of one drawing rather than two screens: the
+ * face strip, the base die and the way out to the tray are the same underneath
+ * both, and moving between them keeps the player's place.
+ */
+enum class DesignerView {
+  /** The canvas, the tools and the palette: one face at a time, flat on. */
+  Face,
+
+  /** The real polyhedron, spinning until a drag takes over. */
+  Solid,
+}
+
 /** What the designer is showing. */
 data class DesignerState(
   val draft: Draft,
@@ -135,6 +156,17 @@ data class DesignerState(
   val stampText: String? = null,
   /** How big the next stamp is, against what this face's own number would be. */
   val stampSize: StampSize = StampSize.Medium,
+  /** Which of the two tabs is in front of the player. */
+  val view: DesignerView = DesignerView.Face,
+  /** How the die on the Solid tab is turned. */
+  val turn: SolidTurn = SolidTurn(),
+  /**
+   * True while the die is turning on its own.
+   *
+   * On until a drag takes over, because a die that has to be dragged before it
+   * shows anything but its front face is a die nobody turns over.
+   */
+  val spinning: Boolean = true,
 ) {
   /** The die being drawn on. */
   val die: Die get() = draft.die
@@ -144,6 +176,17 @@ data class DesignerState(
 
   /** The drawing on the face in front of the player. */
   val face: FaceDrawing get() = draft.face(cell)
+
+  /**
+   * The die as the Solid tab sees it, turned by [turn].
+   *
+   * Worked out here rather than in the draw lambda, which is the line this
+   * module draws everywhere: what can be *wrong* — which faces are facing
+   * away, what order they go down in, where a corner lands — is decided in
+   * plain Kotlin and what is left to draw is paths and colours
+   * (`docs/architecture.md`, decision 55).
+   */
+  val stage: Stage get() = SolidStage.of(draft, turn)
 
   /** The numbers under it — one, or a d4's three (`docs/dice-sets.md`, "The d4"). */
   val guide: List<GuideMark> get() = if (guideShown) draft.guide(cell) else emptyList()
@@ -161,6 +204,20 @@ data class DesignerState(
    * (`BuiltinFont.canDraw`).
    */
   val canStamp: Boolean get() = BuiltinFont.canDraw(stamping)
+
+  /**
+   * True when this die can be pipped instead of numbered, which is a d6 and
+   * only a d6 (`FaceEyes.canBePipped`).
+   *
+   * What decides whether the two eye buttons are on the screen at all. A pip
+   * pattern is a way of writing one to six and there is no pattern for a 7 or
+   * for a Fudge die's minus, so the offer is withheld rather than made and
+   * refused.
+   */
+  val canPip: Boolean get() = FaceEyes.canBePipped(draft.die)
+
+  /** True when some face is carrying pips, which is what `Clear eyes` is for. */
+  val pipped: Boolean get() = FaceEyes.pipped(draft)
 
   val canUndo: Boolean get() = face.canUndo
   val canRedo: Boolean get() = face.canRedo
@@ -314,8 +371,10 @@ class DesignerPresenter(
    * unnecessary, and a dialog that warns about a loss that cannot happen is
    * worse than no dialog at all.
    *
-   * The pen, its colour, how big the stamp is and whether the guide is showing
-   * all stay: they are how somebody is working, not what they are working on.
+   * The pen, its colour, how big the stamp is, whether the guide is showing and
+   * which of the two tabs is open all stay: they are how somebody is working,
+   * not what they are working on. So does how the die is turned — a d20 swapped
+   * for a d12 is the same hand holding a different die.
    * What the stamp is *loaded with* does not — it goes back to following the
    * face, because a number from the die that was put down is not a number this
    * one has.
@@ -332,6 +391,9 @@ class DesignerPresenter(
         choosable = state.choosable,
         clipboard = state.clipboard,
         stampSize = state.stampSize,
+        view = state.view,
+        turn = state.turn,
+        spinning = state.spinning,
       )
   }
 
@@ -384,9 +446,73 @@ class DesignerPresenter(
     drafts.save(state.draft)
   }
 
+  /**
+   * Lays the standard pips on all six faces of a d6, in one tap
+   * (`docs/face-designer.md`, "Fill all with eyes").
+   *
+   * The other half of "fill all with numbers", and its opposite: a face
+   * carries pips or a numeral and never both, so this takes the numerals off
+   * as it goes. A die that cannot be pipped is left alone, and no button
+   * offers it one ([DesignerState.canPip]).
+   */
+  fun fillEyes() {
+    state = state.copy(draft = FaceEyes.fill(state.draft, state.colorArgb))
+    drafts.save(state.draft)
+  }
+
+  /** Takes the pips off again, which is the undo for somebody who pressed it to see. */
+  fun clearEyes() {
+    state = state.copy(draft = FaceEyes.clear(state.draft))
+    drafts.save(state.draft)
+  }
+
   /** The guide was turned on or off. */
   fun showGuide(shown: Boolean) {
     state = state.copy(guideShown = shown)
+  }
+
+  /**
+   * The other tab was chosen.
+   *
+   * Nothing else moves: the face in front of the player, the pen, the colour
+   * and how the die is turned all stay as they were, so the two tabs are two
+   * views of one drawing rather than two screens with their own memories.
+   */
+  fun look(view: DesignerView) {
+    state = state.copy(view = view)
+  }
+
+  /**
+   * A finger dragged across the stage, by [across] and [down] of its width and
+   * height.
+   *
+   * **The drag unticks Spin.** A die that went on turning under the finger
+   * holding it would be a die fighting back, and the tick is how somebody puts
+   * it back to turning on its own.
+   */
+  fun turned(
+    across: Float,
+    down: Float,
+  ) {
+    state = state.copy(turn = state.turn.dragged(across, down), spinning = false)
+  }
+
+  /** Spin was ticked or unticked. */
+  fun spin(spinning: Boolean) {
+    state = state.copy(spinning = spinning)
+  }
+
+  /**
+   * [seconds] of the turn the die makes on its own have passed.
+   *
+   * Taken as an amount of time rather than as a step, so the die turns at the
+   * same rate whatever the panel is running at — which is the same bargain the
+   * tray makes with its own frames (`docs/physics-and-rendering.md`). A tick
+   * that arrives after somebody has taken hold of the die does nothing.
+   */
+  fun spun(seconds: Float) {
+    if (!state.spinning) return
+    state = state.copy(turn = state.turn.spun(seconds))
   }
 
   /**

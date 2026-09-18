@@ -116,6 +116,13 @@ object DraftFile {
    * lists, so that the dots of every kind of mark are written and read the one
    * way — and so that a reader that predates stamps drops them and keeps the
    * drawing around them, exactly as it does a fill.
+   *
+   * A d6's pips are rings too, and carry [EYES] beside them to say they are
+   * pips rather than a glyph — which is the one thing a drawing cannot work
+   * out from the shapes, and the thing `Clear eyes` and "fill all with
+   * numbers" both need to know (`FaceEyes`). A reader that predates them reads
+   * them as a stamp of six circles, which is what they look like; nothing is
+   * lost and nothing is drawn wrongly.
    */
   private fun markOf(mark: Mark): JsonObject =
     JsonObject(
@@ -129,7 +136,10 @@ object DraftFile {
 
           is Fill -> put(FILLS, JsonPrimitive(true))
 
-          is Stamp -> put(RINGS, JsonArray(mark.rings.map { JsonPrimitive(it.size) }))
+          is Rings -> {
+            put(RINGS, JsonArray(mark.rings.map { JsonPrimitive(it.size) }))
+            if (mark is Eyes) put(EYES, JsonPrimitive(true))
+          }
         }
         put(DOTS, JsonArray(mark.dots.flatMap { listOf(JsonPrimitive(it.x), JsonPrimitive(it.y)) }))
       },
@@ -151,36 +161,15 @@ object DraftFile {
     // one whose lengths are not numbers — which `Stamp.of` refuses like any
     // other ring that encloses nothing.
     val rings = (mark[RINGS] as? JsonArray)?.map { (it as? JsonPrimitive)?.content?.toIntOrNull() ?: 0 }
+    val eyes = (mark[EYES] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false
     val dots = dotsOf(mark, least = if (fills || rings != null) DOTS_OF_A_REGION else DOTS_OF_A_STROKE)
-    val width = (mark[WIDTH] as? JsonPrimitive)?.content?.toFloatOrNull()
+    if (colour == null || dots == null) return null
     return when {
-      colour == null || dots == null -> null
+      rings != null && eyes -> Eyes.of(rings, dots, colour)
       rings != null -> Stamp.of(rings, dots, colour)
       fills -> Fill(dots = dots, colorArgb = colour)
-      width == null -> null
-      else ->
-        Stroke(
-          dots = dots,
-          colorArgb = colour,
-          width = width,
-          erases = (mark[ERASES] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false,
-        )
+      else -> strokeFrom(mark, dots, colour)
     }
-  }
-
-  /**
-   * The dots of one mark, or null when they are not dots.
-   *
-   * An odd count is half a point, and a `null` is something that was not a
-   * number. Either way the path is not the path that was drawn.
-   */
-  private fun dotsOf(
-    mark: JsonObject,
-    least: Int,
-  ): List<Dot>? {
-    val numbers = (mark[DOTS] as? JsonArray).orEmpty().map { (it as? JsonPrimitive)?.content?.toFloatOrNull() }
-    if (numbers.size < least || numbers.size % 2 != 0 || numbers.any { it == null }) return null
-    return numbers.filterNotNull().chunked(2) { Dot(x = it[0], y = it[1]) }
   }
 
   private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.content?.toIntOrNull()
@@ -188,22 +177,64 @@ object DraftFile {
   private fun JsonElement.string(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.content
 
   private fun JsonArray?.orEmpty(): List<JsonElement> = this ?: emptyList()
+}
 
-  /** Two numbers to a dot, and a stroke of one dot is a tap rather than a line. */
-  private const val DOTS_OF_A_STROKE = 4
+// The draft file's own keys, and the two counts that say what a path is.
+// File-private rather than the object's, so the small readers below can see
+// them without being members of it.
 
-  /** A region needs three corners before it is a region. */
-  private const val DOTS_OF_A_REGION = 6
+/** Two numbers to a dot, and a stroke of one dot is a tap rather than a line. */
+private const val DOTS_OF_A_STROKE = 4
 
-  private const val FORMAT_KEY = "format"
-  private const val DIE = "die"
-  private const val FACES = "faces"
-  private const val CELL = "cell"
-  private const val STROKES = "strokes"
-  private const val COLOUR = "color"
-  private const val WIDTH = "width"
-  private const val ERASES = "erases"
-  private const val FILLS = "fill"
-  private const val RINGS = "rings"
-  private const val DOTS = "dots"
+/** A region needs three corners before it is a region. */
+private const val DOTS_OF_A_REGION = 6
+
+private const val FORMAT_KEY = "format"
+private const val DIE = "die"
+private const val FACES = "faces"
+private const val CELL = "cell"
+private const val STROKES = "strokes"
+private const val COLOUR = "color"
+private const val WIDTH = "width"
+private const val ERASES = "erases"
+private const val FILLS = "fill"
+private const val RINGS = "rings"
+private const val EYES = "eyes"
+private const val DOTS = "dots"
+
+/**
+ * The dots of one mark, or null when they are not dots.
+ *
+ * An odd count is half a point, and a `null` is something that was not a
+ * number. Either way the path is not the path that was drawn.
+ */
+private fun dotsOf(
+  mark: JsonObject,
+  least: Int,
+): List<Dot>? {
+  val numbers = (mark[DOTS] as? JsonArray).orEmpty().map { (it as? JsonPrimitive)?.content?.toFloatOrNull() }
+  if (numbers.size < least || numbers.size % 2 != 0 || numbers.any { it == null }) return null
+  return numbers.filterNotNull().chunked(2) { Dot(x = it[0], y = it[1]) }
+}
+
+/**
+ * The one kind of mark that carries a width, or null when it does not.
+ *
+ * Out here rather than inside [DraftFile] for the reason [dotsOf] is: reading
+ * a mark is a handful of small questions about JSON, and an object that
+ * answers all of them is an object with a dozen functions on it. Out here they
+ * are file-private either way.
+ */
+private fun strokeFrom(
+  mark: JsonObject,
+  dots: List<Dot>,
+  colour: Int,
+): Mark? {
+  val width = (mark[WIDTH] as? JsonPrimitive)?.content?.toFloatOrNull() ?: return null
+  return Stroke(
+    dots = dots,
+    colorArgb = colour,
+    width = width,
+    erases = (mark[ERASES] as? JsonPrimitive)?.content?.toBooleanStrictOrNull() ?: false,
+  )
 }
