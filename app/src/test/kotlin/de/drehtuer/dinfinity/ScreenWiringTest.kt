@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity
 
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.TableView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
@@ -118,6 +119,16 @@ class ScreenWiringTest {
     val picker = wiring(AppSettings(defaultTable = chosen)).presenters().tables()
 
     assertNotNull(picker.state.chosen)
+  }
+
+  @Test
+  fun `the roll screen is built with the lean the settings were read at`() {
+    // The setting is read when the screen opens rather than watched, so this
+    // wiring is where it is read — both positions have to build a tray
+    // (`docs/architecture.md`, decision 16).
+    TableView.entries.forEach { view ->
+      assertNotNull("the tray, looking $view", wiring(AppSettings(tableView = view)).presenters().roll())
+    }
   }
 
   private companion object {

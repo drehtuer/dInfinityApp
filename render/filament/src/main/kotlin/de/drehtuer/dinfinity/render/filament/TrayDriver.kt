@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.render.filament
 import android.view.Choreographer
 import android.view.Surface
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DebugWatch
@@ -59,13 +60,23 @@ class TrayDriver(
    * (`docs/architecture.md`, decision 16).
    */
   debug: DebugWatch = DebugWatch.NONE,
+  /**
+   * How far the camera leans over the table — the player's **Table view**
+   * setting (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+   *
+   * Given here for the reason the overlay is: this driver is one visit to the
+   * roll screen, so reading the setting when it is built is exactly what
+   * "takes effect the next time the screen opens" means
+   * (`docs/architecture.md`, decision 16).
+   */
+  tableView: TableView = TableView.Angled,
   // Last, so that a trailing lambda still means this one. A driver is built
   // with a stage factory in exactly one place — the device suite — and it is
   // written as a trailing lambda there; putting anything after it makes that
   // lambda quietly bind to the wrong parameter, which is what happened.
   private val stages: ((Surface, Int, Int) -> Stage)? = null,
 ) : Tray {
-  private val loop = TrayLoop(impacts, debug)
+  private val loop = TrayLoop(impacts, debug, tableView)
 
   /**
    * The thread and engine this driver made for itself, if it was not given

@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.render.filament
 
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.simulation.api.Exact
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -10,9 +11,19 @@ import kotlin.math.tan
 /**
  * Where the camera stands (`docs/physics-and-rendering.md`, "Rendering").
  *
- * It looks down at the tray at a slight angle rather than straight down —
- * straight down is a diagram, and the whole point of rolling real dice is that
- * you can see them tumble. While a roll is running it frames the whole tray,
+ * How far it leans is the player's: **Table view** in Settings is straight
+ * down or [TILT_DEGREES] off it, and the shot is the same arithmetic either
+ * way. The argument for leaning is that straight down is a diagram and the
+ * whole point of rolling real dice is that you can see them tumble; the
+ * argument against it is a phone, where a leaning shot spends a large share of
+ * the frame on the rim. Neither wins, which is why it is a setting and why
+ * straight down is what a new install gets ([TableView]).
+ *
+ * The frame is solved rather than fixed, so a lean of nothing needs no special
+ * case: the camera's own up rotates with it, stays square to the way it looks
+ * at every angle, and at 0° stands directly over the middle of the tray.
+ *
+ * While a roll is running it frames the whole tray,
  * because a die can be anywhere in it; once the dice have settled it frames
  * *them* and eases in, because by then the only thing worth looking at is what
  * they came to.
@@ -26,8 +37,15 @@ import kotlin.math.tan
  * far more precisely than a person squinting at a phone.
  */
 object TrayCamera {
-  /** How far the camera leans away from straight down. */
+  /**
+   * How far the camera leans away from straight down on [TableView.Angled] —
+   * and what every caller that does not care gets, because it is the shot this
+   * file took before the lean was a setting.
+   */
   const val TILT_DEGREES: Double = 22.0
+
+  /** [TableView.StraightDown]: no lean at all, and every die square to the screen. */
+  const val NO_TILT_DEGREES: Double = 0.0
 
   /** How much of the scene the camera takes in, top to bottom. */
   const val FIELD_OF_VIEW_DEGREES: Double = 40.0
@@ -43,11 +61,17 @@ object TrayCamera {
    * a player cannot then tell four dice from two. Looking closer is the
    * player's to do, and [view] is them doing it
    * (`docs/physics-and-rendering.md`).
+   *
+   * @param tiltDegrees how far to lean away from straight down — the Table
+   *   view setting, through [tiltDegreesOf]. [TILT_DEGREES] when nobody says,
+   *   which is the shot this took before the lean was a setting; the *setting*
+   *   defaults the other way, to [TableView.StraightDown].
    */
   fun framingTheTray(
     geometry: TableGeometry,
     aspectRatio: Double,
     view: TrayView = TrayView.Whole,
+    tiltDegrees: Double = TILT_DEGREES,
   ): CameraShot {
     val held = view.within(geometry)
     val middle = Vector3(held.panAlongMm, held.panAcrossMm, 0.0)
@@ -60,8 +84,16 @@ object TrayCamera {
           height = geometry.wallHeightMm,
         ),
       aspectRatio = aspectRatio,
+      tiltDegrees = tiltDegrees,
     )
   }
+
+  /** How far [view] leans, in degrees away from straight down. */
+  fun tiltDegreesOf(view: TableView): Double =
+    when (view) {
+      TableView.StraightDown -> NO_TILT_DEGREES
+      TableView.Angled -> TILT_DEGREES
+    }
 
   /**
    * A camera aimed at [target], pulled back until every one of [framed] is
@@ -78,14 +110,19 @@ object TrayCamera {
     target: Vector3,
     framed: List<Vector3>,
     aspectRatio: Double,
+    tiltDegrees: Double,
   ): CameraShot {
     require(aspectRatio > 0.0) { "a viewport $aspectRatio wide for its height is not a viewport" }
-    val tilt = radians(TILT_DEGREES)
+    val tilt = radians(tiltDegrees)
     // Down the screen and forwards: the camera stands off the near end of the
     // tray, which is the bottom of the screen, and looks back along it.
     val forward = Vector3(Exact.sin(tilt), 0.0, -Exact.cos(tilt))
     val up = Vector3(Exact.cos(tilt), 0.0, Exact.sin(tilt))
-    val right = cross(up, forward)
+    // `cross(forward, up)`, in that order: the other way round is screen-*left*
+    // and was written here for a long time, harmless only because its one use
+    // is inside an `abs()`. It is right here so that nobody hunting a
+    // handedness bug stops on this line (`docs/TODO.md`, Step 4.9).
+    val right = cross(forward, up)
     val upward = tan(radians(FIELD_OF_VIEW_DEGREES / 2))
     val across = upward * aspectRatio
 

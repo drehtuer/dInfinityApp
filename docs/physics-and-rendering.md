@@ -1149,18 +1149,34 @@ impact sounds rather than a crash in the middle of a roll.
   which die a finger is on is `TrayPick`, the inverse of this camera
   ("Picking a die up and throwing it again").
 - **How far it leans is the player's, and it leans less than it did.**
-  `TrayCamera.TILT_DEGREES` was 22° and not a setting. The design makes it
-  **Table view** in Settings, with two positions: *straight down*, which is the
-  default and puts every die square to the screen, and *angled*, which is the
-  22° shot and shows the top and left walls. The reason is what a phone
-  showed: at 411 × 923 dp a 22° shot spends a large share of the frame on the
-  rim and leaves the felt a tall trapezoid inside it, and the furniture is not
-  what anybody is looking at. The argument the other way is in `TrayCamera`'s
-  own KDoc and still holds — straight down is a diagram, and the point of
-  rolling real dice is watching them tumble — which is exactly why it is two
-  positions rather than a new constant. **It is a camera, not a projection:**
-  straight down still draws the dice in perspective and still casts their
-  shadows, it just stops leaning.
+  `TrayCamera.TILT_DEGREES` was 22° and not a setting. It is **Table view** in
+  Settings now, with two positions: *straight down*, which is the **default**
+  and puts every die square to the screen, and *angled*, which is the 22° shot
+  and shows the top and left walls. The reason is what a phone showed: at
+  411 × 923 dp a 22° shot spends a large share of the frame on the rim and
+  leaves the felt a tall trapezoid inside it, and the furniture is not what
+  anybody is looking at. The argument the other way is in `TrayCamera`'s own
+  KDoc and still holds — straight down is a diagram, and the point of rolling
+  real dice is watching them tumble — which is exactly why it is two positions
+  rather than a new constant. **It is a camera, not a projection:** straight
+  down still draws the dice in perspective and still casts their shadows, it
+  just stops leaning; the tray is framed with the same margin either way, and
+  at 0° the camera stands directly over the middle of the table instead of off
+  its near end.
+
+  The lean is an argument to the framing rather than a constant in it, so
+  `TrayCamera` stays what it was — arithmetic about a frustum, tested on a JVM
+  at both positions. It is read **when the roll screen opens** and never
+  watched, like power saving, the shake, the haptics, the sound and the
+  rounding (`docs/architecture.md`, decision 16): the tray a visit is given is
+  built with one answer, a rotation rebuilds the picture with the same one, and
+  changing it while dice are in the air changes nothing until the next visit.
+  A finger is read against the shot the screen is actually taking —
+  `TrayPick.through` takes the same lean — because a pick worked out against
+  the other one lands on the die next door. What does *not* follow the setting
+  is the table picker's thumbnails: those are pictures of a table rather than a
+  roll in progress, and the angled shot is what shows a look's walls
+  (`docs/tables.md`, "Thumbnails").
 - **The table is drawn before anything is thrown onto it, and after.** A tray
   is a table, not a roll: the screen says *there is a table* as soon as it
   opens, and the floor, the walls and the rim are built and drawn with nothing
@@ -1298,10 +1314,11 @@ impact sounds rather than a crash in the middle of a roll.
   along the short side as often as it asks for that, and a corner takes the
   rate of whichever it is nearer — so a change of rate stretches the pattern
   rather than cutting it.
-- Camera looks down at the tray at a slight angle — 22° off straight down,
-  40° field of view, standing off the near end of the tray. Straight down is a
-  diagram, and the point of rolling real dice is watching them tumble. While a
-  roll is running it frames the whole tray, because a die can be anywhere in
+- Camera looks down at the tray straight or at a slight angle — **Table view**
+  decides, 0° or 22° off straight down, 40° field of view, and at 22° it stands
+  off the near end of the tray ("How far it leans is the player's"). Straight
+  down is the default and a leaning shot is the one that shows the walls. While
+  a roll is running it frames the whole tray, because a die can be anywhere in
   it; once the dice settle it frames *them* — each as the box around its
   bounding sphere, so a die at the edge of the group is wholly in shot rather
   than centred and clipped — and eases in with a smoothstep, because a camera

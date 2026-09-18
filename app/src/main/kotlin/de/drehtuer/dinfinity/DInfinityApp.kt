@@ -38,6 +38,7 @@ import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.feature.designer.DesignerScreen
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.graph.GraphPresenter
@@ -115,6 +116,7 @@ fun DInfinityApp(
   onHapticsChanged: (Boolean) -> Unit = {},
   onSoundChanged: (Boolean) -> Unit = {},
   onRoundingSelected: (Rounding) -> Unit = {},
+  onTableViewSelected: (TableView) -> Unit = {},
   onDeveloperToolsChanged: (Boolean) -> Unit = {},
   onRepository: () -> Unit = {},
   /**
@@ -203,6 +205,7 @@ fun DInfinityApp(
                 onHapticsChanged = onHapticsChanged,
                 onSoundChanged = onSoundChanged,
                 onRoundingSelected = onRoundingSelected,
+                onTableViewSelected = onTableViewSelected,
                 onDeveloperToolsChanged = onDeveloperToolsChanged,
                 onRepository = onRepository,
                 version = version,
@@ -669,6 +672,7 @@ private fun chrome(
   onHapticsChanged: (Boolean) -> Unit,
   onSoundChanged: (Boolean) -> Unit,
   onRoundingSelected: (Rounding) -> Unit,
+  onTableViewSelected: (TableView) -> Unit,
   onDeveloperToolsChanged: (Boolean) -> Unit,
   onRepository: () -> Unit,
   version: String,
@@ -721,6 +725,7 @@ private fun chrome(
         onHapticsChanged = onHapticsChanged,
         onSoundChanged = onSoundChanged,
         onRoundingSelected = onRoundingSelected,
+        onTableViewSelected = onTableViewSelected,
         onDeveloperToolsChanged = onDeveloperToolsChanged,
         onRepository = onRepository,
         version = version,

@@ -70,7 +70,7 @@ over it against the prototype. What is left on each is in `docs/TODO.md`.
 every question the app was waiting on and decided a good deal nobody had asked
 about, so each screen's list has gained work that is code rather than an eye:
 plates over the table, a counting plate, per-set physical properties, the
-designer's Solid tab, plates over the table, and a table-view setting.
+designer's Solid tab, and plates over the table.
 
 **The accent is done**: six presets, a colour of the player's own, and
 `AccentRamp.clamp` between the choice and the paint — which turned the
@@ -91,6 +91,11 @@ Settings had been forgetting to do under the Pixel 10a's status bar
 
 **The dice are lit by a room**, reflect one, wear a lacquer and sit on the
 felt rather than over it, and a set can say how far into a die you can see.
+
+**Table view is done**: the camera's 22° lean is a Settings row with two
+positions, straight down by default, read when the roll screen opens like the
+other six. The tilt is an argument to `TrayCamera` rather than a constant, so
+both positions are framed by the same JVM-tested arithmetic.
 
 **Step 5 is the real remaining work** — see Known risks.
 

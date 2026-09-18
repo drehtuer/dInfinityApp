@@ -145,10 +145,6 @@ is drawn over the table"):
       digit is dotted and its tens pair is not; an upright number in the result
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
-- [ ] **Table view becomes a setting**, straight down by default and 22° on
-      *angled*. The camera arithmetic is already a function of one constant;
-      what is new is reading a setting and re-framing without restarting a roll
-      (`docs/physics-and-rendering.md`, "Rendering")
 
 - [ ] **Revisited against the device data, and left alone deliberately.** The
       two constants do different jobs: `FLOOR_SHARE` *shrinks* and `MIN_SCALE`
@@ -543,10 +539,42 @@ restores the choice; the session falls back where a roll is *recorded*, because
 a session deleted while another screen was in front would otherwise strand
 every throw filed under it (`docs/statistics.md`, per session).
 
-**From the design pass of 2026-09-17** (`docs/architecture.md`, "Settings"):
+**Table view is built, and four things were decided while building it**
+(`docs/architecture.md`, "Settings"; `docs/physics-and-rendering.md`,
+"Rendering (normal mode)"):
 
-- [ ] **A Table view row**, straight down or angled, taking effect the next
-      time the roll screen opens like the other five
+- **The lean is an argument, not a second camera.** `TrayCamera.TILT_DEGREES`
+  stopped being the only answer and became the *angled* one, with 0° beside it
+  and `tiltDegreesOf` mapping the setting onto degrees. Everything else about
+  the shot is the arithmetic that was already there, so both positions are
+  tested on a JVM: straight down stands over the middle of the tray, angled
+  stands off its near end, and the two frame the whole table with the same
+  margin.
+- **`render/filament` still defaults to the shot it always took.** A caller
+  that says nothing — a thumbnail, a pick built for a test — gets 22°, because
+  that keeps the module's behaviour a function of what it is asked for rather
+  than of a preference it cannot see. The *player's* default is the other way
+  round and lives in `AppSettings.tableView`, which is straight down. The one
+  consequence worth naming: the **table picker's thumbnails do not follow the
+  setting**. They are pictures of a table rather than a roll in progress, and
+  the angled shot is the one that shows a look's walls.
+- **The camera is read when the screen opens, like the other six.** The tray a
+  visit is given is built with one answer and a rotation rebuilds the picture
+  with the same one, so nothing moves under a roll (decision 16). `TrayPick`
+  takes the same lean, so a finger is read against the shot the screen is
+  actually taking — it is not wired to a gesture yet, which is why the
+  parameter is there before the caller is.
+- **`shotOn`'s `right` really is right now**, which is the item that used to be
+  in Step 5 here: it was `cross(up, forward)`, which is screen-*left*, and it
+  is `cross(forward, up)`. It stays harmless either way — the vector's one use
+  is inside an `abs()` — so nothing about the framing changed, and the reason
+  to fix it while touching the file is that a 0° lean is exactly when somebody
+  will come here hunting a handedness bug. **The degenerate case does not
+  arise**: the camera's up rotates with the lean rather than being the world's,
+  so at 0° it looks along `−z` with up `+x` and the frame is as square as it is
+  at 22°. A test says so, and says that `+y` across the tray is screen-*left* —
+  which is the wall the angled shot is documented to show.
+
 **Navigation is finished, and three things were decided while finishing it**
 (`docs/architecture.md`, "Navigation" and "One safe area, applied once"):
 
@@ -629,13 +657,6 @@ after every physics change.
 
       It needs a way to build a quaternion from two orthonormal frames, which
       `Quaternion` does not have yet.
-
-- [ ] **`TrayCamera.shotOn` calls `cross(up, forward)` `right`, and it is
-      left.** Screen-right is `cross(forward, up)`; the code has the operands
-      the other way round, so the vector is negated. It is harmless today
-      because its only use is inside an `abs()` in the framing solve, which is
-      why nothing caught it. Fix it with the reflection above, since anyone
-      reading that file while hunting a handedness bug will stop here first.
 
 ### 5.1 Harness
 

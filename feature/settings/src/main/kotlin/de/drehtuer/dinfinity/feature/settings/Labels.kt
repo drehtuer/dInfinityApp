@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.settings
 import androidx.annotation.StringRes
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.TableView
 
 /*
  * The words for the choices in `core/model`.
@@ -28,4 +29,12 @@ internal fun Rounding.labelRes(): Int =
     Rounding.Down -> R.string.rounding_down
     Rounding.Nearest -> R.string.rounding_nearest
     Rounding.Up -> R.string.rounding_up
+  }
+
+/** What to call this table view on screen. */
+@StringRes
+internal fun TableView.labelRes(): Int =
+  when (this) {
+    TableView.StraightDown -> R.string.table_view_straight_down
+    TableView.Angled -> R.string.table_view_angled
   }

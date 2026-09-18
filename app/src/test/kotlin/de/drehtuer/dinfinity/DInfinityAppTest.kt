@@ -15,6 +15,7 @@ import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.feature.graph.GraphTestTags
 import de.drehtuer.dinfinity.feature.settings.MenuTestTags
 import de.drehtuer.dinfinity.feature.settings.SettingsTestTags
@@ -88,6 +89,25 @@ class DInfinityAppTest {
     compose.onNodeWithTag(SettingsTestTags.SCREEN).assertIsDisplayed()
     compose.onNodeWithTag(SettingsTestTags.accentSwatch(AccentColor.Amber)).performScrollTo().performClick()
     assertEquals(listOf(AccentColor.Amber), chosen)
+  }
+
+  @Test
+  fun `the table view chosen in settings is reported back out of the graph`() {
+    // The row is the feature module's, but the wire from it to the thing that
+    // writes the setting runs through here — and a lambda that stopped halfway
+    // would leave a control that looks like it works.
+    val chosen = mutableListOf<TableView>()
+    compose.setContent {
+      DInfinityTheme {
+        DInfinityApp(settings = AppSettings(), onTableViewSelected = { chosen += it })
+      }
+    }
+
+    compose.onNodeWithTag(MenuTestTags.BUTTON).performClick()
+    compose.onNodeWithTag(MenuTestTags.entryOf(Destination.Settings.route)).performScrollTo().performClick()
+
+    compose.onNodeWithTag(SettingsTestTags.tableViewOf(TableView.Angled)).performScrollTo().performClick()
+    assertEquals(listOf(TableView.Angled), chosen)
   }
 
   @Test

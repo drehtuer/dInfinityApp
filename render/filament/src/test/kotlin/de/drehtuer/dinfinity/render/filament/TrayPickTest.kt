@@ -173,6 +173,29 @@ class TrayPickTest {
     )
   }
 
+  @Test
+  fun `a pick on a table looked at straight down is read against that shot`() {
+    // The lean is the player's (**Table view**), and a finger read against a
+    // shot the screen is not taking picks the die next to the one it is on.
+    val dice = spread()
+    val flat = TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = TrayCamera.NO_TILT_DEGREES)
+    val pick = TrayPick.through(geometry, PORTRAIT, tiltDegrees = TrayCamera.NO_TILT_DEGREES)
+
+    dice.forEachIndexed { index, die ->
+      val (across, down) = flat.screenFraction(die.at.position, PORTRAIT)
+      assertEquals("the finger landed on the wrong die", index, pick.dieUnder(across, down, dice))
+    }
+    // And it really is a different picture: the same finger on the leaning
+    // shot's frustum is somewhere else on the table.
+    val leaning = TrayCamera.framingTheTray(geometry, PORTRAIT)
+    val corner = dice.last().at.position
+    val (across, down) = flat.screenFraction(corner, PORTRAIT)
+    assertTrue(
+      "the two positions of the setting frame the same die identically",
+      leaning.screenFraction(corner, PORTRAIT) != Pair(across, down),
+    )
+  }
+
   /** Dice at rest across the tray, no two of them in the same place. */
   private fun spread(): List<DieAtRest> =
     listOf(
