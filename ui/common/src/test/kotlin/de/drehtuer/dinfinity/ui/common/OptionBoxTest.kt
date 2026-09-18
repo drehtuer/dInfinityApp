@@ -1,10 +1,14 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertWidthIsAtLeast
@@ -12,6 +16,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -150,5 +155,77 @@ class OptionBoxTest {
     compose.onNodeWithTag("chosen").performClick()
 
     compose.runOnIdle { assertEquals(true, cleared) }
+  }
+
+  @Test
+  fun `an option drawn as a picture is still an option, and still has a name`() {
+    // The slot form: the border, the inversion, the target and the semantics
+    // are the lettered form's, because an option drawn as an icon is the same
+    // control. What changes is only what is inside the box — and a picture
+    // has no words, so the name is not optional.
+    compose.setContent {
+      Row {
+        OptionBox(
+          contentDescription = "Eraser",
+          selected = true,
+          onClick = {},
+          modifier = Modifier.testTag("eraser"),
+        ) { Box(Modifier.size(GLYPH)) }
+        OptionBox(
+          contentDescription = "Fill",
+          selected = false,
+          onClick = {},
+          modifier = Modifier.testTag("fill"),
+        ) { Box(Modifier.size(GLYPH)) }
+      }
+    }
+
+    compose.onNodeWithContentDescription("Eraser").assertIsSelected()
+    compose.onNodeWithTag("fill").assertIsNotSelected()
+    compose.onNodeWithTag("eraser").assertWidthIsAtLeast(TOUCH_TARGET)
+    compose.onNodeWithTag("eraser").assertHeightIsAtLeast(TOUCH_TARGET)
+  }
+
+  @Test
+  fun `the ink the content is handed inverts with the box`() {
+    // A glyph that decided its own colour would be invisible on the chosen
+    // one, which is filled. The box has already made that decision, so it
+    // hands it over rather than leaving the content to guess.
+    val inks = mutableListOf<Color>()
+    compose.setContent {
+      Row {
+        OptionBox(contentDescription = "Chosen", selected = true, onClick = {}) { inks += it }
+        OptionBox(contentDescription = "Not", selected = false, onClick = {}) { inks += it }
+      }
+    }
+
+    compose.runOnIdle { assertEquals("both were drawn in the same ink", 2, inks.distinct().size) }
+  }
+
+  @Test
+  fun `an option this die has no use for is dead rather than absent`() {
+    // The paste turn on a kite, whose cells have no turn. A set of options
+    // that moved about under the finger choosing from it would be worse than
+    // one with a dim member.
+    var chosen = 0
+    compose.setContent {
+      OptionBox(
+        text = "Turn 1/1",
+        selected = false,
+        onClick = { chosen++ },
+        enabled = false,
+        modifier = Modifier.testTag("turn"),
+      )
+    }
+
+    compose.onNodeWithTag("turn").assertIsNotEnabled()
+    compose.onNodeWithTag("turn").performClick()
+
+    compose.runOnIdle { assertEquals("a disabled option was chosen", 0, chosen) }
+  }
+
+  private companion object {
+    /** Something to put in the slot that is not a word. */
+    val GLYPH = 22.dp
   }
 }

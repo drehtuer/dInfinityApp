@@ -5,6 +5,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -88,6 +89,28 @@ class ModernistIconButtonTest {
     compose.onNodeWithTag("more").performClick()
 
     compose.runOnIdle { assertEquals(1, pressed) }
+  }
+
+  @Test
+  fun `an action with nothing to do is dead rather than gone`() {
+    // Undo on a face nobody has drawn on. A row whose buttons come and go as
+    // the drawing changes is a row nobody learns, so it stays and says it
+    // cannot be pressed — and it must actually not be pressed, not merely
+    // look it.
+    var pressed = 0
+    compose.setContent {
+      ModernistIconButton(
+        contentDescription = "Undo",
+        onClick = { pressed++ },
+        enabled = false,
+        modifier = Modifier.testTag("undo"),
+      ) { Text("↶") }
+    }
+
+    compose.onNodeWithTag("undo").assertIsNotEnabled()
+    compose.onNodeWithTag("undo").performClick()
+
+    compose.runOnIdle { assertEquals("a disabled button ran its action", 0, pressed) }
   }
 
   @Test
