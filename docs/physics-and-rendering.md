@@ -1117,6 +1117,20 @@ impact sounds rather than a crash in the middle of a roll.
   mirror either (`DIE_COAT_ROUGHNESS` is 0.12): a die has been in a bag with
   other dice. Felt with a clear coat is a table nobody owns, so the tray has
   none, and the shader skips the whole path when there is none to apply.
+- **The shadow map is given the tray, not five metres of nothing.** A
+  directional shadow map covers the camera's whole frustum, and this camera can
+  see 5,000 mm because a `far` plane has to be somewhere. The tray is 240 mm
+  long. So Filament's default 1,024-pixel map was spread over twenty times the
+  scene, at about 5 mm a texel — a third of a die's face — and what a phone
+  showed was a wall's shadow with a visibly stepped edge standing a few
+  millimetres clear of the wall that cast it, which is what a shadow biased
+  away from its own caster looks like.
+
+  Four times the map, and a shadow distance that stops just past the tray,
+  puts a texel at about a twentieth of a millimetre. The biases come down with
+  it, because they are in world units too and Filament's default normal bias
+  of 1.0 is a whole millimetre of push on a die 16 mm across.
+
 - **What says a die is *on* the table rather than over it** is the darkening
   where the two meet. A cast shadow puts a die above the felt; contact occlusion
   puts it down on it, and without it every die floats a millimetre however good
