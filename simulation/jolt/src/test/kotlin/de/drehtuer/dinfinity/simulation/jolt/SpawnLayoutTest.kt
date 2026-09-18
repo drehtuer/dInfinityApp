@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
+import de.drehtuer.dinfinity.simulation.api.FallingIn
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -291,6 +292,27 @@ class SpawnLayoutTest {
     val reversed = (2 downTo 0).map { backwards.placementOf(it, 3).position }.reversed()
 
     assertEquals(forwards, reversed)
+  }
+
+  @Test
+  fun `the board before a throw falls at the same gravity the throw does`() {
+    // `FallingIn` cannot reach this constant — it is upstream of the solver
+    // and the shake driver is not — so it carries its own copy, and a drop
+    // that fell at some other rate than the throw that follows it would be
+    // two tables in one tray.
+    assertEquals(ShakeDriver.GRAVITY_MM_PER_SECOND2, FallingIn.GRAVITY_MM_PER_SECOND2, 0.0)
+  }
+
+  @Test
+  fun `a die put on the board is dropped from higher than one an explosion adds`() {
+    // Deliberately, and this is where it is written down. An added die is
+    // dropped into a roll among dice whose faces are being read, and its job
+    // is not to upstage them; a die the player has just put on the board *is*
+    // the thing they are looking at.
+    assertTrue(
+      "a board's drop of ${FallingIn.DROP_HEIGHT_MM} mm is no higher than an added die's",
+      FallingIn.DROP_HEIGHT_MM > SpawnLayout.RETHROW_HEIGHT_MM,
+    )
   }
 
   private companion object {

@@ -119,9 +119,17 @@ object FallingIn {
     /** Whether it is still on its way down at [seconds] on the board's clock. */
     fun moving(seconds: Double): Boolean = seconds < restsAt
 
-    /** Where the die's centre is at [seconds] on the board's clock. */
-    fun positionAt(seconds: Double): Vector3 =
-      restingAt.copy(z = restingAt.z + heightAt((seconds - releasedAt).coerceAtLeast(0.0), heldAtMm))
+    /**
+     * Where the die's centre is at [seconds] on the board's clock.
+     *
+     * A die that is no longer [moving] is at [restingAt] exactly, rather than
+     * at whatever the last fraction of a millimetre of arithmetic came to: a
+     * die on the table is on the table.
+     */
+    fun positionAt(seconds: Double): Vector3 {
+      if (!moving(seconds)) return restingAt
+      return restingAt.copy(z = restingAt.z + heightAt((seconds - releasedAt).coerceAtLeast(0.0), heldAtMm))
+    }
 
     /**
      * How the die is turned at [seconds] on the board's clock.
@@ -133,6 +141,7 @@ object FallingIn {
      * decide a face.
      */
     fun orientationAt(seconds: Double): Quaternion {
+      if (!moving(seconds)) return Quaternion.Identity
       val left = 1.0 - eased(((seconds - releasedAt) / fallSeconds).coerceIn(0.0, 1.0))
       if (left <= 0.0) return Quaternion.Identity
       return Quaternion.about(turningAbout, throughRadians * left)
@@ -251,6 +260,20 @@ object FallingIn {
    * bounce is on the table too.
    */
   fun heightAt(
+    seconds: Double,
+    heightMm: Double,
+  ): Double = heightAbove(seconds, heightMm).coerceIn(0.0, heightMm)
+
+  /**
+   * The same before it is clamped, which is the arithmetic on its own.
+   *
+   * The clamp above is not tidying. The sum of the bounces and the walk
+   * through them are the same numbers added in a different order, so a die
+   * asked for its height at the exact instant it stops can come out a hair's
+   * breadth either side of the felt, and a die below the felt is a bug
+   * whatever its size.
+   */
+  private fun heightAbove(
     seconds: Double,
     heightMm: Double,
   ): Double {

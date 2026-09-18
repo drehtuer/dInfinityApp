@@ -80,6 +80,31 @@ class RestingPlacesTest {
     assertTrue(places.first().flatDistanceTo(places.last()) >= RADIUS_MM + BIG_RADIUS_MM)
   }
 
+  @Test
+  fun `a die added to a board goes where the dice on it are not`() {
+    // The picker adds one die to a board that already has some on it, and the
+    // ones on it do not move: they are named rather than laid out again.
+    val already = RestingPlaces.of(geometry, List(THREE) { RADIUS_MM })
+
+    val added = RestingPlaces.of(geometry, listOf(RADIUS_MM), among = already).single()
+
+    already.forEach { standing ->
+      assertTrue(added.flatDistanceTo(standing) >= RADIUS_MM * 2, "the added die landed on one already down")
+    }
+  }
+
+  @Test
+  fun `adding a die one at a time lays out the same board as asking for them all`() {
+    // What keeps the board deterministic while it is built a tap at a time: a
+    // die appended takes the spot a whole layout would have given it.
+    val whole = RestingPlaces.of(geometry, List(FOUR) { RADIUS_MM })
+
+    var built = emptyList<Vector3>()
+    repeat(FOUR) { built = built + RestingPlaces.of(geometry, listOf(RADIUS_MM), among = built) }
+
+    assertEquals(whole, built)
+  }
+
   private fun Vector3.flatDistanceTo(other: Vector3): Double {
     val dx = x - other.x
     val dy = y - other.y
@@ -89,6 +114,8 @@ class RestingPlacesTest {
   private companion object {
     const val RADIUS_MM = 8.0
     const val BIG_RADIUS_MM = 12.0
+    const val THREE = 3
+    const val FOUR = 4
     const val TEN = 10
     const val TWENTY = 20
     const val FAR_TOO_MANY = 400

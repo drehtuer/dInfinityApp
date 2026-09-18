@@ -6,7 +6,9 @@ import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
+import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.RestingPlaces
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -398,10 +400,153 @@ class TrayRendererTest {
     assertEquals("the waiting dice did not follow the surface", DICE, stage.placed.size)
   }
 
-  private fun spec(): ThrowSpec =
+  @Test
+  fun `a die put on the board arrives from above and is still on its way`() {
+    // The feature: a die the player added falls in rather than appearing.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+
+    renderer.waiting(spec())
+
+    assertTrue("the dice were stood down rather than dropped", renderer.falling)
+    assertTrue(
+      "a waiting die was drawn already on the table",
+      stage.placed.values.any { it[TRANSLATION_Z] > OFF_THE_TABLE_MM },
+    )
+  }
+
+  @Test
+  fun `and it is on the table once the fall is over`() {
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    renderer.waiting(spec())
+
+    renderer.fall(A_WHOLE_FALL)
+
+    assertFalse("the die never landed", renderer.falling)
+    assertTrue(
+      "a die that had landed was still in the air",
+      stage.placed.values.all { it[TRANSLATION_Z] < OFF_THE_TABLE_MM },
+    )
+  }
+
+  @Test
+  fun `where it lands is where it would simply have been stood`() {
+    // The board is the board it always was. Only the arriving is new.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+
+    renderer.waiting(spec())
+    renderer.fall(A_WHOLE_FALL)
+
+    val where = stage.placed.values.map { it[TRANSLATION_X] to it[TRANSLATION_Y] }
+    val stood =
+      RestingPlaces
+        .of(geometry, List(DICE) { ClearSpace.radiusOf(StandardDice.d6, 1.0) })
+        .map { it.x.toFloat() to it.y.toFloat() }
+    assertEquals(stood, where)
+  }
+
+  @Test
+  fun `a die already standing does not move when another is added`() {
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    renderer.waiting(spec(dice = 1))
+    renderer.fall(A_WHOLE_FALL)
+    val standing = stage.placed.values.single().copyOf()
+
+    renderer.waiting(spec(dice = 2))
+
+    val again = stage.placed.getValue(FIRST_DIE)
+    assertEquals(standing[TRANSLATION_X], again[TRANSLATION_X], 0.0f)
+    assertEquals(standing[TRANSLATION_Y], again[TRANSLATION_Y], 0.0f)
+    assertEquals("the die that was down was picked up again", standing[TRANSLATION_Z], again[TRANSLATION_Z], 0.0f)
+  }
+
+  @Test
+  fun `a board with nothing falling on it is drawn once and then left alone`() {
+    // A settled board is a still picture like any other. Asking it for frames
+    // it does not need would be a tray that never stops drawing.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    renderer.waiting(spec())
+    renderer.fall(A_WHOLE_FALL)
+    val drawn = stage.frames
+
+    renderer.fall(A_WHOLE_FALL)
+
+    assertFalse(renderer.falling)
+    assertEquals("the board went on drawing after it had settled", drawn, stage.frames)
+  }
+
+  @Test
+  fun `a surface that arrives mid-fall is given the dice where they are`() {
+    val renderer = TrayRenderer()
+    renderer.table(geometry, look)
+    renderer.waiting(spec())
+    renderer.fall(PART_OF_A_FALL)
+
+    val stage = FakeStage()
+    renderer.stage(stage)
+
+    assertEquals("the falling dice did not follow the surface", DICE, stage.placed.size)
+    assertTrue(
+      "the dice were put back on the table rather than where they were",
+      stage.placed.values.any { it[TRANSLATION_Z] > OFF_THE_TABLE_MM },
+    )
+  }
+
+  @Test
+  fun `throwing the dice ends the fall they were arriving on`() {
+    // The dice that were waiting have been thrown, and a half-finished fall
+    // belongs to a board that no longer exists.
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+    renderer.waiting(spec())
+
+    renderer.begin(spec(), geometry, look)
+
+    assertFalse(renderer.falling)
+  }
+
+  @Test
+  fun `clearing the board ends the fall too`() {
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+    renderer.waiting(spec())
+
+    renderer.end()
+
+    assertFalse(renderer.falling)
+  }
+
+  @Test
+  fun `a fall asked to advance with no board does nothing`() {
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+
+    renderer.fall(A_WHOLE_FALL)
+
+    assertFalse(renderer.falling)
+  }
+
+  private fun spec(dice: Int = DICE): ThrowSpec =
     ThrowSpec(
       dice =
-        List(DICE) { index ->
+        List(dice) { index ->
           DieInstance(
             index = index,
             groupId = 0,
@@ -435,8 +580,21 @@ class TrayRendererTest {
     /** The floor, the walls and the rim — three meshes, one material each. */
     const val TRAY_PARTS = 3
 
-    /** Where a 4x4 column-major transform keeps its x and y. */
+    /** Where a 4x4 column-major transform keeps its x, y and z. */
     const val TRANSLATION_X = 12
     const val TRANSLATION_Y = 13
+    const val TRANSLATION_Z = 14
+
+    /** The first die's entity, which `FakeStage` numbers from one. */
+    const val FIRST_DIE = TRAY_PARTS + 1
+
+    /** Above a d6's own resting height, so only a die in the air is over it. */
+    const val OFF_THE_TABLE_MM = 20.0f
+
+    /** Longer than any drop takes, so the board is certainly down. */
+    const val A_WHOLE_FALL = 2.0
+
+    /** And short enough that it certainly is not. */
+    const val PART_OF_A_FALL = 0.01
   }
 }

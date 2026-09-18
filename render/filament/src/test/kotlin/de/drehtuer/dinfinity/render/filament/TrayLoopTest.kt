@@ -693,6 +693,88 @@ class TrayLoopTest {
     assertEquals("the same reading was posted more than once", read.size, read.distinct().size)
   }
 
+  @Test
+  fun `a die falling onto the board is drawn every frame until it lands`() {
+    // Not a simulation and still a picture that moves: it needs the frame
+    // callback for the fifth of a second it takes to come down.
+    val loop = TrayLoop()
+    val stage = FakeStage()
+    loop.stage(stage)
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    val drawn = stage.frames
+    var at = SOME_LATE_UPTIME
+    var frames = 0
+    while (loop.frame(at) && frames < PATIENCE_FRAMES) {
+      at += SIXTIETH_OF_A_SECOND_NANOS
+      frames++
+    }
+
+    assertTrue("the fall was over in one frame", stage.frames - drawn > SPARE_FRAMES)
+    assertTrue("the board never came to rest", frames < PATIENCE_FRAMES)
+  }
+
+  @Test
+  fun `and nothing is asked for once it has`() {
+    // A board that has settled is a still picture. A tray that went on asking
+    // for frames would be a tray that never sleeps.
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    var at = SOME_LATE_UPTIME
+    repeat(PATIENCE_FRAMES) {
+      loop.frame(at)
+      at += SIXTIETH_OF_A_SECOND_NANOS
+    }
+
+    assertFalse("the settled board still wanted frames", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a fall with nowhere to draw is not worth a frame`() {
+    // Nobody is owed an animation they cannot see. The roll is the thing that
+    // must go on without a surface, and this is not one.
+    val loop = TrayLoop()
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    assertFalse(loop.wantsFrames)
+  }
+
+  @Test
+  fun `the first frame of a fall is worth no time at all`() {
+    // The same rule the first frame of a roll follows. Measuring from zero
+    // would hand the board however long the device has been awake and land
+    // every die before it was drawn once.
+    val loop = TrayLoop()
+    val stage = FakeStage()
+    loop.stage(stage)
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    loop.frame(SOME_LATE_UPTIME)
+
+    assertTrue("the whole fall was spent on the frame that started it", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a roll that starts while a die is falling takes the board away`() {
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 4)
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    loop.roll(roll.start())
+
+    assertTrue(loop.rolling)
+    repeat(PATIENCE_FRAMES) { loop.frame(SOME_LATE_UPTIME + it * SIXTIETH_OF_A_SECOND_NANOS) }
+    assertFalse("the board outlived the throw that replaced it", loop.wantsFrames)
+  }
+
   private fun spec(): ThrowSpec =
     ThrowSpec(
       dice =
