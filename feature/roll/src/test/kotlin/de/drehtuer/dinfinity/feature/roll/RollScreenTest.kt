@@ -133,6 +133,22 @@ class RollScreenTest {
   }
 
   @Test
+  fun `a long press on a die in the sheet offers to draw on it`() {
+    // Quick mode through the whole screen rather than through the breakdown on
+    // its own: the sheet the chip is in comes up from the bottom edge now, and
+    // a long press on something that is still moving is a drag
+    // (`docs/face-designer.md`, "Quick mode"; `PullUpResult`).
+    show(faces = mapOf(0 to 0))
+    typeFormula("1d20")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertIsDisplayed()
+
+    compose.onNodeWithTag(RollTestTags.dieAt(0)).performTouchInput { longClick() }
+
+    compose.onNodeWithTag(RollTestTags.doodleOf(0)).assertIsDisplayed()
+  }
+
+  @Test
   fun `a tap on the picker row types the formula for you`() {
     // The row is not a second way to describe a roll: it edits the field, and
     // what comes out is a formula somebody could have typed

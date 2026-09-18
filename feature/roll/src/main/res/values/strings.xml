@@ -53,6 +53,14 @@
   <!-- A number the formula adds or takes away, itemised on the result sheet. -->
   <string name="roll_sheet_plus">plus</string>
   <string name="roll_sheet_minus">minus</string>
+  <!-- The result sheet's handle: what it is, what a tap on it does, and where
+       the sheet is now. Said rather than drawn, because the bar looks the same
+       in both rests and a screen reader has nothing else to go on. -->
+  <string name="roll_result_handle">Result sheet</string>
+  <string name="roll_result_push_down">Push the result down to see the table</string>
+  <string name="roll_result_pull_up">Pull the result up to see the breakdown</string>
+  <string name="roll_result_is_up">Showing the breakdown</string>
+  <string name="roll_result_is_down">Pushed down</string>
   <!-- Quick mode: what a long press on a die in the breakdown offers (docs/face-designer.md). -->
   <string name="roll_die_doodle">Doodle this die</string>
   <string name="roll_hint_empty">Type a formula, or tap a die below.</string>

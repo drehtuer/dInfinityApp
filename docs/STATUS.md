@@ -97,6 +97,16 @@ each face's background, numerals and pips and says plainly that it does not draw
 pen strokes. **Nobody has looked at it on a screen yet** — the phone is off the
 network — and what needs an eye is written down in `docs/TODO.md`, 4.6.
 
+**The result is a pull-up sheet.** It comes up from the bottom edge once the
+dice have been read, is pushed down by its grip until the whole table is
+visible and pulled back up the same way, and never goes away — parked, it still
+carries the total. It used to be a full-width plate across the middle of the
+tray, which with the straight-down table view meant a die could land under it
+and stay there until the next throw. Where it rests, what a drag does to that
+and what a flick settles to are plain Kotlin under JVM tests (`SheetSlide`);
+Compose has the gesture and the drawing. **Nobody has seen it on a phone yet** —
+what needs an eye is in `docs/TODO.md`, 4.1.
+
 **The roll screen's controls are on plates.** `ui/common`'s `Plate` is the
 opaque `--color-bg` ground with `--shadow-sm` that every control over the table
 now stands on, so the formula's dashed rule hugs its words instead of crossing
