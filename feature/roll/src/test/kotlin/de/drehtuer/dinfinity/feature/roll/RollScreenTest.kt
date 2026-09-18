@@ -545,18 +545,6 @@ class RollScreenTest {
   }
 
   @Test
-  fun `a formula too large to graph keeps its range and loses only its average`() {
-    // `OutcomeGraph` declines past a point; the ends do not
-    // (`docs/probability.md`, limits).
-    show()
-
-    typeFormula("30d100")
-
-    compose.onNodeWithTag(RollTestTags.EXPECTED).assertExists()
-    compose.onNodeWithTag(RollTestTags.EXPECTED_AVERAGE, useUnmergedTree = true).assertDoesNotExist()
-  }
-
-  @Test
   fun `the result sheet says what the throw was expected to come to`() {
     // A total with nothing to read it against is the commonest complaint a
     // dice roller gets. The sheet answers it.

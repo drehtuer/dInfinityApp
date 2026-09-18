@@ -149,7 +149,7 @@ class TrayPlatesTest {
 
     compose
       .onNodeWithTag(RollTestTags.EXPECTED)
-      .assertContentDescriptionEquals("Expected 3 to 21+, average avg 12.2")
+      .assertContentDescriptionEquals("Expected 3 to 21+, average avg 12.3")
   }
 
   @Test

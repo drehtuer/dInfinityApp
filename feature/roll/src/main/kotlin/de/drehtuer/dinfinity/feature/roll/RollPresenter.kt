@@ -290,16 +290,28 @@ class RollPresenter(
     // throw begins. This is the same rule on the screen's side of the thread,
     // so the next gesture starts from where the camera actually is.
     looking = TrayView.Whole
+
+    // The faces this throw has reported so far.
+    //
+    // Kept here because a throw that gives up reports **no outcome at all** —
+    // `onStalled` carries which dice never stopped and nothing about the ones
+    // that did. Without this the dice that were read would be forgotten, and
+    // the throw that brings the rest of them back would have nothing to score
+    // them against (`RollMachine.gaveUp`).
+    var read: Map<Int, Int> = emptyMap()
     driver.roll(
       start = { watcher -> rolls.start(spec, watcher) },
       onCounted = { counted ->
         // On the screen's thread: this arrives from wherever the roll is
         // stepped, once per die read, and the state it sets is Compose's.
-        toTheScreen { progress = machine.progress(counted) }
+        toTheScreen {
+          read = counted
+          progress = machine.progress(counted)
+        }
       },
       onStalled = { unsettled ->
         toTheScreen {
-          if (machine.gaveUp(unsettled)) {
+          if (machine.gaveUp(unsettled, read)) {
             progress = null
             publish()
           }

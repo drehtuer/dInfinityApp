@@ -26,6 +26,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -349,6 +350,80 @@ class RollPresenterTest {
     assertEquals("the tray was rebuilt for a table that never changed", 1, tray.tabled.size)
   }
 
+  @Test
+  fun `the dice a roll gave up on wait for a shake, like the die an explosion earns`() {
+    // The gap this closes: after `gaveUp` the machine has no prepared throw,
+    // so `roll` used to answer "nothing to throw" and a shake at a stalled
+    // tray did nothing at all. The dice waited for a button instead, which
+    // made them the one re-throw in the app a hand could not make
+    // (`docs/physics-and-rendering.md`, "Starting a roll").
+    val rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5, 2 to 5, 3 to 5))
+    val presenter = presenter(rolls, tray = StallingTray(unsettled = listOf(2, 3)))
+
+    presenter.type("4d6")
+    presenter.roll()
+
+    assertTrue("the roll did not give up", presenter.state is RollState.Stalled)
+
+    assertTrue("a shake at a stalled tray threw nothing", presenter.roll())
+
+    assertEquals("the dice that never stopped were not thrown again", 2, rolls.started.size)
+    assertEquals(
+      "the dice that were read went back in the air too",
+      2,
+      rolls.started
+        .last()
+        .dice.size,
+    )
+  }
+
+  @Test
+  fun `a shake with nothing stalled and nothing earned throws the formula`() {
+    // The other side of the branch: `roll` asks the chain, then the stalled
+    // dice, and only then starts a throw of its own.
+    val rolls = RecordingRolls(faces = mapOf(0 to 5))
+    val presenter = presenter(rolls)
+
+    presenter.type("1d6")
+
+    assertTrue(presenter.roll())
+    assertEquals(1, rolls.started.size)
+  }
+
+  @Test
+  fun `what the formula is expected to come to reaches the screen`() {
+    // The Roll button's label used to be the only thing on the screen that
+    // said what a shake was worth ([Expectation]).
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)))
+
+    presenter.type("1d6")
+
+    val expected = requireNotNull(presenter.expected)
+    assertEquals(1L, expected.range.lowest)
+    assertEquals(6L, expected.range.highest)
+    assertEquals(3.5, requireNotNull(expected.mean), 1e-9)
+  }
+
+  @Test
+  fun `and survives the throw, so the result sheet has something to read the total against`() {
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)))
+
+    presenter.type("1d6")
+    presenter.roll()
+
+    assertTrue("the roll did not land", presenter.state is RollState.Settled)
+    assertEquals(6L, requireNotNull(presenter.expected).range.highest)
+  }
+
+  @Test
+  fun `a formula that does not read has nothing to expect`() {
+    val presenter = presenter(RecordingRolls(faces = mapOf(0 to 5)))
+
+    presenter.type("3d6 +")
+
+    assertNull("a formula that does not read was given a range", presenter.expected)
+  }
+
   private fun presenterOn(tray: DirectTray) =
     RollPresenter(
       machine = machine(),
@@ -587,6 +662,60 @@ class RollPresenterTest {
     override fun look(view: TrayView) {
       looked += view
     }
+
+    override fun clear() = Unit
+
+    override fun close() = Unit
+
+    private companion object {
+      const val MOST_FRAMES = 64
+    }
+  }
+
+  /**
+   * A tray whose dice never all stop.
+   *
+   * The first throw gives up on [unsettled]; every throw after it lands, so
+   * the shake that follows is a throw that finishes.
+   */
+  private class StallingTray(
+    private val unsettled: List<Int>,
+  ) : Tray {
+    private var thrown = 0
+
+    override fun surfaceAvailable(
+      surface: Surface,
+      width: Int,
+      height: Int,
+    ) = Unit
+
+    override fun surfaceLost() = Unit
+
+    override fun roll(
+      start: (Renderer) -> WatchedRoll,
+      onCounted: (Map<Int, Int>) -> Unit,
+      onStalled: (List<Int>) -> Unit,
+      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
+    ) {
+      val roll = start(HeadlessRenderer())
+      if (thrown++ == 0) {
+        onStalled(unsettled)
+      } else {
+        var frames = 0
+        while (roll.running && frames++ < MOST_FRAMES) roll.advance(SettleRule.TIMESTEP_SECONDS)
+        roll.outcome?.let { onSettled(it, roll.drivenBy) }
+      }
+      roll.close()
+    }
+
+    override fun shake(sample: ShakeSample) = Unit
+
+    override fun table(
+      geometry: TableGeometry,
+      look: TableLook,
+    ) = Unit
+
+    override fun look(view: TrayView) = Unit
 
     override fun clear() = Unit
 

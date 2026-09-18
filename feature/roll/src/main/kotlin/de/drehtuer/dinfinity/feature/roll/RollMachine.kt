@@ -136,6 +136,20 @@ class RollMachine(
      */
     var adding: List<DieInstance> = emptyList()
 
+    /**
+     * Which dice of the plan the throw in the air is throwing *again*, in the
+     * order they were handed to it, or empty when it is adding new ones.
+     *
+     * The two are not the same thing and used to be treated as one. A die an
+     * explosion earns is a die the plan never mentioned, and its face joins
+     * [added]; a die the roll gave up on is one of the plan's own, and its
+     * face belongs at that die's index in [faces]. Putting a re-thrown die in
+     * [added] left the plan's die with no face at all, which is what made a
+     * stalled roll throw an exception the moment its dice came back
+     * (`docs/physics-and-rendering.md`, "A roll that gives up").
+     */
+    var replacing: List<Int> = emptyList()
+
     /** The faces of the first throw, which is the only throw the plan describes. */
     var faces: Map<Int, Int> = emptyMap()
 
@@ -372,21 +386,41 @@ class RollMachine(
     val flight = inFlight ?: return null
 
     val adding = flight.adding
-    if (adding.isEmpty()) {
-      flight.faces = outcome.faces
-      flight.drivenBy = drivenBy
-      flight.cameToRest(flight.prepared.plan.dice, outcome)
-    } else {
+    val replacing = flight.replacing
+    when {
+      adding.isEmpty() -> {
+        flight.faces = outcome.faces
+        flight.drivenBy = drivenBy
+        flight.cameToRest(flight.prepared.plan.dice, outcome)
+      }
+      // The dice a roll gave up on, come back. They are the plan's own dice,
+      // so their faces go to the indices they were thrown for rather than
+      // onto the end of the added ones — the roll is the same roll and the
+      // dice that were already read keep the faces they were read on.
+      replacing.isNotEmpty() -> {
+        flight.faces =
+          flight.faces +
+            replacing.mapIndexed { at, index ->
+              index to
+                requireNotNull(outcome.faces[at]) {
+                  "the re-thrown ${adding[at].die.id} was thrown and reported no face"
+                }
+            }
+        flight.cameToRest(adding, outcome)
+      }
       // In the order they were asked for, which is the order they were thrown
       // in: the scoring is re-run from the beginning over these faces, and a
       // face that went to the wrong chain would be a different roll.
-      adding.forEachIndexed { at, die ->
-        flight.added +=
-          requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
+      else -> {
+        adding.forEachIndexed { at, die ->
+          flight.added +=
+            requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
+        }
+        flight.cameToRest(adding, outcome)
       }
-      flight.cameToRest(adding, outcome)
     }
     flight.adding = emptyList()
+    flight.replacing = emptyList()
 
     val scoring =
       RunningScore.of(
@@ -530,12 +564,21 @@ class RollMachine(
    *
    * The throw is not scored and not recorded: there is no total, because some
    * of its dice were never read. What there is instead is a throw of those
-   * dice, waiting for somebody to ask for it.
+   * dice, waiting for a hand.
+   *
+   * @param read the faces the roll did get, by die index. **A stalled throw
+   *   reports no outcome at all**, so without this the dice that were read
+   *   would be forgotten the moment the roll gave up — and the throw that
+   *   brought the rest of them back would have nothing to score against them.
    */
-  fun gaveUp(unsettled: List<Int>): Boolean {
+  fun gaveUp(
+    unsettled: List<Int>,
+    read: Map<Int, Int> = emptyMap(),
+  ): Boolean {
     val flight = inFlight ?: return false
     if (unsettled.isEmpty()) return false
     stuck = unsettled
+    flight.faces = read
     state = RollState.Stalled(unsettled = unsettled.size, read = flight.prepared.plan.dice.size - unsettled.size)
     return true
   }
@@ -554,7 +597,12 @@ class RollMachine(
     val again = stuck ?: return null
     stuck = null
     val dice = flight.prepared.plan.dice
-    return earnedThrow(flight, again.mapNotNull { dice.getOrNull(it)?.die }).copy(shake = shake)
+    // Which dice of the plan these are, kept so their faces can go back where
+    // they belong when they land ([InFlight.replacing]).
+    val known = again.filter { dice.getOrNull(it) != null }
+    flight.replacing = known
+    state = RollState.Rolling(diceCount = known.size)
+    return earnedThrow(flight, known.map { dice[it].die }).copy(shake = shake)
   }
 
   /** Whether a throw gave up and its dice are waiting to be thrown again. */
