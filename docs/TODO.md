@@ -112,30 +112,18 @@ What is below is what it does not have yet.
 **From the design pass of 2026-09-17** (`docs/physics-and-rendering.md`, "What
 is drawn over the table"):
 
-- [ ] **Put the controls on plates.** The screen keeps its shape — one
-      full-bleed table, everything floating on it — and every control over it
-      becomes an opaque `--color-bg` plate with `--shadow-sm`, no radius, no
-      border, 7 / 11 / 8 dp of padding, hugging its content. That fixes three
-      things at once: the formula's dashed rule stops running the width of the
-      screen and becomes an underline again, the picker and "Save a roll" stop
-      sitting on bare felt, and **accent stops touching felt anywhere**, which
-      is what makes any accent over a shelf of tables safe without checking
-      every pair
-- [ ] **Build the counting plate.** Across the bottom: `COUNTING` kicker, the
-      count in tabular figures, `of 20 read`, the still-possible range
-      right-aligned with a `+` in accent-700 while a chain is open, and a 3 dp
-      progress rule. It replaces the line of text currently sitting where
-      "Rolling…" used to be — the most important unstyled thing in the app
-- [ ] **Two roll states on that same plate**: *another throw earned* (`Throw 3
-      more` / `Stop the chain`) and *could not settle* (`Throw those 3 again` /
-      `Cancel the roll`). Both are states the screen already reaches and
-      neither has a design until now; `rollState` in the prototype shows them
 - [ ] **Mark the dice of a later pass** — 4 dp accent-700 outline and a
       `pass 2` label in the `dropped` slot — so a total counting twenty dice
       over a table holding three explains itself on the felt
-- [ ] **Draw the total once.** Today the result is the total at ~42 dp centred
-      on the felt *and* again at the right edge at x ≈ 376 dp of 411, where it
-      looks clipped. The design has one result sheet; the second copy goes
+- [ ] **Score a chain the player stopped.** `Stop the chain` on the earned
+      plate puts the roll away with no total, which is honest but is not what
+      the button says. Scoring what is on the table needs `core/notation` to
+      have a *reason* a chain ended that is not the tray's: `RunningScore`
+      stops one only when `AddedDice.room` says no, and `GroupRoller` writes
+      `DieNote.TrayFull` when it does — so a player-stopped chain would print
+      "The tray had no room for another die" over a tray with plenty. The work
+      is a `DieNote` of its own, a way for `ExtraThrow` to say which refusal it
+      is, a `ChainLimit` entry and a line in `docs/dice-notation.md`
 - [ ] **Stagger the spawn**, 85 ms between dice, with the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** to be ported: a settled die moved by another
@@ -145,6 +133,30 @@ is drawn over the table"):
       digit is dotted and its tens pair is not; an upright number in the result
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
+
+**Decided while building the plates**, where the design left the app a choice:
+
+- The plates are **one column at the bottom of the tray**, not four blocks
+  placed at the prototype's corners. The design puts the formula top-left and
+  the hint bottom-left; the app's controls have always been one stack and
+  moving them is a separate change from giving them a ground to stand on. What
+  the plates fix is what they were put on the list for — the dashed rule, the
+  bare felt, and accent never touching either.
+- **The accent's 700 step is mixed rather than looked up**, in `ui/common` as
+  `Ink.accentDeep`, from the theme's `primary` against the ground it is read
+  on. A feature module cannot see `:app`'s `LocalModernistColors`, and the
+  player picks any colour they like, so there is no pigment to name — it is
+  the same rule `Tag` already mixes the ramp's other two ends by.
+- **A group's subtotal is not drawn when it is the whole total** (`Subtotals`).
+  That is the "draw the total once" item: the design's sheet keeps subtotals
+  because they are how the rows add up, and for `1d20` there is nothing to add
+  up — one group, no modifier, and the number printed twice.
+- **`Cancel the roll` and `Stop the chain` are the same act today**: the roll
+  is put away with no total. That is right for the refusal and wrong for the
+  chain, which is the open item above.
+- **The kickers are upper case in `strings.xml`.** Compose has no text
+  transform, and uppercasing in Kotlin changes what a screen reader says —
+  which is the open question `SectionKicker` already records.
 
 - [ ] **Revisited against the device data, and left alone deliberately.** The
       two constants do different jobs: `FLOOR_SHARE` *shrinks* and `MIN_SCALE`
@@ -1219,7 +1231,6 @@ The figures are reported in every PR description either way.
       texture ships with one level, which for a gradient costs a few per cent
       of one channel on a sheen. Worth an hour with Filament's JNI source
       before it is worth anything else
-
 
 - [ ] **Does the sound go?** The design's Settings has Appearance, Table view,
       Power-saving mode, Haptics, Division and Accent colour, and nothing else:

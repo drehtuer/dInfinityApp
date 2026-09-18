@@ -69,8 +69,19 @@ over it against the prototype. What is left on each is in `docs/TODO.md`.
 **It is no longer mostly judgement.** The design pass of 2026-09-17 answered
 every question the app was waiting on and decided a good deal nobody had asked
 about, so each screen's list has gained work that is code rather than an eye:
-plates over the table, a counting plate, per-set physical properties, the
-designer's Solid tab, and plates over the table.
+per-set physical properties, the designer's Solid tab, staggered spawns, and a
+trailing dot on `6` and `9`.
+
+**The roll screen's controls are on plates.** `ui/common`'s `Plate` is the
+opaque `--color-bg` ground with `--shadow-sm` that every control over the table
+now stands on, so the formula's dashed rule hugs its words instead of crossing
+them and **no accent is drawn on felt anywhere**. The running readout has
+become the counting plate — kicker, count, `of 20 read`, the still-possible
+range with its `+` in the accent's 700 step, and a progress rule — and the two
+states that had no drawing, *another throw earned* and *could not settle*, are
+on that same plate with their buttons wired to the roll the machine already
+reached. The total is drawn once (`docs/physics-and-rendering.md`, "What is
+drawn over the table").
 
 **The accent is done**: six presets, a colour of the player's own, and
 `AccentRamp.clamp` between the choice and the paint — which turned the

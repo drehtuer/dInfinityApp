@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +33,13 @@ import de.drehtuer.dinfinity.ui.common.Ink
  * Red when the formula does not read, which is the badge `9c` asks for — what
  * exactly is wrong is said in the editor, under the squiggle, because that is
  * where somebody can do anything about it.
+ *
+ * **It hugs its words, and the rule hugs them with it.** It used to fill the
+ * width of the screen with the text centred in it, so the dashed rule ran the
+ * whole width and crossed the formula rather than sitting under it — the first
+ * device session read `3d6 + 4` as struck through. The line is what the plate
+ * under it is for: a block of type over the table, as wide as the type
+ * (`docs/physics-and-rendering.md`, "What is drawn over the table").
  */
 @Composable
 internal fun FormulaLine(
@@ -51,10 +57,9 @@ internal fun FormulaLine(
     // sits on, not a caption under it (`--font-heading`, `titleLarge`).
     style = MaterialTheme.typography.titleLarge,
     color = if (text.isBlank()) Ink.muted else ink,
-    textAlign = TextAlign.Center,
+    textAlign = TextAlign.Start,
     modifier =
       modifier
-        .fillMaxWidth()
         .clickable(onClick = onEdit)
         .padding(vertical = 8.dp)
         .drawBehind { underline(ink) }
