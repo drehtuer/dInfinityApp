@@ -631,15 +631,14 @@ private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
   // On the power-saving panel as well as on the tray, because the panel
   // stands *instead of* the table: a mode with no surface is still a mode
   // somebody has to be able to roll in.
-  val throwThem = throwAction(presenter)
   if (!presenter.draws) {
-    PowerSavingPanel(modifier = throwThem)
+    PowerSavingPanel(modifier = Modifier.throwing(presenter))
     return
   }
   DiceTray(
     driver = presenter.tray,
     geometry = presenter.geometry,
-    modifier = Modifier.fillMaxSize().then(throwThem),
+    modifier = Modifier.fillMaxSize().throwing(presenter),
     // A surface has nothing under it for a screen reader to find, so what is
     // on the table is said here or nowhere at all (`docs/architecture.md`,
     // "Accessibility").
@@ -661,9 +660,9 @@ private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
  * (`docs/architecture.md`, goal 1).
  */
 @Composable
-private fun throwAction(presenter: RollPresenter): Modifier {
+private fun Modifier.throwing(presenter: RollPresenter): Modifier {
   val label = stringResource(R.string.roll_throw_action)
-  return Modifier.semantics {
+  return this.semantics {
     customActions = listOf(CustomAccessibilityAction(label) { presenter.roll() })
   }
 }
