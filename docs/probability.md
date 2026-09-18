@@ -11,7 +11,14 @@ lets a player see at a glance that `3d6` is bell-shaped and centred on 10.5,
 while `1d20` is flat, and what `2d20kh1` does to the odds.
 
 The graph is available even for formulas the table cannot physically roll
-(`500d6`); the roll button is what gets disabled, not the math.
+(`500d6`); it is the *throw* that is refused, not the math.
+
+The same arithmetic says what an ordinary formula is expected to come to
+before it is thrown — the lowest, the highest and the exact average, on the
+tray before the shake and again on the result sheet
+(`docs/physics-and-rendering.md`, "What the screen says before the throw").
+A formula past the limits below keeps its range, which costs nothing, and
+loses only its average.
 
 ## What is shown
 

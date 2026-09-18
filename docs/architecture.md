@@ -397,6 +397,8 @@ stateDiagram-v2
     TooMany: TooMany<br/>asked for N, M fit
     Ready: Ready<br/>diceCount, scale
     Rolling: Rolling<br/>dice in the air
+    ShakeAgain: ShakeAgain<br/>a chain earned throws
+    Stalled: Stalled<br/>dice that never stopped
     Settled: Settled<br/>result, divides
 
     Empty --> Ready: type a formula that reads and fits
@@ -413,17 +415,24 @@ stateDiagram-v2
     Ready --> Empty: clear the field
     Ready --> Invalid: type
     Ready --> TooMany: type
-    Ready --> Rolling: Roll, or a shake
+    Ready --> Rolling: a shake
 
     Rolling --> Rolling: an explosion or a reroll adds a die<br/>(thrown once the last has landed)
+    Rolling --> ShakeAgain: a chain earned a throw
+    Rolling --> Stalled: the roll gave up on some dice
     Rolling --> Settled: the last die comes to rest
     Rolling --> Ready: type<br/>(abandons the throw)
     Rolling --> Invalid: type
     Rolling --> TooMany: type
     Rolling --> Empty: clear the field
 
+    ShakeAgain --> Rolling: a shake<br/>(throws the dice it earned)
+    ShakeAgain --> Ready: type<br/>(abandons the roll)
+    Stalled --> Rolling: a shake<br/>(throws the ones that never stopped)
+    Stalled --> Ready: Cancel the roll, or type
+
     Settled --> Settled: Down / Nearest / Up<br/>(rescored, dice never move)
-    Settled --> Rolling: Roll, or a shake
+    Settled --> Rolling: a shake
     Settled --> Ready: type
     Settled --> Invalid: type
     Settled --> TooMany: type
@@ -453,25 +462,31 @@ file.
 
 ### What each state puts on screen
 
-| State | Total | Message | Sheet | Roll button | Formula field |
+| State | Total | Message | Sheet | A shake | Formula field |
 | --- | --- | --- | --- | --- | --- |
-| `Empty` | — | what to do next | — | disabled | live |
-| `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | disabled | live, in error |
-| `TooMany` | — | how many were asked for and how many fit | — | disabled | live, in error |
-| `Ready` | — | that shaking also rolls | — | **enabled** | live |
-| `Rolling` | — | "Rolling…" | — | disabled | live |
-| `Settled` | the total | — | breakdown, and rounding if the formula divides | **enabled** (throws again) | live |
+| `Empty` | — | what to do next | — | throws nothing | live |
+| `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | throws nothing | live, in error |
+| `TooMany` | — | how many were asked for and how many fit | — | throws nothing | live, in error |
+| `Ready` | — | that a shake rolls, and what the throw is expected to come to | — | **throws the formula** | live |
+| `Rolling` | — | how many dice have been read, and the range they can still come to | — | joins the roll in the air | live |
+| `ShakeAgain` | — | how many dice the chain earned | — | **throws them** | live |
+| `Stalled` | — | how many never stopped, and `Cancel the roll` | — | **throws them again** | live |
+| `Settled` | the total | — | breakdown, what it was expected to come to, and rounding if the formula divides | **throws the formula again** | live |
 
-Neither blank cell in the first two rows is an accident: a tray with nothing
-on it and a button that does nothing is a screen with no way in, and shaking —
-the one input nobody would guess at — has nowhere else to be announced.
+There is no Roll button column any more, because there is no Roll button: a
+shake is the throw (`docs/physics-and-rendering.md`, "Starting a roll"). The
+column that replaces it is the only one a player can act on, which is why the
+message column carries so much — with nothing to press, the words are the
+whole of the affordance, and shaking is the one input nobody would guess at.
 
 **Over all of it, once**, a new install shows the first-launch screen
 (`design/dInfinity.dc.html`, option 9a). It is not a state of `RollState`: the
 machine underneath is `Empty` like any other new screen, and the welcome is a
-sheet on top with four ways out, all of them forward. Its "roll a d20 now"
-types `1d20` into the field and asks for a roll — there is no demonstration
-path and no canned number. That it has been seen is remembered on disk, and
+sheet on top with four ways out, all of them forward. Its "put a d20 on the
+table" types `1d20` into the field and gets out of the way; the throw is the
+shake the player makes, because a welcome that rolled for them would be
+teaching the one thing this app does not do. There is no demonstration path
+and no canned number. That it has been seen is remembered on disk, and
 also in the composition, so the screen changes when the button is pressed
 rather than when a write comes back.
 
@@ -524,9 +539,15 @@ and none of them decides anything itself:
   and both are `type` underneath — a tap *is* an edit to the formula, so it
   re-validates, re-checks the table's capacity and abandons a throw in the air
   exactly as a keystroke does (`docs/dice-notation.md`);
-- **the Roll button** calls `roll`, which is one press for one throw — a
-  settled roll is put away by the presenter rather than by a second press;
-- **a shake** calls the same `roll`, which is why it had to be one act;
+- **a shake** calls `roll`, which is one shake for one throw — a settled roll
+  is put away by the presenter rather than by a separate act, and a roll that
+  is waiting on a hand is continued rather than restarted, whether it is
+  waiting for the dice a chain earned or for the ones a throw gave up on;
+- **the table's custom accessibility action**, and the editor's action key,
+  call the same `roll` with no samples. They are the two ways in that are not
+  a hand, and they exist because a shake is not a gesture every hand can make
+  ("Accessibility", below; `docs/physics-and-rendering.md`, "Starting a
+  roll");
 - **Down / Nearest / Up** call `round`, which rescores from subtotals that
   already landed and never moves a die;
 - **the one-tap fix under an error** calls `type` with the formula the parser
@@ -553,11 +574,13 @@ unchanged: the dice are thrown by the same `roll`, stepped by the same loop,
 and the total arrives in the same `Settled`. Only pinch and pan have nothing
 to move (`design/dInfinity.dc.html`, option 1z).
 
-The tray is not in that list on purpose. It draws what the roll is doing and
-has no way to change it: `Renderer` has no method that returns anything
-(decision 48), so drawing a roll cannot alter one, and a one-finger tap on the
-tray deliberately does nothing yet (`docs/physics-and-rendering.md`, "Starting
-a roll").
+The tray is in that list once and only once, for its accessibility action.
+Otherwise it draws what the roll is doing and has no way to change it:
+`Renderer` has no method that returns anything (decision 48), so drawing a roll
+cannot alter one, and a one-finger tap on the tray deliberately does nothing
+yet (`docs/physics-and-rendering.md`, "Starting a roll"). The action is a
+*custom* action rather than a click for exactly that reason — a semantic click
+is a tap to anything walking the tree.
 
 ### While the phone is being shaken
 
@@ -909,17 +932,22 @@ to migrate.
 The active group's rolls sit above the dice picker, as tiles: a roll somebody
 named comes before a die they have to assemble.
 
-**A tap here throws**, where a tap on the saved-rolls list only puts the
-formula in the field. The two are not inconsistent. A saved roll *is* a named
-formula rolled with one tap, and this is the one place in the app where the
-tray is already on screen to roll it on; from the list you are somewhere else,
-and arriving at the tray with a throw already finished would be a roll nobody
-watched.
+**A tap here fills the formula field**, exactly as a tap on the saved-rolls
+list does, and the throw is the shake that follows
+(`docs/physics-and-rendering.md`, "Starting a roll"). It used to throw, which
+made the strip the one control in the app that rolled without a hand: a saved
+roll brushed by a thumb was dice already on the table, and the throw nobody
+watched was the throw that counted.
+
+What the strip hands back is the formula **and which saved roll put it there**,
+and that survives the wait for a hand — so the throw is still recorded as that
+roll's, and the saved-roll statistics still have something to count
+(`docs/statistics.md`).
 
 It is handed to the roll screen as a **slot**, the same way the menu button is,
 and for the same reason: a roll screen that knew what a saved roll was would be
 one feature module depending on another. The slot is given the callback that
-rolls a formula, so the strip hands back text and the roll screen does the rest
+fills the field, so the strip hands back text and the roll screen does the rest
 — through the same `type` a keystroke goes through.
 
 The invitation tile is last and is the only thing there when the group is
@@ -1445,6 +1473,31 @@ A control drawn as one glyph is labelled and given a target: the menu button,
 the export mark, a group's **…**, the back arrow out of a die. Rows that are
 one fact are merged with `mergeDescendants` so they arrive as one
 announcement rather than three.
+
+### A gesture is not an affordance
+
+**Shaking the phone is the only way to throw dice** (`docs/physics-and-
+rendering.md`, "Starting a roll"), and a shake is not a gesture every hand can
+make. Two things therefore stand in for it, and neither is a button on the
+screen:
+
+- **a custom accessibility action on the table**, labelled *Throw the dice*,
+  and on the power-saving panel that stands instead of the table. A custom
+  action rather than a click: a tap on the tray deliberately does not roll,
+  and a semantic click *is* a tap to anything walking the tree.
+- **the action key in the formula editor.** That is what the key already
+  means, and somebody typing a formula on a hardware keyboard has no hand
+  free to shake the phone.
+
+Both call the same `roll` a shake calls, with no samples, so there is no
+second path to a number (goal 1).
+
+**A roll that is waiting on a hand announces itself.** A chain that earned a
+throw, and a throw that gave up on dice that never stopped, both put a plate
+over the tray saying how many dice the next shake will throw — and a toast
+with the same count, which is a polite live region, so it is read when it
+arrives rather than when somebody swipes onto it. A notice nobody is told
+about is a notice that did not happen.
 
 ### Touch targets
 

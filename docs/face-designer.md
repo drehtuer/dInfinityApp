@@ -35,11 +35,11 @@ installed by other users like any other set.
 3. **Turn it over.** The **Solid** tab beside the flat editor shows the real
    polyhedron with each authored face on the face it was drawn for, turning on
    its own until a drag takes over ("The solid, not just the face").
-4. **Roll it.** The Roll button throws the die into the tray to see how it
-   looks in motion (`docs/physics-and-rendering.md`, "Starting a roll"). It
-   opens the tray with the die in the formula field and **does not throw it**:
-   the throw is the player's to make, which is the same answer every other way
-   into the tray gives.
+4. **Roll it.** `Roll it` takes the die to the tray to see how it looks in
+   motion (`docs/physics-and-rendering.md`, "Starting a roll"). It opens the
+   tray with the die in the formula field and **does not throw it**: the
+   throw is the shake the player makes, which is the same answer every other
+   way into the tray gives.
 5. **It is already saved.** Every drawing is a draft on disk, and the drafts
    together *are* the personal set ("My dice", id `mine`): the folder is
    written with a generated `diceset.toml` and one atlas PNG per drawn die,

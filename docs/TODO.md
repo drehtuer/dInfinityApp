@@ -80,8 +80,8 @@ Home. Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`,
 `docs/physics-and-rendering.md`.
 
 The screen rolls. A formula is typed, validated on every keystroke, refused if
-the table cannot hold it, thrown from the Roll button or a shake, simulated and drawn on
-the Pixel 10a, and its total read off the faces. The picker row offers a chosen
+the table cannot hold it, **thrown by a shake and by nothing else**, simulated
+and drawn on the Pixel 10a, and its total read off the faces. The picker row offers a chosen
 set's dice, with a chooser under it once there is a second set installed — and
 a die taken from a set that is not the default is written `brass:1d20`, so the
 row can only ever write a formula that rolls what it showed.
@@ -91,9 +91,9 @@ with a dashed rule under it, a tap brings the field and the keyboard up, and
 Enter rolls. The squiggle and the error line are in the editor where they can
 be acted on; the line itself is marked in red (`6f`, `9c`).
 
-**First launch offers all three ways in** (`9a`): throw a d20 now, go straight
-to the tray, bring saved rolls in from a file or a link, or add somebody else's
-dice. The last two do not dismiss it — somebody who goes to fetch something
+**First launch offers all three ways in** (`9a`): put a d20 on the table, go
+straight to the tray, bring saved rolls in from a file or a link, or add
+somebody else's dice. The last two do not dismiss it — somebody who goes to fetch something
 comes back to a welcome whose count line has something new to say, and that
 line now counts the sets, the saved rolls and the sessions there really are
 rather than a sentence with a zero written into it.
@@ -106,15 +106,6 @@ is drawn over the table"):
 - [ ] **Mark the dice of a later pass** — 4 dp accent-700 outline and a
       `pass 2` label in the `dropped` slot — so a total counting twenty dice
       over a table holding three explains itself on the felt
-- [ ] **Score a chain the player stopped.** `Stop the chain` on the earned
-      plate puts the roll away with no total, which is honest but is not what
-      the button says. Scoring what is on the table needs `core/notation` to
-      have a *reason* a chain ended that is not the tray's: `RunningScore`
-      stops one only when `AddedDice.room` says no, and `GroupRoller` writes
-      `DieNote.TrayFull` when it does — so a player-stopped chain would print
-      "The tray had no room for another die" over a tray with plenty. The work
-      is a `DieNote` of its own, a way for `ExtraThrow` to say which refusal it
-      is, a `ChainLimit` entry and a line in `docs/dice-notation.md`
 - [ ] **Stagger the spawn**, 85 ms between dice, with the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** to be ported: a settled die moved by another
@@ -173,9 +164,6 @@ is drawn over the table"):
   That is the "draw the total once" item: the design's sheet keeps subtotals
   because they are how the rows add up, and for `1d20` there is nothing to add
   up — one group, no modifier, and the number printed twice.
-- **`Cancel the roll` and `Stop the chain` are the same act today**: the roll
-  is put away with no total. That is right for the refusal and wrong for the
-  chain, which is the open item above.
 - **The kickers are upper case in `strings.xml`.** Compose has no text
   transform, and uppercasing in Kotlin changes what a screen reader says —
   which is the open question `SectionKicker` already records.

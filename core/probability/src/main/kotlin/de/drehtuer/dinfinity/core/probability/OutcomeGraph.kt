@@ -23,8 +23,8 @@ import de.drehtuer.dinfinity.core.notation.NumberNode
  * this reads their faces exactly as the simulator will.
  *
  * The table has no say here. `500d6` graphs perfectly well and is refused only
- * when it reaches the tray; the roll button is what gets disabled, not the
- * maths (`docs/probability.md`, `docs/tables.md`).
+ * when it reaches the tray; it is the *throw* that is refused, not the maths
+ * (`docs/probability.md`, `docs/tables.md`).
  */
 object OutcomeGraph {
   /**

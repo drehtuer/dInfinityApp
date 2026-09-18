@@ -92,7 +92,7 @@ object NotationReference {
       NotationLimit(
         what = "Dice in one throw",
         value = "what the table holds",
-        then = "The formula is fine and the graph works; the Roll button says how many would fit.",
+        then = "The formula is fine and the graph works; the tray says how many would fit.",
       ),
       NotationLimit(
         what = "Explosions in a row",

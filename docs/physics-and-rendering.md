@@ -162,26 +162,65 @@ mode; there is no other one.
 
 ## Starting a roll
 
-Two ways to start, and only two:
+**A shake is the throw.** It is the only way to put dice in the air, and every
+other control in the app stops at filling the formula field. The dice are
+spawned when the shake begins and are driven by the phone's motion until the
+hand stops, then released ("Shake input", below).
 
-1. **The Roll button.** Dice are spawned in a cluster above the tray with a
-   randomised (seeded) orientation, angular velocity and a modest downward
-   plus lateral impulse. This is the "drop from the hand" throw.
-2. **Shake.** See below. The dice are spawned when the shake begins and are
-   driven by the phone's motion until the user stops shaking, then released.
+There was a Roll button, and it is gone. It was not a second way to throw so
+much as a way of making the shake optional: a tap on a saved roll threw, the
+button threw, the welcome threw, and a player could use the app for a week
+without discovering the thing it is for. The button also owned the one line of
+the screen that said what a throw would be worth, which is now the ready plate
+(see "What the screen says before the throw").
 
-In both cases the initial angular velocity is large enough that the outcome is
-not predictable from the starting orientation. (A die dropped from 2 cm with
-no spin *would* be predictable. We do not do that.)
+The initial angular velocity is large enough that the outcome is not
+predictable from the starting orientation. (A die dropped from 2 cm with no
+spin *would* be predictable. We do not do that.)
+
+**A shake finishes what it starts.** Two states leave a roll part-way through —
+a chain that earned a throw, and a throw that gave up on dice that never
+stopped — and the same shake answers both. Neither has a button, and the screen
+says how many dice the next shake will throw, both on the plate over the tray
+and in a toast that announces itself to a screen reader.
 
 **Tapping the tray does not roll.** It is the largest target on the screen and
 the most tempting one, which is exactly why it is not spent here: the tray is
-where the camera will be moved and where individual dice will be picked up and
-re-thrown, and a surface that throws the whole formula the moment it is touched
+where the camera is moved and where individual dice will be picked up and
+re-thrown, and a surface that threw the whole formula the moment it is touched
 has nowhere left to put either. A roll is also not something to start by
-accident — it replaces a result somebody may still be reading. Two deliberate
-gestures, one of them a button and the other a shake of the whole phone, are
-enough.
+accident — it replaces a result somebody may still be reading.
+
+### The two ways in that are not a hand
+
+Shaking is not a gesture every hand can make, and every screen has to be
+operable (`docs/architecture.md`, "Accessibility"). Two affordances therefore
+stay, and neither is a button on the screen:
+
+- **a custom accessibility action on the table**, labelled *Throw the dice*. A
+  custom action rather than a click, because a tap on the tray deliberately
+  does not roll and a semantic click *is* a tap to anything walking the
+  semantics tree. It sits on the power-saving panel too, which stands instead
+  of the table.
+- **Enter in the formula editor.** That is what the key already means, and
+  somebody typing a formula on a hardware keyboard has no hand free to shake
+  the phone.
+
+Both call the same entry point a shake does, with no samples — which is what an
+added die is thrown with anyway — so there is still one path to a number
+(`docs/architecture.md`, goal 1).
+
+### What the screen says before the throw
+
+A button said "Roll". With no button, the plate in its place says what rolling
+would get you: **the lowest the formula can come to, the highest, and the exact
+average**. The ends are `RollBounds`, the same calculation the counting plate
+draws mid-roll, asked of a throw that has read no dice at all; the average is
+`core/probability`'s exact distribution (`docs/probability.md`). A formula too
+large to graph exactly keeps its range and loses only its average.
+
+The same line is repeated under the breakdown on the result sheet, so the total
+is a number in a range rather than a number on its own.
 
 ## Picking a die up and throwing it again
 
@@ -219,9 +258,10 @@ back where the simulation left them and never moves them again.
 
 ```mermaid
 flowchart LR
-  button["Roll button"] --> spec["ThrowSpec"]
-  shake["Shake"] --> spec
+  shake["Shake"] --> spec["ThrowSpec"]
+  action["The table's accessibility action,<br/>and Enter in the editor"] --> spec
   chain["An explosion or a reroll<br/>(ThrowSpec.among)"] --> spec
+  stalled["Dice a throw gave up on<br/>(ThrowSpec.among)"] --> spec
   hand["A hand picking a die up<br/>(ThrowSpec.among)"] --> spec
   spec --> sim["DiceSimulator"]
   sim --> faces["The faces, and where each die stopped"]
@@ -1607,16 +1647,17 @@ what is under them down, so two open at once is the top half of the table
 covered, which is the thing this layout exists to stop. Opening either shuts
 the other, in the screen rather than in each control.
 
-What is left along the bottom is the saved-rolls strip and the Roll button.
-The picker has gone to the top, and the two things to do with a result have
-gone onto the result itself (below).
+What is left along the bottom is the saved-rolls strip, and only that. The
+picker has gone to the top, the two things to do with a result have gone onto
+the result itself (below), and the Roll button is gone altogether — a shake is
+the throw ("Starting a roll").
 
 **Accent never touches felt.** Accent appears only *on* a plate, which is how
 an accent the player chooses freely and a shelf of tables stop being a pair
 anybody has to check — a green accent on green felt cannot happen if the accent
 is never on the felt, and with a colour picker there is no list of pairs to
-check in the first place (question 10). So the Roll button, a
-refusal and both asking plates are each on one — and the result sheet, which is
+check in the first place (question 10). So "See the odds", a refusal and every
+asking plate are each on one — and the result sheet, which is
 not a plate but an opaque surface of its own, keeps the same rule for the same
 reason, which is what lets "See the odds" and "Save as roll" sit on it. The pairing that has to be legible is accent-on-`--color-bg`: one
 pairing rather than a matrix.
@@ -1713,26 +1754,42 @@ row of figures an eye takes in at a glance is four disconnected fragments read
 aloud, so the plate carries one sentence of its own and merges what is under it
 (`docs/architecture.md`, "Accessibility").
 
-**Two states the prototype did not have live on that same plate.** *Another
-throw earned* is a chain that has stopped and is one shake short: an
-accent-700 kicker, a line of copy, `Throw 3 more` as the primary and `Stop the
-chain` as a ghost. *Could not settle* is the refusal: an alert icon, an
-accent-700 kicker, copy naming how many dice never stopped, then `Throw those 3
-again` and `Cancel the roll`. Both are reachable in the prototype through its
+**Two states the prototype did not have live on that same plate, and neither
+of them has a button to press.** *Another throw earned* is a chain that has
+stopped and is one shake short: an accent-700 kicker and a line of copy saying
+how many dice it earned. *Could not settle* is the refusal: an alert icon, an
+accent-700 kicker, copy naming how many dice never stopped, and `Cancel the
+roll` — which is a way out rather than a way on, and is the only button left on
+any of these plates. Both are reachable in the prototype through its
 `rollState` tweak, which is the quickest way to see them.
 
 Neither is a new state. They are `RollState.ShakeAgain` and `RollState.Stalled`
 — which the roll has reached all along, with one line of text between them —
-and what was missing was the drawing. `Throw 3 more` is the throw the Roll
-button and a shake already make, so a chain is continued by the same call
-whichever of the three asks for it.
+and what was missing was the drawing.
 
-**`Stop the chain` puts the roll away with no total**, which is what `Cancel
-the roll` does and is not what the button says. Scoring what is on the table
-instead needs a reason a chain ended that is not the tray's: `RunningScore`
-stops one only when there is no room for another die, and the breakdown then
-says so in as many words. Giving the player's own refusal a note of its own is
-`core/notation` work and is on the list (`docs/TODO.md`, Step 4.1).
+**Both wait for the same shake.** The plates used to carry `Throw 3 more` and
+`Throw those 3 again`, and both are gone with the Roll button: a throw is a
+throw whether it is the first of a roll or the last, and a button that made
+one was a button that made the shake optional. What is drawn instead is the
+count, so a player who shakes knows how many dice are about to go up — on the
+plate, and in a toast over the tray that is a polite live region, so a screen
+reader is *told* rather than having to be swiped onto it.
+
+**`Stop the chain` is gone too.** It put the roll away with no total, which is
+what `Cancel the roll` does and was not what the button said — a roll thrown
+away rather than a roll finished. Scoring what is on the table instead would
+need a reason a chain ended that is not the tray's, and rather than invent one
+the option was deleted: a chain that has earned a throw is finished by
+throwing it.
+
+**A stalled roll that comes back keeps what it already read.** The dice that
+settled are not thrown again — throwing them would throw away answers the roll
+already has — so only the unsettled ones go back in the air, and their faces
+return to the plan indices they were thrown for. A throw that gives up reports
+no outcome at all, so the faces read before it gave up are carried across
+separately (`RollMachine.gaveUp`); in power-saving mode, where there are no
+frames to pace a running readout, that one report is the only time the tray
+says what it counted.
 
 **The total is drawn once.** The result sheet keeps a subtotal per group,
 because that is how its rows add up to the total — but a formula with one group

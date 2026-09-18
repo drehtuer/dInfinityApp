@@ -66,7 +66,7 @@ To keep the simulation and the probability graph tractable:
 | Limit | Value | Behaviour when exceeded |
 | --- | --- | --- |
 | Dice per formula (parse) | 1,000 | Parse error, shown inline. This bound exists so the outcome graph stays cheap. |
-| Dice per *roll* | table capacity (`docs/tables.md`), hard cap 100 | Roll button disabled with the reason; the graph still works |
+| Dice per *roll* | table capacity (`docs/tables.md`), hard cap 100 | A shake throws nothing and the screen says how many would fit; the graph still works |
 | Sides per die | must exist in a set | Parse error naming the missing die |
 | Explosion depth | 20 | Further explosions ignored, noted in breakdown |
 | Dice in the tray, including the ones explosions add | table capacity, hard cap 100 | The chain stops there, noted in the breakdown. An added die is dropped into clear floor, and a tray with none left cannot take one (`docs/tables.md`) |
@@ -157,8 +157,20 @@ Modifiers take effect in this order whatever order they were written in, so
 
    **The app does not throw the earned dice. The player shakes again.** An
    exploding six earns a throw, and a throw is something a hand does — so the
-   dice that are down stay down, the screen says a shake is owed, and the next
-   shake throws them.
+   dice that are down stay down, the screen says how many a shake is owed, and
+   the next shake throws them. There is no button for it: a shake is the only
+   way anything is thrown (`docs/physics-and-rendering.md`, "Starting a roll").
+
+   **A chain cannot be stopped short.** There was a `Stop the chain` option
+   beside it, and it put the roll away with no total — a roll thrown away
+   rather than a roll finished, which is not what the words promised. Scoring
+   what is on the table instead would need a reason a chain ended that is not
+   the tray's, so rather than invent one the option was deleted. A chain that
+   has earned a throw is finished by throwing it.
+
+   **Advantage earns nothing.** `2d20kh1` is one throw of two dice followed by
+   a selection, so there is no second throw to wait for and no shake is owed.
+   Only `!` and `r n` earn a later throw.
 
    **Every chain that earned a die is owed one at the same moment**, and one
    shake throws the lot. Three sixes in `8d6!` are three dice, thrown together,
@@ -177,6 +189,20 @@ Modifiers take effect in this order whatever order they were written in, so
 4. **`kh` / `kl` / `dh` / `dl`** — whole chains are kept or dropped, ranked by
    what each chain came to together. A percentile pair counts as one unit, so
    `2d%kh1` keeps the better of two 1–100 results.
+
+### What the screen says before the dice are thrown
+
+Every roll shows what it is expected to come to: **the lowest, the highest and
+the average**. It is on the plate over the tray before the shake, where the
+Roll button's label used to be the only thing saying what a throw was worth,
+and again under the breakdown on the result sheet, so the total is a number in
+a range rather than a number on its own.
+
+The ends are the same reckoning the live range uses, asked of a throw that has
+read no dice at all — so the figures a player reads before the throw and the
+figures they watch close during it are one calculation seen twice. The average
+is the exact mean of the distribution (`docs/probability.md`), and a formula
+too large to graph exactly keeps its range and loses only its average.
 
 ### What the screen says while the dice are still landing
 
@@ -345,12 +371,16 @@ SavedRoll {
   make that refusal arbitrary.
 - Deleting a group never deletes a roll. Its rolls move to Unfiled and its
   child groups are lifted to the top level.
-- The home screen shows the **active group** as tiles; tap to roll,
-  long-press to edit. A tap *throws* there, unlike a tap on the saved-rolls
-  list, which only puts the formula in the field: the tray is already on
-  screen, and arriving at it with the throw already over would be a roll nobody
-  watched. Switching the active group is one tap in the top bar, and the active
-  group also sets the default statistics session (`docs/statistics.md`).
+- The home screen shows the **active group** as tiles; tap to fill the
+  formula field, long-press to edit. A tap *fills* there, exactly as a tap on
+  the saved-rolls list does, and the throw is the shake that follows
+  (`docs/physics-and-rendering.md`, "Starting a roll"). It used to throw, which
+  made the strip the one control in the app that rolled without a hand — a
+  saved roll brushed by a thumb was dice already on the table, and the throw
+  nobody watched was the throw that counted. Which roll the formula came from
+  is carried across the wait, so the throw is still recorded as that roll's
+  (`docs/statistics.md`). Switching the active group is one tap in the top bar,
+  and the active group also sets the default statistics session.
 - **The order is the player's, and nothing else's.** There is no pinning and no
   favourites: each entry carries a grip, and dragging it moves it. The design
   took the favourite flag out in the pass of 2026-09-17, and the reason is that
