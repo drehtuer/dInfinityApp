@@ -99,8 +99,23 @@ class PhysicalStore(
     val partial = File(file.parentFile, file.name + PARTIAL)
     runCatching {
       partial.writeText(text)
-      if (!partial.renameTo(file)) partial.delete()
-    }.onFailure { partial.delete() }
+      if (!partial.renameTo(file)) tidy(partial)
+    }.onFailure { tidy(partial) }
+  }
+
+  /**
+   * Takes the half-written file away, and says nothing when it cannot.
+   *
+   * There is nowhere for a failure here to go. The write has already failed or
+   * the rename has, the player has been told nothing either way, and a file
+   * left behind is picked up by the next write — which starts by overwriting
+   * it. So the boolean is read and dropped deliberately rather than by
+   * oversight, which is the difference a static analyser cannot see and this
+   * comment is for.
+   */
+  private fun tidy(partial: File) {
+    @Suppress("UNUSED_VARIABLE")
+    val gone = partial.delete()
   }
 
   /**
