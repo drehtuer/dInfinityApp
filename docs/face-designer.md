@@ -490,10 +490,20 @@ be a die fighting back. The tick puts it back.
 step and a 16 % accent tint in its fill — so moving between the two tabs never
 loses the player's place.
 
+**A face is drawn on the die's paper, not the screen's.** The flat editor draws
+every face on white, so a solid drawn on the theme's surface is the same
+drawing in two colours depending on which tab is in front — and on a dark page
+it is black ink on a dark grey face, which is a numeral nobody can read. That
+is what the first look at this tab on a phone showed. A die is a white thing in
+a room whichever page it is being drawn on, and a face turned away from the
+lamp is that paper in shadow rather than the colour of the page's ink. Whether
+the *canvas* should follow the theme is a separate question and still open
+(`docs/design-handover.md`); what matters here is that the two tabs cannot
+answer it differently.
+
 **The shading is not the spec.** One lamp over the viewer's left shoulder and a
-floor under it, mixed out of the screen's own paper and ink so that a die in a
-dark theme is lit by the same rule as one in a light theme. How a die is really
-lit is `docs/physics-and-rendering.md`'s business.
+floor under it, so that the same rule lights a die on either page. How a die is
+really lit is `docs/physics-and-rendering.md`'s business.
 
 ### What the Solid view shows, and what it does not
 
