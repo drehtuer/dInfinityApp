@@ -509,6 +509,14 @@ table of is written into the same package, as a `[[table]]` entry and a
 so the same package is rebuilt from two records rather than one, and a phone
 with photos and no drawings has a `mine` that is a table pack.
 
+The third record is **what the dice are made of**: the weight, translucency and
+size the details screen's steppers set, kept in `filesDir/mine-physical.txt`
+and written into the package as its `[defaults]` table (`docs/dice-sets.md`,
+"Weight, translucency and size, as a person sets them"). It is a record rather
+than a line in the generated `diceset.toml` for the same reason the drafts are:
+the folder is a view, and a number kept only there would be rewritten away by
+the next stroke.
+
 A draft whose die is not installed is not in the package, and its file is kept:
 re-installing the package that defines the die brings the drawing back.
 

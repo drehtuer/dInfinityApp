@@ -69,8 +69,8 @@ over it against the prototype. What is left on each is in `docs/TODO.md`.
 **It is no longer mostly judgement.** The design pass of 2026-09-17 answered
 every question the app was waiting on and decided a good deal nobody had asked
 about, so each screen's list has gained work that is code rather than an eye:
-plates over the table, a counting plate, per-set physical properties, the
-designer's Solid tab, plates over the table, and a table-view setting.
+plates over the table, a counting plate, the designer's Solid tab, and a
+table-view setting.
 
 **The accent is done**: six presets, a colour of the player's own, and
 `AccentRamp.clamp` between the choice and the paint — which turned the
@@ -91,6 +91,17 @@ Settings had been forgetting to do under the Pixel 10a's status bar
 
 **The dice are lit by a room**, reflect one, wear a lacquer and sit on the
 felt rather than over it, and a set can say how far into a die you can see.
+
+**The Physical block is done**: a set's detail screen quotes what a dice shop
+quotes — grams a die, translucency as a per cent, size as a percentage of an
+average die — from the `density`, `translucency` and `size_mm` its file
+writes. The volume that turns a density into grams is closed-form arithmetic
+per catalogue solid (`core/model`'s `DieVolume`), so the figure is the mass of
+the body the solver throws. "My dice" carries the steppers and keeps the three
+numbers in a record of its own beside the drafts; every other set is read-only,
+because its numbers came out of somebody else's `diceset.toml`. One thing to
+decide: the built-in dice are 16 mm **across the corners** and so weigh 0.9 g
+where a shop would say 4.2 — `docs/TODO.md`, 4.4.
 
 **Step 5 is the real remaining work** — see Known risks.
 

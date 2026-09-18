@@ -335,20 +335,41 @@ chosen**, and the choice is written into the file and into the installed folder
 alike. What goes out is validated first, by the same validator a download goes
 through.
 
-**From the design pass of 2026-09-17** (`docs/dice-sets.md`, "Weight,
-translucency and size, as a person sets them"):
+**The Physical block is built** (`docs/dice-sets.md`, "Weight, translucency and
+size, as a person sets them"), and four things were decided in the building:
 
-- [ ] **The Physical block on a set's detail screen** — weight in grams,
-      translucency in per cent, size as a percentage of the average die.
-      Weight is `density × volume`, and the volume is the one the solver
-      computes for a body's mass and nobody has ever asked it for, so this
-      needs a way to ask
-- [ ] **Steppers on "My dice"**, at 0.1 g / 5 % / 5 %, each reading the live
-      value so a rapid run of taps accumulates. Imported sets show the same
-      three figures and no steppers, because their numbers came out of somebody
-      else's `diceset.toml`
-- [ ] **Size is 50–150 % of average** where the format clamps `size_mm` to
-      8–40. The tighter bound belongs to the slider rather than to the file
+- **The volume is arithmetic, not a measurement.** `core/model`'s `DieVolume`
+  holds one constant per catalogue solid, each a multiple of the cube of the
+  die's circumradius and each derived from the solid in its KDoc. The two
+  trapezohedra have no textbook constant; they are cut into an antiprism (whose
+  volume the prismatoid rule gives exactly) and two pyramids, and the test
+  checks that against a tetrahedron sum over the real corners. A coin is the
+  24-gon prism its rim is collided as, and `CoinShape` now holds the two
+  numbers that say so, so `simulation/api` and the volume cannot disagree.
+- **A set whose dice differ is quoted as a range** — "0.3–1.6 g" — and as one
+  figure only where both ends print the same. Chosen over the commonest value
+  because a range is true of every die in the set, where a commonest value is a
+  claim about one die presented as the set's. Dice essentially always differ in
+  weight, since a d4 and a d20 of one `size_mm` are not the same solid.
+- **A weight stepper moves the `density`**, by the amount that changes a **d6
+  of the set's current size** by 0.1 g. A gram is a fact about one die of one
+  shape, so a step needs a reference solid, and the d6 is the one the design's
+  own figures quote and the one nearly every set defines.
+- **"My dice" keeps the three numbers in a record of its own**
+  (`filesDir/mine-physical.txt`, `designer`'s `PhysicalStore`), beside the
+  drafts and the photos, and they go out as the package's `[defaults]` table.
+  The package is *built* from its records, so a number written only into
+  `dicesets/mine/diceset.toml` would be rewritten away by the next stroke.
+
+**Open, and for the design rather than the code:** the built-in dice are
+smaller than a dice shop's. `size_mm` is the width across the corners
+(`docs/dice-sets.md`, "Size"), so the built-in 16 mm d6 is a 9.2 mm cube and
+the block honestly prints **0.9 g** where the design pass quotes 4.2 g — which
+is what a *nominal* 16 mm d6 (a 16 mm **edge**) weighs. The arithmetic is not
+in doubt; what is, is whether the built-in set should declare something nearer
+`size_mm = 28` so that its dice weigh what a player expects to feel. Changing
+it moves every built-in die's mass and how many fit a table, so it is a
+decision to take on purpose rather than a constant to tweak.
 
 - [ ] *Done, and worth knowing where:* a malicious archive is refused at every layer and a failed install leaves nothing behind. `SafeExtractorTest` has the paths that climb out, the absolute and Windows paths, the symbolic links, the entry count and the zip bomb refused at the megabyte it becomes obvious; `PackageInstallerTest` has the failed, hostile, interrupted and unwritable installs, each leaving nothing behind and each leaving an existing package alone; `dicesets/format` has the set files that lie about themselves and the images that are not images; and `HostileArchiveTest` joins them up over a real HTTPS server now that an archive can arrive from a link. A malicious **texture** is covered too, now that there is a decoder: `InstalledArtworkTest` has the paths that climb out of a package and the file over the cap, each refused before a decoder sees it, `AtlasDecoderTest` has the image refused from its bounds with nothing decoded, and `AtlasDecoderDeviceTest` has the file that passes the header check and will not decode — on a device, because Robolectric hands back a fake bitmap for bytes it cannot identify
 

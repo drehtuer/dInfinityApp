@@ -35,6 +35,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DiePhysical
+import de.drehtuer.dinfinity.core.model.Span
 import de.drehtuer.dinfinity.core.notation.Sides
 import de.drehtuer.dinfinity.designer.MinePackage
 import de.drehtuer.dinfinity.designer.SetLicense
@@ -44,6 +46,7 @@ import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.ModernistButton
 import de.drehtuer.dinfinity.ui.common.ModernistButtonKind
+import de.drehtuer.dinfinity.ui.common.ModernistIconButton
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.SectionKicker
 import de.drehtuer.dinfinity.ui.common.Tag
@@ -143,6 +146,7 @@ private fun Body(
 ) {
   LazyColumn(modifier = Modifier.fillMaxSize().testTag(SetDetailTestTags.LIST)) {
     item { Provenance(row, onSource) }
+    item { Physical(presenter) }
     item { Default(presenter) }
     item { Manage(row, presenter) }
     item { Export(presenter) }
@@ -219,6 +223,197 @@ private fun Source(
     }
   }
 }
+
+/**
+ * What the dice are made of: weight, translucency and size
+ * (`design/dInfinityPhone.dc.html`, the Dice set details screen;
+ * `docs/dice-sets.md`, "Weight, translucency and size, as a person sets
+ * them").
+ *
+ * **The three things a set file writes, said the way a dice shop says them.**
+ * An author writes `density`, `translucency` and `size_mm`; nobody holds a die
+ * and estimates its grams per cubic centimetre, so the screen prints the grams
+ * — density times the volume of the solid ([DiePhysical]) — the per cent, and
+ * the size as a percentage of an average die.
+ *
+ * **A set whose dice differ says so.** A range rather than one figure, because
+ * a set is a bag of dice and they need not agree: a d4 and a d20 of one size
+ * and one density are never the same weight, since the d4 is the thinner solid
+ * inside the same sphere. A "commonest value" would be a claim about one die
+ * printed as though it spoke for the rest.
+ *
+ * The steppers are "My dice"'s alone. An imported set is read-only, which is
+ * not a permission check but a fact about what a set is: its numbers came out
+ * of somebody else's `diceset.toml`, and editing them here would make `brass`
+ * mean two different things on two phones.
+ */
+@Composable
+private fun Physical(presenter: SetDetailPresenter) {
+  val physical = presenter.state.physical ?: return
+  val editable = presenter.state.editable
+  Column(
+    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).testTag(SetDetailTestTags.PHYSICAL),
+    verticalArrangement = Arrangement.spacedBy(4.dp),
+  ) {
+    SectionKicker(stringResource(R.string.sets_detail_physical))
+    PhysicalLine(
+      label = stringResource(R.string.sets_detail_weight),
+      note = stringResource(R.string.sets_detail_weight_note),
+      value = grams(physical.weightG),
+      row = SetDetailTestTags.WEIGHT,
+      down = stringResource(R.string.sets_detail_lighter),
+      up = stringResource(R.string.sets_detail_heavier),
+      onStep = if (editable) presenter::weigh else null,
+    )
+    PhysicalLine(
+      label = stringResource(R.string.sets_detail_translucency),
+      note =
+        joined(
+          translucencyWord(physical.translucencyPercent),
+          stringResource(R.string.sets_detail_translucency_note),
+        ),
+      value = percent(physical.translucencyPercent),
+      row = SetDetailTestTags.TRANSLUCENCY,
+      down = stringResource(R.string.sets_detail_less_translucent),
+      up = stringResource(R.string.sets_detail_more_translucent),
+      onStep = if (editable) presenter::seeThrough else null,
+    )
+    PhysicalLine(
+      label = stringResource(R.string.sets_detail_size),
+      note = joined(sizeWord(physical.sizePercent), stringResource(R.string.sets_detail_size_note)),
+      value = percent(physical.sizePercent),
+      row = SetDetailTestTags.SIZE,
+      down = stringResource(R.string.sets_detail_smaller),
+      up = stringResource(R.string.sets_detail_bigger),
+      onStep = if (editable) presenter::resize else null,
+    )
+    if (!editable) {
+      Text(
+        text = stringResource(R.string.sets_detail_physical_fixed),
+        style = MaterialTheme.typography.bodySmall,
+        color = Ink.muted,
+        modifier = Modifier.testTag(SetDetailTestTags.PHYSICAL_FIXED),
+      )
+    }
+  }
+}
+
+/**
+ * One row of the block: what it is, what it says, and — on "My dice" — the two
+ * taps that move it.
+ *
+ * [onStep] takes the number of steps rather than a direction, so that the
+ * presenter has one way in for a tap and a hold could later ask for several
+ * without another entry point. Null is a set whose numbers are not this
+ * phone's, and then there is nothing to press at all rather than something
+ * disabled: a stepper greyed out would say the app might have let you.
+ */
+@Composable
+private fun PhysicalLine(
+  label: String,
+  note: String,
+  value: String,
+  row: String,
+  down: String,
+  up: String,
+  onStep: ((Int) -> Unit)?,
+) {
+  Row(
+    // Not merged, although the rows above it are. What is in it is a label, a
+    // figure and — on "My dice" — two buttons, and a merged row would read the
+    // whole line out at a finger that is on one of the buttons.
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .padding(vertical = 4.dp)
+        .testTag(row),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(8.dp),
+  ) {
+    Column(modifier = Modifier.weight(1f)) {
+      Text(text = label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.ExtraBold)
+      Text(text = note, style = MaterialTheme.typography.bodySmall, color = Ink.muted)
+    }
+    Text(
+      text = value,
+      style = MaterialTheme.typography.titleMedium,
+      fontWeight = FontWeight.ExtraBold,
+      modifier = Modifier.testTag(SetDetailTestTags.valueOf(row)),
+    )
+    onStep?.let { step ->
+      Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        ModernistIconButton(
+          contentDescription = down,
+          onClick = { step(-1) },
+          modifier = Modifier.testTag(SetDetailTestTags.stepOf(row, up = false)),
+        ) {
+          Text(text = stringResource(R.string.sets_detail_step_down), style = MaterialTheme.typography.titleMedium)
+        }
+        ModernistIconButton(
+          contentDescription = up,
+          onClick = { step(1) },
+          modifier = Modifier.testTag(SetDetailTestTags.stepOf(row, up = true)),
+        ) {
+          Text(text = stringResource(R.string.sets_detail_step_up), style = MaterialTheme.typography.titleMedium)
+        }
+      }
+    }
+  }
+}
+
+/** Grams per die: one figure where the dice agree, both ends where they do not. */
+@Composable
+private fun grams(span: Span): String =
+  if (span.isOne(GRAM)) {
+    stringResource(R.string.sets_detail_grams, span.low)
+  } else {
+    stringResource(R.string.sets_detail_grams_range, span.low, span.high)
+  }
+
+/** The same rule for the two figures that are already per cents. */
+@Composable
+private fun percent(span: Span): String =
+  if (span.isOne(WHOLE_PER_CENT)) {
+    stringResource(R.string.sets_detail_percent, span.low)
+  } else {
+    stringResource(R.string.sets_detail_percent_range, span.low, span.high)
+  }
+
+/** "Opaque", or that the table shows through — the note the prototype leads with. */
+@Composable
+private fun translucencyWord(span: Span): String =
+  stringResource(if (span.high == 0.0) R.string.sets_detail_opaque else R.string.sets_detail_see_through)
+
+/**
+ * "Average", or how far off it these dice are.
+ *
+ * Only where the set's dice agree about their size. Where they do not, the
+ * sentence stands on its own rather than naming one die's size as the set's.
+ */
+@Composable
+private fun sizeWord(span: Span): String? =
+  when {
+    !span.isOne(WHOLE_PER_CENT) -> null
+    Math.round(span.low) == AVERAGE -> stringResource(R.string.sets_detail_size_average)
+    span.low > AVERAGE -> stringResource(R.string.sets_detail_size_over, span.low - AVERAGE)
+    else -> stringResource(R.string.sets_detail_size_under, AVERAGE - span.low)
+  }
+
+/** The prototype's `·` between a word about a figure and the sentence under it. */
+@Composable
+private fun joined(
+  word: String?,
+  sentence: String,
+): String = if (word == null) sentence else stringResource(R.string.sets_detail_note_joined, word, sentence)
+
+/** A tenth of a gram is what a weight is printed to, and what one tap moves it by. */
+private const val GRAM = DiePhysical.WEIGHT_STEP_G
+
+/** Per cents are printed whole. */
+private const val WHOLE_PER_CENT = 1.0
+
+/** A hundred per cent is the average die. */
+private const val AVERAGE = 100L
 
 /**
  * Which set plain notation reaches for first (design `6a`).
@@ -553,6 +748,20 @@ object SetDetailTestTags {
   const val EXPORTED: String = "setdetail:export:done"
   const val EXPORT_PROBLEM: String = "setdetail:export:problem"
   const val LICENSE_CHOOSER: String = "setdetail:license"
+  const val PHYSICAL: String = "setdetail:physical"
+  const val PHYSICAL_FIXED: String = "setdetail:physical:fixed"
+  const val WEIGHT: String = "setdetail:physical:weight"
+  const val TRANSLUCENCY: String = "setdetail:physical:translucency"
+  const val SIZE: String = "setdetail:physical:size"
+
+  /** The figure one row of the Physical block is showing. */
+  fun valueOf(row: String): String = "$row:value"
+
+  /** One of a row's two steppers. */
+  fun stepOf(
+    row: String,
+    up: Boolean,
+  ): String = "$row:" + if (up) "up" else "down"
 
   fun dieOf(id: String): String = "setdetail:die:$id"
 

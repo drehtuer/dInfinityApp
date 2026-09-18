@@ -1574,6 +1574,8 @@ to re-run (decision 13).
   drafts/…                    in-progress face drawings, one file per die
   table-photos/…              photographs made into tables: <id>.webp and <id>.name, two files each
                               (deliberately not inside dicesets/, where a loose folder would be scanned as a package)
+  mine-physical.txt           what "My dice" is made of: size_mm, density, translucency, one per line
+                              (the third record mine/ is built from; docs/dice-sets.md)
   savedrolls/
     imports/…                 imported collections kept for "re-import / diff"
 <cacheDir>/
