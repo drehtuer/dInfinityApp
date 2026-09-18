@@ -32,10 +32,13 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#278**. `v0.1.0` is cut from #268 and is two
-fixes behind. In flight: the accent, on `feature/accent` — six new presets, a
-colour of the player's own behind the contrast clamp, and the filled accent tag
-that clamp finally makes drawable.
+`main` has everything through **#278**. In flight: thirteen stacked pull
+requests, #280 through #292, which are the design pass of 2026-09-17 folded
+into `docs/` and then built. They merge in order, each on the one below it.
+
+`v0.1.0` is cut from #268 and is now a long way behind — two faults a user sees
+were fixed before any of this, and the remedy is `v0.1.1` whenever somebody
+wants one.
 
 ## Done
 
@@ -134,8 +137,8 @@ release was cut while this section said the opposite, and it shipped both of
 them.
 
 **The whole device tier runs, and until #274 it could not.** `./gradlew
-connectedDebugAndroidTest` across every module on the Pixel 10a: **82 tests, 1
-skipped, 0 failed**, 11m 25s. It used to fail however green the tests were,
+connectedDebugAndroidTest` across every module on the Pixel 10a: **87 tests, 1
+skipped, 0 failed**, 7m 47s, run on the whole of #280–#290 merged together. It used to fail however green the tests were,
 because `HarnessTest` declines to run without `harness.rolls` and the runner
 files an assumption as a failure. So the command `.claude/CLAUDE.md` asks a
 developer to run before a PR was one nobody could pass — which is the third
