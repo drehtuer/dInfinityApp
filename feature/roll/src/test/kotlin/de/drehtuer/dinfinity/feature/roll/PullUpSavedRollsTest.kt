@@ -131,6 +131,25 @@ class PullUpSavedRollsTest {
     assertTrue("the grip measured nothing", parked > 0f)
   }
 
+  @Test
+  fun `a strip wired to nothing still draws`() {
+    // `onParked` and `onRest` both default to doing nothing, so a preview or
+    // a test of something around it can put one on screen.
+    compose.setContent {
+      Box(modifier = Modifier.fillMaxSize()) {
+        PullUpSavedRolls(rest = SheetRest.Up, onRest = {}, modifier = Modifier.align(Alignment.BottomCenter)) {
+          Text(text = "4d6dl1", modifier = Modifier.testTag(STRIP))
+        }
+      }
+    }
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(STRIP).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.SAVED_HANDLE).performClick()
+
+    compose.onNodeWithTag(RollTestTags.SAVED_HANDLE).assertIsDisplayed()
+  }
+
   /** The strip with its rest held outside it, which is how the screen holds it. */
   private fun show() {
     compose.setContent {

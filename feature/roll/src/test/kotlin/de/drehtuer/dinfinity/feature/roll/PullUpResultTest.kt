@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -23,6 +24,7 @@ import de.drehtuer.dinfinity.core.model.DieNote
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
+import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.notation.RollRange
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Assert.assertTrue
@@ -136,6 +138,32 @@ class PullUpResultTest {
     show()
 
     compose.onNodeWithTag(RollTestTags.EXPECTED).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a sheet wired to nothing still draws and still works`() {
+    // Every callback on it has a default that does nothing, so a preview or a
+    // test of something around it can put one on screen. Pressing them is not
+    // an error — and the defaults are the branch a test of the wired sheet
+    // never takes.
+    compose.setContent {
+      Box(modifier = Modifier.fillMaxSize()) {
+        PullUpResult(
+          result = fourD6DropLowest(),
+          divides = true,
+          modifier = Modifier.align(Alignment.BottomCenter),
+        )
+      }
+    }
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+    compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).performClick()
+    compose.onNodeWithTag(RollTestTags.roundingOf(Rounding.Up)).performClick()
+    compose.onNodeWithTag(RollTestTags.dieAt(0)).performTouchInput { longClick() }
+    compose.onNodeWithTag(RollTestTags.doodleOf(0)).performClick()
+
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertIsDisplayed()
   }
 
   @Test

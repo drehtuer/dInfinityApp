@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.roll
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -90,6 +91,17 @@ class BottomEdgeTest {
       edge = move(edge)
       assertTrue("both sheets were up after $name", edge.apart)
     }
+  }
+
+  @Test
+  fun `and the invariant knows what it would look like to have failed`() {
+    // Nothing the transitions do can build this, which is the point of them
+    // — so it is built by hand, once, to say what `apart` is actually
+    // asserting in the walk above.
+    assertFalse("both up was not noticed", BottomEdge(SheetRest.Up, SheetRest.Up).apart)
+    assertTrue(BottomEdge(SheetRest.Up, SheetRest.Down).apart)
+    assertTrue(BottomEdge(SheetRest.Down, SheetRest.Up).apart)
+    assertTrue(BottomEdge(SheetRest.Down, SheetRest.Down).apart)
   }
 
   private companion object {

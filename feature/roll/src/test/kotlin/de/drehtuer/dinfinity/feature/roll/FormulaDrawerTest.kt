@@ -119,6 +119,18 @@ class FormulaDrawerTest {
   }
 
   @Test
+  fun `a drawer wired to nothing still draws and still works`() {
+    // No error, no `wrong` and no `onSubmit`: the defaults are the branch
+    // every other test here takes past.
+    compose.setContent { FormulaDrawer(text = "3d6", onChange = {}, open = true, onOpen = {}) }
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).performImeAction()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.INVALID).assertDoesNotExist()
+  }
+
+  @Test
   fun `the tab is worth pressing`() {
     show(text = "3d6")
 
