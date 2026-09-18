@@ -52,7 +52,16 @@ class DiceTrayLifecycleTest {
     show(tray, screen)
 
     // Somewhere to draw, before anything else happens.
-    compose.waitUntil(TIMEOUT) { tray.events.isNotEmpty() }
+    //
+    // The one wait in this class that a cold process has to satisfy: the first
+    // surface of the first test is behind the app being started, Compose being
+    // set up and a `SurfaceView` being given a buffer, and on a phone that has
+    // just had the suite installed that took longer than five seconds once in
+    // a whole-tier run — while passing in under one on every warm run since.
+    // So it is given a cold-start budget rather than the warm one the waits
+    // below use. It still fails if the surface never arrives, which is what it
+    // is for; it stops failing because the phone was busy.
+    compose.waitUntil(COLD_TIMEOUT) { tray.events.isNotEmpty() }
     assertEquals(listOf(AVAILABLE), tray.events.toList())
 
     // The lock screen.
@@ -186,6 +195,9 @@ class DiceTrayLifecycleTest {
 
     /** Long enough for a surface to be made on a phone that is busy. */
     const val TIMEOUT = 5_000L
+
+    /** And what the first surface of a cold process is given. */
+    const val COLD_TIMEOUT = 20_000L
 
     /** Long enough that a tray with a habit of churning would have churned. */
     const val A_WHILE = 1_000L

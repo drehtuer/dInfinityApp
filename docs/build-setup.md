@@ -463,6 +463,19 @@ reads the JUnit XML the run produced and fails the build if anything in it
 failed, erred, or if the run produced no results at all. A module with no
 `src/androidTest` at all is expected to produce nothing and says so.
 
+**A cold process is slower than a warm one, and one wait knows it.** The first
+surface of the first test in `DiceTrayLifecycleTest` is behind the app
+starting, Compose setting itself up and a `SurfaceView` being handed a buffer.
+In a whole-tier run on a phone that had just had the suite installed, that took
+longer than the five seconds every other wait in the class is given — once —
+while passing in under a second on every warm run before and since. That one
+wait therefore has a twenty-second budget and the rest keep five.
+
+It is worth knowing why the number is not simply raised everywhere: a wait
+exists to fail when the thing never happens, and every second added to it is a
+second a real failure takes to report. The cold start is the one place where
+the wait is measuring the phone rather than the app.
+
 That indirection is a workaround for a bug in AGP 9.4.0, not a softening of the
 check. AGP keys its per-device verdict by the device id it pulls back out of the
 JUnit unique id — but JUnit percent-escapes a unique id segment, so a phone
