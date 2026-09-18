@@ -91,6 +91,17 @@ class SpellingOfTest {
   }
 
   @Test
+  fun `a set asked for is named even when it is the one a bare formula means`() {
+    // Somebody whose default set *is* "My dice". `1d20` would resolve to the
+    // drawing there anyway, but saying which set is asked for is the point of
+    // asking — and a formula that names it cannot stop being right when the
+    // default is changed on another screen.
+    val catalogue = DiceCatalog.of(listOf(builtin, mine), defaultSetId = DiceSet.PERSONAL_ID)
+
+    assertEquals("mine:1d20", spellingOf(die("d20", mine), catalogue, preferred = DiceSet.PERSONAL_ID))
+  }
+
+  @Test
   fun `a set asked for that has not got the die falls back to what would resolve`() {
     // A face nobody drew on is not in the personal package, so there is no
     // `mine:1d20` to throw — and a plain d20 is a better answer than none.

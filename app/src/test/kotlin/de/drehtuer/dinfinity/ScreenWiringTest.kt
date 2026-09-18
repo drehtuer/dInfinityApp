@@ -190,6 +190,19 @@ class ScreenWiringTest {
 
     assertNotNull(presenters.diceSet("builtin") {})
     assertNotNull(presenters.diceSet("never-installed") {})
+    // And for a route that carries none at all, which the wiring answers with
+    // the bundled set rather than with a screen about nothing.
+    assertNotNull(presenters.diceSet("") {})
+  }
+
+  @Test
+  fun `the table picker is built with and without a renderer behind it`() {
+    // Power-saving mode creates no Filament engine on any screen, so the
+    // thumbnails are null and the picker shows its swatches — which is the
+    // same thing it does on a device that cannot read a frame back
+    // (`docs/tables.md`, "Thumbnails").
+    assertNotNull(wiring(AppSettings(powerSaving = true)).presenters().tables())
+    assertNotNull(wiring(AppSettings(powerSaving = false)).presenters().tables())
   }
 
   @Test

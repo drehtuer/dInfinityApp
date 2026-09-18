@@ -10,6 +10,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -136,8 +137,18 @@ fun OptionBox(
   )
 }
 
-/** What both forms above are: a box that inverts, with something in the middle. */
+/**
+ * What both forms above are: a box that inverts, with something in the middle.
+ *
+ * `@NonRestartableComposable` because it can never usefully skip. It is called
+ * only by the two overloads above, which pass on the arguments they were just
+ * handed — so it is reached exactly when one of *them* decided to recompose,
+ * and the lettered form hands it a fresh lambda every time regardless. The
+ * annotation drops the skip machinery the compiler would otherwise emit for
+ * nine parameters that are already known to have changed.
+ */
 @Composable
+@NonRestartableComposable
 private fun OptionBox(
   selected: Boolean,
   onClick: () -> Unit,

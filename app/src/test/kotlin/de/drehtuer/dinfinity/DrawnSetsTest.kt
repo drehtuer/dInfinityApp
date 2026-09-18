@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.data.db.DInfinityDatabase
@@ -139,6 +140,21 @@ class DrawnSetsTest {
     }
 
   @Test
+  fun `a drawing on a die nothing defines any more is a refusal, not a blank phone`() =
+    runBlocking {
+      // A draft whose die is not installed is not in the package and its file
+      // is kept (`docs/face-designer.md`, "My dice") — so a phone where the
+      // only drawing is on a removed set's die builds no package at all.
+      // That is a refusal: there *is* something drawn, and it did not get in.
+      val library = library(dice = emptyList())
+
+      val outcome = drawn(library).save(DiceSet.PERSONAL_ID, drawing())
+
+      assertEquals(SaveResult.Refused, outcome)
+      assertTrue("the drawing was thrown away with the refusal", drafts.known().contains("d6"))
+    }
+
+  @Test
   fun `a set nobody can write to is refused rather than attempted`() =
     runBlocking {
       val outcome = drawn(library()).save(DiceSet.BUILTIN_ID, drawing())
@@ -163,7 +179,7 @@ class DrawnSetsTest {
       io = Dispatchers.Unconfined,
     )
 
-  private fun library() =
+  private fun library(dice: List<Die> = listOf(d6)) =
     SetLibrary(
       bundled = BuiltinDiceSet.set,
       installed = InstalledSets(root),
@@ -176,7 +192,9 @@ class DrawnSetsTest {
           drafts = drafts,
           root = root,
           painter = BitmapAtlas(),
-          dice = { listOf(d6) },
+          // Every die a draft may name. Empty is a phone whose packages have
+          // all been removed, which is what leaves a drawing with no die.
+          dice = { dice },
           photos = photos,
         ),
     )

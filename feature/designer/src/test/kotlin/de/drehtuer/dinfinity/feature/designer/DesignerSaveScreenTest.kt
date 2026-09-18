@@ -58,6 +58,25 @@ class DesignerSaveScreenTest {
   }
 
   @Test
+  fun `the sheet is a chooser, and saves into the set that was chosen`() {
+    // There is one writable set on a real phone today, which is exactly why
+    // this is worth asserting: a sheet that always saves into the first set
+    // would look right until the second one existed
+    // (`docs/face-designer.md`, "Save to set").
+    val sets = OneSet(writable = listOf(OneSet.MINE, OneSet.OTHER))
+    show(d6, sets = sets)
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.saveInto(OneSet.MINE.id)).assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.saveInto(OneSet.OTHER.id)).performClick()
+    compose.onNodeWithTag(DesignerTestTags.saveInto(OneSet.OTHER.id)).assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).performClick()
+
+    assertEquals(OneSet.OTHER.id, sets.into)
+    compose.onNodeWithText("Saved to Props. Roll it now throws the drawing.").assertExists()
+  }
+
+  @Test
   fun `Save to set asks which set, and says which one it went to`() {
     // There is one writable set today and it is a list all the same: what the
     // sheet answers is *which set*, and a screen that answers it by not
@@ -251,16 +270,24 @@ class DesignerSaveScreenTest {
   /** A library with one writable set and no disk behind it. */
   private class OneSet(
     private val answer: SaveResult? = null,
+    override val writable: List<WritableSet> = listOf(MINE),
   ) : DesignerSets {
-    override val writable: List<WritableSet> = listOf(MINE)
+    var into: String? = null
+      private set
 
     override suspend fun save(
       setId: String,
       draft: Draft,
-    ): SaveResult = answer ?: SaveResult.Saved(MINE, "mine:1${draft.die.id}")
+    ): SaveResult {
+      into = setId
+      return answer ?: SaveResult.Saved(writable.first { it.id == setId }, "$setId:1${draft.die.id}")
+    }
 
     companion object {
       val MINE = WritableSet(id = "mine", name = "My dice")
+
+      /** The second personal set the model has not got yet (`docs/TODO.md`, 4.6). */
+      val OTHER = WritableSet(id = "props", name = "Props")
     }
   }
 

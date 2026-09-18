@@ -75,6 +75,18 @@ class DesignerSavingTest {
   }
 
   @Test
+  fun `a die no formula can name is not thrown, with or without a library`() {
+    // The screen does not draw the button at all in this case, so nothing
+    // should ever call this — which is exactly why the presenter has to be
+    // the one that says so rather than trusting the screen to.
+    val thrown = mutableListOf<String>()
+
+    DesignerPresenter(d6).roll(thrown::add)
+
+    assertTrue("something was thrown for a die notation cannot name", thrown.isEmpty())
+  }
+
+  @Test
   fun `a die no formula can name is not thrown by a save that worked`() {
     val sets = OneSet(answer = { SaveResult.Saved(OneSet.MINE, rollable = null) })
     val presenter = DesignerPresenter(d6, sets = sets)
