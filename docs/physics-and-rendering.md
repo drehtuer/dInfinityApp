@@ -65,7 +65,11 @@ Every die is a **convex** rigid body:
   Standard sets use realistic sizes (a d6 of 16 mm) and density (~1.2 g/cm³,
   roughly acrylic).
 - Restitution around 0.3, friction around 0.5. These are tunable per die in
-  the set file within clamped ranges.
+  the set file within clamped ranges. The solver stops applying restitution
+  below 1 unit/s, which is Jolt's own default and a centimetre a second here.
+  It was 150 mm/s for a while, chosen as "about where a die lands and stays" —
+  which it is, and which also gave every contact after the first landing a
+  restitution of exactly zero, so a die bounced once and then dead-dropped.
 - Rounded edges: shapes with sharp corners (d4 especially) get a hull margin of
   3 % of the die's nominal size, so they tumble instead of catching on the
   floor. A share rather than a fixed millimetre, so a die shrunk by the
@@ -337,8 +341,19 @@ spread by a hand nobody can see.
 The second is the solver's own error. At 1/120 s a die travelling a metre a
 second crosses half its own width between collision checks, so two dice are
 first seen already deep inside each other and are pushed apart hard. Resolve
-collision in sub-steps and that stops happening — and the dice pack, because the
-popping apart was doing the spreading.
+collision in sub-steps and that stops happening — and the dice were expected to
+pack, because the popping apart was doing the spreading.
+
+**That expectation has now been measured, and it was too pessimistic.** The
+solver takes two collision steps per simulation step, and on 200 rolls of
+20d20 on the Pixel 10a it costs nothing that shows: no die is left standing on
+another either way, and what it buys is the deepest die-into-die overlap
+falling from 9.9 mm to 6.6 mm and the re-throw share from 3.1 % to 2.8 %. It
+does take 17 % off how far the middle die turns after it lands — 1.72 turns to
+1.43 — which is the packing the old reasoning feared, showing up as less
+tumbling rather than as a heap. The throw buys that back
+("How hard the dice are thrown" below). A step costs 0.37 ms against a budget
+of 8.33.
 
 Both are measured, with numbers, in `docs/TODO.md` (Step 5.5). The point for
 anyone changing this file is that **the correction rate and the overlap depth
@@ -513,6 +528,74 @@ look like a regression in how a shaken roll reads.
   against the gravity of the step, and under a hand that is throwing four
   gravities at the dice only real slams get through ("Impacts, haptics and
   sound").
+
+## How hard the dice are thrown, and how anyone can tell
+
+A roll is only honest if the dice *roll*. `v0.1.1`'s did not: they arrived,
+gripped the felt and stopped, which reads as a number being placed on the
+table rather than thrown onto it.
+
+**Nothing could see it, and that was the real fault.** Every bar the harness
+scored was met by those rolls — they settled fast, never stacked, never ran
+out the cap — because settle time cannot tell a die that tumbled from a die
+that landed flat and slid to a halt. So the measurement came first.
+
+`Tumble` (`simulation/api`) counts how far a die turns **after it first
+touches the table**, in whole turns, and the harness scores the middle die of
+each roll against a floor of one turn — its only target that is a floor rather
+than a ceiling, for the reason above. The spin a die is given in the air is a
+constant somebody chose, so counting that would be marking our own homework;
+what nobody sets directly is how much of it survives the landing. One turn is
+the bar because that is about what it takes to watch a die topple off the face
+it landed on onto the one it is read from.
+
+Like `RollDiagnostics`, it is **a reading and never an input**: nothing it
+computes reaches the solver, so the same seed comes to the same faces whether
+or not anybody is counting turns. A die thrown again starts again, and a die
+that has been read and lifted off stops counting, so one slow neighbour cannot
+make a throw look worse than it was.
+
+**And it is a throw, not a drop.** A die leaves the hand at up to 1100 mm/s
+sideways with 30–75 rad/s of spin, from 60 mm above the floor. Those numbers
+were chosen against the figure above rather than by eye: at the 250 mm/s it
+used to be, a die travelled about 34 mm before it landed — it came down
+roughly where it was let go, with nothing left to turn into tumbling.
+
+**A handful is thrown; a hundred is tipped in.** The sideways speed tapers
+with how many dice are in the tray, from the full throw at one die to a
+quarter of it at the capacity rule's hundred. A tray that is already full has
+no floor to tumble across, and throwing each of a hundred dice at a metre a
+second piles them against a wall: a hundred coins, the flattest shape in the
+catalogue, stacked 28 deep at a bound of 10 before the taper existed.
+
+The taper reads the **count**, not the room in a die's cell, and that was
+measured the wrong way round first. Cell slack sounds like the better
+measure, because it is what actually says whether a die has anywhere to go;
+but twenty d20 have barely a third of a radius of slack each and throw
+perfectly well, so tapering on slack throttled the ordinary roll to under
+half speed and gave back most of the tumbling, while a hundred coins — whose
+slack is a rounding error — stayed stacked either way. What separates the two
+cases is how many dice are in the tray.
+
+Measured on the Pixel 10a, 200 rolls of 20d20, before and after the four
+changes (the throw, the taper, the restitution floor and two collision steps):
+
+| | `v0.1.1` | now |
+| --- | --- | --- |
+| turns after landing (middle die) | 0.89 | 1.52 |
+| deepest die-into-die overlap | 9.02 mm | 5.04 mm |
+| dice re-thrown | 3.20 % | 2.20 % |
+| median settle | 0.78 s | 0.81 s |
+| p99 settle | 1.48 s | 1.47 s |
+| p99 step time | 0.32 ms | 0.37 ms |
+
+Every bar is better than it was or unchanged; the dice simply roll now. The
+two that still fail — the re-throw share and the overlap depth — fail by less
+than they did, and both were failing before any of this.
+
+None of it touches a die that has come to rest. What changed is what a die is
+given *before* it lands and how well the solver resolves what happens after —
+which is the only half of this the app is allowed to work on.
 
 ## Settling and reading the result
 

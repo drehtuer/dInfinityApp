@@ -76,8 +76,7 @@ class Tumble(
   }
 
   /** How far one die turned after it first touched anything, in whole turns. */
-  fun turnsOf(index: Int): Double =
-    if (index in 0 until dieCount) turnedRadians[index] / FULL_TURN else 0.0
+  fun turnsOf(index: Int): Double = if (index in 0 until dieCount) turnedRadians[index] / FULL_TURN else 0.0
 
   /**
    * The middle die's turns, which is what a target is set against.

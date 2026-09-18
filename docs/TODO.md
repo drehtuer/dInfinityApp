@@ -958,7 +958,13 @@ a die fairer than the plastic one in their hand, is not worth a warning
 
 ### 5.4 Collisions
 
-- [ ] **Dice go 9 mm into each other, and the bar is 0.2 mm.** Measured on the Pixel 10a the first time the harness ran: 200 throws of 20 d20s, deepest die–die overlap **9.019 mm** against a target of 0.2, on dice 16 mm across. More than half a die. It is the number the plan asked for and nobody had ever had, and it is almost certainly the same fault as the correction rate below rather than a second one: dice are spawned or corrected into each other and the solver pushes them apart afterwards, which is what a 45 % correction rate looks like from the collision side. Prevention (5.5) is where it is fixed; this is where it is measured
+- [ ] **Dice go 5 mm into each other, and the bar is 0.2 mm.** Measured on the Pixel 10a the first time the harness ran: 200 throws of 20 d20s, deepest die–die overlap **9.019 mm** against a target of 0.2, on dice 16 mm across. More than half a die. It is the number the plan asked for and nobody had ever had, and it is almost certainly the same fault as the correction rate below rather than a second one: dice are spawned or corrected into each other and the solver pushes them apart afterwards, which is what a 45 % correction rate looks like from the collision side. Prevention (5.5) is where it is fixed; this is where it is measured.
+
+      **Updated 2026-09-18: 5.041 mm.** Two collision sub-steps and a throw
+      that tapers with the dice count took it from 9.019, and the correction
+      rate it was attributed to no longer exists — so the remaining depth is
+      the solver's own discrete-detection error and nothing else. Still a
+      factor of twenty-five above the bar
 - [ ] **Done, on the Pixel 10a, and the old check was too kind twice over.**
       `ContainmentTest` asks the tray's own bounds — half a side, not a whole
       one, which is what `JoltBridgeTest` allowed and is twice as far out as the
@@ -1237,6 +1243,17 @@ throws rather than a twelve-second fight with the solver.
       spreading force, and what a sustained sideways shake *should* do to a
       tray of dice is the open question in 5.6 that has to be answered first.
       The numbers above are the starting point; nothing in the code changed
+
+      **Partly overtaken, 2026-09-18.** The bias no longer exists, so the
+      43.55 % correction rate and the "waiting 400 ms" row are history rather
+      than options — the measured rate is 0.000 % because there is no code
+      that could correct a die. **Two collision sub-steps have now shipped**,
+      and the packing this entry feared was measured rather than assumed: at
+      20 d20 it costs 17 % of how far the middle die turns after landing and
+      leaves nothing standing on another die, which the harness's new `turns
+      after landing` row can now see. Deepest overlap is **5.04 mm**, down
+      from 9.019. Four and eight sub-steps remain untried against the throw as
+      it is now, and are the obvious next thing here
 - [ ] Tune prevention (spawn spread and stagger, dice-on-dice friction, throw energy, scale) until the numbers above hold without leaning on corrections. **Where it starts:** 20 d20s at the capacity rule's scale settle in 89–132 steps on the Pixel 10a, with 9 of the 20 corrected, 0–1 re-thrown and **zero** post-rest corrections. The last figure is the one that must stay at zero and does; the correction rate is 45 % against a 0.5 % budget, and bringing it down is what this task is
 - [ ] *Measured, on the Pixel 10a:* 200 throws of 20 d20s, base seed 1. **43.55 %** of dice corrected against a 0.5 % budget, **3.50 %** re-thrown against 0.05 %. What passes on the same run is every honesty bar and every timing one: **zero** dice at rest on another die, **zero** post-rest corrections, zero forced settles, no throw near the twelve-second cap, median settle 0.81 s and p99 1.83 s against 2 s and 4 s, and a p99 step of 1.00 ms against the 8.33 ms a 120 Hz step has. The engine is fast and honest and leans on corrections far too hard, which is what the rest of this section is about
 - [ ] **The corrections are visible at 100 dice, and they look like popcorn.** Seen on the Pixel 10a: dice stack against a wall and then *pop* apart to unstack, and individual dice jump to find a better spot. Every one of those lands while the die is still moving, so the honest rule holds and nothing touches a die at rest — but "it does not cheat" and "it does not look like it cheats" are different claims, and this is the second one failing. It is the 45 %-against-0.5 % correction rate above, seen rather than counted, and it is the argument for prevention over correction rather than a separate task
