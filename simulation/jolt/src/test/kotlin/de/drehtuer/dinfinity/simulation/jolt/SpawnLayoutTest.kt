@@ -174,6 +174,59 @@ class SpawnLayoutTest {
   }
 
   @Test
+  fun `a die thrown again is not dropped on top of a die that is already down`() {
+    // Rung 3 drops a die back on the table, and the dice already down from
+    // earlier throws of the same chain are drawn there with **no bodies** —
+    // so nothing can push them apart and nothing will. A drop point picked
+    // without looking at them is a die falling through one, which is the
+    // picture claiming the physics did something it did not
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    val down =
+      listOf(
+        Vector3(-60.0, 0.0, ADDED_RADIUS_MM),
+        Vector3(0.0, 0.0, ADDED_RADIUS_MM),
+        Vector3(60.0, 0.0, ADDED_RADIUS_MM),
+      )
+    val layout = SpawnLayout(geometry, ADDED_RADIUS_MM, seed = 21L, among = down)
+
+    repeat(ATTEMPTS) { attempt ->
+      val at = layout.rethrowPlacement(index = 0, attempt = attempt).position
+      down.forEach { other ->
+        val gap = hypotenuse(at.x - other.x, at.y - other.y)
+        assertTrue(
+          "attempt $attempt dropped a die thrown again $gap mm from one already down",
+          gap >= 2 * ADDED_RADIUS_MM + ClearSpace.CLEARANCE_MM,
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `two dice thrown again in the same pass are not dropped on the same spot`() {
+    // A pass can throw several dice again at once, and those dice *do* have
+    // bodies — two dropped on one patch of floor start inside each other and
+    // the solver spends the throw shoving them apart, which is where the
+    // die-into-die overlap comes from (`docs/TODO.md`, Step 5.4). Each one
+    // makes room for the ones after it, exactly as a round an explosion owes
+    // does ([SpawnLayout.rethrowPlacement]).
+    val layout = SpawnLayout(geometry, ADDED_RADIUS_MM, seed = 34L)
+    val placed = mutableListOf<Vector3>()
+
+    repeat(A_PASS) { index ->
+      val at = layout.rethrowPlacement(index = index, attempt = 0, clearOf = placed).position
+      placed.forEach { other ->
+        val gap = hypotenuse(at.x - other.x, at.y - other.y)
+        assertTrue(
+          "die $index of one pass was thrown again $gap mm from another of the same pass",
+          gap >= 2 * ADDED_RADIUS_MM + ClearSpace.CLEARANCE_MM,
+        )
+      }
+      placed += at
+    }
+  }
+
+  @Test
   fun `a die an explosion adds is dropped, not hurled across the tray`() {
     // The same throw a re-thrown die gets, for the same reason: a die that
     // travels is a die that arrives somewhere nobody made room for.
@@ -246,6 +299,12 @@ class SpawnLayoutTest {
 
     /** A 16 mm d6's, which is what an exploding `8d6!` actually adds. */
     const val ADDED_RADIUS_MM = 8.0
+
+    /** Enough re-throws that a drop point chosen blind would land on something. */
+    const val ATTEMPTS = 50
+
+    /** A pass that throws a tray's worth of dice again at once. */
+    const val A_PASS = 20
 
     val COUNTS = listOf(1, 2, 5, 8, 20, 40, 60, TableCapacity.MAX_DICE)
   }

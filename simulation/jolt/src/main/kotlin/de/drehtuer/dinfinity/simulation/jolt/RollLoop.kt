@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Tumble
+import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
  * One roll, from the first step to the reading — the correction ladder made
@@ -506,8 +507,15 @@ class RollLoop(
         world.remove(index)
       }
     }
+    // And each die this pass throws again makes room for the ones after it.
+    // They are dropped together, into the same tray, and two of them aimed at
+    // the same patch of floor start inside each other — which is a heap made
+    // by the mechanism that exists to clear one.
+    val placed = mutableListOf<Vector3>()
     throwAgain.forEach { index ->
-      world.respawn(index, layout.rethrowPlacement(index, rethrowCount[index]))
+      val placement = layout.rethrowPlacement(index, rethrowCount[index], placed)
+      placed += placement.position
+      world.respawn(index, placement)
       // The speed it has the moment after this is the re-throw rather than a
       // contact, and a sound for the app's own hand is the one noise a player
       // must never hear.
