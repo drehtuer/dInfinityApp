@@ -8,6 +8,8 @@ import de.drehtuer.dinfinity.simulation.api.cross
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.absoluteValue
+import kotlin.math.hypot
 
 /**
  * Putting the canvas on the face it was drawn for (`FaceOnSolid`).
@@ -167,6 +169,96 @@ class FaceOnSolidTest {
     )
   }
 
+  @Test
+  fun `a cell fit puts the outline on the polygon the mesh samples`() {
+    // The exporter's half of the same answer, and the one that was missing.
+    // A cell is sampled in the face's own frame, so this is the check that a
+    // drawing masked into the canvas's outline is painted where the die will
+    // look for it (`FaceOnSolid.cellFitOf`).
+    REGULAR.forEach { shape ->
+      val outline = FaceOutline.of(shape)
+      SolidFaces.of(shape).forEach { face ->
+        val fit = FaceOnSolid.cellFitOf(face, outline)
+        val landed = FaceShapes.corners(outline).map(fit::of)
+        val wanted = face.corners.map(face::cellOf)
+        landed.forEach { corner ->
+          assertTrue(
+            "${shape.id} face ${face.index} paints a corner at $corner, which is not one of $wanted",
+            wanted.any { away(it, corner) < NEARLY },
+          )
+        }
+      }
+    }
+  }
+
+  @Test
+  fun `and covers every face, kites included`() {
+    // A kite is the one outline that is not the face's own shape, so no turn
+    // and no size lands it exactly. What it must still do is *cover*: a mask
+    // that falls short leaves bare resin round the edge of the face with the
+    // printed label showing through it, which is the fault a device session
+    // reported as "does not show the face colour".
+    DieShape.entries.forEach { shape ->
+      val outline = FaceOutline.of(shape)
+      val canvas = FaceShapes.corners(outline)
+      if (canvas.isEmpty()) return@forEach
+      SolidFaces.of(shape).forEach { face ->
+        val fit = FaceOnSolid.cellFitOf(face, outline)
+        val mask = canvas.map(fit::of)
+        face.corners.forEach { corner ->
+          val (u, v) = face.cellOf(corner)
+          assertTrue(
+            "${shape.id} face ${face.index} shows $u,$v and the mask $mask does not cover it",
+            Polygon.contains(mask, Dot(u.toFloat(), v.toFloat())) || onEdgeOf(mask, Dot(u.toFloat(), v.toFloat())),
+          )
+        }
+      }
+    }
+  }
+
+  @Test
+  fun `a canvas with no corners is copied into its cell as it is`() {
+    // The disc, whose circle is the cell's circle whichever way the face is
+    // turned — so there is nothing to turn it by and nothing to grow it by.
+    val face = SolidFaces.of(DieShape.Coin).first()
+
+    val fit = FaceOnSolid.cellFitOf(face, FaceOutline.Circle)
+
+    assertEquals(CellFit.SQUARE_ON, fit)
+    assertEquals(Dot(0.25f, 0.75f), fit.of(Dot(0.25f, 0.75f)))
+  }
+
+  @Test
+  fun `a fit that turns nothing still grows the canvas onto the cell`() {
+    // A d6's square is upright already, so the whole of its fit is the size:
+    // the canvas draws its outline at 0.48 of the canvas and the cell's own
+    // half is 0.5, which is the thin bare rim every shape used to have.
+    val face = SolidFaces.of(DieShape.Cube).first()
+
+    val fit = FaceOnSolid.cellFitOf(face, FaceOutline.Square)
+
+    assertEquals(0.0, fit.twist, NEARLY)
+    assertEquals(1 / 0.96, fit.scale, NEARLY)
+  }
+
+  /** How far a place in a cell is from a point on the canvas put into one. */
+  private fun away(
+    place: Pair<Double, Double>,
+    point: Dot,
+  ): Double = hypot(place.first - point.x, place.second - point.y)
+
+  /** Whether [point] is on the boundary of [mask], which "inside" does not count. */
+  private fun onEdgeOf(
+    mask: List<Dot>,
+    point: Dot,
+  ): Boolean =
+    mask.indices.any { at ->
+      val from = mask[at]
+      val to = mask[(at + 1) % mask.size]
+      val cross = (to.x - from.x) * (point.y - from.y) - (to.y - from.y) * (point.x - from.x)
+      cross.absoluteValue < ON_THE_LINE
+    }
+
   /** Which corner of [face] is nearest [point]. */
   private fun nearestTo(
     face: SolidFace,
@@ -178,6 +270,15 @@ class FaceOnSolidTest {
 
     /** Close enough to be the same point on a solid one unit across. */
     const val NEARLY = 1e-6
+
+    /**
+     * How near the boundary of a mask counts as on it.
+     *
+     * A corner of the face lands exactly on a corner of the mask wherever
+     * the two are the same shape, and "exactly" in doubles is a few parts in
+     * a million of a cell after a turn and a divide.
+     */
+    const val ON_THE_LINE = 1e-6
 
     /**
      * How nearly a corner may line up with the canvas's own up before the face
