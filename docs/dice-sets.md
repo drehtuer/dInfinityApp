@@ -248,6 +248,15 @@ value at each end of that edge, because the value belongs to the corner rather
 than to either face. An author who draws them differently has drawn a die that
 reads as two different numbers depending on which way you look at it.
 
+**Which corner of a cell is which corner of the die is geometry, not index
+arithmetic.** The three corners cell *i* carries are the three that are not
+*i*, but the order they are numbered in is not the order they go round the
+triangle, so anything that hands them to the three corners of a cell as they
+come is right about one of the six edges. `simulation/api` answers it once —
+`SolidFace.cornerReads` names the readable position each corner of the real
+polygon is — and the tray's printed numbers and the face designer's guide both
+read that answer rather than working it out (`docs/face-designer.md`).
+
 **Face order.** Faces are numbered from the top of the shape's reference
 orientation downwards, and anticlockwise around each ring starting from the
 `+x` side; face 0 is the one that is up when the die has not been turned. That

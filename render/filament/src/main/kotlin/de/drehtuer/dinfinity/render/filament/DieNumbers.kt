@@ -11,8 +11,6 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.FaceRead
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
-import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
  * What is printed on a die that has no artwork
@@ -163,6 +161,12 @@ object DieNumbers {
    * on all three faces a player can see, and two faces sharing an edge agree
    * along it — which is what makes the reading unambiguous rather than a
    * convention somebody has to know.
+   *
+   * *Which* corner a corner is comes off the mesh
+   * ([MeshFace.reads]), which got it from `simulation/api`, which is also
+   * where the face designer's guide gets it: one derivation from the solid, so
+   * a printed d4 and a drawn one cannot number the same corner differently
+   * (`docs/architecture.md`, decision 35).
    */
   private fun corners(
     die: Die,
@@ -172,12 +176,10 @@ object DieNumbers {
     face: Typeface,
   ): List<Mark> {
     val surface = mesh.faces.first { it.index == index }
-    val directions = ShapeGeometry.directionsOf(die.shape).map(Vector3::normalised)
     val cell = ShapeAtlas.cellOf(die.shape, index)
     val (column, row) = cell
     val corners = FaceRoom.cornersOf(surface, grid, cell)
-    return surface.positions.mapIndexedNotNull { corner, position ->
-      val at = nearest(directions, position.normalised())
+    return surface.reads.mapIndexedNotNull { corner, at ->
       val uv = surface.uvs[corner]
       val text = textOf(die.faces[at])
       // The corner in this cell's own coordinates, which is what a placement
@@ -192,12 +194,6 @@ object DieNumbers {
         )?.let { Mark(text = text, placement = it) }
     }
   }
-
-  /** Which of [directions] [position] is, by the only measure a unit solid has. */
-  private fun nearest(
-    directions: List<Vector3>,
-    position: Vector3,
-  ): Int = directions.indices.minBy { (directions[it] - position).length }
 
   /**
    * What a face is printed with: its label, or its value when the built-in

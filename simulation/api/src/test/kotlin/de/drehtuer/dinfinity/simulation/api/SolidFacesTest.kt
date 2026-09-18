@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.core.model.FaceRead
 import kotlin.math.hypot
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
@@ -74,6 +75,65 @@ class SolidFacesTest {
         "the corner a d4 is read from is one of the corners of its own cell",
       )
     }
+  }
+
+  @Test
+  fun `a vertex-read solid says which corner each corner of a cell is`() {
+    // The one answer the tray prints a d4's numbers from and the face
+    // designer draws its guide from. It has to be the corner the polygon
+    // actually has there — not the face's index arithmetic, which agrees with
+    // the solid on one edge in six (`docs/face-designer.md`, "The d4").
+    val corners = ShapeGeometry.verticesOf(DieShape.Tetrahedron)
+
+    SolidFaces.of(DieShape.Tetrahedron).forEach { face ->
+      assertEquals(face.corners.size, face.cornerReads.size, "cell ${face.index} does not read every corner")
+      face.corners.forEachIndexed { corner, position ->
+        assertTrue(
+          position.approximates(corners[face.cornerReads[corner]], TOLERANCE),
+          "cell ${face.index} calls its corner $corner position ${face.cornerReads[corner]}, which it is not",
+        )
+      }
+      assertEquals(
+        (corners.indices - face.index).toSet(),
+        face.cornerReads.toSet(),
+        "cell ${face.index} does not carry the three corners that are not its own",
+      )
+    }
+  }
+
+  @Test
+  fun `two cells of a d4 sharing an edge call its ends the same two corners`() {
+    // Which is the whole of the rule, and why it is derived here rather than
+    // twice over: they are the same two corners of one solid.
+    val faces = SolidFaces.of(DieShape.Tetrahedron)
+
+    faces.forEach { one ->
+      faces.filter { it.index > one.index }.forEach { other ->
+        assertEquals(
+          2,
+          (one.cornerReads.toSet() intersect other.cornerReads.toSet()).size,
+          "cells ${one.index} and ${other.index} do not meet along an edge",
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `a face-read solid reads nothing from its corners`() {
+    // A cube's corner is exactly as far from three of its faces, so there is
+    // no answer and none is offered — an arbitrary one would be worse.
+    DieShape.entries.filter { it.naturalRead == FaceRead.FaceUp }.forEach { shape ->
+      SolidFaces.of(shape).forEach { face ->
+        assertTrue(face.cornerReads.isEmpty(), "${shape.id} face ${face.index} claims to read from its corners")
+      }
+    }
+  }
+
+  @Test
+  fun `a face reads one position per corner or none at all`() {
+    val face = SolidFaces.of(DieShape.Cube).first()
+
+    assertFailsWith<IllegalArgumentException> { face.copy(cornerReads = listOf(0)) }
   }
 
   @Test

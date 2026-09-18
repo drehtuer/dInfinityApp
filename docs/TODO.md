@@ -478,9 +478,10 @@ over?" question unnecessary and it is gone: changing die no longer loses
 anything. **Roll it** hands the tray the die being drawn — the die as its set
 defines it, since nothing puts an atlas on one yet, and absent rather than dead
 for a die plain notation cannot name (decision 31). The d4's
-three-numbers-per-corner rule is **derived rather than checked** — a cell's
-numbers are read from the corners it meets, so two cells sharing an edge cannot
-be made to disagree along it.
+three-numbers-per-corner rule is **derived rather than checked**, and derived
+from the solid: `SolidFaces` names the readable position each corner of a cell
+is, and the guide, the stamp and the tray all read that one answer, so two
+cells sharing an edge cannot be made to disagree along it.
 
 **The export is built.** A drawing becomes an atlas at 256 px per cell in the
 shape catalogue's own grid, with the cells nobody drew on left out so they stay
@@ -529,7 +530,11 @@ the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
       The Solid tab shows the drawing the canvas's way and says so; which of
       the two should move is the open question, and it is not a small one —
       changing the atlas's rule repaints every die of every set ever published
-      (`docs/dice-sets.md`, "Up is `+z`")
+      (`docs/dice-sets.md`, "Up is `+z`"). **The d4's corner numbers are not
+      part of this any more**: which corner of a cell carries which number is
+      read off the solid and is right whatever the turn works out to be
+      (`docs/face-designer.md`, "The d4 rule is derived, not checked"). What
+      is left here is the turn of the *drawing*
 - [ ] **Whether the Solid tab should draw pen strokes too**, as thin filled
       outlines rather than as lines of a width. What it costs is a stroke
       turned into a polygon per mark per face per frame; what it buys is a

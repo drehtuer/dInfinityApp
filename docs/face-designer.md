@@ -25,7 +25,9 @@ installed by other users like any other set.
    **A d4 is the exception and needs three guides, not one.** Its numbers
    belong to corners rather than to faces, so each of its four triangles
    carries the values of its three corners, one at each corner of the canvas
-   (`docs/dice-sets.md`, "The d4"). The guide shows all three in place, and
+   (`docs/dice-sets.md`, "The d4"). Which corner of the canvas carries which
+   of the three is read off the solid rather than off the face order ("The d4
+   rule is derived, not checked"). The guide shows all three in place, and
    the two triangles sharing an edge have to agree along it — a die drawn
    otherwise reads as a different number depending on which way it is looked
    at, which the designer should make hard to do by accident rather than
@@ -75,10 +77,21 @@ strip. Each of them is arithmetic over the stored vectors and lives in
 `designer/` where a plain test can reach it; what is left in the screen is a
 path and a mask.
 
-**The d4 rule is derived, not checked.** A cell's three numbers are read from
-the three corners that cell meets, so two cells sharing an edge draw the same
-value at each end of it because they are reading the same corner. There is no
-second copy to disagree with and so nothing to warn about.
+**The d4 rule is derived, not checked — and derived from the solid.** A cell's
+three numbers are read from the three corners that cell meets, and *which of
+them goes at which corner of the canvas* is asked of `simulation/api`:
+`SolidFaces` says which corner of the real triangle is which readable position
+(`SolidFace.cornerReads`) and where that corner lands in the cell, and the
+guide, the stamp and the tray's own printed numbers all come from that one
+answer. Two cells sharing an edge are asking about the same two corners of one
+tetrahedron, so they draw the same value at each end of it; there is no second
+copy to disagree with and so nothing to warn about.
+
+It was derived from the *face order* until v0.1.2 — the three face indices that
+are not this cell's, handed to the three corners of the canvas as they came —
+which is a rule about arithmetic rather than about a tetrahedron. It agrees
+with the solid on one edge in six, so a d4 drawn from the guide met its
+neighbour's number along one edge and two strangers along the other five.
 
 **Changing the base die changes the drawing, and keeps both.** A different die
 has different faces, a different number of them, and different values under the
@@ -275,10 +288,11 @@ what the button on this screen has ever meant.
 
 **A d4 gets three, one at each corner**, each turned to face its own corner,
 because its values belong to corners rather than to faces (`docs/dice-sets.md`,
-"The d4"). They land exactly where the guide already showed them: how far in
-from the corner a number sits is one number in `core/glyphs`, and the guide and
-the stamp both read it, so tracing the guide and stamping the number cannot
-come out in two places.
+"The d4"). They land exactly where the guide already showed them: which corner
+carries which number is `SolidFaces`' one answer and how far in from the corner
+a number sits is one number in `core/glyphs`, and the guide and the stamp both
+read both, so tracing the guide and stamping the number cannot come out in two
+places.
 
 A face an author left blank stays blank, and a face whose label the font cannot
 draw gets its **value** — the one thing about a face the app can always write
