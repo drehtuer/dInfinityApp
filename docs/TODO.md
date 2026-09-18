@@ -124,7 +124,10 @@ is drawn over the table"):
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
 
-- [ ] **The plates are a stack at the bottom, and on a phone that is a wall.**
+- [ ] **The rest of the plates are a stack at the bottom, and on a phone that
+      is most of a wall.** The formula has moved to the corner the design puts
+      it in and the felt is clear again above the controls; what is left below
+      is the saved rolls, the picker and the Roll button.
       Seen on the Pixel 10a with the straight-down table view: the result, the
       odds, the saved rolls, the picker and the button are five plates one
       above another, and between them they cover something like half the felt —
