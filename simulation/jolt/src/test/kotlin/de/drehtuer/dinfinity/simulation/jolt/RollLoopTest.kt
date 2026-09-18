@@ -12,6 +12,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -430,14 +431,56 @@ class RollLoopTest {
     // spec goes into the world empty and the moments arrive afterwards. What
     // the roll is reproducible from is this, and nothing above the loop is in a
     // position to collect it (`docs/physics-and-rendering.md`, "Shake input").
+    //
+    // The moments are numbered on the *world's* clock, not on the sensor's:
+    // the numbers below are deliberately nothing like the steps they arrive
+    // for, and the record still says which step each one drove
+    // (`ShakeDriver.add`).
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
     val loop = loop(listOf(StandardDice.d6), world)
-    val hand = List(3) { ShakeSample(it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
+    val hand = List(3) { ShakeSample(SENSOR_NUMBERING + it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
 
-    hand.forEach(loop::shake)
+    hand.forEach { moment ->
+      loop.shake(moment)
+      loop.advance()
+    }
     loop.run()
 
-    assertEquals(hand, loop.drivenBy)
+    assertEquals(listOf(0, 1, 2), loop.drivenBy.map(ShakeSample::stepIndex))
+    assertEquals(
+      hand.map(ShakeSample::accelerationMmPerSecond2),
+      loop.drivenBy.map(ShakeSample::accelerationMmPerSecond2),
+    )
+  }
+
+  @Test
+  fun `several readings before a single step are one step's worth of gravity`() {
+    // Sensors outrun 120 Hz, and a paced roll steps slower still. A step has
+    // one gravity, so what the record keeps is the reading that drove it.
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    val loop = loop(listOf(StandardDice.d6), world)
+
+    List(3) { ShakeSample(SENSOR_NUMBERING + it, Vector3(6_000.0, 0.0, 0.0), DOWN) }.forEach(loop::shake)
+    loop.run()
+
+    assertEquals(listOf(0), loop.drivenBy.map(ShakeSample::stepIndex))
+  }
+
+  @Test
+  fun `a roll is driven while a hand is on it and watched once it lets go`() {
+    // The boundary the pace is applied at, and it is the same question the
+    // loop asks before it lets a roll end
+    // (`de.drehtuer.dinfinity.simulation.api.RollPace`).
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(listOf(StandardDice.d6), world)
+
+    assertFalse("a tap-to-roll throw has no hand on it", loop.driven)
+
+    loop.shake(ShakeSample(SENSOR_NUMBERING, Vector3(6_000.0, 0.0, 0.0), DOWN))
+    assertTrue("the hand did not reach the roll", loop.driven)
+
+    repeat(ShakeDriver.HOLD_STEPS + 1) { loop.advance() }
+    assertFalse("the hand was let go and the roll is still being driven", loop.driven)
   }
 
   @Test
@@ -549,6 +592,9 @@ class RollLoopTest {
 
     /** Straight down, as the gyroscope reports it: a direction, not a magnitude. */
     val DOWN = Vector3(0.0, 0.0, -1.0)
+
+    /** A step index off the sensor's own clock, unlike any the world will take. */
+    const val SENSOR_NUMBERING = 500
     const val TROUBLE_STEPS = 12
   }
 }

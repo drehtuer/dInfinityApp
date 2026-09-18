@@ -139,8 +139,24 @@ class RollLoop(
    * rest ([ShakeDriver]).
    */
   fun shake(sample: ShakeSample) {
-    shake.add(sample)
+    shake.add(sample, atStep = tracker.stepsTaken)
   }
+
+  /**
+   * True while a hand is throwing these dice, rather than a player watching
+   * them (`docs/physics-and-rendering.md`, "The simulation clock").
+   *
+   * The same question [nothingLeftToStep] asks before the roll is allowed to
+   * end, and deliberately the same one: the part of a roll that may not be
+   * declared over because the hand is still on it is exactly the part that may
+   * not be slowed down for somebody to look at
+   * ([de.drehtuer.dinfinity.simulation.api.RollPace]).
+   *
+   * False for a tap-to-roll throw from its first step, because nobody is
+   * driving one at all — and false again a tenth of a second after the last
+   * sample of a shake, which is where watching begins.
+   */
+  val driven: Boolean get() = shake.stillShaking(tracker.stepsTaken)
 
   /** True once the roll has taken longer than a roll should ([SettleRule.HARD_CAP_SECONDS]). */
   val outOfTime: Boolean get() = tracker.outOfTime()

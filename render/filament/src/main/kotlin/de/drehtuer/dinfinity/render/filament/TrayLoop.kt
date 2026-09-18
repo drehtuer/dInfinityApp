@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DebugWatch
 import de.drehtuer.dinfinity.simulation.api.Impacts
+import de.drehtuer.dinfinity.simulation.api.RollPace
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -19,7 +20,7 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * a JVM. [TrayDriver] is the thread and the surface it runs on, and is the
  * only part that needs a device (`docs/architecture.md`, decision 40).
  *
- * Two rules are worth naming because they are easy to get subtly wrong and
+ * Three rules are worth naming because they are easy to get subtly wrong and
  * impossible to notice afterwards:
  *
  * - **A surface coming or going never touches the roll.** A new stage is given
@@ -29,6 +30,12 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  *   before it to measure against, and measuring from zero would hand the clock
  *   however long the device has been awake — spending the whole catch-up
  *   budget on frame one and starting the roll a fifth of a second in.
+ * - **A frame the player is only watching is worth less than it took.** This
+ *   is where real time becomes simulated time, so this is where the roll is
+ *   paced out over enough wall clock to be watched
+ *   ([RollPace]) — and where it is not, while a hand is still throwing the
+ *   dice. It changes no step, no order and no face; it changes when the steps
+ *   are asked for (`docs/physics-and-rendering.md`, "The simulation clock").
  *
  * Not thread-safe: one thread owns a roll, and [TrayDriver] is the thread that
  * does (`docs/architecture.md`, "Threading").
@@ -261,6 +268,10 @@ class TrayLoop(
    * finished is left on screen exactly as it finished: the dice have stopped
    * and nothing may touch them, so there is nothing left to draw
    * (`.claude/CLAUDE.md`).
+   *
+   * How much of the frame the roll is given is [RollPace]'s answer, not the
+   * clock's: all of it while a hand is driving the throw, a fraction of it
+   * while the player is watching one land.
    */
   fun frame(nanos: Long): Boolean {
     val live = roll
@@ -281,7 +292,15 @@ class TrayLoop(
       return wantsFrames
     }
 
-    live.advance(secondsSince(nanos))
+    // **Here is the whole of the pacing, and here is why it is here.** This is
+    // the one place in the app where real time becomes simulated time, so it
+    // is the only place that can spend less of the first than it is given.
+    // Power-saving mode has no frames and never passes through this line, so
+    // it cannot be paced by accident — which is a stronger promise than a flag
+    // somebody has to remember to clear (`PowerSavingTray`). The clock itself
+    // stays [secondsSince]'s, which the falling board on the other branch of
+    // this frame uses too.
+    live.advance(RollPace.secondsFor(secondsSince(nanos), live.driven))
     hear(live)
     watch(live)
     count(live)

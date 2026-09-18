@@ -104,36 +104,59 @@ class ShakeDriver(
    * "Shake input").
    *
    * It is a question about the *record*, so it answers the same during a live
-   * roll and during a replay of one: the samples always run ahead of the step
-   * the world is on, so both see the same ones by the time they are asked.
+   * roll and during a replay of one: a live sample is filed on the step the
+   * world is about to take ([add]), and a replayed one on the step it drove
+   * the first time, which is the same step.
    */
   fun stillShaking(step: Int): Boolean = !isStill && step <= lastSampleStep + HOLD_STEPS
 
   /**
-   * Takes one more moment of a shake that is still happening.
+   * Takes one more moment of a shake that is still happening, and puts it on
+   * the next step the world will take.
    *
    * The dice are spawned when the shake begins, so most of a shake arrives
-   * *after* the roll has started and has to reach it as it comes. Each sample
-   * carries the step it belongs to, counted from the start of the shake by
-   * `ShakeRecorder` — and because the frame clock never runs the simulation
-   * faster than real time, the step a sample names is always still ahead of
-   * the step the world is on. So a sample is in place before it is needed, and
-   * the same record replayed afterwards drives exactly the same steps
-   * (`docs/physics-and-rendering.md`, "Shake input").
+   * *after* the roll has started and has to reach it as it comes. The step
+   * index a live sample carries is `ShakeRecorder`'s, counted in wall-clock
+   * milliseconds from the start of the shake — and **that is a different clock
+   * from the world's step counter.** They ran together while a watched roll
+   * was stepped at real time; they do not once it is paced
+   * ([de.drehtuer.dinfinity.simulation.api.RollPace]), and they never quite
+   * did while a frame was late enough to drop steps
+   * ([de.drehtuer.dinfinity.simulation.api.FrameClock.droppedSteps]).
+   *
+   * So a live sample is not filed under the step its own clock names. It is
+   * filed under [atStep], the step the world is about to take, which is the
+   * only meaning "the hand is doing this *now*" can have to a simulation. A
+   * sample kept at a step the world passed a second ago drives nothing at all,
+   * which is what shaking a phone at tumbling dice used to do
+   * (`docs/physics-and-rendering.md`, "Shake input"); one kept at a step the
+   * world will not reach for a second arrives a second late, which is what
+   * pacing would otherwise have made of a second shake.
+   *
+   * The sample is **rewritten** to the step it was filed under rather than
+   * merely stored there, so [recorded] is a record that replays: the record of
+   * a throw is what actually drove it, not what came off the sensors.
    *
    * A sample for a step already held replaces it: sensors deliver faster than
    * 120 Hz and a step has one gravity.
    *
    * A sample past [ShakeSample.MAX_RECORDED] is dropped rather than kept. The
-   * roll is force-settled at the twelve-second cap, so that sample names a
-   * step that will never be taken; keeping it would let a hand that goes on
-   * shaking grow this map — and the record handed out with the result — for as
-   * long as it liked.
+   * roll is given up at the twelve-second cap, so that sample names a step
+   * that will never be taken; keeping it would let a hand that goes on shaking
+   * grow this map — and the record handed out with the result — for as long as
+   * it liked.
+   *
+   * @param atStep the next step the world will take, which the caller knows
+   *   and this does not: a driver has no clock, by design.
    */
-  fun add(sample: ShakeSample) {
-    if (!sample.drivesAStep) return
-    byStep[sample.stepIndex] = sample
-    lastSampleStep = maxOf(lastSampleStep, sample.stepIndex)
+  fun add(
+    sample: ShakeSample,
+    atStep: Int,
+  ) {
+    val placed = sample.copy(stepIndex = atStep)
+    if (!placed.drivesAStep) return
+    byStep[atStep] = placed
+    lastSampleStep = maxOf(lastSampleStep, atStep)
   }
 
   /**
