@@ -1567,14 +1567,21 @@ world, so the capacity rule is unchanged.
   surface nothing draws to: a surface is a buffer the compositor keeps, and
   what this mode claims is that none of it exists. `PowerSavingTray` is the
   other implementation of `Tray`, and there is no Filament type in it.
-- **Nothing says so on the screen, and it should.** The prototype has a panel
-  for this mode — grey, with "Power-saving mode" over "Same physics, no
-  rendering. The result is identical to what the tray would show."
-  (`design/dInfinityPhone.dc.html`). The app draws neither the panel nor
-  anything in its place, so what a player sees is an empty tray and a total
-  arriving from nowhere, which is indistinguishable from a renderer that has
-  failed. The first device session mistook it for exactly that
-  (`docs/design-handover.md`, "Four the pass did not reach").
+- **It says so, where the table would be.** A grey panel with "Power-saving
+  mode" over "Same physics, no rendering. The result is identical to what the
+  tray would show." — the prototype's panel and the prototype's words
+  (`design/dInfinityPhone.dc.html`, option `1z`). It has to be said, because
+  the alternative was an empty screen with a total arriving on it, which is
+  indistinguishable from a renderer that has failed: the first device session
+  spent twenty minutes believing that was what it was looking at.
+
+  The sentence that matters is the second one. A player who thinks this mode is
+  a cheaper *kind* of roll is a player who will not use it, and the whole claim
+  of the mode is that the number is the same one the pictures would have shown.
+
+  It is not a plate. A plate is a ground for a control drawn **over** the
+  table; this stands **instead of** it, which is why it fills the space the
+  tray would and carries the tray's own grey rather than the page's colour.
 - The simulation runs on a worker thread as fast as possible, still at
   the same fixed timestep, still with the same seed, correction logic and
   settle rules. Typical roll finishes in well under 100 ms of wall time.

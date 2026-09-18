@@ -191,6 +191,24 @@ class RollScreenTest {
   }
 
   @Test
+  fun `and it says so, rather than leaving a blank where the table was`() {
+    // The fault this is the fix for: no surface, no panel, and a total
+    // arriving on an empty screen — which is what a renderer that has failed
+    // looks like, and what the first session on a phone spent twenty minutes
+    // believing it was looking at (`docs/physics-and-rendering.md`).
+    compose.setContent { RollScreen(presenter = presenter(UndrawnTray(), LandingRolls(mapOf(0 to 0)))) }
+
+    compose.onNodeWithTag(RollTestTags.POWER_SAVING).assertExists()
+  }
+
+  @Test
+  fun `a tray that draws needs no notice that it is not drawing`() {
+    compose.setContent { RollScreen(presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0)))) }
+
+    compose.onNodeWithTag(RollTestTags.POWER_SAVING).assertDoesNotExist()
+  }
+
+  @Test
   fun `while the dice are being read the screen says how far it has got`() {
     // The dice leave the table as they are counted, so the count and the range
     // are what a player follows instead of them (`docs/TODO.md`, Step 5.5).

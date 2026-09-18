@@ -59,16 +59,6 @@ One section per screen. Each is a vertical slice: state, UI, tests, and the
 device check it needs. The design option ids (`1a`, `9c`, …) are the labels on
 the canvas — open [design/](../design/) beside the code.
 
-- [ ] **Power-saving mode says nothing, and reads as a broken renderer.** The
-      prototype has a panel for it — grey, "Power-saving mode" over "Same
-      physics, no rendering. The result is identical to what the tray would
-      show." The app draws no panel and no surface, so a player sees empty felt
-      and a total arriving from nowhere. The first device session lost twenty
-      minutes to it, convinced Filament had failed, and it is the clearest case
-      of the prototype being right and the app simply not having built it
-      (`docs/design-handover.md`, "Four the pass did not reach"). The mode is read
-      when the screen opens, so the screen already knows.
-
 Every screen follows the same four steps, so they are written out once here
 rather than repeated below:
 

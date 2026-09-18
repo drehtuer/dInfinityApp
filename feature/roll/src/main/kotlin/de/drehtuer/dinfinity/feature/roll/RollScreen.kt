@@ -141,6 +141,11 @@ fun RollScreen(
         // (`docs/architecture.md`, "Accessibility").
         describing = TrayReading.of(presenter.state).spoken(),
       )
+    } else {
+      // And when there is no surface, something has to say so: an empty
+      // screen with a total arriving on it is what a broken renderer looks
+      // like ([PowerSavingPanel]).
+      PowerSavingPanel()
     }
 
     Controls(
@@ -622,6 +627,9 @@ private fun ThrowButton(
 object RollTestTags {
   const val SCREEN: String = "roll:screen"
   const val TRAY: String = "roll:tray"
+
+  /** What stands where the tray would be when the pictures are off. */
+  const val POWER_SAVING: String = "roll:power-saving"
 
   /**
    * The formula field and its squiggle, which are `ui/common`'s and shared

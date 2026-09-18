@@ -164,6 +164,9 @@
     <item quantity="other">Dice tray, %1$d dice down, shake again for the one they earned</item>
   </plurals>
   <string name="roll_tray_settled">Dice tray, the dice have landed on %1$d</string>
+  <!-- The panel that stands where the tray would be when the pictures are off. -->
+  <string name="roll_power_saving">Power-saving mode</string>
+  <string name="roll_power_saving_same">Same physics, no rendering. The result is identical to what the tray would show.</string>
   <string name="roll_debug_overlay">Debug overlay</string>
   <!-- The plan of the tray: how many dice, and how many in each of the three states. -->
   <plurals name="roll_debug_plan">

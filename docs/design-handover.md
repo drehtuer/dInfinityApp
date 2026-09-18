@@ -51,15 +51,8 @@ its true shape, and whether an oversized stamp on a d4 shrinks to fit.
    each refusal a typed reason the screen phrases is a design change as much as
    a code one, and it is what translation waits on.
 
-### Four the pass did not reach
+### Three the pass did not reach
 
-- **Power-saving mode still draws nothing.** The prototype has a panel — grey,
-  "Power-saving mode" over "Same physics, no rendering. The result is identical
-  to what the tray would show." The app puts no surface on the screen and adds
-  no panel, so a player sees an empty tray and a number arriving from nowhere.
-  The first device session lost twenty minutes to it, convinced the renderer
-  had failed. **It is the clearest case of the prototype being right and the
-  app simply not having built it** (`docs/physics-and-rendering.md`).
 - **The table picker is a list of rows**, where the prototype `1u` is a
   two-column grid of cards. Deliberate — a row fits a 44 × 64 dp thumbnail and
   a name at a touch target worth pressing — but a real divergence, and a card
