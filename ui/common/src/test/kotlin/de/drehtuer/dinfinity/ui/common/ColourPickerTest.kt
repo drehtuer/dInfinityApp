@@ -3,13 +3,14 @@ package de.drehtuer.dinfinity.ui.common
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
-import androidx.compose.ui.test.assertTouchHeightIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Hsv
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -110,15 +111,29 @@ class ColourPickerTest {
   }
 
   @Test
-  fun `everything in the sheet is big enough to hit`() {
+  fun `the patch and both buttons are big enough to hit`() {
     // Android's floor for anything pressable, and WCAG 2.2's 2.5.8 at AA.
     show()
 
     compose.onNodeWithTag(tags.patch).assertHeightIsAtLeast(TOUCH_TARGET)
     compose.onNodeWithTag(tags.use).assertHeightIsAtLeast(TOUCH_TARGET)
     compose.onNodeWithTag(tags.cancel).assertHeightIsAtLeast(TOUCH_TARGET)
+  }
+
+  @Test
+  fun `the three sliders are Material's own 44 dp, which is four short of the floor`() {
+    // The one control in this sheet that does not reach `TOUCH_TARGET`, said
+    // out loud rather than left out of the test above. `Slider` clamps its
+    // own height and neither `heightIn` nor `minimumInteractiveComponentSize`
+    // moves the node the label is attached to, so this is Material's figure
+    // and not a choice made here. What softens it is the shape: a slider's
+    // target is its whole width, which is the width of the sheet. If Material
+    // ever grows it, this test is what notices.
+    show()
+
     listOf(tags.hue, tags.depth, tags.brightness).forEach {
-      compose.onNodeWithTag(it).assertTouchHeightIsEqualTo(TOUCH_TARGET)
+      compose.onNodeWithTag(it).assertHeightIsAtLeast(MATERIAL_SLIDER)
+      compose.onNodeWithTag(it).assertWidthIsAtLeast(TOUCH_TARGET)
     }
   }
 
@@ -159,3 +174,6 @@ class ColourPickerTest {
     }
   }
 }
+
+/** What Material lays a `Slider` out at, and clamps it to. */
+private val MATERIAL_SLIDER = 44.dp

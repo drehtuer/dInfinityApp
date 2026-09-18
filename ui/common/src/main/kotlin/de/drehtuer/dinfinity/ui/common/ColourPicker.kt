@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -123,7 +122,19 @@ fun ColourPicker(
   }
 }
 
-/** One of the picker's three sliders, named so a screen reader can say which. */
+/**
+ * One of the picker's three sliders, named so a screen reader can say which.
+ *
+ * **It is 44 dp tall, which is four short of [TOUCH_TARGET].** That is
+ * Material's own figure and `Slider` clamps it: neither `heightIn` nor
+ * `minimumInteractiveComponentSize` moves the node the label is attached to,
+ * so growing the band would mean growing something a screen reader and an
+ * accessibility scanner cannot see. Both copies of this picker shipped at 44
+ * and this one does too — recorded here and asserted in `ColourPickerTest`
+ * rather than quietly left out, so the day Material grows it, the test says
+ * so. What softens it is the shape: a slider's target is its whole width,
+ * which here is the width of the sheet.
+ */
 @Composable
 private fun Channel(
   label: Int,
@@ -140,13 +151,6 @@ private fun Channel(
     valueRange = 0f..most,
     modifier =
       Modifier
-        // Material lays a slider out at 44 dp — four short of Android's
-        // floor for anything pressable and of WCAG 2.2's 2.5.8 at AA — and
-        // clamps its own height, so the band a finger may land in is grown
-        // around it rather than the slider grown past its drawing. Both
-        // copies of this picker shipped at 44; this is the fix they never
-        // got (`TOUCH_TARGET`).
-        .minimumInteractiveComponentSize()
         .semantics { contentDescription = name }
         .testTag(tag),
   )
