@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.feature.settings
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
@@ -79,6 +81,25 @@ class SettingRowTest {
    * so the test says what the rule is rather than what a font measured to.
    */
   @Test
+  fun `a control that would fill the row is asked what it wants instead`() {
+    // The one that a fixed-size fake cannot catch, and the one a phone did: a
+    // segmented control fills the width it is offered, because that is what
+    // makes its options equal. Measured against the row's own constraints it
+    // takes the whole row, the words get nothing, and every row on the screen
+    // stacks — which is what shipped until this test existed.
+    compose.setContent {
+      Box(modifier = Modifier.width(WIDE)) {
+        SettingRow(heading = NAME, explanation = SENTENCE) { GreedyDial() }
+      }
+    }
+
+    val text = compose.onNodeWithText(NAME).getUnclippedBoundsInRoot()
+    val control = compose.onNodeWithTag(DIAL).getUnclippedBoundsInRoot()
+
+    assertTrue("a control that fills its width pushed the text off the row", control.left >= text.right)
+  }
+
+  @Test
   fun `a control with no room beside the text goes under it`() {
     compose.setContent {
       Box(modifier = Modifier.width(NARROW)) {
@@ -139,6 +160,17 @@ class SettingRowTest {
   @Composable
   private fun Dial() {
     Box(modifier = Modifier.size(CONTROL).testTag(DIAL))
+  }
+
+  /**
+   * A control that fills whatever it is given, the way a segmented control
+   * does, but whose content is [CONTROL] wide.
+   */
+  @Composable
+  private fun GreedyDial() {
+    Row(modifier = Modifier.fillMaxWidth().testTag(DIAL)) {
+      Box(modifier = Modifier.size(CONTROL))
+    }
   }
 }
 

@@ -15,6 +15,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Appearance
@@ -89,10 +90,24 @@ internal fun SettingRow(
     // so there is no unbounded case to answer for here.
     val room = constraints.maxWidth
     val gap = Modernist.x3.roundToPx()
-    // Measured first, and at its own size: the control is the half that cannot
-    // be squeezed, so it is what decides whether the other half has room.
-    val dial = measurables[1].measure(constraints.copy(minWidth = 0, minHeight = 0))
-    val beside = room - dial.width - gap >= TEXT_LEAST.roundToPx()
+    // **Asked how wide it wants to be, not how wide it can be.** A segmented
+    // control fills the width it is offered — that is what makes its options
+    // equal — so measuring it against the row's own constraints hands it the
+    // whole row and leaves nothing for the words. Every row with one would
+    // then stack, which is exactly what a phone showed. The intrinsic width is
+    // the content's: three options plus their padding, and nothing else.
+    val wanted = measurables[1].maxIntrinsicWidth(constraints.maxHeight).coerceAtMost(room)
+    val beside = room - wanted - gap >= TEXT_LEAST.roundToPx()
+    // Fixed at what it wanted, so that being placed beside the words does not
+    // let it take them back.
+    val dial =
+      measurables[1].measure(
+        if (beside) {
+          Constraints.fixedWidth(wanted)
+        } else {
+          constraints.copy(minWidth = 0, minHeight = 0)
+        },
+      )
     val words =
       measurables[0].measure(
         constraints.copy(
