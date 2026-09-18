@@ -32,15 +32,17 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#278**. In flight: fifteen stacked pull
-requests, #280 through #294, which are the design pass of 2026-09-17 folded
-into `docs/` and then built. They merge in order, each on the one below it.
+`main` has everything through **#297**, which is the whole design round:
+fifteen stacked pull requests, #280 through #294, and the one that carried the
+eleven of them that had landed on each other rather than on `main`. Nothing is
+in flight.
 
-**The last device run covered #280–#290**: the whole tier on the Pixel 10a,
-87 tests, 1 skipped, 0 failed, 7m 47s. What came after it — the plates, the
-power-saving panel, the Settings rows and the Solid tab — is verified on the
-JVM and by Robolectric only, because the phone went off the network while it
-was being built.
+**The last device run covered the stack through #290**: the whole tier on the
+Pixel 10a, 87 tests, 1 skipped, 0 failed, 7m 47s. What came after it — the
+plate that hugs, the power-saving panel, the formula in the corner, the
+Settings rows and the Solid tab — is verified on the JVM and by Robolectric
+only, because the phone went off the network while it was being built. **That
+is the next thing a phone should be pointed at.**
 
 `v0.1.0` is cut from #268 and is now a long way behind — two faults a user sees
 were fixed before any of this, and the remedy is `v0.1.1` whenever somebody
@@ -75,10 +77,14 @@ wants one.
 **Step 4: every screen is written and connected**, and has just had a pass
 over it against the prototype. What is left on each is in `docs/TODO.md`.
 
-**It is no longer mostly judgement.** The design pass of 2026-09-17 answered
-every question the app was waiting on and decided a good deal nobody had asked
-about, so each screen's list has gained work that is code rather than an eye:
-staggered spawns and a trailing dot on `6` and `9` are still on it.
+**The design pass is built.** It answered every question the app was waiting on
+and decided a good deal nobody had asked about, and the round that followed
+built almost all of it. What it decided and this has *not* done is in
+`docs/TODO.md`: the dice still arrive all at once rather than one at a time,
+the controls other than the formula are still a stack at the bottom where the
+design has a strip under an app bar, and the sound switch the design removed is
+still there, because taking a feature out is a product call rather than a
+drawing.
 
 **The face designer has a Solid tab.** A Face / Solid pair on the screen, the
 flat editor unchanged under the first of them and the real polyhedron under the
@@ -187,14 +193,17 @@ thing feels right is still a person's call.
 - Three smaller ones in `docs/TODO.md`, Open questions: who measures a *drawn*
   frame, whether a stamp should be draggable, and `FACE_SHARE` being applied
   twice.
-- **The designer answered, on 2026-09-17**, and the blocking question is gone:
-  accent text at body size is `--color-accent-700` and both ends of the ramp
-  are mixed from the accent the player picked. The filled accent tag is drawn —
-  it is what says "Update available" on a dice-set row. The roll screen is **one picture**, not bands. What
-  the pass did *not* answer — percent typography, whether a refusal keeps its
-  words, a draggable stamp, "Doodle this die", where a table look's texture says
-  its package, how a photo crops — stays open, and the design added six of its
-  own. All of them are in `docs/TODO.md`.
+- **What the design pass did not answer** — percent typography, whether a
+  refusal keeps its words, a draggable stamp, "Doodle this die", where a table
+  look's texture says its package, how a photo crops — is still open, and the
+  design added six questions of its own. All of them are in `docs/TODO.md`.
+- **Three things the round found and did not fix**, each written down with its
+  numbers rather than worked around: a six-level cubemap that this driver
+  refuses at level one against arithmetic that checks out on both sides; the
+  atlas exporter turning a cell differently from the canvas, by up to 60° on a
+  d20, which cannot be corrected without repainting every published die; and
+  opposite-face numbering meaning a seed recorded before it reads back a
+  different number after.
 - **The design removed the sound switch**, and the app has a whole `feedback/`
   module that generates impact sounds per table material. That is a product
   call rather than a drawing, and it is the one thing in the pass not yet
