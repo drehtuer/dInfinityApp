@@ -128,34 +128,27 @@ fun RollScreen(
         .background(MaterialTheme.colorScheme.background)
         .testTag(RollTestTags.SCREEN),
   ) {
-    // No surface at all in power-saving mode, rather than one nothing draws
-    // to: a surface is a buffer the compositor keeps, and the claim that mode
-    // makes is that none of it exists (`docs/architecture.md`, decision 38).
-    if (presenter.draws) {
-      DiceTray(
-        driver = presenter.tray,
-        geometry = presenter.geometry,
-        modifier = Modifier.fillMaxSize(),
-        // A surface has nothing under it for a screen reader to find, so what
-        // is on the table is said here or nowhere at all
-        // (`docs/architecture.md`, "Accessibility").
-        describing = TrayReading.of(presenter.state).spoken(),
-      )
-    } else {
-      // And when there is no surface, something has to say so: an empty
-      // screen with a total arriving on it is what a broken renderer looks
-      // like ([PowerSavingPanel]).
-      PowerSavingPanel()
-    }
+    TheTableOrANoticeThatThereIsNone(presenter)
 
     Controls(
       presenter = presenter,
       onSeeTheOdds = onSeeTheOdds,
       onDoodle = onDoodle,
       strip = strip,
+      modifier = Modifier.align(Alignment.BottomCenter),
+    )
+
+    // The formula in the top left corner of the table, which is where the
+    // design puts it and where somebody writes down what they are about to
+    // throw (`design/dInfinityPhone.dc.html`; `docs/physics-and-rendering.md`,
+    // "What is drawn over the table"). It used to be at the bottom of the
+    // stack of controls, which on a phone meant the felt was a strip above a
+    // wall of plates.
+    FormulaCorner(
+      presenter = presenter,
       editing = editing,
       onEditing = { editing = it },
-      modifier = Modifier.align(Alignment.BottomCenter),
+      modifier = Modifier.align(Alignment.TopStart),
     )
 
     // Over the tray rather than in a bar above it: the tray is the screen, and
@@ -254,8 +247,6 @@ private fun Controls(
   onSeeTheOdds: (formula: String, total: Long?) -> Unit,
   onDoodle: (String) -> Unit,
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit,
-  editing: Boolean,
-  onEditing: (Boolean) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   val state = presenter.state
@@ -294,7 +285,6 @@ private fun Controls(
     }
     SavedRollsPlate(presenter, strip)
     PickerPlate(presenter)
-    FormulaPlate(presenter = presenter, state = state, editing = editing, onEditing = onEditing)
     // The Roll button is filled in the accent, so it is on a plate for the
     // same reason "See the odds" is.
     Plate(modifier = Modifier.fillMaxWidth()) {
@@ -370,6 +360,7 @@ private fun PickerPlate(presenter: RollPresenter) {
  * so both states mark it; *what* is wrong is said in the editor, under the
  * squiggle, and where the total goes.
  */
+
 @Composable
 private fun FormulaPlate(
   presenter: RollPresenter,
@@ -404,6 +395,61 @@ private fun FormulaPlate(
     // with the words centred in it, which reads as a formula struck through
     // rather than one waiting to be edited.
     Plate { FormulaLine(text = presenter.text, onEdit = { onEditing(true) }, wrong = wrong) }
+  }
+}
+
+/**
+ * The table, or — in power-saving mode — the notice that there is not one.
+ *
+ * No surface at all in that mode, rather than one nothing draws to: a surface
+ * is a buffer the compositor keeps, and the claim the mode makes is that none
+ * of it exists (`docs/architecture.md`, decision 38). Something has to say so,
+ * because an empty screen with a total arriving on it is what a broken
+ * renderer looks like ([PowerSavingPanel]).
+ */
+@Composable
+private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
+  if (!presenter.draws) {
+    PowerSavingPanel()
+    return
+  }
+  DiceTray(
+    driver = presenter.tray,
+    geometry = presenter.geometry,
+    modifier = Modifier.fillMaxSize(),
+    // A surface has nothing under it for a screen reader to find, so what is
+    // on the table is said here or nowhere at all (`docs/architecture.md`,
+    // "Accessibility").
+    describing = TrayReading.of(presenter.state).spoken(),
+  )
+}
+
+/**
+ * The formula, in the top left corner of the table.
+ *
+ * Its own composable rather than a `Box` in the middle of the screen's own,
+ * because where a thing sits and what it is are two questions and the screen
+ * only has to answer the first.
+ */
+@Composable
+private fun FormulaCorner(
+  presenter: RollPresenter,
+  editing: Boolean,
+  onEditing: (Boolean) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Box(
+    modifier =
+      modifier
+        .safeDrawingPadding()
+        .padding(start = CORNER_ACROSS, top = CORNER_DOWN, end = MENU_ROOM),
+  ) {
+    FormulaPlate(
+      presenter = presenter,
+      state = presenter.state,
+      editing = editing,
+      onEditing = onEditing,
+    )
   }
 }
 
@@ -624,6 +670,7 @@ private fun ThrowButton(
 }
 
 /** What the tests reach the screen by. */
+
 object RollTestTags {
   const val SCREEN: String = "roll:screen"
   const val TRAY: String = "roll:tray"
@@ -719,3 +766,18 @@ object RollTestTags {
   /** "Doodle this die", offered by a long press on one (`docs/face-designer.md`, "Quick mode"). */
   fun doodleOf(instanceIndex: Int): String = "roll:sheet:die:$instanceIndex:doodle"
 }
+
+/** `left: 14px` — how far in from the side of the table a corner plate sits. */
+private val CORNER_ACROSS = 14.dp
+
+/** And `top: 12px`, which is tighter, because a line of type sits high in its box. */
+private val CORNER_DOWN = 12.dp
+
+/**
+ * What the formula leaves for the menu button beside it.
+ *
+ * It only bites while the formula is being edited, because a plate hugs its
+ * content otherwise — but a field that ran under the menu button would be a
+ * field whose last character is behind a control.
+ */
+private val MENU_ROOM = 56.dp
