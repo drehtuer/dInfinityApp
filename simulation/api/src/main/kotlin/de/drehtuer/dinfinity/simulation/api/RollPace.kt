@@ -57,14 +57,43 @@ object RollPace {
   const val WATCHED: Double = 0.5
 
   /**
+   * How long a roll is worth watching, in simulated seconds.
+   *
+   * **Past this the pace goes back to one, and the reason is `100d4`.** The
+   * twelve-second cap counts *simulated* time, so pacing does not change when
+   * a roll gives up — only how long somebody waits to be told. At a flat half
+   * that turned the cap into twenty-four seconds of staring at dice that were
+   * never going to stop, on the one formula that already reaches it and that
+   * a device session already reported as stuck.
+   *
+   * Three seconds is chosen against the measurements rather than picked: the
+   * median 20d20 settles in 0.81 s and the ninety-ninth in 1.47 s, so a roll
+   * that is behaving is paced from the first step to the last and never meets
+   * this at all. What meets it is a roll that is not landing — and a roll
+   * that is not landing is being *waited for* rather than watched, which is
+   * the moment slow motion stops being a courtesy.
+   *
+   * It costs one discontinuity, three seconds in, on rolls that were going
+   * wrong anyway; the alternative was making every ordinary roll worse to
+   * spare the rare one.
+   */
+  const val WATCHED_SECONDS: Double = 3.0
+
+  /** The same, in the fixed steps the loop actually counts. */
+  val WATCHED_STEPS: Int = (WATCHED_SECONDS * SettleRule.STEPS_PER_SECOND).toInt()
+
+  /**
    * What [elapsedSeconds] of a real frame is worth to the roll.
    *
    * @param driven whether a hand is throwing these dice at this moment. True
    *   gives the frame back whole, because a shake is answered now or it is not
    *   answered.
+   * @param stepsTaken how far the roll has got, in fixed steps. Past
+   *   [WATCHED_STEPS] the frame is given back whole as well.
    */
   fun secondsFor(
     elapsedSeconds: Double,
     driven: Boolean,
-  ): Double = if (driven) elapsedSeconds else elapsedSeconds * WATCHED
+    stepsTaken: Int = 0,
+  ): Double = if (driven || stepsTaken >= WATCHED_STEPS) elapsedSeconds else elapsedSeconds * WATCHED
 }

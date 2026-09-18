@@ -156,7 +156,19 @@ power-saving mode; there is no other one.
   energy a hand does not put into dice, and would push `100d4` further into the
   twelve-second cap.
 
-  **`RollPace.WATCHED` is one constant and the only one.** There is no easing
+  **A roll stops being paced once it stops landing.** The pace holds for
+  `RollPace.WATCHED_SECONDS` of simulated time and then gives the frame back
+  whole. The reason is `100d4`: the twelve-second cap counts *simulated* time,
+  so pacing cannot change when a roll gives up, only how long somebody waits
+  to be told — and a flat half turned that into twenty-four seconds of
+  watching dice that were never going to stop. Three seconds is chosen against
+  the measurements: the median 20d20 settles in 0.81 s and the ninety-ninth in
+  1.47 s, so a roll that is behaving is paced from first step to last and
+  never meets the bound at all. What meets it is a roll that is not landing,
+  and a roll that is not landing is being *waited for* rather than watched.
+
+  **`RollPace.WATCHED` is otherwise one constant and the only one.** There is
+  no easing
   curve and no per-phase exception: a pace that changed while the dice were in
   view would be indistinguishable from a phone dropping frames, and would make
   the roll's own smoothness unmeasurable. The one place the speed changes is

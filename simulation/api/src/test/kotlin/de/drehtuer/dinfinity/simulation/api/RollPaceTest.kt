@@ -75,6 +75,43 @@ class RollPaceTest {
     assertEquals(EXPECTED_WATCHED_SECONDS, wallClock, 0.01)
   }
 
+  @Test
+  fun `a roll that will not land stops being watched and starts being waited for`() {
+    // `100d4` runs the twelve-second cap out, and the cap counts simulated
+    // time: at a flat half that is twenty-four seconds of watching dice that
+    // were never going to stop, on the one formula a device session already
+    // reported as stuck.
+    val late = RollPace.WATCHED_STEPS
+    assertEquals(FRAME_SECONDS, RollPace.secondsFor(FRAME_SECONDS, driven = false, stepsTaken = late), TOLERANCE)
+    assertEquals(FRAME_SECONDS, RollPace.secondsFor(FRAME_SECONDS, driven = false, stepsTaken = late + 1), TOLERANCE)
+  }
+
+  @Test
+  fun `and every roll that behaves is paced from the first step to the last`() {
+    // The measured ninety-ninth percentile for 20d20 is 1.47 s, so the bound
+    // has to sit well clear of it or it would be pacing the ordinary roll
+    // differently at the end than at the start.
+    val p99 = (MEASURED_P99_SECONDS * SettleRule.STEPS_PER_SECOND).toInt()
+    assertTrue(
+      p99 < RollPace.WATCHED_STEPS,
+      "the bound falls inside the rolls that land: $p99 steps of ${RollPace.WATCHED_STEPS}",
+    )
+    assertEquals(
+      FRAME_SECONDS * RollPace.WATCHED,
+      RollPace.secondsFor(FRAME_SECONDS, driven = false, stepsTaken = p99),
+      TOLERANCE,
+    )
+  }
+
+  @Test
+  fun `a hand still beats the bound, because a shake is answered now or not at all`() {
+    assertEquals(
+      FRAME_SECONDS,
+      RollPace.secondsFor(FRAME_SECONDS, driven = true, stepsTaken = 0),
+      TOLERANCE,
+    )
+  }
+
   private companion object {
     /** One frame of a 60 Hz panel. */
     const val FRAME_SECONDS = 1.0 / 60.0
@@ -84,6 +121,9 @@ class RollPaceTest {
 
     /** And what the player waits for it, at the pace chosen here. */
     const val EXPECTED_WATCHED_SECONDS = 1.62
+
+    /** And the ninety-ninth, which the pace has to cover whole. */
+    const val MEASURED_P99_SECONDS = 1.47
 
     const val TOLERANCE = 1e-12
   }

@@ -71,7 +71,7 @@ class LiveRoll internal constructor(
   override val unsettled: List<Int> get() = loop.unsettled
 
   /** How many fixed steps the roll has taken. Simulated time, never wall time. */
-  val stepsTaken: Int get() = loop.stepsTaken
+  override val stepsTaken: Int get() = loop.stepsTaken
 
   /**
    * Every moment of the shake that has reached this roll, in step order.

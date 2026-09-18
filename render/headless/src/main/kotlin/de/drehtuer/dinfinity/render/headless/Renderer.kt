@@ -223,6 +223,14 @@ interface WatchedRoll : AutoCloseable {
   val driven: Boolean get() = false
 
   /**
+   * How far the roll has got, in fixed steps.
+   *
+   * What says whether a roll is still worth watching in slow motion or has
+   * turned into one somebody is waiting on (`RollPace.WATCHED_STEPS`).
+   */
+  val stepsTaken: Int get() = 0
+
+  /**
    * Moves the roll on by however much [elapsedSeconds] is worth and hands back
    * where the dice are. The renderer watching has already been shown the same
    * frame.

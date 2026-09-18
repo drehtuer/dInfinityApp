@@ -300,7 +300,7 @@ class TrayLoop(
     // somebody has to remember to clear (`PowerSavingTray`). The clock itself
     // stays [secondsSince]'s, which the falling board on the other branch of
     // this frame uses too.
-    live.advance(RollPace.secondsFor(secondsSince(nanos), live.driven))
+    live.advance(RollPace.secondsFor(secondsSince(nanos), live.driven, live.stepsTaken))
     hear(live)
     watch(live)
     count(live)
