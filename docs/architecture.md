@@ -1150,7 +1150,7 @@ offer a formula the app would refuse (`docs/dice-notation.md`).
 | --- | --- | --- |
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
 | one of the six accent presets, or a colour from the system picker | `onAccentSelected` | the stored accent, and with it every screen at once. The six are laid out four across, so six presets and a custom swatch come out 4 + 3 with nothing orphaned |
-| Straight down / Angled | `onTableViewSelected` | how far the camera leans over the table, from the next visit to the roll screen (`docs/physics-and-rendering.md`, "Rendering") |
+| Straight down / Angled | `onTableViewSelected` | how far the camera leans over the table, from the next visit to the roll screen. Straight down is the default (`docs/physics-and-rendering.md`, "Rendering (normal mode)") |
 | the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
 | the haptics switch | `onHapticsChanged` | whether a die landing ticks in the hand, from the next visit to the roll screen. The system's own touch-feedback setting still governs it: the effects go out under `VibrationAttributes.USAGE_TOUCH` and the app never asks whether that is on |
 | the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
@@ -1161,14 +1161,18 @@ offer a formula the app would refuse (`docs/dice-notation.md`).
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
 
-Six of those take effect **when the roll screen next opens** rather than where
-they are pressed — power saving, the shake, haptics, sound, the default
-rounding and the debug overlay half of the developer toggle. A renderer
-appearing under a roll in progress, sensors registering mid-throw, a roll that
-starts buzzing half way down, an overlay appearing over a throw, or a total
-changing its arithmetic while the dice are in the air are not settings taking
-effect; they are bugs (decision 16). The developer toggle's *other* half — the
-menu row — appears at once, because a menu is not a roll.
+Seven of those take effect **when the roll screen next opens** rather than
+where they are pressed — power saving, the shake, haptics, sound, the default
+rounding, the table view and the debug overlay half of the developer toggle. A
+renderer appearing under a roll in progress, sensors registering mid-throw, a
+roll that starts buzzing half way down, an overlay appearing over a throw, a
+camera leaning over while the dice are still moving, or a total changing its
+arithmetic while the dice are in the air are not settings taking effect; they
+are bugs (decision 16). The camera is the clearest of them: the tray a visit is
+given is built with one answer and a rotation rebuilds the picture with the
+same one, so the lean is fixed for as long as the screen is. The developer
+toggle's *other* half — the menu row — appears at once, because a menu is not a
+roll.
 
 **The accent is no longer a closed palette, and the clamp is what makes that
 safe.** `AccentColor` was six entries checked against both grounds by a test,

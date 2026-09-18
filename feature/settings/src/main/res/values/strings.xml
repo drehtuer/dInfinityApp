@@ -53,6 +53,16 @@
   <string name="settings_shake_heading">Shake</string>
   <string name="settings_shake_explanation">Off means the motion sensors are never switched on at all, which is the one setting here that saves any power.</string>
   <string name="settings_shake_label">Shake the phone to throw</string>
+  <!--
+    Table view: how far the camera leans over the table
+    (docs/physics-and-rendering.md, "Rendering (normal mode)"). The explanation
+    is the design's own copy, plus what every setting on this screen that the
+    roll screen reads has to say.
+  -->
+  <string name="settings_table_view_heading">Table view</string>
+  <string name="settings_table_view_explanation">Straight down keeps every die square to the screen. Angled shows the top and left wall. It takes effect the next time the roll screen opens.</string>
+  <string name="table_view_straight_down">Straight down</string>
+  <string name="table_view_angled">Angled</string>
   <!-- Division rounding (docs/dice-notation.md). -->
   <string name="settings_rounding_heading">Division</string>
   <string name="settings_rounding_explanation">Which way a division rounds. The result sheet can re-round the throw in front of you; that choice is not remembered.</string>

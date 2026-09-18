@@ -244,6 +244,25 @@ class RollScreenTest {
   }
 
   @Test
+  fun `a roll that gave up can be cancelled rather than thrown again`() {
+    // The plate offers both, and a player who does not want those dice back
+    // needs a way out that is not "type something else"
+    // (`docs/physics-and-rendering.md`, "What is drawn over the table").
+    val tray = StallingTray(unsettled = listOf(1, 2))
+    compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
+    typeFormula("4d6")
+    compose.onNodeWithTag(RollTestTags.THROW).performClick()
+    val thrown = tray.throws
+
+    compose.onNodeWithTag(RollTestTags.STALLED_CANCEL).performClick()
+
+    compose.onNodeWithTag(RollTestTags.STALLED).assertDoesNotExist()
+    // Cancelled, not re-thrown: the formula is back on the tray ready to go.
+    assertEquals("cancelling threw something", thrown, tray.throws)
+    compose.onNodeWithTag(RollTestTags.THROW).assertIsEnabled()
+  }
+
+  @Test
   fun `a formula puts its dice on the board before anybody throws them`() {
     val tray = DirectTray()
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }

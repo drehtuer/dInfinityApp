@@ -24,6 +24,7 @@ import de.drehtuer.dinfinity.data.setPowerSaving
 import de.drehtuer.dinfinity.data.setRounding
 import de.drehtuer.dinfinity.data.setShakeToRoll
 import de.drehtuer.dinfinity.data.setSound
+import de.drehtuer.dinfinity.data.setTableView
 import de.drehtuer.dinfinity.data.setWelcomeSeen
 import de.drehtuer.dinfinity.feature.saved.R
 import de.drehtuer.dinfinity.feature.settings.MenuHeader
@@ -159,6 +160,9 @@ class MainActivity : ComponentActivity() {
       },
       onRoundingSelected = { rounding ->
         lifecycleScope.launch { repository.setRounding(rounding) }
+      },
+      onTableViewSelected = { view ->
+        lifecycleScope.launch { repository.setTableView(view) }
       },
       onDeveloperToolsChanged = { on ->
         lifecycleScope.launch { repository.setDeveloperTools(on) }

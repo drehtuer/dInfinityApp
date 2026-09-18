@@ -9,6 +9,7 @@ import de.drehtuer.dinfinity.core.model.AccentChoice
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.core.model.TableView
 
 /*
  * The settings, one named change each.
@@ -45,6 +46,16 @@ suspend fun SettingsRepository.setShakeToRoll(on: Boolean) = update { it.copy(sh
 
 /** Which way division rounds unless a throw says otherwise (`docs/dice-notation.md`). */
 suspend fun SettingsRepository.setRounding(rounding: Rounding) = update { it.copy(rounding = rounding) }
+
+/**
+ * How far the camera leans over the table
+ * (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+ *
+ * Takes effect the next time the roll screen opens, like power saving and the
+ * rest: a camera that moved under a roll in progress would not be a setting
+ * taking effect (`docs/architecture.md`, decision 16).
+ */
+suspend fun SettingsRepository.setTableView(view: TableView) = update { it.copy(tableView = view) }
 
 /**
  * Turns the debugging tools on, or off

@@ -112,30 +112,18 @@ What is below is what it does not have yet.
 **From the design pass of 2026-09-17** (`docs/physics-and-rendering.md`, "What
 is drawn over the table"):
 
-- [ ] **Put the controls on plates.** The screen keeps its shape — one
-      full-bleed table, everything floating on it — and every control over it
-      becomes an opaque `--color-bg` plate with `--shadow-sm`, no radius, no
-      border, 7 / 11 / 8 dp of padding, hugging its content. That fixes three
-      things at once: the formula's dashed rule stops running the width of the
-      screen and becomes an underline again, the picker and "Save a roll" stop
-      sitting on bare felt, and **accent stops touching felt anywhere**, which
-      is what makes any accent over a shelf of tables safe without checking
-      every pair
-- [ ] **Build the counting plate.** Across the bottom: `COUNTING` kicker, the
-      count in tabular figures, `of 20 read`, the still-possible range
-      right-aligned with a `+` in accent-700 while a chain is open, and a 3 dp
-      progress rule. It replaces the line of text currently sitting where
-      "Rolling…" used to be — the most important unstyled thing in the app
-- [ ] **Two roll states on that same plate**: *another throw earned* (`Throw 3
-      more` / `Stop the chain`) and *could not settle* (`Throw those 3 again` /
-      `Cancel the roll`). Both are states the screen already reaches and
-      neither has a design until now; `rollState` in the prototype shows them
 - [ ] **Mark the dice of a later pass** — 4 dp accent-700 outline and a
       `pass 2` label in the `dropped` slot — so a total counting twenty dice
       over a table holding three explains itself on the felt
-- [ ] **Draw the total once.** Today the result is the total at ~42 dp centred
-      on the felt *and* again at the right edge at x ≈ 376 dp of 411, where it
-      looks clipped. The design has one result sheet; the second copy goes
+- [ ] **Score a chain the player stopped.** `Stop the chain` on the earned
+      plate puts the roll away with no total, which is honest but is not what
+      the button says. Scoring what is on the table needs `core/notation` to
+      have a *reason* a chain ended that is not the tray's: `RunningScore`
+      stops one only when `AddedDice.room` says no, and `GroupRoller` writes
+      `DieNote.TrayFull` when it does — so a player-stopped chain would print
+      "The tray had no room for another die" over a tray with plenty. The work
+      is a `DieNote` of its own, a way for `ExtraThrow` to say which refusal it
+      is, a `ChainLimit` entry and a line in `docs/dice-notation.md`
 - [ ] **Stagger the spawn**, 85 ms between dice, with the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** to be ported: a settled die moved by another
@@ -145,10 +133,30 @@ is drawn over the table"):
       digit is dotted and its tens pair is not; an upright number in the result
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
-- [ ] **Table view becomes a setting**, straight down by default and 22° on
-      *angled*. The camera arithmetic is already a function of one constant;
-      what is new is reading a setting and re-framing without restarting a roll
-      (`docs/physics-and-rendering.md`, "Rendering")
+
+**Decided while building the plates**, where the design left the app a choice:
+
+- The plates are **one column at the bottom of the tray**, not four blocks
+  placed at the prototype's corners. The design puts the formula top-left and
+  the hint bottom-left; the app's controls have always been one stack and
+  moving them is a separate change from giving them a ground to stand on. What
+  the plates fix is what they were put on the list for — the dashed rule, the
+  bare felt, and accent never touching either.
+- **The accent's 700 step is mixed rather than looked up**, in `ui/common` as
+  `Ink.accentDeep`, from the theme's `primary` against the ground it is read
+  on. A feature module cannot see `:app`'s `LocalModernistColors`, and the
+  player picks any colour they like, so there is no pigment to name — it is
+  the same rule `Tag` already mixes the ramp's other two ends by.
+- **A group's subtotal is not drawn when it is the whole total** (`Subtotals`).
+  That is the "draw the total once" item: the design's sheet keeps subtotals
+  because they are how the rows add up, and for `1d20` there is nothing to add
+  up — one group, no modifier, and the number printed twice.
+- **`Cancel the roll` and `Stop the chain` are the same act today**: the roll
+  is put away with no total. That is right for the refusal and wrong for the
+  chain, which is the open item above.
+- **The kickers are upper case in `strings.xml`.** Compose has no text
+  transform, and uppercasing in Kotlin changes what a screen reader says —
+  which is the open question `SectionKicker` already records.
 
 - [ ] **Revisited against the device data, and left alone deliberately.** The
       two constants do different jobs: `FLOOR_SHARE` *shrinks* and `MIN_SCALE`
@@ -564,10 +572,42 @@ restores the choice; the session falls back where a roll is *recorded*, because
 a session deleted while another screen was in front would otherwise strand
 every throw filed under it (`docs/statistics.md`, per session).
 
-**From the design pass of 2026-09-17** (`docs/architecture.md`, "Settings"):
+**Table view is built, and four things were decided while building it**
+(`docs/architecture.md`, "Settings"; `docs/physics-and-rendering.md`,
+"Rendering (normal mode)"):
 
-- [ ] **A Table view row**, straight down or angled, taking effect the next
-      time the roll screen opens like the other five
+- **The lean is an argument, not a second camera.** `TrayCamera.TILT_DEGREES`
+  stopped being the only answer and became the *angled* one, with 0° beside it
+  and `tiltDegreesOf` mapping the setting onto degrees. Everything else about
+  the shot is the arithmetic that was already there, so both positions are
+  tested on a JVM: straight down stands over the middle of the tray, angled
+  stands off its near end, and the two frame the whole table with the same
+  margin.
+- **`render/filament` still defaults to the shot it always took.** A caller
+  that says nothing — a thumbnail, a pick built for a test — gets 22°, because
+  that keeps the module's behaviour a function of what it is asked for rather
+  than of a preference it cannot see. The *player's* default is the other way
+  round and lives in `AppSettings.tableView`, which is straight down. The one
+  consequence worth naming: the **table picker's thumbnails do not follow the
+  setting**. They are pictures of a table rather than a roll in progress, and
+  the angled shot is the one that shows a look's walls.
+- **The camera is read when the screen opens, like the other six.** The tray a
+  visit is given is built with one answer and a rotation rebuilds the picture
+  with the same one, so nothing moves under a roll (decision 16). `TrayPick`
+  takes the same lean, so a finger is read against the shot the screen is
+  actually taking — it is not wired to a gesture yet, which is why the
+  parameter is there before the caller is.
+- **`shotOn`'s `right` really is right now**, which is the item that used to be
+  in Step 5 here: it was `cross(up, forward)`, which is screen-*left*, and it
+  is `cross(forward, up)`. It stays harmless either way — the vector's one use
+  is inside an `abs()` — so nothing about the framing changed, and the reason
+  to fix it while touching the file is that a 0° lean is exactly when somebody
+  will come here hunting a handedness bug. **The degenerate case does not
+  arise**: the camera's up rotates with the lean rather than being the world's,
+  so at 0° it looks along `−z` with up `+x` and the frame is as square as it is
+  at 22°. A test says so, and says that `+y` across the tray is screen-*left* —
+  which is the wall the angled shot is documented to show.
+
 **Navigation is finished, and three things were decided while finishing it**
 (`docs/architecture.md`, "Navigation" and "One safe area, applied once"):
 
@@ -650,13 +690,6 @@ after every physics change.
 
       It needs a way to build a quaternion from two orthonormal frames, which
       `Quaternion` does not have yet.
-
-- [ ] **`TrayCamera.shotOn` calls `cross(up, forward)` `right`, and it is
-      left.** Screen-right is `cross(forward, up)`; the code has the operands
-      the other way round, so the vector is negated. It is harmless today
-      because its only use is inside an `abs()` in the framing solve, which is
-      why nothing caught it. Fix it with the reflection above, since anyone
-      reading that file while hunting a handedness bug will stop here first.
 
 ### 5.1 Harness
 
@@ -1219,7 +1252,6 @@ The figures are reported in every PR description either way.
       texture ships with one level, which for a gradient costs a few per cent
       of one channel on a sheen. Worth an hour with Filament's JNI source
       before it is worth anything else
-
 
 - [ ] **Does the sound go?** The design's Settings has Appearance, Table view,
       Power-saving mode, Haptics, Division and Accent colour, and nothing else:

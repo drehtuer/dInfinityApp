@@ -147,12 +147,18 @@ class TrayPick(
      * frustum a finger is read against is by construction the frustum the dice
      * were drawn in. Two arrangements of the same numbers would be two
      * answers, and the one that disagreed would be the one nobody ran.
+     *
+     * That is why [tiltDegrees] is here too: the lean is the player's now
+     * (**Table view**), and a finger read against a shot the screen is not
+     * taking would pick the die next to the one it is on. It is the same
+     * default this module's camera takes, for the same reason.
      */
     fun through(
       geometry: TableGeometry,
       aspectRatio: Double,
       view: TrayView = TrayView.Whole,
-    ): TrayPick = TrayPick(TrayCamera.framingTheTray(geometry, aspectRatio, view), aspectRatio)
+      tiltDegrees: Double = TrayCamera.TILT_DEGREES,
+    ): TrayPick = TrayPick(TrayCamera.framingTheTray(geometry, aspectRatio, view, tiltDegrees), aspectRatio)
 
     private fun halfAngle(degrees: Double): Double = degrees / 2 * Math.PI / HALF_TURN_DEGREES
 

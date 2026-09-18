@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
@@ -256,6 +257,46 @@ class TrayRendererTest {
     assertEquals(
       TrayCamera.framingTheTray(geometry, stage.width.toDouble() / stage.height, closer),
       stage.shots.single(),
+    )
+  }
+
+  @Test
+  fun `the table view the screen opened with is the one it draws`() {
+    // **Table view**, read when the roll screen opens and not watched
+    // (`docs/architecture.md`, decision 16). The renderer is where that answer
+    // is kept, so the shot is the one the player asked for rather than the one
+    // this module drew before the lean was a setting.
+    val stage = FakeStage()
+    val renderer = TrayRenderer(TableView.StraightDown)
+    renderer.stage(stage)
+
+    renderer.table(geometry, look)
+
+    val aspect = stage.width.toDouble() / stage.height
+    assertEquals(
+      TrayCamera.framingTheTray(geometry, aspect, tiltDegrees = TrayCamera.NO_TILT_DEGREES),
+      stage.shots.last(),
+    )
+    assertTrue("straight down drew the leaning shot", stage.shots.last() != TrayCamera.framingTheTray(geometry, aspect))
+  }
+
+  @Test
+  fun `turning the phone does not straighten the table or lean it`() {
+    // A new stage means a new drawing renderer, and it has to be built with
+    // the same answer — otherwise the phone comes back from a turn looking at
+    // the table from somewhere else, which is the setting taking effect
+    // mid-roll by the back door.
+    val renderer = TrayRenderer(TableView.StraightDown)
+    renderer.begin(spec(), geometry, look)
+    renderer.show(frame(0.0))
+
+    val turned = FakeStage()
+    renderer.stage(turned)
+
+    val aspect = turned.width.toDouble() / turned.height
+    assertEquals(
+      TrayCamera.framingTheTray(geometry, aspect, tiltDegrees = TrayCamera.NO_TILT_DEGREES),
+      turned.shots.last(),
     )
   }
 

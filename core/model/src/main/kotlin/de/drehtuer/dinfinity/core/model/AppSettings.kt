@@ -41,6 +41,16 @@ data class AppSettings(
    */
   val rounding: Rounding = Rounding.Default,
   /**
+   * How far the camera leans over the table
+   * (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+   *
+   * Straight down by default: a leaning shot on a tall phone spends more of
+   * the frame on the wooden rim than on the felt. It is read when the roll
+   * screen opens rather than watched, for the reason [powerSaving] is
+   * (`docs/architecture.md`, decision 16).
+   */
+  val tableView: TableView = TableView.Default,
+  /**
    * Roll without drawing the dice (`design/dInfinity.dc.html`, option 1z).
    *
    * Off by default and **only ever changed here**: a roll that silently

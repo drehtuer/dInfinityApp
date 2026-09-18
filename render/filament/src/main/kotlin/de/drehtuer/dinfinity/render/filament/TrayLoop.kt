@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DebugWatch
@@ -59,8 +60,18 @@ class TrayLoop(
    * allocates nothing per frame for it.
    */
   private val debug: DebugWatch = DebugWatch.NONE,
+  /**
+   * How far the camera leans over the table — the player's **Table view**
+   * setting (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+   *
+   * Handed to the renderer this loop makes and never changed afterwards, for
+   * the reason the debug overlay is handed over here: it is read when the
+   * screen opens, and a camera that moved under a roll in progress is not a
+   * setting taking effect (`docs/architecture.md`, decision 16).
+   */
+  tableView: TableView = TableView.Angled,
 ) : AutoCloseable {
-  private val renderer = TrayRenderer()
+  private val renderer = TrayRenderer(tableView)
 
   private var stage: Stage? = null
   private var roll: WatchedRoll? = null
