@@ -1,9 +1,11 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.abs
 
 /**
  * The die in the hand: where its corners land, which faces are facing away,
@@ -131,24 +133,101 @@ class SolidStageTest {
   }
 
   @Test
-  fun `a drag turns the die and stops short of edge-on`() {
+  fun `a drag across swings the die and a drag down tips it`() {
     val turn = SolidTurn()
 
-    assertTrue("a drag across does not turn the die", turn.dragged(0.25f, 0f).yaw > turn.yaw)
-    assertTrue("a drag down does not lean the die", turn.dragged(0f, 0.25f).pitch > turn.pitch)
-    assertTrue("the die can be looked at edge-on", turn.dragged(0f, TOO_FAR).pitch < STRAIGHT_UP)
-    assertTrue("the die can be looked at edge-on", turn.dragged(0f, -TOO_FAR).pitch > -STRAIGHT_UP)
+    // A swing about the stage's upright moves nothing up or down: every
+    // corner keeps the height it was at and travels round. A tip about the
+    // stage's horizontal is the same statement a quarter turn away — nothing
+    // moves left or right. Between them that is the whole of what the two
+    // directions of a drag mean, and neither is a claim about the die's own
+    // axes, which is the point.
+    POINTS.forEach { point ->
+      assertEquals(
+        "a drag across moved a corner up or down",
+        turn.turnedTo(point).z,
+        turn.dragged(0.25f, 0f).turnedTo(point).z,
+        A_LITTLE,
+      )
+      assertEquals(
+        "a drag down moved a corner sideways",
+        turn.turnedTo(point).x,
+        turn.dragged(0f, 0.25f).turnedTo(point).x,
+        A_LITTLE,
+      )
+    }
+    assertTrue("a drag across did not move the die", moved(turn, turn.dragged(0.25f, 0f)))
+    assertTrue("a drag down did not move the die", moved(turn, turn.dragged(0f, 0.25f)))
+  }
+
+  @Test
+  fun `a drag does the same thing wherever the die has been left`() {
+    // What the die's own axes could not promise. A sideways drag used to be a
+    // yaw applied *before* the lean, so on a die already tipped it rolled the
+    // die instead of swinging it. Here the axis is the stage's, so a sideways
+    // drag is a swing from every pose there is.
+    val poses = listOf(SolidTurn(), SolidTurn().spun(4f), SolidTurn().dragged(0.4f, -0.3f))
+    poses.forEach { pose ->
+      POINTS.forEach { point ->
+        assertEquals(
+          "a drag across moved a corner up or down",
+          pose.turnedTo(point).z,
+          pose.dragged(0.3f, 0f).turnedTo(point).z,
+          A_LITTLE,
+        )
+      }
+    }
   }
 
   @Test
   fun `the spin comes back round to where it started`() {
-    val turn = SolidTurn(pitch = 0f, yaw = 0f)
+    val turn = SolidTurn()
 
     val round = turn.spun(SPIN_ROUND)
 
-    assertEquals("a full turn does not come back round", 0f, round.yaw, A_LITTLE.toFloat())
-    assertEquals("the spin leans the die", turn.pitch, round.pitch)
-    assertTrue("a moment of spin does not move the die", turn.spun(1f).yaw > 0f)
+    POINTS.forEach { point -> assertSamePoint(turn.turnedTo(point), round.turnedTo(point)) }
+    assertTrue("a moment of spin does not move the die", moved(turn, turn.spun(1f)))
+  }
+
+  @Test
+  fun `the spin is about the reader's upright, whatever the die is doing`() {
+    // The fault this is the fix for: the spin used to be a yaw applied before
+    // a lean, which is an axis the die carries with it. Tip the die towards
+    // you and its spin axis tipped too, so a die looked at edge-on span like a
+    // coin on a table rather than turning in the hand.
+    val tipped = SolidTurn().dragged(0f, 0.45f)
+
+    POINTS.forEach { point ->
+      assertEquals(
+        "the spin moved a corner up or down, so it is not turning about the upright",
+        tipped.turnedTo(point).z,
+        tipped.spun(3f).turnedTo(point).z,
+        A_LITTLE,
+      )
+    }
+    assertTrue("the spin did not turn the die", moved(tipped, tipped.spun(3f)))
+  }
+
+  @Test
+  fun `the spin carries on from where a drag left the die`() {
+    val dragged = SolidTurn().dragged(0.3f, 0.2f)
+    val spun = dragged.spun(SPIN_ROUND)
+
+    // A whole turn of the spin lands back on the dragged pose rather than on
+    // some pose of the spin's own.
+    POINTS.forEach { point -> assertSamePoint(dragged.turnedTo(point), spun.turnedTo(point)) }
+  }
+
+  @Test
+  fun `turning the die keeps its shape`() {
+    val turn = SolidTurn().dragged(0.4f, 0.25f).spun(2.5f)
+    val a = Vector3(0.3, -0.7, 0.5)
+    val b = Vector3(-0.2, 0.4, 0.9)
+
+    // A rotation and nothing else: lengths and angles survive it, which is
+    // what says the composition has not drifted into a scale or a shear.
+    assertEquals(a.length, turn.turnedTo(a).length, A_LITTLE)
+    assertEquals(a dot b, turn.turnedTo(a) dot turn.turnedTo(b), A_LITTLE)
   }
 
   @Test
@@ -196,25 +275,49 @@ class SolidStageTest {
     return sides.all { it >= -ON_THE_LINE } || sides.all { it <= ON_THE_LINE }
   }
 
+  /** The same direction, to within a hair of a unit stage. */
+  private fun assertSamePoint(
+    expected: Vector3,
+    actual: Vector3,
+  ) {
+    assertEquals("$actual is not $expected", expected.x, actual.x, A_LITTLE)
+    assertEquals("$actual is not $expected", expected.y, actual.y, A_LITTLE)
+    assertEquals("$actual is not $expected", expected.z, actual.z, A_LITTLE)
+  }
+
+  /** True when [after] puts some direction somewhere [before] does not. */
+  private fun moved(
+    before: SolidTurn,
+    after: SolidTurn,
+  ): Boolean =
+    POINTS.any { point ->
+      val was = before.turnedTo(point)
+      val now = after.turnedTo(point)
+      abs(was.x - now.x) > A_LITTLE || abs(was.y - now.y) > A_LITTLE || abs(was.z - now.z) > A_LITTLE
+    }
+
   private companion object {
     /** Every way up the stage has to work: flat on, leaning, and part way round. */
     val TURNS =
       listOf(
         SolidTurn(),
-        SolidTurn(pitch = 5f, yaw = 0f),
-        SolidTurn(pitch = 40f, yaw = 137f),
-        SolidTurn(pitch = -85f, yaw = 251f),
-        SolidTurn(pitch = 85f, yaw = 33f),
+        SolidTurn().dragged(0f, 0.03f),
+        SolidTurn().dragged(0.78f, 0.23f),
+        SolidTurn().dragged(0.43f, -0.57f),
+        SolidTurn().spun(9f).dragged(0.1f, 0.4f),
+      )
+
+    /** A handful of directions to take a turn through. */
+    val POINTS =
+      listOf(
+        Vector3.Up,
+        Vector3(1.0, 0.0, 0.0),
+        Vector3(0.0, 1.0, 0.0),
+        Vector3(0.4, -0.6, 0.7),
       )
 
     /** Close enough on a stage that is one unit across. */
     const val A_LITTLE = 1e-3
-
-    /** A drag far enough to lean the die past anything it is allowed to reach. */
-    const val TOO_FAR = 4f
-
-    /** Straight up, which the lean has to stop short of. */
-    const val STRAIGHT_UP = 90f
 
     /** How long the die takes to come all the way round on its own. */
     const val SPIN_ROUND = 16f

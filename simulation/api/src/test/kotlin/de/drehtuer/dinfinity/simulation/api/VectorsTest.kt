@@ -242,6 +242,50 @@ class VectorsTest {
   }
 
   /** Two quaternions are the same turn when they agree up to their sign. */
+  @Test
+  fun `two turns combine into the one that does both`() {
+    val first = Quaternion.about(Vector3(1.0, 0.0, 0.0), PI / 2)
+    val then = Quaternion.about(Vector3.Up, PI / 2)
+    val both = then * first
+
+    // A point taken through the two in order lands where the combined turn
+    // puts it — which is the whole of what the product means.
+    val point = Vector3(0.3, 0.5, 0.8)
+    val step = then.rotate(first.rotate(point))
+    val once = both.rotate(point)
+    assertEquals(step.x, once.x, 1e-12)
+    assertEquals(step.y, once.y, 1e-12)
+    assertEquals(step.z, once.z, 1e-12)
+  }
+
+  @Test
+  fun `order matters, which is why the product is written the way it is`() {
+    val across = Quaternion.about(Vector3(1.0, 0.0, 0.0), PI / 2)
+    val around = Quaternion.about(Vector3.Up, PI / 2)
+    assertTrue(abs((across * around) dot (around * across)) < 1 - 1e-6)
+  }
+
+  @Test
+  fun `doing nothing before or after a turn is that turn`() {
+    val turn = Quaternion.about(Vector3(0.2, -0.4, 0.9), 1.1)
+    assertSameTurn(turn, turn * Quaternion.Identity)
+    assertSameTurn(turn, Quaternion.Identity * turn)
+  }
+
+  @Test
+  fun `four quarter turns about one axis are no turn at all`() {
+    val quarter = Quaternion.about(Vector3.Up, PI / 2)
+    assertSameTurn(Quaternion.Identity, quarter * quarter * quarter * quarter)
+  }
+
+  @Test
+  fun `a product of unit turns is a unit turn`() {
+    val a = Quaternion.about(Vector3(1.0, 2.0, 3.0), 0.7)
+    val b = Quaternion.about(Vector3(-2.0, 0.5, 1.0), 2.2)
+    val both = a * b
+    assertEquals(1.0, sqrt(both.w * both.w + both.x * both.x + both.y * both.y + both.z * both.z), 1e-12)
+  }
+
   private fun assertSameTurn(
     expected: Quaternion,
     actual: Quaternion,

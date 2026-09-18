@@ -486,6 +486,25 @@ its own at a turn every sixteen seconds until a drag takes over, and **the drag
 unticks Spin** — a die that went on turning under the finger holding it would
 be a die fighting back. The tick puts it back.
 
+**Both the spin and the drag turn the die about the reader's axes, not its
+own.** The die's orientation is one free rotation rather than a pitch and a
+yaw, and every turn is composed onto it from the *outside*: a sideways drag and
+the spin swing it about the upright of the screen, a drag down tips it about
+the horizontal, and the spin carries on from wherever a drag left the die
+rather than from a pose of its own.
+
+That is a correction rather than a refinement. The spin used to be a yaw
+applied *before* a lean, which is the same thing as an axis the die carries
+with it: tip the die towards you and its spin axis tipped too, so a die looked
+at nearly edge-on span like a coin on a table instead of turning in the hand.
+The drag had the same fault from the other end — on a die already a quarter
+round, a sideways drag rolled it rather than swinging it.
+
+**A die can now be turned right over.** The lean used to stop 5° short of
+edge-on, because a pitch and a yaw go strange at the poles; a free rotation has
+no poles, so the clamp went with them. Turning a die over is the point of
+holding one.
+
 **The selected face reads as selected** — a 4 dp outline in the accent's deep
 step and a 16 % accent tint in its fill — so moving between the two tabs never
 loses the player's place.
