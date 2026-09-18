@@ -181,9 +181,15 @@ Modifiers take effect in this order whatever order they were written in, so
    handful. A chain that threw itself finished a roll the
    player had not finished asking for, and it made the one moment worth
    watching happen without them. Everything else about it is unchanged: the
-   earned die is thrown into the same tray, among the dice already down, on a
-   seed derived from the throw that started the chain — so a chain still
-   replays to itself however long the player takes between shakes.
+   earned die is thrown into the same tray, among the dice **still** down, on
+   a seed derived from the throw that started the chain — so a chain still
+   replays to itself however long the player takes between shakes. Still
+   down, because a throw that had to throw one of its own dice again took the
+   dice it had already read off the table to make the room, and those have
+   left: they keep their faces and the next link of the chain is neither
+   drawn over them nor aimed around them
+   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+   adds").
 3. **`min n`** — a die below `n` counts as `n`, per die. The face it actually
    landed on is still what the breakdown shows; only its contribution changes.
 4. **`kh` / `kl` / `dh` / `dl`** — whole chains are kept or dropped, ranked by

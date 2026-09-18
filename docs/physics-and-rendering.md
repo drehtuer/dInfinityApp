@@ -945,6 +945,26 @@ throwing it again").
    the dice are counted again, and again, until there is nothing left to throw.
    Each pass reads most of what is on the table, so what remains shrinks fast.
 
+   **Each one is dropped where nothing is standing.** The spot is drawn from
+   the roll's own stream, and kept if it is clear of everything that will be
+   on that floor when the die arrives: the dice the same pass has already
+   thrown again, which have bodies and would start inside it, and the dice of
+   `ThrowSpec.among` from earlier throws of the same chain, which have none
+   and would be fallen straight through. A spot that is not clear is given up
+   for the clearest the tray has — the same answer the die an explosion adds
+   gets. A drop with nothing in the way is the drop that was drawn, so a roll
+   still replays to itself.
+
+   **And the lift outlives the throw.** A die lifted in step 3 has left the
+   table for good, and the floor it stood on may be under the die that was
+   thrown again onto it. So what the throw reports is where the dice *still
+   on the table* stopped and not where the lifted ones did
+   (`SimulationOutcome.restingAt`, which is therefore shorter than `faces`
+   whenever a pass threw something again). A lifted die keeps its face — it is
+   part of the result — but the next throw of the chain is neither drawn over
+   it nor aimed around it. Reporting it was what put two dice in one place
+   when an exploding roll came back for its next die.
+
 **There is no other rung, and that is the point.** Nothing biases a die, nudges
 one, pops a pair apart or places one anywhere. The share of dice needing a
 correction is not a number to tune any more: there is no code in the loop that
@@ -1039,11 +1059,22 @@ formula with explosions in it replays like any other.
   a roll replays to itself.
 - **And it is dropped, not thrown.** The same low, gentle, spinning drop a
   die thrown again is given, for the same reason: a die hurled across the tray is a
-  die that arrives somewhere nobody made room for.
+  die that arrives somewhere nobody made room for. The die thrown again is now
+  aimed the same way too — it used to be dropped at a point drawn at random
+  from the whole tray, which is how a re-throw inside an added throw came down
+  through a die that was lying there.
 - **The tray is drawn with them still in it.** The added throw carries the
   settled dice as `ThrowSpec.among`; the renderer puts one renderable per die
   back exactly where the simulation left it and never moves it again. What the
   player sees is the six they rolled, and then a die landing beside it.
+- **And only the ones that are still in it.** A throw that had to throw a die
+  again lifted the dice it had already read, to free the floor for it — so
+  those dice are off the table and their floor may be under the die that came
+  down there. They are not in `among`: they keep their faces and they are not
+  drawn back, because drawing a die where another die is standing is the very
+  picture this section exists to forbid, and counting their floor as taken
+  would hide the room the lift made ("Avoiding stacked and cocked dice",
+  step 4).
 - **A chain stops when the tray runs out of floor.** There are two ends to a
   chain of explosions: the depth limit (`docs/dice-notation.md`), and this one —
   no clear floor left for another die, or a hundred dice in the tray, which is
