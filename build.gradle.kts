@@ -109,8 +109,17 @@ val verifySourcesTracked = tasks.register("verifySourcesTracked") {
       .directory(rootDir)
       .redirectErrorStream(true)
       .start()
-    process.outputStream.bufferedWriter().use { writer ->
-      sources.forEach { writer.appendLine(it) }
+    try {
+      process.outputStream.bufferedWriter().use { writer ->
+        sources.forEach { writer.appendLine(it) }
+      }
+    } catch (_: java.io.IOException) {
+      // It gave up before it had read the list and closed the pipe under us,
+      // which is what "there is no repository here" looks like from this
+      // side — a linked worktree whose `.git` file names a path the
+      // container cannot see, for one. What it meant is in the exit status
+      // read just below; a broken pipe on the way in is not an answer, and
+      // must not be a failure of its own.
     }
     val ignored = process.inputStream.bufferedReader().readLines().filter { it.isNotBlank() }
     val status = process.waitFor()

@@ -334,6 +334,12 @@ class DInfinityScreensTest {
     // rather than on the die.
     compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
 
+    // The saved rolls are a pull-up now, parked so the whole table shows
+    // (`docs/physics-and-rendering.md`, "Two pull-ups, one bottom edge"), so
+    // they are pulled out before anything can be tapped on them.
+    compose.onNodeWithTag(RollTestTags.SAVED_HANDLE).performClick()
+    compose.waitForIdle()
+
     // The tap fills the field; the shake is the throw
     // (`docs/physics-and-rendering.md`, "Starting a roll").
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).assertIsDisplayed().performClick()
@@ -388,6 +394,9 @@ class DInfinityScreensTest {
 
     // Which roll the formula came from survives the wait for a hand: the tap
     // fills the field and the shake that follows is still Fireball's throw.
+    // The rolls are pulled out of their pull-up first, the way a player does.
+    compose.onNodeWithTag(RollTestTags.SAVED_HANDLE).performClick()
+    compose.waitForIdle()
     compose.onNodeWithTag(HomeStripTestTags.tileOf("fireball")).performClick()
     assertTrue("the strip threw the roll rather than filling the field", recorded.isEmpty())
     shake()
