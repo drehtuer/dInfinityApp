@@ -1,16 +1,14 @@
 package de.drehtuer.dinfinity.feature.roll
 
-import android.view.Surface
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -24,27 +22,12 @@ import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
-import de.drehtuer.dinfinity.core.model.DieInstance
-import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.render.filament.Tray
-import de.drehtuer.dinfinity.render.filament.TrayView
-import de.drehtuer.dinfinity.render.headless.BodyTransform
-import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
-import de.drehtuer.dinfinity.render.headless.RenderFrame
-import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.Rolls
-import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.Impact
-import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.SettleRule
-import de.drehtuer.dinfinity.simulation.api.ShakeSample
-import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
-import de.drehtuer.dinfinity.simulation.api.ThrowSpec
-import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -162,7 +145,7 @@ class RollScreenTest {
     // not fit across a phone — which is why the row scrolls.
     compose.onNodeWithTag(RollTestTags.pickerDie("d20")).performScrollTo().performClick()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("1d20")
+    theFormula().assertTextContains("1d20")
     assertTrue("the die the row typed could not be thrown", shake())
   }
 
@@ -174,8 +157,8 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
     compose.onNodeWithTag(RollTestTags.pickerDie("d6")).performClick()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("2d6")
     compose.onNodeWithTag(RollTestTags.pickerCount("d6"), useUnmergedTree = true).assertTextEquals("2")
+    theFormula().assertTextContains("2d6")
   }
 
   @Test
@@ -433,8 +416,9 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.WELCOME_ROLL).performClick()
 
     compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("1d20")
     compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
+    theFormula().assertTextContains("1d20")
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
     assertEquals(1, seen.size)
 
     // And it is a real throw when the hand comes: there is no other path.
@@ -461,10 +445,15 @@ class RollScreenTest {
   }
 
   @Test
-  fun `an empty field says what to do rather than nothing`() {
+  fun `an empty tray says nothing at all, and draws nothing over the felt`() {
+    // `Type a formula, or open Dice at the top.` stood here and is gone: it
+    // pointed at a formula that is no longer on the table, and it was a plate
+    // over the felt in the one state where the felt is all there is.
     show()
 
-    compose.onNodeWithTag(RollTestTags.HINT).assertTextEquals("Type a formula, or open Dice at the top.")
+    compose.onNodeWithTag(RollTestTags.HINT).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.DICE_MENU).assertIsDisplayed()
   }
 
   @Test
@@ -615,86 +604,6 @@ class RollScreenTest {
     assertEquals("$BRASS:1d20", presenter.text)
   }
 
-  @Test
-  fun `a tap on the strip fills the field and throws nothing`() {
-    // The slot is how the roll screen is handed saved rolls without knowing
-    // what one is. What it hands back is the formula *and* which roll put it
-    // there, so the throw that follows can be recorded as that roll's
-    // (`docs/statistics.md`, per saved roll and per group).
-    //
-    // **It used to throw.** That made the strip the one control in the app
-    // that rolled without a hand, and a saved roll brushed by a thumb was
-    // dice already on the table (`docs/physics-and-rendering.md`, "Starting
-    // a roll").
-    lateinit var presenter: RollPresenter
-    val tray = DirectTray()
-    compose.setContent {
-      presenter = remember { presenter(tray, LandingRolls(mapOf(0 to 0))) }
-      RollScreen(
-        presenter = presenter,
-        strip = { fill ->
-          Button(
-            onClick = { fill("1d20", SavedRollSource(rollId = "fireball", groupId = "thorin")) },
-            modifier = Modifier.testTag(STRIP_TAG),
-          ) { Text("Fireball") }
-        },
-      )
-    }
-
-    compose.onNodeWithTag(STRIP_TAG).performClick()
-
-    assertEquals("1d20", presenter.text)
-    assertTrue("the strip threw the roll rather than filling the field", presenter.state is RollState.Ready)
-    assertEquals("the strip threw something", 0, tray.throws)
-  }
-
-  @Test
-  fun `and the shake after it is the throw`() {
-    // The formula reached the field with the saved roll behind it, so the
-    // throw the hand makes is still that roll's.
-    lateinit var presenter: RollPresenter
-    compose.setContent {
-      presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
-      RollScreen(
-        presenter = presenter,
-        strip = { fill ->
-          Button(
-            onClick = { fill("1d20", SavedRollSource(rollId = "fireball", groupId = "thorin")) },
-            modifier = Modifier.testTag(STRIP_TAG),
-          ) { Text("Fireball") }
-        },
-      )
-    }
-    compose.onNodeWithTag(STRIP_TAG).performClick()
-
-    shake()
-
-    compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
-    assertEquals("1d20", presenter.text)
-  }
-
-  @Test
-  fun `a typed formula from the slot belongs to no saved roll`() {
-    // The other side of the slot: a caller with nothing to attribute passes
-    // none, and the screen takes the ordinary path.
-    lateinit var presenter: RollPresenter
-    compose.setContent {
-      presenter = remember { presenter(DirectTray(), LandingRolls(mapOf(0 to 0))) }
-      RollScreen(
-        presenter = presenter,
-        strip = { fill ->
-          Button(onClick = { fill("1d6", null) }, modifier = Modifier.testTag(STRIP_TAG)) { Text("Two") }
-        },
-      )
-    }
-
-    compose.onNodeWithTag(STRIP_TAG).performClick()
-    shake()
-
-    compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
-    assertEquals("1d6", presenter.text)
-  }
-
   private fun twoSets(): DiceCatalog =
     DiceCatalog.of(
       listOf(BuiltinDiceSet.set, BuiltinDiceSet.set.copy(id = BRASS, name = "Brass")),
@@ -756,7 +665,7 @@ class RollScreenTest {
     compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
 
     compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertIsDisplayed()
   }
 
   @Test
@@ -773,31 +682,36 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the tray shows the formula rather than a field, until it is tapped`() {
-    // A field is a thing to fill in; the formula is a thing somebody has
-    // written (`design/dInfinity.dc.html`, option 2a).
+  fun `the tray shows a tab rather than the formula, until it is asked for`() {
+    // The second device session asked for the formula to be out of the way
+    // entirely: what is left on the felt is the door, not what is behind it
+    // (`design/dInfinity.dc.html`, option 2a).
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA_DRAWER).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
   }
 
   @Test
-  fun `and there is always something to tap, even with nothing typed`() {
-    // Without the hint standing in, a fresh install shows a tray, a row of
-    // dice and a blank space where the formula goes.
+  fun `and there is always a tab to press, even with nothing typed`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertTextContains("3d6", substring = true)
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertTextContains("Formula", substring = true)
   }
 
   @Test
-  fun `tapping it brings the field up`() {
+  fun `pressing it brings the drawer in, and pressing it again takes it away`() {
     show()
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
 
+    compose.onNodeWithTag(RollTestTags.FORMULA_DRAWER).assertIsDisplayed()
     compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
   }
 
   @Test
@@ -829,14 +743,21 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the line is marked when the formula does not read`() {
-    // The badge `9c` asks for. What exactly is wrong is said in the editor,
-    // under the squiggle, because that is where somebody can fix it.
+  fun `the tab is marked when the formula does not read`() {
+    // The badge `9c` asks for, and the one thing the shut tab still says
+    // about a formula it does not print. What exactly is wrong is said in the
+    // drawer, under the squiggle, because that is where somebody can fix it.
     show()
     typeFormula("3d6 +")
 
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.INVALID).assertIsDisplayed()
+
+    // And shut again, the tab is still there to say something is behind it —
+    // what it says to a screen reader is [FormulaDrawerTest]'s.
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
+
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
   }
 
   /**
@@ -852,15 +773,26 @@ class RollScreenTest {
   }
 
   /**
-   * Types a formula the way a player does: tap the line, then type.
+   * Types a formula the way a player does: bring the drawer in, then type.
    *
-   * The field is not on the tray until somebody asks for it
+   * The formula is not on the tray at all until somebody asks for it
    * (`design/dInfinity.dc.html`, option 2a), so every test that types goes
-   * through the tap — which is also the only way the tap stays tested.
+   * through the tab — which is also the only way the tab stays tested.
    */
   private fun typeFormula(text: String) {
-    compose.onNodeWithTag(RollTestTags.FORMULA_LINE).performClick()
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(text)
+  }
+
+  /**
+   * The field, which is now the only place the formula is written at all.
+   *
+   * It brings the drawer in first: the tray no longer prints the formula, so
+   * "what does the field say" is a question that starts with a press.
+   */
+  private fun theFormula(): SemanticsNodeInteraction {
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
+    return compose.onNodeWithTag(RollTestTags.FORMULA)
   }
 
   /**
@@ -910,6 +842,33 @@ class RollScreenTest {
     return presenter
   }
 
+  @Test
+  fun `the way back to the designer is on the tray only when there is one`() {
+    // The banner itself is `BackToDesignerTest`'s; what this asks is that the
+    // screen draws it at all, and that every other way onto the tray has no
+    // banner on it (`docs/face-designer.md`, "The way back").
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        onBackToDesigner = {},
+      )
+    }
+
+    compose.onNodeWithTag(RollTestTags.BACK_TO_DESIGNER).assertIsDisplayed()
+  }
+
+  @Test
+  fun `and every other way onto the tray has none`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.BACK_TO_DESIGNER).assertDoesNotExist()
+  }
+
+  private fun presenter(
+    tray: Tray,
+    rolls: Rolls,
+  ) = rollPresenter(tray, rolls)
+
   private fun showWith(modifier: Modifier) {
     compose.setContent {
       RollScreen(
@@ -919,215 +878,12 @@ class RollScreenTest {
     }
   }
 
-  private fun presenter(
-    tray: Tray,
-    rolls: Rolls,
-  ) = RollPresenter(
-    machine =
-      RollMachine(
-        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
-        geometry = TableGeometry.referenceDevice(),
-        look = { TableLook(id = "plain", name = "Plain") },
-        outside = Outside(seeds = { 1L }, clock = { 0L }),
-      ),
-    driver = tray,
-    rolls = rolls,
-    toTheScreen = { it() },
-  )
-
   /** Throws the dice where it stands, so a click and its total are one act. */
   private companion object {
     const val CALLER_TAG = "caller:modifier"
 
     /** A second installed set, which is when the chooser is worth drawing. */
     const val BRASS = "brass"
-    const val STRIP_TAG = "test:strip"
     const val PATIENCE = 2_000L
-  }
-
-  /** A tray that throws the dice where it stands and says it draws nothing. */
-  private class UndrawnTray : DirectTray() {
-    override val draws: Boolean = false
-  }
-
-  private open class DirectTray : Tray {
-    val shaken = mutableListOf<ShakeSample>()
-
-    /** How many times the screen has given this tray back. */
-    var closes = 0
-      private set
-
-    /** How many throws this tray has been handed. */
-    var throws = 0
-      private set
-
-    /** Every board this tray has been asked to show, in order. */
-    val boards = mutableListOf<List<DieInstance>>()
-
-    /** Every table this tray has been told about, in order. */
-    val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
-
-    /** Every view the player has asked for, in order. */
-    val looked = mutableListOf<TrayView>()
-
-    override fun surfaceAvailable(
-      surface: Surface,
-      width: Int,
-      height: Int,
-    ) = Unit
-
-    override fun surfaceLost() = Unit
-
-    override fun roll(
-      start: (Renderer) -> WatchedRoll,
-      onCounted: (Map<Int, Int>) -> Unit,
-      onStalled: (List<Int>) -> Unit,
-      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
-    ) {
-      throws++
-      val live = start(HeadlessRenderer())
-      while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
-      live.outcome?.let { onSettled(it, live.drivenBy) }
-      live.close()
-    }
-
-    override fun waiting(spec: ThrowSpec) {
-      boards += spec.dice
-    }
-
-    override fun shake(sample: ShakeSample) {
-      shaken += sample
-    }
-
-    override fun table(
-      geometry: TableGeometry,
-      look: TableLook,
-    ) {
-      tabled += geometry to look
-    }
-
-    override fun look(view: TrayView) {
-      looked += view
-    }
-
-    override fun clear() = Unit
-
-    override fun close() {
-      closes++
-    }
-  }
-
-  /**
-   * A tray that reports some dice counted and then leaves the roll in the air,
-   * which is what the screen looks like halfway through one.
-   */
-  private class CountingTray(
-    private val read: Map<Int, Int>,
-  ) : Tray by PendingTray() {
-    override fun roll(
-      start: (Renderer) -> WatchedRoll,
-      onCounted: (Map<Int, Int>) -> Unit,
-      onStalled: (List<Int>) -> Unit,
-      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
-    ) {
-      onCounted(read)
-    }
-  }
-
-  /** A tray whose roll gives up: some dice never settle, and there is no total. */
-  private class StallingTray(
-    private val unsettled: List<Int>,
-  ) : Tray by PendingTray() {
-    var throws = 0
-      private set
-
-    override fun roll(
-      start: (Renderer) -> WatchedRoll,
-      onCounted: (Map<Int, Int>) -> Unit,
-      onStalled: (List<Int>) -> Unit,
-      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
-    ) {
-      throws++
-      onStalled(unsettled)
-    }
-  }
-
-  /** A tray that takes the throw and leaves the dice in the air. */
-  private class PendingTray : Tray {
-    val shaken = mutableListOf<ShakeSample>()
-
-    /** Every table this tray has been told about, in order. */
-    val tabled = mutableListOf<Pair<TableGeometry, TableLook>>()
-
-    /** Every view the player has asked for, in order. */
-    val looked = mutableListOf<TrayView>()
-
-    override fun surfaceAvailable(
-      surface: Surface,
-      width: Int,
-      height: Int,
-    ) = Unit
-
-    override fun surfaceLost() = Unit
-
-    override fun roll(
-      start: (Renderer) -> WatchedRoll,
-      onCounted: (Map<Int, Int>) -> Unit,
-      onStalled: (List<Int>) -> Unit,
-      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
-    ) {
-      start(HeadlessRenderer())
-    }
-
-    override fun shake(sample: ShakeSample) {
-      shaken += sample
-    }
-
-    override fun table(
-      geometry: TableGeometry,
-      look: TableLook,
-    ) {
-      tabled += geometry to look
-    }
-
-    override fun look(view: TrayView) {
-      looked += view
-    }
-
-    override fun clear() = Unit
-
-    override fun close() = Unit
-  }
-
-  /** A roll that lands on the given faces at the first frame. */
-  private class LandingRolls(
-    private val faces: Map<Int, Int>,
-  ) : Rolls {
-    override fun start(
-      spec: ThrowSpec,
-      watcher: Renderer,
-    ): WatchedRoll =
-      object : WatchedRoll {
-        private var landed = false
-
-        override val running: Boolean get() = !landed
-
-        override val outcome: SimulationOutcome? get() = if (landed) SimulationOutcome(faces = faces) else null
-
-        override val drivenBy: List<ShakeSample> = emptyList()
-
-        override val impacts: List<Impact> = emptyList()
-
-        override fun advance(elapsedSeconds: Double): RenderFrame {
-          landed = true
-          return RenderFrame.still(
-            spec.dice.indices.map { BodyTransform(it, Vector3(0.0, 0.0, 8.0), Quaternion.Identity) },
-          )
-        }
-
-        override fun shake(sample: ShakeSample) = Unit
-
-        override fun close() = Unit
-      }
   }
 }

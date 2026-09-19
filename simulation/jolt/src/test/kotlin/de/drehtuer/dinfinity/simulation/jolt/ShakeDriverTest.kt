@@ -96,7 +96,7 @@ class ShakeDriverTest {
     val driver = ShakeDriver(listOf(sample(step = 0, x = 5_000.0)))
     assertFalse(driver.stillShaking(ShakeDriver.HOLD_STEPS + 1))
 
-    driver.add(sample(step = 40, x = 5_000.0))
+    driver.add(sample(step = 40, x = 5_000.0), atStep = 40)
 
     assertTrue("a hand that kept going was not noticed", driver.stillShaking(ShakeDriver.HOLD_STEPS + 1))
   }
@@ -186,9 +186,9 @@ class ShakeDriverTest {
     // sensors happened to fire.
     val driver = ShakeDriver(emptyList())
 
-    driver.add(sample(step = 7, x = 1_000.0))
-    driver.add(sample(step = 2, x = 2_000.0))
-    driver.add(sample(step = 11, x = 3_000.0))
+    driver.add(sample(step = 7, x = 1_000.0), atStep = 7)
+    driver.add(sample(step = 2, x = 2_000.0), atStep = 2)
+    driver.add(sample(step = 11, x = 3_000.0), atStep = 11)
 
     assertEquals(listOf(2, 7, 11), driver.recorded().map(ShakeSample::stepIndex))
   }
@@ -200,8 +200,8 @@ class ShakeDriverTest {
     // different roll.
     val driver = ShakeDriver(emptyList())
 
-    driver.add(sample(step = 4, x = 1_000.0))
-    driver.add(sample(step = 4, x = 9_000.0))
+    driver.add(sample(step = 4, x = 1_000.0), atStep = 4)
+    driver.add(sample(step = 4, x = 9_000.0), atStep = 4)
 
     assertEquals(listOf(sample(step = 4, x = 9_000.0)), driver.recorded())
   }
@@ -221,7 +221,7 @@ class ShakeDriverTest {
     // twelve. Every moment past the cap names a step nothing will ever take.
     val driver = ShakeDriver(emptyList())
 
-    repeat(THIRTY_SECONDS_OF_STEPS) { step -> driver.add(sample(step = step, x = 1_000.0)) }
+    repeat(THIRTY_SECONDS_OF_STEPS) { step -> driver.add(sample(step = step, x = 1_000.0), atStep = step) }
 
     assertEquals(ShakeSample.MAX_RECORDED, driver.recorded().size)
     assertEquals(ShakeSample.MAX_RECORDED - 1, driver.recorded().last().stepIndex)
@@ -231,7 +231,7 @@ class ShakeDriverTest {
   fun `a moment past the cap is not kept and does not hold the roll open`() {
     val driver = ShakeDriver(emptyList())
 
-    driver.add(sample(step = ShakeSample.MAX_RECORDED, x = 10_000.0))
+    driver.add(sample(step = ShakeSample.MAX_RECORDED, x = 10_000.0), atStep = ShakeSample.MAX_RECORDED)
 
     assertEquals(emptyList<ShakeSample>(), driver.recorded())
     assertTrue("a sample that drives nothing still counted as a shake", driver.isStill)
@@ -248,6 +248,77 @@ class ShakeDriverTest {
     assertEquals(listOf(0), ShakeDriver(shake).recorded().map(ShakeSample::stepIndex))
   }
 
+  @Test
+  fun `a live sample drives the step the world is about to take, not the one its own clock names`() {
+    // The recorder counts steps in wall-clock milliseconds from the start of
+    // the shake; the world counts the steps it has actually taken. Pacing a
+    // watched roll pulls the two apart, and a sample left on the recorder's
+    // number would reach the dice a beat late — or, once the world had gone
+    // past it, never.
+    val driver = ShakeDriver(emptyList())
+
+    driver.add(sample(step = 240, x = 5_000.0), atStep = 100)
+    driver.advance(100)
+
+    assertTrue("the hand did not reach the step it arrived for", driver.gravity.x < 0.0)
+  }
+
+  @Test
+  fun `a sample whose own clock is behind the world is not filed in the past`() {
+    // What shaking a phone at tumbling dice used to do: nothing at all.
+    val driver = ShakeDriver(emptyList())
+
+    driver.add(sample(step = 3, x = 5_000.0), atStep = 200)
+
+    driver.advance(3)
+    assertEquals("a step already taken was driven", ShakeDriver.DEFAULT_GRAVITY, driver.gravity)
+    driver.advance(200)
+    assertTrue("the hand never reached the roll", driver.gravity.x < 0.0)
+  }
+
+  @Test
+  fun `the record names the step that drove the roll, so it replays`() {
+    // `spec.copy(shake = recorded())` has to reproduce the roll, and it cannot
+    // if the record keeps the sensor's numbering while the world used another.
+    val driver = ShakeDriver(emptyList())
+    driver.add(sample(step = 240, x = 5_000.0), atStep = 100)
+
+    val record = driver.recorded()
+    assertEquals(listOf(100), record.map(ShakeSample::stepIndex))
+
+    val replayed = ShakeDriver(record)
+    repeat(REPLAY_STEPS) { step ->
+      driver.advance(step)
+      replayed.advance(step)
+      assertEquals("the record did not replay the roll it drove", driver.gravity, replayed.gravity)
+    }
+  }
+
+  @Test
+  fun `how long the hand is still shaking is counted on the world's clock`() {
+    // A roll may not end while this holds, so a number off the wrong clock
+    // would hold a finished roll open for as long as the drift lasted.
+    val driver = ShakeDriver(emptyList())
+
+    driver.add(sample(step = 1_000, x = 5_000.0), atStep = 20)
+
+    assertTrue(driver.stillShaking(20 + ShakeDriver.HOLD_STEPS))
+    assertFalse(
+      "a sensor's numbering held the roll open long after the hand stopped",
+      driver.stillShaking(20 + ShakeDriver.HOLD_STEPS + 1),
+    )
+  }
+
+  @Test
+  fun `a sample placed past the cap is dropped, however early its own clock said it was`() {
+    val driver = ShakeDriver(emptyList())
+
+    driver.add(sample(step = 0, x = 5_000.0), atStep = ShakeSample.MAX_RECORDED)
+
+    assertEquals(emptyList<ShakeSample>(), driver.recorded())
+    assertTrue("a sample that drives nothing still counted as a shake", driver.isStill)
+  }
+
   private fun sample(
     step: Int,
     x: Double,
@@ -261,5 +332,8 @@ class ShakeDriverTest {
   private companion object {
     /** Long enough to be past the roll's own cap several times over. */
     const val THIRTY_SECONDS_OF_STEPS = 3_600
+
+    /** Far enough past the one sample in the record to cover it letting go. */
+    const val REPLAY_STEPS = 140
   }
 }

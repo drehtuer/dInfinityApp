@@ -55,12 +55,23 @@ class LiveRoll internal constructor(
   /** True until the last die has come to rest. */
   override val running: Boolean get() = outcome == null && !loop.stalled
 
+  /**
+   * True while a hand is throwing these dice rather than a player watching
+   * them ([RollLoop.driven]).
+   *
+   * Read by whoever converts real frames into simulated time, which is not
+   * this: a roll is handed however much time it may spend and has no opinion
+   * about where that came from
+   * ([de.drehtuer.dinfinity.simulation.api.RollPace]).
+   */
+  override val driven: Boolean get() = running && loop.driven
+
   override val stalled: Boolean get() = loop.stalled
 
   override val unsettled: List<Int> get() = loop.unsettled
 
   /** How many fixed steps the roll has taken. Simulated time, never wall time. */
-  val stepsTaken: Int get() = loop.stepsTaken
+  override val stepsTaken: Int get() = loop.stepsTaken
 
   /**
    * Every moment of the shake that has reached this roll, in step order.
@@ -115,10 +126,13 @@ class LiveRoll internal constructor(
    * Moves the roll on by however much [elapsedSeconds] is worth, shows the
    * renderer where the dice are, and hands back the same frame.
    *
-   * Called once per displayed frame with the time since the last one. The
-   * frame time never reaches the solver — [FrameClock] cuts it into whole
-   * fixed steps first — so a stutter, a slow frame or a 120 Hz panel change
-   * when the roll is drawn and never what it comes to.
+   * Called once per displayed frame with however much simulated time that
+   * frame earns the roll, which on a watched tray is a fraction of the time
+   * the frame took ([de.drehtuer.dinfinity.simulation.api.RollPace], applied
+   * by the caller). Either way the number never reaches the solver —
+   * [FrameClock] cuts it into whole fixed steps first — so a stutter, a slow
+   * frame, a 120 Hz panel or a pace change when the roll is drawn and never
+   * what it comes to.
    */
   override fun advance(elapsedSeconds: Double): RenderFrame {
     var steps = clock.advance(elapsedSeconds)

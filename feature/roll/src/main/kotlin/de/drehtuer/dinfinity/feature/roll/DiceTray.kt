@@ -239,8 +239,15 @@ private fun PointerInputScope.moveTheCamera(
   onLook(
     from.movedBy(
       by = event.calculateZoom().toDouble(),
-      alongFraction = -(pan.y / height).toDouble(),
-      acrossFraction = -(pan.x / width).toDouble(),
+      // **The table follows the finger.** Tray `+x` is screen-up and `+y` is
+      // screen-left (`TrayCamera`), so moving the camera's target *with* the
+      // drag is what makes the felt come with it; negating it moved the table
+      // the other way, which is what the second device session reported as
+      // the drag being inverted. Pinching is anchored the other way round on
+      // purpose — see `about` below — because that is a place on the screen
+      // rather than a movement of one.
+      alongFraction = (pan.y / height).toDouble(),
+      acrossFraction = (pan.x / width).toDouble(),
       geometry = geometry,
       about =
         ScreenSpot(

@@ -200,8 +200,15 @@ object FaceGuide {
     cell: Int,
   ): List<Pair<Int, GuideSpot>> {
     if (!isCornerRead(die) || cell !in die.faces.indices) return emptyList()
+    val outline = FaceOutline.of(die.shape)
     val surface = SolidFaces.of(die.shape)[cell]
-    val places = SPOTS.map { FaceShapes.corner(FaceOutline.of(die.shape), it) }
+    // Through the same fit the exporter paints with, so "where the canvas's
+    // corner goes" is one answer rather than two. Before the exporter had a
+    // fit at all this was a comparison in canvas coordinates that happened to
+    // come out right, because a tetrahedron's cells are turned by fifteen
+    // degrees and a whole step is a hundred and twenty ([FaceOnSolid]).
+    val fit = FaceOnSolid.cellFitOf(surface, outline)
+    val places = SPOTS.map { fit.of(FaceShapes.corner(outline, it)) }
     val wound = surface.corners.indices.sortedBy { round(surface.cellOf(surface.corners[it])) }
     val turn = alignment(wound.map { surface.cellOf(surface.corners[it]) }, places)
     return SPOTS.mapIndexed { at, spot -> surface.cornerReads[wound[(at + turn) % wound.size]] to spot }

@@ -245,6 +245,8 @@ stateDiagram-v2
     Roll --> Graph: See the odds, off the result sheet
     Roll --> Editor: Save as roll, off the result sheet
     Roll --> Menu: the menu button
+    Screen --> Roll: Roll it, carrying the die being drawn
+    Roll --> Screen: back to the designer, on that die
     Screen --> Editor: a saved roll, or New
     Editor --> Screen: saved, deleted, or the chevron
     Editor --> Roll: Roll now
@@ -268,6 +270,17 @@ other screen is two presses away. Choosing a row takes the menu *off* the back
 stack with it, so back from what it opened goes where the menu was opened
 from — a menu you have to press back through twice reads as a detour. Choosing
 the screen you are already on does not stack a second copy of it.
+
+**One control climbs to somewhere the menu does not go**, and it is the one
+exception worth naming. A throw asked for by the face designer's **Roll it**
+carries the die it was drawing on the tray's own route, and a tray opened
+that way draws a banner going back to the designer on that die
+(`docs/face-designer.md`, "The way back"). It is a banner rather than a
+chevron because a chevron climbs to a destination's `up` — the same screen
+every time — and the tray is home and has none; a control that appeared on
+some visits and not on others could not be that. The press itself uses the
+same `climbTo` a chevron does, so what it leaves behind is the tray with the
+designer on it rather than a pile of both twice.
 
 Nothing is undefined, and nothing is unreachable. `NavHost` answers back on
 every destination, `Destination.home` is where the app opens, and a route that
@@ -448,6 +461,18 @@ among the dice that set it off (`docs/physics-and-rendering.md`, "The dice an
 explosion or a reroll adds"). Every one of those throws is an ordinary throw
 down the ordinary path; there is no second way to get a number.
 
+**A die falling onto the board is not a state.** Adding a die to the formula
+drops one onto the table and it tumbles to a stop, which takes about a fifth of
+a second and is worth watching — but `RollState` says what the *roll* is doing,
+and while the dice are being put out the roll is doing nothing at all. The
+screen stays in `Ready` throughout and says the same thing before, during and
+after; the fall is a picture the tray is drawing, entirely inside
+`render/filament` and `simulation/api`, and nothing above it can tell whether
+it has finished (`docs/physics-and-rendering.md`, "The dice waiting to be
+thrown"). It has to be that way round: a state for it would be a state a shake
+could arrive in, and a shake that had to wait for an animation would be a
+shake the app ignored.
+
 **Typing is the one input every state accepts**, which is why it reaches every
 state in the diagram: the field is live on every keystroke and is never
 disabled, including while the dice are in the air. That last edge is the one
@@ -462,16 +487,22 @@ file.
 
 ### What each state puts on screen
 
-| State | Total | Message | Sheet | A shake | Formula field |
+| State | Total | Message | Sheet | A shake | Formula drawer |
 | --- | --- | --- | --- | --- | --- |
-| `Empty` | — | what to do next | — | throws nothing | live |
-| `Invalid` | — | the formula again, squiggled under what is wrong, and why | — | throws nothing | live, in error |
-| `TooMany` | — | how many were asked for and how many fit | — | throws nothing | live, in error |
+| `Empty` | — | nothing at all | — | throws nothing | live |
+| `Invalid` | — | the squiggle and why, inside the drawer; the tab is red | — | throws nothing | live, in error |
+| `TooMany` | — | how many were asked for and how many fit; the tab is red | — | throws nothing | live, in error |
 | `Ready` | — | that a shake rolls, and what the throw is expected to come to | — | **throws the formula** | live |
 | `Rolling` | — | how many dice have been read, and the range they can still come to | — | joins the roll in the air | live |
-| `ShakeAgain` | — | how many dice the chain earned | — | **throws them** | live |
-| `Stalled` | — | how many never stopped, and `Cancel the roll` | — | **throws them again** | live |
-| `Settled` | the total | — | breakdown, what it was expected to come to, and rounding if the formula divides | **throws the formula again** | live |
+| `ShakeAgain` | — | how many dice the chain earned, and what is still to come | — | **throws them** | live |
+| `Stalled` | — | how many never stopped, what is still to come, and `Cancel the roll` | — | **throws them again** | live |
+| `Settled` | the total, in the sheet's grip | — | the grip carries the total and what the throw was expected to come to; the body carries the breakdown and rounding if the formula divides | **throws the formula again** | live |
+
+**`Empty` says nothing, and that is deliberate.** `Type a formula, or open
+Dice at the top.` stood in that row and the second device session asked for
+it to go (`docs/physics-and-rendering.md`, "What is drawn over the table").
+An empty tray is now an empty tray with two doors along the top, and a fresh
+install still gets the first-launch screen.
 
 There is no Roll button column any more, because there is no Roll button: a
 shake is the throw (`docs/physics-and-rendering.md`, "Starting a roll"). The
@@ -503,21 +534,24 @@ repositories rather than from presenters: a sessions presenter would make the
 default session as a side effect, and saying hello is not a reason to write to
 a database.
 
-**The formula sits on the tray as text, not as a field.** A dashed rule under
-it says it can be typed into; a tap brings the field and the keyboard up, and
-the keyboard's action key rolls (`design/dInfinity.dc.html`, option 2a). A
-field is a thing to fill in and this is a thing somebody has written. The hint
-stands in when nothing has been typed, so there is always something to tap, and
-the line is marked when the formula does not read — *what* is wrong is said in
-the editor, under the squiggle, because that is where somebody can fix it.
-Whether the editor is open is the screen's, remembered across a rotation, and
-`RollMachine` knows nothing about it.
+**The formula is not on the tray at all until it is asked for.** What is on
+the tray is a tab at the right-hand edge — the word `Formula` and a chevron —
+and pressing it slides the drawer in from the side: the field, the squiggle,
+the one-tap fix and the keyboard, whose action key rolls
+(`design/dInfinity.dc.html`, option 2a). It used to be a line of type with a
+dashed rule under it, on screen in every state; the second device session
+asked for it to be put away and to arrive from the side, and both halves are
+about the felt. The tab is **red when the formula does not read**, which is
+the one thing it still says about a formula it no longer prints — *what* is
+wrong is said inside, under the squiggle, because that is where somebody can
+fix it. Whether the drawer is in is the screen's, remembered across a
+rotation, and `RollMachine` knows nothing about it.
 
-**Two menus hang off the top edge, and only one of them can be open.** The
+**Two controls hang off the top edge, and only one of them can be open.** The
 formula is one of them, on the right under the menu button; the dice picker is
-the other, on the left. Both push what is under them down rather than floating
-over it, so two open at once would be the top half of the table covered —
-which is the thing the layout exists to stop
+the other, on the left. The picker pushes what is under it down and the
+formula comes in over the table, so two open at once would be the top half of
+the table covered — which is the thing the layout exists to stop
 (`docs/physics-and-rendering.md`, "What is drawn over the table"). Which is
 open is two booleans on the screen, remembered across a rotation, and opening
 either shuts the other in one place rather than in each control.
@@ -531,8 +565,18 @@ so a shut menu still says what is in the throw.
 Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
-- **the formula line** opens the editor, and **the editor** calls `type` on
-  every keystroke and `roll` on the action key;
+- **the formula's tab** brings the drawer in and takes it away again, and
+  **the field inside it** calls `type` on every keystroke and `roll` on the
+  action key;
+- **the saved rolls' handle** moves that pull-up between its two rests, and
+  the strip inside it calls `type` or `typeSaved`. Neither decides anything
+  about the roll: a tap on a saved roll fills the field and waits for a shake
+  like every other way in;
+- **the result sheet's handle** moves that pull-up between its two rests, and
+  a result never leaves the screen while the roll is on it. The two sheets
+  share the bottom edge and may not both be up; which yields is `BottomEdge`,
+  plain Kotlin with its own tests
+  (`docs/physics-and-rendering.md`, "Two pull-ups, one bottom edge");
 - **the dice pull-down** puts the picker on screen and takes it away again,
   and decides nothing about the roll;
 - **the dice picker row** calls `add` on a tap and `remove` on a long press,
@@ -929,8 +973,11 @@ to migrate.
 
 ### The saved-roll strip on the tray
 
-The active group's rolls sit above the dice picker, as tiles: a roll somebody
-named comes before a die they have to assemble.
+The active group's rolls, as tiles, **behind a pull-up on the bottom edge**:
+parked by default so the whole table is visible, pulled up when somebody wants
+one (`docs/physics-and-rendering.md`, "Two pull-ups, one bottom edge"). It was
+a plate standing across the felt in every state, which is one more place a die
+could land and not be seen.
 
 **A tap here fills the formula field**, exactly as a tap on the saved-rolls
 list does, and the throw is the shake that follows
@@ -1704,10 +1751,11 @@ come to rest is finished (`docs/physics-and-rendering.md`, "The dice an
 explosion or a reroll adds").
 
 The loop back into `LiveRoll` is a shake. The dice are spawned when the shake
-is confirmed, so most of one arrives while they are already in the air; each
-sample names the step it belongs to, and the roll is reproducible from the
-record afterwards because the frame clock never runs the simulation faster
-than real time (`docs/physics-and-rendering.md`, "Shake input").
+is confirmed, so most of one arrives while they are already in the air; a
+sample is filed on the step the world is about to take and rewritten to it, so
+the roll is reproducible from the record afterwards whatever the sensor's own
+clock said — which matters, because a watched roll is paced and the two clocks
+do not run together (`docs/physics-and-rendering.md`, "Shake input").
 
 The roll accumulates those samples as it takes them and reports them beside the
 outcome, so a throw that has landed can be described by the spec that would
@@ -1853,3 +1901,5 @@ the archives an install is working through, and those came from a stranger.
 | 61 | Every word a screen says is a string resource, and a check of the project's own — not Android Lint's — is what keeps it that way | Lint has the rule and cannot apply it: `HardcodedText` reads layout XML, and there is no layout in this app to read. Left at that, "nothing prevents a translation" would be a claim maintained by whoever last remembered it, which is the kind of rule that decays quietly — a caption typed into a `Text(` is invisible in review and invisible in CI. So the rule is enforced by `verifyTextIsAResource`, which reads what a composable is *handed*. It is a heuristic over source text rather than a type-resolved analysis, and that shapes what it asks: only the handful of call sites that put words on a screen, and only literals with words of their own in them, so that a test tag, a route, a `require` message and `"%.1f"` are all left alone. The gaps are the two plain-Kotlin modules that write English on purpose — the notation reference beside its parser, and the validator that may not depend on Android — and they are exempted by file name in their own build scripts rather than by a directory nothing looks in, so the hole stays visible and small |
 | 63 | There is **one** colour picker, in `ui/common`, and the arithmetic under it is in `core/model` | Three screens ask for a colour and the sheet had been written twice, each copy private to its feature module, each with its own slider row and its own duplicate of what a hue is — and the second copy's own comment already said that two pickers disagreeing about a hue would be one too many, which is a note somebody wrote instead of fixing it. The rule for `ui/common` answers it exactly: more than one screen needs it, and it needs no screen. What forced the second half is the dependency arrow — `ui/common` may not depend on a feature's engine, so the arithmetic could not stay in `:designer` and moving it *up* was the only direction left. `core/model` is where it belongs anyway: it sits beside `AccentRamp` and `Contrast`, which are the other things every picked colour goes through, it is plain Kotlin so a JVM test holds what a hue is rather than a Robolectric one, and it is low enough that nothing has to take a screen's dependency to write a colour down. `feature/settings` had taken `:designer` for the arithmetic alone and no longer depends on it; `feature/designer`'s alias of `ui/common`'s `Ink` went with the name clash that forced it. The tags are derived from one string rather than declared seven times per screen, because twenty-one constants is twenty-one chances to spell a suffix two ways |
 | 62 | Which die a finger is on is arithmetic in `render/filament`, the inverse of the camera; whether that die may be thrown again is arithmetic in `core/notation`, over the breakdown | The same line decisions 40 and 47 draw, applied to the only gesture the tray had left. A touch point becomes a die by a ray through the frustum `TrayCamera` framed, against the ball around each die at the scale the capacity rule threw it — so it belongs beside that camera, where a JVM test can project a die through the picture it was drawn in and ask for it back, and not inside a `pointerInput` lambda where the only test is a person tapping a phone and the only symptom is a die they did not touch. The second half is a different question and deliberately not in the same place: *may* a die be thrown again is about the **formula**, not about the physics or the picture. A die that another die was thrown because of is spent — `8d6!` threw a seventh die because the sixth came up six — and throwing it again would leave the roll holding a die nothing asks for, which can only be resolved by taking a die off the table or keeping one whose reason has gone. Both are the app moving dice behind the player, which is what the whole stacking ladder exists to avoid. So the rule sits beside `GroupRoller`, which is what builds the chains, and it is coarse on purpose: a group carrying `!` or `r n` offers nothing at all rather than a per-die guess reconstructed from a flat list the chains were flattened out of. A die it refuses is a die the player throws again by pressing **Roll**; a die it wrongly allowed would be a roll the app had rearranged |
+| 64 | The dice waiting to be thrown *fall* onto the board, and the fall is closed-form arithmetic in `simulation/api` rather than a second physics world | The player asked to see a die land when they add one, and the obvious way to get that is to simulate it — which is the one thing this app must not do twice. A real world for the pre-throw board would be a second place a face could come from, kept out of the score by a promise rather than by construction, and it would want a thread, a lifecycle and a device to test on, with eight of them queued behind somebody tapping out `8d6`. `FallingIn` has none of that: free fall, three bounces and an eased turn, evaluated wherever the frame callback asks, with **every fall ending at `Quaternion.Identity`** — the resting orientation is fixed before the die is let go, so there is no face to read even in principle. It ends exactly where `RestingPlaces` always put the die, so the board is the board it always was; its randomness comes through `Seeds.WAITING`, a purpose no throw uses, so the golden fixture does not move; and it is all on the near side of `Stage`, so it is tested on a JVM (`docs/physics-and-rendering.md`, "The dice waiting to be thrown") |
+| 65 | A watched roll is **paced**: `RollPace` scales a frame's real time before `FrameClock` turns it into steps, and the factor is one constant applied in `TrayLoop.frame` | The dice are too fast to watch and the physics cannot fix it — friction moves the median settle of 20d20 on the Pixel 10a only from 0.73 s to 0.85 s, and the top of that range pushes the dice into one another. Two seconds of tumbling is energy a hand does not put into dice. So the same roll is shown over more wall clock: same seed, same steps, same order, same faces, nothing reaching the solver. It lives at the one line where real time becomes simulated time, which is also the line power-saving mode never crosses — that mode has no screen, so it must not be paced, and a place it cannot reach is a better guarantee than a flag it must clear. It is off while `WatchedRoll.driven`, which is `ShakeDriver.stillShaking`, so the part of a roll a hand is steering is exactly the part that is not slowed; reusing the roll's own predicate is what stops the two ever disagreeing. Placing it here rather than inside `FrameClock` also keeps the clock's contract untouched: it still says nothing about wall clocks and still reports dropped steps and interpolation in the time it was actually given |

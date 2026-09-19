@@ -207,9 +207,39 @@ interface WatchedRoll : AutoCloseable {
   val diagnostics: RollDiagnostics get() = RollDiagnostics.NONE
 
   /**
+   * True while a hand is throwing these dice rather than a player watching
+   * them (`docs/physics-and-rendering.md`, "The simulation clock").
+   *
+   * What a watched tray asks before it decides how much of a frame the roll is
+   * worth: a roll being driven gets every frame whole, because a shake is
+   * answered now or it is not answered, and a roll being watched is paced so
+   * the dice can be seen to land
+   * ([de.drehtuer.dinfinity.simulation.api.RollPace]).
+   *
+   * A reading like [outcome] and [countedSoFar] — asking cannot change the
+   * roll. The default is false because a roll with no hand on it is the
+   * ordinary case and a fake in a test should not have to say so.
+   */
+  val driven: Boolean get() = false
+
+  /**
+   * How far the roll has got, in fixed steps.
+   *
+   * What says whether a roll is still worth watching in slow motion or has
+   * turned into one somebody is waiting on (`RollPace.WATCHED_STEPS`).
+   */
+  val stepsTaken: Int get() = 0
+
+  /**
    * Moves the roll on by however much [elapsedSeconds] is worth and hands back
    * where the dice are. The renderer watching has already been shown the same
    * frame.
+   *
+   * The time handed over is **simulated** time the roll may spend, which on a
+   * watched tray is not the same as the time the frame took
+   * ([de.drehtuer.dinfinity.simulation.api.RollPace]). Whoever converts one
+   * into the other does it before calling this; a roll knows nothing about
+   * wall clocks.
    */
   fun advance(elapsedSeconds: Double): RenderFrame
 

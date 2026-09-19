@@ -332,6 +332,16 @@ private fun Roll(
     // like any other way off this screen, and back comes to it again — which
     // is why the drawing is a draft on disk rather than something to save.
     onDoodle = { dieId -> navController.navigate(designerRoute(dieId)) },
+    // And the other direction: a throw that came from the designer's "Roll
+    // it" carries the die it was drawing, and that is what puts the way back
+    // on the tray. It *climbs* rather than popping, so the stack left behind
+    // is the tray with the designer on it — the same stack opening the
+    // designer from the tray would leave ([climbTo]).
+    onBackToDesigner =
+      entry.arguments
+        ?.getString(DesignerArgument.DIE)
+        ?.takeIf { it.isNotEmpty() }
+        ?.let { dieId -> { navController.climbTo(Destination.FaceDesigner, designerRoute(dieId)) } },
     menu = { MenuTo(navController) },
     // The active group's saved rolls, handed to the tray as a slot: the roll
     // screen does not know what a saved roll is, and does not have to
@@ -590,12 +600,20 @@ private fun customising(
       // breakdown — and on the usual one when it names none
       // (`docs/face-designer.md`, "Quick mode").
       val die = entry.arguments?.getString(DesignerArgument.DIE).orEmpty()
+      val designer = remember(entry) { screens.faceDesigner(die) }
       DesignerScreen(
-        presenter = remember(entry) { screens.faceDesigner(die) },
+        presenter = designer,
         // Straight to the tray with the die in the field, unrolled — the same
         // answer the notation screen's examples give, and for the same reason:
         // the throw is the player's to make.
-        onRoll = { formula -> navController.navigate(rollRoute(formula)) },
+        //
+        // The die goes with it, read at the press rather than off the route:
+        // the chooser can have moved to another die since this screen opened,
+        // and the way back has to land on the one actually being tested
+        // (`feature/roll`'s `BackToDesigner`).
+        onRoll = { formula ->
+          navController.navigate(rollRoute(formula, drawing = designer.state.draft.die.id))
+        },
         menu = { MenuTo(navController) },
       )
       true
@@ -888,9 +906,22 @@ internal fun designerRoute(dieId: String): String =
  *
  * Encoded like the graph's, and for the same reason: a formula is made of the
  * characters a URI reserves.
+ *
+ * @param drawing the die the face designer was drawing when this throw was
+ *   asked for, or empty for every other way into the tray. It is what puts
+ *   the way back on the tray, and it carries the die so that the way back
+ *   opens the designer on the die being tested rather than on whichever one
+ *   it last opened (`feature/roll`'s `BackToDesigner`).
  */
-internal fun rollRoute(formula: String): String =
-  "${Destination.Roll.route}?${GraphArgument.FORMULA}=${Uri.encode(formula)}"
+internal fun rollRoute(
+  formula: String,
+  drawing: String = "",
+): String =
+  buildString {
+    append(Destination.Roll.route)
+    append("?${GraphArgument.FORMULA}=${Uri.encode(formula)}")
+    if (drawing.isNotEmpty()) append("&${DesignerArgument.DIE}=${Uri.encode(drawing)}")
+  }
 
 /**
  * Up, out of [from] — to the screen it hangs off, whatever path the player
@@ -912,8 +943,30 @@ internal fun rollRoute(formula: String): String =
  */
 internal fun NavHostController.climb(from: Destination) {
   val up = from.up ?: return
-  navigate(up.route) {
-    popUpTo(Destination.home.route) { inclusive = up == Destination.home }
+  climbTo(up, up.route)
+}
+
+/**
+ * Up to [destination], by way of [route] so that it can be opened with an
+ * argument.
+ *
+ * What [climb] does once it knows where it is going, and the one other thing
+ * that needs it: the way back to the face designer, which is a climb to a
+ * screen that is *not* the tray's up — the tray has none, being home — and
+ * which carries the die being tested (`feature/roll`'s `BackToDesigner`).
+ *
+ * It leaves the same stack a climb leaves, which is the point of sharing it:
+ * the tray at the bottom and one screen on top of it, whatever path the
+ * player took. Going back to the designer this way therefore leaves back
+ * pointing at the tray, rather than at the tray *underneath* the designer
+ * underneath the tray that navigating would have piled up.
+ */
+internal fun NavHostController.climbTo(
+  destination: Destination,
+  route: String = destination.route,
+) {
+  navigate(route) {
+    popUpTo(Destination.home.route) { inclusive = destination == Destination.home }
     // Climbing to the screen already underneath is not a second copy of it.
     launchSingleTop = true
   }

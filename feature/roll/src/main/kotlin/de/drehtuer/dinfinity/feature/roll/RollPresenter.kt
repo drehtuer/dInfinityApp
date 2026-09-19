@@ -77,11 +77,17 @@ class RollPresenter(
     private set
 
   /**
-   * How far the roll in the air has got, or null when none is.
+   * How far the roll has got, or null when there is no roll under way.
    *
    * What the screen follows while a roll is going, because the dice do not
    * stay to be followed: each one is read and taken off the table as soon as
-   * it can be (`docs/TODO.md`, Step 5.5).
+   * it can be.
+   *
+   * **It outlives the dice stopping when the roll is not over.** A chain that
+   * earned a throw and a throw that gave up are both waiting on a hand, and
+   * the range this carries is what a player standing over them is deciding
+   * with. It is cleared by a roll that *finished*, by `clear`, and by a fresh
+   * throw — never by dice merely coming to rest (`TrayPlates`).
    */
   var progress: RollProgress? by mutableStateOf(null)
     private set
@@ -257,6 +263,9 @@ class RollPresenter(
     if (state is RollState.Settled) machine.clear()
 
     val spec = machine.throwDice(shake) ?: return false
+    // A throw of its own rather than the next of a chain, so whatever the last
+    // roll got as far as is not what this one starts by showing.
+    progress = null
     publish()
     throwIt(spec)
     return true
@@ -324,10 +333,13 @@ class RollPresenter(
       },
       onStalled = { unsettled ->
         toTheScreen {
-          if (machine.gaveUp(unsettled, read)) {
-            progress = null
-            publish()
-          }
+          // [progress] is deliberately **not** cleared. A roll that gave up is
+          // a roll waiting on a hand, and what the player is deciding is
+          // whether to shake — for which the range the roll can still come out
+          // in is the whole of the answer. Cleared here, it flashed past with
+          // the counting plate and the refusal said nothing about the numbers
+          // (`TrayPlates`, `StalledPlate`).
+          if (machine.gaveUp(unsettled, read)) publish()
         }
       },
       onSettled = { outcome, drivenBy ->
@@ -344,7 +356,10 @@ class RollPresenter(
           // result, the plan and the seed off it, and nothing downstream has
           // anywhere to put a shake (`docs/architecture.md`, decision 13).
           val landed = machine.settled(outcome, drivenBy)
-          progress = null
+          // A finished roll has a total and no range left to have; a chain that
+          // earned a throw has both a range and a hand to wait for, so its
+          // progress stays on the screen ([EarnedPlate]).
+          if (landed is Landed.Complete) progress = null
           publish()
           when (landed) {
             is Landed.Complete -> {
@@ -409,6 +424,7 @@ class RollPresenter(
   /** Puts the result away, ready to throw the same formula again. */
   fun clear() {
     machine.clear()
+    progress = null
     publish()
   }
 

@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.ShapeAtlas
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 
 /**
  * One cell of an atlas, and what is drawn in it.
@@ -13,6 +14,10 @@ import de.drehtuer.dinfinity.core.model.ShapeAtlas
  *   face has to be drawn upright in it.
  * @param marks what was drawn on it, in fractions of the canvas, in the order
  *   they go down: fills first, ink over them ([FaceDrawing]).
+ * @param fit how the canvas is turned and sized into this cell
+ *   ([FaceOnSolid.cellFitOf]). **It is not the same for two cells of one
+ *   die**, which is the whole of why it is here rather than on the plan: the
+ *   turn is a property of where the face sits on the solid.
  */
 data class AtlasCell(
   val index: Int,
@@ -20,12 +25,16 @@ data class AtlasCell(
   val top: Int,
   val size: Int,
   val marks: List<Mark>,
+  val fit: CellFit = CellFit.SQUARE_ON,
 ) {
   /** [dot] — a fraction of the canvas — as a point in the image. */
-  fun at(dot: Dot): Dot = Dot(x = left + dot.x * size, y = top + dot.y * size)
+  fun at(dot: Dot): Dot {
+    val placed = fit.of(dot)
+    return Dot(x = left + placed.x * size, y = top + placed.y * size)
+  }
 
   /** [fraction] of the canvas as a length in the image, e.g. a nib's width. */
-  fun pixels(fraction: Float): Float = fraction * size
+  fun pixels(fraction: Float): Float = fraction * fit.scale.toFloat() * size
 
   /** [marks] as points in the image, ready to be drawn. */
   fun placed(): List<Mark> = marks.map { mark -> mark.at(mark.dots.map(::at)) }
@@ -92,6 +101,7 @@ object Atlas {
   ): AtlasPlan? {
     val shape = draft.die.shape
     val grid = ShapeAtlas.gridFor(shape)
+    val solid = SolidFaces.of(shape)
     val drawn =
       draft.die.faces.indices
         .mapNotNull { index -> draft.faces[index]?.takeIf { !it.blank }?.let { index to it } }
@@ -110,6 +120,10 @@ object Atlas {
             top = row * cellPixels,
             size = cellPixels,
             marks = drawing.marks,
+            // The one thing here that is not the grid's: how the canvas has
+            // to be turned and grown to land on the polygon the die actually
+            // shows ([FaceOnSolid.cellFitOf]).
+            fit = FaceOnSolid.cellFitOf(solid[index], draft.outline),
           )
         },
     )

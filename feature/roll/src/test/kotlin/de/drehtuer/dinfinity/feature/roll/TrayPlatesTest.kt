@@ -99,6 +99,38 @@ class TrayPlatesTest {
   }
 
   @Test
+  fun `an earned throw says where the roll can still come out`() {
+    // The gap the second device session fell into: the range was on the
+    // counting plate, the counting plate went the moment the dice stopped,
+    // and what is left to decide with while a chain waits for a hand was
+    // nothing at all.
+    compose.setContent { EarnedPlate(waiting = 1, range = RollRange(lowest = 7, highest = 26, more = true)) }
+
+    compose.onNodeWithText("STILL TO COME", useUnmergedTree = true).assertExists()
+    compose
+      .onNodeWithTag(RollTestTags.STILL_TO_COME)
+      .assertContentDescriptionEquals("Still to come, 7 to 26+")
+  }
+
+  @Test
+  fun `a chain whose range nobody kept says nothing about it`() {
+    compose.setContent { EarnedPlate(waiting = 1) }
+
+    compose.onNodeWithTag(RollTestTags.STILL_TO_COME).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a roll that gave up says it too, because it is waiting on the same shake`() {
+    compose.setContent {
+      StalledPlate(unsettled = 3, read = 17, onCancel = {}, range = RollRange(lowest = 20, highest = 100))
+    }
+
+    compose
+      .onNodeWithTag(RollTestTags.STILL_TO_COME)
+      .assertContentDescriptionEquals("Still to come, 20 to 100")
+  }
+
+  @Test
   fun `one earned die asks for it in the singular`() {
     compose.setContent { EarnedPlate(waiting = 1) }
 

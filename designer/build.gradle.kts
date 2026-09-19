@@ -31,4 +31,10 @@ dependencies {
   // one: a deserializer's idea of the file is the class shape of the day, and
   // a drawing has to survive the class changing under it (`DraftFile`).
   implementation(libs.kotlinx.serialization.json)
+
+  // The bundled dice, for the export tests. A drawing is started from a real
+  // die and what leaves the exporter has to be that die again, face for face
+  // — which is a claim about the numbering of an actual d20 rather than about
+  // an invented one (`DrawnDiceScoreTheSameTest`).
+  testImplementation(project(":dicesets:builtin"))
 }

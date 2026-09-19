@@ -145,12 +145,11 @@ class TrayDriver(
   }
 
   /**
-   * One more moment of the shake, handed to the roll on its own thread.
+   * Puts the dice that are waiting to be thrown on the table.
    *
-   * Posted rather than applied where it arrives: the sensors are read on the
-   * main thread and the roll belongs to this one, and a shake written into a
-   * world that is mid-step is a race with a physics engine on the other end
-   * of it.
+   * Posted like everything else, and then [schedule]d: a die the player just
+   * added is falling onto the board, and it needs the frame callback running
+   * for the fifth of a second that takes.
    */
   override fun waiting(spec: ThrowSpec) =
     post {
@@ -158,6 +157,14 @@ class TrayDriver(
       schedule()
     }
 
+  /**
+   * One more moment of the shake, handed to the roll on its own thread.
+   *
+   * Posted rather than applied where it arrives: the sensors are read on the
+   * main thread and the roll belongs to this one, and a shake written into a
+   * world that is mid-step is a race with a physics engine on the other end
+   * of it.
+   */
   override fun shake(sample: ShakeSample) {
     post { loop.shake(sample) }
   }

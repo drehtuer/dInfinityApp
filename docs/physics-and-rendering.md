@@ -131,10 +131,65 @@ Every die is a **convex** rigid body:
 
 ### The simulation clock
 
-A roll is a loop over fixed steps, and the only question is who turns it. That
-is the whole difference between a roll on screen and a roll in power-saving
-mode; there is no other one.
+A roll is a loop over fixed steps, and the only questions are who turns it and
+how fast. That is the whole difference between a roll on screen and a roll in
+power-saving mode; there is no other one.
 
+- **A watched roll does not run at real time.** `RollPace` scales the time a
+  frame is worth before `FrameClock` sees it, so the same roll is shown over
+  more wall clock than the physics took: `RollPace.WATCHED` of a second of real
+  time per second of simulated time, which at the current **0.5** means a roll
+  takes twice as long to watch as it takes to happen.
+
+  It is a presentation change and nothing else. The seed, the steps, their
+  order, the corrections, the re-throws and the faces are all exactly what they
+  were; what changes is when the steps are asked for. Nothing here reaches the
+  solver.
+
+  It exists because the physics has nothing left to give. Measured on the
+  Pixel 10a over 200 rolls of 20d20, the die/table friction pair moves the
+  median settle from 0.73 s (0.34/0.42) through 0.81 s (0.5/0.6, what is
+  shipped) to 0.85 s (0.7/0.85), and the turns a die makes after landing from
+  1.45 to 1.59 — and the high end also pushes the dice into one another, from
+  5.04 mm of overlap to 5.59 mm. Twenty d20 in a tray the size of a phone
+  genuinely stop in under a second. Two or three seconds of tumbling would mean
+  energy a hand does not put into dice, and would push `100d4` further into the
+  twelve-second cap.
+
+  **A roll stops being paced once it stops landing.** The pace holds for
+  `RollPace.WATCHED_SECONDS` of simulated time and then gives the frame back
+  whole. The reason is `100d4`: the twelve-second cap counts *simulated* time,
+  so pacing cannot change when a roll gives up, only how long somebody waits
+  to be told — and a flat half turned that into twenty-four seconds of
+  watching dice that were never going to stop. Three seconds is chosen against
+  the measurements: the median 20d20 settles in 0.81 s and the ninety-ninth in
+  1.47 s, so a roll that is behaving is paced from first step to last and
+  never meets the bound at all. What meets it is a roll that is not landing,
+  and a roll that is not landing is being *waited for* rather than watched.
+
+  **`RollPace.WATCHED` is otherwise one constant and the only one.** There is
+  no easing
+  curve and no per-phase exception: a pace that changed while the dice were in
+  view would be indistinguishable from a phone dropping frames, and would make
+  the roll's own smoothness unmeasurable. The one place the speed changes is
+  the moment the hand lets go, which is a moment the player caused and at which
+  the dice's motion changes character anyway — the tray stops hauling them
+  about and there is nothing but gravity left. A slower roll is also a slower
+  *answer*, so the number is meant to be judged on a phone and changed.
+- **A roll being driven is never paced.** While a hand is throwing the dice the
+  player is not watching the roll, they are steering it, and dice that answer a
+  hand a beat late are the only way this could make the app worse. The question
+  asked is `WatchedRoll.driven`, which is `ShakeDriver.stillShaking` — the same
+  question the roll asks before it is allowed to end. So the part of a roll
+  that may not be declared over because the hand is on it is exactly the part
+  that is not slowed down for somebody to look at, and the two can never
+  disagree. A tap-to-roll throw has no hand on it at any point and is paced
+  from its first step.
+- **The pace is applied where real time becomes simulated time**, which is
+  `TrayLoop.frame` and nowhere else. Power-saving mode asks for a fixed helping
+  of simulated time and has no frame clock at all, so it never passes through
+  that line and cannot be paced by accident — a stronger promise than a flag
+  somebody has to remember to clear ("Power-saving mode").
 - **A frame time never reaches the solver.** `FrameClock` accumulates the time
   a frame actually took, cuts it into whole 1/120 s steps and carries the
   remainder to the next frame, where it becomes the interpolation a renderer
@@ -219,8 +274,19 @@ draws mid-roll, asked of a throw that has read no dice at all; the average is
 `core/probability`'s exact distribution (`docs/probability.md`). A formula too
 large to graph exactly keeps its range and loses only its average.
 
-The same line is repeated under the breakdown on the result sheet, so the total
-is a number in a range rather than a number on its own.
+**It is on the screen for as long as a shake is the next thing that happens**,
+and in exactly one place at a time. Before the throw it is on the ready plate;
+while the dice are moving it is the counting plate's live range; on the two
+plates a roll can wait on — a chain that earned a throw, a throw that gave up
+— it is that same live range under a `STILL TO COME` kicker; and once the dice
+have landed it is in the **result sheet's grip**, beside the total, where it
+survives the sheet being pushed down.
+
+That last move is the fix for what the second device session found: during a
+chain of re-rolls the figures appeared for an instant and were then covered by
+the result. They were under the breakdown, so they went away with it, and a
+player deciding whether to shake again was left with nothing to decide with
+(see "What is drawn over the table").
 
 ## Picking a die up and throwing it again
 
@@ -437,14 +503,21 @@ look like a regression in how a shaken roll reads.
 - **The dice are spawned when the shake begins**, and every moment after that
   reaches them while they are already in the air. What the player sees is dice
   answering their hand, not dice thrown once the hand has stopped.
-- That works without a clock between the two because the samples name their
-  own step. `ShakeRecorder` counts steps from the start of the shake at the
-  simulation's own 120 Hz, and the frame clock never runs the simulation
-  *faster* than real time — it drops steps when it falls behind and never
-  gains any. So the step a sample names is always still ahead of the step the
-  world is on: every sample is in place before it is needed, and replaying the
-  record afterwards drives exactly the same steps. No gate, no waiting, and the
-  live roll and its replay are the same roll.
+- **A live sample drives the step the world is about to take**, whatever its
+  own clock says. `ShakeRecorder` counts steps from the start of the shake at
+  the simulation's own 120 Hz, which is a *wall* clock; the world counts the
+  steps it has actually taken. The two are not the same clock — a watched roll
+  is paced ("The simulation clock"), and a frame that ran long drops steps
+  either way — so `ShakeDriver.add` files each arriving sample on the step the
+  world will take next and **rewrites the sample to that step**. The record it
+  hands back is therefore what actually drove the roll, and replaying it drives
+  exactly the same steps. No gate, no waiting, and the live roll and its replay
+  are the same roll.
+- Filing them by arrival is what makes the hand immediate rather than merely
+  eventual. A sample kept on the recorder's number would reach the dice as late
+  as the two clocks had drifted, and once the world had gone past that number
+  it would never reach them at all — which is what shaking a phone at tumbling
+  dice used to do.
 - **A second shake at dice still in the air keeps them moving.** A hand that
   shakes again has not waited for the dice to stop, so that shake starts no
   throw: nothing is spawned, nothing replaces the roll in progress, and its
@@ -452,17 +525,23 @@ look like a regression in how a shaken roll reads.
   while it lasts, because the settle rule waits on the last sample and there is
   now a later one.
 
-  The mechanism is one thing, and it is the thing that was wrong. A sample's
-  step index is counted from the first moment its recorder saw, and that moment
-  is when the dice were spawned — so **the recorder's clock is the roll's
-  clock**. A second shake that restarted that clock numbered its moments from
-  zero, naming steps the running roll had taken a second earlier, and
-  `ShakeDriver` never reached them: shaking the phone at moving dice did
-  nothing at all. So a shake that begins while a roll is running goes on
-  numbering from where the first one left off, and only a shake that actually
-  throws dice starts the clock over. `SensorShakeSource` is told which it is —
-  whether a roll is in the air is the app's question, asked per sample because
-  a roll may settle between two readings.
+  The mechanism is one thing, and it is the thing that was wrong. A second
+  shake that numbered its moments from zero named steps the running roll had
+  taken a second earlier, and `ShakeDriver` never reached them: shaking the
+  phone at moving dice did nothing at all. Two things keep it reaching them
+  now. A shake that begins while a roll is running goes on numbering from
+  where the first one left off, and only a shake that actually throws dice
+  starts the clock over — `SensorShakeSource` is told which it is, asked per
+  sample because a roll may settle between two readings. And the driver files
+  every arriving sample on the step the world is about to take, whatever
+  number it came with, so no amount of drift between the two clocks can put
+  the hand out of reach.
+
+  **The pace comes off the moment the hand is back.** A roll being watched is
+  slowed so the dice can be seen to land; a roll being driven is not, and a
+  second shake makes it driven again on the frame it starts
+  ("The simulation clock"). The dice answer the hand immediately, and the slow
+  motion returns a tenth of a second after the last reading.
 
   What it deliberately does **not** do is replace the roll. The dice are the
   ones already tumbling; a second shake is more of the same throw, which is
@@ -945,6 +1024,26 @@ throwing it again").
    the dice are counted again, and again, until there is nothing left to throw.
    Each pass reads most of what is on the table, so what remains shrinks fast.
 
+   **Each one is dropped where nothing is standing.** The spot is drawn from
+   the roll's own stream, and kept if it is clear of everything that will be
+   on that floor when the die arrives: the dice the same pass has already
+   thrown again, which have bodies and would start inside it, and the dice of
+   `ThrowSpec.among` from earlier throws of the same chain, which have none
+   and would be fallen straight through. A spot that is not clear is given up
+   for the clearest the tray has — the same answer the die an explosion adds
+   gets. A drop with nothing in the way is the drop that was drawn, so a roll
+   still replays to itself.
+
+   **And the lift outlives the throw.** A die lifted in step 3 has left the
+   table for good, and the floor it stood on may be under the die that was
+   thrown again onto it. So what the throw reports is where the dice *still
+   on the table* stopped and not where the lifted ones did
+   (`SimulationOutcome.restingAt`, which is therefore shorter than `faces`
+   whenever a pass threw something again). A lifted die keeps its face — it is
+   part of the result — but the next throw of the chain is neither drawn over
+   it nor aimed around it. Reporting it was what put two dice in one place
+   when an exploding roll came back for its next die.
+
 **There is no other rung, and that is the point.** Nothing biases a die, nudges
 one, pops a pair apart or places one anywhere. The share of dice needing a
 correction is not a number to tune any more: there is no code in the loop that
@@ -1009,6 +1108,75 @@ That is a settling problem rather than a counting one, the same family as
 `100d4`, and it is bounded in the device suite at today's worst case so that
 the next change to the shake or the settle rule improves it or is noticed.
 
+## The dice waiting to be thrown
+
+Tapping a saved roll, or a die in the picker, puts dice **on** the table rather
+than throwing them. The board follows the formula as it is typed and as the
+picker adds to it, so what a player is looking at before they shake is what
+they are about to throw (`docs/dice-notation.md`, "Picking dice without
+typing").
+
+**A die that is new to the board falls onto it and tumbles to a stop.** It used
+to appear, laid flat where it belonged, which is not what putting a die on a
+table looks like. It is let go 60 mm above its place, turns between three
+quarters and one and three fifths of a turn about an axis of its own on the way
+down, bounces three times at 35 % and is down in about a fifth of a second.
+
+**And none of it is a roll.** This is the one thing that has to be true, so it
+is true by construction rather than by care:
+
+- **Every fall ends square on** — `Quaternion.Identity`, the same turn for
+  every die, every seed and every board. The orientation a die comes to rest in
+  is decided before it is released, so there is no face here to read even if
+  something wanted one. It is the tumble that varies, and by the time the die
+  is standing the tumble is over.
+- **There is no body and no world.** `FallingIn` is closed-form arithmetic over
+  a clock — free fall, three bounces, an eased turn — evaluated wherever the
+  frame callback asks. Nothing is stepped, nothing is solved, and a frame that
+  arrives late finds the dice exactly where a frame that arrived on time would
+  have, so the board looks the same at 60 Hz and at 120.
+- **Its randomness is its own.** The axis, the turn and the release height come
+  through `Seeds.WAITING`, a purpose no throw uses. A board built between two
+  throws therefore cannot move a number in either of them, and the golden
+  fixture does not shift under a feature that decides nothing ("Timestep and
+  determinism").
+- **It ends where the die would simply have been stood.** `RestingPlaces` still
+  says where each die belongs and still says the same thing it always did, so
+  the board a player taps twice is the same board twice. The fall changed how a
+  die arrives and nothing about where.
+
+**A die already standing does not move.** The dice on the board are handed to
+the next board as floor that is taken, and no place is computed for them again
+— the same `ClearSpace` question an added die asks inside a roll, asked one
+level up. So a tap adds one die falling into the gaps between the ones that are
+down, and a long press takes one off and disturbs nothing. Which dice carry
+over is matched by what each die *is* rather than by where it sits in the
+formula, so taking the d6 out of `2d6 + 1d20` leaves the d20 where it was. A
+board whose dice have been shrunk by the capacity rule is the one case where
+they all move, because every place on it has moved (`docs/tables.md`,
+"Capacity rule").
+
+**And a die still in the air when the next tap arrives goes on falling.** Its
+release is carried onto the new board's clock rather than restarted. Tapping
+out `8d6` builds eight boards in a row and leaves nothing running behind any of
+them: a board is a list and a number, not a thread and not a world, and there
+is never more than one.
+
+The frames it costs are the only frames it costs. A board that is falling wants
+one per vsync and a board that has settled wants none, which is what
+`TrayLoop.wantsFrames` says; and a fall with nowhere to draw wants none either,
+because nobody is owed an animation they cannot see. A throw takes the board
+away when it starts — the dice that were waiting have been thrown, and a
+half-finished fall belongs to a board that no longer exists.
+
+What is still open is a question only a hand can answer: whether 60 mm and a
+fifth of a second read as a die being dropped on a table, or as a die that
+blinks into place a moment late. The height is the number to turn
+(`FallingIn.DROP_HEIGHT_MM`), and it is deliberately higher than the 25 mm an
+added die is dropped from — that drop happens among dice whose faces are being
+read and should not upstage them, and this one *is* the thing the player is
+looking at.
+
 ## The dice an explosion or a reroll adds
 
 `8d6!` does not know how many dice it is until the first eight have landed, and
@@ -1039,11 +1207,22 @@ formula with explosions in it replays like any other.
   a roll replays to itself.
 - **And it is dropped, not thrown.** The same low, gentle, spinning drop a
   die thrown again is given, for the same reason: a die hurled across the tray is a
-  die that arrives somewhere nobody made room for.
+  die that arrives somewhere nobody made room for. The die thrown again is now
+  aimed the same way too — it used to be dropped at a point drawn at random
+  from the whole tray, which is how a re-throw inside an added throw came down
+  through a die that was lying there.
 - **The tray is drawn with them still in it.** The added throw carries the
   settled dice as `ThrowSpec.among`; the renderer puts one renderable per die
   back exactly where the simulation left it and never moves it again. What the
   player sees is the six they rolled, and then a die landing beside it.
+- **And only the ones that are still in it.** A throw that had to throw a die
+  again lifted the dice it had already read, to free the floor for it — so
+  those dice are off the table and their floor may be under the die that came
+  down there. They are not in `among`: they keep their faces and they are not
+  drawn back, because drawing a die where another die is standing is the very
+  picture this section exists to forbid, and counting their floor as taken
+  would hide the room the lift made ("Avoiding stacked and cocked dice",
+  step 4).
 - **A chain stops when the tray runs out of floor.** There are two ends to a
   chain of explosions: the depth limit (`docs/dice-notation.md`), and this one —
   no clear floor left for another die, or a hundred dice in the tray, which is
@@ -1265,12 +1444,12 @@ impact sounds rather than a crash in the middle of a roll.
   perspective and still cast their shadows" — is kept by construction and not
   by remembering.
 
-  Two things are **not** the tray's cast shadow and are deliberately left
-  alone. The contact darkening where a die meets the felt is screen-space
-  ambient occlusion (below), which has no per-renderable switch in Filament
-  and is what stops every die floating a millimetre; and the wall being
-  darker than the floor is the lighting, not a shadow — a surface turned away
-  from the key light is simply less lit.
+  **Stopping the tray casting was not the whole of it.** A device session
+  reported the rim's shadow still on the felt afterwards, and it was right:
+  what was left was ambient occlusion, which is not a cast shadow and so was
+  untouched by any of this (below). The wall being darker than the floor is
+  neither — that is the lighting, and a surface turned away from the key light
+  is simply less lit.
 
 - **The shadow map is given the tray, not five metres of nothing.** A
   directional shadow map covers the camera's whole frustum, and this camera can
@@ -1286,12 +1465,25 @@ impact sounds rather than a crash in the middle of a roll.
   it, because they are in world units too and Filament's default normal bias
   of 1.0 is a whole millimetre of push on a die 16 mm across.
 
-- **What says a die is *on* the table rather than over it** is the darkening
-  where the two meet. A cast shadow puts a die above the felt; contact occlusion
-  puts it down on it, and without it every die floats a millimetre however good
-  the shadow is. Filament's screen-space ambient occlusion does it, at a radius
-  of 8 mm — about half a die — which is enough to read as contact without the
-  whole tray dimming.
+- **There is no ambient occlusion, because the table may not shade itself.**
+  It was here for the darkening where a die meets the felt — a cast shadow puts
+  a die *above* the table and contact occlusion puts it *down on* it — and that
+  argument is sound. It is not what this scene needed.
+
+  Occlusion darkens every concave corner it can see, and the largest one in
+  the tray is the tray: the join where the wall meets its own floor, running
+  the whole way round. The felt wore a soft dark band hugging the wall, and a
+  band along the rim reads as **the rim throwing a shadow** — which is the one
+  thing a table must not do. Filament's occlusion is a property of the view
+  rather than of a renderable, so it cannot be asked for on the dice and not
+  on the tray.
+
+  It was settled by rendering the tray both ways on the Pixel 10a and looking,
+  rather than by argument: with occlusion the felt carries the band; without
+  it the felt is clean **and the die keeps the cast shadow it always had**,
+  which turns out to be what was doing the work. A die reads as being on the
+  table because of the shadow under it, not because of the darkening around
+  it.
 - The tray mesh is a function of the tray's geometry and nothing else — no
   package supplies one (`docs/tables.md`). Only the **inside** is modelled:
   the floor, the inner walls up to the 60 mm rim, and a 6 mm band across the
@@ -1309,6 +1501,13 @@ impact sounds rather than a crash in the middle of a roll.
   takes the table away, and a player cannot then tell four dice from two.
   Looking closer is theirs to do — **pinch to zoom, two fingers to pan** — and
   what that produces is a `TrayView`, which cannot leave the table.
+
+  **The table comes with the fingers**: two fingers dragged up carry the felt
+  up with them, as though a hand were on the cloth. It is the table that
+  moves, not the camera, which is the only one of the two a player is
+  thinking about. The pinch is anchored the other way round, at the place on
+  the screen the fingers are closing on rather than at a movement of them, so
+  the corner somebody is pinching into is the corner they get.
 
   **At the whole tray there is nowhere to pan to, and the room to move grows
   with the zoom until, at `TrayView.CLOSEST`, the middle of the screen reaches
@@ -1591,6 +1790,17 @@ impact sounds rather than a crash in the middle of a roll.
   and blends them itself: positions in a straight line, turns spherically and
   the short way round. The arithmetic is on `RenderFrame` rather than in each
   renderer, so two of them cannot disagree about where the same die was.
+- **What is drawn is the roll slowed down, not a slower roll.** A watched roll
+  is stepped at `RollPace.WATCHED` of real time once the hand has let go
+  ("The simulation clock"), so 120 Hz of physics arrives at 60 steps of wall
+  clock a second and every frame in between is an interpolated one. Nothing
+  blurs and nothing stutters — there are *more* frames per simulation step than
+  before, not fewer — and the dice are seen to turn down onto a face instead of
+  being on one by the time the eye arrives. A 20d20 throw that the solver
+  finishes in 0.81 s takes about 1.6 s to watch.
+- While the phone is being shaken the roll runs at real time, so the dice on
+  screen answer the hand on the frame it moved. The change of pace when the
+  hand lets go is the one the player caused.
 - Results are overlaid as labels near each die once settled; tap a die to
   highlight its contribution in the breakdown.
 
@@ -1619,10 +1829,12 @@ It is one component, `ui/common`'s `Plate`, because a plate is a token rather
 than a layout: six of them on one screen, each drawing its own shadow and its
 own padding, is six chances for the numbers to drift.
 
-**The top of the screen is a column of three things, and the bottom is two.**
-That is the layout the second device session asked for, and the whole of what
-it is for is the felt: with the straight-down table view, a plate over the
-tray is a place a die can land and not be seen.
+**The top of the screen is a column of three things, and the bottom is two
+pull-ups and a plate.** That is the layout the second device session asked
+for, and the whole of what it is for is the felt: with the straight-down
+table view, a plate over the tray is a place a die can land and not be seen.
+Everything that is not being used is therefore *put away* — behind a
+pull-down, behind a tab or below the bottom edge — rather than shrunk.
 
 Along the top, 14 dp in and 12 dp down, in one column that pushes downwards as
 it opens:
@@ -1636,21 +1848,38 @@ it opens:
    about.
 2. **The menu button**, in the same row, at the end of it. The room it takes
    is the row rather than a constant the formula had to remember to leave.
-3. **The formula**, under the menu button and aligned to the same edge, as an
-   expanding menu of the same kind. Shut, it is the line somebody has written
-   with a dashed rule under it, hugging its words. Open, it fills the width
-   and is the field, the squiggle and the keyboard — *what* is wrong with a
-   formula is said in there, because that is where it can be acted on.
+3. **The formula**, under the menu button and aligned to the same edge, as a
+   **tab with a drawer behind it**. Shut, it is a plate carrying the word
+   `Formula` and a chevron pointing inwards, mirroring `Dice` at the other
+   end of the corner — *the formula itself is not drawn at all*. Pressed, the
+   drawer slides **in from the right-hand edge** and is the field, the
+   squiggle, the one-tap fix and the keyboard; the chevron turns round and
+   pushes it back out.
 
-**Only one of the two can be open.** Both hang off the top edge and both push
-what is under them down, so two open at once is the top half of the table
-covered, which is the thing this layout exists to stop. Opening either shuts
-the other, in the screen rather than in each control.
+**The formula used to be on the felt**, as a line of type with a dashed rule
+under it, in every state whether or not anybody was editing it. The second
+device session asked for it to be out of the way entirely and to arrive from
+the side rather than dropping down, and both halves of that are the point: a
+formula is a thing somebody has already written, and a line of it over a
+table read straight down is one more block a die can land behind.
 
-What is left along the bottom is the saved-rolls strip, and only that. The
-picker has gone to the top, the two things to do with a result have gone onto
-the result itself (below), and the Roll button is gone altogether — a shake is
-the throw ("Starting a roll").
+**The shut tab is red when the formula does not read.** That is the one thing
+it still says about a formula it no longer prints, and it has to say it — a
+mistake behind a door nobody has a reason to open is a mistake nobody finds.
+*What* is wrong is still said inside, under the squiggle, because that is
+where it can be acted on; red is not something a screen reader can say, so the
+tab's state description says it in words.
+
+**Only one of the two can be open.** The dice pull-down pushes what is under
+it down and the formula comes in over the table, so two open at once is the
+top half of the table covered — which is the thing this layout exists to stop.
+Opening either shuts the other, in the screen rather than in each control.
+
+What is left along the bottom is **one plate and two pull-ups**: the plate
+that says what the roll is doing, the saved rolls, and the result. The picker
+has gone to the top, the two things to do with a result have gone onto the
+result itself (below), and the Roll button is gone altogether — a shake is the
+throw ("Starting a roll").
 
 **Accent never touches felt.** Accent appears only *on* a plate, which is how
 an accent the player chooses freely and a shelf of tables stop being a pair
@@ -1672,11 +1901,21 @@ filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
 | Plate | Where | What it carries |
 | --- | --- | --- |
 | Dice | top left, 14 / 12 dp in | the word, the count and a chevron; the picker row and the set chooser behind it |
-| Formula | top right, under the menu button | the formula, dashed underline as wide as the text, tap to edit; the field and the squiggle behind it |
-| Hint | bottom left, 13 dp / 600 | only while the table is idle |
-| Counting | across the bottom | how far through the reading a roll is |
-| Another throw earned | across the bottom | a chain that stopped, and the shake it wants |
-| Could not settle | across the bottom | how many dice never stopped, and what to do about them |
+| Formula | top right, under the menu button | a tab: the word and a chevron, red when the formula does not read; the field and the squiggle slide in behind it |
+| Ready | across the bottom | that a shake rolls, and what the throw is expected to come to |
+| Counting | across the bottom | how far through the reading a roll is, and the range it can still come out in |
+| Another throw earned | across the bottom | a chain that stopped, the shake it wants, and what is still to come |
+| Could not settle | across the bottom | how many dice never stopped, what is still to come, and what to do about them |
+
+**There is no plate at all on an empty tray.** `Type a formula, or open Dice
+at the top.` stood there and the second device session asked for it to go: it
+pointed at a formula that is no longer on the table and at a menu that says
+`Dice` on its own head, and it was a block over the felt in the one state
+where the felt is all there is. An empty tray is an empty tray, with the two
+doors along the top — and, on a fresh install, the first-launch screen — to
+say what to do. `Shake the phone to roll.` stays, on the ready plate: shaking
+is the one thing nobody would guess at, and there is no button left to say
+it.
 
 **The result is a pull-up sheet, not a plate in the stack**
 (`design/dInfinity.dc.html`, options 1e–1g; the prototype draws it as
@@ -1695,16 +1934,24 @@ Three things are fixed about it:
   rolled, so the sheet slides up from below the bottom edge as soon as there is
   a total.
 - **It never goes away while the roll is on the screen.** Pushed all the way
-  down it still shows its grip — the 2 dp top rule, the handle and the total —
-  so the number stays readable and the sheet stays grabbable. A result that
-  could be dismissed is a result somebody can lose, and the only way back to it
-  would be to throw the dice again, which is the one act this app cannot undo.
-  There is therefore no close button, where the prototype has one.
-- **The column of controls is lifted by the parked height**, so the Roll
-  button and the saved rolls sit above a sheet that has been pushed down
-  rather than under it. Up, the sheet covers them, which is what the
-  prototype does too: a result being read is the thing in front of the player,
-  and it is one push out of the way.
+  down it still shows its grip — the 2 dp top rule, the handle, the total and
+  **what the throw was expected to come to** — so the number stays readable
+  and the sheet stays grabbable. A result that could be dismissed is a result
+  somebody can lose, and the only way back to it would be to throw the dice
+  again, which is the one act this app cannot undo. There is therefore no
+  close button, where the prototype has one.
+- **The expected range is in the grip, not under the breakdown.** That is the
+  fourth thing the second device session found: during a chain of re-rolls the
+  lowest, the highest and the average flashed past with the ready plate and
+  were then covered by the result. What a player is deciding at that moment is
+  whether to shake again, and the range is the whole of the answer — so it
+  sits beside the total, in the half of the sheet that survives a push down,
+  and there is exactly one of it on the screen at a time.
+- **Everything above it is lifted by the parked height**, so the saved rolls
+  and the outcome plate sit above a sheet that has been pushed down rather
+  than under it. Up, the sheet covers them, which is what the prototype does
+  too: a result being read is the thing in front of the player, and it is one
+  push out of the way.
 - **What is done with a result is on the result.** `See the odds` and `Save
   as roll` sit at the foot of the breakdown, which is what the second device
   session asked for. They are in the sheet's **body** and not in its grip,
@@ -1736,6 +1983,41 @@ at the bottom edge from an inch below the top means down — and "a flick" is
 measured in sheet heights per second rather than pixels, so it is the same
 gesture on every phone and for a one-line breakdown as for a twenty-die one.
 
+### Two pull-ups, one bottom edge
+
+**The saved rolls are a pull-up as well** (`design/dInfinity.dc.html`, option
+1c). They were the last plate standing across the bottom of the felt, in
+every state, whether or not anybody wanted one — so they are parked by
+default, showing a grip with `SAVED ROLLS` on it, and a pull brings the strip
+out. It is the same component as the result: one `PullUpSheet` over one
+`SheetSlide`, with the two rests, the drag, the flick and the measuring in one
+place rather than two. The only differences are that the saved rolls do **not**
+arrive by themselves — they have nothing to announce — and that they start
+parked.
+
+Which leaves the question the two of them raise together, and it is settled
+in one place:
+
+- **They are never both up.** Opening either parks the other, which is the
+  same rule the two menus along the top keep, for the same reason.
+- **A result that lands takes the edge.** Nobody should have to reach for the
+  number they have just rolled, and a sheet arriving under a strip somebody is
+  reading is a number nobody sees. So the saved rolls give way to a result and
+  not the other way about: a total is the thing that cannot be got back
+  without throwing the dice again, and a strip of saved rolls is one pull away
+  for ever.
+- **Parked is not gone, for either of them.** The grips stack on the edge —
+  the result's on the edge itself, the saved rolls' directly above it — so
+  neither is ever more than one touch away. While the result is *up* it covers
+  both, which is what "up" means.
+- **A roll put away leaves the saved rolls where the player left them.** A
+  strip that sprang open every time a total went away would be a strip that
+  opens itself once per throw.
+
+The rule is `feature/roll`'s `BottomEdge`: plain Kotlin, under JVM tests,
+with the invariant asked of every order the two controls can be pressed in
+rather than of the two the screen happens to reach first.
+
 **The counting plate is the home the running readout did not have.** It was the
 most important unstyled thing in the app: one line of text, sitting where
 "Rolling…" used to be because there was nowhere else. It is now a plate across
@@ -1766,6 +2048,17 @@ any of these plates. Both are reachable in the prototype through its
 Neither is a new state. They are `RollState.ShakeAgain` and `RollState.Stalled`
 — which the roll has reached all along, with one line of text between them —
 and what was missing was the drawing.
+
+**Both carry the range the roll can still come out in**, under a `STILL TO
+COME` kicker and drawn by the same component the counting plate draws it
+with. That is the other half of the range fault: the figures went away the
+moment the dice stopped, so the plate a chain waits on said nothing about the
+numbers and a player deciding whether to shake had nothing to decide with. So
+`RollPresenter.progress` now **outlives the dice coming to rest when the roll
+is not over** — it is cleared by a roll that finished, by `Cancel the roll`
+and by a fresh throw, and by nothing else. The range is the live one,
+tightened by every die already read, rather than the formula's pre-throw
+ends.
 
 **Both wait for the same shake.** The plates used to carry `Throw 3 more` and
 `Throw those 3 again`, and both are gone with the Roll button: a throw is a
@@ -1866,6 +2159,14 @@ world, so the capacity rule is unchanged.
 - The simulation runs on a worker thread as fast as possible, still at
   the same fixed timestep, still with the same seed, correction logic and
   settle rules. Typical roll finishes in well under 100 ms of wall time.
+- **It is not paced, and it cannot be.** `RollPace` exists so a player can
+  watch the dice land, and there is nothing here to watch. `PowerSavingTray`
+  asks for a fixed helping of *simulated* time rather than measuring a frame,
+  so it never crosses the line where real time becomes simulated time and
+  there is no factor in its path to set wrongly ("The simulation clock"). A
+  paced roll and this one take the same steps and come to the same faces; only
+  the wall clock over them differs, and here it is as short as the processor
+  can make it.
 - The mode is read **once, when the roll screen opens**, and not watched. A
   renderer appearing or vanishing under a roll in progress is not a setting
   taking effect, it is a bug; turning it on takes effect the next time the

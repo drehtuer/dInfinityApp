@@ -297,11 +297,21 @@ internal fun Expected(
  * put the roll away with no total, which is a roll thrown away rather than a
  * roll finished. What is left is a sentence, which is all this ever was
  * (`docs/physics-and-rendering.md`, "Starting a roll").
+ *
+ * @param range where the roll can still come out, carried over from the
+ *   counting plate the moment before. **This is the plate a chain waits on**,
+ *   and what a player is deciding there is whether to shake again — which the
+ *   second device session could not do, because the range flashed past with
+ *   the counting plate and was gone. It is the *live* range, tightened by
+ *   every die already read, and it is the same [Range] drawn by the same
+ *   [RollProgress]: one calculation seen twice rather than a second copy.
+ *   Null for a chain whose progress has been forgotten.
  */
 @Composable
 internal fun EarnedPlate(
   waiting: Int,
   modifier: Modifier = Modifier,
+  range: RollRange? = null,
 ) {
   Plate(modifier = modifier.fillMaxWidth().testTag(RollTestTags.SHAKE_AGAIN)) {
     Column(verticalArrangement = Arrangement.spacedBy(ROW_GAP)) {
@@ -311,7 +321,38 @@ internal fun EarnedPlate(
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onBackground,
       )
+      if (range != null) StillToCome(range)
     }
+  }
+}
+
+/**
+ * Where a roll that is waiting on a hand can still come out.
+ *
+ * Drawn by the two plates a shake is owed to — a chain that earned a throw,
+ * and a throw that gave up — and by nothing else. The counting plate has the
+ * same figures while the dice are moving and the ready plate has the
+ * pre-throw ones; this is the gap between them, which is exactly where the
+ * numbers used to disappear.
+ *
+ * One sentence to a screen reader, for the reason every other row of figures
+ * on this screen is (`docs/architecture.md`, "Accessibility").
+ */
+@Composable
+private fun StillToCome(range: RollRange) {
+  val ceiling =
+    if (range.more) stringResource(R.string.roll_ceiling_more, range.highest) else range.highest.toString()
+  val spoken = stringResource(R.string.roll_still_spoken, range.lowest, ceiling)
+  Row(
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
+    verticalAlignment = Alignment.Bottom,
+    modifier =
+      Modifier
+        .semantics(mergeDescendants = true) { contentDescription = spoken }
+        .testTag(RollTestTags.STILL_TO_COME),
+  ) {
+    SectionKicker(text = stringResource(R.string.roll_still_kicker), color = Ink.muted)
+    Range(range = range)
   }
 }
 
@@ -327,6 +368,11 @@ internal fun EarnedPlate(
  * Handing them back is a shake, not a button. `Throw those N again` was the
  * last throw in the app that a hand could not make, and it is gone; `Cancel
  * the roll` stays, because giving up is not throwing.
+ *
+ * @param range where the roll can still come out once the dice that never
+ *   stopped have been thrown again. The same live range the earned plate
+ *   carries, and for the same reason: this is a plate somebody stands in
+ *   front of deciding whether to shake.
  */
 @Composable
 internal fun StalledPlate(
@@ -334,6 +380,7 @@ internal fun StalledPlate(
   read: Int,
   onCancel: () -> Unit,
   modifier: Modifier = Modifier,
+  range: RollRange? = null,
 ) {
   Plate(modifier = modifier.fillMaxWidth().testTag(RollTestTags.STALLED)) {
     Column(verticalArrangement = Arrangement.spacedBy(ROW_GAP)) {
@@ -349,6 +396,7 @@ internal fun StalledPlate(
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onBackground,
       )
+      if (range != null) StillToCome(range)
       ModernistButton(
         text = stringResource(R.string.roll_stalled_cancel),
         onClick = onCancel,

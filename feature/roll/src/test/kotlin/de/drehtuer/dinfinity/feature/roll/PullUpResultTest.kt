@@ -2,14 +2,20 @@ package de.drehtuer.dinfinity.feature.roll
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -18,6 +24,8 @@ import de.drehtuer.dinfinity.core.model.DieNote
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
+import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.notation.RollRange
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -109,6 +117,56 @@ class PullUpResultTest {
   }
 
   @Test
+  fun `pushed down it still says what the throw was expected to come to`() {
+    // The fault the second device session found: the expected range was under
+    // the breakdown, so it went away with the breakdown and a player deciding
+    // whether to throw again saw it only as a flash between rolls. It is in
+    // the grip now, which is the half that survives a push down.
+    show(expected = Expectation(range = RollRange(lowest = 4, highest = 18), mean = 12.24))
+
+    compose.onNodeWithTag(RollTestTags.RESULT_HANDLE).performClick()
+    compose.waitForIdle()
+
+    compose
+      .onNodeWithTag(RollTestTags.EXPECTED)
+      .assertIsDisplayed()
+      .assertContentDescriptionEquals("Expected 4 to 18, average avg 12.2")
+  }
+
+  @Test
+  fun `a throw with nothing to expect prints no range at all`() {
+    show()
+
+    compose.onNodeWithTag(RollTestTags.EXPECTED).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a sheet wired to nothing still draws and still works`() {
+    // Every callback on it has a default that does nothing, so a preview or a
+    // test of something around it can put one on screen. Pressing them is not
+    // an error — and the defaults are the branch a test of the wired sheet
+    // never takes.
+    compose.setContent {
+      Box(modifier = Modifier.fillMaxSize()) {
+        PullUpResult(
+          result = fourD6DropLowest(),
+          divides = true,
+          modifier = Modifier.align(Alignment.BottomCenter),
+        )
+      }
+    }
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(RollTestTags.ODDS).performClick()
+    compose.onNodeWithTag(RollTestTags.SAVE_AS_ROLL).performClick()
+    compose.onNodeWithTag(RollTestTags.roundingOf(Rounding.Up)).performClick()
+    compose.onNodeWithTag(RollTestTags.dieAt(0)).performTouchInput { longClick() }
+    compose.onNodeWithTag(RollTestTags.doodleOf(0)).performClick()
+
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertIsDisplayed()
+  }
+
+  @Test
   fun `the grip reports its height, so nothing is left under a parked sheet`() {
     var parked = 0f
     compose.setContent {
@@ -125,11 +183,23 @@ class PullUpResultTest {
     assertTrue("the grip measured nothing", parked > 0f)
   }
 
-  private fun show() {
+  /**
+   * The sheet with its rest held outside it, which is how the screen holds it.
+   *
+   * It is hoisted because there are two pull-ups on one bottom edge now and
+   * neither of them may decide for the pair ([BottomEdge]); a test that let
+   * the default `onRest` swallow the answer would be testing a sheet nothing
+   * is wired to.
+   */
+  private fun show(expected: Expectation? = null) {
     compose.setContent {
+      var rest by remember { mutableStateOf(SheetRest.Up) }
       Box(modifier = Modifier.fillMaxSize()) {
         PullUpResult(
           result = fourD6DropLowest(),
+          rest = rest,
+          onRest = { rest = it },
+          expected = expected,
           modifier = Modifier.align(Alignment.BottomCenter),
         )
       }

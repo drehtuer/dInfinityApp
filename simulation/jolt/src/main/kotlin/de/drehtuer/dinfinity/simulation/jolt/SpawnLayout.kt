@@ -160,26 +160,70 @@ class SpawnLayout(
    * does: a cocked die is picked up and dropped back on the table, not hurled
    * at it. [attempt] is mixed into the seed so a die that comes up cocked
    * twice is not thrown the same way twice.
+   *
+   * **It is dropped on floor nothing is standing on.** The spot is drawn from
+   * the roll's own stream, as it always was, and kept if it is clear; a spot
+   * that is not is given up for the clearest the tray has
+   * ([ClearSpace.clearestPoint]), which is the same answer the die an
+   * explosion adds gets. Two things it has to clear, and they fail
+   * differently: the dice of [among] are earlier throws of the same chain,
+   * drawn on the table with **no bodies**, so a die dropped on one falls
+   * straight through the picture of it; and [clearOf] is the dice this same
+   * pass has already thrown again, which *do* have bodies, so two on one
+   * patch of floor start inside each other and the solver spends the throw
+   * pushing them out (`docs/physics-and-rendering.md`, "Avoiding stacked and
+   * cocked dice").
+   *
+   * A throw with nothing in the way is unchanged, down to the last draw: the
+   * spot is drawn first and kept, so the same seed replays the same roll.
+   *
+   * @param clearOf where this pass has already put the dice it is throwing
+   *   again, in the order it placed them. The caller keeps the list because
+   *   only the caller knows when a pass begins.
    */
   fun rethrowPlacement(
     index: Int,
     attempt: Int,
+    clearOf: List<Vector3> = emptyList(),
   ): Placement {
     val random = randomFor(index, Seeds.RETHROW + attempt)
     val halfLong = geometry.longSideMm / 2 - marginMm()
     val halfShort = geometry.shortSideMm / 2 - marginMm()
+    val drawn =
+      Vector3(
+        x = random.nextDouble(-halfLong, halfLong),
+        y = random.nextDouble(-halfShort, halfShort),
+        z = 0.0,
+      )
+    val taken = among + clearOf
+    val point = if (isClearAt(drawn, taken)) drawn else ClearSpace.clearestPoint(geometry, dieRadiusMm, taken) ?: drawn
     return Placement(
-      position =
-        Vector3(
-          x = random.nextDouble(-halfLong, halfLong),
-          y = random.nextDouble(-halfShort, halfShort),
-          z = RETHROW_HEIGHT_MM + dieRadiusMm,
-        ),
+      position = point.copy(z = RETHROW_HEIGHT_MM + dieRadiusMm),
       rotation = randomRotation(random),
       linearVelocity = Vector3(0.0, 0.0, -RETHROW_DOWN_MM_PER_SECOND),
       angularVelocity = randomSpin(random, RETHROW_SPIN_RADIANS_PER_SECOND),
     )
   }
+
+  /**
+   * Whether a die dropped at [point] would come down clear of [taken].
+   *
+   * The plain non-overlap question — two bounding circles and the clearance a
+   * solver needs between them — and deliberately not [ClearSpace]'s, which
+   * asks for a whole die's width of free floor because it is choosing the
+   * *best* spot rather than judging a given one. Using the stricter rule here
+   * would throw away perfectly good drops and move dice that had nothing
+   * wrong with them.
+   */
+  private fun isClearAt(
+    point: Vector3,
+    taken: List<Vector3>,
+  ): Boolean =
+    taken.none { other ->
+      val dx = point.x - other.x
+      val dy = point.y - other.y
+      sqrt(dx * dx + dy * dy) < 2 * dieRadiusMm + ClearSpace.CLEARANCE_MM
+    }
 
   /**
    * A nudge of up to [amount] either way.

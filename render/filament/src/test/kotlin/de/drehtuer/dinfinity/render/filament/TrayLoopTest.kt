@@ -14,6 +14,7 @@ import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
+import de.drehtuer.dinfinity.simulation.api.RollPace
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.Struck
@@ -75,9 +76,12 @@ class TrayLoopTest {
   }
 
   @Test
-  fun `a frame is worth the time since the frame before it`() {
+  fun `a frame a hand is driving is worth the whole time since the frame before it`() {
+    // A shake is answered now or it is not answered. Nothing may come between
+    // the hand and the dice, least of all the app's own taste in pacing
+    // (`RollPace`).
     val loop = TrayLoop()
-    val roll = FakeRoll(steps = 10)
+    val roll = FakeRoll(steps = 10, driven = true)
     loop.stage(FakeStage())
     loop.roll(roll.start())
 
@@ -88,6 +92,48 @@ class TrayLoopTest {
     assertEquals(3, roll.advanced.size)
     assertEquals(1.0 / 60.0, roll.advanced[1], EPSILON)
     assertEquals(2.0 / 60.0, roll.advanced[2], EPSILON)
+  }
+
+  @Test
+  fun `a frame the player is only watching is worth the paced share of it`() {
+    // The dice stop in well under a second, which is the physics being right
+    // rather than the physics being hurried. The same roll is spread over more
+    // wall clock so a player can watch it land (`RollPace`).
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+    loop.frame(SOME_LATE_UPTIME + 3 * SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals(3, roll.advanced.size)
+    assertEquals(RollPace.WATCHED / 60.0, roll.advanced[1], EPSILON)
+    assertEquals(RollPace.WATCHED * 2.0 / 60.0, roll.advanced[2], EPSILON)
+  }
+
+  @Test
+  fun `a hand coming back to a roll in progress takes the pace off again`() {
+    // A second shake at dice still in the air is more of the same roll, not a
+    // new throw — and the moment it starts the player is driving again, so the
+    // slow motion stops on that frame rather than on the next roll
+    // (`docs/physics-and-rendering.md`, "Shake input").
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+    roll.driven = true
+    loop.frame(SOME_LATE_UPTIME + 2 * SIXTIETH_OF_A_SECOND_NANOS)
+    roll.driven = false
+    loop.frame(SOME_LATE_UPTIME + 3 * SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals("the watched frame was not paced", RollPace.WATCHED / 60.0, roll.advanced[1], EPSILON)
+    assertEquals("the hand was answered late", 1.0 / 60.0, roll.advanced[2], EPSILON)
+    assertEquals("the pace did not come back", RollPace.WATCHED / 60.0, roll.advanced[3], EPSILON)
   }
 
   @Test
@@ -564,6 +610,12 @@ class TrayLoopTest {
 
   private inner class FakeRoll(
     private val steps: Int,
+    /**
+     * Whether a hand is throwing these dice, which is what the loop asks
+     * before it decides how much of a frame the roll is worth
+     * ([de.drehtuer.dinfinity.simulation.api.RollPace]).
+     */
+    override var driven: Boolean = false,
   ) : WatchedRoll {
     val advanced = mutableListOf<Double>()
     val shaken = mutableListOf<ShakeSample>()
@@ -691,6 +743,88 @@ class TrayLoopTest {
     repeat(5) { loop.frame(SOME_LATE_UPTIME + it) }
 
     assertEquals("the same reading was posted more than once", read.size, read.distinct().size)
+  }
+
+  @Test
+  fun `a die falling onto the board is drawn every frame until it lands`() {
+    // Not a simulation and still a picture that moves: it needs the frame
+    // callback for the fifth of a second it takes to come down.
+    val loop = TrayLoop()
+    val stage = FakeStage()
+    loop.stage(stage)
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    val drawn = stage.frames
+    var at = SOME_LATE_UPTIME
+    var frames = 0
+    while (loop.frame(at) && frames < PATIENCE_FRAMES) {
+      at += SIXTIETH_OF_A_SECOND_NANOS
+      frames++
+    }
+
+    assertTrue("the fall was over in one frame", stage.frames - drawn > SPARE_FRAMES)
+    assertTrue("the board never came to rest", frames < PATIENCE_FRAMES)
+  }
+
+  @Test
+  fun `and nothing is asked for once it has`() {
+    // A board that has settled is a still picture. A tray that went on asking
+    // for frames would be a tray that never sleeps.
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    var at = SOME_LATE_UPTIME
+    repeat(PATIENCE_FRAMES) {
+      loop.frame(at)
+      at += SIXTIETH_OF_A_SECOND_NANOS
+    }
+
+    assertFalse("the settled board still wanted frames", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a fall with nowhere to draw is not worth a frame`() {
+    // Nobody is owed an animation they cannot see. The roll is the thing that
+    // must go on without a surface, and this is not one.
+    val loop = TrayLoop()
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    assertFalse(loop.wantsFrames)
+  }
+
+  @Test
+  fun `the first frame of a fall is worth no time at all`() {
+    // The same rule the first frame of a roll follows. Measuring from zero
+    // would hand the board however long the device has been awake and land
+    // every die before it was drawn once.
+    val loop = TrayLoop()
+    val stage = FakeStage()
+    loop.stage(stage)
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    loop.frame(SOME_LATE_UPTIME)
+
+    assertTrue("the whole fall was spent on the frame that started it", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a roll that starts while a die is falling takes the board away`() {
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 4)
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+    loop.waiting(spec())
+
+    loop.roll(roll.start())
+
+    assertTrue(loop.rolling)
+    repeat(PATIENCE_FRAMES) { loop.frame(SOME_LATE_UPTIME + it * SIXTIETH_OF_A_SECOND_NANOS) }
+    assertFalse("the board outlived the throw that replaced it", loop.wantsFrames)
   }
 
   private fun spec(): ThrowSpec =

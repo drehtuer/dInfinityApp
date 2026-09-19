@@ -12,6 +12,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
@@ -185,8 +186,42 @@ class RollLoopTest {
 
     val outcome = loop(listOf(StandardDice.d6, StandardDice.d6), world).run()
 
-    assertEquals("a counted die lost the place it was counted at", 2, outcome.restingAt.size)
+    // One, not two. Die 0 was counted *and* lifted off to make the room die 1
+    // was thrown again into, so it is no longer on the table and is not
+    // offered to the throw that follows. Its **face** is kept all the same,
+    // which is what this test is about.
+    assertEquals("a counted die that is still down lost the place it was counted at", 1, outcome.restingAt.size)
     assertTrue("a counted die has no face", outcome.faces.values.all { it >= 0 })
+  }
+
+  @Test
+  fun `a die lifted off the table is not offered to the throw that follows`() {
+    // The same two dice, asked the other question: what is the *next* throw
+    // of the chain told is on the table. Die 0 is read and lifted off to make
+    // room, and die 1 is thrown again onto the floor that freed — the same
+    // spot, because that is where the room was.
+    //
+    // `restingAt` is what an explosion's throw is drawn among and aimed
+    // around (`RollMachine.earnedThrow`, `ClearSpace`). A die that is no
+    // longer on the table must not be in it: drawn back it puts two dice in
+    // one place, and counted as floor it hides the room it left
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
+    val world =
+      FakeWorld(2) { _, index, rethrows ->
+        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
+      }
+    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world)
+
+    val outcome = loop.run()
+
+    assertEquals("both dice were read", 2, outcome.faces.size)
+    assertEquals("the wrong dice were lifted off", listOf(true, false), loop.liftedOut)
+    assertEquals(
+      "a die that had been taken off the table was handed to the next throw",
+      setOf(1),
+      outcome.restingAt.keys,
+    )
   }
 
   @Test
@@ -396,14 +431,56 @@ class RollLoopTest {
     // spec goes into the world empty and the moments arrive afterwards. What
     // the roll is reproducible from is this, and nothing above the loop is in a
     // position to collect it (`docs/physics-and-rendering.md`, "Shake input").
+    //
+    // The moments are numbered on the *world's* clock, not on the sensor's:
+    // the numbers below are deliberately nothing like the steps they arrive
+    // for, and the record still says which step each one drove
+    // (`ShakeDriver.add`).
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
     val loop = loop(listOf(StandardDice.d6), world)
-    val hand = List(3) { ShakeSample(it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
+    val hand = List(3) { ShakeSample(SENSOR_NUMBERING + it, Vector3(6_000.0, 0.0, 0.0), DOWN) }
 
-    hand.forEach(loop::shake)
+    hand.forEach { moment ->
+      loop.shake(moment)
+      loop.advance()
+    }
     loop.run()
 
-    assertEquals(hand, loop.drivenBy)
+    assertEquals(listOf(0, 1, 2), loop.drivenBy.map(ShakeSample::stepIndex))
+    assertEquals(
+      hand.map(ShakeSample::accelerationMmPerSecond2),
+      loop.drivenBy.map(ShakeSample::accelerationMmPerSecond2),
+    )
+  }
+
+  @Test
+  fun `several readings before a single step are one step's worth of gravity`() {
+    // Sensors outrun 120 Hz, and a paced roll steps slower still. A step has
+    // one gravity, so what the record keeps is the reading that drove it.
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
+    val loop = loop(listOf(StandardDice.d6), world)
+
+    List(3) { ShakeSample(SENSOR_NUMBERING + it, Vector3(6_000.0, 0.0, 0.0), DOWN) }.forEach(loop::shake)
+    loop.run()
+
+    assertEquals(listOf(0), loop.drivenBy.map(ShakeSample::stepIndex))
+  }
+
+  @Test
+  fun `a roll is driven while a hand is on it and watched once it lets go`() {
+    // The boundary the pace is applied at, and it is the same question the
+    // loop asks before it lets a roll end
+    // (`de.drehtuer.dinfinity.simulation.api.RollPace`).
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.tumbling() }
+    val loop = loop(listOf(StandardDice.d6), world)
+
+    assertFalse("a tap-to-roll throw has no hand on it", loop.driven)
+
+    loop.shake(ShakeSample(SENSOR_NUMBERING, Vector3(6_000.0, 0.0, 0.0), DOWN))
+    assertTrue("the hand did not reach the roll", loop.driven)
+
+    repeat(ShakeDriver.HOLD_STEPS + 1) { loop.advance() }
+    assertFalse("the hand was let go and the roll is still being driven", loop.driven)
   }
 
   @Test
@@ -515,6 +592,9 @@ class RollLoopTest {
 
     /** Straight down, as the gyroscope reports it: a direction, not a magnitude. */
     val DOWN = Vector3(0.0, 0.0, -1.0)
+
+    /** A step index off the sensor's own clock, unlike any the world will take. */
+    const val SENSOR_NUMBERING = 500
     const val TROUBLE_STEPS = 12
   }
 }

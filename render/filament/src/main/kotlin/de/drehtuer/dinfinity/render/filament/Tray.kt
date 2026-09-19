@@ -4,6 +4,8 @@ import android.view.Surface
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.FallingIn
+import de.drehtuer.dinfinity.simulation.api.RestingPlaces
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -105,9 +107,15 @@ interface Tray : AutoCloseable {
    * edited, and the board follows along. What the player looks at before they
    * shake is what they are about to throw (`docs/TODO.md`, Step 4.1).
    *
+   * **A die that is new to the board falls onto it and tumbles to a stop**,
+   * and a die that was already standing does not move
+   * (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
+   *
    * **Nothing about this is a roll.** No body is made, no step is taken and no
-   * face is read — these are dice drawn where [RestingPlaces] says they sit,
-   * and the faces they happen to show are not a result and are never scored.
+   * face is read — these are dice drawn where [RestingPlaces] says they come
+   * to rest, and the faces they happen to show are not a result and are never
+   * scored. The fall cannot decide one either: every die on the board comes to
+   * rest in the same orientation, fixed before it is let go ([FallingIn]).
    * Passing no dice clears the board back to an empty table.
    */
   fun waiting(spec: ThrowSpec) = Unit

@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Tumble
+import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
  * One roll, from the first step to the reading — the correction ladder made
@@ -138,8 +139,24 @@ class RollLoop(
    * rest ([ShakeDriver]).
    */
   fun shake(sample: ShakeSample) {
-    shake.add(sample)
+    shake.add(sample, atStep = tracker.stepsTaken)
   }
+
+  /**
+   * True while a hand is throwing these dice, rather than a player watching
+   * them (`docs/physics-and-rendering.md`, "The simulation clock").
+   *
+   * The same question [nothingLeftToStep] asks before the roll is allowed to
+   * end, and deliberately the same one: the part of a roll that may not be
+   * declared over because the hand is still on it is exactly the part that may
+   * not be slowed down for somebody to look at
+   * ([de.drehtuer.dinfinity.simulation.api.RollPace]).
+   *
+   * False for a tap-to-roll throw from its first step, because nobody is
+   * driving one at all — and false again a tenth of a second after the last
+   * sample of a shake, which is where watching begins.
+   */
+  val driven: Boolean get() = shake.stillShaking(tracker.stepsTaken)
 
   /** True once the roll has taken longer than a roll should ([SettleRule.HARD_CAP_SECONDS]). */
   val outOfTime: Boolean get() = tracker.outOfTime()
@@ -396,10 +413,21 @@ class RollLoop(
         // the dice standing on the rest of it, and neither is something the
         // screen could work out for itself
         // (`docs/physics-and-rendering.md`).
+        //
+        // **The dice that were lifted off are not in it**, because they are
+        // not on the table any more. A die is lifted exactly to free the
+        // floor it stood on for a die being thrown again, so that floor is
+        // where the re-thrown die may well have landed — and handing the
+        // lifted one on would tell the next throw two untrue things at once:
+        // draw a die where another die is standing, and treat as taken the
+        // room the lift made. That is what put two dice in one place when an
+        // exploding roll came back for its next die ([liftedOut]).
         restingAt =
-          countedAt.indices.associateWith { index ->
-            countedAt[index] ?: RestingPlace(states[index].position, states[index].orientation)
-          },
+          countedAt.indices
+            .filterNot { lifted[it] }
+            .associateWith { index ->
+              countedAt[index] ?: RestingPlace(states[index].position, states[index].orientation)
+            },
         steps = tracker.stepsTaken,
         // Zero, and not by luck. There is no correction left in this loop to
         // count: a die is either read and lifted off or thrown again where the
@@ -495,8 +523,15 @@ class RollLoop(
         world.remove(index)
       }
     }
+    // And each die this pass throws again makes room for the ones after it.
+    // They are dropped together, into the same tray, and two of them aimed at
+    // the same patch of floor start inside each other — which is a heap made
+    // by the mechanism that exists to clear one.
+    val placed = mutableListOf<Vector3>()
     throwAgain.forEach { index ->
-      world.respawn(index, layout.rethrowPlacement(index, rethrowCount[index]))
+      val placement = layout.rethrowPlacement(index, rethrowCount[index], placed)
+      placed += placement.position
+      world.respawn(index, placement)
       // The speed it has the moment after this is the re-throw rather than a
       // contact, and a sound for the app's own hand is the one noise a player
       // must never hear.

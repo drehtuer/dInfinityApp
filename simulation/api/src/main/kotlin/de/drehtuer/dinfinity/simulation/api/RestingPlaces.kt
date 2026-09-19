@@ -20,6 +20,12 @@ package de.drehtuer.dinfinity.simulation.api
  * clearest spot left, so the next one goes somewhere else — which is why they
  * do not overlap and why the arrangement is the same every time for the same
  * dice. A player who taps the same saved roll twice sees the same table.
+ *
+ * **Where a die comes to rest is here; how it gets there is [FallingIn].** A
+ * die the picker adds is dropped onto the place this hands back and tumbles
+ * into it, which is an animation and not a simulation — and it comes to rest
+ * exactly where it would have been stood before there was a fall at all,
+ * which is what keeps the board the same board every time.
  */
 object RestingPlaces {
   /**
@@ -29,14 +35,22 @@ object RestingPlaces {
    * cannot hold is refused before it reaches here (`docs/tables.md`, "Capacity
    * rule"), but a rounding that leaves the last die without a spot should show
    * one die fewer rather than throw.
+   *
+   * @param among where the dice that are **already standing** are, and are to
+   *   go on standing. Tapping the picker adds one die to a board that already
+   *   has some on it, and the ones on it do not move: they are named here so
+   *   the new one is given floor nobody is using, and no place is computed for
+   *   them at all ([FallingIn]). Empty for a board built from nothing, which
+   *   is the way this read before there was such a thing as adding one die.
    */
   fun of(
     geometry: TableGeometry,
     radiiMm: List<Double>,
+    among: List<Vector3> = emptyList(),
   ): List<Vector3> {
     val places = mutableListOf<Vector3>()
     radiiMm.forEach { radius ->
-      val point = ClearSpace.clearestPoint(geometry, radius, places) ?: return places
+      val point = ClearSpace.clearestPoint(geometry, radius, among + places) ?: return places
       // On the floor rather than at nought: a die drawn with its centre on the
       // table is a die half sunk into it.
       places += point.copy(z = radius)

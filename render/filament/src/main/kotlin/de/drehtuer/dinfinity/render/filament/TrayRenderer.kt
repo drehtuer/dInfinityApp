@@ -1,13 +1,13 @@
 package de.drehtuer.dinfinity.render.filament
 
+import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
-import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.RestingPlaces
+import de.drehtuer.dinfinity.simulation.api.FallingIn
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
@@ -36,7 +36,14 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * Every line of this is a decision about when to draw what, and none of it is
  * a GPU — so it sits on the near side of [Stage] and is tested on a JVM
  * (`docs/architecture.md`, decision 47).
+ *
+ * The class carries a function-count suppression for the reason [TrayLoop] and
+ * [TrayDriver] do: most of these are one per thing that can happen to a
+ * picture — a stage arrives, a table is named, a throw begins, a frame lands,
+ * a roll ends, the board changes, a die falling on it moves — and folding two
+ * of them together would hide which is which rather than shorten anything.
  */
+@Suppress("TooManyFunctions")
 class TrayRenderer(
   /**
    * How far the camera leans over the table — the player's **Table view**
@@ -58,6 +65,23 @@ class TrayRenderer(
   private var latest: RenderFrame? = null
   private var settled = false
   private var view: TrayView = TrayView.Whole
+
+  /**
+   * The dice waiting to be thrown, each on its way to a place or standing in
+   * one, and how long the board has been running.
+   *
+   * A list and a number: no thread, no world, nothing that goes on happening
+   * if nobody asks. Tapping out `8d6` replaces this eight times and leaves
+   * nothing behind either time ([FallingIn]).
+   */
+  private var board: List<FallingIn.Drop> = emptyList()
+  private var boardSeconds = 0.0
+
+  /** What each die on the board is, so the next board knows which are new. */
+  private var standing: List<Pair<Die, Double>> = emptyList()
+
+  /** True while a die the player added is still on its way down. */
+  val falling: Boolean get() = FallingIn.stillFalling(board, boardSeconds)
 
   /** True while there is somewhere to draw. */
   val drawable: Boolean get() = drawing != null
@@ -121,6 +145,7 @@ class TrayRenderer(
     scene = Scene(spec = null, geometry = geometry, look = look)
     latest = null
     settled = false
+    clearBoard()
     drawing?.table(geometry, look, view)
   }
 
@@ -140,6 +165,9 @@ class TrayRenderer(
     scene = Scene(spec, geometry, look)
     latest = null
     settled = false
+    // The dice that were waiting have been thrown, and a half-finished fall
+    // belongs to a board that no longer exists.
+    clearBoard()
     // A throw is watched from the whole table. The dice can land anywhere in
     // it, and a camera left closed in on one corner would hide most of what
     // was just rolled (`docs/physics-and-rendering.md`).
@@ -170,6 +198,7 @@ class TrayRenderer(
   override fun end() {
     latest = null
     settled = false
+    clearBoard()
     val table = scene?.copy(spec = null)
     scene = table
     if (table == null) {
@@ -180,12 +209,19 @@ class TrayRenderer(
   }
 
   /**
-   * Draws the dice that are waiting to be thrown, at rest on the table.
+   * Puts the dice that are waiting to be thrown on the table, dropping in the
+   * ones that were not there a moment ago
+   * (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
    *
-   * The same two calls a finished roll ends on — build the bodies, then show
-   * them standing still — because that is exactly what this is: dice on a
-   * table, not moving. What it is *not* is a roll, so nothing is stepped and
-   * no face is read.
+   * The dice already standing stay exactly where they are standing — they are
+   * handed to [FallingIn.board] as taken floor and no place is computed for
+   * them again. The dice that are new fall in from above and tumble to a
+   * stop, and where they stop is the place they would simply have been put
+   * before there was a fall at all.
+   *
+   * What it is *not* is a roll. Nothing is stepped, no face is read, and the
+   * orientation every one of these dice comes to rest in is fixed before it is
+   * let go ([FallingIn]).
    */
   fun waiting(spec: ThrowSpec) {
     val showing = scene ?: return
@@ -193,29 +229,74 @@ class TrayRenderer(
       table(showing.geometry, showing.look)
       return
     }
-    val standing = RenderFrame.still(restingTransforms(spec))
+    val radii = spec.dice.map { ClearSpace.radiusOf(it.die, spec.dieScale) }
+    val wanted = spec.dice.mapIndexed { index, instance -> instance.die to radii[index] }
+    board =
+      FallingIn.board(
+        geometry = spec.geometry,
+        radiiMm = radii,
+        seed = spec.seed,
+        keeping = FallingIn.keeping(standing, wanted, board, boardSeconds),
+      )
+    standing = wanted
+    boardSeconds = 0.0
     scene = showing.copy(spec = spec)
-    // Remembered, not just drawn. A surface comes and goes — the lock screen,
-    // a rotation — and the board has to come back with it, exactly as a
-    // finished roll does. Kept as settled, because that is what it is: dice on
-    // a table, not moving (`docs/physics-and-rendering.md`).
-    latest = standing
-    settled = true
-    drawing?.let { renderer ->
-      renderer.begin(spec, showing.geometry, showing.look)
-      renderer.settled(standing)
-    }
+    // The scene has just been rebuilt, so this board has to be drawn even when
+    // nothing on it is moving — a die taken off the board moves none of the
+    // others and would otherwise leave the old picture up.
+    settled = false
+    drawing?.begin(spec, showing.geometry, showing.look)
+    draw()
   }
 
-  /** Where each waiting die is drawn: laid out so none of them overlaps. */
-  private fun restingTransforms(spec: ThrowSpec): List<BodyTransform> =
-    RestingPlaces
-      .of(
-        geometry = spec.geometry,
-        radiiMm = spec.dice.map { ClearSpace.radiusOf(it.die, spec.dieScale) },
-      ).mapIndexed { index, place ->
-        BodyTransform(index = index, position = place, orientation = Quaternion.Identity)
-      }
+  /**
+   * Moves the fall on by [elapsedSeconds] and draws where the dice have got to.
+   *
+   * Called once per displayed frame while [falling] is true and no more, which
+   * is a fifth of a second after a tap and nothing at all between taps
+   * ([TrayLoop.frame]). Nothing here is a simulation clock: the whole fall is
+   * decided when the board is built, so a frame that arrives late finds the
+   * dice exactly where a frame that arrived on time would have.
+   */
+  fun fall(elapsedSeconds: Double) {
+    if (board.isEmpty()) return
+    boardSeconds += elapsedSeconds
+    draw()
+  }
+
+  /**
+   * Shows the board as it is at this moment, still or moving.
+   *
+   * A board that has come to rest is shown as *settled* and only once: it is
+   * dice on a table, not moving, and a surface that arrives afterwards has to
+   * be given it back that way rather than mid-fall
+   * (`docs/physics-and-rendering.md`).
+   */
+  private fun draw() {
+    val frame = RenderFrame.still(boardTransforms())
+    latest = frame
+    val moving = falling
+    if (!moving && settled) return
+    settled = !moving
+    drawing?.let { renderer -> if (moving) renderer.show(frame) else renderer.settled(frame) }
+  }
+
+  /** Where each waiting die is at this moment on the board's clock. */
+  private fun boardTransforms(): List<BodyTransform> =
+    board.map { drop ->
+      BodyTransform(
+        index = drop.index,
+        position = drop.positionAt(boardSeconds),
+        orientation = drop.orientationAt(boardSeconds),
+      )
+    }
+
+  /** There is no board any more, so nothing is falling onto one. */
+  private fun clearBoard() {
+    board = emptyList()
+    standing = emptyList()
+    boardSeconds = 0.0
+  }
 
   /**
    * What a new stage has to be told to catch up with the old one.

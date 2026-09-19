@@ -268,6 +268,42 @@ class LiveRollTest {
   }
 
   @Test
+  fun `a roll says whether a hand is throwing it, which is what decides the pace`() {
+    // The boundary between the part of a roll the player is driving and the
+    // part they are watching. A driven roll gets every frame whole; a watched
+    // one is paced so the dice can be seen to land
+    // (`de.drehtuer.dinfinity.simulation.api.RollPace`).
+    val world = FakeWorld(DICE, tumblingThenSettling())
+    liveOver(world).use { live ->
+      assertFalse("a tap-to-roll throw has no hand on it", live.driven)
+
+      live.shake(ShakeSample(live.stepsTaken, Vector3(5_000.0, 0.0, 0.0), DOWN))
+      assertTrue("the hand did not reach the roll", live.driven)
+
+      repeat(ShakeDriver.HOLD_STEPS + 1) { live.advance(SettleRule.TIMESTEP_SECONDS) }
+      assertFalse("the hand was let go and the roll is still driven", live.driven)
+
+      while (live.running) live.advance(1.0 / FRAMES_PER_SECOND)
+      assertFalse("a roll that is over is being driven by nobody", live.driven)
+    }
+  }
+
+  @Test
+  fun `a shake at a roll that has already landed does not make it driven again`() {
+    // Nothing touches a die that has come to rest, and a hand is not an
+    // exception — so a sample that arrives late cannot put the roll back into
+    // slow motion either.
+    val world = FakeWorld(DICE, tumblingThenSettling())
+    liveOver(world).use { live ->
+      while (live.running) live.advance(1.0 / FRAMES_PER_SECOND)
+
+      live.shake(ShakeSample(live.stepsTaken, Vector3(5_000.0, 0.0, 0.0), DOWN))
+
+      assertFalse("a settled roll answered a hand", live.driven)
+    }
+  }
+
+  @Test
   fun `a roll that has landed knows the shake that threw it`() {
     // The throw's `ThrowSpec` was empty of shake — the dice are spawned when
     // the shake is confirmed — so this is the only place the record exists, and

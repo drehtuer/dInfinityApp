@@ -72,8 +72,29 @@ class DiceTrayTest {
     dragWithTwoFingers()
 
     assertTrue("two fingers moved nothing", seen.isNotEmpty())
-    // Dragging up the screen looks further up the tray, which is `+x`.
-    assertTrue("the view did not move up the tray: ${seen.last()}", seen.last().panAlongMm > 0.0)
+    // **The felt comes with the fingers.** Tray `+x` is screen-up, so a target
+    // moved along `+x` puts a further-up part of the table in the middle and
+    // the felt appears to slide *down*. Fingers going up must therefore take
+    // the target the other way — which is the sign the second device session
+    // reported as inverted, and this is the assertion that was agreeing with
+    // it (`docs/physics-and-rendering.md`, "Rendering").
+    assertTrue("the table did not come up with the fingers: ${seen.last()}", seen.last().panAlongMm < 0.0)
+  }
+
+  @Test
+  fun `and they take it the way they went, not the other way`() {
+    // The whole of the bug in one test: the two directions have to move the
+    // table opposite ways. A sign error passes every "it moved" assertion.
+    tray(from = TrayView(zoom = CLOSE_IN))
+
+    dragWithTwoFingers()
+    val afterUp = seen.last().panAlongMm
+
+    dragWithTwoFingers(by = DRAG_PX)
+    val afterDown = seen.last().panAlongMm
+
+    assertTrue("fingers going up did not take the table up: $afterUp", afterUp < 0.0)
+    assertTrue("fingers going back down did not bring it back: $afterUp then $afterDown", afterDown > afterUp)
   }
 
   @Test
@@ -116,12 +137,13 @@ class DiceTrayTest {
     assertEquals("the camera panned from a stale place", 0.0, seen.last().panAlongMm, NEARLY_NOTHING_MM)
   }
 
-  private fun dragWithTwoFingers() {
+  /** Two fingers dragged [by] pixels down the screen; negative goes up. */
+  private fun dragWithTwoFingers(by: Float = -DRAG_PX) {
     compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput {
       down(0, center + Offset(-SPREAD_PX, 0f))
       down(1, center + Offset(SPREAD_PX, 0f))
-      updatePointerBy(0, Offset(0f, -DRAG_PX))
-      updatePointerBy(1, Offset(0f, -DRAG_PX))
+      updatePointerBy(0, Offset(0f, by))
+      updatePointerBy(1, Offset(0f, by))
       move()
       up(0)
       up(1)

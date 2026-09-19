@@ -120,6 +120,14 @@ class RollMachine(
      * onto, and the picture to drop it into. No throw ever puts a body in the
      * world for one of these — a die that has come to rest is finished
      * (`docs/physics-and-rendering.md`).
+     *
+     * **Only the dice still on the table.** A die that was read and lifted
+     * off to make room for one being thrown again has left, and its floor may
+     * already be under that die — so it has a face in the result and no place
+     * in this list. That is why [cameToRest] takes what
+     * [SimulationOutcome.restingAt] has rather than what the throw had: a
+     * throw of four dice that had to throw one again reports four faces and
+     * fewer places, and the difference is exactly the dice that are gone.
      */
     val down: MutableList<DieAtRest> = mutableListOf()
 
@@ -160,7 +168,13 @@ class RollMachine(
     var rethrows: Int = 0
     var forcedSettles: Int = 0
 
-    /** Where the dice of one throw stopped, added to [down] in throw order. */
+    /**
+     * Where the dice of one throw stopped, added to [down] in throw order.
+     *
+     * A die the throw reported no place for was lifted off the table during
+     * it, so there is nothing to add: it is read, it is scored, and it is
+     * gone ([down], `SimulationOutcome.restingAt`).
+     */
     fun cameToRest(
       thrown: List<DieInstance>,
       outcome: SimulationOutcome,

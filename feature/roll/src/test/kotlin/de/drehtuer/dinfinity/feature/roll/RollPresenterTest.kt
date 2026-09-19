@@ -26,6 +26,7 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -403,6 +404,66 @@ class RollPresenterTest {
   }
 
   @Test
+  fun `a roll that gave up keeps the range it had, because it is waiting on a hand`() {
+    // The second device session could not read the range: it went with the
+    // counting plate the moment the dice stopped, and the plate that asks for
+    // a shake said nothing about the numbers. A roll that gave up is a roll
+    // waiting on a hand, so what it got as far as stays on the screen
+    // (`TrayPlates`, `StalledPlate`).
+    val rolls = RecordingRolls(faces = mapOf(0 to 5, 1 to 5, 2 to 5, 3 to 5))
+    val presenter =
+      presenter(rolls, tray = StallingTray(read = mapOf(0 to 5, 1 to 5), unsettled = listOf(2, 3)))
+
+    presenter.type("4d6")
+    presenter.roll()
+
+    assertTrue("the roll did not give up", presenter.state is RollState.Stalled)
+    assertNotNull("the range went away with the counting plate", presenter.progress)
+  }
+
+  @Test
+  fun `a chain waiting on a hand keeps it too`() {
+    val rolls = RecordingRolls(faces = mapOf(0 to 5), then = listOf(mapOf(0 to 0)))
+    val presenter = presenter(rolls, tray = DirectTray(counted = mapOf(0 to 5)))
+
+    presenter.type("1d6!")
+    presenter.roll()
+
+    assertTrue("the chain did not stop for a shake", presenter.state is RollState.ShakeAgain)
+    assertNotNull("the range went away between the throws of one chain", presenter.progress)
+  }
+
+  @Test
+  fun `a roll that finished has no range left to have`() {
+    val rolls = RecordingRolls(faces = mapOf(0 to 5))
+    val presenter = presenter(rolls, tray = DirectTray(counted = mapOf(0 to 5)))
+
+    presenter.type("1d6")
+    presenter.roll()
+
+    assertTrue("the roll did not land", presenter.state is RollState.Settled)
+    assertNull("a finished roll kept a range it no longer has", presenter.progress)
+  }
+
+  @Test
+  fun `and a fresh throw does not start by showing the last one's`() {
+    // A throw of its own rather than the next of a chain: what the roll
+    // before it got as far as is not what this one has read.
+    val presenter =
+      presenter(
+        RecordingRolls(faces = mapOf(0 to 5, 1 to 5), landImmediately = false),
+        tray = StallingTray(read = mapOf(0 to 5), unsettled = listOf(1), landLater = false),
+      )
+    presenter.type("2d6")
+    presenter.roll()
+    assertNotNull("the stalled roll had no range", presenter.progress)
+
+    presenter.clear()
+
+    assertNull("putting the roll away left its range on the screen", presenter.progress)
+  }
+
+  @Test
   fun `a stalled roll says it is rolling again while its dice are in the air`() {
     // It said `Stalled` all the way through the re-throw, so the plate that
     // asks for a shake stayed up while the dice it asked for were already
@@ -643,6 +704,15 @@ class RollPresenterTest {
      */
     private val watcher: Renderer = HeadlessRenderer(),
     /**
+     * Faces to report as read before the dice are stepped, or none.
+     *
+     * A real tray reads each die as it comes to rest and says so, which is
+     * what fills `RollPresenter.progress` and so the range on the plates. A
+     * fake that only ever landed could not be asked what the screen shows
+     * *during* a roll, or after one that is not over.
+     */
+    private val counted: Map<Int, Int> = emptyMap(),
+    /**
      * What the hand does while the dice are in the air.
      *
      * Called with the roll open and not yet stepped, which is where a shake
@@ -678,6 +748,7 @@ class RollPresenterTest {
     ) {
       val roll = start(watcher)
       live = roll
+      if (counted.isNotEmpty()) onCounted(counted)
       whileRolling()
       // Capped, because a fake roll that never lands is a test case here and
       // an unbounded loop is not a useful way to fail it.

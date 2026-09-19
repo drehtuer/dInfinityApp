@@ -57,7 +57,12 @@ enum class Destination(
     R.string.screen_roll,
     R.string.screen_roll_description,
     MenuGroup.Play,
-    arguments = listOf(GraphArgument.FORMULA),
+    // The die is what makes the tray offer a way *back* to the face designer:
+    // a throw that came from "Roll it" is a throw being looked at, and the
+    // screen it came from is the screen to return to
+    // (`docs/face-designer.md`, "Flow", step 4). Empty for every other way
+    // in, which is every other way in.
+    arguments = listOf(GraphArgument.FORMULA, DesignerArgument.DIE),
   ),
   Graph(
     "graph",
@@ -292,6 +297,11 @@ object DesignerArgument {
    * an id nothing answers to opens on the usual die rather than on nothing —
    * a package can be removed while its result is still on the tray
    * (`designer`'s `OpeningDie`).
+   *
+   * The roll screen is opened with one too, and there it means something
+   * else: not "draw this" but "this throw came from the designer, drawing
+   * this die", which is what puts the way back on the tray
+   * ([de.drehtuer.dinfinity.rollRoute]).
    */
   const val DIE: String = "die"
 }

@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.DebugWatch
 import de.drehtuer.dinfinity.simulation.api.Impacts
+import de.drehtuer.dinfinity.simulation.api.RollPace
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -19,7 +20,7 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * a JVM. [TrayDriver] is the thread and the surface it runs on, and is the
  * only part that needs a device (`docs/architecture.md`, decision 40).
  *
- * Two rules are worth naming because they are easy to get subtly wrong and
+ * Three rules are worth naming because they are easy to get subtly wrong and
  * impossible to notice afterwards:
  *
  * - **A surface coming or going never touches the roll.** A new stage is given
@@ -29,6 +30,12 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  *   before it to measure against, and measuring from zero would hand the clock
  *   however long the device has been awake — spending the whole catch-up
  *   budget on frame one and starting the roll a fifth of a second in.
+ * - **A frame the player is only watching is worth less than it took.** This
+ *   is where real time becomes simulated time, so this is where the roll is
+ *   paced out over enough wall clock to be watched
+ *   ([RollPace]) — and where it is not, while a hand is still throwing the
+ *   dice. It changes no step, no order and no face; it changes when the steps
+ *   are asked for (`docs/physics-and-rendering.md`, "The simulation clock").
  *
  * Not thread-safe: one thread owns a roll, and [TrayDriver] is the thread that
  * does (`docs/architecture.md`, "Threading").
@@ -113,8 +120,15 @@ class TrayLoop(
    * A still picture is the other half, and it does need somewhere to draw: an
    * empty table is worth one frame, but Filament may decline the one it is
    * offered, so the asking goes on until a frame actually lands.
+   *
+   * And a die the player has just added is falling onto the board, which is
+   * neither: it is a picture that moves and has no simulation under it. It
+   * wants frames for the fifth of a second it takes to land and none before or
+   * after, and it wants them only when there is somewhere to draw — nobody is
+   * owed an animation they cannot see (`docs/physics-and-rendering.md`, "The
+   * dice waiting to be thrown").
    */
-  val wantsFrames: Boolean get() = roll != null || (stage != null && owed)
+  val wantsFrames: Boolean get() = roll != null || (stage != null && (owed || renderer.falling))
 
   /** True while a roll is in progress, watched or not. */
   val rolling: Boolean get() = roll != null
@@ -156,11 +170,12 @@ class TrayLoop(
   }
 
   /**
-   * Puts the dice that are waiting to be thrown on the table.
+   * Puts the dice that are waiting to be thrown on the table, with the ones
+   * the player has just added falling into it.
    *
-   * A still picture like the empty table is, and owed a frame for the same
-   * reason: nothing else here would produce one, so without it the dice would
-   * not appear until something else happened to draw.
+   * Owed a frame like the empty table is, because nothing else here would
+   * produce one; and for as long as a die is still coming down it is owed
+   * another every frame, which [frame] gives it and [wantsFrames] asks for.
    *
    * A roll already in the air is left alone. The board is what a player
    * arranges *between* throws, and a formula edited while the dice are still
@@ -169,6 +184,10 @@ class TrayLoop(
   fun waiting(spec: ThrowSpec) {
     if (roll != null) return
     renderer.waiting(spec)
+    // The fall starts now, so the frame this is drawn on is worth no time at
+    // all — the same rule the first frame of a roll follows, and for the same
+    // reason: there is no frame before it to measure against.
+    lastFrameNanos = null
     owed = true
   }
 
@@ -249,10 +268,21 @@ class TrayLoop(
    * finished is left on screen exactly as it finished: the dice have stopped
    * and nothing may touch them, so there is nothing left to draw
    * (`.claude/CLAUDE.md`).
+   *
+   * How much of the frame the roll is given is [RollPace]'s answer, not the
+   * clock's: all of it while a hand is driving the throw, a fraction of it
+   * while the player is watching one land.
    */
   fun frame(nanos: Long): Boolean {
     val live = roll
     if (live == null) {
+      // A die the player added is on its way down. It is not a roll and there
+      // is nothing to step: the board is asked where its dice are at this
+      // moment and drawn there, and the moment is the only thing that moved.
+      if (stage != null && renderer.falling) {
+        renderer.fall(secondsSince(nanos))
+        owed = true
+      }
       // Nothing is moving, but something may not have been drawn yet: the
       // table before the first throw, or a landed roll on a surface that has
       // just arrived. One frame settles it — and only a frame that actually
@@ -262,14 +292,15 @@ class TrayLoop(
       return wantsFrames
     }
 
-    val previous = lastFrameNanos
-    lastFrameNanos = nanos
-
-    // A frame clock that jumped backwards — a different clock source, or a
-    // counter that wrapped — is worth no time rather than a negative amount,
-    // which the frame clock would refuse outright.
-    val elapsed = if (previous == null) 0.0 else ((nanos - previous).coerceAtLeast(0)) / NANOS_PER_SECOND
-    live.advance(elapsed)
+    // **Here is the whole of the pacing, and here is why it is here.** This is
+    // the one place in the app where real time becomes simulated time, so it
+    // is the only place that can spend less of the first than it is given.
+    // Power-saving mode has no frames and never passes through this line, so
+    // it cannot be paced by accident — which is a stronger promise than a flag
+    // somebody has to remember to clear (`PowerSavingTray`). The clock itself
+    // stays [secondsSince]'s, which the falling board on the other branch of
+    // this frame uses too.
+    live.advance(RollPace.secondsFor(secondsSince(nanos), live.driven, live.stepsTaken))
     hear(live)
     watch(live)
     count(live)
@@ -352,6 +383,23 @@ class TrayLoop(
    */
   private fun watch(live: WatchedRoll) {
     if (debug.watching) debug.saw(live.diagnostics)
+  }
+
+  /**
+   * How much time this frame is worth, and remembers it for the next one.
+   *
+   * **The first frame of anything is worth no time at all.** There is no frame
+   * before it to measure against, and measuring from zero would hand the clock
+   * however long the device has been awake. A clock that jumped backwards — a
+   * different clock source, or a counter that wrapped — is worth no time
+   * either, rather than a negative amount that the frame clock would refuse
+   * outright.
+   */
+  private fun secondsSince(nanos: Long): Double {
+    val previous = lastFrameNanos
+    lastFrameNanos = nanos
+    if (previous == null) return 0.0
+    return (nanos - previous).coerceAtLeast(0) / NANOS_PER_SECOND
   }
 
   private fun endRoll() {

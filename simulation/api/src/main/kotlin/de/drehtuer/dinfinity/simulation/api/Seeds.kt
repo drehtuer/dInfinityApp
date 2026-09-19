@@ -85,6 +85,19 @@ object Seeds {
   /** And the nudge a die in trouble gets. */
   const val BIAS: Long = 0x42_49_41_53
 
+  /**
+   * And the tumble a die dropped onto the board before a throw falls with.
+   *
+   * **A stream of its own is the whole reason this constant exists.** What it
+   * seeds is not a roll and is never read (`FallingIn`), but a purpose it
+   * shared with the spawn would make it a roll's business all the same: every
+   * die the picker added before a throw would take the numbers the throw was
+   * going to be given, and the golden fixture would move under a feature that
+   * decides nothing. Separate purpose, separate stream, and the recorded
+   * throws are exactly what they were.
+   */
+  const val WAITING: Long = 0x57_41_49_54
+
   /** And an extra throw's, which is a seed rather than a stream. */
   private const val EXTRA: Long = 0x45_58_54_52_41
 

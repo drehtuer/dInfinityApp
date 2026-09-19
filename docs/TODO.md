@@ -116,6 +116,41 @@ is drawn over the table"):
       sheet is not. It is what is printed on a die, so it is `core/glyphs` and
       the built-in set rather than a layout (`docs/face-designer.md`)
 
+**Decided while putting the formula and the saved rolls away**, answering the
+second device session (`docs/physics-and-rendering.md`, "What is drawn over
+the table"):
+
+- **The shut formula is a tab, not a shrunken line.** The word `Formula` and a
+  chevron on a plate, mirroring `Dice` at the other end of the corner, and
+  **red when the formula does not read** — a mistake behind a door nobody has
+  a reason to open is a mistake nobody finds. An icon alone would have been
+  smaller and would have said nothing.
+- **The drawer slides, and only horizontally.** No fade and no expansion: the
+  fault being fixed is a menu that dropped down, and something that grew into
+  place is the same arrival under a different name.
+- **The saved rolls reuse the result's pull-up rather than getting one of
+  their own.** `PullUpSheet` over `SheetSlide`, with the rest hoisted — two
+  sheets on one edge is a rule about the pair of them, so neither may hold it.
+- **A result takes the bottom edge; the saved rolls yield.** A total cannot be
+  got back without throwing the dice again and a strip of saved rolls is one
+  pull away for ever, so `BottomEdge.resultArrives` parks the strip and not
+  the other way about. Parked, the two grips stack rather than overlap.
+- **The expected range moved into the result sheet's grip**, and left the
+  breakdown. One copy on the screen at a time, and it is in the half that
+  survives a push down — which is the whole of the complaint.
+- **`RollPresenter.progress` outlives the dice stopping when the roll is not
+  over**, so the earned and stalled plates can draw the live range. It is
+  cleared by a roll that finished, by `Cancel the roll` and by a fresh throw.
+- **`roll_hint_empty` is deleted rather than reworded.** It pointed at a
+  formula that is no longer on the table and at a menu that says `Dice` on its
+  own head. `roll_hint_ready` stays: shaking is the one thing nobody would
+  guess at.
+- **A pull-up's test tag goes inside `Modifier.offset`.** A semantics node
+  outside it reports the place the sheet would be if it had never slid, so a
+  tag applied through the caller's modifier makes every position assertion
+  quietly pass. It cost half an hour; it is written down so it costs nobody
+  else one.
+
 **Decided while making the result a pull-up**, where the brief left a choice
 (`docs/physics-and-rendering.md`, "What is drawn over the table"):
 
@@ -203,6 +238,25 @@ is drawn over the table"):
       parked sheet leaves enough felt to see a die that landed at the bottom
       edge. Where it rests and what a flick settles to are JVM-tested; the feel
       is not (`docs/physics-and-rendering.md`, "What is drawn over the table")
+- [ ] *Judge the two pull-ups sharing the bottom edge on the phone:* with a
+      result down there are two grips stacked on the edge, and the questions
+      are whether that reads as two things or as one confusing one, whether
+      `SAVED ROLLS` is needed on the lower grip or the bar alone would do, and
+      whether a result arriving while the saved rolls are up reads as the
+      total answering the roll or as the strip being snatched away
+      (`docs/physics-and-rendering.md`, "Two pull-ups, one bottom edge")
+- [ ] *Judge the formula tab on the phone:* whether a tab at the right edge
+      reads as "the formula is in there", whether the slide from the side is
+      quick enough to feel like a drawer rather than an animation, and —
+      the one that matters — whether **not being able to see the formula**
+      costs more than the felt it gives back. The dice menu's head carries a
+      count for the same question; the formula tab carries only its colour
+      (`design/dInfinity.dc.html`, option 2a)
+- [ ] *Judge the empty tray on the phone:* `Type a formula, or open Dice at the
+      top.` is gone at the session's request, so a tray somebody has just
+      cleared now says nothing at all. On a fresh install the welcome still
+      does. Whether the silence reads as calm or as broken is an eye's
+      question (`docs/design-handover.md`, question 6)
 - [ ] *Judge the dice pull-down on the phone:* the dice are behind a head reading `Dice` at the top of the table now, and the row inside it still scrolls — the built-in set offers ten dice and ten at a touch target worth pressing do not fit across a 360 dp screen. Three things need eyes. Does a shut menu read as "the dice are in there" or as "there are no dice"? Does the count on the head answer that? And does the scrolling row read as "there are more dice over there" or as "the d20 is missing" — the d20 being the die most people want (`design/dInfinity.dc.html`, option 1h)
 - [ ] *Judge the tray with no shadow of its own on the phone:* the wall and the rim no longer cast, and the dice still do. What is left to see is whether the join between the wall and the floor still reads as a corner — the contact darkening there is screen-space ambient occlusion rather than a cast shadow, and it cannot be turned off per renderable without taking the dice's contact with it (`docs/physics-and-rendering.md`, "Rendering (normal mode)")
 - [ ] **Decided: braced notation, so a set's own dice can be typed and picked.**
@@ -465,7 +519,32 @@ with the bundled set first, so it kept the untextured `d20` and dropped the
 personal one — the chooser now leaves the personal set out altogether, because
 a die of "My dice" is a drawing rather than a shape to draw on. Roll it is
 still absent rather than dead for a die plain notation cannot name
-(decision 31).
+(decision 31). **It is a round trip now**: the throw carries the die it was
+drawing and the tray draws a banner back to the designer on that die, which
+climbs rather than piling the two screens up (`docs/face-designer.md`, "The
+way back").
+
+**A drawn face lands where the die shows it.** The exporter used to copy the
+canvas into the cell square on while the die samples that cell in the face's
+own frame, so a drawing came out turned — 15° on a d4, 36° on a d12, 60° on a
+d8 and a d20, 154° on a d10, 166° on a d18 — and drawn at 0.96 of the size the
+die shows, which is why a whole-face fill left a third of a d20's face bare
+with the printed number showing through. Each cell now carries the turn and
+size that carry the canvas onto the real polygon, from the same `FaceOnSolid`
+solve the Solid tab draws with. What holds it is an end-to-end test over the
+real chain — painted on a device, packaged, validated, installed, read back
+through the renderer's own `AtlasKey` — and what that test asserts is the
+promise rather than the bug: every point the die shows of a filled face
+carries the fill.
+
+**Drawn dice score what the dice they were drawn on score**, and there are
+seven tests saying so over every bundled die: the values, the labels, the
+indices, a die drawn on one face of twenty, the opposite-face pairing kept
+and not invented, two hundred turns of each die read drawn and plain, and
+every face of a d20 reachable exactly once. The device session's worry — that
+the designer's dice might not roll fair because faces are assigned after the
+physics — had no bug behind it, and the tests are there so nobody has to take
+that on trust again.
 
 **The tools are pictures**, taken verbatim from the prototype's own sprite and
 held to it by a test that reads `design/dInfinityPhone.dc.html`. The
@@ -514,28 +593,35 @@ the pen; why, and the other limit it carries, are in `docs/face-designer.md`,
       drag of a stage-width per 176° is the rate a finger expects; and whether
       a face carrying only its background and its number reads as a face
       somebody drew or as a face that lost their drawing
-- [ ] *Judgement, on a phone:* the drawing now reaches the tray, and nobody
-      has seen one there. Whether a face somebody drew with a finger reads as
-      *their drawing* at tray distance or as a smudge; whether the exporter's
-      turn (below) is the only thing wrong with how it lands; whether eight
+- [ ] *Judgement, on a phone:* the drawing reaches the tray the right way
+      round now, and nobody has seen one there since. Whether a face somebody
+      drew with a finger reads as *their drawing* at tray distance or as a
+      smudge; whether a d10's drawing, which is painted 1.2× large and clipped
+      at the tip (below), reads as their drawing at all; whether eight
       44 dp glyphs in a wrapping row read as tools without their words, or
       whether the bucket and the stamp need a caption after all; and whether a
       52 dp thumbnail of a face is a face or a grey square
-- [ ] **The atlas's turn of a cell is not the canvas's.** The exporter draws
-      every cell with the face's up taken as `+z` flattened onto it while the
-      canvas masks every cell into one canonical outline, and the two are not
-      the same turn — an octahedron's top face is fifteen degrees off the
-      triangle the canvas draws, a d20's up to sixty and a d12's up to
-      thirty-six, while a d6's square lands exactly. So a drawing comes out
-      of the exporter turned, and clipped where it runs past the real polygon.
-      The Solid tab shows the drawing the canvas's way and says so; which of
-      the two should move is the open question, and it is not a small one —
-      changing the atlas's rule repaints every die of every set ever published
-      (`docs/dice-sets.md`, "Up is `+z`"). **The d4's corner numbers are not
-      part of this any more**: which corner of a cell carries which number is
-      read off the solid and is right whatever the turn works out to be
-      (`docs/face-designer.md`, "The d4 rule is derived, not checked"). What
-      is left here is the turn of the *drawing*
+- [ ] *Judgement, on a phone:* the way back from a test throw. Whether the
+      banner over the tray reads as "you are testing this" or as something in
+      the way of the table, and whether coming back to the designer on the die
+      being tested is what a hand expects (`docs/face-designer.md`, "The way
+      back")
+- [ ] **The canvas draws one kite for two different ones.** `FaceOutline.Kite`
+      is a kite somebody chose the proportions of, and it is used for both the
+      d10 and the d18, whose faces are differently proportioned kites — so no
+      turn and no size lands the canvas exactly on either. The exporter covers
+      instead of fitting, which leaves the face wholly coloured at the cost of
+      a drawing a little large and clipped at the tip: measured over the
+      catalogue, the covering size is 1.20× the best fit on a d10 and 1.37× on
+      a d18, and exactly the best fit on every other shape. Closing it
+      properly means the canvas outline being the face's own
+      polygon, which needs `FaceOutline` to stop being one enum value per
+      family — and changes the shape somebody draws on, so drawings already on
+      disk are masked differently (`docs/face-designer.md`, "Export details").
+      **The turn itself is done**: each cell is painted with the turn and size
+      that carry the canvas onto the polygon the die shows, from the same
+      solve the Solid tab uses, and every sampled point of every face of every
+      catalogue shape is covered
 - [ ] **Whether the Solid tab should draw pen strokes too**, as thin filled
       outlines rather than as lines of a width. What it costs is a stroke
       turned into a polygon per mark per face per frame; what it buys is a
@@ -1279,7 +1365,9 @@ throws rather than a twelve-second fight with the solver.
 ### 5.6 Feel — the user's call, not a metric
 
 - [ ] Dice respond to a shake within ~100 ms, and they move the way the hand did — the tray itself never moves, because it is the screen (`docs/physics-and-rendering.md`). The direction and the dropped-force stutter are both fixed; what is left to judge is the *start*, which read as a lag on the Pixel 10a: the dice are already travelling fast when the shake begins to reach them, so the hand seems to be catching up with dice that left without it. The 100 ms start threshold and the spawn impulse are the two numbers in it
-- [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling. **Not yet:** on the Pixel 10a the dice do not travel far enough and the tumble does not read as dice being thrown. Throw energy and spawn spread are where that is tuned (5.5), and this is the judgement that says when it is right
+- [ ] The tumble reads as dice: bounce height, spin decay, dice rolling on an edge before toppling. **Better, and now too fast** — that is the device session's own wording. The travel and the turns are there; what was missing was time to see them, and the physics has none left to give (friction moves the median settle of 20d20 only from 0.73 s to 0.85 s, and its top end pushes the dice into one another). So the roll is now *shown* over more wall clock than it takes: `RollPace.WATCHED` (`docs/physics-and-rendering.md`, "The simulation clock"). This entry stays open until an eye says the tumble reads
+- [ ] **Is the paced roll the right speed?** The only way to settle it is to hold the phone. `RollPace.WATCHED` is 0.5 — half speed, so a 20d20 throw the solver finishes in 0.81 s takes about 1.6 s to watch — and it is one constant with nothing else beside it, meant to be changed on this judgement. Three things to look for. **Does a roll now read as dice landing** rather than dice arriving: the last turn onto a face is the part worth seeing, and it is the part that was over first. **Is the answer still prompt** — roll `1d20` a dozen times in a row and say whether the wait annoys; a slower roll is a slower answer and that cost is entirely the app's choice. And **does the change of speed when the hand lets go read as intended** or as a stutter: the pace is flat and comes on at release, deliberately, rather than easing in. If it wants easing, that is a second constant and it should be added on evidence, not before
+- [ ] **Does a second shake at tumbling dice still answer instantly?** The pace comes off the frame a hand returns, and a live sample is now filed on the step the world is about to take rather than on the one the sensor's clock names — without which the slow motion would have delayed a second shake by however long it had been running. Shake, let go, and shake again before the dice stop: the dice should jump on the hand, not a beat later (`docs/physics-and-rendering.md`, "Shake input")
 - [ ] *Judge the formula editor on the phone:* whether a dashed rule under the formula reads as "you can type here", and whether a keyboard over the lower half of the tray is right or wants the tray to shift up while the editor is open (`design/dInfinity.dc.html`, option 2a)
 - [ ] Rendering polish — shader tuning, and the optimisation pass — is deliberately **last**: it is worth doing once the dice move the way they should, and worth nothing before that. Nothing above should wait for it
 - [ ] **Do the haptics land?** They fire on real impacts only and the rule is asserted rather than tuned: a change in a die's speed that the step's own gravity explains is never reported, so a die sliding and a die at rest are silent by construction. What a phone has to answer is the *feel* — whether a die hitting the tray reads as a knock rather than a rattle, whether one die landing among twenty is still felt, and whether the 45 ms rate limit turns a hundred dice into a handful of distinct knocks or into one long buzz. Listen for: a single d20 landing, then `20d6`, then `100d6`
@@ -1287,7 +1375,9 @@ throws rather than a twelve-second fight with the solver.
 - [ ] **Does power-saving mode's second read as the roll?** There are no frames there, so the impacts are replayed across about a second after the dice have stopped. Whether that sounds like a throw that happened or like a sound effect played at you is the judgement — and whether a second is the right length
 - [ ] Settled faces are legible at arm's length without zooming. The *size* is settled — 16 mm reads fine on the Pixel 10a — and the numbers are drawn now. What is left to judge is one number: `DieNumbers.FACE_SHARE`, how much of the room a face has a numeral takes up. Everything else about the size is solved from the face itself, so this is the only knob and it moves every shape at once. The d4's three-to-a-triangle (`CORNER_HEIGHT`) is the second question, and the d18 is the third — its kites are long enough that its numbers are a third the size of a d6's, which is the shape question already open below
 - [ ] Power-saving feels instant and gives the same answer
-- [ ] *Judge an exploding roll on the phone:* `8d6!` now **waits** between links of the chain — the six earns a throw and the screen asks for a shake, rather than the app throwing it. Whether that reads as "your turn again" or as the roll having stalled needs a hand and eyes. **It works, and was seen working**: `4d6!` came up `6 6 1 1 3 5` on the Pixel 10a, six dice on the tray for a throw of four, none of them on top of another, total 22. What is left is not whether it happens but how it reads. Three things need eyes. **Does the wait read as part of the roll** — a die lands, a beat, another die drops — or as the app having stalled? **Does the added die look thrown**, given that it is dropped from 25 mm straight down rather than hurled like the first eight? And **does it ever appear to pass through a die already lying there** on its way to a stop: it cannot touch one, because there is no body for the settled dice in its world, so if it *looks* as though it did, the drop point is too close and `ClearSpace` is the number to move (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds")
+- [ ] *Judge an exploding roll on the phone:* `8d6!` now **waits** between links of the chain — the six earns a throw and the screen asks for a shake, rather than the app throwing it. Whether that reads as "your turn again" or as the roll having stalled needs a hand and eyes. **It works, and was seen working**: `4d6!` came up `6 6 1 1 3 5` on the Pixel 10a, six dice on the tray for a throw of four, none of them on top of another, total 22. What is left is not whether it happens but how it reads. Three things need eyes. **Does the wait read as part of the roll** — a die lands, a beat, another die drops — or as the app having stalled? **Does the added die look thrown**, given that it is dropped from 25 mm straight down rather than hurled like the first eight? And **does it ever appear to pass through a die already lying there** on its way to a stop: it cannot touch one, because there is no body for the settled dice in its world, so if it *looks* as though it did, the drop point is too close and `ClearSpace` is the number to move (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll adds"). **Two ways it did have now been closed**: a die the first throw read and lifted off is no longer handed to the next link — it used to be drawn back onto floor the re-thrown die had since landed on — and a die thrown again is dropped clear of what is standing rather than at a point drawn blind from the whole tray. What is left is whether anything still reads as passing through
+- [ ] **Is the roll different on the first throws of a session?** The device session reported both the re-roll overlap and the chain throwing itself "only in the beginning, correct after a few throws". The overlap had a cause that is not first-throw-specific and is fixed; the chain has waited for a shake since `feature/shake-is-the-roll` and there is no path in the app that throws an earned die without `RollPresenter.roll`. What is unexplained is the *pattern*, and the one thing that really is only true at the start is that the roll thread is busy — the Filament engine is made and its material compiled on the device, the atlas is decoded, the Jolt library is loaded — so the frame clock cannot keep up and **drops steps** (`FrameClock.MAX_STEPS_PER_FRAME` is 4, and the time for steps it could not take is dropped with them). A dropped step is a step the world never takes, which is a materially different throw from a warm one. **Half of this is now closed**: a dropped step used to strand the shake sample that named it, because the sensor's numbering ran on while the world's did not, and a live sample is now filed on the step the world is about to take instead (`ShakeDriver.add`). The steps themselves are still dropped. `LiveRoll.droppedSteps` already counts them and nothing shows it: put it on the debug overlay, then throw `4d6!` three times on a cold start and read the number
+- [ ] **Does a die the picker adds read as being dropped on the table?** It used to appear; it now falls 60 mm and tumbles to a stop in about a fifth of a second, which is what real dice do from that height and may still be too quick to register on a screen (`docs/physics-and-rendering.md`, "The dice waiting to be thrown"). Three things to look for. **Does a single tap read as a die landing**, or as a die blinking into place a moment late — if the latter, `FallingIn.DROP_HEIGHT_MM` is the one number to turn, and every other constant follows from it. **Does tapping a d6 eight times in a row look right**: the dice already down must not so much as twitch, and a die still in the air when the next tap lands must go on falling rather than start again. **And does a falling die ever appear to pass through one standing?** It cannot touch one — there is no physics here at all — and it falls straight down its own column of floor, so if it *looks* as though it did, the clearance is the number to move and not the drop
 - [ ] *Judge a chain that fills the tray:* roll enough exploding dice that the tray runs out of clear floor. The sheet now says which of the two ways the chain ended — "Exploding stopped at 20 dice." or "The tray had no room for another die." — under the group it happened in (`docs/dice-notation.md`, "Evaluation", step 7). What is left is a person's call: whether the stop reads as a rule or as a bug, and whether a line under the group is where the eye actually goes
 
 ### 5.7 Performance on the Pixel 10a

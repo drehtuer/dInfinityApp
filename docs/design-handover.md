@@ -52,6 +52,20 @@ its true shape, and whether an oversized stamp on a d4 shrinks to fit.
    each refusal a typed reason the screen phrases is a design change as much as
    a code one, and it is what translation waits on.
 
+### One the prototype cannot draw
+
+**A die the picker adds falls onto the table.** Tapping a d6 used to put one
+there; it now drops 60 mm and tumbles to a stop in about a fifth of a second,
+and the dice already down do not move
+(`docs/physics-and-rendering.md`, "The dice waiting to be thrown"). The
+prototype's tray is a still picture of a board, so it shows where the dice end
+up and cannot show them arriving — the two are not in conflict, and the still
+picture is still right: the board after the fall is the board the prototype
+draws, because the fall ends exactly where the die would otherwise have been
+stood. What is missing from `design/` is the motion, and the only decision in
+it is how long the drop should read as taking. That needs a hand rather than a
+drawing, and it is in `docs/TODO.md` under 5.6.
+
 ### Five the pass did not reach
 
 - **The table picker is a list of rows**, where the prototype `1u` is a
@@ -95,7 +109,10 @@ What the app does now, and what the prototype still draws
 | --- | --- | --- |
 | The dice | a pull-down at the top of the table: a `Dice` head with the count and a chevron, opening onto the picker row | the picker strip, always out, in the slot at `order:{{ pickerOrder }}` |
 | The set chooser | folded inside that pull-down | a dropdown off the strip's **Set** button (`setMenuOpen`) — the same idea, one level further in |
-| The formula | an expanding menu on the right, under the menu button | a plate in the top **left** corner, `plateLeft` / `plateTop` |
+| The formula | a **tab** on the right edge under the menu button, with the field sliding in horizontally behind it; the formula itself is not on the table | a plate in the top **left** corner, `plateLeft` / `plateTop`, with the formula printed on it |
+| The saved rolls | a **pull-up** on the bottom edge, parked by default | option `1c` says "saved rolls behind a pull-up" in one line; `dInfinityPhone.dc.html` still draws the strip in the column |
+| The empty-tray hint | none | a hint block in the bottom-left corner |
+| The expected range | on the ready plate, on the two waiting plates, and in the result sheet's **grip** | not drawn at all |
 | The tray's own shadow | none: the wall and the rim cast nothing, the dice cast | the fake bezel, `trayBorder: 6px solid {{ tbl.wall }}` |
 | `See the odds`, `Save as roll` | at the foot of the result sheet | already at the foot of the result sheet, as `Graph` and `Save` — **the app has caught up here**, and only the wording differs |
 
@@ -112,6 +129,26 @@ Three questions for the next pass over the prototype:
 3. **`Graph` and `Save` against "See the odds" and "Save as roll".** The app's
    wording is the wording it uses everywhere else for those two acts; the
    prototype's is shorter. One of them should give.
+4. **What the shut formula tab should look like.** The app draws the word
+   `Formula` and a chevron pointing inwards, on a plate, mirroring `Dice` at
+   the other end of the corner, and turns both red when the formula does not
+   read. The prototype has no shut state to compare it with: a tab flush with
+   the edge, an icon alone, or something narrower would all be defensible, and
+   the choice is a drawing rather than a rule.
+5. **Two pull-ups on one bottom edge.** The result arrives by itself and the
+   saved rolls are pulled up by hand; they may not both be up, and parked they
+   stack — the result's grip on the edge, the saved rolls' directly above it.
+   Option `1c` asks for the saved rolls behind a pull-up and `1e`–`1g` for the
+   result as one, but nothing draws the two of them together. How tall the
+   saved rolls' grip should be, and whether `SAVED ROLLS` belongs on it, is
+   the part a drawing would settle.
+6. **An empty tray now says nothing.** `Type a formula, or open Dice at the
+   top.` is gone at the session's request, and the formula it pointed at is no
+   longer on the felt either. On a fresh install the first-launch screen still
+   says what to do; on a tray somebody has just cleared, nothing does. That may
+   be right — it is the state where the felt is all there is — but it is a
+   deliberate silence rather than an oversight, and the next pass should
+   confirm it.
 
 ### One that has been closed
 

@@ -220,6 +220,18 @@ class DInfinityAppTest {
   }
 
   @Test
+  fun `a throw from the designer carries the die it was drawing, and nothing else does`() {
+    // The die is what puts the way back on the tray, so a route that dropped
+    // it would be a throw the player cannot get back from
+    // (`docs/face-designer.md`, "The way back"). It is left off every other
+    // way in rather than carried as an empty argument, because an empty
+    // argument is a promise the tray would have to check.
+    assertEquals("roll?formula=mine%3A1d20&die=d20", rollRoute("mine:1d20", drawing = "d20"))
+    assertEquals("roll?formula=2d6", rollRoute("2d6"))
+    assertEquals(Destination.Roll, Destination.ofRoute(rollRoute("mine:1d20", drawing = "d20")))
+  }
+
+  @Test
   fun `the editor is opened on a roll, or on a new one`() {
     // Not in the menu: it is about one roll, and the way to it is that roll.
     assertEquals("editor?roll=fireball", editorRoute("fireball"))

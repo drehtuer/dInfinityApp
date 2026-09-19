@@ -68,6 +68,11 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   and **Roll it throws the drawing** rather than a plain die of that shape.
   Built: [../docs/face-designer.md](../docs/face-designer.md), "Save to set"
   and "Flow", step 4.
+- **A test throw has a way back** — the `fromDesigner` banner over the roll
+  screen, which returns to the designer on the die being tested. The app
+  draws it as a plate rather than in the prototype's accent tint, because
+  accent never touches felt. Built:
+  [../docs/face-designer.md](../docs/face-designer.md), "The way back".
 - **Saved rolls are dragged into the order the player wants**; pinning and
   favourites are gone.
 - **Settings gained an accent picker and lost the sound switch.**
@@ -76,14 +81,18 @@ Every one of those is folded into `docs/` — that is where a decision lives onc
 it is taken. What the design left open is in
 [../docs/TODO.md](../docs/TODO.md).
 
-**The roll screen's top has moved on since this was imported.** A device
-session asked for the dice to be a pull-down at the top of the table and the
-formula to be an expanding menu on the right under the menu button, and the
-app does that now; the prototype still draws an always-out picker strip and
-the formula in the left corner. The tray also casts no shadow on its own felt
-any more. The whole difference is tabulated in
+**The roll screen has moved on since this was imported.** A device session
+asked for the dice to be a pull-down at the top of the table and the formula
+to sit on the right under the menu button, and a second one asked for the
+formula to be **hidden behind a tab that slides in from the side**, the saved
+rolls to be a **pull-up** (which option `1c` already names in one line), the
+empty-tray hint to go, and the expected range to stay readable through a
+chain of re-rolls. The app does all of that now; the prototype still draws an
+always-out picker strip, the formula printed in the left corner, a hint block
+and a saved-roll strip in the column. The tray also casts no shadow on its own
+felt any more. The whole difference is tabulated in
 [../docs/design-handover.md](../docs/design-handover.md), "The roll screen's
-top, after the second device session", with the three questions the next pass
+top, after the second device session", with the six questions the next pass
 over the prototype has to answer. It is written down rather than drawn
 because this file is generated — see **Editing**, below.
 
@@ -114,7 +123,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 | Saved rolls, editor, import — 1n–1p, 1r, 7b, 9b, 9f–9g, 6e | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Dice sets, set details, install and update — 1s–1t, 5a, 6a–6b, 8c, 9h–9i | [../docs/dice-sets.md](../docs/dice-sets.md) |
 | Table picker — 1u, 8a, 9j | [../docs/tables.md](../docs/tables.md) |
-| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; its export on the "My dice" details, 8c | [../docs/face-designer.md](../docs/face-designer.md) |
+| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; the way back from a test throw, `fromDesigner`; its export on the "My dice" details, 8c | [../docs/face-designer.md](../docs/face-designer.md) |
 | Statistics, history, sessions — 1w, 1x, 5b–5c, 6c, 8b, 9e | [../docs/statistics.md](../docs/statistics.md) |
 | Menu, Settings — 1q, 1y, 2d | [../README.md](../README.md), [../docs/architecture.md](../docs/architecture.md) |
 
