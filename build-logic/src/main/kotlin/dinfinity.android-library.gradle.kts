@@ -72,11 +72,16 @@ android {
     // with the verification metadata regenerated beside it — a version arrives
     // as something to review rather than as a broken build
     // (`docs/build-setup.md`).
-    // Both of them: `GradleDependency` is the same question asked by a
-    // different detector, and turning one off simply hands the failure to the
-    // other. Found by putting tomlj back to 1.2.0 and watching the build fail
-    // again under the other name.
-    disable += setOf("NewerVersionAvailable", "GradleDependency")
+    //
+    // All three of them, because turning one off hands the failure to the next.
+    // `GradleDependency` asks the same question as `NewerVersionAvailable` —
+    // found by putting tomlj back to 1.2.0 and watching the build fail again
+    // under the other name. `AndroidGradlePluginVersion` asks it about AGP and
+    // about the Gradle wrapper, and it has broken a green `main` twice: AGP
+    // 9.4.1 on 18 September, answered by chasing the version, and Gradle 9.8.0
+    // ten days later on a commit that only bumped three Actions. Chasing the
+    // release is not a fix — the second time is what said so.
+    disable += setOf("NewerVersionAvailable", "GradleDependency", "AndroidGradlePluginVersion")
   }
 }
 
