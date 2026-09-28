@@ -1046,21 +1046,37 @@ the build uses, `assembleDebugAndroidTest` included, or the device suite fails o
 its own dependencies.
 
 **Keeping up to date is Dependabot's job, and only Dependabot's.** Android
-Lint ships two detectors that ask Maven Central whether anything newer exists —
-`NewerVersionAvailable` and `GradleDependency` — and both are switched off in
-the convention plugins. A build should succeed or fail on what is in the tree,
-not on what somebody else published this morning: tomlj 1.3.0 turned `main` red
-on a commit that changed no dependency, hours after the same code went green.
+Lint ships three detectors that ask whether anything newer exists than what the
+tree pins — `NewerVersionAvailable`, `GradleDependency` and
+`AndroidGradlePluginVersion` — and all three are switched off in the convention
+plugins. A build should succeed or fail on what is in the tree, not on what
+somebody else published this morning: tomlj 1.3.0 turned `main` red on a commit
+that changed no dependency, hours after the same code went green.
 
 The second reason is worse than the first. Those detectors need the network, and
 the devcontainer runs Gradle `--offline`, so they say nothing locally and fire
 on CI — `./gradlew check` passes on a tree CI will reject, which is exactly how
 that failure reached `main`. A check that only fires on one of the two machines
-is worse than no check. Turning off `NewerVersionAvailable` alone is not enough,
-either: `GradleDependency` asks the same question and simply takes over.
+is worse than no check.
+
+Switching one off is not enough either, because the next one takes the question
+over. `GradleDependency` asks what `NewerVersionAvailable` asks, found by
+putting tomlj back to 1.2.0 and watching the build fail again under the other
+name. `AndroidGradlePluginVersion` asks it of the Android Gradle Plugin and of
+`gradle/wrapper/gradle-wrapper.properties`, and it broke a green `main` twice
+before it was switched off: AGP 9.4.1 on 18 September, answered by chasing the
+version, and Gradle 9.8.0 on 28 September, on a commit that bumped three
+Actions and touched nothing Gradle reads. Chasing the release buys ten days.
 
 So a new version arrives as a pull request to review, with the verification
 metadata regenerated beside it, rather than as a broken build.
+
+The Gradle wrapper wants watching by hand. `AndroidGradlePluginVersion` was the
+only thing reading `gradle/wrapper/gradle-wrapper.properties`, and it read it by
+breaking the build, on CI only; no Dependabot pull request has ever proposed a
+wrapper version here. So the wrapper is bumped deliberately, and the version it
+pins is the one in the tool table at the top of this document — the two are
+changed together or not at all.
 
 A Dependabot pull request changes which artifacts the build resolves, so it
 would fail until someone regenerated the file by hand. That is the check
