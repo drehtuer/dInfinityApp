@@ -330,7 +330,7 @@ flowchart LR
   shake["Shake"] --> spec["ThrowSpec"]
   chain["An explosion or a reroll<br/>(ThrowSpec.among)"] --> spec
   stalled["Dice a throw gave up on<br/>(ThrowSpec.among)"] --> spec
-  hand["A hand picking a die up<br/>(ThrowSpec.among)"] --> spec
+  hand["Dice a finger picked,<br/>thrown by a shake<br/>(ThrowSpec.among)"] --> spec
   spec --> sim["DiceSimulator"]
   sim --> faces["The faces, and where each die stopped"]
   faces --> score["Scoring, which decides no number"]
@@ -428,9 +428,18 @@ faces four times, and the roll contributes one total. That is how an exploding
 chain is already counted, so a hand re-throw is not a new rule in the history
 but the existing one applied to a throw the player asked for.
 
+**The finger picks; the shake throws** (`docs/architecture.md`, decision 68).
+A finger on a die marks it as picked up, and nothing else: the die stays where
+it lies and nothing about it moves. The next shake throws the picked dice —
+only those, among the ones still lying — through the same `ThrowSpec.among` an
+explosion uses. So a re-throw is started by a hand shaking the phone like
+every other throw, and "only a shake starts a roll" (decision 66) holds without
+an exception for it. A shake with nothing picked throws the whole roll again,
+as it always has.
+
 **The gesture itself is not wired up yet** (`docs/TODO.md`, "Wire the
-one-finger touch to a hand re-throw"). Until it is, a single finger on the tray
-does nothing — which is what it has been all along.
+one-finger pick and the shake that throws it"). Until it is, a single finger on
+the tray does nothing — which is what it has been all along.
 
 ## What a shake's spread currently rests on
 
