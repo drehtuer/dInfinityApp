@@ -78,9 +78,12 @@ need a hand rather than a drawing; they are in `docs/TODO.md` under 5.6.
 - **How does a photograph sit on the tray?** Cropped at import, losing pixels
   somebody chose, or mapped at draw time, which needs the tray's aspect — and
   the tray's aspect changes with the phone.
-- **Does the picker row grow a brace form?** A set's own dice (`skull-d6`) are
-  becoming typable as `3{skull-d6}kh1`; the row still offers only the ten
-  standard dice.
+- **The picker row grew a brace form, and the prototype has not.** A set's own
+  dice (`skull-d6`) are typable as `3{skull-d6}kh1`, and the row now offers
+  them after the standard dice, captioned with their id and writing the braces
+  (`docs/architecture.md`, decision 75). The prototype's row still shows only
+  the ten standard dice; a caption as long as `skull-d6` under a 26 dp
+  silhouette is the part worth drawing.
 - **The sprite has no paste and no mirror.** The face designer has copy, turn,
   mirror and paste, and none of the four is in the prototype at all. Copy is
   `#ic-copy` and the turn keeps its words, because `Turn 3/4` is a count. The

@@ -306,6 +306,32 @@ class CollectionReaderTest {
   }
 
   @Test
+  fun `a set named inside braces is checked like any other`() {
+    // `3{brass:skull-d6}` asks for brass as surely as `brass:1d20` does
+    // (`docs/dice-notation.md`, "A set's own dice").
+    val loaded =
+      loaded(
+        collection(rolls = """{ "group": "a", "name": "Bones", "formula": "3{brass:skull-d6}kh1" }"""),
+        installed = setOf("builtin"),
+      )
+
+    assertEquals(listOf(CollectionCode.UnknownDiceSet), loaded.warnings.map { it.code })
+    assertEquals(
+      "3{brass:skull-d6}kh1",
+      loaded.collection.rolls
+        .single()
+        .formula,
+    )
+  }
+
+  @Test
+  fun `a braced die the parser refuses is refused here`() {
+    val rejected = rejected(collection(rolls = """{ "group": "a", "name": "Bones", "formula": "3{}" }"""))
+
+    assertEquals(CollectionCode.BadFormula, rejected.errors.single().code)
+  }
+
+  @Test
   fun `a set named twice in one formula is only mentioned once`() {
     val loaded =
       loaded(

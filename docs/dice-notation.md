@@ -23,6 +23,9 @@ is evaluated.
 | `2 * (1d8 + 3)` | arithmetic and grouping |
 | `1d6 + 1d4 [Fire]` | trailing label, ignored for math, shown in breakdown |
 | `brass:1d20` | use the d20 from the installed dice set with id `brass` |
+| `3{skull-d6}kh1` | three of the die whose own id is `skull-d6`, keep the highest |
+| `3{brass:skull-d6}kh1` | the same, from the set `brass` |
+| `3{skull:d6}kh1` | three of the `d6` of the set `skull` |
 
 **The app carries this reference too.** Menu → **Notation** lists everything
 below in the same words, with an example on every line that you can tap to put
@@ -41,9 +44,12 @@ term      := factor (("*" | "/") factor)*
 factor    := ("-")? atom
 atom      := dice | integer | "(" expr ")"
 dice      := (setref ":")? count? "d" sides modifier*
+           | count? braced modifier*     ; a die named by its own id
 count     := integer                     ; default 1, max 1000 (see Limits)
 sides     := integer | "%" | "F"          ; "%" is an alias for 100 (as 2d10), "F" = fudge/fate die
 setref    := identifier                  ; installed dice set id
+braced    := "{" (slug ":")? slug "}"    ; {die} or {set:die}, no spaces inside
+slug      := [a-z0-9][a-z0-9-]*          ; at most 40 characters
 modifier  := "kh" integer                ; keep highest n
            | "kl" integer                ; keep lowest n
            | "dh" integer                ; drop highest n
@@ -66,7 +72,41 @@ either case, so `4D6KH3` and `4d6kh3` are one formula. Two things are not:
   has to start with a letter. A set id may start with a digit
   (`docs/dice-sets.md`), but such a set cannot be named in a formula: `3dice:1d6`
   does not parse as a `setref`. Give a set you want to reference by name an id
-  that starts with a letter.
+  that starts with a letter — or name it inside braces, where `{3dice:d6}`
+  reads, because the `}` says where the id ends.
+- **A braced id is lower-case and written exactly** as the set file spells it:
+  `{Skull-d6}` is an error, not the same die.
+
+### A set's own dice
+
+A dice set may define dice under any id — `skull-d6`, a `d100` that really has
+a hundred faces (`docs/dice-sets.md`). Plain notation cannot name them: a die
+id and a modifier are made of the same characters, so `brass:skull-d6kh1` has
+no reading that does not ask the installed sets where the id stops
+(`docs/architecture.md`, decision 31). **Braces close the id before the
+modifiers start**, so a set's own die is written braced:
+
+- `3{skull-d6}kh1` — three of the die whose own id is `skull-d6`, keep the
+  highest. Resolved like a plain `3d6`: the default set's, falling back to the
+  built-in set's per die.
+- `3{brass:skull-d6}kh1` — the same, from the set `brass`, with no fallback,
+  as for any `setref`.
+- `3{skull:d6}kh1` — the `d6` of the set `skull`.
+
+The set goes **inside** the braces and only there: `brass:3{skull-d6}` is an
+error that says where to put it, so each die has one spelling and the picker's
+badges can read it back. A braced id is the die **with that id and nothing
+else**: `{d100}` is a set's real hundred-face die, never the percentile pair,
+and `{d10-tens}` is the tens die thrown on its own. Everything else is as for
+any group — the count, the modifiers, the limits, the breakdown, which quotes
+the group as written.
+
+The parser lexes what is between the braces **without looking at any set**,
+which is what lets the field keep validating on every keystroke; whether a set
+has the die is decided when the formula is planned (`DieResolver`), and a die
+nobody has is the usual "no skull-d6 in set "builtin"" under the group. A
+formula without braces means exactly what it always did, so every saved roll,
+history entry and collection file written before is read the same way.
 
 ## Limits
 
@@ -80,6 +120,7 @@ To keep the simulation and the probability graph tractable:
 | Explosion depth | 20 | Further explosions ignored, noted in breakdown |
 | Dice in the tray, including the ones explosions add | table capacity, hard cap 100 | The chain stops there, noted in the breakdown. An added die is dropped into clear floor, and a tray with none left cannot take one (`docs/tables.md`) |
 | Nested parentheses | 8 | Parse error |
+| Characters in a braced set or die id | 40 | Parse error; no dice set can define a longer id |
 | Result magnitude | fits in 64-bit | Overflow is a parse-time error via the PMF bound |
 
 A formula like `500d6` can be typed and graphed but cannot be rolled: the
@@ -345,11 +386,17 @@ formula and never throws one away":
 - **A formula that does not parse has no badges and cannot be added to.**
   There are no counts to show and nothing to splice into.
 
-The row offers the **standard dice the selected set defines** — `dN`, `d%`
-and `dF`. A set's own die ids (`skull-d6`) are not on it, because plain
-notation has no spelling for them (`docs/architecture.md`, decision 31), and
-a button whose taps could not be written into the field would be a button
-whose taps disappear.
+The row offers **every die the selected set defines**: the standard dice first
+— `dN`, `d%` and `dF`, in their usual order — then the set's own dice in the
+order its file lists them, each captioned with its id and drawn as the solid it
+is. A tap on a set's own die writes it braced (see "A set's own dice"):
+`1{skull-d6}` from the default set, `1{brass:skull-d6}` from another, counted
+up to `2{brass:skull-d6}` by the next tap like any group. A set's own die whose
+id plain notation already names exactly — a `d3` — is written plainly, `1d3`,
+because that is what somebody would type; a `d100` of its own is braced,
+because plain `d100` is the percentile pair (`docs/architecture.md`,
+decision 75). The badges follow the same rule as ever: `2{d6}` is not what the
+d6 button writes, so it is not the d6 button's to count.
 
 ## d100 and d%
 
@@ -644,6 +691,10 @@ middle of something (`3d6 +`) is blamed on a position one past its end, and
 there is nothing there to underline.
 
 Suggestions are offered when the intent is obvious (`d7` → nearest available,
-`3 d 6` → `3d6`), as one tap under the message. Where there is no honest
+`3 d 6` → `3d6`), as one tap under the message. A braced `{d7}` is offered the
+nearest `dN` still braced; a braced `{skull-d7}` is offered nothing, because
+there is no honest nearest to a skull. Empty braces (`{}`), a `{` with no `}`,
+and a character that cannot be in an id (`{Skull}`, a space) are each an error
+of their own, pointing at the brace or at the character. Where there is no honest
 reading there is no suggestion: a guess that is wrong is one tap away from
 replacing a formula somebody meant.

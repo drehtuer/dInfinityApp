@@ -312,9 +312,9 @@ internal fun basesIn(catalogue: DiceCatalog): List<Die> =
  * How [die] is written in a formula, or null when notation cannot name it.
  *
  * Through the same picker the roll screen's row uses, so **Roll it** and a tap
- * on the row write the same thing. A set's own `skull-d6` has no spelling a
- * formula could carry and comes back null (`docs/architecture.md`,
- * decision 31).
+ * on the row write the same thing. A set's own `skull-d6` comes back braced,
+ * `1{skull-d6}` or `1{brass:skull-d6}`; only a die no installed set has comes
+ * back null (`docs/architecture.md`, decision 75).
  *
  * **Which set to name is decided by what would resolve**, not by where the die
  * came from — because the designer's row has no answer to "where from": it

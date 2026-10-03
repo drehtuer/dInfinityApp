@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import de.drehtuer.dinfinity.core.notation.PickableDie
@@ -112,6 +113,24 @@ class PickerRowTest {
     row.forEach { die ->
       compose.onNodeWithTag(RollTestTags.pickerDie(die.notation)).assertExists()
     }
+  }
+
+  @Test
+  fun `a set's own die gets a button captioned with its id, and a tap asks for it`() {
+    // The row used to stop at the standard dice because a set's own die had
+    // no spelling; braced notation gives it one (`docs/architecture.md`,
+    // decision 75).
+    val skull = PickableDie("skull-d6", Sides.Named("skull-d6"), setRef = "brass", outline = Sides.Numeric(6))
+    val added = mutableListOf<PickableDie>()
+    compose.setContent {
+      PickerRow(dice = listOf(d6, skull), counts = mapOf(skull to 2), onAdd = added::add, onRemove = {})
+    }
+
+    compose.onNodeWithTag(RollTestTags.pickerDie("skull-d6")).assertIsDisplayed().performClick()
+
+    compose.onNodeWithText("skull-d6", useUnmergedTree = true).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.pickerCount("skull-d6"), useUnmergedTree = true).assertTextEquals("2")
+    assertEquals(listOf(skull), added)
   }
 
   private fun show(

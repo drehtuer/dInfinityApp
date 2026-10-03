@@ -35,6 +35,13 @@ object NotationLimits {
   /** The most sides a `dN` may name. Beyond it no set could define the die. */
   const val MAX_SIDES: Int = 1_000_000
 
+  /**
+   * The longest id a `{…}` may name, set and die alike. No dice set can
+   * define a longer one (`docs/dice-sets.md`), so a longer id is a typo —
+   * refused as one rather than quoted back whole by "no such die".
+   */
+  const val MAX_ID_LENGTH: Int = 40
+
   /** How much text fits in a `[…]` before it stops being a label. */
   const val MAX_LABEL_LENGTH: Int = 60
 

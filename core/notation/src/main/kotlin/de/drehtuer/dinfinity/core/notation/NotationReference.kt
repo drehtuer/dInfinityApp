@@ -67,6 +67,13 @@ object NotationReference {
               meaning = "Take the dice from an installed set instead of the default one.",
               example = "builtin:1d20",
             ),
+            NotationEntry(
+              syntax = "{…}",
+              meaning =
+                "A die by its own id, for a set's own dice: 3{skull-d6}kh1. " +
+                  "Name the set inside the braces, as in {brass:skull-d6}.",
+              example = "3{builtin:d6}kh1",
+            ),
           ),
       ),
     )
@@ -108,6 +115,11 @@ object NotationReference {
         what = "Characters in a label",
         value = "${NotationLimits.MAX_LABEL_LENGTH}",
         then = "Refused as you type.",
+      ),
+      NotationLimit(
+        what = "Characters in a braced id",
+        value = "${NotationLimits.MAX_ID_LENGTH}",
+        then = "Refused as you type. No dice set has a longer one.",
       ),
     )
   }

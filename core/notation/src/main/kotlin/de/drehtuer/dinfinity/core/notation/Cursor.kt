@@ -56,6 +56,20 @@ internal class Cursor(
     return text.substring(start, position)
   }
 
+  /**
+   * The `[a-z0-9][a-z0-9-]*` here as text, empty when there is none: a die or
+   * set id as a dice set writes it (`docs/dice-sets.md`), which may start
+   * with a digit. Only ever read between braces, where the `}` says where the
+   * id ends and nothing has to guess.
+   */
+  fun scanSlug(): String {
+    val start = position
+    if (peek()?.isSlugStart() != true) return ""
+    advance()
+    while (peek()?.isSlugPart() == true) advance()
+    return text.substring(start, position)
+  }
+
   /** The `[a-z][a-z0-9_-]*` here as text, empty when there is none. */
   fun scanIdentifier(): String {
     val start = position
@@ -73,6 +87,10 @@ internal fun Cursor.rangeFrom(start: Int): IntRange = start until maxOf(position
 internal fun Cursor.here(): IntRange = minOf(position, maxOf(text.length - 1, 0)).let { it..it }
 
 private fun Char.isLowerCaseLetter(): Boolean = this in 'a'..'z'
+
+private fun Char.isSlugStart(): Boolean = this in 'a'..'z' || this in '0'..'9'
+
+private fun Char.isSlugPart(): Boolean = isSlugStart() || this == '-'
 
 private fun Char.isIdentifierPart(): Boolean = this in 'a'..'z' || this in '0'..'9' || this == '_' || this == '-'
 

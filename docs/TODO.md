@@ -60,15 +60,6 @@ Spec: `docs/dice-notation.md`, `docs/tables.md`,
       already throws a throw's unread dice through `Passes.next`, and a picked
       die is one more die for that same throw — so only one of the two can be
       owed by a shake at a time, and the unread dice come first
-- [ ] **Decided, not built: braced notation for a set's own dice.**
-      `3{skull-d6}kh1` is three of the die whose id is `skull-d6`;
-      `3{brass:skull-d6}kh1` the same from set `brass`; `3{skull:d6}kh1` the
-      `d6` of set `skull`. Braces close the id before the modifiers start,
-      which is what decision 31 lacked; a braced id is lexed without consulting
-      installed sets and resolved by `DieResolver`. Touches the grammar,
-      `FormulaParser`, `NotationReference`, the breakdown, history, saved rolls
-      and collection files; lifts `DicePicker.offeredBy`'s filter to
-      `StandardDieIds`
 
 Implementation notes recorded only here:
 

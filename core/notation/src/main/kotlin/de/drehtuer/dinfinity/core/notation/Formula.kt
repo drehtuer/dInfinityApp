@@ -80,13 +80,14 @@ data class BinaryNode(
 ) : FormulaNode
 
 /**
- * A group of dice: `3d6`, `2d20kh1`, `brass:1d20`, `8d6!`.
+ * A group of dice: `3d6`, `2d20kh1`, `brass:1d20`, `8d6!`, `3{brass:skull-d6}kh1`.
  *
  * @param id the node's position in source order, `0` upwards. It is the same
  *   number as the [de.drehtuer.dinfinity.core.model.PlannedGroup.id] it plans
  *   to and the breakdown group it scores into, which is what lets a die in the
  *   tray be traced back to the part of the formula that asked for it.
- * @param setRef the `setref:` prefix, or `null` to use the default set.
+ * @param setRef the `setref:` prefix — for [Sides.Named], the set written
+ *   inside the braces — or `null` to use the default set.
  * @param count how many dice — or, for [Sides.Percentile], how many *pairs*.
  * @param modifiers in source order; the order they are *applied* in is fixed
  *   and does not depend on how they were written (see `RollEvaluator`).
@@ -128,6 +129,19 @@ sealed interface Sides {
 
   /** `dF` — the fudge die, the set's `df` (−1, 0 or +1). */
   data object Fudge : Sides
+
+  /**
+   * `{skull-d6}` — the die whose own id is [id], written in braces.
+   *
+   * Exact, and nothing else: `{d100}` is a set's real hundred-face die if it
+   * has one, never the percentile pair, and `{d6}` is the die whose id is
+   * `d6` (`docs/dice-notation.md`, "A set's own dice"). The parser checks
+   * only that [id] is shaped like an id; whether any set has it is
+   * `DieResolver`'s question.
+   */
+  data class Named(
+    val id: String,
+  ) : Sides
 }
 
 /**

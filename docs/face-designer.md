@@ -131,9 +131,11 @@ on.
 and follows the chooser, so it throws the die in front of the player rather
 than the one the screen opened on — and the die it throws is the one with the
 atlas on it, because pressing it builds the personal package first and names
-the die in that package (Flow, step 4). It is **absent rather than dead** for a
-die plain notation cannot name: a set's own `skull-d6` has no spelling a
-formula could carry (`docs/architecture.md`, decision 31).
+the die in that package (Flow, step 4). A set's own `skull-d6` is thrown as
+`1{brass:skull-d6}` — the braced spelling the picker row writes
+(`docs/dice-notation.md`, "A set's own dice"; `docs/architecture.md`,
+decision 75). It is **absent rather than dead** for a die notation cannot name,
+which is now only a die no installed set has.
 
 **And it lands the right way round.** The exporter used to copy the canvas
 into the cell square on, while the die samples that cell in the face's own
@@ -911,9 +913,8 @@ common thing for the rare one. The dice in the breakdown had no gesture at all,
 and they are the better subject anyway: a die that has just landed is the one
 being looked at when "this d6 is boring" is thought. A dropped die offers it
 like any other — a `4d6dl1` whose 1 is the dull one is exactly the case — and
-so does a die plain notation cannot name, which the picker row cannot even
-show (`docs/architecture.md`, decision 31). Whether the picker row should offer
-it too, through a menu, is an open question (`docs/TODO.md`).
+so does a set's own die thrown from its braced spelling. Whether the picker row
+should offer it too, through a menu, is an open question (`docs/TODO.md`).
 
 **It offers rather than opens.** The press puts up a one-line menu and the menu
 navigates. Leaving the tray on a gesture that announced nothing would be a

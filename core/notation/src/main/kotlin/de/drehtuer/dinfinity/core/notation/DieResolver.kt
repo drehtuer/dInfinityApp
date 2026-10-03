@@ -61,6 +61,9 @@ internal class DieResolver(
     when (node.sides) {
       is Sides.Numeric -> listOf(find(node, requestedSetId, "d${node.sides.value}"))
       Sides.Fudge -> listOf(find(node, requestedSetId, FUDGE_DIE_ID))
+      // The id exactly as braced, even `{d100}` or `{d10-tens}`: the braces
+      // are how a player asks for a die by name rather than by what it does.
+      is Sides.Named -> listOf(find(node, requestedSetId, node.sides.id))
       Sides.Percentile -> percentile(node, requestedSetId)
     }
 
@@ -115,7 +118,8 @@ internal class DieResolver(
   ): String {
     val prefix = node.setRef?.plus(":").orEmpty()
     val suffix = node.modifiers.joinToString("") { formulaText.substring(it.range) }
-    return formulaText.replaceRange(node.range, "$prefix${node.count}$dieId$suffix")
+    val group = if (node.sides is Sides.Named) "${node.count}{$prefix$dieId}" else "$prefix${node.count}$dieId"
+    return formulaText.replaceRange(node.range, "$group$suffix")
   }
 
   /** One resolved die and where it came from. */

@@ -77,6 +77,26 @@ class SavedRollRepositoryTest {
     }
 
   @Test
+  fun `a braced formula is stored as written`() =
+    runTest {
+      // `docs/dice-notation.md`, "A set's own dice": the row writes them, so
+      // a saved roll made from the row carries them.
+      groups.ensureUnfiled("Unfiled")
+      val bones =
+        SavedRoll(id = "bones", groupId = SavedRollGroup.UNFILED_ID, name = "Bones", formula = "3{brass:skull-d6}kh1")
+
+      repository.save(bones)
+
+      assertEquals(
+        "3{brass:skull-d6}kh1",
+        repository.all
+          .first()
+          .single()
+          .formula,
+      )
+    }
+
+  @Test
   fun `a roll saved with no creation time gets the time it was saved`() =
     runTest {
       groups.ensureUnfiled("Unfiled")

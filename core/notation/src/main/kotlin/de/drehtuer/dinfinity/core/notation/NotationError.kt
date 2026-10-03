@@ -79,6 +79,15 @@ enum class NotationErrorCode {
   /** A `setref:` naming a dice set that is not installed. */
   UnknownSet,
 
+  /** `{}` — braces with no die id between them. */
+  EmptyBraces,
+
+  /** A `{` with no `}`. */
+  UnclosedBrace,
+
+  /** Something between braces that is not a die id, e.g. `{Skull}` or `{brass:}`. */
+  BadDieId,
+
   /** A die the set does not define, e.g. `d7`. */
   UnknownDie,
 

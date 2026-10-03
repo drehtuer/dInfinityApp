@@ -73,7 +73,8 @@ a tumble; everything else is real.
   average, before you shake and again beside the total.
 - **Power-saving mode** — same physics, no rendering; just the result. The dice
   are still heard: the impacts the throw made are played back over a second.
-- **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on.
+- **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on,
+  and a dice set's own dice by name: `3{skull-d6}kh1`.
   The whole grammar is in the app under **Notation**, with an example on every
   line you can tap to try.
 - **Does the math** — the total, the modifiers and the per-die breakdown are

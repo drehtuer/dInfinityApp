@@ -28,7 +28,7 @@ sealed interface SaveResult {
    * The drawings are in [set], and the die that was on the canvas is now
    * [rollable] — the set-qualified formula that throws **the drawing** rather
    * than the plain die of that shape, or null for a die notation cannot name
-   * (`docs/architecture.md`, decision 31).
+   * (`docs/dice-notation.md`).
    */
   data class Saved(
     val set: WritableSet,

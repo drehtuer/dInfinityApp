@@ -66,6 +66,7 @@ internal class FormulaGrammar(
     return when {
       char == '(' -> parenthesised()
       dice.isDiceStart() -> dice.scan(setRef = null, count = null, start = start)
+      dice.isBraceStart() -> dice.scanBraced(count = null, start = start)
       char.isDigit() -> numberOrDice(start)
       char in 'a'..'z' -> setReferencedDice(start)
       else -> throw notAValue(cursor, char)
@@ -92,12 +93,15 @@ internal class FormulaGrammar(
     return inner
   }
 
-  /** A number, unless a `d` follows it with no space, which makes it a count. */
+  /** A number, unless a `d` or a `{` follows it with no space, which makes it a count. */
   private fun numberOrDice(start: Int): FormulaNode {
     val digits = cursor.scanDigits()
     val value = dice.literal(digits, cursor.rangeFrom(start))
-    if (!dice.isDiceStart()) return NumberNode(value, cursor.rangeFrom(start))
-    return dice.scan(setRef = null, count = value, start = start)
+    return when {
+      dice.isDiceStart() -> dice.scan(setRef = null, count = value, start = start)
+      dice.isBraceStart() -> dice.scanBraced(count = value, start = start)
+      else -> NumberNode(value, cursor.rangeFrom(start))
+    }
   }
 
   /** `brass:1d20` — a group taken from a named set rather than the default one. */
@@ -113,13 +117,7 @@ internal class FormulaGrammar(
     val countStart = cursor.position
     val digits = cursor.scanDigits()
     val count = if (digits.isEmpty()) null else dice.literal(digits, cursor.rangeFrom(countStart))
-    if (!dice.isDiceStart()) {
-      throw failure(
-        NotationErrorCode.MissingSides,
-        "'$identifier:' has to be followed by a die, for example $identifier:1d20",
-        cursor.rangeFrom(start),
-      )
-    }
+    if (!dice.isDiceStart()) throw notADieAfter(cursor, identifier, digits, start)
     return dice.scan(setRef = identifier, count = count, start = start)
   }
 
@@ -149,6 +147,29 @@ private fun endOfFormula(cursor: Cursor): ParseFailure =
     "the formula ends where a value was expected",
     cursor.here(),
   )
+
+/** Why `brass:` is not followed by a die it can take. */
+private fun notADieAfter(
+  cursor: Cursor,
+  identifier: String,
+  digits: String,
+  start: Int,
+): ParseFailure =
+  if (cursor.peek() == '{') {
+    // One place for the set, so one spelling per die: inside the braces,
+    // where the picker writes it and where the badges look for it.
+    failure(
+      NotationErrorCode.UnexpectedCharacter,
+      "a braced die names its set inside the braces, for example ${digits.ifEmpty { "1" }}{$identifier:skull-d6}",
+      cursor.rangeFrom(start),
+    )
+  } else {
+    failure(
+      NotationErrorCode.MissingSides,
+      "'$identifier:' has to be followed by a die, for example $identifier:1d20",
+      cursor.rangeFrom(start),
+    )
+  }
 
 private fun notAValue(
   cursor: Cursor,
