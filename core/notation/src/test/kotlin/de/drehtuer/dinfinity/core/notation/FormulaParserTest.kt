@@ -127,7 +127,7 @@ class FormulaParserTest {
   }
 
   @Test
-  fun `notation is case-insensitive except for set ids`() {
+  fun `dice, fudge and keep-drop words read in either case`() {
     assertEquals("2d20kh1", render(parsed("2D20KH1").root))
     assertEquals("1dF", render(parsed("1df").root))
     assertEquals("4d6dl1", render(parsed("4D6DL1").root))

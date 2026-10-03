@@ -13,10 +13,10 @@ that only works on one laptop is a build nobody else can reproduce.
 | --- | --- | --- |
 | Ubuntu | 26.04 LTS | Base image |
 | OpenJDK | 21 | Gradle and the Kotlin compiler |
-| Android SDK platform | newest stable minor of API 37 | `compileSdk` / `targetSdk` |
+| Android SDK platform | API 37, base minor (`platforms;android-37.0`) | `compileSdk` / `targetSdk` |
 | Android build-tools | newest for API 37 | aapt2, d8, apksigner |
 | `adb` (platform-tools) | newest | Talking to a phone over WiFi debugging |
-| Android NDK + CMake | pinned: 30.0.16248370 and 4.1.2 | The physics engine and the renderer are native (`simulation/jolt`, `render/filament`), so the NDK is not optional — it is only switched off for a quick image with no native code in it. These two are *pinned* rather than resolved, unlike everything else in this table: see [The native build](#the-native-build). `cmake` and `ninja` are on `PATH`, so a native build can be driven by hand as well as by Gradle |
+| Android NDK + CMake | pinned: 30.0.16248370 and 4.1.2 | The physics engine is C++ compiled from source (`simulation/jolt`), so the NDK is not optional — it is only switched off for a quick image with no native code in it. The renderer does not need it: `render/filament` is Kotlin over Filament's prebuilt AAR. These two are *pinned* rather than resolved, unlike everything else in this table: see [The native build](#the-native-build). `cmake` and `ninja` are on `PATH`, so a native build can be driven by hand as well as by Gradle |
 | Android emulator + one system image | newest automated-test image, API 36 | The middle testing tier: faster to reach than a phone, and the only place a regression in the physics is caught before one (Step 5.1). See [The emulator](#the-emulator) |
 | Gradle | 9.7.1 | Also present as the wrapper in the repository |
 | ktlint, detekt | via Gradle | Style and static analysis |
@@ -26,10 +26,13 @@ that only works on one laptop is a build nobody else can reproduce.
 The SDK packages are *resolved* at image build time from what Google's
 repository offers, not pinned by name — with one exception, the NDK and CMake,
 for the reason in [The native build](#the-native-build). Platform packages have been
-minor-versioned since Android 16 (`platforms;android-37.2`, not
-`platforms;android-37`), so a hard-coded name rots silently; the image asks for
-the newest stable minor of the API in `ANDROID_API` and fails loudly, listing
-what is available, if that major does not exist yet.
+minor-versioned since Android 16 (`platforms;android-37.0`, `…-37.1`, …), and
+`compileSdk = 37` resolves to the *base* minor, `android-37.0`. So that is what
+the image installs, and CI too (`platforms;android-${api}.0`): installing a
+later minor would only make the build download the base one itself on first
+run, and using a later one would mean setting `compileSdkMinor` as well. The
+image asks for the base stable platform of the API in `ANDROID_API` and fails
+loudly, listing what is available, if that major does not exist yet.
 
 ## First build
 
@@ -66,18 +69,19 @@ volume and takes a few minutes; later runs are seconds.
 
 ### A quicker image
 
-The full image is about 7 GB, most of it the NDK. Until `simulation/jolt` and
-`render/filament` have their native sources there is nothing for it to
-compile, so skipping it gives a 2.1 GB image that is fine for doc or UI work:
+The full image is about 7 GB, and the NDK is ~2.5 GB of it. Only
+`simulation/jolt` needs it — Jolt is compiled from source on every build — so
+skipping it gives an image that is fine for doc or UI work and cannot build
+that module:
 
 ```sh
 docker build --build-arg INSTALL_NDK=false -t dinfinity-dev .devcontainer
 ```
 
-The default is `true`, because the physics engine and the renderer are native
-and every real build of the app needs it.
+The default is `true`, because the physics engine is native and every real
+build of the app needs it.
 
-The emulator and its system image are another ~2.5 GB and come off the same
+The emulator and its system image are another ~3 GB and come off the same
 way:
 
 ```sh
@@ -109,8 +113,9 @@ the image cannot start at all, with `unable to find user dev`.
 ./gradlew :app:assembleRelease   # dInfinityApp-<version>.apk, R8-shrunk
 ```
 
-Both land in `app/build/outputs/named-apk/`. The version comes from
-`version.txt` at the repository root — the only place it is written down.
+Both land in `app/build/outputs/named-apk/<variant>/`, so `debug/` or
+`release/`. The version comes from `version.txt` at the repository root — the
+only place it is written down.
 
 ### Android build features
 
@@ -561,6 +566,7 @@ emulator attached it refuses to guess — name one with `--device` or
 
 | Option | What it is |
 | --- | --- |
+| `-d`, `--device` | which device, by serial (default `$ANDROID_SERIAL`, or the only one attached) |
 | `-n`, `--rolls` | how many throws (default 1000) |
 | `--soak` | roll for this long instead: `90`, `90s`, `5m`, `1h`. Soak mode |
 | `--frames` | step each roll at a frame's cadence and report what the frames cost. A paced run takes as long as the dice really take |
@@ -871,8 +877,9 @@ counters, lines and conditions; there is no method counter to import, whatever
 JaCoCo measures. So `.claude/CLAUDE.md`'s pair is only half met on the server:
 **branch** coverage is published as `branch_coverage` and is in the README
 badges, while **function** coverage exists only in the JaCoCo reports, where
-`./gradlew coverageReport` writes it and the reports CI uploads carry it. Making
-it fail a build needs a check of our own — `docs/TODO.md`.
+`./gradlew coverageReport` writes it and the reports CI uploads carry it. What
+makes it fail a build is a check of our own, `verifyCoverage`, which `check`
+runs — see [below](#repository-invariants).
 
 ## Continuous integration
 
@@ -904,9 +911,12 @@ request is always aimed at `main`.
 
 The JDK, the SDK packages and Gradle come from one composite action,
 `.github/actions/setup-android-build`, so CI and CodeQL cannot drift apart. It
-reads `dinfinity.androidApi` and `dinfinity.buildTools` straight out of
-`gradle.properties` — the same two properties the container image and the
-Gradle build read, so there is no fourth place to update an SDK version.
+reads `dinfinity.androidApi`, `dinfinity.buildTools`, `dinfinity.ndk` and
+`dinfinity.cmake` straight out of `gradle.properties` — the same properties the
+Gradle build reads (the last two in `simulation/jolt`), so CI installs exactly
+what the build will ask for. The container image does not read the file: its
+`ANDROID_API`, `NDK_VERSION` and `CMAKE_VERSION` build arguments are kept in
+step with those properties by hand, and say so beside them.
 
 The SonarQube scan is part of the build job rather than a job of its own, so it
 reuses that build instead of paying for a second one. It is skipped when
@@ -988,7 +998,14 @@ everywhere — a developer sees the same failure CI does — and because raising
 is a visible line in a diff while lowering it is an argument someone has to make
 in the pull request. Recomputing `main`'s coverage to diff against would be
 slower, would only work on CI, and would still need someone to read the number.
-Device-only modules are left out, exactly as they are from SonarQube's figure.
+What is left out is drawn coarser than SonarQube's figure. `verifyCoverage`
+skips the reports of two whole modules, `simulation/jolt` and
+`render/filament`, because their tests cannot run where it runs, and excludes
+by name only the device-only files in modules it does measure (`DiceTray.kt`,
+`ShakeToRoll.kt`, `RollWiring.kt`). `sonar.coverage.exclusions` excludes
+*files* — inside those two modules only the native sources and the few Kotlin
+files that hold an engine, a context or their thread — so the rest of both
+modules still counts there.
 
 ## Releasing
 
@@ -1053,11 +1070,11 @@ plugins. A build should succeed or fail on what is in the tree, not on what
 somebody else published this morning: tomlj 1.3.0 turned `main` red on a commit
 that changed no dependency, hours after the same code went green.
 
-The second reason is worse than the first. Those detectors need the network, and
-the devcontainer runs Gradle `--offline`, so they say nothing locally and fire
-on CI — `./gradlew check` passes on a tree CI will reject, which is exactly how
-that failure reached `main`. A check that only fires on one of the two machines
-is worse than no check.
+The second reason is worse than the first. Those detectors need the network
+and answer from what they last fetched, so the same tree can pass on one
+machine and fail on another — `./gradlew check` passed locally on a tree CI
+rejected, which is exactly how that failure reached `main`. A check whose
+verdict depends on the machine is worse than no check.
 
 Switching one off is not enough either, because the next one takes the question
 over. `GradleDependency` asks what `NewerVersionAvailable` asks, found by
@@ -1100,8 +1117,10 @@ run* banner in the merge box, and someone with write access presses it. The
 metadata commit is correct either way — the checks are waiting to be allowed to
 start, not failing.
 
-(That is what GitHub's documentation describes. No Dependabot pull request has
-opened since this workflow landed, so it has not yet been watched happening
+(That is what GitHub's documentation describes. The Dependabot pull requests
+since this workflow landed — #105 and #329 — have both been GitHub Actions
+bumps, which change no Gradle artifact: the workflow ran on both and had
+nothing to commit, so the approval step has not yet been watched happening
 here.)
 
 To skip that press, add a fine-grained personal access token with

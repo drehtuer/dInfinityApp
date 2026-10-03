@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-09-19
+**Last updated:** 2026-10-03
 
 ## Where we are
 
@@ -21,27 +21,26 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ### Branch state
 
-`main` has everything through **#306**, which cut `v0.1.1`.
+`main` has everything through **#330**. **In flight:**
+`docs/bring-docs-up-to-date`, a documentation-only pass that brings `README.md`
+and every document in `docs/` back in line with the code after the two stacks
+below, and compacts `docs/TODO.md`.
 
-**In flight: a stack of eleven answering the second and third device
-sessions**, plus one standalone fix for the documentation site. In order:
+Twenty-two pull requests landed between `v0.1.1` and here: two stacks
+answering two device sessions, then a Dependabot Actions bump and the lint fix
+it provoked. What they came to, rather than what each one was: the dice tumble
+and are shown slowly enough to watch; the roll screen is felt with two doors on
+it instead of a wall of plates; the shake is the only way to throw and
+everything that earns another one waits for a hand; a drawn face lands where the
+die shows it; and three faults that were in `v0.1.1` itself are gone — a crash
+on `100d4`, a documentation site that had been publishing 17 September since the
+18th, and a lint check that turned the build red whenever somebody else
+published a release, which it did over AGP 9.4.1 and again over Gradle 9.8.0
+before it was switched off for good (#330).
 
-| | |
-| --- | --- |
-| `fix/tray-tumble` | the dice tumble rather than landing and sticking |
-| `feature/roll-screen-layout` | dice pull-down at the top, formula menu on the right, no shadow on the felt |
-| `fix/tray-gestures` | two fingers to pan, and the pan reaches the walls |
-| `fix/fudge-label-and-editor-prefill` | the screen stays awake on purpose, a new roll starts on the last one |
-| `feature/saved-roll-colour-picker` | one colour picker for the whole app |
-| `fix/d4-corner-numbers` | a d4's corners read off the solid, so every edge agrees |
-| `feature/shake-is-the-roll` | the shake is the only way to throw |
-| `feature/designer-icons-and-save` | the designer's tools are pictures, and the die you drew is the die that rolls |
-| `feature/signed-fudge-totals` | a Fudge total carries its sign |
-| `fix/rerolls-wait-and-clear` | a re-roll lands on floor nothing is standing on |
-| `fix/designer-test-roll` | a test throw has a way back, and the face you drew lands where the die shows it |
-| `fix/docs-site-build` | **off `main`, not in the stack** — the published site has been stale since 18 September |
-
-**The whole device tier has been run on the Pixel 10a over the merged stack.**
+**The whole device tier has been run on the Pixel 10a over each stack**, and
+CI is green on `main`: build, tests, coverage, Sonar's gate, CodeQL, the device
+suite compiling, and the documentation site deploying.
 
 ## Done
 
@@ -64,21 +63,11 @@ sessions**, plus one standalone fix for the documentation site. In order:
 
 ## In progress
 
-**Step 4's screens are all built.** What is left on each is judgement, and it
-is listed in `docs/TODO.md`.
-
-**The third device session's three notes on the face designer are answered**
-on `fix/designer-test-roll`: a test throw now has a way back to the designer,
-a drawn face is painted where the die shows it rather than turned by up to
-166°, and the fairness worry turned out to have no bug behind it — a drawn
-die's `faces` array is the base die's, whole and in order, and seven tests
-say so. What is left there is judgement on a phone.
-
-**The second device session is answered in full by the stack above.** The last
-open question in it — what a Fudge roll prints — is settled: a total of Fudge
-dice carries its sign (`+2`, `−1`, `0`), which is how Fate writes one and the
-only spelling that says the same thing about one die as about four
-(`docs/dice-notation.md`, "dF, and the sign a Fudge total carries").
+**Nothing but the documentation pass above.** Step 4's screens are all built,
+and the second and third device sessions are answered in full — what is left
+of them is judgement on a phone, listed below and in `docs/TODO.md`. A Fudge
+total carries its sign (`docs/dice-notation.md`), and a drawn face lands where
+the die shows it (`docs/face-designer.md`).
 
 ## Blocked / waiting on
 
@@ -92,17 +81,11 @@ than execution — every one of them is in `docs/TODO.md`:
 2. Whether the dice now *look* like they tumble. The figure says they turn
    1.52 times after landing against 0.89 before, but a number is not an eye.
 3. Whether an exploding chain ever still looks as though a die passed through
-   one lying there. Two ways it could have are closed on
-   `fix/rerolls-wait-and-clear`; what is unexplained is why the session saw it
+   one lying there. Two ways it could have are closed (#321); what is
+   unexplained is why the session saw it
    **only on the first throws**, and the one candidate — the frame clock
    dropping steps while the engine and the material are still being built — is
    a number nothing shows yet (`LiveRoll.droppedSteps`).
-
-**One thing needs the repository owner**, not a branch: **AGP 9.4.1 was
-published on 18 September**, and Android Lint treats a newer AGP as an error
-under `warningsAsErrors`. Every pull request will fail `lint` until it is
-bumped, which also needs `gradle/verification-metadata.xml` regenerated
-because dependencies are pinned by SHA-256. Dependabot covers Gradle weekly.
 
 ## Known risks
 
@@ -118,22 +101,25 @@ because dependencies are pinned by SHA-256. Dependabot covers Gradle weekly.
   own discrete-detection error and nothing else; it is now known that part of
   it was a spawn, because a pass that threw several dice again dropped each of
   them at a point drawn blind from the whole tray and two could start inside
-  each other. Fixed on `fix/rerolls-wait-and-clear`; **the figure has not been
-  re-measured on the phone**, and that run is what says how much of the 5.04 mm
+  each other. Fixed in #321; **the figure has not been re-measured on the
+  phone**, and that run is what says how much of the 5.04 mm
   was this.
 - **The d18 is a known limitation, decided and written down.** It cannot pass
   chi-squared at a hundred thousand rolls — its resting basins are narrow
   enough that the float32 hull's own rounding biases it. Held to the
   worst-face bound instead (worst measured 0.389 % against a 1 % bar).
-- **`100d4` does not reliably settle**, and never did. Nothing is touched
-  after coming to rest on any seed; the cap firing at all is prevention work.
+- **`100d4` does not reliably settle**, and neither does one throw in sixteen
+  under a hard sideways shake: both can run out the twelve-second cap, where
+  the roll gives up rather than invent an answer. It no longer takes the app
+  with it (#319). Nothing is touched after coming to rest on any seed; the cap
+  firing at all is settling work.
 - **The capacity constants barely bite.** It would take ~240 dice to reach the
   40 % floor and the engine stops at 100, so the refusal a player meets is the
   body cap rather than the table. Step 5.3.
 - Determinism holds across the two ABIs; unproven across *devices* of the same
   ABI and across time. The container's emulator has no real GPU and no
   display, so `screencap` returns black there.
-- **Branch coverage is ~71.5 % against a floor of 62**, function coverage
+- **Branch coverage is ~71.4 % against a floor of 62**, function coverage
   ~92.7 % against a floor of 85. Seven in ten missed branches are Compose skip
   branches a test can only take one side of.
 

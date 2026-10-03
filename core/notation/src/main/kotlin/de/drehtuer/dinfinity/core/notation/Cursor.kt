@@ -40,8 +40,9 @@ internal class Cursor(
   fun match(char: Char): Boolean = (peek() == char).also { if (it) advance() }
 
   /**
-   * Steps over [word] and says so, ignoring case. Notation is
-   * case-insensitive except for set ids, so `KH1` and `kh1` are one thing.
+   * Steps over [word] and says so, ignoring case, so `KH1` and `kh1` are one
+   * thing. Set ids and the re-roll `r` are matched exactly instead
+   * (`docs/dice-notation.md`).
    */
   fun matchWord(word: String): Boolean =
     text.regionMatches(position, word, 0, word.length, ignoreCase = true).also {

@@ -49,7 +49,11 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   "Rendering (normal mode)").
 - **Per-set physical properties**: weight, translucency and size, all three
   real rather than metadata.
-- **Dice land one at a time** and shove the dice already down.
+- **Dice land one at a time** and shove the dice already down. The app is to
+  take the stagger and not the shove — a settled die moved by code is the
+  invisible hand — and neither is built yet
+  ([../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
+  "What is drawn over the table").
 - **The face designer gained a Solid tab** — the real polyhedron, with
   opposite-face numbering, d4 values at the corners and d6 pips. Built:
   [../docs/face-designer.md](../docs/face-designer.md), "The solid, not just
@@ -94,10 +98,12 @@ felt any more. The whole difference is tabulated in
 [../docs/design-handover.md](../docs/design-handover.md), "The roll screen's
 top, after the second device session", with the six questions the next pass
 over the prototype has to answer. It is written down rather than drawn
-because this file is generated — see **Editing**, below.
+because this file is generated and a rearrangement that size belongs in the
+design project — see **Editing**, below.
 
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
-2026-09-17.
+2026-09-17, with two hand edits to `dInfinityPhone.dc.html` since (see
+**Editing**).
 
 ## Viewing
 
@@ -130,7 +136,20 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 ## Editing
 
 Edit in the [Claude Design project](./) and re-import here so the two stay in
-step. Decisions made in the design that change behaviour, limits or defaults
+step.
+
+**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Two
+small corrections were made here after the 2026-09-17 sync, to keep the
+prototype true to the app: a Fudge face prints `−`, blank and `+` rather than
+its value (`faceText` beside `pipDot`), and the throw buttons are gone — the
+`earned` plate's `Throw N more` and `Stop the chain`, the `stuck` plate's
+`Throw those N again`, and the result sheet's `Again` / `Roll again` (its
+`rollAgain` handler is left in the script, unreferenced). Before the next
+import, either make the same changes in the design project or re-apply them
+afterwards; `git log -- design/dInfinityPhone.dc.html` lists them
+([../docs/design-handover.md](../docs/design-handover.md), "The shake is the
+throw"). Anything larger is not hand-edited: it is written down in the
+hand-over and waits for the design project. Decisions made in the design that change behaviour, limits or defaults
 must be reflected in `docs/` in the same PR (see `../.claude/CLAUDE.md`).
 An import brings the project's own `github.md` sync notes along; fold its
 decisions into `docs/`, list anything left over in
