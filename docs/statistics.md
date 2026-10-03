@@ -203,6 +203,17 @@ on (`docs/architecture.md`, decisions 13 and 56).
 - **Overview:** big tiles for the currently selected die type — natural
   highs, natural lows, average, total rolls — with a face histogram and a
   faint line for the expected uniform frequency.
+  **Faces are named the way the die prints them** — a dF's bars read `−`,
+  `0`, `+` (or a blank, on a set that leaves those faces blank), not `-1`,
+  `0`, `1`, and so do "natural +" and "natural −" in the tiles. The counts are
+  kept by value; the label is looked up from the installed set when the screen
+  is drawn, so nothing about it is stored. TalkBack says the same label ("Face
+  minus came up 2 times…"), and a blank face is said as "blank" rather than as
+  nothing. A value the die prints two different ways reads as its number, and
+  so does every value of a die whose set is not installed any more — the bar
+  counts the value, and the value is the one thing left to say. A roll-up
+  keeps a label only where every set in it prints that value the same way
+  (`docs/architecture.md`, decision 73).
 - **All dice:** table of every die ever rolled. Three orders: most recently
   used (the default — a player comes here about a die they have just been
   rolling), most thrown, and highest average. No ascending/descending toggle:
@@ -364,6 +375,13 @@ dropping it is a migration for nothing.
   was thrown in, and a histogram has forgotten that. Everything else in the
   summary *is* derivable from the counts — the throws are their sum, the mean
   their weighted average — so it is not repeated down every row.
+- **Both statistics forms write a face's value, not its label**, though the
+  screen prints the label. A file is read by a machine, and a value is what a
+  pivot table can add up and what stays the same when a set is relabelled or
+  uninstalled; a label looked up at export time would be today's print of a
+  throw made under another. No label column is added (decision 73). The history
+  export is different only in that it already carries each die's `label` as it
+  was recorded with the roll.
 - A set filter is carried into the file; **the roll-up is not.** A pooled row
   stands for every d20 in every set at once and so belongs to no set, which is
   right on a screen and wrong in a file, where the set is what makes a record

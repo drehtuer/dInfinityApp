@@ -367,6 +367,26 @@ class StatsScreenTest {
     assertEquals("the two sets' counts were not added", 12L, bars.single { it.value == 1 }.count)
   }
 
+  @Test
+  fun `a roll-up prints a value the way its dice agree on, and the number where they do not`() {
+    // A dF and a d6 are both cubes, so "all my d6s" pools them. A minus only
+    // the dF has keeps its print; a 1 the d6 prints `1` and the dF `+` reads
+    // as the number both faces score (decision 73).
+    given(dieId = "d6", sides = 6, throws = 6, sum = 21)
+    given(dieId = "df", sides = 6, throws = 6, sum = 0)
+    val presenter = show()
+    presenter.rollUp(true)
+    compose.waitForIdle()
+
+    presenter.select("", "d6")
+
+    compose.waitUntil(PATIENCE) { presenter.state.selected != null }
+    val die = presenter.state.selected!!
+    assertEquals("−", die.labelOf(-1))
+    assertEquals("1", die.labelOf(1))
+    assertEquals("6", die.labelOf(6))
+  }
+
   private fun summaries(): Int = runBlocking { database.dieSummary().all().first() }.size
 
   @Test

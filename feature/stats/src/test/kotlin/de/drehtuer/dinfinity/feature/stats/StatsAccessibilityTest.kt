@@ -6,12 +6,17 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
 import de.drehtuer.dinfinity.data.SessionRepository
@@ -101,6 +106,51 @@ class StatsAccessibilityTest {
   }
 
   @Test
+  fun `a fudge die's bars are printed and said the way the die prints them`() {
+    // The bundled dF prints `−`, `0` and `+`; the histogram used to print a
+    // hyphen and a digit and say "Face -1" (decision 73).
+    given(dieId = "df", sides = 6, throws = 4, sum = 0)
+    faces(dieId = "df", sides = 6, counts = mapOf(-1 to 2L, 1 to 2L))
+    val presenter = show()
+
+    openDie(presenter, "df")
+
+    compose
+      .onNodeWithTag(StatsTestTags.barOf(-1))
+      .assertContentDescriptionEquals("Face − came up 2 times, 50.0 %; a fair die, 33.3 %")
+      .assertTextContains("−")
+    compose.onNodeWithTag(StatsTestTags.barOf(1)).assertTextContains("+")
+    compose.onNodeWithTag(StatsTestTags.HIGHS).assertTextContains("natural +", substring = true)
+    compose.onNodeWithTag(StatsTestTags.LOWS).assertTextContains("natural −", substring = true)
+  }
+
+  @Test
+  fun `a blank face is drawn blank and said as a word`() {
+    given(setId = "fate", dieId = "df", sides = 6, throws = 3, sum = 0)
+    faces(setId = "fate", dieId = "df", sides = 6, counts = mapOf(0 to 3L))
+    val presenter = show(catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set, FATE)))
+
+    openDie(presenter, "df", setId = "fate")
+
+    compose
+      .onNodeWithTag(StatsTestTags.barOf(0))
+      .assertContentDescriptionEquals("Face blank came up 3 times, 100.0 %; a fair die, 33.3 %")
+  }
+
+  @Test
+  fun `a die whose set is gone is printed and said as its values`() {
+    given(setId = "gone", dieId = "df", sides = 6, throws = 2, sum = -2)
+    faces(setId = "gone", dieId = "df", sides = 6, counts = mapOf(-1 to 2L))
+    val presenter = show()
+
+    openDie(presenter, "df", setId = "gone")
+
+    compose
+      .onNodeWithTag(StatsTestTags.barOf(-1))
+      .assertContentDescriptionEquals("Face \u22121 came up 2 times, 100.0 %; a fair die, 100.0 %")
+  }
+
+  @Test
   fun `the way back out of a die is a word, not an arrow`() {
     given(dieId = "d2", sides = 2, throws = 2, sum = 3)
     faces(dieId = "d2", sides = 2, counts = mapOf(1 to 1L, 2 to 1L))
@@ -163,17 +213,18 @@ class StatsAccessibilityTest {
   private fun openDie(
     presenter: StatsPresenter,
     dieId: String,
+    setId: String = "builtin",
   ) {
-    compose.onNodeWithTag(StatsTestTags.dieOf("builtin", dieId)).performClick()
+    compose.onNodeWithTag(StatsTestTags.dieOf(setId, dieId)).performClick()
     compose.waitUntil(PATIENCE) { presenter.state.selected != null }
   }
 
-  private fun show(): StatsPresenter {
+  private fun show(catalog: DiceCatalog = DiceCatalog.of(listOf(BuiltinDiceSet.set))): StatsPresenter {
     val presenter =
       StatsPresenter(
         statistics = reading,
         writer = writing,
-        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+        catalog = catalog,
         scope = scope,
         sessions = null,
       )
@@ -183,6 +234,7 @@ class StatsAccessibilityTest {
   }
 
   private fun given(
+    setId: String = "builtin",
     dieId: String,
     sides: Int,
     throws: Long,
@@ -190,12 +242,13 @@ class StatsAccessibilityTest {
   ) {
     runBlocking {
       database.dieSummary().upsert(
-        DieSummaryRow(setId = "builtin", dieId = dieId, sides = sides, throws = throws, sum = sum),
+        DieSummaryRow(setId = setId, dieId = dieId, sides = sides, throws = throws, sum = sum),
       )
     }
   }
 
   private fun faces(
+    setId: String = "builtin",
     dieId: String,
     sides: Int,
     counts: Map<Int, Long>,
@@ -204,7 +257,7 @@ class StatsAccessibilityTest {
       counts.forEach { (value, count) ->
         database.dieStats().upsert(
           DieStatsRow(
-            setId = "builtin",
+            setId = setId,
             dieId = dieId,
             sessionId = SessionRepository.DEFAULT_ID,
             sides = sides,
@@ -218,5 +271,24 @@ class StatsAccessibilityTest {
 
   private companion object {
     const val PATIENCE = 2_000L
+
+    /** A set whose Fudge die leaves its blank faces blank, as a Fate deck's do. */
+    val FATE =
+      DiceSet(
+        id = "fate",
+        name = "Fate",
+        version = "1.0.0",
+        dice =
+          listOf(
+            Die(
+              id = "df",
+              shape = DieShape.Cube,
+              faces =
+                listOf(-1, -1, 0, 1, 0, 1).mapIndexed { index, value ->
+                  Face(index = index, value = value, label = mapOf(-1 to "−", 0 to "", 1 to "+").getValue(value))
+                },
+            ),
+          ),
+      )
   }
 }

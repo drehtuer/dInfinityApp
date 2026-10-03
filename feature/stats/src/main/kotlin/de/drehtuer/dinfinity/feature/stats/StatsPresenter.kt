@@ -9,6 +9,7 @@ import de.drehtuer.dinfinity.core.stats.DieSummary
 import de.drehtuer.dinfinity.core.stats.Extremes
 import de.drehtuer.dinfinity.core.stats.FaceBar
 import de.drehtuer.dinfinity.core.stats.FaceHistogram
+import de.drehtuer.dinfinity.core.stats.FaceLabels
 import de.drehtuer.dinfinity.core.stats.FaceTally
 import de.drehtuer.dinfinity.core.stats.PooledDie
 import de.drehtuer.dinfinity.data.DieStatisticsRepository
@@ -256,6 +257,9 @@ private fun rowOf(
     // A set that has been uninstalled since still has a record, and the
     // record is the player's.
     values = die?.faces?.map(Face::value).orEmpty(),
+    // Read from the set as it is now, never stored with the counts: a set that
+    // is gone reads as its values (decision 73).
+    labels = die?.let { FaceLabels.of(it.faces) } ?: FaceLabels.None,
     installed = die != null,
   )
 }
@@ -284,6 +288,12 @@ data class DieRow(
   val summary: DieSummary,
   val name: String,
   val values: List<Int> = emptyList(),
+  /**
+   * How the die prints its values, for the bars and the natural highs and lows
+   * (decision 73). [FaceLabels.None] when nobody can say any more, which
+   * prints the values themselves.
+   */
+  val labels: FaceLabels = FaceLabels.None,
   /** False when the set it came from is not installed any more. */
   val installed: Boolean = true,
   /**
@@ -310,6 +320,9 @@ data class DieDetail(
 ) {
   val setId: String get() = row.setId
   val dieId: String get() = row.dieId
+
+  /** How [value] is printed on this die: its own label, or the number (decision 73). */
+  fun labelOf(value: Int): String = row.labels.of(value)
 
   /**
    * True when the fair line is a guess rather than a fact.
@@ -498,5 +511,8 @@ private fun rolledUp(
     // pool whose fair line is built from the rest while the bars count all of
     // them. That is exactly what `fairLineIsAGuess` exists to say.
     installed = rows.all(DieRow::installed),
+    // A label the sets agree on survives the roll-up; one they print
+    // differently reads as its number (decision 73).
+    labels = rows.fold(FaceLabels.None) { pooled, row -> pooled + row.labels },
     pool = rows.map { PooledDie(values = it.values, throws = it.summary.throws) },
   )

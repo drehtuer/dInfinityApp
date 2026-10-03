@@ -16,6 +16,13 @@ import org.junit.Test
  */
 class ReadingsTest {
   @Test
+  fun `a blank face is said as a word, and any other as itself`() {
+    assertEquals("blank", spokenFace("", blank = "blank"))
+    assertEquals("blank", spokenFace(" ", blank = "blank"))
+    assertEquals("−", spokenFace("−", blank = "blank"))
+  }
+
+  @Test
   fun `a share is a percentage to one decimal`() {
     assertEquals("50.0 %", percent(0.5))
     assertEquals("8.3 %", percent(1.0 / 12))

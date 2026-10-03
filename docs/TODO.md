@@ -157,13 +157,6 @@ and read here, and a seed gives the same result with the renderer on and off.
       a d10's at all? Do eight 44 dp tool glyphs need captions? Does the
       test-throw banner read as "you are testing this"?
 
-### 4.8 History — `feature/stats`
-
-- [ ] **The face histogram prints a value, not a label.** A dF reads `-1`, `0`,
-      `1` instead of `−`, blank, `+`, and TalkBack says "Face -1". Plumb the
-      label from the installed die at read time; decide whether the CSV and JSON
-      exports keep the value
-
 ### 4.10 Settings and menu — `feature/settings`
 
 - [ ] The design's Settings has *Example dice set on GitHub* and *Reset

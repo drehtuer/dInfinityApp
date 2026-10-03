@@ -373,7 +373,9 @@ d6 is relabelled `1,2,1,2,1,2`.
 
 A Fudge die's faces are a minus, a blank and a plus — worth −1, 0 and +1 —
 and the bundled `df` is labelled `− − 0 + 0 +` (`docs/dice-sets.md`,
-"Numbering"). The faces and the breakdown print those symbols.
+"Numbering"). The faces and the breakdown print those symbols, and so does
+the statistics histogram, which names each bar by the die's own label
+(`docs/statistics.md`, "Screens").
 
 **A total of Fudge dice is written with its sign**: `+2`, `−1`, `0`. That is
 how a Fate result is written, and it is the only spelling that says the same

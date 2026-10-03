@@ -78,8 +78,11 @@
   <!-- %1$s is the id of a set that is no longer installed. -->
   <string name="stats_set_gone">%1$s — not installed</string>
   <!-- %1$d is the die's own highest value: 20 for a d20, 3 for a d6 labelled 1,2,3,1,2,3. -->
-  <string name="stats_natural_high">natural %1$d</string>
-  <string name="stats_natural_low">natural %1$d</string>
+  <!-- %1$s is the face as the die prints it: "20", or "+" on a Fudge die. -->
+  <string name="stats_natural_high">natural %1$s</string>
+  <string name="stats_natural_low">natural %1$s</string>
+  <!-- What a face printed with nothing on it is called, aloud and in the tiles. -->
+  <string name="stats_face_blank">blank</string>
   <string name="stats_average">average</string>
   <string name="stats_total_throws">throws</string>
   <string name="stats_guessed_line">That set is not installed, so the fair line is guessed from what has come up rather than from the die’s faces.</string>
@@ -124,12 +127,13 @@
   <!--
     One row of the face histogram. The bar and the fair line behind it are told
     apart by colour alone, and the fair share is written nowhere on the row.
-    %1$d is the face, %2$d how many times it came up, %3$s its share and %4$s
+    %1$s is the face as the die prints it (a blank one is called
+    stats_face_blank), %2$d how many times it came up, %3$s its share and %4$s
     what a fair die would give.
   -->
   <plurals name="stats_bar_against_fair">
-    <item quantity="one">Face %1$d came up %2$d time, %3$s; a fair die, %4$s</item>
-    <item quantity="other">Face %1$d came up %2$d times, %3$s; a fair die, %4$s</item>
+    <item quantity="one">Face %1$s came up %2$d time, %3$s; a fair die, %4$s</item>
+    <item quantity="other">Face %1$s came up %2$d times, %3$s; a fair die, %4$s</item>
   </plurals>
   <!-- A roll in the history whose breakdown holds a natural maximum. -->
   <string name="history_natural_max">%1$d, with a natural maximum</string>

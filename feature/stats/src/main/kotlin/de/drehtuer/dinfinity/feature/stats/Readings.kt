@@ -58,3 +58,16 @@ internal data class TotalsReading(
     }
   }
 }
+
+/**
+ * A face's label as something that can be said (decision 73).
+ *
+ * A Fudge die's blank face is a label of nothing, and "Face came up 3 times"
+ * is a sentence with a hole in it. So a blank label is read as [blank] — a
+ * word, from the resources — and every other label as itself: TalkBack already
+ * says `−` as "minus" and `💀` as "skull".
+ */
+internal fun spokenFace(
+  label: String,
+  blank: String,
+): String = label.ifBlank { blank }
