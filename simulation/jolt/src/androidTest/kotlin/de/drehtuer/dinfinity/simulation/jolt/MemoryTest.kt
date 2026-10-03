@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.simulation.api.BoardDrops
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import org.junit.Assert.assertTrue
@@ -57,22 +58,47 @@ class MemoryTest {
     )
   }
 
+  @Test
+  fun twoHundredBoardsLeaveNothingBehind() {
+    // Every tap on the picker opens a world for the board's drop and closes it
+    // again (`JoltBoardSettler`). Tapping all evening must not leave a world
+    // behind per tap.
+    val settler = JoltBoardSettler()
+    val dice = List(TWENTY) { Die.standard("d6", DieShape.Cube) }
+
+    repeat(WARM_UP) { board -> settler.settle(BoardDrops.request(board, spec(dice, 0L), emptyMap())) }
+    val before = footprint()
+
+    repeat(BOARDS) { board -> settler.settle(BoardDrops.request(board + WARM_UP, spec(dice, 0L), emptyMap())) }
+    val after = footprint()
+
+    val nativeGrowth = after.nativeBytes - before.nativeBytes
+    assertTrue(
+      "the native heap grew $nativeGrowth bytes over $BOARDS boards, which is a board's world nobody closed",
+      nativeGrowth <= ALLOWED_NATIVE_BYTES,
+    )
+  }
+
   private fun roll(
     dice: List<Die>,
     seed: Long,
   ) {
-    JoltDiceSimulator().run(
-      ThrowSpec(
-        dice =
-          dice.mapIndexed { index, die ->
-            DieInstance(index = index, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = die)
-          },
-        geometry = geometry,
-        table = table,
-        seed = seed,
-      ),
-    )
+    JoltDiceSimulator().run(spec(dice, seed))
   }
+
+  private fun spec(
+    dice: List<Die>,
+    seed: Long,
+  ): ThrowSpec =
+    ThrowSpec(
+      dice =
+        dice.mapIndexed { index, die ->
+          DieInstance(index = index, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = die)
+        },
+      geometry = geometry,
+      table = table,
+      seed = seed,
+    )
 
   /**
    * What is allocated right now, after the collector has been given every
@@ -107,6 +133,9 @@ class MemoryTest {
 
     /** And the five hundred the plan asks for. */
     const val ROLLS = 500
+
+    /** Boards dropped, each in a world of its own: an evening of tapping the picker. */
+    const val BOARDS = 200
 
     /**
      * How much the **native** heap may be up by afterwards.

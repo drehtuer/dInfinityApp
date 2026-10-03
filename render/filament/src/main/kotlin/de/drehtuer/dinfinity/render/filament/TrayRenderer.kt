@@ -6,8 +6,10 @@ import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
+import de.drehtuer.dinfinity.simulation.api.BoardDrops
+import de.drehtuer.dinfinity.simulation.api.BoardRequest
+import de.drehtuer.dinfinity.simulation.api.BoardTrack
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
-import de.drehtuer.dinfinity.simulation.api.FallingIn
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 
@@ -40,7 +42,7 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  * The class carries a function-count suppression for the reason [TrayLoop] and
  * [TrayDriver] do: most of these are one per thing that can happen to a
  * picture — a stage arrives, a table is named, a throw begins, a frame lands,
- * a roll ends, the board changes, a die falling on it moves — and folding two
+ * a roll ends, the board changes, its drop arrives, a die on it moves — and folding two
  * of them together would hide which is which rather than shorten anything.
  */
 @Suppress("TooManyFunctions")
@@ -67,21 +69,41 @@ class TrayRenderer(
   private var view: TrayView = TrayView.Whole
 
   /**
-   * The dice waiting to be thrown, each on its way to a place or standing in
-   * one, and how long the board has been running.
+   * The dice waiting to be thrown, as a recorded drop, and how far into it the
+   * board has played.
    *
-   * A list and a number: no thread, no world, nothing that goes on happening
-   * if nobody asks. Tapping out `8d6` replaces this eight times and leaves
-   * nothing behind either time ([FallingIn]).
+   * A recording and a number: the world that made it was closed before it
+   * arrived, and nothing goes on happening if nobody asks ([BoardTrack]).
    */
-  private var board: List<FallingIn.Drop> = emptyList()
-  private var boardSeconds = 0.0
+  private var track: BoardTrack = BoardTrack.EMPTY
+  private var trackSeconds = 0.0
 
-  /** What each die on the board is, so the next board knows which are new. */
+  /** What each die of the formula on show is, so the next board knows which are new. */
   private var standing: List<Pair<Die, Double>> = emptyList()
 
-  /** True while a die the player added is still on its way down. */
-  val falling: Boolean get() = FallingIn.stillFalling(board, boardSeconds)
+  /**
+   * How many boards this visit has asked for, which is what each one's drops
+   * are seeded by ([BoardDrops.request]).
+   */
+  private var boardsBuilt = 0
+
+  /**
+   * The board asked for and not yet arrived, if there is one.
+   *
+   * **Only the latest board is ever wanted.** A drop is worked out off this
+   * thread, and the player can tap again before it is back; the next request
+   * is built against what is on screen and replaces this, and a drop that
+   * comes back for a board that is no longer pending is dropped. A throw, a
+   * new table or a cleared tray forgets it altogether, so a late drop never
+   * paints over a roll ([settled]).
+   */
+  private var pending: Pending? = null
+
+  /** And where the board on screen had got to when it was asked for. */
+  private var requestedAt = 0.0
+
+  /** True while a board's drop is still playing. */
+  val falling: Boolean get() = !track.ended(trackSeconds)
 
   /** True while there is somewhere to draw. */
   val drawable: Boolean get() = drawing != null
@@ -209,93 +231,125 @@ class TrayRenderer(
   }
 
   /**
-   * Puts the dice that are waiting to be thrown on the table, dropping in the
-   * ones that were not there a moment ago
+   * Asks for the dice waiting to be thrown to be put on the table, dropping in
+   * the ones that were not there a moment ago
    * (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
    *
-   * The dice already standing stay exactly where they are standing — they are
-   * handed to [FallingIn.board] as taken floor and no place is computed for
-   * them again. The dice that are new fall in from above and tumble to a
-   * stop, and where they stop is the place they would simply have been put
-   * before there was a fall at all.
+   * Returns the board to let fall, or null when there is none to ask for —
+   * no table yet, or no dice, which is the empty table again. Nothing on
+   * screen changes until the drop comes back ([settled]): the request is
+   * built from **what is on screen now**, each die already on the board
+   * starting where it is drawn and moving as it is moving, so the drop picks
+   * up from exactly the picture the player is looking at.
    *
-   * What it is *not* is a roll. Nothing is stepped, no face is read, and the
-   * orientation every one of these dice comes to rest in is fixed before it is
-   * let go ([FallingIn]).
+   * What it is *not* is a roll. No face is read, ever, and the shake that
+   * follows throws every one of these dice from a spawn of its own
+   * ([BoardDrops]).
    */
-  fun waiting(spec: ThrowSpec) {
-    val showing = scene ?: return
+  fun waiting(spec: ThrowSpec): BoardRequest? {
+    val showing = scene ?: return null
     if (spec.dice.isEmpty()) {
       table(showing.geometry, showing.look)
-      return
+      return null
     }
-    val radii = spec.dice.map { ClearSpace.radiusOf(it.die, spec.dieScale) }
-    val wanted = spec.dice.mapIndexed { index, instance -> instance.die to radii[index] }
-    board =
-      FallingIn.board(
-        geometry = spec.geometry,
-        radiiMm = radii,
-        seed = spec.seed,
-        keeping = FallingIn.keeping(standing, wanted, board, boardSeconds),
-      )
-    standing = wanted
-    boardSeconds = 0.0
-    scene = showing.copy(spec = spec)
+    val wanted = spec.dice.map { it.die to ClearSpace.radiusOf(it.die, spec.dieScale) }
+    val recorded = track.indices.withIndex().associate { (die, index) -> index to die }
+    val kept =
+      BoardDrops
+        .keeping(standing, wanted, present = recorded.keys)
+        .mapValues { (_, was) -> track.placementAt(recorded.getValue(was), trackSeconds) }
+    boardsBuilt++
+    val request = BoardDrops.request(boardsBuilt, spec, kept)
+    pending = Pending(boardsBuilt, spec, wanted)
+    requestedAt = trackSeconds
+    return request
+  }
+
+  /**
+   * The drop for board [number] has come back. Returns whether it is the one
+   * being waited for, and so is now on screen.
+   *
+   * It starts as far in as the board on screen has moved since it was asked
+   * for: the dice carried over were snapshotted at that moment, so playing the
+   * new drop from its beginning would put them back to where they were a few
+   * frames ago.
+   */
+  fun settled(
+    number: Int,
+    track: BoardTrack,
+  ): Boolean {
+    val waited = pending?.takeIf { it.number == number } ?: return false
+    val showing = scene ?: return false
+    val catchUp = (trackSeconds - requestedAt).coerceAtLeast(0.0)
+    pending = null
+    this.track = track
+    trackSeconds = catchUp
+    standing = waited.dice
+    scene = showing.copy(spec = waited.spec)
     // The scene has just been rebuilt, so this board has to be drawn even when
     // nothing on it is moving — a die taken off the board moves none of the
     // others and would otherwise leave the old picture up.
     settled = false
-    drawing?.begin(spec, showing.geometry, showing.look)
+    drawing?.begin(waited.spec, showing.geometry, showing.look)
     draw()
+    return true
   }
 
   /**
-   * Moves the fall on by [elapsedSeconds] and draws where the dice have got to.
+   * Moves the drop on by [elapsedSeconds] and draws where the dice have got to.
    *
-   * Called once per displayed frame while [falling] is true and no more, which
-   * is a fifth of a second after a tap and nothing at all between taps
-   * ([TrayLoop.frame]). Nothing here is a simulation clock: the whole fall is
-   * decided when the board is built, so a frame that arrives late finds the
-   * dice exactly where a frame that arrived on time would have.
+   * Called once per displayed frame while [falling] is true and no more
+   * ([TrayLoop.frame]). Nothing here is a simulation clock: the whole drop was
+   * recorded before it was shown, so a frame that arrives late finds the dice
+   * exactly where a frame that arrived on time would have.
    */
   fun fall(elapsedSeconds: Double) {
-    if (board.isEmpty()) return
-    boardSeconds += elapsedSeconds
+    if (track.dice == 0) return
+    trackSeconds += elapsedSeconds
     draw()
   }
 
   /**
    * Shows the board as it is at this moment, still or moving.
    *
-   * A board that has come to rest is shown as *settled* and only once: it is
-   * dice on a table, not moving, and a surface that arrives afterwards has to
-   * be given it back that way rather than mid-fall
-   * (`docs/physics-and-rendering.md`).
+   * Drawn between the two recorded steps either side of the moment, the way a
+   * roll is ([RenderFrame.blended]). A board that has come to rest is shown as
+   * *settled* and only once: it is dice on a table, not moving, and a surface
+   * that arrives afterwards has to be given it back that way rather than
+   * mid-drop (`docs/physics-and-rendering.md`).
    */
   private fun draw() {
-    val frame = RenderFrame.still(boardTransforms())
-    latest = frame
+    val step = track.stepAt(trackSeconds)
     val moving = falling
+    val frame =
+      if (moving) {
+        RenderFrame(posesAt(step), posesAt(step + 1), track.fractionAt(trackSeconds))
+      } else {
+        RenderFrame.still(posesAt(track.steps - 1))
+      }
+    latest = frame
     if (!moving && settled) return
     settled = !moving
     drawing?.let { renderer -> if (moving) renderer.show(frame) else renderer.settled(frame) }
   }
 
-  /** Where each waiting die is at this moment on the board's clock. */
-  private fun boardTransforms(): List<BodyTransform> =
-    board.map { drop ->
-      BodyTransform(
-        index = drop.index,
-        position = drop.positionAt(boardSeconds),
-        orientation = drop.orientationAt(boardSeconds),
-      )
+  /** Every recorded die at [step] of the drop. */
+  private fun posesAt(step: Int): List<BodyTransform> =
+    track.indices.mapIndexed { die, index ->
+      val pose = track.poseAt(die, step)
+      BodyTransform(index = index, position = pose.position, orientation = pose.orientation)
     }
 
-  /** There is no board any more, so nothing is falling onto one. */
+  /**
+   * There is no board any more, so nothing is dropping onto one — and a drop
+   * still being worked out is for a board that no longer exists.
+   */
   private fun clearBoard() {
-    board = emptyList()
+    track = BoardTrack.EMPTY
     standing = emptyList()
-    boardSeconds = 0.0
+    trackSeconds = 0.0
+    pending = null
+    requestedAt = 0.0
   }
 
   /**
@@ -309,5 +363,12 @@ class TrayRenderer(
     val spec: ThrowSpec?,
     val geometry: TableGeometry,
     val look: TableLook,
+  )
+
+  /** A board asked for: its number, the formula it is, and what each die of it is. */
+  private class Pending(
+    val number: Int,
+    val spec: ThrowSpec,
+    val dice: List<Pair<Die, Double>>,
   )
 }

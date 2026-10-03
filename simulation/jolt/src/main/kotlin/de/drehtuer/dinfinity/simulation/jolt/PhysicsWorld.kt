@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.simulation.api.DieMotion
+import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.Vector3
 
@@ -105,23 +106,6 @@ interface PhysicsWorld : AutoCloseable {
    */
   fun remove(index: Int)
 }
-
-/**
- * Where a die starts, or restarts.
- *
- * @param position in the tray, millimetres, with the floor at `z = 0`.
- * @param rotation how it is turned as it is let go.
- * @param linearVelocity mm/s.
- * @param angularVelocity rad/s. Large on purpose: a die dropped without spin
- *   would land predictably from its starting orientation, which is not a roll
- *   (`docs/physics-and-rendering.md`, "Starting a roll").
- */
-data class Placement(
-  val position: Vector3,
-  val rotation: Quaternion,
-  val linearVelocity: Vector3,
-  val angularVelocity: Vector3,
-)
 
 /**
  * One die, as the solver has it this step.

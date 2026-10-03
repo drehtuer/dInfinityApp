@@ -291,9 +291,15 @@ rest again until everything is counted (`docs/physics-and-rendering.md`,
       dropping steps while Filament, the atlas and Jolt load
       (`MAX_STEPS_PER_FRAME` is 4). Put `LiveRoll.droppedSteps` on the debug
       overlay, then throw `4d6!` three times from a cold start
-- [ ] **Does a die the picker adds read as dropped on the table?** 60 mm, a
-      fifth of a second (`FallingIn.DROP_HEIGHT_MM`); does tapping a d6 eight
-      times look right?
+- [ ] **Does a die the picker adds read as dropped and tumbled?** Does it
+      land and roll rather than appear; do the bumps look right after eight
+      quick taps of a d6; does a removal let a leaning die fall plausibly?
+      The numbers to turn are `BoardDrops.DROP_HEIGHT_MM` (60) and
+      `HEIGHT_JITTER_MM` (18), `LEAST_SLIDE_MM_PER_SECOND`–
+      `MOST_SLIDE_MM_PER_SECOND` (40–150), `MOST_DOWNWARD_MM_PER_SECOND` (150)
+      and `LEAST_SPIN_RADIANS_PER_SECOND`–`MOST_SPIN_RADIANS_PER_SECOND`
+      (9–18). Also run `BoardSettlerTest` and read its timings (`dinfinity.board`
+      in logcat)
 - [ ] Rendering polish and the optimisation pass — deliberately **last**
 
 ### 5.7 Performance on the Pixel 10a

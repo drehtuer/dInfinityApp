@@ -997,6 +997,11 @@ below happens either before the dice are thrown or while they are still
 moving, except the last resort, which is an honest re-throw the player can
 see.
 
+All of this is about the dice of a roll. **The dice waiting on the board before
+a throw are not dice of a roll**: no face of theirs is read, so nothing here is
+applied to them, and a board die that lands cocked or on another stays that way
+until the shake throws everything ("The dice waiting to be thrown").
+
 It is a rule about the **app**, and a player's own hand is not an exception to
 it but the other side of it: a die a player throws again is chosen, watched and
 recorded, and it is still thrown rather than moved (see "Picking a die up and
@@ -1121,66 +1126,95 @@ picker adds to it, so what a player is looking at before they shake is what
 they are about to throw (`docs/dice-notation.md`, "Picking dice without
 typing").
 
-**A die that is new to the board falls onto it and tumbles to a stop.** It used
-to appear, laid flat where it belonged, which is not what putting a die on a
-table looks like. It is let go 60 mm above its place, turns between three
-quarters and one and three fifths of a turn about an axis of its own on the way
-down, bounces three times at 35 % and is down in about a fifth of a second.
+**A die that is new to the board is dropped onto it and tumbles to a stop,
+under real physics.** It used to appear in a laid-out spot, and then to fall
+into that spot along a scripted path; dice spaced evenly over a table do not look
+like dice somebody dropped there. Now it is let go above a random clear spot and
+the engine brings it down among the dice already there
+(`docs/architecture.md`, decision 67):
 
-**And none of it is a roll.** This is the one thing that has to be true, so it
-is true by construction rather than by care:
+- **Released** above a spot drawn at random inside the walls — the first of up
+  to eight draws that is clear of every die on the board, else the clearest
+  point there is (`ClearSpace`), else not at all, which is the same shortfall the
+  board always had. It is held `BoardDrops.DROP_HEIGHT_MM` (60 mm) plus up to
+  `HEIGHT_JITTER_MM` (18 mm) above the felt, beyond its own radius and always
+  under the lid; turned evenly over every orientation; drifting sideways at
+  `LEAST_SLIDE_MM_PER_SECOND`–`MOST_SLIDE_MM_PER_SECOND` (40–150 mm/s) in a
+  random direction and downwards at up to `MOST_DOWNWARD_MM_PER_SECOND`
+  (150 mm/s); and spinning about a random axis at
+  `LEAST_SPIN_RADIANS_PER_SECOND`–`MOST_SPIN_RADIANS_PER_SECOND` (9–18 rad/s).
+- **Simulated once, off the roll thread, and played back.** When the board
+  changes, `BoardSettler` opens a short-lived headless Jolt world on the visit's
+  board thread: every die on the board as a dynamic body where it is drawn now
+  and moving as it is moving, plus the new dice where they are let go. Gravity
+  is the throw's (`ShakeDriver.GRAVITY_MM_PER_SECOND2`), the world is stepped at
+  `SettleRule.TIMESTEP_SECONDS` until `RestTracker` says every die has stopped
+  or three seconds have passed (`MOST_BOARD_STEPS`), one pose per die per step
+  is written down, and the world is closed before the recording
+  (`BoardTrack`) is handed back. Playback maps the board's clock to a step and
+  a fraction and draws between the two, as a roll is drawn — so 60 Hz and
+  120 Hz see the same drop, and nothing is running between frames.
+- **The dice already on the board can be bumped.** They are bodies in that
+  world like the new one, so a die dropped next to another may knock it; that
+  is what dropping a die among dice does, and the player asked for physics.
+  A die still in the air when the next tap arrives keeps its momentum: it is
+  carried into the next drop at the pose and speed the recording had for it at
+  that moment (speeds by finite difference between two recorded steps).
+- **A die nothing touches is drawn exactly where it stood.** A die that started
+  dead still and moved less than 0.05 mm or turned less than 0.002 rad is
+  recorded at its starting pose on every step, verbatim
+  (`BoardTrack.STILL_DRIFT_MM`, `STILL_TURN_RADIANS`). That is a drawing
+  decision, not a force: a resting die must not shiver by a solver's few
+  microns each time another is dropped beside it.
 
-- **Every fall ends square on** — `Quaternion.Identity`, the same turn for
-  every die, every seed and every board. The orientation a die comes to rest in
-  is decided before it is released, so there is no face here to read even if
-  something wanted one. It is the tumble that varies, and by the time the die
-  is standing the tumble is over.
-- **There is no body and no world.** `FallingIn` is closed-form arithmetic over
-  a clock — free fall, three bounces, an eased turn — evaluated wherever the
-  frame callback asks. Nothing is stepped, nothing is solved, and a frame that
-  arrives late finds the dice exactly where a frame that arrived on time would
-  have, so the board looks the same at 60 Hz and at 120.
-- **Its randomness is its own.** The axis, the turn and the release height come
-  through `Seeds.WAITING`, a purpose no throw uses. A board built between two
-  throws therefore cannot move a number in either of them, and the golden
-  fixture does not shift under a feature that decides nothing ("Timestep and
-  determinism").
-- **It ends where the die would simply have been stood.** `RestingPlaces` still
-  says where each die belongs and still says the same thing it always did, so
-  the board a player taps twice is the same board twice. The fall changed how a
-  die arrives and nothing about where.
+**And none of it is a roll.** This is the one thing that has to be true, and it
+is held by structure rather than by care:
 
-**A die already standing does not move.** The dice on the board are handed to
-the next board as floor that is taken, and no place is computed for them again
-— the same `ClearSpace` question an added die asks inside a roll, asked one
-level up. So a tap adds one die falling into the gaps between the ones that are
-down, and a long press takes one off and disturbs nothing. Which dice carry
-over is matched by what each die *is* rather than by where it sits in the
-formula, so taking the d6 out of `2d6 + 1d20` leaves the d20 where it was. A
-board whose dice have been shrunk by the capacity rule is the one case where
-they all move, because every place on it has moved (`docs/tables.md`,
-"Capacity rule").
+- **A board reports poses, never faces.** `BoardSettler.settle` returns a
+  `BoardTrack`, which is positions and orientations and nothing else, and the
+  board code never calls `FaceReader`. Nothing on the board is scored or
+  recorded, and the shake that follows throws every die from a spawn of its own,
+  exactly as before — the board's poses are not where a throw starts.
+- **Its randomness is its own.** Release spots, heights, turns and spins come
+  from `Seeds.waiting(board, die)`, which is the board's number within the
+  visit under the purpose `Seeds.WAITING`, a purpose no throw uses. A board
+  built between two throws therefore cannot move a number in either of them,
+  and the golden fixture does not shift ("Timestep and determinism"). The number
+  is a per-visit counter rather than the spec's seed, which every board shares,
+  so a d6 taken off and put back does not land the same way every time.
+- **There is no correction on the board.** The correction ladder belongs to a
+  roll. A board die that lands cocked against a wall or on top of another stays
+  as it landed; the shake throws everything, so nothing about a board has to be
+  read or put right ("Avoiding stacked and cocked dice").
 
-**And a die still in the air when the next tap arrives goes on falling.** Its
-release is carried onto the new board's clock rather than restarted. Tapping
-out `8d6` builds eight boards in a row and leaves nothing running behind any of
-them: a board is a list and a number, not a thread and not a world, and there
-is never more than one.
+**Every change is a new drop of what is on screen.** Adding a die, removing one
+— a die resting on it may fall — and a capacity rescale that shrinks every die
+all snapshot the dice as they are drawn at that moment and simulate again.
+Which dice carry over is matched by what each die *is* and the size it is drawn
+at rather than by where it sits in the formula, so taking the d6 out of
+`2d6 + 1d20` leaves the d20 where it was; a rescale changes every die's size,
+so every die is dropped afresh (`docs/tables.md`, "Capacity rule").
 
-The frames it costs are the only frames it costs. A board that is falling wants
-one per vsync and a board that has settled wants none, which is what
-`TrayLoop.wantsFrames` says; and a fall with nowhere to draw wants none either,
-because nobody is owed an animation they cannot see. A throw takes the board
-away when it starts — the dice that were waiting have been thrown, and a
-half-finished fall belongs to a board that no longer exists.
+**Only the latest board is ever drawn.** Tapping out `8d6` quickly asks for
+boards faster than they may come back. Each request is numbered and built
+against what is on screen; a drop that comes back for a board that is no longer
+the pending one is thrown away, and a drop that comes back late starts as far
+in as the board on screen has moved since it was asked for. A throw, a new
+table or a cleared tray forgets the pending board altogether, so a late drop
+never paints over a roll.
 
-What is still open is a question only a hand can answer: whether 60 mm and a
-fifth of a second read as a die being dropped on a table, or as a die that
-blinks into place a moment late. The height is the number to turn
-(`FallingIn.DROP_HEIGHT_MM`), and it is deliberately higher than the 25 mm an
-added die is dropped from — that drop happens among dice whose faces are being
-read and should not upstage them, and this one *is* the thing the player is
-looking at.
+The frames it costs are the only frames it costs. A board whose drop is playing
+wants one per vsync, and a board whose drop has ended wants none, which is what
+`TrayLoop.wantsFrames` says; a drop with nowhere to draw wants none either. A
+throw takes the board away when it starts — the dice that were waiting have
+been thrown, and a half-finished drop belongs to a board that no longer exists.
+
+The drop height is deliberately higher than the 25 mm a die an explosion adds
+is dropped from (`SpawnLayout.RETHROW_HEIGHT_MM`): that drop happens among dice
+whose faces are being read and should not upstage them, and this one *is* the
+thing the player is looking at. What is still open is a question only a hand
+can answer — whether the release constants above read as a die dropped and
+tumbled on a table (`docs/TODO.md`).
 
 ## The dice an explosion or a reroll adds
 

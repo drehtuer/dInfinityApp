@@ -38,6 +38,7 @@ import org.junit.Test
 class TrayLoopTest {
   private val geometry = TableGeometry.referenceDevice()
   private val look = TableLook(id = "plain", name = "Plain")
+  private val boards = FakeBoards()
 
   @Test
   fun `the table view this visit opened with reaches the renderer`() {
@@ -695,7 +696,7 @@ class TrayLoopTest {
     loop.table(geometry, look)
     val drawn = stage.frames
 
-    loop.waiting(spec())
+    loop.drop(spec())
     loop.frame(SOME_LATE_UPTIME)
 
     assertTrue("the board was never drawn", stage.frames > drawn)
@@ -711,8 +712,9 @@ class TrayLoopTest {
     loop.table(geometry, look)
     loop.roll(roll.start())
 
-    loop.waiting(spec())
+    val request = loop.waiting(spec())
 
+    assertEquals("a board was asked for under a roll still going", null, request)
     assertTrue("the board replaced a roll that was still going", loop.rolling)
   }
 
@@ -747,13 +749,13 @@ class TrayLoopTest {
 
   @Test
   fun `a die falling onto the board is drawn every frame until it lands`() {
-    // Not a simulation and still a picture that moves: it needs the frame
-    // callback for the fifth of a second it takes to come down.
+    // A recording played back and still a picture that moves: it needs the
+    // frame callback for as long as the drop lasts.
     val loop = TrayLoop()
     val stage = FakeStage()
     loop.stage(stage)
     loop.table(geometry, look)
-    loop.waiting(spec())
+    loop.drop(spec())
 
     val drawn = stage.frames
     var at = SOME_LATE_UPTIME
@@ -774,24 +776,34 @@ class TrayLoopTest {
     val loop = TrayLoop()
     loop.stage(FakeStage())
     loop.table(geometry, look)
-    loop.waiting(spec())
+    loop.drop(spec())
 
-    var at = SOME_LATE_UPTIME
-    repeat(PATIENCE_FRAMES) {
-      loop.frame(at)
-      at += SIXTIETH_OF_A_SECOND_NANOS
-    }
+    playOut(loop)
 
     assertFalse("the settled board still wanted frames", loop.wantsFrames)
   }
 
   @Test
+  fun `a board still being worked out wants no frames of its own`() {
+    // Nothing on screen changes until the drop is back, so there is nothing to
+    // draw every frame — only the one frame any change is owed.
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+
+    assertTrue("a board was not asked for", loop.waiting(spec()) != null)
+    loop.frame(SOME_LATE_UPTIME)
+
+    assertFalse(loop.wantsFrames)
+  }
+
+  @Test
   fun `a fall with nowhere to draw is not worth a frame`() {
-    // Nobody is owed an animation they cannot see. The roll is the thing that
-    // must go on without a surface, and this is not one.
+    // Nobody is owed a drop they cannot see. The roll is the thing that must
+    // go on without a surface, and this is not one.
     val loop = TrayLoop()
     loop.table(geometry, look)
-    loop.waiting(spec())
+    loop.drop(spec())
 
     assertFalse(loop.wantsFrames)
   }
@@ -805,11 +817,75 @@ class TrayLoopTest {
     val stage = FakeStage()
     loop.stage(stage)
     loop.table(geometry, look)
-    loop.waiting(spec())
+    loop.drop(spec())
 
     loop.frame(SOME_LATE_UPTIME)
 
     assertTrue("the whole fall was spent on the frame that started it", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a drop onto a board that had come to rest starts its own clock`() {
+    // The last frame the clock saw was the end of the drop before, however
+    // long ago that was. Measured from there, the new die would land before it
+    // was drawn once.
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+    loop.drop(spec())
+    val stopped = playOut(loop)
+
+    loop.drop(spec(dice = DICE + 1))
+    loop.frame(stopped + A_MINUTE_NANOS)
+
+    assertTrue("the new die landed on the frame that started it", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a surface that comes back mid-drop picks it up where it stopped`() {
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+    loop.drop(spec())
+    loop.frame(SOME_LATE_UPTIME)
+    loop.surfaceLost()
+
+    loop.stage(FakeStage())
+    loop.frame(SOME_LATE_UPTIME + A_MINUTE_NANOS)
+
+    assertTrue("the time nobody could see was spent on the drop", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a drop that is no longer wanted is not played`() {
+    val loop = TrayLoop()
+    loop.stage(FakeStage())
+    loop.table(geometry, look)
+    val first = requireNotNull(loop.waiting(spec()))
+    loop.waiting(spec(dice = DICE + 1))
+    loop.frame(SOME_LATE_UPTIME)
+
+    loop.boardSettled(first.number, boards.settle(first))
+
+    assertFalse("a stale drop was played", loop.wantsFrames)
+  }
+
+  @Test
+  fun `a drop that comes back after the dice were thrown is not played`() {
+    // A late board never paints over a roll.
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 4)
+    val stage = FakeStage()
+    loop.stage(stage)
+    loop.table(geometry, look)
+    val request = requireNotNull(loop.waiting(spec()))
+    loop.roll(roll.start())
+
+    loop.boardSettled(request.number, boards.settle(request))
+    playOut(loop)
+    loop.boardSettled(request.number, boards.settle(request))
+
+    assertFalse("the board came back over the throw", loop.wantsFrames)
   }
 
   @Test
@@ -818,7 +894,7 @@ class TrayLoopTest {
     val roll = FakeRoll(steps = 4)
     loop.stage(FakeStage())
     loop.table(geometry, look)
-    loop.waiting(spec())
+    loop.drop(spec())
 
     loop.roll(roll.start())
 
@@ -827,10 +903,26 @@ class TrayLoopTest {
     assertFalse("the board outlived the throw that replaced it", loop.wantsFrames)
   }
 
-  private fun spec(): ThrowSpec =
+  /** Asks for a board and hands its drop straight back, as the board thread would. */
+  private fun TrayLoop.drop(spec: ThrowSpec) {
+    val request = requireNotNull(waiting(spec)) { "no board was asked for" }
+    boardSettled(request.number, boards.settle(request))
+  }
+
+  /** Frames until the loop stops asking, and the time of the last one. */
+  private fun playOut(loop: TrayLoop): Long {
+    var at = SOME_LATE_UPTIME
+    repeat(PATIENCE_FRAMES) {
+      loop.frame(at)
+      at += SIXTIETH_OF_A_SECOND_NANOS
+    }
+    return at
+  }
+
+  private fun spec(dice: Int = DICE): ThrowSpec =
     ThrowSpec(
       dice =
-        List(DICE) { index ->
+        List(dice) { index ->
           DieInstance(
             index = index,
             groupId = 0,
@@ -858,6 +950,7 @@ class TrayLoopTest {
     /** A phone that has been awake for a day, which is what a frame clock counts from. */
     const val SOME_LATE_UPTIME = 86_400_000_000_000L
     const val SIXTIETH_OF_A_SECOND_NANOS = 16_666_667L
+    const val A_MINUTE_NANOS = 60_000_000_000L
     const val SPARE_FRAMES = 3
     const val THREE_FRAMES = 3
 

@@ -29,6 +29,7 @@ import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.jolt.JoltBoardSettler
 import de.drehtuer.dinfinity.simulation.jolt.JoltDiceSimulator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -84,6 +85,14 @@ class RollWiring(
   private val artwork: (String) -> AtlasImage? = { null },
 ) {
   private val simulator = JoltDiceSimulator()
+
+  /**
+   * What lets the dice waiting to be thrown fall onto the table, beside the
+   * simulator because it is the same engine named in the same one place
+   * (`docs/architecture.md`, decision 67). It holds no world between boards —
+   * each drop opens one and closes it — so one serves every visit.
+   */
+  private val boards = JoltBoardSettler()
 
   /**
    * The installed sets a formula resolves against.
@@ -296,7 +305,7 @@ class RollWiring(
       // blank screen would be describing something nobody can see.
       PowerSavingTray(impacts = impacts)
     } else {
-      TrayDriver(shared = rollThread, impacts = impacts, debug = debug, tableView = tableView)
+      TrayDriver(shared = rollThread, impacts = impacts, debug = debug, tableView = tableView, boards = boards)
     }
 
   /**

@@ -85,6 +85,20 @@ class SeedsTest {
   }
 
   @Test
+  fun `a board's drops come from the board's number, the die and their own purpose`() {
+    // The board is not a roll. Its stream is the board number's, under a
+    // purpose no throw draws on, so building a board cannot move a number in
+    // the throw that follows it (`docs/architecture.md`, decision 67).
+    val board = Seeds.waiting(board = 3, dieIndex = 2).nextDouble()
+
+    assertEquals(Seeds.stream(seed = 3L, dieIndex = 2, purpose = Seeds.WAITING).nextDouble(), board)
+    assertNotEquals(Seeds.stream(seed = 3L, dieIndex = 2, purpose = Seeds.SPAWN).nextDouble(), board)
+    assertNotEquals(Seeds.waiting(board = 4, dieIndex = 2).nextDouble(), board, "two boards dropped alike")
+    assertNotEquals(Seeds.waiting(board = 3, dieIndex = 1).nextDouble(), board, "two dice dropped alike")
+    assertTrue(Seeds.WAITING !in setOf(Seeds.SPAWN, Seeds.RETHROW, Seeds.BIAS))
+  }
+
+  @Test
   fun `stirring nothing is not nothing`() {
     // Seed zero is the one a counter starts at and the one a bad mixer leaves
     // alone. SplitMix64's finaliser maps it to zero, which is why the roll
