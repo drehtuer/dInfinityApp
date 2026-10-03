@@ -25,7 +25,7 @@ here any more — this table is only a map from the question to its home.
 | A filled accent tag needs both ends of a ramp | Both ends are mixed from the accent the player picked, against text and ground rather than black and white. Built: `ui/common`'s `TagKind.Accent`, and it is what says "Update available" on a dice-set row | `docs/architecture.md`, "Settings" |
 | Is there a 3D preview in the designer? | There is now: a **Solid** tab | `docs/face-designer.md`, "The solid, not just the face" |
 | The designer's tool row should be icons, undo and redo in the app bar, the strip 52 dp thumbnails | All three, from the prototype's own sprite; the thumbnail keeps its label, which is the pairing this suggested | `docs/face-designer.md`, "The tools are pictures" |
-| Where does the total go, and how many times? | Once, in the result sheet | `docs/TODO.md`, 4.1 |
+| Where does the total go, and how many times? | Once, in the result sheet | `docs/physics-and-rendering.md`, "What is drawn over the table" |
 
 The pass also decided a good deal nobody had asked about — per-set weight,
 translucency and size; a table-view setting; staggered drops; opposite-face
@@ -97,10 +97,12 @@ drawing, and it is in `docs/TODO.md` under 5.6.
 
 The app has moved ahead of the prototype here, on a device session's word
 rather than a drawing's, and the prototype has not been re-imported since. The
-divergence is written down rather than drawn because the prototype is
-generated: it is edited in the Claude Design project and re-imported whole
-("Editing", `design/README.md`), so a hand edit to
-`design/dInfinityPhone.dc.html` would be undone by the next sync.
+prototype is generated — edited in the Claude Design project and re-imported
+whole ("Editing", `design/README.md`) — so only small, local corrections have
+been made to `design/dInfinityPhone.dc.html` by hand (a Fudge face's printed
+label, and the throw buttons below), and a re-import has to keep them. A
+rearrangement of the whole roll screen is not a small correction, so this one
+is written down rather than drawn.
 
 What the app does now, and what the prototype still draws
 (`docs/physics-and-rendering.md`, "What is drawn over the table"):
@@ -116,7 +118,7 @@ What the app does now, and what the prototype still draws
 | The tray's own shadow | none: the wall and the rim cast nothing, the dice cast | the fake bezel, `trayBorder: 6px solid {{ tbl.wall }}` |
 | `See the odds`, `Save as roll` | at the foot of the result sheet | already at the foot of the result sheet, as `Graph` and `Save` — **the app has caught up here**, and only the wording differs |
 
-Three questions for the next pass over the prototype:
+Six questions for the next pass over the prototype:
 
 1. **Is a pull-down right for the dice at all?** The design's strip is always
    out; the device session asked for it to be put away. The count on the head
@@ -170,8 +172,10 @@ already close — it has no Roll button either, and a tap on the tray stands in
 for the shake a browser cannot make — so most of the change was deleting
 things.
 
-**Hand-edited, and in step:** the `earned` plate has lost `Throw {{ n }} more`
-and `Stop the chain` and now says to shake again; the `stuck` plate has lost
+**Hand-edited in `dInfinityPhone.dc.html`, and in step** — one of the two
+hand edits since the 2026-09-17 sync that a re-import has to keep. The
+`earned` plate has lost `Throw {{ n }} more` and `Stop the chain` and now says
+to shake again; the `stuck` plate has lost
 `Throw those {{ n }} again` and keeps `Cancel the roll`; and the result sheet
 has lost `Again` (compact) and `Roll again` (poster). Its `rollAgain` handler
 is left in the script, unreferenced, rather than unpicked by hand.
@@ -282,9 +286,11 @@ are 25 and 32. Which did you mean?
    "this is the one that takes something away" signal has gone with it. A
    system with one red and no other colour has only weight and wording left to
    say "careful".
-5. **The slider has no design.** Hue, depth and brightness in the designer use
-   Material's, which has a circular thumb and a rounded track, in a system with
-   no round anything.
+5. **The slider has no design.** Hue, depth and brightness are three of
+   Material's sliders inside `ui/common`'s shared `ColourPicker` — the one
+   picker Settings, the face designer and the saved-roll editor all open — at
+   Material's own 44 dp, with a circular thumb and a rounded track, in a system
+   with no round anything.
 6. **Uppercase.** The prototype sets kickers and column headings in
    `text-transform: uppercase` with wide tracking. The tracking is applied; the
    case is not, because Compose has no text transform, so applying it means

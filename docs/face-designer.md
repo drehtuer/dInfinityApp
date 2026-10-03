@@ -145,7 +145,7 @@ turned and a fill of a whole face came out covering part of it, with the
 printed number showing through the rest. Each cell now carries its own turn
 and size, from the same solve the Solid tab uses (`FaceOnSolid`), and the
 two halves of the designer show the same die. What is left of it is the kite,
-under "The way back" below and in `docs/TODO.md`, 4.6.
+under "Export details" below and in `docs/TODO.md`, 4.6.
 
 ## The way back
 
@@ -211,7 +211,8 @@ details" below).
 Deliberately small:
 
 - Pen with three widths, eraser, fill bucket
-- Colour palette (the set's default colours + 12 presets + a picker)
+- Colour palette (12 fixed presets, then a swatch showing the colour in the
+  pen that opens a picker — "A colour beyond the twelve")
 - Undo/redo (per face, unlimited within the session)
 - Copy face → paste onto another face, with optional turn/mirror (for making
   all faces share a border, for example)
@@ -243,12 +244,13 @@ The three pens are **one glyph at three widths** — what separates three pens
 is how wide they draw, so it is the one thing that separates their pictures,
 and the medium pen is the sprite's `#ic-pencil` exactly as drawn.
 
-**Four controls keep their words on purpose.** `Turn 3/4` is a count and a
-picture of a rotation cannot say which of four turns the next paste lands on;
-Small / Medium / Large are the same picture at three sizes and three boxes
-differing by a few pixels is a row nobody reads at arm's length; a die's id
-(`d18`) is its own word; and "fill all with numbers" is a sentence there is no
-picture of.
+**Some controls keep their words on purpose.** The lettered buttons in the
+table's last row are sentences there is no picture of — "fill all with
+numbers" most plainly. Three more kinds keep theirs as well: `Turn 3/4` is a
+count, and a picture of a rotation cannot say which of four turns the next
+paste lands on; the stamp's Small / Medium / Large are the same picture at
+three sizes, and three boxes differing by a few pixels is a row nobody reads at
+arm's length; and a die's id (`d18`) in the base-die row is its own word.
 
 **Every picture is named.** The words that came off the faces are the labels a
 screen reader now says — the resources did not go anywhere — and every control
@@ -707,15 +709,19 @@ went, and the flat editor is where a stroke is looked at. Whether it is worth
 drawing strokes as thin filled outlines instead is an open question
 (`docs/TODO.md`).
 
-**Nor does it promise the atlas's own turn of a cell.** The atlas draws every
+**The atlas turns a cell its own way, and the exporter follows the canvas.** The atlas draws every
 cell with the face's up taken as `+z` flattened onto it (`docs/dice-sets.md`,
 "Up is `+z`") while the canvas masks every cell into one canonical outline, and
-those two are not the same turn — an octahedron's top face sits fifteen degrees
-off the triangle the canvas draws, a d20's faces up to sixty, a d12's up to
-thirty-six, and a d6's not at all. What the Solid tab shows is
-the drawing the way the canvas shows it, put on the face it belongs to; which
-way round it will come out of the exporter is the other question, and it is
-written down as one (`docs/TODO.md`).
+those two are not the same turn — the canvas outline is off by nothing on a
+d6 and by as much as 166° on a d18 (the figures are under "And it lands the
+right way round" above). What the Solid tab shows is the drawing the way the
+canvas shows it, put on the face it belongs to, and **the exporter now paints
+the atlas with the same turn and size** (`FaceOnSolid.cellFitOf`, the flat
+counterpart of the basis this tab draws with), so the drawing lands on the tray
+the way round the Solid tab showed it. The one place the two can still part is
+the kite: its canvas outline is not the d10's or the d18's own shape, and the
+exporter paints it at the size that covers the face where this tab draws the
+best fit ("Export details", `docs/TODO.md`, 4.6).
 
 ### Save to set
 

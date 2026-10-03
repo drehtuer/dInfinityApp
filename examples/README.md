@@ -44,9 +44,10 @@ Two things are worth knowing before the first attempt:
 
 ## Installing it
 
-Zip the folder and hand the archive to the app's dice-set screen, or point the
-app at a folder with the system file picker. A set on a git forge is installed
-from its URL. All three go through the same validator, and a package that fails
+Zip the folder (or tar and gzip it) and pick the archive from the app's
+dice-set screen with the system file picker — the picker opens a single file,
+not a folder. A set on a git forge is installed from its URL. Both go through
+the same validator, and a package that fails
 it is rejected whole, with every error listed and a line number against each.
 
 Nothing in a package is ever executed: there are no scripts and no build steps,

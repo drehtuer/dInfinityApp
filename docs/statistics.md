@@ -10,7 +10,7 @@ rolled this campaign?" without turning into a spreadsheet.
 
 ## What is recorded
 
-Every completed roll writes one `RollHistory` row and updates aggregate
+Every completed roll writes one `RollHistoryRow` (`roll_history`) and updates aggregate
 counters. Rolls that are cancelled (app closed mid-tumble) are discarded.
 
 ### Per die (keyed by `setId` + `dieId`)
@@ -373,8 +373,11 @@ dropping it is a migration for nothing.
   offering it beside a filter would make it look the same size.
 - **The two records are separate, and a reset says which one it forgets.**
   Forgetting a die's aggregate leaves its rolls in the history; forgetting a
-  session's rolls leaves what each die has done, because `die_stats` and
-  `die_summary` carry no session to subtract from (see Storage). The
+  session's rolls deletes only its `roll_history` rows and leaves what each die
+  has done. `die_stats` does carry the session (since version 5), but
+  `die_summary` does not — its streaks run across sessions and cannot be taken
+  apart by one — so the per-die record is left whole rather than half
+  subtracted (see Storage). The
   confirmation says so — a "forget" that half forgets, silently, would send
   somebody back to the statistics wondering why nothing moved.
 - Nothing is uploaded anywhere. There is no analytics backend; the

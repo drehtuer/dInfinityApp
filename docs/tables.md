@@ -199,7 +199,7 @@ Rules:
   as raw PCM. So no decoder takes part at all, on a stranger's file or on the
   app's own, which is this rule carried one step further than it had to be. Felt
   is almost all noise and gone in a fiftieth of a second; glass is almost all
-  ring and hangs on ten times as long
+  ring and hangs on about four times as long
   (`docs/physics-and-rendering.md`, "Impacts, haptics and sound").
 - **A `sound` names what the *table* sounds like, not what the roll sounds
   like.** Dice hitting each other sound like dice whatever they are landing on,
@@ -289,12 +289,14 @@ A photo table is also the one row in the picker that offers **Remove**, because
 it is the one look that does not belong to a package: everything else is
 removed by removing its package, on the screen that is about packages.
 
-**The tray does not draw the picture yet**, and neither does it draw a drawn
-die's artwork: nothing fills the `atlases` seam that turns a package's texture
-into a `Texture` on the GPU (`docs/TODO.md`, Step 3). So a photo table is a
-complete, valid, exportable table that currently renders as its colours, in
-exactly the state a die with a drawn atlas is in. What is done here is the
-package and the path into it; what is left is one seam, shared with the dice.
+**The tray does not draw the picture yet.** The `atlases` seam that turns a
+package's texture into a `Texture` on the GPU is filled for dice — `DieArtwork`
+in `:app` answers a key of package and path (`AtlasKey`) — but a table look's
+texture carries a path and nothing saying whose package, so it resolves to
+nothing (`docs/TODO.md`, "Open questions"). So a photo table is a complete,
+valid, exportable table that currently renders as its colours. What is done
+here is the package and the path into it; what is left is saying whose package
+a table's texture is in.
 
 ## Selecting a table
 
@@ -433,8 +435,8 @@ filed under which table it is *and what that table is*, so a photograph removed
 and another made under the same id is drawn afresh rather than shown the first
 one's picture.
 
-**A photo table's thumbnail is its colours, like every other table's.** Nothing
-fills the seam that turns a package's texture into a `Texture` on the GPU yet,
-so a thumbnail shows exactly what the tray shows: `floor_color` and
-`wall_color` (`docs/TODO.md`, Step 3). When that seam is filled, both change
+**A photo table's thumbnail is its colours, like every other table's.** A table
+texture resolves to nothing through the artwork seam yet, so a thumbnail shows
+exactly what the tray shows: `floor_color` and `wall_color` (`docs/TODO.md`,
+"Open questions"). When a table's texture can be resolved, both change
 together, because both go through the same renderer.

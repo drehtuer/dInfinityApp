@@ -201,7 +201,10 @@ data class SavedRollGroupRow(
  * The formula is **text**, not a parse tree, and is re-validated every time it
  * is shown. The dice set it names may have been uninstalled since, and a saved
  * roll that no longer resolves is neither deleted nor rewritten: it shows a
- * warning and falls back to the built-in set when thrown. Storing anything
+ * warning, and putting it in the field shows the error under it like any other
+ * formula. It does **not** fall back to the built-in set — a `setref:` gets no
+ * fallback, so the roll waits, exactly as written, for the set to come back.
+ * Storing anything
  * more resolved than the text would make an uninstall quietly rewrite what
  * somebody wrote.
  *

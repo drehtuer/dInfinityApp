@@ -68,9 +68,9 @@ data class DiceSet(
      * (`docs/dice-notation.md`). A set is free to leave any of them out;
      * notation then falls back to the built-in set for that one die.
      *
-     * They are lower case because a die id is a slug. Notation is
-     * case-insensitive everywhere except set ids, so `dF` typed by a player
-     * and `df` in a set file are the same die.
+     * They are lower case because a die id is a slug. Notation reads `d`,
+     * `F` and the keep and drop words in either case, so `dF` typed by a
+     * player and `df` in a set file are the same die.
      */
     val StandardDieIds: List<String> =
       listOf("d2", "d4", "d6", "d8", "d10", "d10-tens", "d12", "d18", "d20", "df")

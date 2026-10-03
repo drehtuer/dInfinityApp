@@ -40,8 +40,8 @@ friction = 0.5
 # `BuiltinDiceSetTest` instead of being trusted because they are written down
 # here. A tetrahedron has no opposite faces and keeps 1-4 at its corners.
 
-# A real d2 is a coin, not a cube. A set without one falls back to a d6
-# labelled 1,2,1,2,1,2 (docs/dice-notation.md, "d2"); this one need not.
+# A real d2 is a coin, not a cube. This is the coin every other set falls
+# back to when it has no d2 of its own (docs/dice-notation.md, "d2").
 [[die]]
 id = "d2"
 shape = "coin"

@@ -101,9 +101,10 @@ Every die is a **convex** rigid body:
 - The engine is configured in deterministic mode — Jolt built with
   `CROSS_PLATFORM_DETERMINISTIC=ON` (`docs/build-setup.md`) — stepped by a
   single-threaded job system, and no `System.nanoTime()` takes part in any
-  simulation decision. Single-threaded because a roll is at most eighty small
-  convex bodies, where the threads would cost more than they save, and because
-  it removes a whole class of question about what "deterministic" depends on.
+  simulation decision. Single-threaded because a roll is at most a hundred
+  small convex bodies (`TableCapacity.MAX_DICE`), where the threads would cost
+  more than they save, and because it removes a whole class of question about
+  what "deterministic" depends on.
 - The simulation runs in **centimetres and grams**, converted from the app's
   millimetres at the bridge and nowhere else. That is not cosmetic: at metre
   scale a die's inertia tensor falls under a hard-coded "near zero" test inside
@@ -183,8 +184,9 @@ power-saving mode; there is no other one.
   question the roll asks before it is allowed to end. So the part of a roll
   that may not be declared over because the hand is on it is exactly the part
   that is not slowed down for somebody to look at, and the two can never
-  disagree. A tap-to-roll throw has no hand on it at any point and is paced
-  from its first step.
+  disagree. A throw that no hand starts — the accessibility action on the
+  table, or Enter in the formula editor ("The two ways in that are not a
+  hand") — has no hand on it at any point and is paced from its first step.
 - **The pace is applied where real time becomes simulated time**, which is
   `TrayLoop.frame` and nowhere else. Power-saving mode asks for a fixed helping
   of simulated time and has no frame clock at all, so it never passes through
@@ -202,12 +204,14 @@ power-saving mode; there is no other one.
   Dropping it costs nothing but wall-clock time: the roll takes the same steps
   in the same order and comes to the same faces, it simply arrives there later.
   A number here is a smoothness problem, and Step 5.7 is where it stops being
-  acceptable (`docs/TODO.md`).
-- **A re-throw takes no simulated time.** Rung 3 picks a die up and puts it
-  back at the spawn point between one step and the next, so there is nothing to
-  interpolate across and the renderer is told so: the die is drawn at its new
-  place, not sliding smoothly back through the air towards it. An invisible
-  hand with an animation on it is still an invisible hand.
+  acceptable (`docs/TODO.md`). `LiveRoll.droppedSteps` counts them, but
+  nothing in the app shows the count yet — putting it on the debug overlay is
+  an open item in `docs/TODO.md`.
+- **A re-throw takes no simulated time.** A die that could not be read is
+  picked up and put back at the spawn point between one step and the next, so
+  there is nothing to interpolate across and the renderer is told so: the die
+  is drawn at its new place, not sliding smoothly back through the air towards
+  it. An invisible hand with an animation on it is still an invisible hand.
 - **Watching is passive, and the type says so.** A roll in progress hands the
   renderer a frame and takes nothing back. It cannot be stepped, reached into
   or asked for another go from the far side of `Renderer`, so turning the
@@ -391,8 +395,8 @@ again, and which cost nothing, because which die a keep/drop leaves out is
 arithmetic over the faces and is redone from whatever faces there are. That is
 `PickUp`, beside `GroupRoller`, which is what built the chains it refuses to
 guess at. It is conservative on purpose: a die it refuses is a die the player
-throws again by pressing **Roll**, and a die it wrongly allowed would be a roll
-the app had rearranged.
+throws again by shaking the whole roll again, and a die it wrongly allowed
+would be a roll the app had rearranged.
 
 ### Can this be used to roll until you like the answer
 
@@ -412,23 +416,23 @@ sure the throw is *visible* and that the record does not flatter it:
   throws a die five times has rolled five times. There is no version of this
   where the app decides the fifth.
 
-What the app must never do is let a re-throw *cost* nothing to the record. That
-is the part that is not decided yet.
+What the app must never do is let a re-throw *cost* nothing to the record, and
+that is decided (below).
 
-### What is built, and what is waiting on a decision
+### What is built, and what is not yet
 
 `TrayPick` and `PickUp` are built and tested: the app can say which die a
-finger is on and which dice a hand may go near. **The gesture is not wired up
-yet**, and the reason is one question with no obvious answer — *what the
-history says about a roll a die was thrown again in* (`docs/TODO.md`, "Open
-questions").
+finger is on and which dice a hand may go near. What the history says about a
+roll a die was thrown again in is decided too: **the die's history keeps every
+throw, the roll's keeps the sum.** A `d6` that went `6, 6, 6, 4` contributes
+four readings to its own fairness figure, because it really did land on those
+faces four times, and the roll contributes one total. That is how an exploding
+chain is already counted, so a hand re-throw is not a new rule in the history
+but the existing one applied to a throw the player asked for.
 
-A roll is written down the moment its dice stop, one `RollHistory` row and a
-face count for every die (`docs/statistics.md`). A hand re-throw happens after
-that, and it changes the total. Amending the row, writing a second one, and
-moving when a roll is written down are three different products, not three
-spellings of one, and each of them changes what the history *means*. Until that
-is answered the gesture stays unspent — which is what it has been all along.
+**The gesture itself is not wired up yet** (`docs/TODO.md`, "Wire the
+one-finger touch to a hand re-throw"). Until it is, a single finger on the tray
+does nothing — which is what it has been all along.
 
 ## What a shake's spread currently rests on
 
@@ -462,7 +466,7 @@ tumbling rather than as a heap. The throw buys that back
 of 8.33.
 
 Both are measured, with numbers, in `docs/TODO.md` (Step 5.5). The point for
-anyone changing this file is that **the correction rate and the overlap depth
+anyone changing this file is that **the re-throw rate and the overlap depth
 cannot be fixed independently of deciding what a sustained sideways shake should
 do to a tray of dice**, which is an open question below. A tray of dice under a
 1.8 g lateral drive packing against the far wall may well be right — it is what
@@ -597,8 +601,10 @@ look like a regression in how a shaken roll reads.
 - **The cap is also the hand's limit on the roll.** A shake holds a roll open,
   but not past twelve seconds: the safety valve is not something the hand gets
   a vote on, and steps counted past it would be a roll nothing can describe.
-- A shake session starts when acceleration magnitude stays above 3,500 mm/s²
-  (about 0.35 g) for more than 80 ms, and ends after 400 ms below 1,500 mm/s².
+- A shake session starts when acceleration magnitude stays above 6,000 mm/s²
+  (about 0.6 g) for 100 ms, and ends after 400 ms below 1,500 mm/s². The start
+  was 0.35 g once and was raised because picking the phone up, setting it down
+  or handing it over registered as a shake (`ShakeThresholds`).
   Two thresholds rather than one, with a gap between them: a single threshold
   would flicker on and off through the quiet moment at the top of every swing.
   A session that runs past 30 s is ended anyway — it has stopped being an
@@ -686,7 +692,7 @@ that has been read and lifted off stops counting, so one slow neighbour cannot
 make a throw look worse than it was.
 
 **And it is a throw, not a drop.** A die leaves the hand at up to 1100 mm/s
-sideways with 30–75 rad/s of spin, from 60 mm above the floor. Those numbers
+sideways with 37.5–75 rad/s of spin, from 60 mm above the floor. Those numbers
 were chosen against the figure above rather than by eye: at the 250 mm/s it
 used to be, a die travelled about 34 mm before it landed — it came down
 roughly where it was let go, with nothing left to turn into tumbling.
@@ -732,9 +738,10 @@ which is the only half of this the app is allowed to work on.
 A die is **at rest** when both its linear speed is below 1 cm/s and angular
 speed below 0.05 rad/s for 250 ms of simulated time.
 
-The roll is **finished** when every die is at rest, or when a hard cap of 12
-simulated seconds is hit (then all still-moving dice are force-settled by
-zeroing velocity, which is logged as an anomaly).
+The roll is **finished** when every die is at rest. A die is never
+force-settled: if the 12-second backstop is reached first, the roll gives up
+without an outcome for the dice still moving, and the screen offers those dice
+back ("A roll that cannot finish says so", below).
 
 Reading a face: for each face of the die, take the dot product of its outward
 normal (in world space) with the up vector. The face with the largest dot
@@ -1353,9 +1360,10 @@ the surface decides, and some noise in a mix the surface also decides. Four
 numbers per preset say the whole of it — a base frequency, a decay time, a noise
 share and a second partial that is deliberately not a whole multiple, because a
 struck plate or block is not a tone generator. Felt is almost all noise and gone
-in a fiftieth of a second; glass is almost all ring and hangs on ten times as
-long. The noise comes from a `Seeds`-stirred stream keyed by the preset and the
-ringing from `Exact`, so a table sounds the same on every launch and on every
+in a fiftieth of a second; glass is almost all ring and hangs on about four
+times as long (`ImpactWaveform`: a decay of 0.018 s against 0.075 s). The noise
+comes from a `Seeds`-stirred stream keyed by the preset and the ringing from
+`Exact`, so a table sounds the same on every launch and on every
 phone.
 
 **Pitch tracks impulse and die size** (`docs/TODO.md`, Step 5.6), and both
@@ -1461,9 +1469,10 @@ impact sounds rather than a crash in the middle of a roll.
   away from its own caster looks like.
 
   Four times the map, and a shadow distance that stops just past the tray,
-  puts a texel at about a twentieth of a millimetre. The biases come down with
-  it, because they are in world units too and Filament's default normal bias
-  of 1.0 is a whole millimetre of push on a die 16 mm across.
+  puts a texel at under half a millimetre — 900 mm over 2,048 pixels, about
+  0.44 mm. The biases come down with it, because they are in world units too
+  and Filament's default normal bias of 1.0 is a whole millimetre of push on a
+  die 16 mm across.
 
 - **There is no ambient occlusion, because the table may not shade itself.**
   It was here for the darkening where a die meets the felt — a cast shadow puts
@@ -1705,15 +1714,14 @@ impact sounds rather than a crash in the middle of a roll.
 - Camera looks down at the tray straight or at a slight angle — **Table view**
   decides, 0° or 22° off straight down, 40° field of view, and at 22° it stands
   off the near end of the tray ("How far it leans is the player's"). Straight
-  down is the default and a leaning shot is the one that shows the walls. While
-  a roll is running it frames the whole tray, because a die can be anywhere in
-  it; once the dice settle it frames *them* — each as the box around its
-  bounding sphere, so a die at the edge of the group is wholly in shot rather
-  than centred and clipped — and eases in with a smoothstep, because a camera
-  that starts and stops dead reads as a glitch rather than as attention.
+  down is the default and a leaning shot is the one that shows the walls. It
+  frames the whole tray while a roll is running and after the dice have
+  settled alike, because a die can be anywhere in it; it does not close in on
+  the settled dice ("The camera frames the whole tray, and only the player
+  moves it", above).
 - The distance is solved, not guessed: each framed corner names the nearest the
   camera may stand for it to be inside the frustum, and the camera takes the
-  furthest of those. That is what makes "the dice are in shot" a test rather
+  furthest of those. That is what makes "the tray is in shot" a test rather
   than a judgement.
 - Die meshes come from the shape catalogue — the same closed forms the solver
   collides, grouped onto the same face directions the reader reads, so face *i*
@@ -1801,12 +1809,14 @@ impact sounds rather than a crash in the middle of a roll.
 - While the phone is being shaken the roll runs at real time, so the dice on
   screen answer the hand on the frame it moved. The change of pace when the
   hand lets go is the one the player caused.
-- Results are overlaid as labels near each die once settled; tap a die to
-  highlight its contribution in the breakdown.
+- The result is not drawn over the dice. The total and its breakdown are on
+  the result sheet ("What is drawn over the table"), and a one-finger tap on
+  the tray deliberately does nothing — it is kept for picking a die up
+  ("Picking a die up and throwing it again").
 
 Target: 60 fps with 20 dice on the Pixel 10a with headroom; the capacity rule
-caps a roll at what the table can hold, which on a phone-sized table is in
-the region of 60–80 small dice. Beyond ~40 dice the renderer drops shadows.
+caps a roll at what the table can hold, and never above a hundred dice
+(`TableCapacity.MAX_DICE`). Every die casts a shadow, whatever the count.
 
 ## What is drawn over the table
 
@@ -2092,11 +2102,13 @@ the roll's number at the display size in the middle of the screen and again at
 clipped. So a subtotal is drawn unless it is the whole of the result
 (`Subtotals`, and `docs/design-handover.md`).
 
-**A die from a later pass says so.** A roll that had to throw something again
-shows the dice of its last pass only, so a total counting twenty dice can stand
-over a table holding three. Those dice get a 4 dp `--color-accent-700` outline
-and a `pass 2` label in the slot the `dropped` marker already uses, and the
-number on the felt stops looking like a mistake.
+**A die from a later pass should say so — not built yet.** A roll that had to
+throw something again shows the dice of its last pass only, so a total counting
+twenty dice can stand over a table holding three. The design gives those dice a
+4 dp `--color-accent-700` outline and a `pass 2` label in the slot the
+`dropped` marker already uses, so the number on the felt stops looking like a
+mistake; the app does not draw either yet (`docs/TODO.md`, "Mark the dice of a
+later pass").
 
 **6 and 9 carry a trailing dot.** A die on a table lies at whatever angle it
 landed at, and `6` and `9` are the same glyph turned over, so the ambiguous one
@@ -2114,20 +2126,24 @@ and `LabelRoom` measures the numeral *with its dot on*, because `6.` is wider
 than `6` and a `6` sized as though it were bare would hang its dot over the
 edge of its face.
 
-**The dice arrive one at a time.** Each falls from above where it lands, 85 ms
-after the one before it, and the result sheet waits for the last of them:
-`min(2400, 950 + (n − 1) × 85)` ms. In the prototype the shove a landing die
-gives the dice already down is an animation — three passes along the collision
-normal, a randomised overshoot, a ±35° spin — because the prototype has no
-solver. **In the app it is not to be built at all.** A die landing among
-settled dice already moves them: they are rigid bodies and it hit them. What
-the app takes from this is the *stagger*, dice spawned across a beat rather
-than in one cluster; what it must not take is the shove, which written in
-Kotlin would be precisely the invisible hand this project refuses
-(`.claude/CLAUDE.md`). A settled die moved by another die is physics. A settled
-die moved by code is a bug. The stagger stays inside the seed either way — the
-schedule is part of the throw, so a replay replays it — and it is still one
-world, so the capacity rule is unchanged.
+**The dice are to arrive one at a time — not built yet.** In the design each
+falls from above where it lands, 85 ms after the one before it, and the result
+sheet waits for the last of them: `min(2400, 950 + (n − 1) × 85)` ms
+(`docs/TODO.md`, "Stagger the spawn"). What the app does today is release every
+die at once and stagger them in *height* instead: `SpawnLayout` spreads the dice
+over a grid of cells and cycles the cells through three height bands, so dice
+that drift together arrive at different moments rather than in a heap. In the
+prototype the shove a landing die gives the dice already down is an animation —
+three passes along the collision normal, a randomised overshoot, a ±35° spin —
+because the prototype has no solver. **In the app it is not to be built at
+all.** A die landing among settled dice already moves them: they are rigid
+bodies and it hit them. What the app takes from this is the *stagger*, dice
+spawned across a beat rather than in one cluster; what it must not take is the
+shove, which written in Kotlin would be precisely the invisible hand this
+project refuses (`.claude/CLAUDE.md`). A settled die moved by another die is
+physics. A settled die moved by code is a bug. When the stagger in time is built
+it stays inside the seed — the schedule is part of the throw, so a replay
+replays it — and it is still one world, so the capacity rule is unchanged.
 
 ## Power-saving mode
 
@@ -2157,8 +2173,8 @@ world, so the capacity rule is unchanged.
   table; this stands **instead of** it, which is why it fills the space the
   tray would and carries the tray's own grey rather than the page's colour.
 - The simulation runs on a worker thread as fast as possible, still at
-  the same fixed timestep, still with the same seed, correction logic and
-  settle rules. Typical roll finishes in well under 100 ms of wall time.
+  the same fixed timestep, still with the same seed, settle rules and
+  re-throws. Typical roll finishes in well under 100 ms of wall time.
 - **It is not paced, and it cannot be.** `RollPace` exists so a player can
   watch the dice land, and there is nothing here to watch. `PowerSavingTray`
   asks for a fixed helping of *simulated* time rather than measuring a frame,
@@ -2243,15 +2259,15 @@ same biases on the same steps. The snapshot is also built **on demand**:
 off walks no dice per frame.
 
 **It is a plan, not a wireframe over the dice.** The picture is drawn by
-Filament in perspective from a tilted camera; the overlay is Compose, from
-straight above. Registering a wireframe to the picture would mean reproducing
-the projection, the pinch and the pan on the far side of `Stage` — new code
-behind the line no JVM test can reach, in order to draw outlines over pictures
-that already show where the dice are. A plan says what the pictures cannot:
-which die is standing on another, which is against a wall, and which has not
-stopped yet. So nothing was added to `Stage`, and `TrayPlan` — the arithmetic
-that turns a position in millimetres into a place on the plan — is plain Kotlin
-with a JVM test (decision 56).
+Filament in perspective, from a camera that may lean 22° and can be pinched and
+panned; the overlay is Compose, from straight above. Registering a wireframe to
+the picture would mean reproducing the projection, the pinch and the pan on the
+far side of `Stage` — new code behind the line no JVM test can reach, in order
+to draw outlines over pictures that already show where the dice are. A plan says
+what the pictures cannot: which die is standing on another, which is against a
+wall, and which has not stopped yet. So nothing was added to `Stage`, and
+`TrayPlan` — the arithmetic that turns a position in millimetres into a place on
+the plan — is plain Kotlin with a JVM test (decision 56).
 
 The overlay is read when the roll screen opens and not watched, like power
 saving, the shake, the haptics and the sound, and for the same reason: an

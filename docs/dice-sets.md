@@ -103,11 +103,10 @@ faces = [1, 2, 3, 4, 5, 6]
 labels = ["💀", "2", "3", "4", "5", "6"]   # what is printed if no texture
 
 [[die]]
-id = "d4"
-shape = "tetrahedron"
-read = "vertex-up"
-faces = [1, 2, 3, 4]
-color = "#f0e6d0"
+id = "d6"
+shape = "cube"
+faces = [1, 2, 3, 4, 5, 6]
+color = "#f0e6d0"                # per-die override
 
 # --- tables (optional, see docs/tables.md) ---------------------------
 
@@ -126,13 +125,13 @@ sound = "felt"
 | Field | Required | Notes |
 | --- | --- | --- |
 | `format` | yes | Integer. The app refuses formats newer than it knows. |
-| `set.id` | yes | Slug of 3–40 characters (`[a-z0-9-]`, starting and ending with a letter or digit). Used as the `setref` in notation and as the folder name, which is why it has a floor. |
+| `set.id` | yes | Slug of 3–40 characters (`[a-z0-9-]`, starting and ending with a letter or digit). Used as the `setref` in notation and as the folder name, which is why it has a floor. Notation only reads a `setref` that starts with a letter (`docs/dice-notation.md`), so a set whose id starts with a digit installs and rolls from the picker but cannot be named in a typed formula. |
 | `set.name`, `set.version` | yes | |
 | `set.author`, `license`, `description`, `homepage` | no | Displayed only; nothing in the app enforces a licence. `license` is an SPDX identifier by convention — see "What a licence means". `homepage` is shown as text, opened only on explicit tap, `https` only. |
 | `defaults.*` | no | Material and physics defaults, all clamped. |
-| `die.id` | yes | Slug of 1–40 characters, unique within the set — shorter than a set id, because `d2`, `d4` and `d6` are the ids plain notation resolves. Standard names (`d2`…`d100`, `d10-tens`, `df`) are what typed notation resolves, optionally set-qualified as `brass:2d20`. A die with any other id is rolled by tapping it in the dice picker — the grammar in `docs/dice-notation.md` has no unambiguous way to write `skull-d6kh1`, since a slug and a modifier are made of the same characters. |
+| `die.id` | yes | Slug of 1–40 characters, unique within the set — shorter than a set id, because `d2`, `d4` and `d6` are the ids plain notation resolves. Standard names (`d2`, `d4`, `d6`, `d8`, `d10`, `d10-tens`, `d12`, `d18`, `d20`, `df`) are what typed notation resolves — there is no `d100` die, because `d100`/`d%` is always a `d10-tens` and `d10` pair (`docs/dice-notation.md`, "d100 and d%"), optionally set-qualified as `brass:2d20`. A die with any other id is rolled by tapping it in the dice picker — the grammar in `docs/dice-notation.md` has no unambiguous way to write `skull-d6kh1`, since a slug and a modifier are made of the same characters. |
 | `die.shape` | yes | A name from the shape catalogue below. v1 has no other option. |
-| `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (d2-as-d6). |
+| `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (a d6 numbered 1–3 twice, say). |
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
 | `die.read` | no | `face-up` (default) or `vertex-up`. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
@@ -196,14 +195,17 @@ any other, and there is no privileged path for it:
 ## Shape catalogue
 
 The catalogue is **closed in v1**: these eight shapes and nothing else. Face
-count, face order and texture atlas layout are defined by the app (documented
-in `dicesets/format/shapes/` with reference images).
+count, face order and texture atlas layout are defined by the app, in code: the
+atlas grid in `core/model` (`ShapeAtlas.kt`) and each solid's faces, their
+order and which way each cell is drawn up in `simulation/api`
+(`SolidFaces.kt`). `examples/` carries a blank atlas for every shape to draw
+over.
 
 | Name | Faces | Typical use |
 | --- | --- | --- |
 | `coin` | 2 | d2 |
 | `tetrahedron` | 4 | d4 |
-| `cube` | 6 | d6, d2-as-d6 |
+| `cube` | 6 | d6 |
 | `octahedron` | 8 | d8 |
 | `pentagonal-trapezohedron` | 10 | d10, d10-tens (together: d100 / `d%`) |
 | `dodecahedron` | 12 | d12 |
@@ -580,7 +582,7 @@ Users paste a URL. Accepted sources:
 | GitLab (gitlab.com or self-hosted) | `https://gitlab.com/ada/brass-and-bone/-/tree/main` | Same, via the GitLab API |
 | Codeberg / Gitea / Forgejo | `https://codeberg.org/ada/brass-and-bone` | Same, via the Gitea API |
 | Any archive | `https://example.org/dice/brass.zip`<br>`https://example.org/dice/brass.tar.gz` | Direct download; the SHA-256 of the archive is recorded in place of a commit SHA |
-| Local file | picked via the system file picker | `.zip`, `.tar.gz` or a folder |
+| Local file | picked via the system file picker | A single `.zip`, `.tar.gz` or `.tgz` file. A folder cannot be picked: the picker opens one document, so a set on the phone's storage is zipped first. |
 
 The forge integrations exist for convenience (browse to a repo, paste the
 URL, get updates). They are not what makes an install safe — the validator
@@ -626,7 +628,9 @@ Install flow:
 5. Run the validator (below). On failure: delete the temp folder, show the
    report.
 6. On success: move the folder atomically to `dicesets/<set.id>/`. If a set
-   with that id exists, ask to replace (versions are compared). Replacing
+   with that id exists it is replaced without asking — versions are not
+   compared, so installing an older package over a newer one is allowed — and
+   the result says so afterwards ("… was replaced with this one"). Replacing
    moves the old folder aside to `<set.id>.replacing` first and deletes it
    only once the new one is in place, so a failure halfway leaves the *old*
    set installed rather than neither. Every step of that is checked: if the
@@ -743,7 +747,7 @@ somebody.
 
 ## Validation
 
-The validator runs the same way for URL installs, local folder/zip imports,
+The validator runs the same way for URL installs, local archive imports,
 face designer exports and the built-in set. It produces a report of
 `error` / `warning` lines with file and line references.
 
@@ -820,7 +824,10 @@ are ignored with a warning to allow future extensions.
 - Loading a set at startup is lazy and wrapped: if a previously installed set
   fails to load (corrupted storage, app upgrade with stricter rules), it is
   marked *disabled* with a reason, and the app continues with the built-in
-  set. Notation that references it falls back and the breakdown says so.
+  set. Plain notation (no `setref`) that would have taken a die from it falls
+  back per die to the built-in set, and the breakdown says which set each die
+  came from. Notation that names it with a `setref` gets no fallback: it is a
+  parse error naming the missing set (`docs/dice-notation.md`).
 - **What is installed is read off the disk and validated again every time, not
   remembered from the install.** `InstalledSets` answers with a package that is
   either ready or broken-with-its-report, and the two cases exist precisely

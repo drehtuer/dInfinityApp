@@ -551,8 +551,8 @@ class FilamentStage(
      * which is the classic look of a shadow biased away from its own caster.
      *
      * So: four times the map, and a shadow distance that stops just past the
-     * tray instead of at the camera's far plane. That is about a twentieth of
-     * a millimetre per texel, and the biases come down with it — they are in
+     * tray instead of at the camera's far plane. That is under half a
+     * millimetre per texel, and the biases come down with it — they are in
      * world units too, and a normal bias of Filament's default 1.0 is a whole
      * millimetre of push on a die 16 mm across.
      */

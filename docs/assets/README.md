@@ -52,9 +52,10 @@ same font file:
 python3 tools/generate-font.py /tmp/Archivo.ttf .
 ```
 
-What it writes is the digits, the two signs, a times, a per cent and a full
-stop, as closed polygons in em units with the curves already flattened — a die
-turns them into a distance field once and the field is what the shader reads
+What it writes is the digits, three signs — `+`, the hyphen-minus `-` and the
+typographic minus `−` (U+2212) — a times, a per cent and a full stop, as closed
+polygons in em units with the curves already flattened. A die turns them into
+a distance field once and the field is what the shader reads
 (`docs/physics-and-rendering.md`). It is a resource rather than Kotlin so that
 it stays diffable and stays inside the hundred-and-twenty-column rule the
 linters hold everything else to.

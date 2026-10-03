@@ -85,7 +85,8 @@ a tumble; everything else is real.
   for a typed formula or for a handful of dice picked by tapping, with mean
   and standard deviation.
 - **Standard dice** — d2, d4, d6, d8, d10, d12, d18, d20, d100 (as two d10s;
-  `d%` is an alias for `d100`).
+  `d%` is an alias for `d100`), and Fudge dice (`dF`), whose total carries its
+  sign.
 - **Extensible dice sets** — dice are defined in plain text files with
   optional face textures; install sets from GitHub, GitLab, Codeberg or any
   `https` link to an archive. [examples/](examples/) is a working set to copy:
@@ -96,7 +97,7 @@ a tumble; everything else is real.
 - **Safe imports** — a broken or malicious dice set can fail to load, but it
   cannot crash the app or affect other sets.
 - **Your accent** — the one colour the interface spends is yours to choose: six
-  presets, or any colour your phone's picker offers, pushed toward the ground
+  presets, or any colour from the app's own picker, pushed toward the ground
   it is read against until it is legible on both the light and the dark one.
 - **Your view of the table** — look straight down at the tray, or lean the
   camera over and see the top and left walls. Straight down is what a new
@@ -107,20 +108,22 @@ a tumble; everything else is real.
   tray and the charts, which are drawings and would otherwise be silent.
   Nothing is said by a colour alone: a natural 20, a dropped die, the chosen
   filter and the line a fair die would draw all say so in words as well. Touch
-  targets are 48 dp and the palette's contrast is measured in a test rather
-  than eyeballed.
+  targets are 48 dp — save the colour picker's sliders, which Material holds at
+  44 dp and which a test records — and the palette's contrast is measured in a
+  test rather than eyeballed.
 - **Face designer** — draw die faces with your finger, turn the die over, save
   the lot as a dice set of your own, and roll the die you drew.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
   natural 7. It still matters.
-- **No cocked dice, no invisible hand** — dice that would land on top of each
-  other are steered apart while they are still tumbling, never poked once
-  they have stopped. A die that does end up cocked is re-thrown where you can
-  see it, the way you would at a real table.
-- **No 500d6** — a roll is refused when the dice would not fit on the table
-  with room to tumble. Dice shrink to make room up to a point; past that the
-  simulation would only produce nonsense, so the app says no.
+- **No cocked dice, no invisible hand** — nothing nudges, steers or pokes a
+  die. A roll reads the dice that came to rest flat, takes them off the table
+  and throws the rest again where you can see it, the way you would at a real
+  table.
+- **No 500d6** — a roll is refused past a hundred dice, or sooner when the
+  dice would not fit on the table with room to tumble. Dice shrink to make
+  room up to a point; past that the simulation would only produce nonsense, so
+  the app says no.
 
 ## Documentation
 
@@ -148,13 +151,14 @@ is the visual one. Each document below links to the screens that realise it.
 ## Status
 
 **Implementation. The app rolls dice on a phone, and `v0.1.1` is out** — a
-signed pre-release, published with its SHA-256, built from this repository by
+signed early release, published with its SHA-256, built from this repository by
 pushing a tag. Every screen is written and connected; the documents in `docs/`
 and the prototype in `design/` are still the specification, and where the two
 disagree one of them is a bug.
 
-It is a pre-release because the physics is not finished: `100d4` does not
-reliably settle, and a hard sideways shake can run a roll past its cap. See [docs/STATUS.md](docs/STATUS.md) for where things stand and
+It is still `0.x` because the physics is not finished: `100d4` does not
+reliably settle, and a hard sideways shake can run a roll out to its
+twelve-second cap, where it gives up rather than invent an answer. See [docs/STATUS.md](docs/STATUS.md) for where things stand and
 [docs/TODO.md](docs/TODO.md) for what is next.
 
 ## Building
@@ -169,7 +173,7 @@ docker run --rm -it -v "$PWD":/workspace -w /workspace dinfinity-dev \
   ./gradlew build test lint detekt ktlintCheck assembleDebugAndroidTest
 ```
 
-Release and debug APKs land in `app/build/outputs/named-apk/` as
+Release and debug APKs land in `app/build/outputs/named-apk/<variant>/` as
 `dInfinityApp-<version>.apk` and `dInfinityApp-<version>-debug.apk`. The
 container also carries `adb`, so a phone attached over WiFi debugging runs the
 on-device tests without leaving it.
@@ -185,8 +189,9 @@ the tracking files are kept tidy — are in
 
 ## Platform
 
-- Targets Android 17 (API 37); `minSdk` is 36 for now — see
-  [docs/TODO.md](docs/TODO.md), "Open questions"
+- Targets Android 17 (API 37); `minSdk` is 36, because Robolectric cannot
+  start API 37 — decision 17 in
+  [docs/architecture.md](docs/architecture.md#key-decisions-log)
 - Reference device: Google Pixel 10a; that is where it is tested first
 - Kotlin, Jetpack Compose
 - Accessibility: TalkBack labels on every screen, 48 dp touch targets, no

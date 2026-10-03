@@ -23,10 +23,10 @@ import kotlin.math.tan
  * case: the camera's own up rotates with it, stays square to the way it looks
  * at every angle, and at 0° stands directly over the middle of the tray.
  *
- * While a roll is running it frames the whole tray,
- * because a die can be anywhere in it; once the dice have settled it frames
- * *them* and eases in, because by then the only thing worth looking at is what
- * they came to.
+ * It frames the whole tray, while a roll is running and after the dice have
+ * settled alike: a die can be anywhere in it, and a camera that closed in on
+ * the settled dice would take away the table they landed on. Looking closer
+ * is the player's to do, by panning and pinching ([TrayView]).
  *
  * The tray's long side is the screen's *height*: a portrait phone gets a
  * portrait tray (`docs/tables.md`), and the long side is `+x`, so `+x` is up

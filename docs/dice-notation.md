@@ -56,8 +56,17 @@ integer   := [0-9]+
 identifier:= [a-z][a-z0-9_-]*
 ```
 
-Whitespace is ignored between tokens. Notation is case-insensitive except for
-set ids.
+Whitespace is ignored between tokens. Most of the notation is
+case-insensitive: `D`, `F`, `kh`, `kl`, `dh`, `dl` and `min` may be written in
+either case, so `4D6KH3` and `4d6kh3` are one formula. Two things are not:
+
+- **`r` must be lower-case.** The reroll modifier is matched exactly, so
+  `4d6r1` rerolls and `4D6R1` is a parse error.
+- **A set id is lower-case.** `setref` is scanned as `[a-z][a-z0-9_-]*` — it
+  has to start with a letter. A set id may start with a digit
+  (`docs/dice-sets.md`), but such a set cannot be named in a formula: `3dice:1d6`
+  does not parse as a `setref`. Give a set you want to reference by name an id
+  that starts with a letter.
 
 ## Limits
 
@@ -342,14 +351,17 @@ whose taps disappear.
 imported collections and the breakdown (which always prints `d100`).
 Both are always resolved to a tens d10 (faces 00–90) and a units
 d10 (0–9) from the same set, marked as a pair. Result = tens + units, with
-00+0 = 100. If the set has a `d100-tens` die it is used; otherwise the normal
+00+0 = 100. If the set has a `d10-tens` die it is used; otherwise the normal
 d10 is used with its face values multiplied by ten in the breakdown. Sets can
 also define a true 100-face die but it is never chosen by `d100` implicitly.
 
 ## d2
 
-`d2` uses the set's coin if present, otherwise a d6 with face values
-`1,2,1,2,1,2`. Which one was used is visible in the breakdown.
+`d2` is an ordinary die id: it uses the set's `d2` (a coin) if it has one.
+Without a `setref`, a set that lacks one falls back to the built-in set's coin,
+like any other missing die, and the breakdown says which set it came from.
+With a `setref`, a missing `d2` is an error. Nothing stands in for a coin — no
+d6 is relabelled `1,2,1,2,1,2`.
 
 ## dF, and the sign a Fudge total carries
 

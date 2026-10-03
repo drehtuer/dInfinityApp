@@ -128,8 +128,10 @@ friction = 0.5              # 0.1 .. 1.0
 # the app chooses from the face count — as square as it can be, widest first,
 # face *i* in cell *i* reading left to right and top to bottom. The grid for
 # each shape is written above each die below. The path is relative to this
-# folder and cannot leave it; `..`, an absolute path or a backslash is an
-# error. PNG or WebP only, at most 2048x2048 and 4 MiB each, and at most 24 MiB
+# folder and cannot leave it: a `..`, an absolute path (a leading `/` or `\`,
+# or a drive letter such as `C:`) or an empty segment (`a//b`) is an error. A
+# backslash anywhere else is read as a `/`, so `textures\d6.png` is fine.
+# PNG or WebP only, at most 2048x2048 and 4 MiB each, and at most 24 MiB
 # of textures in the whole package.
 #
 # The atlases in `textures/` are fully transparent and exactly the right size.
