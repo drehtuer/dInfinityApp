@@ -131,7 +131,11 @@ fun RollScreen(
 
   val edges = rememberEdges(landed = presenter.state is RollState.Settled)
 
-  WhileTheScreenIsUp(presenter)
+  // Whether the first-launch welcome is still up decides two things — whether
+  // it is drawn, and whether the shake is listened to (decision 74).
+  val welcome = rememberWelcome(firstLaunch, onWelcomeSeen)
+
+  WhileTheScreenIsUp(presenter, listening = !welcome.up)
 
   Box(
     modifier =
@@ -191,7 +195,7 @@ fun RollScreen(
     // live region, so a shake that is being waited for is *announced*.
     WaitingForAShake(presenter.state, modifier = Modifier.align(Alignment.BottomCenter))
 
-    if (firstLaunch) FirstLaunch(presenter, whatIsThere, onWelcomeSeen, onImportCollection, onAddSets)
+    if (welcome.up) FirstLaunch(presenter, whatIsThere, welcome::pressPast, onImportCollection, onAddSets)
   }
 }
 
@@ -216,8 +220,11 @@ fun RollScreen(
  * and was written into the history for a screen nobody was on.
  */
 @Composable
-private fun WhileTheScreenIsUp(presenter: RollPresenter) {
-  ShakeToRoll(presenter)
+private fun WhileTheScreenIsUp(
+  presenter: RollPresenter,
+  listening: Boolean,
+) {
+  ShakeToRoll(presenter, listening = listening)
   KeepTheScreenAwake()
   LockTheOrientation()
   DisposableEffect(presenter.tray) {
@@ -430,13 +437,56 @@ internal fun RollState.awaiting(): Awaiting? =
 private val ABOVE_THE_EDGE = 18.dp
 
 /**
+ * Whether the first-launch welcome is up, and the one way to take it down.
+ *
+ * Held by the screen rather than by the welcome because it decides more than
+ * whether the welcome is drawn: while it covers the tray the shake is not
+ * listened to at all, so no roll can start and no result can land behind it
+ * (`docs/architecture.md`, decision 74).
+ */
+private class WelcomeState(
+  /** True while the welcome covers the tray. */
+  val up: Boolean,
+  private val press: () -> Unit,
+) {
+  /** Pressed past: gone from this screen at once, and remembered on disk. */
+  fun pressPast() = press()
+}
+
+/**
+ * [WelcomeState], remembered across a rotation for the same reason the
+ * welcome is: one that reappeared when the phone turned would look broken.
+ */
+@Composable
+private fun rememberWelcome(
+  firstLaunch: Boolean,
+  onWelcomeSeen: () -> Unit,
+): WelcomeState {
+  var pressed by rememberSaveable { mutableStateOf(false) }
+  return WelcomeState(
+    up = firstLaunch && !pressed,
+    press = {
+      pressed = true
+      onWelcomeSeen()
+    },
+  )
+}
+
+/**
  * The first-launch screen, over the tray, until it is pressed past
  * (`design/dInfinity.dc.html`, option 9a).
  *
- * Dismissed here as well as remembered on disk, so the screen changes the
- * moment a button is pressed rather than when a write comes back — and it
- * survives a rotation, because a welcome that reappeared when the phone turned
- * would be a welcome that looked broken.
+ * Dismissed by the screen as well as remembered on disk, so the screen
+ * changes the moment a button is pressed rather than when a write comes back —
+ * and it survives a rotation, because a welcome that reappeared when the phone
+ * turned would be a welcome that looked broken.
+ *
+ * **While it is up the shake is not listened to** (decision 74). It covers the
+ * whole tray, so a roll started under it would be dice nobody saw land and a
+ * result sheet drawn under its buttons. The tray behind it is otherwise left
+ * alone: a formula that arrives while it is up — a saved roll tapped after
+ * the import — is typed and waits, and the first shake after it is pressed
+ * past throws it.
  *
  * Its d20 is **put on the table, not thrown**: `1d20` is typed into the field
  * and the welcome gets out of the way, and the throw is the shake the player
@@ -449,25 +499,19 @@ private val ABOVE_THE_EDGE = 18.dp
 private fun FirstLaunch(
   presenter: RollPresenter,
   what: WhatIsThere,
-  onWelcomeSeen: () -> Unit,
+  onWelcomed: () -> Unit,
   onImport: () -> Unit,
   onAddSets: () -> Unit,
 ) {
-  var welcomed by rememberSaveable { mutableStateOf(false) }
-  if (welcomed) return
   Welcome(
     // The count of sets is the screen's own; the other two are handed in,
     // because this module does not know what a saved roll or a session is.
     what = what.copy(sets = presenter.sets),
     onRollNow = {
-      welcomed = true
-      onWelcomeSeen()
+      onWelcomed()
       presenter.type(FIRST_ROLL)
     },
-    onDismiss = {
-      welcomed = true
-      onWelcomeSeen()
-    },
+    onDismiss = onWelcomed,
     // Neither of these dismisses it: somebody who goes to fetch something and
     // comes back should find the welcome still there, with a count line that
     // has something new to say.

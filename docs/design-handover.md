@@ -216,6 +216,14 @@ is left in the script, unreferenced, rather than unpicked by hand.
   Worth a word on the board saying it is a browser's substitute for a shake,
   and the welcome's "Shake the phone or tap the tray to roll" wants the second
   half taken off.
+- **The welcome does not listen for a shake.** While the first-launch
+  takeover (`9a`) is up, the app registers no shake at all, so nothing can be
+  thrown under it and no result sheet can land behind its buttons
+  (`docs/architecture.md`, decision 74). Its copy still says that a shake
+  rolls; that is the lesson for the tray it leads to, not an invitation to
+  shake the welcome itself. The prototype reads no motion at all — a tray tap
+  stands in for the shake, and the welcome covers the tray — so nothing on the
+  board has to change.
 - **Settings has no shake switch any more** (option `1y` still lists one).
   A shake is the only way to start a roll, so a switch that turned it off
   would leave the app with no way to roll at all (decision 66). The row wants

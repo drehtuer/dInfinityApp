@@ -69,9 +69,6 @@ Spec: `docs/dice-notation.md`, `docs/tables.md`,
       `FormulaParser`, `NotationReference`, the breakdown, history, saved rolls
       and collection files; lifts `DicePicker.offeredBy`'s filter to
       `StandardDieIds`
-- [ ] **The welcome and the result sheet share the bottom edge.** A roll from
-      the saved-roll strip while the first-launch welcome is up draws the
-      breakdown under its buttons. Probably: draw no result behind a takeover
 
 Implementation notes recorded only here:
 

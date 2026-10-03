@@ -36,17 +36,28 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
  *
  * What it listens to is [ShakeInput.current]: the sensors, or a test's hand
  * standing in for them behind this same code ([ShakeInput]).
+ *
+ * @param listening false while something covers the whole tray — the
+ *   first-launch welcome — so a shake then is not heard at all, rather than
+ *   heard and thrown behind a screen nobody can see through
+ *   (`docs/architecture.md`, decision 74). Turning it back on registers the
+ *   hand there and then, so the first shake after the welcome is a throw.
  */
 @Composable
-internal fun ShakeToRoll(presenter: RollPresenter) {
+internal fun ShakeToRoll(
+  presenter: RollPresenter,
+  listening: Boolean = true,
+) {
   val context = LocalContext.current
   var shaking by remember { mutableStateOf(false) }
 
   // A hand around a phone that is being shaken is a hand on both edges of it.
   HoldTheEdges(shaking)
 
-  LifecycleResumeEffect(presenter) {
-    val listening =
+  LifecycleResumeEffect(presenter, listening) {
+    // Nothing registered, so nothing to let go of.
+    if (!listening) return@LifecycleResumeEffect onPauseOrDispose { shaking = false }
+    val heard =
       ShakeInput.current.listen(
         context,
         ShakeInput.Hand(
@@ -63,7 +74,7 @@ internal fun ShakeToRoll(presenter: RollPresenter) {
         ),
       )
     onPauseOrDispose {
-      listening.stop()
+      heard.stop()
       // Leaving the screen mid-shake must not leave the edges claimed.
       shaking = false
     }

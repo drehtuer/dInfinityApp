@@ -2141,6 +2141,15 @@ say what to do. `Shake the phone to roll.` stays, on the ready plate: shaking
 is the one thing nobody would guess at, and there is no button left to say
 it.
 
+**Nothing is drawn behind the first-launch welcome, because nothing can
+start there.** The welcome is a takeover over the whole tray, and the result
+sheet shares its bottom edge; a roll thrown while it was up — a formula
+opened on the way back from an import, then a shake — drew the breakdown under
+its buttons. While the welcome is up the shake is **not listened to**, so no
+roll starts behind it and there is no result to hide (`docs/architecture.md`,
+decision 74). What is typed meanwhile waits on the board, and the first shake
+after the welcome is pressed past throws it.
+
 **The result is a pull-up sheet, not a plate in the stack**
 (`design/dInfinity.dc.html`, options 1e–1g; the prototype draws it as
 `position:absolute;bottom:0` with `animation:dz-up`). It comes up from the
