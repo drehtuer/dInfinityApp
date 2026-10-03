@@ -1605,7 +1605,7 @@ boundary.
 
 The two in bold are short of their bar, and both would need the palette itself
 to change — which is a design decision and not a test's to make. They are
-written down in `docs/TODO.md` under "Open questions" with these numbers, and
+written down in `docs/TODO.md` under "Open questions", and
 `ModernistContrastTest` holds them at the measured value so a palette edit
 cannot deepen the shortfall without failing.
 
@@ -1710,7 +1710,7 @@ files that do so — `NotationReference.kt`, `AtlasDecoder.kt` and
 reason beside them, the same way the coverage exclusions are, so the gap is a
 line in a diff. Closing it means giving each message a
 typed reason the screen phrases, which is a design change rather than a string
-move; it is recorded in `docs/TODO.md` under "Open questions".
+move; it is recorded in `docs/TODO.md` under Step 6, "Localisation".
 
 The same is true of the sentences `app/`'s download and file-reading helpers
 write — `PackageFileReading`, `CollectionFileReading`, `PackageDownload`,
