@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-03
+**Last updated:** 2026-10-04
 
 ## Where we are
 
@@ -19,14 +19,19 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **`main` is at #336** — a shake is the only way to start a roll (decision
   66), the dice waiting to be thrown drop under real Jolt physics (decision
   67), and a die picked by finger will be thrown by a shake (decision 68,
-  decided, not built). **In flight, stacked:** `feature/drop-from-one-spot` —
-  added dice leave one spot over the middle of the tray a tenth of a second
-  apart, so the eye can follow them (decision 69); then
-  `feature/shake-rethrows-stuck-dice` — a die that lands cocked or on another
-  is no longer thrown again by the roll: it waits where it lies and the
-  player's next shake throws it (decision 70); then `feature/livelier-tumble`
-  — more spin (60–120 rad/s) and bouncier dice (restitution 0.55), after the
-  owner found the tumble too short.
+  decided, not built).
+- **In flight, one stack, in merge order:**
+  - #337 — added dice leave one spot over the middle of the tray a tenth of a
+    second apart (decision 69);
+  - #338 — a die that lands cocked or on another waits where it lies for the
+    player's shake (decision 70);
+  - #339 — more spin (60–120 rad/s) and bouncier dice (restitution 0.55);
+  - then the overnight batch on top: the re-throw code nothing calls is gone
+    and `FairnessTest` counts a give-up instead of stopping; the debug overlay
+    shows the frame rate and dropped steps (decision 72); the statistics name
+    a face by its label (decision 73); no shake is heard while the welcome is
+    up (decision 74); braced notation for a set's own dice, offered on the
+    picker (decision 75).
 
 ## Done
 
