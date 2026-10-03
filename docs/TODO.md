@@ -47,14 +47,16 @@ Spec: `docs/dice-notation.md`, `docs/tables.md`,
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** ported: a settled die moved by code is the
       invisible hand
-- [ ] **Wire the one-finger touch to a hand re-throw.** Everything under it is
-      built and decided: `TrayPick` (which die a finger is on), `PickUp` (which
-      dice a hand may go near; none in a group with `!` or `r n`), the throw is
-      `ThrowSpec.among`, and the history keeps every throw of the die and the
-      sum for the roll (`docs/physics-and-rendering.md`, "Picking a die up and
-      throwing it again"). The tap is decided — it does not roll (decision
-      66) — so the finger is free for this. Settle "Is the hand re-throw
-      thrown by the finger or by a shake?" (Open questions) first
+- [ ] **Wire the one-finger pick and the shake that throws it.** Everything
+      under it is built and decided: `TrayPick` (which die a finger is on),
+      `PickUp` (which dice a hand may go near; none in a group with `!` or
+      `r n`), the throw is `ThrowSpec.among`, the history keeps every throw of
+      the die and the sum for the roll, and **the finger only picks — the next
+      shake throws the picked dice** (decision 68;
+      `docs/physics-and-rendering.md`, "Picking a die up and throwing it
+      again"). Left to decide while building it: how a picked die is shown,
+      and how a pick is undone (a second touch on the same die is the obvious
+      answer)
 - [ ] **Decided, not built: braced notation for a set's own dice.**
       `3{skull-d6}kh1` is three of the die whose id is `skull-d6`;
       `3{brass:skull-d6}kh1` the same from set `brass`; `3{skull:d6}kh1` the
@@ -371,11 +373,6 @@ their own, add recomposition tests. Figures go in every PR description.
 - [ ] **Does the sound go?** The design's Settings has no sound switch; the app
       generates impact sounds per table and die size. Remove, add the row back
       to the design, or keep with no switch
-- [ ] **Is the hand re-throw thrown by the finger or by a shake?** The finger
-      picks the die (`TrayPick`); a finger that also throws it would be a
-      throw no shake started, which decision 66 rules out for a roll. Picking
-      up with the finger and throwing with a shake keeps the rule; settle
-      before wiring the re-throw
 - [ ] "Doodle this die" on the picker's long press as well as the breakdown's?
 - [ ] Should a stamp be draggable after it is put down, as in `1v`?
 - [ ] Should the anomaly log survive a restart? A stored seed is a replay

@@ -16,14 +16,11 @@ This is a snapshot, not a changelog — git history is the changelog.
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
 - **Latest release:** `v0.1.1`, signed and published with its SHA-256.
-- **`main` is at #331**, and CI is green on it. **In flight:**
-  `docs/harness-figures` — this file and `docs/TODO.md` compacted, with the
-  2026-10-03 harness figures; `feature/shake-only`, stacked on it — a shake is
-  the only way to roll: the editor's key, the table's accessibility action and
-  the Settings switch are gone (decision 66); and `feature/physical-board-drop`,
-  stacked on that — the dice waiting to be thrown drop under real Jolt physics,
-  worked out on a board thread and played back (decision 67, superseding 64),
-  device suite not yet run.
+- **`main` is at #335** — a shake is the only way to start a roll (decision
+  66), and the dice waiting to be thrown drop under real Jolt physics, worked
+  out on a board thread and played back (decision 67, superseding 64). **In
+  flight:** `docs/shake-throws-the-picked-die` — the hand re-throw is picked by
+  a finger and thrown by a shake (decision 68).
 
 ## Done
 
@@ -91,8 +88,6 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 
 All in `docs/TODO.md`; the ones that block code first.
 
-- **Is the hand re-throw thrown by the finger or by a shake?** — blocks
-  wiring it; a finger that throws would be a throw no shake started.
 - **Does the impact sound go?** The design has no switch for it.
 - **What the re-throw bar should bound** — duration and passes, probably.
 - **The built-in set's `size_mm`**, which changes every die's mass and how
