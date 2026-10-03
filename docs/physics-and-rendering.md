@@ -2461,6 +2461,13 @@ whoever is debugging the physics.
 A panel over the tray, drawn while the roll screen is open. It shows, per
 frame:
 
+- the **frame rate**: frames per second and the **p99 frame time**, over the
+  last 120 frames the tray drew back to back (`FrameMeter`), or *"no frames
+  yet"* before there are two in a row;
+- the **dropped steps**: how many steps this roll's frames were too late to pay
+  for (`FrameClock.droppedSteps`, carried on the snapshot as
+  `RollDiagnostics.droppedSteps`), and how many every roll since the screen
+  opened has dropped (`DroppedTally`);
 - the step the roll is on, and how many dice have come to rest;
 - how many dice are **waiting for a shake** — at rest, not read, and with no
   face to read because they are cocked or standing on another die; exactly the
@@ -2498,6 +2505,20 @@ what the pictures cannot: which die is standing on another, which is against a
 wall, and which has not stopped yet. So nothing was added to `Stage`, and
 `TrayPlan` — the arithmetic that turns a position in millimetres into a place on
 the plan — is plain Kotlin with a JVM test (decision 56).
+
+**The frame rate is measured, not estimated, and only while it is shown.**
+`TrayLoop.frame` hands the overlay the time between two frame callbacks in a
+row — `Choreographer`'s vsync timestamps, so a missed vsync shows as a 33 ms
+frame on a 60 Hz panel — and nothing for the gap after a frame that asked for
+no successor, which is the tray sitting still rather than stuttering. The
+figures are `FrameMeter`'s, plain Kotlin with a JVM test; the relay keeps the
+window on the roll thread and posts a reading to the screen every 30 frames.
+With the toggle off `DebugWatch.watching` is false and no frame is timed. It
+lives under the developer toggle rather than as a Settings row of its own: a
+frame rate is a figure for whoever is checking Step 5.7's targets, not a
+choice a player makes (`docs/architecture.md`, decision 72). It reads what the
+display did — the whole frame, physics and drawing — so it is the number the
+headless harness cannot give (`FrameTimes.drawn` is false there).
 
 The overlay is read when the roll screen opens and not watched, like power
 saving, the shake, the haptics and the sound, and for the same reason: an

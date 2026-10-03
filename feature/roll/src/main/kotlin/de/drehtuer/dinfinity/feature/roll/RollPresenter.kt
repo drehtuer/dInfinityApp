@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
+import de.drehtuer.dinfinity.simulation.api.FrameRate
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -161,6 +162,18 @@ class RollPresenter(
    * nothing else.
    */
   val diagnostics: RollDiagnostics get() = debug?.latest ?: RollDiagnostics.NONE
+
+  /**
+   * Every step this visit's rolls have dropped, for the overlay's
+   * dropped-steps line — nought with the toggle off.
+   */
+  val droppedThisVisit: Long get() = debug?.droppedThisVisit ?: 0L
+
+  /**
+   * How fast the tray is being drawn, for the overlay's frame-rate line, or
+   * null with the toggle off or before any frames (decision 72).
+   */
+  val frameRate: FrameRate? get() = debug?.frameRate
 
   /**
    * Whether this screen puts a tray on the screen at all.

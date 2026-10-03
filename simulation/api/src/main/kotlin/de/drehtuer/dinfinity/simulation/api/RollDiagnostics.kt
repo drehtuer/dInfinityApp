@@ -33,6 +33,12 @@ package de.drehtuer.dinfinity.simulation.api
  *   always be zero. Anything else is the invisible hand this app exists not to
  *   have.
  * @param contacts where the dice have hit something recently, newest last.
+ * @param droppedSteps steps a frame was too late to pay for, so far in this
+ *   roll ([FrameClock.droppedSteps]). The roll is unaffected — the same steps
+ *   are taken in the same order and come to the same faces — so it is a
+ *   smoothness figure, and the one the "is the first throw of a session
+ *   different?" question needs on screen (`docs/TODO.md`, Step 5.6). Nought
+ *   from a roll that keeps no clock.
  */
 data class RollDiagnostics(
   val steps: Int = 0,
@@ -42,7 +48,12 @@ data class RollDiagnostics(
   val forcedSettles: Int = 0,
   val postRestCorrections: Int = 0,
   val contacts: List<ContactPoint> = emptyList(),
+  val droppedSteps: Int = 0,
 ) {
+  init {
+    require(droppedSteps >= 0) { "a roll cannot have dropped $droppedSteps steps" }
+  }
+
   /** How many dice are in the throw. */
   val diceCount: Int get() = dice.size
 
@@ -188,6 +199,18 @@ fun interface DebugWatch {
 
   /** Whether a snapshot is worth building at all. */
   val watching: Boolean get() = true
+
+  /**
+   * One displayed frame came [intervalNanos] after the one before it — the
+   * frame-rate readout on the overlay (`docs/physics-and-rendering.md`,
+   * "Debug tooling"; `docs/architecture.md`, decision 72).
+   *
+   * Only ever called for two frames in a row, never across a pause in which
+   * the tray asked for none: a gap while nothing moved is not a slow frame.
+   * Asked of a watcher only when [watching] is true, so a tray with the
+   * developer toggle off measures nothing. Returns nothing, like [saw].
+   */
+  fun framed(intervalNanos: Long) = Unit
 
   companion object {
     /** Watches nothing, and is what a tray has until the toggle is on. */

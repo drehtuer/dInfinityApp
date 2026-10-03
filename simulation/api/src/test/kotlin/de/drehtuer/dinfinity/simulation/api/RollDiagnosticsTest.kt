@@ -158,6 +158,25 @@ class RollDiagnosticsTest {
     assertEquals(listOf(7), seen.map(RollDiagnostics::steps))
   }
 
+  @Test
+  fun `a watcher that does not time frames takes a frame time without complaint`() {
+    // The frame-rate readout is the relay's; every other watcher — the
+    // default one included — has no use for a frame time and must not have to
+    // write out that it ignores one (decision 72).
+    DebugWatch.NONE.framed(16_666_667L)
+    val seen = mutableListOf<RollDiagnostics>()
+    DebugWatch { seen += it }.framed(16_666_667L)
+    assertTrue(seen.isEmpty())
+  }
+
+  @Test
+  fun `a snapshot says how many steps its frames were too late to pay for`() {
+    assertEquals(0, RollDiagnostics.NONE.droppedSteps)
+    assertEquals(116, RollDiagnostics(droppedSteps = 116).droppedSteps)
+    // Dropped steps are a count; a negative one is a bug in whoever built it.
+    assertThrows { RollDiagnostics(droppedSteps = -1) }
+  }
+
   private fun die(
     index: Int,
     stillFor: Int,

@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.simulation.api.FrameRate
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.ui.common.Ink
@@ -52,12 +53,18 @@ import de.drehtuer.dinfinity.ui.common.Ink
  *
  * @param diagnostics the latest snapshot. [RollDiagnostics.NONE] draws an
  *   empty tray, which is what there is before the first throw.
+ * @param droppedThisVisit every step the rolls of this visit have dropped,
+ *   this one's included ([DroppedTally]).
+ * @param frameRate how fast the tray is being drawn, or null before it has
+ *   been drawn two frames in a row (decision 72).
  */
 @Composable
 fun DebugOverlay(
   diagnostics: RollDiagnostics,
   geometry: TableGeometry,
   modifier: Modifier = Modifier,
+  droppedThisVisit: Long = 0L,
+  frameRate: FrameRate? = null,
 ) {
   val anomalies = diagnostics.forcedSettles + diagnostics.postRestCorrections
   val overlayLabel = stringResource(R.string.roll_debug_overlay)
@@ -72,6 +79,7 @@ fun DebugOverlay(
         }.testTag(DebugTestTags.OVERLAY),
     verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
+    Timing(dropped = diagnostics.droppedSteps, droppedThisVisit = droppedThisVisit, frameRate = frameRate)
     Line(
       text =
         stringResource(
@@ -112,6 +120,37 @@ fun DebugOverlay(
     }
     TrayPlanView(diagnostics = diagnostics, geometry = geometry)
   }
+}
+
+/**
+ * The two timing rows: how fast the tray is being drawn, and how many steps
+ * frames have been too late to pay for (`docs/TODO.md`, Steps 5.6 and 5.7).
+ *
+ * The frame rate says "no frames yet" rather than nought until there is a
+ * reading — power-saving mode draws none at all, and "0 fps" would read as a
+ * frozen screen rather than an absent one.
+ */
+@Composable
+private fun Timing(
+  dropped: Int,
+  droppedThisVisit: Long,
+  frameRate: FrameRate?,
+) {
+  Line(
+    text =
+      if (frameRate == null) {
+        stringResource(R.string.roll_debug_frames_none)
+      } else {
+        stringResource(R.string.roll_debug_frames, frameRate.framesPerSecond, frameRate.p99Millis)
+      },
+    colour = MaterialTheme.colorScheme.onSurface,
+    tag = DebugTestTags.FRAMES,
+  )
+  Line(
+    text = stringResource(R.string.roll_debug_dropped, dropped, droppedThisVisit),
+    colour = MaterialTheme.colorScheme.onSurface,
+    tag = DebugTestTags.DROPPED,
+  )
 }
 
 /**
@@ -226,6 +265,12 @@ object DebugTestTags {
   const val OVERLAY: String = "roll:debug"
   const val COUNTERS: String = "roll:debug:counters"
   const val LADDER: String = "roll:debug:ladder"
+
+  /** The frame rate and the p99 frame time (decision 72). */
+  const val FRAMES: String = "roll:debug:frames"
+
+  /** The steps this roll and this visit have dropped. */
+  const val DROPPED: String = "roll:debug:dropped"
 
   /** Shown only when something has gone wrong, which should be never. */
   const val ANOMALY: String = "roll:debug:anomaly"

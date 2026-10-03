@@ -96,6 +96,17 @@ class TrayLoop(
   private var owed = false
 
   /**
+   * When the last frame was, for the frame-rate readout — and null when the
+   * frame before this one asked for no successor.
+   *
+   * Its own clock rather than [lastFrameNanos]: that one is reset whenever a
+   * roll or a drop starts, because the first frame of anything is worth no
+   * simulated time, while the time between two frames on screen is a frame
+   * time whatever began in between (`docs/architecture.md`, decision 72).
+   */
+  private var timedNanos: Long? = null
+
+  /**
    * How many of the roll's impacts have been handed on already.
    *
    * The roll keeps the whole list and this keeps the place in it, rather than
@@ -297,6 +308,31 @@ class TrayLoop(
    * while the player is watching one land.
    */
   fun frame(nanos: Long): Boolean {
+    val more = draw(nanos)
+    if (debug.watching) time(nanos, more)
+    return more
+  }
+
+  /**
+   * Hands the overlay how long this frame came after the last, if the last
+   * one asked for it.
+   *
+   * Only two frames in a row make a frame time. A frame that returned false
+   * stopped the callback, and the next one comes whenever something next
+   * happens on the tray — a pause, not a slow frame, and a readout that
+   * counted it would report a phone sitting still as a phone stuttering.
+   */
+  private fun time(
+    nanos: Long,
+    more: Boolean,
+  ) {
+    val previous = timedNanos
+    if (previous != null) debug.framed(nanos - previous)
+    timedNanos = if (more) nanos else null
+  }
+
+  /** [frame], less the timing of it. */
+  private fun draw(nanos: Long): Boolean {
     val live = roll
     if (live == null) {
       // A die the player added is on its way down. It is not a roll and there

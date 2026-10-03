@@ -17,12 +17,15 @@ import androidx.compose.ui.test.onNodeWithText
 import de.drehtuer.dinfinity.simulation.api.ContactPoint
 import de.drehtuer.dinfinity.simulation.api.DebugWatch
 import de.drehtuer.dinfinity.simulation.api.DieDiagnostic
+import de.drehtuer.dinfinity.simulation.api.FrameMeter
+import de.drehtuer.dinfinity.simulation.api.FrameRate
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.Struck
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -77,6 +80,39 @@ class DebugOverlayTest {
     compose
       .onNodeWithTag(DebugTestTags.LADDER, useUnmergedTree = true)
       .assertTextContains("corr 9 · waiting 1 · hits 2")
+  }
+
+  @Test
+  fun `the overlay says the frame rate and the p99 frame time`() {
+    compose.setContent {
+      DebugOverlay(
+        diagnostics = RollDiagnostics.NONE,
+        geometry = geometry,
+        frameRate = FrameRate(framesPerSecond = 59.6, p99Millis = 33.34, frames = 120),
+      )
+    }
+
+    compose.onNodeWithTag(DebugTestTags.FRAMES, useUnmergedTree = true).assertTextContains("60 fps · p99 33.3 ms")
+  }
+
+  @Test
+  fun `before two frames in a row the frame-rate line says so rather than nought`() {
+    compose.setContent { DebugOverlay(diagnostics = RollDiagnostics.NONE, geometry = geometry) }
+
+    compose.onNodeWithTag(DebugTestTags.FRAMES, useUnmergedTree = true).assertTextContains("fps — no frames yet")
+  }
+
+  @Test
+  fun `the overlay says the steps this roll and this visit have dropped`() {
+    compose.setContent {
+      DebugOverlay(
+        diagnostics = RollDiagnostics(droppedSteps = 12),
+        geometry = geometry,
+        droppedThisVisit = 40,
+      )
+    }
+
+    compose.onNodeWithTag(DebugTestTags.DROPPED, useUnmergedTree = true).assertTextContains("dropped 12 · visit 40")
   }
 
   @Test
@@ -189,6 +225,37 @@ class DebugOverlayTest {
   }
 
   @Test
+  fun `a relay adds up the steps every roll of the visit dropped`() {
+    val relay = DebugRelay(toTheScreen = { it() })
+
+    relay.saw(RollDiagnostics(steps = 40, droppedSteps = 30))
+    relay.saw(RollDiagnostics(steps = 0))
+    relay.saw(RollDiagnostics(steps = 8, droppedSteps = 2))
+
+    assertEquals(2, relay.latest.droppedSteps)
+    assertEquals(32L, relay.droppedThisVisit)
+  }
+
+  @Test
+  fun `a relay posts a frame rate once it has a window's share of frames, and not every frame`() {
+    val posted = mutableListOf<() -> Unit>()
+    val relay = DebugRelay(toTheScreen = { posted += it })
+
+    repeat((DebugRelay.POST_EVERY - 1).toInt()) { relay.framed(SIXTIETH) }
+    assertTrue("a reading crossed before it was due", posted.isEmpty())
+
+    relay.framed(SIXTIETH)
+    assertEquals(1, posted.size)
+    assertNull("the screen's copy moved before the post ran", relay.frameRate)
+
+    posted.single().invoke()
+    val rate = requireNotNull(relay.frameRate)
+    assertEquals(60.0, rate.framesPerSecond, 0.01)
+    assertEquals(DebugRelay.POST_EVERY.toInt(), rate.frames)
+    assertTrue(rate.frames <= FrameMeter.WINDOW)
+  }
+
+  @Test
   fun `a relay made the way the app makes one posts to the screen's own thread`() {
     // The default: the roll thread hands a snapshot over and the main looper
     // delivers it, which is the same crossing a finished throw makes
@@ -224,4 +291,8 @@ class DebugOverlayTest {
       struck = Struck.Die,
       strength = 0.5,
     )
+
+  private companion object {
+    const val SIXTIETH = 16_666_667L
+  }
 }

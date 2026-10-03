@@ -154,6 +154,27 @@ class DeveloperToolsTest {
     assertEquals(11, presenter.diagnostics.steps)
   }
 
+  @Test
+  fun `the overlay sees the visit's dropped steps and the frame rate through the presenter`() {
+    val relay = DebugRelay(toTheScreen = { it() })
+    val presenter = presenter(relay = relay)
+    assertNull(presenter.frameRate)
+
+    relay.saw(RollDiagnostics(steps = 11, droppedSteps = 3))
+    repeat(DebugRelay.POST_EVERY.toInt()) { relay.framed(SIXTIETH_NANOS) }
+
+    assertEquals(3L, presenter.droppedThisVisit)
+    assertEquals(60.0, requireNotNull(presenter.frameRate).framesPerSecond, 0.01)
+  }
+
+  @Test
+  fun `with the toggle off there is no frame rate and nothing dropped to show`() {
+    val presenter = presenter()
+
+    assertNull(presenter.frameRate)
+    assertEquals(0L, presenter.droppedThisVisit)
+  }
+
   private fun presenter(
     relay: DebugRelay? = null,
     developer: DeveloperLog = DeveloperLog.NONE,
@@ -250,5 +271,6 @@ class DeveloperToolsTest {
   private companion object {
     const val SEED = 99L
     const val AT = 1_234L
+    const val SIXTIETH_NANOS = 16_666_667L
   }
 }

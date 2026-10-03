@@ -218,6 +218,14 @@
     row is numbers.
   -->
   <string name="roll_debug_counters">step %1$d · at rest %2$d/%3$d</string>
+  <!--
+    The frame-rate readout (decision 72): frames a second and the p99 frame
+    time in milliseconds, over the last 120 frames.
+  -->
+  <string name="roll_debug_frames">%1$.0f fps · p99 %2$.1f ms</string>
+  <string name="roll_debug_frames_none">fps — no frames yet</string>
+  <!-- Steps a frame was too late to pay for: this roll, and every roll since the screen opened. -->
+  <string name="roll_debug_dropped">dropped %1$d · visit %2$d</string>
   <string name="roll_debug_ladder">corr %1$d · waiting %2$d · hits %3$d</string>
   <!-- Shown only when one has happened. Either number above zero is a bug. -->
   <string name="roll_debug_anomaly">BUG: forced %1$d · post-rest %2$d</string>

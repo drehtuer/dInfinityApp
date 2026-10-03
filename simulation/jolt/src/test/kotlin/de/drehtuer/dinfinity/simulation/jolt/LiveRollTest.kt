@@ -206,6 +206,22 @@ class LiveRollTest {
   }
 
   @Test
+  fun `the overlay's snapshot carries the steps the clock dropped`() {
+    // The loop under the roll never sees the clock, so a snapshot built by it
+    // alone would always say nought — and the first throw of a session is the
+    // one this number was put on the overlay to catch (`docs/TODO.md`, 5.6).
+    val world = FakeWorld(DICE, tumblingThenSettling())
+    liveOver(world, clock = FrameClock(maxStepsPerFrame = CATCH_UP_CAP)).use { live ->
+      assertEquals(0, live.diagnostics.droppedSteps)
+
+      live.advance(1.0)
+
+      assertEquals(SettleRule.STEPS_PER_SECOND - CATCH_UP_CAP, live.diagnostics.droppedSteps)
+      assertEquals(live.stepsTaken, live.diagnostics.steps)
+    }
+  }
+
+  @Test
   fun `a die nobody can read ends the roll where it lies, and the picture with it`() {
     // A die that came to rest cocked used to be picked up and thrown again by
     // the roll itself, in the middle of the frames. Now the roll is over the

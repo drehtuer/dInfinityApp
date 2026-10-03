@@ -316,8 +316,9 @@ keeps them comparable.
 - [ ] **Is the first throw of a session different?** Seen: overlap and a chain
       throwing itself "only in the beginning". The candidate is the frame clock
       dropping steps while Filament, the atlas and Jolt load
-      (`MAX_STEPS_PER_FRAME` is 4). Put `LiveRoll.droppedSteps` on the debug
-      overlay, then throw `4d6!` three times from a cold start
+      (`MAX_STEPS_PER_FRAME` is 4). With developer tools on, throw `4d6!`
+      three times from a cold start and read the overlay's
+      `dropped <roll> · visit <total>` line after each
 - [ ] **Does a die the picker adds read as dropped and tumbled?** Does it
       land and roll rather than appear; do the bumps look right after eight
       quick taps of a d6; does a removal let a leaning die fall plausibly? Put
@@ -338,11 +339,12 @@ keeps them comparable.
 `MemoryTest` holds the native heap across 500 rolls (1,440 bytes left
 behind).
 
-- [ ] **A rendered harness and an on-screen frame rate** (decided). The
-      headless harness times the simulation half of a frame only
-      (`FrameTimes.drawn`). Needed: an instrumented test on a real surface at
-      twenty dice, its arithmetic in `:simulation:harness`, and a setting that
-      shows the frame rate
+- [ ] **A rendered harness** (decided). The headless harness times the
+      simulation half of a frame only (`FrameTimes.drawn`). Needed: an
+      instrumented test on a real surface at twenty dice, its arithmetic in
+      `:simulation:harness`. The on-screen frame rate exists — the debug
+      overlay's `fps · p99` line (decision 72) — and is the hand check
+      meanwhile
 - [ ] 60 fps sustained at 20 dice, p99 frame under 16.6 ms; 30 fps at the
       capacity limit
 - [ ] Battery cost of 100 rolls, written into `docs/physics-and-rendering.md`

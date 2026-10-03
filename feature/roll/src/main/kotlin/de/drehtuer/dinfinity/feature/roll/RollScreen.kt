@@ -242,6 +242,8 @@ private fun TheDebugOverlay(
   DebugOverlay(
     diagnostics = presenter.diagnostics,
     geometry = presenter.geometry,
+    droppedThisVisit = presenter.droppedThisVisit,
+    frameRate = presenter.frameRate,
     modifier = modifier.safeDrawingPadding().padding(8.dp),
   )
 }

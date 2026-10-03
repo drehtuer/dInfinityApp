@@ -109,8 +109,13 @@ class LiveRoll internal constructor(
    * nothing there. Reading it cannot change the roll, which is the same
    * promise [Renderer] makes and the reason both are allowed to exist
    * (`RollLoop.diagnostics`).
+   *
+   * The steps the clock has dropped ride along ([droppedSteps]): the loop
+   * never sees the clock, and the question the overlay is asked to answer —
+   * is the first throw of a session late — is a question about the clock
+   * (`docs/TODO.md`, Step 5.6).
    */
-  override val diagnostics: RollDiagnostics get() = loop.diagnostics()
+  override val diagnostics: RollDiagnostics get() = loop.diagnostics().copy(droppedSteps = droppedSteps)
 
   /**
    * Steps that a frame was too late to pay for, in total
