@@ -6,9 +6,12 @@ import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
+import de.drehtuer.dinfinity.simulation.api.BoardRequest
+import de.drehtuer.dinfinity.simulation.api.BoardTrack
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.RestingPlaces
+import de.drehtuer.dinfinity.simulation.api.SettleRule
+import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -29,6 +32,7 @@ import org.junit.Test
 class TrayRendererTest {
   private val geometry = TableGeometry.referenceDevice()
   private val look = TableLook(id = "plain", name = "Plain")
+  private val boards = FakeBoards()
 
   @Test
   fun `with nowhere to draw it draws nothing and does not complain`() {
@@ -329,7 +333,7 @@ class TrayRendererTest {
   }
 
   @Test
-  fun `the dice waiting to be thrown are drawn standing on the table`() {
+  fun `the dice waiting to be thrown are drawn on the table once their drop is back`() {
     // Tapping a saved roll puts its dice down rather than throwing them, so
     // what a player looks at before shaking is what they are about to throw
     // (`docs/TODO.md`, Step 4.1).
@@ -339,20 +343,22 @@ class TrayRendererTest {
     renderer.table(geometry, look)
     val added = stage.added.size
 
-    renderer.waiting(spec())
+    val request = requireNotNull(renderer.waiting(spec()))
 
+    assertEquals("dice were drawn before their drop had been worked out", added, stage.added.size)
+    assertTrue(renderer.settled(request.number, boards.settle(request)))
     assertTrue("no dice were put on the table", stage.added.size > added)
     assertEquals("the waiting dice were not drawn anywhere", DICE, stage.placed.size)
   }
 
   @Test
-  fun `waiting dice are laid out so that none of them overlaps`() {
+  fun `waiting dice are let go so that none of them overlaps`() {
     val stage = FakeStage()
     val renderer = TrayRenderer()
     renderer.stage(stage)
     renderer.table(geometry, look)
 
-    renderer.waiting(spec())
+    renderer.drop(spec())
 
     val where = stage.placed.values.map { it[TRANSLATION_X] to it[TRANSLATION_Y] }
     assertEquals("two waiting dice were drawn in the same place", where.size, where.distinct().size)
@@ -365,10 +371,11 @@ class TrayRendererTest {
     val renderer = TrayRenderer()
     renderer.stage(stage)
     renderer.table(geometry, look)
-    renderer.waiting(spec())
+    renderer.drop(spec())
 
-    renderer.waiting(spec().copy(dice = emptyList()))
+    val request = renderer.waiting(spec().copy(dice = emptyList()))
 
+    assertEquals("an empty board was sent to be dropped", null, request)
     assertTrue("the table went with the dice", renderer.redraw())
     assertEquals("dice were left on a cleared board", 0, stage.placed.size)
   }
@@ -381,8 +388,8 @@ class TrayRendererTest {
     val renderer = TrayRenderer()
     renderer.stage(stage)
 
-    renderer.waiting(spec())
-
+    assertEquals(null, renderer.waiting(spec()))
+    assertFalse("a drop was taken for a tray that does not exist yet", renderer.settled(1, BoardTrack.EMPTY))
     assertTrue("dice were drawn onto a tray that does not exist yet", stage.placed.isEmpty())
   }
 
@@ -392,7 +399,7 @@ class TrayRendererTest {
     // what is already known, rather than being thrown away.
     val renderer = TrayRenderer()
     renderer.table(geometry, look)
-    renderer.waiting(spec())
+    renderer.drop(spec())
 
     val stage = FakeStage()
     renderer.stage(stage)
@@ -408,7 +415,7 @@ class TrayRendererTest {
     renderer.stage(stage)
     renderer.table(geometry, look)
 
-    renderer.waiting(spec())
+    renderer.drop(spec())
 
     assertTrue("the dice were stood down rather than dropped", renderer.falling)
     assertTrue(
@@ -418,12 +425,12 @@ class TrayRendererTest {
   }
 
   @Test
-  fun `and it is on the table once the fall is over`() {
+  fun `and it is on the table once the drop is over`() {
     val stage = FakeStage()
     val renderer = TrayRenderer()
     renderer.stage(stage)
     renderer.table(geometry, look)
-    renderer.waiting(spec())
+    renderer.drop(spec())
 
     renderer.fall(A_WHOLE_FALL)
 
@@ -435,22 +442,25 @@ class TrayRendererTest {
   }
 
   @Test
-  fun `where it lands is where it would simply have been stood`() {
-    // The board is the board it always was. Only the arriving is new.
+  fun `a moment between two recorded steps is drawn between them`() {
+    // Played back like a roll: a panel at some other rate than the physics
+    // still sees the die move smoothly.
     val stage = FakeStage()
     val renderer = TrayRenderer()
     renderer.stage(stage)
     renderer.table(geometry, look)
+    val request = renderer.drop(spec(dice = 1))
+    val from =
+      request.bodies
+        .single()
+        .placement.position.z
+    val floor = ClearSpace.radiusOf(StandardDice.d6, 1.0)
+    val perStep = (from - floor) / FakeBoards.STEPS
 
-    renderer.waiting(spec())
-    renderer.fall(A_WHOLE_FALL)
+    renderer.fall(SettleRule.TIMESTEP_SECONDS * STEP_AND_A_HALF)
 
-    val where = stage.placed.values.map { it[TRANSLATION_X] to it[TRANSLATION_Y] }
-    val stood =
-      RestingPlaces
-        .of(geometry, List(DICE) { ClearSpace.radiusOf(StandardDice.d6, 1.0) })
-        .map { it.x.toFloat() to it.y.toFloat() }
-    assertEquals(stood, where)
+    val drawn = stage.placed.getValue(FIRST_DIE)[TRANSLATION_Z].toDouble()
+    assertEquals(from - STEP_AND_A_HALF * perStep, drawn, DRAWN_MM)
   }
 
   @Test
@@ -459,19 +469,121 @@ class TrayRendererTest {
     val renderer = TrayRenderer()
     renderer.stage(stage)
     renderer.table(geometry, look)
-    renderer.waiting(spec(dice = 1))
+    renderer.drop(spec(dice = 1))
     renderer.fall(A_WHOLE_FALL)
     val standing =
       stage.placed.values
         .single()
         .copyOf()
 
-    renderer.waiting(spec(dice = 2))
+    val request = renderer.drop(spec(dice = 2))
 
+    val carried = request.bodies.first().placement
+    assertEquals("a standing die was handed over moving", Vector3.Zero, carried.linearVelocity)
+    assertEquals(Vector3.Zero, carried.angularVelocity)
+    renderer.fall(A_WHOLE_FALL)
     val again = stage.placed.getValue(FIRST_DIE)
     assertEquals(standing[TRANSLATION_X], again[TRANSLATION_X], 0.0f)
     assertEquals(standing[TRANSLATION_Y], again[TRANSLATION_Y], 0.0f)
     assertEquals("the die that was down was picked up again", standing[TRANSLATION_Z], again[TRANSLATION_Z], 0.0f)
+  }
+
+  @Test
+  fun `a die still in the air when the next one is added carries on with its momentum`() {
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+    renderer.drop(spec(dice = 1))
+    renderer.fall(PART_OF_A_FALL)
+
+    val carried = requireNotNull(renderer.waiting(spec(dice = 2))).bodies.first().placement
+
+    assertTrue("the die in the air was stopped dead", carried.linearVelocity.z < 0.0)
+  }
+
+  @Test
+  fun `a die taken off the board leaves the others where they were`() {
+    // Removing a die is a board like any other — the rest may have been
+    // leaning on it — and none of them is new.
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+    renderer.drop(spec(dice = 3))
+    renderer.fall(A_WHOLE_FALL)
+
+    val request = requireNotNull(renderer.waiting(spec(dice = 2)))
+
+    assertEquals(2, request.bodies.size)
+    assertTrue(request.bodies.all { it.placement.linearVelocity == Vector3.Zero })
+  }
+
+  @Test
+  fun `only the latest board is drawn, and an earlier drop arriving late is dropped`() {
+    // Eight quick taps ask for eight boards; whichever comes back after the
+    // player has moved on is for a board that no longer exists.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    val first = requireNotNull(renderer.waiting(spec(dice = 1)))
+    val second = requireNotNull(renderer.waiting(spec(dice = 2)))
+
+    assertTrue("two boards shared a number", second.number > first.number)
+    assertFalse("a stale drop was drawn", renderer.settled(first.number, boards.settle(first)))
+    assertEquals(0, stage.placed.size)
+    assertTrue(renderer.settled(second.number, boards.settle(second)))
+    assertEquals(2, stage.placed.size)
+    assertFalse("the same drop was drawn twice", renderer.settled(second.number, boards.settle(second)))
+  }
+
+  @Test
+  fun `a board asked for against one that never arrived drops every die afresh`() {
+    // The request is built from what is on screen, and the dice of the board
+    // that never arrived were never on screen.
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+    renderer.waiting(spec(dice = 1))
+
+    val second = requireNotNull(renderer.waiting(spec(dice = 2)))
+
+    assertTrue(second.bodies.all { it.placement.position.z > OFF_THE_TABLE_MM })
+  }
+
+  @Test
+  fun `a drop that arrives late starts as far in as the board on screen has moved`() {
+    // The dice carried over were snapshotted when it was asked for; starting
+    // it from its beginning would set them back by however long it took.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    renderer.drop(spec(dice = 1))
+    val request = requireNotNull(renderer.waiting(spec(dice = 2)))
+    renderer.fall(SettleRule.TIMESTEP_SECONDS * CATCH_UP_STEPS)
+
+    renderer.settled(request.number, boards.settle(request))
+
+    val released =
+      request.bodies
+        .last()
+        .placement.position.z
+    val drawn = stage.placed.getValue(FIRST_DIE + 1)[TRANSLATION_Z].toDouble()
+    assertTrue("the late drop started from the beginning", drawn < released - DRAWN_MM)
+  }
+
+  @Test
+  fun `every die is dropped and drawn, even more than there is clear floor for`() {
+    // A die the player added must appear: the shake will count it.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+
+    val request = renderer.drop(spec(dice = TableCapacity.MAX_DICE))
+
+    assertEquals(TableCapacity.MAX_DICE, request.bodies.size)
+    assertEquals(TableCapacity.MAX_DICE, stage.placed.size)
   }
 
   @Test
@@ -482,7 +594,7 @@ class TrayRendererTest {
     val renderer = TrayRenderer()
     renderer.stage(stage)
     renderer.table(geometry, look)
-    renderer.waiting(spec())
+    renderer.drop(spec())
     renderer.fall(A_WHOLE_FALL)
     val drawn = stage.frames
 
@@ -496,7 +608,7 @@ class TrayRendererTest {
   fun `a surface that arrives mid-fall is given the dice where they are`() {
     val renderer = TrayRenderer()
     renderer.table(geometry, look)
-    renderer.waiting(spec())
+    renderer.drop(spec())
     renderer.fall(PART_OF_A_FALL)
 
     val stage = FakeStage()
@@ -516,7 +628,7 @@ class TrayRendererTest {
     val renderer = TrayRenderer()
     renderer.stage(FakeStage())
     renderer.table(geometry, look)
-    renderer.waiting(spec())
+    renderer.drop(spec())
 
     renderer.begin(spec(), geometry, look)
 
@@ -524,11 +636,37 @@ class TrayRendererTest {
   }
 
   @Test
+  fun `a drop still being worked out when the dice are thrown never paints over the throw`() {
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+    val request = requireNotNull(renderer.waiting(spec()))
+
+    renderer.begin(spec(), geometry, look)
+
+    assertFalse(renderer.settled(request.number, boards.settle(request)))
+  }
+
+  @Test
+  fun `nor over a new table or a cleared tray`() {
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+    val beforeTable = requireNotNull(renderer.waiting(spec()))
+    renderer.table(geometry, look)
+    val beforeEnd = requireNotNull(renderer.waiting(spec()))
+    renderer.end()
+
+    assertFalse(renderer.settled(beforeTable.number, boards.settle(beforeTable)))
+    assertFalse(renderer.settled(beforeEnd.number, boards.settle(beforeEnd)))
+  }
+
+  @Test
   fun `clearing the board ends the fall too`() {
     val renderer = TrayRenderer()
     renderer.stage(FakeStage())
     renderer.table(geometry, look)
-    renderer.waiting(spec())
+    renderer.drop(spec())
 
     renderer.end()
 
@@ -544,6 +682,13 @@ class TrayRendererTest {
     renderer.fall(A_WHOLE_FALL)
 
     assertFalse(renderer.falling)
+  }
+
+  /** Asks for a board and hands its drop straight back, as the board thread would. */
+  private fun TrayRenderer.drop(spec: ThrowSpec): BoardRequest {
+    val request = requireNotNull(waiting(spec)) { "no board was asked for" }
+    assertTrue("the drop that was asked for was not drawn", settled(request.number, boards.settle(request)))
+    return request
   }
 
   private fun spec(dice: Int = DICE): ThrowSpec =
@@ -593,6 +738,15 @@ class TrayRendererTest {
 
     /** Above a d6's own resting height, so only a die in the air is over it. */
     const val OFF_THE_TABLE_MM = 20.0f
+
+    /** How many steps a drop that comes back late has to catch up on. */
+    const val CATCH_UP_STEPS = 10
+
+    /** A moment half way between the first and second recorded steps. */
+    const val STEP_AND_A_HALF = 1.5
+
+    /** How closely a drawn position, a float, matches the arithmetic. */
+    const val DRAWN_MM = 1e-3
 
     /** Longer than any drop takes, so the board is certainly down. */
     const val A_WHOLE_FALL = 2.0

@@ -13,6 +13,8 @@ import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.BoardSettler
+import de.drehtuer.dinfinity.simulation.api.BoardTrack
 import de.drehtuer.dinfinity.simulation.api.Impact
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
@@ -60,7 +62,7 @@ class TrayDriverTest {
     val settled = CountDownLatch(1)
 
     try {
-      TrayDriver { surface, width, height ->
+      TrayDriver(boards = NO_DROP) { surface, width, height ->
         FilamentStage.ready()
         Counted(FilamentStage(width, height, surface)).also { counted += it }
       }.use { driver ->
@@ -109,7 +111,7 @@ class TrayDriverTest {
     reader.setOnImageAvailableListener({ arrived.countDown() }, Handler(listening.looper))
 
     try {
-      TrayDriver().use { driver ->
+      TrayDriver(boards = NO_DROP).use { driver ->
         driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
         driver.table(geometry, look)
 
@@ -166,7 +168,7 @@ class TrayDriverTest {
     }, Handler(listening.looper))
 
     try {
-      TrayDriver(shared = host).use { driver ->
+      TrayDriver(shared = host, boards = NO_DROP).use { driver ->
         driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
         driver.table(geometry, look)
 
@@ -196,7 +198,7 @@ class TrayDriverTest {
     }, Handler(listening.looper))
 
     try {
-      TrayDriver().use { driver ->
+      TrayDriver(boards = NO_DROP).use { driver ->
         driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
         driver.table(geometry, look)
         assertTrue(
@@ -231,7 +233,7 @@ class TrayDriverTest {
     val roll = FakeRoll(FRAMES * FRAMES)
 
     try {
-      TrayDriver().use { driver ->
+      TrayDriver(boards = NO_DROP).use { driver ->
         driver.surfaceAvailable(reader.surface, WIDTH, HEIGHT)
         driver.roll(roll.start()) { _, _ -> }
         driver.surfaceLost()
@@ -250,7 +252,7 @@ class TrayDriverTest {
     val roll = FakeRoll(FRAMES)
 
     try {
-      TrayDriver().use { driver ->
+      TrayDriver(boards = NO_DROP).use { driver ->
         driver.surfaceAvailable(first.surface, WIDTH, HEIGHT)
         driver.roll(roll.start()) { _, _ -> }
         driver.surfaceAvailable(second.surface, HEIGHT, WIDTH)
@@ -361,6 +363,9 @@ class TrayDriverTest {
     )
 
   private companion object {
+    /** These tests are about rolls and surfaces; no board is ever dropped. */
+    val NO_DROP: BoardSettler = BoardSettler { BoardTrack.EMPTY }
+
     const val WIDTH = 320
     const val HEIGHT = 640
     const val BUFFERS = 3

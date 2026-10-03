@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.TableGeometry

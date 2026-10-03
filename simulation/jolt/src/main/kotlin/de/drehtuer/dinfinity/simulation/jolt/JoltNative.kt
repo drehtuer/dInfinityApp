@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
 import android.util.Log
+import de.drehtuer.dinfinity.simulation.api.Placement
 
 /**
  * The JNI surface, and nothing else.

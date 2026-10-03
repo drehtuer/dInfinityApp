@@ -133,6 +133,15 @@ data class Quaternion(
       z = w * other.z + x * other.y - y * other.x + z * other.w,
     )
 
+  /**
+   * The turn that undoes this one, for a unit quaternion.
+   *
+   * What two recorded orientations are compared with: `after * before.conjugate()`
+   * is the turn that took the die from one to the other, which is how a
+   * recorded drop says how fast a die was spinning ([BoardTrack.velocitiesAt]).
+   */
+  fun conjugate(): Quaternion = Quaternion(w, -x, -y, -z)
+
   /** How closely this turn agrees with [other]; `±1` when they are the same. */
   infix fun dot(other: Quaternion): Double = w * other.w + x * other.x + y * other.y + z * other.z
 

@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.Exact
+import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.TableCapacity

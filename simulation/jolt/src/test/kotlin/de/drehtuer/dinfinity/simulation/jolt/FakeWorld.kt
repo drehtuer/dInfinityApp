@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.simulation.api.DieMotion
+import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.Vector3
 

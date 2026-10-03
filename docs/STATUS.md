@@ -20,7 +20,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   `docs/harness-figures` — this file and `docs/TODO.md` compacted, with the
   2026-10-03 harness figures; `feature/shake-only`, stacked on it — a shake is
   the only way to roll: the editor's key, the table's accessibility action and
-  the Settings switch are gone (decision 66).
+  the Settings switch are gone (decision 66); and `feature/physical-board-drop`,
+  stacked on that — the dice waiting to be thrown drop under real Jolt physics,
+  worked out on a board thread and played back (decision 67, superseding 64),
+  device suite not yet run.
 
 ## Done
 
@@ -72,6 +75,10 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   hard sideways shake: both can run out the twelve-second cap, where the roll
   gives up rather than invent an answer (#319 stopped it taking the app with
   it).
+- **A board die landing on another may show the solver's overlap.** The same
+  5.29 mm die-into-die penetration the harness measures for a throw can show
+  as interpenetration when a dropped board die lands on a standing one; the
+  board has no correction, by design, so it would stay until the shake.
 - **The d18 cannot pass chi-squared** — decided and written down; it is held
   to the worst-face bound (0.389 % against 1 %).
 - **The capacity rule barely bites**: the 100-body cap refuses long before the

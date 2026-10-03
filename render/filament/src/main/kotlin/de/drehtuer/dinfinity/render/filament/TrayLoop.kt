@@ -4,6 +4,8 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.BoardRequest
+import de.drehtuer.dinfinity.simulation.api.BoardTrack
 import de.drehtuer.dinfinity.simulation.api.DebugWatch
 import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.RollPace
@@ -122,11 +124,11 @@ class TrayLoop(
    * offered, so the asking goes on until a frame actually lands.
    *
    * And a die the player has just added is falling onto the board, which is
-   * neither: it is a picture that moves and has no simulation under it. It
-   * wants frames for the fifth of a second it takes to land and none before or
+   * neither: it is a recorded drop being played back, with no world under it
+   * any more. It wants frames while the recording plays and none before or
    * after, and it wants them only when there is somewhere to draw — nobody is
-   * owed an animation they cannot see (`docs/physics-and-rendering.md`, "The
-   * dice waiting to be thrown").
+   * owed a drop they cannot see (`docs/physics-and-rendering.md`, "The dice
+   * waiting to be thrown").
    */
   val wantsFrames: Boolean get() = roll != null || (stage != null && (owed || renderer.falling))
 
@@ -148,6 +150,11 @@ class TrayLoop(
     // with nothing on it, or a roll that has already come to rest — owes it a
     // frame, because neither of those will produce one on its own.
     owed = true
+    // A board's drop is played only while there is somewhere to draw it, so a
+    // drop that was waiting for this surface picks up where it stopped rather
+    // than skipping the time nobody could see. A roll is not paused by a lost
+    // surface, and keeps its clock.
+    if (roll == null) lastFrameNanos = null
   }
 
   /**
@@ -170,24 +177,40 @@ class TrayLoop(
   }
 
   /**
-   * Puts the dice that are waiting to be thrown on the table, with the ones
-   * the player has just added falling into it.
+   * Asks for the dice that are waiting to be thrown to be put on the table,
+   * with the ones the player has just added dropped into it — and returns the
+   * board to let fall, which the caller works out off this thread and hands
+   * back to [boardSettled].
    *
-   * Owed a frame like the empty table is, because nothing else here would
-   * produce one; and for as long as a die is still coming down it is owed
-   * another every frame, which [frame] gives it and [wantsFrames] asks for.
-   *
-   * A roll already in the air is left alone. The board is what a player
-   * arranges *between* throws, and a formula edited while the dice are still
-   * moving is for the throw after this one.
+   * Null while a roll is in the air: the board is what a player arranges
+   * *between* throws, and a formula edited while the dice are still moving is
+   * for the throw after this one. Null too when there is nothing to drop —
+   * no dice is the empty table, which is owed a frame like any still picture.
    */
-  fun waiting(spec: ThrowSpec) {
+  fun waiting(spec: ThrowSpec): BoardRequest? {
+    if (roll != null) return null
+    val request = renderer.waiting(spec)
+    owed = true
+    return request
+  }
+
+  /**
+   * Board [number]'s drop has been worked out. Played from now on if it is
+   * still the one wanted; dropped if the player has moved on, or if a throw has
+   * started since — a late board never paints over a roll.
+   *
+   * When nothing was playing, the frame it starts on is worth no time at all:
+   * the clock's last frame was the end of some earlier drop, and measuring from
+   * it would hand the new one however long the board had been standing.
+   */
+  fun boardSettled(
+    number: Int,
+    track: BoardTrack,
+  ) {
     if (roll != null) return
-    renderer.waiting(spec)
-    // The fall starts now, so the frame this is drawn on is worth no time at
-    // all — the same rule the first frame of a roll follows, and for the same
-    // reason: there is no frame before it to measure against.
-    lastFrameNanos = null
+    val wasPlaying = renderer.falling
+    if (!renderer.settled(number, track)) return
+    if (!wasPlaying) lastFrameNanos = null
     owed = true
   }
 
@@ -277,8 +300,9 @@ class TrayLoop(
     val live = roll
     if (live == null) {
       // A die the player added is on its way down. It is not a roll and there
-      // is nothing to step: the board is asked where its dice are at this
-      // moment and drawn there, and the moment is the only thing that moved.
+      // is nothing to step: the recorded drop is asked where its dice are at
+      // this moment and drawn there, and the moment is the only thing that
+      // moved.
       if (stage != null && renderer.falling) {
         renderer.fall(secondsSince(nanos))
         owed = true

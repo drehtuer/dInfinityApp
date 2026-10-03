@@ -44,6 +44,20 @@ object Seeds {
   ): Random = Random(stir(seed xor (dieIndex.toLong() shl DIE_SHIFT) xor purpose))
 
   /**
+   * The stream die [dieIndex] of the visit's [board]th board is dropped with
+   * (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
+   *
+   * Seeded by the board's number rather than by a throw's seed, because a
+   * board has none: every board is built from a spec seeded nought, and a d6
+   * taken off and put back would otherwise fall onto the same spot, the same
+   * way up, every time. Through [WAITING], so it can never be a roll's stream.
+   */
+  fun waiting(
+    board: Int,
+    dieIndex: Int,
+  ): Random = stream(board.toLong(), dieIndex, WAITING)
+
+  /**
    * The seed of the [nth] extra throw a roll needed — an exploding die's
    * next die, or a re-throw.
    *
@@ -86,10 +100,11 @@ object Seeds {
   const val BIAS: Long = 0x42_49_41_53
 
   /**
-   * And the tumble a die dropped onto the board before a throw falls with.
+   * And where a die dropped onto the board before a throw is let go from, and
+   * how ([waiting]).
    *
    * **A stream of its own is the whole reason this constant exists.** What it
-   * seeds is not a roll and is never read (`FallingIn`), but a purpose it
+   * seeds is not a roll and is never read (`BoardDrops`), but a purpose it
    * shared with the spawn would make it a roll's business all the same: every
    * die the picker added before a throw would take the numbers the throw was
    * going to be given, and the golden fixture would move under a feature that

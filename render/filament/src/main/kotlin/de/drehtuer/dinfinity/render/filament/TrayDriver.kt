@@ -1,17 +1,23 @@
 package de.drehtuer.dinfinity.render.filament
 
+import android.util.Log
 import android.view.Choreographer
 import android.view.Surface
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
+import de.drehtuer.dinfinity.simulation.api.BoardSettler
 import de.drehtuer.dinfinity.simulation.api.DebugWatch
 import de.drehtuer.dinfinity.simulation.api.Impacts
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.api.settleOrStand
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 /**
  * The thread a roll happens on, and the surface it is drawn to
@@ -70,6 +76,16 @@ class TrayDriver(
    * (`docs/architecture.md`, decision 16).
    */
   tableView: TableView = TableView.Angled,
+  /**
+   * What lets the dice waiting to be thrown fall onto the table
+   * (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
+   *
+   * Run on this visit's board thread, never on the roll thread: a drop is a
+   * few milliseconds of physics worked out in one go, and the roll thread is
+   * the one drawing the frames. No default: a tray that drew added dice some
+   * other way would be a second board nobody meant to ship.
+   */
+  private val boards: BoardSettler,
   // Last, so that a trailing lambda still means this one. A driver is built
   // with a stage factory in exactly one place — the device suite — and it is
   // written as a trailing lambda there; putting anything after it makes that
@@ -88,6 +104,18 @@ class TrayDriver(
   private val handler get() = host.handler
 
   private var ticking = false
+
+  /**
+   * The board thread: one per visit, and the only place a board's drop is
+   * worked out (`docs/architecture.md`, "Threading").
+   *
+   * A single thread, so drops are worked out in the order they were asked for
+   * and two are never in flight on two threads at once; its own, so a drop
+   * never holds up a frame. Shut down with the visit — anything still queued
+   * or running then is for a board nobody will see.
+   */
+  private val board: ExecutorService =
+    Executors.newSingleThreadExecutor { work -> Thread(work, BOARD_THREAD).apply { isDaemon = true } }
 
   /**
    * Set before anything is torn down, and checked inside everything posted.
@@ -147,14 +175,35 @@ class TrayDriver(
   /**
    * Puts the dice that are waiting to be thrown on the table.
    *
-   * Posted like everything else, and then [schedule]d: a die the player just
-   * added is falling onto the board, and it needs the frame callback running
-   * for the fifth of a second that takes.
+   * Posted like everything else. The board it asks for is worked out on the
+   * board thread, and the drop that comes back is posted to the roll thread
+   * and [schedule]d — it needs the frame callback running while it plays. The
+   * loop decides whether it is still wanted when it arrives
+   * ([TrayLoop.boardSettled]); this only carries it.
    */
   override fun waiting(spec: ThrowSpec) =
     post {
-      loop.waiting(spec)
+      val request = loop.waiting(spec)
       schedule()
+      if (request != null) {
+        try {
+          board.execute {
+            // Never `settle` bare: this is a thread of its own, and a drop that
+            // failed here would take the app with it. The board is stood still
+            // instead, and the shake reports a broken engine properly.
+            val track =
+              boards.settleOrStand(request) { failure ->
+                Log.w(BOARD_THREAD, "the board's drop failed; standing the dice still", failure)
+              }
+            post {
+              loop.boardSettled(request.number, track)
+              schedule()
+            }
+          }
+        } catch (_: RejectedExecutionException) {
+          // The visit ended between the post and here: nobody will see it.
+        }
+      }
     }
 
   /**
@@ -217,6 +266,7 @@ class TrayDriver(
   override fun close() {
     if (closed) return
     closed = true
+    board.shutdownNow()
     host.await {
       // The frame callback is removed by hand now that the thread survives:
       // a tick left posted would step a loop that has been closed.
@@ -260,5 +310,13 @@ class TrayDriver(
   ): Stage {
     stages?.let { return it(surface, width, height) }
     return host.filament().stage(surface, width, height)
+  }
+
+  private companion object {
+    /**
+     * What the board thread is called, so a trace can tell it from the roll
+     * thread — and the tag its warnings are logged under.
+     */
+    const val BOARD_THREAD = "dinfinity-board"
   }
 }
