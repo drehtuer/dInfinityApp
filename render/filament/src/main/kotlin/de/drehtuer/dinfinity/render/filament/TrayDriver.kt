@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.render.filament
 
+import android.util.Log
 import android.view.Choreographer
 import android.view.Surface
 import de.drehtuer.dinfinity.core.model.TableLook
@@ -13,6 +14,7 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.api.settleOrStand
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
@@ -186,7 +188,13 @@ class TrayDriver(
       if (request != null) {
         try {
           board.execute {
-            val track = boards.settle(request)
+            // Never `settle` bare: this is a thread of its own, and a drop that
+            // failed here would take the app with it. The board is stood still
+            // instead, and the shake reports a broken engine properly.
+            val track =
+              boards.settleOrStand(request) { failure ->
+                Log.w(BOARD_THREAD, "the board's drop failed; standing the dice still", failure)
+              }
             post {
               loop.boardSettled(request.number, track)
               schedule()
@@ -305,7 +313,10 @@ class TrayDriver(
   }
 
   private companion object {
-    /** What the board thread is called, so a trace can tell it from the roll thread. */
+    /**
+     * What the board thread is called, so a trace can tell it from the roll
+     * thread — and the tag its warnings are logged under.
+     */
     const val BOARD_THREAD = "dinfinity-board"
   }
 }

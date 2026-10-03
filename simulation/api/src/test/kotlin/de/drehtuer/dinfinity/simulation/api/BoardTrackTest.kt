@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.api
 
+import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import kotlin.math.PI
 import kotlin.test.Test
@@ -244,6 +245,74 @@ class BoardTrackTest {
     assertEquals(0.0, BoardTrack.angleBetween(quarter, quarter), TOLERANCE)
   }
 
+  @Test
+  fun `a board stood without a drop puts a moving die on the felt below it, square on`() {
+    val released = Placement(START, Quaternion.about(Vector3.Up, 1.0), Vector3(30.0, 0.0, -50.0), Vector3.Up)
+    val request = boardOf(BoardBody(4, StandardDice.d6, 1.0, released))
+
+    val track = BoardTrack.standing(request)
+
+    val pose = track.finalPoses.single()
+    assertEquals(START.x, pose.position.x, FLOAT_TOLERANCE)
+    assertEquals(START.y, pose.position.y, FLOAT_TOLERANCE)
+    assertEquals(ClearSpace.radiusOf(StandardDice.d6, 1.0), pose.position.z, FLOAT_TOLERANCE)
+    assertEquals(Quaternion.Identity, pose.orientation)
+    assertEquals(listOf(4), track.indices)
+    assertTrue(track.ended(0.0), "a still board was played as a fall")
+  }
+
+  @Test
+  fun `and leaves a die that was already standing exactly as it stood`() {
+    val turned = Quaternion.about(Vector3.Up, 1.0)
+    val standing = Placement(START, turned, Vector3.Zero, Vector3.Zero)
+    val request = boardOf(BoardBody(0, StandardDice.d6, 1.0, standing))
+
+    val pose = BoardTrack.standing(request).finalPoses.single()
+
+    assertEquals(START, pose.position)
+    assertEquals(turned.w, pose.orientation.w, FLOAT_TOLERANCE)
+    assertEquals(turned.z, pose.orientation.z, FLOAT_TOLERANCE)
+  }
+
+  @Test
+  fun `a drop that works out is the drop`() {
+    val request = boardOf(body(START))
+    val dropped = falling(steps = 3)
+    var told: Exception? = null
+
+    val track = BoardSettler { dropped }.settleOrStand(request) { told = it }
+
+    assertEquals(dropped, track)
+    assertEquals(null, told)
+  }
+
+  @Test
+  fun `a drop that fails stands the board still and says why, rather than throwing`() {
+    // The board is worked out on a thread of its own, where an exception
+    // would be the end of the app (`docs/physics-and-rendering.md`).
+    val request = boardOf(body(START))
+    var told: Exception? = null
+
+    val track = BoardSettler { error("the physics bridge would not open") }.settleOrStand(request) { told = it }
+
+    assertEquals(BoardTrack.standing(request), track)
+    assertTrue(told is IllegalStateException)
+  }
+
+  @Test
+  fun `a failure with nobody listening still falls back`() {
+    val request = boardOf(body(START))
+
+    assertEquals(BoardTrack.standing(request), BoardSettler { error("no") }.settleOrStand(request))
+  }
+
+  @Test
+  fun `an error is not a board's to swallow`() {
+    val request = boardOf(body(START))
+
+    assertFailsWith<OutOfMemoryError> { BoardSettler { throw OutOfMemoryError() }.settleOrStand(request) }
+  }
+
   /** One die falling straight down at [DROP_PER_STEP] a step, let go moving. */
   private fun falling(steps: Int): BoardTrack =
     record(steps, moving = true) { k ->
@@ -272,11 +341,15 @@ class BoardTrackTest {
     return recorder.finish()
   }
 
+  private fun boardOf(body: BoardBody): BoardRequest =
+    BoardRequest(1, TableGeometry.referenceDevice(), TABLE, listOf(body))
+
   private fun body(position: Vector3): BoardBody =
     BoardBody(0, StandardDice.d6, 1.0, Placement(position, Quaternion.Identity, Vector3.Zero, Vector3.Zero))
 
   private companion object {
     val START = Vector3(10.0, -20.0, 80.0)
+    val TABLE = TableLook(id = "plain", name = "Plain")
     const val DROP_PER_STEP = 2.0
     const val TURN_PER_STEP = 0.1
     const val LONG = 200

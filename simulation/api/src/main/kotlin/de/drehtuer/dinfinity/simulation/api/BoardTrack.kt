@@ -245,6 +245,26 @@ class BoardTrack private constructor(
     /** A board with nothing on it. */
     val EMPTY: BoardTrack = BoardTrack(emptyList(), 0, FloatArray(0))
 
+    /**
+     * [request]'s dice standing on the table with no drop at all — what is
+     * shown when working the drop out failed ([settleOrStand]).
+     *
+     * A die that was already standing stays exactly as it stood. A die that
+     * was moving — one being let go, or one still in the air — is stood
+     * straight below where it was, on the felt and square on, so nothing is
+     * left hanging in the air or sunk into the floor. One step and over: a
+     * still picture, not a fall.
+     */
+    fun standing(request: BoardRequest): BoardTrack =
+      Recorder(request.bodies.map { it.copy(placement = stoodBelow(it)) }).finish()
+
+    private fun stoodBelow(body: BoardBody): Placement {
+      val at = body.placement
+      if (at.linearVelocity.length == 0.0 && at.angularVelocity.length == 0.0) return at
+      val floor = ClearSpace.radiusOf(body.die, body.dieScale)
+      return Placement(at.position.copy(z = floor), Quaternion.Identity, Vector3.Zero, Vector3.Zero)
+    }
+
     // Where each number sits within a pose's seven floats.
     private const val X = 0
     private const val Y = 1

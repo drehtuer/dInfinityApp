@@ -30,6 +30,33 @@ fun interface BoardSettler {
 }
 
 /**
+ * [BoardSettler.settle], or — if working the drop out fails — the board stood
+ * still without one ([BoardTrack.standing]).
+ *
+ * **A board must never take the app down.** It is a picture of dice waiting
+ * to be thrown, worked out on a thread of its own, and a drop that fails there
+ * (a bridge that would not open, a hull the engine refused) would otherwise be
+ * an uncaught exception on that thread and the end of the process. The board
+ * is shown without its fall instead, and the shake still throws every die
+ * through the ordinary path — which is where a broken engine is reported
+ * properly. [failed] is told why, so it can be logged.
+ *
+ * Exceptions only: an `Error` is the runtime itself in trouble, and catching
+ * one to draw some dice would only hide it.
+ */
+@Suppress("TooGenericExceptionCaught") // Any failure of a picture falls back to a still one; see above.
+fun BoardSettler.settleOrStand(
+  request: BoardRequest,
+  failed: (Exception) -> Unit = {},
+): BoardTrack =
+  try {
+    settle(request)
+  } catch (failure: Exception) {
+    failed(failure)
+    BoardTrack.standing(request)
+  }
+
+/**
  * One board to let fall: the dice on it, each where it is now and how it is
  * moving, and the dice that are being dropped onto it.
  *

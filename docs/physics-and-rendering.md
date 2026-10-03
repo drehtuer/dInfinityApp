@@ -1201,7 +1201,10 @@ against what is on screen; a drop that comes back for a board that is no longer
 the pending one is thrown away, and a drop that comes back late starts as far
 in as the board on screen has moved since it was asked for. A throw, a new
 table or a cleared tray forgets the pending board altogether, so a late drop
-never paints over a roll.
+never paints over a roll. A drop that fails to be worked out at all — the
+bridge would not open — never takes the app down: it is logged and the board is
+stood still instead, each moving die straight below where it was, square on the
+felt (`settleOrStand`, `BoardTrack.standing`).
 
 The frames it costs are the only frames it costs. A board whose drop is playing
 wants one per vsync, and a board whose drop has ended wants none, which is what
