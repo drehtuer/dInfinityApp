@@ -264,8 +264,9 @@ val verifyDocsLinks = tasks.register("verifyDocsLinks") {
  * Files that need a device, inside modules that mostly do not.
  *
  * Whole modules are left out below; these are the stragglers — a composable
- * that can only be exercised by a real `Surface`, a sensor listener that needs
- * real sensors, the one file that names the physics engine. Excluding them by
+ * that can only be exercised by a real `Surface`, the one file that names the
+ * physics engine. `ShakeToRoll.kt` used to be one; Robolectric drives it with
+ * real sensor events now (`ShakeInputTest`), so it is measured like the rest. Excluding them by
  * name rather than excluding their modules keeps everything around them
  * measured, which is the point: the gap should be visible and small, not hidden
  * behind a directory (`.claude/CLAUDE.md`).
@@ -276,7 +277,6 @@ val verifyDocsLinks = tasks.register("verifyDocsLinks") {
 val deviceOnlyFiles: Set<String> =
   setOf(
     "DiceTray.kt",
-    "ShakeToRoll.kt",
     "RollWiring.kt",
   )
 

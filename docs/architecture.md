@@ -549,8 +549,9 @@ a database.
 **The formula is not on the tray at all until it is asked for.** What is on
 the tray is a tab at the right-hand edge — the word `Formula` and a chevron —
 and pressing it slides the drawer in from the side: the field, the squiggle,
-the one-tap fix and the keyboard, whose action key rolls
-(`design/dInfinity.dc.html`, option 2a). It used to be a line of type with a
+the one-tap fix and the keyboard, whose action key says Done and puts the
+drawer away again — it throws nothing (decision 66;
+`design/dInfinity.dc.html`, option 2a). It used to be a line of type with a
 dashed rule under it, on screen in every state; the second device session
 asked for it to be put away and to arrive from the side, and both halves are
 about the felt. The tab is **red when the formula does not read**, which is
@@ -578,8 +579,8 @@ Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
 - **the formula's tab** brings the drawer in and takes it away again, and
-  **the field inside it** calls `type` on every keystroke and `roll` on the
-  action key;
+  **the field inside it** calls `type` on every keystroke. Its action key
+  says Done and shuts the drawer; it does not call `roll` (decision 66);
 - **the saved rolls' handle** moves that pull-up between its two rests, and
   the strip inside it calls `type` or `typeSaved`. Neither decides anything
   about the roll: a tap on a saved roll fills the field and waits for a shake
@@ -595,15 +596,12 @@ and none of them decides anything itself:
   and both are `type` underneath — a tap *is* an edit to the formula, so it
   re-validates, re-checks the table's capacity and abandons a throw in the air
   exactly as a keystroke does (`docs/dice-notation.md`);
-- **a shake** calls `roll`, which is one shake for one throw — a settled roll
+- **a shake** calls `roll`, and **nothing else does**: there is no button, no
+  key and no accessibility action that throws, and no setting that switches
+  shaking off (decision 66). It is one shake for one throw — a settled roll
   is put away by the presenter rather than by a separate act, and a roll that
   is waiting on a hand is continued rather than restarted, whether it is
   waiting for the dice a chain earned or for the ones a throw gave up on;
-- **the table's custom accessibility action**, and the editor's action key,
-  call the same `roll` with no samples. They are the two ways in that are not
-  a hand, and they exist because a shake is not a gesture every hand can make
-  ("Accessibility", below; `docs/physics-and-rendering.md`, "Starting a
-  roll");
 - **Down / Nearest / Up** call `round`, which rescores from subtotals that
   already landed and never moves a die;
 - **the one-tap fix under an error** calls `type` with the formula the parser
@@ -630,13 +628,12 @@ unchanged: the dice are thrown by the same `roll`, stepped by the same loop,
 and the total arrives in the same `Settled`. Only pinch and pan have nothing
 to move (`design/dInfinity.dc.html`, option 1z).
 
-The tray is in that list once and only once, for its accessibility action.
-Otherwise it draws what the roll is doing and has no way to change it:
-`Renderer` has no method that returns anything (decision 48), so drawing a roll
-cannot alter one, and a one-finger tap on the tray deliberately does nothing
-yet (`docs/physics-and-rendering.md`, "Starting a roll"). The action is a
-*custom* action rather than a click for exactly that reason — a semantic click
-is a tap to anything walking the tree.
+The tray is not in that list at all, except for the camera. It draws what the
+roll is doing and has no way to change it: `Renderer` has no method that
+returns anything (decision 48), so drawing a roll cannot alter one, and a
+one-finger tap on the tray does nothing — decided, not pending
+(`docs/physics-and-rendering.md`, "Starting a roll"). It carries a spoken
+description of what is on it and no action, custom or otherwise.
 
 ### While the phone is being shaken
 
@@ -644,6 +641,16 @@ is a tap to anything walking the tree.
 knows. There is one more piece of state, deliberately outside the sealed
 interface: **whether a shake is going on right now**. It is owned by
 `ShakeToRoll` and read by nothing that scores a roll.
+
+`ShakeToRoll` does not name the sensors itself. It listens to
+`ShakeInput.current`, which is `ShakeInput.SENSORS` — `SensorShakeSource` over
+the accelerometer and gyroscope — in every build. A test sets a `TestHand`
+there instead, because a shake is the only way to roll and neither Robolectric
+nor a phone on a desk can be shaken on cue; the hand calls the same
+`onStarted`, `onSample` and `onEnded` the sensors do, so a test throws by the
+one path a player does (decision 66). `ShakeInputTest` drives the sensor half
+with real `SensorEvent`s, so the stand-in is known to stand in for something
+that works.
 
 It is separate because it is not about the dice. A shake begins, the dice are
 thrown, `RollState` goes to `Rolling` — and the hand carries on moving through
@@ -1348,7 +1355,6 @@ thing a test can see, and one does.
 | System / Light / Dark | `onAppearanceSelected` | which palette every screen draws in, immediately. Three choices and no fourth: "automatic at sunset" would change colour halfway through somebody's game |
 | one of the six accent presets, or a colour from the system picker | `onAccentSelected` | the stored accent, and with it every screen at once. The six are laid out four across, so six presets and a custom swatch come out 4 + 3 with nothing orphaned |
 | Straight down / Angled | `onTableViewSelected` | how far the camera leans over the table, from the next visit to the roll screen. Straight down is the default (`docs/physics-and-rendering.md`, "Rendering (normal mode)") |
-| the shake switch | `onShakeChanged` | whether the next visit to the roll screen registers the motion sensors **at all**. The only setting here that saves any power |
 | the haptics switch | `onHapticsChanged` | whether a die landing ticks in the hand, from the next visit to the roll screen. The system's own touch-feedback setting still governs it: the effects go out under `VibrationAttributes.USAGE_TOUCH` and the app never asks whether that is on |
 | the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
 | Down / Nearest / Up | `onRoundingSelected` | which way division rounds on the next throw, and on every outcome graph. The per-throw override on the result sheet is still not remembered |
@@ -1358,10 +1364,10 @@ thing a test can see, and one does.
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
 
-Seven of those take effect **when the roll screen next opens** rather than
-where they are pressed — power saving, the shake, haptics, sound, the default
-rounding, the table view and the debug overlay half of the developer toggle. A
-renderer appearing under a roll in progress, sensors registering mid-throw, a
+Six of those take effect **when the roll screen next opens** rather than
+where they are pressed — power saving, haptics, sound, the default rounding,
+the table view and the debug overlay half of the developer toggle. A renderer
+appearing under a roll in progress, a
 roll that starts buzzing half way down, an overlay appearing over a throw, a
 camera leaning over while the dice are still moving, or a total changing its
 arithmetic while the dice are in the air are not settings taking effect; they
@@ -1547,23 +1553,30 @@ nib is `selected`, the guide is a `Role.Checkbox` because a tap turns it back
 off — and a tool that merely *does* something is a `Role.Button` with no
 chosen-ness to report at all, rather than one reporting that it is not chosen.
 
-### A gesture is not an affordance
+### A gesture is not an affordance — and rolling is one anyway
 
 **Shaking the phone is the only way to throw dice** (`docs/physics-and-
 rendering.md`, "Starting a roll"), and a shake is not a gesture every hand can
-make. Two things therefore stand in for it, and neither is a button on the
-screen:
+make. Until decision 66 two things stood in for it: a custom accessibility
+action on the table, *Throw the dice*, and the formula editor's action key.
+**Both are gone, and nothing replaces them.** There is no button, no key, no
+accessibility action and no switch in Settings that throws or that turns
+shaking off; a tap on the table does nothing.
 
-- **a custom accessibility action on the table**, labelled *Throw the dice*,
-  and on the power-saving panel that stands instead of the table. A custom
-  action rather than a click: a tap on the tray deliberately does not roll,
-  and a semantic click *is* a tap to anything walking the tree.
-- **the action key in the formula editor.** That is what the key already
-  means, and somebody typing a formula on a hardware keyboard has no hand
-  free to shake the phone.
+**This is a decided limitation, and it is the one place the rule above is
+broken on purpose.** Somebody using TalkBack can hear everything on the roll
+screen — what is on the table, what the dice came to, what a roll is waiting
+for — and can type a formula, but cannot start a roll unless they can also
+shake the phone. The same is true of anybody who cannot shake one: a phone on
+a stand, a hand that cannot hold it, a tablet on a desk. The owner chose it,
+knowing that, because the throw is the product: a roll that can be started
+without the hand is a random-number generator with dice drawn on it
+(decision 66).
 
-Both call the same `roll` a shake calls, with no samples, so there is no
-second path to a number (goal 1).
+What survives of the old affordances is the description. The table still says
+what is on it, the power-saving panel still says why there is no table, and
+the waiting toast below still announces how many dice the next shake will
+throw — so a player who can shake is never left guessing what a shake will do.
 
 **A roll that is waiting on a hand announces itself.** A chain that earned a
 throw, and a throw that gave up on dice that never stopped, both put a plate
@@ -1797,7 +1810,8 @@ to re-run (decision 13).
   two, which is a change from the original design (decision 49).
 - **Sensors arrive on the main thread.** There is no sensor thread:
   `SensorShakeSource` registers with `SensorManager` without a `Handler`, from
-  the roll screen's `LifecycleResumeEffect` (`ShakeToRoll`), so its callbacks
+  the roll screen's `LifecycleResumeEffect` (`ShakeToRoll`, through
+  `ShakeInput`), so its callbacks
   come in on the main looper. They do nothing heavy there — the shake detector
   decides, and each `ShakeSample` is posted to the roll thread
   (`TrayDriver.shake`), where it is applied at the step it is numbered for.
@@ -1914,7 +1928,7 @@ the archives an install is working through, and those came from a stranger.
 | 44 | The golden determinism suite is split where the engine begins, and the two halves compile the same code for turning a case into a throw | What CI can run and what only a device can run are different questions about the same roll: everything the engine is *handed* is Kotlin and belongs on the JVM, everything it *did* needs an ABI. Splitting it there means the part most likely to be changed by accident — a tuning constant, an extra random draw, a solid's closed form — is caught on every pull request rather than on whoever next runs a phone. Both halves assert the same digest of the throw, which is what makes the JVM half evidence about a real roll rather than about itself; the moment the two disagree about what a case even is, that is the failure, and it is a louder one than a wrong face. The shared source set exists because a JVM copy and a device copy of that definition would be two suites, and their first divergence would look exactly like a physics bug |
 | 45 | A die's mesh is grouped onto `simulation/api`'s own face directions, and lives beside the shape catalogue's atlas layout in `core/model` | The mesh is the third description of a solid, after the hull the solver collides and the directions the reader reads, and decision 35 already says all three come from one construction. This is that rule carried out: a face of the mesh is not *matched* to a catalogue face afterwards, it is built by asking which corners lie on that face's plane, so face *i* of the picture is face *i* of the roll by construction. A die whose printed face and scored face disagree looks exactly like the physics cheating, and it is the one accusation this app cannot answer. The atlas grid moved out of `dicesets/format` for the same reason: both the validator that checks an author's image and the renderer that samples it have to mean the same grid, and a renderer that depended on a package validator to find out would be the wrong way round |
 | 46 | Filament's materials are compiled on the device with `filamat-android`, not by `matc` at build time | Filament ships no default material: every surface needs one compiled from `.mat` source, and the two ways to get there are a host tool or the runtime compiler. `matc` would mean the devcontainer image and the CI action both gaining another pinned download, and the app build depending on a host binary — for a project whose whole build story is "it works in the container", that is a real cost. `filamat-android` is one dependency line, supports Vulkan as well as OpenGL ES and optimises what it compiles. It is paid for in APK size, because it bundles a shader compiler, and in some work at launch. If either turns out to matter on the Pixel 10a, the material source does not change — only who compiles it. It also leaves the door open to a dice set bringing its own material rather than only its own parameters, which `matc` at build time would have closed for good — but that door stays shut in v1, because a shader is code and `docs/dice-sets.md` says the app never runs anything from a package (`docs/TODO.md`, After v1) |
-| 47 | `render/filament` draws through a `Stage` interface, and one file implements it | The same line decision 40 draws through the physics, for the same reason and with the same shape. Which meshes a throw needs, how big each die is at the capacity rule's scale, which numbers its material takes, when the camera stops framing the tray and starts framing the dice — all judgement, and none of it physics or GPU. Behind the seam a JVM test can say the dice were the right size, that the camera moved when they settled and that a second roll did not land on top of the first; in front of it a device can only say a frame was drawn. `FilamentStage` and `FilamentEngine` are the files that hold a context, and — with `RollThread`, the thread they are made on and the lifetime they are kept for (decision 50), and `TrayDriver`, which posts the roll onto that thread — the files `sonar-project.properties` excludes from SonarQube's coverage figure, by name. The build's own gate, `verifyCoverage`, draws the line coarser: it leaves the whole of `render/filament` (and of `simulation/jolt`) out, because those modules' tests cannot run where it runs, and excludes by name only the device-only stragglers in modules it does measure (`DiceTray.kt`, `ShakeToRoll.kt`, `RollWiring.kt`). They are split along what a surface owns: a swap chain and a viewport die with the surface they were made from, while the engine and the material compiled on the device do not — rebuilding those for every rotation is a recompile the player watches as a black tray |
+| 47 | `render/filament` draws through a `Stage` interface, and one file implements it | The same line decision 40 draws through the physics, for the same reason and with the same shape. Which meshes a throw needs, how big each die is at the capacity rule's scale, which numbers its material takes, when the camera stops framing the tray and starts framing the dice — all judgement, and none of it physics or GPU. Behind the seam a JVM test can say the dice were the right size, that the camera moved when they settled and that a second roll did not land on top of the first; in front of it a device can only say a frame was drawn. `FilamentStage` and `FilamentEngine` are the files that hold a context, and — with `RollThread`, the thread they are made on and the lifetime they are kept for (decision 50), and `TrayDriver`, which posts the roll onto that thread — the files `sonar-project.properties` excludes from SonarQube's coverage figure, by name. The build's own gate, `verifyCoverage`, draws the line coarser: it leaves the whole of `render/filament` (and of `simulation/jolt`) out, because those modules' tests cannot run where it runs, and excludes by name only the device-only stragglers in modules it does measure (`DiceTray.kt`, `RollWiring.kt`). They are split along what a surface owns: a swap chain and a viewport die with the surface they were made from, while the engine and the material compiled on the device do not — rebuilding those for every rotation is a recompile the player watches as a black tray |
 | 48 | A roll in progress is a `LiveRoll`: the loop steps one step at a time, and a `FrameClock` decides when. Power-saving mode is the same object with nobody calling the clock | The loop used to run to completion in one call, which meant a rendered roll could only be a second implementation of it — and two implementations of "the physics result *is* the roll" is one too many (goal 1). Splitting the loop at the step it was already taking costs nothing and buys the claim outright: normal mode asks for the time since the last frame, power-saving asks for the lot, and underneath it is one loop over one world taking the same steps in the same order. The clock is the other half. Handing a frame time to a solver would make the roll depend on the panel, the thermal state and whether the app was backgrounded, so the frame time stops at the clock: it is cut into whole fixed steps and the remainder becomes the moment a renderer interpolates at. That is also why a slow frame drops simulated *time* and never a step — the roll is unchanged, it simply arrives later. The dependency runs `simulation/jolt` → `render/headless`, the direction the data-flow diagram already showed: a renderer is handed frames and has no way back |
 | 49 | The physics and the Filament engine share one thread, driven by that thread's own `Choreographer` | The design started with a simulation thread publishing transforms to a render thread through a lock-free double-buffer. Written down, the render side turns out to have exactly one thing it can do with a transform, which is draw it — so the buffer would be eighty entries copied across a boundary neither side wanted, and a class of bug (torn reads, a frame drawn from two different steps, a stage closed while the other thread is mid-draw) bought in exchange for overlapping a copy with a draw. Filament also insists every engine call comes from the thread that made the engine, and the physics world is single-threaded for determinism, so both halves already wanted one owner each; giving them the same owner removes the hand-off rather than synchronising it. The thread is still not the main one — eighty convex bodies at 120 Hz does not belong where the UI is drawn. What it costs is that a long physics step delays that frame, which is the same trade the frame clock's four-step catch-up cap already makes visible |
 | 50 | The roll thread and the Filament engine on it outlive a visit to the roll screen; the physics world and the scene do not | `FilamentEngine` already keeps the engine and the compiled material across every surface made from it, because compiling the dice material happens on the device for the driver that is actually there (decision 46) and costs long enough that rebuilding it per rotation *was* the black tray. A driver per visit put that cost straight back: leaving the roll screen for the menu and returning compiled the material again, and the player watched it happen. So the line is drawn one level further out — what a *visit* owns is a roll, and a roll the player walked away from never landed, so the world and the scene still go. The thread is kept with the engine rather than instead of it, because Filament only takes calls from the thread that made the engine, and an engine outliving its thread is an engine nothing may touch. What it costs is an idle thread and one engine held while the player is on another screen, against a black tray every time they come back |
@@ -1929,7 +1943,8 @@ the archives an install is working through, and those came from a stranger.
 | 59 | Every die is printed, and its artwork is composited over the printing by alpha | `docs/dice-sets.md` has always promised that an atlas may leave a cell transparent and the label shows through, and the old material could not keep it: `baseColor *= atlas` over a transparent pixel is black, not the die, and the printed field was suppressed for any die with a `texture` at all. Deciding it per *cell* instead would mean the renderer knowing which cells came out empty, which is a fact about pixels that live on the far side of `Stage` — so it is decided per *pixel*, in the material, where the alpha already is. The cost is a distance field built for dice that may not need one, which is cached per die and is eighty kilobytes; what it buys is that a die with no artwork and a die whose artwork covers every face are the same code path with different alpha, rather than two. Where the artwork is opaque the result is the old multiply exactly, which is what keeps a table's floor tinted by its floor colour |
 | 60 | The table picker's thumbnails are drawn by the roll screen's renderer, on the roll screen's thread and engine; everything that decides what one is a picture of is plain Kotlin | It is the first thing in the app to want the renderer somewhere that is not the tray, and there were three ways to get it and only one that keeps the promises already made. A private engine on the main thread is simply wrong — Filament takes calls only from the thread that made the engine (decision 49). A second engine on a second thread works and pays, again, the cost decision 50 exists to avoid: the dice material is compiled on the device for the driver that is actually there (decision 46) and takes long enough to watch, so a second one is that compile twice over and two graphics contexts held for one app. `RollThread` already outlives every visit to every screen and already has one engine on it, and a handler serialises what reaches it, so the picker posts. What a thumbnail owns is a swap chain and a scene, and both are given back before the post returns. The other half is decision 40 and 47 applied again: how big a picture is, what tray it is a tray of, where the camera stands, which face of the die is up, how high that leaves the die sitting, which looks are kept and which are dropped are all arithmetic and judgement, and all of them fail as *a slightly odd picture* rather than as an error — so all of them are `ThumbnailPlan` and `ThumbnailCache`, with JVM tests, and only the draw call and the buffer of pixels are behind `Stage`. The seam back out is the same one `TablePhotos` uses: `feature/tables` asks for a picture of a look and cannot name an engine, `render/filament` draws a frame and cannot name a bitmap, and `:app` joins them. The fallback is the screen's existing swatch, kept for exactly that — an engine that will not open, a driver that will not read a frame back, and power-saving mode, which promises that no engine is created *at all* |
 | 61 | Every word a screen says is a string resource, and a check of the project's own — not Android Lint's — is what keeps it that way | Lint has the rule and cannot apply it: `HardcodedText` reads layout XML, and there is no layout in this app to read. Left at that, "nothing prevents a translation" would be a claim maintained by whoever last remembered it, which is the kind of rule that decays quietly — a caption typed into a `Text(` is invisible in review and invisible in CI. So the rule is enforced by `verifyTextIsAResource`, which reads what a composable is *handed*. It is a heuristic over source text rather than a type-resolved analysis, and that shapes what it asks: only the handful of call sites that put words on a screen, and only literals with words of their own in them, so that a test tag, a route, a `require` message and `"%.1f"` are all left alone. The gaps are the two plain-Kotlin modules that write English on purpose — the notation reference beside its parser, and the validator that may not depend on Android — and they are exempted by file name in their own build scripts rather than by a directory nothing looks in, so the hole stays visible and small |
-| 62 | Which die a finger is on is arithmetic in `render/filament`, the inverse of the camera; whether that die may be thrown again is arithmetic in `core/notation`, over the breakdown | The same line decisions 40 and 47 draw, applied to the only gesture the tray had left. A touch point becomes a die by a ray through the frustum `TrayCamera` framed, against the ball around each die at the scale the capacity rule threw it — so it belongs beside that camera, where a JVM test can project a die through the picture it was drawn in and ask for it back, and not inside a `pointerInput` lambda where the only test is a person tapping a phone and the only symptom is a die they did not touch. The second half is a different question and deliberately not in the same place: *may* a die be thrown again is about the **formula**, not about the physics or the picture. A die that another die was thrown because of is spent — `8d6!` threw a seventh die because the sixth came up six — and throwing it again would leave the roll holding a die nothing asks for, which can only be resolved by taking a die off the table or keeping one whose reason has gone. Both are the app moving dice behind the player, which is what the whole stacking ladder exists to avoid. So the rule sits beside `GroupRoller`, which is what builds the chains, and it is coarse on purpose: a group carrying `!` or `r n` offers nothing at all rather than a per-die guess reconstructed from a flat list the chains were flattened out of. A die it refuses is a die the player throws again by throwing the roll again — a shake, the tray's accessibility action, or the formula field's action key; a die it wrongly allowed would be a roll the app had rearranged |
+| 62 | Which die a finger is on is arithmetic in `render/filament`, the inverse of the camera; whether that die may be thrown again is arithmetic in `core/notation`, over the breakdown | The same line decisions 40 and 47 draw, applied to the only gesture the tray had left. A touch point becomes a die by a ray through the frustum `TrayCamera` framed, against the ball around each die at the scale the capacity rule threw it — so it belongs beside that camera, where a JVM test can project a die through the picture it was drawn in and ask for it back, and not inside a `pointerInput` lambda where the only test is a person tapping a phone and the only symptom is a die they did not touch. The second half is a different question and deliberately not in the same place: *may* a die be thrown again is about the **formula**, not about the physics or the picture. A die that another die was thrown because of is spent — `8d6!` threw a seventh die because the sixth came up six — and throwing it again would leave the roll holding a die nothing asks for, which can only be resolved by taking a die off the table or keeping one whose reason has gone. Both are the app moving dice behind the player, which is what the whole stacking ladder exists to avoid. So the rule sits beside `GroupRoller`, which is what builds the chains, and it is coarse on purpose: a group carrying `!` or `r n` offers nothing at all rather than a per-die guess reconstructed from a flat list the chains were flattened out of. A die it refuses is a die the player throws again by shaking the whole roll again; a die it wrongly allowed would be a roll the app had rearranged |
 | 63 | There is **one** colour picker, in `ui/common`, and the arithmetic under it is in `core/model` | Three screens ask for a colour and the sheet had been written twice, each copy private to its feature module, each with its own slider row and its own duplicate of what a hue is — and the second copy's own comment already said that two pickers disagreeing about a hue would be one too many, which is a note somebody wrote instead of fixing it. The rule for `ui/common` answers it exactly: more than one screen needs it, and it needs no screen. What forced the second half is the dependency arrow — `ui/common` may not depend on a feature's engine, so the arithmetic could not stay in `:designer` and moving it *up* was the only direction left. `core/model` is where it belongs anyway: it sits beside `AccentRamp` and `Contrast`, which are the other things every picked colour goes through, it is plain Kotlin so a JVM test holds what a hue is rather than a Robolectric one, and it is low enough that nothing has to take a screen's dependency to write a colour down. `feature/settings` had taken `:designer` for the arithmetic alone and no longer depends on it; `feature/designer`'s alias of `ui/common`'s `Ink` went with the name clash that forced it. The tags are derived from one string rather than declared seven times per screen, because twenty-one constants is twenty-one chances to spell a suffix two ways |
 | 64 | The dice waiting to be thrown *fall* onto the board, and the fall is closed-form arithmetic in `simulation/api` rather than a second physics world | The player asked to see a die land when they add one, and the obvious way to get that is to simulate it — which is the one thing this app must not do twice. A real world for the pre-throw board would be a second place a face could come from, kept out of the score by a promise rather than by construction, and it would want a thread, a lifecycle and a device to test on, with eight of them queued behind somebody tapping out `8d6`. `FallingIn` has none of that: free fall, three bounces and an eased turn, evaluated wherever the frame callback asks, with **every fall ending at `Quaternion.Identity`** — the resting orientation is fixed before the die is let go, so there is no face to read even in principle. It ends exactly where `RestingPlaces` always put the die, so the board is the board it always was; its randomness comes through `Seeds.WAITING`, a purpose no throw uses, so the golden fixture does not move; and it is all on the near side of `Stage`, so it is tested on a JVM (`docs/physics-and-rendering.md`, "The dice waiting to be thrown") |
 | 65 | A watched roll is **paced**: `RollPace` scales a frame's real time before `FrameClock` turns it into steps, and the factor is one constant applied in `TrayLoop.frame` | The dice are too fast to watch and the physics cannot fix it — friction moves the median settle of 20d20 on the Pixel 10a only from 0.73 s to 0.85 s, and the top of that range pushes the dice into one another. Two seconds of tumbling is energy a hand does not put into dice. So the same roll is shown over more wall clock: same seed, same steps, same order, same faces, nothing reaching the solver. It lives at the one line where real time becomes simulated time, which is also the line power-saving mode never crosses — that mode has no screen, so it must not be paced, and a place it cannot reach is a better guarantee than a flag it must clear. It is off while `WatchedRoll.driven`, which is `ShakeDriver.stillShaking`, so the part of a roll a hand is steering is exactly the part that is not slowed; reusing the roll's own predicate is what stops the two ever disagreeing. Placing it here rather than inside `FrameClock` also keeps the clock's contract untouched: it still says nothing about wall clocks and still reports dropped steps and interpolation in the time it was actually given |
+| 66 | **A shake is the only way to start a roll.** No key, no accessibility action, no tap and no setting to turn it off | The owner's call: "only a shake starts the roll, not a button or tap on the screen." Two non-shake throws had survived the Roll button — the formula editor's action key and the table's custom accessibility action, *Throw the dice* — and both are gone: the key says Done and only closes the editor, and the table keeps its spoken description and carries no action. A tap on the table, already inert, is recorded as **decided: no**, which leaves the one-finger touch free for picking a die up. The **Shake to roll** switch in Settings went with them, because with shake the only way in, switching the sensors off would leave an app that cannot roll; `AppSettings.shakeToRoll` is gone and an old install's `shake_to_roll` key is left on disk, unread. **The consequence is accepted, not overlooked:** a TalkBack user who cannot also shake the phone, and anybody else who cannot shake one, has no way to start a roll ("Accessibility"). Tests still need to shake, so `feature/roll`'s `ShakeInput` is where `ShakeToRoll` gets its shakes — the sensors in every build — and a test installs a `TestHand` there, which reaches the presenter by the same `onStarted → roll` and `onSample → shaking` calls the sensors make. It is process-wide because the device tests launch `MainActivity` as it ships and cannot hand a composable anything; nothing a player can reach sets it |

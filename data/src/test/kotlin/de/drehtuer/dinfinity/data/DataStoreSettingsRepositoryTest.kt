@@ -3,10 +3,12 @@ package de.drehtuer.dinfinity.data
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import app.cash.turbine.test
 import de.drehtuer.dinfinity.core.model.AccentColor
+import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableView
@@ -125,7 +127,6 @@ class DataStoreSettingsRepositoryTest {
           "accent_colour" to "amber",
           "appearance" to "system",
           "power_saving" to false,
-          "shake_to_roll" to true,
           "haptics" to true,
           "sound" to true,
           "rounding" to "down",
@@ -176,23 +177,34 @@ class DataStoreSettingsRepositoryTest {
     }
 
   @Test
-  fun `shake is on until somebody turns it off`() =
+  fun `an install from when shake could be turned off still loads, and the old key is left alone`() =
     runTest {
-      // A fresh install has no key at all, and reading an absent boolean as
-      // false would ship every new install without the thing that makes this a
-      // dice app.
-      val repository = DataStoreSettingsRepository(dataStore(this))
+      // Shake is the only way to roll, so there is no switch for it any more
+      // (`docs/architecture.md`, decision 66). A phone that had turned it off
+      // still has the key on disk; it must neither break the read nor be
+      // mistaken for anything else, and nothing is gained by deleting it.
+      val store = dataStore(this)
+      store.edit { preferences ->
+        preferences[booleanPreferencesKey("shake_to_roll")] = false
+        preferences[booleanPreferencesKey("haptics")] = false
+      }
+      val repository = DataStoreSettingsRepository(store)
 
-      assertEquals(true, repository.settings.first().shakeToRoll)
-      repository.setShakeToRoll(false)
-      assertEquals(false, repository.settings.first().shakeToRoll)
+      assertEquals(AppSettings(haptics = false), repository.settings.first())
+
+      repository.setSound(false)
+      val stored =
+        store.data
+          .first()
+          .asMap()
+          .mapKeys { (key, _) -> key.name }
+      assertEquals(false, stored["shake_to_roll"])
     }
 
   @Test
   fun `haptics and sound are on until somebody turns them off`() =
     runTest {
-      // Same rule as the shake above, and the same reason: a fresh install has
-      // neither key, and reading an absent boolean as false would ship a silent
+      // A fresh install has neither key, and reading an absent boolean as false would ship a silent
       // app to everybody who had never opened Settings.
       val repository = DataStoreSettingsRepository(dataStore(this))
 
@@ -210,8 +222,8 @@ class DataStoreSettingsRepositoryTest {
   @Test
   fun `the debugging tools are off until somebody turns them on`() =
     runTest {
-      // Absent means off, which is the opposite of the shake, the haptics and
-      // the sound above — and right for the same reason those are on: it is
+      // Absent means off, which is the opposite of the haptics and the sound
+      // above — and right for the same reason those are on: it is
       // what a fresh install should be (`docs/physics-and-rendering.md`,
       // "Debug tooling").
       val repository = DataStoreSettingsRepository(dataStore(this))

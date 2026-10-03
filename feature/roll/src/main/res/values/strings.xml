@@ -111,13 +111,6 @@
   <!-- The two ways on from a result, at the foot of the sheet (options 7a, 3b). -->
   <string name="roll_see_the_odds">See the odds</string>
   <string name="roll_save_as_roll">Save as roll</string>
-  <!--
-    The tray's custom accessibility action. Shaking is the only way to throw
-    and a shake is not a gesture every hand can make, so the table carries the
-    throw as an action a screen reader can offer (`docs/architecture.md`,
-    "Accessibility").
-  -->
-  <string name="roll_throw_action">Throw the dice</string>
   <string name="roll_rolling">Rolling…</string>
   <!--
     The counting plate, across the bottom of the tray while the dice are still

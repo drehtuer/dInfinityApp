@@ -101,6 +101,14 @@ over the prototype has to answer. It is written down rather than drawn
 because this file is generated and a rearrangement that size belongs in the
 design project — see **Editing**, below.
 
+**A shake is now the only way to roll** (decision 66 in
+[../docs/architecture.md](../docs/architecture.md#key-decisions-log)), so two
+things the prototype still draws are not the app's: the shake switch in
+Settings (`1y`), which the app no longer has, and the welcome's "or tap the
+tray to roll". Both are listed in
+[../docs/design-handover.md](../docs/design-handover.md), "The shake is the
+throw, and the prototype half-says so".
+
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
 2026-09-17, with two hand edits to `dInfinityPhone.dc.html` since (see
 **Editing**).

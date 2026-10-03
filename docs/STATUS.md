@@ -18,7 +18,9 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Latest release:** `v0.1.1`, signed and published with its SHA-256.
 - **`main` is at #331**, and CI is green on it. **In flight:**
   `docs/harness-figures` — this file and `docs/TODO.md` compacted, with the
-  2026-10-03 harness figures.
+  2026-10-03 harness figures; `feature/shake-only`, stacked on it — a shake is
+  the only way to roll: the editor's key, the table's accessibility action and
+  the Settings switch are gone (decision 66).
 
 ## Done
 
@@ -82,7 +84,8 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 
 All in `docs/TODO.md`; the ones that block code first.
 
-- **Does a tap on the table roll?** — blocks the one-finger hand re-throw.
+- **Is the hand re-throw thrown by the finger or by a shake?** — blocks
+  wiring it; a finger that throws would be a throw no shake started.
 - **Does the impact sound go?** The design has no switch for it.
 - **What the re-throw bar should bound** — duration and passes, probably.
 - **The built-in set's `size_mm`**, which changes every die's mass and how

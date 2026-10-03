@@ -29,9 +29,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Rounding
@@ -113,7 +110,6 @@ fun RollScreen(
   onBackToDesigner: (() -> Unit)? = null,
   menu: @Composable () -> Unit = {},
   strip: @Composable ((String, SavedRollSource?) -> Unit) -> Unit = {},
-  shakeToRoll: Boolean = true,
   openWith: String = "",
 ) {
   // Typed in rather than set some other way: a formula arriving from a saved
@@ -135,7 +131,7 @@ fun RollScreen(
 
   val edges = rememberEdges(landed = presenter.state is RollState.Settled)
 
-  WhileTheScreenIsUp(presenter, shakeToRoll)
+  WhileTheScreenIsUp(presenter)
 
   Box(
     modifier =
@@ -220,11 +216,8 @@ fun RollScreen(
  * and was written into the history for a screen nobody was on.
  */
 @Composable
-private fun WhileTheScreenIsUp(
-  presenter: RollPresenter,
-  shakeToRoll: Boolean,
-) {
-  ShakeToRoll(presenter, enabled = shakeToRoll)
+private fun WhileTheScreenIsUp(presenter: RollPresenter) {
+  ShakeToRoll(presenter)
   KeepTheScreenAwake()
   LockTheOrientation()
   DisposableEffect(presenter.tray) {
@@ -643,12 +636,10 @@ private fun AlongTheTop(
       // A throw the table cannot hold is a formula that reads perfectly well,
       // so the tab marks that too — the words for it are the outcome plate's.
       wrong = state is RollState.Invalid || state is RollState.TooMany,
-      // It closes the drawer first, so what the dice land on is not behind a
-      // keyboard.
-      onSubmit = {
-        onEditing(false)
-        presenter.roll()
-      },
+      // The keyboard's key puts the editor away and does nothing else. A
+      // shake is the only thing that throws (`docs/architecture.md`,
+      // decision 66), so finishing a formula is finishing a formula.
+      onDone = { onEditing(false) },
     )
 
     // Last in the column, so it sits between the formula it explains and the
@@ -671,24 +662,17 @@ private fun AlongTheTop(
  */
 @Composable
 private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
-  // Throwing is a shake, and a shake is not something every hand can make.
-  // So the table carries a custom accessibility action that throws — not a
-  // click, because a tap on the tray deliberately does not roll and a
-  // semantic click is a tap to anything that walks the tree
-  // (`docs/architecture.md`, "Accessibility";
-  // `docs/physics-and-rendering.md`, "Starting a roll").
-  //
-  // On the power-saving panel as well as on the tray, because the panel
-  // stands *instead of* the table: a mode with no surface is still a mode
-  // somebody has to be able to roll in.
+  // Neither the table nor the panel throws anything when touched, and
+  // neither carries an accessibility action that would: a shake is the only
+  // way to start a roll (`docs/architecture.md`, decision 66).
   if (!presenter.draws) {
-    PowerSavingPanel(modifier = Modifier.throwing(presenter))
+    PowerSavingPanel()
     return
   }
   DiceTray(
     driver = presenter.tray,
     geometry = presenter.geometry,
-    modifier = Modifier.fillMaxSize().throwing(presenter),
+    modifier = Modifier.fillMaxSize(),
     // A surface has nothing under it for a screen reader to find, so what is
     // on the table is said here or nowhere at all (`docs/architecture.md`,
     // "Accessibility").
@@ -699,22 +683,6 @@ private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
     view = presenter.looking,
     onLook = presenter::look,
   )
-}
-
-/**
- * The one way to throw that is not a hand.
- *
- * It calls exactly what a shake calls — `RollPresenter.roll` with no samples,
- * which is what an added die is thrown with anyway — so there is no second
- * path to a number and nothing here that a shake does not also reach
- * (`docs/architecture.md`, goal 1).
- */
-@Composable
-private fun Modifier.throwing(presenter: RollPresenter): Modifier {
-  val label = stringResource(R.string.roll_throw_action)
-  return this.semantics {
-    customActions = listOf(CustomAccessibilityAction(label) { presenter.roll() })
-  }
 }
 
 /**

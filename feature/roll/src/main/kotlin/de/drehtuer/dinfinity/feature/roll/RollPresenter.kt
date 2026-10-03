@@ -238,9 +238,10 @@ class RollPresenter(
    * what the dice came to, and that is posted to the screen's own thread
    * before the machine is touched.
    *
-   * @param shake what the phone did, or empty for the accessibility action on
-   *   the tray, which is the one way into this that is not a hand
-   *   (`docs/architecture.md`, "Accessibility").
+   * @param shake what the phone did before the throw, if anything. A shake
+   *   calls this the moment it is confirmed, with nothing yet, and hands the
+   *   rest of itself to [shaking] as it happens; a shake is the only thing
+   *   that calls this at all (`docs/architecture.md`, decision 66).
    * @return whether dice were actually thrown. False when there is nothing to
    *   throw — a formula that does not read, a throw the table cannot hold, or
    *   **a roll already in the air**, which is what a second shake at tumbling

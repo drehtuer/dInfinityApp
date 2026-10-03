@@ -24,15 +24,6 @@ data class AppSettings(
    */
   val appearance: Appearance = Appearance.System,
   /**
-   * Whether shaking the phone throws the dice
-   * (`docs/physics-and-rendering.md`, "Shake input").
-   *
-   * On by default, because it is the thing that makes this a dice app rather
-   * than a number generator. Off means the sensors are never registered at
-   * all, which is also the only setting here that saves any power.
-   */
-  val shakeToRoll: Boolean = true,
-  /**
    * Which way division rounds unless a throw says otherwise
    * (`docs/dice-notation.md`, "Division rounding").
    *

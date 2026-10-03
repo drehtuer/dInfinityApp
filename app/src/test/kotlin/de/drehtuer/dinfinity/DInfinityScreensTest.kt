@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity
 
 import android.content.Context
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
@@ -29,6 +28,8 @@ import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.feature.designer.DesignerTestTags
 import de.drehtuer.dinfinity.feature.roll.FinishedThrow
 import de.drehtuer.dinfinity.feature.roll.RollTestTags
+import de.drehtuer.dinfinity.feature.roll.ShakeInput
+import de.drehtuer.dinfinity.feature.roll.TestHand
 import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.feature.saved.EditorTestTags
 import de.drehtuer.dinfinity.feature.saved.HomeStripTestTags
@@ -85,8 +86,16 @@ class DInfinityScreensTest {
   /** A `dicesets/` folder of its own, so one test's packages are not another's. */
   private val temporary: File = Files.createTempDirectory("dinfinity-app-sets").toFile()
 
+  /**
+   * A hand where the sensors would be. A shake is the only way to roll and
+   * Robolectric has nothing to shake, so the roll screen listens to this
+   * instead (`ShakeInput`), through the very calls the sensors make.
+   */
+  private val hand = TestHand()
+
   @Before
   fun open() {
+    ShakeInput.current = hand
     database =
       Room
         .inMemoryDatabaseBuilder(
@@ -106,6 +115,7 @@ class DInfinityScreensTest {
 
   @After
   fun close() {
+    ShakeInput.current = ShakeInput.SENSORS
     scope.cancel()
     database.close()
   }
@@ -504,21 +514,9 @@ class DInfinityScreensTest {
     compose.runOnIdle { navigation.navigate(destination.route) }
   }
 
-  /**
-   * Throws the dice the only way the app offers that is not a hand: the
-   * table's custom accessibility action (`RollScreen`).
-   *
-   * There is no Roll button and Robolectric has no accelerometer, so this is
-   * how a test shakes the phone (`docs/architecture.md`, "Accessibility").
-   */
+  /** Shakes the phone, which is the only way to throw (`docs/architecture.md`, decision 66). */
   private fun shake() {
-    val throwThem =
-      compose
-        .onNodeWithTag(RollTestTags.TRAY)
-        .fetchSemanticsNode()
-        .config[SemanticsActions.CustomActions]
-        .single()
-    compose.runOnUiThread { throwThem.action() }
+    assertTrue("the shake threw nothing", compose.runOnUiThread { hand.shake() })
     compose.waitForIdle()
   }
 

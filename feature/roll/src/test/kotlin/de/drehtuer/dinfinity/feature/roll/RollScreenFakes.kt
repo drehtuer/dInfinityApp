@@ -21,6 +21,7 @@ import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
+import org.junit.rules.ExternalResource
 
 /*
  * The trays and rolls the roll screen's tests are driven by.
@@ -243,4 +244,25 @@ internal class LandingRolls(
 
       override fun close() = Unit
     }
+}
+
+/**
+ * A [TestHand] installed as [ShakeInput.current] for one test, and the sensors
+ * put back after it.
+ *
+ * A shake is the only way to start a roll, and Robolectric has no hand, so
+ * every test that wants dice in the air goes through this — which reaches the
+ * presenter by the very calls the sensors make (`docs/architecture.md`,
+ * decision 66).
+ */
+class ShakingHand : ExternalResource() {
+  val hand = TestHand()
+
+  override fun before() {
+    ShakeInput.current = hand
+  }
+
+  override fun after() {
+    ShakeInput.current = ShakeInput.SENSORS
+  }
 }

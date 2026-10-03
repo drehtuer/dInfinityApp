@@ -52,8 +52,9 @@ Spec: `docs/dice-notation.md`, `docs/tables.md`,
       dice a hand may go near; none in a group with `!` or `r n`), the throw is
       `ThrowSpec.among`, and the history keeps every throw of the die and the
       sum for the roll (`docs/physics-and-rendering.md`, "Picking a die up and
-      throwing it again"). Settle "Does a tap on the table roll?" (Open
-      questions) first — they want the same finger
+      throwing it again"). The tap is decided — it does not roll (decision
+      66) — so the finger is free for this. Settle "Is the hand re-throw
+      thrown by the finger or by a shake?" (Open questions) first
 - [ ] **Decided, not built: braced notation for a set's own dice.**
       `3{skull-d6}kh1` is three of the die whose id is `skull-d6`;
       `3{brass:skull-d6}kh1` the same from set `brass`; `3{skull:d6}kh1` the
@@ -364,8 +365,11 @@ their own, add recomposition tests. Figures go in every PR description.
 - [ ] **Does the sound go?** The design's Settings has no sound switch; the app
       generates impact sounds per table and die size. Remove, add the row back
       to the design, or keep with no switch
-- [ ] **Does a tap on the table roll?** The prototype's does; the app keeps the
-      one-finger touch for picking a die up. Settle before the hand re-throw
+- [ ] **Is the hand re-throw thrown by the finger or by a shake?** The finger
+      picks the die (`TrayPick`); a finger that also throws it would be a
+      throw no shake started, which decision 66 rules out for a roll. Picking
+      up with the finger and throwing with a shake keeps the rule; settle
+      before wiring the re-throw
 - [ ] "Doodle this die" on the picker's long press as well as the breakdown's?
 - [ ] Should a stamp be draggable after it is put down, as in `1v`?
 - [ ] Should the anomaly log survive a restart? A stored seed is a replay

@@ -230,7 +230,7 @@ internal fun AppearanceSection(
  * share of the frame on the wooden rim.
  *
  * It takes effect the next time the roll screen opens, like power saving, the
- * shake, the haptics and the sound, and for the same reason
+ * haptics and the sound, and for the same reason
  * (`docs/architecture.md`, decision 16).
  */
 @Composable
@@ -253,28 +253,6 @@ internal fun TableViewSection(
 }
 
 /**
- * Whether shaking the phone throws the dice
- * (`docs/physics-and-rendering.md`, "Shake input").
- *
- * The only setting on this screen that saves any power: off means the
- * accelerometer and the gyroscope are never registered at all, rather than
- * registered and ignored.
- */
-@Composable
-internal fun ShakeSection(
-  on: Boolean,
-  onChanged: (Boolean) -> Unit,
-) {
-  SwitchRow(
-    label = stringResource(R.string.settings_shake_heading),
-    explanation = stringResource(R.string.settings_shake_explanation),
-    on = on,
-    onChanged = onChanged,
-    tag = SettingsTestTags.SHAKE,
-  )
-}
-
-/**
  * Whether a die landing is felt and heard
  * (`docs/physics-and-rendering.md`, "Haptics and sound").
  *
@@ -289,8 +267,8 @@ internal fun ShakeSection(
  * beside either. The design has no sound switch at all, which is the open
  * question `docs/TODO.md` records under "Does the sound go?".
  *
- * Both take effect the next time the roll screen opens, like power saving and
- * the shake, and for the same reason (`docs/architecture.md`, decision 16).
+ * Both take effect the next time the roll screen opens, like power saving,
+ * and for the same reason (`docs/architecture.md`, decision 16).
  */
 @Composable
 internal fun FeelSection(
@@ -359,7 +337,7 @@ internal fun RoundingSection(
  * one (`docs/architecture.md`, decisions 13 and 56).
  *
  * The overlay takes effect the next time the roll screen opens, like power
- * saving, the shake, the haptics and the sound, and for the same reason
+ * saving, the haptics and the sound, and for the same reason
  * (decision 16). The menu row appears at once, because a menu is not a roll.
  */
 @Composable

@@ -41,9 +41,6 @@ suspend fun SettingsRepository.setHaptics(on: Boolean) = update { it.copy(haptic
 /** Whether a die hitting something makes a noise (`docs/physics-and-rendering.md`). */
 suspend fun SettingsRepository.setSound(on: Boolean) = update { it.copy(sound = on) }
 
-/** Whether shaking the phone throws the dice. Off means the sensors are never registered. */
-suspend fun SettingsRepository.setShakeToRoll(on: Boolean) = update { it.copy(shakeToRoll = on) }
-
 /** Which way division rounds unless a throw says otherwise (`docs/dice-notation.md`). */
 suspend fun SettingsRepository.setRounding(rounding: Rounding) = update { it.copy(rounding = rounding) }
 

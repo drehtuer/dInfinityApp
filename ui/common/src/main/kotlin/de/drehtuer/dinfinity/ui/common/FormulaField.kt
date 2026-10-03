@@ -37,10 +37,11 @@ import de.drehtuer.dinfinity.core.notation.NotationError
  *   put the squiggle under.
  * @param onSuggestion taking the parser's suggested correction, which arrives
  *   as text to be typed like any other.
- * @param onSubmit what the keyboard's action key does, or `null` for a field
- *   that only holds text. The tray's is **Enter rolls**
- *   (`design/dInfinity.dc.html`, option 2a); the editor's and the graph's have
- *   nothing to do, so their key says Done and puts the keyboard away.
+ * @param onDone what else the keyboard's action key does, after putting the
+ *   keyboard away. **The key says Done on every screen and never throws** —
+ *   a shake is the only way to start a roll (`docs/architecture.md`,
+ *   decision 66). The tray's drawer uses it to close itself; the editor and the
+ *   graph have nothing more to do.
  * @param takeFocus true for a field that has just appeared because somebody
  *   asked for it, so the keyboard comes up without a second tap.
  */
@@ -54,7 +55,7 @@ fun FormulaField(
   error: NotationError? = null,
   wrong: Boolean = error != null,
   onSuggestion: (String) -> Unit = onChange,
-  onSubmit: (() -> Unit)? = null,
+  onDone: () -> Unit = {},
   takeFocus: Boolean = false,
 ) {
   val focus = remember { FocusRequester() }
@@ -72,8 +73,16 @@ fun FormulaField(
       singleLine = true,
       label = label?.let { { Text(it) } },
       placeholder = hint?.let { { Text(it) } },
-      keyboardOptions = KeyboardOptions(imeAction = if (onSubmit == null) ImeAction.Done else ImeAction.Go),
-      keyboardActions = KeyboardActions(onGo = onSubmit?.let { submit -> { submit() } }),
+      keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+      // The default first — the keyboard goes away whatever the caller does
+      // — and then whatever the caller does.
+      keyboardActions =
+        KeyboardActions(
+          onDone = {
+            defaultKeyboardAction(ImeAction.Done)
+            onDone()
+          },
+        ),
       modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag(FormulaTestTags.FIELD),
     )
     if (error != null) FormulaError(formula = text, error = error, onSuggestion = onSuggestion)

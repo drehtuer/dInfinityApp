@@ -184,9 +184,8 @@ power-saving mode; there is no other one.
   question the roll asks before it is allowed to end. So the part of a roll
   that may not be declared over because the hand is on it is exactly the part
   that is not slowed down for somebody to look at, and the two can never
-  disagree. A throw that no hand starts — the accessibility action on the
-  table, or Enter in the formula editor ("The two ways in that are not a
-  hand") — has no hand on it at any point and is paced from its first step.
+  disagree. Every throw now starts with a hand on it, because a shake is the
+  only way to start one ("Starting a roll").
 - **The pace is applied where real time becomes simulated time**, which is
   `TrayLoop.frame` and nowhere else. Power-saving mode asks for a fixed helping
   of simulated time and has no frame clock at all, so it never passes through
@@ -222,7 +221,9 @@ power-saving mode; there is no other one.
 ## Starting a roll
 
 **A shake is the throw.** It is the only way to put dice in the air, and every
-other control in the app stops at filling the formula field. The dice are
+other control in the app stops at filling the formula field. That is absolute
+(`docs/architecture.md`, decision 66): no button, no key, no accessibility
+action and no setting that switches shaking off. The dice are
 spawned when the shake begins and are driven by the phone's motion until the
 hand stops, then released ("Shake input", below).
 
@@ -243,31 +244,26 @@ stopped — and the same shake answers both. Neither has a button, and the scree
 says how many dice the next shake will throw, both on the plate over the tray
 and in a toast that announces itself to a screen reader.
 
-**Tapping the tray does not roll.** It is the largest target on the screen and
-the most tempting one, which is exactly why it is not spent here: the tray is
+**Tapping the tray does not roll** — decided, not pending. It is the largest
+target on the screen and the most tempting one, which is exactly why it is not
+spent here: the tray is
 where the camera is moved and where individual dice will be picked up and
 re-thrown, and a surface that threw the whole formula the moment it is touched
 has nowhere left to put either. A roll is also not something to start by
 accident — it replaces a result somebody may still be reading.
 
-### The two ways in that are not a hand
+### No way in that is not a hand
 
-Shaking is not a gesture every hand can make, and every screen has to be
-operable (`docs/architecture.md`, "Accessibility"). Two affordances therefore
-stay, and neither is a button on the screen:
+There used to be two: a custom accessibility action on the table, *Throw the
+dice*, and Enter in the formula editor. **Both are gone** (`docs/architecture.md`,
+decision 66). The editor's key says Done and only closes the editor; the
+table carries a spoken description of what is on it and no action. Nothing in
+Settings turns shaking off either, because with it off nothing could roll.
 
-- **a custom accessibility action on the table**, labelled *Throw the dice*. A
-  custom action rather than a click, because a tap on the tray deliberately
-  does not roll and a semantic click *is* a tap to anything walking the
-  semantics tree. It sits on the power-saving panel too, which stands instead
-  of the table.
-- **Enter in the formula editor.** That is what the key already means, and
-  somebody typing a formula on a hardware keyboard has no hand free to shake
-  the phone.
-
-Both call the same entry point a shake does, with no samples — which is what an
-added die is thrown with anyway — so there is still one path to a number
-(`docs/architecture.md`, goal 1).
+The cost is stated rather than hidden: somebody who cannot shake the phone —
+including a TalkBack user who cannot also shake it — cannot start a roll. The
+owner accepted that as the price of the throw being the hand's
+(`docs/architecture.md`, "Accessibility").
 
 ### What the screen says before the throw
 
@@ -298,7 +294,10 @@ A player who does not like how a die landed picks it up and throws it again.
 That is the third way a die can be thrown, and it is the only one that is not
 the app's idea. The tray's **one-finger touch is being kept for it** — which is
 what the paragraph above is about, and why a tap on the biggest target on the
-screen deliberately does nothing.
+screen deliberately does nothing. *How* the picked-up die is then thrown — by
+the finger, or by a shake once it is picked up — is open: a finger that throws
+would be a throw no shake started, which decision 66 rules out for a roll
+(`docs/TODO.md`, Open questions).
 
 **It is not the invisible hand.** The rule further down — *nothing touches a
 die that has come to rest* — is about the **app** reaching into a finished roll,
@@ -329,7 +328,6 @@ back where the simulation left them and never moves them again.
 ```mermaid
 flowchart LR
   shake["Shake"] --> spec["ThrowSpec"]
-  action["The table's accessibility action,<br/>and Enter in the editor"] --> spec
   chain["An explosion or a reroll<br/>(ThrowSpec.among)"] --> spec
   stalled["Dice a throw gave up on<br/>(ThrowSpec.among)"] --> spec
   hand["A hand picking a die up<br/>(ThrowSpec.among)"] --> spec
