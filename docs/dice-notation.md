@@ -499,6 +499,17 @@ SavedRoll {
   put. The order is written down when the finger lifts, in one go, rather than
   at every step of the drag.
 
+  **A row held near the list's top or bottom edge scrolls the list** towards
+  that edge, so a row can travel further than the list shows in one drag. The
+  band along each edge is 64 dp tall, and the speed grows with how deep into it
+  the finger is, from nothing at its inner edge to 640 dp a second at the
+  list's own edge and beyond — tuning constants in `SavedEdgeScroll`, not
+  limits. A row picked up *inside* a band does not set the list moving by
+  being picked up: the band starts where the drag started, so the list only
+  scrolls once the finger has moved towards the edge (decision 78 in
+  `docs/architecture.md`). Letting go drops the row where it is, as any other
+  drag does.
+
   **A new roll lands at the bottom of its group's list.** It is a thing
   somebody has just made and not yet placed; putting it at the top would move
   everything they *had* placed down by one. The grip also carries *move up* and

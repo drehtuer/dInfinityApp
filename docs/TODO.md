@@ -108,12 +108,14 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 - [ ] Ten emoji as icons, or draw the design's icon pack? A decision, not an
       omission (`docs/dice-notation.md`)
-- [ ] Auto-scroll while dragging a row past the list's edge — worth it if long
-      lists prove tedious; *move up/down* already work without a drag
 - [ ] The canvas captions for `1r`, `1o`, `1p` still mention favourites; fix in
       the design project and re-import
 - [ ] *Judge the drag on the phone:* picked up or nudged, and is the grip where
-      a thumb expects it?
+      a thumb expects it? With 30 or more rolls, hold a row at the top and the
+      bottom edge: is a 64 dp band easy to find without hitting it by accident,
+      is 640 dp/s at the edge controllable (can you stop on the row you want),
+      and does a row picked up at the edge stay still until you move it
+      outwards? Tune `SavedEdgeScroll.ZONE_DP` / `TOP_SPEED_DP_PER_SECOND`
 
 ### 4.4 Dice sets — `feature/sets`
 
