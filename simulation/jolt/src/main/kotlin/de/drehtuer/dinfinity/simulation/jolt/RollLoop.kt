@@ -220,13 +220,17 @@ class RollLoop(
             touchingWall = state.touchingWall,
             supportedByDie = state.supportedByDie,
             countedOut = counted[index],
-            // Nought, and by construction: a loop throws once. A die thrown
-            // again is thrown by the next shake, in the next loop.
-            rethrows = 0,
           )
         },
       corrections = 0,
-      rethrows = 0,
+      // The dice the throw will hand back if they stay as they are: at rest,
+      // not read, and with no face to read. A loop throws once, so this is
+      // what the overlay can say about the next shake — never how many dice
+      // the roll threw again, which is nought by construction.
+      waiting =
+        states.indices.count {
+          !counted[it] && tracker.isAtRest(it) && readableFace(spec.dice[it].die, states[it]) == null
+        },
       forcedSettles = forced.count { it },
       postRestCorrections = 0,
       contacts = recentContacts,
@@ -464,19 +468,14 @@ class RollLoop(
     val unread = mutableListOf<Int>()
     states.forEachIndexed { index, state ->
       if (counted[index]) return@forEachIndexed
-      val die = spec.dice[index].die
-      val reading = FaceReader.read(die, state.orientation)
+      val face = readableFace(spec.dice[index].die, state)
 
-      // A die standing on another one is not counted even when its face is
-      // perfectly readable: it is resting on something that is about to be
-      // taken away, and a reading taken from a die that is about to fall is
-      // not a reading of anything.
       // At rest as well as readable. A die in mid-air can be showing a face
       // perfectly squarely and is not showing it to anybody — that only
       // matters when the roll gives up, because every other path here waits
       // until the dice have stopped.
-      if (reading is Reading.Face && !state.supportedByDie && tracker.isAtRest(index)) {
-        countedFace[index] = reading.index
+      if (face != null && tracker.isAtRest(index)) {
+        countedFace[index] = face
         countedAt[index] = RestingPlace(state.position, state.orientation)
         counted[index] = true
         // Its turning is a fact about the throw that was read; the rest of
@@ -492,30 +491,23 @@ class RollLoop(
   companion object {
     /** A die that has not been read yet. Never reaches an outcome. */
     private const val NOT_YET = -1
-
-    /**
-     * How long a die has to stay in trouble before it is worth touching —
-     * about a twentieth of a second.
-     *
-     * Short enough that the die still has the speed a bias is measured
-     * against, long enough that a die merely tumbling through an awkward angle
-     * is left alone.
-     */
-    const val TROUBLE_STEPS_BEFORE_BIAS: Int = 6
   }
 }
 
 /**
- * The two questions rung 2 acts on: is this die standing on another one, and
- * would it read as cocked if it stopped now.
+ * The face [die] shows in [state], or null when it shows none worth reading.
  *
- * "Leaning on a wall", the third case the physics document names, is the one
- * where [DieState.touchingWall] and a cocked reading are both true — so it
- * needs no rule of its own, only the two below.
+ * A die standing on another one is not read even when its face is perfectly
+ * readable: it is resting on something that is about to be taken away, and a
+ * reading taken from a die that is about to fall is not a reading of anything.
+ * One rule for [RollLoop]'s counting and for its diagnostics, so the overlay's
+ * "waiting" is exactly the dice the throw will hand back.
  */
-internal object TroubleCheck {
-  fun isInTrouble(
-    state: DieState,
-    die: Die,
-  ): Boolean = state.supportedByDie || FaceReader.read(die, state.orientation) is Reading.Cocked
+internal fun readableFace(
+  die: Die,
+  state: DieState,
+): Int? {
+  if (state.supportedByDie) return null
+  val reading = FaceReader.read(die, state.orientation)
+  return if (reading is Reading.Face) reading.index else null
 }

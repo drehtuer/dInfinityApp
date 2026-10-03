@@ -7,9 +7,9 @@ import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import de.drehtuer.dinfinity.simulation.harness.FaceTally
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.abs
 
 /**
  * Whether the dice are fair (`docs/TODO.md`, Step 5.2).
@@ -48,6 +48,11 @@ import kotlin.math.abs
  * die that is skewed overall, and a **worst-face** bound catches one face that
  * is wrong while the rest cover for it. A die can pass either alone.
  *
+ * Both are over the throws that were read. A throw that runs out the
+ * twelve-second backstop has no face; it is counted as a **give-up**, printed
+ * with its seed, and fails the run only past [FaceTally.GIVE_UP_SHARE] of the
+ * throws (`docs/physics-and-rendering.md`, "Are the dice fair").
+ *
  * **One shape is held to the worst-face bound alone**, and which one is a
  * decision rather than a rule — see [HELD_TO_THE_FACE_BOUND].
  */
@@ -62,10 +67,11 @@ class FairnessTest {
     val unfair = mutableListOf<String>()
 
     DieShape.entries.forEach { shape ->
-      val counts = countFaces(shape, rolls)
-      val expected = rolls.toDouble() / shape.faceCount
-      val chiSquared = counts.sumOf { count -> (count - expected) * (count - expected) / expected }
-      val worst = counts.maxOf { abs(it / rolls.toDouble() - 1.0 / shape.faceCount) }
+      val gaveUpAt = mutableListOf<Long>()
+      val tally = countFaces(shape, rolls, gaveUpAt)
+      val counts = tally.counts
+      val chiSquared = tally.chiSquared
+      val worst = tally.worstFaceOff
       val limit = criticalValue(shape.faceCount - 1)
 
       // The chi-squared of a shape that is not judged on it is still printed,
@@ -74,13 +80,20 @@ class FairnessTest {
       // person it is there to inform.
       val bar = if (shape in HELD_TO_THE_FACE_BOUND) " (not judged on it)" else ""
       report.appendLine(
-        "${shape.id}: n=$rolls chi2=%.2f limit=%.2f%s worstFaceOff=%.3f%% counts=%s"
-          .format(chiSquared, limit, bar, worst * PERCENT, counts.toList()),
+        "${shape.id}: n=${tally.read} chi2=%.2f limit=%.2f%s worstFaceOff=%.3f%% counts=%s gaveUp=%d/%d seeds=%s"
+          .format(chiSquared, limit, bar, worst * PERCENT, counts, tally.giveUps, tally.giveUpsAllowed, gaveUpAt),
       )
+      // A throw that ran out the twelve-second backstop has no face and is
+      // not judged as one; it is a figure of its own, held to a bar of its
+      // own (`FaceTally.GIVE_UP_SHARE`). Its seed is printed so the throw can
+      // be replayed and watched.
+      if (tally.tooManyGiveUps) {
+        unfair += "${shape.id} gave up ${tally.giveUps} times, more than ${tally.giveUpsAllowed}"
+      }
       // Only judged once there are enough rolls for the test to mean anything:
       // chi-squared wants a handful in every cell, and the quick run is there
       // to catch a die that never shows a face at all rather than to referee.
-      if (rolls >= ENOUGH_TO_JUDGE) {
+      if (tally.read >= ENOUGH_TO_JUDGE) {
         val judgedByChiSquared = shape !in HELD_TO_THE_FACE_BOUND
         if (judgedByChiSquared && chiSquared > limit) {
           unfair += "${shape.id} chi2 %.2f > %.2f".format(chiSquared, limit)
@@ -89,29 +102,43 @@ class FairnessTest {
       }
       // Whatever the count, a face that never came up at all is a broken die
       // rather than an unlucky one.
-      if (counts.any { it == 0L }) unfair += "${shape.id} never showed some face: ${counts.toList()}"
+      if (tally.missesAFace) unfair += "${shape.id} never showed some face: $counts"
     }
 
     println(report)
     assertTrue("$report\nunfair: $unfair", unfair.isEmpty())
   }
 
-  /** How often each face of [shape] came up over [rolls] throws of one die. */
+  /**
+   * How often each face of [shape] came up over [rolls] throws of one die, and
+   * how many throws gave up — with their seeds added to [gaveUpAt].
+   *
+   * `runOrGiveUp` rather than `run`: a throw that ran out the backstop is a
+   * null here, not an exception that ends the run and loses every count
+   * gathered before it.
+   */
   private fun countFaces(
     shape: DieShape,
     rolls: Int,
-  ): LongArray {
+    gaveUpAt: MutableList<Long>,
+  ): FaceTally {
     val die = Die.standard(shape.id, shape)
     val simulator = JoltDiceSimulator()
-    val counts = LongArray(shape.faceCount)
+    val tally = FaceTally(shape.faceCount)
     // A different seed per roll, because the same seed is the same roll: what
     // is being asked is whether the *physics* is even-handed across throws,
     // not whether one throw repeats (`JoltBridgeTest` asks that).
     for (roll in 0 until rolls) {
-      val outcome = simulator.run(spec(die, seed = seedFor(roll)))
-      counts[outcome.faces.getValue(0)]++
+      val seed = seedFor(roll)
+      val face = simulator.runOrGiveUp(spec(die, seed = seed))?.faces?.get(0)
+      if (face == null) {
+        tally.gaveUp()
+        gaveUpAt += seed
+      } else {
+        tally.read(face)
+      }
     }
-    return counts
+    return tally
   }
 
   /**

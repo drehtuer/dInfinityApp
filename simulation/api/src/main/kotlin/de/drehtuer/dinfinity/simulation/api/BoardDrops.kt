@@ -59,7 +59,7 @@ object BoardDrops {
    * How far above the felt, beyond its own radius, a die is let go.
    *
    * Higher than the 25 mm an added die is dropped from
-   * (`SpawnLayout.RETHROW_HEIGHT_MM`), and deliberately. That drop happens
+   * (`SpawnLayout.ADDED_DROP_HEIGHT_MM`), and deliberately. That drop happens
    * inside a roll, among dice whose faces the player is reading, and its job
    * is to be unobtrusive; this one *is* the thing the player asked to see. At
    * 25 mm the whole fall is over in an eighth of a second, which on a screen

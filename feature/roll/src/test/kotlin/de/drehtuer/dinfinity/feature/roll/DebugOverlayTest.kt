@@ -60,14 +60,14 @@ class DebugOverlayTest {
   }
 
   @Test
-  fun `the overlay counts the corrections, the re-throws and the contacts`() {
+  fun `the overlay counts the corrections, the dice waiting for a shake and the contacts`() {
     compose.setContent {
       DebugOverlay(
         diagnostics =
           RollDiagnostics(
             dice = listOf(die(0)),
             corrections = 9,
-            rethrows = 1,
+            waiting = 1,
             contacts = listOf(contact(), contact()),
           ),
         geometry = geometry,
@@ -76,7 +76,7 @@ class DebugOverlayTest {
 
     compose
       .onNodeWithTag(DebugTestTags.LADDER, useUnmergedTree = true)
-      .assertTextContains("corr 9 · rethrow 1 · hits 2")
+      .assertTextContains("corr 9 · waiting 1 · hits 2")
   }
 
   @Test

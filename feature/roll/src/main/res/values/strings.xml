@@ -218,7 +218,7 @@
     row is numbers.
   -->
   <string name="roll_debug_counters">step %1$d · at rest %2$d/%3$d</string>
-  <string name="roll_debug_ladder">corr %1$d · rethrow %2$d · hits %3$d</string>
+  <string name="roll_debug_ladder">corr %1$d · waiting %2$d · hits %3$d</string>
   <!-- Shown only when one has happened. Either number above zero is a bug. -->
   <string name="roll_debug_anomaly">BUG: forced %1$d · post-rest %2$d</string>
   <!--

@@ -119,18 +119,6 @@ class RestTracker(
   fun stillSteps(index: Int): Int = stillFor[index]
 
   /**
-   * Forgets that the die at [index] was ever still.
-   *
-   * A die that has been picked up and thrown again is not at rest, whatever it
-   * was doing a moment ago (`docs/physics-and-rendering.md`, rung 3). Without
-   * this the roll would count the re-thrown die as finished before its new
-   * throw had taken a single step, and would stop with it in mid-air.
-   */
-  fun rethrown(index: Int) {
-    stillFor[index] = 0
-  }
-
-  /**
    * True when every die is at rest.
    *
    * **And nothing else.** A roll used to finish when it ran out of time as

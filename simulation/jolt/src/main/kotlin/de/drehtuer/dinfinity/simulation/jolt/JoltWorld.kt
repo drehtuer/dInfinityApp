@@ -113,8 +113,6 @@ class JoltWorld private constructor(
     Units.mmToUnits(velocity.z),
   )
 
-  override fun remove(index: Int) = JoltNative.nativeRemove(handle, index)
-
   override fun respawn(
     index: Int,
     placement: Placement,

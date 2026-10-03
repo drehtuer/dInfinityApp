@@ -23,8 +23,9 @@ import kotlin.math.min
  * faces whether or not anybody is counting turns
  * (`docs/architecture.md`, decision 38).
  *
- * A die thrown again starts again — its first throw's turns are not a fact
- * about the throw the player ends up reading.
+ * A die thrown again by the player's shake is thrown in a world of its own,
+ * with a count of its own (decision 70): its first throw's turns are not a
+ * fact about the throw the player ends up reading.
  */
 class Tumble(
   private val dieCount: Int,
@@ -56,7 +57,7 @@ class Tumble(
   }
 
   /**
-   * Stops counting this die: it has been read and taken off the table.
+   * Stops counting this die: it has been read.
    *
    * Without this a counted die would go on contributing zeroes for as long as
    * the rest of the roll lasted, which would say the throw tumbled less the
@@ -64,15 +65,6 @@ class Tumble(
    */
   fun settled(index: Int) {
     if (index in 0 until dieCount) frozen[index] = true
-  }
-
-  /** Starts this die again, because it is being thrown again. */
-  fun rethrown(index: Int) {
-    if (index !in 0 until dieCount) return
-    turnedRadians[index] = 0.0
-    lastSeen[index] = null
-    hasTouched[index] = false
-    frozen[index] = false
   }
 
   /** How far one die turned after it first touched anything, in whole turns. */

@@ -88,7 +88,7 @@ fun DebugOverlay(
         stringResource(
           R.string.roll_debug_ladder,
           diagnostics.corrections,
-          diagnostics.rethrows,
+          diagnostics.waiting,
           diagnostics.contacts.size,
         ),
       colour = MaterialTheme.colorScheme.onSurface,

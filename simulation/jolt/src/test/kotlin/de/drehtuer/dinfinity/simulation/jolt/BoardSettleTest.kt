@@ -109,7 +109,6 @@ class BoardSettleTest {
 
     assertTrue(world.biases.isEmpty())
     assertTrue(world.respawns.isEmpty())
-    assertTrue(world.removed.isEmpty())
   }
 
   @Test

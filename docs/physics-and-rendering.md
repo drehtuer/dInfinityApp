@@ -847,6 +847,19 @@ Headless, but the same simulation a watched roll steps: the only difference is
 who asks for the steps ("Power-saving mode"), so a fairness result here is a
 fairness result for the app.
 
+**A throw that gives up is a figure, not a crash.** One throw in a hundred
+thousand — a coin, in the runs that have shown one — is still moving at the
+twelve-second backstop, and has no face to count
+(`SettleRule.HARD_CAP_SECONDS`). The run used to stop on it and lose everything
+it had counted. Now each one is a **give-up**: it is left out of both judgements
+above, because a give-up is not a face and counting it as one would be the
+made-up number the backstop exists to refuse, and it is reported per shape with
+its seed so the throw can be replayed and watched. A run fails on give-ups only
+past **one in ten thousand throws, and never fewer than one**
+(`FaceTally.GIVE_UP_SHARE` in `simulation/harness`, tested on the JVM) — over
+three times the worst the Pixel 10a has shown, and loose enough that the quick
+run does not trip on the one it meets about once in sixty runs.
+
 The roll count is an instrumentation argument, because the honest number and
 the affordable number are not the same. The default is small enough to sit in
 the ordinary device suite and still catch a die that is grossly loaded; the
@@ -1375,9 +1388,9 @@ throw takes the board away when it starts — the dice that were waiting have
 been thrown, and a half-finished drop belongs to a board that no longer exists.
 
 The drop height is deliberately higher than the 25 mm a die an explosion adds
-is dropped from (`SpawnLayout.RETHROW_HEIGHT_MM`): that drop happens among dice
-whose faces are being read and should not upstage them, and this one *is* the
-thing the player is looking at. What is still open is a question only a hand
+is dropped from (`SpawnLayout.ADDED_DROP_HEIGHT_MM`): that drop happens among
+dice whose faces are being read and should not upstage them, and this one *is*
+the thing the player is looking at. What is still open is a question only a hand
 can answer — whether the release constants above read as a die dropped and
 tumbled on a table, and whether the spot, the jitter and the interval make a
 stream the eye can follow (`docs/TODO.md`).
@@ -2449,10 +2462,12 @@ A panel over the tray, drawn while the roll screen is open. It shows, per
 frame:
 
 - the step the roll is on, and how many dice have come to rest;
-- how many dice have been counted — read, which is not the same as taken off
-  the table — how many have been thrown again (always nought within one throw:
-  a die is thrown again by the player's next shake, in a throw of its own), and
-  how many contacts have been recorded;
+- how many dice are **waiting for a shake** — at rest, not read, and with no
+  face to read because they are cocked or standing on another die; exactly the
+  dice the throw will hand back for the player's next shake (decision 70) —
+  and how many contacts have been recorded. The line used to count the dice
+  the roll threw again by itself, which has been nought within a throw since
+  the roll stopped doing that;
 - a **plan of the tray** with one footprint per die — its collision size at the
   scale the capacity rule threw it — filled in proportion to that die's **rest
   timer**, coloured differently for a die standing on another, and dotted where

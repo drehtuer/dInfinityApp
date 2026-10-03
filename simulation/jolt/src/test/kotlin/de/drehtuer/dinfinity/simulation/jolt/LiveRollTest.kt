@@ -87,7 +87,6 @@ class LiveRollTest {
     assertTrue("no die was left for a shake", reported.unread.isNotEmpty())
     // And neither way of asking touched the world for it.
     assertTrue("a die was thrown again with no hand on it", world.respawns.isEmpty() && watched.respawns.isEmpty())
-    assertTrue("a die was taken off the table", world.removed.isEmpty() && watched.removed.isEmpty())
   }
 
   @Test

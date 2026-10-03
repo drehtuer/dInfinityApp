@@ -5,6 +5,7 @@ import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.simulation.api.Quaternion
+import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -109,10 +110,10 @@ class RollDiagnosticsTest {
   }
 
   @Test
-  fun `a snapshot of a throw that left a die unread counts no re-throw, because it made none`() {
+  fun `a snapshot of a throw that left a die unread counts it as waiting for a shake`() {
     // The die ends cocked and is left for the player's shake. The roll used to
-    // throw it again itself and the overlay counted that; there is nothing to
-    // count now, and the die is shown as what it is — at rest and not read.
+    // throw it again itself and the overlay counted that; what it counts now
+    // is the die the next shake is for — at rest and not read.
     val world = FakeWorld(1) { step, index, rethrows -> settlingThenStuck(step, index, rethrows) }
     val roll = loop(world, dice = listOf(StandardDice.d6))
 
@@ -123,13 +124,47 @@ class RollDiagnosticsTest {
     val seen = roll.diagnostics()
 
     assertEquals(roll.outcome().corrections, seen.corrections)
-    assertEquals(0, seen.rethrows)
+    assertEquals("the cocked die was not counted as waiting", 1, seen.waiting)
     assertEquals(0, seen.postRestCorrections)
-    // Per die as well as in total, so the overlay can point at the one that
-    // needs a hand.
-    assertEquals(0, seen.dice.single().rethrows)
     assertFalse("a cocked die was shown as read", seen.dice.single().countedOut)
     assertEquals(listOf(0), roll.outcome().unread)
+  }
+
+  @Test
+  fun `only a die at rest with no face to read is waiting, never one read or still moving`() {
+    // Mid-roll: one die at rest and readable (it will be read when the table
+    // settles), one at rest and cocked (it will be handed back), one still
+    // tumbling (nobody can say yet). Only the second is the next shake's.
+    val world =
+      FakeWorld(3) { _, index, _ ->
+        when (index) {
+          0 -> FakeWorld.settled()
+          1 -> FakeWorld.settled(cocked)
+          else -> FakeWorld.tumbling()
+        }
+      }
+    val roll = loop(world, dice = listOf(StandardDice.d6, StandardDice.d6, StandardDice.d6))
+
+    repeat(SettleRule.REST_STEPS + 1) { roll.advance() }
+
+    assertEquals(1, roll.diagnostics().waiting)
+  }
+
+  @Test
+  fun `a die that was read is not waiting, and the one standing on another is`() {
+    val world =
+      FakeWorld(2) { _, index, _ ->
+        if (index == 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
+      }
+    val roll = loop(world, dice = listOf(StandardDice.d6, StandardDice.d6))
+
+    @Suppress("ControlFlowWithEmptyBody")
+    while (roll.advance()) {
+      // Run it out: the first die is read, the second is handed back.
+    }
+
+    assertEquals(listOf(true, false), roll.countedOut)
+    assertEquals(1, roll.diagnostics().waiting)
   }
 
   @Test
@@ -207,7 +242,7 @@ class RollDiagnosticsTest {
     /** Fewer steps than a die needs to be at rest, so the timer is mid-fill. */
     const val SETTLING_STEPS = 10
 
-    /** Long enough for `TROUBLE_STEPS_BEFORE_BIAS` to have passed. */
+    /** Long enough for a die in trouble to have stayed in it a while. */
     const val TROUBLE_STEPS = 12
 
     /** A roll with no dice has no dice in its snapshot either. */

@@ -81,7 +81,6 @@ class RollLoopTest {
     assertEquals("the die nobody could read was not handed back", listOf(0), outcome.unread)
     assertTrue("a settled die was biased", world.biases.isEmpty())
     assertTrue("a settled die was thrown again by the roll itself", world.respawns.isEmpty())
-    assertTrue("a settled die was taken off the table", world.removed.isEmpty())
   }
 
   @Test
@@ -99,7 +98,6 @@ class RollLoopTest {
     assertEquals("a die that settled perfectly well was thrown again", 0, outcome.rethrows)
     assertEquals("it was read", 1, outcome.faces.size)
     assertTrue("and nothing was left waiting for a shake", outcome.complete)
-    assertEquals("and taken off a table nothing else was going to be thrown onto", emptyList<Int>(), world.removed)
   }
 
   @Test
@@ -135,7 +133,6 @@ class RollLoopTest {
     assertEquals("the die that could be read was not read", setOf(0), outcome.faces.keys)
     assertEquals("the die standing on it was not handed back", listOf(1), outcome.unread)
     assertEquals("the dice are drawn as read", listOf(true, false), loop.countedOut)
-    assertEquals("a die came off the table before anybody shook", emptyList<Int>(), world.removed)
     assertTrue("a die was thrown again by the roll itself", world.respawns.isEmpty())
   }
 
@@ -152,7 +149,6 @@ class RollLoopTest {
 
     assertEquals("a die was thrown again with nothing wrong with it", 0, outcome.rethrows)
     assertEquals("all three were read", 3, outcome.faces.size)
-    assertEquals("a die was taken off a table nothing was going to be thrown onto", emptyList<Int>(), world.removed)
     assertEquals("the dice are drawn as read", listOf(true, true, true), loop.countedOut)
   }
 

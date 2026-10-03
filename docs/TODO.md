@@ -205,19 +205,17 @@ re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
       with its texture-up as the camera's up, read back through `Snapshot`,
       asserting the ink is heavier in the half `DieNumbers.fieldOf` says
       (decision 40). Needs a quaternion from two orthonormal frames
-- [ ] Delete `TroubleCheck` from `RollLoop.kt` — nothing calls it since
-      counting replaced the correction ladder
 
 ### 5.2 Fairness and determinism
 
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
 
-- [ ] **A coin can roll out the twelve-second cap on its own**, and
-      `FairnessTest` then stops instead of counting it: one throw in 100,000
-      at 60–120 rad/s and restitution 0.55 (seed 5897839758308530927), three
-      in 100,000 before. Count a give-up as a failure figure of its own, and
-      find out what the coin is doing for twelve seconds
+- [ ] **A coin can roll out the twelve-second cap on its own**: one throw in
+      100,000 at 60–120 rad/s and restitution 0.55 (seed
+      5897839758308530927), three in 100,000 before. `FairnessTest` now counts
+      it as a give-up and prints its seed; find out what the coin is doing for
+      twelve seconds
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
       for its ten cases on both ABIs; any divergence is a release blocker
@@ -277,10 +275,6 @@ keeps them comparable.
       app asking, rather than as the roll hanging? Is the plate, the toast and
       the heap left as it lay enough to know which die the shake is for — or
       does the waiting die want marking on the tray (`docs/design-handover.md`)?
-- [ ] Delete what decision 70 left without a caller in a roll:
-      `SpawnLayout.rethrowPlacement`, `PhysicsWorld.remove` (and its JNI),
-      `RestTracker.rethrown`, `Tumble.rethrown`. **Not** `respawn`: the board
-      lets each parked die go with it (decision 69)
 - [ ] **Repeat the 10,000-roll runs at 20 and 60 dice under counting.** Under
       the ladder three rolls in 10,000 at 20 dice and two thirds of 29 standing
       dice at 60 ran out of time

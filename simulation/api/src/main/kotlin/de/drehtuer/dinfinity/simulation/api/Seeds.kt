@@ -109,7 +109,13 @@ object Seeds {
    */
   const val SPAWN: Long = 0x53_50_41_57_4E
 
-  /** And a re-thrown die's, with the attempt number added so two attempts differ. */
+  /**
+   * And a re-thrown die's, from when the roll threw dice again by itself.
+   *
+   * Nothing draws from it since the player's shake does that (decision 70,
+   * [again]). It stays reserved so that no new purpose takes the number and
+   * quietly shares a stream with recorded throws that used it.
+   */
   const val RETHROW: Long = 0x52_45_54_48_52_4F
 
   /** And the nudge a die in trouble gets. */
