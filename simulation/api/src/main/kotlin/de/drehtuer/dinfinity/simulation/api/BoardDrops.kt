@@ -79,8 +79,10 @@ object BoardDrops {
    * whose dice have been shrunk to fit is a board whose dice have all changed
    * and is dropped afresh.
    *
-   * @param present which dice of [was] are actually on the board. A die there
-   *   was no floor for was never let go, and cannot be carried over.
+   * @param present which dice of [was] are actually in the drop on screen.
+   *   Every die of a board is let go ([release] always finds it somewhere),
+   *   so this is all of them; it is asked rather than assumed so that a die
+   *   the picture does not hold can never be carried over from nowhere.
    */
   fun <T> keeping(
     was: List<T>,
@@ -103,9 +105,10 @@ object BoardDrops {
    *
    * The dice in [kept] start where they are on screen now, moving as they are
    * moving. Every other die of [spec] is new and is let go from above
-   * ([release]), in index order, each clear of the dice before it. A die there
-   * is no floor for is left out — the same shortfall the board has always had,
-   * and one die fewer rather than a die through another.
+   * ([release]), in index order, each clear of the dice before it. **Every
+   * die is let go**: a die the player added must appear, and the throw that
+   * follows counts it, so a crowded board drops it from higher rather than
+   * leaving it out.
    *
    * @param number this board's number within the visit, which is what its
    *   drops are seeded by ([Seeds.waiting]). Not the spec's seed: every board
@@ -119,26 +122,35 @@ object BoardDrops {
   ): BoardRequest {
     val taken = kept.values.mapTo(mutableListOf()) { it.position }
     val bodies =
-      spec.dice.mapIndexedNotNull { index, instance ->
+      spec.dice.mapIndexed { index, instance ->
         val placement =
           kept[index] ?: release(
             geometry = spec.geometry,
             radiusMm = ClearSpace.radiusOf(instance.die, spec.dieScale),
             taken = taken,
             random = Seeds.waiting(number, index),
-          )?.also { taken += it.position }
-        placement?.let { BoardBody(index, instance.die, spec.dieScale, it) }
+          ).also { taken += it.position }
+        BoardBody(index, instance.die, spec.dieScale, placement)
       }
     return BoardRequest(number = number, geometry = spec.geometry, table = spec.table, bodies = bodies)
   }
 
   /**
    * Where and how a new die of [radiusMm] is let go over [geometry], clear of
-   * the dice at [taken] — or null when there is no floor left for it.
+   * the dice at [taken].
    *
    * A spot drawn at random inside the walls, the first of [SPOT_DRAWS] that
    * no die is standing on; failing that, the clearest point there is. Held
-   * [DROP_HEIGHT_MM] and a little more above the felt, turned any way at all,
+   * [DROP_HEIGHT_MM] and a little more above the felt.
+   *
+   * **And when the floor is full, it is let go anyway.** Random spots pack a
+   * floor less tightly than a laid-out grid, so a board the capacity rule
+   * accepts can run out of clear floor before it runs out of dice — and a die
+   * the player added that never appeared would be a die the shake then throws
+   * from nowhere. So it goes over the least crowded point there is, stacked
+   * higher than every die it would otherwise start inside, measured in three
+   * dimensions ([CrowdedFloor]); the physics settles it onto or among the
+   * others. Turned any way at all,
    * drifting sideways and spinning: a die dropped straight down without a
    * spin would land on whatever face it was let go on, which looks like a die
    * being *put* down.
@@ -148,17 +160,18 @@ object BoardDrops {
     radiusMm: Double,
     taken: List<Vector3>,
     random: Random,
-  ): Placement? {
-    val spot = spotFor(geometry, radiusMm, taken, random) ?: return null
+  ): Placement {
     val ceiling = geometry.ceilingHeightMm - radiusMm - ClearSpace.CLEARANCE_MM
+    val clear = spotFor(geometry, radiusMm, taken, random)
     val height = (radiusMm + DROP_HEIGHT_MM + random.nextDouble(0.0, HEIGHT_JITTER_MM)).coerceAtMost(ceiling)
+    val spot = clear?.copy(z = height) ?: CrowdedFloor.spot(geometry, radiusMm, taken, height, ceiling)
     val rotation = anyTurn(random)
     val slide = random.nextDouble(LEAST_SLIDE_MM_PER_SECOND, MOST_SLIDE_MM_PER_SECOND)
     val heading = random.nextDouble() * 2 * PI
     val downward = random.nextDouble(0.0, MOST_DOWNWARD_MM_PER_SECOND)
     val spin = anyDirection(random) * random.nextDouble(LEAST_SPIN_RADIANS_PER_SECOND, MOST_SPIN_RADIANS_PER_SECOND)
     return Placement(
-      position = Vector3(spot.x, spot.y, height),
+      position = spot,
       rotation = rotation,
       linearVelocity = Vector3(slide * Exact.cos(heading), slide * Exact.sin(heading), -downward),
       angularVelocity = spin,

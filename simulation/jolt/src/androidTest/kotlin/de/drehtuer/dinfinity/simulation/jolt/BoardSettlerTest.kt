@@ -58,6 +58,25 @@ class BoardSettlerTest {
   }
 
   @Test
+  fun everyDieOfAFullBoardIsDroppedAndComesDownInsideTheTray() {
+    // Random spots pack the floor worse than a grid, and on the phone the
+    // 35th of 40 used to find no clear spot and silently go missing. A die the
+    // player added must appear: the shake counts it.
+    val request = BoardDrops.request(number = 1, spec(FORTY, scaleFor(FORTY)), kept = emptyMap())
+
+    val track = settler.settle(request)
+
+    assertEquals("dice were left off the board", FORTY, request.bodies.size)
+    assertEquals("dice went missing from the drop", FORTY, track.dice)
+    track.finalPoses.forEachIndexed { die, pose ->
+      val at = pose.position
+      assertTrue("die $die went through the floor: $at", at.z > 0.0)
+      assertTrue("die $die is past a long wall: $at", abs(at.x) < geometry.longSideMm / 2)
+      assertTrue("die $die is past a short wall: $at", abs(at.y) < geometry.shortSideMm / 2)
+    }
+  }
+
+  @Test
   fun aDropThatMissesAStandingDieLeavesItExactlyWhereItStood() {
     // The promise the no-shimmer rule keeps: a die nothing touched is drawn
     // where it stood, to the bit, however the solver left it.

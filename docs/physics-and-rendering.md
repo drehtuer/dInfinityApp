@@ -1135,8 +1135,12 @@ the engine brings it down among the dice already there
 
 - **Released** above a spot drawn at random inside the walls — the first of up
   to eight draws that is clear of every die on the board, else the clearest
-  point there is (`ClearSpace`), else not at all, which is the same shortfall the
-  board always had. It is held `BoardDrops.DROP_HEIGHT_MM` (60 mm) plus up to
+  point there is (`ClearSpace`). **Every die the player adds is let go**, because
+  the shake that follows counts it: random spots pack the floor less tightly
+  than a laid-out grid, so a full board can run out of clear floor first, and
+  then the die goes over the least crowded point, lifted clear in three
+  dimensions of every die it would start inside, and the physics settles it
+  onto or among the others (`CrowdedFloor`). It is otherwise held `BoardDrops.DROP_HEIGHT_MM` (60 mm) plus up to
   `HEIGHT_JITTER_MM` (18 mm) above the felt, beyond its own radius and always
   under the lid; turned evenly over every orientation; drifting sideways at
   `LEAST_SLIDE_MM_PER_SECOND`–`MOST_SLIDE_MM_PER_SECOND` (40–150 mm/s) in a

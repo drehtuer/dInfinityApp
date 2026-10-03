@@ -11,7 +11,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -54,8 +53,8 @@ class BoardDropsTest {
   }
 
   @Test
-  fun `a die that never made it onto the board is not kept either`() {
-    // There was no floor for it, so there is nothing on screen to carry over.
+  fun `a die the drop on screen does not hold is not kept either`() {
+    // There is nothing on screen to carry over from.
     val kept = BoardDrops.keeping(listOf(D6, D6), listOf(D6, D6), present = setOf(0))
 
     assertEquals(mapOf(0 to 0), kept)
@@ -63,7 +62,7 @@ class BoardDropsTest {
 
   @Test
   fun `a new die is let go above the table and inside its walls`() {
-    val placement = assertNotNull(release(seed = 1))
+    val placement = release(seed = 1)
 
     val radius = ClearSpace.radiusOf(StandardDice.d6, 1.0)
     assertTrue(placement.position.z >= radius + BoardDrops.DROP_HEIGHT_MM, "let go from too low")
@@ -78,7 +77,7 @@ class BoardDropsTest {
   @Test
   fun `it drifts, falls and spins within the named bounds`() {
     repeat(SAMPLES) { seed ->
-      val placement = assertNotNull(release(seed))
+      val placement = release(seed)
       val velocity = placement.linearVelocity
       val slide = sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
       assertTrue(slide in BoardDrops.LEAST_SLIDE_MM_PER_SECOND..BoardDrops.MOST_SLIDE_MM_PER_SECOND, "slide $slide")
@@ -98,7 +97,7 @@ class BoardDropsTest {
     // let go from as high as the jitter ever reaches, is still under it.
     val huge = geometry.shortSideMm / 2 - ClearSpace.CLEARANCE_MM - 1.0
     repeat(SAMPLES) { seed ->
-      val placement = BoardDrops.release(geometry, huge, emptyList(), Random(seed)) ?: return@repeat
+      val placement = BoardDrops.release(geometry, huge, emptyList(), Random(seed))
       assertTrue(placement.position.z + huge < geometry.ceilingHeightMm, "a die started through the lid")
     }
     val ordinary = ClearSpace.radiusOf(StandardDice.d20, 1.0)
@@ -112,7 +111,7 @@ class BoardDropsTest {
     val taken = listOf(Vector3(0.0, 0.0, radius), Vector3(-60.0, 20.0, radius), Vector3(70.0, -15.0, radius))
 
     repeat(SAMPLES) { seed ->
-      val spot = assertNotNull(BoardDrops.release(geometry, radius, taken, Random(seed))).position
+      val spot = BoardDrops.release(geometry, radius, taken, Random(seed)).position
       taken.forEach { other ->
         val dx = spot.x - other.x
         val dy = spot.y - other.y
@@ -129,17 +128,91 @@ class BoardDropsTest {
     val crowd = crowd(radius)
     val clearest = assertNotNull(ClearSpace.clearestPoint(geometry, radius, crowd))
 
-    val spot = BoardDrops.release(geometry, radius, crowd, AlwaysTheMiddle)?.position
+    val spot = BoardDrops.release(geometry, radius, crowd, AlwaysTheMiddle).position
 
-    assertEquals(clearest.x, spot?.x)
-    assertEquals(clearest.y, spot?.y)
+    assertEquals(clearest.x, spot.x)
+    assertEquals(clearest.y, spot.y)
   }
 
   @Test
-  fun `a die there is no floor for is not let go at all`() {
+  fun `a die too big for the tray is still let go, over the middle`() {
+    // Past anything the capacity rule accepts, but a die the player added is
+    // never simply missing.
     val tooBig = geometry.longSideMm
 
-    assertNull(BoardDrops.release(geometry, tooBig, emptyList(), Random(1)))
+    val placement = BoardDrops.release(geometry, tooBig, emptyList(), Random(1))
+
+    assertEquals(0.0, placement.position.x)
+    assertEquals(0.0, placement.position.y)
+  }
+
+  @Test
+  fun `a die with no clear floor is let go over the least crowded point, above what is already there`() {
+    // Random spots pack a floor less tightly than a grid. When nothing is
+    // clear, the die still goes in — higher, so it starts inside nothing.
+    val radius = ClearSpace.radiusOf(StandardDice.d6, 1.0)
+    val apart = 2 * radius + ClearSpace.CLEARANCE_MM
+    val full = crowd(radius) + Vector3(geometry.longSideMm / 2 - radius, geometry.shortSideMm / 2 - radius, radius)
+    val inTheAir = full.map { it.copy(z = HIGH_MM) }
+    val taken = full + inTheAir
+
+    val placement = BoardDrops.release(geometry, radius, taken, Random(SEVEN))
+
+    taken.forEach { other ->
+      assertTrue((placement.position - other).length >= apart - TOLERANCE, "a die started inside another at $other")
+    }
+    assertTrue(placement.position.z + radius < geometry.ceilingHeightMm, "a die started through the lid")
+  }
+
+  @Test
+  fun `a crowded spot is lifted clear of every die it would start inside, and no higher`() {
+    val apart = 2 * SMALL_MM + ClearSpace.CLEARANCE_MM
+    // Two dice in the way, and one far enough above them that the gap between
+    // is room enough: the die goes into the gap, not over the top.
+    val stack = listOf(Vector3(0.0, 0.0, LOW_MM), Vector3(0.0, 0.0, LOW_MM + apart - 1.0), Vector3(1.0, 0.0, HIGH_MM))
+
+    val height = CrowdedFloor.stackedHeight(Vector3.Zero, from = LOW_MM, apart = apart, taken = stack)
+
+    assertEquals(LOW_MM + 2 * apart - 1.0 + CrowdedFloor.LIFT_SLACK_MM, height, TOLERANCE)
+    assertTrue(height < HIGH_MM, "lifted over a die it had room beneath, to $height")
+    stack.forEach { assertTrue((Vector3(0.0, 0.0, height) - it).length >= apart) }
+  }
+
+  @Test
+  fun `a die straight over a column of dice is lifted over all of them, and the lifting ends`() {
+    // The case that once never ended: dice exactly overhead of each other,
+    // where a lift to exactly `z + apart` measured a hair under `apart` in
+    // floating point and was repeated for ever.
+    val apart = 2 * SMALL_MM + ClearSpace.CLEARANCE_MM
+    val column = List(COLUMN) { Vector3(0.0, 0.0, SMALL_MM + it * apart) }
+
+    val height = CrowdedFloor.stackedHeight(Vector3.Zero, from = SMALL_MM, apart = apart, taken = column)
+
+    column.forEach { assertTrue((Vector3(0.0, 0.0, height) - it).length >= apart) }
+    assertTrue(height <= column.last().z + apart + COLUMN * CrowdedFloor.LIFT_SLACK_MM, "lifted too far, to $height")
+  }
+
+  @Test
+  fun `a spot nothing is near is not lifted at all`() {
+    assertEquals(LOW_MM, CrowdedFloor.stackedHeight(Vector3.Zero, LOW_MM, apart = 10.0, taken = emptyList()))
+  }
+
+  @Test
+  fun `a tray where nothing fits under the lid gives the lowest spot, held under it`() {
+    val spot = CrowdedFloor.spot(geometry, SMALL_MM, emptyList(), from = LOW_MM, ceiling = LOW_MM / 2)
+
+    assertEquals(Vector3(0.0, 0.0, LOW_MM / 2), spot)
+  }
+
+  @Test
+  fun `a crowded spot is the point furthest from every die`() {
+    val radius = SMALL_MM
+    val taken = listOf(Vector3(-100.0, 0.0, radius))
+
+    val spot = CrowdedFloor.spot(geometry, radius, taken, from = LOW_MM, ceiling = HIGH_MM)
+
+    assertTrue(spot.x > 100.0, "went to $spot, not the far end")
+    assertEquals(LOW_MM, spot.z)
   }
 
   @Test
@@ -200,13 +273,29 @@ class BoardDropsTest {
   }
 
   @Test
-  fun `more dice than there is floor for are let go as far as they go`() {
-    val request = BoardDrops.request(number = 1, spec(FAR_TOO_MANY), kept = emptyMap())
+  fun `every die of the fullest board the capacity rule allows is let go, none inside another`() {
+    // A die the player added must appear: the shake will count it.
+    val most = mostThatFit()
+    val scale = (TableCapacity.check(List(most) { StandardDice.d6 }, geometry) as CapacityVerdict.Fits).scale
+    val radius = ClearSpace.radiusOf(StandardDice.d6, scale)
 
-    assertTrue(request.bodies.size < FAR_TOO_MANY, "the tray was filled with more dice than it holds")
-    assertTrue(request.bodies.isNotEmpty(), "nothing was dropped at all")
-    assertEquals(request.bodies.map { it.index }.sorted(), request.bodies.map { it.index })
+    val request = BoardDrops.request(number = 1, spec(most, scale), kept = emptyMap())
+
+    assertEquals((0 until most).toList(), request.bodies.map { it.index })
+    val spots = request.bodies.map { it.placement.position }
+    for (a in spots.indices) {
+      for (b in a + 1 until spots.size) {
+        assertTrue((spots[a] - spots[b]).length >= 2 * radius, "dice $a and $b start inside each other")
+      }
+      assertTrue(spots[a].z + radius < geometry.ceilingHeightMm, "die $a started through the lid")
+    }
   }
+
+  /** The most d6 the capacity rule lets onto this tray, at whatever scale. */
+  private fun mostThatFit(): Int =
+    (TableCapacity.MAX_DICE downTo 1).first {
+      TableCapacity.check(List(it) { StandardDice.d6 }, geometry) is CapacityVerdict.Fits
+    }
 
   @Test
   fun `a turn drawn at random is a unit turn and no two are alike`() {
@@ -235,7 +324,7 @@ class BoardDropsTest {
     repeat(SAMPLES) { assertEquals(1.0, BoardDrops.anyDirection(random).length, TOLERANCE) }
   }
 
-  private fun release(seed: Int): Placement? =
+  private fun release(seed: Int): Placement =
     BoardDrops.release(geometry, ClearSpace.radiusOf(StandardDice.d6, 1.0), emptyList(), Random(seed))
 
   /** Dice on a grid, a little apart, leaving clear floor only in one corner. */
@@ -255,7 +344,10 @@ class BoardDropsTest {
     return spots
   }
 
-  private fun spec(count: Int): ThrowSpec =
+  private fun spec(
+    count: Int,
+    scale: Double = 1.0,
+  ): ThrowSpec =
     ThrowSpec(
       dice =
         List(count) {
@@ -264,6 +356,7 @@ class BoardDropsTest {
       geometry = geometry,
       table = table,
       seed = 0L,
+      dieScale = scale,
     )
 
   /** A random source that always answers the middle of whatever is asked. */
@@ -286,10 +379,13 @@ class BoardDropsTest {
     const val THREE = 3
     const val FOUR = 4
     const val SEVEN = 7
+    const val COLUMN = 6
     const val SAMPLES = 50
     const val MANY = 20_000
     const val SPREAD = 0.02
-    const val FAR_TOO_MANY = TableCapacity.MAX_DICE
+    const val HIGH_MM = 80.0
+    const val LOW_MM = 20.0
+    const val SMALL_MM = 5.0
     const val CORNER_CELLS = 3
     const val TOLERANCE = 1e-9
   }

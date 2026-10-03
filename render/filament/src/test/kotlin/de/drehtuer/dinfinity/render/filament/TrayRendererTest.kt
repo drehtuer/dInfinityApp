@@ -573,7 +573,8 @@ class TrayRendererTest {
   }
 
   @Test
-  fun `more dice than there is floor for are dropped as far as they go`() {
+  fun `every die is dropped and drawn, even more than there is clear floor for`() {
+    // A die the player added must appear: the shake will count it.
     val stage = FakeStage()
     val renderer = TrayRenderer()
     renderer.stage(stage)
@@ -581,8 +582,8 @@ class TrayRendererTest {
 
     val request = renderer.drop(spec(dice = TableCapacity.MAX_DICE))
 
-    assertTrue(request.bodies.size < TableCapacity.MAX_DICE)
-    assertEquals(request.bodies.size, stage.placed.size)
+    assertEquals(TableCapacity.MAX_DICE, request.bodies.size)
+    assertEquals(TableCapacity.MAX_DICE, stage.placed.size)
   }
 
   @Test
