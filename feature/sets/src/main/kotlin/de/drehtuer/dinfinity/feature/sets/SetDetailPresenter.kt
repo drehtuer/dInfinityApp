@@ -193,7 +193,7 @@ class SetDetailPresenter(
           license = state.license ?: SetLicense.ofId(row?.set?.license),
           // Only ever read once. What is in hand is what the steppers have
           // been moving, and the folder is behind it by a reading.
-          declared = state.declared ?: if (row?.personal == true) library.personalPhysical() else null,
+          declared = state.declared ?: if (row?.personal == true) library.personalPhysical(id) else null,
         )
     }
   }
@@ -233,7 +233,7 @@ class SetDetailPresenter(
     if (next == now) return
     state = state.copy(declared = next)
     scope.launch {
-      library.setPersonalPhysical(next)
+      library.setPersonalPhysical(id, next)
       refresh()
     }
   }
@@ -261,7 +261,7 @@ class SetDetailPresenter(
     if (license == null || !state.canExport) return
     state = state.copy(exporting = true, exported = false, exportProblem = emptyList())
     scope.launch {
-      when (val result = library.exportPersonal(license)) {
+      when (val result = library.exportPersonal(id, license)) {
         is ExportResult.Ready -> {
           onShare(result.file)
           state = state.copy(exporting = false, exported = true)

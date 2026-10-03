@@ -72,8 +72,10 @@ sealed interface PhotoResult {
 }
 
 /**
- * The personal set, "My dice" (`docs/face-designer.md`, "Flow", step 5;
- * design option `8c`).
+ * A personal set: "My dice" (`docs/face-designer.md`, "Flow", step 5;
+ * design option `8c`), or one somebody named in the face designer, which is
+ * the same class on records of its own ([PersonalSets];
+ * `docs/architecture.md`, decision 79).
  *
  * It is an ordinary installed package in an ordinary folder, built from the
  * drawings on the phone. Everything that reads dice sets therefore reads it
@@ -110,16 +112,27 @@ sealed interface PhotoResult {
  *   written only into `dicesets/mine/diceset.toml` would be rewritten away by
  *   the next stroke somebody drew (`docs/dice-sets.md`, "Weight, translucency
  *   and size, as a person sets them").
+ * @param id which personal set this is. [MinePackage.ID] — "My dice", whose
+ *   records are where they have always been — unless [PersonalSets] made it
+ *   for a set somebody named (`docs/architecture.md`, decision 79).
+ * @param name what the set is called on the sets screen and in the sheet.
+ * @param keepEmpty true for a set somebody made on purpose: its package is
+ *   written even with nothing in it, so it is on the list, in the picker and
+ *   in notation the moment it is named. "My dice" is false — a phone nobody
+ *   has drawn on has no `mine`, as it never has.
  */
 @Suppress("LongParameterList", "TooManyFunctions")
 class MineSets(
   private val drafts: DraftStore,
-  private val root: File,
+  internal val root: File,
   private val painter: AtlasPainter,
   private val dice: () -> List<Die>,
   private val photos: PhotoStore,
   private val physical: Physicals = Physicals.NONE,
   private val author: () -> String? = { null },
+  val id: String = MinePackage.ID,
+  val name: String = MinePackage.NAME,
+  private val keepEmpty: Boolean = false,
 ) {
   /**
    * The stamp of the drawings the folder was last built from.
@@ -135,7 +148,7 @@ class MineSets(
    * Where the package goes, and the rule that a half-written one never exists
    * ([PackageFolder]).
    */
-  private val into = PackageFolder(root, MinePackage.ID)
+  private val into = PackageFolder(root, id)
 
   /**
    * Writes the personal package if the drawings have moved on since it was
@@ -153,7 +166,7 @@ class MineSets(
     builtFrom = stamp
     val drawings = drawings()
     val pictures = photos.photos()
-    if (drawings.isEmpty() && pictures.isEmpty()) {
+    if (drawings.isEmpty() && pictures.isEmpty() && !keepEmpty) {
       into.remove()
       return
     }
@@ -254,7 +267,7 @@ class MineSets(
         // what makes the licence stick.
         into.install(files)
         builtFrom = stamp()
-        ExportResult.Ready(PackageFile(name = MinePackage.FILE_NAME, bytes = PackageZip.of(files)))
+        ExportResult.Ready(PackageFile(name = MinePackage.fileNameOf(id), bytes = PackageZip.of(files)))
       }
     }
   }
@@ -289,7 +302,65 @@ class MineSets(
     drawings: List<Draft>,
     pictures: List<TablePhoto>,
     license: String,
-  ): Map<String, ByteArray> = MinePackage.of(drawings, license, author(), painter, pictures, physical.material())
+  ): Map<String, ByteArray> =
+    MinePackage.of(drawings, license, author(), painter, pictures, physical.material(), id = id, name = name)
+
+  /**
+   * Writes [draft] into this set's own record, where it waits for the next
+   * reading to build it into the package.
+   *
+   * For "My dice" that record is the designer's drafts folder, so this is the
+   * write the canvas makes anyway; for a named set it is that set's copy of
+   * the drawing (`docs/face-designer.md`, "Save to set").
+   */
+  fun keep(draft: Draft) {
+    drafts.save(draft)
+  }
+
+  /** True when this set has a drawing in its record — what tells "nothing drawn" from "not written". */
+  fun drawn(): Boolean = drafts.known().isNotEmpty()
+
+  /**
+   * The set made by [PersonalSets] for the name somebody typed, with its
+   * records in [records] and its package beside this one's.
+   *
+   * Here rather than in [PersonalSets] because everything a personal set needs
+   * apart from its records — where packages go, the painter, the dice a draft
+   * may name, the author — is already in hand, and is the same for every one
+   * of them.
+   */
+  internal fun sibling(
+    id: String,
+    name: String,
+    records: File,
+  ): MineSets =
+    MineSets(
+      drafts = DraftStore(File(records, DraftStore.DIRECTORY)),
+      root = root,
+      painter = painter,
+      dice = dice,
+      photos = PhotoStore(File(records, PhotoStore.DIRECTORY)),
+      physical = PhysicalStore(File(records, PersonalSets.PHYSICAL_FILE)),
+      author = author,
+      id = id,
+      name = name,
+      keepEmpty = true,
+    )
+
+  /**
+   * The files an empty package of [id] called [name] would be, for checking a
+   * new set's name with the validator before anything is written.
+   */
+  internal fun emptyPackageOf(
+    id: String,
+    name: String,
+  ): Map<String, ByteArray> =
+    MinePackage.of(emptyList(), SetLicense.UNSPECIFIED, author(), painter, id = id, name = name)
+
+  /** Takes the package off the disk. For a named set being removed; never "My dice"'s records. */
+  internal fun removePackage() {
+    into.remove()
+  }
 
   /**
    * What the dice are made of, as the details screen shows and sets it

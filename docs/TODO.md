@@ -136,10 +136,12 @@ and read here, and a seed gives the same result with the renderer on and off.
       canvas outline, which changes how drafts on disk are masked
 - [ ] Should the Solid tab draw pen strokes (as thin filled outlines)? Today it
       says what it does not draw
-- [ ] **More than one personal set.** `MinePackage.ID` is fixed to `mine` and
-      `MineSets` is one folder, so "Save to set" lists one set. Needs an id per
-      set, a `MineSets` per folder, drafts keyed by set, an export and physical
-      record each
+- [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
+      named set is a copy and also stays in "My dice" — is that what somebody
+      expects, or should a set-only drawing leave "My dice" alone? Does the
+      line under the name field ("Its id will be brass-bone: that is what
+      notation calls the set") read as help rather than jargon, and is a
+      refused name's sentence clear about what to change?
 - [ ] *Judgement:* does the bucket close a loop somebody meant to close (ends
       within 0.08 of the canvas)? Does the Solid tab's turning d20 read as a die
       being turned over; is one lamp enough; does the selected-face outline

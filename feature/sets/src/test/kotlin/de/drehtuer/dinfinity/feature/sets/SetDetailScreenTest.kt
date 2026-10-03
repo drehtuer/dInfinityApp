@@ -32,6 +32,7 @@ import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.MineSets
+import de.drehtuer.dinfinity.designer.PersonalSets
 import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.designer.PhysicalStore
 import de.drehtuer.dinfinity.designer.SetLicense
@@ -458,21 +459,23 @@ class SetDetailScreenTest {
    * "My dice" with the records it is built from behind it, which is what makes
    * its three physical numbers this phone's to change.
    */
-  private fun mine(): MineSets {
+  private fun mine(): PersonalSets {
     val drafts = DraftStore(File(temporary, "drafts"))
     drafts.save(
       Draft(die = Die.standard(id = "d6", shape = DieShape.Cube)).onFace(0) {
         it.draw(Stroke(dots = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)), colorArgb = INK, width = 0.05f))
       },
     )
-    return MineSets(
-      drafts = drafts,
-      root = root,
-      painter = BitmapAtlas(),
-      dice = { listOf(Die.standard(id = "d6", shape = DieShape.Cube)) },
-      photos = PhotoStore(File(temporary, "table-photos")),
-      physical = PhysicalStore(File(temporary, PhysicalStore.FILE_NAME)),
-    )
+    val mine =
+      MineSets(
+        drafts = drafts,
+        root = root,
+        painter = BitmapAtlas(),
+        dice = { listOf(Die.standard(id = "d6", shape = DieShape.Cube)) },
+        photos = PhotoStore(File(temporary, "table-photos")),
+        physical = PhysicalStore(File(temporary, PhysicalStore.FILE_NAME)),
+      )
+    return PersonalSets(mine, File(temporary, PersonalSets.DIRECTORY))
   }
 
   /**
@@ -505,7 +508,7 @@ class SetDetailScreenTest {
     onGone: () -> Unit = {},
     default: String = "",
     onDefault: (String) -> Unit = {},
-    personal: MineSets? = null,
+    personal: PersonalSets? = null,
   ): SetDetailPresenter {
     val presenter =
       SetDetailPresenter(

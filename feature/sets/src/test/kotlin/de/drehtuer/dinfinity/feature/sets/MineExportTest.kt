@@ -17,7 +17,9 @@ import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.ExportResult
 import de.drehtuer.dinfinity.designer.MinePackage
 import de.drehtuer.dinfinity.designer.MineSets
+import de.drehtuer.dinfinity.designer.NewSet
 import de.drehtuer.dinfinity.designer.PackageFile
+import de.drehtuer.dinfinity.designer.PersonalSets
 import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.designer.PhysicalStore
 import de.drehtuer.dinfinity.designer.SetLicense
@@ -265,7 +267,55 @@ class MineExportTest {
         defaultSetId = { DiceSet.BUILTIN_ID },
       )
 
-    assertEquals(ExportResult.Empty, runBlocking { bare.exportPersonal(SetLicense.Mit) })
+    assertEquals(ExportResult.Empty, runBlocking { bare.exportPersonal(MinePackage.ID, SetLicense.Mit) })
+  }
+
+  @Test
+  fun `a named set is personal, has steppers of its own and goes out under its own name`() {
+    // Decision 79: every personal set has its own export and its own record
+    // of what its dice are made of — and "My dice" is none the wiser.
+    draw()
+    val id = named("Brass & Bone")
+    val presenter = detail(id)
+
+    assertTrue(presenter.state.personal)
+    assertTrue("a new set does not start at the average", presenter.state.declared == DieMaterial())
+    presenter.weigh(2)
+    presenter.choose(SetLicense.Mit)
+    presenter.export()
+    await("nothing was shared") { shared != null }
+
+    val file = shared ?: error("nothing was shared")
+    assertEquals("brass-bone.zip", file.name)
+    val set = inside(file)
+    assertEquals("brass-bone", set.id)
+    assertEquals("Brass & Bone", set.name)
+    assertEquals(
+      DiePhysical.weighted(DieMaterial(), 2).density,
+      set.dice
+        .single()
+        .material.density,
+      1e-9,
+    )
+    val mine = runBlocking { library().one(MinePackage.ID) }?.set?.dice?.single() ?: error("my dice went missing")
+    assertEquals("my dice took the other set's weight", DieMaterial().density, mine.material.density, 1e-9)
+  }
+
+  @Test
+  fun `removing a named set takes its records too, and leaves My dice alone`() {
+    // A package whose records stayed would be built straight back at the
+    // next reading: a set nobody could remove.
+    draw()
+    val id = named("Props")
+    val library = library()
+    val row = runBlocking { library.one(id) } ?: error("the named set is not on the list")
+
+    runBlocking { library.remove(row) }
+
+    val rows = runBlocking { library().all() }
+    assertTrue("the named set came back", rows.none { it.id == id })
+    assertTrue("my dice went with it", rows.any { it.id == MinePackage.ID })
+    assertFalse("its records are still there", File(File(temporary, PersonalSets.DIRECTORY), id).exists())
   }
 
   /** What the details screen is currently saying the package is licensed under. */
@@ -275,12 +325,13 @@ class MineExportTest {
   }
 
   private fun draw() {
-    drafts.save(
-      Draft(die = d6).onFace(0) {
-        it.draw(Stroke(dots = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)), colorArgb = INK, width = 0.05f))
-      },
-    )
+    drafts.save(drawing())
   }
+
+  private fun drawing(): Draft =
+    Draft(die = d6).onFace(0) {
+      it.draw(Stroke(dots = listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)), colorArgb = INK, width = 0.05f))
+    }
 
   private fun library() =
     SetLibrary(
@@ -290,7 +341,13 @@ class MineExportTest {
       io = Dispatchers.Unconfined,
       installer = PackageInstaller(root),
       defaultSetId = { DiceSet.BUILTIN_ID },
-      personal =
+      personal = personal(),
+    )
+
+  /** "My dice" on the records it has always had, and named sets beside it. */
+  private fun personal() =
+    PersonalSets(
+      mine =
         MineSets(
           drafts = drafts,
           root = root,
@@ -299,7 +356,16 @@ class MineExportTest {
           photos = photos,
           physical = physical,
         ),
+      records = File(temporary, PersonalSets.DIRECTORY),
     )
+
+  /** Makes a named set with one drawing in it, the way the designer's sheet does. */
+  private fun named(name: String): String {
+    val sets = personal()
+    val made = sets.create(name) as? NewSet.Made ?: error("the set was not made")
+    sets.find(made.id)?.keep(drawing()) ?: error("the set went missing")
+    return made.id
+  }
 
   private fun detail(id: String): SetDetailPresenter =
     SetDetailPresenter(

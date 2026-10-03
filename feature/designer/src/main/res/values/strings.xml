@@ -19,6 +19,18 @@
   <string name="designer_save_done">Saved to %1$s. Roll it now throws the drawing.</string>
   <string name="designer_save_blank">There is nothing drawn to save yet.</string>
   <string name="designer_save_refused">That could not be written, and nothing was changed.</string>
+  <!-- The last choice in the Save to set sheet: make a personal set of your own and save into it. -->
+  <string name="designer_save_new">New set…</string>
+  <!-- The label of the field the new set's name is typed into. -->
+  <string name="designer_save_new_name">Name of the new set</string>
+  <!-- Under the name field. %1$s is the id the name comes to, like "brass-bone"; it is what notation calls the set. -->
+  <string name="designer_save_new_id">Its id will be %1$s: that is what notation calls the set.</string>
+  <!-- Why a new set was not made. %1$s is the id the name came to, like "me". -->
+  <string name="designer_save_new_unnamed">A new set needs a name.</string>
+  <string name="designer_save_new_long">That name is too long: a set’s name has at most 40 characters.</string>
+  <string name="designer_save_new_bad_id">A set’s id is made from its name and needs 3 to 40 letters and digits; this name comes to “%1$s”. Try a longer name.</string>
+  <string name="designer_save_new_taken">There is already a set with the id “%1$s” on this phone. Choose another name.</string>
+  <string name="designer_save_new_refused">That set could not be made, and nothing was changed.</string>
   <!-- The flat editor, where a face is drawn one at a time. -->
   <string name="designer_view_face">Face</string>
   <!-- The die itself, turned over in the hand. -->
