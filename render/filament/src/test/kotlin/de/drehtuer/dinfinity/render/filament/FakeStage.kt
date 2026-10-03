@@ -86,6 +86,13 @@ class FakeStage(
     placed -= entity
   }
 
+  /** Entities put back into the scene after being taken out, in order. */
+  val put: MutableList<Int> = mutableListOf()
+
+  override fun put(entity: Int) {
+    put += entity
+  }
+
   override fun aim(shot: CameraShot) {
     shots += shot
   }

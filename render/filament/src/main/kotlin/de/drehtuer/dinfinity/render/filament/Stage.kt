@@ -63,8 +63,23 @@ interface Stage : AutoCloseable {
    *
    * The entity is not destroyed, because the mesh and its material are the
    * expensive half and the same die may be drawn again by the next roll.
+   *
+   * Also what a die on the board gets while it waits its turn to be dropped
+   * (`docs/physics-and-rendering.md`, "The dice waiting to be thrown"), until
+   * [put] brings it back.
    */
   fun take(entity: Int)
+
+  /**
+   * Puts an entity [take] took out back into the scene, drawn again from the
+   * next frame where it was last [place]d.
+   *
+   * What a die on the board gets the moment it is let go: it was built with
+   * the rest of the board, so that letting it go costs no mesh, and kept out
+   * of the scene until its turn. Putting back an entity that is already in
+   * the scene changes nothing.
+   */
+  fun put(entity: Int)
 
   /** Points the camera where [shot] says. */
   fun aim(shot: CameraShot)

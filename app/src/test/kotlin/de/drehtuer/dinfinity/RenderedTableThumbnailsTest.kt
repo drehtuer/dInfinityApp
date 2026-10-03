@@ -190,6 +190,8 @@ private class PaintedStage(
 
   override fun take(entity: Int) = Unit
 
+  override fun put(entity: Int) = Unit
+
   override fun aim(shot: CameraShot) = Unit
 
   override fun draw(): Boolean = true

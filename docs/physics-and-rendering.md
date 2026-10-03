@@ -1138,41 +1138,77 @@ typing").
 **A die that is new to the board is dropped onto it and tumbles to a stop,
 under real physics.** It used to appear in a laid-out spot, and then to fall
 into that spot along a scripted path; dice spaced evenly over a table do not look
-like dice somebody dropped there. Now it is let go above a random clear spot and
-the engine brings it down among the dice already there
-(`docs/architecture.md`, decision 67):
+like dice somebody dropped there. Then it was let go over a random clear spot,
+and a player adding five dice could not tell which five were new. Now **every
+die is let go over the same spot, one after another**, and the engine brings
+them down among the dice already there (`docs/architecture.md`, decisions 67
+and 69):
 
-- **Released** above a spot drawn at random inside the walls — the first of up
-  to eight draws that is clear of every die on the board, else the clearest
-  point there is (`ClearSpace`). **Every die the player adds is let go**, because
-  the shake that follows counts it: random spots pack the floor less tightly
-  than a laid-out grid, so a full board can run out of clear floor first, and
-  then the die goes over the least crowded point, lifted clear in three
-  dimensions of every die it would start inside, and the physics settles it
-  onto or among the others (`CrowdedFloor`). It is otherwise held `BoardDrops.DROP_HEIGHT_MM` (60 mm) plus up to
-  `HEIGHT_JITTER_MM` (18 mm) above the felt, beyond its own radius and always
-  under the lid; turned evenly over every orientation; drifting sideways at
-  `LEAST_SLIDE_MM_PER_SECOND`–`MOST_SLIDE_MM_PER_SECOND` (40–150 mm/s) in a
-  random direction and downwards at up to `MOST_DOWNWARD_MM_PER_SECOND`
-  (150 mm/s); and spinning about a random axis at
+- **One spot.** Every added die is let go over `BoardDrops.DROP_SPOT`, the
+  middle of the tray, within `SPOT_JITTER_MM` (1.5 mm) of it — enough that two
+  dice do not come down centre on centre, too little for the eye to see the
+  spot move. The middle rather than the end by the dice pull-down, because the
+  pull-down lies over the top of the table while it is open, which is exactly
+  when dice are being tapped in. The eye stays on one point and follows each
+  die as it leaves it; the dice spread out by knocking into each other and into
+  the dice already down, which is physics.
+- **In quick succession.** Several dice added at once — a saved roll put on
+  the table, a formula typed, `40d6` — are let go in index order,
+  `DROP_INTERVAL_SECONDS` (0.1 s, `DROP_INTERVAL_STEPS` = 12 steps) apart: the
+  first at once, each of the others a tenth of a second after the one before,
+  by which time that one is most of the way down. A bigger handful than fits
+  in `LONGEST_STREAM_SECONDS` (4 s, forty-one dice) at that pace is let go
+  closer together so that it does (`intervalFor`), never two in one step.
+  Single taps in quick succession get the same stream through the board
+  being simulated again on every tap (below), and a die tapped while others
+  are still falling is let go over the same spot.
+- **Never inside another.** Where a die actually starts is settled at its
+  step, against the dice in play at that moment, in three dimensions: the die
+  before it may still be falling through the spot, or a heap may have formed
+  under it. It is lifted straight up over whatever is in the way
+  (`BoardDrops.letGo`, `CrowdedFloor.stackedHeight`), keeping the gap the
+  biggest die on the board needs. **Every die the player adds is let go**,
+  because the shake that follows counts it — so only when the lift would put
+  it through the lid does it go somewhere else: over the least crowded point
+  of the tray, lifted the same way (`CrowdedFloor.spot`).
+- **How it is let go.** `DROP_HEIGHT_MM` (60 mm) above the felt, beyond its own
+  radius and always under the lid; turned evenly over every orientation;
+  drifting sideways at `LEAST_SLIDE_MM_PER_SECOND`–`MOST_SLIDE_MM_PER_SECOND`
+  (40–150 mm/s) in a random direction — the drift is what sends each die of a
+  stream its own way off the spot — and downwards at up to
+  `MOST_DOWNWARD_MM_PER_SECOND` (150 mm/s); and spinning about a random axis at
   `LEAST_SPIN_RADIANS_PER_SECOND`–`MOST_SPIN_RADIANS_PER_SECOND` (9–18 rad/s).
+  One height for every die: the stream already staggers the landings.
 - **Simulated once, off the roll thread, and played back.** When the board
   changes, `BoardSettler` opens a short-lived headless Jolt world on the visit's
   board thread: every die on the board as a dynamic body where it is drawn now
-  and moving as it is moving, plus the new dice where they are let go. Gravity
-  is the throw's (`ShakeDriver.GRAVITY_MM_PER_SECOND2`), the world is stepped at
-  `SettleRule.TIMESTEP_SECONDS` until `RestTracker` says every die has stopped
-  or three seconds have passed (`MOST_BOARD_STEPS`), one pose per die per step
-  is written down, and the world is closed before the recording
-  (`BoardTrack`) is handed back. Playback maps the board's clock to a step and
-  a fraction and draws between the two, as a roll is drawn — so 60 Hz and
-  120 Hz see the same drop, and nothing is running between frames.
+  and moving as it is moving, plus the new dice. A new die is a body from the
+  start — the bridge only adds bodies before the first step — but until its
+  step (`BoardBody.dropStep`) it is parked a metre under the tray, in a row of
+  its own, where it touches nothing (`PARKED_BELOW_MM`); at its step it is put
+  over the spot once (`PhysicsWorld.respawn`), and from then on it is a die
+  like the others. Gravity is the throw's (`ShakeDriver.GRAVITY_MM_PER_SECOND2`),
+  the world is stepped at `SettleRule.TIMESTEP_SECONDS` until the last die has
+  been let go and `RestTracker` says every die has stopped, or three seconds
+  after the last die was let go (`MOST_BOARD_STEPS`); one pose per die per step
+  is written down, and the world is closed before the recording (`BoardTrack`)
+  is handed back. Playback maps the board's clock to a step and a fraction and
+  draws between the two, as a roll is drawn — so 60 Hz and 120 Hz see the same
+  drop, and nothing is running between frames.
+- **A die waiting its turn is not drawn.** The recording says, for every die,
+  the step from which it is on the table (`BoardTrack.inPlay`). A frame leaves
+  out every die not yet let go, the renderer takes a die a frame leaves out out
+  of the scene and puts it back the frame it is let go (`Stage.put`), so it is
+  built with the rest of the board and appears at the spot, never in the
+  middle of the floor.
 - **The dice already on the board can be bumped.** They are bodies in that
   world like the new one, so a die dropped next to another may knock it; that
   is what dropping a die among dice does, and the player asked for physics.
   A die still in the air when the next tap arrives keeps its momentum: it is
   carried into the next drop at the pose and speed the recording had for it at
-  that moment (speeds by finite difference between two recorded steps).
+  that moment (speeds by finite difference between two recorded steps). A die
+  still waiting its turn is not on screen, so it is not carried over: the next
+  board lets it go again, over the same spot.
 - **A die nothing touches is drawn exactly where it stood.** A die that started
   dead still and moved less than 0.05 mm or turned less than 0.002 rad is
   recorded at its starting pose on every step, verbatim
@@ -1188,7 +1224,7 @@ is held by structure rather than by care:
   board code never calls `FaceReader`. Nothing on the board is scored or
   recorded, and the shake that follows throws every die from a spawn of its own,
   exactly as before — the board's poses are not where a throw starts.
-- **Its randomness is its own.** Release spots, heights, turns and spins come
+- **Its randomness is its own.** The jitter about the spot, turns, drifts and spins come
   from `Seeds.waiting(board, die)`, which is the board's number within the
   visit under the purpose `Seeds.WAITING`, a purpose no throw uses. A board
   built between two throws therefore cannot move a number in either of them,
@@ -1217,7 +1253,9 @@ table or a cleared tray forgets the pending board altogether, so a late drop
 never paints over a roll. A drop that fails to be worked out at all — the
 bridge would not open — never takes the app down: it is logged and the board is
 stood still instead, each moving die straight below where it was, square on the
-felt (`settleOrStand`, `BoardTrack.standing`).
+felt — or at the clearest point of the tray when a die already stands there,
+since every die being added is over the same spot (`settleOrStand`,
+`BoardTrack.standing`).
 
 The frames it costs are the only frames it costs. A board whose drop is playing
 wants one per vsync, and a board whose drop has ended wants none, which is what
@@ -1230,7 +1268,8 @@ is dropped from (`SpawnLayout.RETHROW_HEIGHT_MM`): that drop happens among dice
 whose faces are being read and should not upstage them, and this one *is* the
 thing the player is looking at. What is still open is a question only a hand
 can answer — whether the release constants above read as a die dropped and
-tumbled on a table (`docs/TODO.md`).
+tumbled on a table, and whether the spot, the jitter and the interval make a
+stream the eye can follow (`docs/TODO.md`).
 
 ## The dice an explosion or a reroll adds
 

@@ -9,7 +9,8 @@ import de.drehtuer.dinfinity.simulation.api.Quaternion
 
 /**
  * A board settler with no physics in it: every die slides straight down to the
- * felt and turns flat over [steps] steps, and a die already down stays put.
+ * felt and turns flat over [steps] steps from the step it is let go at, and a
+ * die already down stays put.
  *
  * Enough for what the tray decides — which board is wanted, when it is drawn,
  * how far into it a frame is — and nothing of the real drop, which is the
@@ -24,10 +25,12 @@ class FakeBoards(
   override fun settle(request: BoardRequest): BoardTrack {
     asked += request
     val recorder = BoardTrack.Recorder(request.bodies)
-    for (step in 1..steps) {
-      val share = step.toDouble() / steps
+    val lastDrop = request.bodies.maxOfOrNull { it.firstStep } ?: 0
+    for (step in 1..lastDrop + steps) {
       recorder.record(
         request.bodies.map { body ->
+          // Each die falls for [steps] steps from the moment it is let go.
+          val share = ((step - body.firstStep).toDouble() / steps).coerceIn(0.0, 1.0)
           val from = body.placement.position
           val floor = ClearSpace.radiusOf(body.die, body.dieScale)
           BoardPose(

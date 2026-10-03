@@ -49,8 +49,9 @@ object Seeds {
    *
    * Seeded by the board's number rather than by a throw's seed, because a
    * board has none: every board is built from a spec seeded nought, and a d6
-   * taken off and put back would otherwise fall onto the same spot, the same
-   * way up, every time. Through [WAITING], so it can never be a roll's stream.
+   * taken off and put back would otherwise be let go turned, drifting and
+   * spinning the same way every time. Through [WAITING], so it can never be a
+   * roll's stream.
    */
   fun waiting(
     board: Int,

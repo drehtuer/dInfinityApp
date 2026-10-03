@@ -286,6 +286,31 @@ class FilamentDiceRendererTest {
   }
 
   @Test
+  fun `a die the first frame leaves out is not drawn where it was built`() {
+    // A die on the board still waiting its turn to be let go: built with the
+    // rest, but there is nowhere it is yet, and left in the scene it would be
+    // drawn in the middle of the floor.
+    renderer.begin(spec(), geometry, look)
+
+    renderer.show(RenderFrame.still(listOf(at(0, Vector3.Zero))))
+
+    assertEquals(listOf(TRAY_PARTS + 2, TRAY_PARTS + 3), stage.taken.sorted())
+    assertTrue("a die was put back that never left", stage.put.isEmpty())
+  }
+
+  @Test
+  fun `and is put back into the scene the frame it is let go, once`() {
+    renderer.begin(spec(), geometry, look)
+    renderer.show(RenderFrame.still(listOf(at(0, Vector3.Zero))))
+
+    renderer.show(RenderFrame.still(listOf(at(0, Vector3.Zero), at(1, Vector3.Up))))
+    renderer.show(RenderFrame.still(listOf(at(0, Vector3.Zero), at(1, Vector3.Up))))
+
+    assertEquals(listOf(TRAY_PARTS + 2), stage.put)
+    assertTrue("the die let go was not drawn", stage.placed.containsKey(TRAY_PARTS + 2))
+  }
+
+  @Test
   fun `a die the stage would not take is not moved either`() {
     // `add` hands back "no entity" for a mesh with nothing in it, and nought
     // is not an entity anything may be done to.

@@ -199,6 +199,11 @@ class FilamentStage(
     scene.removeEntity(entity)
   }
 
+  override fun put(entity: Int) {
+    if (entity == Stage.NOTHING || scene.hasEntity(entity)) return
+    scene.addEntity(entity)
+  }
+
   override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,

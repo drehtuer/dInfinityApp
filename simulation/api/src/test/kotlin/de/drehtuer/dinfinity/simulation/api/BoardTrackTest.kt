@@ -275,6 +275,104 @@ class BoardTrackTest {
   }
 
   @Test
+  fun `dice let go over the same spot are stood apart, not inside each other`() {
+    // Every die being added is let go over one spot, so standing each one
+    // straight below where it was would stand them all in one place.
+    val radius = ClearSpace.radiusOf(StandardDice.d6, 1.0)
+    val standing = Placement(Vector3(0.0, 0.0, radius), Quaternion.Identity, Vector3.Zero, Vector3.Zero)
+    val overTheSpot = Placement(Vector3(0.0, 0.0, HIGH), Quaternion.Identity, Vector3(0.0, 0.0, -1.0), Vector3.Up)
+    val request =
+      BoardRequest(
+        1,
+        TableGeometry.referenceDevice(),
+        TABLE,
+        listOf(
+          BoardBody(0, StandardDice.d6, 1.0, overTheSpot, dropStep = 0),
+          BoardBody(1, StandardDice.d6, 1.0, standing),
+          BoardBody(2, StandardDice.d6, 1.0, overTheSpot, dropStep = LATER),
+        ),
+      )
+
+    val track = BoardTrack.standing(request)
+
+    val at = track.finalPoses.map { it.position }
+    assertEquals(standing.position, at[1], "the die already standing was moved")
+    for (a in at.indices) {
+      for (b in a + 1 until at.size) {
+        assertTrue((at[a] - at[b]).length >= 2 * radius, "dice $a and $b were stood inside each other")
+      }
+      assertEquals(radius, at[a].z, FLOAT_TOLERANCE)
+    }
+    assertTrue((0 until track.dice).all { track.inPlay(it, 0) }, "a still board left a die out")
+  }
+
+  @Test
+  fun `dice too big for any clear point are still stood, below where they were`() {
+    // Past anything the capacity rule accepts: nothing is clear anywhere, and
+    // a still picture with two dice in one place is better than none.
+    val moving = Placement(START, Quaternion.Identity, Vector3(0.0, 0.0, -1.0), Vector3.Up)
+    val huge = BoardBody(0, StandardDice.d6, HUGE, moving, dropStep = 0)
+    val request = BoardRequest(1, TableGeometry.referenceDevice(), TABLE, listOf(huge, huge.copy(index = 1)))
+
+    val track = BoardTrack.standing(request)
+
+    track.finalPoses.forEach { pose ->
+      assertEquals(START.x, pose.position.x, FLOAT_TOLERANCE)
+      assertEquals(START.y, pose.position.y, FLOAT_TOLERANCE)
+    }
+  }
+
+  @Test
+  fun `tracks of different dice, or of different poses, are different tracks`() {
+    val one = BoardTrack.Recorder(listOf(body(START))).finish()
+    val other = BoardTrack.Recorder(listOf(body(START).copy(index = 1))).finish()
+    val elsewhere = BoardTrack.Recorder(listOf(body(START.copy(x = -START.x)))).finish()
+
+    assertNotEquals(one, other)
+    assertNotEquals(one, elsewhere)
+  }
+
+  @Test
+  fun `a die let go later is not in play until its step`() {
+    val now = BoardBody(0, StandardDice.d6, 1.0, Placement(START, Quaternion.Identity, Vector3.Up, Vector3.Zero), 0)
+    val later = now.copy(index = 1, dropStep = LATER)
+    val recorder = BoardTrack.Recorder(listOf(now, later))
+    repeat(LATER) { recorder.record(List(2) { BoardPose(START, Quaternion.Identity) }) }
+
+    val track = recorder.finish()
+
+    assertTrue(track.inPlay(0, 0))
+    assertFalse(track.inPlay(1, LATER - 1))
+    assertTrue(track.inPlay(1, LATER))
+  }
+
+  @Test
+  fun `when a die is let go is part of the track`() {
+    val now = BoardBody(0, StandardDice.d6, 1.0, Placement(START, Quaternion.Identity, Vector3.Up, Vector3.Zero), 0)
+
+    val first = BoardTrack.Recorder(listOf(now)).finish()
+    val later = BoardTrack.Recorder(listOf(now.copy(dropStep = LATER))).finish()
+
+    assertNotEquals(first, later)
+    assertNotEquals(first.hashCode(), later.hashCode())
+  }
+
+  @Test
+  fun `a recording can start from poses other than the ones the dice were meant to start in`() {
+    val meant = body(START)
+    val lifted = BoardPose(START.copy(z = HIGH), Quaternion.Identity)
+
+    val track = BoardTrack.Recorder(listOf(meant), listOf(lifted)).finish()
+
+    assertEquals(HIGH, track.poseAt(0, 0).position.z, FLOAT_TOLERANCE)
+  }
+
+  @Test
+  fun `a die cannot be let go before the drop starts`() {
+    assertFailsWith<IllegalArgumentException> { body(START).copy(dropStep = -1) }
+  }
+
+  @Test
   fun `a drop that works out is the drop`() {
     val request = boardOf(body(START))
     val dropped = falling(steps = 3)
@@ -351,6 +449,9 @@ class BoardTrackTest {
     val START = Vector3(10.0, -20.0, 80.0)
     val TABLE = TableLook(id = "plain", name = "Plain")
     const val DROP_PER_STEP = 2.0
+    const val HIGH = 90.0
+    const val HUGE = 30.0
+    const val LATER = 12
     const val TURN_PER_STEP = 0.1
     const val LONG = 200
     const val TOLERANCE = 1e-9

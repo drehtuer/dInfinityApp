@@ -253,7 +253,15 @@ class TrayRenderer(
       return null
     }
     val wanted = spec.dice.map { it.die to ClearSpace.radiusOf(it.die, spec.dieScale) }
-    val recorded = track.indices.withIndex().associate { (die, index) -> index to die }
+    // A die still waiting its turn to be let go is not on the table yet, so
+    // there is nothing to carry over: the next board lets it go again, from
+    // the same spot.
+    val now = track.stepAt(trackSeconds)
+    val recorded =
+      track.indices
+        .withIndex()
+        .filter { (die, _) -> track.inPlay(die, now) }
+        .associate { (die, index) -> index to die }
     val kept =
       BoardDrops
         .keeping(standing, wanted, present = recorded.keys)
@@ -323,9 +331,9 @@ class TrayRenderer(
     val moving = falling
     val frame =
       if (moving) {
-        RenderFrame(posesAt(step), posesAt(step + 1), track.fractionAt(trackSeconds))
+        RenderFrame(posesAt(step, step), posesAt(step + 1, step), track.fractionAt(trackSeconds))
       } else {
-        RenderFrame.still(posesAt(track.steps - 1))
+        RenderFrame.still(posesAt(track.steps - 1, track.steps - 1))
       }
     latest = frame
     if (!moving && settled) return
@@ -333,9 +341,20 @@ class TrayRenderer(
     drawing?.let { renderer -> if (moving) renderer.show(frame) else renderer.settled(frame) }
   }
 
-  /** Every recorded die at [step] of the drop. */
-  private fun posesAt(step: Int): List<BodyTransform> =
-    track.indices.mapIndexed { die, index ->
+  /**
+   * Every recorded die on the table by step [shown], where it is at [step]
+   * of the drop.
+   *
+   * A die still waiting its turn to be let go is left out, and a frame that
+   * leaves a die out does not draw it ([FilamentDiceRenderer]). Both ends of a
+   * frame are asked with the same [shown], so a die let go in between is not
+   * in one end and missing from the other.
+   */
+  private fun posesAt(
+    step: Int,
+    shown: Int,
+  ): List<BodyTransform> =
+    track.indices.withIndex().filter { (die, _) -> track.inPlay(die, shown) }.map { (die, index) ->
       val pose = track.poseAt(die, step)
       BodyTransform(index = index, position = pose.position, orientation = pose.orientation)
     }

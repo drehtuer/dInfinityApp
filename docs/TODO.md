@@ -295,9 +295,13 @@ rest again until everything is counted (`docs/physics-and-rendering.md`,
       overlay, then throw `4d6!` three times from a cold start
 - [ ] **Does a die the picker adds read as dropped and tumbled?** Does it
       land and roll rather than appear; do the bumps look right after eight
-      quick taps of a d6; does a removal let a leaning die fall plausibly?
-      The numbers to turn are `BoardDrops.DROP_HEIGHT_MM` (60) and
-      `HEIGHT_JITTER_MM` (18), `LEAST_SLIDE_MM_PER_SECOND`–
+      quick taps of a d6; does a removal let a leaning die fall plausibly? Put
+      a saved roll of `8d6` on the table: can the eye follow the stream out of
+      the one spot, and does `40d6` read as a patter rather than a wait?
+      The numbers to turn are `BoardDrops.DROP_SPOT` (the middle of the tray),
+      `SPOT_JITTER_MM` (1.5), `DROP_INTERVAL_SECONDS` (0.1),
+      `LONGEST_STREAM_SECONDS` (4), `DROP_HEIGHT_MM` (60),
+      `LEAST_SLIDE_MM_PER_SECOND`–
       `MOST_SLIDE_MM_PER_SECOND` (40–150), `MOST_DOWNWARD_MM_PER_SECOND` (150)
       and `LEAST_SPIN_RADIANS_PER_SECOND`–`MOST_SPIN_RADIANS_PER_SECOND`
       (9–18). Also run `BoardSettlerTest` and read its timings (`dinfinity.board`

@@ -55,15 +55,18 @@ its true shape, and whether an oversized stamp on a d4 shrinks to fit.
 ### One the prototype cannot draw
 
 **A die the picker adds falls onto the table.** Tapping a d6 used to put one
-there; it is now let go about 60 mm above a random clear spot and comes down
+there; it is now let go about 60 mm above the middle of the tray and comes down
 under real physics, tumbling to a stop among the dice already down — which it
 may knock (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
+Several added at once leave that one spot a tenth of a second apart, so the
+eye can follow them.
 The prototype's tray is a still picture of a board, so it shows dice standing
 and cannot show them arriving. The two disagree in one respect, and the
 prototype is the one that is out of date: its board is laid out in even
 spacing, and the real board is wherever the dice came to rest, which is the
 point of the change. What is missing from `design/` is the motion and the
-scatter, and the only decisions in it — how high, how hard, how much spin —
+scatter, and the only decisions in it — where, how often, how high, how hard,
+how much spin —
 need a hand rather than a drawing; they are in `docs/TODO.md` under 5.6.
 
 ### Five the pass did not reach

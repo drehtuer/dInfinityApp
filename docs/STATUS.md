@@ -20,7 +20,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   66), and the dice waiting to be thrown drop under real Jolt physics, worked
   out on a board thread and played back (decision 67, superseding 64). **In
   flight:** `docs/shake-throws-the-picked-die` — the hand re-throw is picked by
-  a finger and thrown by a shake (decision 68).
+  a finger and thrown by a shake (decision 68); `feature/drop-from-one-spot` —
+  added dice leave one spot over the middle of the tray a tenth of a second
+  apart, so the eye can follow them (decision 69; device suite not yet run).
 
 ## Done
 

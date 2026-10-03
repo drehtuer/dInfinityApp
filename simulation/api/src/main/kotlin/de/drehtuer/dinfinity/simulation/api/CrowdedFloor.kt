@@ -3,36 +3,43 @@ package de.drehtuer.dinfinity.simulation.api
 import kotlin.math.sqrt
 
 /**
- * Where a die dropped onto the board goes when no floor is clear
+ * Where a die dropped onto the board starts when something is in its way
  * (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
  *
- * [BoardDrops] tries random spots first, and random spots pack a floor less
- * tightly than a grid — so a board the capacity rule accepts can run out of
- * clear floor before it runs out of dice. A die the player added must still
- * appear, because the shake that follows counts it. This finds it a place: the
+ * [BoardDrops] lets every die go over one spot, and the die before it may
+ * still be falling through there, or a heap may have formed under it. A die
+ * must never start inside another, and a die the player added must still
+ * appear, because the shake that follows counts it — so it is lifted over
+ * whatever is in the way ([stackedHeight]). When a heap at the spot is so high
+ * that the lift would put it through the lid, this finds it another place: the
  * least crowded point of the tray, lifted clear in three dimensions of every
  * die it would otherwise start inside, for the physics to settle onto or among
- * the others.
+ * the others ([spot]).
  */
 internal object CrowdedFloor {
   /**
-   * Where a die of [radiusMm] goes when no floor is clear: over the least
-   * crowded point of the tray, at [from] or as much higher as it takes not to
-   * start inside any die at [taken].
+   * Where a die of [radiusMm] goes when its own spot is no use: over the least
+   * crowded point of the tray, at [from] or as much higher as it takes to be
+   * [apart] from every die at [taken].
    *
    * Points are tried from the least crowded down, and the first that fits
    * under [ceiling] is the answer. A tray so full that none does is past
    * anything the capacity rule accepts; the lowest of them, held under the
    * lid, is the least wrong place then.
+   *
+   * Six parameters, each the caller's to say: where the die starts, how high
+   * it may go and how far apart it keeps are three different facts, and a
+   * type bundling them would only rename them.
    */
+  @Suppress("LongParameterList")
   fun spot(
     geometry: TableGeometry,
     radiusMm: Double,
     taken: List<Vector3>,
     from: Double,
     ceiling: Double,
+    apart: Double,
   ): Vector3 {
-    val apart = 2 * radiusMm + ClearSpace.CLEARANCE_MM
     val tried =
       floorPoints(geometry, radiusMm)
         .map { point -> point to nearestAcross(point, taken) }

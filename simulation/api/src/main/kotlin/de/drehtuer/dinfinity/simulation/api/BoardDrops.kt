@@ -1,18 +1,22 @@
 package de.drehtuer.dinfinity.simulation.api
 
 import kotlin.math.PI
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 import kotlin.random.Random
 
 /**
  * What goes into a board's drop: which dice carry over from the board on
- * screen, and where the new ones are let go from
+ * screen, and where and when the new ones are let go
  * (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
  *
  * Tapping a d6 in the picker drops a die onto the table from above, and it
  * comes down under real physics among the dice already there ([BoardSettler]).
- * This is the arithmetic either side of that: it builds the [BoardRequest] and
- * nothing else — no body, no world and no step — so it is tested on a JVM.
+ * Every die is let go over the same spot ([DROP_SPOT]), and several added at
+ * once are let go one after another ([DROP_INTERVAL_SECONDS]). This is the
+ * arithmetic either side of that: it builds the [BoardRequest] and says where
+ * a die may start, and nothing else — no body, no world and no step — so it is
+ * tested on a JVM.
  *
  * **The board is not a roll.** Nothing here or downstream of it reads a face;
  * the next shake throws every die from its own spawn, and the numbers the
@@ -20,6 +24,37 @@ import kotlin.random.Random
  * board built between two throws cannot move a number in either of them.
  */
 object BoardDrops {
+  /**
+   * The one point over which every added die is let go: the middle of the
+   * tray. Only its `x` and `y` count; the height is [DROP_HEIGHT_MM].
+   *
+   * **One spot, so the eye can follow.** Dice dropped over random spots came
+   * down all over the table, and a player adding five could not tell which
+   * five were new. Let go one after another over the same point
+   * ([DROP_INTERVAL_SECONDS]), they arrive as a stream the eye stays on, and
+   * spread out by knocking into each other and into the dice already down —
+   * which is physics, and what dropping dice onto a heap does
+   * (`docs/architecture.md`, decision 67).
+   *
+   * The middle rather than the end nearest the dice pull-down: the pull-down
+   * lies over the top of the table while it is open, which is exactly when
+   * the player is tapping dice in, so a die let go up there would fall behind
+   * it. The middle is the point the camera always frames, and the one with as
+   * much room to scatter into on every side.
+   */
+  val DROP_SPOT: Vector3 = Vector3.Zero
+
+  /**
+   * How far from [DROP_SPOT] a die may be let go, in any direction across the
+   * table: a millimetre and a half.
+   *
+   * Enough that two dice let go over the same point do not come down with
+   * their centres stacked to the micron — a die balanced dead on top of
+   * another is the landing a solver is slowest to resolve — and far too
+   * little for the eye to see the spot move.
+   */
+  const val SPOT_JITTER_MM: Double = 1.5
+
   /**
    * How far above the felt, beyond its own radius, a die is let go.
    *
@@ -29,25 +64,51 @@ object BoardDrops {
    * is to be unobtrusive; this one *is* the thing the player asked to see. At
    * 25 mm the whole fall is over in an eighth of a second, which on a screen
    * is a die appearing with extra steps.
+   *
+   * Every die is let go from this one height. The dice of a handful come down
+   * one after another now ([DROP_INTERVAL_SECONDS]), so nothing has to
+   * stagger their landings, and a stream that leaves from one point is the
+   * easiest thing to follow.
    */
   const val DROP_HEIGHT_MM: Double = 60.0
 
   /**
-   * And up to this much more, so a handful is a patter rather than a thud:
-   * dice let go from slightly different heights reach the table at slightly
-   * different moments.
+   * How long after one added die the next is let go, when several are added
+   * at once — a saved roll put on the table, a formula typed, `40d6`.
+   *
+   * A tenth of a second: long enough that each die is seen leaving the spot
+   * on its own (a die let go from [DROP_HEIGHT_MM] is most of the way down by
+   * then, and out of the next one's way), short enough that forty of them are
+   * a four-second patter rather than a wait. A judgement number for the owner
+   * (`docs/TODO.md`, Step 5.6).
    */
-  const val HEIGHT_JITTER_MM: Double = 18.0
+  const val DROP_INTERVAL_SECONDS: Double = 0.1
+
+  /** [DROP_INTERVAL_SECONDS] in whole simulation steps, which is what a drop is scheduled in. */
+  val DROP_INTERVAL_STEPS: Int = (DROP_INTERVAL_SECONDS / SettleRule.TIMESTEP_SECONDS).roundToInt()
 
   /**
-   * How many random spots are tried before the clearest one is taken instead.
+   * The longest a stream of added dice takes to let go, first die to last:
+   * four seconds, which is forty-one dice at [DROP_INTERVAL_SECONDS].
    *
-   * Random first, because a die put down at the one clearest point every time
-   * is a board that is laid out rather than dropped on — the equal spacing the
-   * player asked to see the back of. Eight misses means the board is getting
-   * full, and then the clearest point is the honest answer ([ClearSpace]).
+   * A bigger handful — the capacity rule allows a hundred — is let go closer
+   * together instead, so that it fits ([intervalFor]). Ten seconds of dice
+   * leaving one spot is a wait rather than a patter, and the whole drop is
+   * worked out before the first die of it is shown, so a longer stream is
+   * also a longer pause before anything moves.
    */
-  const val SPOT_DRAWS: Int = 8
+  const val LONGEST_STREAM_SECONDS: Double = 4.0
+
+  /**
+   * How many steps apart [count] dice added at once are let go:
+   * [DROP_INTERVAL_STEPS], or as much less as it takes for the stream to last
+   * no longer than [LONGEST_STREAM_SECONDS] — but never two in one step.
+   */
+  fun intervalFor(count: Int): Int {
+    if (count <= 1) return DROP_INTERVAL_STEPS
+    val longest = (LONGEST_STREAM_SECONDS / SettleRule.TIMESTEP_SECONDS).roundToInt()
+    return (longest / (count - 1)).coerceIn(1, DROP_INTERVAL_STEPS)
+  }
 
   /** The least a die drifts sideways as it is let go, in mm/s. */
   const val LEAST_SLIDE_MM_PER_SECOND: Double = 40.0
@@ -79,10 +140,10 @@ object BoardDrops {
    * whose dice have been shrunk to fit is a board whose dice have all changed
    * and is dropped afresh.
    *
-   * @param present which dice of [was] are actually in the drop on screen.
-   *   Every die of a board is let go ([release] always finds it somewhere),
-   *   so this is all of them; it is asked rather than assumed so that a die
-   *   the picture does not hold can never be carried over from nowhere.
+   * @param present which dice of [was] are actually on the table on screen.
+   *   A die still waiting its turn to be let go ([BoardBody.dropStep]) is
+   *   not: there is nothing on screen to carry over, so the next board drops
+   *   it again, over the same spot.
    */
   fun <T> keeping(
     was: List<T>,
@@ -104,67 +165,68 @@ object BoardDrops {
    * The board for [spec], with the dice in [kept] already on it.
    *
    * The dice in [kept] start where they are on screen now, moving as they are
-   * moving. Every other die of [spec] is new and is let go from above
-   * ([release]), in index order, each clear of the dice before it. **Every
-   * die is let go**: a die the player added must appear, and the throw that
-   * follows counts it, so a crowded board drops it from higher rather than
-   * leaving it out.
+   * moving. Every other die of [spec] is new and is let go over [DROP_SPOT]
+   * ([release]), in index order and [DROP_INTERVAL_STEPS] apart: the first at
+   * once, the next a tenth of a second later, and so on — closer together
+   * only for a handful too big to let go in [LONGEST_STREAM_SECONDS] at that
+   * pace ([intervalFor]). **Every die is let
+   * go**: a die the player added must appear, and the throw that follows
+   * counts it. Exactly where it starts is settled at the moment it is let go,
+   * against the dice in play by then ([letGo]).
    *
    * @param number this board's number within the visit, which is what its
    *   drops are seeded by ([Seeds.waiting]). Not the spec's seed: every board
    *   is built from a spec seeded nought, so a die taken off and put back would
-   *   otherwise land on the same spot in the same way every time.
+   *   otherwise tumble the same way every time.
    */
   fun request(
     number: Int,
     spec: ThrowSpec,
     kept: Map<Int, Placement>,
   ): BoardRequest {
-    val taken = kept.values.mapTo(mutableListOf()) { it.position }
+    val interval = intervalFor(spec.dice.indices.count { it !in kept })
+    var dropped = 0
     val bodies =
       spec.dice.mapIndexed { index, instance ->
-        val placement =
-          kept[index] ?: release(
-            geometry = spec.geometry,
-            radiusMm = ClearSpace.radiusOf(instance.die, spec.dieScale),
-            taken = taken,
-            random = Seeds.waiting(number, index),
-          ).also { taken += it.position }
-        BoardBody(index, instance.die, spec.dieScale, placement)
+        val carried = kept[index]
+        if (carried != null) {
+          BoardBody(index, instance.die, spec.dieScale, carried)
+        } else {
+          val placement =
+            release(
+              geometry = spec.geometry,
+              radiusMm = ClearSpace.radiusOf(instance.die, spec.dieScale),
+              random = Seeds.waiting(number, index),
+            )
+          BoardBody(index, instance.die, spec.dieScale, placement, dropStep = dropped++ * interval)
+        }
       }
     return BoardRequest(number = number, geometry = spec.geometry, table = spec.table, bodies = bodies)
   }
 
   /**
-   * Where and how a new die of [radiusMm] is let go over [geometry], clear of
-   * the dice at [taken].
+   * How a new die of [radiusMm] is meant to be let go over [geometry]: over
+   * [DROP_SPOT], within [SPOT_JITTER_MM] of it, [DROP_HEIGHT_MM] above the
+   * felt beyond its own radius and always under the lid.
    *
-   * A spot drawn at random inside the walls, the first of [SPOT_DRAWS] that
-   * no die is standing on; failing that, the clearest point there is. Held
-   * [DROP_HEIGHT_MM] and a little more above the felt.
+   * Turned any way at all, drifting sideways and spinning: a die dropped
+   * straight down without a spin would land on whatever face it was let go
+   * on, which looks like a die being *put* down — and the drift is what sends
+   * each die of a stream its own way off the spot.
    *
-   * **And when the floor is full, it is let go anyway.** Random spots pack a
-   * floor less tightly than a laid-out grid, so a board the capacity rule
-   * accepts can run out of clear floor before it runs out of dice — and a die
-   * the player added that never appeared would be a die the shake then throws
-   * from nowhere. So it goes over the least crowded point there is, stacked
-   * higher than every die it would otherwise start inside, measured in three
-   * dimensions ([CrowdedFloor]); the physics settles it onto or among the
-   * others. Turned any way at all,
-   * drifting sideways and spinning: a die dropped straight down without a
-   * spin would land on whatever face it was let go on, which looks like a die
-   * being *put* down.
+   * *Meant*, because whether that spot is clear is only known when the die is
+   * let go: the dice before it may still be falling through it ([letGo]).
    */
   fun release(
     geometry: TableGeometry,
     radiusMm: Double,
-    taken: List<Vector3>,
     random: Random,
   ): Placement {
     val ceiling = geometry.ceilingHeightMm - radiusMm - ClearSpace.CLEARANCE_MM
-    val clear = spotFor(geometry, radiusMm, taken, random)
-    val height = (radiusMm + DROP_HEIGHT_MM + random.nextDouble(0.0, HEIGHT_JITTER_MM)).coerceAtMost(ceiling)
-    val spot = clear?.copy(z = height) ?: CrowdedFloor.spot(geometry, radiusMm, taken, height, ceiling)
+    val off = SPOT_JITTER_MM * sqrt(random.nextDouble())
+    val around = random.nextDouble() * 2 * PI
+    val height = (radiusMm + DROP_HEIGHT_MM).coerceAtMost(ceiling)
+    val spot = Vector3(DROP_SPOT.x + off * Exact.cos(around), DROP_SPOT.y + off * Exact.sin(around), height)
     val rotation = anyTurn(random)
     val slide = random.nextDouble(LEAST_SLIDE_MM_PER_SECOND, MOST_SLIDE_MM_PER_SECOND)
     val heading = random.nextDouble() * 2 * PI
@@ -178,34 +240,40 @@ object BoardDrops {
     )
   }
 
-  /** A spot on the floor for a die of [radiusMm], or null when there is none. */
-  private fun spotFor(
+  /**
+   * Where a die of [radiusMm] meant to start at [meant] actually starts, given
+   * the dice in play at the moment it is let go: at [inPlay], none bigger than
+   * [largestRadiusMm].
+   *
+   * **A die never starts inside another**, measured in three dimensions: the
+   * die let go before it may still be in the air under the spot, and one may
+   * have come to rest there. So it is lifted over whatever is in the way
+   * ([CrowdedFloor.stackedHeight]) — never skipped, because a die the player
+   * added must appear. Only when that would put it through the lid does it go
+   * somewhere else: over the least crowded point of the tray, lifted the same
+   * way ([CrowdedFloor.spot]).
+   *
+   * Only where it starts changes. It is turned, drifting and spinning as it
+   * was meant to be.
+   */
+  fun letGo(
     geometry: TableGeometry,
+    meant: Placement,
     radiusMm: Double,
-    taken: List<Vector3>,
-    random: Random,
-  ): Vector3? {
-    val margin = radiusMm + ClearSpace.CLEARANCE_MM
-    val halfLong = geometry.longSideMm / 2 - margin
-    val halfShort = geometry.shortSideMm / 2 - margin
-    if (halfLong <= 0.0 || halfShort <= 0.0) return ClearSpace.clearestPoint(geometry, radiusMm, taken)
-    val needed = 2 * radiusMm + ClearSpace.CLEARANCE_MM
-    repeat(SPOT_DRAWS) {
-      val x = random.nextDouble(-halfLong, halfLong)
-      val y = random.nextDouble(-halfShort, halfShort)
-      if (taken.all { other -> distanceAcross(x, y, other) >= needed }) return Vector3(x, y, 0.0)
-    }
-    return ClearSpace.clearestPoint(geometry, radiusMm, taken)
-  }
-
-  private fun distanceAcross(
-    x: Double,
-    y: Double,
-    other: Vector3,
-  ): Double {
-    val dx = x - other.x
-    val dy = y - other.y
-    return sqrt(dx * dx + dy * dy)
+    largestRadiusMm: Double,
+    inPlay: List<Vector3>,
+  ): Placement {
+    val ceiling = geometry.ceilingHeightMm - radiusMm - ClearSpace.CLEARANCE_MM
+    val apart = radiusMm + maxOf(radiusMm, largestRadiusMm) + ClearSpace.CLEARANCE_MM
+    val from = meant.position
+    val lifted = CrowdedFloor.stackedHeight(from, from.z, apart, inPlay)
+    val spot =
+      if (lifted <= ceiling) {
+        from.copy(z = lifted)
+      } else {
+        CrowdedFloor.spot(geometry, radiusMm, inPlay, from.z, ceiling, apart)
+      }
+    return meant.copy(position = spot)
   }
 
   /**
