@@ -1002,7 +1002,7 @@ What is left out is drawn coarser than SonarQube's figure. `verifyCoverage`
 skips the reports of two whole modules, `simulation/jolt` and
 `render/filament`, because their tests cannot run where it runs, and excludes
 by name only the device-only files in modules it does measure (`DiceTray.kt`,
-`ShakeToRoll.kt`, `RollWiring.kt`). `sonar.coverage.exclusions` excludes
+`RollWiring.kt`). `sonar.coverage.exclusions` excludes
 *files* — inside those two modules only the native sources and the few Kotlin
 files that hold an engine, a context or their thread — so the rest of both
 modules still counts there.

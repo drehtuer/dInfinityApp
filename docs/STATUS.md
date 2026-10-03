@@ -8,138 +8,90 @@ This is a snapshot, not a changelog — git history is the changelog.
 
 ## Where we are
 
-- **Phase:** implementation. Steps 1–3 are done, every Step 4 screen is written
+- **Phase:** implementation. Steps 1–3 are done, every Step 4 screen is built
   and connected, and **Step 5 — physics and rendering on a real phone — is
   where the remaining hard problems are**.
 - **The app rolls dice on a phone.** Shake the Pixel 10a and the dice tumble
   onto a felt tray, come to rest, are felt and heard as they land, and their
-  total appears beside them. They carry real printed numbers, the right way
-  round, and a die whose author drew artwork wears it.
-- **Latest release:** `v0.1.1`, signed and published with its SHA-256 — the
-  first release whose every screen had been looked at on a phone, and the
-  remedy for `v0.1.0`, which was cut before anything in it had reached one.
-
-### Branch state
-
-`main` has everything through **#330**. **In flight:**
-`docs/bring-docs-up-to-date`, a documentation-only pass that brings `README.md`
-and every document in `docs/` back in line with the code after the two stacks
-below, and compacts `docs/TODO.md`.
-
-Twenty-two pull requests landed between `v0.1.1` and here: two stacks
-answering two device sessions, then a Dependabot Actions bump and the lint fix
-it provoked. What they came to, rather than what each one was: the dice tumble
-and are shown slowly enough to watch; the roll screen is felt with two doors on
-it instead of a wall of plates; the shake is the only way to throw and
-everything that earns another one waits for a hand; a drawn face lands where the
-die shows it; and three faults that were in `v0.1.1` itself are gone — a crash
-on `100d4`, a documentation site that had been publishing 17 September since the
-18th, and a lint check that turned the build red whenever somebody else
-published a release, which it did over AGP 9.4.1 and again over Gradle 9.8.0
-before it was switched off for good (#330).
-
-**The whole device tier has been run on the Pixel 10a over each stack**, and
-CI is green on `main`: build, tests, coverage, Sonar's gate, CodeQL, the device
-suite compiling, and the documentation site deploying.
+  total appears beside them, with printed numbers the right way round and an
+  author's artwork where a set has some.
+- **Latest release:** `v0.1.1`, signed and published with its SHA-256.
+- **`main` is at #331**, and CI is green on it. **In flight:**
+  `docs/harness-figures` — this file and `docs/TODO.md` compacted, with the
+  2026-10-03 harness figures; `feature/shake-only`, stacked on it — a shake is
+  the only way to roll: the editor's key, the table's accessibility action and
+  the Settings switch are gone (decision 66).
 
 ## Done
 
-- **The specification.** `README.md`, `docs/` and the clickable prototype in
-  `design/`, cross-referenced both ways. GPL-2.0-or-later.
-- **The skeleton and CI.** Devcontainer, convention plugins, the Modernist
-  theme, the navigation graph. Every linter and both test tiers run on each
-  pull request; SonarQube blocks on its gate and JaCoCo on a function *and*
-  branch floor. Dependencies pinned by SHA-256; a `vX.Y.Z` tag cuts a signed,
-  immutable release.
-- **Steps 1–3.** A formula parsed against the installed sets, graphed exactly,
-  planned against the capacity rule, settled on Jolt 5.3.0, read face by face,
-  drawn with its author's artwork, thrown by a shake, and written down in one
-  transaction. A package from a stranger is validated rule by rule.
-- **Every *decision* about a roll is Kotlin over an interface**, so the rule
-  that matters most — nothing touches a die that has come to rest — is proved
-  by JVM tests rather than sampled on a phone.
-- **Step 5.1, the harness**, and **5.2, fairness and determinism** on the
-  Pixel 10a.
+- **The specification** — `README.md`, `docs/` and the clickable prototype in
+  `design/`, cross-referenced both ways.
+- **The skeleton and CI** — devcontainer, convention plugins, every linter and
+  both test tiers on each pull request, SonarQube's gate, a function *and*
+  branch coverage floor, SHA-256-pinned dependencies, signed immutable
+  releases from a `vX.Y.Z` tag.
+- **Steps 1–3, 5.1 and the fairness half of 5.2** — a formula parsed, graphed
+  exactly, planned against the capacity rule, settled on Jolt 5.3.0, read face
+  by face, drawn, thrown by a shake and written down; a stranger's package
+  validated rule by rule; the harness; fairness on the Pixel 10a.
+- **Every decision about a roll is Kotlin over an interface**, so "nothing
+  touches a die that has come to rest" is proved by JVM tests, not sampled.
 
-## In progress
+## Last device run — Pixel 10a, 2026-10-03, `main` at #331
 
-**Nothing but the documentation pass above.** Step 4's screens are all built,
-and the second and third device sessions are answered in full — what is left
-of them is judgement on a phone, listed below and in `docs/TODO.md`. A Fudge
-total carries its sign (`docs/dice-notation.md`), and a drawn face lands where
-the die shows it (`docs/face-designer.md`).
+- **Device suite:** 87 tests, **86 passed, 0 failed**, 1 skipped (`HarnessTest`,
+  which declines without a roll count), in 8 min 55 s.
+- **Harness, 1,000 rolls of 20d20:** 11 of 13 targets measured, **9 pass**. No
+  die at rest on another, nothing corrected, no roll gave up, settle 0.83 s
+  median and 1.53 s p99, 1.55 turns after landing, p99 step 0.23 ms. Fails:
+  re-throws **2.65 %** against 0.05 %, overlap **5.29 mm** against 0.2 mm
+  (`docs/TODO.md`, Step 5).
 
 ## Blocked / waiting on
 
-**Nothing is blocked.**
+**Nothing is blocked.** What needs a person with the phone is judgement, all
+of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 
-**Three things need a person with the phone**, and they are judgement rather
-than execution — every one of them is in `docs/TODO.md`:
-
-1. Whether the roll screen still reads as a thing to shake now that no button
-   says so, and whether the dice pull-down reads as "the dice are in there".
-2. Whether the dice now *look* like they tumble. The figure says they turn
-   1.52 times after landing against 0.89 before, but a number is not an eye.
-3. Whether an exploding chain ever still looks as though a die passed through
-   one lying there. Two ways it could have are closed (#321); what is
-   unexplained is why the session saw it
-   **only on the first throws**, and the one candidate — the frame clock
-   dropping steps while the engine and the material are still being built — is
-   a number nothing shows yet (`LiveRoll.droppedSteps`).
+1. Whether the dice *look* like they tumble at `RollPace.WATCHED` 0.5, and
+   whether `1d20` a dozen times feels prompt.
+2. Whether the five tables sound like their materials, and whether the
+   haptics read as knocks.
+3. Whether an exploding chain still looks wrong on the first throws after a
+   cold start — `LiveRoll.droppedSteps` is the number, and nothing shows it yet.
 
 ## Known risks
 
-- **Nothing corrects a die any more.** A roll counts the dice that can be
-  read, takes them off the table and throws the rest again until nothing is
-  left. Measured over 2,000 rolls of 20d20 on the Pixel 10a: **0.000 %** of
-  dice corrected, no die at rest on another, no post-rest correction, no
-  forced settle, nothing out of the twelve-second cap.
-- **Two harness bars still fail, and both fail by less than they did.** The
-  re-throw share is 2.20 % against 0.05 % — a bar written for a mechanism that
-  no longer exists and which needs re-deciding rather than hitting — and the
-  die-into-die overlap is 5.04 mm against 0.2 mm. That was called the solver's
-  own discrete-detection error and nothing else; it is now known that part of
-  it was a spawn, because a pass that threw several dice again dropped each of
-  them at a point drawn blind from the whole tray and two could start inside
-  each other. Fixed in #321; **the figure has not been re-measured on the
-  phone**, and that run is what says how much of the 5.04 mm
-  was this.
-- **The d18 is a known limitation, decided and written down.** It cannot pass
-  chi-squared at a hundred thousand rolls — its resting basins are narrow
-  enough that the float32 hull's own rounding biases it. Held to the
-  worst-face bound instead (worst measured 0.389 % against a 1 % bar).
-- **`100d4` does not reliably settle**, and neither does one throw in sixteen
-  under a hard sideways shake: both can run out the twelve-second cap, where
-  the roll gives up rather than invent an answer. It no longer takes the app
-  with it (#319). Nothing is touched after coming to rest on any seed; the cap
-  firing at all is settling work.
-- **The capacity constants barely bite.** It would take ~240 dice to reach the
-  40 % floor and the engine stops at 100, so the refusal a player meets is the
-  body cap rather than the table. Step 5.3.
-- Determinism holds across the two ABIs; unproven across *devices* of the same
-  ABI and across time. The container's emulator has no real GPU and no
-  display, so `screencap` returns black there.
-- **Branch coverage is ~71.4 % against a floor of 62**, function coverage
-  ~92.7 % against a floor of 85. Seven in ten missed branches are Compose skip
-  branches a test can only take one side of.
+- **Die-into-die overlap is the solver's.** #321 fixed a re-throw spawn that
+  could start two dice inside each other, and the re-measure shows it was not
+  the cause: 5.04 mm before, 5.29 mm after. Next is four or eight collision
+  sub-steps against the current throw (Step 5.4).
+- **The re-throw bar measures a mechanism that no longer exists.** 2.65 %
+  against 0.05 %; re-throwing *is* the mechanism now, so the bar needs
+  re-deciding rather than hitting (Step 5.5).
+- **`100d4` does not reliably settle**, nor does one throw in sixteen under a
+  hard sideways shake: both can run out the twelve-second cap, where the roll
+  gives up rather than invent an answer (#319 stopped it taking the app with
+  it).
+- **The d18 cannot pass chi-squared** — decided and written down; it is held
+  to the worst-face bound (0.389 % against 1 %).
+- **The capacity rule barely bites**: the 100-body cap refuses long before the
+  table's floor would (~241 dice).
+- Determinism holds across both ABIs; unproven across devices of one ABI.
+- **Coverage:** branch ~71.4 % against a floor of 62, function ~92.7 % against
+  85. Most missed branches are Compose skip branches.
 
 ## Decisions pending
 
-- Whether the too-many-dice refusal keeps a way through to the outcome graph.
-  "See the odds" is offered only once a roll has landed now, and the argument
-  for offering it on a refusal is still in `docs/architecture.md`.
-- Whether the branch-coverage floor should follow the drift, or stay. Moving a
-  floor to make a check pass is what `.claude/CLAUDE.md` says not to do.
-- Whether the anomaly log should survive a restart (an entry carries a seed,
-  and a stored seed is a replay waiting to happen — decision 13).
-- Where a **table look's** texture says which package it came from.
-- **The canvas draws one kite for the d10 and the d18**, whose faces are
-  differently proportioned kites, so neither can be landed exactly. The
-  exporter covers rather than fits, which colours the whole face at the cost
-  of a drawing 1.2× (d10) or 1.4× (d18) large and clipped at the tip. The
-  turn itself is fixed (`docs/TODO.md`, 4.6).
-- **Several personal sets.** "Save to set" chooses between the writable sets,
-  and there is exactly one today (`docs/TODO.md`, 4.6).
-- **The design removed the sound switch**, and the app has a whole `feedback/`
-  module that generates impact sounds per table material. That is a product
-  call rather than a drawing.
+All in `docs/TODO.md`; the ones that block code first.
+
+- **Is the hand re-throw thrown by the finger or by a shake?** — blocks
+  wiring it; a finger that throws would be a throw no shake started.
+- **Does the impact sound go?** The design has no switch for it.
+- **What the re-throw bar should bound** — duration and passes, probably.
+- **The built-in set's `size_mm`**, which changes every die's mass and how
+  many fit.
+- Whether the too-many-dice refusal offers a way to the outcome graph (the
+  argument is in `docs/architecture.md`).
+- Filled-button label contrast (3.65:1 against 4.5:1), the coverage floor,
+  the anomaly log surviving a restart, where a table texture names its
+  package, one kite outline for two kites, more than one personal set.

@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -50,6 +51,9 @@ import org.robolectric.RobolectricTestRunner
 class RollScreenTest {
   @get:Rule
   val compose = createComposeRule()
+
+  @get:Rule
+  val shaking = ShakingHand()
 
   @Test
   fun `a formula that does not read is shown as an error, not swallowed`() {
@@ -378,7 +382,7 @@ class RollScreenTest {
     }
 
     typeFormula("3d6")
-    shake(RollTestTags.POWER_SAVING)
+    shake()
 
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
   }
@@ -715,31 +719,39 @@ class RollScreenTest {
   }
 
   @Test
-  fun `Enter throws the dice and puts the keyboard away`() {
-    // The other half of 2a: the action key rolls. It closes the editor first,
-    // so what the dice land on is not behind a keyboard.
+  fun `Done puts the keyboard away and throws nothing`() {
+    // The key used to throw. It does not: a shake is the only way to start a
+    // roll (`docs/architecture.md`, decision 66), so finishing a formula is
+    // finishing a formula and the editor goes away so the table can be seen.
     val presenter = show()
     typeFormula("1d20")
 
     compose.onNodeWithTag(RollTestTags.FORMULA).performImeAction()
 
-    compose.waitUntil(PATIENCE) { presenter.state is RollState.Settled }
     compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
-    compose.onNodeWithTag(RollTestTags.TOTAL).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
+    assertFalse("the keyboard's key threw the dice", presenter.state is RollState.Settled)
+    assertEquals("the keyboard's key threw the dice", 0, (presenter.tray as DirectTray).throws)
   }
 
   @Test
-  fun `Enter on a formula that does not read throws nothing`() {
-    // `throwDice` refuses it, which is the machine's rule rather than the
-    // screen's — what is asserted here is that the screen does not pretend
-    // otherwise by closing the editor on a formula nobody can roll.
-    val presenter = show()
-    typeFormula("3d6 +")
+  fun `the table offers a screen reader nothing that throws`() {
+    // There used to be a custom action, "Throw the dice". It is gone with the
+    // key, and with it the last way to roll without a shake — decided, and
+    // accepted for what it costs (`docs/architecture.md`, decision 66). The
+    // table keeps what it says; it no longer offers anything to do.
+    show()
+    typeFormula("1d20")
 
-    compose.onNodeWithTag(RollTestTags.FORMULA).performImeAction()
+    val table = compose.onNodeWithTag(RollTestTags.TRAY).fetchSemanticsNode().config
+    assertTrue("the table carries an action", table.getOrElse(SemanticsActions.CustomActions) { emptyList() }.isEmpty())
+    assertTrue("the table says nothing about itself", table.contains(SemanticsProperties.ContentDescription))
+  }
 
-    compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
-    assertTrue("a formula that does not read was thrown", presenter.state is RollState.Invalid)
+  @Test
+  fun `a shake with no screen up throws nothing`() {
+    // The hand only reaches a screen that is resumed and listening.
+    assertFalse("a shake reached a screen that is not there", compose.runOnIdle { shaking.hand.shake() })
   }
 
   @Test
@@ -796,26 +808,15 @@ class RollScreenTest {
   }
 
   /**
-   * Throws the dice the only way the screen offers one that is not a hand:
-   * the table's custom accessibility action.
+   * Shakes the phone: the only way to throw.
    *
-   * There is no Roll button any more, and Robolectric has no accelerometer,
-   * so this is how a test shakes the phone. It is the same call the shake
-   * source makes — `RollPresenter.roll` with no samples — and it hands back
-   * the same answer, which is what says whether anything was thrown
-   * (`docs/architecture.md`, "Accessibility").
-   *
-   * @param tag the table, or the power-saving panel that stands instead of
-   *   it: the action is on whichever of the two is on the screen.
+   * Robolectric has no accelerometer, so the hand is a [TestHand] standing
+   * where the sensors would be — it reaches the presenter through the same
+   * `onStarted → RollPresenter.roll` the sensors do, and hands back the same
+   * answer, which is what says whether anything was thrown ([ShakeInput]).
    */
-  private fun shake(tag: String = RollTestTags.TRAY): Boolean {
-    val throwThem =
-      compose
-        .onNodeWithTag(tag)
-        .fetchSemanticsNode()
-        .config[SemanticsActions.CustomActions]
-        .single()
-    val threw = compose.runOnUiThread { throwThem.action() }
+  private fun shake(): Boolean {
+    val threw = compose.runOnUiThread { shaking.hand.shake() }
     compose.waitForIdle()
     return threw
   }

@@ -278,19 +278,12 @@ class SettingsScreenTest {
   }
 
   @Test
-  fun `shake is a switch, and it says which way it was moved`() {
-    val changed = mutableListOf<Boolean>()
-    compose.setContent {
-      SettingsScreen(
-        settings = AppSettings(shakeToRoll = true),
-        onAccentSelected = {},
-        onShakeChanged = changed::add,
-      )
-    }
+  fun `there is no switch that turns shaking off, because a shake is the only way to roll`() {
+    // A switch here would be a way to leave the app with no way to roll at all
+    // (`docs/architecture.md`, decision 66).
+    compose.setContent { SettingsScreen(settings = AppSettings(), onAccentSelected = {}) }
 
-    compose.onNodeWithTag(SettingsTestTags.SHAKE).performScrollTo().performClick()
-
-    assertEquals(listOf(false), changed)
+    compose.onNodeWithText("Shake").assertDoesNotExist()
   }
 
   @Test
@@ -358,7 +351,6 @@ class SettingsScreenTest {
     compose.onNodeWithText("tick 1").assertIsDisplayed()
     compose.onNodeWithTag(SettingsTestTags.HAPTICS).performScrollTo().assertIsOn()
     compose.onNodeWithTag(SettingsTestTags.SOUND).performScrollTo().assertIsOff()
-    compose.onNodeWithTag(SettingsTestTags.SHAKE).performScrollTo().assertIsOn()
   }
 
   @Test

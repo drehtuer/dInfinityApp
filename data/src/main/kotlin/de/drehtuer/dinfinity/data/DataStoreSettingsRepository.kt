@@ -28,6 +28,12 @@ import java.io.IOException
  * throws, because silently not saving what someone just chose is worse than an
  * error.
  *
+ * A key this version no longer reads is left where it is rather than
+ * cleaned up. `shake_to_roll` is the one so far: an install from before shake
+ * became the only way to roll still has it, and nothing reads it any more
+ * (`docs/architecture.md`, decision 66). Ignoring it costs a few bytes;
+ * deleting it would be a migration for nothing.
+ *
  * Every key is written on every change rather than only the one that moved.
  * `edit` is one atomic transaction either way, the file is a handful of
  * values, and writing the whole of what was decided means a setting can never
@@ -48,7 +54,6 @@ class DataStoreSettingsRepository(
       preferences[ACCENT_COLOUR] = changed.accentColor.id
       preferences[APPEARANCE] = changed.appearance.id
       preferences[POWER_SAVING] = changed.powerSaving
-      preferences[SHAKE_TO_ROLL] = changed.shakeToRoll
       preferences[HAPTICS] = changed.haptics
       preferences[SOUND] = changed.sound
       preferences[ROUNDING] = changed.rounding.id
@@ -79,10 +84,7 @@ class DataStoreSettingsRepository(
       appearance = Appearance.of(preferences[APPEARANCE]),
       powerSaving = preferences[POWER_SAVING] == true,
       // Absent means on, because the default is on and a fresh install has no
-      // key at all. `== true` would make every new install shake-less.
-      shakeToRoll = preferences[SHAKE_TO_ROLL] ?: true,
-      // Absent means on, for the same reason as the shake above: both default
-      // to on, and a fresh install has no key at all.
+      // key at all. `== true` would make every new install silent.
       haptics = preferences[HAPTICS] ?: true,
       sound = preferences[SOUND] ?: true,
       rounding = Rounding.ofId(preferences[ROUNDING]),
@@ -111,7 +113,6 @@ class DataStoreSettingsRepository(
     private val ACCENT_COLOUR = stringPreferencesKey("accent_colour")
     private val APPEARANCE = stringPreferencesKey("appearance")
     private val POWER_SAVING = booleanPreferencesKey("power_saving")
-    private val SHAKE_TO_ROLL = booleanPreferencesKey("shake_to_roll")
     private val HAPTICS = booleanPreferencesKey("haptics")
     private val SOUND = booleanPreferencesKey("sound")
     private val ROUNDING = stringPreferencesKey("rounding")

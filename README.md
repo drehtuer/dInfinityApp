@@ -63,11 +63,12 @@ a tumble; everything else is real.
   shows the walls — your choice — with haptics and sound on every real impact,
   never on a die sliding or a die at rest. The table decides what it sounds
   like, the die's size decides the pitch, and both switch off.
-- **Shake to roll** — accelerometer and gyroscope drive the throw, and it is
-  the *only* way to throw. There is no Roll button: the table carries an
-  accessibility action for hands that cannot shake, and the formula editor's
-  action key still rolls. The display stays on while the tray is in front,
-  because a shake takes both hands and puts neither of them on the glass.
+- **Shake to roll** — accelerometer and gyroscope drive the throw, and a
+  shake is the *only* way to start one. There is no Roll button, a tap on the
+  table does nothing, the formula editor's key says Done and only closes the
+  editor, and there is no setting that turns shaking off. The display stays
+  on while the tray is in front, because a shake takes both hands and puts
+  neither of them on the glass.
 - **Says what a throw is worth** — the lowest, the highest and the exact
   average, before you shake and again beside the total.
 - **Power-saving mode** — same physics, no rendering; just the result. The dice
@@ -198,7 +199,11 @@ the tracking files are kept tidy — are in
   meaning carried by colour alone, and WCAG 2.2 AA contrast measured rather
   than assumed — the rules, the measurements and the two ratios that fall
   short are in
-  [docs/architecture.md](docs/architecture.md#accessibility)
+  [docs/architecture.md](docs/architecture.md#accessibility). **Rolling needs
+  a hand that can shake the phone.** There is no other way to start a roll —
+  no button, no key and no accessibility action — so somebody who cannot
+  shake a phone cannot roll in this app. That is a decided limitation, not an
+  oversight (decision 66)
 - Language: English, and only English ships. Every word a screen says is a
   string resource, so nothing in the app stands between here and a translation
   somebody writes — the rule, where the line between text and a test tag is

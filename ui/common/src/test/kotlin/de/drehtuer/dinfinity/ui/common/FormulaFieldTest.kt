@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.text.input.ImeAction
 import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.NotationErrorCode
 import org.junit.Assert.assertEquals
@@ -172,19 +174,34 @@ class FormulaFieldTest {
   }
 
   @Test
-  fun `a field with somewhere to submit to says so on the keyboard`() {
-    val submitted = mutableListOf<Unit>()
-    compose.setContent { FormulaField(text = "3d6", onChange = {}, onSubmit = { submitted += Unit }) }
+  fun `the key says Done on every field, and never Go`() {
+    // No field's key throws anything: a shake is the only way to start a roll
+    // (`docs/architecture.md`, decision 66), so the key promises no more than
+    // putting the keyboard away.
+    compose.setContent { FormulaField(text = "3d6", onChange = {}, onDone = {}) }
 
-    compose.onNodeWithTag(FormulaTestTags.FIELD).performImeAction()
-
-    assertEquals(1, submitted.size)
+    val ime =
+      compose
+        .onNodeWithTag(FormulaTestTags.FIELD)
+        .fetchSemanticsNode()
+        .config[SemanticsProperties.ImeAction]
+    assertEquals(ImeAction.Done, ime)
   }
 
   @Test
-  fun `and one with nowhere just puts the keyboard away`() {
-    // The editor and the graph have nothing for an action key to do. Pressing
-    // it is not an error and does not change the text.
+  fun `Done is passed on to whoever asked for it`() {
+    val done = mutableListOf<Unit>()
+    compose.setContent { FormulaField(text = "3d6", onChange = {}, onDone = { done += Unit }) }
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performImeAction()
+
+    assertEquals(1, done.size)
+  }
+
+  @Test
+  fun `and with nobody asking it just puts the keyboard away`() {
+    // The editor and the graph have nothing for the key to do. Pressing it is
+    // not an error and does not change the text.
     compose.setContent { FormulaField(text = "3d6", onChange = { error("the text changed") }) }
 
     compose.onNodeWithTag(FormulaTestTags.FIELD).performImeAction()

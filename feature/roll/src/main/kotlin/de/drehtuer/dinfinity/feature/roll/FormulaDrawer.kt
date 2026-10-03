@@ -66,8 +66,9 @@ import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
  * @param open whether the drawer is in. Hoisted, because the dice pull-down at
  *   the other end of the row may not be open at the same time and that is the
  *   screen's rule rather than either control's.
- * @param onSubmit the keyboard's action key: it shuts the drawer and throws,
- *   so what the dice land on is not behind a keyboard.
+ * @param onDone the keyboard's action key, which says Done: the screen shuts
+ *   the drawer with it. It throws nothing — a shake is the only way to start a
+ *   roll (`docs/architecture.md`, decision 66).
  */
 @Composable
 internal fun FormulaDrawer(
@@ -78,7 +79,7 @@ internal fun FormulaDrawer(
   modifier: Modifier = Modifier,
   error: NotationError? = null,
   wrong: Boolean = error != null,
-  onSubmit: () -> Unit = {},
+  onDone: () -> Unit = {},
 ) {
   Box(modifier = modifier.fillMaxWidth()) {
     // Both halves come and go the same way — `it` is the width of the thing
@@ -114,12 +115,10 @@ internal fun FormulaDrawer(
             hint = stringResource(R.string.roll_formula_hint),
             error = error,
             wrong = wrong,
-            // Enter rolls, and **stays** now that the Roll button has gone. It
-            // is not a button: it is what the key on a keyboard already means,
-            // and a player typing with a hardware keyboard is a player whose
-            // other hand is not free to shake the phone (`docs/architecture.md`,
-            // "Accessibility").
-            onSubmit = onSubmit,
+            // Done puts the editor away and nothing more. It used to throw;
+            // it does not, because only a shake starts a roll
+            // (`docs/architecture.md`, decision 66).
+            onDone = onDone,
             takeFocus = true,
           )
         }

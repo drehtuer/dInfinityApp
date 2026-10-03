@@ -112,7 +112,6 @@ fun DInfinityApp(
   settings: AppSettings = AppSettings(),
   onAccentSelected: (AccentChoice) -> Unit = {},
   onAppearanceSelected: (Appearance) -> Unit = {},
-  onShakeChanged: (Boolean) -> Unit = {},
   onHapticsChanged: (Boolean) -> Unit = {},
   onSoundChanged: (Boolean) -> Unit = {},
   onRoundingSelected: (Rounding) -> Unit = {},
@@ -201,7 +200,6 @@ fun DInfinityApp(
                 onAccentSelected = onAccentSelected,
                 onAppearanceSelected = onAppearanceSelected,
                 onPowerSavingChanged = onPowerSavingChanged,
-                onShakeChanged = onShakeChanged,
                 onHapticsChanged = onHapticsChanged,
                 onSoundChanged = onSoundChanged,
                 onRoundingSelected = onRoundingSelected,
@@ -319,7 +317,6 @@ private fun Roll(
     // (`design/dInfinity.dc.html`, option 9a).
     onImportCollection = { navController.navigate(Destination.CollectionImport.route) },
     onAddSets = { navController.navigate(Destination.DiceSets.route) },
-    shakeToRoll = settings.shakeToRoll,
     onSeeTheOdds = { formula, total -> navController.navigate(graphRoute(formula, total)) },
     // The other way on from a result: the editor, with the formula already
     // typed. The same route the outcome graph's "Save as roll" takes, because
@@ -692,7 +689,6 @@ private fun chrome(
   onAccentSelected: (AccentChoice) -> Unit,
   onAppearanceSelected: (Appearance) -> Unit,
   onPowerSavingChanged: (Boolean) -> Unit,
-  onShakeChanged: (Boolean) -> Unit,
   onHapticsChanged: (Boolean) -> Unit,
   onSoundChanged: (Boolean) -> Unit,
   onRoundingSelected: (Rounding) -> Unit,
@@ -745,7 +741,6 @@ private fun chrome(
         onAccentSelected = onAccentSelected,
         onAppearanceSelected = onAppearanceSelected,
         onPowerSavingChanged = onPowerSavingChanged,
-        onShakeChanged = onShakeChanged,
         onHapticsChanged = onHapticsChanged,
         onSoundChanged = onSoundChanged,
         onRoundingSelected = onRoundingSelected,

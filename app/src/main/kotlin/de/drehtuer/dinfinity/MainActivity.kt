@@ -22,7 +22,6 @@ import de.drehtuer.dinfinity.data.setDeveloperTools
 import de.drehtuer.dinfinity.data.setHaptics
 import de.drehtuer.dinfinity.data.setPowerSaving
 import de.drehtuer.dinfinity.data.setRounding
-import de.drehtuer.dinfinity.data.setShakeToRoll
 import de.drehtuer.dinfinity.data.setSound
 import de.drehtuer.dinfinity.data.setTableView
 import de.drehtuer.dinfinity.data.setWelcomeSeen
@@ -148,9 +147,6 @@ class MainActivity : ComponentActivity() {
       },
       onPowerSavingChanged = { on ->
         lifecycleScope.launch { repository.setPowerSaving(on) }
-      },
-      onShakeChanged = { on ->
-        lifecycleScope.launch { repository.setShakeToRoll(on) }
       },
       onHapticsChanged = { on ->
         lifecycleScope.launch { repository.setHaptics(on) }

@@ -110,7 +110,7 @@ class RollTrayPerVisitTest {
 
     settings = settings.copy(accentColor = AccentColor.ModernistRed)
     compose.waitForIdle()
-    settings = settings.copy(shakeToRoll = false)
+    settings = settings.copy(haptics = false)
     compose.waitForIdle()
     settings = settings.copy(welcomeSeen = true)
     compose.waitForIdle()

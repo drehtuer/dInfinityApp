@@ -198,9 +198,16 @@ is left in the script, unreferenced, rather than unpicked by hand.
   throw and when a roll gives up. The prototype has the component and does not
   raise it here.
 - **The prototype's tray tap is not the app's.** Tapping the tray in the app
-  deliberately does *not* roll — that gesture is kept for picking a die up —
-  so the prototype's stand-in reads as a specification it is not. Worth a word
-  on the board saying it is a browser's substitute for a shake.
+  does *not* roll, and that is decided rather than pending
+  (`docs/architecture.md`, decision 66) — the gesture is kept for picking a
+  die up — so the prototype's stand-in reads as a specification it is not.
+  Worth a word on the board saying it is a browser's substitute for a shake,
+  and the welcome's "Shake the phone or tap the tray to roll" wants the second
+  half taken off.
+- **Settings has no shake switch any more** (option `1y` still lists one).
+  A shake is the only way to start a roll, so a switch that turned it off
+  would leave the app with no way to roll at all (decision 66). The row wants
+  deleting from the prototype's Settings.
 
 ## Screens whose shape still differs
 

@@ -1,6 +1,5 @@
 package de.drehtuer.dinfinity
 
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -9,8 +8,12 @@ import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.drehtuer.dinfinity.feature.roll.RollTestTags
+import de.drehtuer.dinfinity.feature.roll.ShakeInput
+import de.drehtuer.dinfinity.feature.roll.TestHand
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExternalResource
 import org.junit.runner.RunWith
 
 /**
@@ -34,7 +37,30 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class InterruptedRollTest {
-  @get:Rule
+  /**
+   * A hand where the sensors would be, installed before the activity is
+   * launched — the roll screen asks for its shake input when it is resumed,
+   * which is inside the compose rule — and the sensors put back after it.
+   *
+   * A shake is the only way to roll (`docs/architecture.md`, decision 66) and
+   * a phone on a desk cannot be shaken on cue, so this stands where the
+   * sensors would and reaches the roll by the calls they make (`ShakeInput`).
+   */
+  private val hand = TestHand()
+
+  @get:Rule(order = 0)
+  val shaking =
+    object : ExternalResource() {
+      override fun before() {
+        ShakeInput.current = hand
+      }
+
+      override fun after() {
+        ShakeInput.current = ShakeInput.SENSORS
+      }
+    }
+
+  @get:Rule(order = 1)
   val compose = createAndroidComposeRule<MainActivity>()
 
   @Test
@@ -129,31 +155,18 @@ class InterruptedRollTest {
     compose.waitUntil(SETTLE) { showing(RollTestTags.ROLLING) || landed() }
   }
 
-  /**
-   * Throws the dice the only way the screen offers that is not a hand: the
-   * table's custom accessibility action.
-   *
-   * There is no Roll button any more, and an instrumented test cannot shake a
-   * phone, so this is how the suite throws. It is the same call the shake
-   * source makes (`docs/architecture.md`, "Accessibility").
-   */
+  /** Shakes the phone, which is the only way to throw. */
   private fun shake() {
-    val throwThem =
-      compose
-        .onNodeWithTag(RollTestTags.TRAY)
-        .fetchSemanticsNode()
-        .config[SemanticsActions.CustomActions]
-        .single()
-    compose.runOnUiThread { throwThem.action() }
+    assertTrue("the shake threw nothing", compose.runOnUiThread { hand.shake() })
     compose.waitForIdle()
   }
 
-  /** True once the table will take another throw, which is what a usable screen is. */
-  private fun throwable(): Boolean =
-    compose
-      .onAllNodes(hasTag(RollTestTags.TRAY))
-      .fetchSemanticsNodes()
-      .any { node -> node.config.getOrElse(SemanticsActions.CustomActions) { emptyList() }.isNotEmpty() }
+  /**
+   * True once the screen would take another throw, which is what a usable
+   * screen is: a roll screen resumed and listening for a shake, and no roll
+   * still notionally in the air.
+   */
+  private fun throwable(): Boolean = compose.runOnUiThread { hand.heard } && !showing(RollTestTags.ROLLING)
 
   private fun showing(tag: String): Boolean = compose.onAllNodes(hasTag(tag)).fetchSemanticsNodes().isNotEmpty()
 

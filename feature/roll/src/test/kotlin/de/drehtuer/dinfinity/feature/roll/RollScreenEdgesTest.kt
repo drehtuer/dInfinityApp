@@ -5,7 +5,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -37,6 +36,9 @@ import org.robolectric.RobolectricTestRunner
 class RollScreenEdgesTest {
   @get:Rule
   val compose = createComposeRule()
+
+  @get:Rule
+  val shaking = ShakingHand()
 
   @Test
   fun `a tap on the strip fills the field and throws nothing`() {
@@ -237,19 +239,9 @@ class RollScreenEdgesTest {
     compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(text)
   }
 
-  /**
-   * Throws the dice the only way the screen offers one that is not a hand:
-   * the table's custom accessibility action
-   * (`docs/architecture.md`, "Accessibility").
-   */
+  /** Shakes the phone, which is the only way to throw ([ShakingHand]). */
   private fun shake() {
-    val throwThem =
-      compose
-        .onNodeWithTag(RollTestTags.TRAY)
-        .fetchSemanticsNode()
-        .config[SemanticsActions.CustomActions]
-        .single()
-    compose.runOnUiThread { throwThem.action() }
+    compose.runOnUiThread { shaking.hand.shake() }
     compose.waitForIdle()
   }
 

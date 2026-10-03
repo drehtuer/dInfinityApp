@@ -43,7 +43,6 @@ fun SettingsScreen(
   modifier: Modifier = Modifier,
   onAppearanceSelected: (Appearance) -> Unit = {},
   onPowerSavingChanged: (Boolean) -> Unit = {},
-  onShakeChanged: (Boolean) -> Unit = {},
   onHapticsChanged: (Boolean) -> Unit = {},
   onSoundChanged: (Boolean) -> Unit = {},
   onRoundingSelected: (Rounding) -> Unit = {},
@@ -95,8 +94,6 @@ fun SettingsScreen(
     Rule(weight = RuleWeight.Hairline)
     AccentSection(selected = settings.accentColor, onAccentSelected = onAccentSelected)
     Rule(weight = RuleWeight.Hairline)
-    ShakeSection(on = settings.shakeToRoll, onChanged = onShakeChanged)
-    Rule(weight = RuleWeight.Hairline)
     FeelSection(
       haptics = settings.haptics,
       sound = settings.sound,
@@ -145,9 +142,6 @@ object SettingsTestTags {
 
   /** The power-saving switch (design option 1z). */
   const val POWER_SAVING: String = "settings:power-saving"
-
-  /** Whether shaking the phone throws the dice. */
-  const val SHAKE: String = "settings:shake"
 
   /** Whether a die landing is felt, and whether it is heard. */
   const val HAPTICS: String = "settings:haptics"

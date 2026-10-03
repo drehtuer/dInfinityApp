@@ -120,7 +120,7 @@ class FormulaDrawerTest {
 
   @Test
   fun `a drawer wired to nothing still draws and still works`() {
-    // No error, no `wrong` and no `onSubmit`: the defaults are the branch
+    // No error, no `wrong` and no `onDone`: the defaults are the branch
     // every other test here takes past.
     compose.setContent { FormulaDrawer(text = "3d6", onChange = {}, open = true, onOpen = {}) }
 
@@ -139,16 +139,16 @@ class FormulaDrawerTest {
 
   @Test
   fun `the action key is offered to the caller rather than acted on here`() {
-    // Throwing is the screen's, not the drawer's: there is one path to a
-    // number and this is not it (`docs/architecture.md`, goal 1).
-    var submitted = 0
+    // Closing is the screen's, not the drawer's: the screen is what knows the
+    // drawer is open.
+    var done = 0
     compose.setContent {
-      FormulaDrawer(text = "1d20", onChange = {}, open = true, onOpen = {}, onSubmit = { submitted++ })
+      FormulaDrawer(text = "1d20", onChange = {}, open = true, onOpen = {}, onDone = { done++ })
     }
 
     compose.onNodeWithTag(RollTestTags.FORMULA).performImeAction()
 
-    assertEquals("the action key did not reach the screen", 1, submitted)
+    assertEquals("the action key did not reach the screen", 1, done)
   }
 
   /** `3d6 +` — the commonest way to get a squiggle, and the one 9c draws. */
