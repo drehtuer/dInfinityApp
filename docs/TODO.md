@@ -180,18 +180,24 @@ and read here, and a seed gives the same result with the renderer on and off.
 an animation of a random number. Runs again after every physics change, with
 `tools/harness.sh` (`docs/build-setup.md`, "The physics harness").
 
-**Latest harness run** — Pixel 10a, 1,000 rolls of 20d20, 2026-10-03:
+**Latest harness run** — Pixel 10a, 1,000 rolls of 20d20, 2026-10-03, after
+the livelier tumble (60–120 rad/s of spin, die restitution 0.55; the before
+column is `main` at #336):
 
-| target | bar | measured |
-| --- | --- | --- |
-| dice at rest on another die / corrections after rest | 0 / 0 | 0 / 0 |
-| dice corrected | 0.5 % | 0.000 % |
-| **dice re-thrown** | 0.05 % | **2.65 %** (2.20 % over 2,000 rolls on 2026-09-18) |
-| median / p99 settle | 2 s / 4 s | 0.83 s / 1.53 s |
-| rolls that gave up / forced settles | 0 / 0 | 0 / 0 |
-| **deepest die-into-die overlap** | 0.2 mm | **5.29 mm** |
-| turns after landing | ≥ 1.00 | 1.55 |
-| p99 step time | 8.33 ms | 0.23 ms |
+| target | bar | before | measured |
+| --- | --- | --- | --- |
+| dice at rest on another die / corrections after rest | 0 / 0 | 0 / 0 | 0 / 0 |
+| dice corrected | 0.5 % | 0.000 % | 0.000 % |
+| **dice re-thrown** | 0.05 % | 2.65 % | **1.18 %** |
+| median / p99 settle | 2 s / 4 s | 0.83 s / 1.53 s | 0.96 s / 1.76 s |
+| rolls that gave up / forced settles | 0 / 0 | 0 / 0 | 0 / 0 |
+| **deepest die-into-die overlap** | 0.2 mm | 5.29 mm | **7.76 mm** (p99 roll 4.67 → 5.68 mm) |
+| turns after landing | ≥ 1.00 | 1.55 | 2.70 |
+| p99 step time | 8.33 ms | 0.22 ms | 0.38 ms (0.20 ms on a cooler phone, same physics) |
+
+60d20 over 1,000 rolls: turns 1.16 → 2.06, median settle 1.28 s → 1.52 s,
+re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
+`100d6` still gives up within its first 200 rolls, before and after.
 
 - [ ] **A test that sees the printed numbers.** They were drawn reflected for
       all of `v0.1.0`, and a screenshot cannot tell a `u` reflection from a `v`
@@ -207,6 +213,11 @@ an animation of a random number. Runs again after every physics change, with
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
 
+- [ ] **A coin can roll out the twelve-second cap on its own**, and
+      `FairnessTest` then stops instead of counting it: one throw in 100,000
+      at 60–120 rad/s and restitution 0.55 (seed 5897839758308530927), three
+      in 100,000 before. Count a give-up as a failure figure of its own, and
+      find out what the coin is doing for twelve seconds
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
       for its ten cases on both ABIs; any divergence is a release blocker
@@ -237,10 +248,12 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 
 ### 5.4 Collisions
 
-- [ ] **Dice go 5 mm into each other; the bar is 0.2 mm.** 9.02 mm first, 5.04
-      mm after two sub-steps and a tapering throw (2026-09-18), **5.29 mm** on
-      2026-10-03 after #321's spawn fix — so the spawn was not where it came
-      from, and what is left is the solver's discrete detection. Next: four and
+- [ ] **Dice go 5–8 mm into each other; the bar is 0.2 mm.** 9.02 mm first,
+      5.04 mm after two sub-steps and a tapering throw (2026-09-18), 5.29 mm
+      on 2026-10-03 after #321's spawn fix — so the spawn was not where it
+      came from, and what is left is the solver's discrete detection. The
+      livelier tumble took it to **7.76 mm** (the p99 roll from 4.67 to 5.68
+      mm): bouncier dice meet harder. Next: four and
       eight collision sub-steps against the current throw. Under the ladder they
       gave 3.18 mm and 1.58 mm at a p99 step of 0.85–1.32 ms, but packed a
       shaken throw into one end (8 and 13 of 16 seeds, against 2)
@@ -281,9 +294,13 @@ keeps them comparable.
 - [ ] **The start of a shake** read as a lag: the dice are already fast when
       the shake reaches them. The 100 ms start threshold and the spawn impulse
       are the two numbers
-- [ ] **The tumble and the pace.** `RollPace.WATCHED` is 0.5, so a 0.81 s
-      throw takes ~1.6 s to watch. Does a roll read as dice landing; does
-      `1d20` a dozen times annoy; does the speed change when the hand lets go
+- [ ] **The tumble and the pace.** The owner found the tumble too quick and
+      too short; the dice now get 60–120 rad/s of spin and restitution 0.55,
+      which takes them from 1.55 turns after landing to 2.70
+      (`docs/physics-and-rendering.md`, "How hard the dice are thrown").
+      `RollPace.WATCHED` is still 0.5, so a 0.96 s throw takes ~1.9 s to
+      watch: is that long enough now, or is 0.4 wanted? Does a roll read as
+      dice landing; does `1d20` a dozen times annoy; does the speed change when the hand lets go
       read as intended? Does a second shake at tumbling dice still answer
       instantly?
 - [ ] The keyboard over the lower half of the tray — right, or shift the tray

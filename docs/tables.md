@@ -190,6 +190,12 @@ Rules:
   `docs/TODO.md`, "Open questions").
 - Physics values are clamped at validation and again at load, like dice.
   A table can be a bit slippery or a bit grippy; it cannot be frictionless.
+- **A table can make a die bouncier, never deader.** The solver takes the
+  larger of the die's and the table's restitution for a contact, and a die's
+  default is 0.55 (`docs/physics-and-rendering.md`, "Dice bodies"), so on
+  the built-in tables — felt at 0.2, oak at 0.35, glass at 0.45 — the dice
+  set's number is the one in force. Friction is shared: the geometric mean of
+  the two.
 - Sound and light are names from built-in lists so a package cannot ship
   audio files or HDR environment maps (both are large and both are attack
   surface for decoders). More presets can be added to the app over time.

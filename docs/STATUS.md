@@ -24,7 +24,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   apart, so the eye can follow them (decision 69); then
   `feature/shake-rethrows-stuck-dice` — a die that lands cocked or on another
   is no longer thrown again by the roll: it waits where it lies and the
-  player's next shake throws it (decision 70).
+  player's next shake throws it (decision 70); then `feature/livelier-tumble`
+  — more spin (60–120 rad/s) and bouncier dice (restitution 0.55), after the
+  owner found the tumble too short.
 
 ## Done
 
@@ -41,23 +43,27 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every decision about a roll is Kotlin over an interface**, so "nothing
   touches a die that has come to rest" is proved by JVM tests, not sampled.
 
-## Last device run — Pixel 10a, 2026-10-03, `main` at #331
+## Last device run — Pixel 10a, 2026-10-03, `feature/livelier-tumble`
 
-- **Device suite:** 87 tests, **86 passed, 0 failed**, 1 skipped (`HarnessTest`,
-  which declines without a roll count), in 8 min 55 s.
+- **Device suite:** 94 tests, **93 passed, 0 failed**, 1 skipped (`HarnessTest`,
+  which declines without a roll count), in 10 min 48 s.
 - **Harness, 1,000 rolls of 20d20:** 11 of 13 targets measured, **9 pass**. No
-  die at rest on another, nothing corrected, no roll gave up, settle 0.83 s
-  median and 1.53 s p99, 1.55 turns after landing, p99 step 0.23 ms. Fails:
-  re-throws **2.65 %** against 0.05 %, overlap **5.29 mm** against 0.2 mm
-  (`docs/TODO.md`, Step 5).
+  die at rest on another, nothing corrected, no roll gave up, settle 0.96 s
+  median and 1.76 s p99, **2.70 turns after landing** (1.55 before). Fails:
+  re-throws **1.18 %** against 0.05 % (2.65 % before), overlap **7.76 mm**
+  against 0.2 mm (5.29 mm before) (`docs/TODO.md`, Step 5).
+- **Fairness, 20,000 throws a shape:** every shape passes; one coin throw in
+  100,000 runs out the cap (three in 100,000 before), and `FairnessTest`
+  stops on that rather than counting it (`docs/TODO.md`, 5.2).
 
 ## Blocked / waiting on
 
 **Nothing is blocked.** What needs a person with the phone is judgement, all
 of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 
-1. Whether the dice *look* like they tumble at `RollPace.WATCHED` 0.5, and
-   whether `1d20` a dozen times feels prompt.
+1. Whether the livelier tumble now reads as dice rolling, whether
+   `RollPace.WATCHED` 0.5 is slow enough or 0.4 is wanted, and whether `1d20`
+   a dozen times still feels prompt.
 2. Whether the five tables sound like their materials, and whether the
    haptics read as knocks.
 3. Whether an exploding chain still looks wrong on the first throws after a
@@ -67,7 +73,7 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 
 - **Die-into-die overlap is the solver's.** #321 fixed a re-throw spawn that
   could start two dice inside each other, and the re-measure shows it was not
-  the cause: 5.04 mm before, 5.29 mm after. Next is four or eight collision
+  the cause: 5.04 mm before, 5.29 mm after; bouncier dice take it to 7.76 mm. Next is four or eight collision
   sub-steps against the current throw (Step 5.4).
 - **The re-throw bar measures a mechanism that no longer exists.** 2.65 %
   against 0.05 %; since decision 70 it is the share of dice a player is asked
@@ -78,7 +84,7 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   gives up rather than invent an answer (#319 stopped it taking the app with
   it).
 - **A board die landing on another may show the solver's overlap.** The same
-  5.29 mm die-into-die penetration the harness measures for a throw can show
+  5–8 mm die-into-die penetration the harness measures for a throw can show
   as interpenetration when a dropped board die lands on a standing one; the
   board has no correction, by design, so it would stay until the shake.
 - **The d18 cannot pass chi-squared** — decided and written down; it is held

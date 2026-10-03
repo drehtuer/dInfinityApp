@@ -64,8 +64,19 @@ Every die is a **convex** rigid body:
 - Mass is uniform density over the hull volume; inertia tensor from the hull.
   Standard sets use realistic sizes (a d6 of 16 mm) and density (~1.2 g/cm³,
   roughly acrylic).
-- Restitution around 0.3, friction around 0.5. These are tunable per die in
-  the set file within clamped ranges. The solver stops applying restitution
+- Restitution 0.55, friction 0.5 by default. These are tunable per die in
+  the set file within clamped ranges. Jolt combines a contact's two
+  restitutions by taking the larger and its two frictions by their geometric
+  mean, so a table's restitution only matters where it is above the die's.
+  Restitution was 0.3 until it was measured as the reason a die stopped
+  turning soon after it landed: every edge a tumbling die rolls over is an
+  impact, and at 0.3 each of them took most of what was left. Measured on the
+  Pixel 10a over 1,000 rolls of 20d20, raising it to 0.55 took the turns after
+  landing from 1.67 to 2.70 and the re-throw share from 2.76 % to 1.18 %,
+  for 0.13 s more median settle ("How hard the dice are thrown"). Die-on-felt
+  friction moved neither figure (0.5 and 0.65 within 0.01 turn), and the
+  bodies' damping is 0.02, too small to be what stopped them.
+  The solver stops applying restitution
   below 1 unit/s, which is Jolt's own default and a centimetre a second here.
   It was 150 mm/s for a while, chosen as "about where a die lands and stays" —
   which it is, and which also gave every contact after the first landing a
@@ -152,10 +163,12 @@ power-saving mode; there is no other one.
   median settle from 0.73 s (0.34/0.42) through 0.81 s (0.5/0.6, what is
   shipped) to 0.85 s (0.7/0.85), and the turns a die makes after landing from
   1.45 to 1.59 — and the high end also pushes the dice into one another, from
-  5.04 mm of overlap to 5.59 mm. Twenty d20 in a tray the size of a phone
-  genuinely stop in under a second. Two or three seconds of tumbling would mean
-  energy a hand does not put into dice, and would push `100d4` further into the
-  twelve-second cap.
+  5.04 mm of overlap to 5.59 mm. Restitution was the one physical number with
+  room in it ("Dice bodies"): at 0.55 the median 20d20 settles in 0.96 s
+  rather than 0.83 s, and spends it tumbling rather than sliding. Twenty d20 in
+  a tray the size of a phone genuinely stop in about a second. Two or three
+  seconds of tumbling would mean energy a hand does not put into dice, and
+  would push `100d4` further into the twelve-second cap.
 
   **A roll stops being paced once it stops landing.** The pace holds for
   `RollPace.WATCHED_SECONDS` of simulated time and then gives the frame back
@@ -163,8 +176,8 @@ power-saving mode; there is no other one.
   so pacing cannot change when a roll gives up, only how long somebody waits
   to be told — and a flat half turned that into twenty-four seconds of
   watching dice that were never going to stop. Three seconds is chosen against
-  the measurements: the median 20d20 settles in 0.81 s and the ninety-ninth in
-  1.47 s, so a roll that is behaving is paced from first step to last and
+  the measurements: the median 20d20 settles in 0.96 s and the ninety-ninth in
+  1.76 s, so a roll that is behaving is paced from first step to last and
   never meets the bound at all. What meets it is a roll that is not landing,
   and a roll that is not landing is being *waited for* rather than watched.
 
@@ -707,7 +720,7 @@ throws again is a throw of its own and is counted there. A roll of several
 passes reports its first pass's figure, which threw every die.
 
 **And it is a throw, not a drop.** A die leaves the hand at up to 1100 mm/s
-sideways with 37.5–75 rad/s of spin, from 60 mm above the floor. Those numbers
+sideways with 60–120 rad/s of spin, from 60 mm above the floor. Those numbers
 were chosen against the figure above rather than by eye: at the 250 mm/s it
 used to be, a die travelled about 34 mm before it landed — it came down
 roughly where it was let go, with nothing left to turn into tumbling.
@@ -744,9 +757,43 @@ Every bar is better than it was or unchanged; the dice simply roll now. The
 two that still fail — the re-throw share and the overlap depth — fail by less
 than they did, and both were failing before any of this.
 
+**Then the owner held it and said it stopped too soon.** "The tumble feels a
+bit too quick and stops too early; the dice do not have enough initial spin."
+Each candidate was measured on the Pixel 10a over 1,000 rolls of 20d20 (seed
+1), and the spin turned out to be the smaller half of the answer:
+
+| | turns after landing | median / p99 settle | re-throws | overlap, deepest / p99 roll |
+| --- | --- | --- | --- | --- |
+| 37.5–75 rad/s, restitution 0.3 (before) | 1.55 | 0.82 s / 1.53 s | 2.65 % | 5.29 / 4.67 mm |
+| 60–120 rad/s | 1.67 | 0.83 s / 1.50 s | 2.76 % | 5.86 / 5.12 mm |
+| 60–120 rad/s, restitution 0.4 | 2.01 | 0.84 s / 1.57 s | 1.87 % | 6.75 / 5.47 mm |
+| 60–120 rad/s, restitution 0.5 | 2.42 | 0.91 s / 1.70 s | 1.47 % | 6.68 / 5.45 mm |
+| **60–120 rad/s, restitution 0.55 (shipped)** | **2.70** | **0.96 s / 1.76 s** | **1.18 %** | **7.76 / 5.68 mm** |
+| 60–120 rad/s, restitution 0.6 | 2.97 | 1.01 s / 1.85 s | 0.93 % | 6.30 / 5.62 mm |
+| 37.5–75 rad/s, restitution 0.55 | 2.55 | 0.95 s / 1.77 s | 1.38 % | 6.98 / 5.31 mm |
+
+More spin on its own is mostly spent in the air and on the first contact;
+what had been ending the tumble was the bounce. A die that rolls over an edge
+lands on the next face, and at 0.3 each of those landings took most of what
+was left. At 0.55 it keeps enough to roll over the next one. The dice also
+come apart better — the re-throw share halves — at the cost of about a
+millimetre on the typical roll's deepest overlap. 0.55 rather than 0.6
+because the larger throws pay for the last tenth: at sixty d20 one roll in a
+thousand took 10.5 s against a twelve-second cap (none gave up), where 0.5
+kept its slowest at 2.4 s.
+
+Two other things were tried and dropped. Die-on-felt friction (0.5 against
+0.65) moved nothing. A forward roll added to the spin in the direction of the
+throw — what a hand puts on a die it bowls — gained nothing at half the rolling
+rate and, at the full rate, gave a roll enough energy to run out the cap.
+`RollPace.WATCHED` stays at 0.5: the roll now lasts longer because the dice
+are doing more, and slowing the picture as well is a judgement for the phone
+(`docs/TODO.md`, 5.6), not one this table can make.
+
 None of it touches a die that has come to rest. What changed is what a die is
-given *before* it lands and how well the solver resolves what happens after —
-which is the only half of this the app is allowed to work on.
+given *before* it lands, what it is made of, and how well the solver resolves
+what happens after — which is the only half of this the app is allowed to work
+on.
 
 ## Settling and reading the result
 
@@ -1958,7 +2005,7 @@ impact sounds rather than a crash in the middle of a roll.
   blurs and nothing stutters — there are *more* frames per simulation step than
   before, not fewer — and the dice are seen to turn down onto a face instead of
   being on one by the time the eye arrives. A 20d20 throw that the solver
-  finishes in 0.81 s takes about 1.6 s to watch.
+  finishes in 0.96 s takes about 1.9 s to watch.
 - While the phone is being shaken the roll runs at real time, so the dice on
   screen answer the hand on the frame it moved. The change of pace when the
   hand lets go is the one the player caused.

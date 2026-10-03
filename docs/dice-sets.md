@@ -66,7 +66,7 @@ metallic = 0.0
 size_mm = 16                     # clamped to 8..40
 density = 1.2                    # g/cm³, clamped to 0.5..8
 translucency = 0                 # %, 0 solid .. 100 glass, clamped
-restitution = 0.3                # clamped to 0.0..0.8
+restitution = 0.55               # clamped to 0.0..0.8
 friction = 0.5                   # clamped to 0.1..1.0
 
 # --- dice -----------------------------------------------------------

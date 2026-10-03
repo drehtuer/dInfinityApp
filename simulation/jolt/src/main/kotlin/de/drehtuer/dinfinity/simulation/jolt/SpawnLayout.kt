@@ -419,8 +419,14 @@ class SpawnLayout(
      * than a ceiling being met. Raised with [THROW_LATERAL_MM_PER_SECOND]: on
      * its own more spin is mostly spent in the air, and it is the pair that
      * moves the figure that matters.
+     *
+     * Raised again from 75 when the owner found the dice short of spin on the
+     * Pixel 10a. On its own it moved the middle die from 1.55 turns after
+     * landing to 1.67; what carries the spin through the landing is the dice's
+     * restitution (`DieMaterial`, `docs/physics-and-rendering.md`, "How hard
+     * the dice are thrown"). Still under the 200 rad/s body cap.
      */
-    const val SPAWN_SPIN_RADIANS_PER_SECOND: Double = 75.0
+    const val SPAWN_SPIN_RADIANS_PER_SECOND: Double = 120.0
 
     /** And a floor under it, so "random" never comes out as "barely turning". */
     const val SPIN_FLOOR_SHARE: Double = 0.5
