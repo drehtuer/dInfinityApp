@@ -404,6 +404,13 @@ void World::Step(float dt) {
   // standing on another die either way, so the packing the old comment feared
   // does not happen at this count. A step costs 0.35 ms against a budget of
   // 8.33 (`docs/physics-and-rendering.md`, `Tumble`).
+  //
+  // Four and eight were tried against the livelier throw (decision 77): eight
+  // takes the deepest overlap of 20d20 from about 7.5 mm to 2.6 mm and heaps
+  // no more shaken throws than two does, but settles a few steps later on every
+  // seed, re-throws a little more at sixty dice and still misses the 0.2 mm
+  // bar twelve times over. Not worth moving every golden case for; changing
+  // this number means re-recording them and running `FairnessTest` again.
   impl_->system.Update(dt, 2, &impl_->temp_allocator, &impl_->job_system);
 }
 

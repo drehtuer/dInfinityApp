@@ -86,28 +86,33 @@ class CornerCasesTest {
   fun theFlattestShapeAtTheCapIsWhereStackingStillHappens() {
     // **The target is zero and this is not it** (`docs/TODO.md`, Step 5.5).
     // A hundred coins is the one throw in the catalogue that still comes to
-    // rest with dice standing on other dice: four to ten of them, on every seed
-    // tried, which is systematic rather than unlucky.
+    // rest with many dice standing on other dice, on every seed tried, which is
+    // systematic rather than unlucky.
     //
     // It is the shape's own doing. A coin that lands on a coin is *stable*
     // there — a cube or an icosahedron on top of another rolls off, and that is
     // what makes prevention work everywhere else.
     //
-    // **What is asserted is the rule that holds: none of them is read.** A coin
-    // standing on a coin is left lying there, unread, for the player's next
-    // shake to throw again (decision 70) — so the number that used to be
-    // bounded here, the coins *still* stacked after the roll had re-thrown
-    // them itself, no longer exists. The first throw's heap is logged rather
-    // than bounded until the device run has measured it under the new rule
-    // (`docs/TODO.md`, Step 5.3).
+    // **The rule that holds is that none of them is read.** A coin standing on
+    // a coin is left lying there, unread, for the player's next shake to throw
+    // again (decision 70).
+    //
+    // **And the heap one throw leaves is bounded again**, as what it now is:
+    // the coins a single throw leaves on other coins, before any shake. That is
+    // far more than the four to ten the old ladder left, because nothing
+    // re-throws them by itself any more — 18 to 29 a seed on the Pixel 10a
+    // (2026-10-04, `docs/TODO.md`, Step 5.3). The bound is the worst of those,
+    // so a change to the throw or the solver either improves it or is noticed;
+    // the figures are logged as well, so they are there to read.
     val coins = List(TableCapacity.MAX_DICE) { coin() }
     val landed = (1L..COIN_SEEDS).map { seed -> seed to settle(coins, seed) }
 
     landed.forEach { (seed, coinsDown) -> assertNoneStackedWasRead(coinsDown, "a hundred coins on seed $seed") }
-    Log.e(
-      "CoinStack",
-      "coins left standing on another, by seed: " +
-        landed.map { (seed, coinsDown) -> seed to coinsDown.states.count(DieState::supportedByDie) },
+    val stacked = landed.map { (seed, coinsDown) -> seed to coinsDown.states.count(DieState::supportedByDie) }
+    Log.e("CoinStack", "coins left standing on another, by seed: $stacked")
+    assertTrue(
+      "a hundred coins stacked worse than they used to: $stacked",
+      stacked.all { (_, count) -> count <= COINS_STACKED_ALLOWED },
     )
   }
 
@@ -267,5 +272,16 @@ class CornerCasesTest {
 
     /** How many seeds the coin — the worst shape here — is asked on. */
     const val COIN_SEEDS = 8L
+
+    /**
+     * How many of a hundred coins one throw may leave standing on another, on
+     * any of the [COIN_SEEDS] seeds.
+     *
+     * **Not a target — a record of where prevention has got to.** The target
+     * is zero (`docs/TODO.md`, Step 5.3); this is the worst seed measured on
+     * the Pixel 10a under counting (decision 70), at two collision steps
+     * (decision 77).
+     */
+    const val COINS_STACKED_ALLOWED = 29
   }
 }

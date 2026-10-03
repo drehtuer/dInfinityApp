@@ -492,13 +492,41 @@ tumbling rather than as a heap. The throw buys that back
 ("How hard the dice are thrown" below). A step costs 0.37 ms against a budget
 of 8.33.
 
+**Four and eight were tried against the livelier throw, and two stays**
+(`docs/architecture.md`, decision 77). On the Pixel 10a, 2026-10-04, the
+harness's 20d20 over seeds 1–3 (1,000 + 5,000 + 5,000 rolls) and 60d20 over
+1,000:
+
+| collision steps | 2 (kept) | 4 | 8 |
+| --- | --- | --- | --- |
+| deepest overlap, 20d20 | 6.94–7.90 mm | 4.66–4.98 mm | 2.51–2.67 mm |
+| dice re-thrown, 20d20 | 1.19–1.23 % | 1.20–1.22 % | 1.20–1.38 % |
+| median / p99 settle, 20d20 | 0.95–0.96 s / 1.94–1.96 s | 0.98 s / 1.98 s | 0.98 s / 2.00–2.03 s |
+| turns after landing, 20d20 | 2.69–2.72 | 2.62 | 2.79–2.80 |
+| p99 step, 20d20 / 60d20 | 0.18–0.23 / 0.46 ms | 0.23–0.27 ms / — | 0.37–0.42 / 1.63 ms |
+| 60d20 overlap / re-thrown / median settle | 6.17 mm / 2.62 % / 1.67 s | — | 2.45 mm / 2.87 % / 1.75 s |
+| shaken 20d6 seeds ending clustered | 7 of 16 | 7 of 16 | 7 of 16 |
+
+The packing that sub-stepping was feared for **did not happen**: the same
+seven of sixteen shaken throws ended in one end of the tray at every count, and
+the dice turned no less. What eight steps cost is small but the same on every
+seed — two to four steps more to settle at twenty dice, ten at sixty, and a
+quarter of a point more re-throws at sixty — and it still leaves the overlap at
+twelve times the 0.2 mm bar. So the count was not changed: a change that moves
+every golden case and wants the fairness run again has to meet a target, and
+this one cuts a miss to a third and still misses. Eight is one constant away
+in `World::Step` if the owner, watching the tray, finds the overlap visible
+(`docs/TODO.md`, 5.4).
+
 Both are measured, with numbers, in `docs/TODO.md` (Step 5.5). The point for
 anyone changing this file is that **the re-throw rate and the overlap depth
 cannot be fixed independently of deciding what a sustained sideways shake should
 do to a tray of dice**, which is an open question below. A tray of dice under a
 1.8 g lateral drive packing against the far wall may well be right — it is what
 a hand does — but until that is decided, a change that improves the overlap will
-look like a regression in how a shaken roll reads.
+look like a regression in how a shaken roll reads. (Collision sub-steps no
+longer do: at the current throw they leave the shaken heap exactly where it
+was, as the table above says.)
 
 ## Shake input
 

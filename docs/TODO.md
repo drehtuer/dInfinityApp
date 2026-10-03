@@ -176,6 +176,11 @@ column is `main` at #336):
 | turns after landing | ≥ 1.00 | 1.55 | 2.70 |
 | p99 step time | 8.33 ms | 0.22 ms | 0.38 ms (0.20 ms on a cooler phone, same physics) |
 
+Re-run at the stack's tip on 2026-10-04 before trying collision sub-steps
+(5.4): the same within noise — re-throws 1.19 %, settle 0.96 s / 1.96 s,
+overlap 7.76 mm, 2.72 turns, p99 step 0.23 ms; over 5,000 rolls each on seeds
+2 and 3, overlap 6.94 mm and 7.90 mm and re-throws 1.23 % and 1.21 %.
+
 60d20 over 1,000 rolls: turns 1.16 → 2.06, median settle 1.28 s → 1.52 s,
 re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
 `100d6` still gives up within its first 200 rolls, before and after.
@@ -203,11 +208,11 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 - [ ] **`100d4` does not reliably settle.** Five of twenty-four seeds in
       `JoltBridgeTest` reach the twelve-second backstop and give up (since #319
       without taking the app with them). The bound is today's worst case
-- [ ] **A hundred coins stack.** Under the ladder four to ten were left
-      standing per seed; under decision 70 a stacked coin is never read and
-      waits for a shake, so `CornerCasesTest` now asserts that and only logs
-      the first throw's heap (`CoinStack` in logcat). Read the figure off a
-      device run and decide whether it wants a bound again
+- [ ] **A hundred coins stack: 18–29 a seed are left on another coin by one
+      throw** (Pixel 10a, 2026-10-04; four to ten under the old ladder, which
+      re-threw them itself). None is read (decision 70), and
+      `CornerCasesTest` bounds the heap at today's worst, 29. The target is
+      zero
 - [ ] **Decide what a tilted phone means** (deferred): gravity always straight
       down; anchored to `TYPE_GRAVITY`; or a clamped tilt
 - [ ] **A shake along the long axis drives the dice into one end.** Right (it is
@@ -225,10 +230,19 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
       on 2026-10-03 after #321's spawn fix — so the spawn was not where it
       came from, and what is left is the solver's discrete detection. The
       livelier tumble took it to **7.76 mm** (the p99 roll from 4.67 to 5.68
-      mm): bouncier dice meet harder. Next: four and
-      eight collision sub-steps against the current throw. Under the ladder they
-      gave 3.18 mm and 1.58 mm at a p99 step of 0.85–1.32 ms, but packed a
-      shaken throw into one end (8 and 13 of 16 seeds, against 2)
+      mm): bouncier dice meet harder. Four and eight collision sub-steps
+      against it (2026-10-04, decision 77): 4.7–5.0 mm and 2.5–2.7 mm, no
+      more shaken heaps (7 of 16 at 2, 4 and 8), but eight settles a few steps
+      later on every seed and re-throws 2.87 % against 2.62 % at sixty dice,
+      so two stays (`docs/physics-and-rendering.md` has the table). Sub-steps
+      alone will not reach 0.2 mm. The dice already sweep their travel
+      (`LinearCast`), which does not sweep a spinning die's corners — at
+      60–120 rad/s that is the likelier source, and the next thing to look at
+- [ ] *Judge on the phone:* is a die sinking into another visible while the
+      dice tumble? Watch a few `20d20` throws (or `tools/harness.sh --capture
+      20` and step through it). If it is, eight collision steps is the measured
+      fix — one constant in `World::Step`, then the goldens re-recorded and
+      `FairnessTest` re-run at 20,000 a shape
 
 ### 5.5 Stacking and cocking — no invisible hand
 
