@@ -233,6 +233,90 @@ class VectorsTest {
     assertVector(Vector3(0.0, 0.0, 1.0), turned.rotate(Vector3(0.0, 0.0, 1.0)), "forward")
   }
 
+  @Test
+  fun `a turn between two frames carries out onto out and up onto up`() {
+    // Every pair of the frames above, which covers the identity, quarter
+    // turns and all three half-turns, in both directions.
+    FRAMES.forEach { (_, fromUp, fromOut) ->
+      FRAMES.forEach { (_, toUp, toOut) ->
+        val turn = Quaternion.carrying(fromOut, fromUp, toOut, toUp)
+
+        assertVector(toOut, turn.rotate(fromOut), "out")
+        assertVector(toUp, turn.rotate(fromUp), "up")
+        // And the third axis with them: a turn, never a reflection.
+        assertVector(cross(toUp, toOut), turn.rotate(cross(fromUp, fromOut)), "right")
+        assertEquals(1.0, turn dot turn, 1e-12)
+      }
+    }
+  }
+
+  @Test
+  fun `a frame carried onto itself is no turn at all`() {
+    val out = Vector3(1.0, 2.0, 2.0).normalised()
+    val up = cross(out, Vector3(0.0, 0.0, 1.0)).normalised()
+
+    assertSameTurn(Quaternion.Identity, Quaternion.carrying(out, up, out, up))
+  }
+
+  @Test
+  fun `frames that face each other are a half-turn, not a division by zero`() {
+    // Out onto its opposite with the same up: the turn is a half-turn about
+    // up, and the one direction `taking` cannot settle on its own.
+    val out = Vector3(0.0, 0.6, 0.8)
+    val up = Vector3(1.0, 0.0, 0.0)
+    val turn = Quaternion.carrying(out, up, -out, up)
+
+    assertVector(-out, turn.rotate(out), "out")
+    assertVector(up, turn.rotate(up), "up")
+    assertSameTurn(Quaternion.about(up, PI), turn)
+  }
+
+  @Test
+  fun `frames a hair short of facing each other are still carried exactly`() {
+    // Nearly antiparallel: out onto very nearly its opposite, up onto very
+    // nearly itself. The component solved for is the large one, so nothing
+    // divides by the hair.
+    val hair = 1e-9
+    val out = Vector3(0.0, 0.0, 1.0)
+    val up = Vector3(0.0, 1.0, 0.0)
+    val toOut = Vector3(hair, 0.0, -1.0).normalised()
+    val toUp = Vector3(0.0, 1.0, 0.0)
+    val turn = Quaternion.carrying(out, up, toOut, toUp)
+
+    assertVector(toOut, turn.rotate(out), "out")
+    assertVector(toUp, turn.rotate(up), "up")
+    assertEquals(1.0, turn dot turn, 1e-12)
+  }
+
+  @Test
+  fun `a frame whose up is its out is not a frame`() {
+    val out = Vector3(0.0, 0.0, 1.0)
+
+    assertFailsWith<IllegalArgumentException> { Quaternion.carrying(out, out, out, Vector3(0.0, 1.0, 0.0)) }
+    assertFailsWith<IllegalArgumentException> { Quaternion.carrying(out, Vector3(0.0, 1.0, 0.0), out, -out) }
+  }
+
+  @Test
+  fun `a frame that leans or is the wrong length is refused rather than straightened`() {
+    val out = Vector3(0.0, 0.0, 1.0)
+    val up = Vector3(0.0, 1.0, 0.0)
+    val leaning = Vector3(0.0, 1.0, 0.01).normalised()
+
+    assertFailsWith<IllegalArgumentException> { Quaternion.carrying(out, leaning, out, up) }
+    assertFailsWith<IllegalArgumentException> { Quaternion.carrying(out * 2.0, up, out, up) }
+    assertFailsWith<IllegalArgumentException> { Quaternion.carrying(out, up * 0.5, out, up) }
+    assertFailsWith<IllegalArgumentException> { Quaternion.carrying(out, up, out * 2.0, up) }
+    assertFailsWith<IllegalArgumentException> { Quaternion.carrying(out, up, out, up * 0.5) }
+  }
+
+  @Test
+  fun `a frame within the tolerance is accepted`() {
+    val out = Vector3(0.0, 0.0, 1.0 + Quaternion.FRAME_TOLERANCE / 2)
+    val up = Vector3(0.0, 1.0, 0.0)
+
+    assertSameTurn(Quaternion.Identity, Quaternion.carrying(out, up, Vector3(0.0, 0.0, 1.0), up))
+  }
+
   private fun assertVector(
     expected: Vector3,
     actual: Vector3,

@@ -15,8 +15,13 @@ package de.drehtuer.dinfinity.render.filament
  * [de.drehtuer.dinfinity.core.model.AtlasImage] is not one.
  *
  * @param pixels red, green, blue and alpha per pixel, a byte each, **rows from
- *   the top**. Which is not the order a graphics driver reads them in, and
- *   [fromBottomUp] is where that is put right.
+ *   the top** — which is the order Filament's `readPixels` hands them over in,
+ *   so a frame is wrapped as it arrives ([FilamentStage.capture]). OpenGL
+ *   itself counts from the bottom, and this file used to turn the rows over
+ *   on that account; on the Pixel 10a's OpenGL backend they were already the
+ *   right way up, so every thumbnail came out upside down. The device suite
+ *   now pins it with geometry alone — a die set off towards the camera's up
+ *   comes back in the top rows (`PrintedNumbersDeviceTest`).
  */
 class Snapshot(
   val width: Int,
@@ -80,36 +85,5 @@ class Snapshot(
     private const val ALPHA_SHIFT = 24
     private const val RED_SHIFT = 16
     private const val GREEN_SHIFT = 8
-
-    /**
-     * The same frame, with its rows turned the right way up.
-     *
-     * A graphics driver's origin is the bottom left and every image in this
-     * app counts rows from the top — the atlas grid, a die's printed numbers,
-     * and what an Android `Bitmap` expects to be handed. So the flip belongs
-     * here, in plain Kotlin where a test can hold it still, rather than in the
-     * one file that talks to Filament where it could only be checked by
-     * looking at a phone and deciding whether the picture was upside down.
-     */
-    fun fromBottomUp(
-      width: Int,
-      height: Int,
-      rows: ByteArray,
-    ): Snapshot {
-      require(rows.size == width * height * CHANNELS) {
-        "a frame of $width by $height is ${width * height * CHANNELS} bytes, not ${rows.size}"
-      }
-      val stride = width * CHANNELS
-      val turned = ByteArray(rows.size)
-      for (row in 0 until height) {
-        rows.copyInto(
-          destination = turned,
-          destinationOffset = row * stride,
-          startIndex = (height - 1 - row) * stride,
-          endIndex = (height - row) * stride,
-        )
-      }
-      return Snapshot(width, height, turned)
-    }
   }
 }

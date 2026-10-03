@@ -190,9 +190,7 @@ class FilamentEngine(
             // That is a kindness to assets authored for a bottom-left origin,
             // and this app has none: every image in it counts rows from the
             // top — a die's printed numbers, a package's atlas, a table's
-            // floor ([Snapshot.fromBottomUp] says so, and it is the file that
-            // had to put the *readback* the other way round for the same
-            // reason).
+            // floor, and the frames read back off the GPU ([Snapshot]).
             //
             // So there were three conventions and the code stated two.
             // `NumberField` is top-down, `setImage` uploads it as it stands so
@@ -201,7 +199,11 @@ class FilamentEngine(
             // over a second time, and every glyph on every die came out
             // reflected — which a screenshot cannot pin down, because a
             // reflection in `v` and a reflection in `u` differ by a half-turn
-            // and a die lands at an arbitrary orientation.
+            // and a die lands at an arbitrary orientation. The device suite
+            // pins it instead: a face turned square to the camera, the right
+            // way up, read back and asked which way its ink leans on each axis
+            // (`PrintedNumbersDeviceTest`). Turn this back on and the
+            // top-bottom question fails on every die.
             //
             // It governs the artwork atlas and the table's floor as well, and
             // those were reflected too; nothing shipped an asymmetric one, so

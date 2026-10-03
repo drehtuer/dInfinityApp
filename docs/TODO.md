@@ -180,13 +180,6 @@ column is `main` at #336):
 re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
 `100d6` still gives up within its first 200 rolls, before and after.
 
-- [ ] **A test that sees the printed numbers.** They were drawn reflected for
-      all of `v0.1.0`, and a screenshot cannot tell a `u` reflection from a `v`
-      one. The instrument: one die turned so a chosen face looks at the camera
-      with its texture-up as the camera's up, read back through `Snapshot`,
-      asserting the ink is heavier in the half `DieNumbers.fieldOf` says
-      (decision 40). Needs a quaternion from two orthonormal frames
-
 ### 5.2 Fairness and determinism
 
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and

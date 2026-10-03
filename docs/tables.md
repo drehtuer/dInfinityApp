@@ -412,6 +412,13 @@ taken, and the die is placed where the arithmetic says rather than where a
 solver left it. A thumbnail decides nothing, because nobody reads a face off
 one (`docs/architecture.md`, goal 1).
 
+**It is the right way up.** Filament hands a frame back top row first and the
+picture is kept that way. It used to be turned over once more, on the
+assumption that it arrived the way OpenGL counts rows, so every thumbnail was
+upside down and its `19` mirrored. Which way up a frame comes back is pinned
+on the device by geometry alone (`docs/build-setup.md`, "What the renderer's
+device test can and cannot say").
+
 **The swatch is still there, and it is the fallback.** Two colours in a box —
 the floor inside, the wall around it — drawn at exactly the size the picture
 will be, so the list does not jump about as pictures land in it. It is what

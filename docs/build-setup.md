@@ -444,6 +444,19 @@ Both tiers pass that, including the frame arriving, so the emulator's
 software backend *can* deliver to a real surface. Its limitation below is
 specific to reading a headless swap chain back.
 
+One question about the picture it *can* answer: **are the printed numbers the
+right way round** (`PrintedNumbersDeviceTest`). A face is turned square to the
+camera with its texture-up as the camera's up, the frame is read back, and on
+each axis separately the ink has to lean the way `DieNumbers.fieldOf` says it
+leans — left-right catches a reflection in `u`, top-bottom one in `v`, which a
+photograph of a landed die cannot tell apart. The d6, the d20 and the d4 are
+asked; two controls draw a deliberately reflected field and must fail exactly
+the question their reflection belongs to. Underneath it, the frame's own
+orientation is asked with geometry alone — a die set off towards the camera's
+up and right has to come back in the top right — because a readback the wrong
+way up is itself a `v` reflection, and was one: `FilamentStage.capture` turned
+the rows over a second time and every table thumbnail was upside down.
+
 What none of it can say is whether the picture is any *good*. Nothing automated
 can. That is Step 5.6, and it needs a screen and a person.
 

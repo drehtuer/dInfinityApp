@@ -1871,9 +1871,12 @@ impact sounds rather than a crash in the middle of a roll.
 - `Stage.capture` is the only thing on that seam that waits for the GPU, and no
   frame of a roll ever calls it. Reading a frame back means blocking until the
   driver has finished; a still picture drawn once, off screen, can afford it
-  and a tray at 120 Hz cannot. The rows come back the way a driver counts them,
-  from the bottom, and are turned over in plain Kotlin — "is the picture upside
-  down" is not a question worth a phone.
+  and a tray at 120 Hz cannot. The rows come back from the top, the way
+  Filament hands them over, and are kept as they come. They used to be turned
+  over on the assumption that they arrived the way OpenGL counts them, and
+  every thumbnail was upside down; which way up a frame is turned out to be a
+  question only a device can answer, and the device suite now asks it with
+  geometry alone (`PrintedNumbersDeviceTest`).
 - `FilamentStage` and `TrayDriver` are the two files excluded from the coverage
   figure — a GPU context and a thread. Neither is excluded from static
   analysis (`.claude/CLAUDE.md`).
@@ -1998,8 +2001,28 @@ impact sounds rather than a crash in the middle of a roll.
   over a second time — `flipUV` defaults to true, as a kindness to assets
   authored for a bottom-left origin — so it is switched off explicitly. With
   it on, every glyph on every die is drawn reflected, which is what `v0.1.0`
-  shipped. The readback goes the other way and is put right in
-  `Snapshot.fromBottomUp`, where a JVM test can hold it.
+  shipped.
+- **Which way round the numbers are is a device test, not a photograph.**
+  `v0.1.0`'s reflection was found, and its fix confirmed, by looking at a phone,
+  and a look cannot settle it: a reflection in `u` and one in `v` differ by a
+  half-turn, and a die lands at an arbitrary orientation. So
+  `PrintedNumbersDeviceTest` does not land a die. It turns one face square to
+  the camera with its texture-up as the camera's up (`Quaternion.carrying`,
+  one frame onto another), reads the frame back, and asks each axis on its
+  own whether the ink leans the way `DieNumbers.fieldOf` says that cell's ink
+  leans — left-right for a `u` reflection, top-bottom for a `v` one. No golden
+  image and no pixel projected anywhere: the face is square to the camera, so
+  the frame is the face at one scale, and the only number worked out is how
+  far back the camera stands for the frame to be a known square of the cell
+  (all of it for a d4, whose numbers sit in its corners; the square inside the
+  face's inscribed circle for a solid whose neighbouring faces lean towards
+  the camera). The d6, the d20 and the d4 are asked on every face that leans
+  far enough to tell; two controls print a deliberately reflected field and
+  fail exactly the question their reflection belongs to, so a pass is not the
+  instrument being blind. Underneath it the frame's own orientation is pinned
+  by geometry — a die set off towards the camera's up and right comes back in
+  the top right — because a readback the wrong way up is itself a `v`
+  reflection.
 - The font is **real Archivo outlines**, converted by `tools/generate-font.py`
   — the same source and the same licence note as the mark
   (`docs/assets/README.md`). Live text would render in whatever font the device

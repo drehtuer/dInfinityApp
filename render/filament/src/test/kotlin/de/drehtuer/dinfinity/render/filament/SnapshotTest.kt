@@ -8,9 +8,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * A frame read back off the GPU, and the two things about it that can be wrong
- * without a device to say so: which way up it is, and whether it is a picture
- * at all.
+ * A frame read back off the GPU, and what about it can be wrong without a
+ * device to say so: whether it is a picture at all, and which order its
+ * channels are in. Which way up it arrives is a device's question
+ * (`PrintedNumbersDeviceTest`).
  */
 class SnapshotTest {
   @Test
@@ -30,39 +31,12 @@ class SnapshotTest {
   }
 
   @Test
-  fun `the rows are turned over, because a driver counts them from the bottom`() {
-    // Two rows of one pixel: the driver hands back the bottom one first.
-    val bottomUp = byteArrayOf(1, 1, 1, 1, 2, 2, 2, 2)
+  fun `a frame keeps its rows in the order they were handed over`() {
+    // Filament hands a frame over top row first, and it is kept that way: the
+    // turn this once made is what put every thumbnail upside down.
+    val rows = byteArrayOf(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4)
 
-    val turned = Snapshot.fromBottomUp(width = 1, height = 2, rows = bottomUp)
-
-    assertArrayEquals(byteArrayOf(2, 2, 2, 2, 1, 1, 1, 1), turned.pixels)
-  }
-
-  @Test
-  fun `a wider frame keeps the order of the pixels within each row`() {
-    // Two rows of two, so that a flip that also reversed each row would show.
-    val bottomUp = byteArrayOf(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4)
-
-    val turned = Snapshot.fromBottomUp(width = 2, height = 2, rows = bottomUp)
-
-    assertArrayEquals(byteArrayOf(3, 3, 3, 3, 4, 4, 4, 4, 1, 1, 1, 1, 2, 2, 2, 2), turned.pixels)
-    assertEquals(2, turned.width)
-    assertEquals(2, turned.height)
-  }
-
-  @Test
-  fun `a single row is already the right way up`() {
-    val rows = byteArrayOf(9, 8, 7, 6)
-
-    assertArrayEquals(rows, Snapshot.fromBottomUp(width = 1, height = 1, rows = rows).pixels)
-  }
-
-  @Test
-  fun `a frame that is not the size it says it is refuses to be turned over`() {
-    assertThrows(IllegalArgumentException::class.java) {
-      Snapshot.fromBottomUp(width = 2, height = 2, rows = ByteArray(4))
-    }
+    assertArrayEquals(rows, Snapshot(width = 2, height = 2, pixels = rows).pixels)
   }
 
   @Test
