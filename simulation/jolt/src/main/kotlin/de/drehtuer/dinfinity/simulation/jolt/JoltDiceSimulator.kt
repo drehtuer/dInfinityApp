@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.simulation.api.DiceSimulator
+import de.drehtuer.dinfinity.simulation.api.Passes
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -27,21 +28,39 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 class JoltDiceSimulator(
   private val worlds: WorldFactory = JoltWorldFactory,
 ) : DiceSimulator {
+  /**
+   * Throws [spec] and every pass its unread dice need, and reports all of it
+   * as one outcome.
+   *
+   * **A hand that never tires stands in for the player here.** On the screen a
+   * throw that leaves dice unread stops and waits for a shake
+   * ([SimulationOutcome.unread]); nothing here has a player to wait for, so
+   * the dice are thrown again at once, with no shake in the throw, through
+   * exactly the passes and seeds the screen would make ([Passes.scripted]).
+   */
   override fun run(spec: ThrowSpec): SimulationOutcome {
     if (spec.dice.isEmpty()) return SimulationOutcome(faces = emptyMap())
-    // Power-saving mode is not a second implementation, and this line is why:
-    // it is the same roll the screen would have watched, stepped by nobody
-    // (`docs/physics-and-rendering.md`, "Power-saving mode"). Nothing is
-    // listening: a headless run has nowhere to play an impact.
-    return start(spec, listening = false).use { live ->
-      // A headless run has no screen to walk away from, so it gives up rather
-      // than hanging — and fails rather than answering, because a roll whose
-      // dice never stopped has no faces to report (`LiveRoll.runToEnd`).
-      live.runToEnd() ?: error(
-        "the dice had not settled after ${SettleRule.HARD_CAP_SECONDS} s, so there is no roll to report",
-      )
-    }
+    // A headless run has no screen to walk away from, so it gives up rather
+    // than hanging — and fails rather than answering, because a roll whose
+    // dice never stopped has no faces to report (`LiveRoll.runToEnd`).
+    return runOrGiveUp(spec) ?: error(
+      "the dice had not settled after ${SettleRule.HARD_CAP_SECONDS} s, so there is no roll to report",
+    )
   }
+
+  /**
+   * The same, for a caller that would rather be told than thrown at: null
+   * when a pass gave up, or when the dice still could not all be read after
+   * [Passes.MOST_UNWATCHED] passes.
+   */
+  fun runOrGiveUp(spec: ThrowSpec): SimulationOutcome? =
+    Passes.scripted(spec) { pass ->
+      // Power-saving mode is not a second implementation, and this line is
+      // why: it is the same throw the screen would have watched, stepped by
+      // nobody (`docs/physics-and-rendering.md`, "Power-saving mode"). Nothing
+      // is listening: a headless run has nowhere to play an impact.
+      start(pass, listening = false).use { live -> live.runToEnd() }
+    }
 
   /**
    * Opens the world, spawns the dice and hands back the roll for a caller to
@@ -103,7 +122,7 @@ class JoltDiceSimulator(
         } else {
           ImpactRecorder.deaf(spec.dice.size)
         }
-      LiveRoll(spec, world, RollLoop(spec, world, layout, ShakeDriver(spec.shake), heard), renderer)
+      LiveRoll(spec, world, RollLoop(spec, world, ShakeDriver(spec.shake), heard), renderer)
     }.getOrElse { failure ->
       world.close()
       throw failure

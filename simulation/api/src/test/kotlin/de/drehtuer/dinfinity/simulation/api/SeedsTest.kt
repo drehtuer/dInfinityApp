@@ -56,6 +56,23 @@ class SeedsTest {
   }
 
   @Test
+  fun `and of the throws a player's shake makes for dice nobody could read`() {
+    // The same counter shape, and the same reason to be careful with it: a
+    // throw's second, third and fourth passes are seeded by their number.
+    val counted = spreadOf { pass -> kotlin.random.Random(Seeds.again(seed = 11L, pass = pass)) }
+
+    assertTrue(counted in LOOSE_ENOUGH..TIGHT_ENOUGH, "a throw's passes gave a spread of $counted")
+  }
+
+  @Test
+  fun `a throw's re-throws and its explosions are different throws`() {
+    // Both count from one, and a roll may need both: the first explosion of
+    // `8d6!` must not be thrown by the stream of the first re-throw.
+    assertNotEquals(Seeds.derived(seed = 11L, nth = 1), Seeds.again(seed = 11L, pass = 1))
+    assertEquals(Seeds.again(seed = 11L, pass = 2), Seeds.again(seed = 11L, pass = 2))
+  }
+
+  @Test
   fun `a stirred seed is still the same seed`() {
     // Everything above would also be true of a stir that threw the seed away.
     // A roll has to replay to itself, so the same seed has to give the same

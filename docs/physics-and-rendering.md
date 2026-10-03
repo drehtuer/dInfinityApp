@@ -206,11 +206,12 @@ power-saving mode; there is no other one.
   acceptable (`docs/TODO.md`). `LiveRoll.droppedSteps` counts them, but
   nothing in the app shows the count yet — putting it on the debug overlay is
   an open item in `docs/TODO.md`.
-- **A re-throw takes no simulated time.** A die that could not be read is
-  picked up and put back at the spawn point between one step and the next, so
-  there is nothing to interpolate across and the renderer is told so: the die
-  is drawn at its new place, not sliding smoothly back through the air towards
-  it. An invisible hand with an animation on it is still an invisible hand.
+- **A die thrown again is a throw of its own.** A die that could not be read
+  is not picked up between one step and the next: the throw ends with it lying
+  where it fell, and the shake that throws it again opens a new world and a
+  new picture. Nothing moves between the two, so there is nothing to
+  interpolate across — and an invisible hand with an animation on it has no
+  frame left to appear in ("Avoiding stacked and cocked dice").
 - **Watching is passive, and the type says so.** A roll in progress hands the
   renderer a frame and takes nothing back. It cannot be stepped, reached into
   or asked for another go from the far side of `Renderer`, so turning the
@@ -238,11 +239,14 @@ The initial angular velocity is large enough that the outcome is not
 predictable from the starting orientation. (A die dropped from 2 cm with no
 spin *would* be predictable. We do not do that.)
 
-**A shake finishes what it starts.** Two states leave a roll part-way through —
-a chain that earned a throw, and a throw that gave up on dice that never
-stopped — and the same shake answers both. Neither has a button, and the screen
-says how many dice the next shake will throw, both on the plate over the tray
-and in a toast that announces itself to a screen reader.
+**A shake finishes what it starts.** Three states leave a roll part-way
+through — a chain that earned a throw, a throw that left dice it could not read,
+and a throw that gave up on dice that never stopped — and the same shake
+answers all three. None has a button, and the screen says how many dice the
+next shake will throw, both on the plate over the tray and in a toast that
+announces itself to a screen reader. They never compete for one shake: the
+dice nobody could read come first, because a throw earns a chain's next die
+only once every die of it has a face.
 
 **Tapping the tray does not roll** — decided, not pending. It is the largest
 target on the screen and the most tempting one, which is exactly why it is not
@@ -276,9 +280,10 @@ large to graph exactly keeps its range and loses only its average.
 
 **It is on the screen for as long as a shake is the next thing that happens**,
 and in exactly one place at a time. Before the throw it is on the ready plate;
-while the dice are moving it is the counting plate's live range; on the two
-plates a roll can wait on — a chain that earned a throw, a throw that gave up
-— it is that same live range under a `STILL TO COME` kicker; and once the dice
+while the dice are moving it is the counting plate's live range; on the three
+plates a roll can wait on — a chain that earned a throw, dice nobody could
+read, a throw that gave up — it is that same live range under a `STILL TO
+COME` kicker; and once the dice
 have landed it is in the **result sheet's grip**, beside the total, where it
 survives the sheet being pushed down.
 
@@ -329,12 +334,14 @@ back where the simulation left them and never moves them again.
 flowchart LR
   shake["Shake"] --> spec["ThrowSpec"]
   chain["An explosion or a reroll<br/>(ThrowSpec.among)"] --> spec
+  unread["Dice a throw could not read,<br/>thrown by the next shake<br/>(ThrowSpec.among)"] --> spec
   stalled["Dice a throw gave up on<br/>(ThrowSpec.among)"] --> spec
   hand["Dice a finger picked,<br/>thrown by a shake<br/>(ThrowSpec.among)"] --> spec
   spec --> sim["DiceSimulator"]
   sim --> faces["The faces, and where each die stopped"]
   faces --> score["Scoring, which decides no number"]
   faces -.-> chain
+  faces -.-> unread
   faces -.-> hand
 ```
 
@@ -453,8 +460,8 @@ lifted a die out of a pile; take it away and the dice stayed where the shake put
 them. It has been taken away — there is no bias any more — and the dice do now
 stay where the shake puts them. That is no longer treated as a failure: a
 cluster of dice that can all be read is what a sideways shake looks like, and a
-heap that cannot be read is counted, cleared and thrown again rather than
-spread by a hand nobody can see.
+heap that cannot be read is counted and left for the player's shake to throw
+again rather than spread by a hand nobody can see.
 The second is the solver's own error. At 1/120 s a die travelling a metre a
 second crosses half its own width between collision checks, so two dice are
 first seen already deep inside each other and are pushed apart hard. Resolve
@@ -694,9 +701,10 @@ it landed on onto the one it is read from.
 
 Like `RollDiagnostics`, it is **a reading and never an input**: nothing it
 computes reaches the solver, so the same seed comes to the same faces whether
-or not anybody is counting turns. A die thrown again starts again, and a die
-that has been read and lifted off stops counting, so one slow neighbour cannot
-make a throw look worse than it was.
+or not anybody is counting turns. A die that has been read stops counting, so
+one slow neighbour cannot make a throw look worse than it was; a die the player
+throws again is a throw of its own and is counted there. A roll of several
+passes reports its first pass's figure, which threw every die.
 
 **And it is a throw, not a drop.** A die leaves the hand at up to 1100 mm/s
 sideways with 37.5–75 rad/s of spin, from 60 mm above the floor. Those numbers
@@ -1003,8 +1011,8 @@ There are two ways to get this wrong, and the second is worse than the first:
 
 So the rule is: **nothing touches a die that has come to rest.** Everything
 below happens either before the dice are thrown or while they are still
-moving, except the last resort, which is an honest re-throw the player can
-see.
+moving, except the last resort, which is a re-throw the player makes, by
+shaking, and can watch.
 
 All of this is about the dice of a roll. **The dice waiting on the board before
 a throw are not dice of a roll**: no face of theirs is read, so nothing here is
@@ -1025,49 +1033,89 @@ throwing it again").
 
 2. **Counting.** When the dice have stopped, every die that came to rest
    showing a face is **read** — and that reading is its answer for the rest of
-   the roll. Nothing leaves the table yet.
+   the roll. Nothing leaves the table.
 
    A die standing on another one is not counted even when its own face is
    perfectly readable: it is resting on something that is about to be taken
    away, and a reading taken from a die that is about to fall is not a reading
    of anything.
 
-3. **Clearing the table, but only for a throw that needs it.** If that same
-   pass has something left to throw again, every die read so far comes off
-   first — all of it, before a single placement is aimed — and the floor it was
-   standing on is free for the dice that still have to land. If the pass has
-   nothing left to throw, the roll is over and **nothing comes off at all**.
+3. **Stopping, and saying so.** If every die was read, the throw is over.
+   If some could not be — cocked against a wall, on an edge, standing on
+   another die — **the throw stops there too**. Nothing is thrown again by
+   the app: the dice that were read stay read, the ones that could not be
+   lie exactly where they fell, and the screen says how many need another
+   throw and that a shake throws them — on a plate over the tray, in a toast
+   a screen reader announces, and in the tray's own spoken description
+   (`SimulationOutcome.unread`, `RollState.ThrowAgain`; `docs/architecture.md`,
+   decision 70). The player looks at the heap as it lies until they shake.
 
-4. **Throwing the rest again.** Whatever could not be read is picked up and
-   thrown again, visibly, onto a table with more room on it than it had. Then
-   the dice are counted again, and again, until there is nothing left to throw.
-   Each pass reads most of what is on the table, so what remains shrinks fast.
+   This used to throw them again by itself, as often as it took, and the
+   player on the Pixel 10a saw dice go back up into the air with nobody's hand
+   on them. It was an honest re-throw — visible, physical, never a nudge — but
+   it was the app's, and a throw is the player's to make
+   (`docs/architecture.md`, decision 66).
 
-   **Each one is dropped where nothing is standing.** The spot is drawn from
-   the roll's own stream, and kept if it is clear of everything that will be
-   on that floor when the die arrives: the dice the same pass has already
-   thrown again, which have bodies and would start inside it, and the dice of
-   `ThrowSpec.among` from earlier throws of the same chain, which have none
-   and would be fallen straight through. A spot that is not clear is given up
-   for the clearest the tray has — the same answer the die an explosion adds
-   gets. A drop with nothing in the way is the drop that was drawn, so a roll
-   still replays to itself.
+4. **The shake throws those, and only those.** The next shake is a throw of
+   the unread dice in a world of their own — the same path a die an explosion
+   adds takes (`ThrowSpec.among`, `Passes.next`). The dice the last pass read
+   are lifted off the table by that throw, which is the moment they leave the
+   picture: their faces stay in the result, and their floor is the room the
+   throw needs. Dice that were already down before the throw began — a chain's
+   earlier rounds — stay where they are and are carried as `among`, drawn and
+   avoided, with no body in the new world. The shake drives the new dice like
+   any throw, and they are counted again; whatever still cannot be read waits
+   for the shake after that. Each pass reads most of what is on the table, so
+   what remains shrinks fast — at the share measured on the Pixel 10a, a pass
+   leaves under 3 % of its dice.
 
-   **And the lift outlives the throw.** A die lifted in step 3 has left the
+   **Where they are thrown from depends on what is on the table.** With
+   nothing else down, the unread dice are thrown from the spawn grid like any
+   first throw — it *is* a first throw of those dice, and the shake is what
+   throws them. Into a tray that already holds a chain's earlier dice they are
+   dropped into the clearest floor, as an explosion's die is. Either way the
+   placement is drawn from the pass's own seed (`Seeds.again`, the throw's seed
+   and the pass number), so a roll still replays to itself, re-throws and all.
+
+   **And the lift outlives the throw.** A die lifted in step 4 has left the
    table for good, and the floor it stood on may be under the die that was
-   thrown again onto it. So what the throw reports is where the dice *still
-   on the table* stopped and not where the lifted ones did
-   (`SimulationOutcome.restingAt`, which is therefore shorter than `faces`
-   whenever a pass threw something again). A lifted die keeps its face — it is
-   part of the result — but the next throw of the chain is neither drawn over
-   it nor aimed around it. Reporting it was what put two dice in one place
-   when an exploding roll came back for its next die.
+   thrown again onto it. So what a roll reports is where the dice *still on
+   the table* stopped and not where the lifted ones did
+   (`SimulationOutcome.restingAt`, which is empty for a pass that left dice
+   unread and therefore shorter than `faces` for a roll of several passes). A
+   lifted die keeps its face — it is part of the result — but the next throw
+   of a chain is neither drawn over it nor aimed around it.
+
+```mermaid
+flowchart TD
+  throw["A throw<br/>(the first, a chain's round, or a re-throw)"] --> rest["Every die at rest"]
+  rest --> count["Count: each die showing a face is read"]
+  count --> all{"Every die read?"}
+  all -->|yes| done["The throw is over<br/>scored, or a chain earns its next die"]
+  all -->|no| wait["ThrowAgain: the unread dice lie where they fell<br/>plate + toast + spoken tray say how many"]
+  wait -->|"the player shakes"| lift["Lift the dice that were read"]
+  lift --> again["Throw only the unread dice<br/>a world of their own, among the dice still down"]
+  again --> rest
+  wait -->|"type a new formula, or leave the screen"| gone["The roll is abandoned, nothing is recorded"]
+```
 
 **There is no other rung, and that is the point.** Nothing biases a die, nudges
 one, pops a pair apart or places one anywhere. The share of dice needing a
 correction is not a number to tune any more: there is no code in the loop that
 could correct one, so it is zero by construction, and "it does not look like it
 cheats" stops being a separate claim from "it does not cheat".
+
+**The order is fixed: unread dice before a chain.** A throw is scored — and an
+explosion or a reroll earns its next die — only once every die of it has a
+face, so a throw that leaves dice unread asks for them first and the chain
+waits for the shake after. Both cannot be owed at once. A die a chain added
+that lands cocked waits the same way, and comes back as the chain's die rather
+than the plan's.
+
+**The roll is written down once**, when the last die is read: one total, one
+history entry, its re-thrown dice counted in `rethrows`. A die's statistics
+count the face it was read on and nothing else, because a die that landed
+cocked was not read on anything (`docs/statistics.md`).
 
 **Taking a counted die off the table is not moving it.** Its face has been read
 and nothing about it can change again; it is out of play, which is the one
@@ -1080,9 +1128,10 @@ looking at an empty tray with a total floating over it. Most rolls are one or
 two dice that settle on the first pass, so most rolls looked like that, and
 what the app is *for* is watching dice land.
 
-They are two acts now. Every die that can be read is read; only a pass that is
-going to throw something again lifts anything, and then it lifts everything
-read so far at once, before any placement is aimed at the floor it freed.
+They are two acts now, and the second waits for the player: every die that can
+be read is read, and nothing comes off until a shake throws the dice that
+could not be — and then everything read so far comes off at once, before any
+placement is aimed at the floor it freed.
 
 Leaving them is safe precisely because of when counting happens. A die is only
 read once the whole table has settled, so no reading can be knocked out of date
@@ -1093,21 +1142,27 @@ dice out at all: 33 pairs of dice sharing a spot across 8 seeds of 20, the
 worst overlapping by 10.9 mm of a 16 mm die. Every one of those rolls had
 re-throws in it, and every one of them still lifts.
 
-So a roll that settles first time leaves every die where it landed, and a roll
-that had to throw something again shows the dice of its last pass with the
+So a roll that settles first time leaves every die where it landed, a throw
+that left dice unread leaves every die where it landed until the shake, and a
+roll that needed another shake shows the dice of its last pass with the
 total (`docs/TODO.md`, Step 5.5).
 
 **A roll that cannot finish says so, and offers its dice back.** There used to
 be a twelve-second cap that ended a roll by force-settling every die still
 moving and reading it off whatever face it was nearest — a number nobody
-rolled, which is the one thing this app may not produce. A roll now runs until
-its dice have stopped, and a die is thrown again as often as it takes.
+rolled, which is the one thing this app may not produce. A pass now runs until
+its dice have stopped, and a die the player throws again is thrown as often as
+they shake.
 
-What is left of the twelve seconds is a **backstop**, and it is visible rather
-than silent. The dice that could be read are read and taken off the table; the
-screen says how many never settled and offers to throw **those and only those**
-again. A headless run — the harness, where there is no screen to walk away from
-— fails instead of answering, because a roll whose dice never stopped has no
+What is left of the twelve seconds is a **backstop, and it is a pass's**: each
+throw of a roll — the first, every re-throw, every die a chain adds — has its
+own twelve seconds, and the time the roll spends waiting for a shake is no time
+at all to the simulation. When a pass reaches it, the backstop is visible
+rather than silent. The dice that could be read are read; the screen says how
+many never settled and offers to throw **those and only those** again, with the
+same shake that throws a cocked die (the two waits differ only in their words).
+A headless run — the harness, where there is no screen to walk away from —
+fails instead of answering, because a roll whose dice never stopped has no
 faces to report.
 
 It costs nothing at ordinary loads: **2,000 rolls of 20d20 on the Pixel 10a,
@@ -1117,15 +1172,24 @@ limit, a sustained sideways shake — and there it replaces a fabricated answer
 with an honest refusal.
 
 **What it costs is time, and once in a while all of it.** Measured on the
-Pixel 10a over sixteen seeds of twenty dice under a hard sideways shake:
-fifteen resolve in 243 to 709 steps — two to six seconds — with nought to five
-re-throws between twenty dice, none left standing on another, and none read off
-a face it had not landed on. The sixteenth runs the twelve-second cap out
-with **no re-throws at all**, which says where it goes wrong: the dice never
-came to rest, so the roll never reached the point where anything is counted.
-That is a settling problem rather than a counting one, the same family as
-`100d4`, and it is bounded in the device suite at today's worst case so that
-the next change to the shake or the settle rule improves it or is noticed.
+Pixel 10a over sixteen seeds of twenty dice under a hard sideways shake, while
+the roll still threw unread dice again by itself: fifteen resolve in 243 to
+709 steps — two to six seconds — with nought to five re-throws between twenty
+dice, none left standing on another, and none read off a face it had not
+landed on. The sixteenth runs the twelve-second cap out with **no re-throws at
+all**, which says where it goes wrong: the dice never came to rest, so the roll
+never reached the point where anything is counted. That is a settling problem
+rather than a counting one, the same family as `100d4`, and it is bounded in
+the device suite at today's worst case so that the next change to the shake or
+the settle rule improves it or is noticed.
+
+**Headless, a scripted hand shakes.** The harness, the golden suite and every
+device test that wants a whole roll go through `JoltDiceSimulator.run`, which
+follows each pass that leaves dice unread with the throw of those dice at once,
+with no shake in it — exactly the passes and seeds the screen would make, minus
+the wait (`Passes.scripted`). So the harness still measures the share of dice
+that needed another throw, and a die that never comes good gives a headless run
+up after sixteen passes rather than holding it for ever.
 
 ## The dice waiting to be thrown
 
@@ -1300,18 +1364,20 @@ formula with explosions in it replays like any other.
   points rather than a search, so the same tray always gives the same answer and
   a roll replays to itself.
 - **And it is dropped, not thrown.** The same low, gentle, spinning drop a
-  die thrown again is given, for the same reason: a die hurled across the tray is a
-  die that arrives somewhere nobody made room for. The die thrown again is now
-  aimed the same way too — it used to be dropped at a point drawn at random
-  from the whole tray, which is how a re-throw inside an added throw came down
-  through a die that was lying there.
+  die thrown again among dice already down is given, for the same reason: a die
+  hurled across the tray is a die that arrives somewhere nobody made room for.
+  It is the same throw — an unread die of a chain's round is thrown by the next
+  shake through exactly this path, into the clearest floor — and it used to be
+  dropped at a point drawn at random from the whole tray, which is how a
+  re-throw inside an added throw came down through a die that was lying there.
 - **The tray is drawn with them still in it.** The added throw carries the
   settled dice as `ThrowSpec.among`; the renderer puts one renderable per die
   back exactly where the simulation left it and never moves it again. What the
   player sees is the six they rolled, and then a die landing beside it.
-- **And only the ones that are still in it.** A throw that had to throw a die
-  again lifted the dice it had already read, to free the floor for it — so
-  those dice are off the table and their floor may be under the die that came
+- **And only the ones that are still in it.** A throw whose unread dice the
+  player threw again lifted the dice it had already read when that shake came,
+  to free the floor for them — so those dice are off the table and their floor
+  may be under the die that came
   down there. They are not in `among`: they keep their faces and they are not
   drawn back, because drawing a die where another die is standing is the very
   picture this section exists to forbid, and counting their floor as taken
@@ -1344,7 +1410,7 @@ it. It is a *reading* of the roll and never an input to it. Nothing about an
 impact reaches the solver, nothing that decides a roll consults it, and the
 same seed comes to the same faces with something listening and with nothing —
 which `ImpactRecorderTest` asserts rather than assumes, on a roll driven through
-counting, clearing and being thrown again.
+counting and left with dice for the player to throw again.
 
 It is decided in Kotlin over the `PhysicsWorld` seam, like everything else about
 a roll that only looks like physics (`docs/architecture.md`, decision 40).
@@ -2002,6 +2068,7 @@ filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
 | Ready | across the bottom | that a shake rolls, and what the throw is expected to come to |
 | Counting | across the bottom | how far through the reading a roll is, and the range it can still come out in |
 | Another throw earned | across the bottom | a chain that stopped, the shake it wants, and what is still to come |
+| Throw again | across the bottom | how many dice landed where they cannot be read, how many were, that a shake throws them, and what is still to come |
 | Could not settle | across the bottom | how many dice never stopped, what is still to come, and what to do about them |
 
 **There is no plate at all on an empty tray.** `Type a formula, or open Dice
@@ -2133,20 +2200,28 @@ row of figures an eye takes in at a glance is four disconnected fragments read
 aloud, so the plate carries one sentence of its own and merges what is under it
 (`docs/architecture.md`, "Accessibility").
 
-**Two states the prototype did not have live on that same plate, and neither
-of them has a button to press.** *Another throw earned* is a chain that has
+**Three states the prototype did not have live on that same plate, and only
+one of them has a button to press.** *Another throw earned* is a chain that has
 stopped and is one shake short: an accent-700 kicker and a line of copy saying
-how many dice it earned. *Could not settle* is the refusal: an alert icon, an
+how many dice it earned. *Throw again* is a throw that left dice nobody could
+read — cocked, or standing on another — with the same accent-700 kicker and a
+line saying how many, how many of the throw were read, that they stay where
+they lie, and that a shake throws them (decision 70); the tray's spoken
+description says the same. *Could not settle* is the refusal: an alert icon, an
 accent-700 kicker, copy naming how many dice never stopped, and `Cancel the
 roll` — which is a way out rather than a way on, and is the only button left on
-any of these plates. Both are reachable in the prototype through its
-`rollState` tweak, which is the quickest way to see them.
+any of these plates. *Another throw earned* and *Could not settle* are
+reachable in the prototype through its `rollState` tweak, which is the quickest
+way to see them; *Throw again* is not drawn there yet and borrows the earned
+plate's layout (`docs/design-handover.md`, "The shake is the throw").
 
-Neither is a new state. They are `RollState.ShakeAgain` and `RollState.Stalled`
-— which the roll has reached all along, with one line of text between them —
-and what was missing was the drawing.
+*Another throw earned* and *Could not settle* are `RollState.ShakeAgain` and
+`RollState.Stalled` — which the roll had reached all along, with one line of
+text between them — and what was missing was the drawing. *Throw again* is
+`RollState.ThrowAgain`, which is new: a throw used to throw its unread dice
+again itself and never stopped to ask.
 
-**Both carry the range the roll can still come out in**, under a `STILL TO
+**All three carry the range the roll can still come out in**, under a `STILL TO
 COME` kicker and drawn by the same component the counting plate draws it
 with. That is the other half of the range fault: the figures went away the
 moment the dice stopped, so the plate a chain waits on said nothing about the
@@ -2157,7 +2232,7 @@ and by a fresh throw, and by nothing else. The range is the live one,
 tightened by every die already read, rather than the formula's pre-throw
 ends.
 
-**Both wait for the same shake.** The plates used to carry `Throw 3 more` and
+**All three wait for the same shake.** The plates used to carry `Throw 3 more` and
 `Throw those 3 again`, and both are gone with the Roll button: a throw is a
 throw whether it is the first of a roll or the last, and a button that made
 one was a button that made the shake optional. What is drawn instead is the
@@ -2172,11 +2247,12 @@ need a reason a chain ended that is not the tray's, and rather than invent one
 the option was deleted: a chain that has earned a throw is finished by
 throwing it.
 
-**A stalled roll that comes back keeps what it already read.** The dice that
-settled are not thrown again — throwing them would throw away answers the roll
-already has — so only the unsettled ones go back in the air, and their faces
-return to the plan indices they were thrown for. A throw that gives up reports
-no outcome at all, so the faces read before it gave up are carried across
+**A roll that comes back keeps what it already read** — a stalled one and one
+that left dice unread alike. The dice that were read are not thrown again —
+throwing them would throw away answers the roll already has — so only the
+others go back in the air, and their faces return to the dice they were thrown
+for: the plan's, or a chain's (`Passes`). A throw that gives up reports no
+outcome at all, so the faces read before it gave up are carried across
 separately (`RollMachine.gaveUp`); in power-saving mode, where there are no
 frames to pace a running readout, that one report is the only time the tray
 says what it counted.
@@ -2260,8 +2336,12 @@ replays it — and it is still one world, so the capacity rule is unchanged.
   table; this stands **instead of** it, which is why it fills the space the
   tray would and carries the tray's own grey rather than the page's colour.
 - The simulation runs on a worker thread as fast as possible, still at
-  the same fixed timestep, still with the same seed, settle rules and
-  re-throws. Typical roll finishes in well under 100 ms of wall time.
+  the same fixed timestep, still with the same seed and settle rules. Typical
+  roll finishes in well under 100 ms of wall time.
+- **A throw that leaves dice unread waits here too.** There is no tray to look
+  at, so the plate and the toast are the whole of what the player is told,
+  and the shake is the whole of what they do: it throws those dice, on the
+  same worker, and the roll goes on. Nothing about the wait needs a frame.
 - **It is not paced, and it cannot be.** `RollPace` exists so a player can
   watch the dice land, and there is nothing here to watch. `PowerSavingTray`
   asks for a fixed helping of *simulated* time rather than measuring a frame,
@@ -2323,8 +2403,9 @@ frame:
 
 - the step the roll is on, and how many dice have come to rest;
 - how many dice have been counted — read, which is not the same as taken off
-  the table — how many have been thrown again, and how many contacts have been
-  recorded;
+  the table — how many have been thrown again (always nought within one throw:
+  a die is thrown again by the player's next shake, in a throw of its own), and
+  how many contacts have been recorded;
 - a **plan of the tray** with one footprint per die — its collision size at the
   scale the capacity rule threw it — filled in proportion to that die's **rest
   timer**, coloured differently for a die standing on another, and dotted where

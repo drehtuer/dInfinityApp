@@ -16,13 +16,15 @@ This is a snapshot, not a changelog — git history is the changelog.
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
 - **Latest release:** `v0.1.1`, signed and published with its SHA-256.
-- **`main` is at #335** — a shake is the only way to start a roll (decision
-  66), and the dice waiting to be thrown drop under real Jolt physics, worked
-  out on a board thread and played back (decision 67, superseding 64). **In
-  flight:** `docs/shake-throws-the-picked-die` — the hand re-throw is picked by
-  a finger and thrown by a shake (decision 68); `feature/drop-from-one-spot` —
+- **`main` is at #336** — a shake is the only way to start a roll (decision
+  66), the dice waiting to be thrown drop under real Jolt physics (decision
+  67), and a die picked by finger will be thrown by a shake (decision 68,
+  decided, not built). **In flight, stacked:** `feature/drop-from-one-spot` —
   added dice leave one spot over the middle of the tray a tenth of a second
-  apart, so the eye can follow them (decision 69; device suite not yet run).
+  apart, so the eye can follow them (decision 69); then
+  `feature/shake-rethrows-stuck-dice` — a die that lands cocked or on another
+  is no longer thrown again by the roll: it waits where it lies and the
+  player's next shake throws it (decision 70).
 
 ## Done
 
@@ -68,8 +70,9 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
   the cause: 5.04 mm before, 5.29 mm after. Next is four or eight collision
   sub-steps against the current throw (Step 5.4).
 - **The re-throw bar measures a mechanism that no longer exists.** 2.65 %
-  against 0.05 %; re-throwing *is* the mechanism now, so the bar needs
-  re-deciding rather than hitting (Step 5.5).
+  against 0.05 %; since decision 70 it is the share of dice a player is asked
+  to shake for again, so the bar needs re-deciding rather than hitting
+  (Step 5.5).
 - **`100d4` does not reliably settle**, nor does one throw in sixteen under a
   hard sideways shake: both can run out the twelve-second cap, where the roll
   gives up rather than invent an answer (#319 stopped it taking the app with

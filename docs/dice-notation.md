@@ -106,7 +106,13 @@ capacity check happens before any body is created and the UI explains it
 3. Run the table capacity check on the total die count (including the dice
    that a first explosion could add). Refuse with a message if it fails.
 4. All dice from all groups go into **one** physics throw. The breakdown
-   attributes each physical die back to its group.
+   attributes each physical die back to its group. A die that comes to rest
+   where it cannot be read — cocked, or standing on another — has no face yet:
+   it waits where it lies for the player's next shake, which throws it again,
+   and nothing below happens until every die of the throw has a face
+   (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice"). So
+   an explosion is never decided, and a chain never asks for its shake, while a
+   die of the throw is still unread.
 5. Exploding and re-rolled dice: each extra die is a throw of its own, made
    once the last one has come to rest, into the same tray. It drops into the
    clear floor the settled dice leave, among the dice that set it off, and the

@@ -72,6 +72,21 @@ object Seeds {
   ): Long = stir(seed xor (nth.toLong() shl EXTRA_SHIFT) xor EXTRA)
 
   /**
+   * The seed of the [pass]th throw of the dice a throw seeded [seed] could not
+   * read — the throw the player's next shake makes ([Passes]).
+   *
+   * Its own purpose rather than [derived]'s, because both count from one and
+   * a roll can need both: the first explosion of `8d6!` and the first
+   * re-throw of the same throw would otherwise be thrown by one stream. Keyed
+   * by the throw rather than the roll, so a throw replays its re-throws the
+   * same way whether it was the roll's first throw or a die a chain added.
+   */
+  fun again(
+    seed: Long,
+    pass: Int,
+  ): Long = stir(seed xor (pass.toLong() shl EXTRA_SHIFT) xor AGAIN)
+
+  /**
    * SplitMix64's finaliser: a bijection on 64 bits that spreads a change in
    * any one of them across all of them.
    *
@@ -116,6 +131,9 @@ object Seeds {
 
   /** And an extra throw's, which is a seed rather than a stream. */
   private const val EXTRA: Long = 0x45_58_54_52_41
+
+  /** And a throw of the dice a pass could not read, also a seed. */
+  private const val AGAIN: Long = 0x41_47_41_49_4E
 
   private const val DIE_SHIFT = 32
   private const val EXTRA_SHIFT = 40

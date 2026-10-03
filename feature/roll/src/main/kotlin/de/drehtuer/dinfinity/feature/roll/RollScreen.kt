@@ -309,10 +309,11 @@ private fun TheResult(
  * The notice that the roll is waiting to be shaken
  * (`ui/common`'s `ModernistToast`).
  *
- * Two states reach it and they mean different things: dice that never settled
- * are dice to *throw again*, and an exploding chain's are dice the roll has
- * *earned*. Both wait for the same hand, so both say how many — a player who
- * shakes and sees two dice go up wants to have been told it would be two.
+ * Three states reach it and they mean two different things: dice that landed
+ * where they cannot be read and dice that never settled are dice to *throw
+ * again*, and an exploding chain's are dice the roll has *earned*. All of them
+ * wait for the same hand, so all of them say how many — a player who shakes and
+ * sees two dice go up wants to have been told it would be two.
  *
  * The toast takes itself away after 2.6 s while the state it announced is
  * still there; that is the point. The plate under it is the thing that stays,
@@ -343,7 +344,7 @@ private fun WaitingForAShake(
       ModernistToast(
         text =
           pluralStringResource(
-            if (waiting.stalled) R.plurals.roll_toast_stalled else R.plurals.roll_toast_earned,
+            if (waiting.again) R.plurals.roll_toast_again else R.plurals.roll_toast_earned,
             waiting.count,
             waiting.count,
           ),
@@ -407,15 +408,19 @@ private fun rememberEdges(landed: Boolean): Edges {
  */
 internal data class Awaiting(
   val count: Int,
-  /** True for dice a roll gave up on, false for dice a chain earned. */
-  val stalled: Boolean,
+  /**
+   * True for dice being thrown again — ones nobody could read, or ones a roll
+   * gave up on — and false for dice a chain earned.
+   */
+  val again: Boolean,
 )
 
 /** Null for every state that is not waiting on a hand. */
 internal fun RollState.awaiting(): Awaiting? =
   when (this) {
-    is RollState.Stalled -> Awaiting(count = unsettled, stalled = true)
-    is RollState.ShakeAgain -> Awaiting(count = waiting, stalled = false)
+    is RollState.ThrowAgain -> Awaiting(count = unread, again = true)
+    is RollState.Stalled -> Awaiting(count = unsettled, again = true)
+    is RollState.ShakeAgain -> Awaiting(count = waiting, again = false)
     else -> null
   }
 
@@ -740,6 +745,11 @@ private fun Outcome(
     // (`docs/dice-notation.md`, "Evaluation").
     is RollState.ShakeAgain -> EarnedPlate(waiting = state.waiting, range = progress?.range)
 
+    // Dice that landed cocked or on another die are not thrown again by the
+    // app: they lie where they fell and the next shake throws them, so the
+    // screen says how many and asks (decision 70).
+    is RollState.ThrowAgain -> UnreadPlate(unread = state.unread, read = state.read, range = progress?.range)
+
     // While the dice are in the air the dice are not what to look at: each one
     // is read and taken off the table as it lands, so this is what is left to
     // follow (`docs/TODO.md`, Step 5.5).
@@ -794,6 +804,7 @@ private fun TrayReading.spoken(): String =
     is TrayReading.Ready -> pluralStringResource(R.plurals.roll_tray_ready, dice, dice)
     is TrayReading.Rolling -> pluralStringResource(R.plurals.roll_tray_rolling, dice, dice)
     is TrayReading.ShakeAgain -> pluralStringResource(R.plurals.roll_tray_shake_again, dice, dice)
+    is TrayReading.ThrowAgain -> pluralStringResource(R.plurals.roll_tray_throw_again, dice, dice)
     is TrayReading.Stalled -> pluralStringResource(R.plurals.roll_tray_stalled, dice, dice)
     is TrayReading.Settled -> stringResource(R.string.roll_tray_settled, total)
   }
@@ -874,6 +885,9 @@ object RollTestTags {
   /** A roll that gave up, and the one way out of it that is not a shake. */
   const val STALLED: String = "roll:stalled"
   const val STALLED_CANCEL: String = "roll:stalled:cancel"
+
+  /** Dice that landed where they cannot be read, waiting for a shake (decision 70). */
+  const val THROW_AGAIN: String = "roll:throw-again"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = FormulaTestTags.ERROR
 

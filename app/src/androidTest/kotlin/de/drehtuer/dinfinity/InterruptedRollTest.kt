@@ -74,7 +74,7 @@ class InterruptedRollTest {
 
     // Not "the screen came back" — the dice have to have come to rest. A roll
     // that stopped being stepped sits on "Rolling…" and this is what says so.
-    compose.waitUntil(SETTLE) { landed() }
+    landEveryDie()
     resolved()
   }
 
@@ -97,6 +97,11 @@ class InterruptedRollTest {
     // need the frames that resuming brings before it could say anything else.
     compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
     compose.waitForIdle()
+    compose.onNodeWithTag(RollTestTags.ROLLING).assertDoesNotExist()
+    // A throw that stopped on a die it could not read did land while the app
+    // was away: it is waiting for the player's shake, not for frames. The rest
+    // of the dice are the player's to throw.
+    if (waitingForAShake()) landEveryDie()
     resolved()
   }
 
@@ -113,7 +118,7 @@ class InterruptedRollTest {
       compose.activityRule.scenario.moveToState(Lifecycle.State.RESUMED)
     }
 
-    compose.waitUntil(SETTLE) { landed() }
+    landEveryDie()
     compose.onNodeWithTag(RollTestTags.TRAY).assertIsDisplayed()
     resolved()
   }
@@ -189,6 +194,27 @@ class InterruptedRollTest {
   /** Whether the dice have come to rest and a total is on the screen. */
   private fun landed(): Boolean = showing(RollTestTags.TOTAL)
 
+  /**
+   * Whether the throw stopped with dice it could not read, waiting for a
+   * shake to throw them (`docs/architecture.md`, decision 70).
+   */
+  private fun waitingForAShake(): Boolean = showing(RollTestTags.THROW_AGAIN)
+
+  /**
+   * Waits for the roll to come to a total, shaking again — as a player would —
+   * whenever a throw stops with a die it could not read. Twenty dice land
+   * cocked or on one another often enough that a test which only waited would
+   * pass or time out on the dice rather than on the app.
+   */
+  private fun landEveryDie() {
+    repeat(MOST_SHAKES) {
+      compose.waitUntil(SETTLE) { landed() || waitingForAShake() }
+      if (landed()) return
+      shake()
+    }
+    compose.waitUntil(SETTLE) { landed() }
+  }
+
   private fun hasTag(tag: String) =
     androidx.compose.ui.test.SemanticsMatcher.expectValue(
       androidx.compose.ui.semantics.SemanticsProperties.TestTag,
@@ -206,5 +232,8 @@ class InterruptedRollTest {
     const val SETTLE = 20_000L
 
     const val THREE = 3
+
+    /** More shakes than twenty dice have ever needed to all be read. */
+    const val MOST_SHAKES = 8
   }
 }

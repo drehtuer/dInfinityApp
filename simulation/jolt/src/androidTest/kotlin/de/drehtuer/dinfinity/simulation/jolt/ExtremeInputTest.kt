@@ -176,7 +176,7 @@ class ExtremeInputTest {
           world.addDie(ShapeGeometry.hullOf(die, spec.dieScale), die.material, layout.placementOf(index, dice.size))
         }
         world.finish()
-        RollLoop(spec, world, layout, ShakeDriver(shake)).runOrGiveUp()
+        RollLoop(spec, world, ShakeDriver(shake)).runOrGiveUp()
         world.readStates()
       }
     return states to outcome?.faces.orEmpty()

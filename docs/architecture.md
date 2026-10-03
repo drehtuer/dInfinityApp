@@ -423,6 +423,7 @@ stateDiagram-v2
     Ready: Ready<br/>diceCount, scale
     Rolling: Rolling<br/>dice in the air
     ShakeAgain: ShakeAgain<br/>a chain earned throws
+    ThrowAgain: ThrowAgain<br/>dice nobody could read
     Stalled: Stalled<br/>dice that never stopped
     Settled: Settled<br/>result, divides
 
@@ -444,6 +445,7 @@ stateDiagram-v2
 
     Rolling --> Rolling: an explosion or a reroll adds a die<br/>(thrown once the last has landed)
     Rolling --> ShakeAgain: a chain earned a throw
+    Rolling --> ThrowAgain: dice came to rest cocked or stacked
     Rolling --> Stalled: the roll gave up on some dice
     Rolling --> Settled: the last die comes to rest
     Rolling --> Ready: type<br/>(abandons the throw)
@@ -453,6 +455,8 @@ stateDiagram-v2
 
     ShakeAgain --> Rolling: a shake<br/>(throws the dice it earned)
     ShakeAgain --> Ready: type<br/>(abandons the roll)
+    ThrowAgain --> Rolling: a shake<br/>(throws only the unread dice)
+    ThrowAgain --> Ready: type<br/>(abandons the roll)
     Stalled --> Rolling: a shake<br/>(throws the ones that never stopped)
     Stalled --> Ready: Cancel the roll, or type
 
@@ -472,6 +476,19 @@ screen goes on saying "Rolling…" while each added die is dropped into the tray
 among the dice that set it off (`docs/physics-and-rendering.md`, "The dice an
 explosion or a reroll adds"). Every one of those throws is an ordinary throw
 down the ordinary path; there is no second way to get a number.
+
+**`ThrowAgain` comes before `ShakeAgain`, never beside it.** A throw that
+leaves dice it cannot read — cocked, or standing on another die — stops and
+asks for a shake rather than throwing them again itself (decision 70). Its
+dice are scored only once every one of them has a face, and a chain earns its
+next die only when a throw is scored, so the two waits cannot be owed at once:
+the unread dice are thrown first, and the chain asks for the shake after. The
+bookkeeping is `simulation/api`'s `Passes` — which die of the throw each die of
+a later pass is, the throw a shake makes for the unread ones, and the one
+outcome they add up to — and the machine keeps one per throw, so a die a chain
+added that lands cocked comes back as the chain's. A throw that gave up waits
+in the same way (`Stalled`) and is thrown by the same call; only the words
+differ.
 
 **A die falling onto the board is not a state.** Adding a die to the formula
 drops one onto the table and it tumbles to a stop under real physics, which
@@ -508,6 +525,7 @@ file.
 | `Ready` | — | that a shake rolls, and what the throw is expected to come to | — | **throws the formula** | live |
 | `Rolling` | — | how many dice have been read, and the range they can still come to | — | joins the roll in the air | live |
 | `ShakeAgain` | — | how many dice the chain earned, and what is still to come | — | **throws them** | live |
+| `ThrowAgain` | — | how many dice landed where they cannot be read, how many were read, and what is still to come | — | **throws those again, and only those** | live |
 | `Stalled` | — | how many never stopped, what is still to come, and `Cancel the roll` | — | **throws them again** | live |
 | `Settled` | the total, in the sheet's grip | — | the grip carries the total and what the throw was expected to come to; the body carries the breakdown and rounding if the formula divides | **throws the formula again** | live |
 
@@ -1764,7 +1782,9 @@ flowchart TD
     C -->|fits| T["ThrowSpec<br/>dice, dieScale, seed, table,<br/>initial impulse (shake or default)"]
     T -->|"DiceSimulator.start / run"| L["LiveRoll<br/>one fixed step at a time"]
     L -->|"every step, while shaking"| L
-    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows,<br/>where each die came to rest"]
+    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows,<br/>where each die came to rest,<br/>the dice it could not read"]
+    S -->|"dice left unread:<br/>wait for a shake"| U["Passes.next<br/>only those dice, a seed of their own,<br/>among: the dice already down"]
+    U -->|"thrown by the next shake"| L
     L --> D["drivenBy<br/>the shake as it actually arrived"]
     L -.->|body transforms, optional| V[Renderer]
     L -.->|"impacts, optional"| I["Impacts<br/>ticks and sounds, now or over ~1 s"]
@@ -1789,6 +1809,16 @@ method that returns anything and `Impacts` has none either, so drawing a roll
 and hearing one are alike in being unable to change it (decisions 48 and 52).
 The impacts are recorded only when something is going to play them, which is
 what the two feedback settings decide when the screen opens.
+
+The loop through `Passes.next` is a throw that left dice it could not read.
+The throw stops and the roll waits on the screen's thread for a shake — no
+world is open and no step is taken while it waits, so the twelve-second
+backstop is a pass's and a roll can wait as long as the player likes. The
+shake throws the unread dice, and only those, through the same `Rolls.start`
+every throw takes; the dice the last pass read are lifted by that throw rather
+than drawn among it. Headless callers have no shake to wait for, so
+`JoltDiceSimulator.run` follows each such pass with the next at once
+(`Passes.scripted`) — the same passes and seeds, minus the wait (decision 70).
 
 The loop through `One more ThrowSpec` is an explosion or a reroll. A roll is
 not always one throw, and how many it is cannot be known before the dice land,
@@ -1918,7 +1948,7 @@ the archives an install is working through, and those came from a stranger.
 | 15 | Saved-roll import refuses a duplicate group name instead of merging | No conflict UI to get wrong, and an import can never damage existing rolls |
 | 16 | Power-saving is manual only | A roll that silently stops rendering because the battery dipped is a surprise |
 | 17 | `minSdk` 36, `compileSdk`/`targetSdk` 37 | Robolectric cannot start API 37 and cannot run below `minSdk`; a `minSdk` of 37 would cost the whole Robolectric test tier for one API level of reach |
-| 18 | Nothing touches a die at rest: prevention, then corrections while a die is still moving, then a visible re-throw of that one die | A settled die that twitches shows the player the result being arranged rather than rolled — worse than the stacked die it fixes. Re-throwing a cocked die is fair, and it is what a player does at a real table |
+| 18 | Nothing touches a die at rest: prevention, then corrections while a die is still moving, then a visible re-throw of that one die (made by the player's shake since decision 70) | A settled die that twitches shows the player the result being arranged rather than rolled — worse than the stacked die it fixes. Re-throwing a cocked die is fair, and it is what a player does at a real table |
 | 19 | The verdict on an instrumented run comes from its JUnit XML, not from AGP's own pass/fail | AGP 9.4.0 cannot pass a run on a device whose adb serial contains a colon — which is every device attached over WiFi debugging — so its verdict is unusable here (`docs/build-setup.md`) |
 | 20 | Release APKs are signed v2+v3, not v1 or v4 | v3 carries the proof-of-rotation record, so a lost or compromised release key can be replaced without breaking updates for anyone who already installed the app; v1 is unread above API 24 and v4 only speeds up incremental `adb install` |
 | 21 | The submitted dependency graph covers the runtime classpaths only | A graph of every configuration also carries the build's own toolchain, producing vulnerability alerts for transitives no file in this repository declares and that Dependabot therefore cannot patch; build-tool advisories ride in on the weekly AGP and Kotlin bumps instead |
@@ -1970,3 +2000,4 @@ the archives an install is working through, and those came from a stranger.
 | 67 | The dice waiting to be thrown drop under **real physics**, simulated once off the roll thread and played back; this supersedes decision 64 | The scripted fall of decision 64 still put every die in a laid-out spot, square on, and a player said what that looks like: dice set out with equal space, not dropped. Only a simulation makes a die come down somewhere, tumble and knock its neighbour. What decision 64 feared is kept out by structure instead of by refusing the engine: `BoardSettler` returns a `BoardTrack`, which is poses and nothing else, the board code never touches `FaceReader`, nothing on the board is scored, and the next shake throws every die from its own spawn exactly as before — so the golden fixture and every throw are unchanged. The board's numbers come from `Seeds.waiting(board, die)` under `Seeds.WAITING`, a purpose no throw uses. Each board change opens a short-lived headless Jolt world on a per-visit board thread, steps it to rest (or three seconds), records every pose and closes the world before returning, so no world outlives the call and none is shared with a roll; playback is arithmetic over the recording, frame-rate independent, and wants frames only while it plays. A board die nothing touched is recorded exactly where it stood, which is a drawing decision, not a force. The sequencing — numbered requests built from what is on screen, stale drops dropped, a throw cancelling the pending board — lives in `TrayLoop` and `TrayRenderer`, so it is tested on a JVM; the drop itself (`settleOn`) is plain Kotlin over `PhysicsWorld` and tested against a fake world, and the device suite measures what a real one does (`docs/physics-and-rendering.md`, "The dice waiting to be thrown") |
 | 68 | **A die picked up by hand is thrown by a shake.** A finger on a die only marks it picked; the next shake throws the picked dice, and nothing else, through `ThrowSpec.among` | The owner's call: "only the shake throws the die". A finger that threw would be the one throw no shake started, an exception to decision 66 in the one place a player is most tempted to throw on a whim. Picking with the finger keeps the gesture the camera leaves free (one finger, unclaimed) and keeps every throw a hand moving the phone; a shake with nothing picked throws the whole roll again, as it always has. How a picked die is drawn and how a pick is undone are left to the change that wires it (`docs/TODO.md`, 4.1) |
 | 69 | **Dice added to the board leave one spot, one after another.** Every new die is let go over the middle of the tray (`BoardDrops.DROP_SPOT`, within 1.5 mm), and several added at once are let go 0.1 s apart (`DROP_INTERVAL_SECONDS`, at most 4 s for the whole stream), inside the one precomputed board world: a die is a body from the start, parked under the tray until its step, then put over the spot once with `respawn` and drawn from that step on (`BoardTrack.inPlay`, `Stage.put`) | A player said random spots made the added dice hard to keep track of. One spot is what the eye can follow, and a stream from it spreads out by bouncing off what is already down, which is physics (decision 67). Parking rather than adding a body mid-run keeps the native bridge as it is — `nativeAddDie` before `nativeFinish`, `nativeRespawn` already there — so no bridge change needs a device to prove it; the drop stays one deterministic recording and the renderer keeps playing arithmetic over it. A column of dice stacked over the spot was the other cheap way to stagger arrivals, and the 200 mm lid would have cut it at a handful. Where a die starts is decided at its step against the dice in play then, in three dimensions, lifted over anything in the way — a die is never skipped, and only goes elsewhere (`CrowdedFloor.spot`) when the lift would reach the lid. The board's cap counts from the last die let go (`MOST_BOARD_STEPS`), and `LONGEST_STREAM_SECONDS` keeps a hundred dice from being a ten-second wait and a ten-second simulation before anything moves (`docs/physics-and-rendering.md`, "The dice waiting to be thrown") |
+| 70 | **Dice that cannot be read wait for the player's shake.** A throw that leaves dice cocked or standing on another stops: the read dice stay read, the unread ones lie where they fell, and the next shake throws those and only those, through `ThrowSpec.among`; the 12-second backstop is per pass | The owner's call, from the Pixel 10a: "the re-roll of stuck dice still happens automatically, but should be initiated by the user's shake event." The automatic re-throw was honest — visible, physical, never a nudge — but it put dice in the air that no hand had thrown, which is decision 66's rule broken by the app rather than by a button. The re-throw is therefore the throw an explosion already makes: a world of its own, seeded from the throw's seed and the pass number (`Seeds.again`, a purpose of its own so it never shares a stream with an explosion), with the dice still down carried as `among` and the dice the last pass read lifted by the throw rather than before it — so the player looks at the heap as it lies until they shake. The bookkeeping is one plain-Kotlin class in `simulation/api`, `Passes`, shared by the roll screen and by every headless caller, which follows each pass at once with no shake (`Passes.scripted`, at most 16 passes) — so the harness still measures the share of dice that needed another throw, and the golden cases, none of which re-throws, did not move. A throw that leaves dice unread is scored, and a chain earns its next die, only once every die has a face, which orders the two waits without a rule of its own. The cost: a cocked die is a second shake, at about 3 % of dice on the Pixel 10a; the overlay's re-throw count is nought within a throw; and `SpawnLayout.rethrowPlacement` and `PhysicsWorld.respawn`/`remove` have no caller left in a roll |

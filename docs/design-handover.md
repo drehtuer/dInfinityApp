@@ -198,8 +198,17 @@ is left in the script, unreferenced, rather than unpicked by hand.
   has no equivalent and has just lost a button from that action row.
 - **A toast that says how many dice a shake will throw.** It is the
   back-arming toast's component, over the tray, raised when a chain earns a
-  throw and when a roll gives up. The prototype has the component and does not
-  raise it here.
+  throw, when a throw leaves dice nobody could read, and when a roll gives up.
+  The prototype has the component and does not raise it here.
+- **A plate for dice that landed where they cannot be read.** A throw no
+  longer throws its cocked or stacked dice again by itself: it stops, the dice
+  lie where they fell, and a `THROW AGAIN` plate says how many, how many of
+  the throw were read, and that a shake throws them (decision 70,
+  `docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice"). The
+  app draws it on the earned plate's layout — an accent-700 kicker, a line of
+  copy, the `STILL TO COME` range — and the prototype has no such state; its
+  `rollState` tweak wants a fifth value for it. Should the dice that are
+  waiting be marked on the tray, the way the design marks last-pass dice?
 - **The prototype's tray tap is not the app's.** Tapping the tray in the app
   does *not* roll, and that is decided rather than pending
   (`docs/architecture.md`, decision 66) — the gesture is kept for picking a

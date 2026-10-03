@@ -119,6 +119,35 @@ class ThrowSpecTest {
   }
 
   @Test
+  fun `an outcome with dice left unread counts them as thrown and is not complete`() {
+    // A throw that leaves a die cocked is not a throw of fewer dice: the die
+    // is there, waiting for the player's shake (decision 70).
+    val outcome = SimulationOutcome(faces = mapOf(0 to 1), unread = listOf(1), stackedAtRest = 1)
+
+    assertEquals(2, outcome.diceCount)
+    assertFalse(outcome.complete)
+    assertTrue(SimulationOutcome(faces = mapOf(0 to 1)).complete)
+  }
+
+  @Test
+  fun `a die cannot be read and unread at once`() {
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), unread = listOf(0))
+    }
+  }
+
+  @Test
+  fun `the cap is a pass's, so an outcome of several passes may run past one`() {
+    val twice = SimulationOutcome(faces = mapOf(0 to 1), steps = SettleRule.HARD_CAP_STEPS + 1, passes = 2)
+
+    assertEquals(2, twice.passes)
+    assertFailsWith<IllegalArgumentException> {
+      SimulationOutcome(faces = mapOf(0 to 1), steps = SettleRule.HARD_CAP_STEPS * 2 + 1, passes = 2)
+    }
+    assertFailsWith<IllegalArgumentException> { SimulationOutcome(faces = mapOf(0 to 1), passes = 0) }
+  }
+
+  @Test
   fun `more dice cannot be stacked than were thrown`() {
     assertFailsWith<IllegalArgumentException> {
       SimulationOutcome(faces = mapOf(0 to 1), stackedAtRest = 2)

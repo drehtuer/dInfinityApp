@@ -15,12 +15,17 @@ import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Tumble
-import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
- * One roll, from the first step to the reading — the correction ladder made
- * into a loop (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked
- * dice").
+ * One throw, from the first step to the reading
+ * (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
+ *
+ * **One pass, and never more.** When the dice have stopped, every die that can
+ * be read is read and the throw is over. A die that came to rest cocked or
+ * standing on another is reported [SimulationOutcome.unread] and left exactly
+ * where it lies: the loop does not throw it again, because a throw is
+ * something the player's hand does. The next shake throws those dice in a
+ * world of their own ([de.drehtuer.dinfinity.simulation.api.Passes]).
  *
  * It is a loop over a [PhysicsWorld] and nothing more, so the engine
  * underneath can be Jolt on a phone or a fake on the JVM, and the rules below
@@ -37,7 +42,6 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
 class RollLoop(
   private val spec: ThrowSpec,
   private val world: PhysicsWorld,
-  private val layout: SpawnLayout,
   private val shake: ShakeDriver,
   /**
    * What writes down where the dice hit something.
@@ -52,29 +56,16 @@ class RollLoop(
 ) {
   private val diceCount = spec.dice.size
   private val tracker = RestTracker(diceCount)
-  private val rethrowCount = IntArray(diceCount)
   private val forced = BooleanArray(diceCount)
 
   /** Which dice have been read. */
   private val counted = BooleanArray(diceCount)
-
-  /**
-   * Which dice have been taken off the table, which is not the same list.
-   *
-   * A die is read when the table has settled and lifted off only when that
-   * same pass is about to throw something again — so a roll that needed no
-   * re-throw lifts nothing and leaves every die where it landed
-   * ([countAndClear]).
-   */
-  private val lifted = BooleanArray(diceCount)
 
   /** The face each counted die came to rest on, kept as it is counted. */
   private val countedFace = IntArray(diceCount) { NOT_YET }
 
   /** And where it was standing when it was, which the next throw is aimed around. */
   private val countedAt = arrayOfNulls<RestingPlace>(diceCount)
-
-  private var rethrows = 0
 
   /**
    * How far each die turns once it is on the table.
@@ -176,21 +167,16 @@ class RollLoop(
   /** The dice that never came to rest and were never read. */
   val unsettled: List<Int> get() = counted.indices.filterNot { counted[it] }
 
-  /** Which dice have been read, by index. */
-  val countedOut: List<Boolean> get() = counted.toList()
-
   /**
-   * Which dice have been taken off the table, by index.
+   * Which dice have been read, by index.
    *
-   * What a renderer needs in order to stop drawing them, and it is a shorter
-   * list than [countedOut]. A lifted die is out of play and the floor it stood
-   * on is free, so a die thrown afterwards may land exactly there and drawing
-   * both would be two dice in one place. Nothing is lifted unless something is
-   * about to be thrown again, so a roll that settled first time keeps every
-   * die on the table for the player to look at
+   * Read, not taken away: every die stays on the table and in the picture
+   * until the throw is over, and after it. The dice of a throw that left some
+   * unread come off only when the player's shake throws the rest, and that is
+   * a new throw's picture rather than anything this loop does to its world
    * (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
    */
-  val liftedOut: List<Boolean> get() = lifted.toList()
+  val countedOut: List<Boolean> get() = counted.toList()
 
   /**
    * The faces read so far, by die index.
@@ -234,11 +220,13 @@ class RollLoop(
             touchingWall = state.touchingWall,
             supportedByDie = state.supportedByDie,
             countedOut = counted[index],
-            rethrows = rethrowCount[index],
+            // Nought, and by construction: a loop throws once. A die thrown
+            // again is thrown by the next shake, in the next loop.
+            rethrows = 0,
           )
         },
       corrections = 0,
-      rethrows = rethrows,
+      rethrows = 0,
       forcedSettles = forced.count { it },
       postRestCorrections = 0,
       contacts = recentContacts,
@@ -311,11 +299,10 @@ class RollLoop(
    * Moves the roll on by the smallest amount it moves by, and says whether
    * there is anything left to do.
    *
-   * Usually that is one fixed step. Once every die is at rest it is instead
-   * the end of a settle phase, where a die that finished cocked or stacked is
-   * thrown again (rung 3) and the roll goes round once more — which takes no
-   * simulated time, so [stepsTaken] does not move and a caller drawing the
-   * result can tell the two apart.
+   * That is one fixed step, or — once every die is at rest — the reading of
+   * the dice, which ends the throw whatever it found. A die that finished
+   * cocked or stacked ends it as well: it is reported unread and waits for a
+   * hand ([closeOut]).
    *
    * Splitting the roll this way is what lets it be stepped from a frame clock
    * ([de.drehtuer.dinfinity.simulation.api.FrameClock]) without changing it:
@@ -335,7 +322,7 @@ class RollLoop(
     // very step is allowed to — and the backstop second, because a hand holds a
     // roll open for as long as it shakes, which is what a shake is for, but not
     // for ever and not past what `SimulationOutcome` will describe.
-    if (diceCount == 0 || nothingLeftToStep()) return closeOutOrRethrow()
+    if (diceCount == 0 || nothingLeftToStep()) return closeOut()
     if (outOfTime) return giveUp()
 
     val step = tracker.stepsTaken
@@ -368,7 +355,7 @@ class RollLoop(
    * whoever is watching (`docs/physics-and-rendering.md`).
    */
   private fun giveUp(): Boolean {
-    countAndClear(states, throwTheRest = false)
+    count(states)
     stalled = true
     return false
   }
@@ -391,50 +378,54 @@ class RollLoop(
   private fun nothingLeftToStep(): Boolean = tracker.finished() && !shake.stillShaking(tracker.stepsTaken)
 
   /**
-   * The end of a settle phase: either the roll is over, or dice have to be
-   * thrown again and there is another phase to come.
+   * The end of the throw: every die is at rest, so every die that can be read
+   * is read, and the rest are reported for the player's next shake.
    *
-   * A die is thrown again as often as it takes. There used to be a budget of
-   * three, sized for a table with every other die still on it; a die thrown
-   * again now lands on a table the counted dice have left, so the budget was
-   * rationing the only dice that still needed the room.
+   * **This is where the roll used to throw them again by itself**, as often as
+   * it took, lifting the dice it had read to make room. The player saw dice
+   * leave the table and others go back up into the air with nobody's hand on
+   * them — an honest re-throw, but the app's. It stops here instead, and the
+   * dice that could not be read stay where they lie until a shake throws them
+   * (`docs/architecture.md`, decision 70). Always false: there is nothing
+   * left for this loop to step.
    */
-  private fun closeOutOrRethrow(): Boolean {
-    if (countAndClear(states)) {
-      states = world.readStates()
-      return true
-    }
+  private fun closeOut(): Boolean {
+    val unread = count(states)
+    val again = unread.isNotEmpty()
 
     result =
       SimulationOutcome(
-        faces = countedFace.indices.associateWith { countedFace[it] },
+        faces = countedFace.indices.filter { counted[it] }.associateWith { countedFace[it] },
+        unread = unread,
         // Where they stopped, for the throw an explosion or a reroll adds
         // next: it is aimed at the floor this one left clear and drawn among
         // the dice standing on the rest of it, and neither is something the
         // screen could work out for itself
         // (`docs/physics-and-rendering.md`).
         //
-        // **The dice that were lifted off are not in it**, because they are
-        // not on the table any more. A die is lifted exactly to free the
-        // floor it stood on for a die being thrown again, so that floor is
-        // where the re-thrown die may well have landed — and handing the
-        // lifted one on would tell the next throw two untrue things at once:
-        // draw a die where another die is standing, and treat as taken the
-        // room the lift made. That is what put two dice in one place when an
-        // exploding roll came back for its next die ([liftedOut]).
+        // **None of them, when dice are left unread.** The throw that comes
+        // next is theirs, and it lifts every die this one read to free the
+        // floor they stood on — so handing those on would tell that throw two
+        // untrue things at once: draw a die where another may land, and treat
+        // as taken the room the lift made. That is what put two dice in one
+        // place when an exploding roll came back for its next die.
         restingAt =
-          countedAt.indices
-            .filterNot { lifted[it] }
-            .associateWith { index ->
+          if (again) {
+            emptyMap()
+          } else {
+            countedAt.indices.associateWith { index ->
               countedAt[index] ?: RestingPlace(states[index].position, states[index].orientation)
-            },
+            }
+          },
         steps = tracker.stepsTaken,
         // Zero, and not by luck. There is no correction left in this loop to
-        // count: a die is either read and lifted off or thrown again where the
-        // player can watch, and neither is a hand on a die
+        // count: a die is either read or left for the player to throw again,
+        // and neither is a hand on a die
         // (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
         corrections = 0,
-        rethrows = rethrows,
+        // And nought here too: a loop throws once. Re-throws are counted by
+        // whoever makes them (`Passes`).
+        rethrows = 0,
         // Per die, not per way of failing: a die that was still moving when
         // the cap fired *and* was cocked when it was read is one die the
         // simulation had to finish for, not two.
@@ -443,9 +434,9 @@ class RollLoop(
         // What says the dice rolled rather than were placed: the middle die's
         // turns after it first touched the table ([Tumble]).
         medianTurnsAfterLanding = tumble.medianTurns,
-        // A die counted and taken off the table cannot be stood on, so this
-        // counts only what was left standing on something when the roll ran
-        // out of throws — which is the number Step 5.5 wants at zero.
+        // The dice left standing on another, which are all unread: a die
+        // standing on another is never counted. Nought for a throw that read
+        // everything, which is the number Step 5.5 wants at zero.
         stackedAtRest = states.filterIndexed { index, _ -> !counted[index] }.count(DieState::supportedByDie),
         deepestDiePenetrationMm = world.deepestDiePenetrationMm,
       )
@@ -453,40 +444,24 @@ class RollLoop(
   }
 
   /**
-   * Count what can be counted, throw the rest again — taking the counted dice
-   * off the table only if there is a rest to throw — and say whether anything
-   * was thrown.
+   * Counts what can be counted and says which dice could not be.
    *
    * **This is the whole of how a heap is cleared, and there is no hand in it.**
    * A die that came to rest showing a face is read, and that reading is its
    * answer for the rest of the roll. A die that finished cocked or standing on
-   * another one is thrown again, visibly, onto a table the counted dice have
-   * left — which is what a player does when the dice land in a pile, and it is
-   * the reason this converges instead of being tuned.
+   * another one is not read and not touched: it is handed back, by index, for
+   * the player's next shake to throw — onto a table the counted dice have left,
+   * which is what a player does when the dice land in a pile, and it is the
+   * reason this converges instead of being tuned.
    *
-   * **The lift is the price of a re-throw, not of being counted.** Reading a
-   * die and taking it off the table used to be one act, which meant a roll
-   * that settled first time cleared itself off the screen: the dice were read,
-   * lifted, and the player was left looking at empty felt. They are two acts
-   * now. Every die is read first; only if that same pass is going to throw
-   * something again does anything come off, and then all of it comes off at
-   * once, before a single placement is aimed at the floor it freed.
-   *
-   * That ordering is what makes leaving them safe. Counting happens when the
-   * table has settled ([closeOutOrRethrow]), so no die is ever read while
-   * another is still moving and nothing can knock a reading out of date. The
-   * one thing that could put a second die where a counted one stands is a
-   * re-throw, and a re-throw is exactly what lifts them.
-   *
-   * Taking a counted die out of play is not *moving* it: its face has already
-   * been read and nothing about it can change again. That is the line the
-   * honest rule draws (`docs/physics-and-rendering.md`).
+   * Counting happens when the table has settled ([closeOut]), so no die is
+   * ever read while another is still moving and nothing can knock a reading
+   * out of date. Nothing comes off the table here at all: every die stays in
+   * this world and in the picture, and the dice that were read leave only when
+   * a shake throws the others, into a world they are not in.
    */
-  private fun countAndClear(
-    states: List<DieState>,
-    throwTheRest: Boolean = true,
-  ): Boolean {
-    val throwAgain = mutableListOf<Int>()
+  private fun count(states: List<DieState>): List<Int> {
+    val unread = mutableListOf<Int>()
     states.forEachIndexed { index, state ->
       if (counted[index]) return@forEachIndexed
       val die = spec.dice[index].die
@@ -509,42 +484,9 @@ class RollLoop(
         tumble.settled(index)
         return@forEachIndexed
       }
-
-      if (throwTheRest) throwAgain += index
+      unread += index
     }
-    if (throwAgain.isEmpty()) return false
-
-    // Everything that has been read comes off before anything is aimed, so a
-    // re-thrown die is placed against the table the old one measured: the
-    // floor the counted dice were standing on, free.
-    counted.indices.forEach { index ->
-      if (counted[index] && !lifted[index]) {
-        lifted[index] = true
-        world.remove(index)
-      }
-    }
-    // And each die this pass throws again makes room for the ones after it.
-    // They are dropped together, into the same tray, and two of them aimed at
-    // the same patch of floor start inside each other — which is a heap made
-    // by the mechanism that exists to clear one.
-    val placed = mutableListOf<Vector3>()
-    throwAgain.forEach { index ->
-      val placement = layout.rethrowPlacement(index, rethrowCount[index], placed)
-      placed += placement.position
-      world.respawn(index, placement)
-      // The speed it has the moment after this is the re-throw rather than a
-      // contact, and a sound for the app's own hand is the one noise a player
-      // must never hear.
-      recorder.rethrown(index)
-      // The tracker still has it down as settled from a moment ago, and a die
-      // in mid-air is not settled.
-      tracker.rethrown(index)
-      // The turns it made on the throw nobody will read are not this roll's.
-      tumble.rethrown(index)
-      rethrowCount[index]++
-      rethrows++
-    }
-    return true
+    return unread
   }
 
   companion object {

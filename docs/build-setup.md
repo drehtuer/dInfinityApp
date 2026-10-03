@@ -627,6 +627,29 @@ so a soak reads as "five minutes, 143 throws". Its files are labelled
 `20d20-soak` unless `-l` says otherwise, so a soak does not overwrite the
 counted run beside it.
 
+### The hand the harness does not have
+
+On the phone a throw that leaves dice cocked or standing on another **stops
+and waits for the player's shake**, which throws those dice and only those
+([physics-and-rendering.md](physics-and-rendering.md), "Avoiding stacked and
+cocked dice"; decision 70). A headless run has nobody to shake, so it is a
+scripted hand: each pass that leaves dice unread is followed at once by the
+throw of those dice, with no shake in it — the same passes and seeds the
+screen makes, minus the wait (`Passes.scripted`, through
+`JoltDiceSimulator.run`, and the same for a `--frames` run). So a row is still
+a whole roll, and the figures keep their meaning:
+
+- **dice re-thrown** is still the share of dice that needed another throw —
+  counted per die, per pass — which is now the share of dice a player would
+  have had to shake for;
+- **settle time** adds the passes together, so it is the simulated time a
+  roll's dice spent moving; the waits between passes, which are the player's,
+  are not in it;
+- **dice at rest on another die** counts the last pass, where nothing may be
+  left standing;
+- **rolls that gave up** includes a roll whose dice still could not all be read
+  after sixteen passes, which a hand on the phone would go on shaking for.
+
 ### Frame times, and what a headless run may not claim
 
 `--frames` steps each roll the way the screen steps one — a `LiveRoll.advance`

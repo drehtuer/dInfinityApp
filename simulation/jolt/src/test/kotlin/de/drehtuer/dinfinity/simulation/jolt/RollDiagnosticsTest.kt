@@ -44,6 +44,7 @@ class RollDiagnosticsTest {
     assertEquals(unwatched.steps, watched.steps)
     assertEquals(unwatched.corrections, watched.corrections)
     assertEquals(unwatched.rethrows, watched.rethrows)
+    assertEquals(unwatched.unread, watched.unread)
     assertEquals(unwatched.forcedSettles, watched.forcedSettles)
     assertEquals(unwatched.postRestCorrections, watched.postRestCorrections)
   }
@@ -108,7 +109,10 @@ class RollDiagnosticsTest {
   }
 
   @Test
-  fun `a snapshot counts the corrections and the re-throws as they happen`() {
+  fun `a snapshot of a throw that left a die unread counts no re-throw, because it made none`() {
+    // The die ends cocked and is left for the player's shake. The roll used to
+    // throw it again itself and the overlay counted that; there is nothing to
+    // count now, and the die is shown as what it is — at rest and not read.
     val world = FakeWorld(1) { step, index, rethrows -> settlingThenStuck(step, index, rethrows) }
     val roll = loop(world, dice = listOf(StandardDice.d6))
 
@@ -119,11 +123,13 @@ class RollDiagnosticsTest {
     val seen = roll.diagnostics()
 
     assertEquals(roll.outcome().corrections, seen.corrections)
-    assertEquals(roll.outcome().rethrows, seen.rethrows)
+    assertEquals(0, seen.rethrows)
     assertEquals(0, seen.postRestCorrections)
     // Per die as well as in total, so the overlay can point at the one that
-    // needed help.
-    assertEquals(roll.outcome().rethrows, seen.dice.single().rethrows)
+    // needs a hand.
+    assertEquals(0, seen.dice.single().rethrows)
+    assertFalse("a cocked die was shown as read", seen.dice.single().countedOut)
+    assertEquals(listOf(0), roll.outcome().unread)
   }
 
   @Test
@@ -140,10 +146,8 @@ class RollDiagnosticsTest {
   }
 
   /**
-   * A die that settles into trouble and is thrown again until it comes good.
-   *
-   * It has to come good: a die nobody can ever read is a roll that never ends,
-   * and what this class is about is the overlay rather than the settle rule.
+   * A die that settles into trouble and ends cocked, which leaves it for the
+   * player's shake — or, thrown again often enough, comes good.
    */
   private fun settlingThenStuck(
     step: Int,
@@ -155,7 +159,7 @@ class RollDiagnosticsTest {
     else -> FakeWorld.settled(cocked)
   }
 
-  /** Two dice, one of which settles cocked and has to be thrown again. */
+  /** Two dice, one of which settles cocked and is left for a shake. */
   private fun troubled(
     step: Int,
     index: Int,
@@ -179,7 +183,6 @@ class RollDiagnosticsTest {
     return RollLoop(
       spec = spec,
       world = world,
-      layout = SpawnLayout(geometry, RADIUS_MM, spec.seed),
       shake = ShakeDriver(spec.shake),
     )
   }
@@ -199,7 +202,6 @@ class RollDiagnosticsTest {
     /** Tries before this fake lets the die come good. */
     const val ENOUGH_TRIES = 3
 
-    const val RADIUS_MM = 8.0
     const val EPSILON = 1e-9
 
     /** Fewer steps than a die needs to be at rest, so the timer is mid-fill. */

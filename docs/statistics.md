@@ -29,6 +29,15 @@ Dice with duplicated face values (a d6 labelled 1,2,3,1,2,3) count by face
 Dropped dice (from `kh`/`dl` etc.) are still counted in the per-die stats —
 the die was thrown and landed on that face — but flagged in the history row.
 
+A die that landed cocked or on another die and was thrown again by the
+player's next shake ([physics-and-rendering.md](physics-and-rendering.md),
+"Avoiding stacked and cocked dice") is counted **once, on the face it was read
+on**. The landing that could not be read has no face, so there is nothing to
+count for it — the rule "every throw the die landed on a face is counted" gives
+the answer by itself. A roll that waited for that shake is written down once,
+when its last die is read, and its history row counts the dice thrown again in
+its anomalies column, as it did when the roll threw them itself.
+
 ### Per standard die type (aggregated across sets)
 
 The same counters rolled up by *sides*, so "all my d20s" is one line even if

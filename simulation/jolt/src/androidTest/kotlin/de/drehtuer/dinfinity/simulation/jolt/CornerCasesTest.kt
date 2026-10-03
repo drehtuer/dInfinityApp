@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.simulation.jolt
 
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
@@ -8,6 +9,7 @@ import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
+import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableCapacity
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
@@ -53,7 +55,7 @@ class CornerCasesTest {
     )
 
     val landed = settle(atTheCap, seed = 41L)
-    assertEquals("a throw exactly at the cap lost dice", TableCapacity.MAX_DICE, landed.size)
+    assertEquals("a throw exactly at the cap lost dice", TableCapacity.MAX_DICE, landed.states.size)
     assertOnTheTable(atTheCap, landed, "exactly at the cap")
   }
 
@@ -75,8 +77,8 @@ class CornerCasesTest {
 
     (1L..COIN_SEEDS).forEach { seed ->
       val landed = settle(coins, seed)
-      assertEquals("a hundred coins lost dice on seed $seed", coins.size, landed.size)
-      assertInsideTheWalls(landed, "a hundred coins on seed $seed")
+      assertEquals("a hundred coins lost dice on seed $seed", coins.size, landed.states.size)
+      assertInsideTheWalls(landed.states, "a hundred coins on seed $seed")
     }
   }
 
@@ -89,20 +91,23 @@ class CornerCasesTest {
     //
     // It is the shape's own doing. A coin that lands on a coin is *stable*
     // there — a cube or an icosahedron on top of another rolls off, and that is
-    // what makes prevention work everywhere else. Rung 3 re-throws what ends up
-    // stacked, and at this density it cannot find these ones clear floor.
+    // what makes prevention work everywhere else.
     //
-    // Written down as a bound rather than left untested, which is the same
-    // choice `JoltBridgeTest` makes about `100d4` running out of time: it is
-    // today's measured worst case, so the next change to the spawn or the
-    // ladder either improves it or is noticed. Nothing here is touched after it
-    // has come to rest, on any seed, which is the rule that does hold.
+    // **What is asserted is the rule that holds: none of them is read.** A coin
+    // standing on a coin is left lying there, unread, for the player's next
+    // shake to throw again (decision 70) — so the number that used to be
+    // bounded here, the coins *still* stacked after the roll had re-thrown
+    // them itself, no longer exists. The first throw's heap is logged rather
+    // than bounded until the device run has measured it under the new rule
+    // (`docs/TODO.md`, Step 5.3).
     val coins = List(TableCapacity.MAX_DICE) { coin() }
-    val stacked = (1L..COIN_SEEDS).map { seed -> seed to settle(coins, seed).count(DieState::supportedByDie) }
+    val landed = (1L..COIN_SEEDS).map { seed -> seed to settle(coins, seed) }
 
-    assertTrue(
-      "a hundred coins stacked worse than they used to: $stacked",
-      stacked.all { (_, count) -> count <= COINS_STACKED_ALLOWED },
+    landed.forEach { (seed, coinsDown) -> assertNoneStackedWasRead(coinsDown, "a hundred coins on seed $seed") }
+    Log.e(
+      "CoinStack",
+      "coins left standing on another, by seed: " +
+        landed.map { (seed, coinsDown) -> seed to coinsDown.states.count(DieState::supportedByDie) },
     )
   }
 
@@ -156,11 +161,17 @@ class CornerCasesTest {
     }
   }
 
-  /** Throws [dice] and hands back where they stopped. */
+  /** Where one throw's dice stopped, and what reading them came to — null if it gave up. */
+  private class Landed(
+    val states: List<DieState>,
+    val outcome: SimulationOutcome?,
+  )
+
+  /** Throws [dice], once, and hands back where they stopped. */
   private fun settle(
     dice: List<Die>,
     seed: Long,
-  ): List<DieState> {
+  ): Landed {
     val spec = specOf(dice, seed)
     val scale = spec.dieScale
     val layout = SpawnLayout(geometry, dice.maxOf { it.material.boundingRadiusMm } * scale, spec.seed)
@@ -173,23 +184,35 @@ class CornerCasesTest {
       world.finish()
       // A roll that gave up still left its dice somewhere, and where they are
       // is what these corners ask about.
-      RollLoop(spec, world, layout, ShakeDriver(emptyList())).runOrGiveUp()
-      world.readStates()
+      val outcome = RollLoop(spec, world, ShakeDriver(emptyList())).runOrGiveUp()
+      Landed(world.readStates(), outcome)
     }
   }
 
-  /** Every die inside the walls, and none of them standing on another. */
+  /** Every die inside the walls, and none standing on another read. */
   private fun assertOnTheTable(
     dice: List<Die>,
-    landed: List<DieState>,
+    landed: Landed,
     what: String,
   ) {
-    assertEquals("$what lost dice", dice.size, landed.size)
+    assertEquals("$what lost dice", dice.size, landed.states.size)
 
-    assertInsideTheWalls(landed, what)
+    assertInsideTheWalls(landed.states, what)
+    assertNoneStackedWasRead(landed, what)
+  }
 
-    val stacked = landed.count(DieState::supportedByDie)
-    assertEquals("$what came to rest with $stacked dice standing on others", 0, stacked)
+  /**
+   * A die may come to rest on another; it may not be *read* there. It lies
+   * where it is, unread, until the player's shake throws it again
+   * (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
+   */
+  private fun assertNoneStackedWasRead(
+    landed: Landed,
+    what: String,
+  ) {
+    val read = landed.outcome?.faces.orEmpty()
+    val stackedAndRead = landed.states.indices.filter { landed.states[it].supportedByDie && it in read }
+    assertEquals("$what read dice standing on others: $stackedAndRead", emptyList<Int>(), stackedAndRead)
   }
 
   /** Every die's centre inside the tray's own walls. */
@@ -244,15 +267,5 @@ class CornerCasesTest {
 
     /** How many seeds the coin — the worst shape here — is asked on. */
     const val COIN_SEEDS = 8L
-
-    /**
-     * How many of a hundred coins may end up standing on another.
-     *
-     * **Not a target — a record of where prevention has got to**, the same way
-     * `JoltBridgeTest` records the `100d4` throws that run out of time. The
-     * target is zero (`docs/TODO.md`, Step 5.5); the measured range over eight
-     * seeds is four to ten.
-     */
-    const val COINS_STACKED_ALLOWED = 10
   }
 }

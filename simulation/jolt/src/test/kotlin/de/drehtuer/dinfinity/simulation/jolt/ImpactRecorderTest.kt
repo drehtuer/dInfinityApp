@@ -14,7 +14,6 @@ import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
@@ -104,23 +103,10 @@ class ImpactRecorderTest {
   }
 
   @Test
-  fun `a die picked up and thrown again is not heard doing it`() {
-    val recorder = ImpactRecorder(listOf(SIZE_MM))
-    recorder.step(0, listOf(moving(0.0)), GRAVITY)
-    // Rung 3 puts the die back at the spawn point between one step and the
-    // next, and the speed it has afterwards is the app's own hand.
-    recorder.rethrown(0)
-    recorder.step(1, listOf(moving(1_800.0)), GRAVITY)
-
-    assertTrue("the app played a sound for its own invisible hand", recorder.recorded().isEmpty())
-  }
-
-  @Test
   fun `a deaf recorder hears nothing whatever happens`() {
     val recorder = ImpactRecorder.deaf(dieCount = 1)
     recorder.step(0, listOf(moving(0.0)), GRAVITY)
     recorder.step(1, listOf(moving(2_000.0)), GRAVITY)
-    recorder.rethrown(0)
 
     assertTrue(recorder.recorded().isEmpty())
   }
@@ -182,20 +168,17 @@ class ImpactRecorderTest {
   }
 
   @Test
-  fun `a roll driven into the corrections still gives the same faces with ears on`() {
-    // Cocked and standing on another die: the ladder does everything it can do.
+  fun `a roll that leaves dice unread still gives the same answer with ears on`() {
+    // Cocked and standing on another die: every die is left for the player's
+    // shake, which is the most a throw can leave undone.
     val cocked = Quaternion.about(Vector3(1.0, 0.0, 0.0), PI / 4)
-    val trouble = { _: Int, _: Int, rethrows: Int ->
-      // In trouble until it has been thrown again a few times, and then down
-      // clean. A die that never came good would be a roll that never ends.
-      if (rethrows < TRIES) FakeWorld.settled(cocked, supportedByDie = true) else FakeWorld.settled()
-    }
+    val trouble = { _: Int, _: Int, _: Int -> FakeWorld.settled(cocked, supportedByDie = true) }
 
     val heard = loop(DICE, FakeWorld(DICE.size, trouble), ImpactRecorder(DICE.map { SIZE_MM })).run()
     val deaf = loop(DICE, FakeWorld(DICE.size, trouble), ImpactRecorder.deaf(DICE.size)).run()
 
     assertEquals(deaf, heard)
-    assertNotEquals("this case is meant to exercise the ladder", 0, heard.rethrows)
+    assertEquals("this case is meant to leave every die unread", DICE.indices.toList(), heard.unread)
   }
 
   private fun bouncing(): FakeWorld =
@@ -236,7 +219,6 @@ class ImpactRecorderTest {
     return RollLoop(
       spec = spec,
       world = world,
-      layout = SpawnLayout(geometry, RADIUS_MM, spec.seed),
       shake = ShakeDriver(spec.shake),
       recorder = recorder,
     )
@@ -246,13 +228,9 @@ class ImpactRecorderTest {
     /** How long a bouncing die bounces before it stops for good. */
     const val BOUNCING_STEPS = 40
 
-    /** Throws before a die in trouble comes good. */
-    const val TRIES = 3
-
     const val GRAVITY = 9_806.65
     const val SIZE_MM = 16.0
     const val SMALL_MM = 10.0
-    const val RADIUS_MM = 8.0
     const val SEED = 4_242L
     const val STEPS_OF_CONTACT = 4
     const val SLIDING_STEPS = 20

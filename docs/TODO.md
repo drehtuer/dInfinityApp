@@ -56,7 +56,10 @@ Spec: `docs/dice-notation.md`, `docs/tables.md`,
       `docs/physics-and-rendering.md`, "Picking a die up and throwing it
       again"). Left to decide while building it: how a picked die is shown,
       and how a pick is undone (a second touch on the same die is the obvious
-      answer)
+      answer). It joins decision 70's wait rather than adding one: a shake
+      already throws a throw's unread dice through `Passes.next`, and a picked
+      die is one more die for that same throw — so only one of the two can be
+      owed by a shake at a time, and the unread dice come first
 - [ ] **Decided, not built: braced notation for a set's own dice.**
       `3{skull-d6}kh1` is three of the die whose id is `skull-d6`;
       `3{brass:skull-d6}kh1` the same from set `brass`; `3{skull:d6}kh1` the
@@ -217,9 +220,11 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 - [ ] **`100d4` does not reliably settle.** Five of twenty-four seeds in
       `JoltBridgeTest` reach the twelve-second backstop and give up (since #319
       without taking the app with them). The bound is today's worst case
-- [ ] **A hundred coins stack**, four to ten per seed (`CornerCasesTest`). The
-      test's comment still blames the ladder's rung 3; re-measure under
-      counting and update the bound and the comment
+- [ ] **A hundred coins stack.** Under the ladder four to ten were left
+      standing per seed; under decision 70 a stacked coin is never read and
+      waits for a shake, so `CornerCasesTest` now asserts that and only logs
+      the first throw's heap (`CoinStack` in logcat). Read the figure off a
+      device run and decide whether it wants a bound again
 - [ ] **Decide what a tilted phone means** (deferred): gravity always straight
       down; anchored to `TYPE_GRAVITY`; or a clamped tilt
 - [ ] **A shake along the long axis drives the dice into one end.** Right (it is
@@ -242,18 +247,27 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 
 ### 5.5 Stacking and cocking — no invisible hand
 
-Nothing corrects a die: a roll counts the dice that can be read and throws the
-rest again until everything is counted (`docs/physics-and-rendering.md`,
-"Avoiding stacked and cocked dice"). Figures in the table above.
+Nothing corrects a die and nothing throws one but the player: a roll counts the
+dice that can be read, and the ones that cannot wait where they lie for the
+shake that throws them again (`docs/physics-and-rendering.md`, "Avoiding
+stacked and cocked dice"; decision 70). Figures in the table above, measured
+while the roll still threw them again itself; the harness's scripted hand
+keeps them comparable.
 
 - [ ] **Decide what the re-throw bar means now.** 0.05 % was written when a
-      re-throw was the last resort after two rungs of correction; re-throwing is
-      the mechanism now. Probably bound how long a roll takes and how many
-      passes it needs instead — the harness measures both
-- [ ] **Does an automatic re-throw count in the statistics?** A `d6` that took
-      four passes would add four faces to its fairness figure: right (it landed
-      four times) or a bias (it landed four times *because it was hard to
-      read*)?
+      re-throw was the last resort after two rungs of correction. A re-throw is
+      now a second shake the player is asked for, so the share is how often
+      that happens — 2.65 % of dice, which at 20 dice is a second shake on
+      roughly two rolls in five. Bound that per roll, and the passes a roll
+      needs, rather than per die
+- [ ] *With a hand:* does a throw that stops with a cocked die read as the
+      app asking, rather than as the roll hanging? Is the plate, the toast and
+      the heap left as it lay enough to know which die the shake is for — or
+      does the waiting die want marking on the tray (`docs/design-handover.md`)?
+- [ ] Delete what decision 70 left without a caller in a roll:
+      `SpawnLayout.rethrowPlacement`, `PhysicsWorld.remove` (and its JNI),
+      `RestTracker.rethrown`, `Tumble.rethrown`. **Not** `respawn`: the board
+      lets each parked die go with it (decision 69)
 - [ ] **Repeat the 10,000-roll runs at 20 and 60 dice under counting.** Under
       the ladder three rolls in 10,000 at 20 dice and two thirds of 29 standing
       dice at 60 ran out of time
