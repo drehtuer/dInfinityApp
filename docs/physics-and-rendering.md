@@ -2133,8 +2133,22 @@ the GPU's: the GPU draws a frame behind the CPU, so either one running past a
 sixtieth of a second is a frame the display waits for. The frame *interval* is
 printed but not scored, because on a 60 Hz panel it is 16.7 ms by construction
 (`docs/architecture.md`, decision 80; `docs/build-setup.md`, "Drawn frames:
-the rendered harness"). The Pixel 10a's figures go here once the run has been
-made; until then the target is a target, not a measurement.
+the rendered harness").
+
+**Measured on the Pixel 10a** (2026-10-04, at #350; a 1080 × 2424 surface,
+the whole screen; the GPU row *is* measured on its driver):
+
+| run | frames drawn | work p50 / p99 | GPU p50 / p99 | rate | steps dropped |
+| --- | --- | --- | --- | --- | --- |
+| 100 rolls of 20d20 | 13,886 | 3.6 / 8.3 ms | 6.6 / 12.6 ms | 60.3 fps | 0 |
+| 10 rolls of 100d6, the capacity limit | 1,346 | 9.6 / 24.3 ms | 6.2 / 13.7 ms | 57.3 fps | 0 |
+
+Both targets hold: sixty frames a second at twenty dice with p99 work at half
+the budget, and well over thirty at the capacity limit. At a hundred dice the
+p99 frame's *work* passes 16.6 ms — the physics steps, not the GPU, which stays
+at 13.7 ms — so the display holds a frame now and then; the scorecard marks
+that row failed against the sixty-frame bar, which is not the bar for the
+capacity limit.
 
 ## What is drawn over the table
 

@@ -340,13 +340,11 @@ keeps them comparable.
 `MemoryTest` holds the native heap across 500 rolls (1,440 bytes left
 behind).
 
-- [ ] **Run the rendered harness on the Pixel 10a** — `tools/harness.sh
-      --rendered` (decision 80; `docs/build-setup.md`, "Drawn frames: the
-      rendered harness"), built but not yet run on a device. Write its
-      figures into `docs/physics-and-rendering.md`, "Performance, and how it
-      is measured", and say whether the GPU row is measured on its driver
-- [ ] 60 fps sustained at 20 dice, p99 frame under 16.6 ms; 30 fps at the
-      capacity limit (`--rendered -c <limit>`)
+Frame targets met on the Pixel 10a (`tools/harness.sh --rendered`, decision
+80): 60.3 fps at 20d20 with p99 work 8.3 ms and GPU 12.6 ms; 57.3 fps at the
+100-dice limit (`docs/physics-and-rendering.md`, "Performance, and how it is
+measured"). Re-run after any change to the renderer or the physics step.
+
 - [ ] Battery cost of 100 rolls, written into `docs/physics-and-rendering.md`
 
 **Done when** every target is met on the Pixel 10a and the user agrees the

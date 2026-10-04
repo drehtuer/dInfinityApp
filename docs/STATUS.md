@@ -65,6 +65,8 @@ This is a snapshot, not a changelog — git history is the changelog.
   landing**. Fails, as before: re-throws 1.21 % against 0.05 %, overlap
   7.76 mm against 0.2 mm (four and eight collision steps measured and not
   adopted, decision 77).
+- **Rendered harness:** 60.3 fps at 20d20 (p99 work 8.3 ms, GPU 12.6 ms, no
+  step dropped) and 57.3 fps at the 100-dice limit — both frame targets met.
 - **10,000 rolls of 60d20:** two gave up; the 1–100 d6 sweep under counting:
   none gave up at any count (`docs/TODO.md`, 5.3 and 5.5).
 
