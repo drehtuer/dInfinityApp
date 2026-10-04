@@ -16,21 +16,17 @@ This is a snapshot, not a changelog — git history is the changelog.
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
 - **Latest release:** `v0.1.1`, signed and published with its SHA-256.
-- **`main` is at #362**: the owner's feedback on the overnight build is in
+- **`main` is at #368**: the owner's feedback on the overnight build is in
   — a cold start shows the tray in 0.8 s (decision 46), the watched pace is
   0.4 (65), *Clear face* in the designer (82), a throw folds the top away and
   a double tap clears the table (83), an accent shake prompt and pick ring
   (84), *Roll it* throws the drawing as it is now, and every formula field
-  has a × that empties it.
-- **In flight:** the dice of a later pass are outlined in accent-700 and
-  labelled `PASS 2` under them on the tray (decision 85,
-  `docs/physics-and-rendering.md`, "What is drawn over the table"). The room's
-  reflections are prefiltered to six levels. And the coin that ran out the
-  twelve-second cap in `FairnessTest` is explained: it leaned on the old corner
-  post; on the fillet tray 100,000 coin throws give up none ("Why a die could
-  rock for ever"). The designer masks the d10 and the d18 into their own
-  kites, so a drawing fits the face instead of being grown past it (decision
-  86; drafts move to format 2).
+  has a × that empties it. Since then: the room's reflections are prefiltered
+  to six levels, the coin that ran out the twelve-second cap is explained (it
+  leaned on the old corner post; none of 100,000 give up on the fillet tray),
+  and the designer masks the d10 and the d18 into their own kites (86).
+- **In flight:** the `PASS 2` marks on later-pass dice are taken out again at
+  the owner's request (decision 85, withdrawn).
 
 ## Done
 

@@ -82,14 +82,10 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   draws it as a plate rather than in the prototype's accent tint, because
   accent never touches felt. Built:
   [../docs/face-designer.md](../docs/face-designer.md), "The way back".
-- **The dice of a later pass are marked** — the tray's `mark`: a 4 dp
-  `--color-accent-700` stroke round the die and a `pass 2` label under it, in
-  the slot `dropped` uses. Built over the picture with the die's real outline
-  and a band of ground under the stroke, because accent never touches felt
-  (decision 85 in
-  [../docs/architecture.md](../docs/architecture.md#key-decisions-log);
-  [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
-  "What is drawn over the table").
+- **The dice of a later pass are marked** — the tray's `mark`, a 4 dp
+  `--color-accent-700` stroke and a `pass 2` label. **Not ported**: built and
+  taken out again at the owner's request (decision 85 in
+  [../docs/architecture.md](../docs/architecture.md#key-decisions-log)).
 - **Saved rolls are dragged into the order the player wants**; pinning and
   favourites are gone.
 - **Settings gained an accent picker and lost the sound switch.**

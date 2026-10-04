@@ -2,7 +2,6 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.DieAtRest
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import de.drehtuer.dinfinity.simulation.api.cross
@@ -145,53 +144,6 @@ class TrayPick(
   }
 
   /**
-   * The outline [die] is drawn with on the picture: the corners of its hull,
-   * turned the way it lies, seen through this frustum, and wrapped — for the
-   * mark round a die a later pass put on the table
-   * (`docs/architecture.md`, decision 85).
-   *
-   * Exact rather than the ball [markOf] rings, because what the design draws
-   * for a later pass is the die's own edge, and a circle is what a pick
-   * already looks like: the two marks can land on one die, and they have to
-   * be told apart at a glance. The picture of a convex solid is the convex
-   * hull of the pictures of its corners, so nothing about faces or which of
-   * them point away is needed — the same reasoning the designer's **Solid**
-   * tab outlines a die with. The corners are [ShapeGeometry.hullOf] at
-   * [dieScale], which is the hull the renderer draws.
-   *
-   * Clockwise or anticlockwise does not matter to a stroke, and the turn is
-   * whatever the picture's fractions make of it.
-   *
-   * @return the outline's corners in order round it, or null when any corner
-   *   is level with or behind the camera — which no [TrayView] allows, and
-   *   which has no outline on the picture to draw.
-   */
-  fun outlineOf(
-    die: DieAtRest,
-    dieScale: Double = 1.0,
-  ): List<PicturePoint>? {
-    val corners =
-      ShapeGeometry.hullOf(die.die, dieScale).map { corner ->
-        pictureOf(die.at.position + die.at.orientation.rotate(corner)) ?: return null
-      }
-    return wrapped(corners)
-  }
-
-  /** Where [point] is on the picture, or null when it is not in front of the camera. */
-  private fun pictureOf(point: Vector3): PicturePoint? {
-    val offset = point - shot.position
-    val ahead = offset dot shot.forward
-    if (ahead <= 0.0) return null
-    val upward = tan(halfAngle(shot.verticalFieldOfViewDegrees))
-    val across = upward * aspectRatio
-    val right = cross(shot.forward, shot.up)
-    return PicturePoint(
-      acrossFraction = ((offset dot right) / (ahead * across) + 1) / 2,
-      downFraction = (1 - (offset dot shot.up) / (ahead * upward)) / 2,
-    )
-  }
-
-  /**
    * How far the camera has to look along [direction] to reach the ball of
    * [radiusMm] around [centre], or null when the look misses it.
    *
@@ -241,38 +193,6 @@ class TrayPick(
 
     private fun halfAngle(degrees: Double): Double = degrees / 2 * Math.PI / HALF_TURN_DEGREES
 
-    /**
-     * The convex hull of [points], each corner once, in order round it —
-     * Andrew's monotone chain. Points on an edge are left out: they add
-     * nothing to a stroke but a joint.
-     */
-    internal fun wrapped(points: List<PicturePoint>): List<PicturePoint> {
-      val sorted = points.distinct().sortedWith(compareBy(PicturePoint::acrossFraction, PicturePoint::downFraction))
-      if (sorted.size < TRIANGLE) return sorted
-      return sideOf(sorted).dropLast(1) + sideOf(sorted.asReversed()).dropLast(1)
-    }
-
-    /** One side of the hull, walked in the order [points] are given in. */
-    private fun sideOf(points: List<PicturePoint>): List<PicturePoint> {
-      val walk = mutableListOf<PicturePoint>()
-      points.forEach { point ->
-        while (walk.size >= 2 && turnOf(walk[walk.size - 2], walk.last(), point) <= 0.0) walk.removeAt(walk.lastIndex)
-        walk += point
-      }
-      return walk
-    }
-
-    /** Which way the corner at [b] turns, going from [a] to [c]. */
-    private fun turnOf(
-      a: PicturePoint,
-      b: PicturePoint,
-      c: PicturePoint,
-    ): Double =
-      (b.acrossFraction - a.acrossFraction) * (c.downFraction - a.downFraction) -
-        (b.downFraction - a.downFraction) * (c.acrossFraction - a.acrossFraction)
-
-    private const val TRIANGLE = 3
-
     private const val HALF_TURN_DEGREES = 180.0
   }
 }
@@ -292,16 +212,4 @@ data class PickMark(
   val acrossFraction: Double,
   val downFraction: Double,
   val radiusOfHeight: Double,
-)
-
-/**
- * One point on the picture ([TrayPick.outlineOf]).
- *
- * @param acrossFraction 0 at the left edge to 1 at the right — the same
- *   fractions [TrayPick.lookingAlong] takes.
- * @param downFraction 0 at the top to 1 at the bottom.
- */
-data class PicturePoint(
-  val acrossFraction: Double,
-  val downFraction: Double,
 )

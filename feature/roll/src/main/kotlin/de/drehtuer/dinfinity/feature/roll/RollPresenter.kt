@@ -123,13 +123,6 @@ class RollPresenter(
     private set
 
   /**
-   * Which pass of the roll put each of [onTheTable] there, position for
-   * position ([RollMachine.passesOnTheTable], decision 85).
-   */
-  var passes: List<Int> by mutableStateOf(machine.passesOnTheTable)
-    private set
-
-  /**
    * What the formula in the field is expected to come to, or null when it does
    * not read.
    *
@@ -393,22 +386,6 @@ class RollPresenter(
   }
 
   /**
-   * The outline and the label of every die on the table that a later pass
-   * put there, on a picture [aspectRatio] wide for its height — the dice of
-   * the first pass have none (`docs/architecture.md`, decision 85).
-   *
-   * The same frustum the rings are placed by, so an outline is drawn over the
-   * die it belongs to whatever the view.
-   */
-  fun passMarks(aspectRatio: Double): List<PassMark> {
-    if (aspectRatio <= 0.0) return emptyList()
-    val later = onTheTable.zip(passes).filter { (_, pass) -> pass >= PassMark.FIRST_MARKED }
-    if (later.isEmpty()) return emptyList()
-    val pick = TrayPick.through(geometry, aspectRatio, looking, tiltDegrees)
-    return later.mapNotNull { (die, pass) -> pick.outlineOf(die, machine.dieScale)?.let { PassMark(it, pass) } }
-  }
-
-  /**
    * Hands one throw to the tray, and hands the tray the one after it.
    *
    * A roll is not always over when its dice stop: an explosion and a reroll
@@ -569,7 +546,6 @@ class RollPresenter(
     state = machine.state
     onTheTable = machine.onTheTable
     picked = machine.picked
-    passes = machine.passesOnTheTable
     text = machine.text
     expected = machine.expected
     counts = machine.counts

@@ -746,10 +746,7 @@ private fun TheTableOrANoticeThatThereIsNone(
         ),
     )
     // Over the picture and under everything else, and deaf to touch: the
-    // finger that puts a die back goes through to the tray. The outlines of a
-    // later pass go under the rings, so a die that is both keeps its ring
-    // whole (decision 85).
-    PassMarks(marks = presenter.passMarks(aspectRatio.toDouble()), modifier = Modifier.fillMaxSize())
+    // finger that puts a die back goes through to the tray.
     PickRings(marks = presenter.marks(aspectRatio.toDouble()), modifier = Modifier.fillMaxSize())
   }
 }
@@ -957,12 +954,6 @@ object RollTestTags {
 
   /** The rings round the dice a finger has picked up for the next shake (decision 76). */
   const val PICKED: String = "roll:tray:picked"
-
-  /** The outlines round the dice a later pass of the roll put down (decision 85). */
-  const val PASSES: String = "roll:tray:passes"
-
-  /** The `PASS n` label under one of those dice. */
-  const val PASS_LABEL: String = "roll:tray:pass-label"
 
   /**
    * What the next shake will throw, over the tray, its main line and — for
