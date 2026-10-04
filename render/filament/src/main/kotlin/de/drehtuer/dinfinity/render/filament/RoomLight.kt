@@ -35,23 +35,21 @@ object RoomLight {
   const val SIZE: Int = 32
 
   /**
-   * How many levels it carries. **One**, and that is a decision rather than a
-   * simplification.
+   * How many levels it carries: every one down to a single pixel, `log2(32)`
+   * and one more.
    *
-   * A reflection's blur normally follows the surface's roughness by reading a
-   * coarser level of the environment, so a mirror reads the sharp one and felt
-   * reads a flat one. That is worth having when the environment is a room with
-   * things in it. This one is a gradient from sky to ground, and a gradient
-   * blurred is the same gradient nearer its own average — the difference
-   * between its sharpest level and its flattest is a few per cent of one
-   * channel, on a reflection that is itself a sheen.
-   *
-   * It is also the only shape of upload this device's driver accepts. A
-   * six-level cubemap is refused at level one with a buffer overflow against a
-   * region whose own arithmetic checks out on both sides
-   * (`docs/TODO.md`, Open questions).
+   * A reflection's blur follows the surface's roughness by reading a coarser
+   * level of the environment, so a polished die reads the sharp gradient and
+   * felt reads its average. Only the sharp level is drawn here ([faces]);
+   * Filament works out the rest itself, prefiltered for its own lighting
+   * model (`Texture.generatePrefilterMipmap`), which is both more correct
+   * than a blur of our own and the only way this Filament uploads them at
+   * all: its JNI sizes a level's buffer with the region's height shifted by
+   * the level a second time, so a level-one upload of 16 × 16 × 6 is checked
+   * against 3,072 bytes instead of 6,144 and refused
+   * (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
    */
-  const val LEVELS: Int = 1
+  const val LEVELS: Int = 6
 
   /** Overhead: the cool bright half of a room with a window in it. */
   val SKY: Colour = Colour(red = 0.78, green = 0.85, blue = 1.0, alpha = 1.0)
@@ -146,62 +144,47 @@ object RoomLight {
   }
 
   /**
-   * One face of the environment, as `RGBA8` pixels, the top row first.
-   *
-   * [level] is the mip level: nought is the sharp gradient and the last one is
-   * flat, because that is what a reflection in a rough surface converges to.
-   * Filament picks the level from the surface's roughness, so a polished die
-   * catches the sky-to-ground blend and a matte one catches its average.
+   * One face of the environment, as linear RGB floats, the top row first:
+   * the sharp sky-to-ground gradient the coarser levels are prefiltered from
+   * ([LEVELS]). Floats because that is all Filament's prefilter takes.
    */
   fun face(
     face: Int,
-    level: Int = 0,
     sky: Colour = SKY,
     ground: Colour = GROUND,
     size: Int = SIZE,
-  ): ByteArray {
-    val side = (size shr level).coerceAtLeast(1)
-    val blur = (level.toDouble() / FLATTEST).coerceIn(0.0, 1.0)
-    val pixels = ByteArray(side * side * CHANNELS)
+  ): FloatArray {
+    val pixels = FloatArray(size * size * CHANNELS)
     var at = 0
-    for (y in 0 until side) {
-      for (x in 0 until side) {
-        val up = direction(face, x, y, side).z
-        val sharp = blend(ground, sky, (up + 1.0) / SPAN)
-        val colour = blend(sharp, average(sky, ground), blur)
-        pixels[at++] = byteOf(colour.red)
-        pixels[at++] = byteOf(colour.green)
-        pixels[at++] = byteOf(colour.blue)
-        pixels[at++] = OPAQUE
+    for (y in 0 until size) {
+      for (x in 0 until size) {
+        val up = direction(face, x, y, size).z
+        val colour = blend(ground, sky, (up + 1.0) / SPAN)
+        pixels[at++] = colour.red.toFloat()
+        pixels[at++] = colour.green.toFloat()
+        pixels[at++] = colour.blue.toFloat()
       }
     }
     return pixels
   }
 
-  /** How many bytes one level of one face takes. */
-  fun faceBytes(
-    level: Int = 0,
-    size: Int = SIZE,
-  ): Int {
-    val side = (size shr level).coerceAtLeast(1)
-    return side * side * CHANNELS
-  }
+  /** How many bytes one face takes, at four bytes a float. */
+  fun faceBytes(size: Int = SIZE): Int = size * size * CHANNELS * Float.SIZE_BYTES
 
   /**
-   * One whole level: all six faces, in Filament's order, end to end.
-   *
-   * A cubemap is uploaded a level at a time rather than a face at a time —
-   * Filament takes the six as one image six deep, and handing it one face with
-   * a depth of one is a buffer it refuses.
+   * Where each face starts in [faces], in bytes, in Filament's order — what
+   * `generatePrefilterMipmap` is handed alongside them.
    */
-  fun level(
-    level: Int = 0,
+  fun faceOffsets(size: Int = SIZE): IntArray = IntArray(FACES) { it * faceBytes(size) }
+
+  /** The six faces, in Filament's order, end to end. */
+  fun faces(
     sky: Colour = SKY,
     ground: Colour = GROUND,
     size: Int = SIZE,
-  ): ByteArray {
-    val faces = (0 until FACES).map { face(it, level, sky, ground, size) }
-    val whole = ByteArray(faces.sumOf { it.size })
+  ): FloatArray {
+    val faces = (0 until FACES).map { face(it, sky, ground, size) }
+    val whole = FloatArray(faces.sumOf { it.size })
     var at = 0
     faces.forEach { one ->
       one.copyInto(whole, at)
@@ -209,11 +192,6 @@ object RoomLight {
     }
     return whole
   }
-
-  private fun average(
-    sky: Colour,
-    ground: Colour,
-  ): Colour = blend(sky, ground, HALF)
 
   private fun blend(
     from: Colour,
@@ -233,8 +211,6 @@ object RoomLight {
   private fun luminance(colour: Colour): Double =
     RED_WEIGHT * colour.red + GREEN_WEIGHT * colour.green + BLUE_WEIGHT * colour.blue
 
-  private fun byteOf(value: Double): Byte = (value.coerceIn(0.0, 1.0) * FULL).toInt().toByte()
-
   private const val POSITIVE_X = 0
   private const val NEGATIVE_X = 1
   private const val POSITIVE_Y = 2
@@ -242,25 +218,11 @@ object RoomLight {
   private const val POSITIVE_Z = 4
   private const val NEGATIVE_Z = 5
 
-  /**
-   * The level at which the room has no shape left: 32 halved five times is one
-   * pixel, and one pixel is an average.
-   *
-   * It is what a level's blur is measured against rather than a count of
-   * anything. [LEVELS] says how many are actually uploaded, which is one, and
-   * the two are deliberately not the same number — a coarser level is still a
-   * meaningful thing to ask for.
-   */
-  private const val FLATTEST = 5.0
-
   /** A face's coordinates run from −1 to 1, which is two wide. */
   private const val SPAN = 2.0
 
-  private const val CHANNELS = 4
-  private const val FULL = 255.0
-
-  /** The alpha every pixel of the environment carries. A room is not see-through. */
-  private const val OPAQUE: Byte = -1
+  /** Red, green and blue: a room is not see-through, so it has no alpha. */
+  private const val CHANNELS = 3
   private const val HALF = 0.5
   private const val RED_WEIGHT = 0.2126
   private const val GREEN_WEIGHT = 0.7152

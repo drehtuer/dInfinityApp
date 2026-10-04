@@ -113,48 +113,34 @@ class RoomLightTest {
   }
 
   @Test
-  fun `a coarser level is the same room, flatter`() {
-    // Nothing uploads these — the cubemap is one level ([RoomLight.LEVELS]) —
-    // but the blur is what says a rough surface reflects an average rather
-    // than a picture, and it is worth keeping true.
-    val coarse = RoomLight.face(SIDE_FACE, level = COARSE)
-    val first = coarse.take(PIXEL_BYTES)
-    coarse.toList().chunked(PIXEL_BYTES).forEach { assertEquals(first, it) }
-  }
-
-  @Test
-  fun `every level is the size it promises, down to one pixel`() {
-    for (level in 0..COARSE) {
-      assertEquals(RoomLight.faceBytes(level), RoomLight.face(SIDE_FACE, level = level).size)
-    }
-    assertEquals(PIXEL_BYTES, RoomLight.face(SIDE_FACE, level = COARSE).size)
+  fun `every level down to one pixel is asked for`() {
+    // 32, 16, 8, 4, 2, 1: Filament prefilters each of them from the sharp one.
+    assertEquals(1 shl (RoomLight.LEVELS - 1), RoomLight.SIZE)
   }
 
   @Test
   fun `the sizes are the ones Filament works out for itself`() {
-    // Filament computes what it needs from the region it is given — width
-    // times height times depth times four bytes — and refuses a buffer that
-    // is smaller. These are those numbers, written out, so a level that comes
+    // Filament computes what it needs from the faces it is given — width
+    // times height times three floats, six times — and refuses a buffer that is
+    // smaller. These are those numbers, written out, so a buffer that comes
     // back the wrong size is a failure here rather than a precondition inside
     // a driver.
-    assertEquals(32 * 32 * 4, RoomLight.faceBytes(0))
-    assertEquals(16 * 16 * 4, RoomLight.faceBytes(1))
-    assertEquals(8 * 8 * 4, RoomLight.faceBytes(2))
-    assertEquals(6 * 32 * 32 * 4, RoomLight.level(0).size)
-    assertEquals(6 * 16 * 16 * 4, RoomLight.level(1).size)
-    assertEquals(6 * 8 * 8 * 4, RoomLight.level(2).size)
+    assertEquals(32 * 32 * 12, RoomLight.faceBytes())
+    assertEquals(16 * 16 * 12, RoomLight.faceBytes(size = 16))
+    assertEquals(6 * 32 * 32 * 3, RoomLight.faces().size)
   }
 
   @Test
-  fun `a whole level is the six faces, end to end, in order`() {
-    val whole = RoomLight.level(level = 1)
-    assertEquals(RoomLight.FACES * RoomLight.faceBytes(1), whole.size)
-    val second = RoomLight.face(1, level = 1)
-    val at = RoomLight.faceBytes(1)
-    assertEquals(
-      second.toList(),
-      whole.copyOfRange(at, at + second.size).toList(),
-    )
+  fun `the six faces lie end to end, in order, where the offsets say`() {
+    val whole = RoomLight.faces()
+    val offsets = RoomLight.faceOffsets()
+    assertEquals(RoomLight.FACES, offsets.size)
+    for (face in 0 until RoomLight.FACES) {
+      val one = RoomLight.face(face)
+      assertEquals(face * RoomLight.faceBytes(), offsets[face])
+      val at = offsets[face] / Float.SIZE_BYTES
+      assertEquals(one.toList(), whole.copyOfRange(at, at + one.size).toList())
+    }
   }
 
   @Test
@@ -191,13 +177,13 @@ class RoomLightTest {
   }
 
   private fun greenOf(
-    face: ByteArray,
+    face: FloatArray,
     pixel: Int,
-  ): Int = face[pixel * PIXEL_BYTES + GREEN].toInt() and BYTE
+  ): Float = face[pixel * PIXEL_FLOATS + GREEN]
 
-  private fun dimmest(face: ByteArray): Int = (0 until face.size / PIXEL_BYTES).minOf { greenOf(face, it) }
+  private fun dimmest(face: FloatArray): Float = (0 until face.size / PIXEL_FLOATS).minOf { greenOf(face, it) }
 
-  private fun brightest(face: ByteArray): Int = (0 until face.size / PIXEL_BYTES).maxOf { greenOf(face, it) }
+  private fun brightest(face: FloatArray): Float = (0 until face.size / PIXEL_FLOATS).maxOf { greenOf(face, it) }
 
   private companion object {
     val UP = Vector3(0.0, 0.0, 1.0)
@@ -206,8 +192,8 @@ class RoomLightTest {
     /** Three floats to a spherical-harmonic coefficient. */
     const val SH_STRIDE = 3
 
-    /** Four bytes to a pixel of the cubemap. */
-    const val PIXEL_BYTES = 4
+    /** Three floats to a pixel of the cubemap: red, green and blue. */
+    const val PIXEL_FLOATS = 3
 
     const val RED = 0
     const val GREEN = 1
@@ -219,10 +205,6 @@ class RoomLightTest {
     const val DOWN_FACE = 5
     const val SIDE_FACE = 0
     const val STRIDE = 7
-
-    /** 32 halved five times is one pixel, which is a room with no shape at all. */
-    const val COARSE = 5
-    const val BYTE = 0xFF
 
     /** These arrive as 32-bit floats, so this is what "the same number" means. */
     const val TOLERANCE = 1e-6

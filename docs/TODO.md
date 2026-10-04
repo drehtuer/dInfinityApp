@@ -402,9 +402,6 @@ their own, add recomposition tests. Figures go in every PR description.
 
 ### Rendering and physics
 
-- [ ] **Why does a six-level cubemap not upload?** Level one of `RoomLight`'s
-      32-pixel cubemap is refused as a buffer overflow (`RoomLightUploadTest`);
-      it ships with one level. An hour with Filament's JNI source
 - [ ] **A numeral at 0.78 of its face, or 0.78 squared?** `FACE_SHARE` is
       applied twice (`LabelRoom.centred`), so a numeral is ~0.61 of its room.
       Once would make every number 28 % bigger; tray and designer move together

@@ -647,9 +647,10 @@ class FilamentStage(
     /**
      * The room as a small cubemap, which is what a polished surface reflects.
      *
-     * One level, six faces, uploaded in a single call — which is what a
-     * cubemap is: an image six deep. [RoomLight.LEVELS] says why there is only
-     * one of them.
+     * Only the sharp level is ours; every coarser one is prefiltered by
+     * Filament from it, for the roughness each level stands for
+     * ([RoomLight.LEVELS] says why, and why it cannot be uploaded level by
+     * level).
      */
     private fun environment(engine: Engine): Texture {
       val texture =
@@ -659,29 +660,18 @@ class FilamentStage(
           .height(RoomLight.SIZE)
           .depth(RoomLight.FACES)
           .levels(RoomLight.LEVELS)
-          .format(Texture.InternalFormat.RGBA8)
+          .format(Texture.InternalFormat.R11F_G11F_B10F)
           .sampler(Texture.Sampler.SAMPLER_CUBEMAP)
           .build(engine)
-      for (level in 0 until RoomLight.LEVELS) {
-        val side = (RoomLight.SIZE shr level).coerceAtLeast(1)
-        val pixels = RoomLight.level(level = level)
-        val buffer = ByteBuffer.allocateDirect(pixels.size).order(ByteOrder.nativeOrder())
-        buffer.put(pixels)
-        buffer.rewind()
-        // All six faces in one go: a cubemap is an image six deep, and one
-        // face with a depth of one is a buffer Filament refuses.
-        texture.setImage(
-          engine,
-          level,
-          0,
-          0,
-          0,
-          side,
-          side,
-          RoomLight.FACES,
-          Texture.PixelBufferDescriptor(buffer, Texture.Format.RGBA, Texture.Type.UBYTE),
-        )
-      }
+      val pixels = RoomLight.faces()
+      val buffer = ByteBuffer.allocateDirect(pixels.size * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
+      buffer.asFloatBuffer().put(pixels)
+      texture.generatePrefilterMipmap(
+        engine,
+        Texture.PixelBufferDescriptor(buffer, Texture.Format.RGB, Texture.Type.FLOAT),
+        RoomLight.faceOffsets(),
+        Texture.PrefilterOptions(),
+      )
       return texture
     }
   }

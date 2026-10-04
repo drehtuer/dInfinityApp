@@ -1778,14 +1778,17 @@ impact sounds rather than a crash in the middle of a roll.
   shine comes from two lamps in a void. So the same sky-to-ground gradient is
   also a 32-pixel cubemap, generated rather than shipped.
 
-  **One level, not six.** A reflection's blur normally follows a surface's
-  roughness by reading a coarser level, which is worth having when the
-  environment is a room with things in it; this one is a gradient, and a
-  gradient blurred is the same gradient nearer its own average. It is also the
-  only shape of upload the Pixel 10a's driver accepts — a six-level cubemap is
-  refused at level one with a buffer overflow against a region whose arithmetic
-  checks out on both sides, and `RoomLightUploadTest` is what pins that down
-  (`docs/TODO.md`, Open questions).
+  **Six levels, five of them Filament's.** A reflection's blur follows a
+  surface's roughness by reading a coarser level of the environment, so a
+  polished die mirrors the sharp gradient and a matte one its average. Only
+  the sharp 32-pixel level is ours, as linear RGB floats;
+  `Texture.generatePrefilterMipmap` works out the other five for Filament's own
+  lighting model, into an `R11F_G11F_B10F` cubemap. It used to ship one level,
+  because uploading a coarser level by hand is refused: Filament 1.76's JNI
+  sizes the buffer with the region's height shifted by the level a second time,
+  so level one's 16 × 16 × 6 region is checked against half the bytes it needs.
+  The prefilter goes round that and is the better answer anyway
+  (`RoomLightUploadTest`).
 - **The ambient's brightness is an average, and it is divided out.** Filament's
   intensity multiplies every coefficient, so a room that is bright above and
   dim below is a *darker* room than a flat white one at the same setting. The
