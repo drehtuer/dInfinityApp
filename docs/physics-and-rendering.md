@@ -959,6 +959,37 @@ cocked. Every golden case moved and was re-recorded, and `FairnessTest` at
 d6, 20.36 for the d20, 0.03 for the coin; the d18 0.91 % off at its worst
 face, inside its 1 % bound).
 
+**The coin `FairnessTest` lost was the same post.** One coin throw ran out the
+cap before the fillets (seed 5897839758308530927, throw 14,476 of the run). It
+was replayed on the JVM against a linux-x86_64 build of the bridge, made from
+the same sources with Jolt's deterministic flags. That build reproduces all ten
+golden cases exactly, and the first coin it gives up in `FairnessTest`'s seed
+sequence is this one, the seed the phone printed. The trace:
+
+- The coin hits the far short wall, drops, and by 0.75 s is leaning 43° from
+  flat, centre 6.7 mm up at (111, 24) mm. Its rim is on the floor, and its upper
+  rim rests on the side of the +x, +y corner post that faced into the tray. The
+  fillet does not reach that spot.
+- From there to the cap it swings like a door on a hinge. Its angular velocity
+  lies in the coin's own plane: under 0.03 rad/s about the coin's axis, against
+  up to 1.7 rad/s about a line in the face. That line is the hinge through its
+  two contacts, and the sign flips about every 0.14 s. The centre moves
+  ±0.15 mm and the speed peaks at 3 mm/s, so it was under the 10 mm/s linear
+  bar the whole time and never under 0.05 rad/s for long.
+- The swing does not shrink, because both contacts sit on the hinge. Nothing
+  slips, so friction has no work to do, and the 0.02 damping is all that is
+  left. It is the "spins on an axle" picture below in a pendulum's form: the
+  coin's weight hangs off the hinge and keeps bringing it back.
+
+The other coin give-up in that 100,000, `-5535098112695128242`, is the same
+lean on the -x side of the same post, centre at (90, 46) mm. On the tray as it is now,
+both coins land and are read: the first in 89 steps, face 1. Over the same
+100,000 throws (`FairnessTest`'s SplitMix64 seeds 0–99,999) **none gives up**
+(faces 50,145 / 49,855); the slowest throw takes 1,014 steps over three passes.
+`StuckRollTest` keeps the seed and wants it settled within three seconds. So the
+coin needs no physics of its own: what held it up was a surface the tray no
+longer has.
+
 **What still never settles is a die that spins on an axle.** Every one of the
 four rolls that gave up after the change, and the four others traced from
 before it, is the same picture: one die with its centre still to a hundredth
@@ -993,14 +1024,16 @@ Headless, but the same simulation a watched roll steps: the only difference is
 who asks for the steps ("Power-saving mode"), so a fairness result here is a
 fairness result for the app.
 
-**A throw that gives up is a figure, not a crash.** One throw in a hundred
-thousand — a coin, in the runs that have shown one — is still moving at the
-twelve-second backstop, and has no face to count
-(`SettleRule.HARD_CAP_SECONDS`). The run used to stop on it and lose everything
-it had counted. Now each one is a **give-up**: it is left out of both judgements
-above, because a give-up is not a face and counting it as one would be the
-made-up number the backstop exists to refuse, and it is reported per shape with
-its seed so the throw can be replayed and watched. A run fails on give-ups only
+**A throw that gives up is a figure, not a crash.** A throw that is still
+moving at the twelve-second backstop has no face to count
+(`SettleRule.HARD_CAP_SECONDS`). Before the corner fillets, that was about one
+coin in 50,000, leaning on the corner post ("Why a die could rock for ever").
+On today's tray, 100,000 coin throws replayed on the JVM have given up none.
+The run used to stop on a give-up and lose everything it had counted. Now each
+one is a **give-up**: it is left out of both judgements above, because a
+give-up is not a face and counting it as one would be the made-up number the
+backstop exists to refuse, and it is reported per shape with its seed so the
+throw can be replayed and watched. A run fails on give-ups only
 past **one in ten thousand throws, and never fewer than one**
 (`FaceTally.GIVE_UP_SHARE` in `simulation/harness`, tested on the JVM) — over
 three times the worst the Pixel 10a has shown, and loose enough that the quick

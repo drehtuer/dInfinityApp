@@ -24,7 +24,11 @@ This is a snapshot, not a changelog — git history is the changelog.
   has a × that empties it.
 - **In flight:** the dice of a later pass are outlined in accent-700 and
   labelled `PASS 2` under them on the tray (decision 85,
-  `docs/physics-and-rendering.md`, "What is drawn over the table").
+  `docs/physics-and-rendering.md`, "What is drawn over the table"). The room's
+  reflections are prefiltered to six levels. And the coin that ran out the
+  twelve-second cap in `FairnessTest` is explained: it leaned on the old corner
+  post; on the fillet tray 100,000 coin throws give up none ("Why a die could
+  rock for ever").
 
 ## Done
 

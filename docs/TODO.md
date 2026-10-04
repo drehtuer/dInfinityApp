@@ -209,14 +209,13 @@ re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
 
-- [ ] **A coin can roll out the twelve-second cap on its own**: one throw in
-      100,000 at 60–120 rad/s and restitution 0.55 (seed
-      5897839758308530927), three in 100,000 before. `FairnessTest` now counts
-      it as a give-up and prints its seed; find out what the coin is doing for
-      twelve seconds
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
-      for its ten cases on both ABIs; any divergence is a release blocker
+      for its ten cases on both ABIs; any divergence is a release blocker.
+      A linux-x86_64 build of the bridge, made outside the build for the coin
+      replay (`docs/physics-and-rendering.md`, "Why a die could rock for
+      ever"), matched all ten cases and the phone's coin give-up. Building it
+      in Gradle would put real rolls in the JVM tier
 
 ### 5.3 Capacity and corner cases
 
