@@ -129,7 +129,7 @@ class DiceMaterialTest {
       assertTrue("the material never reads $it", "materialParams.$it" in source || "materialParams_$it" in source)
       assertTrue("the resin never reads $it", DiceMaterial.RESIN_SOURCE.contains(it))
     }
-    listOf("transmission", "scatter", "ior", "thickness", "absorption").forEach {
+    listOf("transmission", "scatter", "ior", "thickness", "tint").forEach {
       assertTrue("the resin never reads $it", DiceMaterial.RESIN_SOURCE.contains("materialParams.$it"))
       // The opaque material declares none of these, and Filament refuses a
       // parameter a material does not declare.
@@ -152,7 +152,7 @@ class DiceMaterialTest {
     assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(solid))
 
     val glass = DiceMaterial.dieOf(DieMaterial(translucency = 0.35), texturePath = null)
-    assertEquals(0.35, glass.resin!!.transmission, TOLERANCE)
+    assertEquals(Resin.transmissionOf(0.35), glass.resin!!.transmission, TOLERANCE)
     assertEquals(DiceMaterial.Variant.RESIN, DiceMaterial.variantOf(glass))
   }
 
@@ -171,10 +171,25 @@ class DiceMaterialTest {
   }
 
   @Test
-  fun `a die scaled to nothing is still some thickness`() {
+  fun `a die scaled to nothing bends nothing, and asks for nothing impossible`() {
+    // Thickness is only how far what is seen through a die is displaced, so
+    // none at all is a die that tints and does not bend — not a division by
+    // nought, which is what the absorption it replaced had to guard against.
     val resin = Resin.of(DieMaterial(translucency = 0.6), scale = 0.0)!!
-    assertEquals(Resin.THINNEST_MM, resin.thicknessMm, TOLERANCE)
-    assertTrue(resin.absorption.red.isFinite())
+    assertEquals(0.0, resin.thicknessMm, TOLERANCE)
+  }
+
+  @Test
+  fun `translucency lets the felt through sooner than a straight line would`() {
+    // The ends stay put: nought is solid and one is glass.
+    assertEquals(0.0, Resin.transmissionOf(0.0), TOLERANCE)
+    assertEquals(1.0, Resin.transmissionOf(1.0), TOLERANCE)
+    // Between them the body keeps the square of what is not translucent.
+    assertEquals(0.84, Resin.transmissionOf(0.6), TOLERANCE)
+    assertEquals(0.36, Resin.transmissionOf(0.2), TOLERANCE)
+    // And a value outside the scale is held to it rather than passed on.
+    assertEquals(1.0, Resin.transmissionOf(3.0), TOLERANCE)
+    assertEquals(0.0, Resin.transmissionOf(-1.0), TOLERANCE)
   }
 
   @Test
@@ -203,20 +218,21 @@ class DiceMaterialTest {
   }
 
   @Test
-  fun `the resin swallows least of its own colour`() {
-    val amber = Absorption.of(Colour(red = 1.0, green = 0.5, blue = 0.0, alpha = 1.0), thicknessMm = 10.0)
-    assertEquals(0.0, amber.red, TOLERANCE)
-    assertTrue("green is absorbed more than red", amber.green > amber.red)
-    assertTrue("blue is absorbed more than green", amber.blue > amber.green)
-    // Across the whole thickness a channel keeps its own value to the
-    // configured power: exp(-a × d) = c^depth.
-    assertEquals(
-      Math.pow(0.5, Resin.ABSORPTION_DEPTH),
-      Math.exp(-amber.green * 10.0),
-      TOLERANCE,
-    )
-    // A channel of nothing is held at the least the resin passes, not infinity.
-    assertEquals(-Math.log(Resin.LEAST_CHANNEL) * Resin.ABSORPTION_DEPTH / 10.0, amber.blue, TOLERANCE)
+  fun `the resin tints what is seen through it by one pass of its colour`() {
+    // A die's colour is what it looks like over a pale table, which is two
+    // passes through it; what one pass leaves is the square root.
+    val amber = Resin.tintOf(Colour(red = 1.0, green = 0.25, blue = 0.0, alpha = 0.4))
+    assertEquals(Colour(red = 1.0, green = 0.5, blue = 0.0, alpha = 1.0), amber)
+    // Lighter than the colour, never darker: green felt under amber is olive.
+    val die = Colour.of(AMBER)
+    val tint = Resin.tintOf(die)
+    assertTrue(tint.green > die.green)
+    assertTrue(tint.blue > die.blue)
+    // And it is what reaches the renderer for a die of that colour.
+    assertEquals(tint, Resin.of(DieMaterial(translucency = 1.0, colorArgb = AMBER), scale = 1.0)!!.tint)
+    // A colour out of range is held to it rather than becoming NaN.
+    assertEquals(0.0, Resin.tintOf(Colour(red = -0.5, green = 2.0, blue = 0.0, alpha = 1.0)).red, TOLERANCE)
+    assertEquals(1.0, Resin.tintOf(Colour(red = -0.5, green = 2.0, blue = 0.0, alpha = 1.0)).green, TOLERANCE)
   }
 
   @Test
@@ -239,7 +255,15 @@ class DiceMaterialTest {
     // that keeps a numeral readable on a clear die. It cannot be asserted
     // without a GPU; that it is *there* can be.
     assertTrue(DiceMaterial.RESIN_SOURCE.contains("float bare = 1.0 - printed;"))
-    assertTrue(DiceMaterial.RESIN_SOURCE.contains("material.transmission = materialParams.transmission * bare;"))
+    assertTrue(DiceMaterial.RESIN_SOURCE.contains("float through = materialParams.transmission * bare;"))
+    assertTrue(DiceMaterial.RESIN_SOURCE.contains("material.transmission = through;"))
+    // And the tint is the base colour's, moved towards one pass through the
+    // resin only where light passes: Filament multiplies what it sees through
+    // a surface by the base colour itself, so nothing else may tint it again.
+    assertTrue(
+      DiceMaterial.RESIN_SOURCE.contains("material.baseColor.rgb = mix(colour, materialParams.tint, through);"),
+    )
+    assertFalse(DiceMaterial.RESIN_SOURCE.contains("material.absorption"))
     assertTrue(
       DiceMaterial.RESIN_SOURCE.contains("mix(materialParams.roughness, materialParams.scatter, bare)"),
     )
@@ -258,6 +282,7 @@ class DiceMaterialTest {
     const val TOLERANCE = 1e-9
     const val ROUGH = 1e-4
     const val BLACK = 0xFF000000.toInt()
+    const val AMBER = 0xFFD9822B.toInt()
     const val WHITE = 0xFFFFFFFF.toInt()
   }
 }

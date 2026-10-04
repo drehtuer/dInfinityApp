@@ -426,10 +426,10 @@ class FilamentStage(
         setParameter("ior", resin.ior.toFloat())
         setParameter("thickness", resin.thicknessMm.toFloat())
         setParameter(
-          "absorption",
-          resin.absorption.red.toFloat(),
-          resin.absorption.green.toFloat(),
-          resin.absorption.blue.toFloat(),
+          "tint",
+          resin.tint.red.toFloat(),
+          resin.tint.green.toFloat(),
+          resin.tint.blue.toFloat(),
         )
       }
     }

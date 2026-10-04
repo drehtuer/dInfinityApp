@@ -163,6 +163,54 @@ class FilamentStageTest {
     )
   }
 
+  @Test
+  fun aGlassyDieTakesTheColourOfTheFloorUnderIt() {
+    // The question the one above cannot answer: not whether *any* pixel of a
+    // clear die follows the floor, but whether the die is mostly floor. A
+    // near-white glass die tints nothing, so through it a red floor has to
+    // look red and a blue one blue across most of its body; a refraction
+    // sampling an empty picture, or a tint that darkens what it sees to
+    // nothing, leaves the body grey whichever floor is under it.
+    //
+    // The body is found with an opaque die, not guessed: the pixels a solid
+    // die changes from the empty tray (which takes in its shadow too) and that
+    // do not change with the floor (which leaves out the shadow, the floor and
+    // the walls).
+    val red = look.copy(floorColorArgb = RED_FLOOR)
+    val blue = look.copy(floorColorArgb = BLUE_FLOOR)
+    val emptyRed = drawnWith(translucency = 0.0, table = red, position = OUT_OF_SIGHT)
+    val solidRed = drawnWith(translucency = 0.0, table = red, colour = NEAR_WHITE)
+    val solidBlue = drawnWith(translucency = 0.0, table = blue, colour = NEAR_WHITE)
+    val glassRed = drawnWith(translucency = 1.0, table = red, roughness = GLASSY, colour = NEAR_WHITE)
+    val glassBlue = drawnWith(translucency = 1.0, table = blue, roughness = GLASSY, colour = NEAR_WHITE)
+
+    val body = pixelsAgreeing(solidRed, solidBlue).filter { !samePixel(solidRed, emptyRed, it) }
+    val floorColoured =
+      body.count { pixel ->
+        leans(glassRed, pixel, towardsRed = true) && leans(glassBlue, pixel, towardsRed = false)
+      }
+    val share = floorColoured.toDouble() / body.size.coerceAtLeast(1)
+    val percent = (share * PERCENT).toInt()
+    Log.i(TAG, "glass: $floorColoured of ${body.size} body pixels ($percent %) take the floor's hue")
+    assertTrue("the die's body was not found (${body.size} pixels)", body.size >= LEAST_BODY)
+    assertTrue(
+      "only $floorColoured of ${body.size} pixels of a glass die take the floor's colour",
+      share >= LEAST_FLOOR_SHARE,
+    )
+  }
+
+  /** Whether [pixel] of [frame] is clearly redder than it is blue, or the other way. */
+  private fun leans(
+    frame: ByteArray,
+    pixel: Int,
+    towardsRed: Boolean,
+  ): Boolean {
+    val from = pixel * FilamentStage.PIXEL_BYTES
+    val r = frame[from].toInt() and BYTE
+    val b = frame[from + 2].toInt() and BYTE
+    return if (towardsRed) r - b >= HUE_MARGIN else b - r >= HUE_MARGIN
+  }
+
   /** Every pixel [a] and [b] have the same, by index. */
   private fun pixelsAgreeing(
     a: ByteArray,
@@ -183,10 +231,13 @@ class FilamentStageTest {
     translucency: Double,
     table: TableLook = look,
     roughness: Double = StandardDice.d20.material.roughness,
+    colour: Int = StandardDice.d20.material.colorArgb,
+    position: Vector3 = Vector3(0.0, 0.0, 10.0),
   ): ByteArray {
     // Post-processing off, for the reason `aDrawnFrameIsNotBlank` gives.
     FilamentStage(WIDTH, HEIGHT, postProcessing = false).use { stage ->
-      val material = StandardDice.d20.material.copy(translucency = translucency, roughness = roughness)
+      val material =
+        StandardDice.d20.material.copy(translucency = translucency, roughness = roughness, colorArgb = colour)
       val die = StandardDice.d20.copy(material = material)
       val renderer = FilamentDiceRenderer(stage)
       renderer.begin(
@@ -201,7 +252,7 @@ class FilamentStageTest {
       )
       renderer.show(
         RenderFrame.still(
-          listOf(BodyTransform(index = 0, position = Vector3(0.0, 0.0, 10.0), orientation = Quaternion.Identity)),
+          listOf(BodyTransform(index = 0, position = position, orientation = Quaternion.Identity)),
         ),
       )
       val pixels = stage.pixelBuffer()
@@ -370,6 +421,37 @@ class FilamentStageTest {
      * nought is one that did not.
      */
     const val LEAST_SEEN_THROUGH = 30
+
+    /** A glass die that tints nothing, so the floor's own colour is what shows. */
+    const val NEAR_WHITE = 0xFFF2F2F2.toInt()
+
+    /** Polished glass: the floor seen through it sharp, not blurred. */
+    const val GLASSY = 0.05
+
+    /**
+     * Under the floor, where a die is neither seen nor shades anything the
+     * key light reaches first: the tray as it is with no die on it.
+     */
+    val OUT_OF_SIGHT = Vector3(0.0, 0.0, -500.0)
+
+    /**
+     * How far apart red and blue have to be, in bytes, for a pixel to be
+     * coloured by the floor rather than grey with a cast.
+     */
+    const val HUE_MARGIN = 16
+
+    /**
+     * The share of a glass die's body that has to take the floor's colour.
+     * The rest is ink, which transmits nothing, and the lacquer's reflections
+     * of the room, which are the room's colour whatever the floor is.
+     */
+    const val LEAST_FLOOR_SHARE = 0.3
+
+    /** A d20 at this size covers hundreds of pixels; fewer is a die not found. */
+    const val LEAST_BODY = 100
+
+    const val BYTE = 0xFF
+    const val PERCENT = 100
 
     /** Rotations, near enough: a new surface each, one engine behind them. */
     const val SURFACES = 3

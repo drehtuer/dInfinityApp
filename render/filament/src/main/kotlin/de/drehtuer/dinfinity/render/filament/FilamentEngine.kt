@@ -325,7 +325,7 @@ class FilamentEngine(
         .uniformParameter(MaterialBuilder.UniformType.FLOAT, "scatter")
         .uniformParameter(MaterialBuilder.UniformType.FLOAT, "ior")
         .uniformParameter(MaterialBuilder.UniformType.FLOAT, "thickness")
-        .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "absorption")
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "tint")
 
     /**
      * A decoded atlas, uploaded as it stands.

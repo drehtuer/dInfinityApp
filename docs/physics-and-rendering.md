@@ -2259,11 +2259,27 @@ impact sounds rather than a crash in the middle of a roll.
 
   | Filament input | From | Value |
   | --- | --- | --- |
-  | `transmission` | `translucency` | as it stands: the share of the light leaving the bare body that came through it |
+  | `transmission` | `translucency` | `1 − (1 − translucency)²`: the share of the light leaving the bare body that came through it. Not the translucency as it stands — the body is lit by the key light while the felt under it lies in the die's own shadow, so weighed in a straight line a die at 0.6 was its own colour with the felt a few per cent under it. 0.6 now lets 84 % through, 0.2 lets 36 % |
   | `roughness` (blur of what is seen through) | `translucency`, `roughness` | the larger of the die's `roughness` and `0.6 × (1 − translucency)`: barely translucent is milky, wholly clear is glass, and a rough die is frosted |
   | `ior` | — | 1.5, cast acrylic and epoxy |
-  | `thickness` | `size_mm`, the throw's scale | 0.7 of the die's drawn size, between a d6's inscribed sphere and a d20's |
-  | `absorption` | `color` | so that a ray crossing the whole die keeps the colour's square root on top of Filament's own one-off tint by the body colour: the middle of an amber die is deeper than its edges |
+  | `thickness` | `size_mm`, the throw's scale | 0.7 of the die's drawn size, between a d6's inscribed sphere and a d20's, in the scene's millimetres: how far what is seen through the die is displaced |
+  | `baseColor` (the tint) | `color` | the body colour moved towards its square root, channel by channel, by as much as light passes through — the colour *one* pass through the resin leaves, where `color` is the two passes (down to the table and back) that make a clear die look its colour over a pale table |
+
+  **The tint is applied once.** Filament multiplies what it sees through a
+  surface by that surface's base colour itself (`Ft *= pixel.diffuseColor` in
+  its `evaluateRefraction`), and drops the body's own diffuse light by the
+  transmission (`Fd *= 1 − transmission`). The first resin also handed it an
+  `absorption` worked out from the colour, which tinted the felt by the colour
+  and then again: green felt (linear green 0.11) through amber (linear green
+  0.22, and about half that again from the absorption) kept a tenth of its
+  green, under the die's own shadow, and a glassy amber die came out black
+  with its highlight and its numerals on top. A solid-sphere ray also only
+  ever crosses between three quarters and all of the thickness (the refracted
+  ray leaves at no more than 42° from the normal at an index of 1.5), so the
+  absorption could never have made the middle visibly deeper than the edges
+  — it was a uniform second tint and is gone. The square root is what keeps a
+  near-white glass die nearly clear and a saturated one coloured, and turns
+  green felt under amber olive rather than black.
 
   The die keeps its clear coat over all of it, so it still has the sharp
   highlight of a polished die however milky the inside is. **What is printed
@@ -2282,6 +2298,11 @@ impact sounds rather than a crash in the middle of a roll.
   A resin die still casts a whole shadow, because Filament's shadows have no
   partial coverage for an opaque material, and the light that would pool
   inside a real one (a caustic) is not modelled at all.
+
+  `FilamentStageTest.aGlassyDieTakesTheColourOfTheFloorUnderIt` holds the
+  see-through to a number on the device: a near-white glass d20 over a red
+  floor and then a blue one, and the share of its body pixels that take each
+  floor's hue (logged under `dinfinity.startup`) must be at least 30 %.
 
   The die used to be blended instead — the same surface with its alpha turned
   down — which drew a translucent die as a dusty, faded opaque one: nothing

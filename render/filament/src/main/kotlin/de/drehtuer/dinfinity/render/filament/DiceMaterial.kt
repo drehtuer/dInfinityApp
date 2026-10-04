@@ -2,7 +2,7 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.TableLook
-import kotlin.math.ln
+import kotlin.math.sqrt
 
 /**
  * The materials every surface of a roll is drawn with, and the values that
@@ -103,28 +103,35 @@ object DiceMaterial {
    *
    * Filament's *screen-space refraction*: the opaque scene is drawn first, and
    * this surface then looks into that picture along a ray bent by the resin's
-   * index, through a body [Resin.thicknessMm] thick, losing colour to
-   * [Resin.absorption] on the way. What it sees is the felt, the shadow and the
-   * opaque dice actually behind it, moved the way a lens moves them — which is
-   * what makes a die read as a solid lump of clear stuff rather than a
-   * see-through picture of one (`docs/physics-and-rendering.md`, "A die you can
-   * see into").
+   * index and displaced through a body [Resin.thicknessMm] thick. What it sees
+   * is the felt, the shadow and the opaque dice actually behind it, moved the
+   * way a lens moves them — which is what makes a die read as a solid lump of
+   * clear stuff rather than a see-through picture of one
+   * (`docs/physics-and-rendering.md`, "A die you can see into").
+   *
+   * **The tint is applied once, by the base colour.** Filament multiplies what
+   * it sees through a surface by that surface's base colour on its own, so the
+   * bare body's base colour is moved towards [Resin.tint] — the colour one
+   * pass through the resin leaves — by as much of it as light passes through.
+   * Handing it the die's own colour *and* an absorption tinted the felt by the
+   * colour and then again, and green felt through that much amber is black.
    *
    * The roughness is the resin's *scatter*, not its surface: Filament blurs
    * what is seen through a surface by its roughness, so a milky die is a rough
    * one inside a smooth lacquer, and the lacquer still gives the sharp
    * highlight a polished die has. Where something is printed the surface is
-   * the author's roughness and lets nothing through: ink is paint on the
-   * outside of the resin, and a face you cannot read is not a die.
+   * the author's colour and roughness and lets nothing through: ink is paint
+   * on the outside of the resin, and a face you cannot read is not a die.
    */
   const val RESIN_SOURCE: String =
     SURFACE + """
             float bare = 1.0 - printed;
+            float through = materialParams.transmission * bare;
+            material.baseColor.rgb = mix(colour, materialParams.tint, through);
             material.roughness = mix(materialParams.roughness, materialParams.scatter, bare);
-            material.transmission = materialParams.transmission * bare;
+            material.transmission = through;
             material.ior = materialParams.ior;
             material.thickness = materialParams.thickness;
-            material.absorption = materialParams.absorption;
     """ + COAT
 
   /**
@@ -255,23 +262,22 @@ object DiceMaterial {
  * what turn a word an author understands into the ones Filament does.
  *
  * @param transmission how much of the light leaving the bare body came
- *   through it rather than off it: the set's translucency, as it stands.
+ *   through it rather than off it ([transmissionOf]).
  * @param scatter how blurred what is seen through the die is, as a roughness:
  *   a milky die scatters, a glassy one does not, and an author who made the
  *   die rough frosted it.
  * @param ior how sharply the resin bends light.
  * @param thicknessMm how far through the die a ray travels, in the scene's
- *   millimetres.
- * @param absorption how much of each colour the resin swallows per
- *   millimetre, which is what makes the middle of a die deeper in colour than
- *   its thin edges.
+ *   millimetres, which is how far what is seen through it is displaced.
+ * @param tint what one pass through the resin leaves of white light, linear
+ *   ([tintOf]).
  */
 data class Resin(
   val transmission: Double,
   val scatter: Double,
   val ior: Double,
   val thicknessMm: Double,
-  val absorption: Absorption,
+  val tint: Colour,
 ) {
   companion object {
     /**
@@ -296,27 +302,6 @@ data class Resin(
      */
     const val THICKNESS_OF_SIZE: Double = 0.7
 
-    /**
-     * How much the resin's own colour deepens a ray that crosses the whole
-     * die, as a power of that colour. Filament already tints whatever is seen
-     * through a die by the die's colour, once; this is on top of that, and a
-     * half is what makes the middle of an amber die richer than its edges
-     * without turning it to brown glass.
-     */
-    const val ABSORPTION_DEPTH: Double = 0.5
-
-    /**
-     * The least of a colour channel the resin is allowed to pass. A channel of
-     * exactly nought would ask for infinite absorption.
-     */
-    const val LEAST_CHANNEL: Double = 0.02
-
-    /**
-     * The thinnest a die is ever taken to be, so that a throw scaled to
-     * nothing cannot ask for an infinite absorption.
-     */
-    const val THINNEST_MM: Double = 1.0
-
     /** The resin of [material] at [scale], or null for a die nothing passes through. */
     fun of(
       material: DieMaterial,
@@ -325,43 +310,51 @@ data class Resin(
       val clamped = material.clampedToLimits()
       val translucency = clamped.translucency
       if (translucency <= 0.0) return null
-      val thickness = (clamped.sizeMm * scale * THICKNESS_OF_SIZE).coerceAtLeast(THINNEST_MM)
       return Resin(
-        transmission = translucency,
+        transmission = transmissionOf(translucency),
         scatter = maxOf(clamped.roughness, MILKY_SCATTER * (1.0 - translucency)),
         ior = IOR,
-        thicknessMm = thickness,
-        absorption = Absorption.of(Colour.of(material.colorArgb), thickness),
+        thicknessMm = clamped.sizeMm * scale * THICKNESS_OF_SIZE,
+        tint = tintOf(Colour.of(material.colorArgb)),
       )
     }
-  }
-}
 
-/**
- * How much of each colour a material swallows per millimetre a ray travels
- * through it — Filament's `absorption`, which it applies as
- * `exp(-absorption × distance)`.
- */
-data class Absorption(
-  val red: Double,
-  val green: Double,
-  val blue: Double,
-) {
-  companion object {
     /**
-     * What a resin of [colour] absorbs so that a ray crossing all of
-     * [thicknessMm] keeps [Resin.ABSORPTION_DEPTH] of that colour as a power:
-     * a channel the colour is full of is not absorbed at all, and one it has
-     * none of is absorbed most.
+     * How much of the bare body's light is light that came through it, for a
+     * set's [translucency].
+     *
+     * Not the translucency as it stands. Filament splits a pixel between the
+     * body's own diffuse colour and what is seen through it, and the body is
+     * lit by a key light while what is under it is felt in the die's own
+     * shadow: weighed in a straight line, a die at 0.6 was the body's colour
+     * with the felt a few per cent under it, which reads as an opaque die. So
+     * the share the body keeps falls as a square — `(1 − translucency)²` — and
+     * the ends stay where they were: nought is solid, one is glass, and 0.6
+     * lets 84 % through, which is where the felt starts to show.
      */
-    fun of(
-      colour: Colour,
-      thicknessMm: Double,
-    ): Absorption {
-      fun channel(value: Double): Double =
-        -ln(value.coerceIn(Resin.LEAST_CHANNEL, 1.0)) * Resin.ABSORPTION_DEPTH / thicknessMm
-      return Absorption(channel(colour.red), channel(colour.green), channel(colour.blue))
+    fun transmissionOf(translucency: Double): Double {
+      val kept = 1.0 - translucency.coerceIn(0.0, 1.0)
+      return 1.0 - kept * kept
     }
+
+    /**
+     * What one pass through a resin of [colour] leaves of white light.
+     *
+     * A set's `color` is what the die *looks* like, and a clear die on a pale
+     * table looks its colour because the light that shows it has crossed the
+     * resin twice — down to the table and back up to the eye. One pass is then
+     * the square root, channel by channel, and that is what tints the felt
+     * seen through it: an amber that passes a quarter of the green twice
+     * passes half of it once, and green felt under it is olive rather than
+     * black.
+     */
+    fun tintOf(colour: Colour): Colour =
+      Colour(
+        red = sqrt(colour.red.coerceIn(0.0, 1.0)),
+        green = sqrt(colour.green.coerceIn(0.0, 1.0)),
+        blue = sqrt(colour.blue.coerceIn(0.0, 1.0)),
+        alpha = 1.0,
+      )
   }
 }
 

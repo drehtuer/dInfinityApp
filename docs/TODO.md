@@ -363,9 +363,10 @@ keeps them comparable.
       `feature/realistic-rendering`**: physically based lighting from a real
       room, rounded edges on the drawn dice, and judging the refracting resin
       dice (decision 90) on the phone: does `felt-green-translucent` read as
-      amber resin, and do the milky/glassy ends and the depth of colour need
-      `Resin`'s constants turned. Judged with `tools/gallery.sh` before and after
-      each step, and merged to `main` once the owner likes it on the phone
+      amber resin with the felt showing through, and do the milky/glassy ends
+      and the tint need `Resin`'s constants turned. Judged with
+      `tools/gallery.sh` before and after each step, and merged to `main` once
+      the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
 
