@@ -268,8 +268,9 @@ spin *would* be predictable. We do not do that.)
 through — a chain that earned a throw, a throw that left dice it could not read,
 and a throw that gave up on dice that never stopped — and the same shake
 answers all three. None has a button, and the screen says how many dice the
-next shake will throw, both on the plate over the tray and in a toast that
-announces itself to a screen reader. They never compete for one shake: the
+next shake will throw, both on the plate across the bottom and in an accent
+**shake prompt** over the tray that announces itself to a screen reader and
+stays until the shake (`docs/architecture.md`, decision 84). They never compete for one shake: the
 dice nobody could read come first, because a throw earns a chain's next die
 only once every die of it has a face.
 
@@ -465,8 +466,11 @@ the table instead ("Clearing the table", decision 83) — so a pick shows about
 near, or before the roll has a total does nothing.
 
 **Picking moves nothing.** The die stays exactly where it lies; what changes is
-a ring drawn round it over the picture and the tray's spoken description —
-"N dice picked; shake to throw them", announced as it changes (decision 76).
+a ring drawn round it over the picture, in the accent on a halo of the plates'
+ground, and a shake prompt over the tray — "Shake to throw the 2 picked
+dice", and under it "Tap a ringed die again to put it back" — announced as it
+changes, and gone with the shake (`docs/architecture.md`, decisions 76 and
+84). The tray's spoken description says the count too.
 A pick that would need more clear floor than the tray has left is refused, for
 the reason a chain stops at `TrayFull`: the new die is dropped into clear floor
 and there would be none.
@@ -1247,8 +1251,10 @@ throwing it again").
    another die — **the throw stops there too**. Nothing is thrown again by
    the app: the dice that were read stay read, the ones that could not be
    lie exactly where they fell, and the screen says how many need another
-   throw and that a shake throws them — on a plate over the tray, in a toast
-   a screen reader announces, and in the tray's own spoken description
+   throw and that a shake throws them — on a plate over the tray, in an
+   accent prompt over the felt ("Shake to re-throw 2 dice") a screen reader
+   announces and that stays until the shake, and in the tray's own spoken
+   description
    (`SimulationOutcome.unread`, `RollState.ThrowAgain`; `docs/architecture.md`,
    decision 70). The player looks at the heap as it lies until they shake.
 
@@ -1294,7 +1300,7 @@ flowchart TD
   rest --> count["Count: each die showing a face is read"]
   count --> all{"Every die read?"}
   all -->|yes| done["The throw is over<br/>scored, or a chain earns its next die"]
-  all -->|no| wait["ThrowAgain: the unread dice lie where they fell<br/>plate + toast + spoken tray say how many"]
+  all -->|no| wait["ThrowAgain: the unread dice lie where they fell<br/>plate + shake prompt + spoken tray say how many"]
   wait -->|"the player shakes"| lift["Lift the dice that were read"]
   lift --> again["Throw only the unread dice<br/>a world of their own, among the dice still down"]
   again --> rest
@@ -2327,6 +2333,16 @@ not a plate but an opaque surface of its own, keeps the same rule for the same
 reason, which is what lets "See the odds" and "Save as roll" sit on it. The pairing that has to be legible is accent-on-`--color-bg`: one
 pairing rather than a matrix.
 
+Two things over the felt are accent-coloured and keep the rule by carrying
+their own ground (`docs/architecture.md`, decision 84). The **shake prompt** is
+an opaque accent fill with its words in `onPrimary` at 20 sp — a primary
+button's pairing, at a size where the accent's 3:1 is enough — and its
+smaller second line on `--color-bg`. The **pick ring** is a 4 dp accent ring
+inside an 8 dp ring of `--color-bg`, so 2 dp of ground shows either side of
+the accent whatever the felt is. Both are in the prototype under the
+`rollState` tweak — `unread`, `picked`, `earned` and `stuck`
+(`design/dInfinityPhone.dc.html`).
+
 Where a plate wants the accent it wants its **700 step**, because a kicker is
 10 dp and a `+` is 13 and the accent as chosen only clears the contrast bar for
 large text. That step is *mixed* from the accent in use rather than looked up —
@@ -2343,6 +2359,7 @@ filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
 | Another throw earned | across the bottom | a chain that stopped, the shake it wants, and what is still to come |
 | Throw again | across the bottom | how many dice landed where they cannot be read, how many were, that a shake throws them, and what is still to come |
 | Could not settle | across the bottom | how many dice never stopped, what is still to come, and what to do about them |
+| Shake prompt | centred under the controls along the top | what the next shake will throw and how many — dice to re-throw, earned dice, or picked dice and how to put one back; in the accent, until the shake |
 
 **There is no plate at all on an empty tray.** `Type a formula, or open Dice
 at the top.` stood there and the second device session asked for it to go: it
@@ -2519,8 +2536,9 @@ ends.
 throw whether it is the first of a roll or the last, and a button that made
 one was a button that made the shake optional. What is drawn instead is the
 count, so a player who shakes knows how many dice are about to go up — on the
-plate, and in a toast over the tray that is a polite live region, so a screen
-reader is *told* rather than having to be swiped onto it.
+plate, and in the shake prompt over the tray, which is a polite live region,
+so a screen reader is *told* rather than having to be swiped onto it, and
+which stays until the shake (decision 84).
 
 **`Stop the chain` is gone too.** It put the roll away with no total, which is
 what `Cancel the roll` does and was not what the button said — a roll thrown
@@ -2678,7 +2696,7 @@ gesture is `DiceTray`'s.
   the same fixed timestep, still with the same seed and settle rules. Typical
   roll finishes in well under 100 ms of wall time.
 - **A throw that leaves dice unread waits here too.** There is no tray to look
-  at, so the plate and the toast are the whole of what the player is told,
+  at, so the plate and the shake prompt are the whole of what the player is told,
   and the shake is the whole of what they do: it throws those dice, on the
   same worker, and the roll goes on. Nothing about the wait needs a frame.
 - **It is not paced, and it cannot be.** `RollPace` exists so a player can

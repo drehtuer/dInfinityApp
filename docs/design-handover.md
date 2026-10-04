@@ -207,18 +207,24 @@ is left in the script, unreferenced, rather than unpicked by hand.
 - **The same line on the result sheet.** The app prints it under the
   breakdown, so the total is a number in a range. The prototype's poster sheet
   has no equivalent and has just lost a button from that action row.
-- **A toast that says how many dice a shake will throw.** It is the
-  back-arming toast's component, over the tray, raised when a chain earns a
-  throw, when a throw leaves dice nobody could read, and when a roll gives up.
-  The prototype has the component and does not raise it here.
+- **A prompt that says what the next shake will throw.** It was a toast, and
+  the owner found it easy to miss: it is now an accent banner centred under
+  the controls along the top — a drawn shaken phone and "Shake to re-throw 2
+  dice" at 20 sp in `--color-bg` on `--color-accent`, with, for picked dice,
+  "Tap a ringed die again to put it back" on the ground under it — raised when
+  a chain earns a throw, when dice could not be read, when a roll gives up and
+  when dice are picked, and gone with the shake (`docs/architecture.md`,
+  decision 84). Drawn into the prototype by hand (`rollState` `unread` and
+  `picked`); does it want a design of its own, and is the top of the tray the
+  place for it?
 - **A plate for dice that landed where they cannot be read.** A throw no
   longer throws its cocked or stacked dice again by itself: it stops, the dice
   lie where they fell, and a `THROW AGAIN` plate says how many, how many of
   the throw were read, and that a shake throws them (decision 70,
   `docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice"). The
   app draws it on the earned plate's layout — an accent-700 kicker, a line of
-  copy, the `STILL TO COME` range — and the prototype has no such state; its
-  `rollState` tweak wants a fifth value for it. Should the dice that are
+  copy, the `STILL TO COME` range — and the prototype now draws it by hand as
+  `rollState` `unread`. Should the dice that are
   waiting be marked on the tray, the way the design marks last-pass dice?
 - **The prototype's tray tap is not the app's.** Tapping the tray in the app
   does *not* roll, and that is decided rather than pending
@@ -233,11 +239,13 @@ is left in the script, unreferenced, rather than unpicked by hand.
   picked dice, and the replaced face stays on the sheet struck through
   (`docs/architecture.md`, decisions 68 and 76;
   `docs/physics-and-rendering.md`, "Picking a die up and throwing it again").
-  The app marks a picked die with a two-ink ring over the felt — the plates'
-  ground, broad, with their ink inside it — because accent never touches
-  felt. The prototype has no picked die to draw, and nothing on the sheet says
-  which dice are picked: does the ring want a design, and does the sheet want
-  to show the pick too?
+  The app marks a picked die with a ring over the felt in the accent, on a
+  broader ring of the plates' ground so the accent never meets the felt
+  (decision 84, at the owner's request — it was the ground and the ink, and
+  did not stand out), and says "Shake to throw the 2 picked dice" over the
+  tray. The prototype draws both by hand as `rollState` `picked`; nothing on
+  the sheet says which dice are picked: does the sheet want to show the pick
+  too?
 - **The welcome does not listen for a shake.** While the first-launch
   takeover (`9a`) is up, the app registers no shake at all, so nothing can be
   thrown under it and no result sheet can land behind its buttons

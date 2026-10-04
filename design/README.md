@@ -119,9 +119,12 @@ tray to roll". Both are listed in
 throw, and the prototype half-says so".
 
 **Dice that land cocked wait for a shake** (decision 70), on a `THROW AGAIN`
-plate the prototype does not draw: its `rollState` tweak has `earned` and
-`stuck` and no state for it. The app borrows the earned plate's layout until
-the design has one; the same hand-over section lists it.
+plate, and **what the next shake throws is said over the tray** in an accent
+shake prompt until the shake, with a picked die ringed in the accent on a halo
+of the ground (decision 84). The `rollState` tweak reaches all of it: `unread`
+draws the plate and the prompt, `picked` the prompt with its "put it back"
+line and rings round the first two dice of a landed roll, and `earned` and
+`stuck` carry the prompt too. Both are hand edits (see **Editing**).
 
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
 2026-09-17, with three hand edits to `dInfinityPhone.dc.html` since (see
@@ -146,6 +149,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 | Screens | Specified in |
 | --- | --- |
 | Roll screen: tray, layouts, result sheet — 1a, 1b–1d, 1e–1g, 1z | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), [../docs/tables.md](../docs/tables.md) |
+| Roll screen waiting on a shake: the shake prompt, the `THROW AGAIN` plate and the pick ring — `rollState` `earned`, `stuck`, `unread`, `picked` | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md) ("Picking a die up and throwing it again", "What is drawn over the table"), [../docs/architecture.md](../docs/architecture.md) (decisions 70, 76, 84) |
 | Notation field, dice pickers, errors — 2a, 1h–1j, 9c, 6d | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Outcome graph — 1k–1m, 7a | [../docs/probability.md](../docs/probability.md) |
 | Saved rolls, editor, import — 1n–1p, 1r, 7b, 9b, 9f–9g, 6e | [../docs/dice-notation.md](../docs/dice-notation.md) |
@@ -160,9 +164,11 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 Edit in the [Claude Design project](./) and re-import here so the two stay in
 step.
 
-**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Three
+**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Four
 small corrections were made here after the 2026-09-17 sync, to keep the
-prototype true to the app: a Fudge face prints `−`, blank and `+` rather than
+prototype true to the app: the shake prompt over the tray, the `THROW AGAIN`
+plate and the accent pick ring, reached by the `rollState` values `unread`
+and `picked` (decision 84); a Fudge face prints `−`, blank and `+` rather than
 its value (`faceText` beside `pipDot`); the throw buttons are gone — the
 `earned` plate's `Throw N more` and `Stop the chain`, the `stuck` plate's
 `Throw those N again`, and the result sheet's `Again` / `Roll again` (its

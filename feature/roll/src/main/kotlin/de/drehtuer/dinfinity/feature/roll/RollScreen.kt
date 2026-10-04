@@ -20,9 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -42,9 +40,7 @@ import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
 import de.drehtuer.dinfinity.ui.common.Modernist
-import de.drehtuer.dinfinity.ui.common.ModernistToast
 import de.drehtuer.dinfinity.ui.common.Plate
-import de.drehtuer.dinfinity.ui.common.ToastTestTags
 
 /**
  * Home: the tray, the formula and the total
@@ -211,12 +207,6 @@ fun RollScreen(
       )
     }
 
-    // And, when the roll is waiting on a hand, a line of words that says so
-    // and goes away again. The plate behind it says the same thing and stays,
-    // but a plate is somewhere a player has to look — the toast is a polite
-    // live region, so a shake that is being waited for is *announced*.
-    WaitingForAShake(presenter.state, modifier = Modifier.align(Alignment.BottomCenter))
-
     if (welcome.up) FirstLaunch(presenter, whatIsThere, welcome::pressPast, onImportCollection, onAddSets)
   }
 }
@@ -361,57 +351,6 @@ private fun TheResult(
 }
 
 /**
- * The notice that the roll is waiting to be shaken
- * (`ui/common`'s `ModernistToast`).
- *
- * Three states reach it and they mean two different things: dice that landed
- * where they cannot be read and dice that never settled are dice to *throw
- * again*, and an exploding chain's are dice the roll has *earned*. All of them
- * wait for the same hand, so all of them say how many — a player who shakes and
- * sees two dice go up wants to have been told it would be two.
- *
- * The toast takes itself away after 2.6 s while the state it announced is
- * still there; that is the point. The plate under it is the thing that stays,
- * and a notice that never left would sit over the tray for as long as nobody
- * shook.
- */
-@Composable
-private fun WaitingForAShake(
-  state: RollState,
-  modifier: Modifier = Modifier,
-) {
-  val awaiting = state.awaiting()
-  // What was announced, or null once the words have had their time. A count
-  // of its own rather than a flag, because the state stays and the toast does
-  // not: reading it back off [state] would raise the words again on the next
-  // recomposition.
-  var said by remember { mutableStateOf<Awaiting?>(null) }
-  // Which wait this is. A roll that stalls, is shaken, and stalls again on
-  // the same number of dice is a new thing to say, and without this it would
-  // be the tail of the last toast (`TwoStageBack`).
-  var round by remember { mutableIntStateOf(0) }
-  LaunchedEffect(awaiting) {
-    said = awaiting
-    if (awaiting != null) round++
-  }
-  said?.let { waiting ->
-    key(round) {
-      ModernistToast(
-        text =
-          pluralStringResource(
-            if (waiting.again) R.plurals.roll_toast_again else R.plurals.roll_toast_earned,
-            waiting.count,
-            waiting.count,
-          ),
-        onDismissed = { said = null },
-        // The prototype's `bottom: 18px`, clear of the system's own bar.
-        modifier = modifier.safeDrawingPadding().padding(bottom = ABOVE_THE_EDGE),
-      )
-    }
-  }
-}
-
-/**
  * The two pull-ups along the bottom edge, and how much of the edge they have
  * between them.
  *
@@ -451,36 +390,6 @@ private fun rememberEdges(landed: Boolean): Edges {
   }
   return edges
 }
-
-/**
- * What the next shake would throw, and whether those dice are being thrown
- * again or for the first time.
- *
- * A value rather than two nullable fields on the screen, and out here rather
- * than inside the composable, so the mapping from state to sentence is
- * arithmetic a plain JVM test can read (`TrayReading` is the same idea for
- * what the tray says).
- */
-internal data class Awaiting(
-  val count: Int,
-  /**
-   * True for dice being thrown again — ones nobody could read, or ones a roll
-   * gave up on — and false for dice a chain earned.
-   */
-  val again: Boolean,
-)
-
-/** Null for every state that is not waiting on a hand. */
-internal fun RollState.awaiting(): Awaiting? =
-  when (this) {
-    is RollState.ThrowAgain -> Awaiting(count = unread, again = true)
-    is RollState.Stalled -> Awaiting(count = unsettled, again = true)
-    is RollState.ShakeAgain -> Awaiting(count = waiting, again = false)
-    else -> null
-  }
-
-/** The prototype's `bottom: 18px`, which is where a toast sits. */
-private val ABOVE_THE_EDGE = 18.dp
 
 /**
  * Whether the first-launch welcome is up, and the one way to take it down.
@@ -756,6 +665,15 @@ private fun AlongTheTop(
     // for first is the die, and the way back is what they want *after*
     // (`design/dInfinityPhone.dc.html`).
     onBackToDesigner?.let { BackToDesigner(onBack = it) }
+
+    // What the next shake will throw, when it is owed something: under the
+    // controls and over the felt, centred, where the eye already is when the
+    // dice stop — rather than a line along the bottom edge, which the owner
+    // found easy to miss (decision 84). It goes with the shake that answers
+    // it, because the state it is drawn from does.
+    ShakePrompt.of(presenter.state, presenter.picked.size)?.let { prompt ->
+      ShakePromptBanner(prompt = prompt, modifier = Modifier.align(Alignment.CenterHorizontally))
+    }
   }
 }
 
@@ -812,8 +730,6 @@ private fun TheTableOrANoticeThatThereIsNone(
       // a throw has started ([RollPresenter.looking]).
       view = presenter.looking,
       onLook = presenter::look,
-      // A pick and an un-pick are said as they happen (decision 76).
-      announcing = presenter.picked.isNotEmpty(),
       // One finger on a die picks it up for the next shake, or puts it back
       // (decisions 68 and 76). It never throws anything.
       onTap = { across, down, ratio -> presenter.touch(across, down, ratio) },
@@ -1038,14 +954,16 @@ object RollTestTags {
 
   /** The rings round the dice a finger has picked up for the next shake (decision 76). */
   const val PICKED: String = "roll:tray:picked"
-  const val REFUSED: String = "roll:refused"
-  const val INVALID: String = FormulaTestTags.ERROR
 
   /**
-   * The notice that says how many dice are waiting to be thrown again
-   * (`ui/common`'s `ModernistToast`).
+   * What the next shake will throw, over the tray, its main line and — for
+   * picked dice — the line under it ([ShakePromptBanner], decision 84).
    */
-  const val TOAST: String = ToastTestTags.TOAST
+  const val SHAKE_PROMPT: String = "roll:shake-prompt"
+  const val SHAKE_PROMPT_TEXT: String = "roll:shake-prompt:text"
+  const val SHAKE_PROMPT_HINT: String = "roll:shake-prompt:hint"
+  const val REFUSED: String = "roll:refused"
+  const val INVALID: String = FormulaTestTags.ERROR
 
   /** The one-tap fix, shown only when the mistake has an obvious reading. */
   const val SUGGESTION: String = FormulaTestTags.SUGGESTION

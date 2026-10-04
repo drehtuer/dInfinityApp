@@ -81,13 +81,14 @@ Implementation notes recorded only here:
 - [ ] **Power-saving** leaves the formula, the dice menu and a total; the
       design shows a progress indicator and a result sheet (`1z`). Instant, or
       broken?
-- [ ] **Picking a die up** (decision 76): push the sheet down, tap a die, and
-      look at the ring round it on each table — does it read on the felt, light
-      and dark, and does it sit round the die you touched at every pinch? Is a
-      second tap the undo you reach for, or does a picked die want saying so on
-      the sheet too? Then shake: does only that die go, does it land clear of
-      the others, and does the struck-through face beside the new one on the
-      sheet read as "thrown again"?
+- [ ] **Picking a die up** (decisions 76 and 84): push the sheet down, tap a
+      die, and look at the accent ring round it on each table — does it pop
+      out on the felt, light and dark, with whichever accent is set, and does
+      it sit round the die you touched at every pinch? Does "Shake to throw
+      the picked die" at the top say what picking is for, and is it in the
+      way of a die you want to see? Then shake: does only that die go, does
+      it land clear of the others, and does the struck-through face beside the
+      new one on the sheet read as "thrown again"?
 - [ ] **Clearing the table** (decision 83): shake, and see whether the formula
       tab folding into `Dice` reads as "put away" rather than "gone", and
       whether opening `Dice` to reach the formula is one press too many.
@@ -95,6 +96,9 @@ Implementation notes recorded only here:
       expect, and is the double tap found at all without being told? Tap a
       die: is the ~300 ms before its ring appears noticeable, or does a pick
       still feel immediate?
+- [ ] **The shake prompt** (decision 84): land a die cocked (or a `1d6!` that
+      explodes) — is "Shake to re-throw 1 die" at the top impossible to miss
+      now, does it go the moment you shake, and does TalkBack read it once?
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
 and read here, and a seed gives the same result with the renderer on and off.
@@ -273,8 +277,8 @@ keeps them comparable.
       roughly two rolls in five. Bound that per roll, and the passes a roll
       needs, rather than per die
 - [ ] *With a hand:* does a throw that stops with a cocked die read as the
-      app asking, rather than as the roll hanging? Is the plate, the toast and
-      the heap left as it lay enough to know which die the shake is for — or
+      app asking, rather than as the roll hanging? Is the plate, the shake
+      prompt and the heap left as it lay enough to know which die the shake is for — or
       does the waiting die want marking on the tray (`docs/design-handover.md`)?
 - [ ] **A die pinched at two points spins for ever.** The two `60d20` rolls in
       10,000 that gave up were dice leaning on the round post that stood in

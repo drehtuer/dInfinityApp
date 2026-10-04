@@ -263,16 +263,20 @@ class RollScreenTest {
   }
 
   @Test
-  fun `and says how many of them, in words that go away again`() {
-    // The plate stays and says it too; the toast is the part a screen reader
-    // is told about without being asked (`ModernistToast`).
+  fun `and says over the tray how many of them the shake will throw`() {
+    // The plate says it too; the prompt over the tray is the part a screen
+    // reader is told about without being asked (decision 84).
     val tray = StallingTray(unsettled = listOf(1, 2))
     compose.setContent { RollScreen(presenter = presenter(tray, LandingRolls(mapOf(0 to 0)))) }
 
     typeFormula("4d6")
     shake()
 
-    compose.onNodeWithTag(RollTestTags.TOAST).assertTextEquals("Shake to throw those 2 dice again.")
+    compose
+      .onNodeWithTag(
+        RollTestTags.SHAKE_PROMPT_TEXT,
+        useUnmergedTree = true,
+      ).assertTextEquals("Shake to re-throw 2 dice")
   }
 
   @Test
@@ -283,7 +287,11 @@ class RollScreenTest {
     typeFormula("4d6")
     shake()
 
-    compose.onNodeWithTag(RollTestTags.TOAST).assertTextEquals("Shake to throw that die again.")
+    compose
+      .onNodeWithTag(
+        RollTestTags.SHAKE_PROMPT_TEXT,
+        useUnmergedTree = true,
+      ).assertTextEquals("Shake to re-throw 1 die")
   }
 
   @Test
