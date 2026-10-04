@@ -56,18 +56,17 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every decision about a roll is Kotlin over an interface**, so "nothing
   touches a die that has come to rest" is proved by JVM tests, not sampled.
 
-## Last device run — Pixel 10a, 2026-10-03, `feature/livelier-tumble`
+## Last device run — Pixel 10a, 2026-10-04, the overnight stack tip (#349)
 
-- **Device suite:** 94 tests, **93 passed, 0 failed**, 1 skipped (`HarnessTest`,
-  which declines without a roll count), in 10 min 48 s.
-- **Harness, 1,000 rolls of 20d20:** 11 of 13 targets measured, **9 pass**. No
-  die at rest on another, nothing corrected, no roll gave up, settle 0.96 s
-  median and 1.76 s p99, **2.70 turns after landing** (1.55 before). Fails:
-  re-throws **1.18 %** against 0.05 % (2.65 % before), overlap **7.76 mm**
-  against 0.2 mm (5.29 mm before) (`docs/TODO.md`, Step 5).
-- **Fairness, 20,000 throws a shape:** every shape passes; one coin throw in
-  100,000 runs out the cap (three in 100,000 before), and `FairnessTest`
-  stops on that rather than counting it (`docs/TODO.md`, 5.2).
+- **Device suite:** 102 tests, **101 passed, 0 failed**, 1 skipped
+  (`HarnessTest`, which declines without a roll count).
+- **Harness, 10,000 rolls of 20d20:** no die read while standing on another,
+  none gave up, settle 0.95 s median and 1.96 s p99, **2.70 turns after
+  landing**. Fails, as before: re-throws 1.21 % against 0.05 %, overlap
+  7.76 mm against 0.2 mm (four and eight collision steps measured and not
+  adopted, decision 77).
+- **10,000 rolls of 60d20:** two gave up; the 1–100 d6 sweep under counting:
+  none gave up at any count (`docs/TODO.md`, 5.3 and 5.5).
 
 ## Blocked / waiting on
 

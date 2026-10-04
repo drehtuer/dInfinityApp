@@ -199,10 +199,17 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 
 ### 5.3 Capacity and corner cases
 
-- [ ] **Re-run the 1–100 dice sweep under counting.** Under the ladder: no die
-      at rest on another, no NaN, no die through a wall, p99 step 3.09 ms at a
-      hundred; one roll in sixty at 40 and 100 dice reached the backstop, and
-      re-throws climbed from 1 % to 6.3 %
+The 1–100 d6 sweep under counting (Pixel 10a, 2026-10-04, at #349; 200 rolls
+each up to 20 dice, 60 above): **no roll gave up at any count**, no die read
+while standing on another, p99 step at most 1.23 ms (60 dice) against 8.33.
+
+| dice | 1 | 2 | 5 | 10 | 20 | 40 | 60 | 80 | 100 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| re-thrown | 0 % | 0.25 % | 0.10 % | 0.20 % | 1.10 % | 1.42 % | 1.83 % | 1.38 % | 1.22 % |
+| settle median / p99 (s) | 0.68 / 0.92 | 0.75 / 0.96 | 0.81 / 0.98 | 0.83 / 1.54 | 0.86 / 1.70 | 0.88 / 1.64 | 1.45 / 1.73 | 1.40 / 1.68 | 1.43 / 1.64 |
+| deepest overlap (mm) | 0 | 3.6 | 5.6 | 4.4 | 6.4 | 5.3 | 6.0 | 6.4 | 4.8 |
+| turns after landing | 2.73 | 2.90 | 2.96 | 2.90 | 2.54 | 2.02 | 2.03 | 1.94 | 1.82 |
+
 - [ ] **`100d4` does not reliably settle.** Five of twenty-four seeds in
       `JoltBridgeTest` reach the twelve-second backstop and give up (since #319
       without taking the app with them). The bound is today's worst case
@@ -261,9 +268,17 @@ keeps them comparable.
       app asking, rather than as the roll hanging? Is the plate, the toast and
       the heap left as it lay enough to know which die the shake is for — or
       does the waiting die want marking on the tray (`docs/design-handover.md`)?
-- [ ] **Repeat the 10,000-roll runs at 20 and 60 dice under counting.** Under
-      the ladder three rolls in 10,000 at 20 dice and two thirds of 29 standing
-      dice at 60 ran out of time
+- [ ] **Two 60d20 rolls in 10,000 gave up.** The 10,000-roll runs under
+      counting (Pixel 10a, 2026-10-04, at #349): 20d20 — none gave up,
+      re-throws 1.21 %, settle 0.95 / 1.96 s, 2.70 turns; 60d20 — **2 gave up**,
+      re-throws 2.63 %, settle 1.67 / 2.02 s, 2.09 turns, overlap 7.4 mm. Under
+      the ladder it was three in 10,000 at 20 dice. Both ran the full 1,440
+      steps with **no re-throw at all** — the dice never came to rest, so it is
+      settling, not counting: roll 7196 (seed 8028586073466521667) and roll
+      8091 (seed 8761657533792694254) of `tools/harness.sh -n 10000 -c 60`.
+      Next slowest 1,274 steps; p99.9 is 317. Replay those two seeds and see
+      which die keeps moving — a die rocking on an edge at restitution 0.55
+      (#339) is the first suspect
 - [ ] Tune prevention — spawn spread, dice-on-dice friction, throw energy,
       scale — to bring re-throws and overlap down. Five spawn height bands
       instead of three was neutral
