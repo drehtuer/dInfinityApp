@@ -13,6 +13,7 @@ import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledArtwork
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
+import de.drehtuer.dinfinity.render.filament.AtlasCache
 import de.drehtuer.dinfinity.render.filament.AtlasKey
 import de.drehtuer.dinfinity.simulation.api.SolidFace
 import de.drehtuer.dinfinity.simulation.api.SolidFaces
@@ -127,6 +128,36 @@ class DrawnFaceReachesTheDieTest {
   }
 
   /** The bundled die called [id], which is what a drawing is started from. */
+  @Test
+  fun `a drawing rolled again is the new drawing, not the one the tray saw first`() {
+    // What the owner saw on the Pixel 10a: eyes on a d6, cleared in the
+    // designer, rolled again — and the tray still threw the eyes, because the
+    // engine's atlas cache keyed the picture by package and path alone and
+    // *Roll it* rewrites "My dice" under both unchanged.
+    val die = builtin("d6")
+    val installed = InstalledSets(root)
+    val artwork = InstalledArtwork(installed)
+    val drawn = DieArtwork(stamped = artwork::stamp, read = artwork::read)
+    val cache = AtlasCache(artwork = drawn, upload = { it }, destroy = {}, stamp = drawn::stamp)
+
+    val key = install(filled(die, face = 0))
+    val first = cache.of(key) ?: error("nothing was drawn the first time")
+    assertTrue("face 0 was drawn", 0 !in first.emptyCells(die.faces.size))
+
+    // Face 0 cleared and face 1 drawn instead: a package with nothing drawn
+    // at all has no die in it to throw.
+    val rewritten = install(filled(die, face = 1))
+    File(File(root, MinePackage.ID), AtlasKey.split(rewritten)!!.second).apply {
+      setLastModified(lastModified() + REWRITTEN_LATER_MS)
+    }
+    val second = cache.of(rewritten)
+
+    assertEquals("the same package and path both times", key, rewritten)
+    val now = second ?: error("nothing was drawn the second time")
+    assertTrue("the cleared face came back drawn", 0 in now.emptyCells(die.faces.size))
+    assertTrue("the new stroke is missing", 1 !in now.emptyCells(die.faces.size))
+  }
+
   private fun builtin(id: String): Die = BuiltinDiceSet.set.die(id) ?: error("the bundled set has no '$id'")
 
   /** The first bundled die of [shape], or null when the set has none. */
@@ -153,6 +184,17 @@ class DrawnFaceReachesTheDieTest {
    * because every one of those steps is a step that could drop the picture.
    */
   private fun atlasOf(draft: Draft): AtlasImage {
+    val key = install(draft)
+    val installed = InstalledSets(root)
+    val artwork = DieArtwork(read = InstalledArtwork(installed)::read)
+    return artwork(key) ?: error("the renderer would be handed nothing for '$key'")
+  }
+
+  /**
+   * [draft] written into "My dice" the way *Roll it* writes it, and the key
+   * the renderer would ask for its die's atlas by.
+   */
+  private fun install(draft: Draft): String {
     val files =
       MinePackage.of(
         drawings = listOf(draft),
@@ -169,8 +211,7 @@ class DrawnFaceReachesTheDieTest {
     val ready = installed.find(MinePackage.ID) as? InstalledPackage.Ready ?: error("the package did not install")
     val die = ready.set.die(draft.die.id) ?: error("'${draft.die.id}' is not in the package")
     val path = die.texturePath ?: error("'${die.id}' came out of the exporter with no texture")
-    val artwork = DieArtwork(InstalledArtwork(installed)::read)
-    return artwork(AtlasKey.of(MinePackage.ID, path)) ?: error("the renderer would be handed nothing for '$path'")
+    return AtlasKey.of(MinePackage.ID, path)
   }
 
   /** The points of [face]'s cell the die shows that the atlas leaves clear. */
@@ -247,6 +288,9 @@ class DrawnFaceReachesTheDieTest {
   private companion object {
     /** A colour no die is, so a pixel carrying it came from the drawing. */
     const val PAINT = 0xFFCC2222.toInt()
+
+    /** Later than the first write by more than any file system's clock step. */
+    const val REWRITTEN_LATER_MS = 2_000L
 
     /** The middle of a cell, which every sample is measured from. */
     const val MIDDLE = 0.5

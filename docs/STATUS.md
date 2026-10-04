@@ -16,21 +16,14 @@ This is a snapshot, not a changelog — git history is the changelog.
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
 - **Latest release:** `v0.1.1`, signed and published with its SHA-256.
-- **`main` is at #355**: the overnight stack of 2026-10-04 is in. Added dice
-  drop from one spot (decision 69), a cocked die waits for the player's shake
-  (70), a livelier tumble, the hand re-throw (68, 76), more than one personal
-  set (79), a rendered harness (80), and the tray's corners built as fillets
-  (81).
-- **In flight:** the owner's feedback on that build. A cold start no longer
-  shows a black tray for 9.9 s: 0.8 s, or 3.2 s on the first launch of a new
-  version (the dice material is compiled for one backend and kept on disk,
-  decision 46). The watched pace slows from 0.5 to 0.4 (decision 65), and the
-  face designer's `Clear eyes` becomes `Clear face`, which empties the face in
-  front of the player and nothing else (decision 82). A throw folds the
-  formula into the shut dice pull-down, and a double tap on the felt clears
-  every pull-up, pull-down and tab off the table and back (decision 83). A cocked, earned or picked die is announced by an accent
-  prompt over the tray ("Shake to re-throw 2 dice") instead of the toast, and
-  a picked die is ringed in the accent (decision 84).
+- **`main` is at #360**: the owner's feedback on the overnight build is in
+  — a cold start shows the tray in 0.8 s (decision 46), the watched pace is
+  0.4 (65), *Clear face* in the designer (82), a throw folds the top away and
+  a double tap clears the table (83), and an accent shake prompt and pick
+  ring (84).
+- **In flight:** the designer's *Roll it* threw the drawing as it was the
+  first time — the tray's atlas cache now decodes a package's file again
+  when it changes.
 
 ## Done
 

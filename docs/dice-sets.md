@@ -507,7 +507,7 @@ a package called `textures`.
 flowchart LR
   die["Die.texturePath<br/>textures/d20.png"] --> key["AtlasKey.of(setId, path)<br/>mine::textures/d20.png"]
   key --> stage["FilamentStage<br/>atlases: (String) -> Texture?"]
-  stage --> cache["AtlasCache, on FilamentEngine<br/>one Texture per key, misses remembered"]
+  stage --> cache["AtlasCache, on FilamentEngine<br/>one Texture per key and file version<br/>misses remembered"]
   cache --> app["DieArtwork, in :app<br/>splits the key"]
   app --> found["InstalledArtwork<br/>which folder, which file, how big"]
   found --> decode["AtlasDecoder<br/>bounds, then pixels, then cells"]
@@ -526,6 +526,13 @@ Four things about that path are rules rather than arrangement:
   destroyed with it. A `Texture` is a native handle, so one uploaded per throw
   and dropped is a leak nothing on the JVM can see. A key that came back empty
   is remembered as empty too, so a file that will not decode is read once.
+  **Once per version of the file, not once for ever.** The face designer
+  rewrites "My dice" under the same id and the same paths every time *Roll it*
+  is pressed, so each entry also remembers the file's size and modification
+  time (`InstalledArtwork.stamp`, a stat and no read). When those change, the
+  atlas is decoded again and the old `Texture` is given back, which is safe
+  because a package only changes while the roll screen is not showing. Before
+  this, a drawing rolled a second time was thrown as it looked the first time.
 - **Straight alpha, not premultiplied.** The material lays the artwork over the
   die's printed label by the artwork's own alpha, so a half-transparent pixel
   has to keep its full colour. Android premultiplies by default and the decoder

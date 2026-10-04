@@ -48,6 +48,14 @@ class DieArtworkTest {
     assertNull(artwork(AtlasKey.of("mine", "textures/d20.png")))
   }
 
+  @Test
+  fun `a key that names no package has no stamp`() {
+    val drawn = DieArtwork(read = { _, _ -> error("not asked") }, stamped = { _, _ -> "1@1" })
+
+    assertNull(drawn.stamp("textures/felt.png"))
+    assertEquals("1@1", drawn.stamp(AtlasKey.of("mine", "textures/d6.png")))
+  }
+
   private fun refusal() =
     ValidationMessage(
       severity = Severity.Error,

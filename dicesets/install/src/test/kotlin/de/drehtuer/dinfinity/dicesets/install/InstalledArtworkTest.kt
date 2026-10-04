@@ -4,6 +4,8 @@ import de.drehtuer.dinfinity.core.model.AtlasImage
 import de.drehtuer.dinfinity.dicesets.format.DiceSetLimits
 import de.drehtuer.dinfinity.dicesets.format.ValidationCode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -116,6 +118,29 @@ class InstalledArtworkTest {
     artwork.read("brass", "textures/spare.png")
 
     assertNull(faces)
+  }
+
+  @Test
+  fun `a stamp names the size and the time, and changes when the file is rewritten`() {
+    val root = installed()
+    val artwork = InstalledArtwork(InstalledSets(root)) { _, _, _ -> AtlasDecode.Drawn(image()) }
+    val before = artwork.stamp("brass", "textures/d6.png")
+
+    val file = File(root, "brass/textures/d6.png")
+    file.writeBytes(png(30, 20) + ByteArray(1))
+    file.setLastModified(file.lastModified() + 2_000L)
+
+    assertNotNull(before)
+    assertNotEquals(before, artwork.stamp("brass", "textures/d6.png"))
+  }
+
+  @Test
+  fun `there is no stamp for what is not there or may not be read`() {
+    val artwork = artwork()
+
+    assertNull(artwork.stamp("nobody", "textures/d6.png"))
+    assertNull(artwork.stamp("brass", "textures/gone.png"))
+    assertNull(artwork.stamp("brass", "../../etc/passwd.png"))
   }
 
   private fun artwork(

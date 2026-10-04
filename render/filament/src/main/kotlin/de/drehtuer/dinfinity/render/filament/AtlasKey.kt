@@ -61,37 +61,66 @@ object AtlasKey {
  * a die that prints its labels, and asking the disk about it again on every
  * throw would be re-reading a file that has already answered.
  *
+ * **But not for ever: a key's file can change under it.** The face designer
+ * rebuilds "My dice" every time *Roll it* is pressed, under the same package
+ * and the same path, so a key alone said "already have it" and the tray went
+ * on throwing the drawing as it was the first time — eyes the player had since
+ * cleared, strokes they had not drawn yet. Each entry remembers the [stamp] it
+ * was made under, and one that no longer matches is made again. A miss is
+ * stamped too, so a package installed after its die was first asked about is
+ * found.
+ *
+ * The handle it replaces is given back at once. That is safe because a
+ * package only changes while the player is on another screen — the designer,
+ * the sets screen — and a visit's scene goes with the visit, so nothing on
+ * the GPU still points at it (`RollThread`).
+ *
  * The type is left open so that the *caching* — which is the decision here —
  * can be tested on a JVM, where no Filament handle can be made at all.
  *
  * @param artwork where a key's pixels come from, or `null` when there are none.
  * @param upload how those pixels become something the GPU can sample.
  * @param destroy how one of those is given back.
+ * @param stamp which version of [key]'s file is there now; asked on every
+ *   lookup, so it must be cheap. The default never changes, which keeps
+ *   whatever was made first.
  */
 class AtlasCache<T : Any>(
   private val artwork: (String) -> AtlasImage?,
   private val upload: (AtlasImage) -> T,
   private val destroy: (T) -> Unit,
+  private val stamp: (String) -> Any? = { null },
 ) : AutoCloseable {
-  private val held = mutableMapOf<String, T?>()
+  private class Held<T>(
+    val stamp: Any?,
+    val made: T?,
+  )
+
+  private val held = mutableMapOf<String, Held<T>>()
 
   /** How many atlases are on the GPU, which is what a test asks to see the cache work. */
-  val uploaded: Int get() = held.values.count { it != null }
+  val uploaded: Int get() = held.values.count { it.made != null }
 
   /** How many keys have been asked about, answered or not. */
   val asked: Int get() = held.size
 
-  /** What [key] names, made at most once, or `null` when there is nothing to draw. */
+  /**
+   * What [key] names, made once per version of its file, or `null` when there
+   * is nothing to draw.
+   */
   fun of(key: String): T? {
-    if (held.containsKey(key)) return held[key]
+    val now = stamp(key)
+    val before = held[key]
+    if (before != null && before.stamp == now) return before.made
+    before?.made?.let(destroy)
     val made = artwork(key)?.let(upload)
-    held[key] = made
+    held[key] = Held(now, made)
     return made
   }
 
   /** Gives every handle back. Nothing made from this may be used again. */
   override fun close() {
-    held.values.filterNotNull().forEach(destroy)
+    held.values.mapNotNull { it.made }.forEach(destroy)
     held.clear()
   }
 }

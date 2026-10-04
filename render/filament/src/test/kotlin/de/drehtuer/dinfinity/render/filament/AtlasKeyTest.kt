@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.AtlasImage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Test
@@ -101,6 +102,49 @@ class AtlasKeyTest {
     assertEquals(listOf("handle2"), destroyed)
     assertEquals(0, cache.uploaded)
     assertEquals("a closed cache remembers nothing", 0, cache.asked)
+  }
+
+  @Test
+  fun `a file that changed under its key is decoded again and the old handle given back`() {
+    var version = "a"
+    var decoded = 0
+    val destroyed = mutableListOf<String>()
+    val cache =
+      AtlasCache<String>(
+        artwork = {
+          decoded++
+          image()
+        },
+        upload = { "handle-$version" },
+        destroy = { destroyed += it },
+        stamp = { version },
+      )
+
+    assertEquals("handle-a", cache.of("mine::textures/d6.png"))
+    assertEquals("handle-a", cache.of("mine::textures/d6.png"))
+    version = "b"
+    assertEquals("handle-b", cache.of("mine::textures/d6.png"))
+
+    assertEquals(2, decoded)
+    assertEquals(listOf("handle-a"), destroyed)
+    assertEquals(1, cache.uploaded)
+  }
+
+  @Test
+  fun `a miss is asked again once the file appears`() {
+    var there = false
+    val cache =
+      AtlasCache<Any>(
+        artwork = { if (there) image() else null },
+        upload = { Any() },
+        destroy = { },
+        stamp = { if (there) "1@1" else null },
+      )
+
+    assertNull(cache.of("mine::textures/d6.png"))
+    there = true
+
+    assertNotNull(cache.of("mine::textures/d6.png"))
   }
 
   private fun cache(artwork: (String) -> AtlasImage?): AtlasCache<Any> =

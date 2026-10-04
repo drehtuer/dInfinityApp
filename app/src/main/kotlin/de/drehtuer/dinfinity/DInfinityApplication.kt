@@ -162,7 +162,7 @@ class DInfinityApplication : Application() {
       catalogue = { setLibrary.catalogue },
       chosenTable = { chosenTable },
       developer = developerLog,
-      artwork = DieArtwork(artwork::read),
+      artwork = DieArtwork(stamped = artwork::stamp, read = artwork::read),
     )
   }
 

@@ -49,7 +49,9 @@ installed by other users like any other set.
    it** — `mine:1d20` rather than a bare `1d20`, which would mean whichever
    set is the default and so would throw a plain die. A save that comes to
    nothing still throws: the plain spelling is a die the tray can throw, and
-   what is lost is the artwork rather than the roll.
+   what is lost is the artwork rather than the roll. Every press throws the
+   drawing **as it is now**: the tray decodes the atlas again whenever the
+   file has changed since it last did (`docs/dice-sets.md`, "Textures").
 
    **And it is a round trip.** The throw carries the die it was drawing, and
    the tray draws a banner over the table that goes back to the designer on

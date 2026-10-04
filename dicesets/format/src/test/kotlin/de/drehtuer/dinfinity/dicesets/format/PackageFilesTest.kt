@@ -49,6 +49,16 @@ class PackageFilesTest {
   }
 
   @Test
+  fun `a package on disk says when a file last changed, and one in memory cannot`() {
+    val root = Files.createTempDirectory("dinfinity-package").toFile()
+    File(root, "a.png").apply { writeBytes(byteArrayOf(1)) }.setLastModified(1_000_000L)
+    assertEquals(1_000_000L, PackageFiles.of(root).modified("a.png"))
+    assertNull(PackageFiles.of(root).modified("gone.png"))
+    assertNull(PackageFiles.of(mapOf("a.png" to byteArrayOf(1))).modified("a.png"))
+    root.deleteRecursively()
+  }
+
+  @Test
   fun `a package on disk does not read a directory as a file`() {
     val root = Files.createTempDirectory("dinfinity-package").toFile()
     File(root, "textures").mkdirs()

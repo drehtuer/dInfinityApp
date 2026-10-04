@@ -51,6 +51,15 @@ class InstalledSetsTest {
   }
 
   @Test
+  fun `a package's folder is found by its exact name, and nothing else is`() {
+    PackageInstaller(root).installFrom(Archives.wellFormed(temporary))
+
+    assertEquals(File(root, "fixture-set"), installed.folderOf("fixture-set"))
+    assertNull(installed.folderOf("../dicesets/fixture-set"))
+    assertNull(installed.folderOf("nobody"))
+  }
+
+  @Test
   fun `where it came from is read back with it`() {
     PackageInstaller(root).installFrom(Archives.wellFormed(temporary), from = "https://example.invalid/brass.zip")
 

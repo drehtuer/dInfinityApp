@@ -42,12 +42,16 @@ import java.nio.ByteOrder
  *   the compiled material is kept (`docs/dice-sets.md`, "Textures"). The
  *   default draws nothing, which is what a device test with no packages on
  *   disk wants.
+ * @param artworkStamp which version of a key's atlas is on disk, so that a
+ *   package rewritten under the same name is decoded again ([AtlasCache]).
+ *   The default never changes.
  * @param materials where the compiled material is kept between launches
  *   ([MaterialCache]). The default keeps nothing and compiles every time,
  *   which is what a device test wants: it measures the compiler, not a file.
  */
 class FilamentEngine(
   artwork: (String) -> AtlasImage? = { null },
+  artworkStamp: (String) -> Any? = { null },
   private val materials: MaterialCache = MaterialCache.NONE,
 ) : AutoCloseable {
   init {
@@ -105,7 +109,12 @@ class FilamentEngine(
    * that owns the handles ([AtlasCache]).
    */
   val atlases: AtlasCache<Texture> =
-    AtlasCache(artwork = artwork, upload = { uploadAtlas(engine, it) }, destroy = engine::destroyTexture)
+    AtlasCache(
+      artwork = artwork,
+      upload = { uploadAtlas(engine, it) },
+      destroy = engine::destroyTexture,
+      stamp = artworkStamp,
+    )
 
   /**
    * A single white pixel, for every surface that has no atlas.
