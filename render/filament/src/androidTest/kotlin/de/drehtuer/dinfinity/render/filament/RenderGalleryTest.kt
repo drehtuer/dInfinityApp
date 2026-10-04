@@ -63,8 +63,9 @@ class RenderGalleryTest {
   /**
    * Every built-in shape on each of three tables that light differently —
    * matte felt, a satin wood, a glossy glass — and the same throw twice more
-   * on felt, once in metal and once see-through, which are the two materials
-   * a rendering change is likeliest to move.
+   * on felt in metal and see-through at three strengths — milky, the
+   * default and glassy — which are the materials a rendering change is
+   * likeliest to move.
    */
   private fun scenes(): List<Scene> {
     val set = BuiltinDiceSet.set
@@ -77,9 +78,13 @@ class RenderGalleryTest {
       shapes.map {
         it.copy(material = it.material.copy(translucency = CLEAR, colorArgb = AMBER, numberColorArgb = WHITE))
       }
+    val milky = clear.map { it.copy(material = it.material.copy(translucency = MILKY)) }
+    val glassy = clear.map { it.copy(material = it.material.copy(translucency = 1.0, roughness = GLASSY_ROUGHNESS)) }
     return onTables +
       Scene("${felt.id}-metal", throwOf(metal + metal, felt)) +
-      Scene("${felt.id}-translucent", throwOf(clear + clear, felt))
+      Scene("${felt.id}-translucent", throwOf(clear + clear, felt)) +
+      Scene("${felt.id}-milky", throwOf(milky + milky, felt)) +
+      Scene("${felt.id}-glassy", throwOf(glassy + glassy, felt))
   }
 
   private fun throwOf(
@@ -134,6 +139,8 @@ class RenderGalleryTest {
     const val PNG_QUALITY = 100
     const val METAL_ROUGHNESS = 0.3
     const val CLEAR = 0.6
+    const val MILKY = 0.2
+    const val GLASSY_ROUGHNESS = 0.05
     const val AMBER = 0xFFD9822B.toInt()
     const val WHITE = 0xFFFFFFFF.toInt()
 
