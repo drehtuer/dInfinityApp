@@ -135,7 +135,8 @@ class FaceTransformTest {
     assertEquals(4, FaceTransform.stepsOf(FaceOutline.Square))
     assertEquals(5, FaceTransform.stepsOf(FaceOutline.Pentagon))
     assertEquals(4, FaceTransform.stepsOf(FaceOutline.Circle))
-    assertEquals(1, FaceTransform.stepsOf(FaceOutline.Kite))
+    assertEquals(1, FaceTransform.stepsOf(FaceOutline.PentagonalKite))
+    assertEquals(1, FaceTransform.stepsOf(FaceOutline.EnneagonalKite))
   }
 
   @Test
@@ -145,7 +146,7 @@ class FaceTransformTest {
     assertFalse(FaceTransform(mirrored = true).identity)
     assertClose(
       listOf(Stroke(dots = listOf(Dot(0.7f, 0.5f)), colorArgb = BLACK, width = W)),
-      FaceTransform(turns = 1, mirrored = true).applyTo(listOf(left), FaceOutline.Kite),
+      FaceTransform(turns = 1, mirrored = true).applyTo(listOf(left), FaceOutline.PentagonalKite),
     )
   }
 

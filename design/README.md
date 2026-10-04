@@ -58,6 +58,11 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   opposite-face numbering, d4 values at the corners and d6 pips. Built:
   [../docs/face-designer.md](../docs/face-designer.md), "The solid, not just
   the face".
+- **The d10's and the d18's kites are each their own die's face** — the
+  designer masks (`MASKS`, `POLY`, option `8d`) and the solid's proportions
+  are the app's trapezohedra, measured off `simulation/api`, where they used
+  to be two hand-drawn kites over a solid of the prototype's own. Built:
+  [../docs/face-designer.md](../docs/face-designer.md), "Export details".
 - **The face designer's tools are the phone frame's own sprite** — the app
   draws `#ic-pencil`, `#ic-eraser`, `#ic-bucket`, `#ic-type`, `#ic-image`,
   `#ic-undo`, `#ic-redo` and `#ic-copy` from

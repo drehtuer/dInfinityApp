@@ -112,10 +112,15 @@ class FaceStampTest {
 
   @Test
   fun `never stamps taller than the face has room for`() {
+    // Measured where the face's own number goes, which is the middle of the
+    // canvas on a regular outline and not on a kite: a kite's widest part is
+    // its waist, well above the middle, and that is where its room is.
     FaceOutline.entries.forEach { outline ->
       val corners = middle(outline)
-      val room = LabelRoom.heightAt(corners, Typesetter.inkWidth("8", 1.0), centreX = 0.5, centreY = 0.5)
-      val stamp = requireNotNull(FaceStamp.at("8", Dot(0.5f, 0.5f), outline, StampSize.Large, Drawings.INK))
+      val at = requireNotNull(LabelRoom.centred(corners, "8"))
+      val room = LabelRoom.heightAt(corners, Typesetter.inkWidth("8", 1.0), centreX = at.centreX, centreY = at.centreY)
+      val spot = Dot(at.centreX.toFloat(), at.centreY.toFloat())
+      val stamp = requireNotNull(FaceStamp.at("8", spot, outline, StampSize.Large, Drawings.INK))
       val tall = stamp.dots.maxOf { it.y } - stamp.dots.minOf { it.y }
 
       assertTrue("a $tall stamp on a $outline with room for $room", tall <= room)

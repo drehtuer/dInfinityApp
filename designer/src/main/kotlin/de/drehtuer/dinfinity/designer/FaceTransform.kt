@@ -87,7 +87,7 @@ data class FaceTransform(
         FaceOutline.Square -> QUARTERS
         FaceOutline.Pentagon -> FIFTHS
         FaceOutline.Circle -> QUARTERS
-        FaceOutline.Kite -> NO_TURN
+        FaceOutline.PentagonalKite, FaceOutline.EnneagonalKite -> NO_TURN
       }
 
     private const val THIRDS = 3

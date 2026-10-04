@@ -1,10 +1,13 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.glyphs.LabelRoom
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
+import kotlin.math.hypot
 
 /**
  * Where an outline's corners are, and where a guide number sits
@@ -20,7 +23,8 @@ class FaceShapesTest {
     assertEquals(3, FaceShapes.corners(FaceOutline.Triangle).size)
     assertEquals(4, FaceShapes.corners(FaceOutline.Square).size)
     assertEquals(5, FaceShapes.corners(FaceOutline.Pentagon).size)
-    assertEquals(4, FaceShapes.corners(FaceOutline.Kite).size)
+    assertEquals(4, FaceShapes.corners(FaceOutline.PentagonalKite).size)
+    assertEquals(4, FaceShapes.corners(FaceOutline.EnneagonalKite).size)
   }
 
   @Test
@@ -71,11 +75,104 @@ class FaceShapesTest {
   fun `a kite is not a diamond - its waist sits above the middle`() {
     // What makes a d10 face read as a kite: two short edges at the top, two
     // long ones down to the point.
-    val corners = FaceShapes.corners(FaceOutline.Kite)
-    val waist = corners.filter { abs(it.x - 0.5f) > 0.1f }
+    KITES.forEach { outline ->
+      val corners = FaceShapes.corners(outline)
+      val waist = corners.filter { abs(it.x - 0.5f) > 0.1f }
 
-    assertEquals(2, waist.size)
-    waist.forEach { assertTrue("the waist is not above the middle: $it", it.y < 0.5f) }
+      assertEquals("$outline", 2, waist.size)
+      waist.forEach { assertTrue("$outline's waist is not above the middle: $it", it.y < 0.5f) }
+    }
+  }
+
+  @Test
+  fun `a d10's kite and a d18's are different shapes`() {
+    // The fault this replaced: one kite for both, which fitted neither. The
+    // d18's is the longer and narrower of the two.
+    val d10 = FaceShapes.corners(FaceOutline.PentagonalKite)
+    val d18 = FaceShapes.corners(FaceOutline.EnneagonalKite)
+
+    assertTrue("the d18's kite is not narrower: $d10 against $d18", widthOf(d18) < widthOf(d10) - 0.05f)
+  }
+
+  @Test
+  fun `each kite is its own die's face, corner for corner`() {
+    // Similar to the polygon the solid has, which is what lets a turn and a
+    // size carry one exactly onto the other. Every distance between two
+    // corners in the same proportion to the face's own, on every face — the
+    // faces of a trapezohedron are all one kite, and this says so too.
+    mapOf(
+      FaceOutline.PentagonalKite to DieShape.PentagonalTrapezohedron,
+      FaceOutline.EnneagonalKite to DieShape.EnneagonalTrapezohedron,
+    ).forEach { (outline, shape) ->
+      val drawn = distances(FaceShapes.corners(outline).map { it.x.toDouble() to it.y.toDouble() })
+      SolidFaces.of(shape).forEach { face ->
+        val real = distances(face.corners.map(face::flatOf))
+        val ratio = real.max() / drawn.max()
+        assertEquals(
+          "${shape.id} face ${face.index}: drawn $drawn against ${real.map { it / ratio }}",
+          drawn,
+          real.map { it / ratio },
+          SIMILAR,
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `a kite stands on its own axis in the middle of the canvas`() {
+    // Upright and centred, so the mirror — the one symmetry a kite has —
+    // carries it onto itself, and it spans what a regular outline spans.
+    KITES.forEach { outline ->
+      val corners = FaceShapes.corners(outline)
+      val (top, right, bottom) = corners
+      val left = corners[3]
+
+      assertEquals("$outline's tip", 0.5f, top.x, 1e-5f)
+      assertEquals("$outline's point", 0.5f, bottom.x, 1e-5f)
+      assertEquals("$outline's waist is not level", left.y, right.y, 1e-5f)
+      assertEquals("$outline's waist is not even", 0.5f - left.x, right.x - 0.5f, 1e-5f)
+      assertEquals("$outline's length", 0.96f, bottom.y - top.y, 1e-5f)
+    }
+  }
+
+  @Test
+  fun `the tip that is up is the one between the short edges`() {
+    KITES.forEach { outline ->
+      val (top, right, bottom) = FaceShapes.corners(outline)
+
+      assertTrue("$outline's short edges are not at the top", away(top, right) < away(right, bottom))
+    }
+  }
+
+  @Test(expected = IllegalArgumentException::class)
+  fun `a face that is not a kite is refused`() {
+    FaceShapes.kiteOf(SolidFaces.of(DieShape.Icosahedron).first())
+  }
+
+  private fun widthOf(corners: List<Dot>): Float = corners.maxOf(Dot::x) - corners.minOf(Dot::x)
+
+  private fun away(
+    a: Dot,
+    b: Dot,
+  ): Float = hypot(a.x - b.x, a.y - b.y)
+
+  /** Every distance between two of [corners], in a fixed order. */
+  private fun distances(corners: List<Pair<Double, Double>>): List<Double> =
+    corners.indices
+      .flatMap { a ->
+        (a + 1 until corners.size).map { b ->
+          hypot(corners[a].first - corners[b].first, corners[a].second - corners[b].second)
+        }
+      }.sorted()
+
+  private fun assertEquals(
+    message: String,
+    expected: List<Double>,
+    actual: List<Double>,
+    delta: Double,
+  ) {
+    assertEquals(message, expected.size, actual.size)
+    expected.zip(actual).forEach { (e, a) -> assertEquals(message, e, a, delta) }
   }
 
   @Test
@@ -133,3 +230,8 @@ class FaceShapesTest {
     assertEquals(0.5f, middle.y, 1e-6f)
   }
 }
+
+private val KITES = listOf(FaceOutline.PentagonalKite, FaceOutline.EnneagonalKite)
+
+/** Corners are floats on the canvas, so the proportions agree to a float's worth. */
+private const val SIMILAR = 1e-5

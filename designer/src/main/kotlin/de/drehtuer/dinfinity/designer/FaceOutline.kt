@@ -7,7 +7,8 @@ import de.drehtuer.dinfinity.core.model.DieShape
  * (`docs/face-designer.md`, "Flow"; design option `8d`).
  *
  * A cell is a face of the solid seen flat on, so the outline follows from the
- * shape and nothing else. Drawing outside it would be drawing on a part of the
+ * shape and nothing else — and it is that face's own polygon, so a drawing that
+ * fills the outline fills the face, no more and no less. Drawing outside it would be drawing on a part of the
  * atlas no face shows.
  */
 enum class FaceOutline {
@@ -24,13 +25,24 @@ enum class FaceOutline {
   Pentagon,
 
   /**
-   * The d10 and the d18.
+   * The d10's: a kite.
    *
    * A trapezohedron's faces are kites, not pentagons — the shape people
    * misremember because a d10 *looks* like it has pentagonal faces from a
    * distance.
    */
-  Kite,
+  PentagonalKite,
+
+  /**
+   * The d18's: a kite too, but a longer and narrower one.
+   *
+   * A kite of its own rather than the d10's, because the two are not the same
+   * shape and a mask has to be the face's own polygon to fit it. One kite drawn
+   * for both left the exporter growing the drawing until it covered the face —
+   * 1.20 times on a d10 and 1.37 on a d18, with the long tip clipped off
+   * (`docs/face-designer.md`, "Export details").
+   */
+  EnneagonalKite,
   ;
 
   companion object {
@@ -41,7 +53,8 @@ enum class FaceOutline {
         DieShape.Tetrahedron, DieShape.Octahedron, DieShape.Icosahedron -> Triangle
         DieShape.Cube -> Square
         DieShape.Dodecahedron -> Pentagon
-        DieShape.PentagonalTrapezohedron, DieShape.EnneagonalTrapezohedron -> Kite
+        DieShape.PentagonalTrapezohedron -> PentagonalKite
+        DieShape.EnneagonalTrapezohedron -> EnneagonalKite
       }
   }
 }

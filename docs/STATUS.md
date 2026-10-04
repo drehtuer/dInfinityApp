@@ -28,7 +28,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   reflections are prefiltered to six levels. And the coin that ran out the
   twelve-second cap in `FairnessTest` is explained: it leaned on the old corner
   post; on the fillet tray 100,000 coin throws give up none ("Why a die could
-  rock for ever").
+  rock for ever"). The designer masks the d10 and the d18 into their own
+  kites, so a drawing fits the face instead of being grown past it (decision
+  86; drafts move to format 2).
 
 ## Done
 
@@ -115,4 +117,4 @@ All in `docs/TODO.md`; the ones that block code first.
   argument is in `docs/architecture.md`).
 - Filled-button label contrast (3.65:1 against 4.5:1), the coverage floor,
   the anomaly log surviving a restart, where a table texture names its
-  package, one kite outline for two kites, more than one personal set.
+  package, more than one personal set.

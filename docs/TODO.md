@@ -144,10 +144,12 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 ### 4.6 Face designer — `feature/designer`
 
-- [ ] **One kite outline for two kites.** `FaceOutline.Kite` serves the d10 and
-      the d18, so the exporter covers instead of fitting (1.20× on a d10, 1.37×
-      on a d18, clipped at the tip). The fix is the face's own polygon as the
-      canvas outline, which changes how drafts on disk are masked
+- [ ] *Judge on the phone:* the d10's and the d18's own kites (decision 86).
+      Open a d18 in the designer: does the long, narrow canvas still leave room
+      to draw, and does a whole-face fill and a stamped number land on the
+      thrown die edge to edge, nothing spilling onto the neighbouring faces?
+      A drawing made on a kite die before the change shows larger in the
+      editor than it was drawn — is that read as the die's size or as a fault?
 - [ ] Should the Solid tab draw pen strokes (as thin filled outlines)? Today it
       says what it does not draw
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a

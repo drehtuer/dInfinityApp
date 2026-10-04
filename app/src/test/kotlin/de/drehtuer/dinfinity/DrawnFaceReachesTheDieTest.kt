@@ -116,6 +116,32 @@ class DrawnFaceReachesTheDieTest {
   }
 
   @Test
+  fun `and it fits the face rather than spilling past it`() {
+    // Covering is half of fitting. The d10 and the d18 used to share one
+    // canvas kite that was neither die's face, and the exporter grew it until
+    // it covered — 1.20 and 1.37 times what fitted — so a fill reached past
+    // every edge of the face and a drawing came out larger than it was drawn.
+    // With each die's own polygon as the canvas outline the paint stops at the
+    // face: a little way outside each edge the cell is clear again. The coin
+    // is left out, its canvas being a disc and its cell copied square on.
+    val spilled =
+      (DieShape.entries - DieShape.Coin).mapNotNull { shape ->
+        val die = builtinOf(shape) ?: return@mapNotNull null
+        val atlas = atlasOf(filledThroughout(die))
+        val painted =
+          die.faces.indices.sumOf { face ->
+            samplesOutside(SolidFaces.of(shape)[face]).count { at ->
+              val (x, y) = pixelOf(atlas, shape, face, at)
+              atlas.alphaAt(x, y) > AtlasImage.CLEAR_ALPHA
+            }
+          }
+        if (painted == 0) null else "${shape.id} $painted"
+      }
+
+    assertTrue("points outside a face that a fill of every face painted: $spilled", spilled.isEmpty())
+  }
+
+  @Test
   fun `and it is the colour that was drawn rather than the die's own`() {
     val die = builtin("d20")
     val atlas = atlasOf(filled(die, face = 0))
@@ -245,6 +271,24 @@ class DrawnFaceReachesTheDieTest {
     }
   }
 
+  /**
+   * Points just outside the polygon the mesh samples for [face]: the middle
+   * of each edge, pushed a tenth further from the middle of the face.
+   *
+   * Edge middles rather than corners, because a corner can sit on the edge of
+   * the cell and a tenth past it is the next cell over. Anything that still
+   * lands at the rim of the cell is dropped for the same reason.
+   */
+  private fun samplesOutside(face: SolidFace): List<Pair<Double, Double>> {
+    val corners = face.corners.map(face::cellOf)
+    return corners.indices
+      .map { at ->
+        val next = corners[(at + 1) % corners.size]
+        val (u, v) = (corners[at].first + next.first) / 2 to (corners[at].second + next.second) / 2
+        MIDDLE + (u - MIDDLE) * OUTSIDE to MIDDLE + (v - MIDDLE) * OUTSIDE
+      }.filter { (u, v) -> u in RIM..1 - RIM && v in RIM..1 - RIM }
+  }
+
   /** Where [at] in [face]'s cell lands in the whole image. */
   private fun pixelOf(
     atlas: AtlasImage,
@@ -297,6 +341,12 @@ class DrawnFaceReachesTheDieTest {
 
     /** How far out the samples go: all but a twentieth of the way to the edge. */
     const val INSIDE = 0.95
+
+    /** How far out the outside samples go: a tenth past the edge. */
+    const val OUTSIDE = 1.10
+
+    /** How near the rim of a cell a sample may be before it could be the neighbour's. */
+    const val RIM = 0.03
 
     const val BYTE = 0xFF
   }
