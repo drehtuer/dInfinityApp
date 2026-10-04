@@ -67,9 +67,6 @@ internal object DesignerIcons {
   /** `#ic-redo`. */
   const val REDO: String = "M21 7v6h-6M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"
 
-  /** `#ic-x`: taking everything off the face. */
-  const val CLEAR: String = "M18 6 6 18M6 6l12 12"
-
   /** `#ic-copy`. */
   const val COPY: String = "M8 8h14v14H8zM4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
 
@@ -103,7 +100,6 @@ internal object DesignerIcons {
         "ic-image" to IMAGE,
         "ic-undo" to UNDO,
         "ic-redo" to REDO,
-        "ic-x" to CLEAR,
         "ic-copy" to COPY,
         "ic-download" to SAVE,
       )

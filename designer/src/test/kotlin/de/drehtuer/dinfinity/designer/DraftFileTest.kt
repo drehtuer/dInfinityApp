@@ -219,7 +219,7 @@ class DraftFileTest {
   @Test
   fun `pips come back as pips rather than as a stamp of circles`() {
     // The rings alone cannot say which it is, and the difference matters:
-    // `Clear eyes` and "fill all with numbers" both look for pips
+    // "fill all with eyes" and "fill all with numbers" both look for pips
     // (`docs/face-designer.md`, "Fill all with eyes").
     val pips = requireNotNull(FaceEyes.of(3, RED))
     val drawn = Draft(die = d6).onFace(2) { it.draw(pips) }

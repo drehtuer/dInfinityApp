@@ -24,7 +24,9 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **In flight:** the owner's feedback on that build. A cold start no longer
   shows a black tray for 9.9 s: 0.8 s, or 3.2 s on the first launch of a new
   version (the dice material is compiled for one backend and kept on disk,
-  decision 46).
+  decision 46). The watched pace slows from 0.5 to 0.4 (decision 65), and the
+  face designer's `Clear eyes` becomes `Clear face`, which empties the face in
+  front of the player and nothing else (decision 82).
 
 ## Done
 

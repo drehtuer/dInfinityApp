@@ -119,10 +119,10 @@ object DraftFile {
    *
    * A d6's pips are rings too, and carry [EYES] beside them to say they are
    * pips rather than a glyph — which is the one thing a drawing cannot work
-   * out from the shapes, and the thing `Clear eyes` and "fill all with
-   * numbers" both need to know (`FaceEyes`). A reader that predates them reads
-   * them as a stamp of six circles, which is what they look like; nothing is
-   * lost and nothing is drawn wrongly.
+   * out from the shapes, and the thing "fill all with eyes" and "fill all
+   * with numbers" both need to know (`FaceEyes`). A reader that predates them
+   * reads them as a stamp of six circles, which is what they look like;
+   * nothing is lost and nothing is drawn wrongly.
    */
   private fun markOf(mark: Mark): JsonObject =
     JsonObject(

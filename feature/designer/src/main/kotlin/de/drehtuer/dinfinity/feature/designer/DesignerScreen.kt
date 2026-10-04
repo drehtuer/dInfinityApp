@@ -573,9 +573,11 @@ private fun Warning(state: DesignerState) {
  * Six because that is how many there are: three pens, the eraser, the bucket
  * and the stamp. Every one of them is an **option** — the state the canvas is
  * in until somebody chooses another — so every one of them is an `OptionBox`,
- * and the chosen one inverts. Clear and the guide are on the end: clear is an
- * action, the guide is a two-state thing that is not a pen, and both of them
- * say so by being drawn as what they are.
+ * and the chosen one inverts. The guide is on the end: it is a two-state thing
+ * that is not a pen, and says so by being drawn as what it is. Clearing the
+ * face used to be a cross here and is now `Clear face` under the strip
+ * ([FaceStrip]): a cross among the pens was not read as "take everything off
+ * this face".
  *
  * The three pens are one glyph at three widths, which is the honest picture:
  * what separates them is how wide they draw.
@@ -586,9 +588,8 @@ private fun Tools(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
-  val ink = MaterialTheme.colorScheme.onBackground
   // Wrapping rather than scrolling sideways: a tool hidden off the edge of a
-  // row is a tool nobody finds, and there are eight of them.
+  // row is a tool nobody finds, and there are seven of them.
   FlowRow(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -603,14 +604,6 @@ private fun Tools(
       ) { tint ->
         Glyph(glyphOf(nib), tint, ink = inkOf(nib))
       }
-    }
-    ModernistIconButton(
-      contentDescription = stringResource(R.string.designer_clear),
-      onClick = { presenter.take(Step.Clear) },
-      enabled = !state.face.blank,
-      modifier = Modifier.testTag(DesignerTestTags.CLEAR),
-    ) {
-      Glyph(DesignerIcons.CLEAR, ink)
     }
     OptionBox(
       // The name a screen reader says is what the press *does*, which is what
@@ -902,12 +895,18 @@ private fun Swatch(
  * with the twentieth one is a control nobody finds.
  *
  * **The eyes are offered only where they mean something.** A pip pattern
- * writes one to six and nothing else, so the two eye buttons are on the screen
- * for a d6 and absent for every other die, rather than there and refusing.
- * `Clear eyes` is disabled until there is something to clear.
+ * writes one to six and nothing else, so the eye button is on the screen for a
+ * d6 and absent for every other die, rather than there and refusing.
  *
- * The three keep their words. They are sentences about every face at once —
- * "fill all with numbers" is not a thing there is a picture of.
+ * **`Clear face` is beside them, for every die.** It takes everything off the
+ * face in front of the player — strokes, fills, numerals, pips — in one step
+ * that one press of undo returns, and leaves every other face alone. It is
+ * dead on a blank face. There is no "clear the die": leaving the designer or
+ * choosing another base die does that.
+ *
+ * They keep their words: "fill all with numbers" is not a thing there is a
+ * picture of, and the cross that used to stand for clearing was not read as
+ * one.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -949,13 +948,13 @@ private fun FaceStrip(
           onClick = presenter::fillEyes,
           modifier = Modifier.testTag(DesignerTestTags.FILL_EYES),
         )
-        ModernistButton(
-          text = stringResource(R.string.designer_clear_eyes),
-          onClick = presenter::clearEyes,
-          enabled = state.pipped,
-          modifier = Modifier.testTag(DesignerTestTags.CLEAR_EYES),
-        )
       }
+      ModernistButton(
+        text = stringResource(R.string.designer_clear_face),
+        onClick = { presenter.take(Step.Clear) },
+        enabled = !state.face.blank,
+        modifier = Modifier.testTag(DesignerTestTags.CLEAR),
+      )
     }
   }
 }
@@ -1122,7 +1121,6 @@ object DesignerTestTags {
   const val STAMP_TEXT: String = "designer:stamp:text"
   const val STAMP_REFUSED: String = "designer:stamp:refused"
   const val FILL_EYES: String = "designer:eyes"
-  const val CLEAR_EYES: String = "designer:eyes-clear"
   const val FILL_NUMBERS: String = "designer:stamp:fill"
   const val MORE_COLOURS: String = "designer:colour:more"
   const val INK_HEX: String = "designer:colour:hex"

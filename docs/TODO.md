@@ -140,8 +140,9 @@ and read here, and a seed gives the same result with the renderer on and off.
       within 0.08 of the canvas)? Does the Solid tab's turning d20 read as a die
       being turned over; is one lamp enough; does the selected-face outline
       find a face at the back? Does a drawing read as *theirs* at tray distance,
-      a d10's at all? Do eight 44 dp tool glyphs need captions? Does the
-      test-throw banner read as "you are testing this"?
+      a d10's at all? Do seven 44 dp tool glyphs need captions? Does the
+      test-throw banner read as "you are testing this"? Is `Clear face`, in
+      words under the strip, where a thumb looks for it (decision 82)?
 
 ### 4.10 Settings and menu — `feature/settings`
 

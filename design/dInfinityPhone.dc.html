@@ -691,7 +691,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
     <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 12px 10px">
       <button type="button" class="btn btn-ghost" onClick="{{ fillNumbers }}" style="flex:none;font-size:12px;white-space:nowrap">Fill all with numbers</button>
       <sc-if value="{{ isD6 }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-ghost" onClick="{{ fillPips }}" style="flex:none;font-size:12px;white-space:nowrap">Fill all with eyes</button></sc-if>
-      <sc-if value="{{ hasPips }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-ghost" onClick="{{ clearPips }}" style="flex:none;font-size:12px;white-space:nowrap">Clear eyes</button></sc-if>
+      <button type="button" class="btn btn-ghost" onClick="{{ clearFace }}" disabled="{{ faceBlank }}" style="flex:none;font-size:12px;white-space:nowrap">Clear face</button>
     </div>
     <div style="display:flex;gap:8px;align-items:center;padding:10px 16px 14px;border-top:2px solid var(--color-divider)"><button type="button" class="btn btn-primary" onClick="{{ rollDesigned }}" style="flex:none;white-space:nowrap">Roll it</button><button type="button" class="btn btn-secondary" onClick="{{ saveDesigned }}" style="flex:none;white-space:nowrap">Save to set</button><span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right;line-height:1.3">{{ designerNote }}</span></div>
   <sc-if value="{{ hasSavedNote }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:20;background:var(--color-text);color:var(--color-bg);padding:8px 14px;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:var(--shadow-md);pointer-events:none">{{ savedNote }}</div></sc-if>
@@ -1427,7 +1427,7 @@ class Component extends DCLogic {
   dz(){const S=this.state;const n=this.sides();return S.designs[n]||makeFaces(n)}
   face(){return this.dz()[this.state.face]}
   updFace(fn,snap){this.setState(s=>{const n=this.sides();const faces=(s.designs[n]||makeFaces(n)).slice();const cur=faces[s.face];const next=fn({...cur});
-    if(snap&&next!==cur){next.past=[...(cur.past||[]),{strokes:cur.strokes,stamps:cur.stamps,bg:cur.bg}].slice(-40);next.redo=[]}
+    if(snap&&next!==cur){next.past=[...(cur.past||[]),{strokes:cur.strokes,stamps:cur.stamps,bg:cur.bg,pips:cur.pips,pipColor:cur.pipColor,edges:cur.edges}].slice(-40);next.redo=[]}
     return{designs:{...s.designs,[n]:faces.map((f,i)=>i===s.face?next:f)}}})}
   cvDown=(e)=>{const[x,y]=this.cvPt(e);const t=this.state.tool;e.currentTarget.setPointerCapture&&e.currentTarget.setPointerCapture(e.pointerId);
     if(t==='pen'){this.setState({drawing:{pts:[[x,y]],color:this.state.color,w:this.state.penW}})}
@@ -1439,8 +1439,8 @@ class Component extends DCLogic {
   cvMove=(e)=>{if(this.state.dragStamp!=null){const[x,y]=this.cvPt(e);const i=this.state.dragStamp;this.updFace(f=>({...f,stamps:f.stamps.map((st,k)=>k===i?{...st,x,y}:st)}));return}
     if(!this.state.drawing)return;const[x,y]=this.cvPt(e);const d=this.state.drawing;const last=d.pts[d.pts.length-1];if(Math.hypot(last[0]-x,last[1]-y)<3)return;this.setState({drawing:{...d,pts:[...d.pts,[x,y]]}})}
   cvUp=()=>{if(this.state.dragStamp!=null)this.setState({dragStamp:null});const d=this.state.drawing;if(!d)return;const pts=d.pts.length===1?[d.pts[0],d.pts[0]]:d.pts;this.setState({drawing:null});this.updFace(f=>({...f,strokes:[...f.strokes,{pts:pts.map(p=>p.join(',')).join(' '),color:d.color,w:d.w}]}),true)}
-  undo=()=>{this.updFace(f=>{const past=f.past||[];if(!past.length)return f;const prev=past[past.length-1];return{...f,...prev,past:past.slice(0,-1),redo:[...(f.redo||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}]}})}
-  redo=()=>{this.updFace(f=>{const rd=f.redo||[];if(!rd.length)return f;const nx=rd[rd.length-1];return{...f,...nx,redo:rd.slice(0,-1),past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}]}})}
+  undo=()=>{this.updFace(f=>{const past=f.past||[];if(!past.length)return f;const prev=past[past.length-1];return{...f,...prev,past:past.slice(0,-1),redo:[...(f.redo||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg,pips:f.pips,pipColor:f.pipColor,edges:f.edges}]}})}
+  redo=()=>{this.updFace(f=>{const rd=f.redo||[];if(!rd.length)return f;const nx=rd[rd.length-1];return{...f,...nx,redo:rd.slice(0,-1),past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg,pips:f.pips,pipColor:f.pipColor,edges:f.edges}]}})}
   saveToSet=(key,newName)=>{const n=this.sides();
     if(newName){key=newName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'set';
       if(!SETS.some(x=>x.key===key)){
@@ -1451,11 +1451,11 @@ class Component extends DCLogic {
     this.setState({saveOpen:false,newSetName:'',savedNote:`d${n} saved to ${row?row.name:'the set'}`});
     clearTimeout(this._sv);this._sv=setTimeout(()=>this.setState({savedNote:''}),2600)}
   fillPips=()=>{this.setState(s=>{const faces=(s.designs[6]||makeFaces(6)).map((f,i)=>({...f,
-    past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}],redo:[],
+    past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg,pips:f.pips,pipColor:f.pipColor,edges:f.edges}],redo:[],
     stamps:f.stamps.filter(x=>!x.auto),pips:faceVals(6)[i]||i+1,pipColor:s.color}));
     return{designs:{...s.designs,6:faces}}})}
-  clearPips=()=>this.updFace(f=>({...f,pips:null}),true)
-  fillNumbers=()=>{this.setState(s=>{const n=this.sides();const faces=(s.designs[n]||makeFaces(n)).map((f,i)=>(f.strokes.length&&f.stamps.length)?f:({...f,past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg}],redo:[],pips:null,stamps:n===4?[]:[(g=>({x:g[0],y:g[1],size:g[2],auto:true,text:faceLabel(n,i),color:s.color}))(NUM[n]||[160,160,180])],edges:n===4?cornerVals(i):[],edgeColor:s.color}));return{designs:{...s.designs,[n]:faces}}})}
+  clearFace=()=>this.updFace(f=>({...f,strokes:[],stamps:[],bg:null,pips:null,edges:[]}),true)
+  fillNumbers=()=>{this.setState(s=>{const n=this.sides();const faces=(s.designs[n]||makeFaces(n)).map((f,i)=>(f.strokes.length&&f.stamps.length)?f:({...f,past:[...(f.past||[]),{strokes:f.strokes,stamps:f.stamps,bg:f.bg,pips:f.pips,pipColor:f.pipColor,edges:f.edges}],redo:[],pips:null,stamps:n===4?[]:[(g=>({x:g[0],y:g[1],size:g[2],auto:true,text:faceLabel(n,i),color:s.color}))(NUM[n]||[160,160,180])],edges:n===4?cornerVals(i):[],edgeColor:s.color}));return{designs:{...s.designs,[n]:faces}}})}
   bars(pmf,st,atLeast,picked){const cum=[];let acc=0;for(let i=pmf.p.length-1;i>=0;i--){acc+=pmf.p[i];cum[i]=acc}
     let items=[];for(let k=st.min;k<=st.max;k++)items.push({k,k2:k,p:pmf.p[k-pmf.off],c:cum[k-pmf.off]});
     if(items.length>110){const b=Math.ceil(items.length/110);const out=[];for(let i=0;i<items.length;i+=b){const sl=items.slice(i,i+b);out.push({k:sl[0].k,k2:sl[sl.length-1].k,p:sl.reduce((a,x)=>a+x.p,0),c:sl[0].c})}items=out}
@@ -1686,8 +1686,8 @@ class Component extends DCLogic {
       // designer
       faceNo:S.face+1,faceValue:this.sides()===4?'':faceLabel(this.sides(),S.face),
       ...(g=>({guideX:g[0]/320*100,guideY:g[1]/320*100,guidePx:g[2]}))(NUM[this.sides()]||[160,160,180]),
-      isD6:this.sides()===6,fillPips:this.fillPips,clearPips:this.clearPips,
-      pipDots:pipDots(face.pips,face.pipColor),hasPips:!!face.pips,
+      isD6:this.sides()===6,fillPips:this.fillPips,clearFace:this.clearFace,faceBlank:!face.strokes.length&&!face.stamps.length&&!face.bg&&!face.pips&&!(face.edges||[]).some(x=>x),
+      pipDots:pipDots(face.pips,face.pipColor),
       showGuideNum:!!this.state.showGuide&&!face.pips,faceBg:face.bg||'#e8e5e4',edgeMarks:this.sides()===4?edgeMarks(4,face.edges,face.edgeColor):[],
       edgeFields:(this.sides()===4?[0,1,2]:[]).map((p,i)=>({no:i+1,value:(face.edges||[])[i]||'',set:e=>{const v=e.target.value;this.updFace(f=>{const ar=(f.edges||[]).slice();ar[i]=v;return{...f,edges:ar,edgeColor:S.color}})}})),
       hasEdges:this.sides()===4,edgeCount:3,

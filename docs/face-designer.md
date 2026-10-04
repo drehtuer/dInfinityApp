@@ -216,6 +216,8 @@ Deliberately small:
 - Colour palette (12 fixed presets, then a swatch showing the colour in the
   pen that opens a picker — "A colour beyond the twelve")
 - Undo/redo (per face, unlimited within the session)
+- **Clear face**: everything off the face in front of the player, in one
+  undoable step ("Clear face" below)
 - Copy face → paste onto another face, with optional turn/mirror (for making
   all faces share a border, for example)
 - Stamp: place a digit or a sign from the built-in font, in three sizes, so
@@ -239,8 +241,8 @@ drawn at all:
 | Kind | Drawn as | Which ones |
 | --- | --- | --- |
 | Option — the state the canvas is in | a bordered square that inverts when chosen | three pens, eraser, bucket, stamp; the guide; the paste mirror and turn; the stamp sizes; the base die |
-| Action — a thing that happens | an icon button, dead when there is nothing to do | undo, redo, clear, copy, paste |
-| Sentence about every face | a lettered button | fill all with numbers, fill all with eyes, clear eyes, Save to set, Roll it |
+| Action — a thing that happens | an icon button, dead when there is nothing to do | undo, redo, copy, paste |
+| Sentence — an action there is no picture of | a lettered button, dead when there is nothing to do | fill all with numbers, fill all with eyes, Clear face, Save to set, Roll it |
 
 The three pens are **one glyph at three widths** — what separates three pens
 is how wide they draw, so it is the one thing that separates their pictures,
@@ -248,7 +250,9 @@ and the medium pen is the sprite's `#ic-pencil` exactly as drawn.
 
 **Some controls keep their words on purpose.** The lettered buttons in the
 table's last row are sentences there is no picture of — "fill all with
-numbers" most plainly. Three more kinds keep theirs as well: `Turn 3/4` is a
+numbers" most plainly, and `Clear face`, which was a cross (`#ic-x`) in the
+tool row and was not read as "take everything off this face" (decision 82 in
+[architecture.md](architecture.md)). Three more kinds keep theirs as well: `Turn 3/4` is a
 count, and a picture of a rotation cannot say which of four turns the next
 paste lands on; the stamp's Small / Medium / Large are the same picture at
 three sizes, and three boxes differing by a few pixels is a row nobody reads at
@@ -425,9 +429,10 @@ down, which is the rule the tray already follows.
 
 A d6 and only a d6 can be pipped instead of numbered. One tap lays the standard
 pip patterns on all six faces in the ink in the pen, on a 3 × 3 grid at
-`96 / 160 / 224` of the 320-unit face with each pip at `r = 24`. `Clear eyes`
-takes them off again, which is the undo for somebody who pressed it to see, and
-is dead until there is something to clear.
+`96 / 160 / 224` of the 320-unit face with each pip at `r = 24`. There is no
+button of its own to take them off again: undo does, face by face, and so does
+`Clear face` ("Clear face" below), which takes the pips off with everything
+else on the face.
 
 **A pip is a mark like any other** — closed rings drawn under the even-odd
 rule, the way a stamped glyph is (`designer`'s `Eyes`). That is what makes a
@@ -440,8 +445,8 @@ carries whole.
 
 **A d6 and only a d6**, and the test is what the die *scores* rather than what
 solid it is. A pip pattern is a way of writing one to six and there is no
-pattern for a 7, for a d20's 17 or for a Fudge die's minus — so the two buttons
-are on the screen for a cube carrying exactly 1–6 and **absent** for everything
+pattern for a 7, for a d20's 17 or for a Fudge die's minus — so the button is
+on the screen for a cube carrying exactly 1–6 and **absent** for everything
 else, which is the answer "Roll it" already gives for a die notation cannot
 name.
 
@@ -454,6 +459,24 @@ clear and a fill.
 Like "fill all with numbers" it is **one undoable step per face**, it leaves a
 face that already has what it would put there alone, and it lands *over* a
 drawing rather than taking it away.
+
+### Clear face
+
+`Clear face` sits in the row under the face strip, beside "fill all with
+numbers", **for every die**. It takes everything off the face in front of the
+player — strokes, fills, stamped numerals, pips, whatever the face holds — and
+leaves every other face exactly as it was. It is **one step**: one press of
+undo puts all of it back, and a press of redo takes it off again. It is dead on
+a blank face, so it never puts a step that changed nothing on the undo stack.
+
+**There is no "clear the die".** Leaving the designer or choosing another base
+die already starts again, and a button that wiped twenty faces in one press is
+the one control on the screen that could lose an evening's work to a stray
+thumb. It used to be `Clear eyes` (pips only, every face) beside a cross in the
+tool row that cleared the face; the owner found the first and not the second,
+and the first could not clear numbers. One worded button for the face replaces
+both (decision 82 in [architecture.md](architecture.md); the prototype's
+`clearFace`, [`design/dInfinityPhone.dc.html`](../design/dInfinityPhone.dc.html)).
 
 ### The guide
 
