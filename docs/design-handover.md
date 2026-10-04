@@ -214,11 +214,22 @@ is left in the script, unreferenced, rather than unpicked by hand.
   waiting be marked on the tray, the way the design marks last-pass dice?
 - **The prototype's tray tap is not the app's.** Tapping the tray in the app
   does *not* roll, and that is decided rather than pending
-  (`docs/architecture.md`, decision 66) — the gesture is kept for picking a
-  die up — so the prototype's stand-in reads as a specification it is not.
+  (`docs/architecture.md`, decision 66) — under a total it picks a die up for
+  the next shake — so the prototype's stand-in reads as a specification it is
+  not.
   Worth a word on the board saying it is a browser's substitute for a shake,
   and the welcome's "Shake the phone or tap the tray to roll" wants the second
   half taken off.
+- **The prototype has no pick state.** Once a roll has landed, one finger on a
+  die picks it up and a second tap puts it back; the next shake throws only the
+  picked dice, and the replaced face stays on the sheet struck through
+  (`docs/architecture.md`, decisions 68 and 76;
+  `docs/physics-and-rendering.md`, "Picking a die up and throwing it again").
+  The app marks a picked die with a two-ink ring over the felt — the plates'
+  ground, broad, with their ink inside it — because accent never touches
+  felt. The prototype has no picked die to draw, and nothing on the sheet says
+  which dice are picked: does the ring want a design, and does the sheet want
+  to show the pick too?
 - **The welcome does not listen for a shake.** While the first-launch
   takeover (`9a`) is up, the app registers no shake at all, so nothing can be
   thrown under it and no result sheet can land behind its buttons

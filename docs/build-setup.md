@@ -568,6 +568,7 @@ tools/harness.sh -n 10000                # the run Step 5.5 asks for
 tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
 tools/harness.sh --soak 5m               # soak mode: roll for five minutes
 tools/harness.sh --frames -n 50          # what a frame's simulation costs
+tools/harness.sh --rendered              # what a drawn frame costs (Step 5.7)
 tools/harness.sh --capture 20            # twenty seconds of video to watch
 ```
 
@@ -583,6 +584,7 @@ emulator attached it refuses to guess — name one with `--device` or
 | `-n`, `--rolls` | how many throws (default 1000) |
 | `--soak` | roll for this long instead: `90`, `90s`, `5m`, `1h`. Soak mode |
 | `--frames` | step each roll at a frame's cadence and report what the frames cost. A paced run takes as long as the dice really take |
+| `--rendered` | draw each roll onto a screen-sized surface through the tray and Filament, and score the frame rows only ([below](#drawn-frames-the-rendered-harness)). Default 20 rolls |
 | `--capture` | record the screen for this many seconds instead of scoring a run |
 | `-c`, `--dice` | dice per throw (default 20, which is where Step 5.5 states its settle targets) |
 | `-s`, `--shape` | `d20`, `icosahedron` or `20` — all three are accepted (default `d20`) |
@@ -673,7 +675,7 @@ is off by default.
 What it measures is the **simulation half of a frame**, plus
 `FrameClock.droppedSteps`, the steps a frame that ran long never paid for. It
 is not Step 5.7's 16.6 ms, which is about *drawing* and needs a renderer and a
-surface this module has neither of. So the scorecard grows two rows and they
+surface this module has neither of — that is `--rendered`, below. So the scorecard grows two rows and they
 behave differently:
 
 | Row | A headless run | A paced run |
@@ -686,6 +688,57 @@ A target nothing was measured for is neither a pass nor a failure
 line says how many there were — `HARNESS VERDICT: PASS, 2 not measured`. In the
 JSON the frame figures are **absent** rather than zero, because a zero frame
 time would score as the fastest run ever made.
+
+### Drawn frames: the rendered harness
+
+`--rendered` is the half `--frames` cannot be. It runs `RenderedHarnessTest`
+from `render/filament`'s test APK, which throws the same 20d20 through the
+app's own path — `TrayDriver` on the roll thread with the roll screen's
+engine, `TrayLoop` pacing each frame by `RollPace.WATCHED`, a `LiveRoll`, and
+`FilamentDiceRenderer` drawing through a `FilamentStage` — onto an
+`ImageReader` surface the size of the whole screen (the most pixels the tray
+could ever ask for). It is a real-time run: a watched 20d20 takes about two
+seconds, so the default is twenty rolls, a few thousand frames.
+
+```sh
+tools/harness.sh --rendered                # twenty rolls, scored
+tools/harness.sh --rendered -n 100         # a longer look
+```
+
+What it measures, and how it is scored (`docs/architecture.md`, decision 80):
+
+| Figure | What it is | Scored |
+| --- | --- | --- |
+| `p99 frame time` | a frame's **work on the roll thread**: `LiveRoll.advance`, which steps the world, places the dice and runs Filament's `beginFrame`, `render` and `endFrame` | against 16.6 ms |
+| `p99 GPU frame time` | the GPU's time per frame from Filament's own frame history; **not measured** on a driver without timer queries | against 16.6 ms |
+| `steps a late frame dropped` | `FrameClock.droppedSteps`, over every pass | against zero |
+| `Rate` | frames per second and the p99 interval between two frame starts — the display's cadence, through the overlay's `FrameMeter` | printed, not scored: on a 60 Hz panel every interval is 16.7 ms by construction |
+| `Frames` | frames drawn, and frames Filament declined to draw because the GPU was behind | printed |
+
+Not measured, and not claimed: the Filament driver thread's own CPU time,
+composition and display latency (an `ImageReader` is not composited), the
+haptics and sound an impact plays, and building the scene when a throw
+starts, which happens between frames. Only the frame rows are scored —
+twenty watched rolls are too few for the physics bars, which the plain run
+scores.
+
+The run leaves `harness-rendered-<label>.txt` (the figures, then the
+scorecard and its verdict) under
+`/sdcard/Android/data/de.drehtuer.dinfinity.render.filament.test/files`, and
+the script prints it and takes its exit code from the verdict like any other
+run. The `rendered-` prefix keeps it from overwriting the plain run's file of
+the same label in `build/harness`.
+
+Like `HarnessTest`, the scored test declines without `harness.rolls` or
+`harness.soak`. Beside it, `oneRollIsDrawnAndTimedOnARealSurface` always runs
+in the ordinary device suite: one roll, no bar, a check that the path draws
+and times frames on whatever GPU is there — the emulator's included. By hand:
+
+```sh
+./gradlew :render:filament:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.render.filament.RenderedHarnessTest \
+  -Pandroid.testInstrumentationRunnerArguments.harness.rolls=20
+```
 
 ### Recording a roll to look at
 

@@ -20,18 +20,31 @@ This is a snapshot, not a changelog — git history is the changelog.
   66), the dice waiting to be thrown drop under real Jolt physics (decision
   67), and a die picked by finger will be thrown by a shake (decision 68,
   decided, not built).
-- **In flight, one stack, in merge order:**
+- **In flight, one stack, in merge order** (every PR checked on the Pixel 10a):
   - #337 — added dice leave one spot over the middle of the tray a tenth of a
     second apart (decision 69);
   - #338 — a die that lands cocked or on another waits where it lies for the
     player's shake (decision 70);
   - #339 — more spin (60–120 rad/s) and bouncier dice (restitution 0.55);
-  - then the overnight batch on top: the re-throw code nothing calls is gone
-    and `FairnessTest` counts a give-up instead of stopping; the debug overlay
-    shows the frame rate and dropped steps (decision 72); the statistics name
-    a face by its label (decision 73); no shake is heard while the welcome is
-    up (decision 74); braced notation for a set's own dice, offered on the
-    picker (decision 75).
+  - #340 — the re-throw code nothing calls is gone, and `FairnessTest` counts
+    a give-up instead of stopping;
+  - #341 — the debug overlay shows the frame rate and dropped steps (72);
+  - #342 — the statistics name a face by its label (73);
+  - #343 — no shake is heard while the welcome is up (74);
+  - #344 — braced notation for a set's own dice, offered on the picker (75);
+  - #345 — a device test reads the printed numbers off a frame, and table
+    thumbnails are the right way up again;
+  - #346 — four and eight collision steps measured, two kept (77);
+  - #347 — the saved-rolls list scrolls while a row is dragged at its edge
+    (78);
+  - #348 — more than one personal set in the face designer (79);
+  - #349 — the hand re-throw: a finger picks a landed die, the next shake
+    throws it (decisions 68 and 76);
+  - #350 — the overnight harness runs under counting written down;
+  - #351 — a rendered harness times drawn frames on a real surface; both
+    frame targets met on the Pixel 10a (decision 80);
+  - then the tray's rounded corners built as fillets instead of the invisible
+    posts they were, which dice could rock against for ever (decision 81).
 
 ## Done
 
@@ -48,18 +61,23 @@ This is a snapshot, not a changelog — git history is the changelog.
 - **Every decision about a roll is Kotlin over an interface**, so "nothing
   touches a die that has come to rest" is proved by JVM tests, not sampled.
 
-## Last device run — Pixel 10a, 2026-10-03, `feature/livelier-tumble`
+## Last device run — Pixel 10a, 2026-10-04, the overnight stack tip (#349)
 
-- **Device suite:** 94 tests, **93 passed, 0 failed**, 1 skipped (`HarnessTest`,
-  which declines without a roll count), in 10 min 48 s.
-- **Harness, 1,000 rolls of 20d20:** 11 of 13 targets measured, **9 pass**. No
-  die at rest on another, nothing corrected, no roll gave up, settle 0.96 s
-  median and 1.76 s p99, **2.70 turns after landing** (1.55 before). Fails:
-  re-throws **1.18 %** against 0.05 % (2.65 % before), overlap **7.76 mm**
-  against 0.2 mm (5.29 mm before) (`docs/TODO.md`, Step 5).
-- **Fairness, 20,000 throws a shape:** every shape passes; one coin throw in
-  100,000 runs out the cap (three in 100,000 before), and `FairnessTest`
-  stops on that rather than counting it (`docs/TODO.md`, 5.2).
+- **Device suite:** 102 tests, **101 passed, 0 failed**, 1 skipped
+  (`HarnessTest`, which declines without a roll count).
+- **Harness, 10,000 rolls of 20d20:** no die read while standing on another,
+  none gave up, settle 0.95 s median and 1.96 s p99, **2.70 turns after
+  landing**. Fails, as before: re-throws 1.21 % against 0.05 %, overlap
+  7.76 mm against 0.2 mm (four and eight collision steps measured and not
+  adopted, decision 77).
+- **Rendered harness:** 60.3 fps at 20d20 (p99 work 8.3 ms, GPU 12.6 ms, no
+  step dropped) and 57.3 fps at the 100-dice limit — both frame targets met.
+- **Rounded corners fixed** (decision 81): over 50,000 rolls of 60d20 the
+  give-ups fell from 9 to 2 and re-throws from 2.6 % to 2.2 %. What is left is
+  a die pinched between two others spinning on the line through them, which
+  friction cannot reach — a question for the owner (`docs/TODO.md`, 5.5).
+- **10,000 rolls of 60d20 before that fix:** two gave up; the 1–100 d6 sweep under counting:
+  none gave up at any count (`docs/TODO.md`, 5.3 and 5.5).
 
 ## Blocked / waiting on
 

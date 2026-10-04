@@ -16,8 +16,11 @@ import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -57,6 +60,15 @@ import kotlinx.coroutines.awaitCancellation
  *   left behind ([RollPresenter.looking]).
  * @param onLook the player moved the camera. The caller tells the tray, for
  *   the same reason: one thing owns where the camera is pointed.
+ * @param announcing whether a change to [describing] is said aloud as it
+ *   happens rather than only when the tray is next focused — true while dice
+ *   are picked, so a pick and an un-pick are heard (decision 76). Off
+ *   otherwise, because a tray that announced every state a roll passes
+ *   through would talk over the result sheet that says the same thing.
+ * @param onTap one finger touched the tray at a point, as fractions across
+ *   and down it, and lifted again without moving; the third number is the
+ *   tray's width over its height. That is a finger on a die, and what it does
+ *   is the caller's ([RollPresenter.touch]).
  */
 @Composable
 fun DiceTray(
@@ -66,6 +78,8 @@ fun DiceTray(
   describing: String = "",
   view: TrayView = TrayView.Whole,
   onLook: (TrayView) -> Unit = {},
+  announcing: Boolean = false,
+  onTap: (acrossFraction: Double, downFraction: Double, aspectRatio: Double) -> Unit = { _, _, _ -> },
 ) {
   val lifecycle = LocalLifecycleOwner.current.lifecycle
 
@@ -76,6 +90,7 @@ fun DiceTray(
   // drag, which is worse.
   val looking = rememberUpdatedState(view)
   val told = rememberUpdatedState(onLook)
+  val tapped = rememberUpdatedState(onTap)
 
   // Keyed on the driver so that a new one gets a surface of its own. `onSurface`
   // fires when the surface is *created*, not when this composable's arguments
@@ -88,8 +103,10 @@ fun DiceTray(
       modifier =
         modifier
           .testTag(RollTestTags.TRAY)
-          .semantics { contentDescription = describing }
-          .lookAround(geometry, looking, told),
+          .semantics {
+            contentDescription = describing
+            if (announcing) liveRegion = LiveRegionMode.Polite
+          }.lookAround(geometry, looking, told, tapped),
     ) {
       onSurface { surface, width, height ->
         // The size as it stands, because the stage is handed over again every
@@ -183,38 +200,79 @@ fun DiceTray(
  * were, and a pointer that has only just appeared did not come from anywhere
  * — reading it is a jump at the start of every pinch.
  *
- * One finger is reserved for picking a die up, and a tap on the tray
- * deliberately does not roll. The arithmetic under that gesture is built and
- * tested — `TrayPick` says which die a finger is on and `PickUp` says which
- * dice a hand may go near — and it is still unspent here, because what a
- * re-throw does to the *record* of a roll is a decision nobody has taken
- * (`docs/TODO.md`, "Open questions"). Wiring it to something else in the
- * meantime would spend the only gesture the tray has left on whatever came
- * along first.
+ * **One finger picks a die up**, and a tap on the tray still does not roll
+ * (`docs/architecture.md`, decisions 66, 68 and 76). A finger that comes down,
+ * stays within the touch slop and lifts again before a long press would have
+ * fired is a tap, reported as fractions of the tray ([onTap]); which die it is
+ * on is `TrayPick`'s, whether that die may be picked is `PickUp`'s, and the
+ * shake is what throws it. A finger that wandered, one held down, and any
+ * gesture a second finger joined are not taps — the last of those is the
+ * camera's.
  */
 private fun Modifier.lookAround(
   geometry: TableGeometry,
   view: State<TrayView>,
   onLook: State<(TrayView) -> Unit>,
+  onTap: State<(Double, Double, Double) -> Unit>,
 ): Modifier =
   this.pointerInput(geometry) {
     awaitEachGesture {
       // Not `requireUnconsumed`: a first finger somebody else is already
       // handling is still the first finger of a two-finger gesture.
-      awaitFirstDown(requireUnconsumed = false)
+      val first = awaitFirstDown(requireUnconsumed = false)
+      val tap = OneFingerTap(first.position, first.uptimeMillis, viewConfiguration)
       var wereDown = 1
       var down: Int
       do {
         val event = awaitPointerEvent()
         down = event.changes.count { it.pressed }
+        tap.saw(event, down)
         if (down >= 2 && wereDown >= 2) {
           moveTheCamera(event, geometry, view.value, onLook.value)
           event.changes.forEach { if (it.positionChanged()) it.consume() }
         }
         wereDown = down
       } while (down > 0)
+      val width = size.width.toDouble()
+      val height = size.height.toDouble()
+      if (tap.landed && width > 0.0 && height > 0.0) {
+        onTap.value(first.position.x / width, first.position.y / height, width / height)
+      }
     }
   }
+
+/**
+ * Whether one gesture on the tray is a tap: one finger, kept within the touch
+ * slop, lifted before a long press would have fired, and not taken by
+ * anything else on the way up.
+ *
+ * Its own class so that the rule is one place and the pointer loop above stays
+ * bookkeeping, as [moveTheCamera] keeps the arithmetic out of it.
+ */
+private class OneFingerTap(
+  private val from: Offset,
+  private val downAtMillis: Long,
+  private val viewConfiguration: ViewConfiguration,
+) {
+  private var spoiled = false
+  private var lifted = false
+
+  /** True when the gesture that has ended was a tap. */
+  val landed: Boolean get() = lifted && !spoiled
+
+  fun saw(
+    event: PointerEvent,
+    down: Int,
+  ) {
+    if (down >= 2) spoiled = true
+    event.changes.forEach { change ->
+      val wandered = (change.position - from).getDistance() > viewConfiguration.touchSlop
+      val held = change.uptimeMillis - downAtMillis > viewConfiguration.longPressTimeoutMillis
+      if (wandered || held || change.isConsumed) spoiled = true
+    }
+    if (down == 0) lifted = true
+  }
+}
 
 /**
  * One event of a two-finger gesture, turned into a view and reported.

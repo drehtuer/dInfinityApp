@@ -1,5 +1,8 @@
 package de.drehtuer.dinfinity.core.notation
 
+import de.drehtuer.dinfinity.core.model.DieInstance
+import de.drehtuer.dinfinity.core.model.DieNote
+import de.drehtuer.dinfinity.core.model.RollPlan
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
@@ -31,8 +34,8 @@ import de.drehtuer.dinfinity.core.model.RolledGroup
  * and a rule that re-derived them from the notes would be a second description
  * of the same structure, quietly wrong the first time a `4d6r1dl1` dropped a
  * chain that had already been rerolled. Conservative on purpose: a die this
- * refuses is a die a player throws again by pressing **Roll**, and a die it
- * wrongly allowed would be a roll the app had rearranged.
+ * refuses is a die a player throws again by shaking the whole roll again, and
+ * a die it wrongly allowed would be a roll the app had rearranged.
  *
  * It is a question about the **formula** rather than about the physics. Every
  * die in a finished throw is at rest; what differs between them is whether the
@@ -84,4 +87,68 @@ object PickUp {
    * changes what a die counts as and never what is on the table.
    */
   fun chains(node: DiceNode): Boolean = node.explodes || node.modifiers.any { it is DiceModifier.Reroll }
+
+  /**
+   * [result] with the faces a hand threw away put back in front of the dice
+   * that replaced them, struck through (`docs/physics-and-rendering.md`, "What
+   * happens to the face the die already showed").
+   *
+   * [result] is the roll scored from the faces the dice show **now** — the
+   * scoring is pure, so the total, the keep/drop and the subtotals are simply
+   * run again with the new face in hand, and nothing about them is adjusted
+   * here. What this adds is the record: each earlier face of a die, oldest
+   * first, as a die of its own in the breakdown that does not count
+   * ([DieNote.Dropped]) and says why ([DieNote.Rerolled]), and the die it was
+   * replaced by marked [DieNote.Rerolled] too. That is exactly what `r n`
+   * already shows, so a player who has seen `4d6r1` has seen this.
+   *
+   * The struck-through faces keep the die's own index, so the statistics count
+   * them against the die that threw them: **two throws happened, so two
+   * throws are counted** (`docs/statistics.md`).
+   *
+   * @param earlier every face a die showed before a hand threw it again, by
+   *   [DieInstance.index], oldest first. A die not in it is unchanged.
+   */
+  fun withEarlierThrows(
+    result: RollResult,
+    plan: RollPlan,
+    earlier: Map<Int, List<Int>>,
+  ): RollResult {
+    if (earlier.isEmpty()) return result
+    val instances = plan.dice.associateBy(DieInstance::index)
+    return result.copy(
+      groups =
+        result.groups.map { group ->
+          group.copy(
+            dice =
+              group.dice.flatMap { die ->
+                val faces = earlier[die.instanceIndex].orEmpty()
+                val instance = instances[die.instanceIndex]
+                if (faces.isEmpty() || instance == null) {
+                  listOf(die)
+                } else {
+                  faces.map { face -> struck(instance, face) } + die.copy(notes = die.notes + DieNote.Rerolled)
+                }
+              },
+          )
+        },
+    )
+  }
+
+  /** A face [instance] showed before a hand threw it again, as the breakdown keeps it. */
+  private fun struck(
+    instance: DieInstance,
+    face: Int,
+  ): RolledDie {
+    val shown = instance.die.faces[face]
+    return RolledDie(
+      instanceIndex = instance.index,
+      dieId = instance.die.id,
+      value = shown.value,
+      label = shown.label,
+      naturalMax = shown.value == instance.die.maxValue,
+      naturalMin = shown.value == instance.die.minValue,
+      notes = setOf(DieNote.Dropped, DieNote.Rerolled) + instance.role.note(),
+    )
+  }
 }

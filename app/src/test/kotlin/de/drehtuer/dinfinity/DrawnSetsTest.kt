@@ -14,12 +14,15 @@ import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.MinePackage
 import de.drehtuer.dinfinity.designer.MineSets
+import de.drehtuer.dinfinity.designer.NewSet
+import de.drehtuer.dinfinity.designer.PersonalSets
 import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.designer.Stroke
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.feature.designer.SaveResult
+import de.drehtuer.dinfinity.feature.designer.WritableSet
 import de.drehtuer.dinfinity.feature.sets.SetLibrary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -54,6 +57,7 @@ class DrawnSetsTest {
   private val root = File(temporary, "dicesets")
   private val drafts = DraftStore(File(temporary, "drafts"))
   private val photos = PhotoStore(File(temporary, "table-photos"))
+  private val records = File(temporary, PersonalSets.DIRECTORY)
   private lateinit var database: DInfinityDatabase
   private lateinit var registry: InstalledSetRepository
 
@@ -164,12 +168,71 @@ class DrawnSetsTest {
     }
 
   @Test
-  fun `the one writable set is the personal one, under the name the sets list shows`() {
+  fun `on a phone with no named set the one writable set is the personal one, under the name the sets list shows`() {
     val writable = drawn(library()).writable.single()
 
     assertEquals(DiceSet.PERSONAL_ID, writable.id)
     assertEquals(MinePackage.NAME, writable.name)
   }
+
+  @Test
+  fun `a new set is made, written into, listed and named by notation at once`() =
+    runBlocking {
+      // Decision 79: a set named in the sheet is in the list, the picker and
+      // notation the moment it exists, with the drawing on the canvas in it.
+      val library = library()
+      val sets = drawn(library)
+
+      val outcome = sets.create("Brass & Bone", drawing())
+
+      val brass = WritableSet("brass-bone", "Brass & Bone")
+      assertEquals(SaveResult.Saved(brass, rollable = "brass-bone:1d6"), outcome)
+      assertEquals(listOf(DiceSet.PERSONAL_ID, "brass-bone"), sets.writable.map(WritableSet::id))
+      assertEquals(
+        "textures/d6.png",
+        library.catalogue
+          .set("brass-bone")
+          ?.die("d6")
+          ?.texturePath,
+      )
+      assertTrue("the canvas lost its own draft", drafts.known().contains("d6"))
+      assertTrue(
+        "the set's own copy is not in its records",
+        File(records, "brass-bone/${DraftStore.DIRECTORY}/d6.json").isFile,
+      )
+    }
+
+  @Test
+  fun `a new set with nothing drawn is made, and says there is nothing in it yet`() =
+    runBlocking {
+      val library = library()
+      val sets = drawn(library)
+
+      val outcome = sets.create("Props", Draft(die = d6))
+
+      assertEquals(SaveResult.Blank, outcome)
+      assertNotNull("an empty set is not in the catalogue", library.catalogue.set("props"))
+    }
+
+  @Test
+  fun `a name that is taken is refused and nothing is written`() =
+    runBlocking {
+      val sets = drawn(library())
+
+      val outcome = sets.create("Mine", drawing())
+
+      assertEquals(SaveResult.NotMade(NewSet.Taken("mine")), outcome)
+      assertEquals(listOf(DiceSet.PERSONAL_ID), sets.writable.map(WritableSet::id))
+      assertTrue("a refusal wrote records", !records.exists())
+    }
+
+  @Test
+  fun `saving into a named set that has gone is refused`() =
+    runBlocking {
+      val outcome = drawn(library()).save("props", drawing())
+
+      assertEquals(SaveResult.Refused, outcome)
+    }
 
   private fun drawn(library: SetLibrary) =
     DrawnSets(
@@ -177,7 +240,11 @@ class DrawnSetsTest {
       store = drafts,
       catalogue = { library.catalogue },
       io = Dispatchers.Unconfined,
+      personal = personal ?: error("build the library first"),
     )
+
+  /** The personal sets the last [library] was built on, which [drawn] has to share. */
+  private var personal: PersonalSets? = null
 
   private fun library(dice: List<Die> = listOf(d6)) =
     SetLibrary(
@@ -188,15 +255,20 @@ class DrawnSetsTest {
       installer = PackageInstaller(root),
       defaultSetId = { DiceSet.BUILTIN_ID },
       personal =
-        MineSets(
-          drafts = drafts,
-          root = root,
-          painter = BitmapAtlas(),
-          // Every die a draft may name. Empty is a phone whose packages have
-          // all been removed, which is what leaves a drawing with no die.
-          dice = { dice },
-          photos = photos,
-        ),
+        PersonalSets(
+          mine =
+            MineSets(
+              drafts = drafts,
+              root = root,
+              painter = BitmapAtlas(),
+              // Every die a draft may name. Empty is a phone whose packages
+              // have all been removed, which is what leaves a drawing with no
+              // die.
+              dice = { dice },
+              photos = photos,
+            ),
+          records = records,
+        ).also { personal = it },
     )
 
   /** A d6 with a line on its first face, which is the smallest real drawing. */

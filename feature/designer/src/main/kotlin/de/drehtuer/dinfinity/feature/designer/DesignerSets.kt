@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.feature.designer
 
 import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.NewSet
 
 /**
  * A set the designer may write a drawing into
@@ -8,8 +9,8 @@ import de.drehtuer.dinfinity.designer.Draft
  *
  * **Writable is a small word for a real rule**: a package somebody installed
  * belongs to whoever wrote it, and the app never edits one. What is writable
- * is a set this phone built — "My dice" today, and any other personal set once
- * there can be more than one (`docs/TODO.md`, 4.6).
+ * is a set this phone built — "My dice", and every personal set somebody
+ * named in the sheet (`docs/architecture.md`, decision 79).
  */
 data class WritableSet(
   val id: String,
@@ -40,6 +41,15 @@ sealed interface SaveResult {
 
   /** The package could not be written, or did not validate. Nothing was left half-done. */
   data object Refused : SaveResult
+
+  /**
+   * No new set was made, and [why] says what was wrong with the name — or
+   * with the disk. Nothing was written: the drawing is still only on the
+   * canvas and in the drafts it was already in.
+   */
+  data class NotMade(
+    val why: NewSet,
+  ) : SaveResult
 }
 
 /**
@@ -71,6 +81,20 @@ interface DesignerSets {
     draft: Draft,
   ): SaveResult
 
+  /**
+   * Makes a new personal set called [name] and writes [draft] into it, or
+   * says why not (`docs/face-designer.md`, "Save to set").
+   *
+   * One call rather than a create and a save, because the sheet asks one
+   * question — "put this drawing into a new set called this" — and two calls
+   * would leave a moment in which the set existed and the drawing was not in
+   * it for no reason the person could see.
+   */
+  suspend fun create(
+    name: String,
+    draft: Draft,
+  ): SaveResult
+
   companion object {
     /** Nowhere to save. What a test uses, and what a screen with no library behind it gets. */
     val NONE: DesignerSets =
@@ -81,6 +105,11 @@ interface DesignerSets {
           setId: String,
           draft: Draft,
         ): SaveResult = SaveResult.Blank
+
+        override suspend fun create(
+          name: String,
+          draft: Draft,
+        ): SaveResult = SaveResult.NotMade(NewSet.NotWritten)
       }
   }
 }

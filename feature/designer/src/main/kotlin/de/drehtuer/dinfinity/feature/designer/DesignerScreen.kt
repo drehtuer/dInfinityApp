@@ -47,6 +47,7 @@ import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.FaceTransform
+import de.drehtuer.dinfinity.designer.NewSet
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
@@ -295,11 +296,12 @@ private fun Footer(
  * Where the drawings go (`docs/face-designer.md`, "Save to set").
  *
  * It lists the sets that can be **written to**, which is a set this phone
- * built and never one somebody installed. There is one of those today — "My
- * dice" — and the sheet is a list rather than a single button all the same,
- * because what it is answering is *which set*, and a screen that answers that
- * question by not asking it is a screen that has to be rebuilt when the second
- * personal set arrives (`docs/TODO.md`, 4.6).
+ * built and never one somebody installed — "My dice" and every set named
+ * here — and last of all **New set…**, which turns Save into "make a set
+ * called this and put the drawing in it". The id the name will come to is
+ * said under the field while it is typed, because the id is what notation
+ * calls the set and the rule that makes it is not one anybody should have to
+ * guess (`docs/architecture.md`, decision 79).
  *
  * **It stays open on the answer.** A save that was refused has a reason worth
  * reading and one that worked has a set worth naming; "something happened" is
@@ -319,7 +321,7 @@ private fun SaveSheet(
         text = stringResource(R.string.designer_save_do),
         onClick = presenter::save,
         kind = ModernistButtonKind.Primary,
-        enabled = saving.into != null && !saving.busy,
+        enabled = saving.canSave,
         modifier = Modifier.testTag(DesignerTestTags.SAVE_DO),
       )
       ModernistButton(
@@ -343,6 +345,7 @@ private fun SaveSheet(
         modifier = Modifier.fillMaxWidth().testTag(DesignerTestTags.saveInto(set.id)),
       )
     }
+    NewSetChoice(saving, presenter)
     if (saving.busy) {
       Text(
         text = stringResource(R.string.designer_save_busy),
@@ -353,7 +356,7 @@ private fun SaveSheet(
     }
     saving.done?.let { done ->
       Text(
-        text = stringResource(sentenceOf(done), (done as? SaveResult.Saved)?.set?.name.orEmpty()),
+        text = stringResource(sentenceOf(done), wordOf(done)),
         style = MaterialTheme.typography.bodyMedium,
         color = if (done is SaveResult.Saved) MaterialTheme.colorScheme.onSurface else Ink.accent,
         modifier = Modifier.testTag(DesignerTestTags.SAVE_SAID),
@@ -377,7 +380,76 @@ internal fun sentenceOf(done: SaveResult): Int =
     is SaveResult.Saved -> R.string.designer_save_done
     SaveResult.Blank -> R.string.designer_save_blank
     SaveResult.Refused -> R.string.designer_save_refused
+    is SaveResult.NotMade -> sentenceOf(done.why)
   }
+
+/** Which sentence says why a new set was not made. */
+internal fun sentenceOf(why: NewSet): Int =
+  when (why) {
+    NewSet.Unnamed -> R.string.designer_save_new_unnamed
+    NewSet.NameTooLong -> R.string.designer_save_new_long
+    is NewSet.BadId -> R.string.designer_save_new_bad_id
+    is NewSet.Taken -> R.string.designer_save_new_taken
+    is NewSet.Made, is NewSet.Rejected, NewSet.NotWritten -> R.string.designer_save_new_refused
+  }
+
+/**
+ * The one word a save's sentence is filled in with: the set it went into, the
+ * id a refused name came to, or nothing for a sentence that names neither.
+ */
+internal fun wordOf(done: SaveResult): String =
+  when (done) {
+    is SaveResult.Saved -> done.set.name
+    is SaveResult.NotMade ->
+      when (val why = done.why) {
+        is NewSet.BadId -> why.id
+        is NewSet.Taken -> why.id
+        else -> ""
+      }
+    else -> ""
+  }
+
+/**
+ * **New set…**, and the name field it opens (`docs/face-designer.md`, "Save
+ * to set").
+ *
+ * Its own composable so the sheet stays short enough to read; the decisions
+ * in it — what the id will be, whether Save can be pressed — are [Saving]'s.
+ */
+@Composable
+private fun NewSetChoice(
+  saving: Saving,
+  presenter: DesignerPresenter,
+) {
+  OptionBox(
+    text = stringResource(R.string.designer_save_new),
+    selected = saving.naming,
+    onClick = presenter::nameNewSet,
+    modifier = Modifier.fillMaxWidth().testTag(DesignerTestTags.SAVE_NEW),
+  )
+  if (!saving.naming) return
+  val label = stringResource(R.string.designer_save_new_name)
+  OutlinedTextField(
+    value = saving.name,
+    onValueChange = presenter::newSetName,
+    label = { Text(label) },
+    singleLine = true,
+    isError = saving.done is SaveResult.NotMade,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .semantics { contentDescription = label }
+        .testTag(DesignerTestTags.SAVE_NEW_NAME),
+  )
+  if (saving.newId.isNotEmpty()) {
+    Text(
+      text = stringResource(R.string.designer_save_new_id, saving.newId),
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
+      modifier = Modifier.testTag(DesignerTestTags.SAVE_NEW_ID),
+    )
+  }
+}
 
 /**
  * Which die is being drawn on (`docs/face-designer.md`, "Flow").
@@ -1038,6 +1110,9 @@ object DesignerTestTags {
   const val SAVE_CLOSE: String = "designer:save:close"
   const val SAVE_BUSY: String = "designer:save:busy"
   const val SAVE_SAID: String = "designer:save:said"
+  const val SAVE_NEW: String = "designer:save:new"
+  const val SAVE_NEW_NAME: String = "designer:save:new:name"
+  const val SAVE_NEW_ID: String = "designer:save:new:id"
   const val CLIPBOARD: String = "designer:clipboard"
   const val COPY: String = "designer:copy"
   const val PASTE: String = "designer:paste"

@@ -56,6 +56,49 @@ class StatisticsRepository(
       id
     }
 
+  /**
+   * The roll written down as [id] was finished again: a hand picked up the
+   * dice of [thrownAgain] (by their index in the throw) and a shake threw
+   * them, and [roll] is what it comes to now (`docs/statistics.md`, "A die
+   * thrown again by hand").
+   *
+   * **One roll, every throw.** The history row is the same row with the new
+   * total and the new breakdown — the replaced face struck through in it — so
+   * the history still has one total for the roll. The face counts and the
+   * summaries gain one more throw of each die thrown again, on the face it
+   * came down on this time; the faces it showed before were counted when they
+   * landed and stay counted. Nothing else is counted again: the dice nobody
+   * picked up were thrown once.
+   *
+   * A row that is not there any more — pruned, or forgotten with its session
+   * between the two throws — is not written back, and the new throws are
+   * still counted, because they still happened.
+   *
+   * @param id the row the roll was first written as, or null when there was
+   *   none to amend.
+   */
+  suspend fun amend(
+    id: Long?,
+    roll: FinishedRoll,
+    thrownAgain: Set<Int>,
+  ) = database.withTransaction {
+    val result = roll.result
+    id?.let {
+      database.rollHistoryWriting().amend(
+        id = it,
+        total = result.total,
+        breakdownJson = roll.breakdownJson,
+        anomalies = result.rethrows + result.forcedSettles,
+      )
+    }
+    // The newest throw of each die is the last line with its index: the
+    // struck-through faces stand in front of the one that replaced them.
+    thrownAgain.forEach { index ->
+      val rolled = result.dice.lastOrNull { it.instanceIndex == index } ?: return@forEach
+      roll.dice[index]?.let { source -> count(source, rolled, roll.context.sessionId, result.rolledAtEpochMs) }
+    }
+  }
+
   /** Drops the oldest rolls once there are more than the cap allows. */
   suspend fun prune(): Int =
     if (database.rollHistory().count() > historyLimit) {

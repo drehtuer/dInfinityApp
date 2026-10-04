@@ -489,8 +489,9 @@ private fun Manage(
 /**
  * The personal package on its way out, gated on a licence (design `8c`).
  *
- * Only "My dice" has one, because it is the only package this phone wrote —
- * every other set on the list came from somewhere that already has a copy.
+ * Only a personal set has one — "My dice", or a set somebody named in the face
+ * designer — because those are the packages this phone wrote; every other set
+ * on the list came from somewhere that already has a copy.
  *
  * **The licence comes before the button and the button will not work without
  * it.** A dice set is something somebody else installs and draws with, and the
@@ -533,7 +534,8 @@ private fun Export(presenter: SetDetailPresenter) {
     }
     if (state.exported) {
       Text(
-        text = stringResource(R.string.sets_detail_exported, MinePackage.FILE_NAME),
+        text =
+          stringResource(R.string.sets_detail_exported, MinePackage.fileNameOf(state.row?.id ?: MinePackage.ID)),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.testTag(SetDetailTestTags.EXPORTED),

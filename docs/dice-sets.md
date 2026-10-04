@@ -160,11 +160,35 @@ been picked (`docs/face-designer.md`, "The licence, and why it is a gate").
 
 ## Packages the app writes
 
-One package is generated on the device rather than downloaded: **"My dice"**,
-id `mine`, built from the drawings in the face designer
+Some packages are generated on the device rather than downloaded. **"My
+dice"**, id `mine`, is built from the drawings in the face designer
 (`docs/face-designer.md`) **and from the photographs somebody has made tables
-of** (`docs/tables.md`, "Your own photo"). It is a folder in `dicesets/` like
-any other, and there is no privileged path for it:
+of** (`docs/tables.md`, "Your own photo"). Beside it there can be any number of
+**named personal sets**, made with **New set…** in the designer's Save sheet
+(`docs/face-designer.md`, "Save to set"; `docs/architecture.md`, decision 79):
+
+- A named set's **id is made from its name** and must pass the `set.id` rule
+  above; an id anybody on the phone already has — the bundled set, `mine`, an
+  installed package, another named set — is refused, never merged.
+- Each has **its own records** under `filesDir/personal-sets/<id>/` — its name
+  (`name.txt`), its own drafts (`drafts/`, one file per die) and its own
+  weight, translucency and size (`physical.txt`) — and its package in
+  `dicesets/<id>/` like any other. "My dice" keeps the records it has always
+  had (`filesDir/drafts/`, `filesDir/table-photos/`,
+  `filesDir/mine-physical.txt`); nothing about it moved when named sets
+  arrived, so an update loses nothing.
+- A named set starts at the defaults — the average weight, translucency and
+  size — has no photo tables, and stays on the list with nothing in it, because
+  it was made on purpose. "My dice" with nothing in it is no package at all, as
+  it always was.
+- Each has its own export, under its own file name (`<id>.zip`; "My dice" is
+  still `my-dice.zip`), and its own −/+ steppers on the details screen.
+- Removing a named set removes its records with its package — a package whose
+  records stayed would be built straight back. Removing "My dice" removes the
+  package alone, as it always has.
+
+Every one of them is a folder in `dicesets/` like any other, and there is no
+privileged path for any of them:
 
 - It is written through the same layout as any package — a `diceset.toml`, one
   `textures/<die-id>.png` per drawn die at 256 px per atlas cell with cells
@@ -383,7 +407,8 @@ uses:
 - **An imported set is read-only**, which is not a permission check but a fact
   about what a set is: the numbers came out of somebody's `diceset.toml`, and
   editing them on this phone would make `brass` mean two different things on
-  two phones. **My dice** is the set this phone wrote, so it carries −/+
+  two phones. **My dice** — and every set named in the face designer — is a
+  set this phone wrote, so it carries −/+
   steppers at 0.1 g, 5 % and 5 %, each reading the live value so a rapid run of
   taps accumulates rather than fighting the last frame. The state the finger is
   moving is the screen's; the record is written under it, and the folder
@@ -398,8 +423,9 @@ uses:
   called. The density stays inside the format's 0.5–8, so a run of taps stops
   at balsa and at brass.
 - **Where My dice keeps them.** In a record of its own beside the drafts and
-  the photographs (`filesDir/mine-physical.txt`, `designer`'s `PhysicalStore`),
-  never in `dicesets/mine/diceset.toml`. That file is a *view*: the package is
+  the photographs (`filesDir/mine-physical.txt`, `designer`'s `PhysicalStore`;
+  a named set's is `filesDir/personal-sets/<id>/physical.txt`), never in
+  `dicesets/mine/diceset.toml`. That file is a *view*: the package is
   **built, not accumulated**, so a number written only into it would be
   rewritten away by the next stroke somebody drew. The three go out as the
   package's `[defaults]` table — the one material "My dice" declares, because

@@ -54,20 +54,28 @@ internal sealed interface TrayReading {
     val dice: Int,
   ) : TrayReading
 
-  /** Landed, and this is the total. */
+  /**
+   * Landed, and this is the total — and [picked] of the dice a finger has
+   * picked up for the next shake to throw (decision 76).
+   */
   data class Settled(
     val total: Long,
+    val picked: Int = 0,
   ) : TrayReading
 
   companion object {
     /**
-     * What [state] leaves on the table.
+     * What [state] leaves on the table, with [picked] dice of a landed roll
+     * picked up — which only a landed roll can have.
      *
      * `Invalid` and `TooMany` are [Empty] rather than states of their own: no
      * body is ever created for either, so the tray really is empty, and *why*
      * is said where it can be fixed — under the formula, in the field.
      */
-    fun of(state: RollState): TrayReading =
+    fun of(
+      state: RollState,
+      picked: Int = 0,
+    ): TrayReading =
       when (state) {
         RollState.Empty, is RollState.Invalid, is RollState.TooMany -> Empty
         is RollState.Ready -> Ready(state.diceCount)
@@ -75,7 +83,7 @@ internal sealed interface TrayReading {
         is RollState.ShakeAgain -> ShakeAgain(state.diceCount)
         is RollState.ThrowAgain -> ThrowAgain(state.unread)
         is RollState.Stalled -> Stalled(state.unsettled)
-        is RollState.Settled -> Settled(state.result.total)
+        is RollState.Settled -> Settled(state.result.total, picked)
       }
   }
 }

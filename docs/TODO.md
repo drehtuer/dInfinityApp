@@ -47,19 +47,6 @@ Spec: `docs/dice-notation.md`, `docs/tables.md`,
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** ported: a settled die moved by code is the
       invisible hand
-- [ ] **Wire the one-finger pick and the shake that throws it.** Everything
-      under it is built and decided: `TrayPick` (which die a finger is on),
-      `PickUp` (which dice a hand may go near; none in a group with `!` or
-      `r n`), the throw is `ThrowSpec.among`, the history keeps every throw of
-      the die and the sum for the roll, and **the finger only picks — the next
-      shake throws the picked dice** (decision 68;
-      `docs/physics-and-rendering.md`, "Picking a die up and throwing it
-      again"). Left to decide while building it: how a picked die is shown,
-      and how a pick is undone (a second touch on the same die is the obvious
-      answer). It joins decision 70's wait rather than adding one: a shake
-      already throws a throw's unread dice through `Passes.next`, and a picked
-      die is one more die for that same throw — so only one of the two can be
-      owed by a shake at a time, and the unread dice come first
 
 Implementation notes recorded only here:
 
@@ -94,6 +81,13 @@ Implementation notes recorded only here:
 - [ ] **Power-saving** leaves the formula, the dice menu and a total; the
       design shows a progress indicator and a result sheet (`1z`). Instant, or
       broken?
+- [ ] **Picking a die up** (decision 76): push the sheet down, tap a die, and
+      look at the ring round it on each table — does it read on the felt, light
+      and dark, and does it sit round the die you touched at every pinch? Is a
+      second tap the undo you reach for, or does a picked die want saying so on
+      the sheet too? Then shake: does only that die go, does it land clear of
+      the others, and does the struck-through face beside the new one on the
+      sheet read as "thrown again"?
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
 and read here, and a seed gives the same result with the renderer on and off.
@@ -136,10 +130,12 @@ and read here, and a seed gives the same result with the renderer on and off.
       canvas outline, which changes how drafts on disk are masked
 - [ ] Should the Solid tab draw pen strokes (as thin filled outlines)? Today it
       says what it does not draw
-- [ ] **More than one personal set.** `MinePackage.ID` is fixed to `mine` and
-      `MineSets` is one folder, so "Save to set" lists one set. Needs an id per
-      set, a `MineSets` per folder, drafts keyed by set, an export and physical
-      record each
+- [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
+      named set is a copy and also stays in "My dice" — is that what somebody
+      expects, or should a set-only drawing leave "My dice" alone? Does the
+      line under the name field ("Its id will be brass-bone: that is what
+      notation calls the set") read as help rather than jargon, and is a
+      refused name's sentence clear about what to change?
 - [ ] *Judgement:* does the bucket close a loop somebody meant to close (ends
       within 0.08 of the canvas)? Does the Solid tab's turning d20 read as a die
       being turned over; is one lamp enough; does the selected-face outline
@@ -203,10 +199,17 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 
 ### 5.3 Capacity and corner cases
 
-- [ ] **Re-run the 1–100 dice sweep under counting.** Under the ladder: no die
-      at rest on another, no NaN, no die through a wall, p99 step 3.09 ms at a
-      hundred; one roll in sixty at 40 and 100 dice reached the backstop, and
-      re-throws climbed from 1 % to 6.3 %
+The 1–100 d6 sweep under counting (Pixel 10a, 2026-10-04, at #349; 200 rolls
+each up to 20 dice, 60 above): **no roll gave up at any count**, no die read
+while standing on another, p99 step at most 1.23 ms (60 dice) against 8.33.
+
+| dice | 1 | 2 | 5 | 10 | 20 | 40 | 60 | 80 | 100 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| re-thrown | 0 % | 0.25 % | 0.10 % | 0.20 % | 1.10 % | 1.42 % | 1.83 % | 1.38 % | 1.22 % |
+| settle median / p99 (s) | 0.68 / 0.92 | 0.75 / 0.96 | 0.81 / 0.98 | 0.83 / 1.54 | 0.86 / 1.70 | 0.88 / 1.64 | 1.45 / 1.73 | 1.40 / 1.68 | 1.43 / 1.64 |
+| deepest overlap (mm) | 0 | 3.6 | 5.6 | 4.4 | 6.4 | 5.3 | 6.0 | 6.4 | 4.8 |
+| turns after landing | 2.73 | 2.90 | 2.96 | 2.90 | 2.54 | 2.02 | 2.03 | 1.94 | 1.82 |
+
 - [ ] **`100d4` does not reliably settle.** Five of twenty-four seeds in
       `JoltBridgeTest` reach the twelve-second backstop and give up (since #319
       without taking the app with them). The bound is today's worst case
@@ -265,9 +268,20 @@ keeps them comparable.
       app asking, rather than as the roll hanging? Is the plate, the toast and
       the heap left as it lay enough to know which die the shake is for — or
       does the waiting die want marking on the tray (`docs/design-handover.md`)?
-- [ ] **Repeat the 10,000-roll runs at 20 and 60 dice under counting.** Under
-      the ladder three rolls in 10,000 at 20 dice and two thirds of 29 standing
-      dice at 60 ran out of time
+- [ ] **A die pinched at two points spins for ever.** The two `60d20` rolls in
+      10,000 that gave up were dice leaning on the round post that stood in
+      each corner; the corners are fillets now (decision 81) and over 50,000
+      rolls a count give-ups went from 9 to 2 at `60d20` and 1 to 2 at `20d20`.
+      Every one left — and most from before — is one die with its centre still,
+      turning at 1–31 rad/s about the line through two single contacts (two
+      neighbours, or a neighbour and a wall), which friction cannot reach and
+      0.02 damping takes minutes to stop (`docs/physics-and-rendering.md`,
+      "Why a die could rock for ever"). Missing physics: drilling friction.
+      Options for the owner — a per-contact spin resistance in the contact
+      listener, or more angular damping — both change every roll's tumble, so
+      each wants the turns-after-landing figure, the goldens and `FairnessTest`
+      with it. Replays: `20d20` seed 1 roll 9996, seed 2 roll 5193; `60d20`
+      seed 2 roll 4518, seed 4 roll 8361
 - [ ] Tune prevention — spawn spread, dice-on-dice friction, throw energy,
       scale — to bring re-throws and overlap down. Five spawn height bands
       instead of three was neutral
@@ -329,14 +343,11 @@ keeps them comparable.
 `MemoryTest` holds the native heap across 500 rolls (1,440 bytes left
 behind).
 
-- [ ] **A rendered harness** (decided). The headless harness times the
-      simulation half of a frame only (`FrameTimes.drawn`). Needed: an
-      instrumented test on a real surface at twenty dice, its arithmetic in
-      `:simulation:harness`. The on-screen frame rate exists — the debug
-      overlay's `fps · p99` line (decision 72) — and is the hand check
-      meanwhile
-- [ ] 60 fps sustained at 20 dice, p99 frame under 16.6 ms; 30 fps at the
-      capacity limit
+Frame targets met on the Pixel 10a (`tools/harness.sh --rendered`, decision
+80): 60.3 fps at 20d20 with p99 work 8.3 ms and GPU 12.6 ms; 57.3 fps at the
+100-dice limit (`docs/physics-and-rendering.md`, "Performance, and how it is
+measured"). Re-run after any change to the renderer or the physics step.
+
 - [ ] Battery cost of 100 rolls, written into `docs/physics-and-rendering.md`
 
 **Done when** every target is met on the Pixel 10a and the user agrees the

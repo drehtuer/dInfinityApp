@@ -257,6 +257,11 @@
     <item quantity="other">Dice tray, %1$d dice cannot be read, shake to throw them again</item>
   </plurals>
   <string name="roll_tray_settled">Dice tray, the dice have landed on %1$d</string>
+  <!-- The same, with dice a finger picked up for the next shake to throw (decision 76). -->
+  <plurals name="roll_tray_settled_picked">
+    <item quantity="one">Dice tray, the dice have landed on %1$d, %2$d die picked; shake to throw it</item>
+    <item quantity="other">Dice tray, the dice have landed on %1$d, %2$d dice picked; shake to throw them</item>
+  </plurals>
   <!-- The panel that stands where the tray would be when the pictures are off. -->
   <string name="roll_power_saving">Power-saving mode</string>
   <string name="roll_power_saving_same">Same physics, no rendering. The result is identical to what the tray would show.</string>

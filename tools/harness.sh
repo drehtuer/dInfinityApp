@@ -9,6 +9,10 @@
 # on the emulator, a minute away, before anybody reaches for a phone
 # (docs/build-setup.md).
 #
+# `--rendered` runs the other half of a frame: the same throws drawn through the
+# tray and Filament onto a real surface, from `render/filament`'s test APK, and
+# scored on the frame rows only (docs/TODO.md, Step 5.7).
+#
 # Nothing here decides anything. The comparison and the table are Kotlin, in
 # `:simulation:harness`, and are tested on the JVM; the device renders the
 # table into a file and this script prints it unchanged. A second copy of the
@@ -24,10 +28,26 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 package="de.drehtuer.dinfinity.simulation.jolt.test"
 runner="androidx.test.runner.AndroidJUnitRunner"
 harness_class="de.drehtuer.dinfinity.simulation.jolt.HarnessTest"
+test_module="simulation/jolt"
+
+# The rendered harness is the same idea one module up: `render/filament` owns
+# the surface and Filament, so its androidTest APK is the one that can draw.
+# One method of the class, because the other is the one-roll check the
+# ordinary device suite runs, and it scores nothing.
+rendered_package="de.drehtuer.dinfinity.render.filament.test"
+rendered_class="de.drehtuer.dinfinity.render.filament.RenderedHarnessTest#aRunOfDrawnRollsMeetsTheFrameBudget"
+rendered_module="render/filament"
+
+# A rendered run draws every frame at the watched pace, so a roll takes as long
+# as it takes to watch — about two seconds of 20d20. Twenty rolls is a few
+# thousand frames, which is a p99 worth reading; a longer run is asked for.
+rendered_rolls=20
 
 rolls=1000
+rolls_given=0
 soak=""
 frames=0
+rendered=0
 dice=20
 shape="d20"
 seed=1
@@ -60,6 +80,11 @@ tools/harness.sh — run the physics harness on a device and score it.
       --frames           step each roll the way the screen does — one advance
                          per 60 Hz frame — and report what the frames cost.
                          A paced run takes as long as the dice really take
+      --rendered         draw each roll onto a real surface the size of the
+                         screen, through the tray and Filament, and score
+                         what a frame costs: simulation and draw, and the
+                         GPU's time where the driver reports it. Only the
+                         frame rows are scored. Default 20 rolls; real time
   -c, --dice <n>         dice per throw (default 20)
   -s, --shape <name>     d20, icosahedron or 20 (default d20)
       --seed <n>         the run's base seed (default 1); one number replays
@@ -85,6 +110,7 @@ Examples:
   tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
   tools/harness.sh --soak 5m               # soak mode: roll for five minutes
   tools/harness.sh --frames -n 50          # what a frame's simulation costs
+  tools/harness.sh --rendered              # what a drawn frame costs (Step 5.7)
   tools/harness.sh --capture 20            # twenty seconds of video to watch
 
 The exit code is the verdict: zero when every target was met.
@@ -100,9 +126,10 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     -h | --help) usage; exit 0 ;;
     -d | --device) device="${2:?--device needs a serial}"; shift 2 ;;
-    -n | --rolls) rolls="${2:?--rolls needs a number}"; shift 2 ;;
+    -n | --rolls) rolls="${2:?--rolls needs a number}"; rolls_given=1; shift 2 ;;
     --soak) soak="${2:?--soak needs a duration, such as 5m}"; shift 2 ;;
     --frames) frames=1; shift ;;
+    --rendered) rendered=1; shift ;;
     --capture) capture="${2:?--capture needs a number of seconds}"; shift 2 ;;
     -c | --dice) dice="${2:?--dice needs a number}"; shift 2 ;;
     -s | --shape) shape="${2:?--shape needs a die}"; shift 2 ;;
@@ -113,6 +140,18 @@ while [ "$#" -gt 0 ]; do
     *) usage; fail "unknown argument: $1" ;;
   esac
 done
+
+# A rendered run is a different test in a different APK. It is always paced —
+# the tray's own frame callback is what steps it — so --frames would say
+# nothing, and a capture records the app rather than any run at all.
+if [ "${rendered}" -eq 1 ]; then
+  [ "${frames}" -eq 0 ] || fail "--rendered is already paced by the display; leave out --frames"
+  [ -z "${capture}" ] || fail "--rendered scores a run and --capture records the app; ask for one at a time"
+  package="${rendered_package}"
+  harness_class="${rendered_class}"
+  test_module="${rendered_module}"
+  [ "${rolls_given}" -eq 1 ] || rolls="${rendered_rolls}"
+fi
 
 command -v adb > /dev/null 2>&1 || fail "there is no adb here; this runs inside the devcontainer (docs/build-setup.md)"
 
@@ -195,12 +234,14 @@ else
   echo "Run:     ${rolls} rolls of ${dice}${shape}, seed ${seed}"
 fi
 [ "${frames}" -eq 1 ] && echo "Frames:  each roll stepped at 60 fps and timed; this runs in real time"
+[ "${rendered}" -eq 1 ] &&
+  echo "Frames:  each roll drawn on a screen-sized surface at the watched pace and timed; this runs in real time"
 
 if [ "${build}" -eq 1 ]; then
   echo "Building the test APK…"
-  "${root}/gradlew" --console=plain -p "${root}" :simulation:jolt:assembleDebugAndroidTest
+  "${root}/gradlew" --console=plain -p "${root}" ":${test_module//\//:}:assembleDebugAndroidTest"
 
-  apk="$(find "${root}/simulation/jolt/build/outputs/apk/androidTest/debug" -name '*.apk' -print -quit 2> /dev/null || true)"
+  apk="$(find "${root}/${test_module}/build/outputs/apk/androidTest/debug" -name '*.apk' -print -quit 2> /dev/null || true)"
   [ -n "${apk}" ] || fail "no androidTest APK was built; look above for why"
 
   echo "Installing $(basename "${apk}")…"

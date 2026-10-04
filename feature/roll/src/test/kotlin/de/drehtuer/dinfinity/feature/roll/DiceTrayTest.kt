@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
@@ -45,6 +46,9 @@ class DiceTrayTest {
 
   /** What the player has asked to look at, in order. */
   private val seen = mutableListOf<TrayView>()
+
+  /** Every tap the tray reported, as fractions across and down it and its shape. */
+  private val tapped = mutableListOf<Triple<Double, Double, Double>>()
 
   /** Where the camera is — the caller's, exactly as [RollPresenter] holds it. */
   private val view = mutableStateOf(TrayView.Whole)
@@ -137,6 +141,40 @@ class DiceTrayTest {
     assertEquals("the camera panned from a stale place", 0.0, seen.last().panAlongMm, NEARLY_NOTHING_MM)
   }
 
+  @Test
+  fun `one finger that comes down and lifts again is a tap, at the point it touched`() {
+    // A finger on a die (decision 76). Reported as fractions of the tray and
+    // its shape, which is what `TrayPick` reads a finger with.
+    tray()
+
+    compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput { click(Offset(width / 4f, height * 3 / 4f)) }
+
+    val (across, down, ratio) = tapped.single()
+    assertEquals(QUARTER, across, FRACTION)
+    assertEquals(THREE_QUARTERS, down, FRACTION)
+    assertEquals(WIDE.toDouble() / HIGH, ratio, FRACTION)
+    assertEquals("a tap moved the camera", emptyList<TrayView>(), seen)
+  }
+
+  @Test
+  fun `a finger that wanders, one held down and two fingers are not taps`() {
+    tray()
+
+    compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput {
+      down(0, center)
+      moveTo(0, center + Offset(0f, -DRAG_PX))
+      up(0)
+    }
+    compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput {
+      down(0, center)
+      advanceEventTime(viewConfiguration.longPressTimeoutMillis * 2)
+      up(0)
+    }
+    dragWithTwoFingers()
+
+    assertTrue("something that was not a tap picked a die: $tapped", tapped.isEmpty())
+  }
+
   /** Two fingers dragged [by] pixels down the screen; negative goes up. */
   private fun dragWithTwoFingers(by: Float = -DRAG_PX) {
     compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput {
@@ -163,6 +201,7 @@ class DiceTrayTest {
           view.value = it
           seen += it
         },
+        onTap = { across, down, ratio -> tapped += Triple(across, down, ratio) },
       )
     }
     compose.waitForIdle()
@@ -210,5 +249,8 @@ class DiceTrayTest {
     const val CLOSE_IN = 2.0
     const val PART_WAY_IN = 1.5
     const val NEARLY_NOTHING_MM = 0.5
+    const val QUARTER = 0.25
+    const val THREE_QUARTERS = 0.75
+    const val FRACTION = 0.01
   }
 }

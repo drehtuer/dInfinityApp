@@ -38,6 +38,25 @@ the answer by itself. A roll that waited for that shake is written down once,
 when its last die is read, and its history row counts the dice thrown again in
 its anomalies column, as it did when the roll threw them itself.
 
+#### A die thrown again by hand
+
+A player can pick a die of a landed roll up and throw it again with the next
+shake ([physics-and-rendering.md](physics-and-rendering.md), "Picking a die up
+and throwing it again"). **Every throw of the die is counted, and the roll keeps
+one total.** The roll is written down when it first lands, every die counted
+once. A throw by hand then *amends that same history row* — the new total, and
+the breakdown with the replaced face struck through beside the new one — and
+counts only the dice thrown again, once more each, on the face they came down
+on. A `d6` that went `6, 6, 6, 4` has four readings in its own figures, because
+it landed four times, and the history has one roll.
+
+The struck-through faces keep the die's index in the breakdown, so a history
+row read back says which die was thrown again and what it showed before. The
+row keeps its time, session, saved roll and seed: it is the same roll, finished
+again. A row that has gone by the time the throw lands — pruned, or forgotten
+with its session — is not written back, and the new throws are still counted,
+because they still happened (`StatisticsRepository.amend`).
+
 ### Per standard die type (aggregated across sets)
 
 The same counters rolled up by *sides*, so "all my d20s" is one line even if

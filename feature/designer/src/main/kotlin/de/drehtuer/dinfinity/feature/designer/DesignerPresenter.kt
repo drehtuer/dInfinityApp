@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.designer.FaceStamp
 import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Mark
+import de.drehtuer.dinfinity.designer.PersonalSetId
 import de.drehtuer.dinfinity.designer.SolidStage
 import de.drehtuer.dinfinity.designer.SolidTurn
 import de.drehtuer.dinfinity.designer.Stage
@@ -137,12 +138,26 @@ enum class DesignerView {
  *   every drawn face of every die, so it is not instant and the sheet says so
  *   rather than looking like a button that did nothing.
  * @param done what the last press came to, or null before the first one.
+ * @param naming true while "New set…" is the choice, so Save makes a set
+ *   called [name] rather than writing into [into] (`docs/architecture.md`,
+ *   decision 79).
+ * @param name what has been typed into the new set's name field. Kept when
+ *   another set is chosen and "New set…" chosen again, because a name is
+ *   typing somebody did and a mis-tap should not cost it.
  */
 data class Saving(
   val into: String?,
   val busy: Boolean = false,
   val done: SaveResult? = null,
-)
+  val naming: Boolean = false,
+  val name: String = "",
+) {
+  /** The id the typed name comes to, as the sheet shows it under the field. */
+  val newId: String get() = PersonalSetId.of(name)
+
+  /** Whether Save would do anything: a set chosen, or a name typed for a new one, and nothing running. */
+  val canSave: Boolean get() = !busy && if (naming) name.isNotBlank() else into != null
+}
 
 /** What the designer is showing. */
 data class DesignerState(
@@ -474,7 +489,22 @@ class DesignerPresenter(
 
   /** Another set was chosen in the sheet. The last answer goes with it: it was about the other set. */
   fun saveInto(setId: String) {
-    state = state.copy(saving = Saving(into = setId))
+    state = state.copy(saving = Saving(into = setId, name = state.saving?.name.orEmpty()))
+  }
+
+  /**
+   * "New set…" was chosen: Save now makes a set out of the name field
+   * (`docs/face-designer.md`, "Save to set").
+   */
+  fun nameNewSet() {
+    val saving = state.saving ?: return
+    state = state.copy(saving = Saving(into = null, naming = true, name = saving.name))
+  }
+
+  /** The new set's name field changed. An answer about the last name goes with it. */
+  fun newSetName(name: String) {
+    val saving = state.saving ?: return
+    state = state.copy(saving = saving.copy(name = name, done = null))
   }
 
   /** The sheet was dismissed. */
@@ -492,12 +522,46 @@ class DesignerPresenter(
    * Save is asking.
    */
   fun save() {
-    val into = state.saving?.into ?: return
-    if (state.saving?.busy == true) return
-    state = state.copy(saving = Saving(into = into, busy = true))
+    val saving = state.saving?.takeIf(Saving::canSave) ?: return
+    if (saving.naming) create(saving.name) else saving.into?.let(::write)
+  }
+
+  /** Writes the drawing into the set [into], which already exists. */
+  private fun write(into: String) {
+    state = state.copy(saving = state.saving?.copy(busy = true, done = null))
     scope.launch {
       val outcome = sets.save(into, state.draft)
       state = state.copy(saving = state.saving?.copy(busy = false, done = outcome))
+    }
+  }
+
+  /**
+   * Makes the set the name field names and writes the drawing into it.
+   *
+   * A set that was made is chosen in the sheet from then on, whatever the
+   * save into it came to — it exists, it is on the list, and the next press
+   * should write into it rather than try to make it a second time. A name
+   * that was refused stays in the field, with the reason under it.
+   */
+  private fun create(name: String) {
+    state = state.copy(saving = state.saving?.copy(busy = true, done = null))
+    scope.launch {
+      val outcome = sets.create(name, state.draft)
+      val made =
+        when (outcome) {
+          is SaveResult.Saved -> outcome.set.id
+          is SaveResult.NotMade -> null
+          else -> sets.writable.firstOrNull { it.id == PersonalSetId.of(name) }?.id
+        }
+      state =
+        state.copy(
+          saving =
+            if (made != null) {
+              Saving(into = made, done = outcome)
+            } else {
+              state.saving?.copy(busy = false, done = outcome)
+            },
+        )
     }
   }
 

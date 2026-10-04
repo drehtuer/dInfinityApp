@@ -11,10 +11,14 @@ import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.PickableDie
+import de.drehtuer.dinfinity.render.filament.PickMark
 import de.drehtuer.dinfinity.render.filament.Tray
+import de.drehtuer.dinfinity.render.filament.TrayCamera
+import de.drehtuer.dinfinity.render.filament.TrayPick
 import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
+import de.drehtuer.dinfinity.simulation.api.DieAtRest
 import de.drehtuer.dinfinity.simulation.api.FrameRate
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
@@ -72,6 +76,15 @@ class RollPresenter(
    * decide.
    */
   private val developer: DeveloperLog = DeveloperLog.NONE,
+  /**
+   * How far the camera leans over the table, in degrees — the same lean the
+   * tray's renderer was made with (`TrayCamera.tiltDegreesOf`).
+   *
+   * A finger is read against the frustum the picture was drawn in, and a pick
+   * worked out against a shot the screen is not taking is a finger on the die
+   * next to the one it is on (`TrayPick`).
+   */
+  private val tiltDegrees: Double = TrayCamera.TILT_DEGREES,
 ) {
   /** What the screen draws. */
   var state: RollState by mutableStateOf(machine.state)
@@ -95,6 +108,18 @@ class RollPresenter(
 
   /** The formula as typed, valid or not. */
   var text: String by mutableStateOf(machine.text)
+    private set
+
+  /**
+   * The dice lying under a total, where they stopped — empty whenever there
+   * is no total (`docs/physics-and-rendering.md`, "Picking a die up and
+   * throwing it again").
+   */
+  var onTheTable: List<DieAtRest> by mutableStateOf(machine.onTheTable)
+    private set
+
+  /** Which of [onTheTable] a finger has picked up, by position, for the next shake. */
+  var picked: Set<Int> by mutableStateOf(machine.picked)
     private set
 
   /**
@@ -288,7 +313,7 @@ class RollPresenter(
   /**
    * The throw this roll is part-way through, or null when there is none.
    *
-   * Three ways a roll can be waiting on a hand, and a shake answers all of
+   * Four ways a roll can be waiting on a hand, and a shake answers all of
    * them:
    *
    * - **a chain earned a throw.** The shake is for the die the explosion
@@ -302,13 +327,63 @@ class RollPresenter(
    *   shake could not reach — so a player who had been told to shake stood
    *   over a tray that ignored them
    *   (`docs/physics-and-rendering.md`, "Starting a roll").
+   * - **a finger picked dice of a landed roll up.** The shake throws those
+   *   and only those, and the roll is rescored (decisions 68 and 76). Only a
+   *   roll with a total can have a pick, so this is last: a roll still owed
+   *   one of the three above has nothing picked.
    *
    * No two can be true at once. A chain earns its next die only when a throw
    * is scored, and a throw is scored only once every die of it has been read
    * — so the dice that need throwing again always come first, and the chain
    * waits for the shake after.
    */
-  private fun waiting(shake: List<ShakeSample>): ThrowSpec? = machine.throwEarned(shake) ?: machine.throwAgain(shake)
+  private fun waiting(shake: List<ShakeSample>): ThrowSpec? =
+    machine.throwEarned(shake) ?: machine.throwAgain(shake) ?: machine.throwPicked(shake)
+
+  /**
+   * One finger touched the tray at ([acrossFraction], [downFraction]) of a
+   * picture [aspectRatio] wide for its height, and lifted again without
+   * moving: picks up the die under it, or puts it back
+   * (`docs/architecture.md`, decisions 68 and 76).
+   *
+   * Which die the finger is on is `TrayPick`'s — the same camera, the same
+   * view and the same lean the picture was drawn with — and whether it may be
+   * picked is the machine's. Nothing is thrown and nothing moves: the next
+   * shake throws what is picked.
+   *
+   * @return whether a pick changed. A touch on the bare floor, on a die no
+   *   hand may go near, or with no total on the screen changes nothing.
+   */
+  fun touch(
+    acrossFraction: Double,
+    downFraction: Double,
+    aspectRatio: Double,
+  ): Boolean {
+    if (aspectRatio <= 0.0) return false
+    val position =
+      TrayPick
+        .through(geometry, aspectRatio, looking, tiltDegrees)
+        .dieUnder(acrossFraction, downFraction, machine.onTheTable, machine.dieScale) ?: return false
+    return pick(position)
+  }
+
+  /** The die at [position] on the table is picked up, or put back ([RollMachine.pick]). */
+  fun pick(position: Int): Boolean {
+    val changed = machine.pick(position)
+    if (changed) publish()
+    return changed
+  }
+
+  /**
+   * Where on a picture [aspectRatio] wide for its height each picked die is
+   * drawn, for the ring round it — from the same frustum a finger is read
+   * against, so what is ringed is what a second touch puts back.
+   */
+  fun marks(aspectRatio: Double): List<PickMark> {
+    if (aspectRatio <= 0.0 || picked.isEmpty()) return emptyList()
+    val pick = TrayPick.through(geometry, aspectRatio, looking, tiltDegrees)
+    return picked.sorted().mapNotNull { at -> onTheTable.getOrNull(at)?.let { pick.markOf(it, machine.dieScale) } }
+  }
 
   /**
    * Hands one throw to the tray, and hands the tray the one after it.
@@ -469,6 +544,8 @@ class RollPresenter(
       driver.waiting(board ?: machine.clearedBoard())
     }
     state = machine.state
+    onTheTable = machine.onTheTable
+    picked = machine.picked
     text = machine.text
     expected = machine.expected
     counts = machine.counts

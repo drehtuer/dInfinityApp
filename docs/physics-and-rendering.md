@@ -39,6 +39,10 @@ geometry, the capacity rule and how the *look* of the table can be swapped.
   walls run all the way up to that ceiling rather than stopping at the rim the
   renderer draws, because a box open at the sides between the two is a box dice
   leave (`docs/tables.md`).
+- **The rounded corners are fillets, flat-faced and exactly where they are
+  drawn**: six wedges to the quarter, at the six segments the tray mesh uses.
+  They were a round post 24 mm across that the mesh did not draw, and dice
+  leaning on it never came to rest ("Why a die could rock for ever").
 - **The table is horizontal, whatever the phone is doing.** Gravity in the tray
   is straight down and stays there; the hand moves the dice, the table does not
   tip under them. It used to follow the phone, and the cost was worse than the
@@ -264,9 +268,10 @@ only once every die of it has a face.
 **Tapping the tray does not roll** — decided, not pending. It is the largest
 target on the screen and the most tempting one, which is exactly why it is not
 spent here: the tray is
-where the camera is moved and where individual dice will be picked up and
-re-thrown, and a surface that threw the whole formula the moment it is touched
-has nowhere left to put either. A roll is also not something to start by
+where the camera is moved and where individual dice are picked up for the next
+shake to throw again ("Picking a die up and throwing it again"), and a surface
+that threw the whole formula the moment it is touched would have nowhere left
+to put either. A roll is also not something to start by
 accident — it replaces a result somebody may still be reading.
 
 ### No way in that is not a hand
@@ -310,12 +315,11 @@ player deciding whether to shake again was left with nothing to decide with
 
 A player who does not like how a die landed picks it up and throws it again.
 That is the third way a die can be thrown, and it is the only one that is not
-the app's idea. The tray's **one-finger touch is being kept for it** — which is
-what the paragraph above is about, and why a tap on the biggest target on the
-screen deliberately does nothing. *How* the picked-up die is then thrown — by
-the finger, or by a shake once it is picked up — is open: a finger that throws
-would be a throw no shake started, which decision 66 rules out for a roll
-(`docs/TODO.md`, Open questions).
+the app's idea. The tray's **one-finger tap is spent on it**, and on nothing
+else — which is why a tap on the biggest target on the screen still does not
+roll. **The finger picks; the shake throws** (`docs/architecture.md`, decision
+68): a finger that threw would be a throw no shake started, which decision 66
+rules out for a roll.
 
 **It is not the invisible hand.** The rule further down — *nothing touches a
 die that has come to rest* — is about the **app** reaching into a finished roll,
@@ -437,29 +441,63 @@ sure the throw is *visible* and that the record does not flatter it:
 What the app must never do is let a re-throw *cost* nothing to the record, and
 that is decided (below).
 
-### What is built, and what is not yet
+### How it works on the screen
 
-`TrayPick` and `PickUp` are built and tested: the app can say which die a
-finger is on and which dice a hand may go near. What the history says about a
-roll a die was thrown again in is decided too: **the die's history keeps every
-throw, the roll's keeps the sum.** A `d6` that went `6, 6, 6, 4` contributes
-four readings to its own fairness figure, because it really did land on those
-faces four times, and the roll contributes one total. That is how an exploding
-chain is already counted, so a hand re-throw is not a new rule in the history
-but the existing one applied to a throw the player asked for.
+**Once a roll has a total, one finger on a die picks it up.** A tap — one
+finger, down and up again within the touch slop and before a long press would
+fire — is read through `TrayPick` against the camera, the pinch and the lean
+the picture was drawn with, and `PickUp` says whether that die may go; the
+machine keeps the pick (`RollMachine.pick`). **A second tap on the same die
+puts it back** (`docs/architecture.md`, decision 76). A finger that wanders, a
+finger held down and any gesture a second finger joins are not taps: the last
+of those is the camera's. A tap on the bare floor, on a die no hand may go
+near, or before the roll has a total does nothing.
 
-**The finger picks; the shake throws** (`docs/architecture.md`, decision 68).
-A finger on a die marks it as picked up, and nothing else: the die stays where
-it lies and nothing about it moves. The next shake throws the picked dice —
-only those, among the ones still lying — through the same `ThrowSpec.among` an
-explosion uses. So a re-throw is started by a hand shaking the phone like
-every other throw, and "only a shake starts a roll" (decision 66) holds without
-an exception for it. A shake with nothing picked throws the whole roll again,
-as it always has.
+**Picking moves nothing.** The die stays exactly where it lies; what changes is
+a ring drawn round it over the picture and the tray's spoken description —
+"N dice picked; shake to throw them", announced as it changes (decision 76).
+A pick that would need more clear floor than the tray has left is refused, for
+the reason a chain stops at `TrayFull`: the new die is dropped into clear floor
+and there would be none.
 
-**The gesture itself is not wired up yet** (`docs/TODO.md`, "Wire the
-one-finger pick and the shake that throws it"). Until it is, a single finger on
-the tray does nothing — which is what it has been all along.
+```mermaid
+stateDiagram-v2
+  [*] --> Settled: every die read
+  Settled --> Settled: tap a die (pick, or put back)
+  Settled --> Rolling: shake with dice picked (those dice only)
+  Settled --> Rolling: shake with nothing picked (the whole roll again)
+  Rolling --> ThrowAgain: a die lands cocked
+  ThrowAgain --> Rolling: shake (the unread dice)
+  Rolling --> Settled: rescored, old face struck through
+```
+
+**The next shake throws the picked dice, and only those**
+(`RollMachine.throwPicked`), through the path the unread dice and an
+explosion's die already take: a world of its own, seeded from the roll's seed
+and the count of hand throws (`Seeds.byHand`), every die still down carried as
+`ThrowSpec.among` — the picked one among them, drawn where it lies — and the
+new die dropped into the clearest floor. A shake with nothing picked throws the
+whole roll again, as it always has.
+
+**Unread dice come first.** Nothing can be picked until every die of a throw is
+read: a roll waiting on dice that landed cocked (decision 70) has no total, so
+it offers nothing to pick, and the shake it is owed throws those. A throw by
+hand that lands a die cocked waits the same way before it is scored.
+
+**The roll is rescored, not re-rolled.** When the new dice are read their faces
+replace the old ones in the faces the roll is scored from, the scoring runs
+again from the beginning, and `PickUp.withEarlierThrows` puts each replaced
+face back in front of its replacement, struck through, exactly as `r n` shows
+a reroll. A die thrown again lies on the felt beside the one it replaced, and
+only the newer of the two can be picked again.
+
+**The history keeps every throw of the die and one total for the roll.** The
+roll is written down when it first lands; a throw by hand amends that same row
+with the new total and breakdown and counts only the dice thrown again, once
+more each (`docs/statistics.md`, "A die thrown again by hand"). A `d6` that
+went `6, 6, 6, 4` contributes four readings to its own fairness figure, because
+it really did land on those faces four times, and the roll contributes one
+total.
 
 ## What a shake's spread currently rests on
 
@@ -856,6 +894,69 @@ Special cases:
 - **d2 (coin):** two faces; landing on the edge counts as cocked.
 - **d100:** two d10s rolled together; one is flagged as the tens die in the
   `RollPlan`. 0 + 0 reads as 100.
+
+### Why a die could rock for ever
+
+Two `60d20` rolls in 10,000 (`tools/harness.sh -n 10000 -c 60`, seed 1:
+rolls 7196 and 8091) ran the whole twelve seconds without a re-throw — the
+dice never came to rest, so nothing was ever counted. Replayed on the Pixel
+10a with every die's motion logged over the last second, each had **one die
+moving and fifty-nine stopped dead** (0.000 rad/s):
+
+| roll | the die | what it was doing |
+| --- | --- | --- |
+| 7196 | 8.8 mm up, touching the tray but not the floor, on no die | rocking with a fixed beat of about 0.2 s: up to 7.4 mm/s and 5.9 rad/s, ±3°, between a readable face and 15–21° cocked |
+| 8091 | 10.9 mm up, against the tray and on another die | trembling in place: under 1.4 mm/s, 0.1–0.8 rad/s, ±0.5°, cocked 18–19° |
+
+Both were **5 mm from the surface of the post that stood in each corner**. The
+rounded corner was built as a whole cylinder tangent to both walls, which is
+not a fillet but a post 24 mm across, standing on floor the tray mesh draws as
+open. A die leaning on it and on a neighbour has one contact on a curve and
+nothing flat to settle into. The third-slowest roll of that run, 8926 at 1,153
+steps against a median of 106, was the same picture.
+
+The evidence that it was the post and not the throw: those dice's positions,
+rebuilt at rest in a fresh world, did it again — roll 8091's die trembled to
+the cap. On that frozen scene, applying restitution only above 50 mm/s instead
+of 10 and doubling the solver's iterations did **not** stop it; a flat-faced
+post stopped it in eight steps. So the corners are now what `docs/tables.md`
+says they are — six flat wedges to the quarter, the outline the mesh draws —
+and the three rolls are kept in `StuckRollTest`, which throws them as the
+harness does and wants them settled. All three now are.
+
+Measured on the Pixel 10a, 10,000 rolls of each at seeds 1–5 (50,000 a
+count), before and after (decision 81):
+
+| | 20d20 before | 20d20 after | 60d20 before | 60d20 after |
+| --- | --- | --- | --- | --- |
+| rolls that gave up | 1 | 2 | **9** | **2** |
+| rolls of 600 steps or more | 1 | 2 | 13 | 7 |
+| dice re-thrown | 1.19–1.23 % | 1.03–1.06 % | 2.62–2.67 % | 2.20–2.22 % |
+| settle, median / p99 | 0.95 / 1.95 s | 0.96 / 1.95 s | 1.67 / 2.01 s | 1.65 / 2.00 s |
+| turns after landing | 2.70 | 2.66 | 2.09 | 2.10 |
+| deepest overlap, by seed | 6.9–7.9 mm | 7.2–7.9 mm | 6.4–7.4 mm | 6.1–8.3 mm |
+
+The re-throw share falls with the post because a die propped on it was
+cocked. Every golden case moved and was re-recorded, and `FairnessTest` at
+20,000 a shape passes on the new tray with no throw given up (χ² 4.73 for the
+d6, 20.36 for the d20, 0.03 for the coin; the d18 0.91 % off at its worst
+face, inside its 1 % bound).
+
+**What still never settles is a die that spins on an axle.** Every one of the
+four rolls that gave up after the change, and the four others traced from
+before it, is the same picture: one die with its centre still to a hundredth
+of a millimetre, turning at 1–31 rad/s while the rest have stopped — mostly
+against a wall or up on other dice. Where its contacts were logged (roll 4518
+of seed 2's `60d20`), it was held at two single points by two neighbours and
+spinning about the line through them, and its spin was falling at exactly the
+bodies' angular damping and nothing more. Contact points on the axis do not
+slip, so friction has nothing to work on; Jolt models no rolling or drilling
+friction, and a damping of 0.02 a second would take minutes to stop it.
+A real die cannot do this — its contacts are patches, not points, and its
+corners knock — so the missing physics is drilling friction, and the open
+question is how to give a die some without slowing the tumble it is thrown
+with (`docs/TODO.md`, Step 5.5). Calling it at rest is not an answer: it is
+visibly turning.
 
 ## Are the dice fair
 
@@ -1783,9 +1884,9 @@ impact sounds rather than a crash in the middle of a roll.
   whole tray instead of snapping back to the corner the last roll was read in.
   A rotation does not go back: where the player was looking is part of the
   picture that is rebuilt. One finger moves the camera not at all and consumes
-  nothing; it is left for picking a die up and for the tap that deliberately
-  does not roll — and which die a finger is on is `TrayPick`, the inverse of
-  this camera ("Picking a die up and throwing it again").
+  nothing; a tap with it picks a die up rather than rolling — and which die a
+  finger is on is `TrayPick`, the inverse of this camera ("Picking a die up and
+  throwing it again").
 - **How far it leans is the player's, and it leans less than it did.**
   `TrayCamera.TILT_DEGREES` was 22° and not a setting. It is **Table view** in
   Settings now, with two positions: *straight down*, which is the **default**
@@ -2075,12 +2176,46 @@ impact sounds rather than a crash in the middle of a roll.
   hand lets go is the one the player caused.
 - The result is not drawn over the dice. The total and its breakdown are on
   the result sheet ("What is drawn over the table"), and a one-finger tap on
-  the tray deliberately does nothing — it is kept for picking a die up
-  ("Picking a die up and throwing it again").
+  the tray does not roll — it picks a die up for the next shake ("Picking a die
+  up and throwing it again").
 
 Target: 60 fps with 20 dice on the Pixel 10a with headroom; the capacity rule
 caps a roll at what the table can hold, and never above a hundred dice
 (`TableCapacity.MAX_DICE`). Every die casts a shadow, whatever the count.
+
+### Performance, and how it is measured
+
+The bar is Step 5.7's: 60 fps sustained at twenty dice, **p99 frame under
+16.6 ms**, and 30 fps at the capacity limit (`docs/TODO.md`). Three
+instruments read it, each answering what the others cannot:
+
+| Instrument | What it times | Where |
+| --- | --- | --- |
+| `tools/harness.sh --frames` | the simulation half of a frame, headless | `HarnessTest`, `simulation/jolt` |
+| `tools/harness.sh --rendered` | a frame's simulation **and draw** on the roll thread, the GPU's time per frame, dropped steps and the frame rate, on a screen-sized surface through the shipping tray | `RenderedHarnessTest`, `render/filament` |
+| the debug overlay's `fps · p99` line | the interval between frame callbacks on the real screen, by hand | `TrayLoop`, decision 72 |
+
+The rendered harness scores the roll thread's work and, as a row of its own,
+the GPU's: the GPU draws a frame behind the CPU, so either one running past a
+sixtieth of a second is a frame the display waits for. The frame *interval* is
+printed but not scored, because on a 60 Hz panel it is 16.7 ms by construction
+(`docs/architecture.md`, decision 80; `docs/build-setup.md`, "Drawn frames:
+the rendered harness").
+
+**Measured on the Pixel 10a** (2026-10-04, at #350; a 1080 × 2424 surface,
+the whole screen; the GPU row *is* measured on its driver):
+
+| run | frames drawn | work p50 / p99 | GPU p50 / p99 | rate | steps dropped |
+| --- | --- | --- | --- | --- | --- |
+| 100 rolls of 20d20 | 13,886 | 3.6 / 8.3 ms | 6.6 / 12.6 ms | 60.3 fps | 0 |
+| 10 rolls of 100d6, the capacity limit | 1,346 | 9.6 / 24.3 ms | 6.2 / 13.7 ms | 57.3 fps | 0 |
+
+Both targets hold: sixty frames a second at twenty dice with p99 work at half
+the budget, and well over thirty at the capacity limit. At a hundred dice the
+p99 frame's *work* passes 16.6 ms — the physics steps, not the GPU, which stays
+at 13.7 ms — so the display holds a frame now and then; the scorecard marks
+that row failed against the sixty-frame bar, which is not the bar for the
+capacity limit.
 
 ## What is drawn over the table
 

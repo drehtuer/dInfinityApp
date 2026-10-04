@@ -5,7 +5,7 @@ import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.data.InstalledSetRepository
 import de.drehtuer.dinfinity.designer.ExportResult
-import de.drehtuer.dinfinity.designer.MineSets
+import de.drehtuer.dinfinity.designer.PersonalSets
 import de.drehtuer.dinfinity.designer.SetLicense
 import de.drehtuer.dinfinity.dicesets.install.InstalledPackage
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
@@ -49,19 +49,20 @@ class SetLibrary(
   private val installer: PackageInstaller,
   private val defaultSetId: () -> String,
   /**
-   * The personal package, built from the drawings on the phone
-   * (`docs/face-designer.md`; design `8c`).
+   * The personal packages, built from the drawings on the phone: "My dice"
+   * and every set somebody named (`docs/face-designer.md`; design `8c`;
+   * `docs/architecture.md`, decision 79).
    *
    * Here because this is already the place where "what is on disk" is
-   * answered, and "My dice" is a folder in the same `dicesets/` as everything
-   * else — so the one thing that has to happen is that it is written *before*
-   * the folder is read. Every other screen then sees an ordinary package and
-   * needs to know nothing about drawings.
+   * answered, and each of them is a folder in the same `dicesets/` as
+   * everything else — so the one thing that has to happen is that they are
+   * written *before* the folder is read. Every other screen then sees ordinary
+   * packages and needs to know nothing about drawings.
    *
    * Null for a library with no designer behind it, which is what the tests and
    * a bundled-only install are.
    */
-  private val personal: MineSets? = null,
+  private val personal: PersonalSets? = null,
 ) {
   /**
    * The sets whose dice may be handed out: the bundled one, and every
@@ -127,17 +128,17 @@ class SetLibrary(
    * *new* package off the moment somebody installed one under the same id.
    */
   suspend fun all(): List<SetRow> {
-    val packages =
+    val (packages, ours) =
       withContext(io) {
         personal?.bringUpToDate()
-        installed.scan()
+        installed.scan() to ours()
       }
     registry.keepOnly(packages.map(InstalledPackage::id))
     val off = registry.disabled()
     val rows =
       listOf(SetRow.bundled(bundled)) +
         packages
-          .map { pack -> SetRow.of(pack, enabled = pack.id !in off) }
+          .map { pack -> SetRow.of(pack, enabled = pack.id !in off, madeHere = pack.id in ours) }
           .sortedBy { it.name.lowercase() }
     usable = rows.filter(SetRow::usable).mapNotNull(SetRow::set).distinctBy(DiceSet::id)
     return rows
@@ -160,16 +161,20 @@ class SetLibrary(
   /** The one set called [id], or null when nothing is installed under that name. */
   suspend fun one(id: String): SetRow? {
     if (id == bundled.id) return SetRow.bundled(bundled)
-    val pack =
+    val (pack, ours) =
       withContext(io) {
         personal?.bringUpToDate()
-        installed.find(id)
-      } ?: return null
-    return SetRow.of(pack, enabled = pack.id !in registry.disabled())
+        installed.find(id) to ours()
+      }
+    if (pack == null) return null
+    return SetRow.of(pack, enabled = pack.id !in registry.disabled(), madeHere = pack.id in ours)
   }
 
+  /** The ids of the sets this phone built, or none for a library with no designer behind it. */
+  private fun ours(): Set<String> = personal?.ids().orEmpty()
+
   /**
-   * The personal package as a zip, under the licence its author chose
+   * The personal package [id] as a zip, under the licence its author chose
    * (design `8c`).
    *
    * It goes through the validator on the way out, like every other package —
@@ -181,11 +186,13 @@ class SetLibrary(
    * so the details screen goes on saying what was chosen after the share sheet
    * has closed.
    */
-  suspend fun exportPersonal(license: SetLicense): ExportResult =
-    withContext(io) { personal?.export(license) ?: ExportResult.Empty }
+  suspend fun exportPersonal(
+    id: String,
+    license: SetLicense,
+  ): ExportResult = withContext(io) { personal?.find(id)?.export(license) ?: ExportResult.Empty }
 
   /**
-   * What the dice of "My dice" are made of — weight, translucency and size
+   * What the dice of the personal set [id] are made of — weight, translucency and size
    * (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
    * them").
    *
@@ -194,19 +201,22 @@ class SetLibrary(
    * screen shows the figures a package declares and offers no steppers, which
    * is what it does for everybody else's sets too.
    */
-  suspend fun personalPhysical(): DieMaterial? = withContext(io) { personal?.physical() }
+  suspend fun personalPhysical(id: String): DieMaterial? = withContext(io) { personal?.find(id)?.physical() }
 
   /**
    * Sets them.
    *
    * It writes the *record*, not the folder. The package is built from the
    * records whenever it is read ([all], [one]), so the next reading is what
-   * puts the new weight into `dicesets/mine/diceset.toml` — the same path a
+   * puts the new weight into `dicesets/<id>/diceset.toml` — the same path a
    * newly drawn face takes, and the reason there is nothing here to keep in
    * step by hand.
    */
-  suspend fun setPersonalPhysical(material: DieMaterial) {
-    withContext(io) { personal?.setPhysical(material) }
+  suspend fun setPersonalPhysical(
+    id: String,
+    material: DieMaterial,
+  ) {
+    withContext(io) { personal?.find(id)?.setPhysical(material) }
   }
 
   /**
@@ -237,7 +247,12 @@ class SetLibrary(
    */
   suspend fun remove(row: SetRow) {
     if (row.bundled) return
-    withContext(io) { installed.remove(row.id) }
+    withContext(io) {
+      // A named personal set takes its records with it, or the next reading
+      // would build it straight back (`PersonalSets.forget`).
+      personal?.forget(row.id)
+      installed.remove(row.id)
+    }
     registry.forget(row.id)
   }
 }

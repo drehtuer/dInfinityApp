@@ -70,7 +70,14 @@ import java.util.Locale
  *   Zero: the roll comes to the same faces either way, so what this catches is
  *   a frame that could not keep up, which is what Step 5.7 is about
  *   ([de.drehtuer.dinfinity.simulation.api.FrameClock.droppedSteps]).
+ *
+ * The function-count suppression is for the two ways a run is scored —
+ * [score] and [scoreFrames] — and the one small formatter per unit a bar is
+ * written in. Splitting them across two classes would put the frame bars in a
+ * place the plain scorecard does not read them from, which is two copies of
+ * Step 5.7's budget.
  */
+@Suppress("TooManyFunctions")
 data class HarnessTargets(
   val stackedAtRest: Long = 0,
   val postRestCorrections: Long = 0,
@@ -116,6 +123,33 @@ data class HarnessTargets(
         dropped(summary.frames),
       ),
     )
+
+  /**
+   * A rendered run against Step 5.7's frame rows and nothing else
+   * (`docs/build-setup.md`, "The physics harness", `--rendered`).
+   *
+   * Only these three, because a rendered run is a run about frames: it throws
+   * a handful of rolls at the watched pace, far too few for the settle,
+   * correction and overlap bars to mean anything, and scoring them would fail
+   * a frame-time run on a physics target the plain harness already reports.
+   * [rendered] is null when no frame of a roll was drawn, and every row is
+   * then not measured rather than met.
+   *
+   * The GPU row is held to the same budget as the frame: the GPU works a frame
+   * behind the roll thread, so a frame that is quick to submit and slow to
+   * finish is still a frame the display waits for.
+   */
+  fun scoreFrames(rendered: RenderedSummary?): Scorecard {
+    // Not measured when there was no run, or when the driver kept no timings.
+    val gpuMillis = rendered?.gpuMillis
+    val gpu =
+      if (gpuMillis == null) {
+        TargetResult(GPU_FRAME_TIME, written("%.2f ms", p99FrameMillis), NOT_MEASURED, TargetOutcome.NotMeasured)
+      } else {
+        millis(GPU_FRAME_TIME, gpuMillis.p99, p99FrameMillis)
+      }
+    return Scorecard(listOf(frameTime(rendered?.frames), gpu, dropped(rendered?.frames)))
+  }
 
   /**
    * Step 5.7's frame budget, scored only against frames somebody drew.
@@ -254,6 +288,9 @@ data class HarnessTargets(
 
     /** And the steps a frame that ran long never paid for. */
     const val DROPPED_STEPS: String = "steps a late frame dropped"
+
+    /** And how long the GPU took over a frame, which only a rendered run can say. */
+    const val GPU_FRAME_TIME: String = "p99 GPU frame time"
 
     /** What a row says when there was nothing to measure it from. */
     const val NOT_MEASURED: String = "-"
