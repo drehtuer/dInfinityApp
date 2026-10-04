@@ -97,6 +97,8 @@
   <string name="roll_dice_menu_close">Put the dice away</string>
   <string name="roll_dice_menu_is_open">Open</string>
   <string name="roll_dice_menu_is_shut">Closed</string>
+  <!-- After a throw the formula's tab is folded into the shut pull-down, so opening it brings both (decision 83). -->
+  <string name="roll_dice_menu_open_stowed">Open the dice and the formula</string>
   <!--
     The formula's tab at the right-hand edge (design option 2a): what is behind
     it, what a press does, and what state it is in. The last of those has a
@@ -262,6 +264,12 @@
     <item quantity="one">Dice tray, the dice have landed on %1$d, %2$d die picked; shake to throw it</item>
     <item quantity="other">Dice tray, the dice have landed on %1$d, %2$d dice picked; shake to throw them</item>
   </plurals>
+  <!--
+    The tray's two accessibility actions, standing in for the double tap that
+    clears every control off the table and brings them back (decision 83).
+  -->
+  <string name="roll_tray_hide_controls">Hide the controls</string>
+  <string name="roll_tray_show_controls">Show the controls</string>
   <!-- The panel that stands where the tray would be when the pictures are off. -->
   <string name="roll_power_saving">Power-saving mode</string>
   <string name="roll_power_saving_same">Same physics, no rendering. The result is identical to what the tray would show.</string>

@@ -799,12 +799,16 @@ class RollScreenTest {
     // There used to be a custom action, "Throw the dice". It is gone with the
     // key, and with it the last way to roll without a shake — decided, and
     // accepted for what it costs (`docs/architecture.md`, decision 66). The
-    // table keeps what it says; it no longer offers anything to do.
-    show()
+    // table keeps what it says, and the one thing it offers to do is clear
+    // the controls off itself (decision 83) — which throws nothing.
+    val presenter = show()
     typeFormula("1d20")
 
     val table = compose.onNodeWithTag(RollTestTags.TRAY).fetchSemanticsNode().config
-    assertTrue("the table carries an action", table.getOrElse(SemanticsActions.CustomActions) { emptyList() }.isEmpty())
+    val actions = table.getOrElse(SemanticsActions.CustomActions) { emptyList() }
+    assertEquals("the table carries an action of another kind", listOf("Hide the controls"), actions.map { it.label })
+    compose.runOnIdle { actions.single().action() }
+    assertEquals("clearing the table threw the dice", 0, (presenter.tray as DirectTray).throws)
     assertTrue("the table says nothing about itself", table.contains(SemanticsProperties.ContentDescription))
   }
 

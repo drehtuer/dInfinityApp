@@ -101,6 +101,15 @@ over the prototype has to answer. It is written down rather than drawn
 because this file is generated and a rearrangement that size belongs in the
 design project — see **Editing**, below.
 
+**A throw clears the top, and a double tap clears the table** (decision 83 in
+[../docs/architecture.md](../docs/architecture.md#key-decisions-log)): after a
+shake the formula's tab folds into the shut `Dice` pull-down, and two taps on
+the felt slide every pull-down, pull-up and tab off it until the next two. The
+prototype has neither the pull-down nor the tab to fold, so this too is in the
+hand-over's table rather than drawn
+([../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
+"Clearing the table").
+
 **A shake is now the only way to roll** (decision 66 in
 [../docs/architecture.md](../docs/architecture.md#key-decisions-log)), so two
 things the prototype still draws are not the app's: the shake switch in

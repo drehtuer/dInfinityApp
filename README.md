@@ -65,7 +65,7 @@ a tumble; everything else is real.
   like, the die's size decides the pitch, and both switch off.
 - **Shake to roll** — accelerometer and gyroscope drive the throw, and a
   shake is the *only* way to start one. There is no Roll button, a tap on the
-  table does nothing, the formula editor's key says Done and only closes the
+  table throws nothing, the formula editor's key says Done and only closes the
   editor, and there is no setting that turns shaking off. The display stays
   on while the tray is in front, because a shake takes both hands and puts
   neither of them on the glass.
@@ -105,7 +105,9 @@ a tumble; everything else is real.
   camera over and see the top and left walls. Straight down is what a new
   install rolls with, because on a tall phone a leaning shot spends more of the
   frame on the wooden rim than on the felt. It is a camera either way: the dice
-  are still drawn in perspective and still cast their shadows.
+  are still drawn in perspective and still cast their shadows. A throw puts
+  the formula and the dice menu away while the dice roll, and a double tap on
+  the table clears every control off it until the next double tap.
 - **Readable out loud** — every screen is labelled for TalkBack, including the
   tray and the charts, which are drawings and would otherwise be silent.
   Nothing is said by a colour alone: a natural 20, a dropped die, the chosen

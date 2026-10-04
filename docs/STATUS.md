@@ -26,7 +26,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   version (the dice material is compiled for one backend and kept on disk,
   decision 46). The watched pace slows from 0.5 to 0.4 (decision 65), and the
   face designer's `Clear eyes` becomes `Clear face`, which empties the face in
-  front of the player and nothing else (decision 82).
+  front of the player and nothing else (decision 82). A throw folds the
+  formula into the shut dice pull-down, and a double tap on the felt clears
+  every pull-up, pull-down and tab off the table and back (decision 83).
 
 ## Done
 

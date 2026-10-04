@@ -236,11 +236,16 @@ class PickAndShakeTest {
     compose.waitForIdle()
   }
 
-  /** Taps the tray where the die at [position] on the table is drawn. */
+  /**
+   * Taps the tray where the die at [position] on the table is drawn, and
+   * waits out the double-tap timeout — a tap is only a tap once it is clear
+   * it was not the first half of a double tap (decision 83).
+   */
   private fun tapOn(position: Int) {
     val presenter = presenterOnScreen ?: error("no screen")
     val (at, _) = whereIs(presenter, position)
     compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput { click(at) }
+    compose.mainClock.advanceTimeBy(PAST_A_DOUBLE_TAP)
     compose.waitForIdle()
   }
 
@@ -330,5 +335,8 @@ class PickAndShakeTest {
     const val HALF = 0.5
     const val NEAR_EDGE = 0.97
     const val PORTRAIT = 1080.0 / 2400.0
+
+    /** Twice the platform's double-tap timeout, which is what a lone tap waits out. */
+    val PAST_A_DOUBLE_TAP: Long = android.view.ViewConfiguration.getDoubleTapTimeout() * 2L
   }
 }

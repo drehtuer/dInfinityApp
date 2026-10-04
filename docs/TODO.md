@@ -88,6 +88,13 @@ Implementation notes recorded only here:
       the sheet too? Then shake: does only that die go, does it land clear of
       the others, and does the struck-through face beside the new one on the
       sheet read as "thrown again"?
+- [ ] **Clearing the table** (decision 83): shake, and see whether the formula
+      tab folding into `Dice` reads as "put away" rather than "gone", and
+      whether opening `Dice` to reach the formula is one press too many.
+      Double-tap the felt: do the controls leave and come back the way you
+      expect, and is the double tap found at all without being told? Tap a
+      die: is the ~300 ms before its ring appears noticeable, or does a pick
+      still feel immediate?
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
 and read here, and a seed gives the same result with the renderer on and off.
