@@ -16,6 +16,7 @@ import de.drehtuer.dinfinity.core.notation.Formula
 import de.drehtuer.dinfinity.core.notation.FormulaParser
 import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.ParseResult
+import de.drehtuer.dinfinity.core.notation.PickUp
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.core.notation.PlanResult
 import de.drehtuer.dinfinity.core.notation.RollBounds
@@ -132,6 +133,16 @@ class RollMachine(
      */
     val down: MutableList<DieAtRest> = mutableListOf()
 
+    /**
+     * Which die of the plan each of [down] is, by [DieInstance.index], or null
+     * for a die a chain added — which no hand may pick up ([PickUp]).
+     *
+     * A die thrown again by hand is down twice: where it lay, struck through
+     * and never moved, and where the new throw of it stopped. The later entry
+     * is the one that counts now, and the only one a finger can pick again.
+     */
+    val downIs: MutableList<Int?> = mutableListOf()
+
     /** The faces of the dice the roll has added, in the order it asked for them. */
     val added: MutableList<Int> = mutableListOf()
 
@@ -144,6 +155,31 @@ class RollMachine(
      * together on one shake, because that is what a player does at a table.
      */
     var adding: List<DieInstance> = emptyList()
+
+    /**
+     * The dice of the plan a hand picked up and the shake threw again, by
+     * [DieInstance.index], while that throw is in the air — empty otherwise
+     * (`docs/physics-and-rendering.md`, "Picking a die up and throwing it
+     * again").
+     */
+    var picking: List<Int> = emptyList()
+
+    /**
+     * Every face a die showed before a hand threw it again, oldest first, by
+     * [DieInstance.index]. They stay in the breakdown, struck through, and in
+     * the statistics ([PickUp.withEarlierThrows]).
+     */
+    val earlier: MutableMap<Int, MutableList<Int>> = mutableMapOf()
+
+    /** How many throws a hand has made in this roll, which seeds the next ([Seeds.byHand]). */
+    var byHand: Int = 0
+
+    /**
+     * The rounding the roll is scored under. The player's setting, until the
+     * result sheet re-rounds it — and a die thrown again by hand is scored
+     * under what the sheet was showing, not under the setting it started with.
+     */
+    var rounding: Rounding = Rounding.Default
 
     /**
      * The throw the roll is part-way through — the first, or a round a chain
@@ -183,9 +219,13 @@ class RollMachine(
     fun cameToRest(
       thrown: List<DieInstance>,
       outcome: SimulationOutcome,
+      planIndexOf: (Int) -> Int?,
     ) {
       thrown.forEachIndexed { position, instance ->
-        outcome.restingAt[position]?.let { place -> down += DieAtRest(instance.die, instance.setId, place) }
+        outcome.restingAt[position]?.let { place ->
+          down += DieAtRest(instance.die, instance.setId, place)
+          downIs += planIndexOf(position)
+        }
       }
       rethrows += outcome.rethrows
       forcedSettles += outcome.forcedSettles
@@ -197,6 +237,17 @@ class RollMachine(
 
   private var prepared: Prepared? = null
   private var inFlight: InFlight? = null
+
+  /**
+   * The roll that has landed, kept for as long as its total is on the screen:
+   * where its dice are lying is what a finger picks from, and its faces are
+   * what a die thrown again by hand is scored with. Non-null exactly while
+   * [state] is [RollState.Settled].
+   */
+  private var landed: InFlight? = null
+
+  /** The dice picked up, by their position in [onTheTable]. */
+  private var picks: Set<Int> = emptySet()
 
   /**
    * The throw an explosion earned and nobody has thrown yet.
@@ -293,6 +344,8 @@ class RollMachine(
     cameFrom = from
     prepared = null
     inFlight = null
+    landed = null
+    picks = emptySet()
     scored = null
     expected = null
 
@@ -363,7 +416,7 @@ class RollMachine(
         dieScale = ready.scale,
         shake = shake,
       )
-    inFlight = InFlight(ready, spec)
+    inFlight = InFlight(ready, spec).also { it.rounding = defaultRounding }
     state = RollState.Rolling(ready.diceCount)
     return spec
   }
@@ -404,7 +457,7 @@ class RollMachine(
   fun settled(
     outcome: SimulationOutcome,
     drivenBy: List<ShakeSample> = emptyList(),
-    rounding: Rounding = defaultRounding,
+    rounding: Rounding? = null,
   ): Landed? {
     // A second answer for a throw that has already landed is a stray one.
     val flight = inFlight?.takeIf { it.round.airborne } ?: return null
@@ -412,10 +465,13 @@ class RollMachine(
     // The hand that threw the roll is the hand that threw its first pass. A
     // pass that throws dice nobody could read is a throw a hand makes too, but
     // it follows from this one — seed and all — exactly as a chain's die does.
-    if (flight.adding.isEmpty() && round.pass == 1) flight.drivenBy = drivenBy
+    if (flight.adding.isEmpty() && flight.picking.isEmpty() && round.pass == 1) flight.drivenBy = drivenBy
     round.landed(outcome)
     if (!round.complete) return waitForAShake(round)
+    // Which dice this throw was a hand's, before reading it forgets.
+    val thrownAgain = flight.picking.toSet()
     readInto(flight, round.outcome())
+    rounding?.let { flight.rounding = it }
 
     val scoring =
       RunningScore.of(
@@ -428,7 +484,7 @@ class RollMachine(
             forcedSettles = flight.forcedSettles,
             rolledAtEpochMs = clock(),
           ),
-        rounding = rounding,
+        rounding = flight.rounding,
         added = AddedDice(faces = flight.added, room = { die -> roomForAnother(flight, die) }),
       )
     return when (scoring) {
@@ -446,7 +502,7 @@ class RollMachine(
                 forcedSettles = flight.forcedSettles,
                 rolledAtEpochMs = clock(),
               ),
-            rounding = rounding,
+            rounding = flight.rounding,
             // Each die the round owes takes floor the next one cannot have, so
             // the question is asked with the ones already owed standing on it.
             // Without that a round could be promised more dice than the tray
@@ -459,7 +515,16 @@ class RollMachine(
         state = RollState.ShakeAgain(diceCount = flight.down.size, waiting = next.dice.size)
         Landed.OneMore(next)
       }
-      is Scoring.Scored -> Landed.Complete(complete(flight, scoring.result))
+      is Scoring.Scored ->
+        Landed.Complete(
+          complete(
+            flight = flight,
+            // Scored from the faces the dice show now, with every face a hand
+            // threw away put back in front of its replacement, struck through.
+            result = PickUp.withEarlierThrows(scoring.result, flight.prepared.plan, flight.earlier),
+            thrownAgain = thrownAgain,
+          ),
+        )
     }
   }
 
@@ -486,18 +551,59 @@ class RollMachine(
     outcome: SimulationOutcome,
   ) {
     val adding = flight.adding
-    if (adding.isEmpty()) {
-      flight.faces = outcome.faces
-      flight.cameToRest(flight.prepared.plan.dice, outcome)
-    } else {
-      adding.forEachIndexed { at, die ->
-        flight.added +=
-          requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
+    val picking = flight.picking
+    when {
+      picking.isNotEmpty() -> readByHand(flight, picking, outcome)
+      adding.isEmpty() -> {
+        flight.faces = outcome.faces
+        flight.cameToRest(flight.prepared.plan.dice, outcome) {
+          flight.prepared.plan.dice[it]
+            .index
+        }
       }
-      flight.cameToRest(adding, outcome)
+      else -> {
+        adding.forEachIndexed { at, die ->
+          flight.added +=
+            requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
+        }
+        flight.cameToRest(adding, outcome) { null }
+      }
     }
     flight.adding = emptyList()
+    flight.picking = emptyList()
   }
+
+  /**
+   * Files the faces of a throw a hand made: each picked die's new face
+   * replaces its old one in the faces the roll is scored from, and the old one
+   * is kept, to be struck through ([PickUp.withEarlierThrows]).
+   *
+   * The die that was picked up is still lying where it fell — nothing moved
+   * it — so [InFlight.down] gains the new throw's dice beside it rather than
+   * losing anything.
+   */
+  private fun readByHand(
+    flight: InFlight,
+    picking: List<Int>,
+    outcome: SimulationOutcome,
+  ) {
+    val faces = flight.faces.toMutableMap()
+    picking.forEachIndexed { at, index ->
+      val face = requireNotNull(outcome.faces[at]) { "die $index was thrown again by hand and reported no face" }
+      faces[index]?.let { flight.earlier.getOrPut(index) { mutableListOf() } += it }
+      faces[index] = face
+    }
+    flight.faces = faces
+    flight.cameToRest(picking.map { planned(flight, it) }, outcome) { picking[it] }
+  }
+
+  /** The die of [flight]'s plan at [index]. */
+  private fun planned(
+    flight: InFlight,
+    index: Int,
+  ): DieInstance =
+    flight.prepared.plan.dice
+      .first { it.index == index }
 
   /**
    * Throws the die an explosion earned, driven by [shake].
@@ -565,7 +671,9 @@ class RollMachine(
    */
   fun progress(counted: Map<Int, Int>): RollProgress? {
     val flight = inFlight ?: return null
-    if (flight.adding.isNotEmpty()) return null
+    // A hand's throw reports its own dice, not the roll's, exactly as a
+    // chain's round does.
+    if (flight.adding.isNotEmpty() || flight.picking.isNotEmpty()) return null
     val dice = flight.prepared.plan.dice
     // Every die of the first throw read so far, by the index the plan knows it
     // by — the passes before this one as well as what this one has counted,
@@ -652,6 +760,115 @@ class RollMachine(
     get() = inFlight?.round?.let { !it.airborne && it.waiting.isNotEmpty() } ?: false
 
   /**
+   * The dice lying in the tray under a total, where they stopped — what a
+   * finger picks from (`render/filament`'s `TrayPick`). Empty while there is
+   * no total: a roll in the air, or one waiting on dice nobody could read,
+   * offers nothing to pick until every die of it is read.
+   *
+   * A die read and lifted off the table by a later pass is not here, because
+   * it is not on the table to be touched.
+   */
+  val onTheTable: List<DieAtRest> get() = landed?.down?.toList().orEmpty()
+
+  /** How far the capacity rule shrank the dice on the table, which a finger's target shrinks by. */
+  val dieScale: Double get() = landed?.prepared?.scale ?: 1.0
+
+  /** Which of [onTheTable] are picked up, by position, for the next shake to throw. */
+  val picked: Set<Int> get() = picks
+
+  /**
+   * A finger on the die at [position] in [onTheTable]: picks it up, or — if it
+   * is already picked — puts it back (`docs/architecture.md`, decision 76).
+   *
+   * **Nothing moves.** A pick is a mark on a die for the next shake, and the
+   * die stays exactly where it lies; the shake throws a new throw of it
+   * ([throwPicked]) and this one stays down, struck through.
+   *
+   * Refused — and false — for a die no hand may go near ([PickUp]: any die of
+   * a group with `!` or `r n`, and any die a chain added), for a die that has
+   * already been thrown again and lies struck through, for a touch with no
+   * total on the screen, and for one more die than the tray has clear floor
+   * to drop into ([ClearSpace]). A refusal changes nothing.
+   *
+   * @return whether the pick changed.
+   */
+  fun pick(position: Int): Boolean {
+    val flight = landed ?: return false
+    val changed =
+      when {
+        position in picks -> true
+        position !in liftable(flight) -> false
+        else ->
+          ClearSpace.roomForAnother(
+            geometry = geometry,
+            dieRadiusMm = ClearSpace.radiusOf(flight.down[position].die, flight.prepared.scale),
+            taken = flight.taken(),
+            alreadyPromised = picks.size,
+          )
+      }
+    if (changed) picks = if (position in picks) picks - position else picks + position
+    return changed
+  }
+
+  /**
+   * Which of the dice on the table a hand may pick up, by position.
+   *
+   * The die each plan index is **now**: the last place a die of that index
+   * stopped. One that a hand already threw again lies struck through and has
+   * nothing left to say about the roll.
+   */
+  private fun liftable(flight: InFlight): Set<Int> {
+    val (formula, result) = scored ?: return emptySet()
+    val allowed = PickUp.from(formula, result)
+    val now = mutableMapOf<Int, Int>()
+    flight.downIs.forEachIndexed { position, index -> if (index != null && index in allowed) now[index] = position }
+    return now.values.toSet()
+  }
+
+  /**
+   * Throws the dice a hand picked up, driven by [shake] — and only those
+   * (`docs/architecture.md`, decision 68).
+   *
+   * The throw an explosion's round is: a world of its own with none of the
+   * settled dice in it, every die still down carried as `among` so it is drawn
+   * where it lies and avoided, dropped into the clearest floor. **The picked
+   * die is among them**: it is not lifted and not moved, and its face stays in
+   * the breakdown, struck through, beside the new die's
+   * ([PickUp.withEarlierThrows]). The roll is scored again from the beginning
+   * once the new dice are read, which is rescoring rather than re-rolling.
+   *
+   * Seeded from the roll's own seed and the count of hand throws
+   * ([Seeds.byHand]), so a roll still replays to itself.
+   *
+   * Null when nothing is picked, which is every shake that should throw the
+   * whole roll again.
+   */
+  fun throwPicked(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
+    val flight = landed ?: return null
+    if (picks.isEmpty()) return null
+    val indices = picks.map { requireNotNull(flight.downIs[it]) }.sorted()
+    flight.byHand++
+    val spec =
+      ThrowSpec(
+        dice = indices.mapIndexed { at, index -> planned(flight, index).copy(index = at) },
+        geometry = flight.spec.geometry,
+        table = flight.spec.table,
+        seed = Seeds.byHand(flight.spec.seed, flight.byHand),
+        dieScale = flight.prepared.scale,
+        shake = shake,
+        among = flight.down.toList(),
+      )
+    flight.picking = indices
+    flight.round = Passes(spec)
+    landed = null
+    picks = emptySet()
+    scored = null
+    inFlight = flight
+    state = RollState.Rolling(diceCount = spec.dice.size)
+    return spec
+  }
+
+  /**
    * An empty board: the same table, with no dice on it.
    *
    * What the tray is given when there is nothing waiting — a formula that does
@@ -681,6 +898,7 @@ class RollMachine(
     val (formula, result) = scored ?: return
     val rescored = RollEvaluator.rescore(formula, result, rounding)
     scored = formula to rescored
+    landed?.rounding = rounding
     state = RollState.Settled(rescored, divides = formula.divides)
   }
 
@@ -750,8 +968,11 @@ class RollMachine(
   private fun complete(
     flight: InFlight,
     result: RollResult,
+    thrownAgain: Set<Int>,
   ): FinishedThrow {
     inFlight = null
+    landed = flight
+    picks = emptySet()
     scored = flight.prepared.formula to result
     state = RollState.Settled(result, divides = flight.prepared.formula.divides)
     // Handed out rather than written here: this module decides what a throw
@@ -769,6 +990,7 @@ class RollMachine(
       thrown = flight.spec.copy(shake = flight.drivenBy),
       savedRollId = cameFrom?.rollId,
       groupId = cameFrom?.groupId,
+      thrownAgain = thrownAgain,
     )
   }
 

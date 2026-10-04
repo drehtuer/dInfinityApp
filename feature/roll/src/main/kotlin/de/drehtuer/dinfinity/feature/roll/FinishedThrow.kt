@@ -46,6 +46,19 @@ data class FinishedThrow(
    */
   val savedRollId: String? = null,
   val groupId: String? = null,
+  /**
+   * The dice of the plan a hand picked up and threw again to make this
+   * result, by `DieInstance.index` — empty for a roll finishing for the first
+   * time (`docs/physics-and-rendering.md`, "Picking a die up and throwing it
+   * again").
+   *
+   * Not empty means **this is the same roll, finished again**: it was written
+   * down when it first landed, and what is owed now is its new total and one
+   * more throw of each of these dice — not a second roll in the history, and
+   * not every die counted twice (`docs/statistics.md`, "A die thrown again by
+   * hand").
+   */
+  val thrownAgain: Set<Int> = emptySet(),
 ) {
   /**
    * The roll's own seed, for reproducing the throw when a bug report needs it.

@@ -127,6 +127,61 @@ class PickUpTest {
     )
   }
 
+  @Test
+  fun `a face a hand threw away stays in the breakdown, struck through, before the one that replaced it`() {
+    // `3d6` came up 2, 3, 5; the 2 was picked up and came down 6, and the roll
+    // is scored again from 6, 3, 5. The 2 is still there, as `r n` leaves the
+    // die it replaced.
+    val text = "3d6"
+    val (_, again) = rolled(text, values = listOf(6, 3, 5))
+    val plan = plan(text)
+
+    val kept = PickUp.withEarlierThrows(again, plan, mapOf(0 to listOf(faceShowing(StandardDice.d6, 2))))
+
+    assertEquals(14L, kept.total)
+    assertEquals(listOf(2, 6, 3, 5), kept.dice.map { it.value })
+    val (struck, replacement) = kept.dice.take(2)
+    assertEquals(setOf(DieNote.Dropped, DieNote.Rerolled), struck.notes)
+    assertEquals(setOf(DieNote.Rerolled), replacement.notes)
+    assertEquals(0, struck.instanceIndex, "a struck face was not counted against its own die")
+    assertTrue(kept.dice.drop(2).all { it.notes.isEmpty() }, "a die nobody picked up was marked")
+    assertEquals(again.groups.single().subtotal, kept.groups.single().subtotal)
+  }
+
+  @Test
+  fun `a die thrown three times keeps both earlier faces, oldest first`() {
+    val (_, again) = rolled("2d20kh1", values = listOf(4, 9))
+    val faces = listOf(20, 1).map { faceShowing(StandardDice.d20, it) }
+
+    val kept = PickUp.withEarlierThrows(again, plan("2d20kh1"), mapOf(1 to faces))
+
+    assertEquals(listOf(4, 20, 1, 9), kept.dice.map { it.value })
+    assertTrue(kept.dice[1].naturalMax, "a struck 20 forgot it was the highest face")
+    assertTrue(kept.dice[2].naturalMin, "a struck 1 forgot it was the lowest face")
+    assertFalse(kept.hasNaturalMax, "a struck 20 counted as a natural 20 for the roll")
+    assertEquals(9L, kept.total)
+  }
+
+  @Test
+  fun `a struck half of a percentile pair still says which half it was`() {
+    val (_, again) = rolled("1d100", values = listOf(40, 3))
+    val tens = plan("1d100").dice.first().die
+
+    val kept = PickUp.withEarlierThrows(again, plan("1d100"), mapOf(0 to listOf(faceShowing(tens, 70))))
+
+    assertTrue(DieNote.PercentileTens in kept.dice.first().notes)
+    assertFalse(kept.dice.first().kept)
+  }
+
+  @Test
+  fun `nothing thrown again leaves the result exactly as it was`() {
+    val (_, result) = rolled("3d6", values = listOf(2, 3, 5))
+
+    assertEquals(result, PickUp.withEarlierThrows(result, plan("3d6"), emptyMap()))
+    assertEquals(result, PickUp.withEarlierThrows(result, plan("3d6"), mapOf(0 to emptyList())))
+    assertEquals(result, PickUp.withEarlierThrows(result, plan("3d6"), mapOf(9 to listOf(0))))
+  }
+
   private fun rolled(
     text: String,
     values: List<Int>,

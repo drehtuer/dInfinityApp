@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
+import de.drehtuer.dinfinity.core.model.DieNote
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.PlannedGroup
@@ -264,6 +265,87 @@ class RollRecordingTest {
           .size,
       )
     }
+
+  @Test
+  fun `a die thrown again by hand finishes the same roll, and counts one more throw`() =
+    runTest {
+      // `2d6` came up 6 and 3; the 3 was picked up and came down 5. One roll,
+      // one total, three throws of a d6 (`docs/statistics.md`).
+      recording.record(result = result(), plan = plan())
+
+      recording.amend(result = thrownAgain(), plan = plan(), thrownAgain = setOf(1))
+
+      val row =
+        database
+          .rollHistory()
+          .recent(10)
+          .first()
+          .single()
+      assertEquals(11L, row.total)
+      assertEquals(
+        listOf(6, 3, 5),
+        Breakdown
+          .read(row.breakdownJson)
+          .groups
+          .single()
+          .dice
+          .map { it.value },
+      )
+      val histogram = database.dieStats().histogram("builtin", "d6").first()
+      assertEquals(mapOf(3 to 1L, 5 to 1L, 6 to 1L), histogram.associate { it.faceValue to it.count })
+      assertEquals(3L, database.dieSummary().find("builtin", "d6")!!.throws)
+    }
+
+  @Test
+  fun `a throw by hand with no roll before it counts its dice and writes no row`() =
+    runTest {
+      // Nothing to amend is not a reason to forget a throw that happened.
+      recording.amend(result = thrownAgain(), plan = plan(), thrownAgain = setOf(1))
+
+      assertEquals(
+        0,
+        database
+          .rollHistory()
+          .recent(10)
+          .first()
+          .size,
+      )
+      assertEquals(1L, database.dieSummary().find("builtin", "d6")!!.throws)
+    }
+
+  @Test
+  fun `a die the result does not have, or the plan does not know, is not counted`() =
+    runTest {
+      recording.record(result = result(), plan = plan())
+
+      recording.amend(result = thrownAgain(), plan = plan(), thrownAgain = setOf(7))
+      recording.amend(result = thrownAgain(), plan = RollPlan(formula = "2d6"), thrownAgain = setOf(1))
+
+      assertEquals(2L, database.dieSummary().find("builtin", "d6")!!.throws)
+    }
+
+  /** [result] after the 3 was thrown again by hand and came down 5. */
+  private fun thrownAgain() =
+    result().copy(
+      total = 11,
+      groups =
+        listOf(
+          result().groups.single().copy(
+            subtotal = 11,
+            dice =
+              listOf(
+                RolledDie(instanceIndex = 0, dieId = "d6", value = 6, naturalMax = true),
+                RolledDie(
+                  instanceIndex = 1,
+                  dieId = "d6",
+                  value = 3,
+                  notes = setOf(DieNote.Dropped, DieNote.Rerolled),
+                ),
+                RolledDie(instanceIndex = 1, dieId = "d6", value = 5, notes = setOf(DieNote.Rerolled)),
+              ),
+          ),
+        ),
+    )
 
   private fun plan() =
     RollPlan(

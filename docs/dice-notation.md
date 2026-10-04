@@ -201,9 +201,14 @@ Modifiers take effect in this order whatever order they were written in, so
 
 1. **`r n`** — a die showing `n` or less is thrown once more. Once: the
    replacement stands however low it is. Both dice stay in the breakdown, the
-   first struck through. A reroll the tray has no room for does not happen and
-   the die stands as it fell, marked in the breakdown — the alternative being a
-   die dropped onto dice that have already been read.
+   first struck through — which is also how a die a player picked up and threw
+   again is shown, every earlier face struck through in front of the one that
+   replaced it ([physics-and-rendering.md](physics-and-rendering.md), "Picking
+   a die up and throwing it again"). No die of a group with `r n` or `!` can be
+   picked up: in a chain, which die counts depends on what was thrown because
+   of what. A reroll the tray has no room for does not happen and the die
+   stands as it fell, marked in the breakdown — the alternative being a die
+   dropped onto dice that have already been read.
 2. **`!`** — a die showing its highest face **earns** another throw of the same
    die. The new die joins *that die's* chain rather than the group at large, so
    `2d6!kh1` keeps the better of two chains, which is what a player means by

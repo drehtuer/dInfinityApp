@@ -47,19 +47,6 @@ Spec: `docs/dice-notation.md`, `docs/tables.md`,
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** ported: a settled die moved by code is the
       invisible hand
-- [ ] **Wire the one-finger pick and the shake that throws it.** Everything
-      under it is built and decided: `TrayPick` (which die a finger is on),
-      `PickUp` (which dice a hand may go near; none in a group with `!` or
-      `r n`), the throw is `ThrowSpec.among`, the history keeps every throw of
-      the die and the sum for the roll, and **the finger only picks — the next
-      shake throws the picked dice** (decision 68;
-      `docs/physics-and-rendering.md`, "Picking a die up and throwing it
-      again"). Left to decide while building it: how a picked die is shown,
-      and how a pick is undone (a second touch on the same die is the obvious
-      answer). It joins decision 70's wait rather than adding one: a shake
-      already throws a throw's unread dice through `Passes.next`, and a picked
-      die is one more die for that same throw — so only one of the two can be
-      owed by a shake at a time, and the unread dice come first
 
 Implementation notes recorded only here:
 
@@ -94,6 +81,13 @@ Implementation notes recorded only here:
 - [ ] **Power-saving** leaves the formula, the dice menu and a total; the
       design shows a progress indicator and a result sheet (`1z`). Instant, or
       broken?
+- [ ] **Picking a die up** (decision 76): push the sheet down, tap a die, and
+      look at the ring round it on each table — does it read on the felt, light
+      and dark, and does it sit round the die you touched at every pinch? Is a
+      second tap the undo you reach for, or does a picked die want saying so on
+      the sheet too? Then shake: does only that die go, does it land clear of
+      the others, and does the struck-through face beside the new one on the
+      sheet read as "thrown again"?
 
 **Done when** every example in `docs/dice-notation.md` can be typed, rolled
 and read here, and a seed gives the same result with the renderer on and off.

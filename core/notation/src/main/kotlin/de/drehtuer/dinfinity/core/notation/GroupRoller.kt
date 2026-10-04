@@ -228,7 +228,7 @@ private val DiceModifier.selects: Boolean
       this is DiceModifier.DropLowest
 
 /** What the breakdown says about a die because of the part it plays. */
-private fun DieRole.note(): Set<DieNote> =
+internal fun DieRole.note(): Set<DieNote> =
   when (this) {
     DieRole.Normal -> emptySet()
     DieRole.PercentileTens -> setOf(DieNote.PercentileTens)

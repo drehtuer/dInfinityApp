@@ -63,4 +63,14 @@ class TrayReadingTest {
 
     assertEquals(TrayReading.Settled(11), TrayReading.of(settled))
   }
+
+  @Test
+  fun `a landed throw with dice picked up says how many the shake will throw`() {
+    val settled = RollState.Settled(result = RollResult(formula = "3d6", total = 11), divides = false)
+
+    assertEquals(TrayReading.Settled(11, picked = 2), TrayReading.of(settled, picked = 2))
+    // Only a landed roll has dice to pick; a count handed to any other state
+    // is not said, because there is nothing it could be about.
+    assertEquals(TrayReading.Rolling(3), TrayReading.of(RollState.Rolling(diceCount = 3), picked = 2))
+  }
 }

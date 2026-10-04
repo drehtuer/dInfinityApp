@@ -113,6 +113,37 @@ class TrayPick(
   }
 
   /**
+   * Where on the picture [die] is, and how big — the other half of
+   * [dieUnder], for drawing a mark round a die that has been picked
+   * (`docs/architecture.md`, decision 76).
+   *
+   * The same frustum and the same ball: the mark is drawn round the ball a
+   * finger has to land in to pick that die, so what the player sees ringed is
+   * exactly what a second touch would un-pick. Null for a die behind the
+   * camera, which no [TrayView] allows and which has nowhere on the picture
+   * to be.
+   */
+  fun markOf(
+    die: DieAtRest,
+    dieScale: Double = 1.0,
+  ): PickMark? {
+    val offset = die.at.position - shot.position
+    val ahead = offset dot shot.forward
+    if (ahead <= 0.0) return null
+    val upward = tan(halfAngle(shot.verticalFieldOfViewDegrees))
+    val across = upward * aspectRatio
+    val right = cross(shot.forward, shot.up)
+    val sideways = (offset dot right) / (ahead * across)
+    val upwards = (offset dot shot.up) / (ahead * upward)
+    return PickMark(
+      acrossFraction = (sideways + 1) / 2,
+      downFraction = (1 - upwards) / 2,
+      // The viewport is `2 × upward × ahead` tall at the die's depth.
+      radiusOfHeight = ClearSpace.radiusOf(die.die, dieScale) / (2 * upward * ahead),
+    )
+  }
+
+  /**
    * How far the camera has to look along [direction] to reach the ball of
    * [radiusMm] around [centre], or null when the look misses it.
    *
@@ -165,3 +196,20 @@ class TrayPick(
     private const val HALF_TURN_DEGREES = 180.0
   }
 }
+
+/**
+ * A ring on the picture round one die ([TrayPick.markOf]).
+ *
+ * @param acrossFraction where its centre is, 0 at the left edge to 1 at the
+ *   right — the same fractions [TrayPick.lookingAlong] takes.
+ * @param downFraction 0 at the top to 1 at the bottom.
+ * @param radiusOfHeight how big the die's ball looks, as a share of the
+ *   viewport's height. Of the height rather than the width because the
+ *   frustum's angle is the vertical one; a circle is as many pixels across as
+ *   it is up.
+ */
+data class PickMark(
+  val acrossFraction: Double,
+  val downFraction: Double,
+  val radiusOfHeight: Double,
+)
