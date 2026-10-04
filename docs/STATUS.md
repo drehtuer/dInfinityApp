@@ -20,18 +20,26 @@ This is a snapshot, not a changelog — git history is the changelog.
   66), the dice waiting to be thrown drop under real Jolt physics (decision
   67), and a die picked by finger will be thrown by a shake (decision 68,
   decided, not built).
-- **In flight, one stack, in merge order:**
+- **In flight, one stack, in merge order** (every PR checked on the Pixel 10a):
   - #337 — added dice leave one spot over the middle of the tray a tenth of a
     second apart (decision 69);
   - #338 — a die that lands cocked or on another waits where it lies for the
     player's shake (decision 70);
   - #339 — more spin (60–120 rad/s) and bouncier dice (restitution 0.55);
-  - then the overnight batch on top: the re-throw code nothing calls is gone
-    and `FairnessTest` counts a give-up instead of stopping; the debug overlay
-    shows the frame rate and dropped steps (decision 72); the statistics name
-    a face by its label (decision 73); no shake is heard while the welcome is
-    up (decision 74); braced notation for a set's own dice, offered on the
-    picker (decision 75).
+  - #340 — the re-throw code nothing calls is gone, and `FairnessTest` counts
+    a give-up instead of stopping;
+  - #341 — the debug overlay shows the frame rate and dropped steps (72);
+  - #342 — the statistics name a face by its label (73);
+  - #343 — no shake is heard while the welcome is up (74);
+  - #344 — braced notation for a set's own dice, offered on the picker (75);
+  - #345 — a device test reads the printed numbers off a frame, and table
+    thumbnails are the right way up again;
+  - #346 — four and eight collision steps measured, two kept (77);
+  - #347 — the saved-rolls list scrolls while a row is dragged at its edge
+    (78);
+  - #348 — more than one personal set in the face designer (79);
+  - then the hand re-throw: a finger picks a landed die, the next shake throws
+    it (decisions 68 and 76).
 
 ## Done
 
