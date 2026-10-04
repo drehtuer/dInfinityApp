@@ -300,6 +300,31 @@ class FilamentStage(
   fun engine(): Engine = engine
 
   /**
+   * Filament's own record of the last few frames: hands [each] frame's id and
+   * how long the GPU took over it, in nanoseconds.
+   *
+   * For the rendered harness and nothing else (`docs/build-setup.md`, "The
+   * physics harness"). It reads a history Filament keeps anyway and changes
+   * nothing about a frame. The window is short and is read whole, so a frame
+   * arrives more than once, and a duration the GPU has not finished — or that
+   * a driver with no timer queries can never give — arrives as Filament's
+   * negative `PENDING` or `INVALID`; sorting that out is `RenderedFrames`'s
+   * job, on a JVM, not this file's.
+   */
+  fun gpuFrames(each: (frameId: Int, gpuNanos: Long) -> Unit) {
+    val history = frameHistory
+    val count = frames.getFrameInfoHistory(history).coerceAtMost(history.size)
+    for (index in 0 until count) {
+      each(history[index].frameId, history[index].gpuFrameDuration)
+    }
+  }
+
+  /** Where [gpuFrames] reads into, made on first use so a stage nobody times allocates none. */
+  private val frameHistory: Array<FilamentFrameRenderer.FrameInfo> by lazy {
+    Array(frames.maxFrameHistorySize) { FilamentFrameRenderer.FrameInfo() }
+  }
+
+  /**
    * Throws away everything a single roll put in the scene.
    *
    * The engine, the compiled material and the blank texture stay: they cost

@@ -2116,6 +2116,26 @@ Target: 60 fps with 20 dice on the Pixel 10a with headroom; the capacity rule
 caps a roll at what the table can hold, and never above a hundred dice
 (`TableCapacity.MAX_DICE`). Every die casts a shadow, whatever the count.
 
+### Performance, and how it is measured
+
+The bar is Step 5.7's: 60 fps sustained at twenty dice, **p99 frame under
+16.6 ms**, and 30 fps at the capacity limit (`docs/TODO.md`). Three
+instruments read it, each answering what the others cannot:
+
+| Instrument | What it times | Where |
+| --- | --- | --- |
+| `tools/harness.sh --frames` | the simulation half of a frame, headless | `HarnessTest`, `simulation/jolt` |
+| `tools/harness.sh --rendered` | a frame's simulation **and draw** on the roll thread, the GPU's time per frame, dropped steps and the frame rate, on a screen-sized surface through the shipping tray | `RenderedHarnessTest`, `render/filament` |
+| the debug overlay's `fps · p99` line | the interval between frame callbacks on the real screen, by hand | `TrayLoop`, decision 72 |
+
+The rendered harness scores the roll thread's work and, as a row of its own,
+the GPU's: the GPU draws a frame behind the CPU, so either one running past a
+sixtieth of a second is a frame the display waits for. The frame *interval* is
+printed but not scored, because on a 60 Hz panel it is 16.7 ms by construction
+(`docs/architecture.md`, decision 80; `docs/build-setup.md`, "Drawn frames:
+the rendered harness"). The Pixel 10a's figures go here once the run has been
+made; until then the target is a target, not a measurement.
+
 ## What is drawn over the table
 
 The prototype used to draw this screen as a column of bands with the tray as
