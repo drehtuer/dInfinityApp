@@ -205,6 +205,7 @@ class FaceGuideTest {
   fun `has no corners for a die read face-up, or for a cell it does not have`() {
     assertTrue(FaceGuide.cornersOf(d6, cell = 0).isEmpty())
     assertTrue(FaceGuide.cornersOf(d4, cell = 4).isEmpty())
+    assertTrue(FaceGuide.cornersOf(d4, cell = -1).isEmpty())
   }
 
   @Test
