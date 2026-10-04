@@ -60,7 +60,8 @@ Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeCreateWorld(JNIEnv* 
 
 JNIEXPORT jboolean JNICALL
 Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeAddDie(
-    JNIEnv* env, jobject, jlong handle, jfloatArray hull, jfloat convex_radius, jfloat density,
+    JNIEnv* env, jobject, jlong handle, jfloatArray hull, jfloat convex_radius,
+    jfloat max_error_convex_radius, jfloat density,
     jfloat friction, jfloat restitution, jfloatArray placement) {
   dinfinity::World* world = AsWorld(handle);
   if (world == nullptr) return JNI_FALSE;
@@ -76,6 +77,7 @@ Java_de_drehtuer_dinfinity_simulation_jolt_JoltNative_nativeAddDie(
   spec.hull_points = points.data();
   spec.point_count = static_cast<int>(length / 3);
   spec.convex_radius = convex_radius;
+  spec.max_error_convex_radius = max_error_convex_radius;
   spec.density = density;
   spec.friction = friction;
   spec.restitution = restitution;

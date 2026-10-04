@@ -3,7 +3,6 @@ package de.drehtuer.dinfinity.simulation.jolt
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.DieMotion
-import de.drehtuer.dinfinity.simulation.api.HullMargin
 import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -47,11 +46,15 @@ class JoltWorld private constructor(
     val points = FloatArray(hull.size * JoltNative.AXES)
     hull.forEachIndexed { index, corner -> points.putLength(index * JoltNative.AXES, corner) }
 
+    // The rounding is the die's own, and so is how far Jolt may cut a sharp
+    // corner of it back (`HullRounding`, decision 94).
+    val rounding = HullRounding.of(clamped)
     val created =
       JoltNative.nativeAddDie(
         world = handle,
         hull = points,
-        convexRadius = Units.mmToUnits(convexRadiusMmFor(clamped)),
+        convexRadius = rounding.convexRadius,
+        maxErrorConvexRadius = rounding.maxError,
         // No conversion: the solver's units are centimetres and grams, so a
         // set file's grams per cubic centimetre is already what it wants.
         density = clamped.density.toFloat(),
@@ -216,15 +219,6 @@ class JoltWorld private constructor(
       }
       return JoltWorld(handle, maxDice)
     }
-
-    /**
-     * The rounded edge a solid gets. Sharp corners are what catch on a floor
-     * instead of tumbling off it, and a d4 is almost all corner
-     * (`docs/physics-and-rendering.md`, "Dice bodies"). The number is
-     * `simulation/api`'s, because the renderer draws the die rounded by the
-     * same radius and two copies of it would come apart ([HullMargin]).
-     */
-    private fun convexRadiusMmFor(material: DieMaterial): Double = HullMargin.requestedMm(material)
 
     /** Writes a length in millimetres as three floats in simulation units. */
     private fun FloatArray.putLength(

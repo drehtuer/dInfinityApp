@@ -84,6 +84,7 @@ class DieMaterialTest {
         density = Double.NEGATIVE_INFINITY,
         restitution = Double.NaN,
         friction = Double.NaN,
+        edgeRounding = Double.NaN,
       ).clampedToLimits()
     assertEquals(DieMaterial(), poisoned)
     assertTrue(poisoned.sizeMm.isFinite())
@@ -99,5 +100,19 @@ class DieMaterialTest {
   @Test
   fun `clamp leaves a finite value inside its range alone`() {
     assertEquals(0.5, DieMaterial.clamp(0.5, DieMaterial.UnitRange, 0.0))
+  }
+
+  @Test
+  fun `a die is rounded by three per cent of its size unless a set says otherwise`() {
+    assertEquals(0.03, DieMaterial().edgeRounding)
+    assertEquals(DieMaterial.DEFAULT_EDGE_ROUNDING, DieMaterial().edgeRounding)
+  }
+
+  @Test
+  fun `edge rounding is clamped between half and four times the default`() {
+    assertEquals(0.015, DieMaterial(edgeRounding = 0.0).clampedToLimits().edgeRounding)
+    assertEquals(0.12, DieMaterial(edgeRounding = 0.5).clampedToLimits().edgeRounding)
+    assertEquals(0.06, DieMaterial(edgeRounding = 0.06).clampedToLimits().edgeRounding)
+    assertEquals(0.03, DieMaterial(edgeRounding = Double.POSITIVE_INFINITY).clampedToLimits().edgeRounding)
   }
 }
