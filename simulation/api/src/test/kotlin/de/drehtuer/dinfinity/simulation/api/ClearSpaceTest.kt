@@ -101,6 +101,29 @@ class ClearSpaceTest {
     assertTrue(ClearSpace.roomForAnother(tray, TINY_RADIUS_MM, many.dropLast(1)))
   }
 
+  /**
+   * Three sixes in one round earn three dice at once, and asking about each as
+   * though the tray were still empty of the others would promise room that is
+   * not there (`docs/dice-notation.md`, "Evaluation").
+   */
+  @Test
+  fun `a die already promised takes the floor the next one would have needed`() {
+    // A tray with room for exactly one die this big: it fits across, and two
+    // of them could never sit side by side along the 240 mm.
+    val oneDie = TableGeometry(2 * (BIG_RADIUS_MM + ClearSpace.CLEARANCE_MM))
+
+    assertTrue(ClearSpace.roomForAnother(oneDie, BIG_RADIUS_MM, taken = emptyList()))
+    assertFalse(ClearSpace.roomForAnother(oneDie, BIG_RADIUS_MM, taken = emptyList(), alreadyPromised = 1))
+  }
+
+  @Test
+  fun `a promised die counts towards the engine's cap as well`() {
+    val many = List(TableCapacity.MAX_DICE - 1) { Vector3(0.0, 0.0, 1.0) }
+
+    assertTrue(ClearSpace.roomForAnother(tray, TINY_RADIUS_MM, many))
+    assertFalse(ClearSpace.roomForAnother(tray, TINY_RADIUS_MM, many, alreadyPromised = 1))
+  }
+
   @Test
   fun `a die wider than the tray has nowhere to go at all`() {
     assertNull(ClearSpace.clearestPoint(TableGeometry(20.0), dieRadiusMm = 40.0, taken = emptyList()))
@@ -156,5 +179,8 @@ class ClearSpaceTest {
 
     /** Small enough that the floor never runs out before the body cap does. */
     const val TINY_RADIUS_MM = 1.0
+
+    /** Big enough that a 240 mm tray has room for one of them and not two. */
+    const val BIG_RADIUS_MM = 70.0
   }
 }

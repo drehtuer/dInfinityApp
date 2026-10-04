@@ -142,6 +142,33 @@ class HarnessJsonTest {
   }
 
   @Test
+  fun `a section that is not an object, or a value that is not a plain one, is named`() {
+    val json = HarnessJson.toJson(report())
+    val facts = json["facts"] as JsonObject
+    val broken =
+      listOf(
+        "facts" to JsonObject(json.toMutableMap().apply { put("facts", JsonPrimitive("Pixel")) }),
+        "label" to
+          JsonObject(
+            json.toMutableMap().apply {
+              put("facts", JsonObject(facts.toMutableMap().apply { put("label", JsonObject(emptyMap())) }))
+            },
+          ),
+        "label" to
+          JsonObject(
+            json.toMutableMap().apply {
+              put("facts", JsonObject(facts.toMutableMap().apply { remove("label") }))
+            },
+          ),
+      )
+
+    broken.forEach { (field, document) ->
+      val failure = assertFailsWith<IllegalArgumentException> { HarnessJson.fromJson(document) }
+      assertTrue(failure.message.orEmpty().contains("\"$field\""), failure.message.orEmpty())
+    }
+  }
+
+  @Test
   fun `a whole number that is not one is named too`() {
     val failure = assertFailsWith<IllegalArgumentException> { HarnessJson.decode("""{"schema":"one"}""") }
 

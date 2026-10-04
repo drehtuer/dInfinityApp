@@ -62,6 +62,7 @@ class HarnessRequestTest {
     assertTrue(requireNotNull(HarnessRequest.from(arguments("10", frames = "true"))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = "0"))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = "false"))).framePaced)
+    assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = " No "))).framePaced)
     assertFalse(requireNotNull(HarnessRequest.from(arguments("10", frames = " "))).framePaced)
   }
 

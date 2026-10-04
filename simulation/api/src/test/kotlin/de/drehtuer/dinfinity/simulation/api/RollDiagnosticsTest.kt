@@ -77,6 +77,7 @@ class RollDiagnosticsTest {
     assertThrows { contact(stepIndex = -1) }
     assertThrows { contact(dieIndex = -1) }
     assertThrows { contact(strength = 1.5) }
+    assertThrows { contact(strength = -0.1) }
     // And the honest one is accepted.
     assertEquals(Struck.Die, contact().struck)
   }
