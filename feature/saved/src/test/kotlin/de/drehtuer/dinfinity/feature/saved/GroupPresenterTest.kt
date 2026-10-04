@@ -20,6 +20,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
@@ -74,6 +75,44 @@ class GroupPresenterTest {
   @Test
   fun `nothing is open until a group is asked for`() {
     assertNull(presenter().draft)
+  }
+
+  @Test
+  fun `a keystroke or a press arriving after the sheet has closed changes nothing`() {
+    // The sheet is gone the moment Save or Cancel is pressed, but a text field
+    // can still deliver a last keystroke and a double tap a second press. None
+    // of them may open a sheet again or write a group nobody is looking at.
+    given(SavedRollGroup(id = "dnd", name = "D&D"))
+    val presenter = presenter()
+
+    presenter.name("Thorin")
+    presenter.choose { copy(icon = "🐉") }
+    presenter.save()
+    presenter.delete()
+
+    assertNull(presenter.draft)
+    assertEquals(listOf("D&D"), names())
+  }
+
+  @Test
+  fun `two new groups made without being told an id do not collide`() {
+    // Every other test hands in an id so it can assert on one, which left the
+    // generator the app ships with never once run.
+    val presenter =
+      GroupPresenter(
+        library = library,
+        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+        scope = scope,
+        unfiledName = "Unfiled",
+      )
+
+    presenter.create()
+    val first = presenter.draft!!.id
+    presenter.create()
+    val second = presenter.draft!!.id
+
+    assertTrue("an id that is not there is not an id", first.isNotBlank())
+    assertNotEquals("two new groups were given the same id", first, second)
   }
 
   @Test

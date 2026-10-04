@@ -29,6 +29,7 @@ import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -40,6 +41,8 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.Executor
 
 /**
  * Taking a collection in (`design/dInfinity.dc.html`, options 9f and 9g).
@@ -118,19 +121,50 @@ class ImportScreenTest {
 
     compose.waitUntil(PATIENCE) { presenter.state is ImportState.Clash }
     compose.onNodeWithTag(ImportTestTags.CLASH).assertTextContains("Thorin", substring = true)
+    // And what to do about it: one of the two names has to change.
+    compose.onNodeWithText("Rename", substring = true).assertIsDisplayed()
     // Nothing merged, nothing deleted.
     assertEquals(emptyList<String>(), rollNames())
   }
 
   @Test
-  fun `a refusal says what to do about it`() {
-    given(SavedRollGroup(id = "mine", name = "Thorin"))
-    val presenter = show()
+  fun `while a file is being read the screen says it is busy`() {
+    // Brief, but not instant for five hundred rolls; a screen that showed the
+    // file picker in the meantime would invite a second file into the first's
+    // import.
+    // A scope whose work waits to be handed out, so the state between the
+    // read and the import can be looked at before the import runs.
+    val queued = ConcurrentLinkedQueue<Runnable>()
+    val paused = CoroutineScope(Executor { queued += it }.asCoroutineDispatcher())
+    val presenter =
+      ImportPresenter(
+        importer = importer,
+        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+        scope = paused,
+        unfiledName = "Unfiled",
+      )
+    compose.setContent { ImportScreen(presenter = presenter) }
 
     presenter.offer(thorin())
 
-    compose.waitUntil(PATIENCE) { presenter.state is ImportState.Clash }
-    compose.onNodeWithText("Rename", substring = true).assertIsDisplayed()
+    compose.onNodeWithTag(ImportTestTags.READING).assertIsDisplayed()
+    compose.onNodeWithTag(ImportTestTags.CHOOSE).assertDoesNotExist()
+    compose.waitUntil(PATIENCE) {
+      generateSequence { queued.poll() }.forEach(Runnable::run)
+      presenter.state is ImportState.Imported
+    }
+    paused.cancel()
+  }
+
+  @Test
+  fun `the screen asks for a file rather than choosing one itself`() {
+    // A content URI is the application's business, so the button only asks.
+    var asked = 0
+    show(onChooseFile = { asked++ })
+
+    compose.onNodeWithTag(ImportTestTags.CHOOSE).performClick()
+
+    assertEquals(1, asked)
   }
 
   @Test
@@ -208,12 +242,16 @@ class ImportScreenTest {
 
   @Test
   fun `after a refusal, another file can be chosen`() {
-    val presenter = show()
+    // "Choose another file" goes straight to the picker as well as back to the
+    // start: a second tap on a button that says what it does is one too many.
+    var asked = 0
+    val presenter = show(onChooseFile = { asked++ })
     presenter.offer("not a collection")
 
     compose.onNodeWithTag(ImportTestTags.AGAIN).performClick()
 
     compose.onNodeWithTag(ImportTestTags.CHOOSE).assertIsDisplayed()
+    assertEquals(1, asked)
   }
 
   @Test
@@ -230,6 +268,7 @@ class ImportScreenTest {
 
   private fun show(
     onDone: () -> Unit = {},
+    onChooseFile: () -> Unit = {},
     download: suspend (String) -> Fetched = { Fetched.Failed("no downloader in this test") },
   ): ImportPresenter {
     val presenter =
@@ -240,7 +279,7 @@ class ImportScreenTest {
         unfiledName = "Unfiled",
         download = download,
       )
-    compose.setContent { ImportScreen(presenter = presenter, onDone = onDone) }
+    compose.setContent { ImportScreen(presenter = presenter, onDone = onDone, onChooseFile = onChooseFile) }
     return presenter
   }
 
@@ -305,11 +344,22 @@ class ImportScreenTest {
 
   @Test
   fun `a presenter given no downloader says so rather than doing nothing`() {
-    val presenter = show()
+    // Built without one at all, rather than through `show`, which always hands
+    // a stand-in over: the default is what a caller that supplies none gets,
+    // and it was never the thing being run.
+    val presenter =
+      ImportPresenter(
+        importer = importer,
+        catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set)),
+        scope = scope,
+        unfiledName = "Unfiled",
+      )
+    compose.setContent { ImportScreen(presenter = presenter) }
 
     presenter.fetch("https://example.test/thorin.json")
 
     compose.waitUntil(PATIENCE) { presenter.state is ImportState.Unreachable }
+    compose.onNodeWithText("cannot reach the network", substring = true).assertIsDisplayed()
   }
 
   @Test
