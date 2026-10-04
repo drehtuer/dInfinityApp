@@ -147,7 +147,7 @@ while [ "$#" -gt 0 ]; do
     --seed) seed="${2:?--seed needs a number}"; shift 2 ;;
     -l | --label) label="${2:?--label needs a name}"; shift 2 ;;
     --table) table="${2:?--table needs a table look id, such as dark-glass}"; shift 2 ;;
-    --rounding) rounding="${2:?--rounding needs a share of the die's size, such as 0.12}"; shift 2 ;;
+    --rounding) rounding="${2:?--rounding needs a share of the size of a die, such as 0.12}"; shift 2 ;;
     -o | --out) out="${2:?--out needs a directory}"; shift 2 ;;
     --no-build) build=0; shift ;;
     *) usage; fail "unknown argument: $1" ;;
