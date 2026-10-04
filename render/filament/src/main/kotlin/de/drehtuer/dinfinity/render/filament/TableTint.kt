@@ -23,6 +23,12 @@ import de.drehtuer.dinfinity.core.model.AtlasImage
  * oak boards average 0.44, a lacquered floor, and under the studio's key
  * light that is a white glint across the middle of the tray that turned the
  * brown boards pinkish grey ([roughnessShift]).
+ *
+ * **And the colour is what is on the screen, sheen and all.** Even at the
+ * look's roughness a dielectric reflects the lamps — grey, on top of its
+ * colour — and on green felt's red that doubled the channel: the Pixel 10a
+ * drew `#1f5e3a` as (44, 94, 65). The colour handed to the material is the
+ * one that, with that reflection added, draws as the look's ([SurfaceLight]).
  */
 object TableTint {
   /**
@@ -80,17 +86,25 @@ object TableTint {
    * What [colour] is drawn as over a picture whose average is [mean]: itself
    * when the look multiplies or there is no picture, and scaled to come out
    * at itself on average when the look asks for that ([averaged]).
+   *
+   * "Come out" is on the screen, under [light]: the surface reflects the
+   * lamps on top of whatever colour it is, and a dark felt's darkest channel
+   * is no bigger than that reflection, so the colour the material is given is
+   * the one that draws as [colour] once its sheen is added
+   * ([SurfaceLight.baseFor]). [SurfaceLight.MATTE] leaves [colour] as it is.
    */
   fun colourFor(
     colour: Colour,
     mean: Colour?,
     averaged: Boolean,
+    light: SurfaceLight = SurfaceLight.MATTE,
   ): Colour {
     if (!averaged || mean == null) return colour
+    val base = light.baseFor(colour)
     return Colour(
-      red = colour.red / mean.red.coerceAtLeast(LEAST_MEAN),
-      green = colour.green / mean.green.coerceAtLeast(LEAST_MEAN),
-      blue = colour.blue / mean.blue.coerceAtLeast(LEAST_MEAN),
+      red = base.red / mean.red.coerceAtLeast(LEAST_MEAN),
+      green = base.green / mean.green.coerceAtLeast(LEAST_MEAN),
+      blue = base.blue / mean.blue.coerceAtLeast(LEAST_MEAN),
       alpha = colour.alpha,
     )
   }

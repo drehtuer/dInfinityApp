@@ -2611,8 +2611,14 @@ every pixel of them are what they were.
   middle of the floor. At 0.44 that was a white sheen of about 0.06 in linear
   light over a brown whose blue is 0.013, and the oak drew pinkish grey; the
   rim, darker still, drew as grey stone. Oiled oak at 0.75 keeps a sheen of
-  about a hundredth looking straight down, which `TableTextureDeviceTest`
-  holds the floors to (`docs/tables.md`, "Built-in tables").
+  about 2.3 % of white looking straight down, and felt at 0.9 1.4 % — grey,
+  on top of the colour, and as big as green felt's red. So the colour the
+  material is given is the one that draws as the look's once that sheen is
+  added (`SurfaceLight`: Filament's GGX for the key and its split-sum table
+  for the room, worked out on the JVM for a surface facing up seen straight
+  down); a channel darker than the sheen is lifted by the least grey that
+  reaches it, which keeps the colour's hue. `TableTextureDeviceTest` holds the
+  floors to their colours (`docs/tables.md`, "What the floors draw as").
 - **Uploaded once per package**, on the engine beside the die atlases and
   given back with it, under the same keys (`docs/dice-sets.md`, "How an atlas
   reaches the tray"). The bundled felt and oak are 1.5 MB of WebP in the APK

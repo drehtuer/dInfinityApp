@@ -367,9 +367,11 @@ keeps them comparable.
       solver's own convex radius (91 — does the bend's glint, now spread by
       specular anti-aliasing, read as a soft highlight), felt and oak drawn
       from CC0 pictures (92 — run `TableTextureDeviceTest`, whose floor
-      colours are logged under `TableTextureDeviceTest`; in the gallery, does
-      the oiled oak read as warm oak rather than grey, do the rims and walls
-      read as wood, is the felt's crinkle too strong — its normal map can be
+      colours are logged under `TableTextureDeviceTest`; in the gallery, with
+      each look's sheen now taken out of its colour, does the green felt read
+      as the old green, the black felt as black cloth rather than flat grey,
+      the oak as warm oak — a little darker than before — and its walls as
+      wood, is the felt's crinkle too strong — its normal map can be
       softened — and does it shimmer as the dice settle, and is plain
       unchanged), the dice reflected faintly in the dark glass (93 — is the
       reflection soft and dim enough, and does it look right that the walls
@@ -426,6 +428,15 @@ their own, add recomposition tests. Figures go in every PR description.
 
 ### Rendering and physics
 
+- [ ] **Flat surfaces wear a mirror lacquer nobody asked for.** The dice's
+      material writes `material.clearCoat` only when a die has a lacquer, and
+      Filament's default is a full coat, so plain, dark glass, a flat felt and
+      every flat wall are drawn under a smooth coat that also takes away their
+      own sheen (`docs/tables.md`, "What the floors draw as"). Writing it
+      always changes every flat look and `StudioLightDeviceTest`'s felt
+      (its red would come out about 45, not 34) — so it wants the flat
+      looks put through `SurfaceLight` as the textured ones are, judged in
+      the gallery
 - [ ] **A numeral at 0.78 of its face, or 0.78 squared?** `FACE_SHARE` is
       applied twice (`LabelRoom.centred`), so a numeral is ~0.61 of its room.
       Once would make every number 28 % bigger; tray and designer move together

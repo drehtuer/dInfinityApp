@@ -39,7 +39,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   phone the oak drew pinkish grey: its photograph's roughness map (0.44)
   stood in for the look's, and the key light's sheen washed the brown out. A
   look in `average` now has its roughness map averaged at its `roughness`
-  too, and oak is oiled at 0.75 — not yet run on the phone. It reaches `main` when the owner likes it on the phone.
+  too, and oak is oiled at 0.75. The phone then drew green felt's red 13 over:
+  the felt's own sheen, 1.4 % of white, which a look in `average` now has
+  taken out of its colour (`SurfaceLight`) — not yet run on the phone. It
+  reaches `main` when the owner likes it on the phone.
 
 ## Done
 

@@ -645,7 +645,13 @@ class FilamentStage(
     val albedo = maps.albedo?.let { parts.tablePicture(it, SurfaceMap.ALBEDO) }
     val normal = maps.normal?.let { parts.tablePicture(it, SurfaceMap.NORMAL) }?.texture
     val roughness = maps.roughness?.let { parts.tablePicture(it, SurfaceMap.ROUGHNESS) }
-    val colour = TableTint.colourFor(parameters.colour, albedo?.mean, parameters.averaged)
+    val colour =
+      TableTint.colourFor(
+        parameters.colour,
+        albedo?.mean,
+        parameters.averaged,
+        SurfaceLight.facingUp(parameters.roughness),
+      )
     val shift = TableTint.roughnessShift(parameters.roughness, roughness?.level, parameters.averaged)
     return parts.materialFor(parameters).createInstance().apply {
       setParameter(

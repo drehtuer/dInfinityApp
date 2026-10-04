@@ -289,7 +289,7 @@ flowchart TD
 | `color_mode` | The surface is | For |
 | --- | --- | --- |
 | `multiply` (default) | `*_color` × the picture, which is what the format has always said; a roughness map is the roughness | a photograph — its colour is white and it is shown as it was taken |
-| `average` | the picture scaled, channel by channel, so it *averages out at* `*_color`; a roughness map moved so it averages out at `roughness` | a dyed cloth: `#1f5e3a` is the green the felt is, and the pictures add only its grain |
+| `average` | the picture scaled, channel by channel, so it *averages out at* `*_color` on the screen, the lamps' sheen included ("What the floors draw as"); a roughness map moved so it averages out at `roughness` | a dyed cloth: `#1f5e3a` is the green the felt is, and the pictures add only its grain |
 
 The average is taken once, in linear light, from the pixels the picture is
 uploaded from (`TableTint`), and the scale stops at sixteen times so a nearly
@@ -338,19 +338,52 @@ looks as it does on felt.
 | `dark-glass` | flat colour | flat colour |
 | `plain` | flat colour — the look that costs least to draw, and it stays that | flat colour |
 
-**What the floors draw as.** Looking straight down — the Table view's
-default — with the real room and the post pass on, green felt comes out
-within ten levels a channel of its `floor_color`, as a flat felt always has.
-Oak comes out as its brown with the room's sheen on top, which no roughness
-takes away: a dielectric reflects four per cent of the room looking straight
-down, about a hundredth in linear light, and that is ten to twenty levels on a
-blue of 30 (`#5a3a1e`) or a black felt's 26, a level or two on green felt's
-58. So oak and black felt are held to twenty levels a channel, oak to staying
-a warm brown — red over green over blue — as well, and green felt to ten
-(`TableTextureDeviceTest`). Tilted, the key's highlight
-falls nearer the middle of the floor and the sheen roughly doubles; the oak
-was 0.55 once, and its photograph's own map 0.44, and at either the highlight
-turned the boards pinkish grey.
+**What the floors draw as.** Every surface reflects the lamps on top of its
+colour. A dielectric gives back four per cent of the light straight on, and a
+rough one spreads that over a wide lobe instead of a highlight: under the
+studio's key and room, looking straight down, a felt at roughness 0.9 gives
+back 1.4 % of white in every channel and oiled oak at 0.75 about 2.3 %. That
+is grey, and it is not small next to a dark colour: green felt's red is
+`#1f`, 1.4 % in light, and the Pixel 10a drew `#1f5e3a` as (44, 94, 65) — the
+red doubled, the blue up seven — while the colour reached the material divided
+by the picture's average and nothing else. The normal and roughness maps are
+not the cause: modelled with the felt's own maps, the sheen is the same to a
+ten-thousandth as a flat surface's at 0.9.
+
+So a look in `color_mode = "average"` hands the material the colour that
+draws as its `*_color` *once its sheen is added* (`SurfaceLight`): the
+sheen is worked out from the key, the room, the exposure and the look's
+roughness by Filament's own GGX — its distribution, its visibility and the
+split-sum table it draws a room's reflection with — for a surface facing up
+seen straight down, the Table view's default, and taken out of the colour.
+A colour with a channel darker than the sheen cannot be drawn by any
+surface of that roughness under these lamps; it is lifted by the least grey
+that brings that channel up to the sheen, which keeps the differences
+between its channels — its hue — where clamping the channel alone would turn
+a dark brown maroon. Black felt is therefore drawn as its sheen, `#202020`
+or so, as dark as a dielectric felt can be; it keeps its cloth, because most
+of a felt's grain at screen size is the normal and roughness maps moving the
+sheen, not the colour picture. Oak's blue is lifted the same way.
+
+`TableTextureDeviceTest` holds each textured floor, straight down, with the
+real room and the post pass, to its `floor_color`: green felt within ten
+levels a channel, oak and black felt within twenty — what is left there is
+the part no colour reaches, about six levels on black felt and twelve on
+oak's blue — and oak to staying a warm brown, red over green over blue.
+Tilted, the key's highlight falls nearer the middle of the floor and the
+sheen grows by a tenth or so; that shot is logged, not held. Oak was 0.55
+once, and its photograph's own map 0.44, and at either the highlight turned
+the boards pinkish grey.
+
+A flat look — plain, dark glass, a look made in code — is drawn through the
+dice's material, whose lacquer Filament leaves on at full strength when the
+look asks for none (`material.clearCoat` defaults to one, and the material
+only writes it when a die has a lacquer). Under that coat the surface's own
+sheen is gone and what is left is a mirror's four per cent of the ceiling
+straight overhead, which in the studio is dim: so the flat felt the studio was
+calibrated against (`StudioLightDeviceTest`) draws `#1f5e3a` as (34, 89, 58),
+eleven under the textured one's red before this correction. Nothing above
+depends on that, and it is noted in `docs/TODO.md`.
 
 Where the pictures come from, their licence (CC0) and how they were cut are in
 `docs/assets/README.md`, "Table textures".

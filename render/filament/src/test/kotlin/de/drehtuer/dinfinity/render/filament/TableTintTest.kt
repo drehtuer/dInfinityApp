@@ -49,6 +49,34 @@ class TableTintTest {
   }
 
   @Test
+  fun `under the lamps an averaged felt draws as its colour once its sheen is added`() {
+    // The Pixel 10a drew #1f5e3a as (44, 94, 65) while the colour was divided
+    // by the picture's average and nothing else: the felt's own reflection of
+    // the lamps, grey, on top.
+    val green = Colour.of(0xFF1F5E3A.toInt())
+    val mean = Colour(red = 0.36, green = 0.36, blue = 0.36, alpha = 1.0)
+    val light = SurfaceLight.facingUp(roughness = 0.9)
+
+    val tint = TableTint.colourFor(green, mean, averaged = true, light = light)
+    val drawn =
+      light.drawn(Colour(tint.red * mean.red, tint.green * mean.green, tint.blue * mean.blue, tint.alpha))
+
+    assertEquals(light.baseFor(green).green, tint.green * mean.green, TOLERANCE)
+    assertEquals(green.green, drawn.green, LIGHT_TOLERANCE)
+    assertEquals(green.blue, drawn.blue, LIGHT_TOLERANCE)
+    assertEquals(green.red, drawn.red, LIGHT_TOLERANCE)
+  }
+
+  @Test
+  fun `a look that multiplies is not lifted out of its sheen`() {
+    // A photograph is drawn as it was taken, sheen and all.
+    val photo = Colour(1.0, 1.0, 1.0, 1.0)
+    val mean = Colour(0.2, 0.3, 0.4, 1.0)
+
+    assertSame(photo, TableTint.colourFor(photo, mean, averaged = false, light = SurfaceLight.facingUp(0.9)))
+  }
+
+  @Test
   fun `a coloured picture is evened out channel by channel`() {
     // Oak's own brown, made to average out at a neutral grey: the ebonised
     // walls of the black felt.
@@ -126,6 +154,9 @@ class TableTintTest {
 
   private companion object {
     const val TOLERANCE = 1e-9
+
+    /** Green felt's red is a hair under its sheen, and is drawn that hair over. */
+    const val LIGHT_TOLERANCE = 1e-3
     const val BLACK = 0xFF000000.toInt()
     const val WHITE = 0xFFFFFFFF.toInt()
     const val RED_SHIFT = 16

@@ -115,43 +115,63 @@ class TableTextureDeviceTest {
     // rest. `color_mode = "average"` says the colour in the file is what the
     // floor averages out to, and here is where that is held to.
     //
-    // The oak and the black felt are held to twice the green felt's
-    // tolerance, and the oak to staying warm: the room's sheen on a
-    // dielectric is about a hundredth in linear light whatever the roughness,
-    // which is ten to twenty levels on oak's blue of 30 or black felt's 26
-    // and a level or two on the green felt's 58 (`docs/tables.md`, "Built-in
-    // tables"). It drew (112, 91, 82) in the gallery's tilted shot while its
-    // roughness map stood in for its roughness: pinkish grey.
+    // Every surface reflects the lamps on top of its colour, grey: 1.4 % of
+    // white for the felt, 2.3 % for the oiled oak, looking straight down.
+    // The colour the material is given has that sheen taken out
+    // (`SurfaceLight`) — before it was, green felt drew (44, 94, 65), its red
+    // 13 over. A channel darker than the sheen cannot be drawn at all, and is
+    // lifted by the least grey that reaches it: black felt's 26 comes out
+    // about 32 and oak's blue of 30 about 42. So the oak and the black felt
+    // are held to twice the green felt's tolerance, and the oak to staying
+    // warm (`docs/tables.md`, "What the floors draw as"). It drew
+    // (112, 91, 82) in the gallery's tilted shot while its roughness map stood
+    // in for its roughness: pinkish grey.
     //
     // The tilted shot is logged beside it, not held to a number: the key's
     // highlight lands nearer the middle of the floor there, and the gallery
     // is where a person judges it.
-    listOf(
-      Triple("felt-green", FELT_TOLERANCE, false),
-      Triple("felt-black", DARK_TOLERANCE, false),
-      Triple("oak", DARK_TOLERANCE, true),
-    ).forEach { (id, tolerance, warm) ->
-      val look = look(id)
-      val wrote = channelsOf(look.floorColorArgb)
-      val down = drawnFloorOf(look, TableView.StraightDown)
-      val tilted = drawnFloorOf(look, TableView.Angled)
-      Log.i(
-        TAG,
-        "$id floor ${wrote.joinToString()} drew as (${shown(down)}) straight down, (${shown(tilted)}) tilted",
-      )
-      wrote.indices.forEach { channel ->
+    // Every floor is drawn and logged before any is held to its number, so a
+    // run that fails on the first still says what the others drew.
+    val floors =
+      listOf(
+        Triple("felt-green", FELT_TOLERANCE, false),
+        Triple("felt-black", DARK_TOLERANCE, false),
+        Triple("oak", DARK_TOLERANCE, true),
+      ).map { (id, tolerance, warm) ->
+        val look = look(id)
+        val wrote = channelsOf(look.floorColorArgb)
+        val down = drawnFloorOf(look, TableView.StraightDown)
+        val tilted = drawnFloorOf(look, TableView.Angled)
+        Log.i(
+          TAG,
+          "$id floor ${wrote.joinToString()} drew as (${shown(down)}) straight down, (${shown(tilted)}) tilted",
+        )
+        DrawnFloor(id, wrote, down, tilted, tolerance, warm)
+      }
+    floors.forEach { floor ->
+      floor.wrote.indices.forEach { channel ->
         assertTrue(
-          "$id drew as (${shown(down)}) straight down for ${wrote.joinToString()}",
-          abs(down[channel] - wrote[channel]) <= tolerance,
+          "${floor.id} drew as (${shown(floor.down)}) straight down for ${floor.wrote.joinToString()}",
+          abs(floor.down[channel] - floor.wrote[channel]) <= floor.tolerance,
         )
       }
-      if (warm) {
-        listOf(down, tilted).forEach { drawn ->
-          assertTrue("$id is not a warm brown: (${shown(drawn)})", drawn[0] > drawn[1] && drawn[1] > drawn[2])
+      if (floor.warm) {
+        listOf(floor.down, floor.tilted).forEach { drawn ->
+          assertTrue("${floor.id} is not a warm brown: (${shown(drawn)})", drawn[0] > drawn[1] && drawn[1] > drawn[2])
         }
       }
     }
   }
+
+  /** What one look's floor was written as and drew as, and what it is held to. */
+  private class DrawnFloor(
+    val id: String,
+    val wrote: IntArray,
+    val down: DoubleArray,
+    val tilted: DoubleArray,
+    val tolerance: Double,
+    val warm: Boolean,
+  )
 
   /**
    * The mean red, green and blue [look]'s empty floor draws as from [view],
@@ -306,7 +326,7 @@ class TableTextureDeviceTest {
     /** The flat felt's own tolerance (`StudioLightDeviceTest`), in levels of 255 a channel. */
     const val FELT_TOLERANCE = 10.0
 
-    /** Oak's and black felt's: twice the felt's, for the room's sheen on a channel near 30 (see the test). */
+    /** Oak's and black felt's: twice the felt's, for a channel darker than the sheen (see the test). */
     const val DARK_TOLERANCE = 20.0
 
     /** How far clear of the walls the floor is measured: the corners' rounding and the foot of the wall. */
