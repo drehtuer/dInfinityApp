@@ -2570,13 +2570,27 @@ the roll's number at the display size in the middle of the screen and again at
 clipped. So a subtotal is drawn unless it is the whole of the result
 (`Subtotals`, and `docs/design-handover.md`).
 
-**A die from a later pass should say so — not built yet.** A roll that had to
-throw something again shows the dice of its last pass only, so a total counting
-twenty dice can stand over a table holding three. The design gives those dice a
-4 dp `--color-accent-700` outline and a `pass 2` label in the slot the
-`dropped` marker already uses, so the number on the felt stops looking like a
-mistake; the app does not draw either yet (`docs/TODO.md`, "Mark the dice of a
-later pass").
+**A die from a later pass says so.** A roll that had to throw something
+again keeps on the table only what the last pass of each throw left there, so a
+total counting twenty dice can stand over a table holding three. Those dice are
+outlined in `--color-accent-700`, 4 dp, along the die's own edge, and labelled
+`PASS 2` (or 3, …) under it — ten, semibold, tracked, on a plate of the ground,
+in the slot the design's `dropped` marker uses — so the number on the felt
+stops looking like a mistake (`PassMarks`; `design/dInfinityPhone.dc.html`,
+the tray's `mark`). A pass is every throw of the roll, counted from the first:
+a re-throw of dice nobody could read, the dice a chain earned, and the dice a
+finger picked up are each the next one, and the dice of the first throw carry
+nothing (`docs/architecture.md`, decision 85).
+
+It is drawn over the picture as the pick ring is, and for the same reasons —
+the renderer draws what the simulation says and nothing else — and it stays off
+the felt the same way: the accent-700 line runs inside an 8 dp band of the
+ground. The outline is exact rather than a circle: `TrayPick.outlineOf` puts
+the corners of the die's hull, turned the way it lies, through the frustum the
+picture was drawn in and wraps them, which is the die's silhouette because a
+die is convex. That is also what keeps it apart from a pick, which is a circle
+outside the die in the accent itself; a die that is both wears both, the ring
+on top. Like the ring, it is shown only under a total.
 
 **6 and 9 carry a trailing dot.** A die on a table lies at whatever angle it
 landed at, and `6` and `9` are the same glyph turned over, so the ambiguous one

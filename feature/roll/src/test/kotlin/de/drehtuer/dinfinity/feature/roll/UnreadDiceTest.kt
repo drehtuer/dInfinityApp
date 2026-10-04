@@ -240,6 +240,64 @@ class UnreadDiceTest {
     assertEquals(RollState.ThrowAgain(unread = 1, read = 1), machine.state)
   }
 
+  @Test
+  fun `the dice of the first throw are its first pass, and a re-throw's are numbered by the shake`() {
+    // Decision 85: a later pass is marked on the tray, and only the last pass
+    // of a throw leaves dice on it — so the one die still lying there after
+    // two re-throws is the third pass's, and the label has to say so.
+    val machine = machine()
+    machine.type("3d6")
+    machine.throwDice()
+    machine.settled(pass(read = mapOf(0 to 1), unread = listOf(1, 2)))
+    assertTrue("a throw waiting on a hand offered dice to mark", machine.passesOnTheTable.isEmpty())
+    machine.throwAgain()
+    machine.settled(pass(read = mapOf(0 to 3), unread = listOf(1)))
+    machine.throwAgain()
+
+    machine.settled(pass(read = mapOf(0 to 0)))
+
+    assertEquals(listOf(3), machine.passesOnTheTable)
+    assertEquals("one pass for each die on the table", machine.onTheTable.size, machine.passesOnTheTable.size)
+    assertEquals("a throw read at once is all first pass", listOf(1, 1, 1), oneThrowOnTheTable("3d6"))
+  }
+
+  @Test
+  fun `a die a chain earned is the next pass, and a re-throw of it the one after`() {
+    val machine = machine()
+    machine.type("2d6!")
+    machine.throwDice()
+    machine.settled(pass(read = mapOf(0 to 5, 1 to 1)))
+    machine.throwEarned(hand())
+    machine.settled(pass(read = emptyMap(), unread = listOf(0)))
+    machine.throwAgain()
+
+    machine.settled(pass(read = mapOf(0 to 2)))
+
+    assertEquals(listOf(1, 1, 3), machine.passesOnTheTable)
+  }
+
+  @Test
+  fun `a chain's die that lands at once is the second pass`() {
+    val machine = machine()
+    machine.type("2d6!")
+    machine.throwDice()
+    machine.settled(pass(read = mapOf(0 to 5, 1 to 1)))
+    machine.throwEarned(hand())
+
+    machine.settled(pass(read = mapOf(0 to 2)))
+
+    assertEquals(listOf(1, 1, 2), machine.passesOnTheTable)
+  }
+
+  /** The passes on the table after [formula] is read whole on its first throw. */
+  private fun oneThrowOnTheTable(formula: String): List<Int> {
+    val machine = machine()
+    machine.type(formula)
+    val dice = requireNotNull(machine.throwDice()).dice.size
+    machine.settled(pass(read = (0 until dice).associateWith { 0 }))
+    return machine.passesOnTheTable
+  }
+
   /** What [formula] comes to when every face is read on the first pass. */
   private fun oneThrow(
     formula: String,

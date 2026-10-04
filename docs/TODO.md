@@ -41,8 +41,6 @@ Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`, `1z`.
 Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md` ("What is drawn over the table").
 
-- [ ] **Mark the dice of a later pass** — 4 dp accent-700 outline and a
-      `pass 2` label in the `dropped` slot (design pass of 2026-09-17)
 - [ ] **Stagger the spawn**, 85 ms between dice, the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** ported: a settled die moved by code is the
@@ -101,6 +99,12 @@ Implementation notes recorded only here:
       expect, and is the double tap found at all without being told? Tap a
       die: is the ~300 ms before its ring appears noticeable, or does a pick
       still feel immediate?
+- [ ] **A later pass** (decision 85): land a die cocked and shake it again,
+      or let a `2d6!` explode, or pick a die and shake — does the accent-700
+      outline sit on the die's own edge at every pinch, does `PASS 2` under it
+      read at arm's length on each table, and does it say "this came later"
+      rather than "this one is wrong"? Pick that die again: are the ring and
+      the outline plainly two different marks?
 - [ ] **The shake prompt** (decision 84): land a die cocked (or a `1d6!` that
       explodes) — is "Shake to re-throw 1 die" at the top impossible to miss
       now, does it go the moment you shake, and does TalkBack read it once?

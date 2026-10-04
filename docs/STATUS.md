@@ -16,16 +16,15 @@ This is a snapshot, not a changelog — git history is the changelog.
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
 - **Latest release:** `v0.1.1`, signed and published with its SHA-256.
-- **`main` is at #360**: the owner's feedback on the overnight build is in
+- **`main` is at #362**: the owner's feedback on the overnight build is in
   — a cold start shows the tray in 0.8 s (decision 46), the watched pace is
   0.4 (65), *Clear face* in the designer (82), a throw folds the top away and
-  a double tap clears the table (83), and an accent shake prompt and pick
-  ring (84).
-- **In flight:** the designer's *Roll it* threw the drawing as it was the
-  first time — the tray's atlas cache now decodes a package's file again
-  when it changes. And every formula field gets a × that empties it in one
-  tap and keeps the keyboard up, the same empty text a backspace hands over
-  (`docs/dice-notation.md`, "Emptying the field").
+  a double tap clears the table (83), an accent shake prompt and pick ring
+  (84), *Roll it* throws the drawing as it is now, and every formula field
+  has a × that empties it.
+- **In flight:** the dice of a later pass are outlined in accent-700 and
+  labelled `PASS 2` under them on the tray (decision 85,
+  `docs/physics-and-rendering.md`, "What is drawn over the table").
 
 ## Done
 
