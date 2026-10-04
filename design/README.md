@@ -127,7 +127,7 @@ line and rings round the first two dice of a landed roll, and `earned` and
 `stuck` carry the prompt too. Both are hand edits (see **Editing**).
 
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
-2026-09-17, with three hand edits to `dInfinityPhone.dc.html` since (see
+2026-09-17, with five hand edits to `dInfinityPhone.dc.html` since (see
 **Editing**).
 
 ## Viewing
@@ -164,7 +164,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 Edit in the [Claude Design project](./) and re-import here so the two stay in
 step.
 
-**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Four
+**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Five
 small corrections were made here after the 2026-09-17 sync, to keep the
 prototype true to the app: the shake prompt over the tray, the `THROW AGAIN`
 plate and the accent pick ring, reached by the `rollState` values `unread`
@@ -177,7 +177,13 @@ designer's `Clear eyes` is `Clear face` (`clearFace`, dead on a blank face),
 which takes everything off the face in front of the player in one undoable
 step, with the undo snapshots now carrying the pips and the d4's corner
 numbers so that undo brings them back
-([../docs/face-designer.md](../docs/face-designer.md), "Clear face"). Before the next
+([../docs/face-designer.md](../docs/face-designer.md), "Clear face"); and every
+formula input — the roll screen's two, the graph's and the editor's — carries
+a `#ic-x` button, "Clear the formula", while it has text, which empties it
+through the same setter its `onChange` uses (`formulaFilled` / `clearFormula`,
+`gFormulaFilled` / `clearGFormula`, `edFormulaFilled` / `clearEdFormula`)
+([../docs/dice-notation.md](../docs/dice-notation.md), "Emptying the field").
+Before the next
 import, either make the same changes in the design project or re-apply them
 afterwards; `git log -- design/dInfinityPhone.dc.html` lists them
 ([../docs/design-handover.md](../docs/design-handover.md), "The shake is the

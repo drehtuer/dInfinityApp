@@ -6,10 +6,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertIsNotFocused
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -226,6 +229,70 @@ class FormulaFieldTest {
     compose.onNodeWithText("tick 1").assertIsDisplayed()
     compose.onNodeWithTag(FormulaTestTags.FIELD).assertIsDisplayed()
     compose.onNodeWithTag(FormulaTestTags.ERROR, useUnmergedTree = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `an empty field has no cross`() {
+    // There is nothing for it to clear.
+    compose.setContent { FormulaField(text = "", onChange = {}, hint = "3d6") }
+
+    compose.onNodeWithTag(FormulaTestTags.CLEAR).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a field with something in it has one`() {
+    compose.setContent { FormulaField(text = "3d6", onChange = {}) }
+
+    compose.onNodeWithTag(FormulaTestTags.CLEAR).assertIsDisplayed()
+  }
+
+  @Test
+  fun `the cross hands out an empty formula, the way the last backspace would`() {
+    // Not a second way to empty a formula: the caller hears exactly what it
+    // hears when the text is deleted by hand, and does whatever it does then.
+    var text by mutableStateOf("8d6 [Fire]")
+    val typed = mutableListOf<String>()
+    compose.setContent {
+      FormulaField(
+        text = text,
+        onChange = {
+          typed += it
+          text = it
+        },
+      )
+    }
+
+    compose.onNodeWithTag(FormulaTestTags.CLEAR).performClick()
+
+    assertEquals(listOf(""), typed)
+    compose.onNodeWithTag(FormulaTestTags.CLEAR).assertDoesNotExist()
+  }
+
+  @Test
+  fun `and leaves the cursor in the field for the next formula`() {
+    // Emptying it is for typing something else, so the keyboard stays — or
+    // comes up, on a field nobody had tapped yet.
+    var text by mutableStateOf("3d6")
+    compose.setContent { FormulaField(text = text, onChange = { text = it }) }
+
+    compose.onNodeWithTag(FormulaTestTags.CLEAR).performClick()
+
+    compose.onNodeWithTag(FormulaTestTags.FIELD).assertIsFocused()
+    compose.onNodeWithTag(FormulaTestTags.FIELD).performTextInput("1d20")
+    assertEquals("1d20", text)
+  }
+
+  @Test
+  fun `the cross says what it does, and is big enough to press`() {
+    // A drawing has no words (`docs/architecture.md`, "Accessibility"), and
+    // an 18 dp mark is not a thumb's worth ("Touch targets").
+    compose.setContent { FormulaField(text = "3d6", onChange = {}) }
+
+    compose
+      .onNodeWithTag(FormulaTestTags.CLEAR)
+      .assertContentDescriptionEquals("Clear the formula")
+      .assertWidthIsAtLeast(TOUCH_TARGET)
+      .assertHeightIsAtLeast(TOUCH_TARGET)
   }
 
   private fun noSuchDie() =

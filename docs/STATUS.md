@@ -23,7 +23,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   ring (84).
 - **In flight:** the designer's *Roll it* threw the drawing as it was the
   first time — the tray's atlas cache now decodes a package's file again
-  when it changes.
+  when it changes. And every formula field gets a × that empties it in one
+  tap and keeps the keyboard up, the same empty text a backspace hands over
+  (`docs/dice-notation.md`, "Emptying the field").
 
 ## Done
 
@@ -65,7 +67,7 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 
 1. Whether the dice now travel at the right speed: the tumble was approved,
    the travel was still a little fast, so `RollPace.WATCHED` went from 0.5 to
-   0.4 (`feature/slower-pace`) — and whether `1d20` a dozen times still feels
+   0.4 (#357) — and whether `1d20` a dozen times still feels
    prompt.
 2. Whether the five tables sound like their materials, and whether the
    haptics read as knocks.
