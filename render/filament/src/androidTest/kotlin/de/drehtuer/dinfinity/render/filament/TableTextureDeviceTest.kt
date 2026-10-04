@@ -309,14 +309,22 @@ class TableTextureDeviceTest {
     const val MIDDLE_FROM = 0.35
     const val MIDDLE_TO = 0.65
 
-    /** Grain worth calling grain, in levels of 255 between neighbours. */
-    const val LEAST_GRAIN = 1.0
+    /** What a flat lit colour stays under, in levels of 255 between neighbours. */
+    const val FLAT = 0.5
+
+    /**
+     * Grain worth calling grain: half as much again as the most a flat colour
+     * may have. It was a round 1.0 before the floors were drawn at their
+     * looks' colours (`SurfaceLight`); taking the sheen out of the felt took
+     * a little of the sparkle its weave caught, and the green felt measured
+     * 0.91 on the Pixel 10a with plain at 0.016. Tied to [FLAT] so that the
+     * question stays the one this test asks — is there a picture on the
+     * floor, or a flat colour — rather than how bright the cloth is.
+     */
+    const val LEAST_GRAIN = FLAT * 1.5
 
     /** And how much grainier than plain the felt has to be. */
     const val GRAINIER = 3.0
-
-    /** What a flat lit colour stays under. */
-    const val FLAT = 0.5
 
     const val RGB = 3
     const val BYTE = 0xFF
