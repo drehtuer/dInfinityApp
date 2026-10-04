@@ -360,7 +360,17 @@ class TrayLoop(
     // somebody has to remember to clear (`PowerSavingTray`). The clock itself
     // stays [secondsSince]'s, which the falling board on the other branch of
     // this frame uses too.
-    live.advance(RollPace.secondsFor(secondsSince(nanos), live.driven, live.stepsTaken))
+    // A big roll's tail is quickened as its dice are read ([RollPace.paceFor]).
+    val stillMoving = live.unsettled.size
+    live.advance(
+      RollPace.secondsFor(
+        secondsSince(nanos),
+        live.driven,
+        live.stepsTaken,
+        stillMoving = stillMoving,
+        dice = stillMoving + live.countedSoFar.size,
+      ),
+    )
     hear(live)
     watch(live)
     count(live)

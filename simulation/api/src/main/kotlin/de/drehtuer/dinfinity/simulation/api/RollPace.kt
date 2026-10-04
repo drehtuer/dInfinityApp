@@ -87,6 +87,23 @@ object RollPace {
   val WATCHED_STEPS: Int = (WATCHED_SECONDS * SettleRule.STEPS_PER_SECOND).toInt()
 
   /**
+   * The fewest dice a roll needs for its tail to be quickened ([paceFor]).
+   *
+   * Below this the last die tumbling *is* the roll — `1d20`, `3d6` — and it is
+   * watched at [WATCHED] to the end, which is the pace the owner chose.
+   */
+  const val TAIL_FROM_DICE: Int = 10
+
+  /**
+   * While at least this share of a big roll's dice is still unread, the roll is
+   * watched at [WATCHED].
+   */
+  const val TAIL_STARTS: Double = 0.25
+
+  /** At this share or less still unread, a big roll is shown at real speed. */
+  const val TAIL_ENDS: Double = 0.10
+
+  /**
    * What [elapsedSeconds] of a real frame is worth to the roll.
    *
    * @param driven whether a hand is throwing these dice at this moment. True
@@ -94,10 +111,45 @@ object RollPace {
    *   answered.
    * @param stepsTaken how far the roll has got, in fixed steps. Past
    *   [WATCHED_STEPS] the frame is given back whole as well.
+   * @param stillMoving how many of the roll's dice have not been read yet.
+   * @param dice how many dice the roll threw.
    */
   fun secondsFor(
     elapsedSeconds: Double,
     driven: Boolean,
     stepsTaken: Int = 0,
-  ): Double = if (driven || stepsTaken >= WATCHED_STEPS) elapsedSeconds else elapsedSeconds * WATCHED
+    stillMoving: Int = 0,
+    dice: Int = 0,
+  ): Double = elapsedSeconds * paceFor(driven, stepsTaken, stillMoving, dice)
+
+  /**
+   * The share of real time a roll is shown at, from [WATCHED] up to `1.0`.
+   *
+   * **A big roll's tail is quickened.** A hundred d4 settle in a median 1.29 s
+   * of simulated time but their slowest one in a hundred takes 3.09 s, and at
+   * [WATCHED] that is 7.7 s on the screen of a few dice rocking while ninety-odd
+   * lie still (Pixel 10a, 200 throws). So once most of a roll of at least
+   * [TAIL_FROM_DICE] dice is read, the pace climbs with the share that is: it
+   * is [WATCHED] while [TAIL_STARTS] or more is still moving, real speed at
+   * [TAIL_ENDS] or less, and in between a straight line. It never passes real
+   * speed — the last dice still move the way dice move — and like the rest of
+   * this object it decides only *when* steps are taken, never what they are,
+   * so the faces are the same at any pace (`docs/physics-and-rendering.md`,
+   * "The simulation clock").
+   */
+  fun paceFor(
+    driven: Boolean,
+    stepsTaken: Int = 0,
+    stillMoving: Int = 0,
+    dice: Int = 0,
+  ): Double {
+    if (driven || stepsTaken >= WATCHED_STEPS) return 1.0
+    if (dice < TAIL_FROM_DICE) return WATCHED
+    val moving = stillMoving.toDouble() / dice
+    return when {
+      moving >= TAIL_STARTS -> WATCHED
+      moving <= TAIL_ENDS -> 1.0
+      else -> WATCHED + (1.0 - WATCHED) * (TAIL_STARTS - moving) / (TAIL_STARTS - TAIL_ENDS)
+    }
+  }
 }

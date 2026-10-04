@@ -115,6 +115,27 @@ class TrayLoopTest {
   }
 
   @Test
+  fun `a big roll's tail is shown faster as its dice are read`() {
+    // A hundred dice, ninety-five of them read: past the tail's end, so the
+    // last five are shown at real speed rather than the watched pace.
+    val loop = TrayLoop()
+    val roll = FakeRoll(steps = 10)
+    loop.stage(FakeStage())
+    loop.roll(roll.start())
+    roll.read = 50
+    roll.moving = 50
+
+    loop.frame(SOME_LATE_UPTIME)
+    loop.frame(SOME_LATE_UPTIME + SIXTIETH_OF_A_SECOND_NANOS)
+    roll.read = 95
+    roll.moving = 5
+    loop.frame(SOME_LATE_UPTIME + 2 * SIXTIETH_OF_A_SECOND_NANOS)
+
+    assertEquals("half still moving is watched", RollPace.WATCHED / 60.0, roll.advanced[1], EPSILON)
+    assertEquals("a twentieth still moving is real time", 1.0 / 60.0, roll.advanced[2], EPSILON)
+  }
+
+  @Test
   fun `a hand coming back to a roll in progress takes the pace off again`() {
     // A second shake at dice still in the air is more of the same roll, not a
     // new throw — and the moment it starts the player is driving again, so the
@@ -637,7 +658,15 @@ class TrayLoopTest {
      * them away as it goes.
      */
     override val countedSoFar: Map<Int, Int>
-      get() = (0 until minOf(advanced.size, steps)).associateWith { 0 }
+      get() = (0 until (read ?: minOf(advanced.size, steps))).associateWith { 0 }
+
+    /** How many dice a test says are read, instead of one a step. */
+    var read: Int? = null
+
+    /** How many dice a test says are still moving. */
+    var moving: Int = 0
+
+    override val unsettled: List<Int> get() = List(moving) { it }
 
     /** Impacts a test pushes in, as a real roll would accumulate them. */
     val hits = mutableListOf<Impact>()
