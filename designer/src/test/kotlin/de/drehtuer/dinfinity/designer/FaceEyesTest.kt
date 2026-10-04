@@ -175,32 +175,10 @@ class FaceEyesTest {
   }
 
   @Test
-  fun `clearing takes the pips off and keeps the drawing round them`() {
-    val cleared = FaceEyes.clear(FaceEyes.fill(Drawings.drawn(d6, 0), Drawings.INK))
-
-    assertFalse(FaceEyes.pipped(cleared))
-    assertTrue(cleared.face(0).marks.any { it is Stroke })
-  }
-
-  @Test
-  fun `clearing an unpipped die is not a row of steps that changed nothing`() {
-    val drawn = Drawings.drawn(d6, 0, 1)
-
-    assertEquals(drawn, FaceEyes.clear(drawn))
-  }
-
-  @Test
   fun `a die that cannot be pipped is left alone`() {
     val drawn = Drawings.drawn(d20, 0)
 
     assertEquals(drawn, FaceEyes.fill(drawn, Drawings.INK))
-    assertFalse(FaceEyes.pipped(drawn))
-  }
-
-  @Test
-  fun `pipped says whether there is anything to clear`() {
-    assertFalse(FaceEyes.pipped(Draft(die = d6)))
-    assertTrue(FaceEyes.pipped(FaceEyes.fill(Draft(die = d6), Drawings.INK)))
   }
 
   @Test

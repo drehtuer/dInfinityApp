@@ -96,6 +96,40 @@ class DraftTest {
   }
 
   @Test
+  fun `clearing a face takes every kind of mark off it and leaves the other faces alone`() {
+    // `Clear face` (`docs/face-designer.md`, "Clear face"): pips, a fill, a
+    // stroke — whatever the face holds — and only the face in front of the
+    // player. The whole die is cleared by leaving it, not by a button.
+    val pipped = FaceEyes.fill(draft(), Drawings.INK)
+    val busy = pipped.onFace(0) { it.draw(fill()).draw(stroke()) }
+
+    val cleared = busy.onFace(0) { it.clear() }
+
+    assertTrue(cleared.face(0).blank)
+    (1 until 6).forEach { cell -> assertEquals("cell $cell", busy.face(cell), cleared.face(cell)) }
+    // One press of undo brings back all three marks, pips included.
+    assertEquals(busy.face(0).marks, cleared.onFace(0) { it.undo() }.face(0).marks)
+  }
+
+  @Test
+  fun `clearing a numbered face takes its numeral and keeps every other face's`() {
+    val numbered = FaceStamp.fill(draft(), Drawings.INK)
+
+    val cleared = numbered.onFace(2) { it.clear() }
+
+    assertTrue(cleared.face(2).blank)
+    assertEquals(5, (0 until 6).count { cell -> cleared.face(cell).marks.any { it is Stamp } })
+  }
+
+  @Test
+  fun `clearing a blank face is not a step`() {
+    // Nothing to take back, so nothing on the undo stack.
+    val cleared = draft().onFace(0) { it.clear() }
+
+    assertFalse(cleared.face(0).canUndo)
+  }
+
+  @Test
   fun `a face stops taking strokes at the limit, and says so before it does`() {
     // The screen warns before this; the model refuses rather than throwing,
     // because a finger is already on the glass by then.

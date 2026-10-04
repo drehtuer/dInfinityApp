@@ -507,18 +507,16 @@ class DesignerPresenterTest {
   }
 
   @Test
-  fun `a d6 can be pipped and a d20 cannot, which is what puts the buttons there`() {
+  fun `a d6 can be pipped and a d20 cannot, which is what puts the button there`() {
     assertTrue(DesignerPresenter(d6).state.canPip)
     assertFalse(DesignerPresenter(d20).state.canPip)
   }
 
   @Test
-  fun `filling with eyes pips every face and says so, and clearing takes them off`() {
+  fun `filling with eyes pips every face`() {
     val presenter = DesignerPresenter(d6, drafts = Remembered())
 
-    assertFalse(presenter.state.pipped)
     presenter.fillEyes()
-    assertTrue(presenter.state.pipped)
     assertEquals(
       6,
       (0 until 6).count { cell ->
@@ -528,9 +526,28 @@ class DesignerPresenterTest {
           .any { it is Eyes }
       },
     )
+  }
 
-    presenter.clearEyes()
-    assertFalse(presenter.state.pipped)
+  @Test
+  fun `clearing the face takes the pips and the drawing off it and leaves the other faces pipped`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, drafts = drafts)
+    presenter.fillEyes()
+    presenter.show(3)
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+    val before = presenter.state.draft
+
+    presenter.take(Step.Clear)
+
+    assertTrue(presenter.state.face.blank)
+    (0 until 6).filter { it != 3 }.forEach { cell ->
+      assertEquals("cell $cell", before.face(cell), presenter.state.draft.face(cell))
+    }
+    // Written down at once, like every other step.
+    assertEquals(presenter.state.draft, drafts.load(d6))
+    // And one step: one press of undo puts the pips and the stroke back.
+    presenter.take(Step.Back)
+    assertEquals(before.face(3).marks, presenter.state.face.marks)
   }
 
   @Test

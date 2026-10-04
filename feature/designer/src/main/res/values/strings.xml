@@ -60,11 +60,10 @@
   <string name="designer_fill_numbers">Fill all with numbers</string>
   <!-- One tap that puts the standard pips on all six faces of a d6. "Eyes" is what the dots on a die are called. -->
   <string name="designer_fill_eyes">Fill all with eyes</string>
-  <!-- Takes those pips off again. -->
-  <string name="designer_clear_eyes">Clear eyes</string>
   <string name="designer_undo">Undo</string>
   <string name="designer_redo">Redo</string>
-  <string name="designer_clear">Clear</string>
+  <!-- Takes everything off the face being drawn on — strokes, fills, numbers, eyes — and leaves the other faces alone. Undo brings it back. -->
+  <string name="designer_clear_face">Clear face</string>
   <string name="designer_guide_on">Show guide</string>
   <string name="designer_guide_off">Hide guide</string>
   <string name="designer_face_nearly_full">This face is nearly full — a few strokes left.</string>

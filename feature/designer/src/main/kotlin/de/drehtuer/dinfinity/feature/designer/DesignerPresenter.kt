@@ -107,7 +107,10 @@ enum class Step {
   Back,
   Forward,
 
-  /** Everything off the face, in one step. */
+  /**
+   * Everything off the face in front of the player — strokes, fills, stamps,
+   * pips — in one step, and nothing off any other face (`Clear face`).
+   */
   Clear,
 }
 
@@ -268,15 +271,12 @@ data class DesignerState(
    * True when this die can be pipped instead of numbered, which is a d6 and
    * only a d6 (`FaceEyes.canBePipped`).
    *
-   * What decides whether the two eye buttons are on the screen at all. A pip
+   * What decides whether the eye button is on the screen at all. A pip
    * pattern is a way of writing one to six and there is no pattern for a 7 or
    * for a Fudge die's minus, so the offer is withheld rather than made and
    * refused.
    */
   val canPip: Boolean get() = FaceEyes.canBePipped(draft.die)
-
-  /** True when some face is carrying pips, which is what `Clear eyes` is for. */
-  val pipped: Boolean get() = FaceEyes.pipped(draft)
 
   val canUndo: Boolean get() = face.canUndo
   val canRedo: Boolean get() = face.canRedo
@@ -663,12 +663,6 @@ class DesignerPresenter(
    */
   fun fillEyes() {
     state = state.copy(draft = FaceEyes.fill(state.draft, state.colorArgb))
-    drafts.save(state.draft)
-  }
-
-  /** Takes the pips off again, which is the undo for somebody who pressed it to see. */
-  fun clearEyes() {
-    state = state.copy(draft = FaceEyes.clear(state.draft))
     drafts.save(state.draft)
   }
 

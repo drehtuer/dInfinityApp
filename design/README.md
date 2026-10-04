@@ -60,7 +60,7 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   the face".
 - **The face designer's tools are the phone frame's own sprite** — the app
   draws `#ic-pencil`, `#ic-eraser`, `#ic-bucket`, `#ic-type`, `#ic-image`,
-  `#ic-undo`, `#ic-redo`, `#ic-x` and `#ic-copy` from
+  `#ic-undo`, `#ic-redo` and `#ic-copy` from
   [dInfinityPhone.dc.html](dInfinityPhone.dc.html) and a test holds the two
   equal, so **editing a `<symbol>` in the prototype fails the build until the
   app is edited with it**. The paste and the mirror have no symbol yet:
@@ -115,7 +115,7 @@ plate the prototype does not draw: its `rollState` tweak has `earned` and
 the design has one; the same hand-over section lists it.
 
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
-2026-09-17, with two hand edits to `dInfinityPhone.dc.html` since (see
+2026-09-17, with three hand edits to `dInfinityPhone.dc.html` since (see
 **Editing**).
 
 ## Viewing
@@ -151,13 +151,18 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 Edit in the [Claude Design project](./) and re-import here so the two stay in
 step.
 
-**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Two
+**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Three
 small corrections were made here after the 2026-09-17 sync, to keep the
 prototype true to the app: a Fudge face prints `−`, blank and `+` rather than
-its value (`faceText` beside `pipDot`), and the throw buttons are gone — the
+its value (`faceText` beside `pipDot`); the throw buttons are gone — the
 `earned` plate's `Throw N more` and `Stop the chain`, the `stuck` plate's
 `Throw those N again`, and the result sheet's `Again` / `Roll again` (its
-`rollAgain` handler is left in the script, unreferenced). Before the next
+`rollAgain` handler is left in the script, unreferenced); and the face
+designer's `Clear eyes` is `Clear face` (`clearFace`, dead on a blank face),
+which takes everything off the face in front of the player in one undoable
+step, with the undo snapshots now carrying the pips and the d4's corner
+numbers so that undo brings them back
+([../docs/face-designer.md](../docs/face-designer.md), "Clear face"). Before the next
 import, either make the same changes in the design project or re-apply them
 afterwards; `git log -- design/dInfinityPhone.dc.html` lists them
 ([../docs/design-handover.md](../docs/design-handover.md), "The shake is the

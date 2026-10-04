@@ -12,8 +12,9 @@ import kotlin.math.sin
  *
  * A pipped die is the one die everybody has held, and it is not something
  * anybody wants to draw thirty-six circles for. One tap lays the standard
- * patterns on all six faces in the ink in the pen; `Clear eyes` takes them off
- * again, which is the undo for somebody who pressed it to see.
+ * patterns on all six faces in the ink in the pen. Taking them off again is
+ * undo, or `Clear face` for the face in front of the player — pips are a mark
+ * like any other, so nothing here needs a clear of its own.
  *
  * **Only a d6.** A pip pattern is a way of writing one to six and nothing
  * else: there is no pip pattern for a 7, none for a `−` and none for a d20's
@@ -144,28 +145,6 @@ object FaceEyes {
       }
     }
   }
-
-  /**
-   * [draft] with the pips taken off every face, and the drawing round them
-   * kept.
-   *
-   * One step per face, like [fill], and nothing at all on a face that has no
-   * pips — so pressing it on an unpipped die is not a row of empty steps in
-   * the undo stack.
-   */
-  fun clear(draft: Draft): Draft =
-    draft.die.faces.indices.fold(draft) { so, cell ->
-      if (so.face(cell).marks.none { it is Eyes }) {
-        so
-      } else {
-        so.onFace(cell) { it.swap({ mark -> mark is Eyes }) }
-      }
-    }
-
-  /** True when any face of [draft] is carrying pips, which is what `Clear eyes` is for. */
-  fun pipped(draft: Draft): Boolean =
-    draft.die.faces.indices
-      .any { cell -> draft.face(cell).marks.any { it is Eyes } }
 
   /** One pip: a circle drawn as a ring, round enough that nothing reads as a polygon. */
   private fun ring(spot: Pair<Double, Double>): List<Dot> =

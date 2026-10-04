@@ -170,7 +170,7 @@ class DesignerScreenTest {
     // resources are still there (`docs/face-designer.md`, "Drawing tools").
     show(d6)
 
-    listOf("Fine", "Medium", "Broad", "Eraser", "Fill", "Stamp", "Undo", "Redo", "Clear", "Hide guide")
+    listOf("Fine", "Medium", "Broad", "Eraser", "Fill", "Stamp", "Undo", "Redo", "Hide guide")
       .forEach { compose.onNodeWithContentDescription(it).assertExists() }
   }
 
@@ -190,16 +190,49 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `clear is offered only on a face with something on it`() {
+  fun `clear face is offered only on a face with something on it`() {
     val presenter = show(d6)
 
-    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().assertIsNotEnabled()
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).assertIsNotEnabled()
 
     presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
 
-    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().assertIsEnabled()
-    compose.onNodeWithTag(DesignerTestTags.CLEAR).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).assertIsEnabled()
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).performClick()
     assertEquals(true, presenter.state.face.blank)
+  }
+
+  @Test
+  fun `clear face says what it does, in words`() {
+    // It used to be a cross among the pens, and a cross was not read as
+    // "take everything off this face" (`docs/face-designer.md`, "Clear face").
+    show(d6)
+
+    compose.onNodeWithText("Clear face").assertIsDisplayed()
+    compose.onNodeWithContentDescription("Clear").assertDoesNotExist()
+  }
+
+  @Test
+  fun `clear face takes the numerals and the pips off this face and no other`() {
+    val presenter = show(d6)
+    compose.onNodeWithTag(DesignerTestTags.FILL_EYES).performClick()
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+    val before = presenter.state.draft
+
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).performClick()
+
+    assertTrue(presenter.state.face.blank)
+    (1 until 6).forEach { cell -> assertEquals(before.face(cell), presenter.state.draft.face(cell)) }
+    // One press of undo returns the pips and the stroke together.
+    compose.onNodeWithTag(DesignerTestTags.UNDO).performClick()
+    assertEquals(before.face(0).marks, presenter.state.face.marks)
+  }
+
+  @Test
+  fun `clear face is offered on every die, not only a d6`() {
+    show(d20)
+
+    compose.onNodeWithTag(DesignerTestTags.CLEAR).assertExists()
   }
 
   @Test
@@ -735,7 +768,7 @@ class DesignerScreenTest {
   }
 
   @Test
-  fun `fill all with eyes pips every face of a d6, and clear eyes takes them off`() {
+  fun `fill all with eyes pips every face of a d6`() {
     val presenter = show(d6)
 
     compose.onNodeWithTag(DesignerTestTags.FILL_EYES).assertIsDisplayed().performClick()
@@ -748,34 +781,15 @@ class DesignerScreenTest {
           .any { it is Eyes }
       },
     )
-
-    compose.onNodeWithTag(DesignerTestTags.CLEAR_EYES).assertIsEnabled().performClick()
-    assertEquals(
-      0,
-      (0 until 6).count { cell ->
-        presenter.state.draft
-          .face(cell)
-          .marks
-          .any { it is Eyes }
-      },
-    )
-  }
-
-  @Test
-  fun `clear eyes is dead until there is something to clear`() {
-    show(d6)
-
-    compose.onNodeWithTag(DesignerTestTags.CLEAR_EYES).assertIsNotEnabled()
   }
 
   @Test
   fun `a die that is not a d6 is offered no eyes at all`() {
-    // A pip pattern writes one to six and nothing else, so the buttons are
+    // A pip pattern writes one to six and nothing else, so the button is
     // absent rather than there and refusing (`docs/face-designer.md`).
     show(d20)
 
     compose.onNodeWithTag(DesignerTestTags.FILL_EYES).assertDoesNotExist()
-    compose.onNodeWithTag(DesignerTestTags.CLEAR_EYES).assertDoesNotExist()
   }
 
   @Test
