@@ -31,7 +31,8 @@ This is a snapshot, not a changelog — git history is the changelog.
   stroke, and that pull is now estimated from the gyroscope and taken out
   (decision 87, `docs/physics-and-rendering.md`, "Shake input") — off the
   phone, 45–55 % of the dice in the top third becomes 33–36 %. No golden case
-  moves; how it feels in a hand is the owner's (`docs/TODO.md`, 5.3).
+  moves, and on the Pixel 10a the owner finds the dice no longer pool at the
+  top.
 
 ## Done
 

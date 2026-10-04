@@ -806,8 +806,8 @@ was, as the table above says.)
   unchanged. The stiffness of the estimate (`SwingCorrection.DAMPING`) was
   picked from these runs: a tenth of it pushed the up-and-down shake's dice
   towards the bottom, three times it left a sixth of the pull in and thirty
-  times two thirds. The hands are synthetic; whether a real one
-  now spreads the dice is the owner's to judge (`docs/TODO.md`, 5.3).
+  times two thirds. The hands are synthetic; with a real one, on the Pixel
+  10a, the owner found the dice no longer pool at the top of the screen.
 - An acceleration above 40,000 mm/s² — about four gravities, harder than anyone
   shakes a fistful of dice — is clamped. Past that it is a sensor fault or a
   dropped phone, and no thickness of wall survives it.
