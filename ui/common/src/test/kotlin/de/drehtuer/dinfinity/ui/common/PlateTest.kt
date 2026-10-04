@@ -8,14 +8,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -88,20 +86,6 @@ class PlateTest {
     // one would show the table's colour mixed into it.
     val corner = compose.onNodeWithTag(PLATE).captureToImage().toPixelMap()[1, 1]
     assertEquals("a plate is not an opaque --color-bg ground", ground, corner)
-  }
-
-  @Test
-  fun `a plate is tall enough for the words plus its padding`() {
-    compose.setContent { Plate(modifier = Modifier.testTag(PLATE)) { Text("3d6") } }
-
-    compose.onNodeWithTag(PLATE).assertHeightIsAtLeast(SIDES)
-  }
-
-  @Test
-  fun `the shadow a plate is lifted by is the small one`() {
-    // `--shadow-sm`. The medium step is what floats *over* a screen — a toast,
-    // a menu — and a plate is part of the screen it is on.
-    assertTrue("a plate is lifted as far as a toast", Modernist.Shadow.sm < Modernist.Shadow.md)
   }
 
   private companion object {

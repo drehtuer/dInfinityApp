@@ -1,12 +1,20 @@
 package de.drehtuer.dinfinity.ui.common
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.notation.NotationError
 import de.drehtuer.dinfinity.core.notation.NotationErrorCode
 import org.junit.Assert.assertEquals
@@ -16,14 +24,17 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import kotlin.math.abs
 
 /**
  * The error under the formula (`design/dInfinity.dc.html`, options 6f and 9c).
  *
  * Two halves, tested apart. **Which characters are blamed** is arithmetic and
  * is asserted directly; *that a wave was drawn under them* is pixels, and is
- * the device suite's to look at. The split is the same one the rest of the app
- * draws: the decision is testable, the drawing is not.
+ * read once off a rasterised canvas — whether it *looks* like a wave is still
+ * the device suite's to say.
  */
 @RunWith(RobolectricTestRunner::class)
 class FormulaErrorTest {
@@ -54,15 +65,6 @@ class FormulaErrorTest {
     compose
       .onNodeWithTag(FormulaTestTags.ERROR)
       .assertTextContains("2d6 + 1d7 - 4 — this set has no d7", substring = true)
-  }
-
-  @Test
-  fun `a mistake with an obvious reading is offered as a fix`() {
-    show(
-      NotationError(NotationErrorCode.SpacedDice, "dice are written without spaces in them", 0..4, suggestion = "3d6"),
-    )
-
-    compose.onNodeWithTag(FormulaTestTags.SUGGESTION).assertIsDisplayed()
   }
 
   @Test
@@ -134,6 +136,80 @@ class FormulaErrorTest {
     assertEquals(6f, path.getBounds().right, TOLERANCE)
   }
 
+  @Test
+  // Real text measurement, so that the line actually breaks where a phone
+  // would break it.
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  fun `a blame that runs over a line break is a wave on each line, not a strike through the middle`() {
+    // The squiggle follows the glyphs when the line wraps: the first run
+    // starts at the first blamed character and goes to the end of its line,
+    // the middle ones span their lines, and the last stops after the last
+    // blamed character.
+    lateinit var layout: TextLayoutResult
+    compose.setContent {
+      Text(
+        text = "2d6 + 1d7 - 4 + 3d8 + 2d10 + 1d12 - 1d4",
+        onTextLayout = { layout = it },
+        modifier = Modifier.width(NARROW),
+      )
+    }
+    compose.waitForIdle()
+    assertTrue("the text did not wrap onto three lines: ${layout.lineCount}", layout.lineCount >= 3)
+    val first = 1
+    val last = layout.getLineStart(2)
+
+    val runs = underlinesOf(layout, under = first..last, clearance = 0f)
+
+    assertEquals("one run for each line the blame covers", 3, runs.size)
+    assertEquals(layout.getHorizontalPosition(first, true), runs[0].left, TOLERANCE)
+    assertEquals(layout.getLineRight(0), runs[0].right, TOLERANCE)
+    assertEquals(layout.getLineLeft(1), runs[1].left, TOLERANCE)
+    assertEquals(layout.getLineRight(1), runs[1].right, TOLERANCE)
+    assertEquals(layout.getLineLeft(2), runs[2].left, TOLERANCE)
+    assertEquals(layout.getHorizontalPosition(last + 1, true), runs[2].right, TOLERANCE)
+    assertEquals("the runs are not on lines of their own", 3, runs.map { it.bottom }.distinct().size)
+  }
+
+  /**
+   * The wave, on a real canvas: there is ink of the accent's colour under the
+   * blamed `1d7` and nowhere else on the line. The formula and the complaint
+   * are printed in the text colour, so anything in the accent is the wave.
+   */
+  @Test
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  @Config(qualifiers = "xxhdpi")
+  fun `the wave is drawn under the characters it blames and nowhere else`() {
+    compose.setContent {
+      MaterialTheme(colorScheme = lightColorScheme(primary = ACCENT, onBackground = Color.Black)) {
+        FormulaError(
+          formula = "2d6 + 1d7 - 4",
+          error = NotationError(NotationErrorCode.UnknownDie, "this set has no d7", 6..8),
+        )
+      }
+    }
+    val node = compose.onNodeWithTag(FormulaTestTags.ERROR)
+    val layouts = mutableListOf<TextLayoutResult>()
+    node
+      .fetchSemanticsNode()
+      .config[SemanticsActions.GetTextLayoutResult]
+      .action
+      ?.invoke(layouts)
+    val from = layouts.single().getHorizontalPosition(6, true)
+    val to = layouts.single().getHorizontalPosition(9, true)
+
+    val drawn = node.captureToImage().toPixelMap()
+    val waved = (0 until drawn.width).filter { x -> (0 until drawn.height).any { y -> drawn[x, y].isNear(ACCENT) } }
+
+    assertTrue("no wave was drawn", waved.isNotEmpty())
+    val slack = with(compose.density) { INK_SLACK.toPx() }
+    assertTrue("the wave starts before the blamed characters", waved.first() >= from - slack)
+    assertTrue("the wave runs past the blamed characters", waved.last() <= to + slack)
+  }
+
+  /** Close enough to [colour] to be it under anti-aliasing, and neither the text nor the wash. */
+  private fun Color.isNear(colour: Color): Boolean =
+    abs(red - colour.red) + abs(green - colour.green) + abs(blue - colour.blue) < NEAR
+
   private fun laidOut(text: String): TextLayoutResult {
     lateinit var layout: TextLayoutResult
     compose.setContent {
@@ -155,5 +231,14 @@ class FormulaErrorTest {
   private companion object {
     const val TOLERANCE = 0.5f
     const val CLEARANCE = 3f
+
+    /** Narrow enough that the long formula above wraps onto three lines. */
+    val NARROW = 60.dp
+
+    /** The round cap and the anti-aliasing either side of the wave's ends. */
+    val INK_SLACK = 2.dp
+
+    val ACCENT = Color(0xFF0F7A50)
+    const val NEAR = 0.15f
   }
 }

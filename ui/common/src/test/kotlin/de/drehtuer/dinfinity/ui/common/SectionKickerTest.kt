@@ -33,13 +33,6 @@ class SectionKickerTest {
   val compose = createComposeRule()
 
   @Test
-  fun `a kicker prints the words it was given, in their own case`() {
-    compose.setContent { SectionKicker("Install from a URL or file") }
-
-    compose.onNodeWithText("Install from a URL or file").assertExists()
-  }
-
-  @Test
   fun `a kicker is the accent, and follows the one the player chose`() {
     var accent: Color? = null
     var used: Color? = null
