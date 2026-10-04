@@ -86,15 +86,27 @@ Every die is a **convex** rigid body:
   which it is, and which also gave every contact after the first landing a
   restitution of exactly zero, so a die bounced once and then dead-dropped.
 - Rounded edges: shapes with sharp corners (d4 especially) get a hull margin of
-  3 % of the die's nominal size (`HullMargin.SHARE`, 0.48 mm on a 16 mm die),
-  so they tumble instead of catching on the floor. It is Jolt's *convex
-  radius*: the hull's face planes are pulled in by it and the smaller solid is
-  grown back out by a ball of the same size, so the die that collides has
-  every edge a strip of a cylinder and every corner a patch of a sphere. Jolt
-  gives less than is asked where a corner is sharp — no rounded corner may
-  stand more than 0.5 mm inside the sharp one (`HullMargin.MAX_ERROR_MM`),
-  which cuts a d4 to 0.25 mm — and never more than half the die's thinnest
-  width. The share is of the *nominal* size, clamped to the set file's limits,
+  3 % of the die's nominal size by default (`HullMargin.SHARE`, 0.48 mm on a
+  16 mm die), so they tumble instead of catching on the floor. **The share is
+  each die's own**: a set may ask for 1.5 % to 12 % with `edge_rounding`
+  (`docs/dice-sets.md`), and the face designer's **Edges** control writes it
+  (`docs/face-designer.md`, "Material and edges"; decision 94). It is Jolt's
+  *convex radius*: the hull's face planes are pulled in by it and the smaller
+  solid is grown back out by a ball of the same size, so the die that collides
+  has every edge a strip of a cylinder and every corner a patch of a sphere.
+  Jolt gives less than is asked where a corner is sharp — no rounded corner may
+  stand more than `mMaxErrorConvexRadius` inside the sharp one — and never more
+  than half the die's thinnest width. That error is set per die, **in
+  proportion to the share asked for** (`HullMargin.maxErrorMm`): Jolt's own
+  0.5 mm at the default 3 %, which cuts a d4 to 0.25 mm, and 2 mm at 12 %,
+  which cuts it to 1 mm. Held at 0.5 mm, a rounder die would have got what it
+  asked for only where its corners are blunt — a d6 would stop at 0.68 mm and
+  a d4 would not get rounder at all — so the error grows with the share and
+  every shape is rounded in the proportions it has at the default: the d4
+  half of what it asks for at every value, everything else all of it. At the
+  default the bridge hands Jolt exactly the floats it always did
+  (`HullRoundingTest`), so the built-in set and every golden are the same
+  bodies. The share is of the *nominal* size, clamped to the set file's limits,
   and not of the size the capacity rule shrank the die to: a die thrown at
   half size asks for the same radius in millimetres. The renderer draws the
   same rounding ("Rounded edges", under Rendering).
@@ -1119,6 +1131,27 @@ claim above needs the hundred thousand and is run deliberately:
   -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
   -Pandroid.testInstrumentationRunnerArguments.rolls=100000
 ```
+
+**A rounder die is asked about the same way.** Rounding is symmetric — every
+edge of a solid is rounded by the same radius, so its faces stay alike and
+nothing in the construction favours one — but a rounder die rolls on further
+and cocks differently, and a claim about the built-in die is not a claim about
+it. `edgeRounding` throws every shape at that share of its size instead of the
+default, through the same check (`HarnessRequest.edgeRoundingOf`, refusing
+anything outside what a set file may say); the harness takes the same with
+`tools/harness.sh --rounding 0.12`:
+
+```sh
+./gradlew :simulation:jolt:connectedDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
+  -Pandroid.testInstrumentationRunnerArguments.rolls=100000 \
+  -Pandroid.testInstrumentationRunnerArguments.edgeRounding=0.12
+```
+
+The range stops at 12 % for that reason: past it a 16 mm die is rounded by
+more than 2 mm and starts to behave like the pebble it is turning into, which
+is a question about pebbles rather than about dice. The results of a run at
+12 % belong here once one has been made (`docs/TODO.md`).
 
 **The seeds are stirred, not counted.** A roll's seed becomes a
 `kotlin.random.Random`, and two seeds differing only in their low bits do not
@@ -2714,6 +2747,21 @@ floor has it too; the table drawn from pictures does not ("The table's
 surface"). The settings
 are part of the material cache's key (`DiceMaterial.Variant.fingerprint`), so a
 packet compiled without them is not read back.
+
+**A rounder die is the same construction at a larger radius** (decision 94).
+`RoundedEdges.radiusFor` reads the die's own `edge_rounding` and the error
+Jolt is given for it, so the picture follows the solver at every value a set
+may ask for. At the roundest, 12 % of a 16 mm die, every solid but the d4 is
+rounded by the 1.92 mm it asks for — the coin too, which is thick enough to
+take twice that across — and the d4 by 1 mm; a d20's flat faces lose about
+half their area to the bends. `RoundedEdgesRoundnessTest` holds the mesh to
+the same promises at 1.5 %, 6 % and 12 % as `RoundedEdgesTest` does at 3 %:
+closed, every flat face on its own plane and inside the sharp one, a die on a
+face on the felt, never outside its hull, its corners in by exactly what the
+solver's are. Meshes are cached per shape and radius, so a set of rounder
+dice is one more mesh per shape, not one per die. What is printed is still
+sized against the sharp face, so on a rounder die more of a numeral that runs
+close to an edge is painted round the start of the bend.
 
 **It can be turned off**: `DieMesh.of(shape, rounding = 0.0)` is the sharp
 mesh, surface for surface, and `DieMesh.of(die, scale)` is the rounded one

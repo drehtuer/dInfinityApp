@@ -146,6 +146,15 @@ and read here, and a seed gives the same result with the renderer on and off.
       editor than it was drawn — is that read as the die's size or as a fault?
 - [ ] Should the Solid tab draw pen strokes (as thin filled outlines)? Today it
       says what it does not draw
+- [ ] *Judge on the phone:* the Solid tab's **Material** menu and **Edges**
+      steps (decision 94). Make a d20 each of Plastic, Pearl, Resin, Glass,
+      Metal and Stone and **Roll it**: does each look like its name on the
+      felt and on the oak — Pearl milky rather than faded, Resin clear enough
+      to see the felt bent through it, Glass clear, Metal metal rather than
+      grey plastic, Stone matte? Does the swatch beside the menu hint at the
+      right one? Then a d6 and a d4 at Very round: do the edges look round
+      and do they still read as dice, and do the numbers near a d4's edges
+      still read where they wrap onto the bend?
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
       named set is a copy and also stays in "My dice" — is that what somebody
       expects, or should a set-only drawing leave "My dice" alone? Does the
@@ -204,6 +213,12 @@ re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
 
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
+
+- [ ] Fairness at the roundest edges (decision 94): 100,000 rolls with
+      `edgeRounding=0.12` (`docs/physics-and-rendering.md`, "Are the dice
+      fair"), and a harness run with `--rounding 0.12` for settle time and
+      re-throws against the default; write the figures into
+      `docs/physics-and-rendering.md`
 
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds

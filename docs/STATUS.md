@@ -41,8 +41,12 @@ This is a snapshot, not a changelog — git history is the changelog.
   look in `average` now has its roughness map averaged at its `roughness`
   too, and oak is oiled at 0.75. The phone then drew green felt's red 13 over:
   the felt's own sheen, 1.4 % of white, which a look in `average` now has
-  taken out of its colour (`SurfaceLight`) — not yet run on the phone. It
-  reaches `main` when the owner likes it on the phone.
+  taken out of its colour (`SurfaceLight`) — not yet run on the phone. The
+  face designer's Solid tab now chooses what a die is made of (six named
+  materials) and how round it is (four steps, a new optional `edge_rounding`
+  the solver and the picture both follow; decision 94) — every default
+  unchanged; the device suite and a fairness run at the roundest are next.
+  It reaches `main` when the owner likes it on the phone.
 
 ## Done
 
@@ -114,7 +118,7 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 - **The capacity rule barely bites**: the 100-body cap refuses long before the
   table's floor would (~241 dice).
 - Determinism holds across both ABIs; unproven across devices of one ABI.
-- **Coverage:** branch ~71.4 % against a floor of 62, function ~92.7 % against
+- **Coverage:** branch ~73.2 % against a floor of 62, function ~93.3 % against
   85. Most missed branches are Compose skip branches.
 
 ## Decisions pending

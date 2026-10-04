@@ -68,6 +68,7 @@ density = 1.2                    # g/cm³, clamped to 0.5..8
 translucency = 0                 # %, 0 solid .. 100 glass, clamped
 restitution = 0.55               # clamped to 0.0..0.8
 friction = 0.5                   # clamped to 0.1..1.0
+edge_rounding = 0.03             # share of size_mm, clamped to 0.015..0.12
 
 # --- dice -----------------------------------------------------------
 
@@ -138,6 +139,7 @@ sound = "felt"
 | `die.read` | no | `face-up` (default) or `vertex-up`. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
 | `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. Above `0` the die is drawn as resin: the felt and the dice behind it show *through* it, bent and tinted by the die's own `color` — more of it the higher the value, and wholly at `100` (`docs/physics-and-rendering.md`, "A die you can see into"). How milky it is, how thick and how it tints what is behind it are worked out from this, `color`, `size_mm` and `roughness` — a low translucency is milky, a high one glassy, and a rough die is frosted — so there are no resin fields of their own. The numerals and any artwork stay fully opaque whatever it is, because a face you cannot read is not a die. |
+| `defaults.edge_rounding`, `die.edge_rounding` | no | How round the die's edges and corners are, as a share of `size_mm`: `0.03` (0.48 mm on a 16 mm die) when not given, clamped to `0.015`–`0.12` with a warning, refused when it is not a number. It is a physical property, not a look: it is the solver's *convex radius*, and the renderer draws the die with exactly the rounding the solver collides (`docs/physics-and-rendering.md`, "Dice bodies" and "Rounded edges"). The solver gives a sharp corner less than is asked — a d4 gets half, at every value — so a d4's points never go blunt. Rounder dice tumble a little longer and land a little differently; a fairness run can be asked about any value of it (`FairnessTest`'s `edgeRounding`) (`docs/architecture.md`, decision 94). |
 | `die.color`, `number_color`, `roughness`, `metallic`, `size_mm`, `density`, `restitution`, `friction` | no | Per-die overrides of `defaults`. |
 | `table.*` | no | Table looks; fields and limits in `docs/tables.md`. |
 
@@ -188,6 +190,13 @@ of** (`docs/tables.md`, "Your own photo"). Beside it there can be any number of
 - Removing a named set removes its records with its package — a package whose
   records stayed would be built straight back. Removing "My dice" removes the
   package alone, as it always has.
+- **A die drawn in the designer may carry a material and a rounding of its
+  own** — `roughness`, `metallic`, `translucency` and `edge_rounding` as
+  per-die keys over `[defaults]` — when the Solid tab's **Material** menu or
+  **Edges** control was used on it, or when it was copied from a set whose die
+  was not the standard material (`docs/face-designer.md`, "Material and
+  edges"). Such a die keeps its own translucency when the details screen's
+  stepper moves the rest of the set's, and the block's range says so.
 
 Every one of them is a folder in `dicesets/` like any other, and there is no
 privileged path for any of them:

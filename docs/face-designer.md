@@ -611,6 +611,15 @@ A stamp's dots are written the way every other mark's are, every ring end to
 end, with the lengths beside them; a stamp whose lengths do not add up to the
 dots it carries is not a stamp this wrote and is dropped.
 
+**A die's material and edges are a `finish` beside the faces** — `roughness`,
+`metallic`, `translucency` (a fraction) and `edge_rounding` — written once
+somebody has chosen either ("Material and edges"). The format was not bumped
+for it either: a draft without one reads as it always did, and a build that
+predates it drops it and keeps the drawing. All four or none: a finish with a
+field missing or not a number is not one this wrote and is dropped, and what
+does read is clamped to the set file's limits, so a draft edited on disk
+cannot hand the package a value the validator would have to bring back.
+
 **It was bumped once, to 2, when the kites were split** — a change of
 *meaning* rather than of shape, which is the case the rule above is for. Up to
 format 1 the d10 and the d18 were drawn against one shared kite; from 2 each
@@ -767,6 +776,71 @@ the way round the Solid tab showed it. The kites are no exception: each
 trapezohedron's canvas outline is its own face, so the best fit this tab draws
 and the size the exporter paints are the same number ("Export details").
 
+### Material and edges
+
+> **Design:** the **Material** menu and the **Edges** control are under the
+> turning die on the Solid tab of the
+> [phone prototype](../design/dInfinityPhone.dc.html) (`design/`).
+
+Two controls for the die rather than for a face, so they are on the Solid tab,
+under the die in the hand: what it is made of, and how round its edges are.
+Both belong to the die being drawn — another base die has its own — and both
+are written into its draft the moment they change, like a stroke
+(`docs/architecture.md`, decision 94).
+
+**Material** is a menu of names, because "glass" is what somebody wants and
+"translucency 100 %, roughness 0.05" is how it is made. Each name sets the
+three fields a set file already has for it (`docs/dice-sets.md`) and leaves
+the colour and the rounding alone:
+
+| Name | `roughness` | `metallic` | `translucency` | What it is on the tray |
+| --- | --- | --- | --- | --- |
+| Plastic | 0.35 | 0 | 0 % | The built-in die: every default, unchanged |
+| Pearl | 0.35 | 0 | 25 % | Milky resin — a quarter of the light through, blurred to nothing in particular |
+| Resin | 0.15 | 0 | 60 % | Clear-ish resin: the felt bent through it and a little soft (84 % transmission) |
+| Glass | 0.05 | 0 | 100 % | Polished and wholly clear — the felt as through a lens |
+| Metal | 0.30 | 1 | 0 % | Brushed metal, mirroring the room |
+| Stone | 0.80 | 0 | 0 % | Matte and solid |
+
+The values are tuned against the resin the renderer draws ("A die you can see
+into", `docs/physics-and-rendering.md`): what is seen through a die is blurred
+by the larger of its roughness and `0.6 × (1 − translucency)`, so a quarter
+translucent is milky whatever the roughness and the clear ones need a polished
+body to be clear. **Custom** is shown when the die is made of none of them — a
+die copied from somebody else's set — and it stays as it was until a name is
+chosen; choosing one keeps the die's rounding.
+
+**Edges** is four steps, not a slider: **Sharp**, **Standard**, **Rounded** and
+**Very round**, 1.5 %, 3 %, 6 % and 12 % of the die's size — the least a set
+file may ask for, what every die has always had, twice that, and the most a
+set file may ask for. The rounding is the solver's convex radius, which the
+renderer draws (`docs/physics-and-rendering.md`, "Rounded edges"), so every
+value on offer is a die that *rolls* differently, and four named dice are four
+that can be thrown a hundred thousand times each and checked for fairness;
+a slider would offer a continuum nobody has thrown. A rounding none of the
+steps is — from somebody else's set — selects none of them and says what it
+is under the control ("Custom edges, rounded by 5 % of the die's size").
+
+**The swatch beside the menu is a hint, not the die.** The Solid tab is a
+drawing on paper; a resin die bending the felt and a metal one catching the
+light are the renderer's, and **Roll it** is where they are seen. The swatch
+is a square of the body colour over a chequer — as much of the chequer through
+it as light goes through the die — with a glint as bright as metal and as
+sharp as polish would give it. TalkBack is told the material by the menu
+("Material: Glass") and the step by the control; the swatch is silent.
+
+**What goes into the package.** A die whose material or edges somebody chose
+carries all four values as its own per-die keys — `roughness`, `metallic`,
+`translucency` and `edge_rounding` — over the package's `[defaults]`, written
+whole even where one equals the default, so a die made plastic on purpose
+stays plastic when the details screen later makes the rest of the set
+translucent. A die nobody chose for carries what it was copied as when that is
+anything but the standard material, so what the menu said before anybody
+touched it is what **Roll it** throws; a standard die carries nothing, and the
+details screen's steppers go on reaching it. A die with a material chosen and
+nothing drawn is a die all the same: it goes into the package with its printed
+numbers.
+
 ### Save to set
 
 The footer action is **Save to set**, and it opens a sheet rather than saving
@@ -840,10 +914,11 @@ a named set holds what was put into it on purpose.
   of `ShapeAtlas`'s grid, which is the same grid the renderer samples and the
   validator checks. Two answers to "where is face 7" would be a die whose
   faces are in the wrong places on somebody else's phone.
-- Background of each cell is transparent; the die colour and material come
-  from the set defaults, so the same drawing works on a black or a white die.
-  **A cell nobody drew on is not written at all**, which is what lets the
-  printed label show through it.
+- Background of each cell is transparent; the die colour comes from the set
+  defaults, so the same drawing works on a black or a white die. What the die
+  is made of and how round it is are its own when the Solid tab's controls
+  set them ("Material and edges"). **A cell nobody drew on is not written at
+  all**, which is what lets the printed label show through it.
 - **Each cell is painted with its own turn and size.** The canvas masks every
   face into one canonical outline — a triangle on its point, a square on an
   edge, a kite with its short tip up — and the die samples the cell in the

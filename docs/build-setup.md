@@ -569,6 +569,7 @@ tools/harness.sh -n 200 -c 100 -s d4     # the worst case there is
 tools/harness.sh --soak 5m               # soak mode: roll for five minutes
 tools/harness.sh --frames -n 50          # what a frame's simulation costs
 tools/harness.sh --rendered              # what a drawn frame costs (Step 5.7)
+tools/harness.sh -n 1000 --rounding 0.12 # the roundest dice a set may ask for
 tools/harness.sh --capture 20            # twenty seconds of video to watch
 ```
 
@@ -775,7 +776,9 @@ script:
 
 The other arguments are `harness.soak` (a duration), `harness.frames` (`1` to
 pace them), `harness.dice`, `harness.shape`, `harness.seed`,
-`harness.label` and — read by the rendered harness only — `harness.table`. What each one *means* — including which wins when both a roll
+`harness.label`, `harness.edgeRounding` (every die's `edge_rounding`, a
+share of its size from 0.015 to 0.12; `--rounding` in the script; decision 94)
+and — read by the rendered harness only — `harness.table`. What each one *means* — including which wins when both a roll
 count and a soak are given — is `HarnessRequest.from` and `RunLength.from` in
 `:simulation:harness`, tested on the JVM, so the script and a hand-typed run
 cannot come to disagree (`docs/architecture.md`, decision 53).
