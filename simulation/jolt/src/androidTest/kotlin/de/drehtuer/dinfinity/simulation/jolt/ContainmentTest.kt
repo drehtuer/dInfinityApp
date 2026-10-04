@@ -6,6 +6,8 @@ import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
+import de.drehtuer.dinfinity.simulation.api.Placement
+import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
@@ -111,6 +113,47 @@ class ContainmentTest {
       "dice driven into a corner never stopped: ${settled.count { it.motion.speedMmPerSecond > STILL }} still moving",
       settled.all { it.motion.speedMmPerSecond <= STILL },
     )
+  }
+
+  @Test
+  fun aDieDroppedIntoTheDrawnCornerLandsThere() {
+    // The rounded corner is a fillet — the solid between the two walls and a
+    // 12 mm quarter circle, the outline the tray mesh draws — and nothing else.
+    // It used to be a whole cylinder standing on that circle's centre, a post
+    // 24 mm across on floor that is drawn as open, and dice leaned on it in
+    // mid-air until the cap ran out (`docs/physics-and-rendering.md`, "Why a
+    // die could rock for ever"). A d6 let go square over the circle's centre
+    // fits inside the curve with room to spare, so it has to come straight
+    // down onto the floor and stay there; against the post it would have been
+    // born inside a solid and thrown clear of it.
+    val die = d6()
+    val corner =
+      Vector3(
+        x = -(geometry.longSideMm / 2 - geometry.cornerRadiusMm),
+        y = geometry.shortSideMm / 2 - geometry.cornerRadiusMm,
+        z = DROP_HEIGHT_MM,
+      )
+    val world = requireNotNull(JoltWorld.open(geometry, table, maxDice = 1))
+
+    val landed =
+      world.use {
+        world.addDie(
+          ShapeGeometry.hullOf(die, 1.0),
+          die.material,
+          Placement(corner, Quaternion.Identity, Vector3.Zero, Vector3.Zero),
+        )
+        world.finish()
+        repeat(WATCHED_STEPS) {
+          world.setGravity(ShakeDriver.DEFAULT_GRAVITY)
+          world.step(SettleRule.TIMESTEP_SECONDS)
+        }
+        world.readStates().single()
+      }
+
+    val sideways = Vector3(landed.position.x - corner.x, landed.position.y - corner.y, 0.0).length
+    assertTrue("a die dropped into the corner moved $sideways mm sideways, to ${landed.position}", sideways <= DRIFT_MM)
+    assertTrue("a die dropped into the corner did not reach the floor: ${landed.position}", landed.touchingFloor)
+    assertTrue("a die dropped into the corner is still moving: ${landed.motion}", SettleRule.isStill(landed.motion))
   }
 
   @Test
@@ -244,6 +287,18 @@ class ContainmentTest {
      * A millimetre is well under a die and well over the solver's slop.
      */
     const val SLOP_MM = 1.0
+
+    /** Where the corner drop is let go from: a few millimetres over the floor. */
+    const val DROP_HEIGHT_MM = 20.0
+
+    /**
+     * How far sideways the dropped die may end up.
+     *
+     * It falls 12 mm onto its own face with no spin, so it barely moves; a die
+     * born inside the old post was thrown at least its own half-width and the
+     * post's radius clear of it — 20 mm.
+     */
+    const val DRIFT_MM = 3.0
 
     /** Slower than this is stopped, for a die that should have stopped. */
     const val STILL = 5.0
