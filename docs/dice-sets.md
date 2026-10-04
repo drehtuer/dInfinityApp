@@ -135,7 +135,7 @@ sound = "felt"
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |
 | `die.read` | no | `face-up` (default) or `vertex-up`. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
-| `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. It drives the body's opacity and **nothing else**: the numerals stay fully opaque whatever it is, because a face you cannot read is not a die. |
+| `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. Above `0` the die is drawn as resin: that share of the light leaving its bare body is light that came *through* it, bent and tinted by the die's own `color` (`docs/physics-and-rendering.md`, "A die you can see into"). How milky it is, how thick and how deep its colour runs are worked out from this, `color`, `size_mm` and `roughness` — a low translucency is milky, a high one glassy, and a rough die is frosted — so there are no resin fields of their own. The numerals and any artwork stay fully opaque whatever it is, because a face you cannot read is not a die. |
 | `die.color`, `number_color`, `roughness`, `metallic`, `size_mm`, `density`, `restitution`, `friction` | no | Per-die overrides of `defaults`. |
 | `table.*` | no | Table looks; fields and limits in `docs/tables.md`. |
 
@@ -397,8 +397,8 @@ uses:
   number an author thought about. 50–150 % of 16 mm is 8–24 mm, so everything
   the stepper can reach is a size the file format already accepts.
 - **All three are real, none of them is metadata.** Size scales the die on the
-  table and therefore what the capacity rule counts; translucency drives the
-  body's opacity with the numerals held opaque; weight is mass, so a heavier
+  table and therefore what the capacity rule counts; translucency is how much
+  of the body light passes through, with the numerals held opaque; weight is mass, so a heavier
   die settles sooner. What the app must **not** take from the prototype is its
   arithmetic for the last one: `clamp(0.7, 1.05 × (4.2 / w)^0.35, 1.45)`
   seconds is an animation standing in for a solver, and the app has a solver.

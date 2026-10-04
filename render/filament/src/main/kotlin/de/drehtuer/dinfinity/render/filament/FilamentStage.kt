@@ -416,9 +416,22 @@ class FilamentStage(
         parameters.ink.alpha.toFloat(),
       )
       setParameter("glyphs", glyphs ?: blank, glyphSampler)
-      setParameter("opacity", parameters.opacity.toFloat())
       setParameter("clearCoat", parameters.clearCoat.toFloat())
       setParameter("clearCoatRoughness", parameters.clearCoatRoughness.toFloat())
+      // Only the resin material has these, and Filament refuses a parameter
+      // a material does not declare (`DiceMaterial.RESIN_SOURCE`).
+      parameters.resin?.let { resin ->
+        setParameter("transmission", resin.transmission.toFloat())
+        setParameter("scatter", resin.scatter.toFloat())
+        setParameter("ior", resin.ior.toFloat())
+        setParameter("thickness", resin.thicknessMm.toFloat())
+        setParameter(
+          "absorption",
+          resin.absorption.red.toFloat(),
+          resin.absorption.green.toFloat(),
+          resin.absorption.blue.toFloat(),
+        )
+      }
     }
 
   /**

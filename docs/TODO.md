@@ -361,8 +361,10 @@ keeps them comparable.
       in logcat)
 - [ ] Rendering polish and the optimisation pass — **in progress on
       `feature/realistic-rendering`**: physically based lighting from a real
-      room, refraction and subsurface scattering for translucent dice, rounded
-      edges on the drawn dice. Judged with `tools/gallery.sh` before and after
+      room, rounded edges on the drawn dice, and judging the refracting resin
+      dice (decision 90) on the phone: does `felt-green-translucent` read as
+      amber resin, and do the milky/glassy ends and the depth of colour need
+      `Resin`'s constants turned. Judged with `tools/gallery.sh` before and after
       each step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a

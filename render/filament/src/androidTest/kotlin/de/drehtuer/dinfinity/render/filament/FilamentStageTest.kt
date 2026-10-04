@@ -112,17 +112,18 @@ class FilamentStageTest {
 
   @Test
   fun bothMaterialsCompileOnThisDevice() {
-    // Two of them now: blending is baked into a material when it is compiled,
-    // so a die a set called translucent is drawn with a second material built
-    // from the same source. If the clear-coat lines or the premultiplied
-    // alpha were something this driver's compiler refused, it is here that it
-    // would say so (`docs/physics-and-rendering.md`, "Rendering").
+    // Two of them: refraction is baked into a material when it is compiled,
+    // so a die a set called translucent is drawn with a second material that
+    // shares the first one's surface. If screen-space refraction, the resin's
+    // parameters or the clear coat over them were something this driver's
+    // compiler refused, it is here that it would say so
+    // (`docs/physics-and-rendering.md`, "A die you can see into").
     FilamentEngine().use { filament ->
       val solid = DiceMaterial.dieOf(StandardDice.d20.material, texturePath = null)
       val clear = DiceMaterial.dieOf(StandardDice.d20.material.copy(translucency = HALF_CLEAR), texturePath = null)
       assertEquals(filament.material, filament.materialFor(solid))
-      assertEquals(filament.blendedMaterial, filament.materialFor(clear))
-      assertTrue("both materials are the same one", filament.material != filament.blendedMaterial)
+      assertEquals(filament.resinMaterial, filament.materialFor(clear))
+      assertTrue("both materials are the same one", filament.material != filament.resinMaterial)
     }
   }
 
@@ -137,21 +138,66 @@ class FilamentStageTest {
     assertTrue("a die at 80 % translucent drew exactly what a solid one did", !solid.contentEquals(clear))
   }
 
-  /** One frame of one die of this translucency, as bytes. */
-  private fun drawnWith(translucency: Double): ByteArray {
+  @Test
+  fun aResinDieShowsTheFeltBehindIt() {
+    // What resin is *for*: the floor under a clear die shows through it. A
+    // solid die's own pixels are the same whatever the felt is, so the pixels
+    // that agree between a red floor and a blue one under a solid die are its
+    // body (and the walls, which no die changes). Under a clear die in the
+    // same place, some of exactly those pixels have to follow the floor —
+    // which is a refraction that ran, a resin that compiled, and a refracting
+    // die that was drawn at all, in one question.
+    val red = look.copy(floorColorArgb = RED_FLOOR)
+    val blue = look.copy(floorColorArgb = BLUE_FLOOR)
+    val solidRed = drawnWith(translucency = 0.0, table = red)
+    val solidBlue = drawnWith(translucency = 0.0, table = blue)
+    val clearRed = drawnWith(translucency = 1.0, table = red, roughness = 0.0)
+    val clearBlue = drawnWith(translucency = 1.0, table = blue, roughness = 0.0)
+
+    val body = pixelsAgreeing(solidRed, solidBlue)
+    val seenThrough = body.count { pixel -> !samePixel(clearRed, clearBlue, pixel) }
+    Log.i(TAG, "resin: $seenThrough of ${body.size} body-or-wall pixels follow the floor")
+    assertTrue(
+      "no pixel of a clear die changed with the felt under it ($seenThrough of ${body.size})",
+      seenThrough >= LEAST_SEEN_THROUGH,
+    )
+  }
+
+  /** Every pixel [a] and [b] have the same, by index. */
+  private fun pixelsAgreeing(
+    a: ByteArray,
+    b: ByteArray,
+  ): List<Int> = (0 until a.size / FilamentStage.PIXEL_BYTES).filter { samePixel(a, b, it) }
+
+  private fun samePixel(
+    a: ByteArray,
+    b: ByteArray,
+    pixel: Int,
+  ): Boolean {
+    val from = pixel * FilamentStage.PIXEL_BYTES
+    return (from until from + FilamentStage.PIXEL_BYTES).all { a[it] == b[it] }
+  }
+
+  /** One frame of one die of this translucency, on [table], as bytes. */
+  private fun drawnWith(
+    translucency: Double,
+    table: TableLook = look,
+    roughness: Double = StandardDice.d20.material.roughness,
+  ): ByteArray {
     // Post-processing off, for the reason `aDrawnFrameIsNotBlank` gives.
     FilamentStage(WIDTH, HEIGHT, postProcessing = false).use { stage ->
-      val die = StandardDice.d20.copy(material = StandardDice.d20.material.copy(translucency = translucency))
+      val material = StandardDice.d20.material.copy(translucency = translucency, roughness = roughness)
+      val die = StandardDice.d20.copy(material = material)
       val renderer = FilamentDiceRenderer(stage)
       renderer.begin(
         ThrowSpec(
           dice = listOf(DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = die)),
           geometry = geometry,
-          table = look,
+          table = table,
           seed = 1L,
         ),
         geometry,
-        look,
+        table,
       )
       renderer.show(
         RenderFrame.still(
@@ -230,13 +276,13 @@ class FilamentStageTest {
     dir.deleteRecursively()
     try {
       val compiling = System.nanoTime()
-      FilamentEngine(materials = MaterialCache(dir)).use { it.blendedMaterial }
+      FilamentEngine(materials = MaterialCache(dir)).use { it.resinMaterial }
       val compiled = System.nanoTime() - compiling
       assertEquals(2, dir.listFiles { file -> file.name.endsWith(".filamat") }?.size)
 
       val reading = System.nanoTime()
       FilamentEngine(materials = MaterialCache(dir)).use { filament ->
-        filament.blendedMaterial
+        filament.resinMaterial
         val read = System.nanoTime() - reading
         Log.i(
           "dinfinity.startup",
@@ -308,11 +354,22 @@ class FilamentStageTest {
     const val HEIGHT = 640
     const val ROLLS = 3
 
-    /** Clear enough that a blended die cannot come out as the solid one. */
+    /** Clear enough that a resin die cannot come out as the solid one. */
     const val MOSTLY_CLEAR = 0.8
 
-    /** And enough to pick the blended material at all. */
+    /** And enough to pick the resin material at all. */
     const val HALF_CLEAR = 0.5
+
+    /** Two felts nothing could mistake for each other. */
+    const val RED_FLOOR = 0xFFC02020.toInt()
+    const val BLUE_FLOOR = 0xFF2030C0.toInt()
+
+    /**
+     * How many of a clear die's pixels have to follow the felt. A d20 at this
+     * size is a few hundred pixels; a few dozen is a refraction that ran, and
+     * nought is one that did not.
+     */
+    const val LEAST_SEEN_THROUGH = 30
 
     /** Rotations, near enough: a new surface each, one engine behind them. */
     const val SURFACES = 3

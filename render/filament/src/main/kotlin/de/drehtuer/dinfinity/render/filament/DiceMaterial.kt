@@ -2,9 +2,10 @@ package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.TableLook
+import kotlin.math.ln
 
 /**
- * The one material every surface of a roll is drawn with, and the values that
+ * The materials every surface of a roll is drawn with, and the values that
  * make each of them look different (`docs/tables.md`, "Table looks").
  *
  * Filament ships no default material: every surface needs one compiled from
@@ -19,13 +20,9 @@ import de.drehtuer.dinfinity.core.model.TableLook
  */
 object DiceMaterial {
   /**
-   * The material, in Filament's own language.
-   *
-   * Deliberately dull: one lit, opaque, physically-based surface with a base
-   * colour, a roughness and a metalness, with artwork laid over it. Dice are
-   * dice. The tray is a tray. Nothing here is trying to be clever, and
-   * everything a package is allowed to vary is a number going in rather than a
-   * line of this changing (`docs/TODO.md`, After v1).
+   * What every surface works out first, before anything decides how light
+   * leaves it: the body colour, the label printed into it, the artwork over
+   * that, and how much of the pixel is printed on rather than body.
    *
    * **The artwork is composited, not multiplied.** The body is worked out
    * first — the die's colour with its label printed into it — and the atlas is
@@ -39,7 +36,7 @@ object DiceMaterial {
    * `baseColor * atlas` — which is what keeps a table's floor texture tinted
    * by its floor colour (`docs/tables.md`, "Table looks").
    */
-  const val SOURCE: String = """
+  private const val SURFACE: String = """
         void material(inout MaterialInputs material) {
             prepareMaterial(material);
             vec4 base = materialParams.baseColor;
@@ -68,19 +65,12 @@ object DiceMaterial {
                 colour = mix(body, base.rgb * art.rgb, art.a);
                 printed = max(printed, art.a);
             }
-            // A surface that lets light through is `opacity` covered where it
-            // is bare body and wholly covered where something is printed on
-            // it. For every opaque surface `opacity` is one, so the mix is one
-            // too and the multiply below is by one — the same picture the
-            // opaque material drew before any of this existed.
-            float cover = mix(materialParams.opacity, 1.0, printed);
-            // Filament's transparent blending wants the colour already
-            // multiplied by its coverage. Doing it here rather than at the
-            // blend is what keeps a half-clear die from glowing where the
-            // felt behind it is bright.
-            material.baseColor = vec4(colour * cover, cover);
-            material.roughness = materialParams.roughness;
+            material.baseColor = vec4(colour, 1.0);
             material.metallic = materialParams.metallic;
+    """
+
+  /** The lacquer, and the end of the function both materials share. */
+  private const val COAT: String = """
             if (materialParams.clearCoat > 0.0) {
                 // The lacquer on a die, which is a thin smooth layer over a
                 // body that is not smooth at all. Without it the only way to
@@ -92,6 +82,72 @@ object DiceMaterial {
             }
         }
     """
+
+  /**
+   * The opaque material, in Filament's own language.
+   *
+   * Deliberately dull: one lit, opaque, physically-based surface with a base
+   * colour, a roughness and a metalness, with artwork laid over it. Dice are
+   * dice. The tray is a tray. Nothing here is trying to be clever, and
+   * everything a package is allowed to vary is a number going in rather than a
+   * line of this changing (`docs/TODO.md`, After v1).
+   */
+  const val SOURCE: String =
+    SURFACE + """
+            material.roughness = materialParams.roughness;
+    """ + COAT
+
+  /**
+   * The material of a die light passes through: the same surface, and resin
+   * under it.
+   *
+   * Filament's *screen-space refraction*: the opaque scene is drawn first, and
+   * this surface then looks into that picture along a ray bent by the resin's
+   * index, through a body [Resin.thicknessMm] thick, losing colour to
+   * [Resin.absorption] on the way. What it sees is the felt, the shadow and the
+   * opaque dice actually behind it, moved the way a lens moves them — which is
+   * what makes a die read as a solid lump of clear stuff rather than a
+   * see-through picture of one (`docs/physics-and-rendering.md`, "A die you can
+   * see into").
+   *
+   * The roughness is the resin's *scatter*, not its surface: Filament blurs
+   * what is seen through a surface by its roughness, so a milky die is a rough
+   * one inside a smooth lacquer, and the lacquer still gives the sharp
+   * highlight a polished die has. Where something is printed the surface is
+   * the author's roughness and lets nothing through: ink is paint on the
+   * outside of the resin, and a face you cannot read is not a die.
+   */
+  const val RESIN_SOURCE: String =
+    SURFACE + """
+            float bare = 1.0 - printed;
+            material.roughness = mix(materialParams.roughness, materialParams.scatter, bare);
+            material.transmission = materialParams.transmission * bare;
+            material.ior = materialParams.ior;
+            material.thickness = materialParams.thickness;
+            material.absorption = materialParams.absorption;
+    """ + COAT
+
+  /**
+   * Which compiled material a surface is drawn with.
+   *
+   * How light leaves a surface — whether it is refracted, and so drawn after
+   * the opaque scene and against a picture of it — is fixed when Filament
+   * compiles a material, so a resin die is a second material rather than a
+   * parameter of the first. [key] names it in [MaterialCache].
+   */
+  enum class Variant(
+    val source: String,
+    val key: String,
+  ) {
+    /** Every surface of the tray and every die nothing passes through. */
+    OPAQUE(SOURCE, "opaque"),
+
+    /** A die a set called translucent. */
+    RESIN(RESIN_SOURCE, "resin"),
+  }
+
+  /** Which of the [Variant]s [parameters] are drawn with. */
+  fun variantOf(parameters: Parameters): Variant = if (parameters.resin != null) Variant.RESIN else Variant.OPAQUE
 
   /** What a surface of the tray's floor is drawn with. */
   fun floorOf(look: TableLook): Parameters =
@@ -124,11 +180,14 @@ object DiceMaterial {
    *
    * @param texturePath the atlas, as an [AtlasKey] — the package and the path
    *   inside it — or null for a die whose author supplied none.
+   * @param scale what the throw's capacity rule shrank the die by, which is
+   *   how thick the resin of a translucent one is drawn ([Resin.of]).
    */
   fun dieOf(
     material: DieMaterial,
     texturePath: String?,
     numbers: NumberField? = null,
+    scale: Double = 1.0,
   ): Parameters =
     Parameters(
       colour = Colour.of(material.colorArgb),
@@ -137,7 +196,7 @@ object DiceMaterial {
       texturePath = texturePath,
       numbers = numbers,
       ink = Colour.of(material.numberColorArgb),
-      opacity = material.opacity,
+      resin = Resin.of(material, scale),
       clearCoat = DIE_COAT,
     )
 
@@ -151,7 +210,7 @@ object DiceMaterial {
    * @param numbers the die's labels as a distance field, or null for a surface
    *   with nothing printed on it — which is every surface of the tray.
    * @param ink what [numbers] is printed in.
-   * @param opacity how much of what is behind this surface it hides, one for
+   * @param resin what light does inside a die it passes through, or null for
    *   everything but a die a set called translucent (`docs/dice-sets.md`).
    * @param clearCoat the lacquer over the body, nought for a surface with
    *   none. A tray has none: varnished felt is a table nobody owns.
@@ -164,7 +223,7 @@ object DiceMaterial {
     val texturePath: String?,
     val numbers: NumberField? = null,
     val ink: Colour = Colour.of(DieMaterial.DEFAULT_NUMBER_COLOR_ARGB),
-    val opacity: Double = 1.0,
+    val resin: Resin? = null,
     val clearCoat: Double = 0.0,
     val clearCoatRoughness: Double = DIE_COAT_ROUGHNESS,
   ) {
@@ -173,16 +232,6 @@ object DiceMaterial {
 
     /** True when this surface has the built-in font printed over it. */
     val numbered: Boolean get() = numbers != null
-
-    /**
-     * True when this surface has to be *blended* rather than simply drawn.
-     *
-     * Which material it is drawn with, not which parameter it is given:
-     * blending is fixed when a material is compiled, so a translucent die and
-     * an opaque one are two materials and this is the question that picks
-     * (`FilamentEngine`).
-     */
-    val blended: Boolean get() = opacity < 1.0
   }
 
   /**
@@ -196,6 +245,124 @@ object DiceMaterial {
 
   /** And how much of one there is. A die is varnished; nothing else here is. */
   const val DIE_COAT: Double = 1.0
+}
+
+/**
+ * What light does inside a translucent die, worked out from the three numbers
+ * a set already writes — `translucency`, `color` and `size_mm`
+ * (`docs/dice-sets.md`). Nothing here is a field of its own in the format:
+ * every resin a set can describe is one of these, and the constants below are
+ * what turn a word an author understands into the ones Filament does.
+ *
+ * @param transmission how much of the light leaving the bare body came
+ *   through it rather than off it: the set's translucency, as it stands.
+ * @param scatter how blurred what is seen through the die is, as a roughness:
+ *   a milky die scatters, a glassy one does not, and an author who made the
+ *   die rough frosted it.
+ * @param ior how sharply the resin bends light.
+ * @param thicknessMm how far through the die a ray travels, in the scene's
+ *   millimetres.
+ * @param absorption how much of each colour the resin swallows per
+ *   millimetre, which is what makes the middle of a die deeper in colour than
+ *   its thin edges.
+ */
+data class Resin(
+  val transmission: Double,
+  val scatter: Double,
+  val ior: Double,
+  val thicknessMm: Double,
+  val absorption: Absorption,
+) {
+  companion object {
+    /**
+     * Cast acrylic and epoxy, the two things dice are made of, are 1.49 to
+     * 1.55. Half a hundredth either way is not something an eye can tell.
+     */
+    const val IOR: Double = 1.5
+
+    /**
+     * How blurred the view through a die at the very bottom of the
+     * translucency scale is, as a roughness. A die that is barely translucent
+     * is milky — light gets in and is scattered — and one that is wholly clear
+     * is glass; between them the blur falls away in a straight line.
+     */
+    const val MILKY_SCATTER: Double = 0.6
+
+    /**
+     * How thick a die is to a ray through it, as a share of its size across.
+     * A die is a polyhedron rather than the sphere Filament's model assumes,
+     * and between a d6's inscribed sphere (0.58 of its corner-to-corner size)
+     * and a d20's (0.79) this is the middle.
+     */
+    const val THICKNESS_OF_SIZE: Double = 0.7
+
+    /**
+     * How much the resin's own colour deepens a ray that crosses the whole
+     * die, as a power of that colour. Filament already tints whatever is seen
+     * through a die by the die's colour, once; this is on top of that, and a
+     * half is what makes the middle of an amber die richer than its edges
+     * without turning it to brown glass.
+     */
+    const val ABSORPTION_DEPTH: Double = 0.5
+
+    /**
+     * The least of a colour channel the resin is allowed to pass. A channel of
+     * exactly nought would ask for infinite absorption.
+     */
+    const val LEAST_CHANNEL: Double = 0.02
+
+    /**
+     * The thinnest a die is ever taken to be, so that a throw scaled to
+     * nothing cannot ask for an infinite absorption.
+     */
+    const val THINNEST_MM: Double = 1.0
+
+    /** The resin of [material] at [scale], or null for a die nothing passes through. */
+    fun of(
+      material: DieMaterial,
+      scale: Double,
+    ): Resin? {
+      val clamped = material.clampedToLimits()
+      val translucency = clamped.translucency
+      if (translucency <= 0.0) return null
+      val thickness = (clamped.sizeMm * scale * THICKNESS_OF_SIZE).coerceAtLeast(THINNEST_MM)
+      return Resin(
+        transmission = translucency,
+        scatter = maxOf(clamped.roughness, MILKY_SCATTER * (1.0 - translucency)),
+        ior = IOR,
+        thicknessMm = thickness,
+        absorption = Absorption.of(Colour.of(material.colorArgb), thickness),
+      )
+    }
+  }
+}
+
+/**
+ * How much of each colour a material swallows per millimetre a ray travels
+ * through it — Filament's `absorption`, which it applies as
+ * `exp(-absorption × distance)`.
+ */
+data class Absorption(
+  val red: Double,
+  val green: Double,
+  val blue: Double,
+) {
+  companion object {
+    /**
+     * What a resin of [colour] absorbs so that a ray crossing all of
+     * [thicknessMm] keeps [Resin.ABSORPTION_DEPTH] of that colour as a power:
+     * a channel the colour is full of is not absorbed at all, and one it has
+     * none of is absorbed most.
+     */
+    fun of(
+      colour: Colour,
+      thicknessMm: Double,
+    ): Absorption {
+      fun channel(value: Double): Double =
+        -ln(value.coerceIn(Resin.LEAST_CHANNEL, 1.0)) * Resin.ABSORPTION_DEPTH / thicknessMm
+      return Absorption(channel(colour.red), channel(colour.green), channel(colour.blue))
+    }
+  }
 }
 
 /**

@@ -2145,12 +2145,14 @@ impact sounds rather than a crash in the middle of a roll.
     which Android empties on every update, so a new Filament never reads an
     old packet; its name carries the material source's hash as well, and
     anything wrong with the disk falls back to compiling;
-  - the blended material is made the first time a translucent die asks for
-    it, not with the engine. The built-in set has none, and a translucent die
-    on that first launch pays about two seconds once, mid-throw.
-- **One material** draws every surface of a roll: a lit, opaque, physically
-  based one with a base colour, a roughness and a metalness, with an atlas laid
-  over it. Dice are dice and a tray is a tray. Everything a package may vary is
+  - the resin material is made the first time a translucent die asks for it,
+    not with the engine. The built-in set has none, and a translucent die on
+    that first launch pays about two seconds once, mid-throw.
+- **One material** draws every surface of a roll but a translucent die: a
+  lit, opaque, physically based one with a base colour, a roughness and a
+  metalness, with an atlas laid over it. Dice are dice and a tray is a tray. A
+  die light passes through is the same surface with resin under it ("A die you
+  can see into", below). Everything a package may vary is
   a number going into it rather than a line of it changing (`docs/tables.md`,
   "Table looks"; `docs/TODO.md`, After v1).
 - **The artwork is composited, not multiplied.** The body colour is worked out
@@ -2230,27 +2232,63 @@ impact sounds rather than a crash in the middle of a roll.
   shader recovers a crisp edge from it at whatever size the die is drawn
   (`core/glyphs`). It is built once per die rather than once per body, because
   `20d20` is twenty of the same die.
-- **A die you can see into is a second material, not a second parameter.**
-  Blending is baked into a material when Filament compiles it — a blended
-  surface is drawn in another pass, in another order, against a depth buffer it
-  does not write — so a translucent die cannot be the opaque material with its
-  alpha turned down. The same source is compiled twice, once opaque and once
-  transparent, and which one a surface gets is decided by whether its set
-  called it translucent at all (`docs/dice-sets.md`).
+- **A die you can see into is resin, and resin is a second material.** A
+  translucent die is drawn with Filament's *screen-space refraction*: the
+  opaque scene is drawn first and copied with a chain of ever-blurrier
+  levels, and the die is then drawn on top of it, looking into that copy along
+  a ray bent by the resin and displaced by the die's thickness. What shows
+  through a clear d20 is the felt under it, its own shadow and the dice beside
+  it, moved the way a lens moves them — a solid lump of clear stuff rather than
+  a see-through picture of one (`docs/architecture.md`, decision 90).
+  Refraction is baked into a material when Filament compiles it, so the resin
+  is `DiceMaterial.RESIN_SOURCE`, the opaque material's surface with a
+  different ending, compiled lazily and cached like the opaque one; which one
+  a surface gets is whether its set called it translucent at all
+  (`DiceMaterial.variantOf`, `docs/dice-sets.md`).
 
-  **Transparent rather than fade**, which is the difference between a die made
-  of clear stuff and a ghost: fade takes a surface's own lighting out in
-  proportion to how clear it is, and the sheen down a die's edge is part of the
-  picture. Filament's transparent blending wants the colour already multiplied
-  by its coverage, so the shader does that rather than leaving it to the blend
-  — a half-clear die otherwise glows wherever the felt behind it is bright.
+  ```mermaid
+  flowchart LR
+    opaque["Opaque pass<br/>tray, solid dice"] --> copy["Copy of the frame<br/>with blurred levels"]
+    copy --> resin["Resin dice<br/>look into the copy"]
+    opaque --> resin
+    resin --> post["Post-processing"]
+  ```
 
-  **What is printed stays opaque.** The shader tracks how much of a pixel is
-  ink or artwork rather than body, and the coverage it writes is the die's
-  opacity where the face is bare and one where something is printed on it. Ink
-  is paint on the outside of the resin, and paint does not go clear because the
-  die did — which is the whole of `docs/dice-sets.md`'s promise that a face you
-  cannot read is not a die.
+  Everything the resin is, it gets from fields a set already writes; the
+  format has no resin fields (`Resin.of`):
+
+  | Filament input | From | Value |
+  | --- | --- | --- |
+  | `transmission` | `translucency` | as it stands: the share of the light leaving the bare body that came through it |
+  | `roughness` (blur of what is seen through) | `translucency`, `roughness` | the larger of the die's `roughness` and `0.6 × (1 − translucency)`: barely translucent is milky, wholly clear is glass, and a rough die is frosted |
+  | `ior` | — | 1.5, cast acrylic and epoxy |
+  | `thickness` | `size_mm`, the throw's scale | 0.7 of the die's drawn size, between a d6's inscribed sphere and a d20's |
+  | `absorption` | `color` | so that a ray crossing the whole die keeps the colour's square root on top of Filament's own one-off tint by the body colour: the middle of an amber die is deeper than its edges |
+
+  The die keeps its clear coat over all of it, so it still has the sharp
+  highlight of a polished die however milky the inside is. **What is printed
+  stays opaque**: the shader tracks how much of a pixel is ink or artwork
+  rather than body, and where something is printed the transmission is nought
+  and the roughness the author's. Ink is paint on the outside of the resin,
+  and paint does not go clear because the die did — which is the whole of
+  `docs/dice-sets.md`'s promise that a face you cannot read is not a die.
+
+  **What it costs and what it cannot do.** On a frame with a resin die in
+  view, Filament draws the opaque scene into a texture, builds its blur
+  levels and draws the resin dice after: one extra full-frame copy and a few
+  downsamples, and one more texture read per resin pixel — nothing on a frame
+  without one. What the copy holds is the *opaque* scene, so a translucent die
+  seen through another translucent die is not there: the felt shows instead.
+  A resin die still casts a whole shadow, because Filament's shadows have no
+  partial coverage for an opaque material, and the light that would pool
+  inside a real one (a caustic) is not modelled at all.
+
+  The die used to be blended instead — the same surface with its alpha turned
+  down — which drew a translucent die as a dusty, faded opaque one: nothing
+  behind it bent, nothing in it deepened, and the felt came through as a flat
+  wash. Filament's `SUBSURFACE` shading model was the other candidate and is
+  not used: it wraps direct light round the back of a thin object, cannot
+  refract, and has no clear coat.
 
 - **Every image in this app counts its rows from the top, and the shader is
   told so.** A die's printed numbers, a package's artwork atlas and a table's

@@ -59,6 +59,28 @@ class FilamentDiceRendererTest {
   }
 
   @Test
+  fun `a translucent die's resin is as thick as the die it is drawn as`() {
+    // The capacity rule shrinks a die, and a ray through a shrunk die crosses
+    // less resin: the thickness follows the drawn size, not the set's.
+    val scale = 0.6
+    val clear = StandardDice.d20.copy(material = StandardDice.d20.material.copy(translucency = 0.6))
+    renderer.begin(
+      ThrowSpec(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = clear)),
+        geometry = geometry,
+        table = look,
+        seed = 1L,
+        dieScale = scale,
+      ),
+      geometry,
+      look,
+    )
+
+    val resin = requireNotNull(stage.added[TRAY_PARTS].second.resin)
+    assertEquals(clear.material.sizeMm * scale * Resin.THICKNESS_OF_SIZE, resin.thicknessMm, TOLERANCE)
+  }
+
+  @Test
   fun `a die with no artwork is given its numbers to print`() {
     renderer.begin(spec(), geometry, look)
 

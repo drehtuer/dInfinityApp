@@ -11,7 +11,7 @@ import java.security.MessageDigest
  * Compiling the material on the device (`docs/architecture.md`, decision 46)
  * took the Pixel 10a about eight seconds of a black tray on *every* cold start:
  * nine-tenths of the CPU in those seconds was `libfilamat`. The packet it
- * produces depends only on the material source, whether it is blended and the
+ * produces depends only on the material source, which variant it is and the
  * backend it was compiled for — so it is compiled once and read back after.
  *
  * Meant to live in the app's `codeCacheDir`, which Android empties whenever
@@ -93,17 +93,17 @@ class MaterialCache(
 
     /**
      * The name a packet is kept under: what it was compiled from, for which
-     * backend, and whether it blends.
+     * backend, and which variant of the dice material it is
+     * (`DiceMaterial.Variant`).
      */
     fun keyOf(
       source: String,
       backend: String,
-      blended: Boolean,
+      variant: String,
     ): String {
       val digest = MessageDigest.getInstance("SHA-256").digest(source.toByteArray(Charsets.UTF_8))
       val hash = digest.joinToString("") { "%02x".format(it) }.take(HASH_CHARS)
-      val blending = if (blended) "blended" else "opaque"
-      return "dice-$blending-${backend.lowercase()}-$hash"
+      return "dice-${variant.lowercase()}-${backend.lowercase()}-$hash"
     }
   }
 }

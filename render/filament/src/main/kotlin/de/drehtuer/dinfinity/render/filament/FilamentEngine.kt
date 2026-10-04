@@ -68,37 +68,40 @@ class FilamentEngine(
    * Everything that hides what is behind it, which is every surface of the
    * tray and every die a set has not called translucent.
    */
-  val material: Material = loadMaterial(engine, materials, blended = false)
+  val material: Material = loadMaterial(engine, materials, DiceMaterial.Variant.OPAQUE)
 
-  private val blended = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, blended = true) }
+  private val resin = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.RESIN) }
 
   /**
-   * And the same material again, blended.
+   * And the material of a die light passes through.
    *
-   * Whether a surface is blended is fixed when a material is *compiled* —
-   * Filament bakes the blending mode into the shader, because a blended
-   * surface is drawn in a different pass, in a different order, against a
-   * depth buffer it does not write to. So a translucent die cannot be the
-   * opaque material with a different parameter; it is a second material, from
-   * the same source, and [materialFor] is what picks.
+   * Whether a surface refracts is fixed when a material is *compiled* —
+   * Filament draws a refracting surface after the opaque scene, in a pass of
+   * its own, looking into a picture of what was drawn before it. So a
+   * translucent die cannot be the opaque material with a different parameter;
+   * it is a second material, and [materialFor] is what picks
+   * ([DiceMaterial.variantOf]).
    *
-   * The source is shared rather than copied because the two must agree about
-   * every other thing they draw: the same body, the same printed numbers, the
-   * same artwork over them. Only the blending differs, and only Filament's
-   * builder knows it does.
+   * The two share the whole of their surface — the same body, the same printed
+   * numbers, the same artwork over them ([DiceMaterial.RESIN_SOURCE]) — and
+   * differ only in what happens to the light that is not reflected.
    *
    * **Made the first time a die asks for it**, not with the engine. Most rolls
-   * have no translucent die at all, the built-in set has none, and compiling
-   * it took about two of the five seconds the first launch of a new version
-   * spent with a black tray. A translucent die on that first launch pays for
-   * it instead, once; after that it is read back from [MaterialCache] like the
-   * opaque one. Only ever touched on the thread that owns the engine, so it
-   * needs no lock.
+   * have no translucent die at all, the built-in set has none, and compiling a
+   * second material took about two of the five seconds the first launch of a
+   * new version spent with a black tray. A translucent die on that first
+   * launch pays for it instead, once; after that it is read back from
+   * [MaterialCache] like the opaque one. Only ever touched on the thread that
+   * owns the engine, so it needs no lock.
    */
-  val blendedMaterial: Material by blended
+  val resinMaterial: Material by resin
 
   /** Which of the two [parameters] is to be drawn with. */
-  fun materialFor(parameters: DiceMaterial.Parameters): Material = if (parameters.blended) blendedMaterial else material
+  fun materialFor(parameters: DiceMaterial.Parameters): Material =
+    when (DiceMaterial.variantOf(parameters)) {
+      DiceMaterial.Variant.OPAQUE -> material
+      DiceMaterial.Variant.RESIN -> resinMaterial
+    }
 
   /**
    * Every package's artwork that has been asked for, uploaded once.
@@ -173,7 +176,7 @@ class FilamentEngine(
     atlases.close()
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
-    if (blended.isInitialized()) engine.destroyMaterial(blendedMaterial)
+    if (resin.isInitialized()) engine.destroyMaterial(resinMaterial)
     engine.destroy()
   }
 
@@ -185,17 +188,17 @@ class FilamentEngine(
     const val OPAQUE_WHITE = 0xFF.toByte()
 
     /**
-     * The dice material for [engine], from [materials] if it was compiled on an
-     * earlier launch.
+     * The [variant] of the dice material for [engine], from [materials] if it
+     * was compiled on an earlier launch.
      */
     fun loadMaterial(
       engine: Engine,
       materials: MaterialCache,
-      blended: Boolean,
+      variant: DiceMaterial.Variant,
     ): Material {
       val target = targetOf(engine.backend)
-      val key = MaterialCache.keyOf(DiceMaterial.SOURCE, backend = target.name, blended = blended)
-      val packet = materials.packet(key) { compileMaterial(target, blended) }
+      val key = MaterialCache.keyOf(variant.source, backend = target.name, variant = variant.key)
+      val packet = materials.packet(key) { compileMaterial(target, variant) }
       return Material.Builder().payload(packet, packet.remaining()).build(engine)
     }
 
@@ -216,26 +219,30 @@ class FilamentEngine(
 
     fun compileMaterial(
       target: MaterialBuilder.TargetApi,
-      blended: Boolean,
+      variant: DiceMaterial.Variant,
     ): ByteBuffer {
       MaterialBuilder.init()
       try {
         val packet =
           MaterialBuilder()
-            .name(if (blended) "dinfinity-blended" else "dinfinity")
-            .material(DiceMaterial.SOURCE)
+            .name(
+              when (variant) {
+                DiceMaterial.Variant.OPAQUE -> "dinfinity"
+                DiceMaterial.Variant.RESIN -> "dinfinity-resin"
+              },
+            ).material(variant.source)
+            // `LIT` for resin too, not `SUBSURFACE`. Filament's subsurface
+            // model is a wrap of the direct lights around the back of a thin
+            // object; it cannot refract, has no clear coat, and shows nothing
+            // of what is behind the die — which is the whole of what makes
+            // resin read as resin (`docs/architecture.md`, decision 90).
             .shading(MaterialBuilder.Shading.LIT)
-            // `TRANSPARENT` rather than `FADE`: a die you can see into is a
-            // solid object made of clear stuff, so its own lighting — the
-            // sheen down one edge, the shadowed side — is *there* and belongs
-            // in the picture. `FADE` would take it out in proportion to how
-            // clear the die is, which is what a ghost looks like.
-            //
-            // It also means the shader hands over a colour already multiplied
-            // by its coverage, which `DiceMaterial.SOURCE` does.
-            .blending(
-              if (blended) MaterialBuilder.BlendingMode.TRANSPARENT else MaterialBuilder.BlendingMode.OPAQUE,
-            )
+            // Opaque for both. A refracting surface is *not* blended: Filament
+            // draws it after everything opaque, into the same depth buffer,
+            // and makes its see-through look by sampling a picture of the
+            // opaque scene rather than by letting the blend show it.
+            .blending(MaterialBuilder.BlendingMode.OPAQUE)
+            .apply { if (variant == DiceMaterial.Variant.RESIN) resin() }
             // **Off, and the numbers are upside down without it.**
             //
             // `MaterialBuilder` defaults this to true, which makes `getUV0()`
@@ -270,7 +277,6 @@ class FilamentEngine(
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "numbered")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "inkColor")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "opacity")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoat")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoatRoughness")
             .samplerParameter(
@@ -295,6 +301,31 @@ class FilamentEngine(
         MaterialBuilder.shutdown()
       }
     }
+
+    /**
+     * What the resin variant adds: refraction, and the numbers that describe
+     * the resin ([Resin]).
+     *
+     * **Screen space, not the cubemap.** A cubemap refraction looks through
+     * the die into the *room* — the lighting environment — and a die sits on
+     * felt; looking down through one should show the felt under it, its
+     * shadow and the dice beside it. Screen space does, at the price of one
+     * copy of the opaque scene with its mip chain, made only on frames that
+     * have a refracting die in them. What it cannot show is one translucent
+     * die through another: the picture it looks into holds the opaque scene
+     * only (`docs/physics-and-rendering.md`, "A die you can see into").
+     *
+     * **Solid, not thin.** A die is a lump, not a soap bubble: a ray goes in
+     * at one face and out at another, displaced, and loses colour all the way.
+     */
+    fun MaterialBuilder.resin(): MaterialBuilder =
+      refractionMode(MaterialBuilder.RefractionMode.SCREEN_SPACE)
+        .refractionType(MaterialBuilder.RefractionType.SOLID)
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "transmission")
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "scatter")
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "ior")
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "thickness")
+        .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "absorption")
 
     /**
      * A decoded atlas, uploaded as it stands.

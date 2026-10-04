@@ -4,6 +4,8 @@ import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.TableLook
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -120,23 +122,101 @@ class DiceMaterialTest {
       "numbered",
       "inkColor",
       "glyphs",
-      "opacity",
       "clearCoat",
       "clearCoatRoughness",
     ).forEach {
-      assertTrue("the material never reads $it", DiceMaterial.SOURCE.contains(it))
+      val source = DiceMaterial.SOURCE
+      assertTrue("the material never reads $it", "materialParams.$it" in source || "materialParams_$it" in source)
+      assertTrue("the resin never reads $it", DiceMaterial.RESIN_SOURCE.contains(it))
+    }
+    listOf("transmission", "scatter", "ior", "thickness", "absorption").forEach {
+      assertTrue("the resin never reads $it", DiceMaterial.RESIN_SOURCE.contains("materialParams.$it"))
+      // The opaque material declares none of these, and Filament refuses a
+      // parameter a material does not declare.
+      assertFalse("the opaque material reads $it", DiceMaterial.SOURCE.contains("materialParams.$it"))
     }
   }
 
   @Test
-  fun `a solid die is drawn, and a translucent one is blended`() {
+  fun `the opaque material writes a whole pixel and nothing about light passing through`() {
+    // Every opaque surface wrote a coverage of one before resin existed; this
+    // is that same picture with the multiply by one gone.
+    assertTrue(DiceMaterial.SOURCE.contains("material.baseColor = vec4(colour, 1.0);"))
+    assertFalse(DiceMaterial.SOURCE.contains("material.transmission"))
+  }
+
+  @Test
+  fun `a solid die is opaque, and a translucent one is resin`() {
     val solid = DiceMaterial.dieOf(DieMaterial(), texturePath = null)
-    assertEquals(1.0, solid.opacity, TOLERANCE)
-    assertFalse("a solid die needs no blending", solid.blended)
+    assertNull("a solid die has no resin", solid.resin)
+    assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(solid))
 
     val glass = DiceMaterial.dieOf(DieMaterial(translucency = 0.35), texturePath = null)
-    assertEquals(0.65, glass.opacity, TOLERANCE)
-    assertTrue("a die you can see into has to be blended", glass.blended)
+    assertEquals(0.35, glass.resin!!.transmission, TOLERANCE)
+    assertEquals(DiceMaterial.Variant.RESIN, DiceMaterial.variantOf(glass))
+  }
+
+  @Test
+  fun `each variant compiles its own source under its own name`() {
+    assertEquals(DiceMaterial.SOURCE, DiceMaterial.Variant.OPAQUE.source)
+    assertEquals(DiceMaterial.RESIN_SOURCE, DiceMaterial.Variant.RESIN.source)
+    assertNotEquals(DiceMaterial.Variant.OPAQUE.key, DiceMaterial.Variant.RESIN.key)
+  }
+
+  @Test
+  fun `resin is bent like acrylic and as thick as most of the die`() {
+    val resin = Resin.of(DieMaterial(translucency = 0.6, sizeMm = 20.0), scale = 0.5)!!
+    assertEquals(Resin.IOR, resin.ior, TOLERANCE)
+    assertEquals(20.0 * 0.5 * Resin.THICKNESS_OF_SIZE, resin.thicknessMm, TOLERANCE)
+  }
+
+  @Test
+  fun `a die scaled to nothing is still some thickness`() {
+    val resin = Resin.of(DieMaterial(translucency = 0.6), scale = 0.0)!!
+    assertEquals(Resin.THINNEST_MM, resin.thicknessMm, TOLERANCE)
+    assertTrue(resin.absorption.red.isFinite())
+  }
+
+  @Test
+  fun `a milky die scatters and a glassy one does not`() {
+    val milky = Resin.of(DieMaterial(translucency = 0.1, roughness = 0.0), scale = 1.0)!!
+    val glassy = Resin.of(DieMaterial(translucency = 1.0, roughness = 0.0), scale = 1.0)!!
+    assertEquals(Resin.MILKY_SCATTER * 0.9, milky.scatter, TOLERANCE)
+    assertEquals(0.0, glassy.scatter, TOLERANCE)
+  }
+
+  @Test
+  fun `a rough die is frosted however clear it is`() {
+    val frosted = Resin.of(DieMaterial(translucency = 1.0, roughness = 0.8), scale = 1.0)!!
+    assertEquals(0.8, frosted.scatter, TOLERANCE)
+  }
+
+  @Test
+  fun `resin reads the die through its limits`() {
+    // What reaches the renderer was clamped when the set was installed; a
+    // value edited on disk since is clamped again rather than handed to a
+    // shader.
+    val wild = Resin.of(DieMaterial(translucency = 7.0, sizeMm = 1_000.0), scale = 1.0)!!
+    assertEquals(1.0, wild.transmission, TOLERANCE)
+    assertEquals(DieMaterial.SizeMmRange.endInclusive * Resin.THICKNESS_OF_SIZE, wild.thicknessMm, TOLERANCE)
+    assertNull(Resin.of(DieMaterial(translucency = Double.NaN), scale = 1.0))
+  }
+
+  @Test
+  fun `the resin swallows least of its own colour`() {
+    val amber = Absorption.of(Colour(red = 1.0, green = 0.5, blue = 0.0, alpha = 1.0), thicknessMm = 10.0)
+    assertEquals(0.0, amber.red, TOLERANCE)
+    assertTrue("green is absorbed more than red", amber.green > amber.red)
+    assertTrue("blue is absorbed more than green", amber.blue > amber.green)
+    // Across the whole thickness a channel keeps its own value to the
+    // configured power: exp(-a × d) = c^depth.
+    assertEquals(
+      Math.pow(0.5, Resin.ABSORPTION_DEPTH),
+      Math.exp(-amber.green * 10.0),
+      TOLERANCE,
+    )
+    // A channel of nothing is held at the least the resin passes, not infinity.
+    assertEquals(-Math.log(Resin.LEAST_CHANNEL) * Resin.ABSORPTION_DEPTH / 10.0, amber.blue, TOLERANCE)
   }
 
   @Test
@@ -147,17 +227,22 @@ class DiceMaterialTest {
   }
 
   @Test
-  fun `the tray is never blended, however a die is drawn`() {
-    assertFalse(DiceMaterial.floorOf(PLAIN).blended)
-    assertFalse(DiceMaterial.wallOf(PLAIN).blended)
+  fun `the tray is never resin, however a die is drawn`() {
+    assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.floorOf(PLAIN)))
+    assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.wallOf(PLAIN)))
   }
 
   @Test
   fun `what is printed on a die stays opaque, and the shader is where that happens`() {
-    // The mix is `opacity` where the face is bare and one where it is printed
-    // on, which is the line that keeps a numeral readable on a clear die. It
-    // cannot be asserted without a GPU; that it is *there* can be.
-    assertTrue(DiceMaterial.SOURCE.contains("mix(materialParams.opacity, 1.0, printed)"))
+    // Light passes only through the *bare* body: where ink or artwork is, the
+    // transmission is nought and the roughness the author's, which is the line
+    // that keeps a numeral readable on a clear die. It cannot be asserted
+    // without a GPU; that it is *there* can be.
+    assertTrue(DiceMaterial.RESIN_SOURCE.contains("float bare = 1.0 - printed;"))
+    assertTrue(DiceMaterial.RESIN_SOURCE.contains("material.transmission = materialParams.transmission * bare;"))
+    assertTrue(
+      DiceMaterial.RESIN_SOURCE.contains("mix(materialParams.roughness, materialParams.scatter, bare)"),
+    )
   }
 
   private companion object {

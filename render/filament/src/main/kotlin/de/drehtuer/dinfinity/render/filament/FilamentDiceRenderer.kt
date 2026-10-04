@@ -221,6 +221,7 @@ class FilamentDiceRenderer(
           material = die.material,
           texturePath = die.texturePath?.let { AtlasKey.of(setId, it) },
           numbers = printed.of(die, mesh),
+          scale = scale,
         ),
     )
   }

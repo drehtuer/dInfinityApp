@@ -29,7 +29,8 @@ This is a snapshot, not a changelog — git history is the changelog.
   making the table and dice look real — a render gallery to compare against
   (`tools/gallery.sh`), then lighting from a real room, translucent dice that
   refract and scatter, and rounded edges. It reaches `main` when the owner
-  likes it on the phone.
+  likes it on the phone. Translucent dice are now refracting resin
+  (decision 90), awaiting the device suite and a gallery look.
 
 ## Done
 
