@@ -26,6 +26,7 @@ import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
@@ -97,6 +98,59 @@ class DeveloperScreenTest {
       .performScrollTo()
       .assertTextContains("seed 7 · faces 3 4 · steps 120")
     compose.onNodeWithTag(DeveloperTestTags.VERDICT).performScrollTo().assertTextContains("Determinism holds", true)
+  }
+
+  @Test
+  fun `while the dice are in the air it says so, and then shows what they came to`() {
+    val notes = DeveloperNotes()
+    notes.landed(spec(seed = 7L), clean(), atEpochMs = 1L)
+    val landing = CompletableDeferred<SimulationOutcome>()
+    compose.setContent { DeveloperScreen(presenter = presenter(notes, throwAgain = { landing.await() })) }
+
+    compose.onNodeWithTag(DeveloperTestTags.REPLAY_LAST).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DeveloperTestTags.RUNNING).performScrollTo().assertTextContains("Throwing…")
+    compose.onNodeWithTag(DeveloperTestTags.RESULT).assertDoesNotExist()
+
+    compose.runOnIdle { landing.complete(clean()) }
+
+    compose.onNodeWithTag(DeveloperTestTags.RUNNING).assertDoesNotExist()
+    compose.onNodeWithTag(DeveloperTestTags.RESULT).performScrollTo().assertIsDisplayed()
+  }
+
+  @Test
+  fun `a seed that did not reproduce its roll is called out as a release blocker`() {
+    // The most serious thing this screen can say, so it is worth seeing that it
+    // is said rather than only that the presenter decided it.
+    val notes = DeveloperNotes()
+    notes.landed(spec(seed = 7L), clean(), atEpochMs = 1L)
+    val elsewhere = SimulationOutcome(faces = mapOf(0 to 1, 1 to 1), steps = 120)
+    compose.setContent { DeveloperScreen(presenter = presenter(notes, throwAgain = { elsewhere })) }
+
+    compose.onNodeWithTag(DeveloperTestTags.REPLAY_LAST).performScrollTo().performClick()
+
+    compose
+      .onNodeWithTag(DeveloperTestTags.VERDICT)
+      .performScrollTo()
+      .assertTextContains("release blocker", substring = true)
+  }
+
+  @Test
+  fun `a replay under another seed shows its faces and gives no verdict`() {
+    // A different seed is not supposed to agree with anything, so "same" or
+    // "different" under it would both be noise.
+    val notes = DeveloperNotes()
+    notes.landed(spec(seed = 7L), clean(), atEpochMs = 1L)
+    compose.setContent { DeveloperScreen(presenter = presenter(notes)) }
+
+    compose.onNodeWithTag(DeveloperTestTags.SEED).performScrollTo().performTextInput("12")
+    compose.onNodeWithTag(DeveloperTestTags.REPLAY_SEED).performScrollTo().performClick()
+
+    compose
+      .onNodeWithTag(DeveloperTestTags.RESULT)
+      .performScrollTo()
+      .assertTextContains("seed 12", substring = true)
+    compose.onNodeWithTag(DeveloperTestTags.VERDICT).assertDoesNotExist()
   }
 
   @Test
@@ -177,10 +231,13 @@ class DeveloperScreenTest {
       .assertTextContains("Last throw · dice 2 · seed 7")
   }
 
-  private fun presenter(log: DeveloperNotes): DeveloperPresenter =
+  private fun presenter(
+    log: DeveloperNotes,
+    throwAgain: suspend (ThrowSpec) -> SimulationOutcome = { clean() },
+  ): DeveloperPresenter =
     DeveloperPresenter(
       log = log,
-      throwAgain = { clean() },
+      throwAgain = throwAgain,
       // Unconfined so a click's replay has finished by the time the assertion
       // runs; the real one is a lifecycle scope on a background dispatcher.
       scope = CoroutineScope(Dispatchers.Unconfined),
