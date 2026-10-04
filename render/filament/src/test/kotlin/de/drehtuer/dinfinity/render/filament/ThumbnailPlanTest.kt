@@ -39,6 +39,7 @@ class ThumbnailPlanTest {
     assertThrows(IllegalArgumentException::class.java) { ThumbnailPlan(widthPx = 0, heightPx = 10) }
     assertThrows(IllegalArgumentException::class.java) { ThumbnailPlan(widthPx = 10, heightPx = 0) }
     assertThrows(IllegalArgumentException::class.java) { ThumbnailPlan.of(widthPx = -1, heightPx = 10) }
+    assertThrows(IllegalArgumentException::class.java) { ThumbnailPlan.of(widthPx = 10, heightPx = 0) }
   }
 
   @Test
