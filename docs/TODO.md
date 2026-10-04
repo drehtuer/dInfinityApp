@@ -99,12 +99,6 @@ Implementation notes recorded only here:
       expect, and is the double tap found at all without being told? Tap a
       die: is the ~300 ms before its ring appears noticeable, or does a pick
       still feel immediate?
-- [ ] **A later pass** (decision 85): land a die cocked and shake it again,
-      or let a `2d6!` explode, or pick a die and shake — does the accent-700
-      outline sit on the die's own edge at every pinch, does `PASS 2` under it
-      read at arm's length on each table, and does it say "this came later"
-      rather than "this one is wrong"? Pick that die again: are the ring and
-      the outline plainly two different marks?
 - [ ] **The shake prompt** (decision 84): land a die cocked (or a `1d6!` that
       explodes) — is "Shake to re-throw 1 die" at the top impossible to miss
       now, does it go the moment you shake, and does TalkBack read it once?

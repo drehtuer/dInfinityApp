@@ -240,71 +240,6 @@ class TrayPickTest {
     assertNull(TrayPick(shot, PORTRAIT).markOf(behind))
   }
 
-  @Test
-  fun `a die's outline goes round where it is drawn, inside the ring a pick would get`() {
-    // Decision 85: the outline is the die's own edge, so it is the corners of
-    // its hull, seen through the same frustum — round the centre the ring is
-    // round, and no further out than the ball the ring is drawn outside.
-    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT)
-    val pick = TrayPick(shot, PORTRAIT)
-    spread().forEach { die ->
-      val outline = requireNotNull(pick.outlineOf(die)) { "a die in front of the camera has no outline" }
-      val ring = requireNotNull(pick.markOf(die))
-      val a = outline.minOf { it.acrossFraction }..outline.maxOf { it.acrossFraction }
-      val d = outline.minOf { it.downFraction }..outline.maxOf { it.downFraction }
-
-      assertTrue("a cube seen from above has fewer than four corners", outline.size >= SQUARE)
-      assertTrue("the outline is not round its die", ring.acrossFraction in a && ring.downFraction in d)
-      outline.forEach { corner ->
-        val across = (corner.acrossFraction - ring.acrossFraction) * PORTRAIT
-        val down = corner.downFraction - ring.downFraction
-        assertTrue(
-          "a corner is outside the ball",
-          kotlin.math.hypot(across, down) <= ring.radiusOfHeight * BALL_SLACK,
-        )
-      }
-    }
-  }
-
-  @Test
-  fun `a die turned on the table has a different outline, and a shrunken one a smaller one`() {
-    val pick = TrayPick.through(geometry, PORTRAIT)
-    val flat = at(Vector3(0.0, 0.0, radiusMm))
-    val turned = flat.copy(at = flat.at.copy(orientation = Quaternion.about(Vector3(0.0, 0.0, 1.0), Math.PI / 4)))
-
-    val square = requireNotNull(pick.outlineOf(flat))
-    val diamond = requireNotNull(pick.outlineOf(turned))
-    val small = requireNotNull(pick.outlineOf(flat, SMALL))
-
-    assertTrue("the outline ignored how the die lies", square.toSet() != diamond.toSet())
-    val expected = (square.maxOf { it.downFraction } - square.minOf { it.downFraction }) * SMALL
-    assertEquals(
-      "a shrunken die kept its full-size outline",
-      expected,
-      small.maxOf { it.downFraction } - small.minOf { it.downFraction },
-      expected * SIZE_SLACK,
-    )
-  }
-
-  @Test
-  fun `a die behind the camera has no outline`() {
-    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT)
-
-    assertNull(TrayPick(shot, PORTRAIT).outlineOf(at(shot.position - shot.forward * 50.0)))
-  }
-
-  @Test
-  fun `the wrap keeps the corners, once each, and leaves out what is inside or on an edge`() {
-    val corners = listOf(PicturePoint(0.0, 0.0), PicturePoint(1.0, 0.0), PicturePoint(1.0, 1.0), PicturePoint(0.0, 1.0))
-    val extra = listOf(PicturePoint(0.5, 0.5), PicturePoint(0.5, 0.0), corners[2])
-
-    val wrapped = TrayPick.wrapped(corners + extra)
-
-    assertEquals(corners.toSet(), wrapped.toSet())
-    assertEquals(SQUARE, wrapped.size)
-    assertEquals("two points are already their own outline", corners.take(2), TrayPick.wrapped(corners.take(2)))
-  }
-
   /** Dice at rest across the tray, no two of them in the same place. */
   private fun spread(): List<DieAtRest> =
     listOf(
@@ -342,15 +277,6 @@ class TrayPickTest {
 
     /** The capacity rule's floor, which is how small a die ever gets. */
     const val SMALL = 0.4
-
-    /** A cube's outline from above, and a square's corners. */
-    const val SQUARE = 4
-
-    /** How far a corner's picture may be outside the ball's, which a perspective ring only approximates. */
-    const val BALL_SLACK = 1.05
-
-    /** Perspective makes a shrunken die's picture only nearly proportional. */
-    const val SIZE_SLACK = 0.05
 
     /** Big enough that the camera is inside the die. */
     const val HUGE = 1e4

@@ -269,12 +269,6 @@
     <item quantity="other">Dice tray, %1$d dice cannot be read, shake to throw them again</item>
   </plurals>
   <string name="roll_tray_settled">Dice tray, the dice have landed on %1$d</string>
-  <!--
-    Under a die a later pass of the roll put on the table — a re-throw, an
-    earned die, a picked die thrown again — in the slot the design's `dropped`
-    marker uses, set as a kicker (decision 85).
-  -->
-  <string name="roll_pass_label">PASS %1$d</string>
   <!-- The same, with dice a finger picked up for the next shake to throw (decision 76). -->
   <plurals name="roll_tray_settled_picked">
     <item quantity="one">Dice tray, the dice have landed on %1$d, %2$d die picked; shake to throw it</item>
