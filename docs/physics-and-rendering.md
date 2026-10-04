@@ -154,8 +154,16 @@ power-saving mode; there is no other one.
 - **A watched roll does not run at real time.** `RollPace` scales the time a
   frame is worth before `FrameClock` sees it, so the same roll is shown over
   more wall clock than the physics took: `RollPace.WATCHED` of a second of real
-  time per second of simulated time, which at the current **0.5** means a roll
-  takes twice as long to watch as it takes to happen.
+  time per second of simulated time, which at the current **0.4** means a roll
+  takes two and a half times as long to watch as it takes to happen. It was
+  0.5 until the owner judged the livelier tumble on the Pixel 10a: the spin
+  read right, the dice still crossed the tray a little too fast. At 0.4 the
+  median 20d20 (0.96 s) takes 2.4 s to watch and the ninety-ninth (1.76 s)
+  4.4 s; a single die stops well inside the median, so `1d20` still answers
+  in about two seconds. Impacts are played on the frame whose steps produced
+  them and the result is read when the simulated roll settles, so sound,
+  haptics and the result sheet follow the pace without a number of their
+  own.
 
   It is a presentation change and nothing else. The seed, the steps, their
   order, the corrections, the re-throws and the faces are all exactly what they
@@ -178,7 +186,7 @@ power-saving mode; there is no other one.
   `RollPace.WATCHED_SECONDS` of simulated time and then gives the frame back
   whole. The reason is `100d4`: the twelve-second cap counts *simulated* time,
   so pacing cannot change when a roll gives up, only how long somebody waits
-  to be told — and a flat half turned that into twenty-four seconds of
+  to be told — and a flat 0.4 would turn that into thirty seconds of
   watching dice that were never going to stop. Three seconds is chosen against
   the measurements: the median 20d20 settles in 0.96 s and the ninety-ninth in
   1.76 s, so a roll that is behaving is paced from first step to last and
@@ -852,9 +860,11 @@ Two other things were tried and dropped. Die-on-felt friction (0.5 against
 0.65) moved nothing. A forward roll added to the spin in the direction of the
 throw — what a hand puts on a die it bowls — gained nothing at half the rolling
 rate and, at the full rate, gave a roll enough energy to run out the cap.
-`RollPace.WATCHED` stays at 0.5: the roll now lasts longer because the dice
-are doing more, and slowing the picture as well is a judgement for the phone
-(`docs/TODO.md`, 5.6), not one this table can make.
+`RollPace.WATCHED` stayed at 0.5 for this table: the roll lasts longer
+because the dice are doing more, and slowing the picture as well was a
+judgement for the phone, not one this table could make. Judged there, the
+tumble was right and the travel still a little fast, so the pace went to 0.4
+("The simulation clock") and none of the numbers above moved.
 
 None of it touches a die that has come to rest. What changed is what a die is
 given *before* it lands, what it is made of, and how well the solver resolves
@@ -2184,7 +2194,7 @@ impact sounds rather than a crash in the middle of a roll.
   blurs and nothing stutters — there are *more* frames per simulation step than
   before, not fewer — and the dice are seen to turn down onto a face instead of
   being on one by the time the eye arrives. A 20d20 throw that the solver
-  finishes in 0.96 s takes about 1.9 s to watch.
+  finishes in 0.96 s takes 2.4 s to watch.
 - While the phone is being shaken the roll runs at real time, so the dice on
   screen answer the hand on the frame it moved. The change of pace when the
   hand lets go is the one the player caused.

@@ -292,15 +292,12 @@ keeps them comparable.
 - [ ] **The start of a shake** read as a lag: the dice are already fast when
       the shake reaches them. The 100 ms start threshold and the spawn impulse
       are the two numbers
-- [ ] **The tumble and the pace.** The owner found the tumble too quick and
-      too short; the dice now get 60–120 rad/s of spin and restitution 0.55,
-      which takes them from 1.55 turns after landing to 2.70
-      (`docs/physics-and-rendering.md`, "How hard the dice are thrown").
-      `RollPace.WATCHED` is still 0.5, so a 0.96 s throw takes ~1.9 s to
-      watch: is that long enough now, or is 0.4 wanted? Does a roll read as
-      dice landing; does `1d20` a dozen times annoy; does the speed change when the hand lets go
-      read as intended? Does a second shake at tumbling dice still answer
-      instantly?
+- [ ] **The pace.** The tumble (60–120 rad/s, restitution 0.55) is approved;
+      the travel was still a little fast at 0.5, so `RollPace.WATCHED` is now
+      0.4 and a 0.96 s 20d20 throw takes 2.4 s to watch. Is the travel right
+      now, or too slow? Does `1d20` a dozen times still feel prompt; does the
+      speed change when the hand lets go read as intended; does a second shake
+      at tumbling dice still answer instantly?
 - [ ] The keyboard over the lower half of the tray — right, or shift the tray
       up while editing (`2a`)?
 - [ ] **Haptics:** a knock or a rattle; one die among twenty still felt; a

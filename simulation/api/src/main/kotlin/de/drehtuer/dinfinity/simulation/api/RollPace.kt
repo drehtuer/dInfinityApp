@@ -37,12 +37,16 @@ object RollPace {
    * exception to reason about beside it. One means the roll runs at real time,
    * which is what it did before there was a pace at all.
    *
-   * Half is the first honest guess. It turns the measured 0.81 s median for
-   * 20d20 into about 1.6 s and the 1.5 turns a die makes after landing into
-   * three seconds' worth of looking at them — a die on a table, rather than a
-   * die that has already finished by the time the eye reaches it. It is also
-   * a factor a person can hold in their head while judging it: everything
-   * takes twice as long, including the wait for an answer.
+   * Four tenths, after the owner judged half on the Pixel 10a: with the
+   * livelier tumble (60–120 rad/s, restitution 0.55) the spin read right but
+   * the dice still crossed the tray a little too fast. It turns the measured
+   * 0.96 s median for 20d20 into 2.4 s and the ninety-ninth, 1.76 s, into
+   * 4.4 s — the dice are seen to travel and turn down onto a face, rather than
+   * having finished by the time the eye reaches them. A single die stops well
+   * inside the median, so `1d20` still answers in about two seconds. It is
+   * also a factor a person can hold in their head while judging it:
+   * everything takes two and a half times as long, including the wait for an
+   * answer. Half was the first guess and is what this replaced.
    *
    * It is flat, deliberately, rather than easing from full speed into slow
    * motion as the dice settle. Two reasons. A pace that changes while the dice
@@ -54,20 +58,20 @@ object RollPace {
    * tray stops hauling them about and there is nothing but gravity left. Slow
    * motion arriving there reads as the app taking over, not as a stutter.
    */
-  const val WATCHED: Double = 0.5
+  const val WATCHED: Double = 0.4
 
   /**
    * How long a roll is worth watching, in simulated seconds.
    *
    * **Past this the pace goes back to one, and the reason is `100d4`.** The
    * twelve-second cap counts *simulated* time, so pacing does not change when
-   * a roll gives up — only how long somebody waits to be told. At a flat half
-   * that turned the cap into twenty-four seconds of staring at dice that were
-   * never going to stop, on the one formula that already reaches it and that
+   * a roll gives up — only how long somebody waits to be told. At a flat
+   * four tenths that would turn the cap into thirty seconds of staring at dice
+   * that were never going to stop, on the one formula that already reaches it and that
    * a device session already reported as stuck.
    *
    * Three seconds is chosen against the measurements rather than picked: the
-   * median 20d20 settles in 0.81 s and the ninety-ninth in 1.47 s, so a roll
+   * median 20d20 settles in 0.96 s and the ninety-ninth in 1.76 s, so a roll
    * that is behaving is paced from the first step to the last and never meets
    * this at all. What meets it is a roll that is not landing — and a roll
    * that is not landing is being *waited for* rather than watched, which is
