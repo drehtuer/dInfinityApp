@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.simulation.harness
 
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
@@ -44,6 +45,10 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  *   looks exist is the built-in package's to say, and this module does not
  *   know it, so the id travels as it was typed and is looked up on the
  *   device.
+ * @param edgeRounding how round every die is, as the share of its size a set
+ *   file's `edge_rounding` would give, or null for the default every die has
+ *   when nothing says otherwise (`docs/architecture.md`, decision 94). What
+ *   lets a run measure a rounder die than the built-in set has.
  */
 data class HarnessRequest(
   val label: String,
@@ -53,6 +58,7 @@ data class HarnessRequest(
   val seed: Long,
   val framePaced: Boolean = false,
   val table: String? = null,
+  val edgeRounding: Double? = null,
 ) {
   init {
     require(diceCount in 1..TableCapacity.MAX_DICE) {
@@ -73,7 +79,7 @@ data class HarnessRequest(
     geometry: TableGeometry = TableGeometry.referenceDevice(),
     table: TableLook = PLAIN,
   ): HarnessPlan {
-    val die = Die.standard(shape.id, shape)
+    val die = Die.standard(shape.id, shape, materialOf(edgeRounding))
     val dice = List(diceCount) { die }
     val scale =
       when (val verdict = TableCapacity.check(dice, geometry)) {
@@ -127,6 +133,9 @@ data class HarnessRequest(
     /** Which built-in table look to throw onto, by id ([table]). */
     const val TABLE: String = "harness.table"
 
+    /** How round the dice are, as `edge_rounding` would say it ([edgeRounding]). */
+    const val EDGE_ROUNDING: String = "harness.edgeRounding"
+
     /** Twenty dice, because that is the count Step 5.5 states its settle targets at. */
     const val DEFAULT_DICE: Int = 20
 
@@ -148,16 +157,44 @@ data class HarnessRequest(
       val shape = arguments(SHAPE)?.let(::shapeOf) ?: DEFAULT_SHAPE
       val diceCount = arguments(DICE)?.trim()?.toIntOrNull() ?: DEFAULT_DICE
       val table = arguments(TABLE)?.trim()?.takeIf(String::isNotEmpty)
+      val edgeRounding = edgeRoundingOf(arguments(EDGE_ROUNDING))
       return HarnessRequest(
-        label = arguments(LABEL)?.trim()?.takeIf(String::isNotEmpty) ?: labelOf(diceCount, shape, length, table),
+        label =
+          arguments(LABEL)?.trim()?.takeIf(String::isNotEmpty)
+            ?: labelOf(diceCount, shape, length, table, edgeRounding),
         shape = shape,
         diceCount = diceCount,
         length = length,
         seed = arguments(SEED)?.trim()?.toLongOrNull() ?: DEFAULT_SEED,
         framePaced = asked(arguments(FRAMES)),
         table = table,
+        edgeRounding = edgeRounding,
       )
     }
+
+    /**
+     * The share [value] asks the dice to be rounded by, or null when it asks
+     * for nothing.
+     *
+     * Refused rather than clamped when it is outside what a set file may say
+     * ([DieMaterial.EdgeRoundingRange]): a run is a measurement somebody asked
+     * for at the terminal, and a measurement quietly made of a different die
+     * is worse than a sentence saying why it was not made. `FairnessTest`
+     * reads its own argument through this too.
+     */
+    fun edgeRoundingOf(value: String?): Double? {
+      val text = value?.trim()?.takeIf(String::isNotEmpty) ?: return null
+      val share = text.toDoubleOrNull()
+      require(share != null && share in DieMaterial.EdgeRoundingRange) {
+        "an edge rounding of \"$text\" is not a share of the die's size between " +
+          "${DieMaterial.EdgeRoundingRange.start} and ${DieMaterial.EdgeRoundingRange.endInclusive}"
+      }
+      return share
+    }
+
+    /** The material a die rounded by [edgeRounding] is made of: the default, but for that. */
+    fun materialOf(edgeRounding: Double?): DieMaterial =
+      if (edgeRounding == null) DieMaterial() else DieMaterial(edgeRounding = edgeRounding)
 
     /**
      * What a run calls itself when nobody named it.
@@ -172,12 +209,14 @@ data class HarnessRequest(
       shape: DieShape,
       length: RunLength,
       table: String? = null,
+      edgeRounding: Double? = null,
     ): String =
       buildString {
         append(diceCount)
         append('d')
         append(shape.faceCount)
         if (table != null) append('-').append(table)
+        if (edgeRounding != null) append("-round").append(edgeRounding)
         if (length is RunLength.Soak) append("-soak")
       }
 

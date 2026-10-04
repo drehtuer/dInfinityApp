@@ -8,6 +8,7 @@ import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.harness.FaceTally
+import de.drehtuer.dinfinity.simulation.harness.HarnessRequest
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -35,6 +36,17 @@ import org.junit.Test
  * # the real one, which takes a while and is run deliberately
  * ./gradlew :simulation:jolt:connectedDebugAndroidTest \
  *   -Pandroid.testInstrumentationRunnerArguments.rolls=100000
+ * ```
+ *
+ * A rounder (or sharper) die than the built-in one is thrown by giving its
+ * `edge_rounding` as a share of its size (`docs/architecture.md`,
+ * decision 94):
+ *
+ * ```sh
+ * ./gradlew :simulation:jolt:connectedDebugAndroidTest \
+ *   -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
+ *   -Pandroid.testInstrumentationRunnerArguments.rolls=100000 \
+ *   -Pandroid.testInstrumentationRunnerArguments.edgeRounding=0.12
  * ```
  *
  * The default is small enough to sit in the ordinary suite and still catch a
@@ -65,10 +77,12 @@ class FairnessTest {
     val rolls = rollsAsked()
     val report = StringBuilder()
     val unfair = mutableListOf<String>()
+    val rounding = edgeRoundingAsked()
+    report.appendLine("edge rounding: ${rounding ?: "default"}")
 
     DieShape.entries.forEach { shape ->
       val gaveUpAt = mutableListOf<Long>()
-      val tally = countFaces(shape, rolls, gaveUpAt)
+      val tally = countFaces(shape, rolls, gaveUpAt, rounding)
       val counts = tally.counts
       val chiSquared = tally.chiSquared
       val worst = tally.worstFaceOff
@@ -121,8 +135,9 @@ class FairnessTest {
     shape: DieShape,
     rolls: Int,
     gaveUpAt: MutableList<Long>,
+    edgeRounding: Double?,
   ): FaceTally {
-    val die = Die.standard(shape.id, shape)
+    val die = Die.standard(shape.id, shape, HarnessRequest.materialOf(edgeRounding))
     val simulator = JoltDiceSimulator()
     val tally = FaceTally(shape.faceCount)
     // A different seed per roll, because the same seed is the same roll: what
@@ -165,6 +180,10 @@ class FairnessTest {
     z = (z xor (z ushr SECOND_SHIFT)) * SECOND_MIX
     return z xor (z ushr LAST_SHIFT)
   }
+
+  /** The `edge_rounding` the run was asked to throw at, or null for the default ([HarnessRequest.edgeRoundingOf]). */
+  private fun edgeRoundingAsked(): Double? =
+    HarnessRequest.edgeRoundingOf(InstrumentationRegistry.getArguments().getString("edgeRounding"))
 
   private fun rollsAsked(): Int =
     InstrumentationRegistry
