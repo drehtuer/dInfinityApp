@@ -685,6 +685,26 @@ rolls.
   at 500 — limits on what a file can do to a screen rather than on what anyone
   will write.
 
+## Emptying the field
+
+**Every formula field — the tray's drawer, the saved-roll editor, the outcome
+graph — carries a × at its end while it has anything in it.** One tap empties
+it and leaves the cursor in it, so the keyboard stays up for the next
+formula (`design/dInfinity.dc.html`, options 2a, 6f and 9c). A phone has no
+select-all worth the name, and the alternative was holding backspace through
+`8d6 [Fire] + 2d4kh1`. An empty field has no ×, because there is nothing for
+it to do. To a screen reader it is one button, "Clear the formula", with the
+48 dp target of every other control.
+
+It is **not a second way to empty a formula**: the × hands the screen the same
+empty text the last backspace would, so each screen does exactly what it
+already does with an empty field. On the tray that is the `Empty` state —
+the waiting dice come off the board and nothing is left to throw
+(`docs/architecture.md`, "The roll screen", the `clear the field` edges); the
+editor has a roll with no formula, and no odds under it, until one is typed;
+the graph goes back to the note it shows with nothing to draw. It throws
+nothing, and nothing that has been saved is changed until the editor saves.
+
 ## Error messages
 
 Parse errors point at the offending character range and are shown inline

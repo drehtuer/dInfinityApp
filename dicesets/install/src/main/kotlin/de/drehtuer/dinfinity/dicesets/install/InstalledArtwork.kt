@@ -59,6 +59,29 @@ class InstalledArtwork(
   }
 
   /**
+   * Which version of the atlas [texturePath] in [setId] is on disk — its size
+   * and when it last changed — or `null` when there is none.
+   *
+   * A renderer keeps what it has decoded, and a package can be rewritten
+   * under it: the face designer rebuilds "My dice" every time *Roll it* is
+   * pressed, under the same id and the same path. Comparing this with what it
+   * was when the picture was decoded is how the renderer knows to decode it
+   * again (`docs/dice-sets.md`, "Textures"). Nothing is read or validated
+   * here, so it is cheap enough to ask for every die; the path still goes
+   * through [ReferencedFile] and [PackageFiles] first, as [read]'s does.
+   */
+  fun stamp(
+    setId: String,
+    texturePath: String,
+  ): String? {
+    val folder = installed.folderOf(setId)
+    val reference = ReferencedFile.parse(texturePath, DiceSetLimits.IMAGE_EXTENSIONS)
+    if (folder == null || reference == null) return null
+    val files = PackageFiles.of(folder)
+    return files.size(reference.path)?.let { size -> "$size@${files.modified(reference.path)}" }
+  }
+
+  /**
    * The file itself, once it is known which package and which path it is.
    *
    * The size is asked for before the bytes are, and both before a decoder is:

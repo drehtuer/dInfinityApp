@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity
 
 import android.content.Context
-import de.drehtuer.dinfinity.core.model.AtlasImage
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.TableLook
@@ -82,10 +81,14 @@ class RollWiring(
    *
    * Handed to the roll thread and therefore to the engine, because a decoded
    * atlas belongs to a *package* and outlives every visit to the screen
-   * (`docs/dice-sets.md`, "Textures"). The default draws nothing, which is
-   * what the dice looked like before anything filled this in.
+   * (`docs/dice-sets.md`, "Textures"). It also says which version of a
+   * file is on disk, so that a package rewritten under the same name — "My
+   * dice", every time the face designer's *Roll it* is pressed — is decoded
+   * again rather than drawn as it was
+   * (`de.drehtuer.dinfinity.render.filament.AtlasCache`). Null draws nothing,
+   * which is what the dice looked like before anything filled this in.
    */
-  private val artwork: (String) -> AtlasImage? = { null },
+  private val artwork: DieArtwork? = null,
 ) {
   private val simulator = JoltDiceSimulator()
 
@@ -262,7 +265,11 @@ class RollWiring(
    * new version compiles it at all.
    */
   private val rollThread: RollThread by lazy {
-    RollThread(artwork, MaterialCache(File(context.codeCacheDir, MATERIAL_CACHE_DIR)))
+    RollThread(
+      artwork = artwork ?: { null },
+      artworkStamp = artwork?.let { it::stamp } ?: { null },
+      materials = MaterialCache(File(context.codeCacheDir, MATERIAL_CACHE_DIR)),
+    )
   }
 
   /** Made once, because the pictures it has already drawn are worth keeping. */

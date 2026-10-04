@@ -2295,7 +2295,9 @@ it opens:
    `Formula` and a chevron pointing inwards, mirroring `Dice` at the other
    end of the corner — *the formula itself is not drawn at all*. Pressed, the
    drawer slides **in from the right-hand edge** and is the field, the
-   squiggle, the one-tap fix and the keyboard; the chevron turns round and
+   squiggle, the one-tap fix and the keyboard, with a × at the end of the
+   field that empties it in one tap (`docs/dice-notation.md`, "Emptying the
+   field"); the chevron turns round and
    pushes it back out.
 
 **The formula used to be on the felt**, as a line of type with a dashed rule

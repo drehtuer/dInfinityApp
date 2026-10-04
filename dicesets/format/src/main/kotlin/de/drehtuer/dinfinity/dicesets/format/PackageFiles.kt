@@ -23,6 +23,13 @@ interface PackageFiles {
   /** How large the file at [path] is, or `null` when there is none. */
   fun size(path: String): Long?
 
+  /**
+   * When the file at [path] last changed, in milliseconds, or `null` when
+   * there is none or the package cannot say. Only ever compared with itself:
+   * it is how a picture already decoded is known to be out of date.
+   */
+  fun modified(path: String): Long? = null
+
   companion object {
     /** The files of a folder on disk. */
     fun of(root: File): PackageFiles = FolderPackage(root)
@@ -42,6 +49,8 @@ private class FolderPackage(
   override fun read(path: String): ByteArray? = resolve(path)?.readBytes()
 
   override fun size(path: String): Long? = resolve(path)?.length()
+
+  override fun modified(path: String): Long? = resolve(path)?.lastModified()
 
   /**
    * The file at [path], or `null` if it is not a plain file inside the

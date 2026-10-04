@@ -130,12 +130,17 @@ class InstalledSets(
    * come from a folder name that came from an archive, and a `..` or a
    * separator must not be able to point it anywhere else.
    */
-  fun find(id: String): InstalledPackage? =
-    root
-      .listFiles()
-      .orEmpty()
-      .firstOrNull { it.isDirectory && it.name == id }
-      ?.let(::read)
+  fun find(id: String): InstalledPackage? = folderOf(id)?.let(::read)
+
+  /**
+   * The folder of the package called [id], unread and unvalidated, or null.
+   *
+   * Matched the same way as [find] and [remove]. For the one caller that only
+   * wants to know whether a file has changed, and for which reading and
+   * validating the whole package on every die of every throw would be the
+   * slowest possible way to ask ([InstalledArtwork.stamp]).
+   */
+  fun folderOf(id: String): File? = root.listFiles().orEmpty().firstOrNull { it.isDirectory && it.name == id }
 
   /**
    * Takes a package off the disk (`docs/architecture.md`: uninstall deletes
@@ -153,7 +158,7 @@ class InstalledSets(
    *   either way.
    */
   fun remove(id: String): Boolean {
-    val folder = root.listFiles().orEmpty().firstOrNull { it.isDirectory && it.name == id } ?: return true
+    val folder = folderOf(id) ?: return true
     return folder.deleteRecursively()
   }
 

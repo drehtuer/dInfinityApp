@@ -579,7 +579,8 @@ a database.
 
 **The formula is not on the tray at all until it is asked for.** What is on
 the tray is a tab at the right-hand edge — the word `Formula` and a chevron —
-and pressing it slides the drawer in from the side: the field, the squiggle,
+and pressing it slides the drawer in from the side: the field with its × to
+empty it (`docs/dice-notation.md`, "Emptying the field"), the squiggle,
 the one-tap fix and the keyboard, whose action key says Done and puts the
 drawer away again — it throws nothing (decision 66;
 `design/dInfinity.dc.html`, option 2a). It used to be a line of type with a
@@ -610,7 +611,8 @@ Every control on the screen is connected to exactly one of those transitions,
 and none of them decides anything itself:
 
 - **the formula's tab** brings the drawer in and takes it away again, and
-  **the field inside it** calls `type` on every keystroke. Its action key
+  **the field inside it** calls `type` on every keystroke, and its × calls
+  `type("")` — the same edge as deleting the text by hand. Its action key
   says Done and shuts the drawer; it does not call `roll` (decision 66).
   After a throw the tab is folded into the shut dice pull-down until that is
   opened (decision 83);

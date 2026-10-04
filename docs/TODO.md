@@ -71,6 +71,11 @@ Implementation notes recorded only here:
 - [ ] **The formula tab** at the right edge: does it read as "the formula is in
       there", and does not seeing the formula cost more than the felt it gives
       back (`2a`)?
+- [ ] **The formula's ×** (`docs/dice-notation.md`, "Emptying the field"):
+      open the drawer on a long formula and tap the × at the end of the
+      field — is it found without looking for it, is it far enough from the
+      text that a tap meant for the end of the formula does not empty it, and
+      does the keyboard stay up for the next one?
 - [ ] **The empty tray** says nothing (the welcome does on a fresh install).
       Calm, or broken?
 - [ ] **The dice pull-down:** does a shut menu read as "the dice are in there",

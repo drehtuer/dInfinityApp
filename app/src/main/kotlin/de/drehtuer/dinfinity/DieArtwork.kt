@@ -22,10 +22,23 @@ import de.drehtuer.dinfinity.render.filament.AtlasKey
  * @param read what answers for one package and one path — [InstalledArtwork]
  *   in the app, and something simpler in a test, which is the only reason it
  *   is a parameter.
+ * @param stamped which version of one package's file is on disk
+ *   ([InstalledArtwork.stamp]); the default knows none.
  */
 class DieArtwork(
+  private val stamped: (String, String) -> String? = { _, _ -> null },
   private val read: (String, String) -> AtlasDecode,
 ) : (String) -> AtlasImage? {
+  /**
+   * Which version of [key]'s file is on disk, or `null` when there is none
+   * or [key] names no package — what the renderer's cache compares to know a
+   * package was rewritten under the same name (`AtlasCache`).
+   */
+  fun stamp(key: String): String? {
+    val (setId, path) = AtlasKey.split(key) ?: return null
+    return stamped(setId, path)
+  }
+
   /**
    * The picture [key] names, or `null` when there is not one.
    *

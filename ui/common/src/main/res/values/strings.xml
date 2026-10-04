@@ -3,6 +3,12 @@
   <!-- Offered when a mistake has an obvious reading. %1$s is a formula. -->
   <string name="formula_suggestion">Did you mean %1$s?</string>
   <!--
+    What the × at the end of a formula field does, read by a screen reader in
+    place of the drawing. It empties the field and nothing else: no roll is
+    thrown, nothing is deleted from saved rolls.
+  -->
+  <string name="formula_clear">Clear the formula</string>
+  <!--
     What the chevron in a screen's header does. "Up", not "Back": it climbs to
     the screen this one hangs off rather than retracing where the player has
     been (`docs/architecture.md`, "Navigation"). A screen reader reads this
