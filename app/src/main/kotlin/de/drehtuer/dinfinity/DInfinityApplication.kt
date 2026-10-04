@@ -23,6 +23,7 @@ import de.drehtuer.dinfinity.designer.BitmapPhoto
 import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.MineSets
+import de.drehtuer.dinfinity.designer.PersonalSets
 import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.designer.PhysicalStore
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
@@ -213,8 +214,21 @@ class DInfinityApplication : Application() {
       io = Dispatchers.IO,
       installer = PackageInstaller(File(filesDir, DICE_SETS_FOLDER)),
       defaultSetId = { defaultSet },
-      personal = mineSets,
+      personal = personalSets,
     )
+  }
+
+  /**
+   * Every personal set: "My dice" and every set somebody named in the face
+   * designer (`docs/architecture.md`, decision 79).
+   *
+   * "My dice" keeps the records it has always had — `drafts/`,
+   * `table-photos/`, `mine-physical.txt` — and a named set keeps its own under
+   * `personal-sets/<id>/`, which an install that never names a set never
+   * creates. Nothing moves, so nothing on the disk can be lost by an update.
+   */
+  val personalSets: PersonalSets by lazy {
+    PersonalSets(mine = mineSets, records = File(filesDir, PersonalSets.DIRECTORY))
   }
 
   /**

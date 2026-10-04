@@ -23,4 +23,11 @@ dependencies {
 
   testImplementation(project(":test-fixtures"))
   androidTestImplementation(project(":test-fixtures"))
+
+  // The rendered harness: the real physics thrown through this module's tray
+  // onto a real surface, scored by the plain harness's arithmetic. Test-only,
+  // and only in this direction — nothing this module ships knows Jolt or the
+  // harness exists (`docs/architecture.md`, decision 80).
+  androidTestImplementation(project(":simulation:jolt"))
+  androidTestImplementation(project(":simulation:harness"))
 }

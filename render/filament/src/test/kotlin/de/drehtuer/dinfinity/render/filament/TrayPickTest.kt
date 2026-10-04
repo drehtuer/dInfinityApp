@@ -196,6 +196,50 @@ class TrayPickTest {
     )
   }
 
+  @Test
+  fun `a die is ringed where it is drawn, and a finger on the ring's centre picks it`() {
+    // The mark is the other half of the round trip: drawn round the die a
+    // finger would pick, so a second touch on what is ringed un-picks it.
+    val dice = spread()
+    val view = TrayView(zoom = 1.8, panAlongMm = 20.0, panAcrossMm = 10.0).within(geometry)
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT, view)
+    val pick = TrayPick.through(geometry, PORTRAIT, view)
+
+    dice.forEachIndexed { index, die ->
+      val mark = requireNotNull(pick.markOf(die)) { "a die in front of the camera has no mark" }
+      val (across, down) = shot.screenFraction(die.at.position, PORTRAIT)
+      assertEquals(across, mark.acrossFraction, TOLERANCE)
+      assertEquals(down, mark.downFraction, TOLERANCE)
+      assertEquals(
+        "the ring's centre is not on its die",
+        index,
+        pick.dieUnder(mark.acrossFraction, mark.downFraction, dice),
+      )
+    }
+  }
+
+  @Test
+  fun `a ring is the size of the ball a finger has to land in`() {
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT)
+    val pick = TrayPick(shot, PORTRAIT)
+    val die = at(Vector3(0.0, 0.0, radiusMm))
+    val full = requireNotNull(pick.markOf(die))
+    val small = requireNotNull(pick.markOf(die, SMALL))
+    // Just inside the ring's edge, straight up the picture, is still the die.
+    val inside = full.downFraction - full.radiusOfHeight * EDGE_SHARE
+
+    assertEquals("a shrunken die kept its full-size ring", full.radiusOfHeight * SMALL, small.radiusOfHeight, TOLERANCE)
+    assertEquals(0, pick.dieUnder(full.acrossFraction, inside, listOf(die)))
+  }
+
+  @Test
+  fun `a die behind the camera has nowhere on the picture to be ringed`() {
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT)
+    val behind = at(shot.position - shot.forward * 50.0)
+
+    assertNull(TrayPick(shot, PORTRAIT).markOf(behind))
+  }
+
   /** Dice at rest across the tray, no two of them in the same place. */
   private fun spread(): List<DieAtRest> =
     listOf(

@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -720,20 +721,36 @@ private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
     PowerSavingPanel()
     return
   }
-  DiceTray(
-    driver = presenter.tray,
-    geometry = presenter.geometry,
-    modifier = Modifier.fillMaxSize(),
-    // A surface has nothing under it for a screen reader to find, so what is
-    // on the table is said here or nowhere at all (`docs/architecture.md`,
-    // "Accessibility").
-    describing = TrayReading.of(presenter.state).spoken(),
-    // Where the camera is pointed belongs to the presenter, because a new
-    // throw puts it back at the whole table and the gesture is not what knows
-    // a throw has started ([RollPresenter.looking]).
-    view = presenter.looking,
-    onLook = presenter::look,
-  )
+  var aspectRatio by remember { mutableFloatStateOf(0f) }
+  Box(
+    modifier =
+      Modifier.fillMaxSize().onSizeChanged { size ->
+        aspectRatio = if (size.height > 0) size.width.toFloat() / size.height else 0f
+      },
+  ) {
+    DiceTray(
+      driver = presenter.tray,
+      geometry = presenter.geometry,
+      modifier = Modifier.fillMaxSize(),
+      // A surface has nothing under it for a screen reader to find, so what is
+      // on the table is said here or nowhere at all (`docs/architecture.md`,
+      // "Accessibility").
+      describing = TrayReading.of(presenter.state, presenter.picked.size).spoken(),
+      // Where the camera is pointed belongs to the presenter, because a new
+      // throw puts it back at the whole table and the gesture is not what knows
+      // a throw has started ([RollPresenter.looking]).
+      view = presenter.looking,
+      onLook = presenter::look,
+      // A pick and an un-pick are said as they happen (decision 76).
+      announcing = presenter.picked.isNotEmpty(),
+      // One finger on a die picks it up for the next shake, or puts it back
+      // (decisions 68 and 76). It never throws anything.
+      onTap = { across, down, ratio -> presenter.touch(across, down, ratio) },
+    )
+    // Over the picture and under everything else, and deaf to touch: the
+    // finger that puts a die back goes through to the tray.
+    PickRings(marks = presenter.marks(aspectRatio.toDouble()), modifier = Modifier.fillMaxSize())
+  }
 }
 
 /**
@@ -852,6 +869,8 @@ private fun TrayReading.spoken(): String =
     is TrayReading.ShakeAgain -> pluralStringResource(R.plurals.roll_tray_shake_again, dice, dice)
     is TrayReading.ThrowAgain -> pluralStringResource(R.plurals.roll_tray_throw_again, dice, dice)
     is TrayReading.Stalled -> pluralStringResource(R.plurals.roll_tray_stalled, dice, dice)
+    is TrayReading.Settled if picked > 0 ->
+      pluralStringResource(R.plurals.roll_tray_settled_picked, picked, total, picked)
     is TrayReading.Settled -> stringResource(R.string.roll_tray_settled, total)
   }
 
@@ -934,6 +953,9 @@ object RollTestTags {
 
   /** Dice that landed where they cannot be read, waiting for a shake (decision 70). */
   const val THROW_AGAIN: String = "roll:throw-again"
+
+  /** The rings round the dice a finger has picked up for the next shake (decision 76). */
+  const val PICKED: String = "roll:tray:picked"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = FormulaTestTags.ERROR
 

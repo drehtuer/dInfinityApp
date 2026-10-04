@@ -736,9 +736,9 @@ where it stands. The sheet lists the sets that can be written to — which is
 the drawing on the canvas is written to disk where the caller waits — every
 other write is launched and not waited for, and a package built from the files
 a moment before the last stroke reached them is a package missing that stroke
-— and then `dicesets/mine/` is rebuilt from every drawing and re-scanned. That
-is the only thing that builds it, and before this existed nothing outside the
-sets list ever did.
+— and then the chosen set's folder in `dicesets/` is rebuilt from its drawings
+and re-scanned. That is the only thing that builds it, and before this existed
+nothing outside the sets list ever did.
 
 **The sheet stays open on the answer.** A save that was refused has a reason
 worth reading and one that worked has a set worth naming; "something happened"
@@ -747,18 +747,41 @@ it went into, *nothing drawn yet*, and *could not be written* — the last
 meaning the package did not validate or the disk refused, with nothing left
 half-done either way.
 
-There is **one writable set today**. `MinePackage.ID` is fixed to `mine` and
-the exporter is built on one folder, so several personal sets is a change to
-the model rather than to this screen — and with it the field that names a new
-one. The sheet is a list all the same, because what it answers is *which set*,
-and a screen that answers that by not asking is one that has to be rebuilt
-when the second set arrives. The rest of the item stands in `docs/TODO.md`,
-4.6.
+**New set…** is the last choice in the list, and it opens a name field. Save
+then makes a personal set of that name and writes the drawing into it, in one
+step (`docs/architecture.md`, decision 79):
 
-A set created here will start at the average weight, translucency and size,
-and be in the set list, the picker and notation immediately. There is nothing
-to install and nothing to confirm: it is a package this phone wrote, and the
-validator has already seen it, like every other package this phone writes.
+- **The id is made from the name**, and said under the field while it is
+  typed — "Its id will be `brass-bone`" for *Brass & Bone* — because the id
+  is what notation calls the set and nobody should have to guess the rule: accents dropped, lower case, every run of anything that is
+  not a letter or a digit one hyphen, none at either end, at most 40
+  characters. The name itself is at most 40 characters.
+- **It has to be a set id** (`docs/dice-sets.md`, "Fields": 3 to 40
+  lower-case letters, digits and hyphens). *Me* comes to `me`, one short, and
+  is refused with the rule and the id it came to.
+- **A collision is refused, never merged**: an id the bundled set, "My dice",
+  any installed package or another personal set already has is refused with
+  the id named — "There is already a set with the id `mine` on this phone" —
+  and the name stays in the field to be changed.
+- **Nothing is written until every check has passed**, the validator's among
+  them: the empty package the name would make goes through `DiceSetValidator`
+  first, exactly as every package this phone writes does.
+- **A new set starts at the average weight, translucency and size** — it
+  declares the defaults until its own steppers move them — and is on the set
+  list, in the picker and in notation immediately. There is nothing to install
+  and nothing to confirm: it is a package this phone wrote, and the validator
+  has already seen it. A set named with nothing drawn on the canvas is made all
+  the same and answers *nothing drawn yet*; it is chosen in the sheet from then
+  on either way, so the next Save writes into it rather than trying to make it
+  twice.
+
+**A drawing saved into a named set is a copy.** The canvas goes on keeping
+every drawing in the designer's own drafts — which are what "My dice" is built
+from, as they always were — and a save into a named set writes the drawing on
+the canvas into that set's own drafts as well. Drawing on afterwards changes
+the canvas and "My dice"; the named set has what it was last saved with until
+it is saved into again. So "My dice" holds everything drawn on the phone, and
+a named set holds what was put into it on purpose.
 
 ## Export details
 
@@ -818,7 +841,11 @@ cannot allocate answers with nothing, and a die with no atlas prints its labels
 ## "My dice"
 
 The drawings on the phone **are** a dice set, id `mine`, in `dicesets/mine/`
-like any other installed package. Nothing that reads dice sets knows it is
+like any other installed package. A set named in **Save to set** is the same
+thing again under its own id, built from its own drafts and its own weight
+("Save to set"; `docs/dice-sets.md`, "Packages the app writes"), and
+everything this section says about `mine` is true of it, except that it has
+no photo tables and stays on the list when it is empty. Nothing that reads dice sets knows it is
 special: it is on the sets list, its details screen shows what is in it,
 notation resolves `mine:d20`, and it can be switched off or removed with the
 same tap as anybody else's package.

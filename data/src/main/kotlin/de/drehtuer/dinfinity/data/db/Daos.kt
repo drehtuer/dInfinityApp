@@ -68,14 +68,34 @@ interface RollHistoryDao {
 /**
  * Past rolls, to change.
  *
- * Everything here either adds a roll or takes some away, which is why they are
- * together: a reader of this file can see every way the history can shrink in
- * one screenful, and there are four.
+ * Everything here either adds a roll, takes some away, or — once — finishes
+ * one again, which is why they are together: a reader of this file can see
+ * every way the history can shrink in one screenful, and there are four.
  */
 @Dao
 interface RollHistoryWritingDao {
   @Insert
   suspend fun insert(row: RollHistoryRow): Long
+
+  /**
+   * The roll at [id], finished again: a die of it was picked up by hand and
+   * thrown again, so it has a new total and a breakdown with the old face
+   * struck through in it (`docs/statistics.md`, "A die thrown again by hand").
+   *
+   * The one change a row ever takes to what it says about the roll. It is
+   * still one roll — one row, one total — and nothing else about it moves:
+   * when it was thrown, where it was filed and what replays it.
+   */
+  @Query(
+    "UPDATE roll_history SET total = :total, breakdown_json = :breakdownJson, anomalies = :anomalies " +
+      "WHERE id = :id",
+  )
+  suspend fun amend(
+    id: Long,
+    total: Long,
+    breakdownJson: String,
+    anomalies: Int,
+  ): Int
 
   /**
    * Drops all but the newest [keep] rolls.

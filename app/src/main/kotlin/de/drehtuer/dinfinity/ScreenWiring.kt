@@ -167,7 +167,7 @@ internal class ScreenWiring(
    */
   private fun faceDesigner(wanted: String): DesignerPresenter {
     val catalogue = app.setLibrary.catalogue
-    val everything = basesIn(catalogue)
+    val everything = basesIn(catalogue, app.personalSets.ids())
     val fromDefault = catalogue.set(catalogue.defaultSetId)?.dice.orEmpty()
     return DesignerPresenter(
       // Null only when nothing at all is installed, which no install is: the
@@ -186,6 +186,7 @@ internal class ScreenWiring(
           store = app.draftStore,
           catalogue = { app.setLibrary.catalogue },
           io = Dispatchers.IO,
+          personal = app.personalSets,
         ),
       scope = scope,
     )
@@ -300,11 +301,16 @@ internal class ScreenWiring(
  * `d20` and dropped the personal one, and the chooser handed the designer a
  * die whose `texturePath` was null while claiming to list everything.
  * Excluding the view of the drawings from the list of things to draw on says
- * what was meant and leaves nothing to a list's order.
+ * what was meant and leaves nothing to a list's order. Every set named in
+ * the face designer is a view of drawings in exactly the same way, so
+ * [personal] is all of them (`docs/architecture.md`, decision 79).
  */
-internal fun basesIn(catalogue: DiceCatalog): List<Die> =
+internal fun basesIn(
+  catalogue: DiceCatalog,
+  personal: Set<String> = setOf(DiceSet.PERSONAL_ID),
+): List<Die> =
   catalogue.installed
-    .filterNot { it.id == DiceSet.PERSONAL_ID }
+    .filterNot { it.id in personal }
     .flatMap { it.dice }
     .distinctBy { it.id }
 

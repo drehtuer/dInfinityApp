@@ -87,6 +87,21 @@ object Seeds {
   ): Long = stir(seed xor (pass.toLong() shl EXTRA_SHIFT) xor AGAIN)
 
   /**
+   * The seed of the [nth] throw of dice a player picked up by hand out of a
+   * roll seeded [seed] (`docs/physics-and-rendering.md`, "Picking a die up and
+   * throwing it again").
+   *
+   * A purpose of its own for the reason [again] has one: a roll can be thrown
+   * again by hand after an explosion or a re-throw, and all three count from
+   * one, so the first hand throw must not be thrown by the first explosion's
+   * stream.
+   */
+  fun byHand(
+    seed: Long,
+    nth: Int,
+  ): Long = stir(seed xor (nth.toLong() shl EXTRA_SHIFT) xor HAND)
+
+  /**
    * SplitMix64's finaliser: a bijection on 64 bits that spreads a change in
    * any one of them across all of them.
    *
@@ -140,6 +155,9 @@ object Seeds {
 
   /** And a throw of the dice a pass could not read, also a seed. */
   private const val AGAIN: Long = 0x41_47_41_49_4E
+
+  /** And a throw of dice a player picked up, also a seed. */
+  private const val HAND: Long = 0x48_41_4E_44
 
   private const val DIE_SHIFT = 32
   private const val EXTRA_SHIFT = 40

@@ -43,8 +43,29 @@ object MinePackage {
   /** What the details screen shows under the name. */
   const val DESCRIPTION: String = "Dice drawn in the face designer, and tables made from photos, on this phone."
 
+  /**
+   * What the details screen shows under the name of a personal set somebody
+   * made and named in the face designer — every one of them but "My dice",
+   * which is also where the photo tables go (`docs/architecture.md`,
+   * decision 79).
+   */
+  const val NAMED_DESCRIPTION: String = "Dice drawn in the face designer on this phone."
+
   /** What the zip is called when it is handed to another application. */
   const val FILE_NAME: String = "my-dice.zip"
+
+  /**
+   * What the zip of the personal set [id] is called.
+   *
+   * "My dice" keeps the name it has always gone out under, so a file somebody
+   * already shared and the next one they share are the same file; any other
+   * personal set goes out under its id, which is a slug and therefore already
+   * a file name.
+   */
+  fun fileNameOf(id: String): String = if (id == ID) FILE_NAME else "$id.zip"
+
+  /** What the details screen says about the personal set [id]. */
+  fun descriptionOf(id: String): String = if (id == ID) DESCRIPTION else NAMED_DESCRIPTION
 
   /** The media type it travels as. */
   const val MEDIA_TYPE: String = "application/zip"
@@ -69,6 +90,9 @@ object MinePackage {
    *   package *does* declare, because it is the one somebody set on purpose
    *   (`docs/dice-sets.md`, "Weight, translucency and size, as a person sets
    *   them").
+   * @param id which personal set this is — [ID] for "My dice", and the slug a
+   *   named one was given otherwise (`docs/architecture.md`, decision 79).
+   * @param name what the set is called on the sets screen.
    */
   @Suppress("LongParameterList")
   fun of(
@@ -78,6 +102,8 @@ object MinePackage {
     painter: AtlasPainter,
     photos: List<TablePhoto> = emptyList(),
     physical: DieMaterial = DieMaterial(),
+    id: String = ID,
+    name: String = NAME,
   ): Map<String, ByteArray> {
     val files = mutableMapOf<String, ByteArray>()
     val dice =
@@ -92,12 +118,12 @@ object MinePackage {
       }
     val set =
       DiceSet(
-        id = ID,
-        name = NAME,
+        id = id,
+        name = name,
         version = VERSION,
         author = author,
         license = license,
-        description = DESCRIPTION,
+        description = descriptionOf(id),
         dice = dice,
         tables = tables,
       )

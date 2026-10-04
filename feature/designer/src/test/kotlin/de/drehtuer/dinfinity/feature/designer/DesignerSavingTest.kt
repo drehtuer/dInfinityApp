@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.feature.designer
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
+import de.drehtuer.dinfinity.designer.NewSet
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -213,7 +214,25 @@ class DesignerSavingTest {
   @Test
   fun `a designer with nowhere to save saves nowhere`() {
     assertEquals(SaveResult.Blank, runBlocking { DesignerSets.NONE.save("mine", Draft(die = d6)) })
+    assertEquals(
+      SaveResult.NotMade(NewSet.NotWritten),
+      runBlocking { DesignerSets.NONE.create("Props", Draft(die = d6)) },
+    )
     assertTrue(DesignerSets.NONE.writable.isEmpty())
+  }
+
+  @Test
+  fun `a refused name and a failed write say different things, and the set refused is said too`() {
+    // The two that cannot be told apart from the outside — the validator
+    // refusing an empty package and the disk refusing the record — share a
+    // sentence; everything the person can fix by typing has its own.
+    assertEquals(sentenceOf(NewSet.NotWritten), sentenceOf(NewSet.Rejected(emptyList())))
+    assertEquals(sentenceOf(NewSet.NotWritten), sentenceOf(NewSet.Made("props", "Props")))
+    assertEquals("me", wordOf(SaveResult.NotMade(NewSet.BadId("me"))))
+    assertEquals("mine", wordOf(SaveResult.NotMade(NewSet.Taken("mine"))))
+    assertEquals("", wordOf(SaveResult.NotMade(NewSet.Unnamed)))
+    assertEquals("My dice", wordOf(SaveResult.Saved(OneSet.MINE, null)))
+    assertEquals("", wordOf(SaveResult.Blank))
   }
 
   @Test
@@ -226,6 +245,11 @@ class DesignerSavingTest {
         SaveResult.Saved(OneSet.MINE, "mine:1d6"),
         SaveResult.Blank,
         SaveResult.Refused,
+        SaveResult.NotMade(NewSet.Unnamed),
+        SaveResult.NotMade(NewSet.NameTooLong),
+        SaveResult.NotMade(NewSet.BadId("me")),
+        SaveResult.NotMade(NewSet.Taken("mine")),
+        SaveResult.NotMade(NewSet.NotWritten),
       ).map(::sentenceOf)
 
     assertEquals("two answers say the same thing", said.size, said.distinct().size)
@@ -246,6 +270,11 @@ class DesignerSavingTest {
       saved += draft
       return answer(draft)
     }
+
+    override suspend fun create(
+      name: String,
+      draft: Draft,
+    ): SaveResult = SaveResult.NotMade(NewSet.NotWritten)
 
     companion object {
       val MINE = WritableSet(id = "mine", name = "My dice")

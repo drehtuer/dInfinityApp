@@ -2,6 +2,8 @@ package de.drehtuer.dinfinity.data
 
 import de.drehtuer.dinfinity.core.model.RollPlan
 import de.drehtuer.dinfinity.core.model.RollResult
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Writes down a throw that has landed
@@ -50,22 +52,62 @@ class RollRecording(
     savedRollId: String? = null,
     groupId: String? = null,
   ): Long =
-    statistics.record(
-      FinishedRoll(
-        result = result,
-        // The result knows which face came up; only the plan knows which die
-        // it was and which set supplied it, and the summaries are per die.
-        dice = plan.dice.associate { it.index to RolledDieSource(setId = it.setId, die = it.die) },
-        context =
-          RollContext(
-            sessionId = sessionStillThere(),
-            savedRollId = savedRollId,
-            groupId = groupId,
-          ),
-        breakdownJson = Breakdown.of(result),
-        replay = RollReplay(seed = seed),
+    inOrder.withLock {
+      statistics
+        .record(finished(result, plan, seed, savedRollId, groupId))
+        .also { last = it }
+    }
+
+  /**
+   * The roll recorded last was finished again: a hand picked up the dice of
+   * [thrownAgain] and a shake threw them, and [result] is what it comes to
+   * now (`docs/statistics.md`, "A die thrown again by hand").
+   *
+   * Not a second roll. The row recorded last is given the new total and
+   * breakdown, and only the dice thrown again are counted, once more each
+   * ([StatisticsRepository.amend]).
+   *
+   * **In the order the two arrived.** A throw by hand can land while the
+   * write of the roll it finishes is still in its transaction, and an amend
+   * that ran first would have no row to amend; both go through one lock, so
+   * the second waits for the first.
+   */
+  suspend fun amend(
+    result: RollResult,
+    plan: RollPlan,
+    thrownAgain: Set<Int>,
+  ) = inOrder.withLock {
+    // Where the roll came from and what replays it are the row's already, and
+    // an amend changes neither.
+    statistics.amend(last, finished(result, plan), thrownAgain)
+  }
+
+  /** The row the last roll was written as, which a throw by hand finishes again. */
+  private var last: Long? = null
+
+  /** One write at a time, in the order they were asked for. */
+  private val inOrder = Mutex()
+
+  private suspend fun finished(
+    result: RollResult,
+    plan: RollPlan,
+    seed: Long = 0,
+    savedRollId: String? = null,
+    groupId: String? = null,
+  ) = FinishedRoll(
+    result = result,
+    // The result knows which face came up; only the plan knows which die
+    // it was and which set supplied it, and the summaries are per die.
+    dice = plan.dice.associate { it.index to RolledDieSource(setId = it.setId, die = it.die) },
+    context =
+      RollContext(
+        sessionId = sessionStillThere(),
+        savedRollId = savedRollId,
+        groupId = groupId,
       ),
-    )
+    breakdownJson = Breakdown.of(result),
+    replay = RollReplay(seed = seed),
+  )
 
   /**
    * The active session if it is still there, and the first session if it is

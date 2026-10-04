@@ -10,17 +10,21 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
+import de.drehtuer.dinfinity.designer.NewSet
+import de.drehtuer.dinfinity.designer.PersonalSetId
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -91,6 +95,67 @@ class DesignerSaveScreenTest {
 
     compose.onNodeWithTag(DesignerTestTags.SAVE_SAID).assertIsDisplayed()
     compose.onNodeWithText("Saved to My dice. Roll it now throws the drawing.").assertExists()
+  }
+
+  @Test
+  fun `New set makes a set out of the name typed, says its id, and saves into it`() {
+    // Decision 79: the sheet names a new set, says what its id will be while
+    // it is typed, and the set it made is chosen from then on.
+    val sets = OneSet()
+    show(d6, sets = sets)
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW_NAME).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW).assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).assertIsNotEnabled()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW_NAME).performTextInput("Brass & Bone")
+    compose.onNodeWithText("Its id will be brass-bone: that is what notation calls the set.").assertExists()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).performClick()
+
+    assertEquals("brass-bone", sets.into)
+    compose.onNodeWithText("Saved to Brass & Bone. Roll it now throws the drawing.").assertExists()
+    compose.onNodeWithTag(DesignerTestTags.saveInto("brass-bone")).assertIsSelected()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW_NAME).assertDoesNotExist()
+  }
+
+  @Test
+  fun `a name whose id is taken is refused in words, and the name stays to be changed`() {
+    show(d6, sets = OneSet(refuse = { NewSet.Taken(PersonalSetId.of(it)) }))
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW_NAME).performTextInput("Mine")
+    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).performClick()
+
+    compose
+      .onNodeWithText("There is already a set with the id “mine” on this phone. Choose another name.")
+      .assertExists()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW_NAME).assertTextContains("Mine")
+  }
+
+  @Test
+  fun `a name too short to be an id is refused with the rule`() {
+    show(d6, sets = OneSet(refuse = { NewSet.BadId(PersonalSetId.of(it)) }))
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW_NAME).performTextInput("Me")
+    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).performClick()
+
+    compose.onNodeWithText("this name comes to “me”", substring = true).assertExists()
+  }
+
+  @Test
+  fun `choosing a set after New set puts the name field away`() {
+    show(d6, sets = OneSet())
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE).performClick()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW).performClick()
+    compose.onNodeWithTag(DesignerTestTags.saveInto(OneSet.MINE.id)).performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.SAVE_NEW_NAME).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.SAVE_DO).assertIsEnabled()
   }
 
   @Test
@@ -267,11 +332,19 @@ class DesignerSaveScreenTest {
     return presenter
   }
 
-  /** A library with one writable set and no disk behind it. */
+  /**
+   * A library with writable sets and no disk behind it. A new set is made
+   * under the id its name comes to, unless [refuse] says otherwise.
+   */
   private class OneSet(
     private val answer: SaveResult? = null,
-    override val writable: List<WritableSet> = listOf(MINE),
+    writable: List<WritableSet> = listOf(MINE),
+    private val refuse: (String) -> NewSet? = { null },
   ) : DesignerSets {
+    private val sets = writable.toMutableList()
+
+    override val writable: List<WritableSet> get() = sets.toList()
+
     var into: String? = null
       private set
 
@@ -280,13 +353,22 @@ class DesignerSaveScreenTest {
       draft: Draft,
     ): SaveResult {
       into = setId
-      return answer ?: SaveResult.Saved(writable.first { it.id == setId }, "$setId:1${draft.die.id}")
+      return answer ?: SaveResult.Saved(sets.first { it.id == setId }, "$setId:1${draft.die.id}")
+    }
+
+    override suspend fun create(
+      name: String,
+      draft: Draft,
+    ): SaveResult {
+      refuse(name)?.let { return SaveResult.NotMade(it) }
+      sets += WritableSet(PersonalSetId.of(name), name.trim())
+      return save(PersonalSetId.of(name), draft)
     }
 
     companion object {
       val MINE = WritableSet(id = "mine", name = "My dice")
 
-      /** The second personal set the model has not got yet (`docs/TODO.md`, 4.6). */
+      /** A second personal set, one somebody named (`docs/architecture.md`, decision 79). */
       val OTHER = WritableSet(id = "props", name = "Props")
     }
   }
@@ -307,6 +389,11 @@ class DesignerSaveScreenTest {
       done.await()
       return SaveResult.Saved(OneSet.MINE, "mine:1${draft.die.id}")
     }
+
+    override suspend fun create(
+      name: String,
+      draft: Draft,
+    ): SaveResult = save(OneSet.MINE.id, draft)
 
     fun finish() = done.complete(Unit)
   }

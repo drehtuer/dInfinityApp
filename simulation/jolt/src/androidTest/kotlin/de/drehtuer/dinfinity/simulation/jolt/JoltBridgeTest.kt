@@ -594,8 +594,6 @@ class JoltBridgeTest {
      */
     const val D4_PILE_UPS_ALLOWED = 5
 
-    /** And how many of sixteen shaken `20d6` throws may end in a heap. Same rule. */
-    const val SHAKE_HEAPS_ALLOWED = 2
     val SEEDS = listOf(1L, 2L, 3L, 4L, 5L, 6L)
   }
 }

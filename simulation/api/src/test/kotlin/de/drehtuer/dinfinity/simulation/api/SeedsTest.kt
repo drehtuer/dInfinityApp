@@ -73,6 +73,20 @@ class SeedsTest {
   }
 
   @Test
+  fun `a throw by hand is a throw of its own, and replays to itself`() {
+    // A hand can throw again after an explosion and after a re-throw, and all
+    // three count from one.
+    val first = Seeds.byHand(seed = 11L, nth = 1)
+
+    assertNotEquals(Seeds.derived(seed = 11L, nth = 1), first)
+    assertNotEquals(Seeds.again(seed = 11L, pass = 1), first)
+    assertNotEquals(Seeds.byHand(seed = 11L, nth = 2), first)
+    assertEquals(first, Seeds.byHand(seed = 11L, nth = 1))
+    val counted = spreadOf { nth -> kotlin.random.Random(Seeds.byHand(seed = 11L, nth = nth)) }
+    assertTrue(counted in LOOSE_ENOUGH..TIGHT_ENOUGH, "the throws by hand gave a spread of $counted")
+  }
+
+  @Test
   fun `a stirred seed is still the same seed`() {
     // Everything above would also be true of a stir that threw the seed away.
     // A roll has to replay to itself, so the same seed has to give the same

@@ -20,6 +20,7 @@ import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.RollThread
 import de.drehtuer.dinfinity.render.filament.ThumbnailPlan
 import de.drehtuer.dinfinity.render.filament.Tray
+import de.drehtuer.dinfinity.render.filament.TrayCamera
 import de.drehtuer.dinfinity.render.filament.TrayDriver
 import de.drehtuer.dinfinity.render.filament.TrayThumbnails
 import de.drehtuer.dinfinity.render.headless.Rolls
@@ -209,6 +210,9 @@ class RollWiring(
       recorder = recorder(scope),
       debug = relay,
       developer = developer,
+      // The lean the tray draws with, so a finger is read against the picture
+      // the player is looking at (`TrayPick`).
+      tiltDegrees = TrayCamera.tiltDegreesOf(tableView),
     )
   }
 
@@ -224,6 +228,13 @@ class RollWiring(
     recording?.let { recording ->
       ThrowRecorder { thrown ->
         scope.launch {
+          // A roll a hand finished again is the same roll: its row gets the
+          // new total and only the dice thrown again are counted again
+          // (`docs/statistics.md`, "A die thrown again by hand").
+          if (thrown.thrownAgain.isNotEmpty()) {
+            recording.amend(result = thrown.result, plan = thrown.plan, thrownAgain = thrown.thrownAgain)
+            return@launch
+          }
           recording.record(
             result = thrown.result,
             plan = thrown.plan,

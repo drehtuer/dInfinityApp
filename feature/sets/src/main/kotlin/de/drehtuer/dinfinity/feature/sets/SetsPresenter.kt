@@ -67,6 +67,15 @@ data class SetRow(
    * marked with it where the list is assembled ([SetsPresenter.refresh]).
    */
   val isDefault: Boolean = false,
+  /**
+   * True for a personal set somebody named in the face designer
+   * (`docs/architecture.md`, decision 79).
+   *
+   * Filled in by [SetLibrary], which is the one place that knows which
+   * folders this phone wrote; "My dice" is personal by its id alone and does
+   * not need it.
+   */
+  val madeHere: Boolean = false,
 ) {
   /** True when the package did not pass validation on this reading (`6b`). */
   val broken: Boolean get() = set == null
@@ -88,17 +97,19 @@ data class SetRow(
   val dice: Int get() = set?.dice?.size ?: 0
 
   /**
-   * True for "My dice", the package built from the drawings on this phone
-   * (`docs/face-designer.md`; design `8c`).
+   * True for a package built on this phone: "My dice", and every set somebody
+   * named in the face designer (`docs/face-designer.md`; design `8c`;
+   * `docs/architecture.md`, decision 79).
    *
-   * The id and nothing else, because that *is* what makes it personal: the
-   * exporter writes the folder `mine`, and a folder called `mine` that came
-   * from somewhere else would be one the app overwrote at the next reading
-   * anyway. It is the only difference the details screen makes for it — the
-   * package is otherwise as ordinary as any other, and can be switched off and
-   * removed like one.
+   * For "My dice" the id is enough, because that *is* what makes it personal:
+   * the exporter writes the folder `mine`, and a folder called `mine` that
+   * came from somewhere else would be one the app overwrote at the next
+   * reading anyway. A named set is personal because the library says it is
+   * ([madeHere]). It is the only difference the details screen makes for one
+   * — the package is otherwise as ordinary as any other, and can be switched
+   * off and removed like one.
    */
-  val personal: Boolean get() = !bundled && id == DiceSet.PERSONAL_ID
+  val personal: Boolean get() = !bundled && (id == DiceSet.PERSONAL_ID || madeHere)
 
   /** The version it declares, where it is readable enough to declare one. */
   val version: String? get() = set?.version ?: meta.version
@@ -131,6 +142,7 @@ data class SetRow(
     fun of(
       pack: InstalledPackage,
       enabled: Boolean,
+      madeHere: Boolean = false,
     ): SetRow =
       SetRow(
         id = pack.id,
@@ -140,6 +152,7 @@ data class SetRow(
         meta = pack.meta,
         folder = pack.folder,
         enabled = enabled,
+        madeHere = madeHere,
       )
 
     /** The set that ships inside the app: no folder, always on, never removable. */
