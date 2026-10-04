@@ -194,6 +194,26 @@ class FilamentDiceRendererTest {
   }
 
   @Test
+  fun `a glass table's floor shows the dice and its walls do not`() {
+    renderer.begin(spec(), geometry, look.copy(roughness = 0.1))
+
+    val floor = requireNotNull(stage.added[0].second.reflection)
+    assertEquals(Reflection.strengthOf(0.1), floor.strength, 1e-9)
+    // What the glass shows is what casts: the dice, never the tray
+    // (`Stage.add`), and the walls and rim reflect nothing of their own.
+    val reflecting = stage.added.map { it.second.reflection != null }
+    assertEquals(listOf(true) + List(reflecting.size - 1) { false }, reflecting)
+    assertEquals(List(TRAY_PARTS) { false }, stage.casting.take(TRAY_PARTS))
+  }
+
+  @Test
+  fun `a felt table's floor shows nothing`() {
+    renderer.begin(spec(), geometry, look)
+
+    assertTrue(stage.added.all { it.second.reflection == null })
+  }
+
+  @Test
   fun `and the tray is still shadowless once it has been rebuilt`() {
     // A second throw — and a die an explosion adds — throws the scene away
     // and builds it again, so the flag has to travel with the mesh rather

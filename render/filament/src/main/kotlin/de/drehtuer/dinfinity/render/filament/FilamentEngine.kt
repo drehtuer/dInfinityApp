@@ -110,11 +110,25 @@ class FilamentEngine(
    */
   val resinMaterial: Material by resin
 
-  /** Which of the two [parameters] is to be drawn with. */
+  private val glass = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.GLASS) }
+
+  /**
+   * And the floor of a table glossy enough to show the dice in it
+   * ([DiceMaterial.GLASS_SOURCE], [Reflection]).
+   *
+   * A third material rather than a parameter of the first, so that a table
+   * that reflects nothing samples nothing: felt, oak and the plain table are
+   * drawn with [material], exactly as before. Made the first time a glossy
+   * table is shown, for the reason [resinMaterial] is.
+   */
+  val glassMaterial: Material by glass
+
+  /** Which of the three [parameters] is to be drawn with. */
   fun materialFor(parameters: DiceMaterial.Parameters): Material =
     when (DiceMaterial.variantOf(parameters)) {
       DiceMaterial.Variant.OPAQUE -> material
       DiceMaterial.Variant.RESIN -> resinMaterial
+      DiceMaterial.Variant.GLASS -> glassMaterial
     }
 
   /**
@@ -283,6 +297,7 @@ class FilamentEngine(
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
     if (resin.isInitialized()) engine.destroyMaterial(resinMaterial)
+    if (glass.isInitialized()) engine.destroyMaterial(glassMaterial)
     engine.destroy()
   }
 
@@ -411,6 +426,7 @@ class FilamentEngine(
               when (variant) {
                 DiceMaterial.Variant.OPAQUE -> "dinfinity"
                 DiceMaterial.Variant.RESIN -> "dinfinity-resin"
+                DiceMaterial.Variant.GLASS -> "dinfinity-glass"
               },
             ).material(variant.source)
             // `LIT` for resin too, not `SUBSURFACE`. Filament's subsurface
@@ -425,6 +441,7 @@ class FilamentEngine(
             // opaque scene rather than by letting the blend show it.
             .blending(MaterialBuilder.BlendingMode.OPAQUE)
             .apply { if (variant == DiceMaterial.Variant.RESIN) resin() }
+            .apply { if (variant == DiceMaterial.Variant.GLASS) glass() }
             // **Off, and the numbers are upside down without it.**
             //
             // `MaterialBuilder` defaults this to true, which makes `getUV0()`
@@ -508,6 +525,22 @@ class FilamentEngine(
         .uniformParameter(MaterialBuilder.UniformType.FLOAT, "ior")
         .uniformParameter(MaterialBuilder.UniformType.FLOAT, "thickness")
         .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "tint")
+
+    /**
+     * What the glass variant adds: the picture of the dice seen from under the
+     * floor, and how much of it the table shows ([DiceMaterial.GLASS_SOURCE]).
+     *
+     * Its own picture rather than Filament's screen-space reflections, whose
+     * material switch (`reflectionMode`) is left at its default: those reflect
+     * the walls as well as the dice (`Reflection`).
+     */
+    fun MaterialBuilder.glass(): MaterialBuilder =
+      samplerParameter(
+        MaterialBuilder.SamplerType.SAMPLER_2D,
+        MaterialBuilder.SamplerFormat.FLOAT,
+        MaterialBuilder.ParameterPrecision.DEFAULT,
+        "reflected",
+      ).uniformParameter(MaterialBuilder.UniformType.FLOAT, "reflectionStrength")
 
     /**
      * A decoded atlas, uploaded as it stands.

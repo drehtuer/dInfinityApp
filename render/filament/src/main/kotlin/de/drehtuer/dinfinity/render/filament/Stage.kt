@@ -39,7 +39,9 @@ interface Stage : AutoCloseable {
    *   (`docs/physics-and-rendering.md`, "What is drawn over the table"). The
    *   two are one decision per renderable rather than one for the scene,
    *   because the promise the app makes is about the dice and not about the
-   *   furniture they land on.
+   *   furniture they land on. The same line decides what a glossy table
+   *   shows in it: what casts — the dice — and none of what does not
+   *   ([Reflection]).
    */
   fun add(
     mesh: GpuMesh,

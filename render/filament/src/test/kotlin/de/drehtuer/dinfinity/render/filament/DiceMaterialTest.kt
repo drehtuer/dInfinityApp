@@ -249,6 +249,46 @@ class DiceMaterialTest {
   }
 
   @Test
+  fun `a glossy floor is glass, and nothing else of a table is`() {
+    val glassy = PLAIN.copy(roughness = 0.1, metallic = 0.1)
+    val floor = DiceMaterial.floorOf(glassy)
+    assertEquals(Reflection.strengthOf(0.1), floor.reflection!!.strength, TOLERANCE)
+    assertEquals(DiceMaterial.Variant.GLASS, DiceMaterial.variantOf(floor))
+    // The walls and the rim reflect nothing: a wall in the glass is a dark
+    // band along its foot, which is what the table must not wear.
+    assertNull(DiceMaterial.wallOf(glassy).reflection)
+    assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.wallOf(glassy)))
+    // And a die never does, glossy or not: the dice are what is reflected.
+    assertNull(DiceMaterial.dieOf(DieMaterial(roughness = 0.0), texturePath = null).reflection)
+  }
+
+  @Test
+  fun `felt, oak and the plain table are drawn as they always were`() {
+    listOf(0.9, 0.55, 0.8).forEach { roughness ->
+      val floor = DiceMaterial.floorOf(PLAIN.copy(roughness = roughness))
+      assertNull("a floor of roughness $roughness reflects", floor.reflection)
+      assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(floor))
+    }
+  }
+
+  @Test
+  fun `the glass is the opaque surface with the dice added, under its own name`() {
+    assertEquals(DiceMaterial.GLASS_SOURCE, DiceMaterial.Variant.GLASS.source)
+    assertNotEquals(DiceMaterial.Variant.OPAQUE.key, DiceMaterial.Variant.GLASS.key)
+    assertNotEquals(DiceMaterial.Variant.RESIN.key, DiceMaterial.Variant.GLASS.key)
+    assertTrue(DiceMaterial.GLASS_SOURCE.contains("material.roughness = materialParams.roughness;"))
+    // Turned round across the screen, because the camera under the floor sees
+    // the reflection from the other side (`Reflection.mirrored`).
+    assertTrue(DiceMaterial.GLASS_SOURCE.contains("vec2(1.0 - seen.x, seen.y)"))
+    // A clear pixel changes nothing: reflectance stays Filament's default of
+    // a half and nothing is added.
+    assertTrue(DiceMaterial.GLASS_SOURCE.contains("0.5 * sqrt(max(1.0 - mirrored.a * strength, 0.0))"))
+    // Added as it stands, not exposed a second time.
+    assertTrue(DiceMaterial.GLASS_SOURCE.contains("* fresnel * strength, 0.0);"))
+    assertFalse(DiceMaterial.GLASS_SOURCE.contains("material.transmission"))
+  }
+
+  @Test
   fun `what is printed on a die stays opaque, and the shader is where that happens`() {
     // Light passes only through the *bare* body: where ink or artwork is, the
     // transmission is nought and the roughness the author's, which is the line

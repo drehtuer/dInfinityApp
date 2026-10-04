@@ -135,6 +135,41 @@ object DiceMaterial {
     """ + COAT
 
   /**
+   * The floor of a glossy table: the opaque surface, with the dice seen in it.
+   *
+   * [FilamentStage] draws the dice a second time, small, from a camera under
+   * the floor, into a picture this samples where it stands on the screen —
+   * turned round across it, because that camera sees the reflection from the
+   * other side ([Reflection.mirrored]). The picture is clear where there is
+   * no die, and a clear pixel changes nothing: everywhere no die is reflected
+   * this is [SOURCE] exactly.
+   *
+   * What a die adds is glass's own share of it: the Fresnel term of the
+   * surface — four per cent looking straight down for a dielectric, the base
+   * colour for a metal, more at a glance — times the table's
+   * [Reflection.strength]. And what it takes away is the room: where a die is
+   * reflected, the room the floor reflected there is behind it, so the
+   * surface's reflectance falls by as much. A dark die makes a dark
+   * reflection in a table that was showing a bright ceiling, as it does on a
+   * real one.
+   *
+   * The reflection is added as emissive light that is *not* scaled by the
+   * exposure again: the picture was drawn by a camera with the same exposure,
+   * so it is already in the units this pass writes.
+   */
+  const val GLASS_SOURCE: String =
+    SURFACE + """
+            material.roughness = materialParams.roughness;
+            vec2 seen = uvToRenderTargetUV(getNormalizedViewportCoord().xy);
+            vec4 mirrored = texture(materialParams_reflected, vec2(1.0 - seen.x, seen.y));
+            float strength = materialParams.reflectionStrength;
+            vec3 f0 = mix(vec3(0.04), material.baseColor.rgb, material.metallic);
+            vec3 fresnel = f0 + (1.0 - f0) * pow(1.0 - getNdotV(), 5.0);
+            material.reflectance = 0.5 * sqrt(max(1.0 - mirrored.a * strength, 0.0));
+            material.emissive = vec4(mirrored.rgb * fresnel * strength, 0.0);
+    """ + COAT
+
+  /**
    * Which compiled material a surface is drawn with.
    *
    * How light leaves a surface — whether it is refracted, and so drawn after
@@ -151,10 +186,18 @@ object DiceMaterial {
 
     /** A die a set called translucent. */
     RESIN(RESIN_SOURCE, "resin"),
+
+    /** The floor of a table glossy enough to show the dice ([Reflection]). */
+    GLASS(GLASS_SOURCE, "glass"),
   }
 
   /** Which of the [Variant]s [parameters] are drawn with. */
-  fun variantOf(parameters: Parameters): Variant = if (parameters.resin != null) Variant.RESIN else Variant.OPAQUE
+  fun variantOf(parameters: Parameters): Variant =
+    when {
+      parameters.resin != null -> Variant.RESIN
+      parameters.reflection != null -> Variant.GLASS
+      else -> Variant.OPAQUE
+    }
 
   /** What a surface of the tray's floor is drawn with. */
   fun floorOf(look: TableLook): Parameters =
@@ -163,6 +206,7 @@ object DiceMaterial {
       roughness = look.roughness,
       metallic = look.metallic,
       texturePath = look.floorTexturePath,
+      reflection = Reflection.of(look),
     )
 
   /** And its walls, including the rim, which is the wall seen end-on. */
@@ -222,6 +266,11 @@ object DiceMaterial {
    * @param clearCoat the lacquer over the body, nought for a surface with
    *   none. A tray has none: varnished felt is a table nobody owns.
    * @param clearCoatRoughness how polished that lacquer is.
+   * @param reflection how strongly this surface shows the dice, or null for
+   *   one that does not — which is everything but the floor of a glossy table
+   *   ([Reflection.of]). Not the walls: what a player looks into in a glass
+   *   table is its top, and a wall in the glass is the band along its foot
+   *   that `docs/physics-and-rendering.md` keeps off the table.
    */
   data class Parameters(
     val colour: Colour,
@@ -233,6 +282,7 @@ object DiceMaterial {
     val resin: Resin? = null,
     val clearCoat: Double = 0.0,
     val clearCoatRoughness: Double = DIE_COAT_ROUGHNESS,
+    val reflection: Reflection? = null,
   ) {
     /** True when this surface samples an atlas rather than taking a flat colour. */
     val textured: Boolean get() = texturePath != null

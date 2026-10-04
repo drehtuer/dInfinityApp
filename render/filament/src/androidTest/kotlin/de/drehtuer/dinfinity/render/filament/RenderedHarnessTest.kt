@@ -11,6 +11,8 @@ import android.os.HandlerThread
 import android.view.Display
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.WatchedRoll
 import de.drehtuer.dinfinity.simulation.api.BoardSettler
@@ -99,7 +101,7 @@ class RenderedHarnessTest {
       asked != null,
     )
     val request = requireNotNull(asked)
-    val run = draw(request, request.plan())
+    val run = draw(request, request.plan(table = lookOf(request.table)))
 
     val report =
       RenderedReport(
@@ -124,6 +126,21 @@ class RenderedHarnessTest {
 
     assertTrue(text, report.scorecard.passed)
   }
+
+  /**
+   * The built-in look [id] names, or the plain physics-only look when it
+   * names none (`tools/harness.sh --table`). A glossy look draws the dice a
+   * second time, for the reflection, so which table a run is on is part of
+   * what it measures (`docs/physics-and-rendering.md`, "The dice in a glossy
+   * table").
+   */
+  private fun lookOf(id: String?): TableLook =
+    id?.let {
+      requireNotNull(BuiltinDiceSet.set.table(it)) {
+        "the built-in package has no table called \"$it\"; it has " +
+          BuiltinDiceSet.set.tables.joinToString { table -> table.id }
+      }
+    } ?: HarnessRequest.PLAIN
 
   /** What a run drew: how many throws, on how big a surface, and their frames. */
   private class Run(

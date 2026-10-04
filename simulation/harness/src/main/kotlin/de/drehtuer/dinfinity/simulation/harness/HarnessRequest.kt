@@ -37,6 +37,13 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
  *   with no clock at all. Off by default, because a paced run takes as long as
  *   the dice really take and a thousand of those is an hour
  *   ([FrameTimes]).
+ * @param table the id of the built-in table look to throw onto, or null for
+ *   [PLAIN]. Only the rendered harness reads it — a look is what a frame
+ *   costs to draw, and a glossy table draws the dice twice
+ *   (`docs/physics-and-rendering.md`, "The dice in a glossy table"). Which
+ *   looks exist is the built-in package's to say, and this module does not
+ *   know it, so the id travels as it was typed and is looked up on the
+ *   device.
  */
 data class HarnessRequest(
   val label: String,
@@ -45,6 +52,7 @@ data class HarnessRequest(
   val length: RunLength,
   val seed: Long,
   val framePaced: Boolean = false,
+  val table: String? = null,
 ) {
   init {
     require(diceCount in 1..TableCapacity.MAX_DICE) {
@@ -116,6 +124,9 @@ data class HarnessRequest(
     /** What to call the run, and its files. */
     const val LABEL: String = "harness.label"
 
+    /** Which built-in table look to throw onto, by id ([table]). */
+    const val TABLE: String = "harness.table"
+
     /** Twenty dice, because that is the count Step 5.5 states its settle targets at. */
     const val DEFAULT_DICE: Int = 20
 
@@ -136,13 +147,15 @@ data class HarnessRequest(
       val length = RunLength.from(arguments(ROLLS), arguments(SOAK)) ?: return null
       val shape = arguments(SHAPE)?.let(::shapeOf) ?: DEFAULT_SHAPE
       val diceCount = arguments(DICE)?.trim()?.toIntOrNull() ?: DEFAULT_DICE
+      val table = arguments(TABLE)?.trim()?.takeIf(String::isNotEmpty)
       return HarnessRequest(
-        label = arguments(LABEL)?.trim()?.takeIf(String::isNotEmpty) ?: labelOf(diceCount, shape, length),
+        label = arguments(LABEL)?.trim()?.takeIf(String::isNotEmpty) ?: labelOf(diceCount, shape, length, table),
         shape = shape,
         diceCount = diceCount,
         length = length,
         seed = arguments(SEED)?.trim()?.toLongOrNull() ?: DEFAULT_SEED,
         framePaced = asked(arguments(FRAMES)),
+        table = table,
       )
     }
 
@@ -151,17 +164,20 @@ data class HarnessRequest(
      *
      * A soak says so in its own name, because the files are named after the
      * label and a soak of `20d20` that overwrote the `20d20` run beside it
-     * would be two measurements in one file name.
+     * would be two measurements in one file name. A run on a named [table]
+     * says that too, for the same reason.
      */
     fun labelOf(
       diceCount: Int,
       shape: DieShape,
       length: RunLength,
+      table: String? = null,
     ): String =
       buildString {
         append(diceCount)
         append('d')
         append(shape.faceCount)
+        if (table != null) append('-').append(table)
         if (length is RunLength.Soak) append("-soak")
       }
 

@@ -31,8 +31,8 @@ This is a snapshot, not a changelog — git history is the changelog.
   the felt draws its set colour, no band along the walls, the room cached on
   disk), translucent dice as refracting resin (90) and rounded edges drawn
   with the solver's own convex radius (91), all passing on the Pixel 10a.
-  Felt and oak textures and dice reflected in the dark glass are being
-  built. It reaches `main` when the owner likes it on the phone.
+  The dark glass reflects the dice faintly, by a small second picture of
+  them from under the floor (93). Felt and oak textures are being built. It reaches `main` when the owner likes it on the phone.
 
 ## Done
 

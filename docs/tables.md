@@ -200,6 +200,12 @@ Rules:
   and the table is drawn in `floor_color` and `wall_color` alone
   (`docs/dice-sets.md`, "How an atlas reaches the tray";
   `docs/TODO.md`, "Open questions").
+- **`roughness` also decides whether the table shows the dice in it.** Below
+  0.3 the floor reflects them, faintly and softly — at a perfect polish as
+  strongly as glass reflects, which is four per cent looking straight down —
+  and from 0.3 up it shows none and is drawn exactly as a matte table. There
+  is no field of its own for it: how glossy a surface is is how much it
+  reflects (`docs/physics-and-rendering.md`, "The dice in a glossy table").
 - Physics values are clamped at validation and again at load, like dice.
   A table can be a bit slippery or a bit grippy; it cannot be frictionless.
 - **A table can make a die bouncier, never deader.** The solver takes the
@@ -230,7 +236,10 @@ Rules:
 
 The bundled package ships `felt-green`, `felt-black`, `oak`, `dark-glass`
 and `plain` (a neutral grey that is easy on the eyes and on the battery — it
-is what power-saving mode's result screen echoes).
+is what power-saving mode's result screen echoes). `dark-glass` is the one
+glossy enough to show the dice in it, at two-thirds of a polished
+reflection; its walls and rim reflect nothing, so the foot of each wall
+looks as it does on felt.
 
 ### Your own photo
 
