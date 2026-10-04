@@ -35,8 +35,11 @@ This is a snapshot, not a changelog — git history is the changelog.
   them from under the floor (93). The broken light lines along resin dice's
   rounded edges were the lacquer's glint, thinner than a pixel; specular
   anti-aliasing spreads it now. Felt and oak are drawn from CC0 pictures,
-  keyed by the package the look came from (92); plain stays flat — not yet
-  run on the phone. It reaches `main` when the owner likes it on the phone.
+  keyed by the package the look came from (92); plain stays flat. On the
+  phone the oak drew pinkish grey: its photograph's roughness map (0.44)
+  stood in for the look's, and the key light's sheen washed the brown out. A
+  look in `average` now has its roughness map averaged at its `roughness`
+  too, and oak is oiled at 0.75 — not yet run on the phone. It reaches `main` when the owner likes it on the phone.
 
 ## Done
 

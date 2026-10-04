@@ -68,10 +68,14 @@ internal fun MaterialBuilder.diceParameters(): MaterialBuilder =
     .sampler("atlas")
     .sampler("glyphs")
 
-/** And a table's: its three pictures, and whether it has the two maps. */
+/**
+ * And a table's: its three pictures, whether it has the two maps, and how far
+ * its roughness map is moved ([TableTint.roughnessShift]).
+ */
 internal fun MaterialBuilder.tableParameters(): MaterialBuilder =
   uniformParameter(MaterialBuilder.UniformType.FLOAT, "hasNormal")
     .uniformParameter(MaterialBuilder.UniformType.FLOAT, "hasRoughness")
+    .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughnessShift")
     .sampler("albedo")
     .sampler("normalMap")
     .sampler("roughnessMap")

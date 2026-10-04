@@ -111,9 +111,15 @@ labels = ["−", "−", "0", "+", "0", "+"]
 # with their sources in docs/assets/README.md and made by
 # tools/generate-table-textures.py. With color_mode = "average" each colour is
 # what its surface averages out to, so the colours below are the ones the looks
-# were always designed in and the picture adds only the grain. The felt is
-# grey, so one cloth is both felts; the walls of the felt tables are oak
-# darkened to the frame colour they always had.
+# were always designed in and the picture adds only the grain — and each
+# roughness is what its surface's roughness map averages out to, likewise. The
+# felt is grey, so one cloth is both felts; the walls of the felt tables are
+# oak darkened to the frame colour they always had.
+#
+# Oak is oiled, not lacquered: 0.75. At the photograph's own 0.44, or the
+# 0.55 the flat look had, the studio's key light glints off the middle of the
+# floor and a brown that dark comes out grey (docs/tables.md, "Built-in
+# tables").
 #
 # Dark glass and plain have no pictures at all. Plain is the look that costs
 # least to draw, and it stays a flat colour.
@@ -172,7 +178,7 @@ wall_tile_mm = 300
 color_mode = "average"
 floor_color = "#5a3a1e"
 wall_color = "#3f2913"
-roughness = 0.55
+roughness = 0.75
 friction = 0.45
 restitution = 0.35
 sound = "wood"

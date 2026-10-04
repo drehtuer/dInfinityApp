@@ -6,8 +6,8 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 
 /**
- * The arithmetic that keeps a dyed felt the colour its look names
- * (`docs/tables.md`, "Textures").
+ * The arithmetic that keeps a dyed felt the colour its look names, and an oak
+ * as rough as its look says (`docs/tables.md`, "Textures").
  */
 class TableTintTest {
   @Test
@@ -80,6 +80,36 @@ class TableTintTest {
 
     assertSame(photo, TableTint.colourFor(photo, mean, averaged = false))
     assertSame(photo, TableTint.colourFor(photo, mean = null, averaged = true))
+  }
+
+  @Test
+  fun `a map's level is its red channel as stored, not decoded as a colour`() {
+    // A roughness map is a measurement: 0x80 is 0.502, not the 0.216 an sRGB
+    // decode would make of it, and green and blue are not read.
+    val image = picture(listOf(0xFF80FF00.toInt(), 0xFF000000.toInt() or (0x40 shl RED_SHIFT)))
+
+    assertEquals((0x80 + 0x40) / 2.0 / 255, TableTint.levelOf(image), TOLERANCE)
+  }
+
+  @Test
+  fun `an averaged roughness map is moved to average out at the look's roughness`() {
+    // Poly Haven's oak boards average 0.44; the oiled oak look says 0.75.
+    val shift = TableTint.roughnessShift(roughness = 0.75, level = 0.44, averaged = true)
+
+    assertEquals(0.31, shift, TOLERANCE)
+    assertEquals(0.75, 0.44 + shift, TOLERANCE)
+  }
+
+  @Test
+  fun `a map can be moved down as well as up`() {
+    assertEquals(-0.2, TableTint.roughnessShift(roughness = 0.6, level = 0.8, averaged = true), TOLERANCE)
+  }
+
+  @Test
+  fun `a roughness map that multiplies, or is not there, is not moved`() {
+    // A photograph's roughness is the photograph's own.
+    assertEquals(0.0, TableTint.roughnessShift(roughness = 0.75, level = 0.44, averaged = false), TOLERANCE)
+    assertEquals(0.0, TableTint.roughnessShift(roughness = 0.75, level = null, averaged = true), TOLERANCE)
   }
 
   /** A picture one pixel high, of these ARGB pixels, as an atlas holds them. */

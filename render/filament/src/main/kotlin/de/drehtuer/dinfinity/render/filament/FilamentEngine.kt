@@ -177,11 +177,18 @@ class FilamentEngine(
       stamp = artworkStamp,
     )
 
-  /** A table's normal and roughness maps: as [tableColours], but linear. */
+  /**
+   * A table's normal and roughness maps: as [tableColours], but linear, and
+   * with the level of the red channel a roughness map is moved by
+   * ([TableTint.roughnessShift]). A normal map's is taken too and never read:
+   * one pass over pixels already in memory, against a second cache.
+   */
   private val tableDetail: AtlasCache<TablePicture> =
     AtlasCache(
       artwork = artwork,
-      upload = { TablePicture(uploadSurface(engine, it, SurfaceMap.NORMAL), mean = null) },
+      upload = {
+        TablePicture(uploadSurface(engine, it, SurfaceMap.NORMAL), mean = null, level = TableTint.levelOf(it))
+      },
       destroy = { engine.destroyTexture(it.texture) },
       stamp = artworkStamp,
     )
@@ -198,11 +205,14 @@ class FilamentEngine(
   /**
    * One of a table's pictures on the GPU, and — for a colour picture — its
    * average, worked out once from the pixels it was uploaded from, which is
-   * what a look in `color_mode = "average"` is scaled by ([TableTint]).
+   * what a look in `color_mode = "average"` is scaled by ([TableTint]); for a
+   * map, the average [level] of its red channel, which is what a roughness
+   * map is moved by.
    */
   class TablePicture(
     val texture: Texture,
     val mean: Colour?,
+    val level: Double? = null,
   )
 
   /**

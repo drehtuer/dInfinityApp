@@ -2565,7 +2565,9 @@ caps a roll at what the table can hold, and never above a hundred dice
 names a colour picture, a normal map or a roughness map (`docs/tables.md`,
 "Textures") is drawn with `DiceMaterial.TABLE_SOURCE`: the picture times the
 look's colour, the normal map bending the surface's normal, and the roughness
-map in place of the look's `roughness`. Everything else — plain, a look
+map giving the surface its sheen — moved to average out at the look's
+`roughness` when the look is in `color_mode = "average"`, in place of it when
+the look multiplies. Everything else — plain, a look
 whose package is gone — is drawn through the dice's opaque material exactly
 as before, and dark glass's floor through the glass material ("The dice in a
 glossy table"), so the cheapest tray is still the cheapest, and the dice's
@@ -2600,7 +2602,17 @@ every pixel of them are what they were.
   its colour divided by the picture's linear average before it reaches the
   material (`TableTint`), so the felt averages out at the green the look
   names. The average is taken once, from the pixels the picture is uploaded
-  from, and kept with the texture.
+  from, and kept with the texture. The roughness map is averaged the same way
+  and moved, not scaled, by the difference (`TableTint.roughnessShift`, a
+  uniform of the material; the shader clamps to nought and one). A
+  photograph's roughness map is the photograph's finish: Poly Haven's oak
+  boards average 0.44, a lacquered floor, and the key light comes down two in
+  one from the far side, so at the tilted view its highlight lies across the
+  middle of the floor. At 0.44 that was a white sheen of about 0.06 in linear
+  light over a brown whose blue is 0.013, and the oak drew pinkish grey; the
+  rim, darker still, drew as grey stone. Oiled oak at 0.75 keeps a sheen of
+  about a hundredth looking straight down, which `TableTextureDeviceTest`
+  holds the floors to (`docs/tables.md`, "Built-in tables").
 - **Uploaded once per package**, on the engine beside the die atlases and
   given back with it, under the same keys (`docs/dice-sets.md`, "How an atlas
   reaches the tray"). The bundled felt and oak are 1.5 MB of WebP in the APK
@@ -2713,7 +2725,7 @@ show nothing, and are drawn exactly as they were.
 (`Reflection.of`): a table rougher than **0.3** shows no die at all, and below
 it the strength rises in a straight line to one at a perfect polish. Of the
 bundled looks only `dark-glass` (0.1) is under the line, at **two-thirds**;
-felt (0.9), plain (0.8) and oak (0.55) are well over. How glossy a surface is
+felt (0.9), plain (0.8) and oak (0.75) are well over. How glossy a surface is
 *is* how much it reflects, so the table format does not grow
 (`docs/tables.md`, "Table looks"). Only the floor reflects: the walls and the
 rim take the opaque or the picture material whatever the look. **A floor

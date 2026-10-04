@@ -168,6 +168,18 @@ class DiceMaterialTest {
   }
 
   @Test
+  fun `the table material moves its roughness map by the look's shift and keeps it in range`() {
+    // `TableTint.roughnessShift` is what makes a map average out at the
+    // look's roughness; a source that read the map bare would draw oak as
+    // glossy as its photograph again.
+    assertTrue(
+      DiceMaterial.TABLE_SOURCE.contains(
+        "clamp(texture(materialParams_roughnessMap, uv).r + materialParams.roughnessShift, 0.0, 1.0)",
+      ),
+    )
+  }
+
+  @Test
   fun `a die with no atlas is drawn in its own colour`() {
     val plain = DiceMaterial.dieOf(DieMaterial(), texturePath = null)
     val painted = DiceMaterial.dieOf(DieMaterial(), texturePath = "textures/d20.png")
@@ -412,7 +424,7 @@ class DiceMaterialTest {
 
   @Test
   fun `felt, oak and the plain table are drawn as they always were`() {
-    listOf(0.9, 0.55, 0.8).forEach { roughness ->
+    listOf(0.9, 0.75, 0.8).forEach { roughness ->
       val floor = DiceMaterial.floorOf(PLAIN.copy(roughness = roughness))
       assertNull("a floor of roughness $roughness reflects", floor.reflection)
       assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(floor))

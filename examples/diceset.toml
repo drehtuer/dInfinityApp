@@ -307,7 +307,7 @@ sound = "felt"
 light = "warm"
 floor_tile_mm = 80          # 10 .. 1000 — one copy of the floor's pictures, square
 wall_tile_mm = 300          # 10 .. 1000
-color_mode = "average"      # multiply | average — the colours are what the pictures average out to
+color_mode = "average"      # multiply | average — the colours and roughness are what the pictures average out to
 
 # And the other end of it: the two required fields and nothing else. This is a
 # complete, valid table look — everything unsaid is the app's default.

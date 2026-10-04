@@ -196,7 +196,10 @@ object DiceMaterial {
    * way `v` grows ([TrayMesh]), so green is turned over to meet it.
    *
    * The roughness map is read from its red channel, grey being the same in
-   * all three, and replaces the look's `roughness` where there is one.
+   * all three. In `color_mode = "average"` it is moved by `roughnessShift` so
+   * that it averages out at the look's `roughness`, as the colour averages out
+   * at the look's colour ([TableTint.roughnessShift]); a look that multiplies
+   * takes the map as it stands, in place of its `roughness`.
    */
   const val TABLE_SOURCE: String = """
         void material(inout MaterialInputs material) {
@@ -210,7 +213,7 @@ object DiceMaterial {
             vec3 picture = texture(materialParams_albedo, uv).rgb;
             material.baseColor = vec4(materialParams.baseColor.rgb * picture, 1.0);
             material.roughness = materialParams.hasRoughness > 0.5
-                ? texture(materialParams_roughnessMap, uv).r
+                ? clamp(texture(materialParams_roughnessMap, uv).r + materialParams.roughnessShift, 0.0, 1.0)
                 : materialParams.roughness;
             material.metallic = materialParams.metallic;
         }

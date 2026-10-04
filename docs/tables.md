@@ -182,7 +182,7 @@ floor_tile_mm = 80                # optional: one copy of the pictures covers 80
 floor_tiling = [3, 6]             # without floor_tile_mm: repeats across short/long side, default [1, 1]
 wall_texture = "tables/oak.png"   # optional; wall_normal, wall_roughness, wall_tile_mm likewise
 wall_tiling = [8, 1]
-color_mode = "average"            # multiply (default) | average: how the colours meet the pictures
+color_mode = "average"            # multiply (default) | average: how the colour and roughness meet the pictures
 floor_color = "#1f5e3a"           # the whole colour when no texture
 wall_color = "#5a3a1e"
 roughness = 0.9                   # 0..1
@@ -249,7 +249,7 @@ the rim on top of them:
 | --- | --- | --- |
 | `*_texture` | the colour picture, coloured by `*_color` as `color_mode` says | sRGB, every mip level |
 | `*_normal` | a normal map, OpenGL convention: green points up the picture | linear, every mip level |
-| `*_roughness` | roughness, grey (the red channel is read); replaces `roughness` where present | linear, every mip level |
+| `*_roughness` | roughness, grey (the red channel is read); with `multiply` it replaces `roughness`, with `average` it is moved to average out at it | linear, every mip level |
 
 **A picture is named by a path inside its own package, and only there.** The
 validator stamps every look it reads with the id of the package it read it out
@@ -288,12 +288,19 @@ flowchart TD
 
 | `color_mode` | The surface is | For |
 | --- | --- | --- |
-| `multiply` (default) | `*_color` × the picture, which is what the format has always said | a photograph — its colour is white and it is shown as it was taken |
-| `average` | the picture scaled, channel by channel, so it *averages out at* `*_color` | a dyed cloth: `#1f5e3a` is the green the felt is, and the picture adds only its grain |
+| `multiply` (default) | `*_color` × the picture, which is what the format has always said; a roughness map is the roughness | a photograph — its colour is white and it is shown as it was taken |
+| `average` | the picture scaled, channel by channel, so it *averages out at* `*_color`; a roughness map moved so it averages out at `roughness` | a dyed cloth: `#1f5e3a` is the green the felt is, and the pictures add only its grain |
 
 The average is taken once, in linear light, from the pixels the picture is
 uploaded from (`TableTint`), and the scale stops at sixteen times so a nearly
-black picture cannot blow out. With `average` the colour in the file is the
+black picture cannot blow out. A roughness map's average is taken as stored —
+it is a measurement, not a colour — and the whole map is moved by the
+difference, clamped to nought and one, so its grain keeps its depth and the
+surface is as glossy as the look says rather than as glossy as whatever was
+photographed. That matters more than it sounds: a photograph's roughness is
+the photograph's finish, and Poly Haven's oak boards average 0.44, a
+lacquered floor. In the studio a surface that smooth catches the key light
+across the middle of the tray, and a white sheen over a dark brown is grey. With `average` the colour in the file is the
 colour of the surface, so the picker's swatch — what every row shows in
 power-saving mode — still tells the truth about it. The bundled felt is grey,
 so the two felts are one cloth, and the bundled textured looks all use
@@ -326,10 +333,24 @@ looks as it does on felt.
 
 | Table | Floor | Walls and rim |
 | --- | --- | --- |
-| `felt-green`, `felt-black` | needle felt, grey, 80 mm a copy, averaging out at `floor_color` | oak, 300 mm a copy, averaging out at the frame colour (black felt's is ebonised) |
-| `oak` | oak boards, 300 mm a copy — the whole floor is inside one | the same oak |
+| `felt-green`, `felt-black` | needle felt, grey, 80 mm a copy, averaging out at `floor_color` and at roughness 0.9 | oak, 300 mm a copy, averaging out at the frame colour (black felt's is ebonised), as matte as the felt |
+| `oak` | oak boards, 300 mm a copy — the whole floor is inside one — oiled, averaging out at roughness 0.75 | the same oak |
 | `dark-glass` | flat colour | flat colour |
 | `plain` | flat colour — the look that costs least to draw, and it stays that | flat colour |
+
+**What the floors draw as.** Looking straight down — the Table view's
+default — with the real room and the post pass on, green felt comes out
+within ten levels a channel of its `floor_color`, as a flat felt always has.
+Oak comes out as its brown with the room's sheen on top, which no roughness
+takes away: a dielectric reflects four per cent of the room looking straight
+down, about a hundredth in linear light, and that is ten to twenty levels on a
+blue of 30 (`#5a3a1e`) or a black felt's 26, a level or two on green felt's
+58. So oak and black felt are held to twenty levels a channel, oak to staying
+a warm brown — red over green over blue — as well, and green felt to ten
+(`TableTextureDeviceTest`). Tilted, the key's highlight
+falls nearer the middle of the floor and the sheen roughly doubles; the oak
+was 0.55 once, and its photograph's own map 0.44, and at either the highlight
+turned the boards pinkish grey.
 
 Where the pictures come from, their licence (CC0) and how they were cut are in
 `docs/assets/README.md`, "Table textures".

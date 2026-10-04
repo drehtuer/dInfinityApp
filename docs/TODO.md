@@ -366,10 +366,11 @@ keeps them comparable.
       shadows of clear dice acceptable), rounded edges drawn with the
       solver's own convex radius (91 — does the bend's glint, now spread by
       specular anti-aliasing, read as a soft highlight), felt and oak drawn
-      from CC0 pictures (92 — run `TableTextureDeviceTest`; in the gallery,
-      does the felt read as cloth at arm's length without shimmering as the
-      dice settle, is the oak's grain sharp enough at 4 px/mm on the floor, do
-      the oak walls of the felts read as a wooden frame, and is plain
+      from CC0 pictures (92 — run `TableTextureDeviceTest`, whose floor
+      colours are logged under `TableTextureDeviceTest`; in the gallery, does
+      the oiled oak read as warm oak rather than grey, do the rims and walls
+      read as wood, is the felt's crinkle too strong — its normal map can be
+      softened — and does it shimmer as the dice settle, and is plain
       unchanged), the dice reflected faintly in the dark glass (93 — is the
       reflection soft and dim enough, and does it look right that the walls
       are not reflected). Judged with `tools/gallery.sh` before and after each
