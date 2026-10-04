@@ -85,19 +85,6 @@ class ImpactRecorder(
     }
   }
 
-  /**
-   * Die [index] has been picked up and thrown again (rung 3).
-   *
-   * Its speed between one step and the next is then the re-throw rather than a
-   * contact, and reporting that would be the app playing a sound for its own
-   * invisible hand. The die is simply unknown again, and the landing that
-   * follows is heard like any other.
-   */
-  fun rethrown(index: Int) {
-    if (!listening) return
-    previousSpeed[index] = UNKNOWN
-  }
-
   companion object {
     /**
      * A die with no previous step to compare against.

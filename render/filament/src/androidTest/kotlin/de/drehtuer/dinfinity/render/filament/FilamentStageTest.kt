@@ -165,6 +165,37 @@ class FilamentStageTest {
   }
 
   @Test
+  fun aDieLeftOutUntilItIsLetGoIsDrawnOnceItIs() {
+    // The dice of a handful dropped onto the board are built together and let
+    // go one after another: a die waiting its turn is taken out of the scene,
+    // and `put` has to bring it back for real (`Stage.put`).
+    FilamentStage(WIDTH, HEIGHT, postProcessing = false).use { stage ->
+      val renderer = FilamentDiceRenderer(stage)
+      renderer.begin(spec(), geometry, look)
+      val pixels = stage.pixelBuffer()
+
+      fun drawn(frame: RenderFrame): ByteArray {
+        renderer.show(frame)
+        // Reading the last frame out left the buffer at its end; a second
+        // read-back into it would overflow.
+        pixels.clear()
+        assertTrue(stage.draw(pixels))
+        return ByteArray(pixels.capacity()).also {
+          pixels.rewind()
+          pixels.get(it)
+        }
+      }
+
+      val all = frame()
+
+      val oneOnly = drawn(RenderFrame.still(all.current.take(1)))
+      val letGo = drawn(all)
+
+      assertTrue("a die put back into the scene was not drawn", !oneOnly.contentEquals(letGo))
+    }
+  }
+
+  @Test
   fun oneEngineOutlivesTheSurfacesMadeFromIt() {
     // What a rotation does: the swap chain and the viewport go, the engine and
     // the compiled material stay. Each stage has to draw on its own, and

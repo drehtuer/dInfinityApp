@@ -159,11 +159,6 @@ internal object JoltNative {
     z: Float,
   )
 
-  external fun nativeRemove(
-    world: Long,
-    index: Int,
-  )
-
   external fun nativeRespawn(
     world: Long,
     index: Int,

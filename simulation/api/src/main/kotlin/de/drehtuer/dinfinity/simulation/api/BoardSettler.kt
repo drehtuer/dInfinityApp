@@ -85,12 +85,26 @@ data class BoardRequest(
  * @param dieScale how far the capacity rule shrank it (`docs/tables.md`).
  * @param placement where it starts and how it is moving: a die already
  *   standing starts where it stands at rest, a die still in the air keeps the
- *   momentum it had, and a die being added is released from above
- *   ([BoardDrops.release]).
+ *   momentum it had, and a die being added is meant to be let go from above
+ *   ([BoardDrops.release]) — lifted, when it is let go, over anything in its
+ *   way ([BoardDrops.letGo]).
+ * @param dropStep the step of the drop at which a die being added is let go,
+ *   or null for a die that is on the board already. Until then it is not in
+ *   play: it is in nothing's way, nothing is in its way, and it is not drawn
+ *   ([BoardTrack.inPlay]). This is what lets the dice of a handful leave the
+ *   one spot one after another ([BoardDrops.DROP_INTERVAL_STEPS]).
  */
 data class BoardBody(
   val index: Int,
   val die: Die,
   val dieScale: Double,
   val placement: Placement,
-)
+  val dropStep: Int? = null,
+) {
+  init {
+    require(dropStep == null || dropStep >= 0) { "a die cannot be let go at step $dropStep" }
+  }
+
+  /** The first step at which this die is on the table: nought for one already there. */
+  val firstStep: Int get() = dropStep ?: 0
+}

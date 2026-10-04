@@ -131,7 +131,11 @@ fun RollScreen(
 
   val edges = rememberEdges(landed = presenter.state is RollState.Settled)
 
-  WhileTheScreenIsUp(presenter)
+  // Whether the first-launch welcome is still up decides two things — whether
+  // it is drawn, and whether the shake is listened to (decision 74).
+  val welcome = rememberWelcome(firstLaunch, onWelcomeSeen)
+
+  WhileTheScreenIsUp(presenter, listening = !welcome.up)
 
   Box(
     modifier =
@@ -191,7 +195,7 @@ fun RollScreen(
     // live region, so a shake that is being waited for is *announced*.
     WaitingForAShake(presenter.state, modifier = Modifier.align(Alignment.BottomCenter))
 
-    if (firstLaunch) FirstLaunch(presenter, whatIsThere, onWelcomeSeen, onImportCollection, onAddSets)
+    if (welcome.up) FirstLaunch(presenter, whatIsThere, welcome::pressPast, onImportCollection, onAddSets)
   }
 }
 
@@ -216,8 +220,11 @@ fun RollScreen(
  * and was written into the history for a screen nobody was on.
  */
 @Composable
-private fun WhileTheScreenIsUp(presenter: RollPresenter) {
-  ShakeToRoll(presenter)
+private fun WhileTheScreenIsUp(
+  presenter: RollPresenter,
+  listening: Boolean,
+) {
+  ShakeToRoll(presenter, listening = listening)
   KeepTheScreenAwake()
   LockTheOrientation()
   DisposableEffect(presenter.tray) {
@@ -242,6 +249,8 @@ private fun TheDebugOverlay(
   DebugOverlay(
     diagnostics = presenter.diagnostics,
     geometry = presenter.geometry,
+    droppedThisVisit = presenter.droppedThisVisit,
+    frameRate = presenter.frameRate,
     modifier = modifier.safeDrawingPadding().padding(8.dp),
   )
 }
@@ -309,10 +318,11 @@ private fun TheResult(
  * The notice that the roll is waiting to be shaken
  * (`ui/common`'s `ModernistToast`).
  *
- * Two states reach it and they mean different things: dice that never settled
- * are dice to *throw again*, and an exploding chain's are dice the roll has
- * *earned*. Both wait for the same hand, so both say how many — a player who
- * shakes and sees two dice go up wants to have been told it would be two.
+ * Three states reach it and they mean two different things: dice that landed
+ * where they cannot be read and dice that never settled are dice to *throw
+ * again*, and an exploding chain's are dice the roll has *earned*. All of them
+ * wait for the same hand, so all of them say how many — a player who shakes and
+ * sees two dice go up wants to have been told it would be two.
  *
  * The toast takes itself away after 2.6 s while the state it announced is
  * still there; that is the point. The plate under it is the thing that stays,
@@ -343,7 +353,7 @@ private fun WaitingForAShake(
       ModernistToast(
         text =
           pluralStringResource(
-            if (waiting.stalled) R.plurals.roll_toast_stalled else R.plurals.roll_toast_earned,
+            if (waiting.again) R.plurals.roll_toast_again else R.plurals.roll_toast_earned,
             waiting.count,
             waiting.count,
           ),
@@ -407,15 +417,19 @@ private fun rememberEdges(landed: Boolean): Edges {
  */
 internal data class Awaiting(
   val count: Int,
-  /** True for dice a roll gave up on, false for dice a chain earned. */
-  val stalled: Boolean,
+  /**
+   * True for dice being thrown again — ones nobody could read, or ones a roll
+   * gave up on — and false for dice a chain earned.
+   */
+  val again: Boolean,
 )
 
 /** Null for every state that is not waiting on a hand. */
 internal fun RollState.awaiting(): Awaiting? =
   when (this) {
-    is RollState.Stalled -> Awaiting(count = unsettled, stalled = true)
-    is RollState.ShakeAgain -> Awaiting(count = waiting, stalled = false)
+    is RollState.ThrowAgain -> Awaiting(count = unread, again = true)
+    is RollState.Stalled -> Awaiting(count = unsettled, again = true)
+    is RollState.ShakeAgain -> Awaiting(count = waiting, again = false)
     else -> null
   }
 
@@ -423,13 +437,56 @@ internal fun RollState.awaiting(): Awaiting? =
 private val ABOVE_THE_EDGE = 18.dp
 
 /**
+ * Whether the first-launch welcome is up, and the one way to take it down.
+ *
+ * Held by the screen rather than by the welcome because it decides more than
+ * whether the welcome is drawn: while it covers the tray the shake is not
+ * listened to at all, so no roll can start and no result can land behind it
+ * (`docs/architecture.md`, decision 74).
+ */
+private class WelcomeState(
+  /** True while the welcome covers the tray. */
+  val up: Boolean,
+  private val press: () -> Unit,
+) {
+  /** Pressed past: gone from this screen at once, and remembered on disk. */
+  fun pressPast() = press()
+}
+
+/**
+ * [WelcomeState], remembered across a rotation for the same reason the
+ * welcome is: one that reappeared when the phone turned would look broken.
+ */
+@Composable
+private fun rememberWelcome(
+  firstLaunch: Boolean,
+  onWelcomeSeen: () -> Unit,
+): WelcomeState {
+  var pressed by rememberSaveable { mutableStateOf(false) }
+  return WelcomeState(
+    up = firstLaunch && !pressed,
+    press = {
+      pressed = true
+      onWelcomeSeen()
+    },
+  )
+}
+
+/**
  * The first-launch screen, over the tray, until it is pressed past
  * (`design/dInfinity.dc.html`, option 9a).
  *
- * Dismissed here as well as remembered on disk, so the screen changes the
- * moment a button is pressed rather than when a write comes back — and it
- * survives a rotation, because a welcome that reappeared when the phone turned
- * would be a welcome that looked broken.
+ * Dismissed by the screen as well as remembered on disk, so the screen
+ * changes the moment a button is pressed rather than when a write comes back —
+ * and it survives a rotation, because a welcome that reappeared when the phone
+ * turned would be a welcome that looked broken.
+ *
+ * **While it is up the shake is not listened to** (decision 74). It covers the
+ * whole tray, so a roll started under it would be dice nobody saw land and a
+ * result sheet drawn under its buttons. The tray behind it is otherwise left
+ * alone: a formula that arrives while it is up — a saved roll tapped after
+ * the import — is typed and waits, and the first shake after it is pressed
+ * past throws it.
  *
  * Its d20 is **put on the table, not thrown**: `1d20` is typed into the field
  * and the welcome gets out of the way, and the throw is the shake the player
@@ -442,25 +499,19 @@ private val ABOVE_THE_EDGE = 18.dp
 private fun FirstLaunch(
   presenter: RollPresenter,
   what: WhatIsThere,
-  onWelcomeSeen: () -> Unit,
+  onWelcomed: () -> Unit,
   onImport: () -> Unit,
   onAddSets: () -> Unit,
 ) {
-  var welcomed by rememberSaveable { mutableStateOf(false) }
-  if (welcomed) return
   Welcome(
     // The count of sets is the screen's own; the other two are handed in,
     // because this module does not know what a saved roll or a session is.
     what = what.copy(sets = presenter.sets),
     onRollNow = {
-      welcomed = true
-      onWelcomeSeen()
+      onWelcomed()
       presenter.type(FIRST_ROLL)
     },
-    onDismiss = {
-      welcomed = true
-      onWelcomeSeen()
-    },
+    onDismiss = onWelcomed,
     // Neither of these dismisses it: somebody who goes to fetch something and
     // comes back should find the welcome still there, with a count line that
     // has something new to say.
@@ -740,6 +791,11 @@ private fun Outcome(
     // (`docs/dice-notation.md`, "Evaluation").
     is RollState.ShakeAgain -> EarnedPlate(waiting = state.waiting, range = progress?.range)
 
+    // Dice that landed cocked or on another die are not thrown again by the
+    // app: they lie where they fell and the next shake throws them, so the
+    // screen says how many and asks (decision 70).
+    is RollState.ThrowAgain -> UnreadPlate(unread = state.unread, read = state.read, range = progress?.range)
+
     // While the dice are in the air the dice are not what to look at: each one
     // is read and taken off the table as it lands, so this is what is left to
     // follow (`docs/TODO.md`, Step 5.5).
@@ -794,6 +850,7 @@ private fun TrayReading.spoken(): String =
     is TrayReading.Ready -> pluralStringResource(R.plurals.roll_tray_ready, dice, dice)
     is TrayReading.Rolling -> pluralStringResource(R.plurals.roll_tray_rolling, dice, dice)
     is TrayReading.ShakeAgain -> pluralStringResource(R.plurals.roll_tray_shake_again, dice, dice)
+    is TrayReading.ThrowAgain -> pluralStringResource(R.plurals.roll_tray_throw_again, dice, dice)
     is TrayReading.Stalled -> pluralStringResource(R.plurals.roll_tray_stalled, dice, dice)
     is TrayReading.Settled -> stringResource(R.string.roll_tray_settled, total)
   }
@@ -874,6 +931,9 @@ object RollTestTags {
   /** A roll that gave up, and the one way out of it that is not a shake. */
   const val STALLED: String = "roll:stalled"
   const val STALLED_CANCEL: String = "roll:stalled:cancel"
+
+  /** Dice that landed where they cannot be read, waiting for a shake (decision 70). */
+  const val THROW_AGAIN: String = "roll:throw-again"
   const val REFUSED: String = "roll:refused"
   const val INVALID: String = FormulaTestTags.ERROR
 

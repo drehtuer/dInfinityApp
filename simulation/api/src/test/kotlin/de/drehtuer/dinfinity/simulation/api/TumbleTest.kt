@@ -64,17 +64,6 @@ class TumbleTest {
   }
 
   @Test
-  fun `a die thrown again starts again`() {
-    val tumble = Tumble(1)
-    tumble.step(0, about(0.0), touching = true)
-    tumble.step(0, about(2 * QUARTER), touching = true)
-    tumble.rethrown(0)
-    tumble.step(0, about(0.0), touching = true)
-    tumble.step(0, about(QUARTER), touching = true)
-    assertEquals(0.25, tumble.turnsOf(0), TOLERANCE)
-  }
-
-  @Test
   fun `the median is the middle die, not the one that skittered`() {
     val tumble = Tumble(THREE_DICE)
     // A die dropped dead, a die that toppled a quarter, and a die that rolled
@@ -120,7 +109,6 @@ class TumbleTest {
     val tumble = Tumble(1)
     tumble.step(OFF_THE_END, about(QUARTER), touching = true)
     tumble.settled(OFF_THE_END)
-    tumble.rethrown(OFF_THE_END)
     assertEquals(0.0, tumble.turnsOf(OFF_THE_END), TOLERANCE)
   }
 

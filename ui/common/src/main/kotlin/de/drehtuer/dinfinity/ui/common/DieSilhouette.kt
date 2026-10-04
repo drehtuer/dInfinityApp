@@ -77,6 +77,9 @@ internal fun outlineOf(sides: Sides): List<Offset>? =
   when (sides) {
     is Sides.Percentile -> KITE
     is Sides.Fudge -> SQUARE
+    // An id says nothing about the solid; a caller that knows the shape
+    // passes its face count instead (`PickableDie.outline`).
+    is Sides.Named -> SQUARE
     is Sides.Numeric ->
       when (sides.value) {
         COIN_SIDES -> null

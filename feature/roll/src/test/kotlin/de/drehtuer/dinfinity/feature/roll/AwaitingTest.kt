@@ -13,8 +13,9 @@ import org.junit.Test
  *
  * Plain JVM, for the reason `TrayReading` is: what the screen says is a
  * mapping from a state to a sentence, and a mapping is arithmetic rather than
- * drawing. Only two states wait — a chain that earned a throw, and a throw
- * that gave up on some of its dice. **Advantage is not one of them**:
+ * drawing. Only three states wait — a chain that earned a throw, a throw that
+ * left dice nobody could read, and a throw that gave up on some of its dice.
+ * **Advantage is not one of them**:
  * `2d20kh1` is a single throw followed by a selection, so there is nothing
  * left to wait for (`docs/dice-notation.md`, "Evaluation").
  */
@@ -23,14 +24,21 @@ class AwaitingTest {
   fun `a chain that earned throws is waiting for the dice it earned`() {
     val awaiting = RollState.ShakeAgain(diceCount = 8, waiting = 3).awaiting()
 
-    assertEquals(Awaiting(count = 3, stalled = false), awaiting)
+    assertEquals(Awaiting(count = 3, again = false), awaiting)
+  }
+
+  @Test
+  fun `a throw that left dice nobody could read is waiting to throw those again`() {
+    val awaiting = RollState.ThrowAgain(unread = 1, read = 3).awaiting()
+
+    assertEquals(Awaiting(count = 1, again = true), awaiting)
   }
 
   @Test
   fun `a roll that gave up is waiting to throw the dice that never stopped`() {
     val awaiting = RollState.Stalled(unsettled = 2, read = 18).awaiting()
 
-    assertEquals(Awaiting(count = 2, stalled = true), awaiting)
+    assertEquals(Awaiting(count = 2, again = true), awaiting)
   }
 
   @Test

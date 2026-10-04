@@ -56,6 +56,13 @@ class DieSilhouetteTest {
   }
 
   @Test
+  fun `a die known only by its id is drawn as a die too`() {
+    // `skull-d6` says nothing about the solid; the picker passes the face
+    // count instead when it knows it, and this is the floor when it does not.
+    assertEquals(outlineOf(Sides.Numeric(6)), outlineOf(Sides.Named("skull-d6")))
+  }
+
+  @Test
   fun `no die draws outside the square it is drawn on`() {
     // Every outline is scaled onto the button as a fraction of that square, so
     // a corner outside it is a die that leaks over its neighbour.

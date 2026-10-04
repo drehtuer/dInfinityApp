@@ -427,7 +427,7 @@ private fun Detail(
       )
     }
 
-    Histogram(detail.bars)
+    Histogram(detail.bars, detail::labelOf)
 
     ModernistButton(
       text = stringResource(R.string.stats_reset_die),
@@ -450,18 +450,23 @@ private fun Detail(
  */
 @Composable
 private fun Tiles(detail: DieDetail) {
+  // Named the way the die names them — "natural +" on a Fudge die, not
+  // "natural 1" — and a blank face by a word, since "natural " is not a name.
+  val blank = stringResource(R.string.stats_face_blank)
+  val high = spokenFace(detail.labelOf(detail.extremes.highestValue), blank)
+  val low = spokenFace(detail.labelOf(detail.extremes.lowestValue), blank)
   Column(modifier = Modifier.fillMaxWidth()) {
     Rule()
     TileRow {
       Tile(
-        label = stringResource(R.string.stats_natural_high, detail.extremes.highestValue),
+        label = stringResource(R.string.stats_natural_high, high),
         value = detail.extremes.highs.toString(),
         tag = StatsTestTags.HIGHS,
         modifier = Modifier.weight(1f),
       )
       VerticalDivider(thickness = Modernist.hairline, color = Ink.divider)
       Tile(
-        label = stringResource(R.string.stats_natural_low, detail.extremes.lowestValue),
+        label = stringResource(R.string.stats_natural_low, low),
         value = detail.extremes.lows.toString(),
         tag = StatsTestTags.LOWS,
         modifier = Modifier.weight(1f),
@@ -535,7 +540,11 @@ private fun Tile(
  * smear. The arithmetic behind them is `core/stats`' and is tested there.
  */
 @Composable
-private fun Histogram(bars: List<FaceBar>) {
+private fun Histogram(
+  bars: List<FaceBar>,
+  labelOf: (Int) -> String,
+) {
+  val blank = stringResource(R.string.stats_face_blank)
   val widest = bars.maxOfOrNull { maxOf(it.share, it.fairShare) }?.takeIf { it > 0.0 } ?: 1.0
   Column(
     modifier = Modifier.fillMaxWidth().testTag(StatsTestTags.HISTOGRAM),
@@ -545,6 +554,9 @@ private fun Histogram(bars: List<FaceBar>) {
     verticalArrangement = Arrangement.spacedBy(Modernist.rule),
   ) {
     bars.forEach { bar ->
+      // The die's own print of the value: `−`, a blank and `+` on a Fudge die
+      // rather than `-1`, `0` and `1` (decision 73).
+      val label = labelOf(bar.value)
       // The fair line and the bar over it are told apart by colour and by
       // nothing else, and the fair share is not written anywhere on the row. So
       // the row says both numbers, as one node rather than three
@@ -553,7 +565,7 @@ private fun Histogram(bars: List<FaceBar>) {
         pluralStringResource(
           R.plurals.stats_bar_against_fair,
           bar.count.toInt(),
-          bar.value,
+          spokenFace(label, blank),
           bar.count,
           percent(bar.share),
           percent(bar.fairShare),
@@ -568,7 +580,7 @@ private fun Histogram(bars: List<FaceBar>) {
         horizontalArrangement = Arrangement.spacedBy(Modernist.x2),
       ) {
         Text(
-          text = bar.value.toString(),
+          text = label,
           style = MaterialTheme.typography.labelSmall,
           color = Ink.muted,
           modifier = Modifier.width(LABEL),

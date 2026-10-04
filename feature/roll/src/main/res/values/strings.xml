@@ -171,6 +171,18 @@
     <item quantity="other">%1$d dice rolled their highest face and earned a throw. The dice that are down stay down — shake to throw the %1$d they earned.</item>
   </plurals>
   <!--
+    Dice that came to rest where they cannot be read: cocked, or standing on
+    another die. The app does not throw them again; they stay where they lie
+    and the next shake throws them (`docs/physics-and-rendering.md`, "Avoiding
+    stacked and cocked dice"). %1$d is how many, %2$d the throw's dice, %3$d
+    how many of those were read.
+  -->
+  <string name="roll_unread_kicker">THROW AGAIN</string>
+  <plurals name="roll_unread_body">
+    <item quantity="one">A die landed where it cannot be read, so it stays where it lies — %3$d of %2$d read and counted. Shake to throw it again.</item>
+    <item quantity="other">%1$d dice landed where they cannot be read, so they stay where they lie — %3$d of %2$d read and counted. Shake to throw them again.</item>
+  </plurals>
+  <!--
     A roll that could not finish. It says how many dice never stopped and hands
     them back, rather than reading them off whatever face they were nearest
     (`docs/physics-and-rendering.md`).
@@ -187,7 +199,7 @@
     again 2.6 s later. The plate says the same thing and stays; this is the
     part a screen reader is told about without being asked (`ModernistToast`).
   -->
-  <plurals name="roll_toast_stalled">
+  <plurals name="roll_toast_again">
     <item quantity="one">Shake to throw that die again.</item>
     <item quantity="other">Shake to throw those %1$d dice again.</item>
   </plurals>
@@ -206,7 +218,15 @@
     row is numbers.
   -->
   <string name="roll_debug_counters">step %1$d · at rest %2$d/%3$d</string>
-  <string name="roll_debug_ladder">corr %1$d · rethrow %2$d · hits %3$d</string>
+  <!--
+    The frame-rate readout (decision 72): frames a second and the p99 frame
+    time in milliseconds, over the last 120 frames.
+  -->
+  <string name="roll_debug_frames">%1$.0f fps · p99 %2$.1f ms</string>
+  <string name="roll_debug_frames_none">fps — no frames yet</string>
+  <!-- Steps a frame was too late to pay for: this roll, and every roll since the screen opened. -->
+  <string name="roll_debug_dropped">dropped %1$d · visit %2$d</string>
+  <string name="roll_debug_ladder">corr %1$d · waiting %2$d · hits %3$d</string>
   <!-- Shown only when one has happened. Either number above zero is a bug. -->
   <string name="roll_debug_anomaly">BUG: forced %1$d · post-rest %2$d</string>
   <!--
@@ -231,6 +251,10 @@
   <plurals name="roll_tray_shake_again">
     <item quantity="one">Dice tray, %1$d die down, shake again for the one it earned</item>
     <item quantity="other">Dice tray, %1$d dice down, shake again for the one they earned</item>
+  </plurals>
+  <plurals name="roll_tray_throw_again">
+    <item quantity="one">Dice tray, %1$d die cannot be read, shake to throw it again</item>
+    <item quantity="other">Dice tray, %1$d dice cannot be read, shake to throw them again</item>
   </plurals>
   <string name="roll_tray_settled">Dice tray, the dice have landed on %1$d</string>
   <!-- The panel that stands where the tray would be when the pictures are off. -->

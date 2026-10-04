@@ -51,6 +51,13 @@ class TrayReadingTest {
   }
 
   @Test
+  fun `dice nobody could read are counted, and only those`() {
+    // What a screen reader hears over a tray waiting for a shake: how many
+    // dice the shake will throw again, not how many are on the table.
+    assertEquals(TrayReading.ThrowAgain(1), TrayReading.of(RollState.ThrowAgain(unread = 1, read = 3)))
+  }
+
+  @Test
   fun `a throw that has landed is its total`() {
     val settled = RollState.Settled(result = RollResult(formula = "3d6", total = 11), divides = false)
 

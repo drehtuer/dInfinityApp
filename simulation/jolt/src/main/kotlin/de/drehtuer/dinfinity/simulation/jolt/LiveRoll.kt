@@ -109,8 +109,13 @@ class LiveRoll internal constructor(
    * nothing there. Reading it cannot change the roll, which is the same
    * promise [Renderer] makes and the reason both are allowed to exist
    * (`RollLoop.diagnostics`).
+   *
+   * The steps the clock has dropped ride along ([droppedSteps]): the loop
+   * never sees the clock, and the question the overlay is asked to answer —
+   * is the first throw of a session late — is a question about the clock
+   * (`docs/TODO.md`, Step 5.6).
    */
-  override val diagnostics: RollDiagnostics get() = loop.diagnostics()
+  override val diagnostics: RollDiagnostics get() = loop.diagnostics().copy(droppedSteps = droppedSteps)
 
   /**
    * Steps that a frame was too late to pay for, in total
@@ -195,35 +200,25 @@ class LiveRoll internal constructor(
   }
 
   /**
-   * The dice as they are at this moment, ready to be drawn.
+   * The dice as they are at this moment, ready to be drawn — every one of
+   * them, read or not.
    *
-   * **A die that has been lifted off the table is not in it** — and being
-   * counted is not what lifts one. A die comes off only when the same pass is
-   * about to throw something again, because the floor it was standing on is
-   * then free for the re-thrown die to land on, which means a later die may
-   * land exactly where it was. Drawing it there anyway would put two dice in
-   * one place, which is a worse thing to watch than the stacking this
-   * mechanism replaced (`docs/physics-and-rendering.md`).
-   *
-   * A roll that settles first time throws nothing again, so it lifts nothing:
-   * every die stays where it landed and stays drawn there, which is what a
-   * player expects to be looking at when the total appears.
-   *
-   * Both halves are filtered by the same list, so a frame still has the same
-   * dice at both ends of the step it spans. A die lifted during that step
-   * leaves at once rather than gliding away, which is what being lifted off
-   * the table looks like.
+   * A throw lifts nothing off its own table. When it ends with dice nobody can
+   * read, the picture it leaves is the table exactly as the dice came to rest,
+   * the cocked die and the die it leans on together, and that is what the
+   * player looks at while the screen asks for a shake. The read dice leave
+   * when the shake throws the others: that throw is a world and a picture of
+   * its own, drawn among the dice still down and not among the ones it lifted
+   * (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
    */
-  fun frame(): RenderFrame {
-    val gone = loop.liftedOut
-    return RenderFrame(
-      previous = previous.filterNot { gone.getOrElse(it.index) { false } },
-      current = current.filterNot { gone.getOrElse(it.index) { false } },
+  fun frame(): RenderFrame =
+    RenderFrame(
+      previous = previous,
+      current = current,
       // A roll that is over is not between two states: it is at the second of
       // them, and stays there.
       interpolation = if (running) clock.interpolation else 1.0,
     )
-  }
 
   /**
    * Gives the physics world back, whether or not the roll finished.
@@ -243,7 +238,6 @@ class LiveRoll internal constructor(
   }
 
   private fun step() {
-    val before = loop.stepsTaken
     if (!loop.advance()) {
       // **The loop stops for two different reasons and only one of them has a
       // number in it.** A roll that finished has an outcome; a roll that gave
@@ -257,14 +251,10 @@ class LiveRoll internal constructor(
       return
     }
 
-    val states = transforms()
-    // A re-throw takes no simulated time: the die is picked up and put back at
-    // the spawn point between one step and the next. Blending across that
-    // would draw it gliding smoothly back through the air, which is the one
-    // thing rung 3 must not look like — it is meant to read as a die being
-    // thrown again (`docs/physics-and-rendering.md`, rung 3).
-    previous = if (loop.stepsTaken > before) current else states
-    current = states
+    // Every advance that comes back true took a step: the loop has nothing
+    // else left in it to do between two of them.
+    previous = current
+    current = transforms()
   }
 
   private fun present(): RenderFrame {

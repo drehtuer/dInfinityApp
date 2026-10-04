@@ -39,21 +39,23 @@ import de.drehtuer.dinfinity.ui.common.Plate
 import de.drehtuer.dinfinity.ui.common.SectionKicker
 
 /*
- * The four things that can sit across the bottom of the tray
+ * The five things that can sit across the bottom of the tray
  * (`docs/physics-and-rendering.md`, "What is drawn over the table").
  *
- * One plate, four states, and they are mutually exclusive because they are
- * four answers to the same question — what is the roll doing and what, if
+ * One plate, five states, and they are mutually exclusive because they are
+ * five answers to the same question — what is the roll doing and what, if
  * anything, does it want: `ReadyPlate` before a hand has touched the phone,
  * `CountingPlate` while the dice are still being read, `EarnedPlate` when a
- * chain has stopped one throw short, and `StalledPlate` when dice never came
- * to rest and there is no total.
+ * chain has stopped one throw short, `UnreadPlate` when dice landed where they
+ * cannot be read, and `StalledPlate` when dice never came to rest and there is
+ * no total.
  *
  * None of them invents a state. `RollState.Ready`, `RollState.Rolling` with a
- * `RollProgress`, `RollState.ShakeAgain` and `RollState.Stalled` are what the
- * machine already reaches; this is the drawing.
+ * `RollProgress`, `RollState.ShakeAgain`, `RollState.ThrowAgain` and
+ * `RollState.Stalled` are what the machine already reaches; this is the
+ * drawing.
  *
- * Only one of the four carries a button, and it is `Cancel the roll`. Throwing
+ * Only one of the five carries a button, and it is `Cancel the roll`. Throwing
  * is a shake — there is no Roll button, no `Throw it` and no `Throw those
  * again` (`docs/physics-and-rendering.md`, "Starting a roll").
  */
@@ -327,11 +329,49 @@ internal fun EarnedPlate(
 }
 
 /**
+ * Dice that came to rest where they cannot be read, waiting for the shake that
+ * throws them again.
+ *
+ * **The app does not throw them.** A die cocked against a wall or standing on
+ * another has no face to read, and at a real table whoever threw it picks it
+ * up and throws it again. So the dice that were read stay read, the unread
+ * ones lie exactly where they fell — the heap is on the tray for the player to
+ * see — and the next shake throws those and only those
+ * (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice";
+ * `docs/architecture.md`, decision 70).
+ *
+ * No button, like the earned plate: the only way to throw is a shake, and
+ * typing a new formula is the way out of a roll somebody does not want.
+ *
+ * @param range where the roll can still come out, the same live range the
+ *   counting plate drew a moment ago.
+ */
+@Composable
+internal fun UnreadPlate(
+  unread: Int,
+  read: Int,
+  modifier: Modifier = Modifier,
+  range: RollRange? = null,
+) {
+  Plate(modifier = modifier.fillMaxWidth().testTag(RollTestTags.THROW_AGAIN)) {
+    Column(verticalArrangement = Arrangement.spacedBy(ROW_GAP)) {
+      SectionKicker(text = stringResource(R.string.roll_unread_kicker), color = Ink.accentDeep)
+      Text(
+        text = pluralStringResource(R.plurals.roll_unread_body, unread, unread, unread + read, read),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onBackground,
+      )
+      if (range != null) StillToCome(range)
+    }
+  }
+}
+
+/**
  * Where a roll that is waiting on a hand can still come out.
  *
- * Drawn by the two plates a shake is owed to — a chain that earned a throw,
- * and a throw that gave up — and by nothing else. The counting plate has the
- * same figures while the dice are moving and the ready plate has the
+ * Drawn by the three plates a shake is owed to — a chain that earned a throw,
+ * dice nobody could read, and a throw that gave up — and by nothing else. The
+ * counting plate has the same figures while the dice are moving and the ready plate has the
  * pre-throw ones; this is the gap between them, which is exactly where the
  * numbers used to disappear.
  *

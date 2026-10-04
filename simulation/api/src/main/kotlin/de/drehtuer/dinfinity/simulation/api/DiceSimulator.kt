@@ -139,13 +139,25 @@ data class ShakeSample(
  * What a throw came to.
  *
  * @param faces the index of the face each die came to rest on, keyed by its
- *   position in the throw. This is the roll.
+ *   position in the throw. This is the roll — or, while [unread] is not
+ *   empty, the part of it that could be read.
  * @param steps how many fixed steps it took, which is simulated time and so is
- *   the same on every device.
+ *   the same on every device. Summed over [passes] when the dice that could
+ *   not be read were thrown again, so it is at most the twelve-second cap
+ *   once per pass: the cap is a pass's, and the wait for the player's shake
+ *   between two passes is no time at all to the simulation.
  * @param corrections dice that needed a nudge while they were still moving.
  * @param rethrows dice that came to rest cocked or stacked and were thrown
- *   again, visibly. Honest, and counted: a number that climbs is a physics
- *   bug.
+ *   again, visibly — by the player's next shake, never by the roll itself
+ *   ([Passes]). A die thrown again twice counts twice.
+ * @param unread the dice that came to rest where they cannot be read — cocked,
+ *   or standing on another die — keyed like [faces] and never in it. **The
+ *   throw stops here rather than throwing them again**: they stay exactly
+ *   where they lie, nothing touches them, and the player's next shake throws
+ *   those and only those ([Passes.next], `docs/physics-and-rendering.md`,
+ *   "Avoiding stacked and cocked dice"). Empty for a throw that is finished.
+ * @param passes how many throws this outcome is the sum of: one, plus one for
+ *   each time the dice nobody could read were thrown again.
  * @param forcedSettles dice the simulation had to finish for rather than
  *   letting them finish: still moving when the 12-second cap fired, or still
  *   cocked after their last re-throw. Either way the ladder has already failed
@@ -172,12 +184,13 @@ data class ShakeSample(
  *   dice stop: the throw that comes next has to be aimed at the floor this one
  *   left clear, and drawn among the dice it left standing there
  *   (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
- *   adds"). It is therefore a **shorter** map than [faces] whenever the throw
- *   had to throw a die again: reading a die is what lets it be lifted off, and
- *   a die that has been lifted off has left the table and left its floor free
- *   for the die that was thrown again. Its face is still in [faces] — it is
- *   part of the result — but it is not somewhere the next throw may draw a die
- *   or must avoid dropping one.
+ *   adds"). It is therefore **empty** for a throw that left dice [unread]:
+ *   the throw that follows is theirs, and reading a die is what lets it be
+ *   lifted off the table to free the floor for them. And it is a **shorter**
+ *   map than [faces] for a roll of several [passes], because the dice read
+ *   before the last pass were lifted when it was thrown. Their faces are still
+ *   in [faces] — they are part of the result — but they are not somewhere the
+ *   next throw may draw a die or must avoid dropping one.
  * @param medianTurnsAfterLanding how far the middle die turned after it first
  *   touched the table, in whole turns. Settle time cannot tell a die that
  *   tumbled from one that landed flat and slid, and only one of those reads as
@@ -195,16 +208,25 @@ data class SimulationOutcome(
   val deepestDiePenetrationMm: Double = 0.0,
   val restingAt: Map<Int, RestingPlace> = emptyMap(),
   val medianTurnsAfterLanding: Double = 0.0,
+  val unread: List<Int> = emptyList(),
+  val passes: Int = 1,
 ) {
-  /** How many dice were in the throw. */
-  val diceCount: Int get() = faces.size
+  /** How many dice were in the throw, read or not. */
+  val diceCount: Int get() = faces.size + unread.size
+
+  /** True when every die was read, and false while some wait for a shake ([unread]). */
+  val complete: Boolean get() = unread.isEmpty()
 
   /** True when the roll finished inside the cap with nothing forced. */
   val clean: Boolean get() = forcedSettles == 0 && postRestCorrections == 0
 
   init {
-    require(steps <= SettleRule.HARD_CAP_STEPS) { "a roll cannot run past the ${SettleRule.HARD_CAP_SECONDS}s cap" }
-    require(stackedAtRest <= faces.size) { "$stackedAtRest of ${faces.size} dice cannot be stacked" }
+    require(passes >= 1) { "an outcome of $passes throws is not an outcome of a throw" }
+    require(steps <= SettleRule.HARD_CAP_STEPS * passes) {
+      "a throw cannot run past the ${SettleRule.HARD_CAP_SECONDS}s cap"
+    }
+    require(unread.none { it in faces }) { "a die cannot be read and unread at once" }
+    require(stackedAtRest <= diceCount) { "$stackedAtRest of $diceCount dice cannot be stacked" }
     require(deepestDiePenetrationMm >= 0.0) { "an overlap of $deepestDiePenetrationMm mm is not a depth" }
     require(medianTurnsAfterLanding >= 0.0) { "$medianTurnsAfterLanding turns is not an amount of turning" }
   }

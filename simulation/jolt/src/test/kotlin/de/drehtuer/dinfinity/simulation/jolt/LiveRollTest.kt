@@ -5,7 +5,6 @@ import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.HeadlessRenderer
-import de.drehtuer.dinfinity.render.headless.RenderFrame
 import de.drehtuer.dinfinity.render.headless.Renderer
 import de.drehtuer.dinfinity.simulation.api.FrameClock
 import de.drehtuer.dinfinity.simulation.api.Quaternion
@@ -80,12 +79,14 @@ class LiveRollTest {
 
     assertEquals(straight, fromAClock)
     assertEquals("the two worlds were not even stepped the same number of times", world.steps, watched.steps)
-    assertEquals(world.respawns, watched.respawns)
-    assertEquals(world.removed, watched.removed)
     // And the throw has to be worth comparing: a roll where nothing awkward
-    // happened would agree with itself no matter what this class did.
-    assertTrue("no die was ever thrown again", world.respawns.isNotEmpty())
-    assertTrue("no die was ever counted and taken off the table", world.removed.isNotEmpty())
+    // happened would agree with itself no matter what this class did. This one
+    // reads some dice and leaves one cocked for the player's shake.
+    val reported = requireNotNull(straight)
+    assertTrue("no die was ever read", reported.faces.isNotEmpty())
+    assertTrue("no die was left for a shake", reported.unread.isNotEmpty())
+    // And neither way of asking touched the world for it.
+    assertTrue("a die was thrown again with no hand on it", world.respawns.isEmpty() && watched.respawns.isEmpty())
   }
 
   @Test
@@ -205,27 +206,38 @@ class LiveRollTest {
   }
 
   @Test
-  fun `a die thrown again does not glide back to where it started`() {
-    // Rung 3 is a die being picked up and thrown, and it has to read as one. A
-    // re-throw takes no simulated time, so blending across it would draw the
-    // die sliding smoothly through the air back to the spawn point — an
-    // invisible hand with an animation on it (`docs/physics-and-rendering.md`,
-    // rung 3).
-    val world =
-      FakeWorld(1) { _, _, rethrows ->
-        if (rethrows == 0) FakeWorld.settled(cocked) else FakeWorld.settled()
-      }
-    liveOver(world, dice = listOf(StandardDice.d6)).use { live ->
-      var acrossTheRethrow: RenderFrame? = null
-      while (live.running) {
-        val before = live.stepsTaken
-        val frame = live.advance(SettleRule.TIMESTEP_SECONDS)
-        if (live.running && live.stepsTaken == before) acrossTheRethrow = frame
-      }
+  fun `the overlay's snapshot carries the steps the clock dropped`() {
+    // The loop under the roll never sees the clock, so a snapshot built by it
+    // alone would always say nought — and the first throw of a session is the
+    // one this number was put on the overlay to catch (`docs/TODO.md`, 5.6).
+    val world = FakeWorld(DICE, tumblingThenSettling())
+    liveOver(world, clock = FrameClock(maxStepsPerFrame = CATCH_UP_CAP)).use { live ->
+      assertEquals(0, live.diagnostics.droppedSteps)
 
-      assertEquals(1, requireNotNull(live.outcome).rethrows)
-      val frame = requireNotNull(acrossTheRethrow) { "the re-throw never landed in a frame of its own" }
-      assertEquals("the die was drawn moving across a re-throw", frame.previous, frame.current)
+      live.advance(1.0)
+
+      assertEquals(SettleRule.STEPS_PER_SECOND - CATCH_UP_CAP, live.diagnostics.droppedSteps)
+      assertEquals(live.stepsTaken, live.diagnostics.steps)
+    }
+  }
+
+  @Test
+  fun `a die nobody can read ends the roll where it lies, and the picture with it`() {
+    // A die that came to rest cocked used to be picked up and thrown again by
+    // the roll itself, in the middle of the frames. Now the roll is over the
+    // moment the table is still: the cocked die is reported for the player's
+    // shake, and the last frame is the table exactly as the die came to rest
+    // on it — nothing gliding, nothing lifted (decision 70).
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(cocked) }
+    val watcher = HeadlessRenderer()
+    liveOver(world, watcher, dice = listOf(StandardDice.d6)).use { live ->
+      while (live.running) live.advance(SettleRule.TIMESTEP_SECONDS)
+
+      val outcome = requireNotNull(live.outcome)
+      assertEquals("the cocked die was not handed back", listOf(0), outcome.unread)
+      assertEquals("the roll threw a die again by itself", 0, outcome.rethrows)
+      assertEquals("the cocked die was not drawn where it lay", 1, live.frame().current.size)
+      assertTrue("the picture the player waits over was never handed to the renderer", watcher.finished)
     }
   }
 
@@ -339,24 +351,21 @@ class LiveRollTest {
   }
 
   @Test
-  fun `a die that has been counted is not in the frame any more`() {
-    // It is off the table, and the floor it stood on is free for the dice
-    // still to be thrown — so a later die may land exactly there. A frame that
-    // still carried it would draw two dice in one place, which is a worse
-    // thing to watch than the stacking this replaced (`docs/TODO.md`, 5.5).
+  fun `a die that has been counted is still in the frame, and so is one nobody could read`() {
+    // A throw takes nothing off its own table. The dice it read and the die it
+    // could not are all where they came to rest, which is the picture the
+    // player is asked to shake over; the read ones leave when that shake
+    // throws the other, in a picture of its own
+    // (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
     val world = FakeWorld(DICE, awkward())
     val live = liveOver(world)
     val atTheStart = live.frame().current.size
 
-    live.use { it.runToEnd() }
+    val outcome = live.use { it.runToEnd() }
 
     assertEquals("every die was in the first frame", DICE, atTheStart)
-    assertTrue("no die was ever counted, so this proves nothing", world.removed.isNotEmpty())
-    assertEquals(
-      "a die that had been lifted off the table was still being drawn on it",
-      DICE - world.removed.size,
-      live.frame().current.size,
-    )
+    assertTrue("no die was ever counted, so this proves nothing", requireNotNull(outcome).faces.isNotEmpty())
+    assertEquals("a die was taken out of the picture", DICE, live.frame().current.size)
   }
 
   @Test
@@ -444,8 +453,7 @@ class LiveRollTest {
     clock: FrameClock = FrameClock(),
   ): LiveRoll {
     val spec = spec(dice)
-    val layout = SpawnLayout(geometry, largestRadiusMm(spec), spec.seed)
-    return LiveRoll(spec, world, RollLoop(spec, world, layout, ShakeDriver(emptyList())), renderer, clock)
+    return LiveRoll(spec, world, RollLoop(spec, world, ShakeDriver(emptyList())), renderer, clock)
   }
 
   private fun spec(dice: List<Die>): ThrowSpec =
@@ -460,9 +468,9 @@ class LiveRollTest {
     )
 
   /**
-   * A throw that uses every rung of the ladder: the dice tumble, one settles
-   * onto another and takes its one nudge, and one finishes cocked and has to
-   * be thrown again. A roll with nothing awkward in it would prove far less.
+   * A throw with something awkward in it: the dice tumble, one settles onto
+   * another for a while, and one finishes cocked and is left for the player's
+   * shake. A roll with nothing awkward in it would prove far less.
    */
   private fun awkward(): FakeWorld.States =
     FakeWorld.States { step, index, rethrows ->

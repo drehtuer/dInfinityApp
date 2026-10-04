@@ -198,6 +198,54 @@ data class Quaternion(
       }.normalised()
     }
 
+    /**
+     * The turn that carries one frame onto another: [fromOut] onto [toOut],
+     * and [fromUp] onto [toUp] while it does.
+     *
+     * Two directions say which way a thing faces and which way its top is,
+     * and that is a whole orientation — the third axis is their cross
+     * product, so a *reflection* cannot be asked for by accident. It is what
+     * turns a die so that one face looks at the camera with its number the
+     * right way up, which is how the device suite reads a printed numeral
+     * back off a frame (`render/filament`'s `PrintedNumbersDeviceTest`).
+     *
+     * [taking] answers the first half alone and leaves the spin about that
+     * direction to chance; [of] answers it for the axes only. This is [of]
+     * twice: the turn from the axes to [toOut]'s frame, after the one from
+     * [fromOut]'s frame back to the axes. Each half is Shepperd's method, so a
+     * pair of frames a half-turn apart is as exact as a pair a hair apart.
+     *
+     * Each pair has to be at right angles and one unit long, to within
+     * [FRAME_TOLERANCE]: a frame whose up leans into its out is not a frame,
+     * and quietly straightening it would hide whichever caller got its axes
+     * wrong.
+     */
+    fun carrying(
+      fromOut: Vector3,
+      fromUp: Vector3,
+      toOut: Vector3,
+      toUp: Vector3,
+    ): Quaternion {
+      requireFrame(fromOut, fromUp, "from")
+      requireFrame(toOut, toUp, "to")
+      val from = of(cross(fromUp, fromOut), fromUp, fromOut)
+      val to = of(cross(toUp, toOut), toUp, toOut)
+      return (to * from.conjugate()).normalised()
+    }
+
+    /** How far a frame given to [carrying] may be from orthonormal. */
+    const val FRAME_TOLERANCE: Double = 1e-6
+
+    private fun requireFrame(
+      out: Vector3,
+      up: Vector3,
+      which: String,
+    ) {
+      require(abs(out.length - 1) <= FRAME_TOLERANCE) { "the $which frame's out, $out, is not one unit long" }
+      require(abs(up.length - 1) <= FRAME_TOLERANCE) { "the $which frame's up, $up, is not one unit long" }
+      require(abs(out dot up) <= FRAME_TOLERANCE) { "the $which frame's out $out and up $up are not at right angles" }
+    }
+
     /** No rotation at all: the shape in its reference orientation. */
     val Identity: Quaternion = Quaternion(1.0, 0.0, 0.0, 0.0)
 

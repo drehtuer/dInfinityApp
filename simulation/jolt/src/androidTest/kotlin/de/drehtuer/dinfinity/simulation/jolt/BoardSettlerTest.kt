@@ -47,7 +47,8 @@ class BoardSettlerTest {
 
     val track = settler.settle(request)
 
-    assertTrue("the drop never stopped", track.steps <= MOST_BOARD_STEPS + 1)
+    val lastDrop = request.bodies.maxOf { it.firstStep }
+    assertTrue("the drop never stopped", track.steps <= lastDrop + MOST_BOARD_STEPS + 1)
     track.finalPoses.forEachIndexed { die, pose ->
       val at = pose.position
       assertTrue("die $die went through the floor: $at", at.z > 0.0)
@@ -59,21 +60,49 @@ class BoardSettlerTest {
 
   @Test
   fun everyDieOfAFullBoardIsDroppedAndComesDownInsideTheTray() {
-    // Random spots pack the floor worse than a grid, and on the phone the
-    // 35th of 40 used to find no clear spot and silently go missing. A die the
-    // player added must appear: the shake counts it.
+    // On the phone the 35th of 40 once found no clear spot and silently went
+    // missing. A die the player added must appear: the shake counts it. Forty
+    // let go over one spot is also the heap the lift over dice in the way is
+    // for.
     val request = BoardDrops.request(number = 1, spec(FORTY, scaleFor(FORTY)), kept = emptyMap())
 
     val track = settler.settle(request)
 
     assertEquals("dice were left off the board", FORTY, request.bodies.size)
     assertEquals("dice went missing from the drop", FORTY, track.dice)
+    (0 until FORTY).forEach { die -> assertTrue("die $die was never let go", track.inPlay(die, track.steps - 1)) }
     track.finalPoses.forEachIndexed { die, pose ->
       val at = pose.position
       assertTrue("die $die went through the floor: $at", at.z > 0.0)
       assertTrue("die $die is past a long wall: $at", abs(at.x) < geometry.longSideMm / 2)
       assertTrue("die $die is past a short wall: $at", abs(at.y) < geometry.shortSideMm / 2)
     }
+  }
+
+  @Test
+  fun diceAddedTogetherLeaveTheOneSpotOneAfterAnotherAndNeverStartInsideAnother() {
+    // The feature: a handful comes down as a stream from one point, so the
+    // eye can follow it. Each die starts over the spot — or straight above it,
+    // lifted over a die still in the way — at its own step, clear of every die
+    // in play at that moment.
+    val request = BoardDrops.request(number = 1, spec(EIGHT, scaleFor(EIGHT)), kept = emptyMap())
+    val radius = ClearSpace.radiusOf(d6, scaleFor(EIGHT))
+
+    val track = settler.settle(request)
+
+    request.bodies.forEachIndexed { die, body ->
+      val step = body.firstStep
+      assertTrue("die $die was in play before its turn", step == 0 || !track.inPlay(die, step - 1))
+      val start = track.poseAt(die, step).position
+      val across = Vector3(start.x - BoardDrops.DROP_SPOT.x, start.y - BoardDrops.DROP_SPOT.y, 0.0).length
+      assertTrue("die $die was let go $across mm off the spot", across <= BoardDrops.SPOT_JITTER_MM + FLOAT_MM)
+      (0 until die).forEach { other ->
+        val gap = (track.poseAt(other, step).position - start).length
+        assertTrue("die $die started inside die $other ($gap mm apart)", gap >= 2 * radius)
+      }
+    }
+    val distinct = request.bodies.map { it.firstStep }.distinct()
+    assertEquals("dice were let go together", EIGHT, distinct.size)
   }
 
   @Test
@@ -96,7 +125,7 @@ class BoardSettlerTest {
         number = 2,
         geometry = geometry,
         table = table,
-        bodies = listOf(BoardBody(0, d6, 1.0, standing), BoardBody(1, d6, 1.0, dropped)),
+        bodies = listOf(BoardBody(0, d6, 1.0, standing), BoardBody(1, d6, 1.0, dropped, dropStep = 0)),
       )
 
     val track = settler.settle(request)
@@ -181,6 +210,9 @@ class BoardSettlerTest {
     const val WARM_UP = 3
     const val TIMED_RUNS = 5
     const val NANOS_PER_MS = 1_000_000L
+
+    /** A float's worth of slack on a position read back from the recording. */
+    const val FLOAT_MM = 1e-3
 
     /** Well clear of a die standing anywhere on the other half of the tray. */
     const val FAR_MM = 90.0

@@ -1,7 +1,7 @@
 package de.drehtuer.dinfinity.core.notation
 
 /**
- * Scans one `dice` node: `3d6`, `d%`, `brass:2d20kh1`, `8d6!`.
+ * Scans one `dice` node: `3d6`, `d%`, `brass:2d20kh1`, `8d6!`, `3{skull-d6}kh1`.
  *
  * It is where the two counting limits of `docs/dice-notation.md` are enforced,
  * because it is the only place that knows how many dice a group actually puts
@@ -38,6 +38,30 @@ internal class DiceScanner(
         setRef = setRef,
         count = countOf(count, countRange),
         sides = sides,
+        modifiers = modifiers,
+        range = cursor.rangeFrom(start),
+      )
+    countDice(node)
+    return node
+  }
+
+  /** True when a braced die starts here: `{skull-d6}`. */
+  fun isBraceStart(): Boolean = cursor.peek() == '{'
+
+  /** `dice := count? braced modifier*`, from the `{` onwards. */
+  fun scanBraced(
+    count: Long?,
+    start: Int,
+  ): DiceNode {
+    val countRange = cursor.rangeFrom(start)
+    val braced = BracedIdScanner(cursor).scan()
+    val modifiers = ModifierScanner(cursor).scan()
+    val node =
+      DiceNode(
+        id = nodes++,
+        setRef = braced.setRef,
+        count = countOf(count, countRange),
+        sides = Sides.Named(braced.dieId),
         modifiers = modifiers,
         range = cursor.rangeFrom(start),
       )

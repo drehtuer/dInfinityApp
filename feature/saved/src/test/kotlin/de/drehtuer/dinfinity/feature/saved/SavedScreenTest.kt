@@ -12,9 +12,12 @@ import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import de.drehtuer.dinfinity.core.model.SavedRoll
@@ -33,6 +36,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -175,6 +179,116 @@ class SavedScreenTest {
       listOf("second", "third", "first"),
       runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id },
     )
+  }
+
+  @Test
+  fun `a row held at the bottom edge scrolls the list and goes further than it showed`() {
+    // Thirty rows are more than a screen; the last one starts out of sight.
+    val ids = (1..LONG_LIST).map { "roll$it" }
+    given(*ids.map { roll(it) }.toTypedArray())
+    show()
+    compose.onNodeWithTag(SavedTestTags.rollOf(ids.last())).assertDoesNotExist()
+
+    holdAt(ids.first(), edge = Edge.BOTTOM)
+
+    compose.onNodeWithTag(SavedTestTags.rollOf(ids.last())).assertExists()
+    val order = runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id }
+    // The row went where only a scroll could have taken it: past every row the
+    // list showed when the drag began.
+    assertTrue(
+      "first went to ${order.indexOf(ids.first())}",
+      order.indexOf(ids.first()) > LONG_LIST / 2,
+    )
+    assertEquals(ids.drop(1) + ids.first(), order)
+  }
+
+  @Test
+  fun `a row held at the top edge scrolls the list up and lands at the top`() {
+    val ids = (1..LONG_LIST).map { "roll$it" }
+    given(*ids.map { roll(it) }.toTypedArray())
+    show()
+    compose.onNodeWithTag(SavedTestTags.LIST).performScrollToIndex(LONG_LIST - 1)
+    compose.waitForIdle()
+
+    holdAt(ids.last(), edge = Edge.TOP)
+
+    val order = runBlocking { repository.inGroup(SavedRollGroup.UNFILED_ID).first() }.map { it.id }
+    assertEquals(listOf(ids.last()) + ids.dropLast(1), order)
+  }
+
+  @Test
+  fun `a row picked up at the edge does not move the list by being picked up`() {
+    // The last row shown sits in the bottom band; picking it up and putting it
+    // down again, without moving towards the edge, leaves everything alone.
+    val ids = (1..LONG_LIST).map { "roll$it" }
+    given(*ids.map { roll(it) }.toTypedArray())
+    show()
+    val list = compose.onNodeWithTag(SavedTestTags.LIST).fetchSemanticsNode().boundsInRoot
+    val band = with(compose.density) { SavedEdgeScroll.ZONE_DP.dp.toPx() }
+    val lowest =
+      ids.first { id ->
+        compose
+          .onAllNodesWithTag(SavedTestTags.gripOf(id), useUnmergedTree = true)
+          .fetchSemanticsNodes()
+          .any { it.boundsInRoot.center.y in (list.bottom - band)..list.bottom }
+      }
+    compose.mainClock.autoAdvance = false
+    compose.onNodeWithTag(SavedTestTags.gripOf(lowest), useUnmergedTree = true).performTouchInput {
+      down(center)
+      // Past the touch slop, and away from the edge, so it is a drag.
+      moveBy(Offset(0f, -viewConfiguration.touchSlop - 2f))
+    }
+    hold()
+    compose.onNodeWithTag(SavedTestTags.gripOf(lowest), useUnmergedTree = true).performTouchInput { up() }
+    compose.mainClock.autoAdvance = true
+    compose.waitForIdle()
+
+    compose.onNodeWithTag(SavedTestTags.rollOf(ids.last())).assertDoesNotExist()
+  }
+
+  private enum class Edge { TOP, BOTTOM }
+
+  /**
+   * [HOLD_MILLIS] of frames with the finger still down, letting the main
+   * thread catch up between them: a state written by the gesture reaches a
+   * `snapshotFlow` through a message on it, which a clock advanced in one go
+   * would never let run.
+   */
+  private fun hold() {
+    repeat((HOLD_MILLIS / FRAME_MILLIS).toInt()) {
+      compose.waitForIdle()
+      compose.mainClock.advanceTimeBy(FRAME_MILLIS)
+    }
+  }
+
+  /**
+   * Picks up [id] by its grip, carries it to just inside [edge] of the list in
+   * steps, holds it there for [HOLD_MILLIS] of frames and lets go.
+   */
+  private fun holdAt(
+    id: String,
+    edge: Edge,
+  ) {
+    val list = compose.onNodeWithTag(SavedTestTags.LIST).fetchSemanticsNode().boundsInRoot
+    val grip = compose.onNodeWithTag(SavedTestTags.gripOf(id), useUnmergedTree = true)
+    val from =
+      grip
+        .fetchSemanticsNode()
+        .boundsInRoot.center.y
+    val to = if (edge == Edge.BOTTOM) list.bottom - 1f else list.top + 1f
+    // The frames are the test's to hand out: the list scrolls once a frame
+    // for as long as the finger is held, which would never let an
+    // automatically advancing clock call the screen idle.
+    compose.mainClock.autoAdvance = false
+    grip.performTouchInput {
+      down(center)
+      repeat(STEPS) { moveBy(Offset(0f, (to - from) / STEPS)) }
+    }
+    hold()
+    // The row is the one under the finger now, wherever the list has got to.
+    compose.onNodeWithTag(SavedTestTags.gripOf(id), useUnmergedTree = true).performTouchInput { up() }
+    compose.mainClock.autoAdvance = true
+    compose.waitForIdle()
   }
 
   @Test
@@ -331,5 +445,9 @@ class SavedScreenTest {
 
   private companion object {
     const val NOW = 1_000L
+    const val LONG_LIST = 30
+    const val STEPS = 10
+    const val HOLD_MILLIS = 6_000L
+    const val FRAME_MILLIS = 16L
   }
 }

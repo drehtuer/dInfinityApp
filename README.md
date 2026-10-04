@@ -73,7 +73,8 @@ a tumble; everything else is real.
   average, before you shake and again beside the total.
 - **Power-saving mode** — same physics, no rendering; just the result. The dice
   are still heard: the impacts the throw made are played back over a second.
-- **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on.
+- **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on,
+  and a dice set's own dice by name: `3{skull-d6}kh1`.
   The whole grammar is in the app under **Notation**, with an example on every
   line you can tap to try.
 - **Does the math** — the total, the modifiers and the per-die breakdown are
@@ -118,9 +119,10 @@ a tumble; everything else is real.
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
   natural 7. It still matters.
 - **No cocked dice, no invisible hand** — nothing nudges, steers or pokes a
-  die. A roll reads the dice that came to rest flat, takes them off the table
-  and throws the rest again where you can see it, the way you would at a real
-  table.
+  die, and nothing throws one but you. A roll reads the dice that came to rest
+  flat; a die that lands cocked or on another stays where it lies, the screen
+  says so, and your next shake throws that die again — only that one — the way
+  you would at a real table.
 - **No 500d6** — a roll is refused past a hundred dice, or sooner when the
   dice would not fit on the table with room to tumble. Dice shrink to make
   room up to a point; past that the simulation would only produce nonsense, so

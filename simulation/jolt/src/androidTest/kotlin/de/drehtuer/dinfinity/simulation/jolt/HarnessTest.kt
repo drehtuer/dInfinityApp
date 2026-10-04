@@ -3,6 +3,8 @@ package de.drehtuer.dinfinity.simulation.jolt
 import android.os.Build
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import de.drehtuer.dinfinity.simulation.api.Passes
+import de.drehtuer.dinfinity.simulation.api.SettleRule
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.harness.DeviceFacts
 import de.drehtuer.dinfinity.simulation.harness.FrameTimes
@@ -134,16 +136,25 @@ class HarnessTest {
     return records
   }
 
-  /** One roll stepped as fast as the processor allows — power-saving mode, and the default. */
+  /**
+   * One roll stepped as fast as the processor allows — power-saving mode, and
+   * the default — with every pass its unread dice need thrown straight after
+   * it, because there is no player here to shake for them
+   * (`JoltDiceSimulator.run`).
+   */
   private fun flatOut(
     simulator: JoltDiceSimulator,
     spec: ThrowSpec,
     index: Int,
   ): RollRecord {
     val before = System.nanoTime()
-    val outcome = simulator.run(spec)
-    val elapsed = System.nanoTime() - before
-    return RollRecord.of(index, spec.seed, outcome, elapsed.toDouble() / NANOS_PER_MILLISECOND)
+    val outcome = simulator.runOrGiveUp(spec)
+    val millis = (System.nanoTime() - before).toDouble() / NANOS_PER_MILLISECOND
+    // A roll that gave up is a row, not a crash: a pass ran out its twelve
+    // seconds, or sixteen passes left a die nobody could read. Recorded at the
+    // cap, which is the one step count a roll that gave up is known to reach.
+    return outcome?.let { RollRecord.of(index, spec.seed, it, millis) }
+      ?: RollRecord.gaveUp(index, spec.seed, SettleRule.HARD_CAP_STEPS, millis)
   }
 
   /**
@@ -161,36 +172,50 @@ class HarnessTest {
    * module has no surface and no Filament. That is why the frame figures are
    * marked as not drawn and why the scorecard scores Step 5.7's bar as not
    * measured rather than as a pass.
+   *
+   * **A throw that leaves dice unread is followed at once by the throw of
+   * those dice**, paced the same way. On the screen that throw waits for the
+   * player's shake; the harness has no player, so it is the hand
+   * ([Passes.scripted]) — and the record is of every pass, so the share of
+   * dice thrown again still means what it meant when the roll threw them
+   * itself.
    */
   private fun paced(
     simulator: JoltDiceSimulator,
     spec: ThrowSpec,
     index: Int,
     frames: Frames,
-  ): RollRecord =
-    simulator.start(spec, listening = false).use { roll ->
-      // A frame's worth behind, so the first frame advances the roll rather
-      // than measuring the moment the loop started.
-      var last = System.nanoTime() - FrameTimes.FRAME_NANOS
-      var workNanos = 0L
-      while (roll.running) {
-        val begin = System.nanoTime()
-        roll.advance((begin - last).toDouble() / NANOS_PER_SECOND)
-        last = begin
-        val work = System.nanoTime() - begin
-        workNanos += work
-        frames.millis += work.toDouble() / NANOS_PER_MILLISECOND
-        LockSupport.parkNanos(FrameTimes.waitNanos(work))
+  ): RollRecord {
+    var workNanos = 0L
+    var steps = 0
+    val outcome =
+      Passes.scripted(spec) { pass ->
+        simulator.start(pass, listening = false).use { roll ->
+          // A frame's worth behind, so the first frame advances the roll
+          // rather than measuring the moment the loop started.
+          var last = System.nanoTime() - FrameTimes.FRAME_NANOS
+          while (roll.running) {
+            val begin = System.nanoTime()
+            roll.advance((begin - last).toDouble() / NANOS_PER_SECOND)
+            last = begin
+            val work = System.nanoTime() - begin
+            workNanos += work
+            frames.millis += work.toDouble() / NANOS_PER_MILLISECOND
+            LockSupport.parkNanos(FrameTimes.waitNanos(work))
+          }
+          frames.droppedSteps += roll.droppedSteps
+          steps = roll.stepsTaken
+          roll.outcome
+        }
       }
-      frames.droppedSteps += roll.droppedSteps
-      val millis = workNanos.toDouble() / NANOS_PER_MILLISECOND
-      // A roll that gave up is a row like any other, and the one row that
-      // matters most: it ran longer than a roll should and its dice never
-      // stopped, so it has no faces. It used to be force-settled into an
-      // outcome and counted as a roll that happened.
-      roll.outcome?.let { RollRecord.of(index, spec.seed, it, millis) }
-        ?: RollRecord.gaveUp(index, spec.seed, roll.stepsTaken, millis)
-    }
+    val millis = workNanos.toDouble() / NANOS_PER_MILLISECOND
+    // A roll that gave up is a row like any other, and the one row that
+    // matters most: it ran longer than a roll should and its dice never
+    // stopped, so it has no faces. It used to be force-settled into an
+    // outcome and counted as a roll that happened.
+    return outcome?.let { RollRecord.of(index, spec.seed, it, millis) }
+      ?: RollRecord.gaveUp(index, spec.seed, steps, millis)
+  }
 
   private fun secondsSince(nanos: Long): Double = (System.nanoTime() - nanos).toDouble() / NANOS_PER_SECOND
 

@@ -146,7 +146,8 @@ private fun PickerDie(
       modifier = Modifier.align(Alignment.Center).padding(horizontal = 4.dp),
     ) {
       DieSilhouette(
-        sides = die.sides,
+        // The solid's outline, not the spelling's: a `skull-d6` is a cube.
+        sides = die.outline,
         // `--color-surface`, named rather than reached for through
         // `surfaceVariant`: the palette has one surface and no variant of it.
         fill = MaterialTheme.colorScheme.surface,

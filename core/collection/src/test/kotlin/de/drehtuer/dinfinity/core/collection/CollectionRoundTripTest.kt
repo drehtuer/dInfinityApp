@@ -51,6 +51,25 @@ class CollectionRoundTripTest {
   }
 
   @Test
+  fun `a formula with braces in it is stored and read back as written`() {
+    // Braces are JSON-safe, but a formula is only carried if it comes back
+    // byte for byte and parses to the same dice (`docs/dice-notation.md`,
+    // "A set's own dice").
+    val formulas = listOf("3{skull-d6}kh1", "3{brass:skull-d6}kh1 + 2 [Bones]", "3{skull:d6}kh1", "1d20 + 4")
+    val groups = listOf(SavedRollGroup(id = "g", name = "Bones"))
+    val rolls =
+      formulas.mapIndexed { i, formula ->
+        SavedRoll(id = "r$i", groupId = "g", name = "Roll $i", formula = formula, sortOrder = i)
+      }
+
+    val written = CollectionWriter.write(CollectionWriter.collect(groups, rolls, name = "Bones"))
+    val read = CollectionReader.read(written)
+
+    assertTrue(read is CollectionResult.Loaded, "what we wrote did not read: $read")
+    assertEquals(formulas, read.collection.rolls.map { it.formula })
+  }
+
+  @Test
   fun `a name with quotes and newlines in it survives`() {
     // Not a hypothetical: a group called `He said "roll"` is a group somebody
     // will make, and hand-rolled JSON writing is where that goes wrong.

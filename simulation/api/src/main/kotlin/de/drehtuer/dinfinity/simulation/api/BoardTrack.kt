@@ -20,24 +20,48 @@ import kotlin.math.sqrt
  * no way to ask for one: the board is not a roll, and what a die on it happens
  * to show is never read (`docs/architecture.md`, decision 67).
  *
- * Seven floats per die per step, laid out step by step — about 400 KB for the
- * largest board at the longest drop. Floats because the picture is drawn in
- * floats; a die carried from one board to the next goes through a float on the
- * way, and a float read back and written again is the same float, which is
- * what keeps a die that is standing still standing exactly still.
+ * **A die is not on the table until it is let go.** The dice of a handful are
+ * let go one after another ([BoardDrops.DROP_INTERVAL_STEPS]), and a die
+ * waiting its turn has a pose recorded for every step all the same — the one
+ * it is meant to be let go in — but is not in play and must not be drawn
+ * ([inPlay]).
+ *
+ * Seven floats per die per step, laid out step by step — under two and a half
+ * megabytes for the largest board: a hundred dice, let go over four seconds
+ * (`BoardDrops.LONGEST_STREAM_SECONDS`) and recorded for three more. Floats
+ * because the picture is drawn in floats; a die carried from one board to the
+ * next goes through a float on the way, and a float read back and written
+ * again is the same float, which is what keeps a die that is standing still
+ * standing exactly still.
  *
  * @param indices which die of the formula each recorded die is, in the order
  *   they were recorded.
- * @param steps how many poses each die has: the one it was let go in, and one
- *   per step after that.
+ * @param steps how many poses each die has: the one at the start, and one per
+ *   step after that.
+ * @param firstSteps for each recorded die, the first step at which it is on
+ *   the table ([BoardBody.firstStep]).
  */
 class BoardTrack private constructor(
   val indices: List<Int>,
   val steps: Int,
   private val poses: FloatArray,
+  private val firstSteps: List<Int>,
 ) {
   /** How many dice were recorded. */
   val dice: Int get() = indices.size
+
+  /**
+   * Whether recorded die [die] is on the table at [step] — let go by then,
+   * or there from the start. A moment of the board's clock is in the step
+   * [stepAt] gives.
+   *
+   * A die that is not is drawn nowhere and carried over to nothing: there is
+   * no die there yet, only the plan to let one go.
+   */
+  fun inPlay(
+    die: Int,
+    step: Int,
+  ): Boolean = step >= firstSteps[die]
 
   /** When the last die stopped, on the board's clock. */
   val endsAt: Double get() = (steps - 1).coerceAtLeast(0) * SettleRule.TIMESTEP_SECONDS
@@ -159,13 +183,19 @@ class BoardTrack private constructor(
   }
 
   override fun equals(other: Any?): Boolean =
-    other is BoardTrack && indices == other.indices && steps == other.steps && poses.contentEquals(other.poses)
+    other is BoardTrack &&
+      indices == other.indices &&
+      steps == other.steps &&
+      firstSteps == other.firstSteps &&
+      poses.contentEquals(other.poses)
 
-  override fun hashCode(): Int = 31 * (31 * indices.hashCode() + steps) + poses.contentHashCode()
+  override fun hashCode(): Int =
+    31 * (31 * (31 * indices.hashCode() + steps) + firstSteps.hashCode()) + poses.contentHashCode()
 
   /**
-   * Writes a drop down as it happens, starting from where every die was let
-   * go.
+   * Writes a drop down as it happens, starting from [first]: where every die
+   * is at the start — on the board already, let go at once, or meant to be let
+   * go later ([BoardBody.dropStep]).
    *
    * **A die nothing touched is recorded exactly where it stood.** A die that
    * started dead still and never moved further than [STILL_DRIFT_MM] or turned
@@ -178,12 +208,13 @@ class BoardTrack private constructor(
    */
   class Recorder(
     private val bodies: List<BoardBody>,
+    first: List<BoardPose> = bodies.map { BoardPose(it.placement.position, it.placement.rotation) },
   ) {
     private var poses = FloatArray(bodies.size * STRIDE * INITIAL_STEPS)
     private var steps = 0
 
     init {
-      record(bodies.map { BoardPose(it.placement.position, it.placement.rotation) })
+      record(first)
     }
 
     /** One step's poses, one per die, in the order the dice were given. */
@@ -198,7 +229,7 @@ class BoardTrack private constructor(
     /** The recording, with every die nothing touched held exactly still. */
     fun finish(): BoardTrack {
       val recorded = poses.copyOf(steps * bodies.size * STRIDE)
-      val track = BoardTrack(bodies.map { it.index }, steps, recorded)
+      val track = BoardTrack(bodies.map { it.index }, steps, recorded, bodies.map { it.firstStep })
       bodies.forEachIndexed { die, body ->
         if (untouched(track, die, body.placement)) {
           val start = track.poseAt(die, 0)
@@ -243,26 +274,46 @@ class BoardTrack private constructor(
     const val STILL_TURN_RADIANS: Double = 0.002
 
     /** A board with nothing on it. */
-    val EMPTY: BoardTrack = BoardTrack(emptyList(), 0, FloatArray(0))
+    val EMPTY: BoardTrack = BoardTrack(emptyList(), 0, FloatArray(0), emptyList())
 
     /**
      * [request]'s dice standing on the table with no drop at all — what is
      * shown when working the drop out failed ([settleOrStand]).
      *
      * A die that was already standing stays exactly as it stood. A die that
-     * was moving — one being let go, or one still in the air — is stood
-     * straight below where it was, on the felt and square on, so nothing is
-     * left hanging in the air or sunk into the floor. One step and over: a
+     * was moving — one being let go, or one still in the air — is stood on the
+     * felt, square on, straight below where it was; or, when a die already
+     * stands there — every die being let go is over the same spot — at the
+     * clearest point of the tray instead ([ClearSpace.clearestPoint]). So
+     * nothing is left hanging in the air, sunk into the floor or inside
+     * another. Every die is on the table from the start. One step and over: a
      * still picture, not a fall.
      */
-    fun standing(request: BoardRequest): BoardTrack =
-      Recorder(request.bodies.map { it.copy(placement = stoodBelow(it)) }).finish()
+    fun standing(request: BoardRequest): BoardTrack {
+      val stood = request.bodies.filter { isStill(it.placement) }.mapTo(mutableListOf()) { it.placement.position }
+      val bodies =
+        request.bodies.map { body ->
+          if (isStill(body.placement)) return@map body.copy(dropStep = null)
+          val placement = stoodBelow(request.geometry, body, stood)
+          stood += placement.position
+          body.copy(placement = placement, dropStep = null)
+        }
+      return Recorder(bodies).finish()
+    }
 
-    private fun stoodBelow(body: BoardBody): Placement {
-      val at = body.placement
-      if (at.linearVelocity.length == 0.0 && at.angularVelocity.length == 0.0) return at
-      val floor = ClearSpace.radiusOf(body.die, body.dieScale)
-      return Placement(at.position.copy(z = floor), Quaternion.Identity, Vector3.Zero, Vector3.Zero)
+    private fun isStill(at: Placement): Boolean = at.linearVelocity.length == 0.0 && at.angularVelocity.length == 0.0
+
+    private fun stoodBelow(
+      geometry: TableGeometry,
+      body: BoardBody,
+      stood: List<Vector3>,
+    ): Placement {
+      val radius = ClearSpace.radiusOf(body.die, body.dieScale)
+      val below = body.placement.position.copy(z = radius)
+      val needed = 2 * radius + ClearSpace.CLEARANCE_MM
+      val clear = stood.all { other -> (Vector3(other.x, other.y, radius) - below).length >= needed }
+      val spot = if (clear) below else ClearSpace.clearestPoint(geometry, radius, stood)?.copy(z = radius) ?: below
+      return Placement(spot, Quaternion.Identity, Vector3.Zero, Vector3.Zero)
     }
 
     // Where each number sits within a pose's seven floats.

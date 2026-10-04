@@ -112,11 +112,10 @@ class SpawnLayout(
    * this throw is one die arriving in a tray somebody has already rolled in.
    * It goes where [ClearSpace] says there is room — the point furthest from the
    * dice already down, and as central as that allows — and it is *dropped*
-   * there rather than thrown across the tray, exactly as a re-thrown die is and
-   * for the same reason: a die that travels is a die that arrives somewhere
-   * nobody made room for. The dice already down are not in this throw's world
-   * and cannot be moved by it; the clear space is so the *picture* is honest
-   * too.
+   * there rather than thrown across the tray, because a die that travels is a
+   * die that arrives somewhere nobody made room for. The dice already down are
+   * not in this throw's world and cannot be moved by it; the clear space is so
+   * the *picture* is honest too.
    *
    * A round may be several dice — three sixes in `8d6!` earn three throws — and
    * [addedPoint] is what stops them all landing on the same clear patch.
@@ -124,10 +123,10 @@ class SpawnLayout(
   private fun addedPlacement(index: Int): Placement {
     val random = randomFor(index, Seeds.SPAWN)
     return Placement(
-      position = addedPoint(index).copy(z = RETHROW_HEIGHT_MM + dieRadiusMm),
+      position = addedPoint(index).copy(z = ADDED_DROP_HEIGHT_MM + dieRadiusMm),
       rotation = randomRotation(random),
-      linearVelocity = Vector3(0.0, 0.0, -RETHROW_DOWN_MM_PER_SECOND),
-      angularVelocity = randomSpin(random, RETHROW_SPIN_RADIANS_PER_SECOND),
+      linearVelocity = Vector3(0.0, 0.0, -ADDED_DOWN_MM_PER_SECOND),
+      angularVelocity = randomSpin(random, ADDED_SPIN_RADIANS_PER_SECOND),
     )
   }
 
@@ -155,78 +154,6 @@ class SpawnLayout(
   }
 
   /**
-   * Where die [index] restarts when it has to be thrown again — rung 3.
-   *
-   * Lower and gentler than the first throw, because that is what a player
-   * does: a cocked die is picked up and dropped back on the table, not hurled
-   * at it. [attempt] is mixed into the seed so a die that comes up cocked
-   * twice is not thrown the same way twice.
-   *
-   * **It is dropped on floor nothing is standing on.** The spot is drawn from
-   * the roll's own stream, as it always was, and kept if it is clear; a spot
-   * that is not is given up for the clearest the tray has
-   * ([ClearSpace.clearestPoint]), which is the same answer the die an
-   * explosion adds gets. Two things it has to clear, and they fail
-   * differently: the dice of [among] are earlier throws of the same chain,
-   * drawn on the table with **no bodies**, so a die dropped on one falls
-   * straight through the picture of it; and [clearOf] is the dice this same
-   * pass has already thrown again, which *do* have bodies, so two on one
-   * patch of floor start inside each other and the solver spends the throw
-   * pushing them out (`docs/physics-and-rendering.md`, "Avoiding stacked and
-   * cocked dice").
-   *
-   * A throw with nothing in the way is unchanged, down to the last draw: the
-   * spot is drawn first and kept, so the same seed replays the same roll.
-   *
-   * @param clearOf where this pass has already put the dice it is throwing
-   *   again, in the order it placed them. The caller keeps the list because
-   *   only the caller knows when a pass begins.
-   */
-  fun rethrowPlacement(
-    index: Int,
-    attempt: Int,
-    clearOf: List<Vector3> = emptyList(),
-  ): Placement {
-    val random = randomFor(index, Seeds.RETHROW + attempt)
-    val halfLong = geometry.longSideMm / 2 - marginMm()
-    val halfShort = geometry.shortSideMm / 2 - marginMm()
-    val drawn =
-      Vector3(
-        x = random.nextDouble(-halfLong, halfLong),
-        y = random.nextDouble(-halfShort, halfShort),
-        z = 0.0,
-      )
-    val taken = among + clearOf
-    val point = if (isClearAt(drawn, taken)) drawn else ClearSpace.clearestPoint(geometry, dieRadiusMm, taken) ?: drawn
-    return Placement(
-      position = point.copy(z = RETHROW_HEIGHT_MM + dieRadiusMm),
-      rotation = randomRotation(random),
-      linearVelocity = Vector3(0.0, 0.0, -RETHROW_DOWN_MM_PER_SECOND),
-      angularVelocity = randomSpin(random, RETHROW_SPIN_RADIANS_PER_SECOND),
-    )
-  }
-
-  /**
-   * Whether a die dropped at [point] would come down clear of [taken].
-   *
-   * The plain non-overlap question — two bounding circles and the clearance a
-   * solver needs between them — and deliberately not [ClearSpace]'s, which
-   * asks for a whole die's width of free floor because it is choosing the
-   * *best* spot rather than judging a given one. Using the stricter rule here
-   * would throw away perfectly good drops and move dice that had nothing
-   * wrong with them.
-   */
-  private fun isClearAt(
-    point: Vector3,
-    taken: List<Vector3>,
-  ): Boolean =
-    taken.none { other ->
-      val dx = point.x - other.x
-      val dy = point.y - other.y
-      sqrt(dx * dx + dy * dy) < 2 * dieRadiusMm + ClearSpace.CLEARANCE_MM
-    }
-
-  /**
    * A nudge of up to [amount] either way.
    *
    * At the capacity limit a cell is narrower than the die that goes in it and
@@ -242,9 +169,6 @@ class SpawnLayout(
     random: Random,
     amount: Double,
   ): Double = random.nextDouble(-1.0, 1.0) * amount
-
-  /** How far a die's centre must stay from a wall to start inside the tray. */
-  private fun marginMm(): Double = dieRadiusMm + WALL_CLEARANCE_MM
 
   private fun dropHeightMm(cell: Cell): Double =
     DROP_HEIGHT_MM + dieRadiusMm + cell.layer * (2 * dieRadiusMm + LAYER_GAP_MM)
@@ -419,8 +343,14 @@ class SpawnLayout(
      * than a ceiling being met. Raised with [THROW_LATERAL_MM_PER_SECOND]: on
      * its own more spin is mostly spent in the air, and it is the pair that
      * moves the figure that matters.
+     *
+     * Raised again from 75 when the owner found the dice short of spin on the
+     * Pixel 10a. On its own it moved the middle die from 1.55 turns after
+     * landing to 1.67; what carries the spin through the landing is the dice's
+     * restitution (`DieMaterial`, `docs/physics-and-rendering.md`, "How hard
+     * the dice are thrown"). Still under the 200 rad/s body cap.
      */
-    const val SPAWN_SPIN_RADIANS_PER_SECOND: Double = 75.0
+    const val SPAWN_SPIN_RADIANS_PER_SECOND: Double = 120.0
 
     /** And a floor under it, so "random" never comes out as "barely turning". */
     const val SPIN_FLOOR_SHARE: Double = 0.5
@@ -431,14 +361,14 @@ class SpawnLayout(
      */
     const val CROWDED_SHARE: Double = 0.25
 
-    /** A re-thrown die is dropped from here, where the player can see it. */
-    const val RETHROW_HEIGHT_MM: Double = 25.0
+    /** A die an explosion or a reroll adds is dropped from here, in sight. */
+    const val ADDED_DROP_HEIGHT_MM: Double = 25.0
 
     /** Dropped, not hurled. */
-    const val RETHROW_DOWN_MM_PER_SECOND: Double = 200.0
+    const val ADDED_DOWN_MM_PER_SECOND: Double = 200.0
 
     /** Still enough spin to be a throw rather than a placement. */
-    const val RETHROW_SPIN_RADIANS_PER_SECOND: Double = 18.0
+    const val ADDED_SPIN_RADIANS_PER_SECOND: Double = 18.0
 
     private const val HALF = 0.5
   }

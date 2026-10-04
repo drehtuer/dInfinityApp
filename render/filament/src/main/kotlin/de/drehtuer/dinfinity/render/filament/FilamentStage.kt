@@ -199,6 +199,11 @@ class FilamentStage(
     scene.removeEntity(entity)
   }
 
+  override fun put(entity: Int) {
+    if (entity == Stage.NOTHING || scene.hasEntity(entity)) return
+    scene.addEntity(entity)
+  }
+
   override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,
@@ -275,10 +280,12 @@ class FilamentStage(
   /**
    * One frame, drawn and read back off the GPU.
    *
-   * The rows arrive the way a graphics driver counts them — from the bottom —
-   * and are turned over by [Snapshot.fromBottomUp], which is plain Kotlin
-   * because "is the picture upside down" is not a question worth needing a
-   * phone for.
+   * The rows arrive from the top, which is how Filament hands them over, and
+   * are kept as they come. They used to be turned over on the assumption that
+   * they arrived the way OpenGL counts them, and every thumbnail came out
+   * upside down; which way up a frame is turned out to be a question only a
+   * device could answer, so the device suite asks it with nothing but
+   * geometry (`PrintedNumbersDeviceTest`).
    */
   override fun capture(): Snapshot? {
     val buffer = pixelBuffer()
@@ -286,7 +293,7 @@ class FilamentStage(
     val bytes = ByteArray(buffer.capacity())
     buffer.rewind()
     buffer.get(bytes)
-    return Snapshot.fromBottomUp(width, height, bytes)
+    return Snapshot(width, height, bytes)
   }
 
   /** The engine, for the two callers that have to reach it: textures and transforms. */

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,15 +24,21 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -51,6 +58,7 @@ import de.drehtuer.dinfinity.ui.common.ModernistIconButton
 import de.drehtuer.dinfinity.ui.common.Rule
 import de.drehtuer.dinfinity.ui.common.RuleWeight
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
+import kotlinx.coroutines.flow.first
 
 /**
  * Named formulas, rolled with one tap
@@ -180,7 +188,20 @@ private fun ColumnScope.Rolls(
   // dragged row's middle rather than from the touch point, so the row does not
   // jump to sit under the finger the moment the drag starts.
   var pointer by remember { mutableFloatStateOf(0f) }
+  // Where it was when the drag began, which is what keeps a row picked up near
+  // an edge from setting the list moving by being picked up.
+  var origin by remember { mutableFloatStateOf(0f) }
   var dragging by remember { mutableStateOf<String?>(null) }
+  val hold = rememberScrollHold(list)
+
+  // The row under the finger is where the dragged one goes.
+  fun follow(id: String) {
+    val under = list.indexUnder(pointer) ?: return
+    if (under == list.indexOf(id)) return
+    hold()
+    onMove(id, under)
+  }
+  EdgeScroll(list = list, dragging = dragging, pointer = { pointer }, origin = { origin }, follow = ::follow)
   LazyColumn(
     state = list,
     modifier = Modifier.weight(1f).fillMaxWidth().testTag(SavedTestTags.LIST),
@@ -204,12 +225,13 @@ private fun ColumnScope.Rolls(
             },
             onDrag = { by ->
               pointer += by
-              list.indexUnder(pointer)?.let { under -> onMove(id, under) }
+              follow(id)
             },
             onDragging = { started ->
               if (started) {
-                dragging = id
                 pointer = list.middleOf(id)
+                origin = pointer
+                dragging = id
               } else {
                 dragging = null
                 onSettle()
@@ -220,6 +242,73 @@ private fun ColumnScope.Rolls(
     }
   }
 }
+
+/**
+ * Holds [list] where it is scrolled to across the next change to its rows, by
+ * index rather than by key; call what this returns just before moving a row.
+ *
+ * A list left to itself keeps its first row's *key* in place across a change,
+ * and when that row is the one being dragged up, the list would follow it out
+ * of sight — taking the gesture with it. The request is made after the move
+ * has been composed and before it is measured, the one moment a position by
+ * index is applied to the new order rather than to the old one.
+ */
+@Composable
+private fun rememberScrollHold(list: LazyListState): () -> Unit {
+  val held = remember { mutableStateOf<Pair<Int, Int>?>(null) }
+  SideEffect {
+    held.value?.let { (index, offset) -> list.requestScrollToItem(index, offset) }
+    held.value = null
+  }
+  return { held.value = list.firstVisibleItemIndex to list.firstVisibleItemScrollOffset }
+}
+
+/**
+ * Scrolls [list] while the row [dragging] is held in a band along its top or
+ * bottom edge, faster the deeper in, and keeps the row under the finger as the
+ * rows go past ([SavedEdgeScroll]).
+ *
+ * Asleep until the finger is in a band, so a drag held mid-list asks for no
+ * frames at all.
+ */
+@Composable
+private fun EdgeScroll(
+  list: LazyListState,
+  dragging: String?,
+  pointer: () -> Float,
+  origin: () -> Float,
+  follow: (String) -> Unit,
+) {
+  val density = LocalDensity.current.density
+  val keepUnder by rememberUpdatedState(follow)
+  LaunchedEffect(dragging) {
+    val id = dragging ?: return@LaunchedEffect
+
+    fun speed() =
+      SavedEdgeScroll.speed(
+        pointer = pointer(),
+        origin = origin(),
+        viewport =
+          list.layoutInfo.viewportSize.height
+            .toFloat(),
+        zone = SavedEdgeScroll.ZONE_DP * density,
+        topSpeed = SavedEdgeScroll.TOP_SPEED_DP_PER_SECOND * density,
+      )
+    while (true) {
+      snapshotFlow { speed() }.first { it != 0f }
+      var last = withFrameNanos { it }
+      while (speed() != 0f) {
+        val now = withFrameNanos { it }
+        val by = SavedEdgeScroll.step(speed(), now - last)
+        last = now
+        if (list.scrollBy(by) != 0f) keepUnder(id)
+      }
+    }
+  }
+}
+
+/** Where the row [id] is in the list, or null when it is not drawn. */
+private fun LazyListState.indexOf(id: String): Int? = layoutInfo.visibleItemsInfo.firstOrNull { it.key == id }?.index
 
 /** The middle of the row [id] is drawn in, in the list's own coordinates. */
 private fun LazyListState.middleOf(id: String): Float =

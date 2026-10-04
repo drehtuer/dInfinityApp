@@ -73,6 +73,7 @@ class FilamentDiceRenderer(
     stage.clear()
     this.geometry = geometry
     dice = emptyList()
+    shown.clear()
     stage.light()
     addTray(geometry, look)
     stage.aim(TrayCamera.framingTheTray(geometry, aspectRatio(), view, tilt))
@@ -118,6 +119,9 @@ class FilamentDiceRenderer(
       }
     }
     dice = spec.dice.map { instance -> addDie(instance.die, instance.setId, spec.dieScale) }
+    // Every die is in the scene from here until a frame leaves it out.
+    shown.clear()
+    dice.forEachIndexed { index, entity -> if (entity != Stage.NOTHING) shown += index }
   }
 
   override fun show(frame: RenderFrame) {
@@ -149,15 +153,18 @@ class FilamentDiceRenderer(
       // Nought is Filament's word for "no entity", which is what a die with
       // nothing to draw was given.
       dice.getOrNull(body.index)?.takeIf { it != Stage.NOTHING }?.let { entity ->
+        // A die waiting its turn to be dropped onto the board was left out
+        // until now, and comes into the scene the frame it is let go.
+        if (shown.add(body.index)) stage.put(entity)
         stage.place(entity, Transform.of(body.position, body.orientation))
-        shown += body.index
       }
     }
 
-    // A die the frame has stopped mentioning has been counted and lifted off
-    // the table. Leaving it where it was would draw it under whatever lands
-    // there next, so it comes out of the scene — once, rather than every frame
-    // for the rest of the roll.
+    // A die the frame does not mention is not on the table: in a roll, it
+    // has been counted and lifted off; on the board, it is still waiting its
+    // turn to be let go. Leaving it where it was would draw it under whatever
+    // lands there next — or, never placed at all, in the middle of the floor —
+    // so it comes out of the scene, once rather than every frame.
     val here = bodies.mapTo(mutableSetOf()) { it.index }
     val left = shown - here
     left.forEach { index ->

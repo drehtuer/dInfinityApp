@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.simulation.jolt.golden
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import de.drehtuer.dinfinity.fixtures.Fixtures
 import de.drehtuer.dinfinity.fixtures.GoldenCase
+import de.drehtuer.dinfinity.simulation.api.Passes
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.jolt.JoltDiceSimulator
 import org.junit.Assert.assertEquals
@@ -79,22 +80,29 @@ class ModesAgreeTest {
    * And as the tray makes it: a frame at a time, through the clock.
    *
    * [frames] is the wall time each frame took, cycled — the default being a
-   * steady sixty a second.
+   * steady sixty a second. A pass that leaves dice unread is followed by the
+   * throw of those dice at once, as the power-saving half does: the shake that
+   * throws them on screen is a player's, and neither half has one
+   * ([Passes.scripted]).
    */
   private fun asDrawn(
     case: GoldenCase,
     frames: List<Double> = STEADY,
   ): SimulationOutcome {
     val spec = GoldenThrow.specOf(case)
-    return JoltDiceSimulator().start(spec).use { roll ->
-      var frame = 0
-      while (roll.running) {
-        roll.advance(frames[frame % frames.size])
-        frame++
-        if (frame > GIVE_UP) error("seed ${case.seed} never settled when drawn")
-      }
-      requireNotNull(roll.outcome) { "a roll that stopped running reported nothing" }
-    }
+    return requireNotNull(
+      Passes.scripted(spec) { pass ->
+        JoltDiceSimulator().start(pass).use { roll ->
+          var frame = 0
+          while (roll.running) {
+            roll.advance(frames[frame % frames.size])
+            frame++
+            if (frame > GIVE_UP) error("seed ${case.seed} never settled when drawn")
+          }
+          requireNotNull(roll.outcome) { "a roll that stopped running reported nothing" }
+        }
+      },
+    ) { "seed ${case.seed} left dice unread after every pass it was given" }
   }
 
   private companion object {

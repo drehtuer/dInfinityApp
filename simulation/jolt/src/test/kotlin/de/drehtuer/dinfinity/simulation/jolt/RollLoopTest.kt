@@ -13,7 +13,6 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -72,15 +71,16 @@ class RollLoopTest {
   @Test
   fun `nothing touches a die that has come to rest, however wrong it looks`() {
     // Stopped dead and standing on another die: as much trouble as a die can
-    // be in, and out of reach for exactly that reason.
-    // It is thrown again for as long as it takes, and never touched where it
-    // lies — so a run nobody is watching gives up rather than reporting a die
-    // standing on another one.
+    // be in, and out of reach for exactly that reason. It is not nudged, not
+    // lifted and not thrown again — it is reported, and the player's next
+    // shake throws it (decision 70).
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
 
-    assertThrows(IllegalStateException::class.java) { loop(listOf(StandardDice.d6), world).run() }
+    val outcome = loop(listOf(StandardDice.d6), world).run()
 
+    assertEquals("the die nobody could read was not handed back", listOf(0), outcome.unread)
     assertTrue("a settled die was biased", world.biases.isEmpty())
+    assertTrue("a settled die was thrown again by the roll itself", world.respawns.isEmpty())
   }
 
   @Test
@@ -97,41 +97,43 @@ class RollLoopTest {
     assertEquals(0, outcome.postRestCorrections)
     assertEquals("a die that settled perfectly well was thrown again", 0, outcome.rethrows)
     assertEquals("it was read", 1, outcome.faces.size)
-    assertEquals("and taken off a table nothing else was going to be thrown onto", emptyList<Int>(), world.removed)
+    assertTrue("and nothing was left waiting for a shake", outcome.complete)
   }
 
   @Test
-  fun `a die that cannot be read is thrown again until it can`() {
-    val world = FakeWorld(1, unreadableUntilThrownAgain())
+  fun `a die that cannot be read is left where it lies for a hand to throw`() {
+    // It used to be thrown again by the roll, as often as it took. A throw is
+    // the player's to make, so the throw ends here and says which die is
+    // waiting (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked
+    // dice").
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
     val outcome = loop(listOf(StandardDice.d6), world).run()
 
-    assertTrue("something reached into the roll", world.biases.isEmpty())
-    assertEquals(0, outcome.corrections)
-    assertEquals("the die nobody could read was not thrown again", 1, outcome.rethrows)
-    assertEquals("and once it could be read it was counted", 1, outcome.faces.size)
-    // The re-throw came *before* anything had been read, so there was nothing
-    // on the table to make room for and nothing was taken off it. The die that
-    // ended the roll is the only die there is, and it stays where it landed.
-    assertEquals("the only die in the roll was taken off the table", emptyList<Int>(), world.removed)
-    assertEquals(0, outcome.stackedAtRest)
+    assertEquals("the die was read off a die it was standing on", emptyMap<Int, Int>(), outcome.faces)
+    assertEquals(listOf(0), outcome.unread)
+    assertFalse("a throw with a die nobody could read said it was finished", outcome.complete)
+    assertEquals("a loop counted a re-throw it never made", 0, outcome.rethrows)
+    assertEquals("the die standing on another was not reported", 1, outcome.stackedAtRest)
+    assertEquals("the roll ran on after its dice had stopped", SettleRule.REST_STEPS, outcome.steps)
   }
 
   @Test
-  fun `a die that can be read is counted and taken off the table`() {
-    // The whole mechanism in one throw: two dice, one readable and one standing
-    // on it. The readable one is counted and lifted off — which is what frees
-    // the floor — and the other is thrown again onto the room that made.
+  fun `a die that can be read is counted, and the one it holds up waits for the shake`() {
+    // Two dice, one readable and one standing on it. The readable one is read;
+    // the other is not, and neither is touched — the heap stays on the table
+    // exactly as it fell until the player shakes.
     val world =
-      FakeWorld(2) { _, index, rethrows ->
-        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
+      FakeWorld(2) { _, index, _ ->
+        if (index == 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
       }
+    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world)
 
-    val outcome = loop(listOf(StandardDice.d6, StandardDice.d6), world).run()
+    val outcome = loop.run()
 
-    assertEquals("the die that could be read was not taken off the table", listOf(0), world.removed.take(1))
-    assertTrue("the die standing on another was not thrown again", world.respawns.any { it.second == 1 })
-    assertEquals("a die was left standing on another", 0, outcome.stackedAtRest)
-    assertEquals(2, outcome.faces.size)
+    assertEquals("the die that could be read was not read", setOf(0), outcome.faces.keys)
+    assertEquals("the die standing on it was not handed back", listOf(1), outcome.unread)
+    assertEquals("the dice are drawn as read", listOf(true, false), loop.countedOut)
+    assertTrue("a die was thrown again by the roll itself", world.respawns.isEmpty())
   }
 
   @Test
@@ -139,8 +141,7 @@ class RollLoopTest {
     // The rule the screen depends on. Reading a die and taking it off the
     // table used to be one act, so a roll that went perfectly cleared itself
     // off the felt and left the player looking at an empty tray with a number
-    // floating over it. Nothing is thrown again here, so nothing has to make
-    // room, so nothing comes off.
+    // floating over it. Nothing comes off the table in a throw at all now.
     val world = FakeWorld(3) { _, _, _ -> FakeWorld.settled() }
     val loop = loop(listOf(StandardDice.d6, StandardDice.d20, StandardDice.d6), world)
 
@@ -148,152 +149,90 @@ class RollLoopTest {
 
     assertEquals("a die was thrown again with nothing wrong with it", 0, outcome.rethrows)
     assertEquals("all three were read", 3, outcome.faces.size)
-    assertEquals("a die was taken off a table nothing was going to be thrown onto", emptyList<Int>(), world.removed)
     assertEquals("the dice are drawn as read", listOf(true, true, true), loop.countedOut)
-    assertEquals("and the renderer was told to stop drawing them", listOf(false, false, false), loop.liftedOut)
   }
 
   @Test
-  fun `a die comes off the table only to make room for one being thrown again`() {
-    // Two dice: one readable, one standing on it. The second has to be thrown
-    // again, and *that* is what lifts the first — the floor it is standing on
-    // is the room the re-throw needs.
+  fun `the dice of a throw that left some unread are not offered to the throw that follows`() {
+    // The next throw is the unread dice's, and it lifts every die this one
+    // read to free the floor they stood on. `restingAt` is what a throw is
+    // drawn among and aimed around (`ClearSpace`), so a die about to leave
+    // the table must not be in it: drawn back it puts two dice in one place,
+    // and counted as floor it hides the room the lift made
+    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
+    // adds").
     val world =
-      FakeWorld(2) { _, index, rethrows ->
-        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
-      }
-    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world)
-
-    loop.run()
-
-    assertEquals("both dice were read", listOf(true, true), loop.countedOut)
-    // Only the first. The second was read in the pass that threw nothing
-    // again, so it had no reason to come off and stays on the table.
-    assertEquals("the wrong dice were lifted off", listOf(true, false), loop.liftedOut)
-    assertEquals("the die that made room did not come off", listOf(0), world.removed)
-  }
-
-  @Test
-  fun `a die counted in an early pass keeps the face it was counted on`() {
-    // The reading is taken when the die is lifted off, not at the end of the
-    // roll — by then its body has been out of the simulation for several
-    // passes, and a result read from a die nobody is simulating any more would
-    // be reading whatever the last pass happened to leave behind.
-    val world =
-      FakeWorld(2) { _, index, rethrows ->
-        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
+      FakeWorld(2) { _, index, _ ->
+        if (index == 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
       }
 
     val outcome = loop(listOf(StandardDice.d6, StandardDice.d6), world).run()
 
-    // One, not two. Die 0 was counted *and* lifted off to make the room die 1
-    // was thrown again into, so it is no longer on the table and is not
-    // offered to the throw that follows. Its **face** is kept all the same,
-    // which is what this test is about.
-    assertEquals("a counted die that is still down lost the place it was counted at", 1, outcome.restingAt.size)
-    assertTrue("a counted die has no face", outcome.faces.values.all { it >= 0 })
-  }
-
-  @Test
-  fun `a die lifted off the table is not offered to the throw that follows`() {
-    // The same two dice, asked the other question: what is the *next* throw
-    // of the chain told is on the table. Die 0 is read and lifted off to make
-    // room, and die 1 is thrown again onto the floor that freed — the same
-    // spot, because that is where the room was.
-    //
-    // `restingAt` is what an explosion's throw is drawn among and aimed
-    // around (`RollMachine.earnedThrow`, `ClearSpace`). A die that is no
-    // longer on the table must not be in it: drawn back it puts two dice in
-    // one place, and counted as floor it hides the room it left
-    // (`docs/physics-and-rendering.md`, "The dice an explosion or a reroll
-    // adds").
-    val world =
-      FakeWorld(2) { _, index, rethrows ->
-        if (index == 0 || rethrows > 0) FakeWorld.settled() else FakeWorld.settled(supportedByDie = true)
-      }
-    val loop = loop(listOf(StandardDice.d6, StandardDice.d6), world)
-
-    val outcome = loop.run()
-
-    assertEquals("both dice were read", 2, outcome.faces.size)
-    assertEquals("the wrong dice were lifted off", listOf(true, false), loop.liftedOut)
-    assertEquals(
-      "a die that had been taken off the table was handed to the next throw",
-      setOf(1),
-      outcome.restingAt.keys,
-    )
+    assertEquals("the read die kept no face", setOf(0), outcome.faces.keys)
+    assertEquals("a die about to be lifted was handed to the next throw", emptyMap<Int, Any>(), outcome.restingAt)
   }
 
   @Test
   fun `a die in trouble but already too slow to touch is left alone`() {
     // Below the resting speed but not yet counted as at rest. The watching
     // window has closed even though the tracker is still counting, so this die
-    // is past helping and can only be thrown again.
+    // is past helping, and what it is past is the roll's help: it is a die
+    // for the player to throw again.
     val crawling =
       FakeWorld.settled(supportedByDie = true).copy(
         motion = DieMotion(speedMmPerSecond = 1.0, spinRadiansPerSecond = 0.001),
       )
     val world = FakeWorld(1) { _, _, _ -> crawling }
 
-    assertThrows(IllegalStateException::class.java) { loop(listOf(StandardDice.d6), world).run() }
+    val outcome = loop(listOf(StandardDice.d6), world).run()
 
     assertTrue(world.biases.isEmpty())
-    assertTrue("what nothing may fix, a re-throw must", world.respawns.isNotEmpty())
+    assertTrue("the roll threw a die again by itself", world.respawns.isEmpty())
+    assertEquals("what nothing may fix is the player's to throw", listOf(0), outcome.unread)
   }
 
   @Test
-  fun `a die that stops cocked is thrown again, not nudged onto a face`() {
-    val world =
-      FakeWorld(1) { _, _, rethrows ->
-        if (rethrows == 0) FakeWorld.settled(cocked) else FakeWorld.settled()
-      }
+  fun `a die that stops cocked is left for a hand, not nudged onto a face`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(cocked) }
     val outcome = loop(listOf(StandardDice.d6), world).run()
 
-    assertEquals(1, outcome.rethrows)
-    assertEquals(listOf(0), world.respawns.map { it.second })
+    assertEquals(listOf(0), outcome.unread)
+    assertTrue("a cocked die was read off the face it was nearest", outcome.faces.isEmpty())
+    assertTrue("the roll threw it again by itself", world.respawns.isEmpty())
     assertTrue("a settled die is never biased, cocked or not", world.biases.isEmpty())
-    assertEquals("the re-thrown die reads its new face", 0, outcome.faces.getValue(0))
     assertTrue(outcome.clean)
   }
 
   @Test
-  fun `a die resting on another is thrown again even though it reads fine`() {
-    val world = FakeWorld(1) { _, _, rethrows -> FakeWorld.settled(supportedByDie = rethrows == 0) }
+  fun `a die resting on another is not read even though its face is up`() {
+    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
     val outcome = loop(listOf(StandardDice.d6), world).run()
 
-    assertEquals(
-      "a stacked die has no table under it, whatever face is up",
-      1,
-      outcome.rethrows,
-    )
+    assertEquals("a stacked die has no table under it, whatever face is up", listOf(0), outcome.unread)
   }
 
   @Test
-  fun `a die nobody can read is thrown again until the run gives up, and never answered`() {
+  fun `a die nobody can read ends the throw unanswered, rather than holding it open`() {
     // It used to be thrown three times and then **read off the face it was
-    // nearest** — a made-up answer to a die that never came good. There is no
-    // budget now: it is thrown as often as it takes, and a run nobody is
-    // watching stops waiting rather than inventing a number
-    // (`SettleRule.HARD_CAP_SECONDS`).
+    // nearest** — a made-up answer to a die that never came good — and later
+    // thrown again for as long as it took, which in a run nobody watched meant
+    // until the backstop. It ends the throw now, the moment the table is
+    // still, and waits for a hand (`SettleRule.HARD_CAP_SECONDS`).
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(cocked) }
+    val loop = loop(listOf(StandardDice.d6), world)
 
-    val refused =
-      assertThrows(IllegalStateException::class.java) {
-        loop(listOf(StandardDice.d6), world).run()
-      }
+    val outcome = loop.run()
 
-    assertTrue(
-      "the failure does not say what went wrong",
-      refused.message.orEmpty().contains("had not settled"),
-    )
-    assertTrue("the die was not thrown again at all", world.respawns.size > OLD_BUDGET)
+    assertFalse("a throw that stopped was given up on", loop.stalled)
+    assertEquals(SettleRule.REST_STEPS, world.steps)
+    assertEquals(listOf(0), outcome.unread)
   }
 
   @Test
   fun `a roll that gave up says which dice never settled`() {
     // What the screen needs in order to offer them back: the dice that were
-    // read are read and off the table, and only the ones still moving are
-    // thrown again (`docs/physics-and-rendering.md`).
+    // read are read, and only the ones still moving are thrown again
+    // (`docs/physics-and-rendering.md`).
     val world =
       FakeWorld(2) { _, index, _ ->
         if (index == 0) FakeWorld.settled() else FakeWorld.tumbling()
@@ -335,23 +274,6 @@ class RollLoopTest {
   }
 
   @Test
-  fun `the same seed throws a die again the same way, and another seed does not`() {
-    val trouble = unreadableUntilThrownAgain()
-
-    val first = FakeWorld(1, trouble).also { loop(listOf(StandardDice.d6), it, seed = 7L).run() }
-    val again = FakeWorld(1, trouble).also { loop(listOf(StandardDice.d6), it, seed = 7L).run() }
-    val other = FakeWorld(1, trouble).also { loop(listOf(StandardDice.d6), it, seed = 8L).run() }
-
-    assertTrue("nothing was thrown again, so there is nothing to compare", first.respawnPlacements.isNotEmpty())
-    assertEquals("a roll has to replay to itself", first.respawnPlacements, again.respawnPlacements)
-    assertNotEquals(
-      "two seeds that throw a die again identically are one seed",
-      first.respawnPlacements,
-      other.respawnPlacements,
-    )
-  }
-
-  @Test
   fun `the shake drives every step, and pushes the dice the way the phone did not`() {
     val shake =
       List(SettleRule.REST_STEPS) {
@@ -380,14 +302,7 @@ class RollLoopTest {
     assertEquals(0, world.steps)
   }
 
-  /** A die nobody can read until it has been picked up and thrown again. */
-  private fun unreadableUntilThrownAgain(): FakeWorld.States =
-    FakeWorld.States { _, _, rethrows ->
-      if (rethrows == 0) FakeWorld.settled(supportedByDie = true) else FakeWorld.settled()
-    }
-
   /** A die stuck on another for [steps] steps, then down and clean. */
-
   private fun inTroubleFor(steps: Int): FakeWorld.States =
     FakeWorld.States { step, _, rethrows ->
       if (rethrows == 0 && step < steps) {
@@ -531,16 +446,17 @@ class RollLoopTest {
   }
 
   @Test
-  fun `a die that ends standing on another is counted, whatever the ladder tried`() {
-    // A die that comes down on another one every time is thrown again for ever
-    // rather than being left standing on it — so the run gives up instead of
-    // reporting a die at rest on another die, which was the failure Step 5.5
-    // asks the harness to count.
+  fun `a die that ends standing on another is counted as stacked, and as unread`() {
+    // The figure Step 5.5 asks the harness to keep at zero is about the dice a
+    // roll *ends* with. A throw that leaves one standing on another has not
+    // ended the roll — the player's shake throws it next — so it says so in
+    // both places: stacked, because it is, and unread, because that is why.
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
 
-    assertThrows(IllegalStateException::class.java) { loop(listOf(StandardDice.d6), world).run() }
+    val outcome = loop(listOf(StandardDice.d6), world).run()
 
-    assertTrue("the die was left where it fell", world.respawns.size > OLD_BUDGET)
+    assertEquals(1, outcome.stackedAtRest)
+    assertEquals(listOf(0), outcome.unread)
   }
 
   private fun loop(
@@ -553,7 +469,6 @@ class RollLoopTest {
     return RollLoop(
       spec = spec,
       world = world,
-      layout = SpawnLayout(geometry, RADIUS_MM, spec.seed),
       shake = ShakeDriver(spec.shake),
     )
   }
@@ -579,11 +494,6 @@ class RollLoopTest {
     )
 
   private companion object {
-    /** The three re-throws a die used to be rationed. */
-    const val OLD_BUDGET = 3
-
-    const val RADIUS_MM = 8.0
-
     /** A shake that outlasts the settle rule several times over. */
     const val SHAKE_STEPS = 200
 

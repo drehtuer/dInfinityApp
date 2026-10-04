@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.core.notation
 
+import de.drehtuer.dinfinity.fixtures.StandardDice
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -77,6 +78,20 @@ class NotationReferenceTest {
     assertEquals("20", quoted["Explosions in a row"])
     assertEquals("8", quoted["Brackets inside brackets"])
     assertEquals("60", quoted["Characters in a label"])
+    assertEquals("40", quoted["Characters in a braced id"])
+  }
+
+  @Test
+  fun `the braced example names a die by its id and rolls against the bundled set`() {
+    // The screen puts it in the field, so it has to throw with nothing but
+    // the bundled dice installed — which is why it names the bundled d6 and
+    // not a skull.
+    val braced = NotationReference.entries.single { it.syntax == "{…}" }
+    val node = parsed(braced.example).diceNodes.single()
+    val catalog = DiceCatalog.of(listOf(StandardDice.set()))
+
+    assertTrue(node.sides is Sides.Named, "'${braced.example}' does not use braces")
+    assertTrue(RollPlanner.plan(braced.example, catalog) is PlanResult.Planned)
   }
 
   @Test

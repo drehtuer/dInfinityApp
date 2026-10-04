@@ -16,8 +16,8 @@ import org.junit.Test
  * The rule is *what would resolve*, because the designer's row lists dice by
  * id across every installed set and so has no answer to "which set is this
  * one". A bare `1d20` when the default set has one; the set named when it does
- * not and another set does; and nothing at all for a die plain notation cannot
- * name.
+ * not and another set does; a set's own die braced; and nothing at all for a
+ * die no installed set has.
  */
 class SpellingOfTest {
   private val builtin = BuiltinDiceSet.set
@@ -63,13 +63,20 @@ class SpellingOfTest {
   }
 
   @Test
-  fun `a set's own die has no spelling a formula could carry`() {
-    // Plain notation names `dN`, `d%` and `dF` and nothing else
-    // (`docs/architecture.md`, decision 31), so Roll it is not offered for a
-    // `skull-d6` rather than offered and broken.
+  fun `a set's own die is written braced, naming its set inside the braces`() {
+    // Plain notation has no spelling for `skull-d6`; braced notation does
+    // (`docs/architecture.md`, decision 75), and it is the one the picker row
+    // writes, so Roll it and a tap on the row agree.
     val catalogue = DiceCatalog.of(listOf(builtin, brass))
 
-    assertNull(spellingOf(die("skull-d6", brass), catalogue))
+    assertEquals("1{brass:skull-d6}", spellingOf(die("skull-d6", brass), catalogue))
+  }
+
+  @Test
+  fun `and with no set named when it is the default set's own`() {
+    val catalogue = DiceCatalog.of(listOf(builtin, brass), defaultSetId = "brass")
+
+    assertEquals("1{skull-d6}", spellingOf(die("skull-d6", brass), catalogue))
   }
 
   @Test

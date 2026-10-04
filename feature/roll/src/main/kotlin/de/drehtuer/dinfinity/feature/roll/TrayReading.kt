@@ -39,6 +39,14 @@ internal sealed interface TrayReading {
   ) : TrayReading
 
   /**
+   * Down, and some of them cannot be read: cocked, or on another die. They
+   * are lying where they landed, waiting for the shake that throws them again.
+   */
+  data class ThrowAgain(
+    val dice: Int,
+  ) : TrayReading
+
+  /**
    * The roll gave up and these dice are still on the table, unread, waiting to
    * be thrown again.
    */
@@ -65,6 +73,7 @@ internal sealed interface TrayReading {
         is RollState.Ready -> Ready(state.diceCount)
         is RollState.Rolling -> Rolling(state.diceCount)
         is RollState.ShakeAgain -> ShakeAgain(state.diceCount)
+        is RollState.ThrowAgain -> ThrowAgain(state.unread)
         is RollState.Stalled -> Stalled(state.unsettled)
         is RollState.Settled -> Settled(state.result.total)
       }

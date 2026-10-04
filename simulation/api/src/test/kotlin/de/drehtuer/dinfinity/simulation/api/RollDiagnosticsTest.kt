@@ -39,7 +39,7 @@ class RollDiagnosticsTest {
   fun `a forced settle or a post-rest correction is not clean`() {
     assertFalse(RollDiagnostics(forcedSettles = 1).clean)
     assertFalse(RollDiagnostics(postRestCorrections = 1).clean)
-    assertTrue(RollDiagnostics(corrections = 9, rethrows = 3).clean)
+    assertTrue(RollDiagnostics(corrections = 9, waiting = 3).clean)
   }
 
   @Test
@@ -90,7 +90,7 @@ class RollDiagnosticsTest {
         steps = 11,
         dice = listOf(die(0, stillFor = 3, supportedByDie = true)),
         corrections = 4,
-        rethrows = 2,
+        waiting = 2,
         forcedSettles = 1,
         postRestCorrections = 1,
         contacts = listOf(contact(stepIndex = 9, dieIndex = 0, strength = 0.25)),
@@ -98,7 +98,7 @@ class RollDiagnosticsTest {
 
     assertEquals(11, diagnostics.steps)
     assertEquals(4, diagnostics.corrections)
-    assertEquals(2, diagnostics.rethrows)
+    assertEquals(2, diagnostics.waiting)
     assertEquals(1, diagnostics.forcedSettles)
     assertEquals(1, diagnostics.postRestCorrections)
     assertFalse(diagnostics.clean)
@@ -113,7 +113,6 @@ class RollDiagnosticsTest {
     assertFalse(die.touchingWall)
     assertTrue(die.supportedByDie)
     assertFalse(die.countedOut)
-    assertEquals(0, die.rethrows)
 
     val hit = diagnostics.contacts.single()
     assertEquals(9, hit.stepIndex)
@@ -124,7 +123,7 @@ class RollDiagnosticsTest {
   }
 
   @Test
-  fun `a die that has been counted and lifted off says so, which is what the overlay draws`() {
+  fun `a die that has been counted says so, which is what the overlay draws`() {
     val helped =
       DieDiagnostic(
         index = 1,
@@ -135,13 +134,11 @@ class RollDiagnosticsTest {
         touchingFloor = true,
         touchingWall = true,
         countedOut = true,
-        rethrows = 2,
       )
 
     assertTrue(helped.countedOut)
     assertTrue(helped.touchingFloor)
     assertTrue(helped.touchingWall)
-    assertEquals(2, helped.rethrows)
     assertEquals(1, helped.index)
   }
 
@@ -159,6 +156,25 @@ class RollDiagnosticsTest {
     assertTrue(watch.watching)
     watch.saw(RollDiagnostics(steps = 7))
     assertEquals(listOf(7), seen.map(RollDiagnostics::steps))
+  }
+
+  @Test
+  fun `a watcher that does not time frames takes a frame time without complaint`() {
+    // The frame-rate readout is the relay's; every other watcher — the
+    // default one included — has no use for a frame time and must not have to
+    // write out that it ignores one (decision 72).
+    DebugWatch.NONE.framed(16_666_667L)
+    val seen = mutableListOf<RollDiagnostics>()
+    DebugWatch { seen += it }.framed(16_666_667L)
+    assertTrue(seen.isEmpty())
+  }
+
+  @Test
+  fun `a snapshot says how many steps its frames were too late to pay for`() {
+    assertEquals(0, RollDiagnostics.NONE.droppedSteps)
+    assertEquals(116, RollDiagnostics(droppedSteps = 116).droppedSteps)
+    // Dropped steps are a count; a negative one is a bug in whoever built it.
+    assertThrows { RollDiagnostics(droppedSteps = -1) }
   }
 
   private fun die(

@@ -66,7 +66,7 @@ metallic = 0.0
 size_mm = 16                     # clamped to 8..40
 density = 1.2                    # g/cm³, clamped to 0.5..8
 translucency = 0                 # %, 0 solid .. 100 glass, clamped
-restitution = 0.3                # clamped to 0.0..0.8
+restitution = 0.55               # clamped to 0.0..0.8
 friction = 0.5                   # clamped to 0.1..1.0
 
 # --- dice -----------------------------------------------------------
@@ -97,7 +97,7 @@ faces = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90]
 labels = ["00","10","20","30","40","50","60","70","80","90"]
 
 [[die]]
-id = "skull-d6"                  # any id; reached from the dice picker
+id = "skull-d6"                  # any id; written 3{skull-d6} or tapped in the picker
 shape = "cube"
 faces = [1, 2, 3, 4, 5, 6]
 labels = ["💀", "2", "3", "4", "5", "6"]   # what is printed if no texture
@@ -125,11 +125,11 @@ sound = "felt"
 | Field | Required | Notes |
 | --- | --- | --- |
 | `format` | yes | Integer. The app refuses formats newer than it knows. |
-| `set.id` | yes | Slug of 3–40 characters (`[a-z0-9-]`, starting and ending with a letter or digit). Used as the `setref` in notation and as the folder name, which is why it has a floor. Notation only reads a `setref` that starts with a letter (`docs/dice-notation.md`), so a set whose id starts with a digit installs and rolls from the picker but cannot be named in a typed formula. |
+| `set.id` | yes | Slug of 3–40 characters (`[a-z0-9-]`, starting and ending with a letter or digit). Used as the `setref` in notation and as the folder name, which is why it has a floor. Notation only reads a `setref` that starts with a letter (`docs/dice-notation.md`), so a set whose id starts with a digit installs and rolls from the picker, and a typed formula names it only inside braces, `{3dice:d6}`. |
 | `set.name`, `set.version` | yes | |
 | `set.author`, `license`, `description`, `homepage` | no | Displayed only; nothing in the app enforces a licence. `license` is an SPDX identifier by convention — see "What a licence means". `homepage` is shown as text, opened only on explicit tap, `https` only. |
 | `defaults.*` | no | Material and physics defaults, all clamped. |
-| `die.id` | yes | Slug of 1–40 characters, unique within the set — shorter than a set id, because `d2`, `d4` and `d6` are the ids plain notation resolves. Standard names (`d2`, `d4`, `d6`, `d8`, `d10`, `d10-tens`, `d12`, `d18`, `d20`, `df`) are what typed notation resolves — there is no `d100` die, because `d100`/`d%` is always a `d10-tens` and `d10` pair (`docs/dice-notation.md`, "d100 and d%"), optionally set-qualified as `brass:2d20`. A die with any other id is rolled by tapping it in the dice picker — the grammar in `docs/dice-notation.md` has no unambiguous way to write `skull-d6kh1`, since a slug and a modifier are made of the same characters. |
+| `die.id` | yes | Slug of 1–40 characters, unique within the set — shorter than a set id, because `d2`, `d4` and `d6` are the ids plain notation resolves. Standard names (`d2`, `d4`, `d6`, `d8`, `d10`, `d10-tens`, `d12`, `d18`, `d20`, `df`) are what typed notation resolves — there is no `d100` die, because `d100`/`d%` is always a `d10-tens` and `d10` pair (`docs/dice-notation.md`, "d100 and d%"), optionally set-qualified as `brass:2d20`. A die with any other id is named in braces — `3{skull-d6}kh1`, or `3{brass:skull-d6}kh1` from a named set — because a slug and a modifier are made of the same characters and only the `}` says where the id ends; the dice picker offers it too and writes the braces for you (`docs/dice-notation.md`, "A set's own dice"). |
 | `die.shape` | yes | A name from the shape catalogue below. v1 has no other option. |
 | `die.faces` | yes | Integer values, one per face (or vertex). Length must match the shape. Range −9999..9999. Duplicates allowed (a d6 numbered 1–3 twice, say). |
 | `die.labels` | no | Strings printed on faces when no texture. Defaults to `faces` as text. Max 4 characters each. |

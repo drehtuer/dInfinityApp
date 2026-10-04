@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.render.headless.BodyTransform
 import de.drehtuer.dinfinity.render.headless.RenderFrame
+import de.drehtuer.dinfinity.simulation.api.BoardDrops
 import de.drehtuer.dinfinity.simulation.api.BoardRequest
 import de.drehtuer.dinfinity.simulation.api.BoardTrack
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
@@ -348,11 +349,12 @@ class TrayRendererTest {
     assertEquals("dice were drawn before their drop had been worked out", added, stage.added.size)
     assertTrue(renderer.settled(request.number, boards.settle(request)))
     assertTrue("no dice were put on the table", stage.added.size > added)
+    renderer.fall(A_WHOLE_FALL)
     assertEquals("the waiting dice were not drawn anywhere", DICE, stage.placed.size)
   }
 
   @Test
-  fun `waiting dice are let go so that none of them overlaps`() {
+  fun `dice added together are let go one after another, and a die waiting its turn is not drawn`() {
     val stage = FakeStage()
     val renderer = TrayRenderer()
     renderer.stage(stage)
@@ -360,8 +362,58 @@ class TrayRendererTest {
 
     renderer.drop(spec())
 
-    val where = stage.placed.values.map { it[TRANSLATION_X] to it[TRANSLATION_Y] }
-    assertEquals("two waiting dice were drawn in the same place", where.size, where.distinct().size)
+    assertEquals("more than the first die was let go at once", setOf(FIRST_DIE), stage.placed.keys)
+    renderer.fall((BoardDrops.DROP_INTERVAL_STEPS + HALF) * SettleRule.TIMESTEP_SECONDS)
+    assertEquals(setOf(FIRST_DIE, FIRST_DIE + 1), stage.placed.keys)
+    assertEquals(listOf(FIRST_DIE + 1), stage.put)
+  }
+
+  @Test
+  fun `a die still waiting its turn when the next is tapped is let go again, over the same spot`() {
+    // Taps in quick succession: the board on screen is snapshotted and
+    // simulated again. A die not yet let go is not on screen, so it is not
+    // carried over — it is new again, and so is the die just tapped, and both
+    // leave the spot one after another.
+    val renderer = TrayRenderer()
+    renderer.stage(FakeStage())
+    renderer.table(geometry, look)
+    renderer.drop(spec())
+    renderer.fall(PART_OF_A_FALL)
+
+    val next = requireNotNull(renderer.waiting(spec(dice = DICE + 1)))
+
+    val interval = BoardDrops.DROP_INTERVAL_STEPS
+    assertEquals(listOf(null, 0, interval, 2 * interval), next.bodies.map { it.dropStep })
+    next.bodies.drop(1).forEach { body ->
+      val at = body.placement.position
+      assertTrue(
+        "a die was let go away from the spot, at $at",
+        Vector3(at.x, at.y, 0.0).length <= BoardDrops.SPOT_JITTER_MM + DRAWN_MM,
+      )
+    }
+  }
+
+  @Test
+  fun `every waiting die is first drawn over the one spot`() {
+    // So the eye can follow them: the first frame each die is drawn in is
+    // the frame it leaves the spot.
+    val stage = FakeStage()
+    val renderer = TrayRenderer()
+    renderer.stage(stage)
+    renderer.table(geometry, look)
+    renderer.drop(spec())
+
+    val firstSeen = mutableMapOf<Int, FloatArray>()
+    repeat(DICE * BoardDrops.DROP_INTERVAL_STEPS) {
+      stage.placed.forEach { (entity, matrix) -> firstSeen.getOrPut(entity) { matrix.copyOf() } }
+      renderer.fall(SettleRule.TIMESTEP_SECONDS)
+    }
+
+    assertEquals(DICE, firstSeen.size)
+    firstSeen.values.forEach { matrix ->
+      val across = Vector3(matrix[TRANSLATION_X].toDouble(), matrix[TRANSLATION_Y].toDouble(), 0.0).length
+      assertTrue("a die was first drawn $across mm off the spot", across <= BoardDrops.SPOT_JITTER_MM + DRAWN_MM)
+    }
   }
 
   @Test
@@ -400,6 +452,7 @@ class TrayRendererTest {
     val renderer = TrayRenderer()
     renderer.table(geometry, look)
     renderer.drop(spec())
+    renderer.fall(A_WHOLE_FALL)
 
     val stage = FakeStage()
     renderer.stage(stage)
@@ -532,6 +585,7 @@ class TrayRendererTest {
     assertFalse("a stale drop was drawn", renderer.settled(first.number, boards.settle(first)))
     assertEquals(0, stage.placed.size)
     assertTrue(renderer.settled(second.number, boards.settle(second)))
+    renderer.fall(A_WHOLE_FALL)
     assertEquals(2, stage.placed.size)
     assertFalse("the same drop was drawn twice", renderer.settled(second.number, boards.settle(second)))
   }
@@ -581,6 +635,7 @@ class TrayRendererTest {
     renderer.table(geometry, look)
 
     val request = renderer.drop(spec(dice = TableCapacity.MAX_DICE))
+    renderer.fall(BoardDrops.LONGEST_STREAM_SECONDS + A_WHOLE_FALL)
 
     assertEquals(TableCapacity.MAX_DICE, request.bodies.size)
     assertEquals(TableCapacity.MAX_DICE, stage.placed.size)
@@ -614,7 +669,9 @@ class TrayRendererTest {
     val stage = FakeStage()
     renderer.stage(stage)
 
-    assertEquals("the falling dice did not follow the surface", DICE, stage.placed.size)
+    // Only the first die has been let go by then; the others are still
+    // waiting their turn, and are not drawn anywhere.
+    assertEquals("the falling dice did not follow the surface", 1, stage.placed.size)
     assertTrue(
       "the dice were put back on the table rather than where they were",
       stage.placed.values.any { it[TRANSLATION_Z] > OFF_THE_TABLE_MM },
@@ -744,6 +801,9 @@ class TrayRendererTest {
 
     /** A moment half way between the first and second recorded steps. */
     const val STEP_AND_A_HALF = 1.5
+
+    /** Half a step, so a moment is never on the boundary between two. */
+    const val HALF = 0.5
 
     /** How closely a drawn position, a float, matches the arithmetic. */
     const val DRAWN_MM = 1e-3

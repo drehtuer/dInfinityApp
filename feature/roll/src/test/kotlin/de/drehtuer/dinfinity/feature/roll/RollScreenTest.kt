@@ -14,6 +14,7 @@ import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithTag
@@ -446,6 +447,65 @@ class RollScreenTest {
 
     compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
     assertEquals(1, seen.size)
+  }
+
+  @Test
+  fun `a shake while the welcome is up is not heard, so nothing lands behind it`() {
+    // A formula can reach the tray while the welcome covers it — a saved roll
+    // opened on the way back from an import. A shake then used to throw it and
+    // draw the breakdown under the welcome's buttons (`docs/architecture.md`,
+    // decision 74).
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        firstLaunch = true,
+        openWith = "1d20",
+      )
+    }
+
+    assertFalse("a screen under the welcome is listening for a shake", compose.runOnIdle { shaking.hand.heard })
+    assertFalse("a shake under the welcome threw", shake())
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertIsDisplayed()
+    compose.onNodeWithTag(RollTestTags.ROLLING).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
+  }
+
+  @Test
+  fun `pressing past the welcome finds the formula waiting, and the next shake throws it`() {
+    compose.setContent {
+      RollScreen(
+        presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))),
+        firstLaunch = true,
+        openWith = "1d20",
+      )
+    }
+    shake()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
+
+    assertTrue("the tray is not listening once the welcome has gone", compose.runOnIdle { shaking.hand.heard })
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertDoesNotExist()
+    theFormula().assertTextContains("1d20")
+    assertTrue("the first shake after the welcome threw nothing", shake())
+    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
+  }
+
+  @Test
+  fun `a welcome pressed past stays gone across a rotation, and the tray still hears the hand`() {
+    // Whether it has been pressed past is saved state, and it is what decides
+    // whether a recreated screen listens: a rotation that brought the welcome
+    // back, or came back deaf, would both read as broken.
+    val restore = StateRestorationTester(compose)
+    restore.setContent {
+      RollScreen(presenter = presenter(DirectTray(), LandingRolls(mapOf(0 to 0))), firstLaunch = true)
+    }
+    assertFalse(compose.runOnIdle { shaking.hand.heard })
+    compose.onNodeWithTag(RollTestTags.WELCOME_DISMISS).performClick()
+
+    restore.emulateSavedInstanceStateRestore()
+
+    compose.onNodeWithTag(RollTestTags.WELCOME).assertDoesNotExist()
+    assertTrue("a restored tray is not listening for a shake", compose.runOnIdle { shaking.hand.heard })
   }
 
   @Test

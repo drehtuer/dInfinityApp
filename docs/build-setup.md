@@ -444,6 +444,19 @@ Both tiers pass that, including the frame arriving, so the emulator's
 software backend *can* deliver to a real surface. Its limitation below is
 specific to reading a headless swap chain back.
 
+One question about the picture it *can* answer: **are the printed numbers the
+right way round** (`PrintedNumbersDeviceTest`). A face is turned square to the
+camera with its texture-up as the camera's up, the frame is read back, and on
+each axis separately the ink has to lean the way `DieNumbers.fieldOf` says it
+leans — left-right catches a reflection in `u`, top-bottom one in `v`, which a
+photograph of a landed die cannot tell apart. The d6, the d20 and the d4 are
+asked; two controls draw a deliberately reflected field and must fail exactly
+the question their reflection belongs to. Underneath it, the frame's own
+orientation is asked with geometry alone — a die set off towards the camera's
+up and right has to come back in the top right — because a readback the wrong
+way up is itself a `v` reflection, and was one: `FilamentStage.capture` turned
+the rows over a second time and every table thumbnail was upside down.
+
 What none of it can say is whether the picture is any *good*. Nothing automated
 can. That is Step 5.6, and it needs a screen and a person.
 
@@ -626,6 +639,29 @@ the stopwatch. The document records both what was asked for and how far it got,
 so a soak reads as "five minutes, 143 throws". Its files are labelled
 `20d20-soak` unless `-l` says otherwise, so a soak does not overwrite the
 counted run beside it.
+
+### The hand the harness does not have
+
+On the phone a throw that leaves dice cocked or standing on another **stops
+and waits for the player's shake**, which throws those dice and only those
+([physics-and-rendering.md](physics-and-rendering.md), "Avoiding stacked and
+cocked dice"; decision 70). A headless run has nobody to shake, so it is a
+scripted hand: each pass that leaves dice unread is followed at once by the
+throw of those dice, with no shake in it — the same passes and seeds the
+screen makes, minus the wait (`Passes.scripted`, through
+`JoltDiceSimulator.run`, and the same for a `--frames` run). So a row is still
+a whole roll, and the figures keep their meaning:
+
+- **dice re-thrown** is still the share of dice that needed another throw —
+  counted per die, per pass — which is now the share of dice a player would
+  have had to shake for;
+- **settle time** adds the passes together, so it is the simulated time a
+  roll's dice spent moving; the waits between passes, which are the player's,
+  are not in it;
+- **dice at rest on another die** counts the last pass, where nothing may be
+  left standing;
+- **rolls that gave up** includes a roll whose dice still could not all be read
+  after sixteen passes, which a hand on the phone would go on shaking for.
 
 ### Frame times, and what a headless run may not claim
 

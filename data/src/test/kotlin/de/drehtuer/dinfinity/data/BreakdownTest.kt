@@ -29,6 +29,29 @@ class BreakdownTest {
   }
 
   @Test
+  fun `a braced group keeps its braces, and the set it named`() {
+    // The heading a history entry draws is the notation as written, so
+    // `3{brass:skull-d6}kh1` has to come back as exactly that
+    // (`docs/dice-notation.md`, "A set's own dice").
+    val group =
+      RolledGroup(
+        id = 0,
+        notation = "3{brass:skull-d6}kh1",
+        setId = "brass",
+        requestedSetId = "brass",
+        subtotal = 6,
+        dice = listOf(RolledDie(instanceIndex = 0, dieId = "skull-d6", value = 6, label = "☠")),
+      )
+    val result = RollResult(formula = "3{brass:skull-d6}kh1 + 1", total = 7, groups = listOf(group))
+
+    val read = Breakdown.read(Breakdown.of(result)).groups.single()
+
+    assertEquals("3{brass:skull-d6}kh1", read.notation)
+    assertEquals("brass", read.setId)
+    assertEquals("skull-d6", read.dice.single().dieId)
+  }
+
+  @Test
   fun `a dropped die is kept, not hidden — a player wants to see the 1`() {
     val read = Breakdown.read(Breakdown.of(fourD6DropLowest())).groups.single()
 

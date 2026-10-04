@@ -423,6 +423,7 @@ stateDiagram-v2
     Ready: Ready<br/>diceCount, scale
     Rolling: Rolling<br/>dice in the air
     ShakeAgain: ShakeAgain<br/>a chain earned throws
+    ThrowAgain: ThrowAgain<br/>dice nobody could read
     Stalled: Stalled<br/>dice that never stopped
     Settled: Settled<br/>result, divides
 
@@ -444,6 +445,7 @@ stateDiagram-v2
 
     Rolling --> Rolling: an explosion or a reroll adds a die<br/>(thrown once the last has landed)
     Rolling --> ShakeAgain: a chain earned a throw
+    Rolling --> ThrowAgain: dice came to rest cocked or stacked
     Rolling --> Stalled: the roll gave up on some dice
     Rolling --> Settled: the last die comes to rest
     Rolling --> Ready: type<br/>(abandons the throw)
@@ -453,6 +455,8 @@ stateDiagram-v2
 
     ShakeAgain --> Rolling: a shake<br/>(throws the dice it earned)
     ShakeAgain --> Ready: type<br/>(abandons the roll)
+    ThrowAgain --> Rolling: a shake<br/>(throws only the unread dice)
+    ThrowAgain --> Ready: type<br/>(abandons the roll)
     Stalled --> Rolling: a shake<br/>(throws the ones that never stopped)
     Stalled --> Ready: Cancel the roll, or type
 
@@ -472,6 +476,19 @@ screen goes on saying "Rolling…" while each added die is dropped into the tray
 among the dice that set it off (`docs/physics-and-rendering.md`, "The dice an
 explosion or a reroll adds"). Every one of those throws is an ordinary throw
 down the ordinary path; there is no second way to get a number.
+
+**`ThrowAgain` comes before `ShakeAgain`, never beside it.** A throw that
+leaves dice it cannot read — cocked, or standing on another die — stops and
+asks for a shake rather than throwing them again itself (decision 70). Its
+dice are scored only once every one of them has a face, and a chain earns its
+next die only when a throw is scored, so the two waits cannot be owed at once:
+the unread dice are thrown first, and the chain asks for the shake after. The
+bookkeeping is `simulation/api`'s `Passes` — which die of the throw each die of
+a later pass is, the throw a shake makes for the unread ones, and the one
+outcome they add up to — and the machine keeps one per throw, so a die a chain
+added that lands cocked comes back as the chain's. A throw that gave up waits
+in the same way (`Stalled`) and is thrown by the same call; only the words
+differ.
 
 **A die falling onto the board is not a state.** Adding a die to the formula
 drops one onto the table and it tumbles to a stop under real physics, which
@@ -508,6 +525,7 @@ file.
 | `Ready` | — | that a shake rolls, and what the throw is expected to come to | — | **throws the formula** | live |
 | `Rolling` | — | how many dice have been read, and the range they can still come to | — | joins the roll in the air | live |
 | `ShakeAgain` | — | how many dice the chain earned, and what is still to come | — | **throws them** | live |
+| `ThrowAgain` | — | how many dice landed where they cannot be read, how many were read, and what is still to come | — | **throws those again, and only those** | live |
 | `Stalled` | — | how many never stopped, what is still to come, and `Cancel the roll` | — | **throws them again** | live |
 | `Settled` | the total, in the sheet's grip | — | the grip carries the total and what the throw was expected to come to; the body carries the breakdown and rounding if the formula divides | **throws the formula again** | live |
 
@@ -533,6 +551,15 @@ teaching the one thing this app does not do. There is no demonstration path
 and no canned number. That it has been seen is remembered on disk, and
 also in the composition, so the screen changes when the button is pressed
 rather than when a write comes back.
+
+**While it is up, the tray does not listen for a shake** (decision 74). It
+covers the whole tray, so a roll started under it would be dice nobody saw
+land and a result sheet drawn under its buttons. Whether it has been pressed
+past is therefore held by `RollScreen` (`rememberWelcome`) rather than by the welcome, because it
+decides two things: whether the welcome is drawn, and whether `ShakeToRoll`
+registers a hand. A formula that arrives while it is up is typed and waits;
+pressing past it leaves an ordinary `Empty` or `Ready` tray with the hand
+registered, and the next shake throws.
 
 Two of the four go and fetch something — saved rolls from a file or a link,
 dice sets from either — and **neither dismisses it**: coming back to a tray
@@ -815,6 +842,17 @@ would be the screen arguing with the player. What a reorder *comes to* is
 dragged and where the finger is, to the list to draw. The gesture and the
 drawing are the screen's, and the row that moves is the one under the pointer
 rather than the one the drag began on.
+
+**A row held near an edge scrolls the list.** How fast is `SavedEdgeScroll`,
+plain Kotlin again: where the finger is, where the drag began, the list's
+visible height and the band size, to a speed; and a speed and a frame's length
+to a distance. The screen runs one effect per drag that sleeps on a
+`snapshotFlow` until the finger is in a band, then scrolls by that distance
+once a frame and moves the dragged row to whatever is now under the finger.
+Every move pins the scroll position by *index* (`requestScrollToItem`, issued
+after the move is composed and before it is measured): left to itself a lazy
+list keeps its first row's key in place, and when that row is the dragged one
+the list would follow it out of sight and end the gesture.
 
 **The list is its own scroll box.** The title bar, the group switcher and the
 line above the list stay where they are; only the rolls move. A list that
@@ -1265,6 +1303,13 @@ A value that has never come up is a bar of zero rather than a gap: *"this d20
 has never rolled a 20"* is the single most interesting thing a histogram can
 say, and a missing bar does not say it.
 
+**A bar is named by the die's label, looked up when it is drawn** (decision 73).
+`FaceLabels` (`core/stats`) maps each value to the one label the installed die
+prints it with; `DieRow` carries it and `DieDetail.labelOf` is what the bars
+and the natural-high and natural-low tiles ask. A value printed two ways, a
+value of a die whose set is gone, and a value two pooled sets print
+differently all fall back to the number (`Face.printed`).
+
 | Control | Calls | What changes |
 | --- | --- | --- |
 | a die in the list | `select` | that die opens, and its face counts start being watched |
@@ -1371,7 +1416,7 @@ thing a test can see, and one does.
 | the sound switch | `onSoundChanged` | whether a die landing makes a noise, on the same terms. Which noise is the table's (`docs/tables.md`) |
 | Down / Nearest / Up | `onRoundingSelected` | which way division rounds on the next throw, and on every outcome graph. The per-throw override on the result sheet is still not remembered |
 | the power-saving switch | `onPowerSavingChanged` | whether the next visit to the roll screen draws the dice at all |
-| the developer-tools switch | `onDeveloperToolsChanged` | whether the menu offers the **Developer** screen, at once, and whether the next visit to the roll screen draws the debug overlay. Off on every install, and it changes nothing else: the history still has no replay and still never shows a seed (decisions 13 and 53) |
+| the developer-tools switch | `onDeveloperToolsChanged` | whether the menu offers the **Developer** screen, at once, and whether the next visit to the roll screen draws the debug overlay, with its frame rate and dropped steps (decision 72). Off on every install, and it changes nothing else: the history still has no replay and still never shows a seed (decisions 13 and 53) |
 | **Source code and issues** | `onRepository` | a browser. The app's only outward link |
 | *(not a control)* the first-launch screen | `onWelcomeSeen` | that it has been seen, so it is shown once |
 | the menu button, on every screen | `navigate(Menu)` | which screen is on |
@@ -1523,7 +1568,7 @@ ordinary one.
 | --- | --- | --- |
 | the result sheet | a natural maximum in the accent, a dropped die struck through | "18, highest face", "1, dropped" |
 | the outcome graph | the rolled total marked in the accent | the chart's own description, and the line under it that names the total |
-| the statistics histogram | the observed bar over the fair line | "Face 2 came up 3 times, 75.0 %; a fair die, 50.0 %" |
+| the statistics histogram | the observed bar over the fair line | "Face 2 came up 3 times, 75.0 %; a fair die, 50.0 %" — the face by the die's own label, a blank one as "blank" |
 | the saved-roll chart | the exact distribution in the error colour across the ink bars | how many totals, their range, and how many ran ahead of the distribution |
 | the history | a total with a natural maximum in the accent | "20, with a natural maximum"; the dropped line says it is dropped |
 | the cuts, orders and table rows | the chosen one in the accent and in bold | `selected` in the semantics tree |
@@ -1764,7 +1809,9 @@ flowchart TD
     C -->|fits| T["ThrowSpec<br/>dice, dieScale, seed, table,<br/>initial impulse (shake or default)"]
     T -->|"DiceSimulator.start / run"| L["LiveRoll<br/>one fixed step at a time"]
     L -->|"every step, while shaking"| L
-    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows,<br/>where each die came to rest"]
+    L --> S["SimulationOutcome<br/>per-die face index, steps, rethrows,<br/>where each die came to rest,<br/>the dice it could not read"]
+    S -->|"dice left unread:<br/>wait for a shake"| U["Passes.next<br/>only those dice, a seed of their own,<br/>among: the dice already down"]
+    U -->|"thrown by the next shake"| L
     L --> D["drivenBy<br/>the shake as it actually arrived"]
     L -.->|body transforms, optional| V[Renderer]
     L -.->|"impacts, optional"| I["Impacts<br/>ticks and sounds, now or over ~1 s"]
@@ -1789,6 +1836,16 @@ method that returns anything and `Impacts` has none either, so drawing a roll
 and hearing one are alike in being unable to change it (decisions 48 and 52).
 The impacts are recorded only when something is going to play them, which is
 what the two feedback settings decide when the screen opens.
+
+The loop through `Passes.next` is a throw that left dice it could not read.
+The throw stops and the roll waits on the screen's thread for a shake — no
+world is open and no step is taken while it waits, so the twelve-second
+backstop is a pass's and a roll can wait as long as the player likes. The
+shake throws the unread dice, and only those, through the same `Rolls.start`
+every throw takes; the dice the last pass read are lifted by that throw rather
+than drawn among it. Headless callers have no shake to wait for, so
+`JoltDiceSimulator.run` follows each such pass with the next at once
+(`Passes.scripted`) — the same passes and seeds, minus the wait (decision 70).
 
 The loop through `One more ThrowSpec` is an explosion or a reroll. A roll is
 not always one throw, and how many it is cannot be known before the dice land,
@@ -1820,6 +1877,11 @@ to re-run (decision 13).
   the 120 Hz fixed timestep, off its own `Choreographer`, and draws each frame
   where it stands (`render/filament`'s `TrayDriver`). One thread rather than
   two, which is a change from the original design (decision 49).
+- **The debug overlay crosses on its own relay** (`DebugRelay`), and only
+  while the developer toggle is on. Snapshots are built on the roll thread and
+  posted to the main one each frame; the frame times are summed up there too
+  (`FrameMeter`, the visit's dropped steps in `DroppedTally`) and a frame-rate
+  reading is posted every 30 frames (decision 72).
 - **Sensors arrive on the main thread.** There is no sensor thread:
   `SensorShakeSource` registers with `SensorManager` without a `Handler`, from
   the roll screen's `LifecycleResumeEffect` (`ShakeToRoll`, through
@@ -1918,7 +1980,7 @@ the archives an install is working through, and those came from a stranger.
 | 15 | Saved-roll import refuses a duplicate group name instead of merging | No conflict UI to get wrong, and an import can never damage existing rolls |
 | 16 | Power-saving is manual only | A roll that silently stops rendering because the battery dipped is a surprise |
 | 17 | `minSdk` 36, `compileSdk`/`targetSdk` 37 | Robolectric cannot start API 37 and cannot run below `minSdk`; a `minSdk` of 37 would cost the whole Robolectric test tier for one API level of reach |
-| 18 | Nothing touches a die at rest: prevention, then corrections while a die is still moving, then a visible re-throw of that one die | A settled die that twitches shows the player the result being arranged rather than rolled — worse than the stacked die it fixes. Re-throwing a cocked die is fair, and it is what a player does at a real table |
+| 18 | Nothing touches a die at rest: prevention, then corrections while a die is still moving, then a visible re-throw of that one die (made by the player's shake since decision 70) | A settled die that twitches shows the player the result being arranged rather than rolled — worse than the stacked die it fixes. Re-throwing a cocked die is fair, and it is what a player does at a real table |
 | 19 | The verdict on an instrumented run comes from its JUnit XML, not from AGP's own pass/fail | AGP 9.4.0 cannot pass a run on a device whose adb serial contains a colon — which is every device attached over WiFi debugging — so its verdict is unusable here (`docs/build-setup.md`) |
 | 20 | Release APKs are signed v2+v3, not v1 or v4 | v3 carries the proof-of-rotation record, so a lost or compromised release key can be replaced without breaking updates for anyone who already installed the app; v1 is unread above API 24 and v4 only speeds up incremental `adb install` |
 | 21 | The submitted dependency graph covers the runtime classpaths only | A graph of every configuration also carries the build's own toolchain, producing vulnerability alerts for transitives no file in this repository declares and that Dependabot therefore cannot patch; build-tool advisories ride in on the weekly AGP and Kotlin bumps instead |
@@ -1931,7 +1993,7 @@ the archives an install is working through, and those came from a stranger.
 | 28 | Every dependency is pinned by SHA-256, not only by version | A version says which artifact was asked for; a checksum says which one arrived. The app installs downloaded dice sets, so a build that cannot tell the difference is the wrong foundation for one that must. The cost is that a dependency bump has to regenerate the metadata (`docs/build-setup.md`) |
 | 29 | A release is refused unless the APK carries the expected certificate fingerprint | A signature that verifies is not the same as *our* signature. Without `keystore.properties` the build produces an unsigned APK rather than failing, and an APK signed with the debug key or a regenerated one installs as a different app and can never update anyone — a mistake that cannot be taken back once published (`SECURITY.md`) |
 | 30 | Only one JaCoCo report is written at a time | JaCoCo's HTML formatter copies its static resources out of a jar reached through the class loader, and two reports running at once in the same daemon share that open archive — the first to finish closes it under the other (`ZipException: ZipFile closed`). It failed a build on `main` with nothing changed to explain it. Writing a report is milliseconds, so serialising costs nothing worth measuring |
-| 31 | Typed notation names standard dice (`dN`, `d%`, `dF`), set-qualified or not; a set's own die ids are reached from the dice picker | A die id and a modifier are made of the same characters, so `brass:skull-d6kh1` has no unambiguous reading — the parser would have to ask the installed sets where the id ends, and the formula field re-validates on every keystroke on a thread that has never seen storage. Picked dice build the same `RollPlan` as typed ones, so nothing else in the app knows the difference (`docs/dice-sets.md`) |
+| 31 | Typed notation names standard dice (`dN`, `d%`, `dF`), set-qualified or not; a set's own die ids are reached from the dice picker. **Extended by 75:** a set's own die is typed in braces, `3{brass:skull-d6}kh1` | A die id and a modifier are made of the same characters, so `brass:skull-d6kh1` has no unambiguous reading — the parser would have to ask the installed sets where the id ends, and the formula field re-validates on every keystroke on a thread that has never seen storage. Picked dice build the same `RollPlan` as typed ones, so nothing else in the app knows the difference (`docs/dice-sets.md`) |
 | 32 | Everything a roll can fail on that does not need dice is decided at plan time | A roll is watched. A formula that turns out mid-throw to divide by zero, keep four of two dice or explode for ever would have to fail with dice on the table and nothing to show. `ResultBounds` proves the 64-bit promise the same way, which is also what lets the evaluator add in plain `Long` with no overflow checks |
 | 33 | A dice set is parsed by tomlj and read field by field into plain data classes | Parsing TOML is the kind of thing that should not be hand-rolled, and this parser is the one that carries the line and column of every key — without which the validation report could not say `file:line` at all (`docs/dice-sets.md`). Its deserializer is never used: a downloaded file reaches a document tree and nothing else |
 | 34 | A texture's dimensions are read from its own header, in plain Kotlin, before any decoder sees it | Refusing a 30,000-pixel image is only safe if the refusal happens before the decode, because the decoder is the part with the attack surface. It also means `dicesets/format` stays a JVM module and can be tested without an emulator |
@@ -1969,3 +2031,11 @@ the archives an install is working through, and those came from a stranger.
 | 66 | **A shake is the only way to start a roll.** No key, no accessibility action, no tap and no setting to turn it off | The owner's call: "only a shake starts the roll, not a button or tap on the screen." Two non-shake throws had survived the Roll button — the formula editor's action key and the table's custom accessibility action, *Throw the dice* — and both are gone: the key says Done and only closes the editor, and the table keeps its spoken description and carries no action. A tap on the table, already inert, is recorded as **decided: no**, which leaves the one-finger touch free for picking a die up. The **Shake to roll** switch in Settings went with them, because with shake the only way in, switching the sensors off would leave an app that cannot roll; `AppSettings.shakeToRoll` is gone and an old install's `shake_to_roll` key is left on disk, unread. **The consequence is accepted, not overlooked:** a TalkBack user who cannot also shake the phone, and anybody else who cannot shake one, has no way to start a roll ("Accessibility"). Tests still need to shake, so `feature/roll`'s `ShakeInput` is where `ShakeToRoll` gets its shakes — the sensors in every build — and a test installs a `TestHand` there, which reaches the presenter by the same `onStarted → roll` and `onSample → shaking` calls the sensors make. It is process-wide because the device tests launch `MainActivity` as it ships and cannot hand a composable anything; nothing a player can reach sets it |
 | 67 | The dice waiting to be thrown drop under **real physics**, simulated once off the roll thread and played back; this supersedes decision 64 | The scripted fall of decision 64 still put every die in a laid-out spot, square on, and a player said what that looks like: dice set out with equal space, not dropped. Only a simulation makes a die come down somewhere, tumble and knock its neighbour. What decision 64 feared is kept out by structure instead of by refusing the engine: `BoardSettler` returns a `BoardTrack`, which is poses and nothing else, the board code never touches `FaceReader`, nothing on the board is scored, and the next shake throws every die from its own spawn exactly as before — so the golden fixture and every throw are unchanged. The board's numbers come from `Seeds.waiting(board, die)` under `Seeds.WAITING`, a purpose no throw uses. Each board change opens a short-lived headless Jolt world on a per-visit board thread, steps it to rest (or three seconds), records every pose and closes the world before returning, so no world outlives the call and none is shared with a roll; playback is arithmetic over the recording, frame-rate independent, and wants frames only while it plays. A board die nothing touched is recorded exactly where it stood, which is a drawing decision, not a force. The sequencing — numbered requests built from what is on screen, stale drops dropped, a throw cancelling the pending board — lives in `TrayLoop` and `TrayRenderer`, so it is tested on a JVM; the drop itself (`settleOn`) is plain Kotlin over `PhysicsWorld` and tested against a fake world, and the device suite measures what a real one does (`docs/physics-and-rendering.md`, "The dice waiting to be thrown") |
 | 68 | **A die picked up by hand is thrown by a shake.** A finger on a die only marks it picked; the next shake throws the picked dice, and nothing else, through `ThrowSpec.among` | The owner's call: "only the shake throws the die". A finger that threw would be the one throw no shake started, an exception to decision 66 in the one place a player is most tempted to throw on a whim. Picking with the finger keeps the gesture the camera leaves free (one finger, unclaimed) and keeps every throw a hand moving the phone; a shake with nothing picked throws the whole roll again, as it always has. How a picked die is drawn and how a pick is undone are left to the change that wires it (`docs/TODO.md`, 4.1) |
+| 69 | **Dice added to the board leave one spot, one after another.** Every new die is let go over the middle of the tray (`BoardDrops.DROP_SPOT`, within 1.5 mm), and several added at once are let go 0.1 s apart (`DROP_INTERVAL_SECONDS`, at most 4 s for the whole stream), inside the one precomputed board world: a die is a body from the start, parked under the tray until its step, then put over the spot once with `respawn` and drawn from that step on (`BoardTrack.inPlay`, `Stage.put`) | A player said random spots made the added dice hard to keep track of. One spot is what the eye can follow, and a stream from it spreads out by bouncing off what is already down, which is physics (decision 67). Parking rather than adding a body mid-run keeps the native bridge as it is — `nativeAddDie` before `nativeFinish`, `nativeRespawn` already there — so no bridge change needs a device to prove it; the drop stays one deterministic recording and the renderer keeps playing arithmetic over it. A column of dice stacked over the spot was the other cheap way to stagger arrivals, and the 200 mm lid would have cut it at a handful. Where a die starts is decided at its step against the dice in play then, in three dimensions, lifted over anything in the way — a die is never skipped, and only goes elsewhere (`CrowdedFloor.spot`) when the lift would reach the lid. The board's cap counts from the last die let go (`MOST_BOARD_STEPS`), and `LONGEST_STREAM_SECONDS` keeps a hundred dice from being a ten-second wait and a ten-second simulation before anything moves (`docs/physics-and-rendering.md`, "The dice waiting to be thrown") |
+| 70 | **Dice that cannot be read wait for the player's shake.** A throw that leaves dice cocked or standing on another stops: the read dice stay read, the unread ones lie where they fell, and the next shake throws those and only those, through `ThrowSpec.among`; the 12-second backstop is per pass | The owner's call, from the Pixel 10a: "the re-roll of stuck dice still happens automatically, but should be initiated by the user's shake event." The automatic re-throw was honest — visible, physical, never a nudge — but it put dice in the air that no hand had thrown, which is decision 66's rule broken by the app rather than by a button. The re-throw is therefore the throw an explosion already makes: a world of its own, seeded from the throw's seed and the pass number (`Seeds.again`, a purpose of its own so it never shares a stream with an explosion), with the dice still down carried as `among` and the dice the last pass read lifted by the throw rather than before it — so the player looks at the heap as it lies until they shake. The bookkeeping is one plain-Kotlin class in `simulation/api`, `Passes`, shared by the roll screen and by every headless caller, which follows each pass at once with no shake (`Passes.scripted`, at most 16 passes) — so the harness still measures the share of dice that needed another throw, and the golden cases, none of which re-throws, did not move. A throw that leaves dice unread is scored, and a chain earns its next die, only once every die has a face, which orders the two waits without a rule of its own. The cost: a cocked die is a second shake, at about 3 % of dice on the Pixel 10a; the overlay's re-throw count is nought within a throw; and `SpawnLayout.rethrowPlacement` and `PhysicsWorld.respawn`/`remove` have no caller left in a roll |
+| 72 | **The frame-rate readout is a line on the debug overlay, behind the developer toggle, not a Settings row of its own.** It shows frames per second and the p99 frame time over the last 120 frames the tray drew back to back, measured as the time between two consecutive `Choreographer` frame callbacks in `TrayLoop` and summed up by `FrameMeter` in `simulation/api`; the overlay also shows the roll's and the visit's dropped steps | Step 5.7 asked for "a setting that shows the frame rate" and left where open. The conservative answer is the switch that already exists: a frame rate is a figure for whoever is checking the 60 fps target, not a choice a player makes, and a Settings row would be one more thing every player scrolls past for a number they cannot act on. Behind the toggle it inherits the toggle's promise — off on every install and free when off, because `DebugWatch.watching` is asked before a frame is timed — and its relay, so nothing new crosses a thread. Frame *intervals* rather than the work inside a frame, because the interval is what a person holding the phone sees and includes Filament's half, which the headless harness cannot time (`FrameTimes.drawn`); only frames that followed a frame asking for them are counted, so a still tray does not read as a stutter. A count of frames rather than a stretch of time, so the p99 is over the same 120 samples at 60 Hz and 120 Hz. The visit's dropped steps are told apart by the snapshots alone (`DroppedTally`: a roll's steps and dropped steps only grow), which keeps the overlay a watcher the tray does not have to tell when a roll begins. The instrumented rendered harness that would put these numbers in a report is still to be written (`docs/TODO.md`, Step 5.7) |
+| 73 | **The face histogram names a face by the die's own label; the files keep the value.** The bars, the natural-high and natural-low tiles and what TalkBack says use the label the installed die prints a value with, looked up at read time (`FaceLabels`); a blank label is said as "blank" (a string resource). A value printed two ways, a die whose set is uninstalled, and a value pooled sets print differently fall back to the number. The statistics CSV and JSON exports keep the numeric value and gain no label column | A dF read `-1`, `0`, `1` and TalkBack said "Face -1" (`docs/TODO.md`, 4.8). Looking the label up rather than storing it keeps the database as it is and shows a relabelled set's labels over its old counts; nothing else could be said of a set that is gone. The files are read by machines: a value is what adds up and stays stable across relabelling and uninstalling, and a label taken from the installed set at export time could be a different print from the one the die was thrown with — so a label column would be neither trivial nor true. The history export already carries each die's label as recorded with the roll. The most conservative choice for a value with two prints is the number both faces score, rather than picking one of them |
+| 74 | **While the first-launch welcome is up, the shake is not listened to.** `ShakeToRoll` registers no hand at all while the welcome covers the tray, and registers it the moment the welcome is pressed past; nothing else about the tray behind it changes | A roll could start under the welcome — a formula reaches the field while it is up (a saved roll opened on the way back from an import, which does not dismiss it) and a shake threw it — and the result sheet was then drawn under the welcome's buttons. There were two ways out, and the other one, drawing no result behind it, is worse: the dice would still be thrown, read and written into the history by a roll nobody saw land, and the first thing the tray showed after the welcome would be a total for a throw the player never watched. Not listening is the conservative half — no roll, no history entry, no result to hide, nothing to reconcile when the welcome goes — and it costs a shake made while reading a screen whose buttons are the way on. Not *ignored* but *not registered*, so the sensors are not running behind it either, and what is typed while it is up stays typed: the first shake after it throws that formula, as on any other ready tray (`docs/physics-and-rendering.md`, "What is drawn over the table") |
+| 75 | **A set's own die is named in braces, with its set inside them, and the picker row offers it.** `3{skull-d6}kh1`, `3{brass:skull-d6}kh1`, `3{skull:d6}kh1` (`docs/dice-notation.md`, "A set's own dice"). The set goes inside the braces and only there — `brass:3{skull-d6}` is refused with a message saying where it goes. A braced id is exact: `{d100}` is a die called `d100`, never the percentile pair, and `{d6}` is not what the d6 button counts. Unqualified, it takes the default set's per-die fallback like any plain die; qualified, none. Ids are capped at 40 characters, the longest a set may define. The picker row offers the standard dice and then the set's own, a set's own die written braced — `1{skull-d6}`, `1{brass:skull-d6}` — unless plain notation already names exactly that die (`d3` → `1d3`; never `d100`), and drawn by its solid's face count; the face designer's **Roll it** writes the same spelling | Decision 31's gap, closed the way `docs/TODO.md` had decided: the `}` ends the id, so the parser lexes it without asking any set and the field still validates on a thread with no storage, while `DieResolver` decides whether the die exists. The rest are the small calls building it needed, each the narrower option. One place for the set gives each die one spelling, which is what lets the badges read a tap back (`DicePicker`); exact ids keep `d100` meaning one thing in plain notation and another only when braced, never by guessing; the fallback rule is the existing one rather than a third. Writing `d3` plainly is what a player would type, and the plain spelling resolves to exactly that die, so there is nothing for braces to disambiguate. Nothing already written changes: braces were a parse error before, so every stored formula, history entry and collection file reads as it did |
+| 77 | **The solver keeps two collision steps per 1/120 s step; four and eight were measured and not adopted.** `World::Step` passes 2 to `PhysicsSystem::Update`, as before | Step 5.4 asked whether more collision sub-steps fix die-into-die overlap now that the throw is livelier (60–120 rad/s, restitution 0.55). On the Pixel 10a, 20d20 over seeds 1–3 (11,000 rolls a count) and 60d20 over 1,000: eight steps take the deepest overlap from 6.9–7.9 mm to 2.5–2.7 mm (four: 4.7–5.0 mm), leave the shaken-throw heap where it was (7 of 16 seeds clustered at 2, 4 and 8, so the packing the old ladder showed is gone) and the turns after landing where they were (2.7 → 2.8), and keep the p99 step at 0.4 ms (1.6 ms at sixty dice) against 8.33. But on every seed they settle a little later — median 0.95–0.96 s → 0.98 s, p99 1.94–1.96 s → 2.00–2.03 s, and 1.67 s → 1.75 s median at sixty dice — and at sixty dice re-throw 2.87 % against 2.62 %, so settle regresses beyond run-to-run noise, which was the rule for adopting. Eight still misses the 0.2 mm bar by twelve times, and changing the count moves every golden case and wants the 20,000-a-shape fairness run again; the conservative call is to keep what is recorded and validated. Whether the overlap is visible on the tray at all is the owner's judgement (`docs/TODO.md`, 5.4); if it is, eight is the measured candidate (`docs/physics-and-rendering.md`, "What a shake's spread currently rests on") |
+| 78 | **A row picked up inside the saved-rolls list's edge band does not scroll the list until the finger moves towards that edge.** The band's inner boundary for a drag is wherever the drag began, if that is nearer the edge, and the speed ramps up from there (`SavedEdgeScroll.speed`) | The rows a thumb most often picks up are the first and last ones shown, and both sit inside a band. Scrolling the moment one is picked up would move the list under a finger that has not asked for it, and a player who picked a row up to look at it, or to move it one place, would lose their place. Waiting for a move *towards* the edge is the conservative reading: it never scrolls when nobody meant it to, and costs a few millimetres of travel when they did. Taken while the owner was away; the tuning constants (band 64 dp, 640 dp/s) are a judgement item in `docs/TODO.md`, not part of this decision |

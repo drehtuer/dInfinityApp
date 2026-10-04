@@ -28,6 +28,7 @@ import de.drehtuer.dinfinity.core.notation.ThrowOutcome
 import de.drehtuer.dinfinity.simulation.api.CapacityVerdict
 import de.drehtuer.dinfinity.simulation.api.ClearSpace
 import de.drehtuer.dinfinity.simulation.api.DieAtRest
+import de.drehtuer.dinfinity.simulation.api.Passes
 import de.drehtuer.dinfinity.simulation.api.Seeds
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
@@ -145,18 +146,22 @@ class RollMachine(
     var adding: List<DieInstance> = emptyList()
 
     /**
-     * Which dice of the plan the throw in the air is throwing *again*, in the
-     * order they were handed to it, or empty when it is adding new ones.
+     * The throw the roll is part-way through — the first, or a round a chain
+     * added — and the passes it has taken so far.
      *
-     * The two are not the same thing and used to be treated as one. A die an
-     * explosion earns is a die the plan never mentioned, and its face joins
-     * [added]; a die the roll gave up on is one of the plan's own, and its
-     * face belongs at that die's index in [faces]. Putting a re-thrown die in
-     * [added] left the plan's die with no face at all, which is what made a
-     * stalled roll throw an exception the moment its dice came back
-     * (`docs/physics-and-rendering.md`, "A roll that gives up").
+     * A throw that left dice it could not read is **not over**: those dice
+     * wait where they lie for the player's next shake, which throws them and
+     * nothing else ([Passes.next]). The round keeps which of its own dice each
+     * die of a later pass is, so a face read on the third pass still lands at
+     * the index the plan or the chain knows that die by. Only when every die
+     * of it is read is the round handed on to be scored, as one outcome.
+     *
+     * The same holds for a throw that gave up: the dice that never stopped are
+     * the round's unread dice, and the shake that throws them is the same
+     * shake. A roll that gave up used to keep its own list of dice to throw
+     * again, indexed into the plan whichever throw had stalled.
      */
-    var replacing: List<Int> = emptyList()
+    var round: Passes = Passes(spec)
 
     /** The faces of the first throw, which is the only throw the plan describes. */
     var faces: Map<Int, Int> = emptyMap()
@@ -202,8 +207,6 @@ class RollMachine(
    */
   private var earned: ThrowSpec? = null
 
-  /** The dice a roll gave up on, waiting for somebody to throw them again. */
-  private var stuck: List<Int>? = null
   private var scored: Pair<Formula, RollResult>? = null
 
   /**
@@ -347,10 +350,9 @@ class RollMachine(
   fun throwDice(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
     val ready = prepared ?: return null
     prepared = null
-    // A new throw is not the continuation of the last one's chain, nor of a
-    // throw somebody gave up on.
+    // A new throw is not the continuation of the last one's chain. The dice a
+    // throw could not read go with the flight they belong to.
     earned = null
-    stuck = null
 
     val spec =
       ThrowSpec(
@@ -384,6 +386,13 @@ class RollMachine(
    * make, and whoever is throwing comes back here when it lands
    * ([Landed], `docs/dice-notation.md`, "Evaluation", step 5).
    *
+   * **Nor is a throw always over when its dice stop.** A die that came to rest
+   * cocked or standing on another cannot be read, and the throw does not
+   * throw it again by itself: it stops, the dice that were read stay read,
+   * and the screen asks for the shake that throws the rest ([Landed.Unread],
+   * [throwAgain]). That comes first — a throw is not scored, and a chain does
+   * not earn its next die, until every die of it has a face.
+   *
    * @param drivenBy every moment of the shake that reached the roll, in step
    *   order. A tap-to-roll throw has none, and so has every added die: nobody
    *   shakes the phone at a die the app threw for them. It is taken here rather
@@ -397,8 +406,16 @@ class RollMachine(
     drivenBy: List<ShakeSample> = emptyList(),
     rounding: Rounding = defaultRounding,
   ): Landed? {
-    val flight = inFlight ?: return null
-    readInto(flight, outcome, drivenBy)
+    // A second answer for a throw that has already landed is a stray one.
+    val flight = inFlight?.takeIf { it.round.airborne } ?: return null
+    val round = flight.round
+    // The hand that threw the roll is the hand that threw its first pass. A
+    // pass that throws dice nobody could read is a throw a hand makes too, but
+    // it follows from this one — seed and all — exactly as a chain's die does.
+    if (flight.adding.isEmpty() && round.pass == 1) flight.drivenBy = drivenBy
+    round.landed(outcome)
+    if (!round.complete) return waitForAShake(round)
+    readInto(flight, round.outcome())
 
     val scoring =
       RunningScore.of(
@@ -446,57 +463,40 @@ class RollMachine(
     }
   }
 
+  /** The dice [round] could not read wait where they lie, and the next shake throws them. */
+  private fun waitForAShake(round: Passes): Landed {
+    state = RollState.ThrowAgain(unread = round.waiting.size, read = round.spec.dice.size - round.waiting.size)
+    return Landed.Unread(dice = round.waiting.size)
+  }
+
   /**
-   * Files the faces a throw came to, which is a different thing for each of
-   * the three kinds of throw a roll is made of.
+   * Files the faces a round came to — every pass of it, as one outcome keyed
+   * by the round's own dice ([Passes.outcome]).
    *
    * - **The first throw** is the one the plan describes, so its faces *are*
-   *   the roll's, and the hand that made it is the hand the record keeps.
-   * - **Dice a roll gave up on, come back.** They are the plan's own dice, so
-   *   their faces go to the indices they were thrown for rather than onto the
-   *   end of the added ones — it is the same roll, and the dice that were
-   *   already read keep the faces they were read on.
+   *   the roll's. However many shakes it took to read them all, a die's face
+   *   is at the index the plan knows it by, because the round kept which die
+   *   each later pass was throwing.
    * - **Dice a chain earned** are dice the plan never mentioned, and they are
    *   replayed by position, in the order they were asked for. A face that
    *   went to the wrong chain would be a different roll.
-   *
-   * The middle case used to be the last one, which left the plan's own dice
-   * with no face at all and made scoring a re-thrown roll throw.
    */
   private fun readInto(
     flight: InFlight,
     outcome: SimulationOutcome,
-    drivenBy: List<ShakeSample>,
   ) {
     val adding = flight.adding
-    val replacing = flight.replacing
-    when {
-      adding.isEmpty() -> {
-        flight.faces = outcome.faces
-        flight.drivenBy = drivenBy
-        flight.cameToRest(flight.prepared.plan.dice, outcome)
+    if (adding.isEmpty()) {
+      flight.faces = outcome.faces
+      flight.cameToRest(flight.prepared.plan.dice, outcome)
+    } else {
+      adding.forEachIndexed { at, die ->
+        flight.added +=
+          requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
       }
-      replacing.isNotEmpty() -> {
-        flight.faces =
-          flight.faces +
-          replacing.mapIndexed { at, index ->
-            index to
-              requireNotNull(outcome.faces[at]) {
-                "the re-thrown ${adding[at].die.id} was thrown and reported no face"
-              }
-          }
-        flight.cameToRest(adding, outcome)
-      }
-      else -> {
-        adding.forEachIndexed { at, die ->
-          flight.added +=
-            requireNotNull(outcome.faces[at]) { "the added ${die.die.id} was thrown and reported no face" }
-        }
-        flight.cameToRest(adding, outcome)
-      }
+      flight.cameToRest(adding, outcome)
     }
     flight.adding = emptyList()
-    flight.replacing = emptyList()
   }
 
   /**
@@ -515,7 +515,11 @@ class RollMachine(
     // in the history, and it is the seed every later throw in the chain is
     // derived from — so a chain whose base moved would be a chain that threw
     // different dice the second time it was replayed.
-    return next.copy(shake = shake)
+    val thrown = next.copy(shake = shake)
+    // And the round is this throw now: a die of it that lands cocked waits
+    // for a shake of its own before the chain goes on.
+    inFlight?.round = Passes(thrown)
+    return thrown
   }
 
   /**
@@ -563,14 +567,18 @@ class RollMachine(
     val flight = inFlight ?: return null
     if (flight.adding.isNotEmpty()) return null
     val dice = flight.prepared.plan.dice
+    // Every die of the first throw read so far, by the index the plan knows it
+    // by — the passes before this one as well as what this one has counted,
+    // which it reports by its own positions ([Passes.readSoFar]).
+    val read = flight.round.readSoFar(counted)
     return RollProgress(
-      read = counted.size,
+      read = read.size,
       of = dice.size,
       // The face *values* of the dice read so far. What is on the table, and
       // deliberately not called the roll's total: a formula that drops the
       // lowest of four has a total this is not, which is what the range is for.
       onTheTable =
-        counted.entries.sumOf { (index, face) ->
+        read.entries.sumOf { (index, face) ->
           dice
             .getOrNull(index)
             ?.die
@@ -583,7 +591,7 @@ class RollMachine(
         RollBounds.of(
           formula = flight.prepared.formula,
           plan = flight.prepared.plan,
-          outcome = ThrowOutcome(faces = counted, rolledAtEpochMs = clock()),
+          outcome = ThrowOutcome(faces = read, rolledAtEpochMs = clock()),
           rounding = defaultRounding,
           added = AddedDice(faces = flight.added, room = roomForRound(flight)),
         ),
@@ -595,49 +603,53 @@ class RollMachine(
    *
    * The throw is not scored and not recorded: there is no total, because some
    * of its dice were never read. What there is instead is a throw of those
-   * dice, waiting for a hand.
+   * dice, waiting for a hand — the same wait a die that landed cocked is in,
+   * with different words over it ([throwAgain]).
    *
-   * @param read the faces the roll did get, by die index. **A stalled throw
-   *   reports no outcome at all**, so without this the dice that were read
-   *   would be forgotten the moment the roll gave up — and the throw that
-   *   brought the rest of them back would have nothing to score against them.
+   * @param unsettled the dice that never stopped, by their position in the
+   *   throw that gave up.
+   * @param read the faces the roll did get, by the same positions. **A
+   *   stalled throw reports no outcome at all**, so without this the dice that
+   *   were read would be forgotten the moment the roll gave up — and the throw
+   *   that brought the rest of them back would have nothing to score against
+   *   them.
    */
   fun gaveUp(
     unsettled: List<Int>,
     read: Map<Int, Int> = emptyMap(),
   ): Boolean {
-    val flight = inFlight ?: return false
-    if (unsettled.isEmpty()) return false
-    stuck = unsettled
-    flight.faces = read
-    state = RollState.Stalled(unsettled = unsettled.size, read = flight.prepared.plan.dice.size - unsettled.size)
+    val round = inFlight?.round?.takeIf { it.airborne && unsettled.isNotEmpty() } ?: return false
+    round.gaveUp(read, unsettled)
+    state = RollState.Stalled(unsettled = round.waiting.size, read = round.spec.dice.size - round.waiting.size)
     return true
   }
 
   /**
-   * Throws the dice that never settled, driven by [shake].
+   * Throws the dice the last pass could not read, driven by [shake] — the
+   * dice that landed cocked or on another die, or the ones a throw gave up on.
    *
-   * Only those: the dice that were read are read, off the table and out of the
-   * way, and throwing them again would be throwing away answers the roll
-   * already has. It is the same throw an explosion's round is — a handful of
-   * dice into a tray that already holds some — so there is one path to a
-   * number and this is not a second one (`docs/architecture.md`, goal 1).
+   * Only those: the dice that were read are read, and throwing them again would
+   * be throwing away answers the roll already has. They are lifted off the
+   * table by this throw rather than by the one before it, so the player saw
+   * the heap as it lay until the moment they shook. It is the same throw an
+   * explosion's round is — a handful of dice into a tray that may already hold
+   * some — so there is one path to a number and this is not a second one
+   * (`docs/architecture.md`, goal 1 and decision 70).
+   *
+   * Null when nothing is waiting, which is every shake that is not the one
+   * after a throw stopped short.
    */
-  fun throwUnsettled(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
-    val flight = inFlight ?: return null
-    val again = stuck ?: return null
-    stuck = null
-    val dice = flight.prepared.plan.dice
-    // Which dice of the plan these are, kept so their faces can go back where
-    // they belong when they land ([InFlight.replacing]).
-    val known = again.filter { dice.getOrNull(it) != null }
-    flight.replacing = known
-    state = RollState.Rolling(diceCount = known.size)
-    return earnedThrow(flight, known.map { dice[it].die }).copy(shake = shake)
+  fun throwAgain(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
+    val round = inFlight?.round ?: return null
+    if (round.airborne || round.waiting.isEmpty()) return null
+    val spec = round.next(shake)
+    state = RollState.Rolling(diceCount = spec.dice.size)
+    return spec
   }
 
-  /** Whether a throw gave up and its dice are waiting to be thrown again. */
-  val awaitingRethrow: Boolean get() = stuck != null
+  /** Whether a throw stopped short and its unread dice are waiting to be thrown again. */
+  val awaitingRethrow: Boolean
+    get() = inFlight?.round?.let { !it.airborne && it.waiting.isNotEmpty() } ?: false
 
   /**
    * An empty board: the same table, with no dice on it.
@@ -727,6 +739,10 @@ class RollMachine(
         among = flight.down.toList(),
       )
     flight.adding = spec.dice
+    // The round is this throw from the moment it is owed, so whatever lands
+    // next is filed against its dice; the shake that throws it makes it again
+    // with the hand's samples in it ([throwEarned]).
+    flight.round = Passes(spec)
     return spec
   }
 
@@ -821,8 +837,8 @@ class RollMachine(
 }
 
 /**
- * What a throw that has landed came to: the roll, or the next throw it calls
- * for.
+ * What a throw that has landed came to: the roll, the next throw it calls
+ * for, or the dice of it that need another throw.
  *
  * A roll is not always over when its dice stop. `2d6!` throws two dice, and if
  * one of them shows a six it throws a third — into the same tray, among the
@@ -849,6 +865,19 @@ sealed interface Landed {
    */
   data class OneMore(
     val spec: ThrowSpec,
+  ) : Landed
+
+  /**
+   * Some of the dice came to rest where they cannot be read — cocked, or
+   * standing on another die — and [dice] of them are waiting for the player's
+   * next shake.
+   *
+   * Nothing is thrown for them, and nothing is scored: they stay where they
+   * lie until a shake throws them ([RollMachine.throwAgain]), and the throw
+   * is scored once every die of it has a face.
+   */
+  data class Unread(
+    val dice: Int,
   ) : Landed
 }
 
@@ -916,6 +945,26 @@ sealed interface RollState {
   data class ShakeAgain(
     val diceCount: Int,
     val waiting: Int = 1,
+  ) : RollState
+
+  /**
+   * Some dice came to rest where they cannot be read, and are waiting for a
+   * shake to throw them again.
+   *
+   * **The app does not throw them.** A die that lands cocked or on another
+   * die is thrown again at a real table by whoever threw it, and here too:
+   * the dice that were read stay read, the unread ones stay exactly where
+   * they lie — nothing touches a die at rest — and the next shake throws
+   * those and only those. The roll used to throw them again by itself, which
+   * put dice in the air that nobody's hand had thrown
+   * (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice").
+   *
+   * @param unread how many dice could not be read.
+   * @param read how many dice of the same throw were.
+   */
+  data class ThrowAgain(
+    val unread: Int,
+    val read: Int,
   ) : RollState
 
   /**

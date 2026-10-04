@@ -18,16 +18,13 @@ internal fun render(node: FormulaNode): String =
 
 private fun renderDice(node: DiceNode): String =
   buildString {
-    node.setRef?.let { append("$it:") }
-    append(node.count)
-    append('d')
-    append(
-      when (node.sides) {
-        is Sides.Numeric -> node.sides.value.toString()
-        Sides.Percentile -> "%"
-        Sides.Fudge -> "F"
-      },
-    )
+    val set = node.setRef?.let { "$it:" }.orEmpty()
+    when (node.sides) {
+      is Sides.Named -> append("${node.count}{$set${node.sides.id}}")
+      is Sides.Numeric -> append("$set${node.count}d${node.sides.value}")
+      Sides.Percentile -> append("$set${node.count}d%")
+      Sides.Fudge -> append("$set${node.count}dF")
+    }
     node.modifiers.forEach { append(renderModifier(it)) }
   }
 

@@ -66,7 +66,7 @@ class RollProgressTest {
     machine.throwDice()
     machine.gaveUp(listOf(1, 3))
 
-    val again = requireNotNull(machine.throwUnsettled())
+    val again = requireNotNull(machine.throwAgain())
 
     assertEquals("the settled dice were thrown again too", 2, again.dice.size)
     assertFalse("a throw nobody has made was already driven by something", again.shake.isNotEmpty())

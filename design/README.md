@@ -109,6 +109,11 @@ tray to roll". Both are listed in
 [../docs/design-handover.md](../docs/design-handover.md), "The shake is the
 throw, and the prototype half-says so".
 
+**Dice that land cocked wait for a shake** (decision 70), on a `THROW AGAIN`
+plate the prototype does not draw: its `rollState` tweak has `earned` and
+`stuck` and no state for it. The app borrows the earned plate's layout until
+the design has one; the same hand-over section lists it.
+
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
 2026-09-17, with two hand edits to `dInfinityPhone.dc.html` since (see
 **Editing**).

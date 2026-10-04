@@ -247,6 +247,51 @@ internal class LandingRolls(
 }
 
 /**
+ * Rolls that land on [passes] in turn — the first throw on the first, the
+ * throw after it on the second — and on the last one for good.
+ *
+ * What a throw that leaves dice unread looks like from above the physics: an
+ * outcome with [SimulationOutcome.unread] in it, and then, after a shake, a
+ * throw of only those dice (`docs/architecture.md`, decision 70). Every throw
+ * it is asked for is kept, so a test can ask what the shake threw.
+ */
+internal class PassingRolls(
+  private val passes: List<SimulationOutcome>,
+) : Rolls {
+  val started = mutableListOf<ThrowSpec>()
+
+  override fun start(
+    spec: ThrowSpec,
+    watcher: Renderer,
+  ): WatchedRoll {
+    val lands = passes[minOf(started.size, passes.lastIndex)]
+    started += spec
+    return object : WatchedRoll {
+      private var landed = false
+
+      override val running: Boolean get() = !landed
+
+      override val outcome: SimulationOutcome? get() = if (landed) lands else null
+
+      override val drivenBy: List<ShakeSample> = emptyList()
+
+      override val impacts: List<Impact> = emptyList()
+
+      override fun advance(elapsedSeconds: Double): RenderFrame {
+        landed = true
+        return RenderFrame.still(
+          spec.dice.indices.map { BodyTransform(it, Vector3(0.0, 0.0, 8.0), Quaternion.Identity) },
+        )
+      }
+
+      override fun shake(sample: ShakeSample) = Unit
+
+      override fun close() = Unit
+    }
+  }
+}
+
+/**
  * A [TestHand] installed as [ShakeInput.current] for one test, and the sensors
  * put back after it.
  *

@@ -372,17 +372,16 @@ class DesignerPresenter(
   private val drafts: Drafts = Drafts.NONE,
   /**
    * How the die being drawn is written in a formula, or `null` when notation
-   * cannot name it (`docs/dice-notation.md`; `docs/architecture.md`,
-   * decision 31).
+   * cannot name it (`docs/dice-notation.md`).
    *
    * A function rather than a string, because the die changes while the screen
    * is open. It comes from outside for the reason the dice themselves do: it
    * needs the installed sets and which of them a bare `d20` means, and neither
    * is this module's to know.
    *
-   * Plain notation names `dN`, `d%` and `dF` and nothing else, so a set's own
-   * `skull-d6` has no spelling a formula could carry — and **Roll it** is not
-   * offered for one rather than offered and broken.
+   * A set's own `skull-d6` is written braced, `1{brass:skull-d6}`; what is
+   * left without a spelling is a die no installed set has — and **Roll it** is
+   * not offered for one rather than offered and broken.
    */
   private val notationOf: (Die) -> String? = { null },
   /**
@@ -419,9 +418,9 @@ class DesignerPresenter(
    * The formula that throws the die being drawn, or null when there is none.
    *
    * What it decides is whether **Roll it** is on the screen at all — absent
-   * rather than dead for a die plain notation cannot name, since a set's own
-   * `skull-d6` has no spelling a formula could carry (`docs/architecture.md`,
-   * decision 31). The formula actually thrown is [roll]'s, which is not
+   * rather than dead for a die notation cannot name, which since braced
+   * notation is only a die no installed set has (`docs/architecture.md`,
+   * decision 75). The formula actually thrown is [roll]'s, which is not
    * necessarily this one: saving the drawing first is what lets the tray be
    * handed `mine:1d20` — the die **with the drawing on it** — rather than the
    * plain `1d20` of whichever set a bare `d20` happens to mean.

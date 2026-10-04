@@ -49,8 +49,9 @@ object Seeds {
    *
    * Seeded by the board's number rather than by a throw's seed, because a
    * board has none: every board is built from a spec seeded nought, and a d6
-   * taken off and put back would otherwise fall onto the same spot, the same
-   * way up, every time. Through [WAITING], so it can never be a roll's stream.
+   * taken off and put back would otherwise be let go turned, drifting and
+   * spinning the same way every time. Through [WAITING], so it can never be a
+   * roll's stream.
    */
   fun waiting(
     board: Int,
@@ -69,6 +70,21 @@ object Seeds {
     seed: Long,
     nth: Int,
   ): Long = stir(seed xor (nth.toLong() shl EXTRA_SHIFT) xor EXTRA)
+
+  /**
+   * The seed of the [pass]th throw of the dice a throw seeded [seed] could not
+   * read — the throw the player's next shake makes ([Passes]).
+   *
+   * Its own purpose rather than [derived]'s, because both count from one and
+   * a roll can need both: the first explosion of `8d6!` and the first
+   * re-throw of the same throw would otherwise be thrown by one stream. Keyed
+   * by the throw rather than the roll, so a throw replays its re-throws the
+   * same way whether it was the roll's first throw or a die a chain added.
+   */
+  fun again(
+    seed: Long,
+    pass: Int,
+  ): Long = stir(seed xor (pass.toLong() shl EXTRA_SHIFT) xor AGAIN)
 
   /**
    * SplitMix64's finaliser: a bijection on 64 bits that spreads a change in
@@ -93,7 +109,13 @@ object Seeds {
    */
   const val SPAWN: Long = 0x53_50_41_57_4E
 
-  /** And a re-thrown die's, with the attempt number added so two attempts differ. */
+  /**
+   * And a re-thrown die's, from when the roll threw dice again by itself.
+   *
+   * Nothing draws from it since the player's shake does that (decision 70,
+   * [again]). It stays reserved so that no new purpose takes the number and
+   * quietly shares a stream with recorded throws that used it.
+   */
   const val RETHROW: Long = 0x52_45_54_48_52_4F
 
   /** And the nudge a die in trouble gets. */
@@ -115,6 +137,9 @@ object Seeds {
 
   /** And an extra throw's, which is a seed rather than a stream. */
   private const val EXTRA: Long = 0x45_58_54_52_41
+
+  /** And a throw of the dice a pass could not read, also a seed. */
+  private const val AGAIN: Long = 0x41_47_41_49_4E
 
   private const val DIE_SHIFT = 32
   private const val EXTRA_SHIFT = 40

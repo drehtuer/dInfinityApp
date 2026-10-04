@@ -56,19 +56,10 @@ Spec: `docs/dice-notation.md`, `docs/tables.md`,
       `docs/physics-and-rendering.md`, "Picking a die up and throwing it
       again"). Left to decide while building it: how a picked die is shown,
       and how a pick is undone (a second touch on the same die is the obvious
-      answer)
-- [ ] **Decided, not built: braced notation for a set's own dice.**
-      `3{skull-d6}kh1` is three of the die whose id is `skull-d6`;
-      `3{brass:skull-d6}kh1` the same from set `brass`; `3{skull:d6}kh1` the
-      `d6` of set `skull`. Braces close the id before the modifiers start,
-      which is what decision 31 lacked; a braced id is lexed without consulting
-      installed sets and resolved by `DieResolver`. Touches the grammar,
-      `FormulaParser`, `NotationReference`, the breakdown, history, saved rolls
-      and collection files; lifts `DicePicker.offeredBy`'s filter to
-      `StandardDieIds`
-- [ ] **The welcome and the result sheet share the bottom edge.** A roll from
-      the saved-roll strip while the first-launch welcome is up draws the
-      breakdown under its buttons. Probably: draw no result behind a takeover
+      answer). It joins decision 70's wait rather than adding one: a shake
+      already throws a throw's unread dice through `Passes.next`, and a picked
+      die is one more die for that same throw — so only one of the two can be
+      owed by a shake at a time, and the unread dice come first
 
 Implementation notes recorded only here:
 
@@ -117,12 +108,14 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 - [ ] Ten emoji as icons, or draw the design's icon pack? A decision, not an
       omission (`docs/dice-notation.md`)
-- [ ] Auto-scroll while dragging a row past the list's edge — worth it if long
-      lists prove tedious; *move up/down* already work without a drag
 - [ ] The canvas captions for `1r`, `1o`, `1p` still mention favourites; fix in
       the design project and re-import
 - [ ] *Judge the drag on the phone:* picked up or nudged, and is the grip where
-      a thumb expects it?
+      a thumb expects it? With 30 or more rolls, hold a row at the top and the
+      bottom edge: is a 64 dp band easy to find without hitting it by accident,
+      is 640 dp/s at the edge controllable (can you stop on the row you want),
+      and does a row picked up at the edge stay still until you move it
+      outwards? Tune `SavedEdgeScroll.ZONE_DP` / `TOP_SPEED_DP_PER_SECOND`
 
 ### 4.4 Dice sets — `feature/sets`
 
@@ -154,13 +147,6 @@ and read here, and a seed gives the same result with the renderer on and off.
       a d10's at all? Do eight 44 dp tool glyphs need captions? Does the
       test-throw banner read as "you are testing this"?
 
-### 4.8 History — `feature/stats`
-
-- [ ] **The face histogram prints a value, not a label.** A dF reads `-1`, `0`,
-      `1` instead of `−`, blank, `+`, and TalkBack says "Face -1". Plumb the
-      label from the installed die at read time; decide whether the CSV and JSON
-      exports keep the value
-
 ### 4.10 Settings and menu — `feature/settings`
 
 - [ ] The design's Settings has *Example dice set on GitHub* and *Reset
@@ -177,33 +163,40 @@ and read here, and a seed gives the same result with the renderer on and off.
 an animation of a random number. Runs again after every physics change, with
 `tools/harness.sh` (`docs/build-setup.md`, "The physics harness").
 
-**Latest harness run** — Pixel 10a, 1,000 rolls of 20d20, 2026-10-03:
+**Latest harness run** — Pixel 10a, 1,000 rolls of 20d20, 2026-10-03, after
+the livelier tumble (60–120 rad/s of spin, die restitution 0.55; the before
+column is `main` at #336):
 
-| target | bar | measured |
-| --- | --- | --- |
-| dice at rest on another die / corrections after rest | 0 / 0 | 0 / 0 |
-| dice corrected | 0.5 % | 0.000 % |
-| **dice re-thrown** | 0.05 % | **2.65 %** (2.20 % over 2,000 rolls on 2026-09-18) |
-| median / p99 settle | 2 s / 4 s | 0.83 s / 1.53 s |
-| rolls that gave up / forced settles | 0 / 0 | 0 / 0 |
-| **deepest die-into-die overlap** | 0.2 mm | **5.29 mm** |
-| turns after landing | ≥ 1.00 | 1.55 |
-| p99 step time | 8.33 ms | 0.23 ms |
+| target | bar | before | measured |
+| --- | --- | --- | --- |
+| dice at rest on another die / corrections after rest | 0 / 0 | 0 / 0 | 0 / 0 |
+| dice corrected | 0.5 % | 0.000 % | 0.000 % |
+| **dice re-thrown** | 0.05 % | 2.65 % | **1.18 %** |
+| median / p99 settle | 2 s / 4 s | 0.83 s / 1.53 s | 0.96 s / 1.76 s |
+| rolls that gave up / forced settles | 0 / 0 | 0 / 0 | 0 / 0 |
+| **deepest die-into-die overlap** | 0.2 mm | 5.29 mm | **7.76 mm** (p99 roll 4.67 → 5.68 mm) |
+| turns after landing | ≥ 1.00 | 1.55 | 2.70 |
+| p99 step time | 8.33 ms | 0.22 ms | 0.38 ms (0.20 ms on a cooler phone, same physics) |
 
-- [ ] **A test that sees the printed numbers.** They were drawn reflected for
-      all of `v0.1.0`, and a screenshot cannot tell a `u` reflection from a `v`
-      one. The instrument: one die turned so a chosen face looks at the camera
-      with its texture-up as the camera's up, read back through `Snapshot`,
-      asserting the ink is heavier in the half `DieNumbers.fieldOf` says
-      (decision 40). Needs a quaternion from two orthonormal frames
-- [ ] Delete `TroubleCheck` from `RollLoop.kt` — nothing calls it since
-      counting replaced the correction ladder
+Re-run at the stack's tip on 2026-10-04 before trying collision sub-steps
+(5.4): the same within noise — re-throws 1.19 %, settle 0.96 s / 1.96 s,
+overlap 7.76 mm, 2.72 turns, p99 step 0.23 ms; over 5,000 rolls each on seeds
+2 and 3, overlap 6.94 mm and 7.90 mm and re-throws 1.23 % and 1.21 %.
+
+60d20 over 1,000 rolls: turns 1.16 → 2.06, median settle 1.28 s → 1.52 s,
+re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
+`100d6` still gives up within its first 200 rolls, before and after.
 
 ### 5.2 Fairness and determinism
 
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
 
+- [ ] **A coin can roll out the twelve-second cap on its own**: one throw in
+      100,000 at 60–120 rad/s and restitution 0.55 (seed
+      5897839758308530927), three in 100,000 before. `FairnessTest` now counts
+      it as a give-up and prints its seed; find out what the coin is doing for
+      twelve seconds
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
       for its ten cases on both ABIs; any divergence is a release blocker
@@ -217,9 +210,11 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 - [ ] **`100d4` does not reliably settle.** Five of twenty-four seeds in
       `JoltBridgeTest` reach the twelve-second backstop and give up (since #319
       without taking the app with them). The bound is today's worst case
-- [ ] **A hundred coins stack**, four to ten per seed (`CornerCasesTest`). The
-      test's comment still blames the ladder's rung 3; re-measure under
-      counting and update the bound and the comment
+- [ ] **A hundred coins stack: 18–29 a seed are left on another coin by one
+      throw** (Pixel 10a, 2026-10-04; four to ten under the old ladder, which
+      re-threw them itself). None is read (decision 70), and
+      `CornerCasesTest` bounds the heap at today's worst, 29. The target is
+      zero
 - [ ] **Decide what a tilted phone means** (deferred): gravity always straight
       down; anchored to `TYPE_GRAVITY`; or a clamped tilt
 - [ ] **A shake along the long axis drives the dice into one end.** Right (it is
@@ -232,28 +227,44 @@ Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 
 ### 5.4 Collisions
 
-- [ ] **Dice go 5 mm into each other; the bar is 0.2 mm.** 9.02 mm first, 5.04
-      mm after two sub-steps and a tapering throw (2026-09-18), **5.29 mm** on
-      2026-10-03 after #321's spawn fix — so the spawn was not where it came
-      from, and what is left is the solver's discrete detection. Next: four and
-      eight collision sub-steps against the current throw. Under the ladder they
-      gave 3.18 mm and 1.58 mm at a p99 step of 0.85–1.32 ms, but packed a
-      shaken throw into one end (8 and 13 of 16 seeds, against 2)
+- [ ] **Dice go 5–8 mm into each other; the bar is 0.2 mm.** 9.02 mm first,
+      5.04 mm after two sub-steps and a tapering throw (2026-09-18), 5.29 mm
+      on 2026-10-03 after #321's spawn fix — so the spawn was not where it
+      came from, and what is left is the solver's discrete detection. The
+      livelier tumble took it to **7.76 mm** (the p99 roll from 4.67 to 5.68
+      mm): bouncier dice meet harder. Four and eight collision sub-steps
+      against it (2026-10-04, decision 77): 4.7–5.0 mm and 2.5–2.7 mm, no
+      more shaken heaps (7 of 16 at 2, 4 and 8), but eight settles a few steps
+      later on every seed and re-throws 2.87 % against 2.62 % at sixty dice,
+      so two stays (`docs/physics-and-rendering.md` has the table). Sub-steps
+      alone will not reach 0.2 mm. The dice already sweep their travel
+      (`LinearCast`), which does not sweep a spinning die's corners — at
+      60–120 rad/s that is the likelier source, and the next thing to look at
+- [ ] *Judge on the phone:* is a die sinking into another visible while the
+      dice tumble? Watch a few `20d20` throws (or `tools/harness.sh --capture
+      20` and step through it). If it is, eight collision steps is the measured
+      fix — one constant in `World::Step`, then the goldens re-recorded and
+      `FairnessTest` re-run at 20,000 a shape
 
 ### 5.5 Stacking and cocking — no invisible hand
 
-Nothing corrects a die: a roll counts the dice that can be read and throws the
-rest again until everything is counted (`docs/physics-and-rendering.md`,
-"Avoiding stacked and cocked dice"). Figures in the table above.
+Nothing corrects a die and nothing throws one but the player: a roll counts the
+dice that can be read, and the ones that cannot wait where they lie for the
+shake that throws them again (`docs/physics-and-rendering.md`, "Avoiding
+stacked and cocked dice"; decision 70). Figures in the table above, measured
+while the roll still threw them again itself; the harness's scripted hand
+keeps them comparable.
 
 - [ ] **Decide what the re-throw bar means now.** 0.05 % was written when a
-      re-throw was the last resort after two rungs of correction; re-throwing is
-      the mechanism now. Probably bound how long a roll takes and how many
-      passes it needs instead — the harness measures both
-- [ ] **Does an automatic re-throw count in the statistics?** A `d6` that took
-      four passes would add four faces to its fairness figure: right (it landed
-      four times) or a bias (it landed four times *because it was hard to
-      read*)?
+      re-throw was the last resort after two rungs of correction. A re-throw is
+      now a second shake the player is asked for, so the share is how often
+      that happens — 2.65 % of dice, which at 20 dice is a second shake on
+      roughly two rolls in five. Bound that per roll, and the passes a roll
+      needs, rather than per die
+- [ ] *With a hand:* does a throw that stops with a cocked die read as the
+      app asking, rather than as the roll hanging? Is the plate, the toast and
+      the heap left as it lay enough to know which die the shake is for — or
+      does the waiting die want marking on the tray (`docs/design-handover.md`)?
 - [ ] **Repeat the 10,000-roll runs at 20 and 60 dice under counting.** Under
       the ladder three rolls in 10,000 at 20 dice and two thirds of 29 standing
       dice at 60 ran out of time
@@ -267,9 +278,13 @@ rest again until everything is counted (`docs/physics-and-rendering.md`,
 - [ ] **The start of a shake** read as a lag: the dice are already fast when
       the shake reaches them. The 100 ms start threshold and the spawn impulse
       are the two numbers
-- [ ] **The tumble and the pace.** `RollPace.WATCHED` is 0.5, so a 0.81 s
-      throw takes ~1.6 s to watch. Does a roll read as dice landing; does
-      `1d20` a dozen times annoy; does the speed change when the hand lets go
+- [ ] **The tumble and the pace.** The owner found the tumble too quick and
+      too short; the dice now get 60–120 rad/s of spin and restitution 0.55,
+      which takes them from 1.55 turns after landing to 2.70
+      (`docs/physics-and-rendering.md`, "How hard the dice are thrown").
+      `RollPace.WATCHED` is still 0.5, so a 0.96 s throw takes ~1.9 s to
+      watch: is that long enough now, or is 0.4 wanted? Does a roll read as
+      dice landing; does `1d20` a dozen times annoy; does the speed change when the hand lets go
       read as intended? Does a second shake at tumbling dice still answer
       instantly?
 - [ ] The keyboard over the lower half of the tray — right, or shift the tray
@@ -291,13 +306,18 @@ rest again until everything is counted (`docs/physics-and-rendering.md`,
 - [ ] **Is the first throw of a session different?** Seen: overlap and a chain
       throwing itself "only in the beginning". The candidate is the frame clock
       dropping steps while Filament, the atlas and Jolt load
-      (`MAX_STEPS_PER_FRAME` is 4). Put `LiveRoll.droppedSteps` on the debug
-      overlay, then throw `4d6!` three times from a cold start
+      (`MAX_STEPS_PER_FRAME` is 4). With developer tools on, throw `4d6!`
+      three times from a cold start and read the overlay's
+      `dropped <roll> · visit <total>` line after each
 - [ ] **Does a die the picker adds read as dropped and tumbled?** Does it
       land and roll rather than appear; do the bumps look right after eight
-      quick taps of a d6; does a removal let a leaning die fall plausibly?
-      The numbers to turn are `BoardDrops.DROP_HEIGHT_MM` (60) and
-      `HEIGHT_JITTER_MM` (18), `LEAST_SLIDE_MM_PER_SECOND`–
+      quick taps of a d6; does a removal let a leaning die fall plausibly? Put
+      a saved roll of `8d6` on the table: can the eye follow the stream out of
+      the one spot, and does `40d6` read as a patter rather than a wait?
+      The numbers to turn are `BoardDrops.DROP_SPOT` (the middle of the tray),
+      `SPOT_JITTER_MM` (1.5), `DROP_INTERVAL_SECONDS` (0.1),
+      `LONGEST_STREAM_SECONDS` (4), `DROP_HEIGHT_MM` (60),
+      `LEAST_SLIDE_MM_PER_SECOND`–
       `MOST_SLIDE_MM_PER_SECOND` (40–150), `MOST_DOWNWARD_MM_PER_SECOND` (150)
       and `LEAST_SPIN_RADIANS_PER_SECOND`–`MOST_SPIN_RADIANS_PER_SECOND`
       (9–18). Also run `BoardSettlerTest` and read its timings (`dinfinity.board`
@@ -309,11 +329,12 @@ rest again until everything is counted (`docs/physics-and-rendering.md`,
 `MemoryTest` holds the native heap across 500 rolls (1,440 bytes left
 behind).
 
-- [ ] **A rendered harness and an on-screen frame rate** (decided). The
-      headless harness times the simulation half of a frame only
-      (`FrameTimes.drawn`). Needed: an instrumented test on a real surface at
-      twenty dice, its arithmetic in `:simulation:harness`, and a setting that
-      shows the frame rate
+- [ ] **A rendered harness** (decided). The headless harness times the
+      simulation half of a frame only (`FrameTimes.drawn`). Needed: an
+      instrumented test on a real surface at twenty dice, its arithmetic in
+      `:simulation:harness`. The on-screen frame rate exists — the debug
+      overlay's `fps · p99` line (decision 72) — and is the hand check
+      meanwhile
 - [ ] 60 fps sustained at 20 dice, p99 frame under 16.6 ms; 30 fps at the
       capacity limit
 - [ ] Battery cost of 100 rolls, written into `docs/physics-and-rendering.md`

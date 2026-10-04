@@ -486,10 +486,9 @@ class DesignerPresenterTest {
   }
 
   @Test
-  fun `a die plain notation cannot name has no formula and no button`() {
-    // A set's own `skull-d6` has no spelling a formula could carry
-    // (`docs/architecture.md`, decision 31), and Roll it is not offered for it
-    // rather than offered and broken.
+  fun `a die notation cannot name has no formula and no button`() {
+    // A die no installed set has has no spelling a formula could carry, and
+    // Roll it is not offered for it rather than offered and broken.
     val presenter = DesignerPresenter(d6, choosable = listOf(d6))
 
     assertNull(presenter.rollable)

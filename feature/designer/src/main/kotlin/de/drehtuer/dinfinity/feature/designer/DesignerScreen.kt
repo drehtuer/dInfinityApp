@@ -253,7 +253,7 @@ private fun Header(
  * button in it).
  *
  * **Roll it** is the filled one, because it is the one thing the screen is
- * for; it is absent rather than dead for a die plain notation cannot name — a
+ * for; it is absent rather than dead for a die notation cannot name — a
  * button that is there and does nothing is worse than one that is not.
  * **Save to set** is beside it, and absent when there is nowhere to save.
  */

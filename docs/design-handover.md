@@ -55,15 +55,18 @@ its true shape, and whether an oversized stamp on a d4 shrinks to fit.
 ### One the prototype cannot draw
 
 **A die the picker adds falls onto the table.** Tapping a d6 used to put one
-there; it is now let go about 60 mm above a random clear spot and comes down
+there; it is now let go about 60 mm above the middle of the tray and comes down
 under real physics, tumbling to a stop among the dice already down — which it
 may knock (`docs/physics-and-rendering.md`, "The dice waiting to be thrown").
+Several added at once leave that one spot a tenth of a second apart, so the
+eye can follow them.
 The prototype's tray is a still picture of a board, so it shows dice standing
 and cannot show them arriving. The two disagree in one respect, and the
 prototype is the one that is out of date: its board is laid out in even
 spacing, and the real board is wherever the dice came to rest, which is the
 point of the change. What is missing from `design/` is the motion and the
-scatter, and the only decisions in it — how high, how hard, how much spin —
+scatter, and the only decisions in it — where, how often, how high, how hard,
+how much spin —
 need a hand rather than a drawing; they are in `docs/TODO.md` under 5.6.
 
 ### Five the pass did not reach
@@ -75,9 +78,12 @@ need a hand rather than a drawing; they are in `docs/TODO.md` under 5.6.
 - **How does a photograph sit on the tray?** Cropped at import, losing pixels
   somebody chose, or mapped at draw time, which needs the tray's aspect — and
   the tray's aspect changes with the phone.
-- **Does the picker row grow a brace form?** A set's own dice (`skull-d6`) are
-  becoming typable as `3{skull-d6}kh1`; the row still offers only the ten
-  standard dice.
+- **The picker row grew a brace form, and the prototype has not.** A set's own
+  dice (`skull-d6`) are typable as `3{skull-d6}kh1`, and the row now offers
+  them after the standard dice, captioned with their id and writing the braces
+  (`docs/architecture.md`, decision 75). The prototype's row still shows only
+  the ten standard dice; a caption as long as `skull-d6` under a 26 dp
+  silhouette is the part worth drawing.
 - **The sprite has no paste and no mirror.** The face designer has copy, turn,
   mirror and paste, and none of the four is in the prototype at all. Copy is
   `#ic-copy` and the turn keeps its words, because `Turn 3/4` is a count. The
@@ -195,8 +201,17 @@ is left in the script, unreferenced, rather than unpicked by hand.
   has no equivalent and has just lost a button from that action row.
 - **A toast that says how many dice a shake will throw.** It is the
   back-arming toast's component, over the tray, raised when a chain earns a
-  throw and when a roll gives up. The prototype has the component and does not
-  raise it here.
+  throw, when a throw leaves dice nobody could read, and when a roll gives up.
+  The prototype has the component and does not raise it here.
+- **A plate for dice that landed where they cannot be read.** A throw no
+  longer throws its cocked or stacked dice again by itself: it stops, the dice
+  lie where they fell, and a `THROW AGAIN` plate says how many, how many of
+  the throw were read, and that a shake throws them (decision 70,
+  `docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice"). The
+  app draws it on the earned plate's layout — an accent-700 kicker, a line of
+  copy, the `STILL TO COME` range — and the prototype has no such state; its
+  `rollState` tweak wants a fifth value for it. Should the dice that are
+  waiting be marked on the tray, the way the design marks last-pass dice?
 - **The prototype's tray tap is not the app's.** Tapping the tray in the app
   does *not* roll, and that is decided rather than pending
   (`docs/architecture.md`, decision 66) — the gesture is kept for picking a
@@ -204,6 +219,14 @@ is left in the script, unreferenced, rather than unpicked by hand.
   Worth a word on the board saying it is a browser's substitute for a shake,
   and the welcome's "Shake the phone or tap the tray to roll" wants the second
   half taken off.
+- **The welcome does not listen for a shake.** While the first-launch
+  takeover (`9a`) is up, the app registers no shake at all, so nothing can be
+  thrown under it and no result sheet can land behind its buttons
+  (`docs/architecture.md`, decision 74). Its copy still says that a shake
+  rolls; that is the lesson for the tray it leads to, not an invitation to
+  shake the welcome itself. The prototype reads no motion at all — a tray tap
+  stands in for the shake, and the welcome covers the tray — so nothing on the
+  board has to change.
 - **Settings has no shake switch any more** (option `1y` still lists one).
   A shake is the only way to start a roll, so a switch that turned it off
   would leave the app with no way to roll at all (decision 66). The row wants

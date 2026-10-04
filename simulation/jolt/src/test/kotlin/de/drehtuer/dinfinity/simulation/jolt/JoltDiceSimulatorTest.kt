@@ -4,11 +4,13 @@ import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.fixtures.StandardDice
+import de.drehtuer.dinfinity.simulation.api.Passes
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.abs
@@ -97,6 +99,55 @@ class JoltDiceSimulatorTest {
 
     assertTrue(failure is IllegalStateException)
     assertTrue(failure!!.message!!.contains("libdinfinity_jolt"))
+  }
+
+  @Test
+  fun `a die nobody could read is thrown again by a scripted hand, alone, in a world of its own`() {
+    // Headless, there is no player to shake for it, so the hand is a script:
+    // the dice the first pass could not read are thrown at once, by
+    // themselves, through the same passes the screen makes (`Passes.scripted`).
+    val worlds = mutableListOf<FakeWorld>()
+    val simulator =
+      JoltDiceSimulator { thrown ->
+        val world =
+          if (worlds.isEmpty()) {
+            FakeWorld(thrown.dice.size) { _, index, _ -> FakeWorld.settled(supportedByDie = index == 1) }
+          } else {
+            FakeWorld(thrown.dice.size) { _, _, _ -> FakeWorld.settled() }
+          }
+        world.also { worlds += it }
+      }
+
+    val outcome = simulator.run(spec(listOf(StandardDice.d6, StandardDice.d6, StandardDice.d6)))
+
+    assertEquals("the first pass and one for the die it left", 2, worlds.size)
+    assertEquals("the second pass threw more than the die that needed it", 1, worlds[1].spawned.size)
+    assertEquals(setOf(0, 1, 2), outcome.faces.keys)
+    assertEquals(1, outcome.rethrows)
+    assertEquals(2, outcome.passes)
+    assertTrue("a pass's world was left open", worlds.all(FakeWorld::closed))
+    assertTrue("a die was thrown again inside a pass", worlds.all { it.respawns.isEmpty() })
+  }
+
+  @Test
+  fun `a die that never comes good gives a headless run up rather than holding it for ever`() {
+    var opened = 0
+    val simulator =
+      JoltDiceSimulator { thrown ->
+        opened++
+        FakeWorld(thrown.dice.size) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
+      }
+
+    assertNull(simulator.runOrGiveUp(spec(listOf(StandardDice.d6))))
+    assertEquals(Passes.MOST_UNWATCHED, opened)
+    assertTrue(runCatching { simulator.run(spec(listOf(StandardDice.d6))) }.exceptionOrNull() is IllegalStateException)
+  }
+
+  @Test
+  fun `a pass that gives up gives the whole run up`() {
+    val simulator = JoltDiceSimulator { thrown -> FakeWorld(thrown.dice.size) { _, _, _ -> FakeWorld.tumbling() } }
+
+    assertNull(simulator.runOrGiveUp(spec(listOf(StandardDice.d6))))
   }
 
   private fun radiusSpawnedFor(scale: Double): Double {

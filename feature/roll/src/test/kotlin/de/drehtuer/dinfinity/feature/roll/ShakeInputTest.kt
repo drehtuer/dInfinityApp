@@ -175,6 +175,26 @@ class ShakeInputTest {
   }
 
   @Test
+  fun `a roll screen told not to listen registers nothing, and registers when told to`() {
+    // What the first-launch welcome does to the tray under it (decision 74):
+    // the sensors are not merely ignored, they are not asked for.
+    addSensors()
+    var listening by mutableStateOf(false)
+    val presenter = rollPresenter(DirectTray(), LandingRolls(mapOf(0 to 0)))
+    compose.setContent { ShakeToRoll(presenter, listening = listening) }
+    compose.waitForIdle()
+    assertTrue("a screen told not to listen took the sensors", shadow.listeners.isEmpty())
+
+    listening = true
+    compose.waitForIdle()
+    assertFalse("the screen did not start listening when told to", shadow.listeners.isEmpty())
+
+    listening = false
+    compose.waitForIdle()
+    assertTrue("the sensors were left running after the screen was told to stop", shadow.listeners.isEmpty())
+  }
+
+  @Test
   fun `a test hand with no screen listening throws nothing`() {
     val hand = TestHand()
 

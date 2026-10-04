@@ -557,6 +557,28 @@ class RollMachineTest {
   }
 
   @Test
+  fun `a set's own die is on the row and a tap on it writes a formula that rolls`() {
+    // Braced notation is the spelling the row was missing
+    // (`docs/architecture.md`, decision 75): the tap writes the set inside the
+    // braces, the formula resolves to that die, and the badge reads it back.
+    val skull =
+      BuiltinDiceSet.set.dice
+        .first { it.id == "d6" }
+        .copy(id = "skull-d6")
+    val brass = BuiltinDiceSet.set.copy(id = BRASS, name = "Brass", dice = BuiltinDiceSet.set.dice + skull)
+    val machine = machine(catalog = DiceCatalog.of(listOf(BuiltinDiceSet.set, brass)))
+
+    machine.pickFrom(BRASS)
+    val die = machine.pickable.first { it.notation == "skull-d6" }
+    machine.add(die)
+    machine.add(die)
+
+    assertEquals("2{$BRASS:skull-d6}", machine.text)
+    assertEquals(2, machine.counts[die])
+    assertEquals(2, (machine.state as RollState.Ready).diceCount)
+  }
+
+  @Test
   fun `choosing a set leaves the formula exactly as it was`() {
     // What is already written was written on purpose. A chooser that rewrote
     // `3d6` because somebody looked at another set would be editing a roll

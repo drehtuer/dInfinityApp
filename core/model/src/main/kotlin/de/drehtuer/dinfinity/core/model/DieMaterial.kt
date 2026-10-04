@@ -23,7 +23,10 @@ package de.drehtuer.dinfinity.core.model
  *   rather than a physical property — nothing in the solver reads it — and the
  *   numbers printed on a die stay opaque whatever it is, because a face you
  *   cannot read is not a die (`docs/dice-sets.md`).
- * @param restitution bounciness.
+ * @param restitution bounciness. 0.55 by default: it is what keeps a die
+ *   tumbling from one face to the next after it lands, and at 0.3 a die
+ *   stopped turning soon after its first contact
+ *   (`docs/physics-and-rendering.md`, "Dice bodies").
  * @param friction surface friction. Never zero: dice-on-dice friction is what
  *   stops a pile from behaving like ball bearings
  *   (`docs/physics-and-rendering.md`).
@@ -36,7 +39,7 @@ data class DieMaterial(
   val sizeMm: Double = 16.0,
   val density: Double = 1.2,
   val translucency: Double = 0.0,
-  val restitution: Double = 0.3,
+  val restitution: Double = 0.55,
   val friction: Double = 0.5,
 ) {
   /**

@@ -49,9 +49,6 @@ class FakeWorld(
   /** Every re-throw, as (step, die index). */
   val respawns: MutableList<Pair<Int, Int>> = mutableListOf()
 
-  /** Where a die that has been taken off the table was standing when it was. */
-  private val restedAt = arrayOfNulls<DieState>(diceCount)
-
   /** The gravity the loop set, once per step. */
   val gravities: MutableList<Vector3> = mutableListOf()
 
@@ -98,7 +95,7 @@ class FakeWorld(
   // counting the same steps.
   override fun readStates(): List<DieState> =
     List(diceCount) { index ->
-      restedAt[index] ?: states.at((steps - 1).coerceAtLeast(0), index, rethrows[index])
+      states.at((steps - 1).coerceAtLeast(0), index, rethrows[index])
     }
 
   override fun applyBias(
@@ -119,24 +116,6 @@ class FakeWorld(
     respawns += steps to index
     respawnPlacements += placement
     rethrows[index]++
-  }
-
-  /**
-   * Dice this world has been asked to take off the table, in the order they
-   * were counted.
-   *
-   * A removed die stops moving and stops being in anything's way, which is the
-   * whole of what removal means here: the states it reports afterwards are the
-   * ones it was resting at, because that is what the real one does.
-   */
-  val removed = mutableListOf<Int>()
-
-  override fun remove(index: Int) {
-    if (index in removed) return
-    removed += index
-    // What the real one does: the body leaves the simulation, so the die stops
-    // where it was read and stops being something another die can stand on.
-    restedAt[index] = readStates()[index].copy(motion = DieMotion(0.0, 0.0), supportedByDie = false)
   }
 
   override fun close() {

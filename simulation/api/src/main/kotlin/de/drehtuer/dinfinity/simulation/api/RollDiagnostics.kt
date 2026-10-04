@@ -22,23 +22,38 @@ package de.drehtuer.dinfinity.simulation.api
  * @param dice one entry per die, in throw order.
  * @param corrections how many dice have been nudged while still moving
  *   (rung 2).
- * @param rethrows how many have been picked up and thrown again (rung 3).
+ * @param waiting how many dice have come to rest where they cannot be read —
+ *   cocked, or standing on another die — and so will wait for the player's
+ *   shake (`docs/architecture.md`, decision 70). It replaced a count of the
+ *   dice the roll threw again by itself, which has been nought within a throw
+ *   since the roll stopped doing that.
  * @param forcedSettles dice the simulation had to finish for. Should always be
  *   zero; one is a bug (`docs/TODO.md`, Step 5.5).
  * @param postRestCorrections dice touched after they had come to rest. Must
  *   always be zero. Anything else is the invisible hand this app exists not to
  *   have.
  * @param contacts where the dice have hit something recently, newest last.
+ * @param droppedSteps steps a frame was too late to pay for, so far in this
+ *   roll ([FrameClock.droppedSteps]). The roll is unaffected — the same steps
+ *   are taken in the same order and come to the same faces — so it is a
+ *   smoothness figure, and the one the "is the first throw of a session
+ *   different?" question needs on screen (`docs/TODO.md`, Step 5.6). Nought
+ *   from a roll that keeps no clock.
  */
 data class RollDiagnostics(
   val steps: Int = 0,
   val dice: List<DieDiagnostic> = emptyList(),
   val corrections: Int = 0,
-  val rethrows: Int = 0,
+  val waiting: Int = 0,
   val forcedSettles: Int = 0,
   val postRestCorrections: Int = 0,
   val contacts: List<ContactPoint> = emptyList(),
+  val droppedSteps: Int = 0,
 ) {
+  init {
+    require(droppedSteps >= 0) { "a roll cannot have dropped $droppedSteps steps" }
+  }
+
   /** How many dice are in the throw. */
   val diceCount: Int get() = dice.size
 
@@ -87,7 +102,6 @@ data class RollDiagnostics(
  * @param touchingWall against a wall.
  * @param supportedByDie standing on another die — half of what rung 2 acts on.
  * @param corrected whether this die has had its one nudge.
- * @param rethrows how often it has been thrown again.
  *
  * It is a long list because it is a list of *facts about one die*, each of
  * which the overlay draws differently, and grouping them into a shape of their
@@ -104,16 +118,14 @@ data class DieDiagnostic(
   val touchingWall: Boolean = false,
   val supportedByDie: Boolean = false,
   /**
-   * True once this die has been read and taken off the table.
+   * True once this die has been read.
    *
    * What used to be here was whether the die had been *corrected*, and there
-   * is no correction left in a roll to report: a die is read and lifted off or
-   * thrown again where the player can watch. This is the state that replaced
-   * it, and it is the one the overlay wants — a die drawn as counted is a die
-   * that is out of play and no longer in anyone's way.
+   * is no correction left in a roll to report: a die is read, or left where it
+   * lies for the player's shake. This is the state that replaced it, and it is
+   * the one the overlay wants — a die drawn as counted has its answer.
    */
   val countedOut: Boolean = false,
-  val rethrows: Int = 0,
 ) {
   init {
     require(index >= 0) { "a die is numbered from zero, not $index" }
@@ -133,7 +145,7 @@ data class DieDiagnostic(
   /**
    * True when this die is standing on another one, and therefore has no face
    * worth reading: it is resting on something that is about to be taken away.
-   * A die in this state is thrown again rather than counted.
+   * A die in this state is not counted; it waits for the player's shake.
    */
   val stacked: Boolean get() = supportedByDie
 }
@@ -187,6 +199,18 @@ fun interface DebugWatch {
 
   /** Whether a snapshot is worth building at all. */
   val watching: Boolean get() = true
+
+  /**
+   * One displayed frame came [intervalNanos] after the one before it — the
+   * frame-rate readout on the overlay (`docs/physics-and-rendering.md`,
+   * "Debug tooling"; `docs/architecture.md`, decision 72).
+   *
+   * Only ever called for two frames in a row, never across a pause in which
+   * the tray asked for none: a gap while nothing moved is not a slow frame.
+   * Asked of a watcher only when [watching] is true, so a tray with the
+   * developer toggle off measures nothing. Returns nothing, like [saw].
+   */
+  fun framed(intervalNanos: Long) = Unit
 
   companion object {
     /** Watches nothing, and is what a tray has until the toggle is on. */

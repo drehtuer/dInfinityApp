@@ -15,6 +15,7 @@ import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayView
 import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
+import de.drehtuer.dinfinity.simulation.api.FrameRate
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -163,6 +164,18 @@ class RollPresenter(
   val diagnostics: RollDiagnostics get() = debug?.latest ?: RollDiagnostics.NONE
 
   /**
+   * Every step this visit's rolls have dropped, for the overlay's
+   * dropped-steps line — nought with the toggle off.
+   */
+  val droppedThisVisit: Long get() = debug?.droppedThisVisit ?: 0L
+
+  /**
+   * How fast the tray is being drawn, for the overlay's frame-rate line, or
+   * null with the toggle off or before any frames (decision 72).
+   */
+  val frameRate: FrameRate? get() = debug?.frameRate
+
+  /**
    * Whether this screen puts a tray on the screen at all.
    *
    * False in power-saving mode, where the dice are thrown and never drawn, so
@@ -275,22 +288,27 @@ class RollPresenter(
   /**
    * The throw this roll is part-way through, or null when there is none.
    *
-   * Two ways a roll can be waiting on a hand, and a shake answers both:
+   * Three ways a roll can be waiting on a hand, and a shake answers all of
+   * them:
    *
    * - **a chain earned a throw.** The shake is for the die the explosion
    *   earned, and throwing a fresh formula instead would drop the dice
    *   already down.
+   * - **a throw left dice it could not read** — cocked, or standing on
+   *   another die. The roll used to throw those again by itself; the shake
+   *   does now, and only those (decision 70).
    * - **a throw gave up on some of its dice.** These used to wait for a
    *   button of their own, which made them the one re-throw in the app a
    *   shake could not reach — so a player who had been told to shake stood
    *   over a tray that ignored them
    *   (`docs/physics-and-rendering.md`, "Starting a roll").
    *
-   * They cannot both be true: a throw either lands and is scored, which is
-   * where a chain earns its next die, or it gives up and is not scored at all.
+   * No two can be true at once. A chain earns its next die only when a throw
+   * is scored, and a throw is scored only once every die of it has been read
+   * — so the dice that need throwing again always come first, and the chain
+   * waits for the shake after.
    */
-  private fun waiting(shake: List<ShakeSample>): ThrowSpec? =
-    machine.throwEarned(shake) ?: machine.throwUnsettled(shake)
+  private fun waiting(shake: List<ShakeSample>): ThrowSpec? = machine.throwEarned(shake) ?: machine.throwAgain(shake)
 
   /**
    * Hands one throw to the tray, and hands the tray the one after it.
@@ -376,6 +394,11 @@ class RollPresenter(
             // earned sits ready and the dice that are down stay down
             // (`docs/dice-notation.md`, "Evaluation").
             is Landed.OneMore -> Unit
+            // So does a throw with dice nobody could read in it. They lie
+            // where they landed, the plate says how many, and the next shake
+            // throws them (decision 70). Its progress stays, for the same
+            // reason a chain's does.
+            is Landed.Unread -> Unit
             // Nobody is waiting for this throw any more — the formula was typed
             // over while it was in the air. Nothing landed as far as the screen
             // is concerned, and nothing follows it.

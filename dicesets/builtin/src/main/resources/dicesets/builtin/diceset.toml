@@ -26,7 +26,7 @@ roughness = 0.35
 metallic = 0.0
 size_mm = 16
 density = 1.2              # ~acrylic
-restitution = 0.3
+restitution = 0.55
 friction = 0.5
 
 # --- dice ------------------------------------------------------------

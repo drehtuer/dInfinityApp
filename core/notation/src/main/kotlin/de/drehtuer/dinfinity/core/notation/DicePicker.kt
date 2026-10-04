@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.core.notation
 
 import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.Die
 
 /**
  * Dice added and taken away by tapping rather than by typing
@@ -23,22 +24,26 @@ object DicePicker {
   /**
    * The dice [set] offers the picker row, in the order they are shown.
    *
-   * Only the standard dice, and that is a real limit rather than an oversight:
-   * plain notation names `dN`, `d%` and `dF` and nothing else, so a set's own
-   * `skull-d6` has no spelling a formula could carry
-   * (`docs/architecture.md`, decision 31). A row that added a die the formula
-   * cannot name would be a row whose taps disappear.
+   * The standard dice first, in their usual order, then the set's own dice in
+   * the order the set file lists them. A die plain notation already names
+   * exactly — a set's `d3` — is written plainly, `1d3`, because that is what
+   * somebody would type; every other die is written braced, `1{skull-d6}`,
+   * which is the one spelling that names a die by its own id
+   * (`docs/dice-notation.md`, "A set's own dice"; `docs/architecture.md`,
+   * decision 75). A `d100` of the set's own is braced too: plain `d100` is
+   * always the percentile pair.
    *
-   * @param setRef the `setref:` every tap writes, or `null` for the set plain
-   *   notation already resolves against.
+   * @param setRef the set every tap writes — `brass:1d20`, `1{brass:skull-d6}`
+   *   — or `null` for the set plain notation already resolves against.
    */
   fun offeredBy(
     set: DiceSet,
     setRef: String? = null,
-  ): List<PickableDie> =
-    DiceSet.StandardDieIds
-      .filter { set.die(it) != null }
-      .mapNotNull { standard(it)?.copy(setRef = setRef) }
+  ): List<PickableDie> {
+    val standard = DiceSet.StandardDieIds.filter { set.die(it) != null }.mapNotNull(::standard)
+    val own = set.dice.filterNot { it.id in DiceSet.StandardDieIds }.map(::own)
+    return (standard + own).map { it.copy(setRef = setRef) }
+  }
 
   /**
    * How many of each of [dice] the formula in [text] asks for.
@@ -116,6 +121,22 @@ private fun standard(id: String): PickableDie? =
     id.startsWith('d') -> id.drop(1).toIntOrNull()?.let { PickableDie(id, Sides.Numeric(it)) }
     else -> null
   }
+
+/**
+ * A set's own [die] as the picker offers it: plainly when plain notation
+ * already names exactly this die, braced otherwise. Either way it wears the
+ * outline of the solid it is, because the id says nothing about the shape.
+ */
+private fun own(die: Die): PickableDie {
+  val outline = Sides.Numeric(die.shape.faceCount)
+  val plain =
+    die.id
+      .drop(1)
+      .toIntOrNull()
+      ?.takeIf { "d$it" == die.id && it in 1..NotationLimits.MAX_SIDES && it != PERCENTILE }
+  val sides = if (plain == null) Sides.Named(die.id) else Sides.Numeric(plain)
+  return PickableDie(die.id, sides, outline = outline)
+}
 
 /** A top-level term of the sum, and whether it is added or subtracted. */
 private class Term(
@@ -195,7 +216,10 @@ private fun respelled(
   node: DiceNode,
   count: Int,
 ): String {
-  val from = node.range.first + (node.setRef?.let { it.length + 1 } ?: 0)
+  // A braced group's count comes first (`2{brass:skull-d6}`); a plain one's
+  // comes after its set (`brass:2d20`).
+  val setWritten = if (node.sides is Sides.Named) null else node.setRef
+  val from = node.range.first + (setWritten?.let { it.length + 1 } ?: 0)
   val until = (from..node.range.last).firstOrNull { !text[it].isDigit() } ?: node.range.last + 1
   return text.replaceRange(from, until, count.toString())
 }
@@ -271,24 +295,38 @@ private val SUM_OPERATORS = setOf(BinaryOperator.Plus, BinaryOperator.Minus)
 private val SPACE_RUN = Regex("\\s+")
 private const val PERCENTILE_HALF = "d10-tens"
 
+/** The `dN` plain notation never resolves to a die called that: `d100` is the pair. */
+private const val PERCENTILE = 100
+
 /**
  * One die on the picker row.
  *
- * @param notation how a formula spells it — `d6`, `d%`, `dF`.
+ * @param notation how a formula spells it — `d6`, `d%`, `dF` — or, for a
+ *   braced die, its own id, `skull-d6`. It is also the button's caption.
  * @param sides what that spelling parses to, which is what a group in the
  *   formula is matched against. `d100` and `d%` are the same die and so count
- *   towards the same badge.
+ *   towards the same badge; `{d6}` is [Sides.Named] and is not a `d6`'s.
  * @param setRef the `setref:` a tap writes, or `null` for the default set. A
  *   group written `builtin:1d6` while `builtin` *is* the default is a
  *   different spelling and deliberately does not count: the picker edits what
  *   it can spell, and guessing at which set a player meant is how a tap starts
  *   removing dice it did not put there.
+ * @param outline the silhouette the button wears. The sides, for a standard
+ *   die; the solid's face count, for a set's own die, whose id says nothing
+ *   about its shape.
  */
 data class PickableDie(
   val notation: String,
   val sides: Sides,
   val setRef: String? = null,
+  val outline: Sides = sides,
 ) {
-  /** This die as [count] of them, written the way a formula writes it. */
-  fun notation(count: Int): String = "${setRef?.let { "$it:" } ?: ""}$count$notation"
+  /**
+   * This die as [count] of them, written the way a formula writes it:
+   * `brass:2d20`, or `2{brass:skull-d6}` with the set inside the braces.
+   */
+  fun notation(count: Int): String {
+    val set = setRef?.let { "$it:" }.orEmpty()
+    return if (sides is Sides.Named) "$count{$set$notation}" else "$set$count$notation"
+  }
 }

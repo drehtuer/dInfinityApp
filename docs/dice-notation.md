@@ -23,6 +23,9 @@ is evaluated.
 | `2 * (1d8 + 3)` | arithmetic and grouping |
 | `1d6 + 1d4 [Fire]` | trailing label, ignored for math, shown in breakdown |
 | `brass:1d20` | use the d20 from the installed dice set with id `brass` |
+| `3{skull-d6}kh1` | three of the die whose own id is `skull-d6`, keep the highest |
+| `3{brass:skull-d6}kh1` | the same, from the set `brass` |
+| `3{skull:d6}kh1` | three of the `d6` of the set `skull` |
 
 **The app carries this reference too.** Menu → **Notation** lists everything
 below in the same words, with an example on every line that you can tap to put
@@ -41,9 +44,12 @@ term      := factor (("*" | "/") factor)*
 factor    := ("-")? atom
 atom      := dice | integer | "(" expr ")"
 dice      := (setref ":")? count? "d" sides modifier*
+           | count? braced modifier*     ; a die named by its own id
 count     := integer                     ; default 1, max 1000 (see Limits)
 sides     := integer | "%" | "F"          ; "%" is an alias for 100 (as 2d10), "F" = fudge/fate die
 setref    := identifier                  ; installed dice set id
+braced    := "{" (slug ":")? slug "}"    ; {die} or {set:die}, no spaces inside
+slug      := [a-z0-9][a-z0-9-]*          ; at most 40 characters
 modifier  := "kh" integer                ; keep highest n
            | "kl" integer                ; keep lowest n
            | "dh" integer                ; drop highest n
@@ -66,7 +72,41 @@ either case, so `4D6KH3` and `4d6kh3` are one formula. Two things are not:
   has to start with a letter. A set id may start with a digit
   (`docs/dice-sets.md`), but such a set cannot be named in a formula: `3dice:1d6`
   does not parse as a `setref`. Give a set you want to reference by name an id
-  that starts with a letter.
+  that starts with a letter — or name it inside braces, where `{3dice:d6}`
+  reads, because the `}` says where the id ends.
+- **A braced id is lower-case and written exactly** as the set file spells it:
+  `{Skull-d6}` is an error, not the same die.
+
+### A set's own dice
+
+A dice set may define dice under any id — `skull-d6`, a `d100` that really has
+a hundred faces (`docs/dice-sets.md`). Plain notation cannot name them: a die
+id and a modifier are made of the same characters, so `brass:skull-d6kh1` has
+no reading that does not ask the installed sets where the id stops
+(`docs/architecture.md`, decision 31). **Braces close the id before the
+modifiers start**, so a set's own die is written braced:
+
+- `3{skull-d6}kh1` — three of the die whose own id is `skull-d6`, keep the
+  highest. Resolved like a plain `3d6`: the default set's, falling back to the
+  built-in set's per die.
+- `3{brass:skull-d6}kh1` — the same, from the set `brass`, with no fallback,
+  as for any `setref`.
+- `3{skull:d6}kh1` — the `d6` of the set `skull`.
+
+The set goes **inside** the braces and only there: `brass:3{skull-d6}` is an
+error that says where to put it, so each die has one spelling and the picker's
+badges can read it back. A braced id is the die **with that id and nothing
+else**: `{d100}` is a set's real hundred-face die, never the percentile pair,
+and `{d10-tens}` is the tens die thrown on its own. Everything else is as for
+any group — the count, the modifiers, the limits, the breakdown, which quotes
+the group as written.
+
+The parser lexes what is between the braces **without looking at any set**,
+which is what lets the field keep validating on every keystroke; whether a set
+has the die is decided when the formula is planned (`DieResolver`), and a die
+nobody has is the usual "no skull-d6 in set "builtin"" under the group. A
+formula without braces means exactly what it always did, so every saved roll,
+history entry and collection file written before is read the same way.
 
 ## Limits
 
@@ -80,6 +120,7 @@ To keep the simulation and the probability graph tractable:
 | Explosion depth | 20 | Further explosions ignored, noted in breakdown |
 | Dice in the tray, including the ones explosions add | table capacity, hard cap 100 | The chain stops there, noted in the breakdown. An added die is dropped into clear floor, and a tray with none left cannot take one (`docs/tables.md`) |
 | Nested parentheses | 8 | Parse error |
+| Characters in a braced set or die id | 40 | Parse error; no dice set can define a longer id |
 | Result magnitude | fits in 64-bit | Overflow is a parse-time error via the PMF bound |
 
 A formula like `500d6` can be typed and graphed but cannot be rolled: the
@@ -106,7 +147,13 @@ capacity check happens before any body is created and the UI explains it
 3. Run the table capacity check on the total die count (including the dice
    that a first explosion could add). Refuse with a message if it fails.
 4. All dice from all groups go into **one** physics throw. The breakdown
-   attributes each physical die back to its group.
+   attributes each physical die back to its group. A die that comes to rest
+   where it cannot be read — cocked, or standing on another — has no face yet:
+   it waits where it lies for the player's next shake, which throws it again,
+   and nothing below happens until every die of the throw has a face
+   (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked dice"). So
+   an explosion is never decided, and a chain never asks for its shake, while a
+   die of the throw is still unread.
 5. Exploding and re-rolled dice: each extra die is a throw of its own, made
    once the last one has come to rest, into the same tray. It drops into the
    clear floor the settled dice leave, among the dice that set it off, and the
@@ -339,11 +386,17 @@ formula and never throws one away":
 - **A formula that does not parse has no badges and cannot be added to.**
   There are no counts to show and nothing to splice into.
 
-The row offers the **standard dice the selected set defines** — `dN`, `d%`
-and `dF`. A set's own die ids (`skull-d6`) are not on it, because plain
-notation has no spelling for them (`docs/architecture.md`, decision 31), and
-a button whose taps could not be written into the field would be a button
-whose taps disappear.
+The row offers **every die the selected set defines**: the standard dice first
+— `dN`, `d%` and `dF`, in their usual order — then the set's own dice in the
+order its file lists them, each captioned with its id and drawn as the solid it
+is. A tap on a set's own die writes it braced (see "A set's own dice"):
+`1{skull-d6}` from the default set, `1{brass:skull-d6}` from another, counted
+up to `2{brass:skull-d6}` by the next tap like any group. A set's own die whose
+id plain notation already names exactly — a `d3` — is written plainly, `1d3`,
+because that is what somebody would type; a `d100` of its own is braced,
+because plain `d100` is the percentile pair (`docs/architecture.md`,
+decision 75). The badges follow the same rule as ever: `2{d6}` is not what the
+d6 button writes, so it is not the d6 button's to count.
 
 ## d100 and d%
 
@@ -367,7 +420,9 @@ d6 is relabelled `1,2,1,2,1,2`.
 
 A Fudge die's faces are a minus, a blank and a plus — worth −1, 0 and +1 —
 and the bundled `df` is labelled `− − 0 + 0 +` (`docs/dice-sets.md`,
-"Numbering"). The faces and the breakdown print those symbols.
+"Numbering"). The faces and the breakdown print those symbols, and so does
+the statistics histogram, which names each bar by the die's own label
+(`docs/statistics.md`, "Screens").
 
 **A total of Fudge dice is written with its sign**: `+2`, `−1`, `0`. That is
 how a Fate result is written, and it is the only spelling that says the same
@@ -443,6 +498,17 @@ SavedRoll {
   its own scroll box, so it scrolls under a header and a group picker that stay
   put. The order is written down when the finger lifts, in one go, rather than
   at every step of the drag.
+
+  **A row held near the list's top or bottom edge scrolls the list** towards
+  that edge, so a row can travel further than the list shows in one drag. The
+  band along each edge is 64 dp tall, and the speed grows with how deep into it
+  the finger is, from nothing at its inner edge to 640 dp a second at the
+  list's own edge and beyond — tuning constants in `SavedEdgeScroll`, not
+  limits. A row picked up *inside* a band does not set the list moving by
+  being picked up: the band starts where the drag started, so the list only
+  scrolls once the finger has moved towards the edge (decision 78 in
+  `docs/architecture.md`). Letting go drops the row where it is, as any other
+  drag does.
 
   **A new roll lands at the bottom of its group's list.** It is a thing
   somebody has just made and not yet placed; putting it at the top would move
@@ -636,6 +702,10 @@ middle of something (`3d6 +`) is blamed on a position one past its end, and
 there is nothing there to underline.
 
 Suggestions are offered when the intent is obvious (`d7` → nearest available,
-`3 d 6` → `3d6`), as one tap under the message. Where there is no honest
+`3 d 6` → `3d6`), as one tap under the message. A braced `{d7}` is offered the
+nearest `dN` still braced; a braced `{skull-d7}` is offered nothing, because
+there is no honest nearest to a skull. Empty braces (`{}`), a `{` with no `}`,
+and a character that cannot be in an id (`{Skull}`, a space) are each an error
+of their own, pointing at the brace or at the character. Where there is no honest
 reading there is no suggestion: a guess that is wrong is one tap away from
 replacing a formula somebody meant.

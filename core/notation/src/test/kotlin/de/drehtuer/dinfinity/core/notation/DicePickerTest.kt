@@ -144,16 +144,60 @@ class DicePickerTest {
   }
 
   @Test
-  fun `the row offers the standard dice the set defines and nothing else`() {
-    // A set's own `skull-d6` has no spelling plain notation can carry, so a
-    // button for it would be a button whose taps disappear
-    // (`docs/architecture.md`, decision 31).
-    val set = setOf("d6", "d10", "d10-tens", "df", "skull-d6")
+  fun `the row offers the standard dice first, then the set's own`() {
+    val set = setOf("skull-d6", "d6", "d10", "d10-tens", "df", "d3")
 
     assertEquals(
-      listOf("d6", "d10", "d%", "dF"),
+      listOf("d6", "d10", "d%", "dF", "skull-d6", "d3"),
       DicePicker.offeredBy(set).map(PickableDie::notation),
     )
+  }
+
+  @Test
+  fun `a set's own die is written braced, and a die plain notation names is not`() {
+    // `d3` is what somebody would type for a set's d3, and resolves to exactly
+    // it; `skull-d6` has only the braced spelling (`docs/architecture.md`,
+    // decision 75).
+    val offered = DicePicker.offeredBy(setOf("skull-d6", "d3")).associateBy(PickableDie::notation)
+
+    assertEquals("1{skull-d6}", DicePicker.add("", offered.getValue("skull-d6")))
+    assertEquals("1d3", DicePicker.add("", offered.getValue("d3")))
+  }
+
+  @Test
+  fun `a set's own d100 is braced, because plain d100 is the percentile pair`() {
+    val offered = DicePicker.offeredBy(setOf("d100", "d06", "d0")).map { it.notation(1) }
+
+    assertEquals(listOf("1{d100}", "1{d06}", "1{d0}"), offered)
+  }
+
+  @Test
+  fun `a set's own die wears the outline of its solid`() {
+    val die = DicePicker.offeredBy(setOf("skull-d6")).single()
+
+    assertEquals(Sides.Named("skull-d6"), die.sides)
+    assertEquals(Sides.Numeric(6), die.outline)
+  }
+
+  @Test
+  fun `a braced die is counted, counted up and taken off like any other`() {
+    val skull = DicePicker.offeredBy(setOf("skull-d6"), setRef = "brass").single()
+
+    assertEquals("1{brass:skull-d6}", DicePicker.add("", skull))
+    assertEquals("2d6 + 1{brass:skull-d6} - 1", DicePicker.add("2d6 - 1", skull))
+    assertEquals("3{brass:skull-d6} + 1d4", DicePicker.add("2{brass:skull-d6} + 1d4", skull))
+    assertEquals("2{brass:skull-d6}", DicePicker.add("{brass:skull-d6}", skull))
+    assertEquals(5, DicePicker.counts("2{brass:skull-d6} + 3{brass:skull-d6}", listOf(skull))[skull])
+    assertEquals("1{brass:skull-d6}", DicePicker.remove("2{brass:skull-d6}", skull))
+    assertEquals("1d4", DicePicker.remove("1{brass:skull-d6} + 1d4", skull))
+  }
+
+  @Test
+  fun `a braced die from another set, or with modifiers, is not this button's`() {
+    val skull = DicePicker.offeredBy(setOf("skull-d6")).single()
+
+    assertEquals(0, DicePicker.counts("2{brass:skull-d6} + 3{skull-d6}kh1 + 1d6", listOf(skull))[skull])
+    assertEquals(0, DicePicker.counts("2{d6}", listOf(d6))[d6], "{d6} is not how the d6 button spells it")
   }
 
   @Test
@@ -167,7 +211,7 @@ class DicePickerTest {
   fun `everything the row writes parses back to what was tapped`() {
     // The property the whole picker rests on: a tap is a formula.
     var text = ""
-    val row = listOf(d6, d20, percent)
+    val row = listOf(d6, d20, percent, PickableDie("skull-d6", Sides.Named("skull-d6"), setRef = "brass"))
     repeat(REPEATS) { turn ->
       text = DicePicker.add(text, row[turn % row.size])
       assertTrue(FormulaParser.parse(text) is ParseResult.Parsed, "a tap wrote something unreadable: $text")
@@ -190,6 +234,6 @@ class DicePickerTest {
     )
 
   private companion object {
-    const val REPEATS = 9
+    const val REPEATS = 12
   }
 }
