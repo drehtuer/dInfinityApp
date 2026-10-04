@@ -39,9 +39,12 @@ import java.util.concurrent.CountDownLatch
  *   handed on to the engine and to nothing else: the artwork of a package is
  *   kept for as long as the engine is, for the same reason the compiled
  *   material is (`docs/dice-sets.md`, "Textures").
+ * @param materials where the engine keeps its compiled material between
+ *   launches ([MaterialCache]); the default keeps nothing.
  */
 class RollThread(
   private val artwork: (String) -> AtlasImage? = { null },
+  private val materials: MaterialCache = MaterialCache.NONE,
 ) : AutoCloseable {
   private val thread = HandlerThread(THREAD_NAME).apply { start() }
 
@@ -65,7 +68,7 @@ class RollThread(
    * **Call only on the roll thread.** A graphics context belongs to the thread
    * that made it, and every caller is already inside a [handler] post.
    */
-  fun filament(): FilamentEngine = filament ?: FilamentEngine(artwork).also { filament = it }
+  fun filament(): FilamentEngine = filament ?: FilamentEngine(artwork, materials).also { filament = it }
 
   /**
    * Runs [work] on the roll thread and waits for it.

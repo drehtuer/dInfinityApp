@@ -2018,6 +2018,20 @@ impact sounds rather than a crash in the middle of a roll.
   rather than objects a garbage collector knows about, so everything made
   there is destroyed in reverse; a roll's own entities go at the end of the
   roll, and the engine and the compiled material stay.
+- **The material is compiled once per version, not once per launch.** On the
+  Pixel 10a a cold start showed a black tray for 9.9 s, nine-tenths of it
+  `libfilamat` compiling the two dice materials for every backend Filament has.
+  Three changes bring it to **0.8 s**, and to 3.2 s on the first launch after
+  an install or update:
+  - only the backend the engine runs on is compiled for (OpenGL ES on the
+    Pixel 10a), not `TargetApi.ALL`;
+  - the compiled packet is kept in the app's `codeCacheDir` (`MaterialCache`),
+    which Android empties on every update, so a new Filament never reads an
+    old packet; its name carries the material source's hash as well, and
+    anything wrong with the disk falls back to compiling;
+  - the blended material is made the first time a translucent die asks for
+    it, not with the engine. The built-in set has none, and a translucent die
+    on that first launch pays about two seconds once, mid-throw.
 - **One material** draws every surface of a roll: a lit, opaque, physically
   based one with a base colour, a roughness and a metalness, with an atlas laid
   over it. Dice are dice and a tray is a tray. Everything a package may vary is

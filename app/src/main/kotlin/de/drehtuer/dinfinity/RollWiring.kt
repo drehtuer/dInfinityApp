@@ -16,6 +16,7 @@ import de.drehtuer.dinfinity.feature.roll.RollPresenter
 import de.drehtuer.dinfinity.feature.roll.ThrowRecorder
 import de.drehtuer.dinfinity.feedback.AndroidFeedback
 import de.drehtuer.dinfinity.feedback.ImpactFeedback
+import de.drehtuer.dinfinity.render.filament.MaterialCache
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.RollThread
 import de.drehtuer.dinfinity.render.filament.ThumbnailPlan
@@ -34,6 +35,7 @@ import de.drehtuer.dinfinity.simulation.jolt.JoltBoardSettler
 import de.drehtuer.dinfinity.simulation.jolt.JoltDiceSimulator
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import java.io.File
 
 /**
  * Everything the roll screen needs, put together in the one place that is
@@ -254,8 +256,14 @@ class RollWiring(
    * the device and costs long enough to watch, so paying for it on every visit
    * to the screen is the black tray somebody sees on the way back from the menu
    * (`RollThread`).
+   *
+   * The compiled material is kept on disk as well ([MaterialCache]), in the
+   * code cache Android empties on every update, so only the first launch of a
+   * new version compiles it at all.
    */
-  private val rollThread: RollThread by lazy { RollThread(artwork) }
+  private val rollThread: RollThread by lazy {
+    RollThread(artwork, MaterialCache(File(context.codeCacheDir, MATERIAL_CACHE_DIR)))
+  }
 
   /** Made once, because the pictures it has already drawn are worth keeping. */
   private var pictures: TrayThumbnails? = null
@@ -371,5 +379,10 @@ class RollWiring(
     val short = minOf(metrics.widthPixels, metrics.heightPixels).toDouble()
     val long = maxOf(metrics.widthPixels, metrics.heightPixels).toDouble()
     return if (long > 0.0) short / long else TableGeometry.PIXEL_10A_ASPECT
+  }
+
+  private companion object {
+    /** Under `codeCacheDir`, which Android empties on every update. */
+    const val MATERIAL_CACHE_DIR = "materials"
   }
 }

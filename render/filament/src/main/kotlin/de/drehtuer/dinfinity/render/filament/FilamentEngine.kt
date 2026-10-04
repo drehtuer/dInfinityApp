@@ -42,9 +42,13 @@ import java.nio.ByteOrder
  *   the compiled material is kept (`docs/dice-sets.md`, "Textures"). The
  *   default draws nothing, which is what a device test with no packages on
  *   disk wants.
+ * @param materials where the compiled material is kept between launches
+ *   ([MaterialCache]). The default keeps nothing and compiles every time,
+ *   which is what a device test wants: it measures the compiler, not a file.
  */
 class FilamentEngine(
   artwork: (String) -> AtlasImage? = { null },
+  private val materials: MaterialCache = MaterialCache.NONE,
 ) : AutoCloseable {
   init {
     // Safe to call more than once, and nothing below works before it has been.
@@ -60,7 +64,9 @@ class FilamentEngine(
    * Everything that hides what is behind it, which is every surface of the
    * tray and every die a set has not called translucent.
    */
-  val material: Material = compileMaterial(engine, blended = false)
+  val material: Material = loadMaterial(engine, materials, blended = false)
+
+  private val blended = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, blended = true) }
 
   /**
    * And the same material again, blended.
@@ -76,8 +82,16 @@ class FilamentEngine(
    * every other thing they draw: the same body, the same printed numbers, the
    * same artwork over them. Only the blending differs, and only Filament's
    * builder knows it does.
+   *
+   * **Made the first time a die asks for it**, not with the engine. Most rolls
+   * have no translucent die at all, the built-in set has none, and compiling
+   * it took about two of the five seconds the first launch of a new version
+   * spent with a black tray. A translucent die on that first launch pays for
+   * it instead, once; after that it is read back from [MaterialCache] like the
+   * opaque one. Only ever touched on the thread that owns the engine, so it
+   * needs no lock.
    */
-  val blendedMaterial: Material = compileMaterial(engine, blended = true)
+  val blendedMaterial: Material by blended
 
   /** Which of the two [parameters] is to be drawn with. */
   fun materialFor(parameters: DiceMaterial.Parameters): Material = if (parameters.blended) blendedMaterial else material
@@ -150,7 +164,7 @@ class FilamentEngine(
     atlases.close()
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
-    engine.destroyMaterial(blendedMaterial)
+    if (blended.isInitialized()) engine.destroyMaterial(blendedMaterial)
     engine.destroy()
   }
 
@@ -161,10 +175,40 @@ class FilamentEngine(
     /** Every channel of the blank texture, which multiplies a colour by one. */
     const val OPAQUE_WHITE = 0xFF.toByte()
 
-    fun compileMaterial(
+    /**
+     * The dice material for [engine], from [materials] if it was compiled on an
+     * earlier launch.
+     */
+    fun loadMaterial(
       engine: Engine,
+      materials: MaterialCache,
       blended: Boolean,
     ): Material {
+      val target = targetOf(engine.backend)
+      val key = MaterialCache.keyOf(DiceMaterial.SOURCE, backend = target.name, blended = blended)
+      val packet = materials.packet(key) { compileMaterial(target, blended) }
+      return Material.Builder().payload(packet, packet.remaining()).build(engine)
+    }
+
+    /**
+     * Only the backend the engine actually runs on.
+     *
+     * Every other target is shader code compiled to be thrown away, and on
+     * the Pixel 10a `ALL` roughly tripled the time `libfilamat` took
+     * (`docs/physics-and-rendering.md`, "Rendering (normal mode)"). `ALL` stays for a backend
+     * this list does not know, which costs time but never draws nothing.
+     */
+    fun targetOf(backend: Engine.Backend): MaterialBuilder.TargetApi =
+      when (backend) {
+        Engine.Backend.OPENGL -> MaterialBuilder.TargetApi.OPENGL
+        Engine.Backend.VULKAN -> MaterialBuilder.TargetApi.VULKAN
+        else -> MaterialBuilder.TargetApi.ALL
+      }
+
+    fun compileMaterial(
+      target: MaterialBuilder.TargetApi,
+      blended: Boolean,
+    ): ByteBuffer {
       MaterialBuilder.init()
       try {
         val packet =
@@ -231,14 +275,13 @@ class FilamentEngine(
               MaterialBuilder.ParameterPrecision.DEFAULT,
               "glyphs",
             ).platform(MaterialBuilder.Platform.MOBILE)
-            // Every backend this app can meet: compiling on the device is only
-            // worth its size if it answers for the driver that is actually
-            // here (`docs/architecture.md`, decision 46).
-            .targetApi(MaterialBuilder.TargetApi.ALL)
+            // The driver that is actually here (`docs/architecture.md`,
+            // decision 46), and no other ([targetOf]).
+            .targetApi(target)
             .optimization(MaterialBuilder.Optimization.PERFORMANCE)
             .build()
         check(packet.isValid) { "the dice material did not compile on this device" }
-        return Material.Builder().payload(packet.buffer, packet.buffer.remaining()).build(engine)
+        return packet.buffer
       } finally {
         MaterialBuilder.shutdown()
       }
