@@ -5,7 +5,7 @@ import de.drehtuer.dinfinity.simulation.api.Vector3
 
 /**
  * One shake, from the first hard movement to the release: the detector, the
- * gravity tracker and the recorder wired together
+ * gravity tracker, the swing correction and the recorder wired together
  * (`docs/physics-and-rendering.md`, "Shake input").
  *
  * It is deliberately free of Android. `SensorShakeSource` turns
@@ -17,6 +17,7 @@ class ShakeSession {
   private val detector = ShakeDetector()
   private val gravity = GravityTracker()
   private val recorder = ShakeRecorder()
+  private var swing = SwingCorrection()
 
   /**
    * The moment last recorded, or null when nothing was — before a shake is
@@ -46,12 +47,17 @@ class ShakeSession {
     detector.reset()
     gravity.reset()
     recorder.reset()
+    swing = SwingCorrection()
     latest = null
   }
 
   /**
    * Takes one linear-acceleration sample, with gravity already removed by the
    * sensor, and says whether the shake started or ended.
+   *
+   * What is recorded is the sample with the wrist's swing taken out
+   * ([SwingCorrection]); what decides whether this is a shake is the sample
+   * as it came.
    *
    * Recording begins the moment a shake is confirmed and not before: the dice
    * are spawned then, and a record of the seconds before they existed would
@@ -75,20 +81,33 @@ class ShakeSession {
     accelerationMmPerSecond2: Vector3,
     threw: () -> Boolean = { true },
   ): ShakeDetector.Event {
+    val wasIdle = detector.state == ShakeDetector.State.Idle
+    // The detector hears the hand as it is, swing and all: its thresholds are
+    // about how hard the phone is moving, and the swing is part of that.
     val event = detector.sample(atMillis, accelerationMmPerSecond2.length)
+    // A new estimate of the wrist per shake, from its first hard moment rather
+    // than from when it was confirmed, so the strokes before the dice existed
+    // still teach it where the pivot is.
+    if (wasIdle && detector.state != ShakeDetector.State.Idle) swing.newShake()
+    val hand = swing.correct(atMillis, accelerationMmPerSecond2)
     if (event == ShakeDetector.Event.Started && threw()) {
       recorder.reset()
       gravity.reset()
     }
-    latest = if (shaking) recorder.record(atMillis, accelerationMmPerSecond2, gravity.gravity()) else null
+    latest = if (shaking) recorder.record(atMillis, hand, gravity.gravity()) else null
     return event
   }
 
-  /** Takes one gyroscope sample, which is what tilts gravity. */
+  /**
+   * Takes one gyroscope sample: what tilts gravity, and what says how much of
+   * the next acceleration is only the wrist swinging the phone
+   * ([SwingCorrection]).
+   */
   fun rotation(
     atNanos: Long,
     rateRadiansPerSecond: Vector3,
   ) {
     gravity.sample(atNanos, rateRadiansPerSecond)
+    swing.rotation(rateRadiansPerSecond)
   }
 }

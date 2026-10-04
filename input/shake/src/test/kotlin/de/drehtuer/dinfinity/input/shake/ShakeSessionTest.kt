@@ -8,6 +8,8 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 class ShakeSessionTest {
   private val session = ShakeSession()
@@ -200,6 +202,44 @@ class ShakeSessionTest {
 
     // Not re-anchored to straight down: it is the same roll, in the same frame.
     assertEquals(turned, session.gravity())
+  }
+
+  @Test
+  fun `a phone swung on the wrist drives the dice no further up the tray than down it`() {
+    // The owner's report from the Pixel 10a: the dice gathered at the top of
+    // the screen whichever way the phone was shaken. A swing about the wrist
+    // pulls the sensor towards the hand on every stroke, both ways, and that
+    // pull applied inverse is a steady push up the tray (decision 87).
+    val arm = Vector3(100.0, 0.0, 0.0)
+    val frequency = 2 * PI * 3.0
+    val amplitude = 0.4
+    var pull = 0.0
+    var millis = 0L
+    while (millis <= 2_000) {
+      val t = millis / 1_000.0
+      val rate = Vector3(0.0, 0.0, amplitude * frequency * cos(frequency * t))
+      val turning = -amplitude * frequency * frequency * sin(frequency * t)
+      // The stroke, across the tray, and the pull towards the wrist.
+      val stroke = Vector3(0.0, turning * arm.x, 0.0)
+      val towardsTheWrist = SwingCorrection.pullOf(rate, arm)
+      session.rotation(millis * 1_000_000, rate)
+      session.acceleration(millis, stroke + towardsTheWrist)
+      if (session.shaking) pull += towardsTheWrist.x
+      millis += 20
+    }
+    val recorded = session.recorded()
+    val heard = pull / recorded.size
+    val driven = recorded.sumOf { it.accelerationMmPerSecond2.x } / recorded.size
+
+    assertTrue("the swing pulled towards the wrist: $heard", heard < -2_000)
+    assertEquals("what drives the dice along the tray", 0.0, driven, -0.05 * heard)
+  }
+
+  @Test
+  fun `the swing does not change what counts as a shake`() {
+    // The detector hears the hand as it is; only what is recorded is corrected.
+    session.rotation(0, Vector3(0.0, 0.0, 10.0))
+    assertEquals(ShakeDetector.Event.Started, start())
   }
 
   /** A shake that begins while a roll is already running, so it throws nothing. */

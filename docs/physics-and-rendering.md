@@ -757,6 +757,57 @@ was, as the table above says.)
   is what a replay would need if this is revisited, and the question of what a
   tilted phone should mean is deferred rather than answered
   (`docs/TODO.md`, Step 5.6).
+- **The wrist's swing is taken out of the shake before it is recorded**
+  (`SwingCorrection`, `docs/architecture.md`, decision 87). The owner, on the
+  Pixel 10a: "Dice tend to group at the top of the phone. When shaking up and
+  down, left and right, and back and forth." A hand does not only carry the
+  phone, it swings it about the wrist, and the wrist is below the sensor.
+  Anything turning about a point it is not on is pulled towards that point by
+  `ω × (ω × p)`, `p` running from the pivot to the sensor — a pull that goes
+  with the *square* of the rate of turn, so it does not reverse with the
+  stroke: left or right, up or down, towards the player or away, every stroke
+  pulls towards the bottom of the phone. Applied inverse, it is a steady push
+  up the tray. The tray here does not turn ("The gyroscope no longer turns the
+  world", above), so the one part of a swing only a turning tray would feel
+  does not belong in it.
+
+  The pivot depends on the grip, so it is estimated from the shake itself: the
+  gyroscope gives `ω`, each acceleration sample is one equation
+  `a ≈ (ωωᵀ − |ω|²I)·p`, and `p` is their least-squares answer, started afresh
+  with each shake's first hard moment and weighted by the time each sample
+  stands for, so a faster sensor is not more certain. The carrying and the
+  tangential part of the swing reverse every stroke and fall out of the fit;
+  what is subtracted is the pull for the rate of turn *now*. A phone that has
+  stopped turning has nothing taken away — which is why this is not a
+  high-pass filter, which would answer the hand stopping with a kick the other
+  way. The detector still hears the shake as it was, so nothing about what
+  counts as a shake changes, and the record holds the corrected moments, so a
+  roll replays from its record as before.
+
+  Measured off the phone, through `ShakeSession` and the linux-x86_64 build of
+  the bridge the coin replay used ("Why a die could rock for ever"): 300 throws of 10d6 per row, each a different
+  synthetic hand — 2.5–4.5 Hz, four to seven strokes, carried 20–50 mm, swung
+  10–25° about a pivot 70–150 mm below the sensor, sampled at 50 Hz. "Where"
+  is the dice's mean position along the tray, −1 at the bottom wall and +1 at
+  the top; one die in three in the top third is an even spread.
+
+  | shake | where, before | top third, before | where, after | top third, after |
+  | --- | --- | --- | --- | --- |
+  | none | −0.01 | 35.5 % | −0.01 | 35.5 % |
+  | carried only, any of the three directions | −0.02 to −0.01 | 31.6–35.0 % | the same | the same |
+  | swung, left and right | +0.22 | 51.6 % | +0.02 | 36.2 % |
+  | swung, up and down | +0.16 | 45.3 % | −0.01 | 34.6 % |
+  | swung, back and forth | +0.16 | 47.4 % | +0.01 | 36.2 % |
+  | swung, any direction and axis | +0.28 | 55.1 % | +0.00 | 33.4 % |
+  | swung 20–50°, any direction and axis | +0.51 | 74.3 % | +0.01 | 34.0 % |
+
+  A shake that only carries the phone was never the problem: it leaves the
+  dice spread with and without the correction, and is passed through
+  unchanged. The stiffness of the estimate (`SwingCorrection.DAMPING`) was
+  picked from these runs: a tenth of it pushed the up-and-down shake's dice
+  towards the bottom, three times it left a sixth of the pull in and thirty
+  times two thirds. The hands are synthetic; whether a real one
+  now spreads the dice is the owner's to judge (`docs/TODO.md`, 5.3).
 - An acceleration above 40,000 mm/s² — about four gravities, harder than anyone
   shakes a fistful of dice — is clamped. Past that it is a sensor fault or a
   dropped phone, and no thickness of wall survives it.
