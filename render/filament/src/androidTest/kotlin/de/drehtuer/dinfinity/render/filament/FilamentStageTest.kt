@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.render.filament
 
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import de.drehtuer.dinfinity.core.model.DieInstance
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.fixtures.StandardDice
@@ -15,6 +17,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 /**
  * The renderer on a real GPU (`docs/TODO.md`, Step 3).
@@ -220,6 +223,38 @@ class FilamentStageTest {
   }
 
   @Test
+  fun aMaterialKeptOnDiskDrawsOnTheNextLaunch() {
+    // The second engine reads both materials back instead of compiling them
+    // (`MaterialCache`); the packet has to be one this driver accepts.
+    val dir = File(InstrumentationRegistry.getInstrumentation().targetContext.cacheDir, "materials-test")
+    dir.deleteRecursively()
+    try {
+      val compiling = System.nanoTime()
+      FilamentEngine(materials = MaterialCache(dir)).use { it.blendedMaterial }
+      val compiled = System.nanoTime() - compiling
+      assertEquals(2, dir.listFiles { file -> file.name.endsWith(".filamat") }?.size)
+
+      val reading = System.nanoTime()
+      FilamentEngine(materials = MaterialCache(dir)).use { filament ->
+        filament.blendedMaterial
+        val read = System.nanoTime() - reading
+        Log.i(
+          "dinfinity.startup",
+          "materials compiled in ${compiled / NANOS_PER_MS} ms, read in ${read / NANOS_PER_MS} ms",
+        )
+        filament.stage(surface = null, width = WIDTH, height = HEIGHT).use { stage ->
+          val renderer = FilamentDiceRenderer(stage)
+          renderer.begin(spec(), geometry, look)
+          renderer.show(frame())
+          assertTrue("a material read from disk would not draw", stage.draw())
+        }
+      }
+    } finally {
+      dir.deleteRecursively()
+    }
+  }
+
+  @Test
   fun aSharedEngineDrawsARollTheSameAsAPrivateOne() {
     FilamentEngine().use { filament ->
       filament.stage(surface = null, width = WIDTH, height = HEIGHT).use { stage ->
@@ -281,5 +316,7 @@ class FilamentStageTest {
 
     /** Rotations, near enough: a new surface each, one engine behind them. */
     const val SURFACES = 3
+    const val NANOS_PER_MS = 1_000_000L
+    const val TAG = "dinfinity.startup"
   }
 }
