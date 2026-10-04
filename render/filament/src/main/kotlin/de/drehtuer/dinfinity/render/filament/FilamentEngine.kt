@@ -1,10 +1,13 @@
 package de.drehtuer.dinfinity.render.filament
 
+import com.google.android.filament.ColorGrading
 import com.google.android.filament.Engine
 import com.google.android.filament.Filament
+import com.google.android.filament.IndirectLight
 import com.google.android.filament.Material
 import com.google.android.filament.Texture
 import com.google.android.filament.TextureSampler
+import com.google.android.filament.ToneMapper
 import com.google.android.filament.filamat.MaterialBuilder
 import de.drehtuer.dinfinity.core.model.AtlasImage
 import java.nio.ByteBuffer
@@ -48,11 +51,22 @@ import java.nio.ByteOrder
  * @param materials where the compiled material is kept between launches
  *   ([MaterialCache]). The default keeps nothing and compiles every time,
  *   which is what a device test wants: it measures the compiler, not a file.
+ * @param environment the photographed room the tray is lit by, as the bytes
+ *   of a Radiance `.hdr` panorama ([StudioLight]); the default is the one this
+ *   module ships. Null — or a file [Radiance] cannot decode — lights the tray
+ *   with the generated gradient instead ([RoomLight]), which is also what a
+ *   device test asks for when it wants the room the studio was calibrated
+ *   against.
+ * @param studio where the studio's folded cube is kept between launches
+ *   ([StudioCache]). The default keeps nothing and folds every time, which is
+ *   what a device test that measures the fold wants.
  */
 class FilamentEngine(
   artwork: (String) -> AtlasImage? = { null },
   artworkStamp: (String) -> Any? = { null },
   private val materials: MaterialCache = MaterialCache.NONE,
+  private val environment: () -> ByteArray? = StudioLight::bytes,
+  private val studio: StudioCache = StudioCache.NONE,
 ) : AutoCloseable {
   init {
     // Safe to call more than once, and nothing below works before it has been.
@@ -151,6 +165,94 @@ class FilamentEngine(
     )
 
   /**
+   * How a frame's light becomes a pixel: **linear**, so a colour lit to a
+   * level comes out at that level and nothing between the light and the
+   * screen bends it.
+   *
+   * ACES is a film look. It lifts the midtones and turns saturated colours on
+   * the way — a green felt drifts towards cyan. AgX desaturates everything
+   * towards a grey photograph. **PBR Neutral was tried and crushed the felt:**
+   * below 0.08 it subtracts nearly all of a colour's smallest channel, on the
+   * promise that every surface carries the four per cent of white a
+   * dielectric reflects under an even white room. Under a lamp most of that
+   * reflection goes somewhere the camera is not, and Filament grades in
+   * Rec. 2020, where a saturated sRGB green's smallest channel is three times
+   * what it is in sRGB. The Pixel 10a drew `#1f5e3a` as (0, 70, 22): the red
+   * gone, the blue halved.
+   *
+   * A linear mapper stops dead at one rather than rolling highlights off, so
+   * the exposure leaves the room for it ([TrayLighting.WHITE_LEVEL]): only a
+   * pure white face turned square to the lamp, and the lamp's own reflection
+   * in the lacquer, reach white. A set's colours are part of its design, and
+   * this is the mapper that keeps them.
+   *
+   * One for the engine, made with it: a colour grading is a small lookup
+   * table Filament bakes once, not something worth rebuilding per surface.
+   */
+  val colorGrading: ColorGrading =
+    ColorGrading
+      .Builder()
+      .toneMapper(ToneMapper.Linear())
+      .build(engine)
+
+  /** What [room] is lit by, once it is made: true for the studio, false for the gradient. */
+  var litByStudio: Boolean = false
+    private set
+
+  /** True when the studio's folded cube was read back from [studio] rather than folded. */
+  var studioFromDisk: Boolean = false
+    private set
+
+  /** The textures [room] samples, given back with it. */
+  private val roomTextures = mutableListOf<Texture>()
+
+  private val roomLight = lazy(LazyThreadSafetyMode.NONE) { buildRoom() }
+
+  /**
+   * The room the tray is lit by, made the first time a stage is lit and kept
+   * for as long as the engine is.
+   *
+   * Kept here rather than on a stage for the material's reason: decoding a
+   * panorama and prefiltering it costs real time, and none of it depends on
+   * the surface. A rotation re-lights a new stage with the same room. The
+   * work is done on the roll thread, the first time the tray is drawn,
+   * rather than with the engine, so a screen that never draws the tray —
+   * power saving, the table picker before it needs a picture — pays nothing
+   * (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+   */
+  val room: IndirectLight by roomLight
+
+  /**
+   * The studio if [environment] has one that decodes, and the gradient if
+   * not. Either way the felt receives the same light from it
+   * ([TrayLighting.studioIntensity]), and either way the fill lamp is folded
+   * into its irradiance, because Filament draws only one directional light
+   * and the key is that one ([FillLight]).
+   */
+  private fun buildRoom(): IndirectLight {
+    val faces = environment()?.let { hdr -> studio.faces(hdr) { Radiance.decode(hdr)?.let(StudioCube::faces) } }
+    if (faces != null) {
+      val cube = studio(engine, faces.buffer).also { roomTextures += it }
+      litByStudio = true
+      studioFromDisk = faces.fromDisk
+      return IndirectLight
+        .Builder()
+        .reflections(cube)
+        .irradiance(StudioLight.BANDS, FillLight.inStudio())
+        .rotation(TrayLighting.studioRotation())
+        .intensity(TrayLighting.studioIntensity().toFloat())
+        .build(engine)
+    }
+    val gradient = gradient(engine).also { roomTextures += it }
+    return IndirectLight
+      .Builder()
+      .irradiance(StudioLight.BANDS, FillLight.inGradient())
+      .reflections(gradient)
+      .intensity(TrayLighting.gradientIntensity().toFloat())
+      .build(engine)
+  }
+
+  /**
    * Somewhere to draw, this big, sharing everything above.
    *
    * @param surface an Android `Surface`, or null for a swap chain with nothing
@@ -173,6 +275,10 @@ class FilamentEngine(
     )
 
   override fun close() {
+    if (roomLight.isInitialized()) engine.destroyIndirectLight(room)
+    roomTextures.forEach(engine::destroyTexture)
+    roomTextures.clear()
+    engine.destroyColorGrading(colorGrading)
     atlases.close()
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
@@ -186,6 +292,82 @@ class FilamentEngine(
 
     /** Every channel of the blank texture, which multiplies a colour by one. */
     const val OPAQUE_WHITE = 0xFF.toByte()
+
+    /**
+     * The photographed room as a reflection cubemap, prefiltered for every
+     * roughness, from its six folded [faces].
+     *
+     * Decoded and folded into a cube on this thread ([Radiance],
+     * [StudioCube.faces]) or read back folded ([StudioCache]), then
+     * prefiltered by Filament's own
+     * `generatePrefilterMipmap` — the same CPU prefilter the gradient goes
+     * through, spread over the engine's worker threads — into
+     * `R11F_G11F_B10F`: a third less memory than half floats, and a panorama
+     * has no use for an alpha channel or for more than three significant
+     * digits of a window's brightness.
+     *
+     * Mirroring is off: the faces are already in the frame [StudioLight]'s
+     * irradiance was projected in, and mirroring them would put the window a
+     * die reflects on the other side from the one that lights it.
+     */
+    fun studio(
+      engine: Engine,
+      faces: ByteBuffer,
+    ): Texture {
+      val options =
+        Texture.PrefilterOptions().apply {
+          sampleCount = StudioCube.PREFILTER_SAMPLES
+          mirror = false
+        }
+      return prefiltered(engine, StudioCube.FACE_SIZE, StudioCube.LEVELS, faces, options)
+    }
+
+    /**
+     * The generated room as a small cubemap, which is what a polished surface
+     * reflects when there is no studio to.
+     *
+     * Only the sharp level is ours; every coarser one is prefiltered by
+     * Filament from it, for the roughness each level stands for
+     * ([RoomLight.LEVELS] says why, and why it cannot be uploaded level by
+     * level).
+     */
+    fun gradient(engine: Engine): Texture {
+      val faces = RoomLight.faces()
+      val buffer = ByteBuffer.allocateDirect(faces.size * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
+      buffer.asFloatBuffer().put(faces)
+      return prefiltered(engine, RoomLight.SIZE, RoomLight.LEVELS, buffer, Texture.PrefilterOptions())
+    }
+
+    /**
+     * A cubemap of [size] pixels a face and [levels] levels, its sharp level
+     * [faces] — six faces of linear RGB floats, end to end, in native order —
+     * and every coarser one prefiltered from it by Filament.
+     */
+    private fun prefiltered(
+      engine: Engine,
+      size: Int,
+      levels: Int,
+      faces: ByteBuffer,
+      options: Texture.PrefilterOptions,
+    ): Texture {
+      val texture =
+        Texture
+          .Builder()
+          .width(size)
+          .height(size)
+          .depth(RoomLight.FACES)
+          .levels(levels)
+          .format(Texture.InternalFormat.R11F_G11F_B10F)
+          .sampler(Texture.Sampler.SAMPLER_CUBEMAP)
+          .build(engine)
+      texture.generatePrefilterMipmap(
+        engine,
+        Texture.PixelBufferDescriptor(faces, Texture.Format.RGB, Texture.Type.FLOAT),
+        RoomLight.faceOffsets(size),
+        options,
+      )
+      return texture
+    }
 
     /**
      * The [variant] of the dice material for [engine], from [materials] if it

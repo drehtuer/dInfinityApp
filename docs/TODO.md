@@ -361,14 +361,13 @@ keeps them comparable.
       in logcat)
 - [ ] Rendering polish and the optimisation pass — **in progress on
       `feature/realistic-rendering`**: physically based lighting from a real
-      room (first device run drew every frame white; being fixed), refracting
-      resin for translucent dice (decision 90 — does `felt-green-translucent`
-      read as amber resin with the felt showing through, and do the milky and
-      glassy ends need `Resin`'s constants turned), and rounded edges drawn
-      with the solver's own convex radius (decision 91 — re-run
-      `tools/harness.sh --rendered` for the triangle cost). Judged with
-      `tools/gallery.sh` before and after each step, and merged to `main` once
-      the owner likes it on the phone
+      room (decision 89), refracting resin for translucent dice (90 — do the
+      milky and glassy ends need `Resin`'s constants turned, and are the full
+      shadows of clear dice acceptable), rounded edges drawn with the
+      solver's own convex radius (91); next, felt and oak textures and dice
+      reflected in the dark glass. Judged with `tools/gallery.sh` before and
+      after each step, and merged to `main` once the owner likes it on the
+      phone
 
 ### 5.7 Performance on the Pixel 10a
 

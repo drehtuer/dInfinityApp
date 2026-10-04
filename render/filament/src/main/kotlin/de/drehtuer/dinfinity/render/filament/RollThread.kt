@@ -42,11 +42,14 @@ import java.util.concurrent.CountDownLatch
  * @param artworkStamp which version of an atlas is on disk ([AtlasCache]).
  * @param materials where the engine keeps its compiled material between
  *   launches ([MaterialCache]); the default keeps nothing.
+ * @param studio where the engine keeps the studio's folded cube between
+ *   launches ([StudioCache]); the default keeps nothing.
  */
 class RollThread(
   private val artwork: (String) -> AtlasImage? = { null },
   private val artworkStamp: (String) -> Any? = { null },
   private val materials: MaterialCache = MaterialCache.NONE,
+  private val studio: StudioCache = StudioCache.NONE,
 ) : AutoCloseable {
   private val thread = HandlerThread(THREAD_NAME).apply { start() }
 
@@ -70,7 +73,8 @@ class RollThread(
    * **Call only on the roll thread.** A graphics context belongs to the thread
    * that made it, and every caller is already inside a [handler] post.
    */
-  fun filament(): FilamentEngine = filament ?: FilamentEngine(artwork, artworkStamp, materials).also { filament = it }
+  fun filament(): FilamentEngine =
+    filament ?: FilamentEngine(artwork, artworkStamp, materials, studio = studio).also { filament = it }
 
   /**
    * Runs [work] on the roll thread and waits for it.

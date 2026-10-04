@@ -27,13 +27,12 @@ This is a snapshot, not a changelog — git history is the changelog.
   and the designer masks the d10 and the d18 into their own kites (86).
 - **In flight:** `feature/realistic-rendering`, an integration branch for
   making the table and dice look real — a render gallery to compare against
-  (`tools/gallery.sh`), then lighting from a real room, translucent dice that
-  refract and scatter, and rounded edges. It reaches `main` when the owner
-  likes it on the phone. Translucent dice are refracting resin (decision
-  90): a clear die now takes the colour of the floor under it (91 % of its
-  pixels on the Pixel 10a). Dice are drawn with the convex radius the solver
-  already collides them with (decision 91). The lighting step is being
-  fixed: its first device run drew every frame white.
+  (`tools/gallery.sh`), then lighting from a photographed room (decision 89:
+  the felt draws its set colour, no band along the walls, the room cached on
+  disk), translucent dice as refracting resin (90) and rounded edges drawn
+  with the solver's own convex radius (91), all passing on the Pixel 10a.
+  Felt and oak textures and dice reflected in the dark glass are being
+  built. It reaches `main` when the owner likes it on the phone.
 
 ## Done
 

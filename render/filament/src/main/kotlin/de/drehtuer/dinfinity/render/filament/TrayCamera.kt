@@ -88,6 +88,35 @@ object TrayCamera {
     )
   }
 
+  /**
+   * Where [point] lands in a [width] × [height] picture taken from [shot], in
+   * pixels from the top-left corner, the way a read-back frame counts them
+   * ([Snapshot]); null for a point behind the camera.
+   *
+   * The same perspective `FilamentStage.aim` gives Filament — this field of
+   * view, this aspect, looking from [CameraShot.position] — worked out
+   * without it, so a device test can say *which pixels* are the felt three
+   * millimetres from the wall instead of guessing.
+   */
+  fun pixelOf(
+    shot: CameraShot,
+    point: Vector3,
+    width: Int,
+    height: Int,
+  ): Pair<Double, Double>? {
+    val forward = shot.forward
+    val right = cross(forward, shot.up).normalised()
+    val up = cross(right, forward)
+    val offset = point - shot.position
+    val depth = offset dot forward
+    if (depth <= 0.0) return null
+    val upward = tan(radians(shot.verticalFieldOfViewDegrees / 2))
+    val across = upward * width / height
+    val x = (offset dot right) / (depth * across)
+    val y = (offset dot up) / (depth * upward)
+    return Pair((x + 1.0) / 2 * width, (1.0 - y) / 2 * height)
+  }
+
   /** How far [view] leans, in degrees away from straight down. */
   fun tiltDegreesOf(view: TableView): Double =
     when (view) {

@@ -67,3 +67,23 @@ Archivo is by Omnibus-Type, under the
 embedding outlines in a work like this; the font itself is not redistributed
 here, only the two glyphs of the mark and the sixteen a die is printed with,
 as paths.
+
+## The room the dice are lit by
+
+The tray's image-based light is a photographed panorama, not a drawing:
+**Brown Photostudio 02** by Sergej Majboroda, from
+[Poly Haven](https://polyhaven.com/a/brown_photostudio_02), at 1k (1024 × 512)
+in Radiance `.hdr`. It is shipped unmodified as
+`render/filament/src/main/resources/de/drehtuer/dinfinity/render/filament/brown_photostudio_02_1k.hdr`
+(1,648,130 bytes, MD5 `1362911793f932724326e6e56421f102`, as Poly Haven lists
+it), and why that panorama and that size is in
+`docs/physics-and-rendering.md`, "Rendering (normal mode)".
+
+Poly Haven releases its assets under
+[CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/): no rights
+reserved, no attribution required. It is credited here anyway.
+
+Changing it means re-projecting its irradiance into `StudioLight.IRRADIANCE`,
+and `StudioLightTest` fails until that is done: run `StudioLight.irradianceOf`
+over the new file's decoded pixels (the test's `decoded()` shows how) and
+paste the result.

@@ -5,7 +5,6 @@ import com.google.android.filament.Engine
 import com.google.android.filament.EntityManager
 import com.google.android.filament.Filament
 import com.google.android.filament.IndexBuffer
-import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
 import com.google.android.filament.MaterialInstance
 import com.google.android.filament.RenderableManager
@@ -17,7 +16,6 @@ import com.google.android.filament.TextureSampler
 import com.google.android.filament.VertexBuffer
 import com.google.android.filament.View
 import com.google.android.filament.Viewport
-import de.drehtuer.dinfinity.simulation.api.Vector3
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import com.google.android.filament.Renderer as FilamentFrameRenderer
@@ -45,7 +43,7 @@ import com.google.android.filament.Renderer as FilamentFrameRenderer
  * of its own and gives it back in [close], which is what a test that wants a
  * stage and nothing else does.
  *
- * Fifteen small methods rather than eleven larger ones is deliberate and is
+ * Seventeen small methods rather than eleven larger ones is deliberate and is
  * why the class carries a suppression: this is the file that has to be read
  * against Filament's own documentation, and a method per thing Filament makes
  * is what makes that possible. Folding them together would save a count and
@@ -102,12 +100,6 @@ class FilamentStage(
 
   private val glyphSampler: TextureSampler get() = parts.glyphSampler
 
-  /** The room the tray sits in. Built with the lights, given back with them. */
-  private var ambient: IndirectLight? = null
-
-  /** What that room looks like to a polished surface. Given back with it. */
-  private var room: Texture? = null
-
   private val instances = mutableListOf<MaterialInstance>()
 
   /**
@@ -127,7 +119,54 @@ class FilamentStage(
     view.camera = camera
     view.viewport = Viewport(0, 0, width, height)
     view.isPostProcessingEnabled = postProcessing
+    photograph()
   }
+
+  /**
+   * How a frame is turned into a picture: the tone mapper, the exposure, the
+   * anti-aliasing and the shape of the key light's shadow
+   * (`docs/physics-and-rendering.md`, "Rendering (normal mode)";
+   * `docs/architecture.md`, decision 89). Every number is
+   * [TrayLighting]'s, where the reasons for it are and a JVM can check the
+   * ones that are arithmetic; this only hands them to Filament.
+   */
+  private fun photograph() {
+    view.colorGrading = parts.colorGrading
+    // A real aperture, shutter and ISO, not the one-number overload: that one
+    // means something else by "exposure" and blew every frame out to white
+    // ([TrayLighting.exposure]).
+    camera.setExposure(TrayLighting.APERTURE, TrayLighting.SHUTTER_SECONDS, TrayLighting.sensitivity().toFloat())
+    // Multisampling instead of FXAA, not on top of it: the edges that alias are
+    // geometry, and the full-screen pass FXAA costs is given back
+    // ([TrayLighting.MSAA_SAMPLES]).
+    view.antiAliasing = View.AntiAliasing.NONE
+    view.multiSampleAntiAliasingOptions =
+      View.MultiSampleAntiAliasingOptions().apply {
+        enabled = true
+        sampleCount = TrayLighting.MSAA_SAMPLES
+      }
+    // **PCF, not PCSS.** Filament 1.76's PCSS is not percentage-closer at
+    // all: its shader samples a mip-mapped exponential *variance* shadow map
+    // (`ShadowSample_EVSSM`), and with a variance map the tray's own
+    // geometry came back into the shadow — the rim threw a hard dark band
+    // across the felt 25 to 40 mm in from the top and left walls, exactly the
+    // band `FilamentDiceRenderer.addTray` had removed by stopping the tray
+    // casting. Filament's own notes on variance shadows ask for every receiver
+    // to be a caster too, and this tray is the one thing that must not cast.
+    // PCF reads a plain depth map that holds only what casts — the dice — and
+    // is the shadow the tray had before (`docs/physics-and-rendering.md`,
+    // "Rendering (normal mode)"; `StudioLightDeviceTest` measures the felt by
+    // the walls).
+    view.setShadowType(View.ShadowType.PCF)
+  }
+
+  /**
+   * The exposure the camera actually has, worked out from what Filament kept
+   * of its aperture, shutter and ISO — after its clamps, which is the point:
+   * a device test compares this with [TrayLighting.exposure].
+   */
+  internal fun exposure(): Double =
+    TrayLighting.exposureOf(camera.aperture.toDouble(), camera.shutterSpeed.toDouble(), camera.sensitivity.toDouble())
 
   /** Points the camera where [shot] says, for this viewport. */
   override fun aim(shot: CameraShot) {
@@ -152,24 +191,28 @@ class FilamentStage(
   }
 
   /**
-   * The key light, the fill and the ambient — the whole of the lighting.
+   * The key light and the room — the whole of the lighting.
    *
    * One directional light throws the shadows that tell a player a die is
-   * sitting on the table rather than floating above it; a dimmer one from the
-   * other side keeps the shadowed faces from going to black, where a number
-   * cannot be read (`docs/physics-and-rendering.md`).
+   * sitting on the table rather than floating above it. The fill that keeps
+   * the shadowed faces from going to black, where a number cannot be read,
+   * is part of the room's irradiance rather than a second lamp: Filament
+   * draws one directional light per scene, the brightest, so a second one is
+   * dropped without a word — and was, on every version of this tray until
+   * the device measured it ([FillLight]).
    *
-   * The ambient is not a nicety. Two directional lights and nothing else means
-   * every surface facing away from both is *exactly* black, and the surfaces
-   * that face away from both are the inner walls: a player saw the lit top of
-   * the wall, a shadow cast across the floor, and nothing in between casting
-   * it. A tray is lit by a room, not by two lamps in a void.
+   * The room is not a nicety. A lamp and nothing else means every surface
+   * facing away from it is *exactly* black, and the surfaces that face away
+   * are the inner walls: a player saw the lit top of the wall, a shadow cast
+   * across the floor, and nothing in between casting it. A tray is lit by a
+   * room, not by a lamp in a void.
    */
   override fun light() {
-    addLight(intensity = KEY_LUX, direction = KEY_DIRECTION, shadows = true)
-    addLight(intensity = FILL_LUX, direction = FILL_DIRECTION, shadows = false)
-    val sky = environment(engine).also { room = it }
-    scene.indirectLight = ambient(engine, sky).also { ambient = it }
+    addKeyLight()
+    // The room is the engine's, made once and shared by every stage: a studio
+    // decoded and prefiltered per rotation would be the black tray decision 50
+    // exists to prevent (`FilamentEngine.room`).
+    scene.indirectLight = parts.room
     // **No ambient occlusion, because the table must not shade itself.**
     //
     // It was here for the darkening where a die meets the felt: a cast shadow
@@ -358,10 +401,6 @@ class FilamentStage(
    */
   override fun close() {
     clear()
-    ambient?.let(engine::destroyIndirectLight)
-    ambient = null
-    room?.let(engine::destroyTexture)
-    room = null
     engine.destroyView(view)
     engine.destroyScene(scene)
     engine.destroyRenderer(frames)
@@ -372,19 +411,19 @@ class FilamentStage(
     own?.close()
   }
 
-  private fun addLight(
-    intensity: Float,
-    direction: Vector3,
-    shadows: Boolean,
-  ) {
+  private fun addKeyLight() {
     val entity = EntityManager.get().create()
+    // Scaled to a luminance of one, so [TrayLighting.KEY_LUX] is what lands
+    // and the exposure worked out from it is right.
+    val daylight = TrayLighting.unitLuminance(Colors.cct(TrayLighting.DAYLIGHT_KELVIN))
+    val direction = TrayLighting.KEY_DIRECTION
     LightManager
       .Builder(LightManager.Type.DIRECTIONAL)
-      .color(Colors.cct(DAYLIGHT_KELVIN)[0], Colors.cct(DAYLIGHT_KELVIN)[1], Colors.cct(DAYLIGHT_KELVIN)[2])
-      .intensity(intensity)
+      .color(daylight[0], daylight[1], daylight[2])
+      .intensity(TrayLighting.KEY_LUX.toFloat())
       .direction(direction.x.toFloat(), direction.y.toFloat(), direction.z.toFloat())
-      .castShadows(shadows)
-      .apply { if (shadows) shadowOptions(trayShadows()) }
+      .castShadows(true)
+      .shadowOptions(trayShadows())
       .build(engine, entity)
     scene.addEntity(entity)
     entities += entity
@@ -551,38 +590,6 @@ class FilamentStage(
     /** Red, green, blue and alpha, a byte each. */
     const val PIXEL_BYTES: Int = 4
 
-    /** A key light bright enough to read a die by, in lux. */
-    private const val KEY_LUX = 80_000.0f
-
-    /** And a fill that keeps the shadowed faces off black, where a number cannot be read. */
-    private const val FILL_LUX = 25_000.0f
-
-    /** Neutral daylight, so a table look's own colour is the colour you see. */
-    private const val DAYLIGHT_KELVIN = 6_500.0f
-
-    /**
-     * Down, and from over the player's shoulder — the direction a lamp is in
-     * when somebody rolls dice on a table in front of them.
-     */
-    private val KEY_DIRECTION = Vector3(-0.4, -0.3, -1.0)
-
-    /**
-     * How bright the room is: about a seventh of the key light.
-     *
-     * Enough that a wall facing away from both lamps reads as a wall rather
-     * than as a hole, and low enough that the key still casts the shadow that
-     * puts a die on the table. Tuned against the Pixel 10a, which is the only
-     * place it can be judged (`docs/TODO.md`, Step 5.6).
-     *
-     * It is the *average* brightness, not the brightness in any one
-     * direction. [RoomLight] says light comes down from a bright sky and up
-     * off a dim floor, and Filament's intensity multiplies both, so this is
-     * divided by the room's own average to keep the tray exactly as bright as
-     * it was when the ambient was flat. What changed is where the light comes
-     * from, which is the point.
-     */
-    private const val AMBIENT_LUX = 12_000.0f
-
     /**
      * How the key light's shadow is drawn.
      *
@@ -632,9 +639,6 @@ class FilamentStage(
     /** And the constant part, in the depth buffer's own units rather than in mm. */
     private const val SHADOW_CONSTANT_BIAS = 0.0005f
 
-    /** And back the other way, across the tray, to lift the shadowed faces. */
-    private val FILL_DIRECTION = Vector3(0.6, 0.5, -0.7)
-
     /**
      * Loads the native library. Safe to call more than once.
      *
@@ -644,48 +648,6 @@ class FilamentStage(
      */
     fun ready() {
       Filament.init()
-    }
-
-    private fun ambient(
-      engine: Engine,
-      environment: Texture,
-    ): IndirectLight =
-      IndirectLight
-        .Builder()
-        .irradiance(RoomLight.BANDS, RoomLight.irradiance())
-        .reflections(environment)
-        .intensity((AMBIENT_LUX / RoomLight.averageBrightness()).toFloat())
-        .build(engine)
-
-    /**
-     * The room as a small cubemap, which is what a polished surface reflects.
-     *
-     * Only the sharp level is ours; every coarser one is prefiltered by
-     * Filament from it, for the roughness each level stands for
-     * ([RoomLight.LEVELS] says why, and why it cannot be uploaded level by
-     * level).
-     */
-    private fun environment(engine: Engine): Texture {
-      val texture =
-        Texture
-          .Builder()
-          .width(RoomLight.SIZE)
-          .height(RoomLight.SIZE)
-          .depth(RoomLight.FACES)
-          .levels(RoomLight.LEVELS)
-          .format(Texture.InternalFormat.R11F_G11F_B10F)
-          .sampler(Texture.Sampler.SAMPLER_CUBEMAP)
-          .build(engine)
-      val pixels = RoomLight.faces()
-      val buffer = ByteBuffer.allocateDirect(pixels.size * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
-      buffer.asFloatBuffer().put(pixels)
-      texture.generatePrefilterMipmap(
-        engine,
-        Texture.PixelBufferDescriptor(buffer, Texture.Format.RGB, Texture.Type.FLOAT),
-        RoomLight.faceOffsets(),
-        Texture.PrefilterOptions(),
-      )
-      return texture
     }
   }
 }

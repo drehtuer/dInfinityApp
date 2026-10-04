@@ -18,6 +18,7 @@ import de.drehtuer.dinfinity.feedback.ImpactFeedback
 import de.drehtuer.dinfinity.render.filament.MaterialCache
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.RollThread
+import de.drehtuer.dinfinity.render.filament.StudioCache
 import de.drehtuer.dinfinity.render.filament.ThumbnailPlan
 import de.drehtuer.dinfinity.render.filament.Tray
 import de.drehtuer.dinfinity.render.filament.TrayCamera
@@ -262,13 +263,15 @@ class RollWiring(
    *
    * The compiled material is kept on disk as well ([MaterialCache]), in the
    * code cache Android empties on every update, so only the first launch of a
-   * new version compiles it at all.
+   * new version compiles it at all. The studio's folded cube is kept beside
+   * it for the same reason ([StudioCache]).
    */
   private val rollThread: RollThread by lazy {
     RollThread(
       artwork = artwork ?: { null },
       artworkStamp = artwork?.let { it::stamp } ?: { null },
       materials = MaterialCache(File(context.codeCacheDir, MATERIAL_CACHE_DIR)),
+      studio = StudioCache(File(context.codeCacheDir, STUDIO_CACHE_DIR)),
     )
   }
 
@@ -391,5 +394,8 @@ class RollWiring(
   private companion object {
     /** Under `codeCacheDir`, which Android empties on every update. */
     const val MATERIAL_CACHE_DIR = "materials"
+
+    /** And the studio's folded cube beside them ([StudioCache]). */
+    const val STUDIO_CACHE_DIR = "studio"
   }
 }

@@ -1852,52 +1852,199 @@ impact sounds rather than a crash in the middle of a roll.
 ## Rendering (normal mode)
 
 - Filament scene: tray mesh, one renderable per die, a key directional light
-  casting soft shadows, a dimmer fill from the other side, and a flat ambient.
-  The dice cast; the tray does not (below). Everything receives.
-- **The ambient is not decoration.** Two directional lights and nothing else
-  leave every surface facing away from both at exactly black, and the surfaces
-  facing away from both are the inner walls: the tray showed its lit rim, a
-  shadow across the floor, and nothing in between casting it. A tray is lit by
-  a room.
-- **The room has a ceiling and a floor.** It used to be one
-  spherical-harmonic band — the constant term, the same irradiance from every
-  direction — which is a room with neither. It is now two bands: a cool bright
-  sky overhead, a warm dim bounce underfoot, and the linear blend between them
-  (`RoomLight`). That is what makes a die's top face brighter than its sides
-  for a reason rather than because a lamp happens to point at it, and what
-  keeps the inner wall that faces the camera from matching the one that faces
-  away.
+  casting the shadows, and a photographed room for image-based light that also
+  carries a dimmer fill from the other side (below). The dice cast; the tray
+  does not (below). Everything receives.
+- **The ambient is not decoration.** A lamp and nothing else leaves every
+  surface facing away from it at exactly black, and the surfaces facing away
+  are the inner walls: the tray showed its lit rim, a shadow across the floor,
+  and nothing in between casting it. A tray is lit by a room.
+- **The fill is part of the room, because Filament draws one directional
+  light.** The tray had a key at 80,000 lux and a fill at 25,000 from the
+  other side since its first lit version, both directional. Filament shades
+  exactly one directional light per scene — the brightest; its frame uniforms
+  carry a single light direction and colour — and drops the rest without a
+  word, so **the fill was never drawn**. The device showed it once the felt
+  could be measured: felt the key did not reach (across the rim band below)
+  came out at 0.40 of the lit felt, where key, fill and room predict 0.50 and
+  key and room alone 0.43, and the felt came out at about three quarters of
+  the light the exposure had been worked out for. The fill is now added to the
+  room's irradiance as the three-band spherical harmonics of a distant lamp of
+  25,000 lux from the fill's side (`FillLight.harmonics`): Filament's diffuse
+  ambient *is* three bands, a lamp's clamped cosine in three bands is exact to a few per
+  cent, and the arithmetic is a JVM's to check (`TrayLightingTest`). It is
+  turned into the studio's frame with the studio, and divided by the room's
+  intensity, which Filament multiplies the whole room by. A fill has no
+  highlight and casts no shadow, which is what a fill is for. The key's colour
+  is scaled to a luminance of one before it is given to Filament, so 80,000
+  lux is what lands whatever its colour-temperature conversion normalises to.
+- **The room is a real one** (`docs/architecture.md`, decision 89). It was
+  first one spherical-harmonic band — the same light from every direction —
+  then a generated gradient, a cool sky over a warm floor (`RoomLight`). The
+  gradient got the *direction* of the light right and nothing else: a lacquered
+  die mirrors whatever is around it, a gradient has nothing in it to mirror,
+  and the render gallery showed dice that read as matte plastic under a grey
+  sky. So the room is now a photograph — Poly Haven's **Brown Photostudio 02**,
+  a bright studio with a big window and ceiling lights, CC0 (`StudioLight`,
+  `docs/assets/README.md`).
 
-  The coefficient that carries it is the one Filament multiplies by `n.z`,
-  because this app's up is `+z` in the tray, in the physics and in the
-  renderer. **Which axis that is was the reason the gradient did not exist**,
-  and the answer is not a comment now: `RoomLightTest` evaluates the harmonic
-  the way the shader does and asserts that looking up finds the sky. A sign
-  error there is invisible in review and looks, on a screen, like a perfectly
-  plausible table lit from the floor.
-- **A polished surface reflects the room, so there is a room to reflect.** The
-  irradiance says what a matte surface integrates; it says nothing about what a
-  glossy one mirrors, and an `IndirectLight` with no reflections has dice whose
-  shine comes from two lamps in a void. So the same sky-to-ground gradient is
-  also a 32-pixel cubemap, generated rather than shipped.
+  *Why that one.* Of the seven indoor and studio panoramas compared, it is the
+  one that is both **neutral** — its average is within 2 % of grey in every
+  channel, so a table look's colour is not tinted by the room — and
+  **structured**: a window and lamps for a polished face to catch, brighter
+  overhead than underfoot (about three to one, close to the gradient's 2.8),
+  and no single sun-like source (its brightest pixel is 120 times its average,
+  where a lounge with a bare bulb is 19,000). The small studios with only
+  softboxes were either lit from the floor or nearly featureless. **1k**
+  (1024 × 512) is the smallest Poly Haven makes and exactly enough: a quarter
+  of its width is the 256 pixels a cube face needs, and a die's lacquer blurs
+  its reflections well below that. It is 1.6 MB, 1.3 MB in the APK.
 
-  **Six levels, five of them Filament's.** A reflection's blur follows a
-  surface's roughness by reading a coarser level of the environment, so a
-  polished die mirrors the sharp gradient and a matte one its average. Only
-  the sharp 32-pixel level is ours, as linear RGB floats;
-  `Texture.generatePrefilterMipmap` works out the other five for Filament's own
-  lighting model, into an `R11F_G11F_B10F` cubemap. It used to ship one level,
-  because uploading a coarser level by hand is refused: Filament 1.76's JNI
-  sizes the buffer with the region's height shifted by the level a second time,
-  so level one's 16 × 16 × 6 region is checked against half the bytes it needs.
-  The prefilter goes round that and is the better answer anyway
-  (`RoomLightUploadTest`).
-- **The ambient's brightness is an average, and it is divided out.** Filament's
-  intensity multiplies every coefficient, so a room that is bright above and
-  dim below is a *darker* room than a flat white one at the same setting. The
-  intensity is divided by the room's own average brightness, which keeps the
-  tray exactly as bright as it was when the ambient was flat and changes only
-  where the light comes from.
+  *How it reaches Filament.* As a cubemap for reflections and as three bands
+  of irradiance for matte surfaces. The cubemap is made in three steps, two
+  of them small enough to own and one borrowed:
+
+  1. **decoded** by `Radiance`, a Radiance `.hdr` reader of about a hundred
+     lines — the header, the run-length code and a shared exponent — that
+     reads the file as if it were downloaded: every count is checked against
+     the row and the file, the size is bounded, and anything that does not add
+     up is the gradient rather than a crash (`RadianceTest`, which also holds
+     it to TwelveMonkeys' reading of the shipped file);
+  2. **folded** into six 256-pixel faces by `StudioCube.faces`: each texel
+     looks along the GPU's own cube mapping and takes the panorama pixel that
+     `StudioLight.direction` says looks that way, blended between the nearest
+     four. That is the mapping the irradiance is projected on, so the window a
+     die mirrors and the window that lights it are in the same place, and
+     `StudioLightTest` checks it by reading the folded cube back and projecting
+     it again;
+  3. **prefiltered** for every roughness by Filament's own
+     `Texture.generatePrefilterMipmap` — the part that is genuinely hard, and
+     the same CPU prefilter the gradient has always gone through, spread over
+     the engine's worker threads — at 32 samples a texel rather than its
+     default 8, which leaves a bright window speckled, and with Filament's
+     mirroring off because the faces are folded the right way round already.
+
+  Filament's `HDRLoader` and `IBLPrefilterContext` do steps one and two on
+  the GPU, and were used at first; they live in `filament-utils-android`,
+  whose native library links against gltfio's, and the pair cost 17.5 MB of
+  native code over the four ABIs the APK carries — for a header, a run-length
+  code and a texture lookup (`docs/architecture.md`, decision 89). The
+  irradiance is nine numbers, projected from the same file and written into
+  `StudioLight.IRRADIANCE`: nine numbers need no work on the device, and
+  `StudioLightTest` projects the shipped file again on every build, so a
+  panorama swapped without its numbers fails rather than lighting the felt
+  with a room that is not there. The room is built **once per engine, on the
+  roll thread's first draw** (`FilamentEngine.room`), and shared by every
+  stage made from it, so a rotation re-lights with the same room for nothing.
+
+  **The fold is kept on disk** (`StudioCache`). Decoding and folding is Kotlin
+  over half a million pixels — about 10 and 40 ms on a desktop JVM, and most
+  of the 558 ms the Pixel 10a spent building the room on every cold start,
+  which `MaterialCache` had just brought down to 0.8 s. The six faces depend
+  only on the file and the face size, so the first launch of a version folds
+  them and writes them to `codeCacheDir/studio` — 4.7 MB of floats and a
+  CRC-32 — and every launch after reads them straight into the buffer the
+  prefilter takes, with no conversion. Like the material cache it lives in
+  the directory Android empties on every update; its name still carries a
+  hash of the panorama, the face size, a fold version and the byte order, and
+  **anything wrong with the disk folds again**: no directory, an unreadable
+  file, the wrong length, a checksum that does not match. The prefilter still
+  runs every launch: Filament's JNI cannot upload a cube level by level
+  (`RoomLight.LEVELS`), so its result cannot be kept. `StudioLightDeviceTest`
+  builds the room twice against an empty cache directory: the first launch,
+  which folds, must stay under a second, and the second must have **read**
+  the cube and stay under half a second. A missing or undecodable panorama
+  lights the tray with the gradient instead, which is also the room the
+  studio is calibrated against.
+
+  **Which way is up, and which way the room faces.** The panorama is stored
+  with `+y` up, as every equirectangular image is; this app's up is `+z` in
+  the tray, in the physics and in the renderer. Filament takes a rotation for
+  its indirect light and applies it to the world it shades in, so
+  `StudioLight.rotation` turns the tray's `+z` onto the panorama's `+y` — and
+  then turns the room about that up until its window stands behind the key
+  light (`yawToward`), so the highlight a die mirrors sits where its shadow
+  says the light is. A window on one side and a shadow thrown from the other
+  is a picture with two suns. **That axis was once why the gradient did not
+  exist**, and it is a test now, not a comment: `RoomLightTest` and
+  `StudioLightTest` evaluate the harmonics the way the shader does and assert
+  that looking up finds the bright half. A sign error there is invisible in
+  review and looks, on a screen, like a perfectly plausible table lit from the
+  floor.
+- **The studio is exactly as bright as the gradient, where it matters.** A
+  photograph comes in its own units. What is held equal is the light the
+  *felt* receives from the room — the felt faces up, it is most of the picture,
+  and a player compares tables by it — so the studio's intensity is whatever
+  makes its upward irradiance the gradient's: 12,000 lux of gradient over its
+  own average, times its sky, about 17,600 (`TrayLighting.ambientUpward`),
+  which takes an intensity of about 15,400 (`TrayLighting.studioIntensity`).
+  Sideways the studio is more uneven than the gradient was — a face turned to
+  the window gets about 1.4 times the upward light, one turned away a fifth of
+  it — which is what a real room does and what gives a die's faces their
+  modelling; the fill keeps the darkest of them readable.
+  `TrayLightingTest` holds that as numbers (`TrayLighting.faceLevel`): with
+  the key, the room and its fill, the darkest face a camera above the tray
+  can see is lit to 0.14 of white (a white face there shows at about 105 of
+  255, black ink on it at ten to one), and the brightest — tilted towards the
+  key and the window together — to 1.13.
+- **Colours are kept as the package wrote them: a linear tone mapper,
+  exposed for it.** Filament's default tone mapper is ACES, a film look: it
+  lifts midtones and turns saturated colours on the way, so a green felt
+  drifts towards cyan and a red die towards orange. AgX keeps hue better but
+  greys everything towards a photograph. **Khronos' PBR Neutral was tried and
+  crushed the felt**: below 0.08 it subtracts nearly all of a colour's
+  smallest channel, on the promise that every surface carries the four per
+  cent of white a dielectric reflects under an even white room — and under a
+  lamp most of that reflection goes somewhere the camera is not. Filament
+  grades in Rec. 2020, where a saturated sRGB green's smallest channel is
+  three times what it is in sRGB, so the subtraction took the felt's red below
+  nought: the Pixel 10a drew `#1f5e3a` as (0, 70, 22), and every shadowed face
+  of a die lost the same few per cent of white, which on a face lit to a tenth
+  is most of it. So the tone mapper is **linear** (`FilamentEngine.colorGrading`):
+  a colour lit to a level shows at that level. It stops dead at one rather
+  than rolling highlights off, so the exposure leaves room for it — a white
+  floor facing up lands at **0.95** (`TrayLighting.WHITE_LEVEL`), what it
+  receives from the key, the room and the fill worked out by
+  `TrayLighting.whiteFloorLuminance`. What reaches white is the lamp's
+  reflection in the lacquer and a pure white face turned to the key and the
+  window (1.13); the built-in set's bone resin, a felt and a table do not.
+  That exposure, about 2.1 × 10⁻⁵, is within a fifth of Filament's default
+  (f/16, 1/125 s, ISO 100) and is reached the way a photographer would: f/16
+  and 1/125 s kept, ISO 80 (`TrayLighting.sensitivity`). **Not** through
+  `Camera.setExposure(float)`, whose one argument is not this number: it sets
+  f/1, 1.2 s and an ISO of 100 over its argument, which Filament clamps to
+  204,800, and the camera came out at an exposure of 2,048 — twenty-six stops
+  over, a white frame with or without the post pass, which is how the first
+  build of this looked on the phone. `TrayLightingTest` works Filament's
+  formula on the JVM, and `StudioLightDeviceTest` reads the aperture, shutter
+  and ISO back off the camera, after Filament's clamps, and holds the felt
+  within ten levels of `#1f5e3a` in each channel with the post pass and green
+  and far under white without it.
+- **Edges are multisampled.** The aliasing the gallery showed is geometry — a
+  die's silhouette against the felt, the rim against the floor — which is what
+  4× MSAA is for and what FXAA, Filament's default, can only blur after the
+  fact; FXAA is switched off with it. On the Pixel 10a's tiled GPU the samples
+  are resolved in tile memory, so the cost is coverage work rather than a
+  second full-screen pass, and the FXAA pass it replaces is given back. Not
+  TAA: it jitters every frame and resolves over several, and a settled die
+  that shimmers while its history converges looks like a die that twitched.
+- **Shadows are PCF, not PCSS.** PCSS was tried for a shadow that hardens
+  where a die touches the felt and softens at its tip. Filament 1.76's PCSS is
+  not percentage-closer at all: its shader (`ShadowSample_EVSSM`) samples a
+  mip-mapped exponential *variance* shadow map, and Filament's notes on
+  variance shadows ask for every shadow receiver to be a caster too — the one
+  thing this tray must not be. On the Pixel 10a the rim's shadow came back:
+  a hard dark band across the felt, 25 to 40 mm in from the top and left walls
+  with a rounded corner, at 0.40 of the lit felt — the rim is 60 mm up and the
+  key comes down at two in one, so its shadow lands about 30 mm out. PCF reads
+  a plain depth map that holds only what casts, which is the dice, and is the
+  shadow the tray had before; its four-tap filter softens the edge by about a
+  millimetre at this map's half-millimetre texel. A die's shadow is equally
+  firm from base to tip, as it was. `StudioLightDeviceTest` draws the empty
+  tray and holds the felt in strips 3 to 50 mm out from every wall at 0.9 or
+  more of the felt in the middle, before and after the post pass, so a cast
+  rim shadow (about 0.5), a variance-map band or an occlusion band (0.6 to
+  0.85) fails by name.
 - **Dice are lacquered; the table is not.** A die is a moulded thing with a
   varnish on it, and a varnish is a thin smooth layer over a body that is not
   smooth at all — which is exactly what a clear coat is. Without one the only
@@ -1960,6 +2107,33 @@ impact sounds rather than a crash in the middle of a roll.
   which turns out to be what was doing the work. A die reads as being on the
   table because of the shadow under it, not because of the darkening around
   it.
+
+  **Screen-space contact shadows are left off for the same reason.** They
+  march from each pixel towards the key light through the depth buffer, and
+  the wall is in the depth buffer: the band along the far wall would be back.
+  The wall-strip measurement in `StudioLightDeviceTest` would catch any of the
+  three.
+- **The felt has no weave yet.** A procedural normal variation in the floor
+  would be cheap on the GPU, but the floor is drawn with the dice material,
+  and giving it a weave means a parameter in `DiceMaterial.SOURCE` — the shader
+  the translucent dice are being rewritten in on the same branch. It waits for
+  that to land rather than becoming a second table-texture pipeline.
+- **Before and after** (decision 89), the same seeded throws through
+  `tools/gallery.sh` on the Pixel 10a:
+
+  | | before | after |
+  | --- | --- | --- |
+  | room | a 32 px generated sky-to-ground gradient, two bands of irradiance | Brown Photostudio 02 at 1k, folded into a 256 px cube (kept on disk after the first launch) and prefiltered by Filament, three bands of irradiance |
+  | fill | a second directional light, which Filament never drew | 25,000 lux in the room's three-band irradiance |
+  | felt `#1f5e3a`, read back | (28, 102, 69): too bright and too blue | held within ten levels of (31, 94, 58) by `StudioLightDeviceTest` |
+  | tone mapper and exposure | ACES (Filament's default); f/16, 1/125 s, ISO 100 | linear; f/16, 1/125 s, ISO 80: a white floor facing up at 0.95 |
+  | anti-aliasing | FXAA (Filament's default) | 4× MSAA, no FXAA |
+  | the key light's shadow | PCF | PCF (PCSS was tried and brought the rim's shadow back) |
+  | APK | 92.2 MB | 93.6 MB: +1.3 MB of panorama and the reader; no native code added |
+
+  What they look like is the owner's to judge from the gallery; what they cost
+  a frame is the rendered harness's to measure ("Performance, and how it is
+  measured").
 - The tray mesh is a function of the tray's geometry and nothing else — no
   package supplies one (`docs/tables.md`). Only the **inside** is modelled:
   the floor, the inner walls up to the 60 mm rim, and a 6 mm band across the
@@ -2482,6 +2656,12 @@ p99 frame's *work* passes 16.6 ms — the physics steps, not the GPU, which stay
 at 13.7 ms — so the display holds a frame now and then; the scorecard marks
 that row failed against the sixty-frame bar, which is not the bar for the
 capacity limit.
+
+**Those figures predate decision 89**, which adds 4× MSAA (and drops FXAA),
+a variance shadow map with its mip chain for the soft shadow, and a 256-pixel
+reflection cube in place of a 32-pixel one. By estimate the shadow map is the
+dearest of the three, a millisecond or two of GPU at 2,048 pixels; the GPU p99
+at twenty dice had 4 ms of room. The harness is re-run before it merges.
 
 ## What is drawn over the table
 
