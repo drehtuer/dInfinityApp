@@ -25,14 +25,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   to six levels, the coin that ran out the twelve-second cap is explained (it
   leaned on the old corner post; none of 100,000 give up on the fillet tray),
   and the designer masks the d10 and the d18 into their own kites (86).
-- **In flight:** #370 takes the `PASS n` marks off the tray again. And the
-  dice no longer gather at the top of the screen whichever way the phone is
-  shaken: the wrist's swing pulled the sensor towards the hand on every
-  stroke, and that pull is now estimated from the gyroscope and taken out
-  (decision 87, `docs/physics-and-rendering.md`, "Shake input") — off the
-  phone, 45–55 % of the dice in the top third becomes 33–36 %. No golden case
-  moves, and on the Pixel 10a the owner finds the dice no longer pool at the
-  top.
+- **In flight:** a big roll's tail is shown faster — for ten dice or more
+  the watched pace climbs to real speed as the dice are read (decision 88),
+  after `100d4` measured a median 1.29 s and p99 3.09 s of simulated time on
+  the Pixel 10a, 3.2 s and 7.7 s to watch.
 
 ## Done
 

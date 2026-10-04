@@ -193,15 +193,25 @@ power-saving mode; there is no other one.
   never meets the bound at all. What meets it is a roll that is not landing,
   and a roll that is not landing is being *waited for* rather than watched.
 
-  **`RollPace.WATCHED` is otherwise one constant and the only one.** There is
-  no easing
-  curve and no per-phase exception: a pace that changed while the dice were in
-  view would be indistinguishable from a phone dropping frames, and would make
-  the roll's own smoothness unmeasurable. The one place the speed changes is
-  the moment the hand lets go, which is a moment the player caused and at which
-  the dice's motion changes character anyway — the tray stops hauling them
-  about and there is nothing but gravity left. A slower roll is also a slower
-  *answer*, so the number is meant to be judged on a phone and changed.
+  **A big roll's tail is quickened** (decision 88). A hundred d4 settle in a
+  median 1.29 s of simulated time, but their slowest one in a hundred takes
+  3.09 s (Pixel 10a, 200 throws) — 7.7 s on the screen at 0.4, nearly all of
+  it a few dice rocking while ninety-odd lie still. So for a roll of at least
+  `RollPace.TAIL_FROM_DICE` (10) dice the pace follows the share still unread:
+  `WATCHED` while a quarter or more is moving, real speed once a tenth or less
+  is, and a straight line between (`RollPace.paceFor`). It is a gradual climb
+  rather than a jump, so it does not read as a dropped frame; it never passes
+  real speed, so the last dice still move the way dice move; and it decides
+  only when steps are taken, so the faces are the same at any pace. A smaller
+  roll is watched at `WATCHED` to its last die, because there the last die
+  tumbling *is* the roll.
+
+  Otherwise **`RollPace.WATCHED` is one constant.** The other place the speed
+  changes is the moment the hand lets go, which is a moment the player caused
+  and at which the dice's motion changes character anyway — the tray stops
+  hauling them about and there is nothing but gravity left. A slower roll is
+  also a slower *answer*, so the number is meant to be judged on a phone and
+  changed.
 - **A roll being driven is never paced.** While a hand is throwing the dice the
   player is not watching the roll, they are steering it, and dice that answer a
   hand a beat late are the only way this could make the app worse. The question

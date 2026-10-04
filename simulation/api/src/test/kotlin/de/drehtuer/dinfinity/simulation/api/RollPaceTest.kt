@@ -113,6 +113,42 @@ class RollPaceTest {
     )
   }
 
+  @Test
+  fun `a small roll is watched to the end, however few dice are still moving`() {
+    assertEquals(RollPace.WATCHED, RollPace.paceFor(driven = false, stillMoving = 1, dice = 9), 0.0)
+    assertEquals(RollPace.WATCHED, RollPace.paceFor(driven = false, stillMoving = 0, dice = 1), 0.0)
+  }
+
+  @Test
+  fun `a big roll is watched while a quarter or more of it is still moving`() {
+    assertEquals(RollPace.WATCHED, RollPace.paceFor(driven = false, stillMoving = 100, dice = 100), 0.0)
+    assertEquals(RollPace.WATCHED, RollPace.paceFor(driven = false, stillMoving = 25, dice = 100), 0.0)
+  }
+
+  @Test
+  fun `and shown at real speed once a tenth or less of it is`() {
+    assertEquals(1.0, RollPace.paceFor(driven = false, stillMoving = 10, dice = 100), 0.0)
+    assertEquals(1.0, RollPace.paceFor(driven = false, stillMoving = 1, dice = 10), 0.0)
+    assertEquals(1.0, RollPace.paceFor(driven = false, stillMoving = 0, dice = 100), 0.0)
+  }
+
+  @Test
+  fun `in between, the pace climbs in a straight line and never passes real speed`() {
+    val halfway = RollPace.paceFor(driven = false, stillMoving = 175, dice = 1000)
+    assertEquals((RollPace.WATCHED + 1.0) / 2, halfway, TOLERANCE)
+    val paces = (0..100).map { RollPace.paceFor(driven = false, stillMoving = it, dice = 100) }
+    assertTrue(paces.zipWithNext().all { (more, fewer) -> more >= fewer })
+    assertTrue(paces.all { it in RollPace.WATCHED..1.0 })
+  }
+
+  @Test
+  fun `a hand or a long roll still win over the tail`() {
+    assertEquals(1.0, RollPace.paceFor(driven = true, stillMoving = 100, dice = 100), 0.0)
+    val late = RollPace.WATCHED_STEPS
+    assertEquals(1.0, RollPace.paceFor(driven = false, stepsTaken = late, stillMoving = 100, dice = 100), 0.0)
+    assertEquals(FRAME_SECONDS, RollPace.secondsFor(FRAME_SECONDS, false, 0, stillMoving = 5, dice = 100), TOLERANCE)
+  }
+
   private companion object {
     /** One frame of a 60 Hz panel. */
     const val FRAME_SECONDS = 1.0 / 60.0

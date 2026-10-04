@@ -228,7 +228,14 @@ while standing on another, p99 step at most 1.23 ms (60 dice) against 8.33.
 
 - [ ] **`100d4` does not reliably settle.** Five of twenty-four seeds in
       `JoltBridgeTest` reach the twelve-second backstop and give up (since #319
-      without taking the app with them). The bound is today's worst case
+      without taking the app with them). The bound is today's worst case. On
+      the Pixel 10a (2026-10-04, 200 throws, `tools/harness.sh -c 100 -s d4`):
+      median settle 1.29 s, p99 3.09 s, one roll gave up, and **3.07 % of the
+      dice are re-thrown** — at a hundred dice that is a second shake on
+      about 95 % of rolls. The watching is shortened (decision 88); the
+      cocked d4s are the next thing — spawn spread, d4 throw energy or
+      d4-on-d4 friction, each a physics change with the goldens and
+      `FairnessTest` behind it
 - [ ] **A hundred coins stack: 18–29 a seed are left on another coin by one
       throw** (Pixel 10a, 2026-10-04; four to ten under the old ladder, which
       re-threw them itself). None is read (decision 70), and
@@ -312,6 +319,11 @@ keeps them comparable.
       now, or too slow? Does `1d20` a dozen times still feel prompt; does the
       speed change when the hand lets go read as intended; does a second shake
       at tumbling dice still answer instantly?
+- [ ] **A big roll's quicker tail** (decision 88): throw `100d4` and `40d6` —
+      does the end of the roll speed up smoothly rather than jump, and is
+      the wait for the last few dice short enough now? Do `1d20` and `5d6`
+      still feel unhurried? The numbers are `RollPace.TAIL_FROM_DICE` (10),
+      `TAIL_STARTS` (0.25) and `TAIL_ENDS` (0.10)
 - [ ] The keyboard over the lower half of the tray — right, or shift the tray
       up while editing (`2a`)?
 - [ ] **Haptics:** a knock or a rattle; one die among twenty still felt; a
