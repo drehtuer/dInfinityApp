@@ -2,6 +2,12 @@ package de.drehtuer.dinfinity.simulation.jolt
 
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieInstance
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.TableLook
+import de.drehtuer.dinfinity.simulation.api.TableGeometry
+import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.harness.HarnessRequest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -24,7 +30,7 @@ import org.junit.runner.RunWith
  * the post is gone. This keeps the rolls that found it: each is thrown the way
  * the harness throws it — the same plan, the same derived seed, the same
  * scripted passes — and has to come to rest well inside the time a slow roll
- * takes.
+ * takes. So does the one coin `FairnessTest` lost to the same post.
  */
 @RunWith(AndroidJUnit4::class)
 class StuckRollTest {
@@ -61,6 +67,41 @@ class StuckRollTest {
     )
   }
 
+  /**
+   * The one coin in 100,000 `FairnessTest` throws that ran out the cap
+   * (`docs/TODO.md`, Step 5.2) — the same post, found by a lone die.
+   *
+   * Replayed against the tray as it was, the coin hit the far short wall,
+   * dropped and leaned at 43° with its rim on the floor and its upper rim on
+   * the post in the +x, +y corner, and swung about the line through those two
+   * points for eleven seconds: ±0.15 mm, 1.7 rad/s at the bottom of each swing,
+   * a swing every 0.3 s and never smaller (`docs/physics-and-rendering.md`,
+   * "Why a die could rock for ever"). With the fillets it lands flat and is
+   * read in 89 steps.
+   *
+   * Thrown exactly as `FairnessTest` throws throw 14,476 of its run — one
+   * standard coin on the reference tray, the seed SplitMix64 stirs from that
+   * number.
+   */
+  @Test
+  fun theCoinThatLeanedOnACornerPostNowSettles() {
+    val coin = Die.standard(DieShape.Coin.id, DieShape.Coin)
+    val spec =
+      ThrowSpec(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = coin)),
+        geometry = TableGeometry.referenceDevice(),
+        table = TableLook(id = "plain", name = "Plain"),
+        seed = STUCK_COIN,
+      )
+
+    val outcome = JoltDiceSimulator().runOrGiveUp(spec)
+
+    assertNotNull("the coin (seed $STUCK_COIN) gave up: it never came to rest", outcome)
+    val steps = requireNotNull(outcome).steps
+    Log.i("StuckRoll", "the coin took $steps steps")
+    assertTrue("the coin that once ran out the cap took $steps steps", steps <= MOST_STEPS)
+  }
+
   private companion object {
     /** The run they came from: `tools/harness.sh -n 10000 -c 60 -s d20`, seed 1. */
     const val RUN_ROLLS = 10_000
@@ -73,6 +114,12 @@ class StuckRollTest {
         8091 to 8_761_657_533_792_694_254L,
         8926 to -4_967_573_788_364_099_082L,
       )
+
+    /**
+     * The coin's seed: what `FairnessTest` printed, and what its SplitMix64
+     * makes of throw 14,476.
+     */
+    const val STUCK_COIN = 5_897_839_758_308_530_927L
 
     /**
      * Three seconds, every pass included.

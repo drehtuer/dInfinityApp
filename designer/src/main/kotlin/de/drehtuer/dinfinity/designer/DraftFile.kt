@@ -42,8 +42,20 @@ object DraftFile {
    * that predates them drops a fill it cannot draw rather than losing the
    * drawing around it. Bumping the number instead would blank every drawing on
    * the device to spare an older build one shape, which is not a trade.
+   *
+   * **Format 2 is a change of meaning, not of shape.** The fields are the
+   * same, but on a d10 or a d18 the numbers are fractions of a different
+   * canvas: format 1 masked both into one shared kite, format 2 masks each
+   * into its own face ([SharedKite], `docs/architecture.md` decision 86). An
+   * older build reading a format-2 kite drawing would draw it in the wrong
+   * place, which is worse than not reading it; this build reads format 1 and
+   * carries a kite drawing across on the way in, and every draft is written
+   * back as format 2 the next time it is saved.
    */
-  const val FORMAT: Int = 1
+  const val FORMAT: Int = 2
+
+  /** The format before the kites were split, which is still read ([read]). */
+  const val SHARED_KITE_FORMAT: Int = 1
 
   private val json = Json { ignoreUnknownKeys = true }
 
@@ -84,16 +96,23 @@ object DraftFile {
    * have is dropped rather than refused: a die whose set gained a face is a
    * die somebody can go on drawing, and the alternative is losing the whole
    * drawing over one cell.
+   *
+   * A format-1 draft reads too. On every die but the d10 and the d18 the two
+   * formats mean the same thing; on those two its marks are carried off the
+   * shared kite they were drawn against onto the die's own ([SharedKite]), so
+   * the drawing lands on the die where it always did.
    */
   fun read(
     text: String,
     die: Die,
   ): Draft? {
-    val root = root(text)?.takeIf { it.int(FORMAT_KEY) == FORMAT && it[DIE]?.string() == die.id } ?: return null
+    val root = root(text)?.takeIf { it[DIE]?.string() == die.id } ?: return null
+    val format = root.int(FORMAT_KEY)?.takeIf { it == FORMAT || it == SHARED_KITE_FORMAT } ?: return null
     val faces =
       (root[FACES] as? JsonArray).orEmpty().mapNotNull { face ->
         val cell = (face as? JsonObject)?.int(CELL)?.takeIf { it in die.faces.indices }
-        val marks = cell?.let { (face[STROKES] as? JsonArray).orEmpty().mapNotNull(::markFrom) }
+        val read = cell?.let { (face[STROKES] as? JsonArray).orEmpty().mapNotNull(::markFrom) }
+        val marks = if (read != null && format == SHARED_KITE_FORMAT) SharedKite.carried(read, die.shape) else read
         if (cell == null || marks.isNullOrEmpty()) null else cell to FaceDrawing(marks = FaceDrawing.sunk(marks))
       }
     return Draft(die = die, faces = faces.toMap())

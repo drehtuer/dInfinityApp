@@ -19,6 +19,7 @@ import org.junit.Test
 class DraftFileTest {
   private val d6 = Die.standard(id = "d6", shape = DieShape.Cube)
   private val d4 = Die.standard(id = "d4", shape = DieShape.Tetrahedron)
+  private val d10 = Die.standard(id = "d10", shape = DieShape.PentagonalTrapezohedron)
 
   @Test
   fun `a drawing survives the round trip, stroke for stroke`() {
@@ -106,8 +107,43 @@ class DraftFileTest {
     // worse than a blank canvas.
     val written = DraftFile.write(Draft(die = d6).onFace(0) { it.draw(stroke()) })
 
-    assertTrue("the fixture did not say what format it was", written.contains(""""format":1"""))
-    assertNull(DraftFile.read(written.replace(""""format":1""", """"format":2"""), d6))
+    assertTrue("the fixture did not say what format it was", written.contains(""""format":2"""))
+    assertNull(DraftFile.read(written.replace(""""format":2""", """"format":3"""), d6))
+    assertNull(DraftFile.read(written.replace(""""format":2""", """"format":0"""), d6))
+    assertNull(DraftFile.read(written.replace(""""format":2,""", ""), d6))
+  }
+
+  @Test
+  fun `a format-1 draft still reads, and off a kite die it reads unchanged`() {
+    // Format 1 and 2 differ only on the two trapezohedra, so every other
+    // drawing written before the kites were split comes back as it was.
+    val drawn = Draft(die = d6).onFace(1) { it.draw(stroke()).draw(stamp()) }
+    val old = DraftFile.write(drawn).replace(""""format":2""", """"format":1""")
+
+    assertEquals(drawn.face(1).marks, DraftFile.read(old, d6)?.face(1)?.marks)
+  }
+
+  @Test
+  fun `a format-1 drawing on a d10 is carried off the shared kite`() {
+    // The marks were fractions of the one kite both trapezohedra shared, so
+    // they are moved to where that kite's exporter put them on the die.
+    val drawn = Draft(die = d10).onFace(3) { it.draw(stroke()) }
+    val old = DraftFile.write(drawn).replace(""""format":2""", """"format":1""")
+
+    val back = requireNotNull(DraftFile.read(old, d10)).face(3).marks
+
+    assertEquals(SharedKite.carried(listOf(stroke()), d10.shape), back)
+    assertTrue("the drawing was not moved", back != listOf(stroke()))
+  }
+
+  @Test
+  fun `and once it is written again it is format 2 and is not carried twice`() {
+    val drawn = Draft(die = d10).onFace(3) { it.draw(stroke()) }
+    val once = requireNotNull(DraftFile.read(DraftFile.write(drawn).replace(""""format":2""", """"format":1"""), d10))
+
+    val again = requireNotNull(DraftFile.read(DraftFile.write(once), d10))
+
+    assertEquals(once.face(3).marks, again.face(3).marks)
   }
 
   @Test

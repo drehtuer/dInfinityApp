@@ -41,8 +41,6 @@ Design `1a`–`1j`, `2a`, `3a`–`3c`, `4a`, `4b`, `6d`, `6f`, `9a`, `9c`, `1z`.
 Spec: `docs/dice-notation.md`, `docs/tables.md`,
 `docs/physics-and-rendering.md` ("What is drawn over the table").
 
-- [ ] **Mark the dice of a later pass** — 4 dp accent-700 outline and a
-      `pass 2` label in the `dropped` slot (design pass of 2026-09-17)
 - [ ] **Stagger the spawn**, 85 ms between dice, the result sheet waiting
       `min(2400, 950 + (n − 1) × 85)` ms for the last landing. The prototype's
       collision shove is **not** ported: a settled die moved by code is the
@@ -101,6 +99,12 @@ Implementation notes recorded only here:
       expect, and is the double tap found at all without being told? Tap a
       die: is the ~300 ms before its ring appears noticeable, or does a pick
       still feel immediate?
+- [ ] **A later pass** (decision 85): land a die cocked and shake it again,
+      or let a `2d6!` explode, or pick a die and shake — does the accent-700
+      outline sit on the die's own edge at every pinch, does `PASS 2` under it
+      read at arm's length on each table, and does it say "this came later"
+      rather than "this one is wrong"? Pick that die again: are the ring and
+      the outline plainly two different marks?
 - [ ] **The shake prompt** (decision 84): land a die cocked (or a `1d6!` that
       explodes) — is "Shake to re-throw 1 die" at the top impossible to miss
       now, does it go the moment you shake, and does TalkBack read it once?
@@ -140,10 +144,12 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 ### 4.6 Face designer — `feature/designer`
 
-- [ ] **One kite outline for two kites.** `FaceOutline.Kite` serves the d10 and
-      the d18, so the exporter covers instead of fitting (1.20× on a d10, 1.37×
-      on a d18, clipped at the tip). The fix is the face's own polygon as the
-      canvas outline, which changes how drafts on disk are masked
+- [ ] *Judge on the phone:* the d10's and the d18's own kites (decision 86).
+      Open a d18 in the designer: does the long, narrow canvas still leave room
+      to draw, and does a whole-face fill and a stamped number land on the
+      thrown die edge to edge, nothing spilling onto the neighbouring faces?
+      A drawing made on a kite die before the change shows larger in the
+      editor than it was drawn — is that read as the die's size or as a fault?
 - [ ] Should the Solid tab draw pen strokes (as thin filled outlines)? Today it
       says what it does not draw
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
@@ -205,14 +211,13 @@ re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
 
-- [ ] **A coin can roll out the twelve-second cap on its own**: one throw in
-      100,000 at 60–120 rad/s and restitution 0.55 (seed
-      5897839758308530927), three in 100,000 before. `FairnessTest` now counts
-      it as a give-up and prints its seed; find out what the coin is doing for
-      twelve seconds
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds
-      for its ten cases on both ABIs; any divergence is a release blocker
+      for its ten cases on both ABIs; any divergence is a release blocker.
+      A linux-x86_64 build of the bridge, made outside the build for the coin
+      replay (`docs/physics-and-rendering.md`, "Why a die could rock for
+      ever"), matched all ten cases and the phone's coin give-up. Building it
+      in Gradle would put real rolls in the JVM tier
 
 ### 5.3 Capacity and corner cases
 
@@ -402,9 +407,6 @@ their own, add recomposition tests. Figures go in every PR description.
 
 ### Rendering and physics
 
-- [ ] **Why does a six-level cubemap not upload?** Level one of `RoomLight`'s
-      32-pixel cubemap is refused as a buffer overflow (`RoomLightUploadTest`);
-      it ships with one level. An hour with Filament's JNI source
 - [ ] **A numeral at 0.78 of its face, or 0.78 squared?** `FACE_SHARE` is
       applied twice (`LabelRoom.centred`), so a numeral is ~0.61 of its room.
       Once would make every number 28 % bigger; tray and designer move together

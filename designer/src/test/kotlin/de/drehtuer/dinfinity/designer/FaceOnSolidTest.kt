@@ -21,13 +21,11 @@ import kotlin.math.hypot
  */
 class FaceOnSolidTest {
   @Test
-  fun `a regular outline lands corner for corner on the face`() {
-    // Every regular face of the catalogue is the shape its canvas is masked
-    // into, so the fit is exact and each drawn corner is a corner of the face.
-    // A kite is the exception and has its own test: the outline the designer
-    // draws is a kite somebody chose the proportions of rather than the d10's
-    // own.
-    REGULAR.forEach { shape ->
+  fun `every outline lands corner for corner on the face`() {
+    // Every face of the catalogue is the shape its canvas is masked into — the
+    // kites too, since each trapezohedron has its own — so the fit is exact
+    // and each drawn corner is a corner of the face.
+    POLYGONAL.forEach { shape ->
       val outline = FaceOutline.of(shape)
       SolidFaces.of(shape).forEach { face ->
         val landed = FaceShapes.corners(outline).map { dot -> FaceOnSolid.basisOf(face, outline).pointOf(dot) }
@@ -120,22 +118,70 @@ class FaceOnSolidTest {
     // distance from the middle, so there is no tie to settle: the tip can only
     // land on the end of the face's own symmetry axis that is a tip, and the
     // long point on the other end of it.
-    val kite = FaceShapes.corners(FaceOutline.Kite)
-    SolidFaces.of(DieShape.PentagonalTrapezohedron).forEach { face ->
-      val basis = FaceOnSolid.basisOf(face, FaceOutline.Kite)
-      val tip = nearestTo(face, basis.pointOf(kite[TIP]))
-      val point = nearestTo(face, basis.pointOf(kite[LONG_POINT]))
+    KITES.forEach { shape ->
+      val outline = FaceOutline.of(shape)
+      val kite = FaceShapes.corners(outline)
+      SolidFaces.of(shape).forEach { face ->
+        val basis = FaceOnSolid.basisOf(face, outline)
+        val tip = nearestTo(face, basis.pointOf(kite[TIP]))
+        val point = nearestTo(face, basis.pointOf(kite[LONG_POINT]))
 
-      assertEquals(
-        "face ${face.index} does not put the kite's tip across from its long point",
-        ACROSS_A_KITE,
-        (point - tip + face.corners.size) % face.corners.size,
-      )
-      assertEquals(
-        "face ${face.index} puts the kite's tip on its long point",
-        face.corners.indexOf(face.corners.maxBy { (it - face.centre).length }),
-        point,
-      )
+        assertEquals(
+          "${shape.id} face ${face.index} does not put the kite's tip across from its long point",
+          ACROSS_A_KITE,
+          (point - tip + face.corners.size) % face.corners.size,
+        )
+        assertEquals(
+          "${shape.id} face ${face.index} puts the kite's tip on its long point",
+          face.corners.indexOf(face.corners.maxBy { (it - face.centre).length }),
+          point,
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `a kite's cell fit is the best fit, so the drawing is not grown past its face`() {
+    // The figure that was wrong: one canvas kite for two dice made the
+    // exporter grow the drawing until it covered the face, 1.20 times what
+    // fitted on a d10 and 1.37 on a d18, clipping the tip. With each die's own
+    // kite the size that covers and the size that fits are the same number,
+    // and the mask's area is the face's area — not a sliver more.
+    KITES.forEach { shape ->
+      val outline = FaceOutline.of(shape)
+      SolidFaces.of(shape).forEach { face ->
+        val fit = FaceOnSolid.cellFitOf(face, outline)
+        val mask = FaceShapes.corners(outline).map(fit::of)
+        val real = face.corners.map(face::cellOf).map { (u, v) -> Dot(u.toFloat(), v.toFloat()) }
+
+        assertEquals(
+          "${shape.id} face ${face.index} paints ${Polygon.area(mask)} for a face of ${Polygon.area(real)}",
+          1.0,
+          Polygon.area(mask).toDouble() / Polygon.area(real),
+          FITS,
+        )
+      }
+    }
+  }
+
+  @Test
+  fun `and its long point lands on the face's, not past it`() {
+    // Covering by growing put the canvas's long point beyond the face, where
+    // the cell's own edge cut it off. Fitted, every corner of the mask is a
+    // corner of the face.
+    KITES.forEach { shape ->
+      val outline = FaceOutline.of(shape)
+      SolidFaces.of(shape).forEach { face ->
+        val fit = FaceOnSolid.cellFitOf(face, outline)
+        val point = fit.of(FaceShapes.corners(outline)[LONG_POINT])
+        val far = face.cellOf(face.corners.maxBy { (it - face.centre).length })
+
+        assertTrue(
+          "${shape.id} face ${face.index} puts its long point at $point, not on $far",
+          away(far, point) < CORNER,
+        )
+        assertTrue("${shape.id} face ${face.index} paints off its cell: $point", point.x in 0f..1f && point.y in 0f..1f)
+      }
     }
   }
 
@@ -175,7 +221,7 @@ class FaceOnSolidTest {
     // A cell is sampled in the face's own frame, so this is the check that a
     // drawing masked into the canvas's outline is painted where the die will
     // look for it (`FaceOnSolid.cellFitOf`).
-    REGULAR.forEach { shape ->
+    POLYGONAL.forEach { shape ->
       val outline = FaceOutline.of(shape)
       SolidFaces.of(shape).forEach { face ->
         val fit = FaceOnSolid.cellFitOf(face, outline)
@@ -193,11 +239,10 @@ class FaceOnSolidTest {
 
   @Test
   fun `and covers every face, kites included`() {
-    // A kite is the one outline that is not the face's own shape, so no turn
-    // and no size lands it exactly. What it must still do is *cover*: a mask
-    // that falls short leaves bare resin round the edge of the face with the
-    // printed label showing through it, which is the fault a device session
-    // reported as "does not show the face colour".
+    // Whatever else, a mask must *cover*: one that falls short leaves bare
+    // resin round the edge of the face with the printed label showing through
+    // it, which is the fault a device session reported as "does not show the
+    // face colour".
     DieShape.entries.forEach { shape ->
       val outline = FaceOutline.of(shape)
       val canvas = FaceShapes.corners(outline)
@@ -213,6 +258,17 @@ class FaceOnSolidTest {
           )
         }
       }
+    }
+  }
+
+  @Test
+  fun `a cell fit taken back gives the canvas point it was given`() {
+    val fit = CellFit(across = 0.8, twist = -0.6, origin = Dot(0.5f, 0.45f))
+
+    listOf(Dot(0.1f, 0.9f), Dot(0.5f, 0.45f), Dot(1.2f, -0.3f)).forEach { dot ->
+      val back = fit.canvasOf(fit.of(dot))
+      assertEquals(dot.x.toDouble(), back.x.toDouble(), 1e-6)
+      assertEquals(dot.y.toDouble(), back.y.toDouble(), 1e-6)
     }
   }
 
@@ -325,14 +381,20 @@ class FaceOnSolidTest {
     const val LONG_POINT = 2
     const val ACROSS_A_KITE = 2
 
-    /** The shapes whose faces are the regular polygon their canvas is masked into. */
-    val REGULAR =
-      listOf(
-        DieShape.Tetrahedron,
-        DieShape.Cube,
-        DieShape.Octahedron,
-        DieShape.Dodecahedron,
-        DieShape.Icosahedron,
-      )
+    /** How near the mask's area is held to the face's: a float canvas's worth. */
+    const val FITS = 1e-4
+
+    /** How near a mask corner is held to the face's, in fractions of a cell. */
+    const val CORNER = 1e-5
+
+    /**
+     * The shapes whose faces are polygons, which is every one but the coin —
+     * and every one of them is masked into its own face's shape, the two
+     * kites included.
+     */
+    val POLYGONAL = DieShape.entries - DieShape.Coin
+
+    /** The two trapezohedra, whose kites are the outlines that used to be a stand-in. */
+    val KITES = listOf(DieShape.PentagonalTrapezohedron, DieShape.EnneagonalTrapezohedron)
   }
 }

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
@@ -246,6 +247,32 @@ class PickAndShakeTest {
     )
     assertTrue(presenter.marks(0.0).isEmpty())
     assertFalse("a refused pick reported a change", presenter.pick(9))
+  }
+
+  @Test
+  fun `the die a hand threw again is outlined and labelled as the second pass, and the rest are not`() {
+    // Decision 85. The three dice of the first throw say nothing; the one the
+    // shake threw again is outlined where it is drawn and labelled under it.
+    val presenter = onScreen(DirectTray(), PassingRolls(listOf(threeDown, oneMore)))
+    compose.setContent { RollScreen(presenter = presenter) }
+    typeFormula("3d6")
+    shake()
+    lookAtTheFelt()
+    assertTrue("the first throw's dice were marked", presenter.passMarks(PORTRAIT).isEmpty())
+    compose.onNodeWithTag(RollTestTags.PASSES).assertDoesNotExist()
+    tapOn(1)
+
+    shake()
+
+    val pick = TrayPick.through(geometry, PORTRAIT, presenter.looking)
+    assertEquals(
+      listOf(PassMark(requireNotNull(pick.outlineOf(presenter.onTheTable[3])), pass = 2)),
+      presenter.passMarks(PORTRAIT),
+    )
+    assertTrue(presenter.passMarks(0.0).isEmpty())
+    compose.onNodeWithTag(RollTestTags.PASSES).assertExists()
+    compose.onNodeWithTag(RollTestTags.PASS_LABEL, useUnmergedTree = true).assertExists()
+    compose.onNodeWithText("PASS 2", useUnmergedTree = true).assertExists()
   }
 
   @Test

@@ -17,8 +17,9 @@ installed by other users like any other set.
    copies its `faces` and `labels`, so face *values* are inherited; the user
    is only drawing what the face looks like.
 2. **Draw.** The screen shows one face at a time as a large square canvas
-   with the face's outline (triangle, square, pentagon, kite for the d10…)
-   masked in. Swipe left/right or use the strip at the bottom to move between
+   with the face's outline (triangle, square, pentagon, a kite for the d10
+   and a longer one for the d18) masked in — the face's own polygon, so what
+   fills the outline fills the face. Swipe left/right or use the strip at the bottom to move between
    faces. The number that belongs on the face is shown faintly under the
    drawing as something to trace, and can be hidden ("The guide").
 
@@ -148,8 +149,8 @@ a d18, and drawn at 0.96 of the size the die shows — so a drawing came out
 turned and a fill of a whole face came out covering part of it, with the
 printed number showing through the rest. Each cell now carries its own turn
 and size, from the same solve the Solid tab uses (`FaceOnSolid`), and the
-two halves of the designer show the same die. What is left of it is the kite,
-under "Export details" below and in `docs/TODO.md`, 4.6.
+two halves of the designer show the same die — the d10 and the d18 included,
+since each now has its own kite ("Export details").
 
 ## The way back
 
@@ -610,6 +611,23 @@ A stamp's dots are written the way every other mark's are, every ring end to
 end, with the lengths beside them; a stamp whose lengths do not add up to the
 dots it carries is not a stamp this wrote and is dropped.
 
+**It was bumped once, to 2, when the kites were split** — a change of
+*meaning* rather than of shape, which is the case the rule above is for. Up to
+format 1 the d10 and the d18 were drawn against one shared kite; from 2 each
+is drawn against its own face ("Export details"), so the same numbers on a
+kite die are a different place on the die. A format-1 draft still reads. On
+every other die the two formats mean the same thing; on a d10 or a d18 its
+marks are **carried off the shared kite** on the way in (`designer`'s
+`SharedKite`): the old exporter's fit followed by the inverse of the new one,
+which is a size and a shift — 1.31× on a d10, 1.33× on a d18, the nib of every
+stroke with it — and leaves the drawing on the die exactly where the tray
+showed it before. Nothing is squashed, so a stamped numeral is still the
+glyph it was. The next save writes it as format 2, and it is not carried
+again. What the person sees change is the editor: the drawing now shows at
+the size and in the place the die always showed it. An older build reading a
+format-2 file opens a blank canvas rather than drawing a kite die's marks in
+the wrong place (`docs/architecture.md`, decision 86).
+
 ## The solid, not just the face
 
 > **Design:** the Solid tab is in the designer of the
@@ -745,10 +763,9 @@ right way round" above). What the Solid tab shows is the drawing the way the
 canvas shows it, put on the face it belongs to, and **the exporter now paints
 the atlas with the same turn and size** (`FaceOnSolid.cellFitOf`, the flat
 counterpart of the basis this tab draws with), so the drawing lands on the tray
-the way round the Solid tab showed it. The one place the two can still part is
-the kite: its canvas outline is not the d10's or the d18's own shape, and the
-exporter paints it at the size that covers the face where this tab draws the
-best fit ("Export details", `docs/TODO.md`, 4.6).
+the way round the Solid tab showed it. The kites are no exception: each
+trapezohedron's canvas outline is its own face, so the best fit this tab draws
+and the size the exporter paints are the same number ("Export details").
 
 ### Save to set
 
@@ -837,13 +854,25 @@ a named set holds what was put into it on purpose.
   editor, the solid and the tray agree. **It moves the drawing, not the
   atlas**: which cell a face is and how a cell is read are the file format's
   and cannot change, because every published set is painted to them.
-- The size is the one that **covers** the face rather than the one that fits
-  it best. For every outline but the kite those are the same number, the
-  canvas being the face's own shape. A kite is not — the d10's and the d18's
-  faces are differently proportioned kites and the canvas draws one shape for
-  both — so a best fit would leave a rim of bare resin round every face with
-  the printed number showing through it, and covering instead costs a drawing
-  that is a little large and clipped at the tip (`docs/TODO.md`, 4.6).
+- **The canvas outline is the face's own polygon**, so the size that covers
+  the face and the size that fits it are one number and a fill of the face
+  is the face, no more and no less. The regular outlines always were. The
+  kites were not: the d10 and the d18 shared one hand-drawn kite that was
+  neither die's face, and the exporter grew it until it covered — 1.20× the
+  best fit on a d10 and 1.37× on a d18 (a mask of 1.49 and 2.52 times the
+  face's area) — so a drawing came out larger than drawn and clipped at the
+  tip. Each now has its own kite, measured off the solid (`FaceShapes.kiteOf`
+  over `simulation/api`'s `SolidFaces`): turned short tip up, long point
+  down, and sized so its length spans the 0.96 of the canvas a regular
+  outline does. The d18's is the longer and narrower of the two. The mask now
+  lands corner for corner on the face, and `DrawnFaceReachesTheDieTest` holds
+  every shape to both halves — a whole-face fill reaches every point the die
+  shows and nothing a tenth past its edges. Drafts drawn against the shared
+  kite are carried across when they are read ("The draft file").
+- The stamp and the guide solve a kite's number on the same polygon the tray
+  prints on, so on a d10 and a d18 they now sit where the tray puts the
+  number — up at the kite's waist, where the face is widest — rather than
+  where the shared kite had room.
 - Strokes are rasterised with anti-aliasing from the vector draft, clipped to
   the **face outline** rather than to the cell — a turned paste puts marks
   outside the outline on purpose, and what falls outside belongs to no face.

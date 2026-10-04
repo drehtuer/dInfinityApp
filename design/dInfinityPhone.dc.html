@@ -1198,12 +1198,12 @@ function seedHistory(){const rng=mulberry(7);const out=[];const days=[new Date(2
 days.forEach((d,di)=>{const n=di===2?9:17;for(let k=0;k<n;k++){const g=rng()<0.78?'thorin':'ezren';const pool=SEED_ROLLS.filter(r=>r.group===g);const r=pool[Math.floor(rng()*pool.length)];const res=rollFormula(r.formula,rng);if(!res||res.refused)continue;out.push({...res,ts:d.getTime()+k*6*60000+Math.floor(rng()*120000),name:r.name,session:g==='thorin'?'Thorin':'Ezren',rollId:r.id})}});return out}
 function dieStats(history,sides,setKey='all'){const seq=[];history.slice().sort((a,b)=>a.ts-b.ts).forEach(h=>h.groups.forEach(g=>g.dice.forEach(d=>{if(d.sides===sides&&(setKey==='all'||(d.set||null)===setKey))seq.push(d.v)})));const n=seq.length;const hist=Array.from({length:sides},(_,i)=>seq.filter(v=>v===i+1).length);const highs=hist[sides-1]||0,lows=hist[0]||0;const avg=n?seq.reduce((a,b)=>a+b,0)/n:0;let best=0,cur=0;seq.forEach(v=>{cur=v===sides?cur+1:0;best=Math.max(best,cur)});return{n,hist,highs,lows,avg,best,expected:n/sides}}
 function makeFaces(n=6){return Array.from({length:n},()=>({strokes:[],stamps:[],bg:null,edges:[],past:[],redo:[]}))}
-const MASKS={2:'M160 14a146 146 0 1 0 0 292a146 146 0 1 0 0-292Z',4:'M160 22 302 282H18Z',6:'M28 28h264v264H28Z',7:'M160 14 275 68 304 190 233 302H87L16 190 45 68Z',8:'M160 22 302 282H18Z',10:'M160 12 300 140 160 308 20 140Z',12:'M160 16 304 120 249 292H71L16 120Z',18:'M160 10 264 142 160 310 56 142Z',20:'M160 22 302 282H18Z',30:'M160 12 300 160 160 308 20 160Z'};
+const MASKS={2:'M160 14a146 146 0 1 0 0 292a146 146 0 1 0 0-292Z',4:'M160 22 302 282H18Z',6:'M28 28h264v264H28Z',7:'M160 14 275 68 304 190 233 302H87L16 190 45 68Z',8:'M160 22 302 282H18Z',10:'M160 6.4 280.75 65.07 160 313.6 39.25 65.07Z',12:'M160 16 304 120 249 292H71L16 120Z',18:'M160 6.4 233.13 24.93 160 313.6 86.87 24.93Z',20:'M160 22 302 282H18Z',30:'M160 12 300 160 160 308 20 160Z'};
 const DZ_DICE=[2,4,6,8,10,12,18,20];
 const PHYS={builtin:{w:4.2,a:0,s:100},mine:{w:4.2,a:0,s:100},brass:{w:6.8,a:18,s:108},runes:{w:9.1,a:0,s:115}};
 const physOf=k=>PHYS[k||'builtin']||PHYS.builtin;
-const POLY={4:[[160,22],[302,282],[18,282]],6:[[28,28],[292,28],[292,292],[28,292]],8:[[160,22],[302,282],[18,282]],10:[[160,12],[300,140],[160,308],[20,140]],12:[[160,16],[304,120],[249,292],[71,292],[16,120]],18:[[160,10],[264,142],[160,310],[56,142]],20:[[160,22],[302,282],[18,282]]};
-const NUM={2:[160,160,190],6:[160,160,180],8:[160,200,118],10:[160,146,146],12:[160,168,172],18:[160,152,124],20:[160,200,104],100:[160,200,104]};
+const POLY={4:[[160,22],[302,282],[18,282]],6:[[28,28],[292,28],[292,292],[28,292]],8:[[160,22],[302,282],[18,282]],10:[[160,6.4],[280.75,65.07],[160,313.6],[39.25,65.07]],12:[[160,16],[304,120],[249,292],[71,292],[16,120]],18:[[160,6.4],[233.13,24.93],[160,313.6],[86.87,24.93]],20:[[160,22],[302,282],[18,282]]};
+const NUM={2:[160,160,190],6:[160,160,180],8:[160,200,118],10:[160,112,125],12:[160,168,172],18:[160,76,95],20:[160,200,104],100:[160,200,104]};
 const CORNER=76;
 const PIPG=[96,160,224];
 const PIPS={1:[[1,1]],2:[[0,0],[2,2]],3:[[0,0],[1,1],[2,2]],4:[[0,0],[2,0],[0,2],[2,2]],5:[[0,0],[2,0],[1,1],[0,2],[2,2]],6:[[0,0],[2,0],[0,1],[2,1],[0,2],[2,2]]};
@@ -1280,12 +1280,12 @@ function solidGeom(sides,R=112){
   else if(sides===12){for(const x of[-1,1])for(const y of[-1,1])for(const z of[-1,1])V.push([x,y,z]);
     for(const a of[-1,1])for(const b of[-1,1])V.push([0,a*ip,b*PHI],[a*ip,b*PHI,0],[b*PHI,0,a*ip])}
   else {                                                  // trapezohedron: 2n kites (d10, d18)
-    const n=sides/2,a=2*Math.PI/n,m=Math.cos(a/2),h=n<=5?1.2:0.75,z0=h*(1-m)/(1+m);
+    const n=sides/2,a=2*Math.PI/n,m=Math.cos(a/2),q=(1+m)/(1-m),h=q/Math.sqrt(q*q-1),z0=h/q;  // the app's proportions (simulation/api), so each kite is its die's own
     const A=[],B=[];for(let i=0;i<n;i++){A.push([Math.cos(a*i),Math.sin(a*i),z0]);B.push([Math.cos(a*(i+0.5)),Math.sin(a*(i+0.5)),-z0])}
     V=[[0,0,h],[0,0,-h],...A,...B]}
   const norm=Math.max(...V.map(len));V=V.map(v=>[v[0]/norm,v[1]/norm,v[2]/norm]);
   // authored mask reference: centre x, centre y, circumradius, inradius (320-space)
-  const MREF={2:[160,160,146,146],4:[160,195.33,173.33,83.07],6:[160,160,186.68,132],8:[160,195.33,173.33,83.07],10:[160,150,158,101],12:[160,168,152.6,123.2],18:[160,151,159,87.3],20:[160,195.33,173.33,83.07]}[sides]||[160,160,160,140];
+  const MREF={2:[160,160,146,146],4:[160,195.33,173.33,83.07],6:[160,160,186.68,132],8:[160,195.33,173.33,83.07],10:[160,112.53,201.07,87.87],12:[160,168,152.6,123.2],18:[160,92.47,221.14,54.31],20:[160,195.33,173.33,83.07]}[sides]||[160,160,160,140];
   const plate=(c,t,b,n,pts)=>{
     const rad=Math.max(...pts.map(p=>Math.hypot(p[0],p[1])))||1,box=2*rad*R;
     const poly=pts.map(p=>[((p[0]/(2*rad))+0.5)*100,((p[1]/(2*rad))+0.5)*100]);

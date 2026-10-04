@@ -1,8 +1,13 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.glyphs.LabelRoom
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.simulation.api.SolidFace
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.sin
 
 /**
@@ -31,11 +36,10 @@ object FaceShapes {
       FaceOutline.Triangle -> regular(sides = 3)
       FaceOutline.Square -> regular(sides = 4)
       FaceOutline.Pentagon -> regular(sides = 5)
-      // A kite is not regular: two short edges at the top, two long ones to
-      // the point. The waist sits above the middle, which is what makes a d10
-      // face read as a kite rather than a diamond.
-      FaceOutline.Kite ->
-        listOf(Dot(HALF, TOP), Dot(RIGHT, WAIST), Dot(HALF, BOTTOM), Dot(LEFT, WAIST))
+      // A kite is not regular, and the d10's and the d18's are not the same
+      // kite: each is its own face, measured off the solid.
+      FaceOutline.PentagonalKite -> PENTAGONAL_KITE
+      FaceOutline.EnneagonalKite -> ENNEAGONAL_KITE
     }
 
   /**
@@ -79,6 +83,70 @@ object FaceShapes {
   }
 
   /**
+   * [face]'s own polygon laid on the canvas: a kite, short tip up.
+   *
+   * **The face, measured off the solid, rather than a kite somebody chose the
+   * proportions of.** The canvas outline is the mask a drawing is clipped to,
+   * and the exporter and the Solid tab carry it onto the real face with a turn
+   * and a size and nothing else (`FaceOnSolid`). That lands exactly only when
+   * the two are the same shape. One hand-drawn kite for both trapezohedra was
+   * neither die's, and the difference came out as a drawing grown past its
+   * face until it covered it — 1.20 times on a d10, 1.37 on a d18 — and
+   * clipped at the tip (`docs/face-designer.md`, "Export details").
+   *
+   * The tips are told apart by their edges: the short tip is the corner whose
+   * two edges are the shortest pair, and the long point is the corner across
+   * from it. The kite is turned so the line between them is upright with the
+   * short tip at the top — which puts the waist above the middle, the thing
+   * that makes a d10 face read as a kite rather than a diamond — and sized so
+   * its longer side spans what a regular outline's does, centred on the
+   * canvas.
+   *
+   * Corners come back top, right, bottom, left: the order the canvas has
+   * always wound its outlines in. Internal so a test can put a face of its own
+   * through it; the canvas only ever asks it about the two kites.
+   */
+  internal fun kiteOf(face: SolidFace): List<Dot> {
+    val flat = face.corners.map(face::flatOf)
+    require(flat.size == KITE_CORNERS) { "a kite has $KITE_CORNERS corners, not ${flat.size}" }
+    val short = flat.indices.minBy { at -> edgesAt(flat, at) }
+    val far = (short + 2) % flat.size
+    val (tipX, tipY) = flat[short]
+    val (pointX, pointY) = flat[far]
+    val height = hypot(tipX - pointX, tipY - pointY)
+    val upX = (tipX - pointX) / height
+    val upY = (tipY - pointY) / height
+    // Across the axis and along it from the long point: the kite in a frame of
+    // its own, before it is put on the canvas.
+    val placed =
+      flat.map { (x, y) ->
+        val dx = x - pointX
+        val dy = y - pointY
+        (dx * upY - dy * upX) to (dx * upX + dy * upY)
+      }
+    val width = placed.maxOf { it.first } - placed.minOf { it.first }
+    val scale = SPAN / max(height, width)
+    val canvas =
+      placed.map { (across, along) ->
+        Dot(x = (HALF + across * scale).toFloat(), y = (HALF + (height / 2 - along) * scale).toFloat())
+      }
+    val (left, right) =
+      listOf(canvas[(short + 1) % canvas.size], canvas[(short + KITE_CORNERS - 1) % canvas.size]).sortedBy(Dot::x)
+    return listOf(canvas[short], right, canvas[far], left)
+  }
+
+  /** How long the two edges meeting at corner [at] of [polygon] are together. */
+  private fun edgesAt(
+    polygon: List<Pair<Double, Double>>,
+    at: Int,
+  ): Double {
+    val (x, y) = polygon[at]
+    val (nextX, nextY) = polygon[(at + 1) % polygon.size]
+    val (lastX, lastY) = polygon[(at + polygon.size - 1) % polygon.size]
+    return hypot(nextX - x, nextY - y) + hypot(lastX - x, lastY - y)
+  }
+
+  /**
    * A regular polygon with [sides] corners, filling the canvas.
    *
    * An odd-sided one points upwards — a triangle and a pentagon both read that
@@ -101,15 +169,17 @@ object FaceShapes {
   private val CENTRE = Dot(0.5f, 0.5f)
   private const val RADIUS = 0.48
   private const val TURN = 2 * PI
+  private const val HALF = 0.5
 
-  private const val HALF = 0.5f
-  private const val TOP = 0.04f
-  private const val BOTTOM = 0.96f
-  private const val LEFT = 0.16f
-  private const val RIGHT = 0.84f
+  /** How far a kite reaches along its longer side: the 0.96 every regular outline spans. */
+  private const val SPAN = 2 * RADIUS
 
-  /** Where the kite's two side corners sit: above the middle, which is what makes it a kite. */
-  private const val WAIST = 0.38f
+  private const val KITE_CORNERS = 4
+
+  // Measured once: `corners` is asked every frame the canvas draws, and the
+  // solid does not change between frames.
+  private val PENTAGONAL_KITE: List<Dot> = kiteOf(SolidFaces.of(DieShape.PentagonalTrapezohedron).first())
+  private val ENNEAGONAL_KITE: List<Dot> = kiteOf(SolidFaces.of(DieShape.EnneagonalTrapezohedron).first())
 
   private val CORNER_ORDER =
     mapOf(

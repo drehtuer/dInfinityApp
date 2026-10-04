@@ -39,11 +39,10 @@ class FaceBasis(
  * round-tripped through `atan2` are two rounding errors nobody asked for.
  *
  * It is a *similarity* and nothing more, on purpose. A drawing may come out
- * turned or a little large; it may not come out squashed. Where the canvas
- * outline really is the face's own shape — which is every outline but the
- * kite — a similarity lands it exactly, and where it is not, stretching one
- * into the other would distort every line somebody drew rather than leave a
- * margin (`docs/TODO.md`, 4.6).
+ * turned; it may not come out squashed. The canvas outline is the face's own
+ * shape for every die — each trapezohedron has its own kite — so a similarity
+ * lands it exactly, and stretching one into the other would have distorted
+ * every line somebody drew.
  *
  * Not a `data class`, for the reason [FaceBasis] is not one: it is a frame a
  * drawing is put through, never a value anything compares, copies or prints.
@@ -67,6 +66,17 @@ class CellFit(
     return Dot(
       x = (MIDDLE + across * x + twist * y).toFloat(),
       y = (MIDDLE - twist * x + across * y).toFloat(),
+    )
+  }
+
+  /** The other way: which point of the canvas lands on [cell], a point of the cell. */
+  fun canvasOf(cell: Dot): Dot {
+    val u = cell.x - MIDDLE
+    val v = cell.y - MIDDLE
+    val square = across * across + twist * twist
+    return Dot(
+      x = (origin.x + (across * u - twist * v) / square).toFloat(),
+      y = (origin.y + (twist * u + across * v) / square).toFloat(),
     )
   }
 
@@ -120,7 +130,7 @@ object FaceOnSolid {
     val canvas = FaceShapes.corners(outline)
     if (canvas.size != face.corners.size) return roundBasis(face)
     val origin = middleOf(canvas)
-    val fit = fitFor(canvas, face, origin)
+    val fit = bestFit(flipped(canvas, origin), face.corners.map(face::flatOf))
     // The drawing turned by `fit.turn` and grown by `fit.scale`, written out
     // as where its own two axes end up: across the canvas, and down it — and
     // down the canvas is *against* the face's up, which is the turning-over
@@ -151,7 +161,7 @@ object FaceOnSolid {
    * a d6, up to sixty degrees on a d20 and a hundred and fifty-four on a d10
    * — and the scale is the canvas's 0.48 radius against the cell's half,
    * which is the thin bare rim every shape used to come out with
-   * (`docs/TODO.md`, 4.6).
+   * (`docs/face-designer.md`, "Export details").
    *
    * **It moves the drawing, not the atlas.** Which cell a face is, and how a
    * cell is read, are unchanged and cannot change: every set ever published
@@ -161,8 +171,20 @@ object FaceOnSolid {
   fun cellFitOf(
     face: SolidFace,
     outline: FaceOutline,
+  ): CellFit = cellFitOf(face, FaceShapes.corners(outline))
+
+  /**
+   * [cellFitOf] for a canvas masked into [canvas] rather than into one of the
+   * outlines [FaceShapes] draws today.
+   *
+   * There is one other: the kite the canvas drew for both trapezohedra before
+   * each had its own, which a draft from then was drawn against and has to be
+   * carried off ([SharedKite]).
+   */
+  internal fun cellFitOf(
+    face: SolidFace,
+    canvas: List<Dot>,
   ): CellFit {
-    val canvas = FaceShapes.corners(outline)
     // A canvas with no corners to match is copied in square on, which for the
     // disc is right: its circle is the cell's circle whichever way it is
     // turned.
@@ -173,12 +195,12 @@ object FaceOnSolid {
     val turn = bestFit(drawn, real).turn
     // **The size is the one that covers, not the one that fits best.** A mask
     // smaller than the polygon the die shows leaves bare resin round the edge
-    // of every face, with the printed label showing through it, and that is a
-    // worse answer than a drawing a little larger than it was meant to be:
-    // what falls outside the real polygon is on no face and is never sampled.
-    // For the regular outlines the two sizes are the same number, because the
-    // canvas polygon and the face are the same shape; for a kite they are not
-    // (`docs/TODO.md`, 4.6).
+    // of every face, with the printed label showing through it. For every
+    // outline the canvas draws the two sizes are the same number, because the
+    // canvas polygon *is* the face's own shape — the kites included, since
+    // each trapezohedron has its own (`FaceShapes.kiteOf`). Covering is what
+    // keeps that true to the last bit of rounding, and what answered for the
+    // one shared kite there used to be, which no size fitted ([SharedKite]).
     // Turning the face back by the fit rather than the drawing forwards by
     // it: the size needed is the same either way round, and this leaves the
     // canvas's own corners untouched.
@@ -238,16 +260,6 @@ object FaceOnSolid {
     origin: Dot,
   ): List<Pair<Double, Double>> =
     canvas.map { (it.x - origin.x).toDouble() to -(it.y - origin.y).toDouble() }.reversed()
-
-  /**
-   * The turn and the size that carry a canvas masked into [canvas], about
-   * [origin], onto [face]'s real polygon.
-   */
-  private fun fitFor(
-    canvas: List<Dot>,
-    face: SolidFace,
-    origin: Dot,
-  ): Fit = bestFit(flipped(canvas, origin), face.corners.map(face::flatOf))
 
   /** A canvas with no corners, laid on the face's own frame. */
   private fun roundBasis(face: SolidFace): FaceBasis {

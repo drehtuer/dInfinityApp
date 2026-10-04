@@ -959,6 +959,37 @@ cocked. Every golden case moved and was re-recorded, and `FairnessTest` at
 d6, 20.36 for the d20, 0.03 for the coin; the d18 0.91 % off at its worst
 face, inside its 1 % bound).
 
+**The coin `FairnessTest` lost was the same post.** One coin throw ran out the
+cap before the fillets (seed 5897839758308530927, throw 14,476 of the run). It
+was replayed on the JVM against a linux-x86_64 build of the bridge, made from
+the same sources with Jolt's deterministic flags. That build reproduces all ten
+golden cases exactly, and the first coin it gives up in `FairnessTest`'s seed
+sequence is this one, the seed the phone printed. The trace:
+
+- The coin hits the far short wall, drops, and by 0.75 s is leaning 43° from
+  flat, centre 6.7 mm up at (111, 24) mm. Its rim is on the floor, and its upper
+  rim rests on the side of the +x, +y corner post that faced into the tray. The
+  fillet does not reach that spot.
+- From there to the cap it swings like a door on a hinge. Its angular velocity
+  lies in the coin's own plane: under 0.03 rad/s about the coin's axis, against
+  up to 1.7 rad/s about a line in the face. That line is the hinge through its
+  two contacts, and the sign flips about every 0.14 s. The centre moves
+  ±0.15 mm and the speed peaks at 3 mm/s, so it was under the 10 mm/s linear
+  bar the whole time and never under 0.05 rad/s for long.
+- The swing does not shrink, because both contacts sit on the hinge. Nothing
+  slips, so friction has no work to do, and the 0.02 damping is all that is
+  left. It is the "spins on an axle" picture below in a pendulum's form: the
+  coin's weight hangs off the hinge and keeps bringing it back.
+
+The other coin give-up in that 100,000, `-5535098112695128242`, is the same
+lean on the -x side of the same post, centre at (90, 46) mm. On the tray as it is now,
+both coins land and are read: the first in 89 steps, face 1. Over the same
+100,000 throws (`FairnessTest`'s SplitMix64 seeds 0–99,999) **none gives up**
+(faces 50,145 / 49,855); the slowest throw takes 1,014 steps over three passes.
+`StuckRollTest` keeps the seed and wants it settled within three seconds. So the
+coin needs no physics of its own: what held it up was a surface the tray no
+longer has.
+
 **What still never settles is a die that spins on an axle.** Every one of the
 four rolls that gave up after the change, and the four others traced from
 before it, is the same picture: one die with its centre still to a hundredth
@@ -993,14 +1024,16 @@ Headless, but the same simulation a watched roll steps: the only difference is
 who asks for the steps ("Power-saving mode"), so a fairness result here is a
 fairness result for the app.
 
-**A throw that gives up is a figure, not a crash.** One throw in a hundred
-thousand — a coin, in the runs that have shown one — is still moving at the
-twelve-second backstop, and has no face to count
-(`SettleRule.HARD_CAP_SECONDS`). The run used to stop on it and lose everything
-it had counted. Now each one is a **give-up**: it is left out of both judgements
-above, because a give-up is not a face and counting it as one would be the
-made-up number the backstop exists to refuse, and it is reported per shape with
-its seed so the throw can be replayed and watched. A run fails on give-ups only
+**A throw that gives up is a figure, not a crash.** A throw that is still
+moving at the twelve-second backstop has no face to count
+(`SettleRule.HARD_CAP_SECONDS`). Before the corner fillets, that was about one
+coin in 50,000, leaning on the corner post ("Why a die could rock for ever").
+On today's tray, 100,000 coin throws replayed on the JVM have given up none.
+The run used to stop on a give-up and lose everything it had counted. Now each
+one is a **give-up**: it is left out of both judgements above, because a
+give-up is not a face and counting it as one would be the made-up number the
+backstop exists to refuse, and it is reported per shape with its seed so the
+throw can be replayed and watched. A run fails on give-ups only
 past **one in ten thousand throws, and never fewer than one**
 (`FaceTally.GIVE_UP_SHARE` in `simulation/harness`, tested on the JVM) — over
 three times the worst the Pixel 10a has shown, and loose enough that the quick
@@ -1778,14 +1811,17 @@ impact sounds rather than a crash in the middle of a roll.
   shine comes from two lamps in a void. So the same sky-to-ground gradient is
   also a 32-pixel cubemap, generated rather than shipped.
 
-  **One level, not six.** A reflection's blur normally follows a surface's
-  roughness by reading a coarser level, which is worth having when the
-  environment is a room with things in it; this one is a gradient, and a
-  gradient blurred is the same gradient nearer its own average. It is also the
-  only shape of upload the Pixel 10a's driver accepts — a six-level cubemap is
-  refused at level one with a buffer overflow against a region whose arithmetic
-  checks out on both sides, and `RoomLightUploadTest` is what pins that down
-  (`docs/TODO.md`, Open questions).
+  **Six levels, five of them Filament's.** A reflection's blur follows a
+  surface's roughness by reading a coarser level of the environment, so a
+  polished die mirrors the sharp gradient and a matte one its average. Only
+  the sharp 32-pixel level is ours, as linear RGB floats;
+  `Texture.generatePrefilterMipmap` works out the other five for Filament's own
+  lighting model, into an `R11F_G11F_B10F` cubemap. It used to ship one level,
+  because uploading a coarser level by hand is refused: Filament 1.76's JNI
+  sizes the buffer with the region's height shifted by the level a second time,
+  so level one's 16 × 16 × 6 region is checked against half the bytes it needs.
+  The prefilter goes round that and is the better answer anyway
+  (`RoomLightUploadTest`).
 - **The ambient's brightness is an average, and it is divided out.** Filament's
   intensity multiplies every coefficient, so a room that is bright above and
   dim below is a *darker* room than a flat white one at the same setting. The
@@ -2567,13 +2603,27 @@ the roll's number at the display size in the middle of the screen and again at
 clipped. So a subtotal is drawn unless it is the whole of the result
 (`Subtotals`, and `docs/design-handover.md`).
 
-**A die from a later pass should say so — not built yet.** A roll that had to
-throw something again shows the dice of its last pass only, so a total counting
-twenty dice can stand over a table holding three. The design gives those dice a
-4 dp `--color-accent-700` outline and a `pass 2` label in the slot the
-`dropped` marker already uses, so the number on the felt stops looking like a
-mistake; the app does not draw either yet (`docs/TODO.md`, "Mark the dice of a
-later pass").
+**A die from a later pass says so.** A roll that had to throw something
+again keeps on the table only what the last pass of each throw left there, so a
+total counting twenty dice can stand over a table holding three. Those dice are
+outlined in `--color-accent-700`, 4 dp, along the die's own edge, and labelled
+`PASS 2` (or 3, …) under it — ten, semibold, tracked, on a plate of the ground,
+in the slot the design's `dropped` marker uses — so the number on the felt
+stops looking like a mistake (`PassMarks`; `design/dInfinityPhone.dc.html`,
+the tray's `mark`). A pass is every throw of the roll, counted from the first:
+a re-throw of dice nobody could read, the dice a chain earned, and the dice a
+finger picked up are each the next one, and the dice of the first throw carry
+nothing (`docs/architecture.md`, decision 85).
+
+It is drawn over the picture as the pick ring is, and for the same reasons —
+the renderer draws what the simulation says and nothing else — and it stays off
+the felt the same way: the accent-700 line runs inside an 8 dp band of the
+ground. The outline is exact rather than a circle: `TrayPick.outlineOf` puts
+the corners of the die's hull, turned the way it lies, through the frustum the
+picture was drawn in and wraps them, which is the die's silhouette because a
+die is convex. That is also what keeps it apart from a pick, which is a circle
+outside the die in the accent itself; a die that is both wears both, the ring
+on top. Like the ring, it is shown only under a total.
 
 **6 and 9 carry a trailing dot.** A die on a table lies at whatever angle it
 landed at, and `6` and `9` are the same glyph turned over, so the ambiguous one

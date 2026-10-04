@@ -68,10 +68,19 @@ class MaterialCache(
     try {
       file.parentFile?.mkdirs()
       partial.writeBytes(bytes)
-      if (!partial.renameTo(file)) partial.delete()
+      if (!partial.renameTo(file)) discard(partial)
     } catch (_: IOException) {
-      partial.delete()
+      discard(partial)
     }
+  }
+
+  /**
+   * A temporary file that did not become the packet. One that cannot be
+   * deleted now is deleted when the process ends, so a failed write never
+   * leaves litter behind for longer than one run.
+   */
+  private fun discard(partial: File) {
+    if (partial.exists() && !partial.delete()) partial.deleteOnExit()
   }
 
   companion object {

@@ -22,22 +22,23 @@ import java.nio.ByteOrder
 @RunWith(AndroidJUnit4::class)
 class RoomLightUploadTest {
   @Test
-  fun theLevelsAreTheSizeTheDriverWillAskFor() {
-    assertEquals(BASE * BASE * BYTES_PER_PIXEL * RoomLight.FACES, RoomLight.level(0).size)
-    assertEquals(HALF * HALF * BYTES_PER_PIXEL * RoomLight.FACES, RoomLight.level(1).size)
+  fun theFacesAreTheSizeTheDriverWillAskFor() {
+    assertEquals(BASE * BASE * BYTES_PER_PIXEL * RoomLight.FACES, RoomLight.faces().size * Float.SIZE_BYTES)
   }
 
   @Test
   fun aDirectBufferOffersEveryByteItWasGiven() {
-    val pixels = RoomLight.level(1)
-    val buffer = ByteBuffer.allocateDirect(pixels.size).order(ByteOrder.nativeOrder())
-    buffer.put(pixels)
-    buffer.rewind()
-    assertEquals(pixels.size, buffer.remaining())
+    val pixels = RoomLight.faces()
+    val buffer = ByteBuffer.allocateDirect(pixels.size * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
+    buffer.asFloatBuffer().put(pixels)
+    assertEquals(pixels.size * Float.SIZE_BYTES, buffer.remaining())
   }
 
   @Test
-  fun everyLevelOfTheCubemapUploads() {
+  fun everyLevelOfTheCubemapIsPrefilteredFromTheSharpOne() {
+    // The way the stage does it, and the way that works: one level by hand,
+    // the other five by Filament. Uploading level one by hand is what this
+    // Filament's JNI refuses ([RoomLight.LEVELS]).
     FilamentStage.ready()
     val engine = Engine.create()
     try {
@@ -48,27 +49,19 @@ class RoomLightUploadTest {
           .height(RoomLight.SIZE)
           .depth(RoomLight.FACES)
           .levels(RoomLight.LEVELS)
-          .format(Texture.InternalFormat.RGBA8)
+          .format(Texture.InternalFormat.R11F_G11F_B10F)
           .sampler(Texture.Sampler.SAMPLER_CUBEMAP)
           .build(engine)
-      for (level in 0 until RoomLight.LEVELS) {
-        val side = (RoomLight.SIZE shr level).coerceAtLeast(1)
-        val pixels = RoomLight.level(level = level)
-        val buffer = ByteBuffer.allocateDirect(pixels.size).order(ByteOrder.nativeOrder())
-        buffer.put(pixels)
-        buffer.rewind()
-        texture.setImage(
-          engine,
-          level,
-          0,
-          0,
-          0,
-          side,
-          side,
-          RoomLight.FACES,
-          Texture.PixelBufferDescriptor(buffer, Texture.Format.RGBA, Texture.Type.UBYTE),
-        )
-      }
+      val pixels = RoomLight.faces()
+      val buffer = ByteBuffer.allocateDirect(pixels.size * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
+      buffer.asFloatBuffer().put(pixels)
+      texture.generatePrefilterMipmap(
+        engine,
+        Texture.PixelBufferDescriptor(buffer, Texture.Format.RGB, Texture.Type.FLOAT),
+        RoomLight.faceOffsets(),
+        Texture.PrefilterOptions(),
+      )
+      assertEquals(RoomLight.LEVELS, texture.levels)
       engine.destroyTexture(texture)
     } finally {
       engine.destroy()
@@ -77,7 +70,8 @@ class RoomLightUploadTest {
 
   private companion object {
     const val BASE = 32
-    const val HALF = 16
-    const val BYTES_PER_PIXEL = 4
+
+    /** Three floats of four bytes each. */
+    const val BYTES_PER_PIXEL = 12
   }
 }

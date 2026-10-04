@@ -121,6 +121,23 @@ class PickedDiceTest {
   }
 
   @Test
+  fun `a die thrown again by hand is the next pass, and the one it replaced keeps its own`() {
+    // Decision 85: what the tray labels. The die a hand threw again still
+    // lies where it fell and is the first pass's; the new throw of it is the
+    // second, and a throw of that one again the third.
+    val machine = landed("2d6", faces = listOf(0, 1))
+    assertEquals(listOf(1, 1), machine.passesOnTheTable)
+    machine.pick(0)
+    machine.settled(landing(requireNotNull(machine.throwPicked()), face = 3))
+
+    assertEquals(listOf(1, 1, 2), machine.passesOnTheTable)
+
+    machine.pick(2)
+    machine.settled(landing(requireNotNull(machine.throwPicked()), face = 4))
+    assertEquals(listOf(1, 1, 2, 3), machine.passesOnTheTable)
+  }
+
+  @Test
   fun `a shake with nothing picked has no throw by hand to make`() {
     val machine = landed("3d6", faces = listOf(0, 1, 2))
 

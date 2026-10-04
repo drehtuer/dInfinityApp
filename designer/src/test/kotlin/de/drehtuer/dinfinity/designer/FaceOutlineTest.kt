@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.DieShape
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -14,8 +15,15 @@ import org.junit.Test
 class FaceOutlineTest {
   @Test
   fun `a d10's faces are kites, not the pentagons they look like from a distance`() {
-    assertEquals(FaceOutline.Kite, FaceOutline.of(DieShape.PentagonalTrapezohedron))
-    assertEquals(FaceOutline.Kite, FaceOutline.of(DieShape.EnneagonalTrapezohedron))
+    assertEquals(FaceOutline.PentagonalKite, FaceOutline.of(DieShape.PentagonalTrapezohedron))
+    assertEquals(FaceOutline.EnneagonalKite, FaceOutline.of(DieShape.EnneagonalTrapezohedron))
+  }
+
+  @Test
+  fun `and a d10's kite is not a d18's`() {
+    // One kite for both was the outline that fitted neither, so the two
+    // trapezohedra have one each.
+    assertTrue(FaceOutline.of(DieShape.PentagonalTrapezohedron) != FaceOutline.of(DieShape.EnneagonalTrapezohedron))
   }
 
   @Test

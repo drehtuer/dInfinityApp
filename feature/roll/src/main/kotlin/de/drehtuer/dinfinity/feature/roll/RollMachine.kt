@@ -143,6 +143,25 @@ class RollMachine(
      */
     val downIs: MutableList<Int?> = mutableListOf()
 
+    /**
+     * Which pass of the roll put each of [down] there, counting the first
+     * throw as one — the number the tray prints under a die of a later pass
+     * (`docs/architecture.md`, decision 85).
+     */
+    val downPass: MutableList<Int> = mutableListOf()
+
+    /**
+     * Which pass of the roll is in the air, or was the last to come down.
+     *
+     * One for the first throw, and one more for every throw a shake makes
+     * after it — of dice nobody could read, of the dice a chain earned, of the
+     * dice a finger picked up. Counted across the whole roll rather than per
+     * [round], because what the label answers is "why does the total count
+     * dice this table is not showing", and that is every shake since the
+     * first.
+     */
+    var pass: Int = 1
+
     /** The faces of the dice the roll has added, in the order it asked for them. */
     val added: MutableList<Int> = mutableListOf()
 
@@ -225,6 +244,9 @@ class RollMachine(
         outcome.restingAt[position]?.let { place ->
           down += DieAtRest(instance.die, instance.setId, place)
           downIs += planIndexOf(position)
+          // Only the last pass of a round leaves dice on the table
+          // ([Passes.landed]), so every die this adds came down on this pass.
+          downPass += pass
         }
       }
       rethrows += outcome.rethrows
@@ -624,7 +646,12 @@ class RollMachine(
     val thrown = next.copy(shake = shake)
     // And the round is this throw now: a die of it that lands cocked waits
     // for a shake of its own before the chain goes on.
-    inFlight?.round = Passes(thrown)
+    // It is a pass of its own, too: the dice it brings down are labelled with
+    // it (decision 85).
+    inFlight?.let {
+      it.round = Passes(thrown)
+      it.pass++
+    }
     return thrown
   }
 
@@ -748,9 +775,11 @@ class RollMachine(
    * after a throw stopped short.
    */
   fun throwAgain(shake: List<ShakeSample> = emptyList()): ThrowSpec? {
-    val round = inFlight?.round ?: return null
+    val flight = inFlight ?: return null
+    val round = flight.round
     if (round.airborne || round.waiting.isEmpty()) return null
     val spec = round.next(shake)
+    flight.pass++
     state = RollState.Rolling(diceCount = spec.dice.size)
     return spec
   }
@@ -769,6 +798,13 @@ class RollMachine(
    * it is not on the table to be touched.
    */
   val onTheTable: List<DieAtRest> get() = landed?.down?.toList().orEmpty()
+
+  /**
+   * Which pass of the roll put each of [onTheTable] there, position for
+   * position — one for the first throw, more for every shake after it
+   * (`docs/architecture.md`, decision 85). Empty whenever [onTheTable] is.
+   */
+  val passesOnTheTable: List<Int> get() = landed?.downPass?.toList().orEmpty()
 
   /** How far the capacity rule shrank the dice on the table, which a finger's target shrinks by. */
   val dieScale: Double get() = landed?.prepared?.scale ?: 1.0
@@ -848,6 +884,7 @@ class RollMachine(
     if (picks.isEmpty()) return null
     val indices = picks.map { requireNotNull(flight.downIs[it]) }.sorted()
     flight.byHand++
+    flight.pass++
     val spec =
       ThrowSpec(
         dice = indices.mapIndexed { at, index -> planned(flight, index).copy(index = at) },

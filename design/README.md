@@ -58,6 +58,11 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   opposite-face numbering, d4 values at the corners and d6 pips. Built:
   [../docs/face-designer.md](../docs/face-designer.md), "The solid, not just
   the face".
+- **The d10's and the d18's kites are each their own die's face** — the
+  designer masks (`MASKS`, `POLY`, option `8d`) and the solid's proportions
+  are the app's trapezohedra, measured off `simulation/api`, where they used
+  to be two hand-drawn kites over a solid of the prototype's own. Built:
+  [../docs/face-designer.md](../docs/face-designer.md), "Export details".
 - **The face designer's tools are the phone frame's own sprite** — the app
   draws `#ic-pencil`, `#ic-eraser`, `#ic-bucket`, `#ic-type`, `#ic-image`,
   `#ic-undo`, `#ic-redo` and `#ic-copy` from
@@ -77,6 +82,14 @@ What it changed, all of it in `dInfinityPhone.dc.html`:
   draws it as a plate rather than in the prototype's accent tint, because
   accent never touches felt. Built:
   [../docs/face-designer.md](../docs/face-designer.md), "The way back".
+- **The dice of a later pass are marked** — the tray's `mark`: a 4 dp
+  `--color-accent-700` stroke round the die and a `pass 2` label under it, in
+  the slot `dropped` uses. Built over the picture with the die's real outline
+  and a band of ground under the stroke, because accent never touches felt
+  (decision 85 in
+  [../docs/architecture.md](../docs/architecture.md#key-decisions-log);
+  [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
+  "What is drawn over the table").
 - **Saved rolls are dragged into the order the player wants**; pinning and
   favourites are gone.
 - **Settings gained an accent picker and lost the sound switch.**
