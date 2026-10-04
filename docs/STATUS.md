@@ -15,7 +15,7 @@ This is a snapshot, not a changelog — git history is the changelog.
   onto a felt tray, come to rest, are felt and heard as they land, and their
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
-- **Latest release:** `v0.1.1`, signed and published with its SHA-256.
+- **Latest release:** `v0.2.0`, signed and published with its SHA-256.
 - **`main` is at #368**: the owner's feedback on the overnight build is in
   — a cold start shows the tray in 0.8 s (decision 46), the watched pace is
   0.4 (65), *Clear face* in the designer (82), a throw folds the top away and

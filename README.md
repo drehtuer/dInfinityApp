@@ -155,7 +155,7 @@ is the visual one. Each document below links to the screens that realise it.
 
 ## Status
 
-**Implementation. The app rolls dice on a phone, and `v0.1.1` is out** — a
+**Implementation. The app rolls dice on a phone, and `v0.2.0` is out** — a
 signed early release, published with its SHA-256, built from this repository by
 pushing a tag. Every screen is written and connected; the documents in `docs/`
 and the prototype in `design/` are still the specification, and where the two
