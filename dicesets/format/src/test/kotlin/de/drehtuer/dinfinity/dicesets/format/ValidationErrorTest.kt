@@ -39,6 +39,12 @@ class ValidationErrorTest {
   }
 
   @Test
+  fun `a format older than the first is refused too`() {
+    val rejected = rejecting(minimalToml().replace("format = 1", "format = 0"))
+    assertTrue(ValidationCode.UnsupportedFormat in rejected.codes(), "${rejected.messages}")
+  }
+
+  @Test
   fun `a format that is not a number is refused`() {
     val rejected = rejecting(minimalToml().replace("format = 1", "format = \"one\""))
     assertTrue(ValidationCode.WrongType in rejected.codes(), "${rejected.messages}")
@@ -58,7 +64,7 @@ class ValidationErrorTest {
 
   @Test
   fun `a set id that is not a slug is refused`() {
-    listOf("Brass", "brass set", "../etc", "-brass", "ab").forEach { id ->
+    listOf("Brass", "brass set", "../etc", "-brass", "ab", "b".repeat(41)).forEach { id ->
       val rejected = rejecting(minimalToml().replace("id = \"fixture\"", "id = \"$id\"", ignoreCase = false))
       assertTrue(ValidationCode.BadSlug in rejected.codes(), "'$id' should not be a set id")
     }
@@ -86,6 +92,21 @@ class ValidationErrorTest {
   fun `faces that are not numbers are refused`() {
     val rejected = rejecting(minimalToml().replace("[1, 2, 3, 4, 5, 6]", "[\"a\", \"b\", \"c\", \"d\", \"e\", \"f\"]"))
     assertTrue(ValidationCode.WrongType in rejected.codes(), "${rejected.messages}")
+  }
+
+  @Test
+  fun `faces that are not a list are refused`() {
+    val rejected = rejecting(minimalToml().replace("[1, 2, 3, 4, 5, 6]", "6"))
+    assertTrue(ValidationCode.WrongType in rejected.codes(), "${rejected.messages}")
+  }
+
+  @Test
+  fun `text written as a number is refused rather than printed`() {
+    val misnamed = rejecting(minimalToml().replace("name = \"Fixture\"", "name = 7"))
+    assertTrue(ValidationCode.WrongType in misnamed.codes(), "${misnamed.messages}")
+
+    val labelled = rejecting(minimalToml("labels = [1, 2, 3, 4, 5, 6]"))
+    assertTrue(ValidationCode.WrongType in labelled.codes(), "${labelled.messages}")
   }
 
   @Test
@@ -126,6 +147,48 @@ class ValidationErrorTest {
       rejecting(minimalToml("texture = \"d6.png\""), "d6.png" to png(huge, huge))
     assertTrue(ValidationCode.TextureTooLarge in rejected.codes(), "${rejected.messages}")
     assertTrue(rejected.errors.any { "$huge×$huge" in it.text }, "${rejected.errors}")
+
+    // Either side over the limit is enough: a strip one pixel wide is still
+    // a strip too tall to upload.
+    val tall = rejecting(minimalToml("texture = \"d6.png\""), "d6.png" to png(1, huge))
+    assertTrue(ValidationCode.TextureTooLarge in tall.codes(), "${tall.messages}")
+  }
+
+  /**
+   * Each texture under its own limit, and the package over its total: the
+   * per-file limit alone would let a set carry as many four-megabyte pictures
+   * as it has dice. The package only *claims* the sizes, which is all the
+   * check reads, so the test does not have to allocate them.
+   */
+  @Test
+  fun `textures that are each small enough but too much together are refused`() {
+    val count = (DiceSetLimits.MAX_PACKAGE_TEXTURE_BYTES / DiceSetLimits.MAX_TEXTURE_BYTES).toInt() + 1
+    val dice =
+      (1..count).joinToString("\n") { i ->
+        "[[die]]\nid = \"d6-$i\"\nshape = \"cube\"\nfaces = [1, 2, 3, 4, 5, 6]\ntexture = \"t$i.png\"\n"
+      }
+    val toml = minimalToml().substringBefore("[[die]]") + dice
+    val small = png(30, 20)
+    val inner = packageOf(toml, *(1..count).map { "t$it.png" to small }.toTypedArray())
+    val heavy =
+      object : PackageFiles {
+        override fun read(path: String): ByteArray? = inner.read(path)
+
+        override fun size(path: String): Long? =
+          if (path.endsWith(".png")) DiceSetLimits.MAX_TEXTURE_BYTES else inner.size(path)
+      }
+
+    val result = DiceSetValidator.validate(heavy)
+
+    assertTrue(result is ValidationResult.Rejected, "$result")
+    assertEquals(listOf(ValidationCode.FileTooLarge), result.errors.map(ValidationMessage::code))
+    assertTrue(
+      result.errors
+        .single()
+        .text
+        .contains("together"),
+      "${result.errors}",
+    )
   }
 
   @Test
@@ -154,6 +217,12 @@ class ValidationErrorTest {
   fun `an infinite physics value is refused`() {
     val rejected = rejecting(minimalToml("density = inf"))
     assertTrue(ValidationCode.NotFinite in rejected.codes(), "${rejected.messages}")
+  }
+
+  @Test
+  fun `a physics value written as text is refused`() {
+    val rejected = rejecting(minimalToml("roughness = \"glossy\""))
+    assertTrue(ValidationCode.WrongType in rejected.codes(), "${rejected.messages}")
   }
 
   @Test
@@ -213,6 +282,18 @@ class ValidationErrorTest {
         minimalToml() + "\n\n[[table]]\nid = \"oak\"\nname = \"Oak\"\nsound = \"thunder\"\n",
       )
     assertTrue(ValidationCode.UnknownPreset in rejected.codes(), "${rejected.messages}")
+  }
+
+  @Test
+  fun `a table with no id, a bad id or no name is refused`() {
+    listOf(
+      "[[table]]\nname = \"Oak\"\n" to ValidationCode.MissingField,
+      "[[table]]\nid = \"Oak Table\"\nname = \"Oak\"\n" to ValidationCode.BadSlug,
+      "[[table]]\nid = \"oak\"\n" to ValidationCode.MissingField,
+    ).forEach { (table, code) ->
+      val rejected = rejecting(minimalToml() + "\n\n" + table)
+      assertTrue(code in rejected.codes(), "$table: ${rejected.messages}")
+    }
   }
 
   @Test

@@ -2,7 +2,9 @@ package de.drehtuer.dinfinity.core.notation
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * Every example in the table at the top of `docs/dice-notation.md`, plus the
@@ -94,6 +96,11 @@ class FormulaParserTest {
   }
 
   @Test
+  fun `a set id may carry digits, dashes and underscores after its first letter`() {
+    assertEquals("old_brass-2:1d20", render(parsed("old_brass-2:1d20").root))
+  }
+
+  @Test
   fun `dF is the fudge die`() {
     assertEquals("4dF", render(parsed("4dF").root))
   }
@@ -149,6 +156,22 @@ class FormulaParserTest {
   @Test
   fun `a formula with no dice has no dice nodes`() {
     assertEquals(emptyList(), parsed("2 * (3 + 4)").diceNodes)
+  }
+
+  /**
+   * What decides whether the result sheet offers its rounding control: only a
+   * formula that divides somewhere can come out differently under `Down`,
+   * `Nearest` and `Up` (`docs/dice-notation.md`, "Division rounding"). A
+   * division buried on either side of a sum, or under a minus, still counts.
+   */
+  @Test
+  fun `a formula divides when there is a division anywhere in it`() {
+    listOf("1d6 / 2", "(3d6 + 5) / 2 + 1", "1 + 1d20 / 2", "2 * (1d8 / 2)", "-(1d6 / 2)").forEach { text ->
+      assertTrue(parsed(text).divides, text)
+    }
+    listOf("3d6 + 4", "2 * (1d8 + 3)", "-1d6", "7").forEach { text ->
+      assertFalse(parsed(text).divides, text)
+    }
   }
 
   @Test

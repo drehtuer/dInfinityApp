@@ -67,6 +67,18 @@ class FixturesTest {
   }
 
   @Test
+  fun `a fixture that is not there is named in the failure`() {
+    val failure = assertFailsWith<IllegalArgumentException> { Fixtures.diceSet("no-such-set.toml") }
+
+    assertTrue(failure.message.orEmpty().contains("no-such-set.toml"), failure.message)
+  }
+
+  @Test
+  fun `both golden inputs are read back by the id the file carries`() {
+    GoldenInput.entries.forEach { input -> assertEquals(input, GoldenInput.of(input.id)) }
+  }
+
+  @Test
   fun `the golden shake is one full set of swings and never exceeds its peak`() {
     val samples = GoldenShake.samples()
 

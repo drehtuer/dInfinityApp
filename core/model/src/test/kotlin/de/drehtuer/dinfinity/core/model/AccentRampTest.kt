@@ -75,6 +75,21 @@ class AccentRampTest {
     )
   }
 
+  /**
+   * A bar no colour can clear still gets an answer: the ground's own pole,
+   * the furthest from the page any colour can be.
+   *
+   * Nothing in the app asks for more than 21:1, the widest contrast there is,
+   * but a caller passing a bar the pole cannot meet must get a colour back
+   * rather than the search falling off its end.
+   */
+  @Test
+  fun `a bar no colour can reach falls back to the ground's pole`() {
+    Ground.entries.forEach { ground ->
+      assertEquals(ground.poleArgb, AccentRamp.clamp(AccentColor.Default.argb, ground, atLeast = 22.0))
+    }
+  }
+
   /** Clamping twice is clamping once, which is what lets any layer do it safely. */
   @Test
   fun `the clamp is idempotent`() {
