@@ -119,6 +119,32 @@ class RefResolverTest {
   }
 
   @Test
+  fun `a hash of the right length with something other than hex in it is refused`() {
+    // Forty characters is not enough on its own: this is the shape of a
+    // hash and none of the substance.
+    server.enqueue(MockResponse(body = """{"sha": "${"g".repeat(40)}"}"""))
+
+    assertTrue(failed(source(InstallSource.Kind.GitHub)).reason.contains("not a commit hash"))
+  }
+
+  @Test
+  fun `a reply that names no commit in the field its forge uses is a failure`() {
+    // Each forge's hash is read from its own field and nowhere else: a GitHub
+    // reply has no `id`, a GitLab one no `sha`, and an empty one neither.
+    listOf(
+      InstallSource.Kind.GitHub to """{"id": "$COMMIT"}""",
+      InstallSource.Kind.GitHub to """{"sha": ""}""",
+      InstallSource.Kind.GitLab to """{"sha": "$COMMIT"}""",
+      InstallSource.Kind.Gitea to """["$COMMIT"]""",
+      InstallSource.Kind.Gitea to """[{"id": "$COMMIT"}]""",
+    ).forEach { (kind, body) ->
+      server.enqueue(MockResponse(body = body))
+
+      assertTrue("$kind read a commit out of $body", failed(source(kind)).reason.contains("did not say"))
+    }
+  }
+
+  @Test
   fun `a reply that is not JSON is a failure, not a crash`() {
     server.enqueue(MockResponse(body = "<html>signed in?</html>"))
 
