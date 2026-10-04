@@ -30,4 +30,8 @@ dependencies {
   // harness exists (`docs/architecture.md`, decision 80).
   androidTestImplementation(project(":simulation:jolt"))
   androidTestImplementation(project(":simulation:harness"))
+
+  // The render gallery throws the built-in set's own dice onto its own
+  // tables, so a picture is of what a player sees (`RenderGalleryTest`).
+  androidTestImplementation(project(":dicesets:builtin"))
 }

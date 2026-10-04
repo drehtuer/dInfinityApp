@@ -359,7 +359,11 @@ keeps them comparable.
       and `LEAST_SPIN_RADIANS_PER_SECOND`–`MOST_SPIN_RADIANS_PER_SECOND`
       (9–18). Also run `BoardSettlerTest` and read its timings (`dinfinity.board`
       in logcat)
-- [ ] Rendering polish and the optimisation pass — deliberately **last**
+- [ ] Rendering polish and the optimisation pass — **in progress on
+      `feature/realistic-rendering`**: physically based lighting from a real
+      room, refraction and subsurface scattering for translucent dice, rounded
+      edges on the drawn dice. Judged with `tools/gallery.sh` before and after
+      each step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
 

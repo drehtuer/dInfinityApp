@@ -790,6 +790,25 @@ run produced rather than from the tooling around it — here the table the devic
 wrote, for the same reason the [JUnit XML](#the-verdict-on-an-instrumented-run)
 decides there.
 
+### The render gallery
+
+`tools/gallery.sh` draws the same seeded throws on the same tables — every
+built-in shape twice on green felt, oak and dark glass, then on felt again in
+metal and see-through — settled by the real physics and drawn through the real
+renderer onto a surface the size of the Pixel 10a's screen, and pulls the PNGs
+into `build/gallery/` (`RenderGalleryTest`). Nothing is scored: the pictures are
+for a person to compare before and after a rendering change.
+
+```sh
+tools/gallery.sh                       # build, install, draw, pull
+tools/gallery.sh --out build/before    # keep a set to compare against
+```
+
+It installs only `render/filament`'s test APK, which is its own application,
+so the app on the phone and everything saved in it are left alone — which
+matters when the phone runs a release build that a debug one cannot replace.
+The test is opt-in (`-e gallery 1`) and the ordinary device suite skips it.
+
 ## Connecting a phone over WiFi
 
 The container has `adb`, so on-device tests run from inside it — no need to
