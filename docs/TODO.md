@@ -361,10 +361,12 @@ keeps them comparable.
       in logcat)
 - [ ] Rendering polish and the optimisation pass — **in progress on
       `feature/realistic-rendering`**: physically based lighting from a real
-      room, rounded edges on the drawn dice, and judging the refracting resin
-      dice (decision 90) on the phone: does `felt-green-translucent` read as
-      amber resin with the felt showing through, and do the milky/glassy ends
-      and the tint need `Resin`'s constants turned. Judged with
+      room (first device run drew every frame white; being fixed), refracting
+      resin for translucent dice (decision 90 — does `felt-green-translucent`
+      read as amber resin with the felt showing through, and do the milky and
+      glassy ends need `Resin`'s constants turned), and rounded edges drawn
+      with the solver's own convex radius (decision 91 — re-run
+      `tools/harness.sh --rendered` for the triangle cost). Judged with
       `tools/gallery.sh` before and after each step, and merged to `main` once
       the owner likes it on the phone
 

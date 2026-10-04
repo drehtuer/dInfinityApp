@@ -30,9 +30,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   (`tools/gallery.sh`), then lighting from a real room, translucent dice that
   refract and scatter, and rounded edges. It reaches `main` when the owner
   likes it on the phone. Translucent dice are refracting resin (decision
-  90); the first device look found a glassy amber die black — the felt was
-  tinted twice — so the tint is now one pass and transmission grows as a
-  square, awaiting the device suite and a second gallery look.
+  90): a clear die now takes the colour of the floor under it (91 % of its
+  pixels on the Pixel 10a). Dice are drawn with the convex radius the solver
+  already collides them with (decision 91). The lighting step is being
+  fixed: its first device run drew every frame white.
 
 ## Done
 

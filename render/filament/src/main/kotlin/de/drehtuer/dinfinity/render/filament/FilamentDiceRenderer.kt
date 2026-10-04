@@ -212,10 +212,10 @@ class FilamentDiceRenderer(
     setId: String,
     scale: Double,
   ): Int {
-    val mesh = DieMesh.of(die.shape)
+    val mesh = DieMesh.of(die, scale)
     return stage.add(
       // How far this shape reaches from its middle, at the throw's scale.
-      mesh = GpuMesh.of(mesh.faces, scale = die.material.boundingRadiusMm * scale),
+      mesh = GpuMesh.of(mesh.surfaces, scale = die.material.boundingRadiusMm * scale),
       parameters =
         DiceMaterial.dieOf(
           material = die.material,

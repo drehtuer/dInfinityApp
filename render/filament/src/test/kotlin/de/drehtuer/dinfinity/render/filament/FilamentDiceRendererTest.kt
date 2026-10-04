@@ -54,7 +54,16 @@ class FilamentDiceRendererTest {
           .take(3)
       val corner = Vector3(drawn[0].toDouble(), drawn[1].toDouble(), drawn[2].toDouble())
 
-      assertEquals("${instance.die.id} is drawn the wrong size", reach, corner.length, TOLERANCE)
+      // The first corner drawn is the first corner of the unit mesh, which
+      // sits a rounded edge's width inside the sphere the die reaches.
+      val unit =
+        DieMesh
+          .of(instance.die, scale)
+          .surfaces
+          .first()
+          .positions
+          .first()
+      assertEquals("${instance.die.id} is drawn the wrong size", reach * unit.length, corner.length, TOLERANCE)
     }
   }
 
@@ -336,7 +345,7 @@ class FilamentDiceRendererTest {
   fun `a die the stage would not take is not moved either`() {
     // `add` hands back "no entity" for a mesh with nothing in it, and nought
     // is not an entity anything may be done to.
-    stage.refuse = GpuMesh.of(DieMesh.of(StandardDice.d6.shape).faces, scale = radiusOf(StandardDice.d6))
+    stage.refuse = GpuMesh.of(DieMesh.of(StandardDice.d6, 1.0).surfaces, scale = radiusOf(StandardDice.d6))
     renderer.begin(spec(), geometry, look)
 
     renderer.show(RenderFrame.still(List(3) { at(it, Vector3.Zero) }))

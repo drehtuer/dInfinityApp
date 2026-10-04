@@ -86,9 +86,18 @@ Every die is a **convex** rigid body:
   which it is, and which also gave every contact after the first landing a
   restitution of exactly zero, so a die bounced once and then dead-dropped.
 - Rounded edges: shapes with sharp corners (d4 especially) get a hull margin of
-  3 % of the die's nominal size, so they tumble instead of catching on the
-  floor. A share rather than a fixed millimetre, so a die shrunk by the
-  capacity rule keeps the proportions it was tuned at.
+  3 % of the die's nominal size (`HullMargin.SHARE`, 0.48 mm on a 16 mm die),
+  so they tumble instead of catching on the floor. It is Jolt's *convex
+  radius*: the hull's face planes are pulled in by it and the smaller solid is
+  grown back out by a ball of the same size, so the die that collides has
+  every edge a strip of a cylinder and every corner a patch of a sphere. Jolt
+  gives less than is asked where a corner is sharp — no rounded corner may
+  stand more than 0.5 mm inside the sharp one (`HullMargin.MAX_ERROR_MM`),
+  which cuts a d4 to 0.25 mm — and never more than half the die's thinnest
+  width. The share is of the *nominal* size, clamped to the set file's limits,
+  and not of the size the capacity rule shrank the die to: a die thrown at
+  half size asks for the same radius in millimetres. The renderer draws the
+  same rounding ("Rounded edges", under Rendering).
 
 ## Timestep and determinism
 
@@ -2371,6 +2380,71 @@ impact sounds rather than a crash in the middle of a roll.
 Target: 60 fps with 20 dice on the Pixel 10a with headroom; the capacity rule
 caps a roll at what the table can hold, and never above a hundred dice
 (`TableCapacity.MAX_DICE`). Every die casts a shadow, whatever the count.
+
+### Rounded edges
+
+**A die is drawn with the edges the solver collides it with.** The solver's
+die was never sharp ("Dice bodies"): Jolt rounds every edge and corner by its
+convex radius, and for most of the app's life the picture of that die was the
+sharp solid it was cut from. Where the two differ the sharp picture stood
+*outside* the die that collides — a cube balanced on a corner was drawn
+0.35 mm into the felt and a d4 on its point 0.5 mm, and two dice touching at
+their corners were drawn inside each other.
+
+`RoundedEdges` builds the same construction over the same faces, with the
+same radius (decision 91):
+
+- **Every flat face stays on its own plane, only smaller.** A die resting on a
+  face is drawn exactly where it was, and the face it reads is the face it
+  shows. `RoundedEdgesTest` checks every flat corner against its plane.
+- **Every edge is a strip of a cylinder and every corner a patch of a sphere**,
+  drawn with a normal per corner (`Surface.normals`), so the GPU blends the
+  light across each strip and an edge catches a highlight as a real one does.
+  A strip turns at most 30° between rows (`MAX_SEGMENT_TURN`); a corner patch
+  is a fan from the point where the sharp and the rounded corner are furthest
+  apart, so the corner is drawn exactly as far in as the arithmetic says.
+- **The radius is the solver's, repeated rather than chosen**
+  (`RoundedEdges.radiusFor`): what `HullMargin` asks for, cut down by Jolt's
+  own two limits over the same faces. So there is no gap between the drawn
+  surface and the colliding one to bound; how far either stands in from the
+  sharp hull is the same figure.
+
+| Shape | Radius, 16 mm die | Corner inside the sharp hull | Triangles, sharp → rounded |
+| --- | --- | --- | --- |
+| coin | 0.48 mm | 0.20 mm | 92 → 1,052 |
+| d4 | 0.25 mm (Jolt's limit) | 0.50 mm | 4 → 100 |
+| d6 | 0.48 mm | 0.35 mm | 12 → 204 |
+| d8 | 0.48 mm | 0.35 mm | 8 → 200 |
+| d10 | 0.48 mm | 0.24 mm | 20 → 260 |
+| d12 | 0.48 mm | 0.12 mm | 36 → 516 |
+| d18 | 0.48 mm | 0.21 mm | 36 → 468 |
+| d20 | 0.48 mm | 0.12 mm | 20 → 260 |
+
+A hundred dice at the capacity limit are 20,000 triangles of d6 and at most
+105,000 of coins, where the GPU's 13.7 ms p99 at `100d6` was measured with
+1,200 ("Performance"). The rendered harness is to be re-run on the
+rounded dice before this reaches `main`.
+
+**What is printed stays where it was.** A face's texture coordinates are a
+function of where a point sits on its face's plane, and the flat part of a
+rounded face is painted by the same function as the sharp face — so a number
+or an author's artwork is exactly where it was on the face and the rounding
+only hides the outermost sliver of the cell under the bend. The bend is not
+blank: each half of a strip and each share of a corner patch takes its face's
+cell at the point under it, so artwork that runs to the edge of a face runs
+round the edge as paint would, and nothing is sampled from outside the face's
+polygon. The coin's rim, and the rim's half of every bend beside it, carry no
+cell, as before.
+Labels are still sized against the sharp face (`FaceRoom`), which is what the
+face designer sizes them against too. Every solid's printed numbers stay on
+the flat with room to spare except the d4's, which `LabelRoom.cornered` sets
+hard against its edges: their tips reach 0.19 mm onto the start of the bend
+on a 16 mm die, where they are painted, not cut off.
+
+**It can be turned off**: `DieMesh.of(shape, rounding = 0.0)` is the sharp
+mesh, surface for surface, and `DieMesh.of(die, scale)` is the rounded one
+the tray draws. Nothing of the physics reads any of this — the hull, the
+radius it asks for and what Jolt makes of them are unchanged.
 
 ### Performance, and how it is measured
 
