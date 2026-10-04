@@ -11,6 +11,8 @@ import de.drehtuer.dinfinity.core.model.AccentColor
 import de.drehtuer.dinfinity.core.model.AppSettings
 import de.drehtuer.dinfinity.core.model.Appearance
 import de.drehtuer.dinfinity.core.model.Rounding
+import de.drehtuer.dinfinity.core.model.SavedRollGroup
+import de.drehtuer.dinfinity.core.model.TablePin
 import de.drehtuer.dinfinity.core.model.TableView
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
@@ -19,6 +21,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -44,14 +47,6 @@ class DataStoreSettingsRepositoryTest {
     runTest {
       val repository = DataStoreSettingsRepository(dataStore(this))
       assertEquals(AccentColor.Default, repository.settings.first().accentColor)
-    }
-
-  @Test
-  fun `a chosen accent is read back`() =
-    runTest {
-      val repository = DataStoreSettingsRepository(dataStore(this))
-      repository.setAccentColor(AccentColor.LightBlue)
-      assertEquals(AccentColor.LightBlue, repository.settings.first().accentColor)
     }
 
   @Test
@@ -148,22 +143,59 @@ class DataStoreSettingsRepositoryTest {
 
       assertEquals("a fresh install did not start on the bundled dice", "builtin", settingsOf(repository).defaultSetId)
 
-      repository.setDefaultSet("brass")
-
-      assertEquals("brass", settingsOf(repository).defaultSetId)
-    }
-
-  @Test
-  fun `a default set is remembered even while that set is not installed`() =
-    runTest {
-      // Whether it is installed is a question for the moment a formula is
-      // resolved, not for the moment somebody taps a button: a set switched
-      // off for an evening should still be the default when it comes back.
-      val repository = DataStoreSettingsRepository(dataStore(this))
-
+      // Stored whatever it names, installed or not: that is a question for
+      // the moment a formula is resolved, not for the moment somebody taps a
+      // button, and a set switched off for an evening should still be the
+      // default when it comes back.
       repository.setDefaultSet("a-set-nobody-has")
 
       assertEquals("a-set-nobody-has", settingsOf(repository).defaultSetId)
+    }
+
+  @Test
+  fun `the group and the session the app is in come back`() =
+    runTest {
+      val repository = DataStoreSettingsRepository(dataStore(this))
+      assertEquals(SavedRollGroup.UNFILED_ID, settingsOf(repository).activeGroupId)
+      assertEquals(AppSettings.DEFAULT_SESSION_ID, settingsOf(repository).activeSessionId)
+
+      repository.setActiveGroup("thorin")
+      repository.setActiveSession("tuesday")
+
+      assertEquals("thorin", settingsOf(repository).activeGroupId)
+      assertEquals("tuesday", settingsOf(repository).activeSessionId)
+    }
+
+  @Test
+  fun `a chosen table is stored as two keys, and choosing none takes both away`() =
+    runTest {
+      // Two keys rather than one joined string, because a table id may contain
+      // anything a slug may. Putting the choice back to the bundled default
+      // leaves neither behind, so nothing half-remembers a table.
+      val store = dataStore(this)
+      val repository = DataStoreSettingsRepository(store)
+      assertNull("a fresh install had a table chosen", settingsOf(repository).defaultTable)
+
+      repository.setDefaultTable(TablePin(setId = "brass", tableId = "felt"))
+      assertEquals(TablePin(setId = "brass", tableId = "felt"), settingsOf(repository).defaultTable)
+      assertEquals("brass", stored(store)["table_set"])
+      assertEquals("felt", stored(store)["table_id"])
+
+      repository.setDefaultTable(null)
+      assertNull(settingsOf(repository).defaultTable)
+      assertFalse("table_set" in stored(store))
+      assertFalse("table_id" in stored(store))
+    }
+
+  @Test
+  fun `half a table pin names no table`() =
+    runTest {
+      // A file edited by hand, or cut short: a package with no table in it is
+      // not a table, and reading it as one would put the tray on nothing.
+      val store = dataStore(this)
+      store.edit { preferences -> preferences[stringPreferencesKey("table_set")] = "brass" }
+
+      assertNull(settingsOf(DataStoreSettingsRepository(store)).defaultTable)
     }
 
   @Test
@@ -294,4 +326,11 @@ class DataStoreSettingsRepositoryTest {
     }
 
   private suspend fun settingsOf(repository: DataStoreSettingsRepository) = repository.settings.first()
+
+  /** What is on disk, by key name. */
+  private suspend fun stored(store: DataStore<Preferences>): Map<String, Any> =
+    store.data
+      .first()
+      .asMap()
+      .mapKeys { (key, _) -> key.name }
 }
