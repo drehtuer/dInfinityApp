@@ -371,10 +371,15 @@ data class FaceDrawing(
  *
  * Held as a map rather than a list so an untouched face costs nothing: a d20
  * somebody has drawn one face of is one entry, not twenty.
+ *
+ * @param finish what the die is made of and how round it is, once somebody
+ *   has chosen (`docs/face-designer.md`, "Material and edges"). Null until
+ *   then, and the die is then what it was copied as ([shownFinish]).
  */
 data class Draft(
   val die: Die,
   val faces: Map<Int, FaceDrawing> = emptyMap(),
+  val finish: DieFinish? = null,
 ) {
   /** What has been drawn on [cell], which is nothing until something has. */
   fun face(cell: Int): FaceDrawing = faces[cell] ?: FaceDrawing()
@@ -385,8 +390,24 @@ data class Draft(
   /** How many cells there are to draw on. */
   val cells: Int get() = die.faces.size
 
-  /** True when nothing has been drawn on any face. */
-  val blank: Boolean get() = faces.values.all(FaceDrawing::blank)
+  /**
+   * True when nothing has been drawn on any face and nothing chosen about the
+   * die either.
+   *
+   * A die somebody made glass and drew nothing on is not blank: it is a die
+   * with printed numbers and a material of its own, and **Roll it** throws it
+   * glass (`docs/face-designer.md`, "Material and edges").
+   */
+  val blank: Boolean get() = finish == null && faces.values.all(FaceDrawing::blank)
+
+  /**
+   * What the die is made of and how round it is, as the designer shows it:
+   * what somebody chose, or what the die was copied as.
+   *
+   * The second is carried into the package too ([MinePackage]), so what the
+   * menu says before anybody touches it is what **Roll it** throws.
+   */
+  val shownFinish: DieFinish get() = finish ?: DieFinish.of(die.material)
 
   /** The guide for [cell] — one number, or a d4's three (`FaceGuide`). */
   fun guide(cell: Int): List<GuideMark> = FaceGuide.of(die, cell)

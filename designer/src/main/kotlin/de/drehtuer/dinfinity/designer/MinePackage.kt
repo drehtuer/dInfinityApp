@@ -106,11 +106,12 @@ object MinePackage {
     name: String = NAME,
   ): Map<String, ByteArray> {
     val files = mutableMapOf<String, ByteArray>()
-    val dice =
+    val drawn =
       drawings
         .filterNot(Draft::blank)
         .distinctBy { it.die.id }
-        .map { draft -> withArtwork(draft, painter, files) }
+    val dice = drawn.map { draft -> withArtwork(draft, painter, files, physical) }
+    val finishes = drawn.mapNotNull { draft -> finishOf(draft)?.let { draft.die.id to it } }.toMap()
     val tables =
       photos.distinctBy(TablePhoto::id).map { photo ->
         files[PhotoTable.texturePathOf(photo.id)] = photo.image
@@ -127,7 +128,7 @@ object MinePackage {
         dice = dice,
         tables = tables,
       )
-    return files + (DiceSetValidator.DICE_SET_FILE to DiceSetToml.write(set, physical).encodeToByteArray())
+    return files + (DiceSetValidator.DICE_SET_FILE to DiceSetToml.write(set, physical, finishes).encodeToByteArray())
   }
 
   /**
@@ -138,15 +139,21 @@ object MinePackage {
    * supposed to look like, and a great deal better than a set that refuses to
    * install because one bitmap would not allocate.
    *
-   * The material is deliberately not carried across. A cell is transparent
+   * The colour is deliberately not carried across. A cell is transparent
    * where nobody drew, so the colour under the drawing is the *installing*
    * set's to decide, and the same drawing is meant to work on a black die and
    * on a white one (`docs/face-designer.md`, "Export details").
+   *
+   * **The finish is** ([finishOf]): what the die is made of and how round it
+   * is, laid over the package's own [physical] material. That is what the
+   * designer's Material menu and Edges control show, and what **Roll it**
+   * throws (`docs/face-designer.md`, "Material and edges").
    */
   private fun withArtwork(
     draft: Draft,
     painter: AtlasPainter,
     files: MutableMap<String, ByteArray>,
+    physical: DieMaterial,
   ): Die {
     val die = draft.die
     val png = Atlas.plan(draft)?.let(painter::png)
@@ -158,6 +165,20 @@ object MinePackage {
       faces = die.faces,
       read = die.read,
       texturePath = if (png == null) null else path,
+      material = finishOf(draft)?.on(physical) ?: physical,
     )
   }
+
+  /**
+   * The finish [draft]'s die goes into the package with, or null for none of
+   * its own — the package's `[defaults]` then speak for it.
+   *
+   * What somebody chose, if they chose. Otherwise what the die was copied as,
+   * **when that is anything but the standard one**: a die copied from a set of
+   * metal dice is a metal die in the designer's menu, and stays one when it is
+   * rolled. A die that was standard to begin with carries nothing, so the
+   * details screen's translucency stepper goes on reaching it.
+   */
+  internal fun finishOf(draft: Draft): DieFinish? =
+    draft.finish ?: DieFinish.of(draft.die.material).takeUnless { it == DieFinish.STANDARD }
 }

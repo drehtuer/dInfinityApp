@@ -36,11 +36,19 @@ object DiceSetToml {
 
   /**
    * [set] as the text of its `diceset.toml`, with [defaults] as the material
-   * every die of it inherits.
+   * every die of it inherits and [finishes] as what the dice that have one of
+   * their own are made of, by die id (`docs/face-designer.md`, "Material and
+   * edges").
+   *
+   * A finish is written whole — all four of its keys, even one that happens
+   * to equal the default — because it is a choice about that die and not a
+   * difference from the package: "Plastic" in the menu has to stay plastic
+   * when somebody later makes the rest of the set translucent.
    */
   fun write(
     set: DiceSet,
     defaults: DieMaterial = DieMaterial(),
+    finishes: Map<String, DieFinish> = emptyMap(),
   ): String =
     buildString {
       appendLine("format = $FORMAT")
@@ -56,6 +64,7 @@ object DiceSetToml {
       set.dice.forEach { die ->
         appendLine()
         appendDie(die)
+        finishes[die.id]?.let { appendFinish(it) }
       }
       set.tables.forEach { look ->
         appendLine()
@@ -205,4 +214,16 @@ object DiceSetToml {
   private fun Char.isControl(): Boolean = code < ' '.code || code == DELETE
 
   private const val DELETE = 0x7F
+}
+
+/**
+ * One die's finish, as per-die overrides of `[defaults]`: the material's
+ * three keys, with `translucency` in per cent as a set file writes it, and
+ * `edge_rounding` as the share of the size the solver rounds it by.
+ */
+private fun StringBuilder.appendFinish(finish: DieFinish) {
+  appendLine("roughness = ${finish.roughness}")
+  appendLine("metallic = ${finish.metallic}")
+  appendLine("translucency = ${DiePhysical.translucencyPercentOf(finish.translucency)}")
+  appendLine("edge_rounding = ${finish.edgeRounding}")
 }

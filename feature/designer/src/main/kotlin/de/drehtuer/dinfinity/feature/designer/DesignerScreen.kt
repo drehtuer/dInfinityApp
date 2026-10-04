@@ -47,7 +47,9 @@ import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.FaceTransform
+import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.designer.NewSet
+import de.drehtuer.dinfinity.designer.Roundness
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
@@ -1124,6 +1126,9 @@ object DesignerTestTags {
   const val FILL_NUMBERS: String = "designer:stamp:fill"
   const val MORE_COLOURS: String = "designer:colour:more"
   const val INK_HEX: String = "designer:colour:hex"
+  const val MATERIAL: String = "designer:material"
+  const val SWATCH: String = "designer:material:swatch"
+  const val FINISH_NOTE: String = "designer:finish:note"
 
   /**
    * The shared colour picker, and the six controls in it.
@@ -1147,4 +1152,9 @@ object DesignerTestTags {
   fun faceOf(cell: Int): String = "designer:face:$cell"
 
   fun saveInto(setId: String): String = "designer:save:into:$setId"
+
+  fun materialOf(preset: MaterialPreset): String = "designer:material:${preset.name.lowercase()}"
+
+  /** One step of the Edges control; a rounding none of them is has no option, and so no tag of its own. */
+  fun edgesOf(roundness: Roundness?): String = "designer:edges:${roundness?.name?.lowercase() ?: "custom"}"
 }

@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -76,14 +77,33 @@ object DraftFile {
     return json.encodeToString(
       JsonElement.serializer(),
       JsonObject(
-        mapOf(
-          FORMAT_KEY to JsonPrimitive(FORMAT),
-          DIE to JsonPrimitive(draft.die.id),
-          FACES to JsonArray(faces),
-        ),
+        buildMap {
+          put(FORMAT_KEY, JsonPrimitive(FORMAT))
+          put(DIE, JsonPrimitive(draft.die.id))
+          put(FACES, JsonArray(faces))
+          draft.finish?.let { put(FINISH, finishOf(it)) }
+        },
       ),
     )
   }
+
+  /**
+   * What the die is made of and how round it is, as four named numbers
+   * (`docs/face-designer.md`, "Material and edges").
+   *
+   * A field of its own beside the faces rather than a new format: a draft
+   * without it reads exactly as before, and a build that predates it drops it
+   * and keeps the drawing — the rule fills and stamps already follow.
+   */
+  private fun finishOf(finish: DieFinish): JsonObject =
+    JsonObject(
+      mapOf(
+        ROUGHNESS to JsonPrimitive(finish.roughness),
+        METALLIC to JsonPrimitive(finish.metallic),
+        TRANSLUCENCY to JsonPrimitive(finish.translucency),
+        EDGE_ROUNDING to JsonPrimitive(finish.edgeRounding),
+      ),
+    )
 
   /** Which die [text] is a drawing on, or null when it is not a draft at all. */
   fun dieOf(text: String): String? = root(text)?.get(DIE)?.string()
@@ -115,7 +135,7 @@ object DraftFile {
         val marks = if (read != null && format == SHARED_KITE_FORMAT) SharedKite.carried(read, die.shape) else read
         if (cell == null || marks.isNullOrEmpty()) null else cell to FaceDrawing(marks = FaceDrawing.sunk(marks))
       }
-    return Draft(die = die, faces = faces.toMap())
+    return Draft(die = die, faces = faces.toMap(), finish = finishFrom(root[FINISH]))
   }
 
   private fun root(text: String): JsonObject? = runCatching { json.parseToJsonElement(text) }.getOrNull() as? JsonObject
@@ -220,6 +240,44 @@ private const val FILLS = "fill"
 private const val RINGS = "rings"
 private const val EYES = "eyes"
 private const val DOTS = "dots"
+private const val FINISH = "finish"
+private const val ROUGHNESS = "roughness"
+private const val METALLIC = "metallic"
+private const val TRANSLUCENCY = "translucency"
+private const val EDGE_ROUNDING = "edge_rounding"
+
+// Where each of the four is in the list `finishFrom` reads them into.
+private const val FINISH_ROUGHNESS = 0
+private const val FINISH_METALLIC = 1
+private const val FINISH_TRANSLUCENCY = 2
+private const val FINISH_EDGE_ROUNDING = 3
+
+/**
+ * The die's finish, or null when the draft carries none or one that does not
+ * read.
+ *
+ * All four or nothing: a finish with a field missing is not one this wrote,
+ * and filling the gap with a default would be choosing a material on
+ * somebody's behalf. What does read is clamped to the set file's limits
+ * ([DieFinish.of]), so a draft edited on disk cannot hand the package a value
+ * the validator would have to bring back.
+ */
+private fun finishFrom(element: JsonElement?): DieFinish? {
+  val finish = element as? JsonObject ?: return null
+  val numbers =
+    listOf(ROUGHNESS, METALLIC, TRANSLUCENCY, EDGE_ROUNDING).map { key ->
+      (finish[key] as? JsonPrimitive)?.content?.toDoubleOrNull()?.takeIf(Double::isFinite)
+    }
+  val read = numbers.filterNotNull().takeIf { it.size == numbers.size } ?: return null
+  return DieFinish.of(
+    DieMaterial(
+      roughness = read[FINISH_ROUGHNESS],
+      metallic = read[FINISH_METALLIC],
+      translucency = read[FINISH_TRANSLUCENCY],
+      edgeRounding = read[FINISH_EDGE_ROUNDING],
+    ),
+  )
+}
 
 /**
  * The dots of one mark, or null when they are not dots.

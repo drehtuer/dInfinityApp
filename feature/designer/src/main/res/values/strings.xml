@@ -44,6 +44,33 @@
   </plurals>
   <!-- Said beside the turning die: what the Solid tab shows of a drawing, and what it does not. -->
   <string name="designer_solid_note">Backgrounds, numbers and pips, on the real solid. Pen strokes are on the Face tab.</string>
+  <!-- The kicker over the menu of what the die is made of, on the Solid tab. -->
+  <string name="designer_material">Material</string>
+  <!-- What a screen reader says for the Material menu. %1$s is the material chosen, like "Glass". -->
+  <string name="designer_material_described">Material: %1$s</string>
+  <!-- The materials a die can be made of. Each is a look on the tray and the name a player would give it. -->
+  <string name="designer_material_plastic">Plastic</string>
+  <!-- Milky, a little see-through: mother of pearl, or cloudy resin. -->
+  <string name="designer_material_pearl">Pearl</string>
+  <!-- Clear-ish cast resin, the felt showing through it. -->
+  <string name="designer_material_resin">Resin</string>
+  <string name="designer_material_glass">Glass</string>
+  <string name="designer_material_metal">Metal</string>
+  <!-- Matte, like a die cut from stone. -->
+  <string name="designer_material_stone">Stone</string>
+  <!-- Shown when the die's material is none of the names: one copied from somebody else's set. -->
+  <string name="designer_material_custom">Custom</string>
+  <!-- The kicker over the choice of how round the die's edges are. -->
+  <string name="designer_edges">Edges</string>
+  <!-- How round the die's edges are, sharpest first. Short: four of them share one row. -->
+  <string name="designer_edges_sharp">Sharp</string>
+  <string name="designer_edges_standard">Standard</string>
+  <string name="designer_edges_rounded">Rounded</string>
+  <string name="designer_edges_very_rounded">Very round</string>
+  <!-- Under the controls: the swatch is a hint, the tray is the real thing. -->
+  <string name="designer_finish_note">Roll it to see the material on the tray. Rounder dice tumble a little longer.</string>
+  <!-- Under the edges when the die's rounding is none of the four, as from somebody else's set. %1$d is per cent of the die's size. -->
+  <string name="designer_edges_custom">Custom edges, rounded by %1$d %% of the die’s size. Choose one to change it.</string>
   <string name="designer_nib_fine">Fine</string>
   <string name="designer_nib_medium">Medium</string>
   <string name="designer_nib_broad">Broad</string>

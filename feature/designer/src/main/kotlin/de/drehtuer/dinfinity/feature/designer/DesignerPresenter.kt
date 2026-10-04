@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.drehtuer.dinfinity.core.glyphs.BuiltinFont
 import de.drehtuer.dinfinity.core.model.Die
+import de.drehtuer.dinfinity.designer.DieFinish
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
@@ -15,7 +16,9 @@ import de.drehtuer.dinfinity.designer.FaceStamp
 import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Mark
+import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.designer.PersonalSetId
+import de.drehtuer.dinfinity.designer.Roundness
 import de.drehtuer.dinfinity.designer.SolidStage
 import de.drehtuer.dinfinity.designer.SolidTurn
 import de.drehtuer.dinfinity.designer.Stage
@@ -277,6 +280,16 @@ data class DesignerState(
    * refused.
    */
   val canPip: Boolean get() = FaceEyes.canBePipped(draft.die)
+
+  /**
+   * What the Material menu says the die is made of, or null for **Custom** —
+   * a die copied from a set whose numbers are none of the names
+   * (`docs/face-designer.md`, "Material and edges").
+   */
+  val preset: MaterialPreset? get() = MaterialPreset.of(draft.shownFinish)
+
+  /** Which step of the Edges control the die is on, or null for a rounding none of them is. */
+  val roundness: Roundness? get() = Roundness.of(draft.shownFinish.edgeRounding)
 
   val canUndo: Boolean get() = face.canUndo
   val canRedo: Boolean get() = face.canRedo
@@ -663,6 +676,29 @@ class DesignerPresenter(
    */
   fun fillEyes() {
     state = state.copy(draft = FaceEyes.fill(state.draft, state.colorArgb))
+    drafts.save(state.draft)
+  }
+
+  /**
+   * A name was chosen in the Material menu (`docs/face-designer.md`,
+   * "Material and edges").
+   *
+   * What the die is made of changes and how round it is does not, and the
+   * draft is written down at once like a stroke is: it is part of the
+   * drawing, and **Roll it** throws what it says.
+   */
+  fun madeOf(preset: MaterialPreset) {
+    finish(state.draft.shownFinish.madeOf(preset))
+  }
+
+  /** A step of the Edges control was chosen. What the die is made of stays. */
+  fun rounded(roundness: Roundness) {
+    finish(state.draft.shownFinish.rounded(roundness))
+  }
+
+  private fun finish(finish: DieFinish) {
+    if (finish == state.draft.finish) return
+    state = state.copy(draft = state.draft.copy(finish = finish))
     drafts.save(state.draft)
   }
 
