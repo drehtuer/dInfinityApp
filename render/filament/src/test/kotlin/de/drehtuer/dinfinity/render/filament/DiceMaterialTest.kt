@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieMaterial
+import de.drehtuer.dinfinity.core.model.TableColorMode
 import de.drehtuer.dinfinity.core.model.TableLook
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -75,6 +76,7 @@ class DiceMaterialTest {
         floorTexturePath = "tables/felt.png",
         roughness = 0.7,
         metallic = 0.1,
+        packageId = "brass",
       )
 
     val floor = DiceMaterial.floorOf(look)
@@ -84,8 +86,85 @@ class DiceMaterialTest {
     assertEquals(Colour.of(look.wallColorArgb), wall.colour)
     assertEquals(look.roughness, floor.roughness, TOLERANCE)
     assertEquals(look.metallic, wall.metallic, TOLERANCE)
-    assertTrue("a floor with a texture should sample it", floor.textured)
-    assertFalse("a wall with no texture of its own takes its colour", wall.textured)
+    assertEquals("brass::tables/felt.png", floor.maps?.albedo)
+    assertNull("a wall with no picture of its own takes its colour", wall.maps)
+    // A table's pictures are its maps; the die's atlas slot stays empty.
+    assertFalse(floor.textured)
+  }
+
+  @Test
+  fun `a table's pictures are keyed by the package it came from, every map of them`() {
+    val felt = DiceMaterial.floorOf(FELT)
+    val oak = DiceMaterial.wallOf(FELT)
+
+    assertEquals(
+      DiceMaterial.SurfaceMaps(
+        albedo = "builtin::tables/felt-albedo.webp",
+        normal = "builtin::tables/felt-normal.webp",
+        roughness = "builtin::tables/felt-roughness.webp",
+      ),
+      felt.maps,
+    )
+    assertEquals("builtin::tables/oak-albedo.webp", oak.maps?.albedo)
+    assertNull("no wall roughness map was named", oak.maps?.roughness)
+  }
+
+  @Test
+  fun `a look that came from no package has no pictures to draw`() {
+    // A path on its own names no file: two packages may both ship it.
+    val adrift = FELT.copy(packageId = null)
+
+    assertNull(DiceMaterial.floorOf(adrift).maps)
+    assertNull(DiceMaterial.wallOf(adrift).maps)
+    assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(DiceMaterial.floorOf(adrift)))
+  }
+
+  @Test
+  fun `one map on its own is enough to draw a surface from pictures`() {
+    val bumps = DiceMaterial.SurfaceMaps.of("brass", albedo = null, normal = "n.png", roughness = null)
+    val sheen = DiceMaterial.SurfaceMaps.of("brass", albedo = null, normal = null, roughness = "r.png")
+
+    assertEquals(DiceMaterial.SurfaceMaps(albedo = null, normal = "brass::n.png", roughness = null), bumps)
+    assertEquals("brass::r.png", sheen?.roughness)
+    assertEquals("brass::n.png", bumps?.normal)
+    assertNull(DiceMaterial.SurfaceMaps.of("brass", albedo = null, normal = null, roughness = null))
+  }
+
+  @Test
+  fun `the colour travels to the surface as the look wrote it, with how it meets the picture`() {
+    // The shader multiplies the picture by the colour it is handed; a look in
+    // `color_mode = "average"` has that colour scaled by the picture's mean
+    // first, which is the stage's to do once the picture is in (`TableTint`).
+    val floor = DiceMaterial.floorOf(FELT)
+    val photo = DiceMaterial.floorOf(FELT.copy(colorMode = TableColorMode.Multiply))
+
+    assertEquals(Colour.of(FELT.floorColorArgb), floor.colour)
+    assertTrue(floor.averaged)
+    assertTrue(DiceMaterial.wallOf(FELT).averaged)
+    assertFalse(photo.averaged)
+    assertFalse("a die has no picture to average", DiceMaterial.dieOf(DieMaterial(), texturePath = null).averaged)
+    assertTrue(DiceMaterial.TABLE_SOURCE.contains("materialParams.baseColor.rgb * picture"))
+  }
+
+  @Test
+  fun `a textured table is drawn with the table material, and a die never is`() {
+    assertEquals(DiceMaterial.Variant.TABLE, DiceMaterial.variantOf(DiceMaterial.floorOf(FELT)))
+    assertEquals(DiceMaterial.Variant.TABLE, DiceMaterial.variantOf(DiceMaterial.wallOf(FELT)))
+    val glass = DiceMaterial.dieOf(DieMaterial(translucency = 0.5), texturePath = "brass::d6.png")
+    assertEquals(DiceMaterial.Variant.RESIN, DiceMaterial.variantOf(glass))
+    assertNull(glass.maps)
+  }
+
+  @Test
+  fun `the table material reads its normal map the way OpenGL writes one`() {
+    // Green is up the picture and `v` grows down it, so green is turned over.
+    assertTrue(DiceMaterial.TABLE_SOURCE.contains("bump.y = -bump.y;"))
+    assertTrue(DiceMaterial.TABLE_SOURCE.contains("texture(materialParams_roughnessMap, uv).r"))
+    // And the normal is set before the material is prepared, which is the
+    // only place Filament reads it from.
+    assertTrue(
+      DiceMaterial.TABLE_SOURCE.indexOf("material.normal") < DiceMaterial.TABLE_SOURCE.indexOf("prepareMaterial"),
+    )
   }
 
   @Test
@@ -160,6 +239,14 @@ class DiceMaterialTest {
   fun `each variant compiles its own source under its own name`() {
     assertEquals(DiceMaterial.SOURCE, DiceMaterial.Variant.OPAQUE.source)
     assertEquals(DiceMaterial.RESIN_SOURCE, DiceMaterial.Variant.RESIN.source)
+    assertEquals(DiceMaterial.TABLE_SOURCE, DiceMaterial.Variant.TABLE.source)
+    assertEquals(
+      DiceMaterial.Variant.entries.size,
+      DiceMaterial.Variant.entries
+        .map { it.key }
+        .toSet()
+        .size,
+    )
     assertNotEquals(DiceMaterial.Variant.OPAQUE.key, DiceMaterial.Variant.RESIN.key)
   }
 
@@ -169,13 +256,30 @@ class DiceMaterialTest {
     // miss the cache, not be read back without it.
     DiceMaterial.Variant.entries.forEach { variant ->
       assertTrue(variant.fingerprint.startsWith(variant.source))
-      assertTrue(variant.fingerprint.contains("${DiceMaterial.SPECULAR_AA_VARIANCE}"))
-      assertTrue(variant.fingerprint.contains("${DiceMaterial.SPECULAR_AA_THRESHOLD}"))
+      // Whatever the variant is compiled with is what its key says.
+      assertEquals(
+        variant.name,
+        variant.specularAntiAliasing,
+        variant.fingerprint.contains("${DiceMaterial.SPECULAR_AA_VARIANCE} ${DiceMaterial.SPECULAR_AA_THRESHOLD}"),
+      )
       assertNotEquals(
         MaterialCache.keyOf(variant.source, backend = "OPENGL", variant = variant.key),
         MaterialCache.keyOf(variant.fingerprint, backend = "OPENGL", variant = variant.key),
       )
     }
+  }
+
+  @Test
+  fun `every surface with a bend in it spreads its glint, and the picture-drawn tray does not`() {
+    // The dice have rounded edges and the glass floor shares their surface;
+    // the tray's mesh is flat where the pictures are, and Filament's filter
+    // reads the mesh's normal, not the normal map's.
+    assertTrue(DiceMaterial.Variant.OPAQUE.specularAntiAliasing)
+    assertTrue(DiceMaterial.Variant.RESIN.specularAntiAliasing)
+    assertTrue(DiceMaterial.Variant.GLASS.specularAntiAliasing)
+    assertFalse(DiceMaterial.Variant.TABLE.specularAntiAliasing)
+    val table = DiceMaterial.Variant.TABLE.fingerprint
+    assertTrue(table.endsWith("specularAntiAliasing off"))
   }
 
   @Test
@@ -284,6 +388,29 @@ class DiceMaterialTest {
   }
 
   @Test
+  fun `a glossy floor drawn from pictures is drawn from them and shows no dice`() {
+    // Both are set — the look is glossy and names pictures — and the
+    // pictures win: no material has both, and no bundled look needs one.
+    val polished = DiceMaterial.floorOf(FELT.copy(roughness = 0.1))
+    assertEquals(Reflection.strengthOf(0.1), polished.reflection!!.strength, TOLERANCE)
+    assertEquals("builtin::tables/felt-albedo.webp", polished.maps?.albedo)
+    assertEquals(DiceMaterial.Variant.TABLE, DiceMaterial.variantOf(polished))
+    assertFalse("a picture-drawn floor took a reflection pass", DiceMaterial.reflects(polished))
+  }
+
+  @Test
+  fun `only a glass floor asks for the picture of the dice`() {
+    assertTrue(DiceMaterial.reflects(DiceMaterial.floorOf(PLAIN.copy(roughness = 0.1))))
+    assertFalse(DiceMaterial.reflects(DiceMaterial.floorOf(PLAIN)))
+    assertFalse(DiceMaterial.reflects(DiceMaterial.wallOf(PLAIN.copy(roughness = 0.1))))
+    assertFalse(DiceMaterial.reflects(DiceMaterial.floorOf(FELT)))
+    assertFalse(DiceMaterial.reflects(DiceMaterial.dieOf(DieMaterial(roughness = 0.0), texturePath = null)))
+    // A glossy look that came from no package has no pictures, so it is glass.
+    val adrift = FELT.copy(roughness = 0.1, packageId = null)
+    assertEquals(DiceMaterial.Variant.GLASS, DiceMaterial.variantOf(DiceMaterial.floorOf(adrift)))
+  }
+
+  @Test
   fun `felt, oak and the plain table are drawn as they always were`() {
     listOf(0.9, 0.55, 0.8).forEach { roughness ->
       val floor = DiceMaterial.floorOf(PLAIN.copy(roughness = roughness))
@@ -338,6 +465,22 @@ class DiceMaterialTest {
         name = "Plain",
         floorColorArgb = 0xFF1F5E3A.toInt(),
         wallColorArgb = 0xFF5A3A1E.toInt(),
+      )
+
+    /** The bundled green felt, as the validator hands it over. */
+    val FELT =
+      TableLook(
+        id = "felt-green",
+        name = "Green felt",
+        floorTexturePath = "tables/felt-albedo.webp",
+        floorNormalPath = "tables/felt-normal.webp",
+        floorRoughnessPath = "tables/felt-roughness.webp",
+        floorTileMm = 80.0,
+        wallTexturePath = "tables/oak-albedo.webp",
+        wallTileMm = 300.0,
+        floorColorArgb = 0xFF1F5E3A.toInt(),
+        colorMode = TableColorMode.Average,
+        packageId = "builtin",
       )
 
     const val TOLERANCE = 1e-9

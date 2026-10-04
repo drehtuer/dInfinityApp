@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.dicesets.builtin
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.FaceRead
+import de.drehtuer.dinfinity.core.model.TableColorMode
 import de.drehtuer.dinfinity.core.model.TableLight
 import de.drehtuer.dinfinity.core.model.TableSound
 import de.drehtuer.dinfinity.dicesets.format.DiceSetValidator
@@ -11,6 +12,7 @@ import de.drehtuer.dinfinity.fixtures.StandardDice
 import de.drehtuer.dinfinity.simulation.api.FaceNumbering
 import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -175,6 +177,58 @@ class BuiltinDiceSetTest {
   }
 
   @Test
+  fun `felt and oak are drawn from pictures, and plain and glass are not`() {
+    listOf("felt-green", "felt-black", "oak").forEach { id ->
+      val look = requireNotNull(set.table(id))
+      assertNotNull(id, look.floorTexturePath)
+      assertNotNull(id, look.floorNormalPath)
+      assertNotNull(id, look.floorRoughnessPath)
+      assertNotNull(id, look.floorTileMm)
+      assertNotNull(id, look.wallTexturePath)
+      // The colour in the file is the colour the look was designed in, and
+      // what the picker's swatch shows; the felt only adds grain to it.
+      assertEquals(id, TableColorMode.Average, look.colorMode)
+    }
+    // Plain is the look that costs least to draw, and it stays a colour.
+    listOf("plain", "dark-glass").forEach { id -> assertFalse(id, requireNotNull(set.table(id)).textured) }
+  }
+
+  @Test
+  fun `both felts are one grey cloth, dyed by their colour`() {
+    val green = requireNotNull(set.table("felt-green"))
+    val black = requireNotNull(set.table("felt-black"))
+    assertEquals(green.floorTexturePath, black.floorTexturePath)
+    assertTrue(green.floorColorArgb != black.floorColorArgb)
+  }
+
+  @Test
+  fun `every table knows it is the bundled package's, so its pictures are looked for there`() {
+    set.tables.forEach { look -> assertEquals(look.id, DiceSet.BUILTIN_ID, look.packageId) }
+  }
+
+  @Test
+  fun `every picture a table names is in the package, and small`() {
+    val files = BuiltinDiceSet.files()
+    val pictures =
+      set.tables
+        .flatMap {
+          listOf(
+            it.floorTexturePath,
+            it.floorNormalPath,
+            it.floorRoughnessPath,
+            it.wallTexturePath,
+            it.wallNormalPath,
+            it.wallRoughnessPath,
+          )
+        }.filterNotNull()
+        .toSet()
+    val bytes = pictures.sumOf { requireNotNull(files.size(it)) { "$it is not in the package" } }
+    // What the bundled tables add to the APK (docs/assets/README.md, "Table
+    // textures"). Over this, somebody should look again at the resolution.
+    assertTrue("the table pictures come to $bytes bytes", bytes < MAX_TABLE_PICTURE_BYTES)
+  }
+
+  @Test
   fun `the set is read once and kept`() {
     assertSame(BuiltinDiceSet.set, BuiltinDiceSet.set)
   }
@@ -205,5 +259,9 @@ class BuiltinDiceSetTest {
     val files = BuiltinDiceSet.files()
     requireNotNull(files.read(DiceSetValidator.DICE_SET_FILE))[0] = 0
     assertEquals('#'.code.toByte(), requireNotNull(files.read(DiceSetValidator.DICE_SET_FILE))[0])
+  }
+
+  private companion object {
+    const val MAX_TABLE_PICTURE_BYTES = 2L * 1024 * 1024
   }
 }

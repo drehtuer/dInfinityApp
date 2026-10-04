@@ -175,11 +175,15 @@ A table look is a `[[table]]` entry in a package's `diceset.toml`
 [[table]]
 id = "green-felt"                 # slug, unique within the package
 name = "Green felt"
-floor_texture = "tables/felt.png" # optional, relative, inside the package
-floor_tiling = [3, 6]             # texture repeats across short/long side, default [1, 1]
-wall_texture = "tables/oak.png"   # optional
+floor_texture = "tables/felt.png" # optional, relative, inside the package; the colour picture
+floor_normal = "tables/felt-n.png" # optional normal map, OpenGL convention (green up)
+floor_roughness = "tables/felt-r.png" # optional roughness map, grey, read from red
+floor_tile_mm = 80                # optional: one copy of the pictures covers 80 mm square
+floor_tiling = [3, 6]             # without floor_tile_mm: repeats across short/long side, default [1, 1]
+wall_texture = "tables/oak.png"   # optional; wall_normal, wall_roughness, wall_tile_mm likewise
 wall_tiling = [8, 1]
-floor_color = "#1f5e3a"           # tint; the whole colour when no texture
+color_mode = "average"            # multiply (default) | average: how the colours meet the pictures
+floor_color = "#1f5e3a"           # the whole colour when no texture
 wall_color = "#5a3a1e"
 roughness = 0.9                   # 0..1
 metallic = 0.0                    # 0..1
@@ -192,20 +196,24 @@ light = "warm"                    # neutral | warm | cool | dim  (built-in light
 Rules:
 
 - No mesh field. There is nothing to put there.
-- Textures: PNG/WebP, max 2048×2048, same byte limits as die textures.
-  `floor_tiling` lets a 512×512 felt tile cover the floor without a
-  screen-sized image. **They are validated and not yet drawn.** A die's
-  artwork is found by a key of package and path, and a table look's texture
-  carries a path and nothing saying whose package — so it resolves to nothing
-  and the table is drawn in `floor_color` and `wall_color` alone
-  (`docs/dice-sets.md`, "How an atlas reaches the tray";
-  `docs/TODO.md`, "Open questions").
+- Textures: PNG/WebP, max 2048×2048, same byte limits as die textures, and
+  every one of the six picture keys goes through the same checks a die's
+  atlas does ("Textures", below). `floor_tiling` or `floor_tile_mm` lets a
+  small felt swatch cover the floor without a screen-sized image.
+- `floor_tile_mm` and `wall_tile_mm` are clamped to 10–1000 mm. When one is
+  given it replaces the matching `*_tiling`. `color_mode` is `multiply` or
+  `average`; anything else is refused, like an unknown `sound`.
 - **`roughness` also decides whether the table shows the dice in it.** Below
   0.3 the floor reflects them, faintly and softly — at a perfect polish as
   strongly as glass reflects, which is four per cent looking straight down —
   and from 0.3 up it shows none and is drawn exactly as a matte table. There
   is no field of its own for it: how glossy a surface is is how much it
   reflects (`docs/physics-and-rendering.md`, "The dice in a glossy table").
+  **A floor drawn from pictures shows no dice, however glossy:** the pictures
+  win, because showing both would need a material no bundled table needs
+  (`DiceMaterial.variantOf`; `docs/TODO.md`, "Tables and photos"). Dark glass
+  names no pictures; every bundled look that does is far too rough to
+  reflect.
 - Physics values are clamped at validation and again at load, like dice.
   A table can be a bit slippery or a bit grippy; it cannot be frictionless.
 - **A table can make a die bouncier, never deader.** The solver takes the
@@ -232,6 +240,81 @@ Rules:
   wants none of it turns sound off in Settings.
 - Unknown keys are ignored with a warning.
 
+### Textures
+
+A table is drawn from up to three pictures per surface — floor, and walls with
+the rim on top of them:
+
+| Key | What it is | Uploaded as |
+| --- | --- | --- |
+| `*_texture` | the colour picture, coloured by `*_color` as `color_mode` says | sRGB, every mip level |
+| `*_normal` | a normal map, OpenGL convention: green points up the picture | linear, every mip level |
+| `*_roughness` | roughness, grey (the red channel is read); replaces `roughness` where present | linear, every mip level |
+
+**A picture is named by a path inside its own package, and only there.** The
+validator stamps every look it reads with the id of the package it read it out
+of (`TableLook.packageId`) — that is not a key of the format, and a file that
+writes one is warned about and ignored — and the tray asks for each picture by
+the same key of package and path a die's artwork uses
+(`builtin::tables/felt-albedo.webp`; `docs/dice-sets.md`, "How an atlas
+reaches the tray"). So a table cannot reach another package's files, a look
+built in code with no package has no pictures to draw, and a downloaded
+table's pictures go through exactly the path, size and header checks a die's
+atlas does — at install and again when they are read.
+
+**The bundled package's pictures are read from where it is.** It is never
+installed to disk: it is a resource in the APK, validated on every launch by
+the same validator (`BuiltinDiceSet`). So `InstalledArtwork` answers the
+bundled id first, from the files the package was validated from, and every
+other id from its folder — the rule `SetLibrary` already keeps, so a folder
+on disk calling itself `builtin` is never reached. The bundled pictures change
+only with the APK, so one stamp lasts their whole life.
+
+```mermaid
+flowchart TD
+  toml["[[table]] in a package's diceset.toml"] --> validator["DiceSetValidator: path, size<br/>and header of every picture"]
+  validator --> look["TableLook, stamped with<br/>packageId = the package's id"]
+  look --> keys["DiceMaterial.floorOf / wallOf:<br/>package::path for each map"]
+  keys --> engine["FilamentEngine: one upload per key,<br/>mipmapped, kept with the engine"]
+  engine --> seam["(String) -> AtlasImage?<br/>DieArtwork in :app"]
+  seam --> which{"Bundled id?"}
+  which -- "yes" --> res["The APK's resources,<br/>the files it was validated from"]
+  which -- "no" --> disk["filesDir/dicesets/&lt;id&gt;/,<br/>if it still validates"]
+  res --> decode["Size, then decode"]
+  disk --> decode
+```
+
+**How the colour meets the picture is the look's to say** (`color_mode`):
+
+| `color_mode` | The surface is | For |
+| --- | --- | --- |
+| `multiply` (default) | `*_color` × the picture, which is what the format has always said | a photograph — its colour is white and it is shown as it was taken |
+| `average` | the picture scaled, channel by channel, so it *averages out at* `*_color` | a dyed cloth: `#1f5e3a` is the green the felt is, and the picture adds only its grain |
+
+The average is taken once, in linear light, from the pixels the picture is
+uploaded from (`TableTint`), and the scale stops at sixteen times so a nearly
+black picture cannot blow out. With `average` the colour in the file is the
+colour of the surface, so the picker's swatch — what every row shows in
+power-saving mode — still tells the truth about it. The bundled felt is grey,
+so the two felts are one cloth, and the bundled textured looks all use
+`average` with the colours they were always designed in.
+
+**Laid at real size.** With `*_tile_mm` one copy of the pictures is that many
+millimetres square, measured from the floor's corner: felt keeps its weave on
+a tall phone and a squat one, and a picture larger than the floor covers it
+once without a seam. Without it the floor is cut into whole repeats per side,
+which stretches the picture with the screen — what a photograph wants. On the
+walls the pictures walk round the tray from the top edge down, and the rim
+carries on from the top of the wall, so a wall drawn from oak has an oak rim.
+
+**Drawn with a material of its own.** Felt and oak are drawn with a third
+material (`DiceMaterial.TABLE_SOURCE`): the dice's materials are untouched, so
+every die is drawn exactly as before. It is compiled the first time a textured
+table is drawn and kept in `MaterialCache` like the others; a phone that only
+ever rolls on plain never compiles it. A picture that is named and does not
+come — a package removed, a file that will not decode — is drawn as the flat
+colour, and the tray is drawn anyway.
+
 ### Built-in tables
 
 The bundled package ships `felt-green`, `felt-black`, `oak`, `dark-glass`
@@ -240,6 +323,16 @@ is what power-saving mode's result screen echoes). `dark-glass` is the one
 glossy enough to show the dice in it, at two-thirds of a polished
 reflection; its walls and rim reflect nothing, so the foot of each wall
 looks as it does on felt.
+
+| Table | Floor | Walls and rim |
+| --- | --- | --- |
+| `felt-green`, `felt-black` | needle felt, grey, 80 mm a copy, averaging out at `floor_color` | oak, 300 mm a copy, averaging out at the frame colour (black felt's is ebonised) |
+| `oak` | oak boards, 300 mm a copy — the whole floor is inside one | the same oak |
+| `dark-glass` | flat colour | flat colour |
+| `plain` | flat colour — the look that costs least to draw, and it stays that | flat colour |
+
+Where the pictures come from, their licence (CC0) and how they were cut are in
+`docs/assets/README.md`, "Table textures".
 
 ### Your own photo
 
@@ -316,14 +409,12 @@ A photo table is also the one row in the picker that offers **Remove**, because
 it is the one look that does not belong to a package: everything else is
 removed by removing its package, on the screen that is about packages.
 
-**The tray does not draw the picture yet.** The `atlases` seam that turns a
-package's texture into a `Texture` on the GPU is filled for dice — `DieArtwork`
-in `:app` answers a key of package and path (`AtlasKey`) — but a table look's
-texture carries a path and nothing saying whose package, so it resolves to
-nothing (`docs/TODO.md`, "Open questions"). So a photo table is a complete,
-valid, exportable table that currently renders as its colours. What is done
-here is the package and the path into it; what is left is saying whose package
-a table's texture is in.
+**The tray draws the picture.** A photo table's look is read out of `mine` by
+the validator like every other, so it knows its package and its picture is
+found by the same key of package and path as any table's ("Textures", above).
+It is laid with `[1, 1]` tiling: stretched over the whole floor, whatever the
+screen's shape. Whether a photograph should be cropped to the floor's shape
+instead is still open (`docs/TODO.md`, "Open questions").
 
 ## Selecting a table
 
@@ -469,8 +560,8 @@ filed under which table it is *and what that table is*, so a photograph removed
 and another made under the same id is drawn afresh rather than shown the first
 one's picture.
 
-**A photo table's thumbnail is its colours, like every other table's.** A table
-texture resolves to nothing through the artwork seam yet, so a thumbnail shows
-exactly what the tray shows: `floor_color` and `wall_color` (`docs/TODO.md`,
-"Open questions"). When a table's texture can be resolved, both change
-together, because both go through the same renderer.
+**A thumbnail shows a table's pictures, like the tray does.** It is drawn by
+the same renderer on the same engine, so the felt, the oak and a photograph
+reach the picker with nothing done for them here. Where a thumbnail cannot be
+drawn the swatch is `floor_color` and `wall_color`, which for a look in
+`color_mode = "average"` are the colours its surfaces average out at.

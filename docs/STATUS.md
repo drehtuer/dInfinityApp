@@ -34,8 +34,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   The dark glass reflects the dice faintly, by a small second picture of
   them from under the floor (93). The broken light lines along resin dice's
   rounded edges were the lacquer's glint, thinner than a pixel; specular
-  anti-aliasing spreads it now. Felt and oak textures are being built. It
-  reaches `main` when the owner likes it on the phone.
+  anti-aliasing spreads it now. Felt and oak are drawn from CC0 pictures,
+  keyed by the package the look came from (92); plain stays flat — not yet
+  run on the phone. It reaches `main` when the owner likes it on the phone.
 
 ## Done
 
@@ -121,5 +122,4 @@ All in `docs/TODO.md`; the ones that block code first.
 - Whether the too-many-dice refusal offers a way to the outcome graph (the
   argument is in `docs/architecture.md`).
 - Filled-button label contrast (3.65:1 against 4.5:1), the coverage floor,
-  the anomaly log surviving a restart, where a table texture names its
-  package, more than one personal set.
+  the anomaly log surviving a restart, more than one personal set.

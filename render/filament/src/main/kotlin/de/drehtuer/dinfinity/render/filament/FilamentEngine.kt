@@ -123,12 +123,25 @@ class FilamentEngine(
    */
   val glassMaterial: Material by glass
 
-  /** Which of the three [parameters] is to be drawn with. */
+  private val table = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.TABLE) }
+
+  /**
+   * And the material of a table drawn from pictures ([DiceMaterial.TABLE_SOURCE]).
+   *
+   * Made the first time a textured table is drawn, for the reason
+   * [resinMaterial] is: a phone that only ever rolls on plain never compiles
+   * it, and every other phone compiles it once and reads it back from
+   * [MaterialCache] after that.
+   */
+  val tableMaterial: Material by table
+
+  /** Which of the four [parameters] is to be drawn with. */
   fun materialFor(parameters: DiceMaterial.Parameters): Material =
     when (DiceMaterial.variantOf(parameters)) {
       DiceMaterial.Variant.OPAQUE -> material
       DiceMaterial.Variant.RESIN -> resinMaterial
       DiceMaterial.Variant.GLASS -> glassMaterial
+      DiceMaterial.Variant.TABLE -> tableMaterial
     }
 
   /**
@@ -146,6 +159,65 @@ class FilamentEngine(
       destroy = engine::destroyTexture,
       stamp = artworkStamp,
     )
+
+  /**
+   * A table's colour pictures, uploaded as sRGB with every mip level.
+   *
+   * A cache of their own, apart from [atlases], because the same key is
+   * uploaded differently: a die's atlas is one level, as it stands, and a
+   * table's picture is laid across a floor seen at a slant, where a single
+   * level shimmers as the dice settle. And a colour picture is sRGB where a
+   * normal or a roughness map is a measurement ([tableDetail]).
+   */
+  private val tableColours: AtlasCache<TablePicture> =
+    AtlasCache(
+      artwork = artwork,
+      upload = { TablePicture(uploadSurface(engine, it, SurfaceMap.ALBEDO), TableTint.meanOf(it)) },
+      destroy = { engine.destroyTexture(it.texture) },
+      stamp = artworkStamp,
+    )
+
+  /** A table's normal and roughness maps: as [tableColours], but linear. */
+  private val tableDetail: AtlasCache<TablePicture> =
+    AtlasCache(
+      artwork = artwork,
+      upload = { TablePicture(uploadSurface(engine, it, SurfaceMap.NORMAL), mean = null) },
+      destroy = { engine.destroyTexture(it.texture) },
+      stamp = artworkStamp,
+    )
+
+  /**
+   * The picture [key] names for one map of a table's surface, uploaded once,
+   * or `null` when there is none.
+   */
+  fun tablePicture(
+    key: String,
+    map: SurfaceMap,
+  ): TablePicture? = if (map.colour) tableColours.of(key) else tableDetail.of(key)
+
+  /**
+   * One of a table's pictures on the GPU, and — for a colour picture — its
+   * average, worked out once from the pixels it was uploaded from, which is
+   * what a look in `color_mode = "average"` is scaled by ([TableTint]).
+   */
+  class TablePicture(
+    val texture: Texture,
+    val mean: Colour?,
+  )
+
+  /**
+   * How a table's pictures are sampled: every mip level, blended between, and
+   * anisotropically, because a floor is looked at along it. One level read
+   * from far away is noise that crawls as the camera moves — felt that
+   * shimmers — and a floor seen at a slant blurs to a smear without the
+   * anisotropy. Repeating, because felt is a swatch laid edge to edge.
+   */
+  val tableSampler: TextureSampler =
+    TextureSampler(
+      TextureSampler.MinFilter.LINEAR_MIPMAP_LINEAR,
+      TextureSampler.MagFilter.LINEAR,
+      TextureSampler.WrapMode.REPEAT,
+    ).apply { anisotropy = TABLE_ANISOTROPY }
 
   /**
    * A single white pixel, for every surface that has no atlas.
@@ -294,16 +366,26 @@ class FilamentEngine(
     roomTextures.clear()
     engine.destroyColorGrading(colorGrading)
     atlases.close()
+    tableColours.close()
+    tableDetail.close()
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
     if (resin.isInitialized()) engine.destroyMaterial(resinMaterial)
     if (glass.isInitialized()) engine.destroyMaterial(glassMaterial)
+    if (table.isInitialized()) engine.destroyMaterial(tableMaterial)
     engine.destroy()
   }
 
   private companion object {
     /** Red, green, blue and alpha, a byte each. */
     const val PIXEL_BYTES = 4
+
+    /**
+     * How many samples a slanted look along the floor may take. Eight is where
+     * a phone's GPU stops charging for more: the felt at the far wall is sharp
+     * at it, and sixteen looked the same.
+     */
+    const val TABLE_ANISOTROPY = 8f
 
     /** Every channel of the blank texture, which multiplies a colour by one. */
     const val OPAQUE_WHITE = 0xFF.toByte()
@@ -427,6 +509,7 @@ class FilamentEngine(
                 DiceMaterial.Variant.OPAQUE -> "dinfinity"
                 DiceMaterial.Variant.RESIN -> "dinfinity-resin"
                 DiceMaterial.Variant.GLASS -> "dinfinity-glass"
+                DiceMaterial.Variant.TABLE -> "dinfinity-table"
               },
             ).material(variant.source)
             // `LIT` for resin too, not `SUBSURFACE`. Filament's subsurface
@@ -445,10 +528,10 @@ class FilamentEngine(
             // A rounded edge's glint is thinner than a pixel, and without this
             // it is drawn as a broken white line along the edge rather than
             // spread over the bend ([DiceMaterial.SPECULAR_AA_VARIANCE]). A
-            // flat surface's normal does not change, so nothing flat moves.
-            .specularAntiAliasing(true)
-            .specularAntiAliasingVariance(DiceMaterial.SPECULAR_AA_VARIANCE)
-            .specularAntiAliasingThreshold(DiceMaterial.SPECULAR_AA_THRESHOLD)
+            // flat surface's normal does not change, so nothing flat moves —
+            // which is why a table drawn from pictures goes without it
+            // ([DiceMaterial.Variant.TABLE]).
+            .apply { if (variant.specularAntiAliasing) spreadThinGlints() }
             // **Off, and the numbers are upside down without it.**
             //
             // `MaterialBuilder` defaults this to true, which makes `getUV0()`
@@ -480,22 +563,8 @@ class FilamentEngine(
             .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "baseColor")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughness")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "metallic")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "numbered")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "inkColor")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoat")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoatRoughness")
-            .samplerParameter(
-              MaterialBuilder.SamplerType.SAMPLER_2D,
-              MaterialBuilder.SamplerFormat.FLOAT,
-              MaterialBuilder.ParameterPrecision.DEFAULT,
-              "atlas",
-            ).samplerParameter(
-              MaterialBuilder.SamplerType.SAMPLER_2D,
-              MaterialBuilder.SamplerFormat.FLOAT,
-              MaterialBuilder.ParameterPrecision.DEFAULT,
-              "glyphs",
-            ).platform(MaterialBuilder.Platform.MOBILE)
+            .apply { if (variant == DiceMaterial.Variant.TABLE) tableParameters() else diceParameters() }
+            .platform(MaterialBuilder.Platform.MOBILE)
             // The driver that is actually here (`docs/architecture.md`,
             // decision 46), and no other ([targetOf]).
             .targetApi(target)
@@ -509,45 +578,36 @@ class FilamentEngine(
     }
 
     /**
-     * What the resin variant adds: refraction, and the numbers that describe
-     * the resin ([Resin]).
+     * One of a table's pictures, uploaded with every mip level.
      *
-     * **Screen space, not the cubemap.** A cubemap refraction looks through
-     * the die into the *room* — the lighting environment — and a die sits on
-     * felt; looking down through one should show the felt under it, its
-     * shadow and the dice beside it. Screen space does, at the price of one
-     * copy of the opaque scene with its mip chain, made only on frames that
-     * have a refracting die in them. What it cannot show is one translucent
-     * die through another: the picture it looks into holds the opaque scene
-     * only (`docs/physics-and-rendering.md`, "A die you can see into").
-     *
-     * **Solid, not thin.** A die is a lump, not a soap bubble: a ray goes in
-     * at one face and out at another, displaced, and loses colour all the way.
+     * The levels below the first are made on the GPU, which is why the
+     * texture is flagged as one that may have them generated: drawing a level
+     * a slanted floor never asked for costs nothing, and having none is felt
+     * that crawls. A colour picture is sRGB, so the GPU averages it in light's
+     * units rather than in the encoded ones, and the material multiplies it in
+     * the same; a map is a measurement and is left linear ([SurfaceMap]).
      */
-    fun MaterialBuilder.resin(): MaterialBuilder =
-      refractionMode(MaterialBuilder.RefractionMode.SCREEN_SPACE)
-        .refractionType(MaterialBuilder.RefractionType.SOLID)
-        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "transmission")
-        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "scatter")
-        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "ior")
-        .uniformParameter(MaterialBuilder.UniformType.FLOAT, "thickness")
-        .uniformParameter(MaterialBuilder.UniformType.FLOAT3, "tint")
-
-    /**
-     * What the glass variant adds: the picture of the dice seen from under the
-     * floor, and how much of it the table shows ([DiceMaterial.GLASS_SOURCE]).
-     *
-     * Its own picture rather than Filament's screen-space reflections, whose
-     * material switch (`reflectionMode`) is left at its default: those reflect
-     * the walls as well as the dice (`Reflection`).
-     */
-    fun MaterialBuilder.glass(): MaterialBuilder =
-      samplerParameter(
-        MaterialBuilder.SamplerType.SAMPLER_2D,
-        MaterialBuilder.SamplerFormat.FLOAT,
-        MaterialBuilder.ParameterPrecision.DEFAULT,
-        "reflected",
-      ).uniformParameter(MaterialBuilder.UniformType.FLOAT, "reflectionStrength")
+    fun uploadSurface(
+      engine: Engine,
+      image: AtlasImage,
+      map: SurfaceMap,
+    ): Texture {
+      val texture =
+        Texture
+          .Builder()
+          .width(image.width)
+          .height(image.height)
+          .levels(SurfaceMap.mipLevelsOf(image.width, image.height))
+          .format(if (map.colour) Texture.InternalFormat.SRGB8_A8 else Texture.InternalFormat.RGBA8)
+          .usage(Texture.Usage.DEFAULT or Texture.Usage.GEN_MIPMAPPABLE)
+          .build(engine)
+      val pixels = ByteBuffer.allocateDirect(image.pixels.size).order(ByteOrder.nativeOrder())
+      pixels.put(image.pixels)
+      pixels.flip()
+      texture.setImage(engine, 0, Texture.PixelBufferDescriptor(pixels, Texture.Format.RGBA, Texture.Type.UBYTE))
+      texture.generateMipmaps(engine)
+      return texture
+    }
 
     /**
      * A decoded atlas, uploaded as it stands.

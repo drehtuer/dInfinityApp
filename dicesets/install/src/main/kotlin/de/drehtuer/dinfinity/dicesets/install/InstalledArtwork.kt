@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.dicesets.install
 
+import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.dicesets.format.DiceSetLimits
 import de.drehtuer.dinfinity.dicesets.format.PackageFiles
 import de.drehtuer.dinfinity.dicesets.format.ReferencedFile
@@ -29,14 +30,34 @@ import de.drehtuer.dinfinity.dicesets.format.ValidationMessage
  * one is a package whose `diceset.toml` the app will not read, and reading its
  * pictures anyway would be trusting half a package.
  *
+ * **The bundled package is answered from where it is, not from a folder.** It
+ * is never installed to disk — it is a resource in the APK, read and validated
+ * on every launch by the same validator ([bundled]) — so its id is matched
+ * first and its files are read through the [PackageFiles] it was validated
+ * from. Everything after that is the same road: the same [ReferencedFile], the
+ * same size cap, the same decoder. A package on disk calling itself by the
+ * bundled id is not reached, which is the rule `SetLibrary` already keeps for
+ * the set itself.
+ *
  * @param installed the folders on disk.
+ * @param bundled the package the app ships, or `null` for none.
  * @param decode how bytes become pixels. A parameter only so that a test can
  *   run the path without a decoder, which on the JVM there is not one of.
  */
 class InstalledArtwork(
   private val installed: InstalledSets,
+  private val bundled: BundledPackage? = null,
   private val decode: (ByteArray, String, Int?) -> AtlasDecode = AtlasDecoder.platform::decode,
 ) {
+  /**
+   * The package the app ships: the set it validated to, and the files it was
+   * validated from.
+   */
+  class BundledPackage(
+    val set: DiceSet,
+    val files: PackageFiles,
+  )
+
   /**
    * The atlas [texturePath] names inside the package called [setId].
    *
@@ -49,13 +70,24 @@ class InstalledArtwork(
     texturePath: String,
   ): AtlasDecode {
     val named = "$setId/$texturePath"
-    val ready =
-      installed.find(setId) as? InstalledPackage.Ready
+    val (set, files) =
+      packageOf(setId)
         ?: return refused(named, ValidationCode.ReferencedFileMissing, "is not in a package that is installed")
     val reference =
       ReferencedFile.parse(texturePath, DiceSetLimits.IMAGE_EXTENSIONS)
         ?: return refused(named, ValidationCode.BadFileReference, "is not a picture inside the package")
-    return opened(ready, reference, named)
+    return opened(set, files, reference, named)
+  }
+
+  /**
+   * The set called [setId] and the files it was validated from, or `null`
+   * when nothing usable goes by that name: the bundled package first, then a
+   * folder that still validates.
+   */
+  private fun packageOf(setId: String): Pair<DiceSet, PackageFiles>? {
+    if (bundled != null && setId == bundled.set.id) return bundled.set to bundled.files
+    val ready = installed.find(setId) as? InstalledPackage.Ready ?: return null
+    return ready.set to PackageFiles.of(ready.folder)
   }
 
   /**
@@ -74,11 +106,17 @@ class InstalledArtwork(
     setId: String,
     texturePath: String,
   ): String? {
-    val folder = installed.folderOf(setId)
-    val reference = ReferencedFile.parse(texturePath, DiceSetLimits.IMAGE_EXTENSIONS)
-    if (folder == null || reference == null) return null
-    val files = PackageFiles.of(folder)
-    return files.size(reference.path)?.let { size -> "$size@${files.modified(reference.path)}" }
+    val reference = ReferencedFile.parse(texturePath, DiceSetLimits.IMAGE_EXTENSIONS) ?: return null
+    // The bundled package changes only with the APK, and an APK update is a
+    // new process with an empty cache, so one stamp for its whole life is the
+    // truth. Its size is still asked, so a path it does not have stays a miss.
+    val files =
+      if (bundled != null && setId == bundled.set.id) {
+        bundled.files
+      } else {
+        installed.folderOf(setId)?.let(PackageFiles::of) ?: return null
+      }
+    return files.size(reference.path)?.let { size -> "$size@${files.modified(reference.path) ?: BUNDLED_STAMP}" }
   }
 
   /**
@@ -89,11 +127,11 @@ class InstalledArtwork(
    * same order `FileChecker` keeps during validation.
    */
   private fun opened(
-    ready: InstalledPackage.Ready,
+    set: DiceSet,
+    files: PackageFiles,
     reference: ReferencedFile,
     named: String,
   ): AtlasDecode {
-    val files = PackageFiles.of(ready.folder)
     val size = files.size(reference.path)
     val refusal =
       when {
@@ -105,7 +143,7 @@ class InstalledArtwork(
       }
     if (refusal != null) return refused(named, refusal.first, refusal.second)
     val bytes = files.read(reference.path) ?: return refused(named, ValidationCode.ReferencedFileMissing, "is not here")
-    return decode(bytes, named, ready.set.facesForTexture(reference.path))
+    return decode(bytes, named, set.facesForTexture(reference.path))
   }
 
   private fun refused(
@@ -116,4 +154,9 @@ class InstalledArtwork(
     AtlasDecode.Unusable(
       listOf(ValidationMessage(severity = Severity.Error, code = code, text = "'$file' $said", file = file)),
     )
+
+  private companion object {
+    /** What the bundled package's files are stamped with: they are the APK's. */
+    const val BUNDLED_STAMP = "bundled"
+  }
 }

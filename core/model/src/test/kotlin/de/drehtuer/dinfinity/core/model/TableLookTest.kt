@@ -2,7 +2,9 @@ package de.drehtuer.dinfinity.core.model
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class TableLookTest {
   @Test
@@ -75,5 +77,58 @@ class TableLookTest {
     assertNull(TableSound.ofId(null))
     assertNull(TableLight.ofId("strobe"))
     assertNull(TableLight.ofId(null))
+  }
+
+  @Test
+  fun `a look is textured as soon as any of its six pictures is named`() {
+    val plain = TableLook(id = "plain", name = "Plain")
+    assertFalse(plain.textured)
+    assertNull(plain.packageId, "a look made in code belongs to no package")
+    listOf(
+      plain.copy(floorTexturePath = "a.png"),
+      plain.copy(floorNormalPath = "a.png"),
+      plain.copy(floorRoughnessPath = "a.png"),
+      plain.copy(wallTexturePath = "a.png"),
+      plain.copy(wallNormalPath = "a.png"),
+      plain.copy(wallRoughnessPath = "a.png"),
+    ).forEach { assertTrue(it.textured, it.toString()) }
+    // A size alone is not a picture.
+    assertFalse(plain.copy(floorTileMm = 80.0, wallTileMm = 300.0).textured)
+  }
+
+  @Test
+  fun `a colour multiplies its picture unless the look says it is the average`() {
+    assertEquals(TableColorMode.Multiply, TableLook(id = "plain", name = "Plain").colorMode)
+    assertEquals(TableColorMode.Average, TableColorMode.ofId("average"))
+    assertEquals(TableColorMode.Multiply, TableColorMode.ofId("multiply"))
+    assertNull(TableColorMode.ofId("screen"))
+    assertNull(TableColorMode.ofId(null))
+  }
+
+  @Test
+  fun `every picture and size a look names is kept as it was given`() {
+    val look =
+      TableLook(
+        id = "felt",
+        name = "Felt",
+        floorNormalPath = "fn.png",
+        floorRoughnessPath = "fr.png",
+        floorTileMm = 80.0,
+        wallNormalPath = "wn.png",
+        wallRoughnessPath = "wr.png",
+        wallTileMm = 300.0,
+      )
+    assertEquals(
+      listOf("fn.png", "fr.png", "wn.png", "wr.png"),
+      listOf(look.floorNormalPath, look.floorRoughnessPath, look.wallNormalPath, look.wallRoughnessPath),
+    )
+    assertEquals(80.0, look.floorTileMm)
+    assertEquals(300.0, look.wallTileMm)
+  }
+
+  @Test
+  fun `a texture covers between a centimetre and a metre`() {
+    assertEquals(10.0, TableLook.TileMmRange.start)
+    assertEquals(1000.0, TableLook.TileMmRange.endInclusive)
   }
 }

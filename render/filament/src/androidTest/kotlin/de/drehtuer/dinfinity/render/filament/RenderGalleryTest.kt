@@ -43,7 +43,9 @@ class RenderGalleryTest {
     )
     FilamentStage.ready()
     val out = outDirectory()
-    FilamentEngine().use { filament ->
+    // The bundled package's own pictures, so felt is drawn as felt and oak as
+    // oak (`docs/tables.md`, "Textures").
+    FilamentEngine(artwork = BundledPictures).use { filament ->
       scenes().forEach { scene ->
         filament.stage(surface = null, width = WIDTH, height = HEIGHT).use { stage ->
           val renderer = FilamentDiceRenderer(stage)
@@ -61,11 +63,11 @@ class RenderGalleryTest {
   )
 
   /**
-   * Every built-in shape on each of three tables that light differently —
-   * matte felt, a satin wood, a glossy glass — and the same throw twice more
-   * on felt in metal and see-through at three strengths — milky, the
-   * default and glassy — which are the materials a rendering change is
-   * likeliest to move.
+   * Every built-in shape on each of the five bundled tables — the two felts,
+   * the oak, the glass and plain, so a picture-drawn floor can be put beside a
+   * flat one — and the same throw again on felt in metal and see-through at
+   * three strengths — milky, the default and glassy — which are the
+   * materials a rendering change is likeliest to move.
    */
   private fun scenes(): List<Scene> {
     val set = BuiltinDiceSet.set
@@ -145,6 +147,6 @@ class RenderGalleryTest {
     const val WHITE = 0xFFFFFFFF.toInt()
 
     val SHAPES = listOf("d4", "d6", "d8", "d10", "d12", "d20")
-    val TABLES = listOf("felt-green", "oak", "dark-glass")
+    val TABLES = listOf("felt-green", "felt-black", "oak", "dark-glass", "plain")
   }
 }

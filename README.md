@@ -94,8 +94,9 @@ a tumble; everything else is real.
   `https` link to an archive. [examples/](examples/) is a working set to copy:
   every shape, every field commented, blank atlases to draw on.
 - **Exchangeable tables** — swap the look of the dice tray (felt, wood, glass,
-  your own photo) the same way you would swap a wallpaper. The tray's shape
-  never changes: it is the phone's screen, walls at the edges.
+  your own photo) the same way you would swap a wallpaper. Felt and oak are
+  drawn from real textures at real size; plain stays a flat colour. The tray's
+  shape never changes: it is the phone's screen, walls at the edges.
 - **Safe imports** — a broken or malicious dice set can fail to load, but it
   cannot crash the app or affect other sets.
 - **Your accent** — the one colour the interface spends is yours to choose: six
@@ -144,11 +145,11 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/physics-and-rendering.md](docs/physics-and-rendering.md) | Simulation, shake input, settling and face detection, whether the dice are fair, stacking avoidance, power-saving mode |
 | [docs/dice-notation.md](docs/dice-notation.md) | Roll formula grammar, evaluation rules, saved rolls |
 | [docs/dice-sets.md](docs/dice-sets.md) | Dice set file format, shapes, textures, installing from git forges or archive URLs, validation and sandboxing |
-| [docs/tables.md](docs/tables.md) | Table (tray) geometry, capacity limits, exchangeable table looks |
+| [docs/tables.md](docs/tables.md) | Table (tray) geometry, capacity limits, exchangeable table looks and their textures |
 | [docs/probability.md](docs/probability.md) | How the outcome graph is computed |
 | [docs/face-designer.md](docs/face-designer.md) | Finger-drawn face textures |
 | [docs/statistics.md](docs/statistics.md) | What is tracked, how it is stored, privacy |
-| [docs/assets/README.md](docs/assets/README.md) | The logo files and the die font, how both are generated from Archivo, the font licence, and the photographed room the dice are lit by |
+| [docs/assets/README.md](docs/assets/README.md) | The logo files and the die font, how both are generated from Archivo, and the font licence; the photographed room the dice are lit by; the bundled felt and oak textures, their CC0 sources and how they were cut |
 | [docs/design-handover.md](docs/design-handover.md) | Where the app and the prototype still differ, and the questions each side is waiting on |
 | [design/README.md](design/README.md) | The prototype: what each file is, how to open it offline, how to keep it in step with `docs/` |
 | [examples/README.md](examples/README.md) | The worked dice set: a commented `diceset.toml` using every catalogue shape, and blank atlases to draw on |

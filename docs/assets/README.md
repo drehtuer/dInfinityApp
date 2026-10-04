@@ -87,3 +87,47 @@ Changing it means re-projecting its irradiance into `StudioLight.IRRADIANCE`,
 and `StudioLightTest` fails until that is done: run `StudioLight.irradianceOf`
 over the new file's decoded pixels (the test's `decoded()` shows how) and
 paste the result.
+
+## Table textures
+
+The bundled felt and oak (`docs/tables.md`, "Textures") are photographs, cut
+and re-encoded from two CC0 sources by
+[../../tools/generate-table-textures.py](../../tools/generate-table-textures.py)
+into `dicesets/builtin/src/main/resources/dicesets/builtin/tables/`.
+
+| File | Size | From | Cut |
+| --- | --- | --- | --- |
+| `felt-albedo.webp` | 1024², 234 KiB | ambientCG [Fabric034](https://ambientcg.com/a/Fabric034), `1K-JPG` colour | made grey, so one cloth is both felts; laid at 80 mm a copy (12.8 px/mm) |
+| `felt-normal.webp` | 1024², 446 KiB | the same, `NormalGL` | as it is |
+| `felt-roughness.webp` | 1024², 175 KiB | the same, roughness | as it is |
+| `oak-albedo.webp` | 2048², 281 KiB | Poly Haven [oak_wood_planks](https://polyhaven.com/a/oak_wood_planks), 8k diffuse | the top-left 300 mm of the 1200 mm board (6.8 px/mm) |
+| `oak-normal.webp` | 1024², 189 KiB | the same, 4k `nor_gl` | the same 300 mm (3.4 px/mm) |
+| `oak-roughness.webp` | 1024², 230 KiB | the same, 4k roughness (16-bit) | the same 300 mm, to 8 bits |
+
+**1.5 MiB together**, which is what they add to the APK — WebP is stored
+compressed already, so the zip gains nothing on them. `BuiltinDiceSetTest`
+fails past 2 MiB so that growing them is a decision rather than a drift.
+
+**Why these sizes.** On the Pixel 10a the whole tray is about 10 screen pixels
+to the millimetre. The felt at 12.8 px/mm is sharper than the screen can show,
+so a 1024 swatch is enough and repeats every 80 mm, which at the felt's grain
+is not seen to repeat. The oak is a board, not a swatch: a 300 mm cut covers
+the whole floor once, so it never repeats there, and its colour picture is the
+one 2048 here because grain lines are the detail an eye goes to; its bumps and
+sheen are softer and stay at 1024. The oak's cut does not tile, so on the walls,
+which run round 700 mm of tray, it meets itself two or three times — where a
+board would have a joint anyway.
+
+**Licence.** Both sources are [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/)
+— ambientCG's and Poly Haven's own terms for every asset they publish. CC0
+asks for nothing, not even attribution; the sources are recorded here so the
+files can be made again from the originals and checked against them, not
+because a licence requires it.
+
+Pillow and numpy are not in the devcontainer image, for the reason fontTools
+is not: this runs about once.
+
+```sh
+python3 -m pip install --target /tmp/pylib pillow numpy
+PYTHONPATH=/tmp/pylib python3 tools/generate-table-textures.py /tmp/table-sources .
+```

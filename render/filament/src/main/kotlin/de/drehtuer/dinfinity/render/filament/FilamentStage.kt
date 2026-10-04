@@ -292,11 +292,19 @@ class FilamentStage(
     // Nought is Filament's word for "no entity", and a mesh with nothing in it
     // is not worth one.
     if (mesh.triangleCount == 0 || mesh.vertexCount == 0) return Stage.NOTHING
-    val atlas = parameters.texturePath?.let(atlases)
     val vertices = verticesOf(mesh)
     val triangles = indicesOf(mesh)
-    val reflected = parameters.reflection?.let { mirrorOf().colour }
-    val instance = instanceOf(parameters, atlas, parameters.numbers?.let(::glyphsOf), reflected)
+    // Only a surface drawn with the glass material samples the picture of the
+    // dice; a glossy look drawn from pictures sets its reflection aside
+    // (`DiceMaterial.variantOf`) and costs no reflection pass.
+    val reflected = if (DiceMaterial.reflects(parameters)) mirrorOf().colour else null
+    val maps = parameters.maps
+    val instance =
+      if (maps != null) {
+        tableInstanceOf(parameters, maps)
+      } else {
+        instanceOf(parameters, parameters.texturePath?.let(atlases), parameters.numbers?.let(::glyphsOf), reflected)
+      }
     val entity = EntityManager.get().create()
 
     RenderableManager
@@ -614,11 +622,47 @@ class FilamentStage(
         )
       }
       // And only the glass floor has these (`DiceMaterial.GLASS_SOURCE`).
-      parameters.reflection?.let { reflection ->
-        setParameter("reflected", requireNotNull(reflected), mirrorSampler)
-        setParameter("reflectionStrength", reflection.strength.toFloat())
+      if (reflected != null) {
+        setParameter("reflected", reflected, mirrorSampler)
+        setParameter("reflectionStrength", requireNotNull(parameters.reflection).strength.toFloat())
       }
     }
+
+  /**
+   * A surface of the tray drawn from pictures ([DiceMaterial.TABLE_SOURCE]).
+   *
+   * A picture that is named and does not come — a package removed, a file
+   * that will not decode — is the white pixel, and its map's flag is off: the
+   * surface is then its colour, flat where the normal map would have been,
+   * as rough as the look says. A table loses its grain, never its tray.
+   */
+  private fun tableInstanceOf(
+    parameters: DiceMaterial.Parameters,
+    maps: DiceMaterial.SurfaceMaps,
+  ): MaterialInstance {
+    // From the engine's own caches, like the material: a table's pictures
+    // belong to its package and outlive any one surface ([FilamentEngine]).
+    val albedo = maps.albedo?.let { parts.tablePicture(it, SurfaceMap.ALBEDO) }
+    val normal = maps.normal?.let { parts.tablePicture(it, SurfaceMap.NORMAL) }?.texture
+    val roughness = maps.roughness?.let { parts.tablePicture(it, SurfaceMap.ROUGHNESS) }?.texture
+    val colour = TableTint.colourFor(parameters.colour, albedo?.mean, parameters.averaged)
+    return parts.materialFor(parameters).createInstance().apply {
+      setParameter(
+        "baseColor",
+        colour.red.toFloat(),
+        colour.green.toFloat(),
+        colour.blue.toFloat(),
+        colour.alpha.toFloat(),
+      )
+      setParameter("roughness", parameters.roughness.toFloat())
+      setParameter("metallic", parameters.metallic.toFloat())
+      setParameter("hasNormal", if (normal != null) 1.0f else 0.0f)
+      setParameter("hasRoughness", if (roughness != null) 1.0f else 0.0f)
+      setParameter("albedo", albedo?.texture ?: blank, parts.tableSampler)
+      setParameter("normalMap", normal ?: blank, parts.tableSampler)
+      setParameter("roughnessMap", roughness ?: blank, parts.tableSampler)
+    }
+  }
 
   /**
    * A die's printed numbers, uploaded.

@@ -53,19 +53,24 @@ object BuiltinDiceSet {
     }
 }
 
-/** A package whose files are resources on the classpath. */
+/**
+ * A package whose files are resources on the classpath.
+ *
+ * It remembers how big each file is and nothing else. The bundled tables'
+ * pictures are read through one of these for as long as the app runs — the
+ * tray asks for them by package and path like any package's
+ * (`InstalledArtwork`) — and holding their bytes as well as the textures made
+ * from them would be a megabyte and a half kept for nothing.
+ */
 private class ResourcePackage(
   private val root: String,
   private val loader: ClassLoader?,
 ) : PackageFiles {
-  private val cache = mutableMapOf<String, ByteArray?>()
+  private val sizes = mutableMapOf<String, Long?>()
 
-  override fun read(path: String): ByteArray? = cached(path)?.copyOf()
+  override fun read(path: String): ByteArray? = bytes(path)
 
-  override fun size(path: String): Long? = cached(path)?.size?.toLong()
+  override fun size(path: String): Long? = synchronized(sizes) { sizes.getOrPut(path) { bytes(path)?.size?.toLong() } }
 
-  private fun cached(path: String): ByteArray? =
-    cache.getOrPut(path) {
-      loader?.getResourceAsStream("$root/$path")?.use { it.readBytes() }
-    }
+  private fun bytes(path: String): ByteArray? = loader?.getResourceAsStream("$root/$path")?.use { it.readBytes() }
 }

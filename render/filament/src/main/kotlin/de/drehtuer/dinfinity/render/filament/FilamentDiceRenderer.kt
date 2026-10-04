@@ -189,9 +189,11 @@ class FilamentDiceRenderer(
     // shadow that says anything (`docs/physics-and-rendering.md`).
     stage.add(GpuMesh.of(tray.partsOf(TrayPart.Floor)), floor, casts = false)
     stage.add(GpuMesh.of(tray.partsOf(TrayPart.Wall)), wall, casts = false)
-    // The rim is the wall seen end-on, so it takes the wall's colour and none
-    // of its texture: six millimetres is not where anybody looks.
-    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Rim)), wall.copy(texturePath = null), casts = false)
+    // The rim is the top of the wall and is drawn in the wall's material,
+    // pictures and all. A wall drawn from oak takes a colour that only comes
+    // out right *times the oak* (`docs/tables.md`, "Textures"), so a rim in
+    // that colour alone would be a band of something else around the tray.
+    stage.add(GpuMesh.of(tray.partsOf(TrayPart.Rim)), wall, casts = false)
   }
 
   /**

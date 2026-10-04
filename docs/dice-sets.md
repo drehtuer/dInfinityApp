@@ -114,7 +114,9 @@ color = "#f0e6d0"                # per-die override
 id = "bone-felt"
 name = "Bone felt"
 floor_texture = "tables/felt.png"
-floor_tiling = [3, 6]
+floor_normal = "tables/felt-normal.png"
+floor_tile_mm = 80
+color_mode = "average"
 floor_color = "#d9cbb0"
 wall_color = "#3a2a18"
 sound = "felt"
@@ -543,10 +545,16 @@ Four things about that path are rules rather than arrangement:
   artwork is drawn. The bytes never reach a decoder until the path, the size
   and the dimensions have each been checked, in that order.
 
-**A table look's floor and wall textures do not go through this yet.** They
-carry a path and nothing saying whose package, so they resolve to nothing and a
-table is drawn in its own colours (`docs/tables.md`, "Table looks";
-`docs/TODO.md`, "Open questions").
+**A table look's pictures go through this too.** The validator stamps every
+look with the package it read it out of, so a floor's picture is keyed exactly
+like a die's atlas — `builtin::tables/felt-albedo.webp` — and goes through the
+same path, size and decode checks on the way. Two things differ, both on the
+GPU side: a table's pictures are uploaded with every mip level and sampled
+anisotropically, because a floor is looked at along it, and the colour
+picture is uploaded as sRGB (`docs/tables.md`, "Textures"). **The bundled
+package is answered from its resources**, the files it was validated from,
+because it is never installed to disk; its id is matched before any folder's,
+as `SetLibrary` matches it.
 
 ### Labels, and the artwork over them
 
@@ -791,7 +799,7 @@ Errors (set is rejected):
 - Bad slug, duplicate die id, duplicate table id
 - Unknown shape (including `mesh`, which v1 does not implement); `faces` length
   ≠ shape face count; a face value outside −9999..9999
-- A `read`, `sound` or `light` naming something the app does not have
+- A `read`, `sound`, `light` or `color_mode` naming something the app does not have
 - Referenced file missing, outside the folder, absolute, wrong extension, over
   size; the package's textures over 24 MiB together
 - Texture over the dimension limit, or not a picture of the kind its name
@@ -801,7 +809,7 @@ Errors (set is rejected):
 
 Warnings (set installs, user sees them):
 
-- Physics value clamped, table tiling clamped
+- Physics value clamped, table tiling or tile size clamped
 - A standard die id missing (e.g. no `d12`) — notation will fall back
 - Label longer than 4 chars truncated
 - Unknown key, ignored

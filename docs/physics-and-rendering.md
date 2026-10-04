@@ -2330,12 +2330,16 @@ impact sounds rather than a crash in the middle of a roll.
     anything wrong with the disk falls back to compiling;
   - the resin material is made the first time a translucent die asks for it,
     not with the engine. The built-in set has none, and a translucent die on
-    that first launch pays about two seconds once, mid-throw.
-- **One material** draws every surface of a roll but a translucent die: a
-  lit, opaque, physically based one with a base colour, a roughness and a
-  metalness, with an atlas laid over it. Dice are dice and a tray is a tray. A
-  die light passes through is the same surface with resin under it ("A die you
-  can see into", below). Everything a package may vary is
+    that first launch pays about two seconds once, mid-throw;
+  - the table material is made the same way, the first time a table drawn
+    from pictures is shown ("The table's surface", below). Plain and dark
+    glass never ask for it.
+- **One material** draws every die but a translucent one, and every surface
+  of a tray drawn in colours alone: a lit, opaque, physically based one with a
+  base colour, a roughness and a metalness, with an atlas laid over it. Dice
+  are dice and a tray is a tray. A die light passes through is the same
+  surface with resin under it ("A die you can see into", below); a tray drawn
+  from pictures has a material of its own ("The table's surface", below). Everything a package may vary is
   a number going into it rather than a line of it changing (`docs/tables.md`,
   "Table looks"; `docs/TODO.md`, After v1).
 - **The artwork is composited, not multiplied.** The body colour is worked out
@@ -2555,6 +2559,58 @@ Target: 60 fps with 20 dice on the Pixel 10a with headroom; the capacity rule
 caps a roll at what the table can hold, and never above a hundred dice
 (`TableCapacity.MAX_DICE`). Every die casts a shadow, whatever the count.
 
+### The table's surface
+
+**Felt and oak are drawn from pictures; plain is still a colour.** A look that
+names a colour picture, a normal map or a roughness map (`docs/tables.md`,
+"Textures") is drawn with `DiceMaterial.TABLE_SOURCE`: the picture times the
+look's colour, the normal map bending the surface's normal, and the roughness
+map in place of the look's `roughness`. Everything else — plain, a look
+whose package is gone — is drawn through the dice's opaque material exactly
+as before, and dark glass's floor through the glass material ("The dice in a
+glossy table"), so the cheapest tray is still the cheapest, and the dice's
+own materials are not touched at all: their source, their compiled packet and
+every pixel of them are what they were.
+
+- **Real size.** `TrayMesh` lays the floor's coordinates in millimetres from
+  the floor's corner divided by the look's `floor_tile_mm`: felt is 80 mm a
+  copy on every phone, and the 300 mm of oak covers the whole floor once. The
+  walls walk round the tray from the top edge down at `wall_tile_mm`, and the
+  rim carries on from the top of the wall, so an oak wall has an oak rim.
+- **A frame the normal map agrees with.** Each surface's tangent is the way
+  `u` grows and its bitangent — the normal crossed with the tangent — the way
+  `v` grows; `TrayMeshTest` derives both from the triangles and checks them.
+  Every picture in the app counts its rows from the top, so `v` grows *down*
+  the picture, and the OpenGL-convention normal map (green up the picture) has
+  its green turned over in the shader.
+- **No shimmer.** Each picture is uploaded with its whole mip chain, made on
+  the GPU, and sampled trilinearly with eight-times anisotropy, repeating. A
+  single level read across a slanted floor is noise that crawls as the camera
+  moves; the anisotropy keeps the far wall's felt from smearing. The mip
+  chain is also what averages the *normal map* down at a distance, which is
+  the felt's own shimmer. The specular anti-aliasing the dice have ("Rounded
+  edges") is left off this material: Filament's filter reads how fast the
+  mesh's normal turns, not the normal map's, and the tray's mesh is flat
+  across the floor, so it would cost a full-screen surface something and
+  change nothing.
+- **The colour picture is sRGB**, so the GPU averages and multiplies it in
+  light's units; the normal and roughness maps are measurements and stay
+  linear (`SurfaceMap`). A die's atlas is uploaded as it always was.
+- **Averaged, not only multiplied.** A look in `color_mode = "average"` has
+  its colour divided by the picture's linear average before it reaches the
+  material (`TableTint`), so the felt averages out at the green the look
+  names. The average is taken once, from the pixels the picture is uploaded
+  from, and kept with the texture.
+- **Uploaded once per package**, on the engine beside the die atlases and
+  given back with it, under the same keys (`docs/dice-sets.md`, "How an atlas
+  reaches the tray"). The bundled felt and oak are 1.5 MB of WebP in the APK
+  and about 50 MB on the GPU with their mip chains, the 2048-pixel oak most of
+  it.
+- **Thumbnails get them for free**: the table picker's pictures are drawn by
+  the same renderer on the same engine (`docs/tables.md`, "Thumbnails").
+
+Power-saving mode has no Filament at all, and nothing here reaches it.
+
 ### Rounded edges
 
 **A die is drawn with the edges the solver collides it with.** The solver's
@@ -2635,7 +2691,9 @@ anti-aliasing* (`DiceMaterial.SPECULAR_AA_VARIANCE`, Filament's defaults),
 which raises the roughness — of the body and of the lacquer — by how fast the
 normal changes between neighbouring pixels. On a bend that spreads the glint
 into a soft, unbroken highlight; a flat face's normal does not change, so the
-faces, their numbers and the tray are drawn exactly as before. The settings
+faces, their numbers and the tray are drawn exactly as before. The glass
+floor has it too; the table drawn from pictures does not ("The table's
+surface"). The settings
 are part of the material cache's key (`DiceMaterial.Variant.fingerprint`), so a
 packet compiled without them is not read back.
 
@@ -2658,7 +2716,11 @@ bundled looks only `dark-glass` (0.1) is under the line, at **two-thirds**;
 felt (0.9), plain (0.8) and oak (0.55) are well over. How glossy a surface is
 *is* how much it reflects, so the table format does not grow
 (`docs/tables.md`, "Table looks"). Only the floor reflects: the walls and the
-rim take the opaque material whatever the look.
+rim take the opaque or the picture material whatever the look. **A floor
+drawn from pictures shows no dice either, however glossy**: the pictures win
+(`DiceMaterial.variantOf`), the stage then draws no picture of the dice for
+it (`DiceMaterial.reflects`), and showing both is a material of its own that
+no bundled look needs (`docs/TODO.md`, "Tables and photos").
 
 **What is drawn is a planar reflection of the dice and nothing else.** When the
 floor is glossy, every frame draws the dice twice:

@@ -6,6 +6,7 @@ import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.core.model.Face
 import de.drehtuer.dinfinity.core.model.FaceRead
+import de.drehtuer.dinfinity.core.model.TableColorMode
 import de.drehtuer.dinfinity.core.model.TableLight
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableSound
@@ -248,18 +249,31 @@ class DiceSetTomlTest {
         restitution = 0.45,
         sound = TableSound.Glass,
         light = TableLight.Cool,
+        floorNormalPath = "tables/floor-normal.png",
+        floorRoughnessPath = "tables/floor-roughness.png",
+        floorTileMm = 80.0,
+        wallNormalPath = "tables/wall-normal.png",
+        wallRoughnessPath = "tables/wall-roughness.png",
+        wallTileMm = 300.0,
+        colorMode = TableColorMode.Average,
       )
 
-    // The two textures have to exist for the file checker to accept them, so
-    // the package is written out whole rather than as a lone set file.
+    // The textures have to exist for the file checker to accept them, so the
+    // package is written out whole rather than as a lone set file.
     val back =
       readWhole(
         DiceSet(id = "mine", name = "My dice", version = "1.0.0", tables = listOf(loud)),
         "tables/floor.png" to Drawings.png(64, 64),
         "tables/wall.png" to Drawings.png(64, 64),
+        "tables/floor-normal.png" to Drawings.png(64, 64),
+        "tables/floor-roughness.png" to Drawings.png(64, 64),
+        "tables/wall-normal.png" to Drawings.png(64, 64),
+        "tables/wall-roughness.png" to Drawings.png(64, 64),
       )
 
-    assertEquals(loud, back.tables.single())
+    // Whose package it is comes back too, from the validator rather than the
+    // file: no key of the format says it.
+    assertEquals(loud.copy(packageId = "mine"), back.tables.single())
   }
 
   @Test

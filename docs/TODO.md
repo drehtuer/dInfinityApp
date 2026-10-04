@@ -365,12 +365,15 @@ keeps them comparable.
       milky and glassy ends need `Resin`'s constants turned, and are the full
       shadows of clear dice acceptable), rounded edges drawn with the
       solver's own convex radius (91 — does the bend's glint, now spread by
-      specular anti-aliasing, read as a soft highlight), the dice reflected
-      faintly in the dark glass (93 — is the reflection soft and dim enough,
-      and does it look right that the walls are not reflected); next, felt and
-      oak textures. Judged with `tools/gallery.sh` before and
-      after each step, and merged to `main` once the owner likes it on the
-      phone
+      specular anti-aliasing, read as a soft highlight), felt and oak drawn
+      from CC0 pictures (92 — run `TableTextureDeviceTest`; in the gallery,
+      does the felt read as cloth at arm's length without shimmering as the
+      dice settle, is the oak's grain sharp enough at 4 px/mm on the floor, do
+      the oak walls of the felts read as a wooden frame, and is plain
+      unchanged), the dice reflected faintly in the dark glass (93 — is the
+      reflection soft and dim enough, and does it look right that the walls
+      are not reflected). Judged with `tools/gallery.sh` before and after each
+      step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
 
@@ -448,13 +451,14 @@ their own, add recomposition tests. Figures go in every PR description.
 
 ### Tables and photos
 
-- [ ] **Where does a table look's texture say which package it came from?**
-      Dice artwork reaches the tray by package and path; a `TableLook` carries a
-      path only, so a table draws in its own colours. Decide when a package
-      ships one — which also decides whether a photo table belongs in the
-      personal package before the tray can draw it
 - [ ] How should a photo sit on the tray — centre, fit width, fit height
-      (`1u`)? None is implemented
+      (`1u`)? It is drawn now (decision 92), stretched over the floor by
+      `[1, 1]` tiling
+- [ ] A glossy look that also names pictures (a polished stone photograph)
+      is drawn from its pictures and shows no dice in it: pictures win over
+      the reflection (`DiceMaterial.variantOf`). Showing both needs a fifth
+      material with the table's maps and the glass's picture; build it when a
+      package asks for one
 
 ### Sets and collections
 

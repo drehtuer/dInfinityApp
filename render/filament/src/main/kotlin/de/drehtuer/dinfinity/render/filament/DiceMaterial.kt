@@ -1,6 +1,7 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieMaterial
+import de.drehtuer.dinfinity.core.model.TableColorMode
 import de.drehtuer.dinfinity.core.model.TableLook
 import kotlin.math.sqrt
 
@@ -170,6 +171,52 @@ object DiceMaterial {
     """ + COAT
 
   /**
+   * The material of a table drawn from pictures: felt, oak, a photograph
+   * (`docs/tables.md`, "Textures").
+   *
+   * Its own material rather than a parameter of [SOURCE], for two reasons. A
+   * normal map moves `material.normal`, and Filament fixes whether a material
+   * does that when it compiles it — so every die would have paid for a lookup
+   * none of them makes. And the dice stay exactly as they were: their source
+   * is not touched, so their compiled packet and every pixel of them are what
+   * they were before the tables had textures.
+   *
+   * **The colour multiplies the picture.** A photograph is itself because a
+   * photo table's colour is white; a grey felt is green felt because its
+   * colour is green — scaled first, for a look in `color_mode = "average"`,
+   * so the floor averages out at the green the look names ([TableTint]). The
+   * picture is uploaded as sRGB, so it is in light's own units by the time it
+   * is multiplied — which a die's atlas, uploaded as it stands, is not, and
+   * does not need to be.
+   *
+   * **The normal map is OpenGL's way up**: green points up the picture, which
+   * is how Blender, ambientCG and Poly Haven's `nor_gl` all write one. A
+   * texture coordinate `v` here grows *down* the picture — every image in this
+   * app counts its rows from the top — and the surface's bitangent points the
+   * way `v` grows ([TrayMesh]), so green is turned over to meet it.
+   *
+   * The roughness map is read from its red channel, grey being the same in
+   * all three, and replaces the look's `roughness` where there is one.
+   */
+  const val TABLE_SOURCE: String = """
+        void material(inout MaterialInputs material) {
+            vec2 uv = getUV0();
+            if (materialParams.hasNormal > 0.5) {
+                vec3 bump = texture(materialParams_normalMap, uv).xyz * 2.0 - 1.0;
+                bump.y = -bump.y;
+                material.normal = normalize(bump);
+            }
+            prepareMaterial(material);
+            vec3 picture = texture(materialParams_albedo, uv).rgb;
+            material.baseColor = vec4(materialParams.baseColor.rgb * picture, 1.0);
+            material.roughness = materialParams.hasRoughness > 0.5
+                ? texture(materialParams_roughnessMap, uv).r
+                : materialParams.roughness;
+            material.metallic = materialParams.metallic;
+        }
+    """
+
+  /**
    * Which compiled material a surface is drawn with.
    *
    * How light leaves a surface — whether it is refracted, and so drawn after
@@ -180,6 +227,7 @@ object DiceMaterial {
   enum class Variant(
     val source: String,
     val key: String,
+    val specularAntiAliasing: Boolean = true,
   ) {
     /** Every surface of the tray and every die nothing passes through. */
     OPAQUE(SOURCE, "opaque"),
@@ -189,18 +237,38 @@ object DiceMaterial {
 
     /** The floor of a table glossy enough to show the dice ([Reflection]). */
     GLASS(GLASS_SOURCE, "glass"),
+
+    /**
+     * A surface of the tray drawn from pictures. Only ever compiled on a
+     * phone that has drawn such a table: plain and dark glass never ask.
+     *
+     * **Without specular anti-aliasing.** Filament's filter widens a highlight
+     * by how fast the *geometric* normal turns across a pixel — the mesh's,
+     * not the normal-mapped one — and the tray's geometric normal is constant
+     * across the floor and turns over centimetres at its corners. On this
+     * surface the filter would change nothing but its cost, paid on the
+     * surface that covers most of the screen. What keeps a felt's grain from
+     * shimmering is what averages the normal map itself: its mip chain,
+     * sampled trilinearly and anisotropically ([FilamentEngine.tableSampler]).
+     */
+    TABLE(TABLE_SOURCE, "table", specularAntiAliasing = false),
     ;
 
     /**
      * Everything the compiled packet depends on that this app chooses: the
-     * [source], and the builder settings that are not in it — today the
-     * specular anti-aliasing ([SPECULAR_AA_VARIANCE],
-     * [SPECULAR_AA_THRESHOLD]). A packet kept on disk is found by this
-     * ([MaterialCache.keyOf]), so changing a setting misses the cache rather
-     * than reading back a packet compiled without it.
+     * [source], and the builder settings that are not in it — today whether
+     * the variant has specular anti-aliasing and with what
+     * ([SPECULAR_AA_VARIANCE], [SPECULAR_AA_THRESHOLD]). A packet kept on
+     * disk is found by this ([MaterialCache.keyOf]), so changing a setting
+     * misses the cache rather than reading back a packet compiled without it.
      */
     val fingerprint: String
-      get() = "$source\n// specularAntiAliasing $SPECULAR_AA_VARIANCE $SPECULAR_AA_THRESHOLD"
+      get() =
+        if (specularAntiAliasing) {
+          "$source\n// specularAntiAliasing $SPECULAR_AA_VARIANCE $SPECULAR_AA_THRESHOLD"
+        } else {
+          "$source\n// specularAntiAliasing off"
+        }
   }
 
   /**
@@ -226,32 +294,105 @@ object DiceMaterial {
   /** The most [SPECULAR_AA_VARIANCE] may add to a roughness squared, Filament's default. */
   const val SPECULAR_AA_THRESHOLD: Float = 0.2f
 
-  /** Which of the [Variant]s [parameters] are drawn with. */
+  /**
+   * Which of the [Variant]s [parameters] are drawn with.
+   *
+   * **Pictures win over a reflection.** A glossy look that also names
+   * pictures — a polished marble photograph, say — is drawn from its
+   * pictures and shows no dice in it: drawing both needs a material that has
+   * the table's three maps and the glass's reflected picture at once, and no
+   * table this app ships asks for one (dark glass names no pictures, and every
+   * look that does is far too rough to reflect). A floor whose variant is not
+   * [Variant.GLASS] takes no reflection pass either ([reflects]).
+   */
   fun variantOf(parameters: Parameters): Variant =
     when {
       parameters.resin != null -> Variant.RESIN
+      parameters.maps != null -> Variant.TABLE
       parameters.reflection != null -> Variant.GLASS
       else -> Variant.OPAQUE
     }
 
-  /** What a surface of the tray's floor is drawn with. */
+  /**
+   * Whether a surface drawn with [parameters] shows the dice in it, which is
+   * what the stage draws the picture of the dice from under the floor for.
+   * Only a [Variant.GLASS] surface samples that picture, so a reflection
+   * [variantOf] set aside for a table's pictures costs nothing.
+   */
+  fun reflects(parameters: Parameters): Boolean = variantOf(parameters) == Variant.GLASS
+
+  /**
+   * What a surface of the tray's floor is drawn with.
+   *
+   * A look that names no picture — plain, dark glass, a look made in code — is
+   * the flat colour it always was, through the dice's own material, so the
+   * cheapest table to draw is still the cheapest.
+   */
   fun floorOf(look: TableLook): Parameters =
     Parameters(
       colour = Colour.of(look.floorColorArgb),
       roughness = look.roughness,
       metallic = look.metallic,
-      texturePath = look.floorTexturePath,
+      texturePath = null,
       reflection = Reflection.of(look),
+      maps = SurfaceMaps.of(look.packageId, look.floorTexturePath, look.floorNormalPath, look.floorRoughnessPath),
+      averaged = look.colorMode == TableColorMode.Average,
     )
 
-  /** And its walls, including the rim, which is the wall seen end-on. */
+  /** And its walls, including the rim, which is the top of the wall. */
   fun wallOf(look: TableLook): Parameters =
     Parameters(
       colour = Colour.of(look.wallColorArgb),
       roughness = look.roughness,
       metallic = look.metallic,
-      texturePath = look.wallTexturePath,
+      texturePath = null,
+      maps = SurfaceMaps.of(look.packageId, look.wallTexturePath, look.wallNormalPath, look.wallRoughnessPath),
+      averaged = look.colorMode == TableColorMode.Average,
     )
+
+  /**
+   * The pictures one surface of the tray is drawn from, each as an [AtlasKey]:
+   * the package the look came from and the path inside it.
+   *
+   * @param albedo the colour picture, multiplied by the surface's colour.
+   * @param normal the normal map.
+   * @param roughness the roughness map.
+   */
+  data class SurfaceMaps(
+    val albedo: String?,
+    val normal: String?,
+    val roughness: String?,
+  ) {
+    companion object {
+      /**
+       * The keys for these paths inside [packageId], or `null` when there is
+       * nothing to draw: no picture named, or no package to look in.
+       *
+       * No package is a look made in code rather than read from one, and it
+       * has nowhere its pictures could be. A path is never resolved on its
+       * own: two packages may both ship `tables/felt.webp`, and a path that
+       * reached the disk unqualified would be a package called `tables`.
+       */
+      fun of(
+        packageId: String?,
+        albedo: String?,
+        normal: String?,
+        roughness: String?,
+      ): SurfaceMaps? {
+        if (packageId == null) return null
+        val maps =
+          SurfaceMaps(
+            albedo = albedo?.let { AtlasKey.of(packageId, it) },
+            normal = normal?.let { AtlasKey.of(packageId, it) },
+            roughness = roughness?.let { AtlasKey.of(packageId, it) },
+          )
+        return maps.takeUnless { it == NONE }
+      }
+
+      /** No picture at all, which is a surface drawn in its colour. */
+      private val NONE = SurfaceMaps(albedo = null, normal = null, roughness = null)
+    }
+  }
 
   /**
    * And a die.
@@ -289,10 +430,8 @@ object DiceMaterial {
   /**
    * What one surface's material instance is set to.
    *
-   * @param texturePath the atlas to sample, as an [AtlasKey] for a die and as
-   *   a bare path for a table look — which is why a table's floor is still
-   *   drawn in its colour alone (`docs/TODO.md`, "Open questions"). Null for a
-   *   surface that takes [colour] alone.
+   * @param texturePath a die's atlas, as an [AtlasKey], or null for a surface
+   *   that takes [colour] alone. A table's pictures are [maps].
    * @param numbers the die's labels as a distance field, or null for a surface
    *   with nothing printed on it — which is every surface of the tray.
    * @param ink what [numbers] is printed in.
@@ -305,7 +444,12 @@ object DiceMaterial {
    *   one that does not — which is everything but the floor of a glossy table
    *   ([Reflection.of]). Not the walls: what a player looks into in a glass
    *   table is its top, and a wall in the glass is the band along its foot
-   *   that `docs/physics-and-rendering.md` keeps off the table.
+   *   that `docs/physics-and-rendering.md` keeps off the table. Set aside
+   *   when there are [maps] as well ([variantOf]).
+   * @param maps the pictures a surface of the tray is drawn from, or null for
+   *   everything else — a die, and a table drawn in its colours alone.
+   * @param averaged whether [colour] is what the colour picture in [maps]
+   *   should average out to, rather than what multiplies it ([TableTint]).
    */
   data class Parameters(
     val colour: Colour,
@@ -318,6 +462,8 @@ object DiceMaterial {
     val clearCoat: Double = 0.0,
     val clearCoatRoughness: Double = DIE_COAT_ROUGHNESS,
     val reflection: Reflection? = null,
+    val maps: SurfaceMaps? = null,
+    val averaged: Boolean = false,
   ) {
     /** True when this surface samples an atlas rather than taking a flat colour. */
     val textured: Boolean get() = texturePath != null

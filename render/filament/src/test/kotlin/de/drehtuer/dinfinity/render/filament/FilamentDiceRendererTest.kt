@@ -14,6 +14,7 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
@@ -156,20 +157,35 @@ class FilamentDiceRendererTest {
   }
 
   @Test
-  fun `the tray takes the table's colours and the rim takes no texture`() {
+  fun `the tray takes the table's colours and pictures, and the rim takes the wall's`() {
     val felt =
       look.copy(
         floorTexturePath = "tables/felt.png",
         wallTexturePath = "tables/oak.png",
         floorColorArgb = 0xFF1F5E3A.toInt(),
+        packageId = "brass",
       )
 
     renderer.begin(spec(), geometry, felt)
 
     assertEquals(Colour.of(felt.floorColorArgb), stage.added[0].second.colour)
-    assertEquals("tables/felt.png", stage.added[0].second.texturePath)
-    assertEquals("tables/oak.png", stage.added[1].second.texturePath)
-    assertFalse("six millimetres of rim is not where anybody looks", stage.added[2].second.textured)
+    val (floor, wall) = stage.added.take(2).map { it.second.maps }
+    assertEquals("brass::tables/felt.png", floor?.albedo)
+    assertEquals("brass::tables/oak.png", wall?.albedo)
+    // The wall's colour only comes out right times the wall's picture, so a
+    // rim in the colour alone would be a band of something else.
+    assertEquals(stage.added[1].second, stage.added[2].second)
+  }
+
+  @Test
+  fun `a plain table is drawn exactly as it was, with no picture anywhere`() {
+    renderer.begin(spec(), geometry, look)
+
+    stage.added.take(TRAY_PARTS).forEach { (_, parameters) ->
+      assertNull(parameters.maps)
+      assertFalse(parameters.textured)
+      assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(parameters))
+    }
   }
 
   @Test
