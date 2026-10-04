@@ -2422,8 +2422,11 @@ same radius (decision 91):
 
 A hundred dice at the capacity limit are 20,000 triangles of d6 and at most
 105,000 of coins, where the GPU's 13.7 ms p99 at `100d6` was measured with
-1,200 ("Performance"). The rendered harness is to be re-run on the
-rounded dice before this reaches `main`.
+1,200 ("Performance"). Re-run on the rounded dice (Pixel 10a, 2026-10-04,
+`tools/harness.sh --rendered -n 20 -c 100 -s d6`, 3,864 frames): GPU p50 / p99
+6.5 / 14.8 ms against 6.2 / 13.7 ms, work p99 25.5 ms against 24.3 ms, 57.4 fps
+against 57.3 — about a millisecond of GPU at the capacity limit, and the frame
+budget still met.
 
 **What is printed stays where it was.** A face's texture coordinates are a
 function of where a point sits on its face's plane, and the flat part of a
