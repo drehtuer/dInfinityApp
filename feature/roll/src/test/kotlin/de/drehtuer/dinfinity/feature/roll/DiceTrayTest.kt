@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -49,6 +51,9 @@ class DiceTrayTest {
 
   /** Every tap the tray reported, as fractions across and down it and its shape. */
   private val tapped = mutableListOf<Triple<Double, Double, Double>>()
+
+  /** How many double taps the tray reported. */
+  private var doubled = 0
 
   /** Where the camera is — the caller's, exactly as [RollPresenter] holds it. */
   private val view = mutableStateOf(TrayView.Whole)
@@ -175,6 +180,103 @@ class DiceTrayTest {
     assertTrue("something that was not a tap picked a die: $tapped", tapped.isEmpty())
   }
 
+  @Test
+  fun `two taps in quick succession are a double tap and neither of them is a tap`() {
+    // The first half of a double tap must not pick a die and the second put
+    // it back (decision 83).
+    tray(doubleTaps = true)
+
+    compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput {
+      click(center)
+      advanceEventTime(viewConfiguration.doubleTapMinTimeMillis * 2)
+      click(center + Offset(DRAG_PX, DRAG_PX))
+    }
+    compose.mainClock.advanceTimeBy(PAST_A_DOUBLE_TAP)
+    compose.waitForIdle()
+
+    assertEquals(1, doubled)
+    assertTrue("half of a double tap picked a die: $tapped", tapped.isEmpty())
+  }
+
+  @Test
+  fun `with double taps listened for, a single tap is still a tap once the timeout has passed`() {
+    tray(doubleTaps = true)
+
+    compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput { click(Offset(width / 4f, height * 3 / 4f)) }
+    compose.mainClock.advanceTimeBy(PAST_A_DOUBLE_TAP)
+    compose.waitForIdle()
+
+    val (across, down, _) = tapped.single()
+    assertEquals(QUARTER, across, FRACTION)
+    assertEquals(THREE_QUARTERS, down, FRACTION)
+    assertEquals(0, doubled)
+  }
+
+  @Test
+  fun `a tap followed by a pinch is a tap and a pinch, not a double tap`() {
+    tray(from = TrayView(zoom = CLOSE_IN), doubleTaps = true)
+
+    compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput {
+      click(center)
+      advanceEventTime(viewConfiguration.doubleTapMinTimeMillis * 2)
+      down(0, center + Offset(-SPREAD_PX, 0f))
+      down(1, center + Offset(SPREAD_PX, 0f))
+      updatePointerBy(0, Offset(0f, -DRAG_PX))
+      updatePointerBy(1, Offset(0f, -DRAG_PX))
+      move()
+      up(0)
+      up(1)
+    }
+    compose.waitForIdle()
+
+    assertEquals(0, doubled)
+    assertEquals("the tap before the pinch was lost", 1, tapped.size)
+    assertTrue("the pinch after a tap did not move the camera", seen.isNotEmpty())
+  }
+
+  @Test
+  fun `the tray carries no action it is not handed`() {
+    tray()
+
+    assertTrue(
+      compose
+        .onNodeWithTag(RollTestTags.TRAY)
+        .fetchSemanticsNode()
+        .config
+        .getOrElse(SemanticsActions.CustomActions) { emptyList() }
+        .isEmpty(),
+    )
+  }
+
+  @Test
+  fun `and carries the ones it is handed`() {
+    var asked = 0
+    compose.setContent {
+      DiceTray(
+        driver = SilentTray(),
+        geometry = TableGeometry.referenceDevice(),
+        modifier = Modifier.requiredSize(WIDE.dp, HIGH.dp),
+        actions =
+          listOf(
+            CustomAccessibilityAction("Hide the controls") {
+              asked++
+              true
+            },
+          ),
+      )
+    }
+    val action =
+      compose
+        .onNodeWithTag(RollTestTags.TRAY)
+        .fetchSemanticsNode()
+        .config[SemanticsActions.CustomActions]
+        .single()
+    compose.runOnIdle { action.action() }
+
+    assertEquals("Hide the controls", action.label)
+    assertEquals(1, asked)
+  }
+
   /** Two fingers dragged [by] pixels down the screen; negative goes up. */
   private fun dragWithTwoFingers(by: Float = -DRAG_PX) {
     compose.onNodeWithTag(RollTestTags.TRAY).performTouchInput {
@@ -189,7 +291,10 @@ class DiceTrayTest {
   }
 
   /** A tray on screen, with the view hoisted the way the roll screen hoists it. */
-  private fun tray(from: TrayView = TrayView.Whole) {
+  private fun tray(
+    from: TrayView = TrayView.Whole,
+    doubleTaps: Boolean = false,
+  ) {
     view.value = from
     compose.setContent {
       DiceTray(
@@ -202,6 +307,7 @@ class DiceTrayTest {
           seen += it
         },
         onTap = { across, down, ratio -> tapped += Triple(across, down, ratio) },
+        onDoubleTap = if (doubleTaps) ({ doubled++ }) else null,
       )
     }
     compose.waitForIdle()
@@ -252,5 +358,8 @@ class DiceTrayTest {
     const val QUARTER = 0.25
     const val THREE_QUARTERS = 0.75
     const val FRACTION = 0.01
+
+    /** Twice the platform's double-tap timeout, which is what a lone tap waits out. */
+    val PAST_A_DOUBLE_TAP: Long = android.view.ViewConfiguration.getDoubleTapTimeout() * 2L
   }
 }

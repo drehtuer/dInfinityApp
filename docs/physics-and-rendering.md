@@ -458,7 +458,10 @@ the picture was drawn with, and `PickUp` says whether that die may go; the
 machine keeps the pick (`RollMachine.pick`). **A second tap on the same die
 puts it back** (`docs/architecture.md`, decision 76). A finger that wanders, a
 finger held down and any gesture a second finger joins are not taps: the last
-of those is the camera's. A tap on the bare floor, on a die no hand may go
+of those is the camera's. **A tap is a tap only once the double-tap timeout has
+passed without a second** — two taps in quick succession clear the controls off
+the table instead ("Clearing the table", decision 83) — so a pick shows about
+300 ms after the finger lifts, and the first half of a double tap never picks. A tap on the bare floor, on a die no hand may go
 near, or before the roll has a total does nothing.
 
 **Picking moves nothing.** The die stays exactly where it lies; what changes is
@@ -2333,8 +2336,8 @@ filled tag mixes the ramp's other two ends by (`docs/architecture.md`,
 
 | Plate | Where | What it carries |
 | --- | --- | --- |
-| Dice | top left, 14 / 12 dp in | the word, the count and a chevron; the picker row and the set chooser behind it |
-| Formula | top right, under the menu button | a tab: the word and a chevron, red when the formula does not read; the field and the squiggle slide in behind it |
+| Dice | top left, 14 / 12 dp in | the word, the count and a chevron; the picker row and the set chooser behind it — and, after a throw, the formula's tab too |
+| Formula | top right, under the menu button | a tab: the word and a chevron, red when the formula does not read; the field and the squiggle slide in behind it. Folded into the shut dice pull-down after a throw |
 | Ready | across the bottom | that a shake rolls, and what the throw is expected to come to |
 | Counting | across the bottom | how far through the reading a roll is, and the range it can still come out in |
 | Another throw earned | across the bottom | a chain that stopped, the shake it wants, and what is still to come |
@@ -2586,6 +2589,63 @@ project refuses (`.claude/CLAUDE.md`). A settled die moved by another die is
 physics. A settled die moved by code is a bug. When the stagger in time is built
 it stays inside the seed — the schedule is part of the throw, so a replay
 replays it — and it is still one world, so the capacity rule is unchanged.
+
+### Clearing the table
+
+Two asks from the Pixel 10a, both about seeing the dice
+(`docs/architecture.md`, decision 83).
+
+**A throw clears the top.** A shake that throws dice shuts whichever menu was
+open and folds the formula's tab into the shut dice pull-down: the tab slides
+out through the right-hand edge and the `Dice` head is the only control left
+along the top, so nothing there stands over the dice while they roll or after
+they land. The menu button stays where it is. Opening the pull-down brings the
+tab back beside it, and it stays out when the pull-down is shut again — until
+the next throw. Nothing else brings it back: a tab that slid in when a total
+landed would be one more thing moving over the dice the player is looking at.
+To TalkBack the folded head offers "Open the dice and the formula". A shake
+that throws nothing — a formula that does not read, or dice already in the air
+— leaves the top as it was, and the tab is where the mistake is marked.
+
+**A double tap clears the table.** Two taps anywhere on the tray take every
+pull-down, pull-up and edge tab off it — the column along the top slides out
+through the top edge, the result and the saved rolls through the bottom one —
+and the next double tap brings each back exactly as it was: the same menu open
+or shut, the same sheet up or parked, the top folded or not. What stays is what
+is not a slide: the plate that says what the roll is waiting for (dropped to
+the bottom edge, since there is nothing left to ride above), the toast that
+announces it, the rings round picked dice and the debug overlay. **A shake that
+throws gives the controls back**, with the top folded, because a result that
+arrived behind a cleared table would be a total nobody saw.
+
+**A double tap is never a pick.** One finger on a die picks it ("Picking a die
+up and throwing it again"), so the tray waits the platform's double-tap
+timeout (300 ms) before it calls a lone tap a tap. Picking at once and taking
+the pick back on the second tap would ring a die, announce it and un-ring it
+inside a third of a second. A tap followed straight away by a pinch is a tap
+and a pinch; where the second tap of a double tap lands does not matter.
+
+**TalkBack takes a double tap for itself**, so the tray carries one custom
+action, *Hide the controls* — *Show the controls* while they are hidden. It
+throws nothing (decision 66). Power-saving mode has no table to clear and
+takes no double tap.
+
+```mermaid
+stateDiagram-v2
+  [*] --> Out
+  Out --> Folded: a shake throws (menus shut)
+  Folded --> Out: the dice pull-down opened
+  Out --> Cleared: double tap
+  Folded --> ClearedFolded: double tap
+  Cleared --> Out: double tap
+  ClearedFolded --> Folded: double tap
+  Cleared --> Folded: a shake throws
+  ClearedFolded --> Folded: a shake throws
+```
+
+Which menu is open, whether the top is folded and whether the table is cleared
+are one value, `feature/roll`'s `Controls`, plain Kotlin under JVM tests; the
+gesture is `DiceTray`'s.
 
 ## Power-saving mode
 

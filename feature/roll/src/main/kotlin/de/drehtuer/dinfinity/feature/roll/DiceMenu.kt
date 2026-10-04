@@ -60,6 +60,12 @@ import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
  * is shut still says how many dice are in the throw. Nought prints nothing: a
  * badge reading zero is noise, which is the same rule the badge on a die
  * follows.
+ *
+ * **After a throw the formula is folded in here too** ([stowed]): the screen
+ * takes the formula's tab off the table and leaves this head as the one door
+ * along the top, and opening it brings both back (decision 83). The head is
+ * drawn the same; what a press does is said differently, because it does
+ * more.
  */
 @Composable
 internal fun DiceMenu(
@@ -73,6 +79,7 @@ internal fun DiceMenu(
   onRemove: (PickableDie) -> Unit,
   onChoose: (String) -> Unit,
   modifier: Modifier = Modifier,
+  stowed: Boolean = false,
 ) {
   // A menu with nothing behind it is a control that lies. It happens: a
   // catalogue with no sets in it is what a screen wired to nothing has.
@@ -84,7 +91,14 @@ internal fun DiceMenu(
     // Hugging, so the head is a tab at the top of the table rather than a
     // band across it. The panel under it fills, because a scrolling row of
     // dice wants every millimetre it can have.
-    Plate { DiceMenuHead(expanded = expanded, count = counts.values.sum(), onToggle = { onExpand(!expanded) }) }
+    Plate {
+      DiceMenuHead(
+        expanded = expanded,
+        count = counts.values.sum(),
+        stowed = stowed,
+        onToggle = { onExpand(!expanded) },
+      )
+    }
     if (expanded) {
       Plate(modifier = Modifier.fillMaxWidth()) {
         Column(verticalArrangement = Arrangement.spacedBy(Modernist.x2)) {
@@ -111,10 +125,18 @@ internal fun DiceMenu(
 private fun DiceMenuHead(
   expanded: Boolean,
   count: Int,
+  stowed: Boolean,
   onToggle: () -> Unit,
 ) {
   val name = stringResource(R.string.roll_dice_menu)
-  val act = stringResource(if (expanded) R.string.roll_dice_menu_close else R.string.roll_dice_menu_open)
+  val act =
+    stringResource(
+      when {
+        expanded -> R.string.roll_dice_menu_close
+        stowed -> R.string.roll_dice_menu_open_stowed
+        else -> R.string.roll_dice_menu_open
+      },
+    )
   val where = stringResource(if (expanded) R.string.roll_dice_menu_is_open else R.string.roll_dice_menu_is_shut)
   val ink = MaterialTheme.colorScheme.onBackground
   Row(

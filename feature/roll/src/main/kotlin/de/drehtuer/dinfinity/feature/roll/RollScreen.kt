@@ -1,5 +1,10 @@
 package de.drehtuer.dinfinity.feature.roll
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,6 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Rounding
@@ -119,16 +125,17 @@ fun RollScreen(
   // (`docs/architecture.md`, "Screens and the states behind them").
   LaunchedEffect(openWith) { if (openWith.isNotBlank()) presenter.type(openWith) }
 
-  // Which of the two menus along the top is open, if either. Remembered
-  // across a rotation, because a phone turned mid-formula should come back to
-  // the formula being typed rather than to the tray
-  // (`design/dInfinity.dc.html`, option 2a).
+  // Which of the two menus along the top is open, if either, whether a throw
+  // has folded the top away, and whether a double tap has cleared the table
+  // ([Controls], decision 83). Remembered across a rotation, because a phone
+  // turned mid-formula should come back to the formula being typed rather
+  // than to the tray (`design/dInfinity.dc.html`, option 2a).
   //
-  // **They are mutually exclusive on purpose.** Both hang off the top edge
-  // and both push what is under them down; two open at once is the whole top
-  // half of the table covered, which is the thing this layout exists to stop.
-  var editing by rememberSaveable { mutableStateOf(false) }
-  var picking by rememberSaveable { mutableStateOf(false) }
+  // **The two menus are mutually exclusive on purpose.** Both hang off the
+  // top edge and both push what is under them down; two open at once is the
+  // whole top half of the table covered, which is the thing this layout
+  // exists to stop.
+  var controls by rememberSaveable(stateSaver = Controls.SAVER) { mutableStateOf(Controls()) }
 
   val edges = rememberEdges(landed = presenter.state is RollState.Settled)
 
@@ -136,7 +143,8 @@ fun RollScreen(
   // it is drawn, and whether the shake is listened to (decision 74).
   val welcome = rememberWelcome(firstLaunch, onWelcomeSeen)
 
-  WhileTheScreenIsUp(presenter, listening = !welcome.up)
+  // A shake that throws gets the top out of the way of the dice it threw.
+  WhileTheScreenIsUp(presenter, listening = !welcome.up, onThrown = { controls = controls.thrown() })
 
   Box(
     modifier =
@@ -145,50 +153,63 @@ fun RollScreen(
         .background(MaterialTheme.colorScheme.background)
         .testTag(RollTestTags.SCREEN),
   ) {
-    TheTableOrANoticeThatThereIsNone(presenter)
+    TheTableOrANoticeThatThereIsNone(
+      presenter = presenter,
+      cleared = controls.hidden,
+      onClear = { controls = controls.toggled() },
+    )
 
     WhatTheRollIsDoing(
       presenter = presenter,
       modifier = Modifier.align(Alignment.BottomCenter),
-      lifted = edges.lifted,
+      // With the pull-ups cleared away there is nothing under the plate to
+      // ride above, and a plate left hanging at their height would be the
+      // one thing over the felt with nothing holding it there.
+      lifted = if (controls.hidden) 0f else edges.lifted,
     )
 
-    TheSavedRolls(
-      presenter = presenter,
-      strip = strip,
-      rest = edges.edge.saved,
-      onRest = { edges.edge = edges.edge.savedTo(it) },
-      onParked = { edges.savedParked = it },
-      lifted = edges.resultParked,
-      modifier = Modifier.align(Alignment.BottomCenter),
-    )
+    // **A double tap takes every pull-up, pull-down and tab off the table, and
+    // the next one brings them back as they were** (decision 83). They leave
+    // by the edge each of them lives on — the top's up, the bottom's down —
+    // so the way back is the way they went. What is held about them (which
+    // sheet is up, which menu is open) is the screen's and is not touched.
+    OffTheEdge(cleared = controls.hidden, modifier = Modifier.align(Alignment.BottomCenter)) {
+      TheSavedRolls(
+        presenter = presenter,
+        strip = strip,
+        rest = edges.edge.saved,
+        onRest = { edges.edge = edges.edge.savedTo(it) },
+        onParked = { edges.savedParked = it },
+        lifted = edges.resultParked,
+      )
+    }
 
-    AlongTheTop(
-      presenter = presenter,
-      menu = menu,
-      editing = editing,
-      // Opening one closes the other, in one place rather than in each
-      // control: a menu that had to remember to shut its neighbour is a menu
-      // that eventually forgets.
-      onEditing = { open -> editing = open.also { if (it) picking = false } },
-      picking = picking,
-      onPicking = { open -> picking = open.also { if (it) editing = false } },
-      onBackToDesigner = onBackToDesigner,
-      modifier = Modifier.align(Alignment.TopStart),
-    )
+    OffTheEdge(cleared = controls.hidden, modifier = Modifier.align(Alignment.TopStart), upwards = true) {
+      AlongTheTop(
+        presenter = presenter,
+        menu = menu,
+        // Opening one closes the other, in one place rather than in each
+        // control: a menu that had to remember to shut its neighbour is a
+        // menu that eventually forgets.
+        controls = controls,
+        onControls = { controls = it },
+        onBackToDesigner = onBackToDesigner,
+      )
+    }
 
     TheDebugOverlay(presenter = presenter, modifier = Modifier.align(Alignment.TopStart))
 
-    TheResult(
-      presenter = presenter,
-      onSeeTheOdds = onSeeTheOdds,
-      onSaveAsRoll = onSaveAsRoll,
-      onDoodle = onDoodle,
-      rest = edges.result,
-      onRest = { edges.edge = edges.edge.resultTo(it) },
-      onParked = { edges.resultParked = it },
-      modifier = Modifier.align(Alignment.BottomCenter),
-    )
+    OffTheEdge(cleared = controls.hidden, modifier = Modifier.align(Alignment.BottomCenter)) {
+      TheResult(
+        presenter = presenter,
+        onSeeTheOdds = onSeeTheOdds,
+        onSaveAsRoll = onSaveAsRoll,
+        onDoodle = onDoodle,
+        rest = edges.result,
+        onRest = { edges.edge = edges.edge.resultTo(it) },
+        onParked = { edges.resultParked = it },
+      )
+    }
 
     // And, when the roll is waiting on a hand, a line of words that says so
     // and goes away again. The plate behind it says the same thing and stays,
@@ -197,6 +218,29 @@ fun RollScreen(
     WaitingForAShake(presenter.state, modifier = Modifier.align(Alignment.BottomCenter))
 
     if (welcome.up) FirstLaunch(presenter, whatIsThere, welcome::pressPast, onImportCollection, onAddSets)
+  }
+}
+
+/**
+ * What a double tap takes off the table and the next puts back (decision 83):
+ * [content] slides out through the bottom edge, or the top one when
+ * [upwards], and comes back the way it went.
+ */
+@Composable
+private fun OffTheEdge(
+  cleared: Boolean,
+  modifier: Modifier = Modifier,
+  upwards: Boolean = false,
+  content: @Composable () -> Unit,
+) {
+  val away = { height: Int -> if (upwards) -height else height }
+  AnimatedVisibility(
+    visible = !cleared,
+    enter = slideInVertically(initialOffsetY = away),
+    exit = slideOutVertically(targetOffsetY = away),
+    modifier = modifier,
+  ) {
+    content()
   }
 }
 
@@ -224,8 +268,9 @@ fun RollScreen(
 private fun WhileTheScreenIsUp(
   presenter: RollPresenter,
   listening: Boolean,
+  onThrown: () -> Unit,
 ) {
-  ShakeToRoll(presenter, listening = listening)
+  ShakeToRoll(presenter, listening = listening, onThrown = onThrown)
   KeepTheScreenAwake()
   LockTheOrientation()
   DisposableEffect(presenter.tray) {
@@ -627,15 +672,18 @@ private fun TheSavedRolls(
  * The column fills the width but draws nothing of its own, so the felt
  * between the plates is still felt and still takes a pinch
  * (`docs/physics-and-rendering.md`, "What is drawn over the table").
+ *
+ * **After a throw the formula's tab is folded into the shut dice pull-down**
+ * ([Controls.stowed], decision 83): the tab slides out through the edge it
+ * lives on and the `Dice` head is the one door left, until the player opens
+ * it and the tab comes back beside it.
  */
 @Composable
 private fun AlongTheTop(
   presenter: RollPresenter,
   menu: @Composable () -> Unit,
-  editing: Boolean,
-  onEditing: (Boolean) -> Unit,
-  picking: Boolean,
-  onPicking: (Boolean) -> Unit,
+  controls: Controls,
+  onControls: (Controls) -> Unit,
   onBackToDesigner: (() -> Unit)?,
   modifier: Modifier = Modifier,
 ) {
@@ -658,8 +706,9 @@ private fun AlongTheTop(
           counts = presenter.counts,
           sets = presenter.choosableSets,
           pickingFrom = presenter.pickingFrom,
-          expanded = picking,
-          onExpand = onPicking,
+          expanded = controls.picking,
+          onExpand = { onControls(controls.picking(it)) },
+          stowed = controls.stowed,
           onAdd = presenter::add,
           onRemove = presenter::remove,
           onChoose = presenter::pickFrom,
@@ -679,20 +728,27 @@ private fun AlongTheTop(
     // with a formula is said inside, under the squiggle, because that is
     // where it can be acted on ([FormulaDrawer]).
     val state = presenter.state
-    FormulaDrawer(
-      text = presenter.text,
-      onChange = presenter::type,
-      open = editing,
-      onOpen = onEditing,
-      error = (state as? RollState.Invalid)?.error,
-      // A throw the table cannot hold is a formula that reads perfectly well,
-      // so the tab marks that too — the words for it are the outcome plate's.
-      wrong = state is RollState.Invalid || state is RollState.TooMany,
-      // The keyboard's key puts the editor away and does nothing else. A
-      // shake is the only thing that throws (`docs/architecture.md`,
-      // decision 66), so finishing a formula is finishing a formula.
-      onDone = { onEditing(false) },
-    )
+    AnimatedVisibility(
+      visible = controls.formulaOut,
+      enter = slideInHorizontally { it },
+      exit = slideOutHorizontally { it },
+    ) {
+      FormulaDrawer(
+        text = presenter.text,
+        onChange = presenter::type,
+        open = controls.editing,
+        onOpen = { onControls(controls.editing(it)) },
+        error = (state as? RollState.Invalid)?.error,
+        // A throw the table cannot hold is a formula that reads perfectly
+        // well, so the tab marks that too — the words for it are the outcome
+        // plate's.
+        wrong = state is RollState.Invalid || state is RollState.TooMany,
+        // The keyboard's key puts the editor away and does nothing else. A
+        // shake is the only thing that throws (`docs/architecture.md`,
+        // decision 66), so finishing a formula is finishing a formula.
+        onDone = { onControls(controls.editing(false)) },
+      )
+    }
 
     // Last in the column, so it sits between the formula it explains and the
     // tray it is about. It is the bottom of the chrome rather than the top
@@ -711,17 +767,32 @@ private fun AlongTheTop(
  * of it exists (`docs/architecture.md`, decision 38). Something has to say so,
  * because an empty screen with a total arriving on it is what a broken
  * renderer looks like ([PowerSavingPanel]).
+ *
+ * @param cleared whether a double tap has taken the controls off the table
+ *   (decision 83), which decides what the tray's accessibility action says.
+ * @param onClear the double tap, and the action that stands in for it.
  */
 @Composable
-private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
+private fun TheTableOrANoticeThatThereIsNone(
+  presenter: RollPresenter,
+  cleared: Boolean,
+  onClear: () -> Unit,
+) {
   // Neither the table nor the panel throws anything when touched, and
   // neither carries an accessibility action that would: a shake is the only
-  // way to start a roll (`docs/architecture.md`, decision 66).
+  // way to start a roll (`docs/architecture.md`, decision 66). The one
+  // action the table has clears it, which a screen reader cannot do with two
+  // taps of its own.
+  //
+  // The panel takes no double tap: with the pictures off there is no table
+  // to clear the view of.
   if (!presenter.draws) {
     PowerSavingPanel()
     return
   }
   var aspectRatio by remember { mutableFloatStateOf(0f) }
+  val clearing =
+    stringResource(if (cleared) R.string.roll_tray_show_controls else R.string.roll_tray_hide_controls)
   Box(
     modifier =
       Modifier.fillMaxSize().onSizeChanged { size ->
@@ -746,6 +817,17 @@ private fun TheTableOrANoticeThatThereIsNone(presenter: RollPresenter) {
       // One finger on a die picks it up for the next shake, or puts it back
       // (decisions 68 and 76). It never throws anything.
       onTap = { across, down, ratio -> presenter.touch(across, down, ratio) },
+      // Two taps clear every control off the table, and two more bring them
+      // back (decision 83). A tap waits for the double-tap timeout because of
+      // this, so the first half of a double tap never picks a die.
+      onDoubleTap = onClear,
+      actions =
+        listOf(
+          CustomAccessibilityAction(clearing) {
+            onClear()
+            true
+          },
+        ),
     )
     // Over the picture and under everything else, and deaf to touch: the
     // finger that puts a die back goes through to the tray.

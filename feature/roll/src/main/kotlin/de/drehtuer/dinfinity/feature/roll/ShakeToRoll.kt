@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -42,14 +43,19 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
  *   heard and thrown behind a screen nobody can see through
  *   (`docs/architecture.md`, decision 74). Turning it back on registers the
  *   hand there and then, so the first shake after the welcome is a throw.
+ * @param onThrown a shake that threw dice, told to the screen so it can get
+ *   its controls off the table (decision 83). Not called for a shake that
+ *   threw nothing — a formula that does not read, or dice already in the air.
  */
 @Composable
 internal fun ShakeToRoll(
   presenter: RollPresenter,
   listening: Boolean = true,
+  onThrown: () -> Unit = {},
 ) {
   val context = LocalContext.current
   var shaking by remember { mutableStateOf(false) }
+  val thrown by rememberUpdatedState(onThrown)
 
   // A hand around a phone that is being shaken is a hand on both edges of it.
   HoldTheEdges(shaking)
@@ -67,7 +73,7 @@ internal fun ShakeToRoll(
             // answers is whether it did — and a shake at dice still in the air
             // did not, which is what keeps its moments on their clock.
             shaking = true
-            presenter.roll()
+            presenter.roll().also { threw -> if (threw) thrown() }
           },
           onEnded = { shaking = false },
           onSample = presenter::shaking,

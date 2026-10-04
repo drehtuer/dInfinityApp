@@ -12,14 +12,17 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEvent
-import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
@@ -69,6 +72,15 @@ import kotlinx.coroutines.awaitCancellation
  *   and down it, and lifted again without moving; the third number is the
  *   tray's width over its height. That is a finger on a die, and what it does
  *   is the caller's ([RollPresenter.touch]).
+ * @param onDoubleTap two taps in quick succession, anywhere on the tray — the
+ *   roll screen clears its controls off the table with it, and puts them back
+ *   with the next (decision 83). Null when nothing wants one, and then a tap
+ *   is reported the moment the finger lifts; given, a tap waits out the
+ *   double-tap timeout first, so that the first half of a double tap never
+ *   picks a die.
+ * @param actions what a screen reader may do to the tray instead of the
+ *   gestures it cannot make — clearing the table is one; throwing never is
+ *   (`docs/architecture.md`, decision 66).
  */
 @Composable
 fun DiceTray(
@@ -80,6 +92,8 @@ fun DiceTray(
   onLook: (TrayView) -> Unit = {},
   announcing: Boolean = false,
   onTap: (acrossFraction: Double, downFraction: Double, aspectRatio: Double) -> Unit = { _, _, _ -> },
+  onDoubleTap: (() -> Unit)? = null,
+  actions: List<CustomAccessibilityAction> = emptyList(),
 ) {
   val lifecycle = LocalLifecycleOwner.current.lifecycle
 
@@ -91,6 +105,7 @@ fun DiceTray(
   val looking = rememberUpdatedState(view)
   val told = rememberUpdatedState(onLook)
   val tapped = rememberUpdatedState(onTap)
+  val doubled = rememberUpdatedState(onDoubleTap)
 
   // Keyed on the driver so that a new one gets a surface of its own. `onSurface`
   // fires when the surface is *created*, not when this composable's arguments
@@ -106,7 +121,8 @@ fun DiceTray(
           .semantics {
             contentDescription = describing
             if (announcing) liveRegion = LiveRegionMode.Polite
-          }.lookAround(geometry, looking, told, tapped),
+            if (actions.isNotEmpty()) customActions = actions
+          }.lookAround(geometry, Fingers(looking, told, tapped, doubled)),
     ) {
       onSurface { surface, width, height ->
         // The size as it stands, because the stage is handed over again every
@@ -203,43 +219,98 @@ fun DiceTray(
  * **One finger picks a die up**, and a tap on the tray still does not roll
  * (`docs/architecture.md`, decisions 66, 68 and 76). A finger that comes down,
  * stays within the touch slop and lifts again before a long press would have
- * fired is a tap, reported as fractions of the tray ([onTap]); which die it is
- * on is `TrayPick`'s, whether that die may be picked is `PickUp`'s, and the
- * shake is what throws it. A finger that wandered, one held down, and any
- * gesture a second finger joined are not taps — the last of those is the
+ * fired is a tap, reported as fractions of the tray ([Fingers.onTap]); which
+ * die it is on is `TrayPick`'s, whether that die may be picked is `PickUp`'s,
+ * and the shake is what throws it. A finger that wandered, one held down, and
+ * any gesture a second finger joined are not taps — the last of those is the
  * camera's.
+ *
+ * **Two taps inside the double-tap timeout are a double tap**, and neither of
+ * them is reported as a tap ([Fingers.onDoubleTap], decision 83). Where the
+ * second lands does not matter: the gesture is "the table, please", not a
+ * finger on anything in particular.
  */
 private fun Modifier.lookAround(
   geometry: TableGeometry,
-  view: State<TrayView>,
-  onLook: State<(TrayView) -> Unit>,
-  onTap: State<(Double, Double, Double) -> Unit>,
+  fingers: Fingers,
 ): Modifier =
   this.pointerInput(geometry) {
     awaitEachGesture {
       // Not `requireUnconsumed`: a first finger somebody else is already
       // handling is still the first finger of a two-finger gesture.
       val first = awaitFirstDown(requireUnconsumed = false)
-      val tap = OneFingerTap(first.position, first.uptimeMillis, viewConfiguration)
-      var wereDown = 1
-      var down: Int
-      do {
-        val event = awaitPointerEvent()
-        down = event.changes.count { it.pressed }
-        tap.saw(event, down)
-        if (down >= 2 && wereDown >= 2) {
-          moveTheCamera(event, geometry, view.value, onLook.value)
-          event.changes.forEach { if (it.positionChanged()) it.consume() }
+      if (!followed(first, geometry, fingers)) return@awaitEachGesture
+      val doubled = fingers.onDoubleTap.value
+      if (doubled == null) {
+        tapAt(first, fingers)
+        return@awaitEachGesture
+      }
+      // **A tap waits to see whether it is half of a double tap** (decision
+      // 83). Picking at once and taking the pick back when a second tap came
+      // would ring a die, announce it and un-ring it inside a third of a
+      // second; waiting the system's own double-tap timeout is what every
+      // Android view that tells the two apart does, and it costs a pick that
+      // much delay and nothing else.
+      val second =
+        withTimeoutOrNull(viewConfiguration.doubleTapTimeoutMillis) {
+          awaitFirstDown(requireUnconsumed = false)
         }
-        wereDown = down
-      } while (down > 0)
-      val width = size.width.toDouble()
-      val height = size.height.toDouble()
-      if (tap.landed && width > 0.0 && height > 0.0) {
-        onTap.value(first.position.x / width, first.position.y / height, width / height)
+      when {
+        second == null -> tapAt(first, fingers)
+        // The second gesture is followed exactly like the first, so a pinch
+        // that starts straight after a tap is still a pinch.
+        followed(second, geometry, fingers) -> doubled()
+        // A tap followed by something that was not one: the tap stands.
+        else -> tapAt(first, fingers)
       }
     }
   }
+
+/**
+ * What the tray's fingers report to, each read when a gesture ends rather
+ * than captured when it began (the reason is [DiceTray]'s, at
+ * `rememberUpdatedState`).
+ */
+private class Fingers(
+  val view: State<TrayView>,
+  val onLook: State<(TrayView) -> Unit>,
+  val onTap: State<(Double, Double, Double) -> Unit>,
+  val onDoubleTap: State<(() -> Unit)?>,
+)
+
+/**
+ * One gesture, from the finger that started it until the last one lifts:
+ * the camera moved by two fingers, and whether it was a tap.
+ */
+private suspend fun AwaitPointerEventScope.followed(
+  first: PointerInputChange,
+  geometry: TableGeometry,
+  fingers: Fingers,
+): Boolean {
+  val tap = OneFingerTap(first.position, first.uptimeMillis, viewConfiguration)
+  var wereDown = 1
+  var down: Int
+  do {
+    val event = awaitPointerEvent()
+    down = event.changes.count { it.pressed }
+    tap.saw(event, down)
+    if (down >= 2 && wereDown >= 2) moveTheCamera(event, geometry, fingers.view.value, fingers.onLook.value)
+    wereDown = down
+  } while (down > 0)
+  return tap.landed
+}
+
+/** A tap at where [first] came down, as fractions of the tray and its shape. */
+private fun AwaitPointerEventScope.tapAt(
+  first: PointerInputChange,
+  fingers: Fingers,
+) {
+  val width = size.width.toDouble()
+  val height = size.height.toDouble()
+  if (width > 0.0 && height > 0.0) {
+    fingers.onTap.value(first.position.x / width, first.position.y / height, width / height)
+  }
+}
 
 /**
  * Whether one gesture on the tray is a tap: one finger, kept within the touch
@@ -282,12 +353,14 @@ private class OneFingerTap(
  * table, what a pinch does about the point it is pinched at — belongs to
  * [TrayView] and is tested there on a JVM rather than here on a phone.
  */
-private fun PointerInputScope.moveTheCamera(
+private fun AwaitPointerEventScope.moveTheCamera(
   event: PointerEvent,
   geometry: TableGeometry,
   from: TrayView,
   onLook: (TrayView) -> Unit,
 ) {
+  // Taken, so nothing under the tray reads two fingers as anything else.
+  event.changes.forEach { if (it.positionChanged()) it.consume() }
   val width = size.width.toFloat()
   val height = size.height.toFloat()
   if (width <= 0f || height <= 0f) return

@@ -123,8 +123,10 @@ What the app does now, and what the prototype still draws
 | The expected range | on the ready plate, on the two waiting plates, and in the result sheet's **grip** | not drawn at all |
 | The tray's own shadow | none: the wall and the rim cast nothing, the dice cast | the fake bezel, `trayBorder: 6px solid {{ tbl.wall }}` |
 | `See the odds`, `Save as roll` | at the foot of the result sheet | already at the foot of the result sheet, as `Graph` and `Save` — **the app has caught up here**, and only the wording differs |
+| After a throw | the formula's tab folds into the shut `Dice` pull-down until it is opened (decision 83) | nothing changes along the top |
+| A double tap on the felt | every pull-down, pull-up and tab slides off the table, and the next double tap brings them back (decision 83) | no gesture on the table |
 
-Six questions for the next pass over the prototype:
+Seven questions for the next pass over the prototype:
 
 1. **Is a pull-down right for the dice at all?** The design's strip is always
    out; the device session asked for it to be put away. The count on the head
@@ -157,6 +159,12 @@ Six questions for the next pass over the prototype:
    be right — it is the state where the felt is all there is — but it is a
    deliberate silence rather than an oversight, and the next pass should
    confirm it.
+7. **A table with nothing over it.** After a throw the app folds the
+   formula's tab into the shut `Dice` head, and a double tap clears every
+   control off the felt (decision 83). Nothing in the prototype says a
+   control can be cleared by a gesture, and nothing on a cleared table says
+   how to get the controls back; whether it should — a faint hint the first
+   time, say — is a drawing to make.
 
 ### One that has been closed
 
