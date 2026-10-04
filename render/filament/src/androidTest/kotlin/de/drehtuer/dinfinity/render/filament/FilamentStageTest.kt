@@ -320,6 +320,19 @@ class FilamentStageTest {
   }
 
   @Test
+  fun bothDiceMaterialsSpreadAGlintThinnerThanAPixel() {
+    // A rounded edge's lacquer glint drew as a broken white line on resin
+    // dice; the compiled packets have to carry the specular anti-aliasing
+    // that spreads it (`DiceMaterial.SPECULAR_AA_VARIANCE`).
+    FilamentEngine(materials = MaterialCache.NONE).use { filament ->
+      listOf(filament.material, filament.resinMaterial).forEach { material ->
+        assertEquals(DiceMaterial.SPECULAR_AA_VARIANCE, material.specularAntiAliasingVariance, 1e-6f)
+        assertEquals(DiceMaterial.SPECULAR_AA_THRESHOLD, material.specularAntiAliasingThreshold, 1e-6f)
+      }
+    }
+  }
+
+  @Test
   fun aMaterialKeptOnDiskDrawsOnTheNextLaunch() {
     // The second engine reads both materials back instead of compiling them
     // (`MaterialCache`); the packet has to be one this driver accepts.

@@ -16,6 +16,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.acos
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.sign
 import kotlin.math.sin
@@ -329,6 +330,38 @@ class RoundedEdgesTest {
   }
 
   @Test
+  fun `a rounded edge samples no ink, so a light line along it is not a number`() {
+    // Light dashed lines along the edges of white-numbered resin dice looked
+    // like ink picked up by the bends. They are not: sampled the way the GPU
+    // samples it — bilinear, clamped — anywhere on any triangle of any bend,
+    // the printed field stays short of the half that is the edge of a numeral.
+    // The worst is a d10's 0.09 and a d18's 0.30; a d12's and a d20's are
+    // nought. The d4 is the one exception, by design: its numbers spill onto
+    // the start of the bend ([SPILL]) and are painted on round it. (The lines
+    // were the lacquer's glint, thinner than a pixel — `DiceMaterial`'s
+    // specular anti-aliasing.)
+    DieShape.entries.filter { it != DieShape.Tetrahedron }.forEach { shape ->
+      val die = standard(shape)
+      val mesh = rounded(shape)
+      val field = DieNumbers.fieldOf(die, mesh) ?: return@forEach
+      val worst =
+        curvesOf(mesh).filter { it.uvs.isNotEmpty() }.maxOf { curve ->
+          curve.triangles.chunked(TRIANGLE).maxOf { (a, b, c) ->
+            barycentric().maxOf { (s, t) ->
+              val w = 1 - s - t
+              sample(
+                field,
+                curve.uvs[a].u * w + curve.uvs[b].u * s + curve.uvs[c].u * t,
+                curve.uvs[a].v * w + curve.uvs[b].v * s + curve.uvs[c].v * t,
+              )
+            }
+          }
+        }
+      assertTrue("${shape.id}'s rounded edges sample ink: $worst", worst < HALF)
+    }
+  }
+
+  @Test
   fun `a rounded mesh is worked out once per shape and radius`() {
     assertSame(rounded(DieShape.Icosahedron), rounded(DieShape.Icosahedron))
     assertSame(DieMesh.of(DieShape.Icosahedron), DieMesh.of(DieShape.Icosahedron, 0.0))
@@ -473,6 +506,37 @@ class RoundedEdgesTest {
     )
   }
 
+  /** Points spread over a triangle, as the weights of its second and third corners. */
+  private fun barycentric(): List<Pair<Double, Double>> =
+    (0..SAMPLES).flatMap { s -> (0..SAMPLES - s).map { t -> s.toDouble() / SAMPLES to t.toDouble() / SAMPLES } }
+
+  /**
+   * [field] at `(u, v)` as a `LINEAR`, `CLAMP_TO_EDGE` sampler reads it:
+   * nought for none of the ink, one for the middle of a stroke.
+   */
+  private fun sample(
+    field: NumberField,
+    u: Double,
+    v: Double,
+  ): Double {
+    val x = u * field.width - HALF
+    val y = v * field.height - HALF
+    val left = floor(x).toInt()
+    val top = floor(y).toInt()
+    val across = x - left
+    val down = y - top
+
+    fun at(
+      column: Int,
+      row: Int,
+    ): Double {
+      val byte = field.pixels[row.coerceIn(0, field.height - 1) * field.width + column.coerceIn(0, field.width - 1)]
+      return (byte.toInt() and BYTE) / BYTE.toDouble()
+    }
+    return at(left, top) * (1 - across) * (1 - down) + at(left + 1, top) * across * (1 - down) +
+      at(left, top + 1) * (1 - across) * down + at(left + 1, top + 1) * across * down
+  }
+
   /** Whether [point], on the plane of [polygon], is inside it. */
   private fun inside(
     polygon: List<Vector3>,
@@ -542,6 +606,10 @@ class RoundedEdgesTest {
 
     /** How far, in cells, a d4's number reaches past the flat onto the bend: 0.0125, measured. */
     const val SPILL = 0.013
+
+    /** Steps along each side of a bend's triangle the printed field is sampled at. */
+    const val SAMPLES = 16
+    const val BYTE = 0xFF
 
     /** A corner whose third face sits nearly on the line between the other two. */
     const val STEEP = 5.0

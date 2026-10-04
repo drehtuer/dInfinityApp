@@ -11,8 +11,9 @@ import java.security.MessageDigest
  * Compiling the material on the device (`docs/architecture.md`, decision 46)
  * took the Pixel 10a about eight seconds of a black tray on *every* cold start:
  * nine-tenths of the CPU in those seconds was `libfilamat`. The packet it
- * produces depends only on the material source, which variant it is and the
- * backend it was compiled for — so it is compiled once and read back after.
+ * produces depends only on the material source and the builder settings that
+ * are not in it (`DiceMaterial.Variant.fingerprint`), which variant it is and
+ * the backend it was compiled for — so it is compiled once and read back after.
  *
  * Meant to live in the app's `codeCacheDir`, which Android empties whenever
  * the app is updated: a new APK may carry a new Filament, whose packets the

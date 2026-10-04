@@ -394,7 +394,7 @@ class FilamentEngine(
       variant: DiceMaterial.Variant,
     ): Material {
       val target = targetOf(engine.backend)
-      val key = MaterialCache.keyOf(variant.source, backend = target.name, variant = variant.key)
+      val key = MaterialCache.keyOf(variant.fingerprint, backend = target.name, variant = variant.key)
       val packet = materials.packet(key) { compileMaterial(target, variant) }
       return Material.Builder().payload(packet, packet.remaining()).build(engine)
     }
@@ -442,6 +442,13 @@ class FilamentEngine(
             .blending(MaterialBuilder.BlendingMode.OPAQUE)
             .apply { if (variant == DiceMaterial.Variant.RESIN) resin() }
             .apply { if (variant == DiceMaterial.Variant.GLASS) glass() }
+            // A rounded edge's glint is thinner than a pixel, and without this
+            // it is drawn as a broken white line along the edge rather than
+            // spread over the bend ([DiceMaterial.SPECULAR_AA_VARIANCE]). A
+            // flat surface's normal does not change, so nothing flat moves.
+            .specularAntiAliasing(true)
+            .specularAntiAliasingVariance(DiceMaterial.SPECULAR_AA_VARIANCE)
+            .specularAntiAliasingThreshold(DiceMaterial.SPECULAR_AA_THRESHOLD)
             // **Off, and the numbers are upside down without it.**
             //
             // `MaterialBuilder` defaults this to true, which makes `getUV0()`

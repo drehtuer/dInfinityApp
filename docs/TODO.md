@@ -364,9 +364,11 @@ keeps them comparable.
       room (decision 89), refracting resin for translucent dice (90 — do the
       milky and glassy ends need `Resin`'s constants turned, and are the full
       shadows of clear dice acceptable), rounded edges drawn with the
-      solver's own convex radius (91), the dice reflected faintly in the dark
-      glass (93 — is the reflection soft and dim enough, and does it look
-      right that the walls are not reflected); next, felt and oak textures. Judged with `tools/gallery.sh` before and
+      solver's own convex radius (91 — does the bend's glint, now spread by
+      specular anti-aliasing, read as a soft highlight), the dice reflected
+      faintly in the dark glass (93 — is the reflection soft and dim enough,
+      and does it look right that the walls are not reflected); next, felt and
+      oak textures. Judged with `tools/gallery.sh` before and
       after each step, and merged to `main` once the owner likes it on the
       phone
 

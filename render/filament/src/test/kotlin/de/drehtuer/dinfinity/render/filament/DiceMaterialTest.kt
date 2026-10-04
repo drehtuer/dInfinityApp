@@ -164,6 +164,27 @@ class DiceMaterialTest {
   }
 
   @Test
+  fun `a variant's cache key covers the builder settings that are not in its source`() {
+    // A packet compiled before specular anti-aliasing was switched on must
+    // miss the cache, not be read back without it.
+    DiceMaterial.Variant.entries.forEach { variant ->
+      assertTrue(variant.fingerprint.startsWith(variant.source))
+      assertTrue(variant.fingerprint.contains("${DiceMaterial.SPECULAR_AA_VARIANCE}"))
+      assertTrue(variant.fingerprint.contains("${DiceMaterial.SPECULAR_AA_THRESHOLD}"))
+      assertNotEquals(
+        MaterialCache.keyOf(variant.source, backend = "OPENGL", variant = variant.key),
+        MaterialCache.keyOf(variant.fingerprint, backend = "OPENGL", variant = variant.key),
+      )
+    }
+  }
+
+  @Test
+  fun `a rounded edge's glint is spread by Filament's own default amount`() {
+    assertEquals(0.15f, DiceMaterial.SPECULAR_AA_VARIANCE)
+    assertEquals(0.2f, DiceMaterial.SPECULAR_AA_THRESHOLD)
+  }
+
+  @Test
   fun `resin is bent like acrylic and as thick as most of the die`() {
     val resin = Resin.of(DieMaterial(translucency = 0.6, sizeMm = 20.0), scale = 0.5)!!
     assertEquals(Resin.IOR, resin.ior, TOLERANCE)

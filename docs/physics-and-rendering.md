@@ -2618,6 +2618,27 @@ the flat with room to spare except the d4's, which `LabelRoom.cornered` sets
 hard against its edges: their tips reach 0.19 mm onto the start of the bend
 on a 16 mm die, where they are painted, not cut off.
 
+**A bend's glint is spread over the pixels the bend covers.** The first
+gallery of rounded resin dice showed thin, broken white lines along some edges
+— beside the `9.` of a d12, between the `7` and the `6.` of a d10. They looked
+like white ink picked up by the bends, and are not: sampled as the GPU samples
+it, the printed field on every bend of every shape stays below the half that
+is a numeral's edge (worst 0.09 on a d10, 0.30 on a d18, nought on a d12 and a
+d20; `RoundedEdgesTest`), and a bone die with *black* numbers showed a *light*
+line on the same edge. They were the lacquer's glint. A bend turns the normal
+through up to 90° in under 0.8 mm — two to four pixels of a gallery frame —
+and a coat of roughness 0.12 reflects a light from only a few of those
+degrees, so the glint is thinner than a pixel and each pixel either lands on
+it or misses it: a dashed line, nearly white against a dark resin body. Both
+dice materials are compiled with Filament's *geometric specular
+anti-aliasing* (`DiceMaterial.SPECULAR_AA_VARIANCE`, Filament's defaults),
+which raises the roughness — of the body and of the lacquer — by how fast the
+normal changes between neighbouring pixels. On a bend that spreads the glint
+into a soft, unbroken highlight; a flat face's normal does not change, so the
+faces, their numbers and the tray are drawn exactly as before. The settings
+are part of the material cache's key (`DiceMaterial.Variant.fingerprint`), so a
+packet compiled without them is not read back.
+
 **It can be turned off**: `DieMesh.of(shape, rounding = 0.0)` is the sharp
 mesh, surface for surface, and `DieMesh.of(die, scale)` is the rounded one
 the tray draws. Nothing of the physics reads any of this — the hull, the

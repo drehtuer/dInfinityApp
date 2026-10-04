@@ -32,7 +32,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   disk), translucent dice as refracting resin (90) and rounded edges drawn
   with the solver's own convex radius (91), all passing on the Pixel 10a.
   The dark glass reflects the dice faintly, by a small second picture of
-  them from under the floor (93). Felt and oak textures are being built. It reaches `main` when the owner likes it on the phone.
+  them from under the floor (93). The broken light lines along resin dice's
+  rounded edges were the lacquer's glint, thinner than a pixel; specular
+  anti-aliasing spreads it now. Felt and oak textures are being built. It
+  reaches `main` when the owner likes it on the phone.
 
 ## Done
 

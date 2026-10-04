@@ -189,7 +189,42 @@ object DiceMaterial {
 
     /** The floor of a table glossy enough to show the dice ([Reflection]). */
     GLASS(GLASS_SOURCE, "glass"),
+    ;
+
+    /**
+     * Everything the compiled packet depends on that this app chooses: the
+     * [source], and the builder settings that are not in it — today the
+     * specular anti-aliasing ([SPECULAR_AA_VARIANCE],
+     * [SPECULAR_AA_THRESHOLD]). A packet kept on disk is found by this
+     * ([MaterialCache.keyOf]), so changing a setting misses the cache rather
+     * than reading back a packet compiled without it.
+     */
+    val fingerprint: String
+      get() = "$source\n// specularAntiAliasing $SPECULAR_AA_VARIANCE $SPECULAR_AA_THRESHOLD"
   }
+
+  /**
+   * How hard Filament's *geometric specular anti-aliasing* widens a highlight
+   * where the surface's normal turns fast across a pixel
+   * (`docs/physics-and-rendering.md`, "Rounded edges").
+   *
+   * A rounded edge turns a die's normal through up to ninety degrees in under
+   * a millimetre — two to four pixels of a gallery frame — and the lacquer
+   * ([DIE_COAT_ROUGHNESS]) reflects a light or the room's window from only a
+   * few of those degrees. The glint is then thinner than a pixel, and a pixel
+   * either lands on it or misses it: a broken white line along the edge,
+   * brightest on a dark resin body. Filament's answer raises the roughness by
+   * how much the normal changes between neighbouring pixels, so the glint is
+   * spread over the pixels the bend really covers. A flat face's normal does
+   * not change at all, so a face, its number and the felt are untouched.
+   *
+   * Filament's own defaults, stated so that the cache key and the device test
+   * can name them.
+   */
+  const val SPECULAR_AA_VARIANCE: Float = 0.15f
+
+  /** The most [SPECULAR_AA_VARIANCE] may add to a roughness squared, Filament's default. */
+  const val SPECULAR_AA_THRESHOLD: Float = 0.2f
 
   /** Which of the [Variant]s [parameters] are drawn with. */
   fun variantOf(parameters: Parameters): Variant =
