@@ -236,8 +236,15 @@ while standing on another, p99 step at most 1.23 ms (60 dice) against 8.33.
       zero
 - [ ] **Decide what a tilted phone means** (deferred): gravity always straight
       down; anchored to `TYPE_GRAVITY`; or a clamped tilt
-- [ ] **A shake along the long axis drives the dice into one end.** Right (it is
-      what a hand does) or to be shaped? A 5.6 question
+- [ ] *With a hand:* **do the dice still gather at the top of the screen?**
+      The wrist's swing pushed them there whichever way the phone was shaken;
+      it is taken out now (decision 87), and off the phone a swung shake went
+      from 45–55 % of the dice in the top third to 33–36 %. Shake ten `10d6`
+      each way — left and right, up and down, back and forth — and watch where
+      they stop: no end should win. If the bottom wins instead, the estimate is
+      too eager (`SwingCorrection.DAMPING`). A shake that only *carries* the
+      phone along the long axis was never biased off the phone; whether a
+      heap at the end it last moved towards is right is still a 5.6 question
 - [ ] *With a hand:* shake vertical and upside down for real. `ExtremeInputTest`
       covers what a machine can drive
 - [ ] Decided, left alone: `MIN_SCALE` would not refuse before **241 dice**,
