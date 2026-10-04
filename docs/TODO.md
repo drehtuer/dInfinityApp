@@ -268,17 +268,20 @@ keeps them comparable.
       app asking, rather than as the roll hanging? Is the plate, the toast and
       the heap left as it lay enough to know which die the shake is for — or
       does the waiting die want marking on the tray (`docs/design-handover.md`)?
-- [ ] **Two 60d20 rolls in 10,000 gave up.** The 10,000-roll runs under
-      counting (Pixel 10a, 2026-10-04, at #349): 20d20 — none gave up,
-      re-throws 1.21 %, settle 0.95 / 1.96 s, 2.70 turns; 60d20 — **2 gave up**,
-      re-throws 2.63 %, settle 1.67 / 2.02 s, 2.09 turns, overlap 7.4 mm. Under
-      the ladder it was three in 10,000 at 20 dice. Both ran the full 1,440
-      steps with **no re-throw at all** — the dice never came to rest, so it is
-      settling, not counting: roll 7196 (seed 8028586073466521667) and roll
-      8091 (seed 8761657533792694254) of `tools/harness.sh -n 10000 -c 60`.
-      Next slowest 1,274 steps; p99.9 is 317. Replay those two seeds and see
-      which die keeps moving — a die rocking on an edge at restitution 0.55
-      (#339) is the first suspect
+- [ ] **A die pinched at two points spins for ever.** The two `60d20` rolls in
+      10,000 that gave up were dice leaning on the round post that stood in
+      each corner; the corners are fillets now (decision 81) and over 50,000
+      rolls a count give-ups went from 9 to 2 at `60d20` and 1 to 2 at `20d20`.
+      Every one left — and most from before — is one die with its centre still,
+      turning at 1–31 rad/s about the line through two single contacts (two
+      neighbours, or a neighbour and a wall), which friction cannot reach and
+      0.02 damping takes minutes to stop (`docs/physics-and-rendering.md`,
+      "Why a die could rock for ever"). Missing physics: drilling friction.
+      Options for the owner — a per-contact spin resistance in the contact
+      listener, or more angular damping — both change every roll's tumble, so
+      each wants the turns-after-landing figure, the goldens and `FairnessTest`
+      with it. Replays: `20d20` seed 1 roll 9996, seed 2 roll 5193; `60d20`
+      seed 2 roll 4518, seed 4 roll 8361
 - [ ] Tune prevention — spawn spread, dice-on-dice friction, throw energy,
       scale — to bring re-throws and overlap down. Five spawn height bands
       instead of three was neutral

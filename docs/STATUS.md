@@ -38,8 +38,13 @@ This is a snapshot, not a changelog — git history is the changelog.
   - #347 — the saved-rolls list scrolls while a row is dragged at its edge
     (78);
   - #348 — more than one personal set in the face designer (79);
-  - then the hand re-throw: a finger picks a landed die, the next shake throws
-    it (decisions 68 and 76).
+  - #349 — the hand re-throw: a finger picks a landed die, the next shake
+    throws it (decisions 68 and 76);
+  - #350 — the overnight harness runs under counting written down;
+  - #351 — a rendered harness times drawn frames on a real surface; both
+    frame targets met on the Pixel 10a (decision 80);
+  - then the tray's rounded corners built as fillets instead of the invisible
+    posts they were, which dice could rock against for ever (decision 81).
 
 ## Done
 
@@ -67,7 +72,11 @@ This is a snapshot, not a changelog — git history is the changelog.
   adopted, decision 77).
 - **Rendered harness:** 60.3 fps at 20d20 (p99 work 8.3 ms, GPU 12.6 ms, no
   step dropped) and 57.3 fps at the 100-dice limit — both frame targets met.
-- **10,000 rolls of 60d20:** two gave up; the 1–100 d6 sweep under counting:
+- **Rounded corners fixed** (decision 81): over 50,000 rolls of 60d20 the
+  give-ups fell from 9 to 2 and re-throws from 2.6 % to 2.2 %. What is left is
+  a die pinched between two others spinning on the line through them, which
+  friction cannot reach — a question for the owner (`docs/TODO.md`, 5.5).
+- **10,000 rolls of 60d20 before that fix:** two gave up; the 1–100 d6 sweep under counting:
   none gave up at any count (`docs/TODO.md`, 5.3 and 5.5).
 
 ## Blocked / waiting on

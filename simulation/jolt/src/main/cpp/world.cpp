@@ -11,7 +11,6 @@
 #include <Jolt/Physics/Collision/ContactListener.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
-#include <Jolt/Physics/Collision/Shape/CylinderShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
@@ -124,6 +123,10 @@ constexpr float kTrayConvexRadius = 0.05f;
 /// contact callbacks, where there is no map to consult.
 constexpr std::uint64_t kTrayUserData = 0;
 
+/// How many flat wedges make each rounded corner — the renderer's
+/// `TrayMesh.CORNER_SEGMENTS`, so the solid and the picture are one outline.
+constexpr int kCornerSegments = 6;
+
 }  // namespace
 
 struct World::Impl : public ContactListener {
@@ -218,25 +221,35 @@ struct World::Impl : public ContactListener {
                       new BoxShapeSettings(Vec3(half_long, thickness, wall_half),
                                            kTrayConvexRadius));
 
-    // The rounded inner corners: a cylinder tangent to both walls, so a die
-    // driven into a corner slides back out instead of wedging in the angle
-    // (`docs/tables.md`).
+    // The rounded inner corners: in each corner, the solid that lies between
+    // the two walls and a quarter circle of `corner_radius` tangent to both —
+    // a fillet, so a die driven into a corner meets a curve and slides back
+    // out instead of wedging in the angle (`docs/tables.md`).
     //
-    // They run to the ceiling for the same reason the walls do, and it took a
-    // phone to see why. Stopping them at the rim left their top faces as four
-    // horizontal ledges inside the tray, sixty millimetres up — and a die that
-    // landed on one came to rest there, in mid-air as far as the player is
-    // concerned, with its shadow on the floor well below it. The roll was then
-    // read off a die that was never on the table.
+    // **It used to be a whole cylinder**, tangent to both walls, which is not
+    // a rounded corner but a post: 24 mm across, standing where the renderer
+    // draws open floor and bulging 17 mm out of the corner along the diagonal.
+    // Dice leaned on it in mid-air, and a die leaning on a round post and a
+    // neighbour has a single contact on a curve and nothing to settle into:
+    // two of 10,000 rolls of 60d20 rocked or trembled against one for the
+    // whole twelve seconds, and the third-slowest of them ran 1,153 steps the
+    // same way (`docs/physics-and-rendering.md`, "Why a die could rock for
+    // ever").
+    //
+    // Each quarter is the fan of `kCornerSegments` flat wedges from the
+    // tray's own corner to the arc — the same six segments to the quarter, at
+    // the same points, as the tray mesh draws (`TrayMesh.CORNER_SEGMENTS`) —
+    // so what a die touches is what the player sees, and every surface it can
+    // rest against is flat. They run to the ceiling for the same reason the
+    // walls do, and it took a phone to see why: corners that stopped at the
+    // rim left four horizontal ledges inside the tray, sixty millimetres up,
+    // and a die that landed on one came to rest there with its shadow on the
+    // floor well below it.
     if (radius > 0.0f) {
-      const float corner_half = ceiling * 0.5f;
-      const Quat upright = Quat::sRotation(Vec3(1.0f, 0.0f, 0.0f), JPH_PI * 0.5f);
       for (int sx = -1; sx <= 1; sx += 2) {
         for (int sy = -1; sy <= 1; sy += 2) {
-          compound.AddShape(Vec3(static_cast<float>(sx) * (half_long - radius),
-                                 static_cast<float>(sy) * (half_short - radius), corner_half),
-                            upright,
-                            new CylinderShapeSettings(corner_half, radius, kTrayConvexRadius));
+          AddCornerFillet(compound, static_cast<float>(sx), static_cast<float>(sy), half_long,
+                          half_short, radius, ceiling);
         }
       }
     }
@@ -259,6 +272,37 @@ struct World::Impl : public ContactListener {
     body.mAllowSleeping = false;
     body.mUserData = kTrayUserData;
     return system.GetBodyInterface().CreateAndAddBody(body, EActivation::Activate);
+  }
+
+  /// One corner's fillet, as `kCornerSegments` convex wedges.
+  ///
+  /// `sx` and `sy` are the signs of the corner: +1, +1 is the far right one.
+  /// The arc's centre is `radius` in from both walls, and its quarter is the
+  /// one facing the corner, which is the quarter the renderer draws; each
+  /// wedge is a triangle — the corner and two neighbouring points on the arc —
+  /// stood up from the floor to the ceiling.
+  static void AddCornerFillet(StaticCompoundShapeSettings& compound, float sx, float sy,
+                              float half_long, float half_short, float radius, float ceiling) {
+    const float centre_x = sx * (half_long - radius);
+    const float centre_y = sy * (half_short - radius);
+    const Vec3 corner(sx * half_long, sy * half_short, 0.0f);
+    // From the point where the arc meets the short wall to where it meets the
+    // long one: a quarter turn, the way round that faces the corner.
+    const float from = sx > 0.0f ? 0.0f : JPH_PI;
+    const float sweep = sx * sy * JPH_PI * 0.5f;
+    for (int segment = 0; segment < kCornerSegments; ++segment) {
+      const float a0 = from + sweep * static_cast<float>(segment) / kCornerSegments;
+      const float a1 = from + sweep * static_cast<float>(segment + 1) / kCornerSegments;
+      const Vec3 first(centre_x + radius * std::cos(a0), centre_y + radius * std::sin(a0), 0.0f);
+      const Vec3 second(centre_x + radius * std::cos(a1), centre_y + radius * std::sin(a1), 0.0f);
+      const Vec3 up(0.0f, 0.0f, ceiling);
+      Array<Vec3> wedge = {corner, first, second, corner + up, first + up, second + up};
+      // The boxes' half-millimetre of rounding is asked for, and Jolt shrinks
+      // it to what a wedge this thin beside the walls can hold. The edges a
+      // die can reach are the arc's, fifteen degrees apart.
+      compound.AddShape(Vec3::sZero(), Quat::sIdentity(),
+                        new ConvexHullShapeSettings(wedge, kTrayConvexRadius));
+    }
   }
 
   // ContactListener. With a single-threaded job system these arrive in one

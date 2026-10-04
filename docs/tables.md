@@ -28,7 +28,7 @@ Simulation units are millimetres.
 | Long side | 240 mm, always (a real dice tray, regardless of phone size) |
 | Short side | 240 mm × screen aspect ratio, clamped to 0.40–0.75 (Pixel 10a: 20:9 → ~108 mm) |
 | Wall height | 60 mm as drawn; the collision box is closed to the ceiling at 200 mm |
-| Inner corner radius | 12 mm (dice do not wedge into sharp corners) |
+| Inner corner radius | 12 mm (dice do not wedge into sharp corners); a fillet of six flat segments to the quarter, the same outline the mesh draws |
 | Floor friction / restitution | from the table look, clamped (see below) |
 
 The two heights are not a contradiction. Sixty millimetres is the rim the
@@ -43,6 +43,18 @@ that stops at sixty has a *top*, and four horizontal ledges sixty millimetres
 up inside the tray are four places a die can come to rest in mid-air. It took
 a phone to see it, and what it looked like was a die floating with its shadow
 on the floor beneath it.
+
+**A rounded corner is a fillet, and the solid is exactly what is drawn.** In
+each corner the collision shape is the solid between the two walls and a
+quarter circle of the corner radius tangent to both, built from six flat
+wedges at the same six segments to the quarter the tray mesh draws
+(`TrayMesh.CORNER_SEGMENTS`). It used to be a whole cylinder standing on that
+circle's centre — not a rounded corner but a post 24 mm across, bulging 17 mm
+out of the corner along the diagonal onto floor the renderer draws as open.
+Dice leaned on it in mid-air, and a die leaning on a round post and a
+neighbour has one contact on a curve and nothing to settle into: the two
+`60d20` rolls in 10,000 that never came to rest were both doing that
+(`docs/physics-and-rendering.md`, "Why a die could rock for ever").
 
 Orientation follows the phone: portrait phone → portrait table. **The roll
 screen then holds whatever *shape* it opened in**, because the tray *is* the

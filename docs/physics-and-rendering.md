@@ -39,6 +39,10 @@ geometry, the capacity rule and how the *look* of the table can be swapped.
   walls run all the way up to that ceiling rather than stopping at the rim the
   renderer draws, because a box open at the sides between the two is a box dice
   leave (`docs/tables.md`).
+- **The rounded corners are fillets, flat-faced and exactly where they are
+  drawn**: six wedges to the quarter, at the six segments the tray mesh uses.
+  They were a round post 24 mm across that the mesh did not draw, and dice
+  leaning on it never came to rest ("Why a die could rock for ever").
 - **The table is horizontal, whatever the phone is doing.** Gravity in the tray
   is straight down and stays there; the hand moves the dice, the table does not
   tip under them. It used to follow the phone, and the cost was worse than the
@@ -890,6 +894,69 @@ Special cases:
 - **d2 (coin):** two faces; landing on the edge counts as cocked.
 - **d100:** two d10s rolled together; one is flagged as the tens die in the
   `RollPlan`. 0 + 0 reads as 100.
+
+### Why a die could rock for ever
+
+Two `60d20` rolls in 10,000 (`tools/harness.sh -n 10000 -c 60`, seed 1:
+rolls 7196 and 8091) ran the whole twelve seconds without a re-throw — the
+dice never came to rest, so nothing was ever counted. Replayed on the Pixel
+10a with every die's motion logged over the last second, each had **one die
+moving and fifty-nine stopped dead** (0.000 rad/s):
+
+| roll | the die | what it was doing |
+| --- | --- | --- |
+| 7196 | 8.8 mm up, touching the tray but not the floor, on no die | rocking with a fixed beat of about 0.2 s: up to 7.4 mm/s and 5.9 rad/s, ±3°, between a readable face and 15–21° cocked |
+| 8091 | 10.9 mm up, against the tray and on another die | trembling in place: under 1.4 mm/s, 0.1–0.8 rad/s, ±0.5°, cocked 18–19° |
+
+Both were **5 mm from the surface of the post that stood in each corner**. The
+rounded corner was built as a whole cylinder tangent to both walls, which is
+not a fillet but a post 24 mm across, standing on floor the tray mesh draws as
+open. A die leaning on it and on a neighbour has one contact on a curve and
+nothing flat to settle into. The third-slowest roll of that run, 8926 at 1,153
+steps against a median of 106, was the same picture.
+
+The evidence that it was the post and not the throw: those dice's positions,
+rebuilt at rest in a fresh world, did it again — roll 8091's die trembled to
+the cap. On that frozen scene, applying restitution only above 50 mm/s instead
+of 10 and doubling the solver's iterations did **not** stop it; a flat-faced
+post stopped it in eight steps. So the corners are now what `docs/tables.md`
+says they are — six flat wedges to the quarter, the outline the mesh draws —
+and the three rolls are kept in `StuckRollTest`, which throws them as the
+harness does and wants them settled. All three now are.
+
+Measured on the Pixel 10a, 10,000 rolls of each at seeds 1–5 (50,000 a
+count), before and after (decision 81):
+
+| | 20d20 before | 20d20 after | 60d20 before | 60d20 after |
+| --- | --- | --- | --- | --- |
+| rolls that gave up | 1 | 2 | **9** | **2** |
+| rolls of 600 steps or more | 1 | 2 | 13 | 7 |
+| dice re-thrown | 1.19–1.23 % | 1.03–1.06 % | 2.62–2.67 % | 2.20–2.22 % |
+| settle, median / p99 | 0.95 / 1.95 s | 0.96 / 1.95 s | 1.67 / 2.01 s | 1.65 / 2.00 s |
+| turns after landing | 2.70 | 2.66 | 2.09 | 2.10 |
+| deepest overlap, by seed | 6.9–7.9 mm | 7.2–7.9 mm | 6.4–7.4 mm | 6.1–8.3 mm |
+
+The re-throw share falls with the post because a die propped on it was
+cocked. Every golden case moved and was re-recorded, and `FairnessTest` at
+20,000 a shape passes on the new tray with no throw given up (χ² 4.73 for the
+d6, 20.36 for the d20, 0.03 for the coin; the d18 0.91 % off at its worst
+face, inside its 1 % bound).
+
+**What still never settles is a die that spins on an axle.** Every one of the
+four rolls that gave up after the change, and the four others traced from
+before it, is the same picture: one die with its centre still to a hundredth
+of a millimetre, turning at 1–31 rad/s while the rest have stopped — mostly
+against a wall or up on other dice. Where its contacts were logged (roll 4518
+of seed 2's `60d20`), it was held at two single points by two neighbours and
+spinning about the line through them, and its spin was falling at exactly the
+bodies' angular damping and nothing more. Contact points on the axis do not
+slip, so friction has nothing to work on; Jolt models no rolling or drilling
+friction, and a damping of 0.02 a second would take minutes to stop it.
+A real die cannot do this — its contacts are patches, not points, and its
+corners knock — so the missing physics is drilling friction, and the open
+question is how to give a die some without slowing the tumble it is thrown
+with (`docs/TODO.md`, Step 5.5). Calling it at rest is not an answer: it is
+visibly turning.
 
 ## Are the dice fair
 
