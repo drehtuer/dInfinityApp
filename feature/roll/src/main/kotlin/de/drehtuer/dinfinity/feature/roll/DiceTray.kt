@@ -20,10 +20,8 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -63,11 +61,6 @@ import kotlinx.coroutines.awaitCancellation
  *   left behind ([RollPresenter.looking]).
  * @param onLook the player moved the camera. The caller tells the tray, for
  *   the same reason: one thing owns where the camera is pointed.
- * @param announcing whether a change to [describing] is said aloud as it
- *   happens rather than only when the tray is next focused — true while dice
- *   are picked, so a pick and an un-pick are heard (decision 76). Off
- *   otherwise, because a tray that announced every state a roll passes
- *   through would talk over the result sheet that says the same thing.
  * @param onTap one finger touched the tray at a point, as fractions across
  *   and down it, and lifted again without moving; the third number is the
  *   tray's width over its height. That is a finger on a die, and what it does
@@ -90,7 +83,6 @@ fun DiceTray(
   describing: String = "",
   view: TrayView = TrayView.Whole,
   onLook: (TrayView) -> Unit = {},
-  announcing: Boolean = false,
   onTap: (acrossFraction: Double, downFraction: Double, aspectRatio: Double) -> Unit = { _, _, _ -> },
   onDoubleTap: (() -> Unit)? = null,
   actions: List<CustomAccessibilityAction> = emptyList(),
@@ -120,7 +112,6 @@ fun DiceTray(
           .testTag(RollTestTags.TRAY)
           .semantics {
             contentDescription = describing
-            if (announcing) liveRegion = LiveRegionMode.Polite
             if (actions.isNotEmpty()) customActions = actions
           }.lookAround(geometry, Fingers(looking, told, tapped, doubled)),
     ) {

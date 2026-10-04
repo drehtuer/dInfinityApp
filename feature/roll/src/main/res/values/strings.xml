@@ -197,17 +197,27 @@
   </plurals>
   <string name="roll_stalled_cancel">Cancel the roll</string>
   <!--
-    Said over the tray the moment a roll starts waiting on a hand, and gone
-    again 2.6 s later. The plate says the same thing and stays; this is the
-    part a screen reader is told about without being asked (`ModernistToast`).
+    The prompt over the tray for as long as the next shake is owed something
+    (decision 84): dice nobody could read or that never stopped, dice a chain
+    earned, and dice a finger picked up. In the accent, at 20 sp; it goes with
+    the shake that answers it. %1$d is how many dice the shake will throw.
   -->
-  <plurals name="roll_toast_again">
-    <item quantity="one">Shake to throw that die again.</item>
-    <item quantity="other">Shake to throw those %1$d dice again.</item>
+  <plurals name="roll_prompt_again">
+    <item quantity="one">Shake to re-throw %1$d die</item>
+    <item quantity="other">Shake to re-throw %1$d dice</item>
   </plurals>
-  <plurals name="roll_toast_earned">
-    <item quantity="one">Shake to throw the die it earned.</item>
-    <item quantity="other">Shake to throw the %1$d dice they earned.</item>
+  <plurals name="roll_prompt_earned">
+    <item quantity="one">Shake to throw the earned die</item>
+    <item quantity="other">Shake to throw the %1$d earned dice</item>
+  </plurals>
+  <plurals name="roll_prompt_picked">
+    <item quantity="one">Shake to throw the picked die</item>
+    <item quantity="other">Shake to throw the %1$d picked dice</item>
+  </plurals>
+  <!-- Under the picked prompt, on the plates' ground: the undo is a second tap. -->
+  <plurals name="roll_prompt_picked_back">
+    <item quantity="one">Tap it again to put it back.</item>
+    <item quantity="other">Tap a ringed die again to put it back.</item>
   </plurals>
   <plurals name="roll_tray_stalled">
     <item quantity="one">Dice tray, %1$d die would not settle</item>

@@ -39,8 +39,9 @@ import java.util.concurrent.Executor
  *
  * The roll used to throw them again by itself, and the player on the Pixel
  * 10a saw dice go back into the air with nobody's hand on them. Now the throw
- * stops, the screen says how many dice need another throw — on a plate, in a
- * toast a screen reader announces, and in the tray's own description — and
+ * stops, the screen says how many dice need another throw — on a plate, in an
+ * accent prompt over the tray a screen reader announces (decision 84), and in
+ * the tray's own description — and
  * the next shake throws those and only those. Every shake here comes through a
  * [TestHand], by the same calls the sensors make (decision 66).
  */
@@ -73,7 +74,11 @@ class ThrowAgainTest {
     typeFormula("3d6")
     shake()
 
-    compose.onNodeWithTag(RollTestTags.TOAST).assertTextEquals("Shake to throw those 2 dice again.")
+    compose
+      .onNodeWithTag(
+        RollTestTags.SHAKE_PROMPT_TEXT,
+        useUnmergedTree = true,
+      ).assertTextEquals("Shake to re-throw 2 dice")
     compose
       .onNodeWithTag(RollTestTags.TRAY)
       .assertContentDescriptionEquals("Dice tray, 2 dice cannot be read, shake to throw them again")
@@ -97,12 +102,13 @@ class ThrowAgainTest {
         .dice.size,
     )
     compose.onNodeWithTag(RollTestTags.THROW_AGAIN).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.SHAKE_PROMPT).assertDoesNotExist()
     compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
   }
 
   @Test
   fun `in power-saving mode the wait is the same wait, and the shake still answers it`() {
-    // No frames and no tray to look at, so the plate and the toast are the
+    // No frames and no tray to look at, so the plate and the prompt are the
     // whole of what the player is told — and the shake is the whole of what
     // they do (`docs/physics-and-rendering.md`, "Power-saving mode").
     val rolls = PassingRolls(listOf(oneCocked, allRead))
@@ -112,7 +118,11 @@ class ThrowAgainTest {
     shake()
 
     compose.onNodeWithTag(RollTestTags.THROW_AGAIN).assertExists()
-    compose.onNodeWithTag(RollTestTags.TOAST).assertTextEquals("Shake to throw that die again.")
+    compose
+      .onNodeWithTag(
+        RollTestTags.SHAKE_PROMPT_TEXT,
+        useUnmergedTree = true,
+      ).assertTextEquals("Shake to re-throw 1 die")
 
     assertTrue(shake())
 

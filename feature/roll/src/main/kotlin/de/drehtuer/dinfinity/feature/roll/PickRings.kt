@@ -9,10 +9,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.render.filament.PickMark
+import de.drehtuer.dinfinity.ui.common.Ink
 
 /**
  * A ring round each die a finger has picked up (`docs/architecture.md`,
- * decision 76).
+ * decisions 76 and 84).
  *
  * Drawn **over** the picture, in Compose, rather than into it. The renderer
  * draws what the simulation says and nothing else — a tint or an outline in
@@ -22,11 +23,17 @@ import de.drehtuer.dinfinity.render.filament.PickMark
  * frustum a finger is read against ([RollPresenter.marks]), and tested here
  * on the JVM.
  *
- * **Two inks, not the accent.** Accent never touches felt
- * (`docs/physics-and-rendering.md`, "What is drawn over the table"), and a
- * single ink is the one colour some table will swallow. A broad ring in the
- * plates' ground with a narrow one in their ink inside it reads on a light
- * felt and a dark one alike, the way a focus ring does.
+ * **The accent, on a halo of the ground.** The owner asked for the ring to be
+ * the accent so a picked die pops out (`docs/architecture.md`, decision 84);
+ * it used to be the plates' ground with their ink inside it, which on the
+ * Pixel 10a did not stand out enough. The accent is the player's own colour
+ * ([Ink.accent], the theme's `primary`), so it follows Settings without the
+ * renderer knowing about it. It is not drawn straight onto the felt: a broad
+ * ring in the plates' ground carries it, and the accent sits inside that with
+ * a band of ground showing either side — so what has to be legible is accent
+ * on `--color-bg`, the one pairing the plates already rely on, on a light
+ * felt and a dark one alike (`docs/physics-and-rendering.md`, "What is drawn
+ * over the table").
  *
  * Nothing here takes a touch: the finger that un-picks a die goes through to
  * the tray under it.
@@ -40,27 +47,27 @@ internal fun PickRings(
 ) {
   if (marks.isEmpty()) return
   val ground = MaterialTheme.colorScheme.background
-  val ink = MaterialTheme.colorScheme.onBackground
+  val ring = Ink.accent
   Canvas(modifier = modifier.testTag(RollTestTags.PICKED)) {
-    val broad = BROAD.toPx()
-    val narrow = NARROW.toPx()
+    val halo = HALO.toPx()
+    val inner = RING.toPx()
     val least = SMALLEST.toPx()
     marks.forEach { mark ->
       val centre = Offset((mark.acrossFraction * size.width).toFloat(), (mark.downFraction * size.height).toFloat())
       // Just outside the die's ball, so the ring sits on the felt round the
       // die rather than over its printed face.
-      val radius = maxOf((mark.radiusOfHeight * size.height).toFloat(), least) + broad
-      drawCircle(color = ground, radius = radius, center = centre, style = Stroke(width = broad))
-      drawCircle(color = ink, radius = radius, center = centre, style = Stroke(width = narrow))
+      val radius = maxOf((mark.radiusOfHeight * size.height).toFloat(), least) + halo
+      drawCircle(color = ground, radius = radius, center = centre, style = Stroke(width = halo))
+      drawCircle(color = ring, radius = radius, center = centre, style = Stroke(width = inner))
     }
   }
 }
 
-/** The ground-coloured ring, which keeps the ink one off any felt. */
-private val BROAD = 5.dp
+/** The ground-coloured halo, which keeps the accent off any felt. */
+private val HALO = 8.dp
 
-/** The ink ring inside it. */
-private val NARROW = 2.dp
+/** The accent ring inside it, with 2 dp of ground showing either side. */
+private val RING = 4.dp
 
 /** However far away a die is, its ring is at least a fingertip's half-width. */
 private val SMALLEST = 12.dp

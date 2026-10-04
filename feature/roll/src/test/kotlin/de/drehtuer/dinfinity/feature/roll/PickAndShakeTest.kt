@@ -4,6 +4,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -66,14 +67,47 @@ class PickAndShakeTest {
     compose
       .onNodeWithTag(RollTestTags.TRAY)
       .assertContentDescriptionEquals("Dice tray, the dice have landed on $firstTotal, 1 die picked; shake to throw it")
+    compose
+      .onNodeWithTag(RollTestTags.SHAKE_PROMPT_TEXT, useUnmergedTree = true)
+      .assertTextEquals("Shake to throw the picked die")
+    compose
+      .onNodeWithTag(RollTestTags.SHAKE_PROMPT_HINT, useUnmergedTree = true)
+      .assertTextEquals("Tap it again to put it back.")
     assertTrue(
       "a pick was not announced as it happened",
       compose
-        .onNodeWithTag(RollTestTags.TRAY)
+        .onNodeWithTag(RollTestTags.SHAKE_PROMPT)
         .fetchSemanticsNode()
         .config
         .getOrNull(SemanticsProperties.LiveRegion) != null,
     )
+  }
+
+  @Test
+  fun `two picked dice are counted in the prompt, and the shake takes it away`() {
+    val presenter = onScreen(DirectTray(), PassingRolls(listOf(threeDown, twoMore)))
+    compose.setContent { RollScreen(presenter = presenter) }
+    typeFormula("3d6")
+    shake()
+    lookAtTheFelt()
+    compose.onNodeWithTag(RollTestTags.SHAKE_PROMPT).assertDoesNotExist()
+
+    // The middle die and the far one, which lies towards the top of the
+    // screen where the prompt arrives after the first pick — so this also
+    // holds that the prompt does not take a finger meant for a die.
+    tapOn(1)
+    tapOn(2)
+
+    compose
+      .onNodeWithTag(RollTestTags.SHAKE_PROMPT_TEXT, useUnmergedTree = true)
+      .assertTextEquals("Shake to throw the 2 picked dice")
+    compose
+      .onNodeWithTag(RollTestTags.SHAKE_PROMPT_HINT, useUnmergedTree = true)
+      .assertTextEquals("Tap a ringed die again to put it back.")
+
+    shake()
+
+    compose.onNodeWithTag(RollTestTags.SHAKE_PROMPT).assertDoesNotExist()
   }
 
   @Test
@@ -89,6 +123,7 @@ class PickAndShakeTest {
 
     assertTrue(presenter.picked.isEmpty())
     compose.onNodeWithTag(RollTestTags.PICKED).assertDoesNotExist()
+    compose.onNodeWithTag(RollTestTags.SHAKE_PROMPT).assertDoesNotExist()
     compose
       .onNodeWithTag(RollTestTags.TRAY)
       .assertContentDescriptionEquals("Dice tray, the dice have landed on $firstTotal")
@@ -313,6 +348,16 @@ class PickAndShakeTest {
       restingAt =
         (0..2).associateWith { at ->
           RestingPlace(Vector3((at - 1) * APART_MM, 0.0, REST_HEIGHT_MM), Quaternion.Identity)
+        },
+    )
+
+  /** Two dice a hand threw again, landing clear of the three. */
+  private val twoMore =
+    SimulationOutcome(
+      faces = mapOf(0 to 4, 1 to 5),
+      restingAt =
+        (0..1).associateWith { at ->
+          RestingPlace(Vector3((at - 0.5) * APART_MM, APART_MM, REST_HEIGHT_MM), Quaternion.Identity)
         },
     )
 
