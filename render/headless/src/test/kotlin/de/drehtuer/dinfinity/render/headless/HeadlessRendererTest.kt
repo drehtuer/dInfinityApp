@@ -72,16 +72,6 @@ class HeadlessRendererTest {
   }
 
   @Test
-  fun `a frame says where every die is and how far between steps it is`() {
-    val transform = BodyTransform(index = 2, position = Vector3(1.0, 2.0, 3.0), orientation = Quaternion.Identity)
-    val frame = RenderFrame(previous = listOf(transform), current = listOf(transform), interpolation = 0.25)
-    assertEquals(2, frame.current.single().index)
-    assertEquals(Vector3(1.0, 2.0, 3.0), frame.current.single().position)
-    assertEquals(Quaternion.Identity, frame.current.single().orientation)
-    assertEquals(0.25, frame.interpolation)
-  }
-
-  @Test
   fun `a frame is a whole step by default, which is what a settled roll is`() {
     assertEquals(1.0, RenderFrame.still(emptyList()).interpolation)
   }
@@ -92,13 +82,14 @@ class HeadlessRendererTest {
     // between two simulation steps rather than on one.
     val frame =
       RenderFrame(
-        previous = listOf(at(Vector3(0.0, 0.0, 0.0), Quaternion.Identity)),
-        current = listOf(at(Vector3(4.0, 0.0, 8.0), Quaternion.about(Vector3.Up, PI / 2))),
+        previous = listOf(at(Vector3(0.0, 0.0, 0.0), Quaternion.Identity).copy(index = 2)),
+        current = listOf(at(Vector3(4.0, 0.0, 8.0), Quaternion.about(Vector3.Up, PI / 2)).copy(index = 2)),
         interpolation = 0.5,
       )
 
     val drawn = frame.blended().single()
 
+    assertEquals(2, drawn.index, "the blend lost which die it was")
     assertEquals(Vector3(2.0, 0.0, 4.0), drawn.position)
     assertEquals(1.0, abs(drawn.orientation dot Quaternion.about(Vector3.Up, PI / 4)), 1e-9)
   }

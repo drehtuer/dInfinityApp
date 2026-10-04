@@ -93,6 +93,17 @@ class ShakeSessionTest {
   }
 
   @Test
+  fun `a sample stamped no later than the one before turns nothing`() {
+    // Sensor batches can repeat a timestamp or deliver one out of order. There
+    // is no time between them to integrate, and a negative interval would
+    // turn gravity the wrong way.
+    session.rotation(100_000_000L, Vector3.Zero)
+    session.rotation(100_000_000L, Vector3(10.0, 0.0, 0.0))
+    session.rotation(50_000_000L, Vector3(10.0, 0.0, 0.0))
+    assertEquals(Vector3(0.0, 0.0, -1.0), session.gravity())
+  }
+
+  @Test
   fun `sensor noise does not accumulate into a tilt`() {
     session.rotation(0, Vector3.Zero)
     (1..10_000).forEach { step ->
