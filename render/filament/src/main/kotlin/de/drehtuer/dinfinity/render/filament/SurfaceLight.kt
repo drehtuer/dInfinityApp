@@ -159,12 +159,12 @@ data class SurfaceLight(
         val u = i * step
         val cosHalfSquared = (1.0 - u) / (1.0 + (a2 - 1.0) * u)
         val cosLight = (2.0 * cosHalfSquared - 1.0).coerceAtLeast(0.0)
-        val g = 4.0 * correlatedVisibility(cosLight, alpha) * cosLight
+        val g = PDF_TO_BRDF * correlatedVisibility(cosLight, alpha) * cosLight
         val weight =
           if (i == 0 || i == SIMPSON_STEPS) {
             1.0
           } else if (i % 2 == 1) {
-            4.0
+            SIMPSON_ODD
           } else {
             2.0
           }
@@ -220,6 +220,12 @@ data class SurfaceLight(
     private const val HALF = 0.5
     private const val FRESNEL_POWER = 5
     private const val SIMPSON_STEPS = 1024
+
+    /** Simpson's rule weighs every odd sample four times, every inner even one twice. */
+    private const val SIMPSON_ODD = 4.0
+
+    /** The 4 in GGX's `4 · V · NoL` when its half-vector density is turned into a light direction. */
+    private const val PDF_TO_BRDF = 4.0
   }
 
   /** A lobe's directional albedo, for a white reflector and for the part Fresnel adds at a glance. */

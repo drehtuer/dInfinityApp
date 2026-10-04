@@ -129,5 +129,8 @@ is not: this runs about once.
 
 ```sh
 python3 -m pip install --target /tmp/pylib pillow numpy
-PYTHONPATH=/tmp/pylib python3 tools/generate-table-textures.py /tmp/table-sources .
+PYTHONPATH=/tmp/pylib python3 tools/generate-table-textures.py
 ```
+
+It takes no arguments: it downloads into `build/table-texture-sources` and
+writes into the built-in package, both found from where the script is.

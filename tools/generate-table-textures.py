@@ -11,10 +11,11 @@ like the font and logo scripts beside it, this runs about once in the life of
 the project, so it is a one-off install rather than weight in every image.
 
     python3 -m pip install --target /tmp/pylib pillow numpy
-    PYTHONPATH=/tmp/pylib python3 tools/generate-table-textures.py /tmp/table-sources .
+    PYTHONPATH=/tmp/pylib python3 tools/generate-table-textures.py
 
-The first argument is a folder the sources are downloaded into (and read from
-on a second run); the second is the repository.
+It takes no arguments: the sources are downloaded into the repository's
+`build/table-texture-sources` (and read from there on a second run), and the
+pictures are written into the built-in package.
 
 What it prints at the end is each picture's size and each colour picture's
 linear mean. The tray scales a look's colour by one over that mean
@@ -50,8 +51,28 @@ OAK_SOURCE_MM = 1200.0
 OAK_TILE_MM = 300.0
 
 
+# Where everything goes, worked out from where this script is rather than
+# taken from the command line: the script writes into the repository and
+# downloads into its build folder, and nowhere else.
+REPO = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+SOURCES = os.path.join(REPO, "build", "table-texture-sources")
+OUT = os.path.join(REPO, "dicesets", "builtin", "src", "main", "resources", "dicesets", "builtin", "tables")
+
+FELT_ALBEDO = "felt-albedo.webp"
+FELT_NORMAL = "felt-normal.webp"
+FELT_ROUGHNESS = "felt-roughness.webp"
+OAK_ALBEDO = "oak-albedo.webp"
+OAK_NORMAL = "oak-normal.webp"
+OAK_ROUGHNESS = "oak-roughness.webp"
+
+
 def fetch(url, into):
-    name = os.path.join(into, url.rsplit("/", 1)[-1].split("=")[-1])
+    # The file is named after the last part of the URL and nothing more: a
+    # bare name, so a URL can never point the download outside [into].
+    base = os.path.basename(url.rsplit("/", 1)[-1].split("=")[-1])
+    if not base or base in (".", ".."):
+        sys.exit(f"cannot name a download after {url}")
+    name = os.path.join(into, base)
     if not os.path.exists(name):
         request = urllib.request.Request(url, headers={"User-Agent": "dinfinity-asset-prep"})
         with urllib.request.urlopen(request, timeout=600) as response:
@@ -89,9 +110,9 @@ def save(image, path, quality):
     return os.path.getsize(path)
 
 
-def main(sources, repo):
+def main():
+    sources, out = SOURCES, OUT
     os.makedirs(sources, exist_ok=True)
-    out = os.path.join(repo, "dicesets/builtin/src/main/resources/dicesets/builtin/tables")
     os.makedirs(out, exist_ok=True)
 
     felt_zip = fetch(FELT_ZIP, sources)
@@ -104,10 +125,10 @@ def main(sources, repo):
     # black felt are the same cloth dyed differently.
     felt_albedo = felt["Color"].convert("L").convert("RGB")
     written = {
-        "felt-albedo.webp": save(felt_albedo, os.path.join(out, "felt-albedo.webp"), 85),
-        "felt-normal.webp": save(felt["NormalGL"].convert("RGB"), os.path.join(out, "felt-normal.webp"), 90),
-        "felt-roughness.webp": save(
-            felt["Roughness"].convert("L").convert("RGB"), os.path.join(out, "felt-roughness.webp"), 85
+        FELT_ALBEDO: save(felt_albedo, os.path.join(out, FELT_ALBEDO), 85),
+        FELT_NORMAL: save(felt["NormalGL"].convert("RGB"), os.path.join(out, FELT_NORMAL), 90),
+        FELT_ROUGHNESS: save(
+            felt["Roughness"].convert("L").convert("RGB"), os.path.join(out, FELT_ROUGHNESS), 85
         ),
     }
 
@@ -115,9 +136,9 @@ def main(sources, repo):
     oak_albedo = crop(oak["albedo"].convert("RGB"), OAK_SOURCE_MM, OAK_TILE_MM)
     oak_normal = crop(oak["normal"].convert("RGB"), OAK_SOURCE_MM, OAK_TILE_MM)
     oak_rough = crop(grey(oak["roughness"]), OAK_SOURCE_MM, OAK_TILE_MM).convert("RGB")
-    written["oak-albedo.webp"] = save(oak_albedo, os.path.join(out, "oak-albedo.webp"), 82)
-    written["oak-normal.webp"] = save(oak_normal, os.path.join(out, "oak-normal.webp"), 90)
-    written["oak-roughness.webp"] = save(oak_rough, os.path.join(out, "oak-roughness.webp"), 85)
+    written[OAK_ALBEDO] = save(oak_albedo, os.path.join(out, OAK_ALBEDO), 82)
+    written[OAK_NORMAL] = save(oak_normal, os.path.join(out, OAK_NORMAL), 90)
+    written[OAK_ROUGHNESS] = save(oak_rough, os.path.join(out, OAK_ROUGHNESS), 85)
 
     for name, size in written.items():
         image = Image.open(os.path.join(out, name))
@@ -125,14 +146,14 @@ def main(sources, repo):
     print(f"{'total':22} {sum(written.values()) / 1024:17.1f} KiB")
 
     means = {
-        "felt": mean_linear(Image.open(os.path.join(out, "felt-albedo.webp"))),
-        "oak": mean_linear(Image.open(os.path.join(out, "oak-albedo.webp"))),
+        "felt": mean_linear(Image.open(os.path.join(out, FELT_ALBEDO))),
+        "oak": mean_linear(Image.open(os.path.join(out, OAK_ALBEDO))),
     }
     for texture, mean in means.items():
         print(f"{texture} albedo linear mean: {np.round(mean, 4)}")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        sys.exit("usage: generate-table-textures.py <sources folder> <repository>")
-    main(sys.argv[1], sys.argv[2])
+    if len(sys.argv) != 1:
+        sys.exit("usage: generate-table-textures.py (no arguments; it writes into this repository)")
+    main()
