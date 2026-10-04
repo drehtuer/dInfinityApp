@@ -64,9 +64,10 @@ This is a snapshot, not a changelog — git history is the changelog.
 **Nothing is blocked.** What needs a person with the phone is judgement, all
 of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 
-1. Whether the livelier tumble now reads as dice rolling, whether
-   `RollPace.WATCHED` 0.5 is slow enough or 0.4 is wanted, and whether `1d20`
-   a dozen times still feels prompt.
+1. Whether the dice now travel at the right speed: the tumble was approved,
+   the travel was still a little fast, so `RollPace.WATCHED` went from 0.5 to
+   0.4 (`feature/slower-pace`) — and whether `1d20` a dozen times still feels
+   prompt.
 2. Whether the five tables sound like their materials, and whether the
    haptics read as knocks.
 3. Whether an exploding chain still looks wrong on the first throws after a

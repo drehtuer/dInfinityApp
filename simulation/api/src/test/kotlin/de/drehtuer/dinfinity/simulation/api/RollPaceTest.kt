@@ -66,9 +66,10 @@ class RollPaceTest {
   }
 
   @Test
-  fun `a watched roll takes about twice the wall clock the physics takes`() {
+  fun `a watched roll takes two and a half times the wall clock the physics takes`() {
     // The figure a person judges on the phone: 20d20 settle in a measured
-    // 0.81 s of simulated time, and this is what that becomes on the screen.
+    // 0.96 s of simulated time, and this is what that becomes on the screen.
+    // Half gave 1.9 s, which the owner still found a little fast.
     val wallClock = MEASURED_SETTLE_SECONDS / RollPace.WATCHED
 
     assertTrue(wallClock > MEASURED_SETTLE_SECONDS, "a roll still over before the eye reached it")
@@ -78,8 +79,8 @@ class RollPaceTest {
   @Test
   fun `a roll that will not land stops being watched and starts being waited for`() {
     // `100d4` runs the twelve-second cap out, and the cap counts simulated
-    // time: at a flat half that is twenty-four seconds of watching dice that
-    // were never going to stop, on the one formula a device session already
+    // time: at a flat four tenths that is thirty seconds of watching dice
+    // that were never going to stop, on the one formula a device session already
     // reported as stuck.
     val late = RollPace.WATCHED_STEPS
     assertEquals(FRAME_SECONDS, RollPace.secondsFor(FRAME_SECONDS, driven = false, stepsTaken = late), TOLERANCE)
@@ -88,7 +89,7 @@ class RollPaceTest {
 
   @Test
   fun `and every roll that behaves is paced from the first step to the last`() {
-    // The measured ninety-ninth percentile for 20d20 is 1.47 s, so the bound
+    // The measured ninety-ninth percentile for 20d20 is 1.76 s, so the bound
     // has to sit well clear of it or it would be pacing the ordinary roll
     // differently at the end than at the start.
     val p99 = (MEASURED_P99_SECONDS * SettleRule.STEPS_PER_SECOND).toInt()
@@ -116,14 +117,17 @@ class RollPaceTest {
     /** One frame of a 60 Hz panel. */
     const val FRAME_SECONDS = 1.0 / 60.0
 
-    /** The median settle of 20d20 on the reference device, over 200 rolls. */
-    const val MEASURED_SETTLE_SECONDS = 0.81
+    /**
+     * The median settle of 20d20 on the reference device, at 60–120 rad/s of
+     * spin and restitution 0.55.
+     */
+    const val MEASURED_SETTLE_SECONDS = 0.96
 
     /** And what the player waits for it, at the pace chosen here. */
-    const val EXPECTED_WATCHED_SECONDS = 1.62
+    const val EXPECTED_WATCHED_SECONDS = 2.4
 
     /** And the ninety-ninth, which the pace has to cover whole. */
-    const val MEASURED_P99_SECONDS = 1.47
+    const val MEASURED_P99_SECONDS = 1.76
 
     const val TOLERANCE = 1e-12
   }
