@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -49,6 +50,7 @@ import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.designer.NewSet
+import de.drehtuer.dinfinity.designer.PaperInk
 import de.drehtuer.dinfinity.designer.Roundness
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
@@ -82,7 +84,7 @@ import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
  * prototype's own (`DesignerIcons`), and what draws them is the design
  * system's two shapes for the two kinds of control there are: an option that
  * inverts when it is chosen (`OptionBox` — the pens, the eraser, the bucket,
- * the stamp, the guide) and an action that simply happens
+ * the stamp; the guide, which keeps its word) and an action that simply happens
  * (`ModernistIconButton` — undo, redo, clear, copy, paste). Deciding which of
  * the twenty-one controls was which is what the row needed before it could be
  * drawn at all; it is why there was a `design-system-exception` here for as
@@ -511,7 +513,10 @@ private fun FaceCanvas(
   // lifts: the model takes a whole stroke, so that one undo is one line.
   var drawing by remember { mutableStateOf(emptyList<Dot>()) }
   val outline = state.draft.outline
-  val guideColour = MaterialTheme.colorScheme.onBackground.copy(alpha = GUIDE_ALPHA)
+  // The guide is ink that reads on the *paper*, not on the page: in the
+  // page's own ink it was a pale grey on a dark theme, which on white paper is
+  // nothing at all — and a guide nobody can see is a button that does nothing.
+  val guideColour = guideOn(PAPER)
   val edge = MaterialTheme.colorScheme.outline
 
   Canvas(
@@ -547,7 +552,7 @@ private fun FaceCanvas(
   ) {
     val face = Path().apply { follow(outline, size.width, size.height) }
     clipPath(face) {
-      drawRect(color = Color.White)
+      drawRect(color = PAPER)
       state.guide.forEach { mark -> drawGuide(mark, guideColour) }
       state.face.marks.forEach { mark -> drawMark(mark) }
       if (drawing.size > 1) {
@@ -608,11 +613,11 @@ private fun Tools(
       }
     }
     OptionBox(
-      // The name a screen reader says is what the press *does*, which is what
-      // the words on it used to be — the resources did not go anywhere when
-      // the words came off the face.
-      contentDescription =
-        stringResource(if (state.guideShown) R.string.designer_guide_off else R.string.designer_guide_on),
+      // **A word, not a picture.** It was the prototype's `#ic-image` — a
+      // framed landscape — which is what "add a picture" looks like, and it
+      // was read as exactly that: an image loader that loaded nothing. The
+      // prototype itself labels this "Guide" beside a checkbox.
+      text = stringResource(R.string.designer_guide),
       selected = state.guideShown,
       onClick = { presenter.showGuide(!state.guideShown) },
       // A tap turns it back off again, so it is a checkbox rather than one
@@ -620,9 +625,7 @@ private fun Tools(
       // cannot be unmade.
       role = Role.Checkbox,
       modifier = Modifier.testTag(DesignerTestTags.GUIDE),
-    ) { tint ->
-      Glyph(DesignerIcons.IMAGE, tint)
-    }
+    )
   }
 }
 
@@ -1051,6 +1054,18 @@ private fun inkOf(nib: Nib): Float =
   }
 
 private const val GUIDE_ALPHA = 0.35f
+
+/**
+ * The paper every face is drawn on, on the canvas, in the strip and on the
+ * Solid tab alike.
+ */
+internal val PAPER: Color = Color.White
+
+/**
+ * The guide's colour on [paper]: black or white, whichever reads on it
+ * (`PaperInk`), faint enough to draw over.
+ */
+internal fun guideOn(paper: Color): Color = Color(PaperInk.on(paper.toArgb())).copy(alpha = GUIDE_ALPHA)
 
 /** The fine pen's glyph, thinner than the sprite's own stroke. */
 private const val FINE_INK = 1.1f

@@ -166,7 +166,7 @@ class DesignerScreenTest {
     // resources are still there (`docs/face-designer.md`, "Drawing tools").
     show(d6)
 
-    listOf("Fine", "Medium", "Broad", "Eraser", "Fill", "Stamp", "Undo", "Redo", "Hide guide")
+    listOf("Fine", "Medium", "Broad", "Eraser", "Fill", "Stamp", "Undo", "Redo")
       .forEach { compose.onNodeWithContentDescription(it).assertExists() }
   }
 

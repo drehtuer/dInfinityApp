@@ -268,6 +268,14 @@ paste lands on; the stamp's Small / Medium / Large are the same picture at
 three sizes, and three boxes differing by a few pixels is a row nobody reads at
 arm's length; and a die's id (`d18`) in the base-die row is its own word.
 
+**The guide is the word "Guide", not a picture.** It was the sprite's
+`#ic-image`, a framed landscape, chosen as "a picture under the drawing". On
+the phone it was read as what that glyph means everywhere else — *add an
+image* — and reported as an image loader that loaded nothing. The prototype
+labels the same switch "Guide" beside a checkbox, and so does the app now.
+(There is no way to put a photograph on a face; photographs become tables,
+`docs/tables.md`, "Your own photo".)
+
 **Every picture is named.** The words that came off the faces are the labels a
 screen reader now says — the resources did not go anywhere — and every control
 is at least a 48 dp target whatever the glyph inside it measures.
@@ -510,6 +518,12 @@ blank side an author asked for, and printing a `0` on it would be the app
 arguing with the set file — so there is no numeral to trace and the guide falls
 back to marking the place. The screen is not told which case it is looking at:
 what reaches the draw lambda is a list of closed rings either way.
+
+**It is drawn in an ink that reads on the paper**, black or white, whichever
+stands further from it (`designer`'s `PaperInk`), at a third of its strength.
+It used to be the page's own ink at that strength, which on a dark theme is a
+pale grey — invisible on white paper, so turning the guide on and off changed
+nothing anybody could see.
 
 The guide can still be turned off, and the face's value is still on the strip
 under the canvas while it is.

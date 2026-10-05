@@ -91,8 +91,8 @@
   <string name="designer_redo">Redo</string>
   <!-- Takes everything off the face being drawn on — strokes, fills, numbers, eyes — and leaves the other faces alone. Undo brings it back. -->
   <string name="designer_clear_face">Clear face</string>
-  <string name="designer_guide_on">Show guide</string>
-  <string name="designer_guide_off">Hide guide</string>
+  <!-- The switch for the faint number under the drawing, to trace. A word, because the picture it had was read as "load an image". -->
+  <string name="designer_guide">Guide</string>
   <string name="designer_face_nearly_full">This face is nearly full — a few strokes left.</string>
   <string name="designer_face_full">This face is full. Undo something, or clear it and start again.</string>
   <string name="designer_copy">Copy face</string>

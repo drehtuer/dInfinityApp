@@ -128,8 +128,5 @@ private const val SELECTED_TINT = 0.16f
 /** How much light the band round the outside of a coin catches. */
 private const val RIM_LIGHT = 0.2f
 
-/** The paper every face of the flat editor is drawn on, and so every face here. */
-private val PAPER = Color.White
-
 /** What the lamp leaves of it on a face turned away. */
 private val SHADE = Color.Black
