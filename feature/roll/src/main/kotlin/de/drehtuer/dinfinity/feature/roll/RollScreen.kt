@@ -36,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import de.drehtuer.dinfinity.core.model.Rounding
 import de.drehtuer.dinfinity.core.model.SavedRollSource
 import de.drehtuer.dinfinity.ui.common.FormulaTestTags
@@ -748,6 +749,14 @@ private fun TheTableOrANoticeThatThereIsNone(
     // Over the picture and under everything else, and deaf to touch: the
     // finger that puts a die back goes through to the tray.
     PickRings(marks = presenter.marks(aspectRatio.toDouble()), modifier = Modifier.fillMaxSize())
+    // While a dice material compiles, the tray says so rather than staying
+    // black (decision 95). Over the table and under every control, so the
+    // menu and the formula are still there to be used while it waits.
+    val shaders by presenter.tray.shaders.collectAsStateWithLifecycle()
+    PreparingTheDice(
+      work = shaders,
+      modifier = Modifier.align(Alignment.Center).padding(horizontal = EDGE),
+    )
   }
 }
 
@@ -906,6 +915,13 @@ object RollTestTags {
 
   /** What stands where the tray would be when the pictures are off. */
   const val POWER_SAVING: String = "roll:power-saving"
+
+  /** "Preparing the dice", while a material compiles ([PreparingTheDice]). */
+  const val PREPARING: String = "roll:preparing"
+  const val PREPARING_TITLE: String = "roll:preparing:title"
+  const val PREPARING_BAR: String = "roll:preparing:bar"
+  const val PREPARING_FILL: String = "roll:preparing:fill"
+  const val PREPARING_LEFT: String = "roll:preparing:left"
 
   /**
    * The formula field and its squiggle, which are `ui/common`'s and shared
