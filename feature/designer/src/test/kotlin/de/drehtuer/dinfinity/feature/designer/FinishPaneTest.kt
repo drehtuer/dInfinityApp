@@ -36,14 +36,18 @@ class FinishPaneTest {
   val compose = createComposeRule()
 
   @Test
-  fun `the controls are on the Solid tab and not on the Face tab`() {
+  fun `the controls are on the Material step and not on the Faces step`() {
     show(d6)
-    compose.onNodeWithTag(DesignerTestTags.MATERIAL).assertDoesNotExist()
-
-    solid()
 
     compose.onNodeWithTag(DesignerTestTags.MATERIAL).performScrollTo().assertIsDisplayed()
     compose.onNodeWithTag(DesignerTestTags.EDGES).performScrollTo().assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.MORE_BODY_COLOURS).performScrollTo().assertIsDisplayed()
+
+    compose.onNodeWithTag(DesignerTestTags.stepOf(DesignerStep.Faces)).performClick()
+    compose.onNodeWithTag(DesignerTestTags.viewOf(DesignerView.Solid)).performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.MATERIAL).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.EDGES).assertDoesNotExist()
   }
 
   @Test
@@ -163,10 +167,11 @@ class FinishPaneTest {
       .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentDescription))
   }
 
-  private fun solid() = compose.onNodeWithTag(DesignerTestTags.viewOf(DesignerView.Solid)).performClick()
+  /** The controls are on the Material step, which [show] opens on. */
+  private fun solid() = Unit
 
   private fun show(die: Die): DesignerPresenter {
-    val presenter = DesignerPresenter(die)
+    val presenter = DesignerPresenter(die, step = DesignerStep.Material)
     compose.setContent { DesignerScreen(presenter = presenter) }
     return presenter
   }

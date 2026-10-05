@@ -60,7 +60,7 @@ enum class Destination(
     // The die is what makes the tray offer a way *back* to the face designer:
     // a throw that came from "Roll it" is a throw being looked at, and the
     // screen it came from is the screen to return to
-    // (`docs/face-designer.md`, "Flow", step 4). Empty for every other way
+    // (`docs/face-designer.md`, "Flow", Roll it). Empty for every other way
     // in, which is every other way in.
     arguments = listOf(GraphArgument.FORMULA, DesignerArgument.DIE),
   ),

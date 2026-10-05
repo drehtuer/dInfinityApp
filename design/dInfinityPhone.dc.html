@@ -637,13 +637,19 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
 <!-- ═══ DESIGNER ═══ -->
 <sc-if value="{{ isDesigner }}" hint-placeholder-val="{{ false }}">
 <div data-screen-label="Face designer" style="flex:1;min-height:0;display:flex;flex-direction:column">
-  <div style="display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:2px solid var(--color-divider)"><button type="button" class="btn btn-ghost btn-icon" onClick="{{ back }}" style="color:inherit" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-back"></use></svg></button><span style="font-family:var(--font-heading);font-weight:800;font-size:20px">Face designer</span><span style="font-size:13px;opacity:.6;margin-left:6px">face {{ faceNo }} of {{ dzSides }}</span><span style="flex:1"></span><button type="button" class="btn btn-ghost btn-icon" onClick="{{ undo }}" disabled="{{ noUndo }}" style="color:inherit" aria-label="Undo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-undo"></use></svg></button><button type="button" class="btn btn-ghost btn-icon" onClick="{{ redo }}" disabled="{{ noRedo }}" style="color:inherit" aria-label="Redo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-redo"></use></svg></button></div>
+  <div style="display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:2px solid var(--color-divider)"><button type="button" class="btn btn-ghost btn-icon" onClick="{{ back }}" style="color:inherit" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-back"></use></svg></button><span style="font-family:var(--font-heading);font-weight:800;font-size:20px">Face designer</span><span style="font-size:13px;opacity:.6;margin-left:6px">{{ dzHeaderNote }}</span><span style="flex:1"></span><sc-if value="{{ dzOnFaces }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-ghost btn-icon" onClick="{{ undo }}" disabled="{{ noUndo }}" style="color:inherit" aria-label="Undo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-undo"></use></svg></button><button type="button" class="btn btn-ghost btn-icon" onClick="{{ redo }}" disabled="{{ noRedo }}" style="color:inherit" aria-label="Redo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#ic-redo"></use></svg></button></sc-if></div>
+  <!-- the three steps: shape -> material and colour -> faces (docs/face-designer.md, "Flow") -->
+  <div style="padding:8px 16px 0"><div class="seg" role="tablist" aria-label="Steps" style="display:flex"><sc-for list="{{ dzSteps }}" as="o" hint-placeholder-count="3"><label class="seg-opt" style="flex:1;padding:6px 10px;font-size:12px;text-align:center"><input type="radio" checked="{{ o.on }}" onChange="{{ o.pick }}">{{ o.label }}</label></sc-for></div></div>
   <div style="flex:1;overflow:auto;display:flex;flex-direction:column">
+    <sc-if value="{{ dzOnShape }}" hint-placeholder-val="{{ false }}">
     <div style="display:flex;align-items:center;gap:8px;padding:10px 16px 0"><span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.6;flex:none">Base die</span><div style="display:flex;overflow-x:auto;overflow-y:hidden;flex:1;min-width:0;padding-bottom:4px;scrollbar-width:thin;scrollbar-color:var(--color-divider) transparent"><div class="seg" style="flex:none;display:flex;white-space:nowrap"><sc-for list="{{ dzDice }}" as="d" hint-placeholder-count="9"><label class="seg-opt" style="flex:none;padding:5px 9px;font-size:12px"><input type="radio" checked="{{ d.on }}" onChange="{{ d.pick }}">{{ d.id }}</label></sc-for></div></div></div>
+    </sc-if>
+    <sc-if value="{{ dzOnFaces }}" hint-placeholder-val="{{ true }}">
     <div style="display:flex;align-items:center;gap:8px;padding:8px 16px 0">
       <div class="seg" style="flex:none"><sc-for list="{{ dzViewTabs }}" as="o" hint-placeholder-count="2"><label class="seg-opt" style="padding:6px 14px;font-size:12px"><input type="radio" checked="{{ o.on }}" onChange="{{ o.pick }}">{{ o.label }}</label></sc-for></div>
       <span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right">{{ dzShape }} · face values inherited from the built-in die</span>
     </div>
+    </sc-if>
     <div style="padding:8px 16px 8px;display:flex;justify-content:center">
       <sc-if value="{{ editorOn }}" hint-placeholder-val="{{ true }}">
       <div style="position:relative;width:320px;height:320px;background:var(--color-surface);outline:2px solid var(--color-divider)">
@@ -682,15 +688,22 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
         <span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right;line-height:1.3">{{ sdNote }}</span>
       </div>
     </sc-if>
-    <sc-if value="{{ solidOn }}" hint-placeholder-val="{{ false }}">
+    <sc-if value="{{ dzOnMaterial }}" hint-placeholder-val="{{ false }}">
       <div style="display:flex;flex-direction:column;gap:8px;padding:0 16px 12px">
         <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Material</span>
         <div style="display:flex;align-items:center;gap:8px">
           <div aria-hidden="true" style="flex:none;width:44px;height:44px;border:1px solid var(--color-divider);background:{{ dzSwatch }}"></div>
           <select class="input" aria-label="Material" value="{{ dzMaterial }}" onChange="{{ dzPickMaterial }}" style="flex:1;min-width:0;min-height:44px"><sc-for list="{{ dzMaterials }}" as="m" hint-placeholder-count="7"><option value="{{ m.id }}">{{ m.label }}</option></sc-for></select>
         </div>
+        <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Colour</span>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+          <sc-for list="{{ dzBodies }}" as="c" hint-placeholder-count="12"><button type="button" onClick="{{ c.pick }}" aria-label="Body colour {{ c.hex }}" style="width:26px;height:26px;border:2px solid {{ c.border }};background:{{ c.hex }};cursor:pointer;padding:0"></button></sc-for>
+          <label title="More body colours" style="position:relative;width:26px;height:26px;border:2px solid var(--color-divider);background:{{ dzBody }};cursor:pointer;overflow:hidden;margin-left:6px"><input type="color" value="{{ dzBody }}" onChange="{{ dzPickBody }}" aria-label="More body colours" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
+          <span style="font-size:11px;opacity:.65;font-variant-numeric:tabular-nums">{{ dzBody }}</span>
+        </div>
         <span style="font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Edges</span>
-        <div class="seg" style="flex:none;display:flex;align-self:flex-start"><sc-for list="{{ dzEdges }}" as="o" hint-placeholder-count="4"><label class="seg-opt" style="padding:6px 10px;font-size:12px"><input type="radio" checked="{{ o.on }}" onChange="{{ o.pick }}">{{ o.label }}</label></sc-for></div>
+        <input type="range" min="1.5" max="12" step="0.5" value="{{ dzEdgePct }}" onChange="{{ dzPickEdge }}" aria-label="Edges" aria-valuetext="{{ dzEdgeSaid }}" style="width:100%">
+        <span style="font-size:12px">{{ dzEdgeSaid }}</span>
         <span style="font-size:11px;opacity:.6;line-height:1.3">{{ dzFinishNote }}</span>
       </div>
     </sc-if>
@@ -720,6 +733,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <span style="font-size:11px;opacity:.65;font-variant-numeric:tabular-nums">{{ dzCustomHex }}</span>
     </div>
     </sc-if>
+    <sc-if value="{{ dzOnFaces }}" hint-placeholder-val="{{ true }}">
     <div style="display:flex;gap:6px;padding:10px 12px;border-top:2px solid var(--color-divider);overflow-x:auto;overflow-y:hidden;flex:none;min-width:0">
       <sc-for list="{{ faceStrip }}" as="f" hint-placeholder-count="6"><button type="button" onClick="{{ f.pick }}" aria-label="Face {{ f.no }}" style="flex:none;width:52px;height:52px;padding:0;border:2px solid {{ f.border }};background:var(--color-surface);cursor:pointer;position:relative;overflow:hidden"><svg viewBox="0 0 320 320" width="48" height="48" style="position:absolute;inset:0;display:block"><path d="{{ maskPath }}" fill="{{ f.bg }}" stroke="var(--color-divider)" stroke-width="6"></path><sc-for list="{{ f.pipDots }}" as="p" hint-placeholder-count="0"><circle cx="{{ p.cx }}" cy="{{ p.cy }}" r="24" fill="{{ p.ink }}"></circle></sc-for></svg><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding-top:4px;font-family:var(--font-heading);font-weight:800;font-size:26px;line-height:1;color:#201e1d;opacity:{{ f.numOp }}">{{ f.no }}</div><sc-for list="{{ f.stamps }}" as="s" hint-placeholder-count="0"><div style="position:absolute;left:{{ s.lx }}%;top:{{ s.ly }}%;transform:translate(-50%,-50%);font-family:var(--font-heading);font-weight:800;font-size:{{ s.sizeSm }}px;line-height:1;color:{{ s.color }}">{{ s.text }}</div></sc-for><svg viewBox="0 0 320 320" width="48" height="48" style="position:relative;display:block"><sc-for list="{{ f.strokes }}" as="s" hint-placeholder-count="0"><polyline points="{{ s.pts }}" fill="none" stroke="{{ s.color }}" stroke-width="{{ s.w }}" stroke-linecap="round" stroke-linejoin="round"></polyline></sc-for></svg></button></sc-for>
       </div>
@@ -728,7 +742,8 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
       <sc-if value="{{ isD6 }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-ghost" onClick="{{ fillPips }}" style="flex:none;font-size:12px;white-space:nowrap">Fill all with eyes</button></sc-if>
       <button type="button" class="btn btn-ghost" onClick="{{ clearFace }}" disabled="{{ faceBlank }}" style="flex:none;font-size:12px;white-space:nowrap">Clear face</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;padding:10px 16px 14px;border-top:2px solid var(--color-divider)"><button type="button" class="btn btn-primary" onClick="{{ rollDesigned }}" style="flex:none;white-space:nowrap">Roll it</button><button type="button" class="btn btn-secondary" onClick="{{ saveDesigned }}" style="flex:none;white-space:nowrap">Save to set</button><span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right;line-height:1.3">{{ designerNote }}</span></div>
+    </sc-if>
+    <div style="display:flex;gap:8px;align-items:center;padding:10px 16px 14px;border-top:2px solid var(--color-divider)"><sc-if value="{{ dzHasBack }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-ghost" onClick="{{ dzStepBack }}" style="flex:none;white-space:nowrap">Back</button></sc-if><sc-if value="{{ dzHasNext }}" hint-placeholder-val="{{ false }}"><button type="button" class="btn btn-primary" onClick="{{ dzStepNext }}" style="flex:none;white-space:nowrap">Next</button></sc-if><sc-if value="{{ dzOnFaces }}" hint-placeholder-val="{{ true }}"><button type="button" class="btn btn-primary" onClick="{{ rollDesigned }}" style="flex:none;white-space:nowrap">Roll it</button><button type="button" class="btn btn-secondary" onClick="{{ saveDesigned }}" style="flex:none;white-space:nowrap">Save to set</button></sc-if><span style="flex:1;min-width:0;font-size:11px;opacity:.6;text-align:right;line-height:1.3">{{ designerNote }}</span></div>
   <sc-if value="{{ hasSavedNote }}" hint-placeholder-val="{{ false }}"><div style="position:absolute;left:50%;bottom:74px;transform:translateX(-50%);z-index:20;background:var(--color-text);color:var(--color-bg);padding:8px 14px;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:var(--shadow-md);pointer-events:none">{{ savedNote }}</div></sc-if>
   <sc-if value="{{ saveOpen }}" hint-placeholder-val="{{ false }}">
     <div onClick="{{ closeSave }}" style="position:absolute;inset:0;z-index:30;background:color-mix(in srgb, var(--color-text) 45%, transparent);display:flex;flex-direction:column;justify-content:flex-end">
@@ -1462,7 +1477,7 @@ class Component extends DCLogic {
   sdUp=()=>{if(this.state.sdDrag)this.setState({sdDrag:null})}
   solidView(){const faces=this.dz();
     return solidGeom(this.sides()).map((f,i)=>{const fc=faces[i]||{strokes:[],stamps:[],bg:null};
-      const sel=i===this.state.face;return {m:f.m,clip:f.clip,poly:f.poly,box:Math.round(f.box),off:Math.round(f.off),edgePx:Math.max(7,Math.round(CORNER*f.k)),bg:sel?`color-mix(in srgb, var(--color-accent) 16%, ${fc.bg||'#e8e5e4'})`:(fc.bg||'#e8e5e4'),
+      const sel=i===this.state.face;return {m:f.m,clip:f.clip,poly:f.poly,box:Math.round(f.box),off:Math.round(f.off),edgePx:Math.max(7,Math.round(CORNER*f.k)),bg:sel?`color-mix(in srgb, var(--color-accent) 16%, ${fc.bg||this.state.dzBody||'#e8dcc0'})`:(fc.bg||this.state.dzBody||'#e8dcc0'),
         sel,edgeMarks:this.sides()===4?edgeMarks(4,fc.edges,fc.edgeColor):[],outline:sel?'var(--color-accent-700)':'#201e1d',outlineW:sel?4:1.4,
         cbox:Math.round(f.cbox),cleft:Math.round(f.cleft),ctop:Math.round(f.ctop),
         strokes:fc.strokes,pipDots:pipDots(fc.pips,fc.pipColor),stamps:fc.stamps.map(s=>({text:s.text,color:s.color,lx:s.x/320*100,ly:s.y/320*100,px:Math.max(6,Math.round(s.size*f.k))}))}})}
@@ -1731,7 +1746,7 @@ class Component extends DCLogic {
       ...(g=>({guideX:g[0]/320*100,guideY:g[1]/320*100,guidePx:g[2]}))(NUM[this.sides()]||[160,160,180]),
       isD6:this.sides()===6,fillPips:this.fillPips,clearFace:this.clearFace,faceBlank:!face.strokes.length&&!face.stamps.length&&!face.bg&&!face.pips&&!(face.edges||[]).some(x=>x),
       pipDots:pipDots(face.pips,face.pipColor),
-      showGuideNum:!!this.state.showGuide&&!face.pips,faceBg:face.bg||'#e8e5e4',edgeMarks:this.sides()===4?edgeMarks(4,face.edges,face.edgeColor):[],
+      showGuideNum:!!this.state.showGuide&&!face.pips,faceBg:face.bg||(this.state.dzBody||'#e8dcc0'),edgeMarks:this.sides()===4?edgeMarks(4,face.edges,face.edgeColor):[],
       edgeFields:(this.sides()===4?[0,1,2]:[]).map((p,i)=>({no:i+1,value:(face.edges||[])[i]||'',set:e=>{const v=e.target.value;this.updFace(f=>{const ar=(f.edges||[]).slice();ar[i]=v;return{...f,edges:ar,edgeColor:S.color}})}})),
       hasEdges:this.sides()===4,edgeCount:3,
       edgeLabel:'Corner values',edgeResetLabel:'Reset to standard',
@@ -1742,8 +1757,14 @@ class Component extends DCLogic {
       tools,palette:PALETTE.map(hex=>({hex,border:S.color===hex?'var(--color-text)':'var(--color-divider)',pick:()=>this.setState({color:hex})})),
       dzCustomColor:S.customColor||'#2b5aa8',dzCustomBorder:S.customColor&&S.color===S.customColor?'var(--color-text)':'var(--color-divider)',dzCustomOff:!(S.customColor&&S.color===S.customColor),dzCustomHex:S.customColor&&S.color===S.customColor?S.customColor.toUpperCase():'Custom…',dzPickCustom:e=>this.setState({customColor:e.target.value,color:e.target.value}),
       dzDice:DZ_DICE.map(s=>({id:'d'+s,on:this.sides()===s,pick:()=>this.setState({dzSides:s,face:0,drawing:null})})),dzSides:this.sides(),dzShape:MASK_NAMES[this.sides()],maskPath:MASKS[this.sides()]||MASKS[6],maskClip:`path('${MASKS[this.sides()]||MASKS[6]}')`,
-      faceStrip:this.dz().map((fc,i)=>({no:faceLabel(this.sides(),i),pipDots:pipDots(fc.pips,fc.pipColor),numOp:fc.pips?0:0.16,strokes:fc.strokes,stamps:fc.stamps.map(stampView),bg:fc.bg||'#e8e5e4',border:i===S.face?'var(--color-accent)':'var(--color-divider)',pick:()=>this.setState({face:i,drawing:null})})),
-      ...(()=>{const solid=S.dzView==='solid';const spin=S.sdSpin??true;const r=S.sdRot||{x:-16,y:0};
+      faceStrip:this.dz().map((fc,i)=>({no:faceLabel(this.sides(),i),pipDots:pipDots(fc.pips,fc.pipColor),numOp:fc.pips?0:0.16,strokes:fc.strokes,stamps:fc.stamps.map(stampView),bg:fc.bg||(S.dzBody||'#e8dcc0'),border:i===S.face?'var(--color-accent)':'var(--color-divider)',pick:()=>this.setState({face:i,drawing:null})})),
+      ...(()=>{const STEPS=[['shape','Shape'],['material','Material'],['faces','Faces']];const step=S.dzStep||'shape';const at=STEPS.findIndex(o=>o[0]===step);
+        const go=k=>this.setState({dzStep:k,drawing:null});
+        return{dzSteps:STEPS.map((o,i)=>({label:`${i+1} ${o[1]}`,on:o[0]===step,pick:()=>go(o[0])})),
+          dzOnShape:step==='shape',dzOnMaterial:step==='material',dzOnFaces:step==='faces',
+          dzHasBack:at>0,dzHasNext:at<STEPS.length-1,dzStepBack:()=>at>0&&go(STEPS[at-1][0]),dzStepNext:()=>at<STEPS.length-1&&go(STEPS[at+1][0]),
+          dzHeaderNote:step==='faces'?`face ${S.face+1} of ${this.sides()}`:`step ${at+1} of 3 · d${this.sides()}`}})(),
+      ...(()=>{const solid=(S.dzStep||'shape')!=='faces'||S.dzView==='solid';const spin=S.sdSpin??true;const r=S.sdRot||{x:-16,y:0};
         return{editorOn:!solid,solidOn:solid,
           dzViewTabs:[['face','Face'],['solid','Solid']].map(o=>({label:o[1],on:(S.dzView||'face')===o[0],pick:()=>this.setState({dzView:o[0]})})),
           solidFaces:solid?this.solidView():[],
@@ -1752,14 +1773,17 @@ class Component extends DCLogic {
           sdAnim:spin?'dz-orbit 16s linear infinite':'none',
           sdSpin:spin,toggleSpin:()=>this.setState({sdSpin:!spin}),
           sdNote:`${MASK_NAMES[this.sides()]} · ${this.sides()} faces · drag to turn it`}})(),
-      // the die's material and edges, under the turning die (docs/face-designer.md, "Material and edges")
+      // step 2: the die's material, colour and edges, under the turning die (docs/face-designer.md, "Material, colour and edges")
       ...(()=>{const MATS=[['plastic','Plastic',0.35,0,0],['pearl','Pearl',0.35,0,0.25],['resin','Resin',0.15,0,0.6],['glass','Glass',0.05,0,1],['metal','Metal',0.3,1,0],['stone','Stone',0.8,0,0]];
-        const EDGES=[['sharp','Sharp'],['standard','Standard'],['rounded','Rounded'],['very','Very round']];
-        const mat=S.dzMat||'plastic';const edge=S.dzEdge||'standard';const m=MATS.find(x=>x[0]===mat)||MATS[0];
+        const BODIES=['#000000','#ffffff','#ec3013','#e15b47','#f5a623','#f8e71c','#7ed321','#1f5e3a','#50e3c2','#4a90d9','#9013fe','#8b572a'];
+        const bodyHex=S.dzBody||'#e8dcc0';const pct=S.dzEdgePct??3;const mm=(pct/100*16*(this.sides()===4?0.52:1)).toFixed(2);
+        const mat=S.dzMat||'plastic';const m=MATS.find(x=>x[0]===mat)||MATS[0];
         const body=Math.max(0.2,1-m[4]);const glint=(0.1+0.9*(1-m[2])*(0.5+0.5*m[3])).toFixed(2);const spread=Math.round((0.04+0.36*m[2])*100);
         return{dzMaterial:mat,dzMaterials:MATS.map(x=>({id:x[0],label:x[1]})),dzPickMaterial:e=>this.setState({dzMat:e.target.value}),
-          dzSwatch:`linear-gradient(135deg,transparent ${50-spread}%,rgba(255,255,255,${glint}) 50%,transparent ${50+spread}%),linear-gradient(rgba(232,220,192,${body}),rgba(232,220,192,${body})),repeating-conic-gradient(var(--color-text) 0 25%,var(--color-bg) 0 50%) 0 0/22px 22px`,
-          dzEdges:EDGES.map(o=>({label:o[1],on:edge===o[0],pick:()=>this.setState({dzEdge:o[0]})})),
+          dzSwatch:`linear-gradient(135deg,transparent ${50-spread}%,rgba(255,255,255,${glint}) 50%,transparent ${50+spread}%),linear-gradient(color-mix(in srgb, ${bodyHex} ${Math.round(body*100)}%, transparent),color-mix(in srgb, ${bodyHex} ${Math.round(body*100)}%, transparent)),repeating-conic-gradient(var(--color-text) 0 25%,var(--color-bg) 0 50%) 0 0/22px 22px`,
+          dzBodies:BODIES.map(h=>({hex:h,border:h===bodyHex?'var(--color-text)':'var(--color-divider)',pick:()=>this.setState({dzBody:h})})),
+          dzBody:bodyHex,dzPickBody:e=>this.setState({dzBody:e.target.value}),
+          dzEdgePct:pct,dzPickEdge:e=>this.setState({dzEdgePct:+e.target.value}),dzEdgeSaid:`Rounded by ${pct.toFixed(1)} % of its size: ${mm} mm`,
           dzFinishNote:'Roll it to see the material on the tray. Rounder dice tumble a little longer.'}})(),
       exited:!!S.exited,backArmed:!!S.backArmed&&!S.exited,
       edgeDown:this.edgeDown,edgeUp:this.edgeUp,

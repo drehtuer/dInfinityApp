@@ -118,9 +118,10 @@ a tumble; everything else is real.
   targets are 48 dp — save the colour picker's sliders, which Material holds at
   44 dp and which a test records — and the palette's contrast is measured in a
   test rather than eyeballed.
-- **Face designer** — draw die faces with your finger, turn the die over,
-  make it plastic, pearl, resin, glass, metal or stone and its edges sharp or
-  round, save the lot as a dice set of your own, and roll the die you drew.
+- **Face designer** — in three steps: pick the die; make it plastic, pearl,
+  resin, glass, metal or stone, give it a colour and round its edges on a
+  slider; then draw its faces with your finger and turn it over. Save the lot
+  as a dice set of your own, and roll the die you drew.
   How round a die is, is physics as well as looks: the dice roll on the edges
   they are drawn with.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,

@@ -144,7 +144,7 @@ class SolidViewTest {
   private fun solid() = compose.onNodeWithTag(DesignerTestTags.viewOf(DesignerView.Solid)).performClick()
 
   private fun show(die: Die): DesignerPresenter {
-    val presenter = DesignerPresenter(die)
+    val presenter = DesignerPresenter(die, step = DesignerStep.Faces)
     compose.setContent { DesignerScreen(presenter = presenter) }
     return presenter
   }

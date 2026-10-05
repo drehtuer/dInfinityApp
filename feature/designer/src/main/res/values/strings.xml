@@ -35,6 +35,17 @@
   <string name="designer_view_face">Face</string>
   <!-- The die itself, turned over in the hand. -->
   <string name="designer_view_solid">Solid</string>
+  <!-- The three steps a die is designed in, on the bar under the title. Short: three share one row. -->
+  <string name="designer_step_shape">Shape</string>
+  <string name="designer_step_material">Material</string>
+  <string name="designer_step_faces">Faces</string>
+  <!-- One step on the step bar: %1$d is its number, %2$s its name, like "2 Material". -->
+  <string name="designer_step_numbered">%1$d %2$s</string>
+  <!-- Under the title on the first two steps: %1$d is the step, %2$d how many there are, %3$s the die, like "d20". -->
+  <string name="designer_step_of">Step %1$d of %2$d · %3$s</string>
+  <!-- The footer's way on to the next step, and back to the one before. -->
+  <string name="designer_next">Next</string>
+  <string name="designer_back">Back</string>
   <!-- Whether the die turns on its own. Dragging it turns this off. -->
   <string name="designer_spin">Spin</string>
   <!-- What the die on the Solid tab is: %1$s is a die's name, like "d20", %2$d how many faces it has. -->

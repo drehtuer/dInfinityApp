@@ -120,8 +120,6 @@ internal fun SolidPane(
       modifier = Modifier.weight(1f).testTag(DesignerTestTags.SOLID_NOTE),
     )
   }
-
-  FinishPane(state, presenter)
 }
 
 /** `color-mix(in srgb, var(--color-accent) 16%, …)`, the design's own. */

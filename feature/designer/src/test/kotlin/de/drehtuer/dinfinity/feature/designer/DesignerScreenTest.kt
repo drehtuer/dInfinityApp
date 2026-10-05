@@ -258,6 +258,7 @@ class DesignerScreenTest {
   fun `the die being drawn on is announced as the one that is chosen`() {
     show(d6, choosable = listOf(d6, d4))
 
+    onShape()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d6.id)).assertIsSelected()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).assertIsNotSelected()
 
@@ -431,6 +432,16 @@ class DesignerScreenTest {
   }
 
   @Test
+  fun `tapping another die opens it`() {
+    val presenter = show(d6, choosable = listOf(d6, d4))
+
+    onShape()
+    compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+
+    assertEquals(d4.id, presenter.state.die.id)
+  }
+
+  @Test
   fun `the drawing on the die you left is there when you come back to it`() {
     // It used to ask before throwing the drawing away, and now there is
     // nothing to throw away: each die keeps its own (`docs/face-designer.md`,
@@ -438,6 +449,7 @@ class DesignerScreenTest {
     val presenter = showRemembering(d6, choosable = listOf(d6, d4))
     presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
 
+    onShape()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
     assertTrue("the other die opened on somebody else's drawing", presenter.state.draft.blank)
     compose.onNodeWithTag(DesignerTestTags.baseOf(d6.id)).performClick()
@@ -452,7 +464,7 @@ class DesignerScreenTest {
     // recomposition has to skip them. One that skipped wrongly would come back
     // without its row of dice, which a single-pass test would never see.
     var tick by mutableStateOf(0)
-    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4))
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d4), step = DesignerStep.Shape)
     compose.setContent {
       Column {
         Text("tick $tick")
@@ -465,7 +477,7 @@ class DesignerScreenTest {
     compose.onNodeWithText("tick 1").assertIsDisplayed()
     compose.onNodeWithTag(DesignerTestTags.BASES).assertIsDisplayed()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).assertIsDisplayed()
-    compose.onNodeWithTag(DesignerTestTags.CANVAS).assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.SOLID).assertExists()
   }
 
   @Test
@@ -483,7 +495,11 @@ class DesignerScreenTest {
     val thrown = mutableListOf<String>()
     show(d6, choosable = listOf(d6, d4), notationOf = { "1${it.id}" }, onRoll = thrown::add)
 
+    onShape()
     compose.onNodeWithTag(DesignerTestTags.baseOf(d4.id)).performClick()
+    // Through the steps the way a person goes: Next, Next, then Roll it.
+    compose.onNodeWithTag(DesignerTestTags.NEXT).performClick()
+    compose.onNodeWithTag(DesignerTestTags.NEXT).performClick()
     compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
 
     assertEquals(listOf("1d4"), thrown)
@@ -673,7 +689,7 @@ class DesignerScreenTest {
     val presenter = show(d6)
 
     compose.onNodeWithTag(DesignerTestTags.nibOf(Nib.Stamp)).performScrollTo().performClick()
-    compose.onNodeWithTag(DesignerTestTags.CANVAS).performClick()
+    compose.onNodeWithTag(DesignerTestTags.CANVAS).performScrollTo().performClick()
 
     assertTrue(
       "the stamp left nothing",
@@ -732,7 +748,7 @@ class DesignerScreenTest {
     // recomposition has to skip it — and one that skipped wrongly would come
     // back without the row it was typing in.
     var tick by mutableStateOf(0)
-    val presenter = DesignerPresenter(d6)
+    val presenter = DesignerPresenter(d6, step = DesignerStep.Faces)
     compose.setContent {
       Column {
         Text("tick $tick")
@@ -821,7 +837,7 @@ class DesignerScreenTest {
     // (`DInfinityApp`), which every other test here leaves defaulted.
     compose.setContent {
       DesignerScreen(
-        presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }),
+        presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }, step = DesignerStep.Faces),
         modifier = Modifier.testTag("hosted"),
         onRoll = {},
         menu = { Text("Menu") },
@@ -854,13 +870,17 @@ class DesignerScreenTest {
     notationOf: (Die) -> String? = { null },
     sets: DesignerSets = DesignerSets.NONE,
     onRoll: (String) -> Unit = {},
-  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Drafts.NONE, notationOf, sets), onRoll)
+  ): DesignerPresenter =
+    shown(DesignerPresenter(die, choosable, Drafts.NONE, notationOf, sets, step = DesignerStep.Faces), onRoll)
+
+  /** Back to the first step, where the dice are chosen. */
+  private fun onShape() = compose.onNodeWithTag(DesignerTestTags.stepOf(DesignerStep.Shape)).performClick()
 
   /** The one case that needs a drawing to outlive a change of die. */
   private fun showRemembering(
     die: Die,
     choosable: List<Die>,
-  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Remembered()))
+  ): DesignerPresenter = shown(DesignerPresenter(die, choosable, Remembered(), step = DesignerStep.Faces))
 
   private fun shown(
     presenter: DesignerPresenter,

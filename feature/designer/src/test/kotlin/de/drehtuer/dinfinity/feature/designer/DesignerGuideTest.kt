@@ -44,7 +44,7 @@ class DesignerGuideTest {
     // white paper: switching it changed nothing anybody could see, and the
     // switch — a picture of a landscape — was reported as an image loader that
     // loaded nothing.
-    val presenter = DesignerPresenter(d6)
+    val presenter = DesignerPresenter(d6, step = DesignerStep.Faces)
     compose.setContent {
       MaterialTheme(colorScheme = darkColorScheme()) { DesignerScreen(presenter = presenter) }
     }
@@ -63,7 +63,7 @@ class DesignerGuideTest {
 
   @Test
   fun `the guide's switch is a word a screen reader says, not a picture of a landscape`() {
-    compose.setContent { DesignerScreen(presenter = DesignerPresenter(d6)) }
+    compose.setContent { DesignerScreen(presenter = DesignerPresenter(d6, step = DesignerStep.Faces)) }
 
     compose.onNodeWithTag(DesignerTestTags.GUIDE).performScrollTo().assertTextContains("Guide")
   }

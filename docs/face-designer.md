@@ -2,7 +2,9 @@
 
 > **Design:** the designer is options 1v (d6 with a skull on the 1), 4c
 > (colour picker) and 8d (d20, triangular face mask) of the
-> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)); the
+> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)), and
+> its three steps — shape, material and colour, faces — are the designer of the
+> [phone prototype](../design/dInfinityPhone.dc.html) (`dzSteps`); the
 > export is 8c, on the "My dice" details screen reached like any other
 > package's (6a).
 
@@ -13,10 +15,31 @@ installed by other users like any other set.
 
 ## Flow
 
-1. **Pick a base die.** Any catalogue shape or any installed die. The designer
-   copies its `faces` and `labels`, so face *values* are inherited; the user
-   is only drawing what the face looks like.
-2. **Draw.** The screen shows one face at a time as a large square canvas
+**The designer is three steps**, in the order a die is made: what shape it
+is, what it is made of, and what is on its faces. A bar of the three under the
+title says which step is in front of the player and goes to any of them;
+**Back** and **Next** in the footer walk them in order, and the last step's
+footer has the two ways out, **Roll it** and **Save to set**. Each step is a
+screen of its own rather than a section of one long one, because one screen was
+the chooser, the canvas, six rows of tools, the material and the edges all
+scrolling past each other — and because the order is real: the faces are drawn
+*on* the shape, and the die's colour is the paper they are drawn on.
+
+Nothing is lost going between steps: every change is written into the die's
+draft the moment it is made, and the draft is written again as a step is left.
+The phone's Back leaves the designer from any step, as it always has; the
+footer's **Back** is the way to the step before. From the menu the designer
+opens on the first step; "Doodle this die" and the way back from a test throw
+already know the die and open on the faces (`DesignerStep.openingFor`).
+
+1. **Shape: pick a base die.** Any catalogue shape or any installed die,
+   wrapped in rows with the die turning above them. The designer copies its
+   `faces` and `labels`, so face *values* are inherited; the user is only
+   drawing what the face looks like.
+2. **Material and colour.** The turning die again, and under it what the die
+   is made of, its body colour and how round its edges are ("Material, colour
+   and edges").
+3. **Faces: draw.** The screen shows one face at a time as a large square canvas
    with the face's outline (triangle, square, pentagon, a kite for the d10
    and a longer one for the d18) masked in — the face's own polygon, so what
    fills the outline fills the face. Swipe left/right or use the strip at the bottom to move between
@@ -33,10 +56,13 @@ installed by other users like any other set.
    otherwise reads as a different number depending on which way it is looked
    at, which the designer should make hard to do by accident rather than
    merely warn about afterwards.
-3. **Turn it over.** The **Solid** tab beside the flat editor shows the real
+   The **Solid** tab beside the flat editor shows the real
    polyhedron with each authored face on the face it was drawn for, turning on
    its own until a drag takes over ("The solid, not just the face").
-4. **Roll it.** The footer's filled button throws the die into the tray to see
+
+The footer of the last step:
+
+- **Roll it.** The footer's filled button throws the die into the tray to see
    how it looks in motion (`docs/physics-and-rendering.md`, "Starting a
    roll"). It opens the tray with the die in the formula field and **does not
    throw it**: the throw is the player's to make, which is the same answer
@@ -65,7 +91,7 @@ installed by other users like any other set.
    the tray draws a banner over the table that goes back to the designer on
    *that* die (`design/dInfinityPhone.dc.html`, the `fromDesigner` banner;
    "The way back" below).
-5. **Save to set.** Every drawing is a draft on disk the moment the finger
+- **Save to set.** Every drawing is a draft on disk the moment the finger
    lifts, so nothing is ever *lost*; what the footer's other action does is
    turn the drafts into the installed package ("Save to set" below). It is
    the same step Roll it takes, offered on its own for somebody who wants the
@@ -79,14 +105,16 @@ face, the twelve presets, and the strip that moves between faces. Strokes are
 vectors in fractions of the canvas, so they survive a rotation and can be
 re-rendered at export resolution.
 
-**The body scrolls; the header, the strip and the footer stay.** A square
-canvas and three rows of controls do not fit above the fold on a short phone,
-so everything from the base-die chooser down to the palette scrolls. Three
-things are pinned: the app bar at the top (the title, which face is in front
-of the player, undo and redo, the menu), the face strip above the footer —
-which face is in front of the player is where the screen is steered from —
-and the footer with **Save to set** and **Roll it** in it, which is where the
-prototype puts the one filled button on the screen. The tool, clipboard and
+**The body scrolls; the header, the step bar, the strip and the footer
+stay.** A square canvas and its rows of controls do not fit above the fold on
+a short phone, so everything between the step bar and the strip scrolls. What
+is pinned: the app bar at the top (the title; which face is in front of the
+player on the Faces step and which step otherwise; undo and redo, on the Faces
+step only, where there is something to take back; the menu), the step bar
+under it, the face strip above the footer on the Faces step — which face is in
+front of the player is where that step is steered from — and the footer, with
+the one filled button on the screen: **Next** on the first two steps and
+**Roll it** on the last. The tool, clipboard and
 colour rows **wrap** rather than scroll sideways: a tool hidden off the edge
 of a row is a tool nobody finds. Only the face strip scrolls sideways, because
 twenty faces have to go somewhere.
@@ -141,7 +169,7 @@ on.
 and follows the chooser, so it throws the die in front of the player rather
 than the one the screen opened on — and the die it throws is the one with the
 atlas on it, because pressing it builds the personal package first and names
-the die in that package (Flow, step 4). A set's own `skull-d6` is thrown as
+the die in that package (Flow, Roll it). A set's own `skull-d6` is thrown as
 `1{brass:skull-d6}` — the braced spelling the picker row writes
 (`docs/dice-notation.md`, "A set's own dice"; `docs/architecture.md`,
 decision 75). It is **absent rather than dead** for a die notation cannot name,
@@ -206,7 +234,7 @@ every installed set and so has no answer to "which set is this one": a bare
 `1d20` when the set a plain `d20` already means has one, and `brass:1d18` when
 it does not and `brass` does. **Roll it is the exception**, and asks for the
 personal set by name, because the whole point of the press is to throw the
-drawing (Flow, step 4).
+drawing (Flow, Roll it).
 
 **The chooser does not offer the personal set.** A die of "My dice" is not a
 shape to draw *on* — it is a drawing already, the same `d20` with an atlas over
@@ -670,15 +698,17 @@ the wrong place (`docs/architecture.md`, decision 86).
 
 Until the design pass of 2026-09-17 the answer to "what does it look like as a
 die" was **roll it**, and the hand-over recorded that as deliberate. The design
-asked the other way and it is built: a **Solid** tab beside the flat editor,
+asked the other way and it is built: the turning die is the picture on the
+first two steps — the shape being chosen, then the material, colour and
+rounding being set — and a **Solid** tab beside the flat editor on the third,
 for the one thing rolling cannot do — a roll shows you one face at a time,
 chosen by physics, and a person lettering a d20 wants to turn it over.
 
-The two tabs are two views of one drawing. The base-die chooser, the face strip
-and the way out to the tray are the same underneath both; which face is in
-front of the player, which die is being drawn on, how the die is turned and
-where the pen was all survive moving between them, and so does a change of base
-die.
+The two tabs are two views of one drawing. The face strip and the way out to
+the tray are the same underneath both; which face is in front of the player,
+which die is being drawn on, how the die is turned and where the pen was all
+survive moving between them and between the steps. The die turns on its own
+whenever it is on the screen.
 
 **The polyhedron is generated, not modelled.** `simulation/api` already owned
 every catalogue solid — its corners, the direction of each readable position
@@ -811,12 +841,12 @@ and the size the exporter paints are the same number ("Export details").
 
 ### Material, colour and edges
 
-> **Design:** the **Material** menu and the **Edges** control are under the
-> turning die on the Solid tab of the
+> **Design:** the **Material** menu, the **Colour** row and the **Edges**
+> slider are under the turning die on the designer's second step in the
 > [phone prototype](../design/dInfinityPhone.dc.html) (`design/`).
 
-Three controls for the die rather than for a face, so they are on the Solid
-tab, under the die in the hand: what it is made of, what colour it is, and how
+Three controls for the die rather than for a face, so they are the second
+step, under the die in the hand: what it is made of, what colour it is, and how
 round its edges are. All three belong to the die being drawn — another base die
 has its own — and are written into its draft the moment they change, like a
 stroke (`docs/architecture.md`, decisions 94 and 97).
@@ -1003,7 +1033,7 @@ a named set holds what was put into it on purpose.
   faces are in the wrong places on somebody else's phone.
 - Background of each cell is transparent, so the die's body colour is what
   shows between the marks. What the die is made of and how round it is are
-  its own when the Solid tab's controls set them ("Material, colour and edges").
+  its own when the second step's controls set them ("Material, colour and edges").
   **A cell nobody drew on is not written at all**, and that is what decides
   what a face carries on the tray: **a drawn face carries the drawing and no
   number, and a face left undrawn carries its printed number** — so a die
@@ -1178,7 +1208,7 @@ disk under the die's own id and the drafts together already *are* "My dice", so
 the variant would be a second copy of a drawing that exists, and the switch
 would be a roll whose dice a screen changed behind the player. The ways back to
 the tray are Back and "Roll it", which hands the tray the die being drawn
-("Flow", step 4).
+("Flow", Roll it).
 
 Which die the screen opens on is one rule with the menu's
 (`designer`'s `OpeningDie`): the die the long press named, and the usual d6

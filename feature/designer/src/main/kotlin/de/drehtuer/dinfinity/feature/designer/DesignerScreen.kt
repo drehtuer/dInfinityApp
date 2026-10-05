@@ -98,6 +98,7 @@ fun DesignerScreen(
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
+  Turning(state, presenter)
   Column(
     modifier =
       modifier
@@ -107,25 +108,92 @@ fun DesignerScreen(
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Header(state, presenter, menu)
+    Steps(state, presenter)
 
     Column(
-      // Everything above the strip scrolls, as the body does in the prototype:
-      // a square canvas and three rows of controls do not fit on a short
-      // phone, and a control squeezed off the bottom is one nobody can reach.
+      // Everything between the step bar and the strip scrolls, as the body
+      // does in the prototype: a square canvas and its rows of tools do not
+      // fit on a short phone, and a control squeezed off the bottom is one
+      // nobody can reach.
       modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      BaseDice(state, presenter)
-      ViewTabs(state, presenter)
-      if (state.view == DesignerView.Face) Editor(state, presenter) else SolidPane(state, presenter)
+      when (state.step) {
+        DesignerStep.Shape -> {
+          BaseDice(state, presenter)
+          SolidPane(state, presenter)
+        }
+        DesignerStep.Material -> {
+          SolidPane(state, presenter)
+          FinishPane(state, presenter)
+        }
+        DesignerStep.Faces -> {
+          ViewTabs(state, presenter)
+          if (state.view == DesignerView.Face) Editor(state, presenter) else SolidPane(state, presenter)
+        }
+      }
     }
-    // The strip stays: which face is in front of the player is where the
-    // screen is steered from, and a steering wheel that scrolls away is not
-    // one.
-    FaceStrip(state, presenter)
-    Footer(presenter, onRoll)
+    // The strip stays on the Faces step: which face is in front of the player
+    // is where that step is steered from, and a steering wheel that scrolls
+    // away is not one.
+    if (state.step == DesignerStep.Faces) FaceStrip(state, presenter)
+    Footer(state, presenter, onRoll)
   }
   if (state.saving != null) SaveSheet(state.saving, presenter)
+}
+
+/**
+ * The three steps, as one control that says where the player is and takes
+ * them anywhere (`docs/face-designer.md`, "Flow").
+ *
+ * The design system's segmented control, as the two tabs are: a choice of a
+ * fixed few, butted together, the one in front inverted. **Back** and
+ * **Next** in the footer walk it in order; this is for going straight back to
+ * the colour from the fortieth stroke.
+ */
+@Composable
+private fun Steps(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag(DesignerTestTags.STEPS)) {
+    SegmentedControl(
+      options = DesignerStep.entries,
+      selected = state.step,
+      label = { step ->
+        stringResource(R.string.designer_step_numbered, step.ordinal + 1, stringResource(labelOf(step)))
+      },
+      onSelect = presenter::go,
+      tagOf = DesignerTestTags::stepOf,
+    )
+  }
+}
+
+/**
+ * The die turning on its own whenever it is on the screen, a frame at a time
+ * rather than as an animation of its own: what it turns by is the presenter's
+ * arithmetic over how long the frame took, so it is the same turn on a 60 Hz
+ * panel and on a 120 Hz one (`SolidTurn`).
+ *
+ * `withInfiniteAnimationFrameNanos` rather than `withFrameNanos`, because this
+ * turn has no end: it is what says so, so a test waiting for the screen to
+ * settle is not waiting for a die to stop.
+ */
+@Composable
+private fun Turning(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  LaunchedEffect(state.showsSolid, state.spinning) {
+    if (!state.showsSolid || !state.spinning) return@LaunchedEffect
+    var last = 0L
+    while (true) {
+      withInfiniteAnimationFrameNanos { now ->
+        if (last != 0L) presenter.spun((now - last) / NANOS_A_SECOND)
+        last = now
+      }
+    }
+  }
 }
 
 /**
@@ -141,24 +209,6 @@ private fun ViewTabs(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
-  // The die turns on its own while the Solid tab is open, a frame at a time
-  // rather than as an animation of its own: what it turns by is the
-  // presenter's arithmetic over how long the frame took, so it is the same
-  // turn on a 60 Hz panel and on a 120 Hz one (`SolidTurn`).
-  //
-  // `withInfiniteAnimationFrameNanos` rather than `withFrameNanos`, because
-  // this turn has no end: it is what says so, so a test waiting for the screen
-  // to settle is not waiting for a die to stop.
-  LaunchedEffect(state.view, state.spinning) {
-    if (state.view != DesignerView.Solid || !state.spinning) return@LaunchedEffect
-    var last = 0L
-    while (true) {
-      withInfiniteAnimationFrameNanos { now ->
-        if (last != 0L) presenter.spun((now - last) / NANOS_A_SECOND)
-        last = now
-      }
-    }
-  }
   Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
     SegmentedControl(
       options = DesignerView.entries,
@@ -225,37 +275,65 @@ private fun Header(
         style = MaterialTheme.typography.titleLarge,
         color = ink,
       )
-      Text(
-        text = stringResource(R.string.designer_which_face, state.label, state.draft.cells),
-        style = MaterialTheme.typography.labelSmall,
-        color = Ink.muted,
-        modifier = Modifier.testTag(DesignerTestTags.WHICH_FACE),
-      )
+      if (state.step == DesignerStep.Faces) {
+        Text(
+          text = stringResource(R.string.designer_which_face, state.label, state.draft.cells),
+          style = MaterialTheme.typography.labelSmall,
+          color = Ink.muted,
+          modifier = Modifier.testTag(DesignerTestTags.WHICH_FACE),
+        )
+      } else {
+        Text(
+          text =
+            stringResource(
+              R.string.designer_step_of,
+              state.step.ordinal + 1,
+              DesignerStep.entries.size,
+              state.die.id,
+            ),
+          style = MaterialTheme.typography.labelSmall,
+          color = Ink.muted,
+          modifier = Modifier.testTag(DesignerTestTags.WHICH_STEP),
+        )
+      }
     }
-    ModernistIconButton(
-      contentDescription = stringResource(R.string.designer_undo),
-      onClick = { presenter.take(Step.Back) },
-      enabled = state.canUndo,
-      modifier = Modifier.testTag(DesignerTestTags.UNDO),
-    ) {
-      Glyph(DesignerIcons.UNDO, ink)
-    }
-    ModernistIconButton(
-      contentDescription = stringResource(R.string.designer_redo),
-      onClick = { presenter.take(Step.Forward) },
-      enabled = state.canRedo,
-      modifier = Modifier.testTag(DesignerTestTags.REDO),
-    ) {
-      Glyph(DesignerIcons.REDO, ink)
-    }
+    if (state.step == DesignerStep.Faces) TakingBack(state, presenter, ink)
     menu()
   }
 }
 
+/** Undo and redo, which only the Faces step has anything to take back of. */
+@Composable
+private fun TakingBack(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+  ink: Color,
+) {
+  ModernistIconButton(
+    contentDescription = stringResource(R.string.designer_undo),
+    onClick = { presenter.take(Step.Back) },
+    enabled = state.canUndo,
+    modifier = Modifier.testTag(DesignerTestTags.UNDO),
+  ) {
+    Glyph(DesignerIcons.UNDO, ink)
+  }
+  ModernistIconButton(
+    contentDescription = stringResource(R.string.designer_redo),
+    onClick = { presenter.take(Step.Forward) },
+    enabled = state.canRedo,
+    modifier = Modifier.testTag(DesignerTestTags.REDO),
+  ) {
+    Glyph(DesignerIcons.REDO, ink)
+  }
+}
+
 /**
- * The two ways out of the screen, on the bottom edge where the prototype puts
- * them (`design/dInfinity.dc.html`, option `1v`: a footer with one filled
- * button in it).
+ * The way through the steps and the two ways out of the screen, on the bottom
+ * edge where the prototype puts them (`design/dInfinity.dc.html`, option `1v`:
+ * a footer with one filled button in it).
+ *
+ * **Back** on every step but the first; **Next**, filled, on the first two;
+ * and on the last, the two ways out.
  *
  * **Roll it** is the filled one, because it is the one thing the screen is
  * for; it is absent rather than dead for a die notation cannot name — a
@@ -264,16 +342,35 @@ private fun Header(
  */
 @Composable
 private fun Footer(
+  state: DesignerState,
   presenter: DesignerPresenter,
   onRoll: (String) -> Unit,
 ) {
   val rollable = presenter.rollable
-  if (rollable == null && presenter.writable.isEmpty()) return
   Row(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(8.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
+    if (state.step.previous != null) {
+      ModernistButton(
+        text = stringResource(R.string.designer_back),
+        onClick = presenter::back,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(DesignerTestTags.BACK),
+      )
+    }
+    if (state.step.next != null) {
+      // The one filled button on the first two steps: going on is what they
+      // are for.
+      ModernistButton(
+        text = stringResource(R.string.designer_next),
+        onClick = presenter::next,
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(DesignerTestTags.NEXT),
+      )
+      return@Row
+    }
     if (presenter.writable.isNotEmpty()) {
       ModernistButton(
         text = stringResource(R.string.designer_save),
@@ -470,23 +567,25 @@ private fun NewSetChoice(
  * made it. A die's id is its own word and there is no picture of a `d18`, so
  * these stay lettered where the tool row does not.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BaseDice(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
-  if (!state.baseChoosable) return
-  Row(
+  val dice = state.choosable.ifEmpty { listOf(state.die) }
+  // Wrapping now it has a step to itself: a die hidden off the edge of a row
+  // is a die nobody finds.
+  FlowRow(
     modifier =
       Modifier
         .fillMaxWidth()
-        .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 8.dp)
+        .padding(horizontal = 16.dp)
         .testTag(DesignerTestTags.BASES),
     horizontalArrangement = Arrangement.spacedBy(4.dp),
-    verticalAlignment = Alignment.CenterVertically,
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
-    state.choosable.forEach { die ->
+    dice.forEach { die ->
       OptionBox(
         text = die.id,
         selected = die.id == state.die.id,
@@ -1008,6 +1107,13 @@ private fun FaceThumbnail(
   }
 }
 
+private fun labelOf(step: DesignerStep): Int =
+  when (step) {
+    DesignerStep.Shape -> R.string.designer_step_shape
+    DesignerStep.Material -> R.string.designer_step_material
+    DesignerStep.Faces -> R.string.designer_step_faces
+  }
+
 private fun labelOf(view: DesignerView): Int =
   when (view) {
     DesignerView.Face -> R.string.designer_view_face
@@ -1116,6 +1222,10 @@ object DesignerTestTags {
   const val SOLID_NOTE: String = "designer:solid:note"
   const val SPIN: String = "designer:solid:spin"
   const val WHICH_FACE: String = "designer:which-face"
+  const val WHICH_STEP: String = "designer:which-step"
+  const val STEPS: String = "designer:steps"
+  const val NEXT: String = "designer:next"
+  const val BACK: String = "designer:back"
   const val UNDO: String = "designer:undo"
   const val REDO: String = "designer:redo"
   const val CLEAR: String = "designer:clear"
@@ -1165,6 +1275,8 @@ object DesignerTestTags {
   val PICKER: ColourPickerTags = ColourPickerTags("designer:picker")
 
   fun viewOf(view: DesignerView): String = "designer:view:${view.name.lowercase()}"
+
+  fun stepOf(step: DesignerStep): String = "designer:step:${step.name.lowercase()}"
 
   fun baseOf(dieId: String): String = "designer:base:$dieId"
 

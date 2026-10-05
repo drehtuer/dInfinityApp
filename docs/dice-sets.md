@@ -193,7 +193,8 @@ of** (`docs/tables.md`, "Your own photo"). Beside it there can be any number of
 - **A die drawn in the designer may carry a material, a colour and a rounding
   of its own** — `color`, `number_color`, `roughness`, `metallic`,
   `translucency` and `edge_rounding` as per-die keys over `[defaults]` — when
-  the designer's **Material**, **Colour** or **Edges** control was used on it, or when it was copied from a set whose die
+  the designer's **Material**, **Colour** or **Edges** control (its second
+  step) was used on it, or when it was copied from a set whose die
   was not the standard material (`docs/face-designer.md`, "Material, colour and
   edges"). Such a die keeps its own translucency when the details screen's
   stepper moves the rest of the set's, and the block's range says so.
