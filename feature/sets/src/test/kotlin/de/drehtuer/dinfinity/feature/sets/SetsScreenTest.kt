@@ -6,13 +6,17 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.longClick
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -108,31 +112,22 @@ class SetsScreenTest {
   }
 
   @Test
-  fun `tapping a row with nothing wired to it does nothing`() {
-    // The screen the menu reaches on a cold start has no handler attached yet.
-    // A tap then has to be harmless rather than fatal.
-    write("brass", toml("brass", "Brass"))
-    val presenter = show()
-
-    compose.onNodeWithTag(SetsTestTags.setOf("brass")).performClick()
-
-    compose.waitForIdle()
-    compose.onNodeWithTag(SetsTestTags.setOf("brass")).assertIsDisplayed()
-    assertEquals(null, presenter.state.acting)
-  }
-
-  @Test
   fun `the install button asks, and says so while one is running`() {
     // Choosing the file is the application's business, so the screen only
     // asks. While an install is running it must not ask again: two extractions
     // racing for one folder is the one thing the installer cannot guard.
     var asked = 0
-    val presenter = show(onInstall = { asked++ })
+    val presenter = show(onInstall = { asked++ }, download = { _, far -> held(far) })
 
     compose.onNodeWithTag(SetsTestTags.INSTALL).performClick()
     compose.waitForIdle()
-
     assertEquals(1, asked)
+
+    presenter.installFrom("https://example.test/brass.zip")
+    compose.waitUntil(PATIENCE) { presenter.state.installing }
+
+    compose.onNodeWithTag(SetsTestTags.INSTALL).assertTextContains("Installing", substring = true)
+    compose.onNodeWithTag(SetsTestTags.INSTALL).assertIsNotEnabled()
   }
 
   @Test
@@ -516,6 +511,79 @@ class SetsScreenTest {
 
   /** The two halves joined, with the disk and the database both real. */
   @Test
+  fun `a good package says it is installed, and a second copy says it replaced the first`() {
+    // The title is the outcome: the two are told apart because a replaced set
+    // keeps nothing of the copy it replaced.
+    val presenter = show()
+
+    presenter.install(zip("brass", toml("brass", "Brass")))
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+    compose.onNodeWithText("“Brass” is installed.").assertIsDisplayed()
+    compose.onNodeWithTag(SetsTestTags.OUTCOME_REASON).assertDoesNotExist()
+    compose.onNodeWithTag(SetsTestTags.OUTCOME_CLOSE).performClick()
+    compose.waitUntil(PATIENCE) { presenter.state.outcome == null }
+
+    presenter.install(zip("brass", toml("brass", "Brass")))
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+    compose.onNodeWithText("“Brass” was replaced with this one.").assertIsDisplayed()
+  }
+
+  @Test
+  fun `a tap outside either sheet puts it away and does nothing else`() {
+    // The backdrop is a way out, not a choice: the set stays where it was and
+    // the outcome is simply read.
+    write("brass", toml("brass", "Brass"))
+    val presenter = show()
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).performTouchInput { longClick() }
+    compose.waitUntil(PATIENCE) { presenter.state.acting != null }
+
+    tapOutsideTheSheet()
+
+    compose.waitUntil(PATIENCE) { presenter.state.acting == null }
+    assertTrue("the set was acted on by a tap outside the sheet", File(root, "brass").isDirectory)
+    assertTrue(
+      presenter.state.sets
+        .single { it.id == "brass" }
+        .enabled,
+    )
+
+    presenter.refused("that file is not a dice set")
+    compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
+
+    tapOutsideTheSheet()
+
+    compose.waitUntil(PATIENCE) { presenter.state.outcome == null }
+  }
+
+  /**
+   * The top-left corner of the dialog's own window, which is backdrop: a
+   * sheet sits on the bottom edge. The dialog is the last of the two roots.
+   */
+  private fun tapOutsideTheSheet() {
+    compose.waitForIdle()
+    compose
+      .onAllNodes(isRoot())
+      .onLast()
+      .performTouchInput { click(Offset(1f, 1f)) }
+    compose.waitForIdle()
+  }
+
+  @Test
+  fun `the fetch button installs from the link that was typed`() {
+    val asked = mutableListOf<String>()
+    show(download = { url, _ ->
+      asked += url
+      FetchedPackage.Failed("no")
+    })
+
+    compose.onNodeWithTag(SetsTestTags.LINK).performTextInput("https://example.test/brass.zip")
+    compose.onNodeWithTag(SetsTestTags.FETCH).performClick()
+
+    compose.waitUntil(PATIENCE) { asked.isNotEmpty() }
+    assertEquals(listOf("https://example.test/brass.zip"), asked)
+  }
+
+  @Test
   fun `a link is offered beside the file, and the button waits for one`() {
     show()
 
@@ -639,6 +707,8 @@ class SetsScreenTest {
     compose.onNodeWithTag(SetsTestTags.LIST).performScrollToNode(hasTestTag(SetsTestTags.setOf("brass")))
     compose.onNodeWithTag(SetsTestTags.outdatedOf("brass"), useUnmergedTree = true).assertExists()
     compose.onNodeWithTag(SetsTestTags.outdatedOf("bone"), useUnmergedTree = true).assertDoesNotExist()
+    // And the line beside the button counts them, so the list need not be read.
+    compose.onNodeWithTag(SetsTestTags.CHECKED).assertTextContains("1 set has something newer", substring = true)
   }
 
   @Test
@@ -683,14 +753,11 @@ class SetsScreenTest {
         FetchedPackage.Archive(notASet)
       })
     compose.waitUntil(PATIENCE) { presenter.state.sets.any { it.id == "brass" } }
+    compose.onNodeWithTag(SetsTestTags.LIST).performScrollToNode(hasTestTag(SetsTestTags.setOf("brass")))
 
-    presenter.installFrom(
-      requireNotNull(
-        presenter.state.sets
-          .first { it.id == "brass" }
-          .meta.source,
-      ),
-    )
+    // Through the sheet, which is the only place the screen offers it.
+    compose.onNodeWithTag(SetsTestTags.setOf("brass")).performTouchInput { longClick() }
+    compose.onNodeWithTag(SetsTestTags.UPDATE).performClick()
 
     compose.waitUntil(PATIENCE) { presenter.state.outcome != null }
     assertEquals(listOf("https://codeberg.org/ada/brass"), asked)
