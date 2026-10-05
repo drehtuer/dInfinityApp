@@ -45,7 +45,17 @@ internal fun DrawScope.drawFace(
   // square and the outline it is masked into is not, so a mark near a corner
   // of the canvas belongs to no face (`docs/face-designer.md`).
   clipPath(polygon) {
-    face.marks.forEach { mark -> drawShape(mark) }
+    face.marks.forEach { mark ->
+      if (mark.erases) {
+        // The eraser is the face's own paper, as it is on the canvas — lit as
+        // the face is, and tinted with it when it is the one being drawn on.
+        val path = pathOf(mark.rings, size, mark.union)
+        drawPath(path = path, color = colours.lit(face.light))
+        if (selected) drawPath(path = path, color = colours.tint)
+      } else {
+        drawShape(mark)
+      }
+    }
   }
   drawPath(
     path = polygon,
@@ -61,27 +71,30 @@ internal fun DrawScope.drawSolid(
 ) = drawPath(path = pathOf(listOf(outline), size), color = paper)
 
 /**
- * One closed mark on a face, under the even-odd rule.
+ * One closed mark on a face, under the even-odd rule — or, for a stroke of the
+ * pen, as the union of the shapes its ink covers ([StageShape.union]).
  *
- * The same rule the flat canvas draws a stamp with, and for the same reason:
- * it is what leaves the hole in a `0` open (`FaceInk`).
+ * Even-odd is the rule the flat canvas draws a stamp with, and for the same
+ * reason: it is what leaves the hole in a `0` open (`FaceInk`).
  */
 internal fun DrawScope.drawShape(shape: StageShape) =
-  drawPath(path = pathOf(shape.rings, size), color = Color(shape.colorArgb))
+  drawPath(path = pathOf(shape.rings, size, shape.union), color = Color(shape.colorArgb))
 
 /**
  * Closed rings on the stage as one path.
  *
  * A ring with nothing in it is skipped rather than started and closed: a face
  * that is edge-on projects to no polygon at all, and `moveTo` on an empty list
- * would be a path with a point in it.
+ * would be a path with a point in it. [union] fills the rings as one shape
+ * under the non-zero rule rather than the even-odd one ([StageShape.union]).
  */
 internal fun pathOf(
   rings: List<List<StagePoint>>,
   size: Size,
+  union: Boolean = false,
 ): Path =
   Path().apply {
-    fillType = PathFillType.EvenOdd
+    fillType = if (union) PathFillType.NonZero else PathFillType.EvenOdd
     rings.filter { it.isNotEmpty() }.forEach { ring ->
       ring.forEachIndexed { corner, point ->
         val x = point.x * size.width

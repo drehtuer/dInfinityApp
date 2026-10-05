@@ -102,10 +102,19 @@ data class StagePoint(
  * Rings rather than one path, and drawn under the even-odd rule, because that
  * is what a mark on a face already is: a stamped `0` is its outline and the
  * counter that leaves its hole open ([Rings]).
+ *
+ * @param union true for a stroke of the pen, whose rings are the discs and
+ *   bands its ink covers, all wound one way ([StrokeOutline]): they are drawn
+ *   under the non-zero rule, as their union, where even-odd would cut a hole
+ *   wherever two of them overlap.
+ * @param erases true for the eraser, which is drawn in the face's own paper
+ *   rather than in [colorArgb] — on the stage as on the canvas.
  */
 data class StageShape(
   val rings: List<List<StagePoint>>,
   val colorArgb: Int,
+  val union: Boolean = false,
+  val erases: Boolean = false,
 )
 
 /**
@@ -198,35 +207,40 @@ object SolidStage {
   }
 
   /**
-   * What of a face's drawing the stage can show.
+   * Everything drawn on a face, as the stage can show it, in the order it was
+   * put down.
    *
-   * **Closed marks, and not the strokes of the pen.** A fill, a stamped
-   * numeral and a face of pips are all closed rings, and a closed ring under a
+   * **Every mark is drawn as closed shapes.** A fill, a stamped numeral and a
+   * face of pips already are closed rings, and a closed ring under a
    * projection is still a closed ring with its corners in the right places —
    * so what is drawn is the shape itself rather than an impression of it. A
-   * stroke is not a shape but a *line of a width*, and a width on a tilted
-   * face is wider one way than the other; drawing it as a line of one width
-   * would be the picture telling a lie about the die. It is left out and said
-   * out loud instead (`docs/face-designer.md`).
+   * stroke of the pen is a line of a width, which a projection does not keep:
+   * a width on a tilted face is wider one way than the other. So a stroke is
+   * handed over as the shapes its ink covers ([StrokeOutline]) and those are
+   * projected like any other ring — the line on the die is the line on the
+   * canvas, foreshortened as the face is.
+   *
+   * It used to leave strokes out and say so under the stage, which on a die
+   * drawn with the pen was a die with blank faces.
    */
   private fun shapesOf(
     marks: List<Mark>,
     basis: FaceBasis,
     turn: SolidTurn,
   ): List<StageShape> =
-    marks.mapNotNull { mark ->
+    marks.map { mark ->
       val rings =
         when (mark) {
           is Fill -> listOf(mark.dots)
           is Rings -> mark.rings
-          is Stroke -> null
+          is Stroke -> StrokeOutline.ringsOf(mark)
         }
-      rings?.let { closed ->
-        StageShape(
-          rings = closed.map { ring -> ring.map { dot -> pointOf(turn.turnedTo(basis.pointOf(dot))) } },
-          colorArgb = mark.colorArgb,
-        )
-      }
+      StageShape(
+        rings = rings.map { ring -> ring.map { dot -> pointOf(turn.turnedTo(basis.pointOf(dot))) } },
+        colorArgb = mark.colorArgb,
+        union = mark is Stroke,
+        erases = (mark as? Stroke)?.erases == true,
+      )
     }
 
   /**

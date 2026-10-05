@@ -750,25 +750,33 @@ of it fits equally well, so the tie goes to the one that stands the drawing
 most upright. The disc of a d2 has no corners at all and is laid on the face's
 own frame.
 
-It draws:
+It draws **everything on the face, in the order it was put down**:
 
 - **the face itself**, its real polygon, shaded by which way it is pointing;
 - **its background** — every region the bucket coloured in, including a fill of
   the whole face, clipped to the outline;
 - **its numerals and its pips** — a stamp and a face of eyes alike, in the ink
-  they were put down in, at the place and the size they were put down at.
+  they were put down in, at the place and the size they were put down at;
+- **the strokes of the pen**, eraser and all.
 
-It does not draw **the strokes of the pen**. The line is drawn here: a fill, a
-stamped numeral and a face of pips are *closed shapes*, and a closed shape
-under a projection is still a closed shape with its corners where they belong,
-so what the stage puts down is the mark itself rather than an impression of it.
-A stroke is not a shape but a line of a *width*, and a width on a tilted face is
-wider one way than the other; a `Canvas` draws a line of one width, so drawing
-one would be the picture telling a lie about the die. The tab says so in as many
-words under the stage rather than leaving somebody to wonder where their line
-went, and the flat editor is where a stroke is looked at. Whether it is worth
-drawing strokes as thin filled outlines instead is an open question
-(`docs/TODO.md`).
+Everything is drawn as a *closed shape*, because a closed shape under a
+projection is still a closed shape with its corners where they belong, so what
+the stage puts down is the mark itself rather than an impression of it. A fill,
+a stamp and a face of pips already are. A stroke is a line of a *width*, and a
+width on a tilted face is wider one way than the other — a `Canvas` line of one
+width would be a different line — so a stroke is handed over as **the shapes
+its ink covers** (`designer`'s `StrokeOutline`): a disc at every dot, which is
+the round cap and the round join the canvas draws, and a band half a nib either
+side of every segment. Those are projected like any other ring and filled as
+their union (every ring wound one way, the non-zero rule), so the line on the
+die is the line on the canvas, foreshortened as the face is. Dots a finger left
+closer together than a quarter of the nib are dropped first, because every dot
+is a disc and a band more on every frame the die turns. The eraser is drawn in
+the face's own paper, as it is on the canvas.
+
+It used to leave the strokes out and say so under the stage. On the phone that
+was a die drawn with the pen turning with blank faces, which is not what anybody
+reads "the strokes are on the other tab" as.
 
 **The atlas turns a cell its own way, and the exporter follows the canvas.** The atlas draws every
 cell with the face's up taken as `+z` flattened onto it (`docs/dice-sets.md`,

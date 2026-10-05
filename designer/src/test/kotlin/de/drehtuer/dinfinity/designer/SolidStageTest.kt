@@ -102,15 +102,15 @@ class SolidStageTest {
   }
 
   @Test
-  fun `a stroke of the pen is not drawn, and a fill is`() {
-    // A closed shape projects to a closed shape with its corners in the right
-    // places; a stroke is a line of a width, and a width on a tilted face is
-    // wider one way than the other. What the stage cannot draw honestly it
-    // leaves out (`docs/face-designer.md`).
+  fun `a stroke of the pen is drawn on the solid, as the shapes its ink covers`() {
+    // The turning die showed blank faces for a die drawn with the pen: strokes
+    // were left out. Now every mark is on it, in the order it was put down, a
+    // stroke as the discs and bands its ink covers, filled as their union.
     val die = Drawings.die(DieShape.Cube)
+    val line = Drawings.line()
     val drawn =
       Draft(die = die).onFace(0) { face ->
-        face.draw(Drawings.line()).draw(Fill(dots = FaceShapes.corners(FaceOutline.Square), colorArgb = Drawings.RED))
+        face.draw(Fill(dots = FaceShapes.corners(FaceOutline.Square), colorArgb = Drawings.RED)).draw(line)
       }
 
     val marks =
@@ -120,8 +120,32 @@ class SolidStageTest {
         .single { it.cell == 0 }
         .marks
 
-    assertEquals("the stage drew something other than the fill", 1, marks.size)
-    assertEquals("the fill lost its colour", Drawings.RED, marks.single().colorArgb)
+    assertEquals("a mark was left off the die", 2, marks.size)
+    val (fill, stroke) = marks
+    assertEquals(Drawings.RED, fill.colorArgb)
+    assertEquals(false, fill.union)
+    assertEquals(line.colorArgb, stroke.colorArgb)
+    assertTrue("a stroke's pieces are drawn as one shape", stroke.union)
+    assertEquals(StrokeOutline.ringsOf(line).size, stroke.rings.size)
+    assertEquals(false, stroke.erases)
+  }
+
+  @Test
+  fun `the eraser goes on the solid too, and says so`() {
+    val die = Drawings.die(DieShape.Cube)
+    val erased =
+      Draft(die = die).onFace(0) { face ->
+        face.draw(Drawings.line()).draw(Drawings.line().copy(erases = true))
+      }
+
+    val marks =
+      SolidStage
+        .of(erased, SolidTurn())
+        .faces
+        .single { it.cell == 0 }
+        .marks
+
+    assertEquals(listOf(false, true), marks.map(StageShape::erases))
   }
 
   @Test
