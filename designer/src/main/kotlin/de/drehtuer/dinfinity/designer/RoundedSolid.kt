@@ -138,16 +138,6 @@ class RoundedSolid(
     /** Corners closer than this are one corner: the faces list each separately. */
     const val SAME = 1e-6
 
-    /** The twenty-six neighbours of the middle of a cube, made unit length. */
-    val BALL: List<Vector3> =
-      (-1..1).flatMap { x ->
-        (-1..1).flatMap { y ->
-          (-1..1).mapNotNull { z ->
-            if (x == 0 && y == 0 && z == 0) null else Vector3(x.toDouble(), y.toDouble(), z.toDouble()).normalised()
-          }
-        }
-      }
-
     fun SolidFace.has(point: Vector3): Boolean = corners.any { it.near(point) }
 
     fun Vector3.near(other: Vector3): Boolean = (this - other).length < SAME
@@ -192,3 +182,16 @@ class RoundedSolid(
     ): Double = a.x * (b.y * c.z - b.z * c.y) - a.y * (b.x * c.z - b.z * c.x) + a.z * (b.x * c.y - b.y * c.x)
   }
 }
+
+/**
+ * The directions a rounded corner's ball is sampled in for the outline: the
+ * twenty-six neighbours of the middle of a cube, made unit length.
+ */
+private val BALL: List<Vector3> =
+  (-1..1).flatMap { x ->
+    (-1..1).flatMap { y ->
+      (-1..1).mapNotNull { z ->
+        if (x == 0 && y == 0 && z == 0) null else Vector3(x.toDouble(), y.toDouble(), z.toDouble()).normalised()
+      }
+    }
+  }

@@ -68,7 +68,7 @@ class FilamentStage(
   override val height: Int,
   surface: Any? = null,
   postProcessing: Boolean = true,
-  private val atlases: (String) -> FilamentEngine.DieArtwork? = { null },
+  private val atlases: (String) -> DieArtwork<Texture>? = { null },
   shared: FilamentEngine? = null,
 ) : Stage,
   AutoCloseable {
@@ -282,7 +282,7 @@ class FilamentStage(
   override fun drawnCells(
     atlas: String,
     faces: Int,
-  ): Set<Int> = atlases(atlas)?.coverage?.drawnOn(faces).orEmpty()
+  ): Set<Int> = DieArtwork.drawnBy(atlases(atlas), faces)
 
   override fun put(entity: Int) {
     if (entity == Stage.NOTHING || scene.hasEntity(entity)) return

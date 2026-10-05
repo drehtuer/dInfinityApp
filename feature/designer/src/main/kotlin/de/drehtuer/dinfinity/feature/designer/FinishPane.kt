@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -101,6 +102,7 @@ internal fun FinishPane(
  * because its points are cut back (`RoundedSolid.radius`).
  */
 @Composable
+@NonRestartableComposable
 private fun Edges(
   state: DesignerState,
   presenter: DesignerPresenter,
@@ -145,6 +147,7 @@ private fun Edges(
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
+@NonRestartableComposable
 private fun BodyColours(
   state: DesignerState,
   presenter: DesignerPresenter,

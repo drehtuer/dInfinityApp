@@ -1,5 +1,10 @@
 package de.drehtuer.dinfinity.feature.designer
 
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
@@ -159,6 +164,51 @@ class DesignerStepsTest {
 
     assertEquals(DesignerStep.Faces, presenter.state.step)
     compose.onNodeWithTag(DesignerTestTags.stepOf(DesignerStep.Material)).assertTextContains("2 Material")
+  }
+
+  @Test
+  fun `undo and redo on the last step take a stroke back and put it back`() {
+    val presenter = show(DesignerPresenter(d6, step = DesignerStep.Faces))
+    presenter.drew(listOf(Dot(0.2f, 0.2f), Dot(0.8f, 0.8f)))
+
+    compose.onNodeWithTag(DesignerTestTags.UNDO).performClick()
+    assertTrue(presenter.state.face.blank)
+    compose.onNodeWithTag(DesignerTestTags.REDO).performClick()
+
+    assertEquals(1, presenter.state.face.marks.size)
+  }
+
+  @Test
+  fun `a screen nobody gave a way to the tray still rolls into nothing`() {
+    // The default `onRoll` is a lambda that does nothing; pressing Roll it on
+    // a screen with no tray behind it is a press that goes nowhere, not a crash.
+    val presenter = show(DesignerPresenter(d6, notationOf = { "1${it.id}" }, step = DesignerStep.Faces))
+
+    compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
+
+    assertEquals(DesignerStep.Faces, presenter.state.step)
+  }
+
+  @Test
+  fun `a recomposition on every step leaves each of them as it was`() {
+    // Every step is drawn from one state, so an ordinary recomposition has to
+    // skip them; one that skipped wrongly would come back without its controls.
+    var tick by mutableStateOf(0)
+    val presenter = DesignerPresenter(d6, choosable = listOf(d6, d20))
+    compose.setContent {
+      Column {
+        Text("tick $tick")
+        DesignerScreen(presenter = presenter)
+      }
+    }
+    listOf(DesignerStep.Shape, DesignerStep.Material, DesignerStep.Faces).forEach { step ->
+      compose.runOnIdle { presenter.go(step) }
+      compose.runOnIdle { tick++ }
+      compose.onNodeWithTag(DesignerTestTags.stepOf(step)).assertIsSelected()
+    }
+    compose.runOnIdle { presenter.look(DesignerView.Solid) }
+    compose.runOnIdle { tick++ }
+    compose.onNodeWithTag(DesignerTestTags.SOLID).assertExists()
   }
 
   private fun show(presenter: DesignerPresenter): DesignerPresenter {

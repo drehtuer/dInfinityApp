@@ -177,6 +177,11 @@ private class PaintedStage(
 
   override fun light() = Unit
 
+  override fun drawnCells(
+    atlas: String,
+    faces: Int,
+  ): Set<Int> = emptySet()
+
   override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,

@@ -161,6 +161,17 @@ class AtlasKeyTest {
     assertEquals("no die has seven faces", emptySet<Int>(), coverage.drawnOn(7))
   }
 
+  @Test
+  fun `uploaded artwork carries its coverage, and no artwork draws on nothing`() {
+    val pixels = ByteArray(30 * 20 * AtlasImage.CHANNELS)
+    pixels[(15 * 30 + 12) * AtlasImage.CHANNELS + 3] = 0xFF.toByte()
+    val artwork = DieArtwork(texture = "a texture", coverage = AtlasCoverage.of(AtlasImage(30, 20, pixels)))
+
+    assertEquals("a texture", artwork.texture)
+    assertEquals(setOf(4), DieArtwork.drawnBy(artwork, 6))
+    assertEquals(emptySet<Int>(), DieArtwork.drawnBy(null, 6))
+  }
+
   private fun cache(artwork: (String) -> AtlasImage?): AtlasCache<Any> =
     AtlasCache(artwork = artwork, upload = { Any() }, destroy = { })
 

@@ -156,3 +156,25 @@ class AtlasCoverage private constructor(
       )
   }
 }
+
+/**
+ * A die's atlas uploaded, and which faces it draws on — worked out once from
+ * the pixels it was uploaded from, because a face its artwork draws on is not
+ * printed ([Stage.drawnCells]).
+ *
+ * Generic in what the upload made, so the part of it that decides something —
+ * which faces — is a JVM test's to ask about; on a phone [T] is Filament's
+ * `Texture`.
+ */
+class DieArtwork<T : Any>(
+  val texture: T,
+  val coverage: AtlasCoverage,
+) {
+  companion object {
+    /** The faces of a die with [faces] faces [artwork] draws on, and none when there is no artwork. */
+    fun drawnBy(
+      artwork: DieArtwork<*>?,
+      faces: Int,
+    ): Set<Int> = artwork?.coverage?.drawnOn(faces).orEmpty()
+  }
+}

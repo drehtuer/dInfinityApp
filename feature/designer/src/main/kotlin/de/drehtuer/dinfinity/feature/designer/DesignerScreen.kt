@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -150,8 +151,13 @@ fun DesignerScreen(
  * fixed few, butted together, the one in front inverted. **Back** and
  * **Next** in the footer walk it in order; this is for going straight back to
  * the colour from the fortieth stroke.
+ *
+ * `@NonRestartableComposable`, like the other small pieces of this screen that
+ * take the whole [DesignerState]: a state that is a new value after every
+ * stroke is a state they can never usefully skip on.
  */
 @Composable
+@NonRestartableComposable
 private fun Steps(
   state: DesignerState,
   presenter: DesignerPresenter,
@@ -180,6 +186,7 @@ private fun Steps(
  * settle is not waiting for a die to stop.
  */
 @Composable
+@NonRestartableComposable
 private fun Turning(
   state: DesignerState,
   presenter: DesignerPresenter,
@@ -304,6 +311,7 @@ private fun Header(
 
 /** Undo and redo, which only the Faces step has anything to take back of. */
 @Composable
+@NonRestartableComposable
 private fun TakingBack(
   state: DesignerState,
   presenter: DesignerPresenter,

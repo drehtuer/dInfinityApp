@@ -21,16 +21,22 @@ import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.GraphicsMode
 
 /**
- * The Material menu and the Edges control on the Solid tab
- * (`docs/face-designer.md`, "Material, colour and edges"; `design/dInfinityPhone.dc.html`).
+ * The Material menu, the body colour and the Edges slider on the designer's
+ * second step (`docs/face-designer.md`, "Material, colour and edges";
+ * `design/dInfinityPhone.dc.html`).
  */
 @RunWith(RobolectricTestRunner::class)
+// A real bitmap behind the screen, so the swatch and the turning die are drawn
+// rather than recorded.
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class FinishPaneTest {
   @get:Rule
   val compose = createComposeRule()
@@ -148,12 +154,24 @@ class FinishPaneTest {
 
   @Test
   fun `a body colour past the twelve is picked in the shared picker`() {
-    show(d6)
+    val presenter = show(d6)
     solid()
 
     compose.onNodeWithTag(DesignerTestTags.MORE_BODY_COLOURS).performScrollTo().performClick()
-
     compose.onNodeWithTag(DesignerTestTags.BODY_PICKER.sheet).assertExists()
+    compose.onNodeWithTag(DesignerTestTags.BODY_PICKER.cancel).performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.BODY_PICKER.sheet).assertDoesNotExist()
+    assertEquals(DieMaterial.DEFAULT_COLOR_ARGB, presenter.state.bodyArgb)
+
+    compose.onNodeWithTag(DesignerTestTags.MORE_BODY_COLOURS).performScrollTo().performClick()
+    compose
+      .onNodeWithTag(DesignerTestTags.BODY_PICKER.brightness)
+      .performSemanticsAction(SemanticsActions.SetProgress) { it(0.2f) }
+    compose.onNodeWithTag(DesignerTestTags.BODY_PICKER.use).performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.BODY_PICKER.sheet).assertDoesNotExist()
+    assertTrue("the colour picked was not the die's", presenter.state.bodyArgb != DieMaterial.DEFAULT_COLOR_ARGB)
   }
 
   @Test

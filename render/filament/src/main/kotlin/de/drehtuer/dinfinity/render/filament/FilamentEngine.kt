@@ -160,7 +160,7 @@ class FilamentEngine(
    * leak the JVM cannot see. It is given back in [close], before the engine
    * that owns the handles ([AtlasCache]).
    */
-  val atlases: AtlasCache<DieArtwork> =
+  val atlases: AtlasCache<DieArtwork<Texture>> =
     AtlasCache(
       artwork = artwork,
       upload = { DieArtwork(uploadAtlas(engine, it), AtlasCoverage.of(it)) },
@@ -209,16 +209,6 @@ class FilamentEngine(
     key: String,
     map: SurfaceMap,
   ): TablePicture? = if (map.colour) tableColours.of(key) else tableDetail.of(key)
-
-  /**
-   * A die's atlas on the GPU, and which faces it draws on — worked out once
-   * from the pixels it was uploaded from, because a face its artwork draws on
-   * is not printed ([Stage.drawnCells]).
-   */
-  class DieArtwork(
-    val texture: Texture,
-    val coverage: AtlasCoverage,
-  )
 
   /**
    * One of a table's pictures on the GPU, and — for a colour picture — its
@@ -377,7 +367,7 @@ class FilamentEngine(
     width: Int,
     height: Int,
     postProcessing: Boolean = true,
-    atlases: (String) -> DieArtwork? = this.atlases::of,
+    atlases: (String) -> DieArtwork<Texture>? = this.atlases::of,
   ): FilamentStage =
     FilamentStage(
       width = width,

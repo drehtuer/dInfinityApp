@@ -118,12 +118,13 @@ interface Stage : AutoCloseable {
    * Asked before a die is added, because a face its artwork draws on is not
    * printed (`docs/dice-sets.md`, "Labels, and the artwork over them"). The
    * pixels are on the far side of this line ([Stage.add]'s parameters name the
-   * atlas rather than carry it), so the answer is too.
+   * atlas rather than carry it), so the answer is too. A stage that cannot
+   * read pixels answers none, and every face is printed.
    */
   fun drawnCells(
     atlas: String,
     faces: Int,
-  ): Set<Int> = emptySet()
+  ): Set<Int>
 
   /** Throws away everything one roll put in the scene, and nothing else. */
   fun clear()

@@ -139,6 +139,7 @@ class FaceInkTest {
     val rubbed = Stroke(listOf(Dot(0.1f, 0.5f), Dot(0.9f, 0.5f)), width = 0.2f, colorArgb = INK, erases = true)
 
     assertTrue("the eraser left the canvas untouched", inked(onACanvas { drawMark(rubbed) }))
+    assertTrue("drawn on its own, it is drawn on the default paper", inked(onACanvas { drawStroke(rubbed) }))
   }
 
   @Test
