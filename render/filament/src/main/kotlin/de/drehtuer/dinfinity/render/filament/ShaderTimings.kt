@@ -110,10 +110,19 @@ class ShaderTimingStore(
     try {
       target.parentFile?.mkdirs()
       partial.writeText(timings.encode(), Charsets.UTF_8)
-      if (!partial.renameTo(target)) partial.delete()
+      if (!partial.renameTo(target)) discard(partial)
     } catch (_: IOException) {
-      partial.delete()
+      discard(partial)
     }
+  }
+
+  /**
+   * A temporary file that did not become the figures. One that cannot be
+   * deleted now is deleted when the process ends, as [MaterialCache] does, so
+   * a failed write never leaves litter behind for longer than one run.
+   */
+  private fun discard(partial: File) {
+    if (partial.exists() && !partial.delete()) partial.deleteOnExit()
   }
 
   companion object {
