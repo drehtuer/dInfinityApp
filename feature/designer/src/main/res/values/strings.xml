@@ -35,6 +35,17 @@
   <string name="designer_view_face">Face</string>
   <!-- The die itself, turned over in the hand. -->
   <string name="designer_view_solid">Solid</string>
+  <!-- The three steps a die is designed in, on the bar under the title. Short: three share one row. -->
+  <string name="designer_step_shape">Shape</string>
+  <string name="designer_step_material">Material</string>
+  <string name="designer_step_faces">Faces</string>
+  <!-- One step on the step bar: %1$d is its number, %2$s its name, like "2 Material". -->
+  <string name="designer_step_numbered">%1$d %2$s</string>
+  <!-- Under the title on the first two steps: %1$d is the step, %2$d how many there are, %3$s the die, like "d20". -->
+  <string name="designer_step_of">Step %1$d of %2$d · %3$s</string>
+  <!-- The footer's way on to the next step, and back to the one before. -->
+  <string name="designer_next">Next</string>
+  <string name="designer_back">Back</string>
   <!-- Whether the die turns on its own. Dragging it turns this off. -->
   <string name="designer_spin">Spin</string>
   <!-- What the die on the Solid tab is: %1$s is a die's name, like "d20", %2$d how many faces it has. -->
@@ -42,8 +53,8 @@
     <item quantity="one">%1$s, %2$d face. Drag to turn it.</item>
     <item quantity="other">%1$s, %2$d faces. Drag to turn it.</item>
   </plurals>
-  <!-- Said beside the turning die: what the Solid tab shows of a drawing, and what it does not. -->
-  <string name="designer_solid_note">Backgrounds, numbers and pips, on the real solid. Pen strokes are on the Face tab.</string>
+  <!-- Said beside the turning die: what it shows, and how to turn it. -->
+  <string name="designer_solid_note">Everything drawn, on the real solid. Drag to turn it.</string>
   <!-- The kicker over the menu of what the die is made of, on the Solid tab. -->
   <string name="designer_material">Material</string>
   <!-- What a screen reader says for the Material menu. %1$s is the material chosen, like "Glass". -->
@@ -60,17 +71,20 @@
   <string name="designer_material_stone">Stone</string>
   <!-- Shown when the die's material is none of the names: one copied from somebody else's set. -->
   <string name="designer_material_custom">Custom</string>
+  <!-- The kicker over the die's body colour: what every face is drawn on and what shows at the rounded edges. -->
+  <string name="designer_body">Colour</string>
+  <!-- What a screen reader says for one of the body colours. %1$s is the colour as hex, like "#EC3013". -->
+  <string name="designer_body_colour">Body colour %1$s</string>
+  <!-- The swatch after the twelve, which opens the picker for the body colour. %1$s is the colour now. -->
+  <string name="designer_body_more">More body colours, now %1$s</string>
+  <!-- The title of the picker the body colour is chosen in. -->
+  <string name="designer_body_title">Colour of the die</string>
   <!-- The kicker over the choice of how round the die's edges are. -->
   <string name="designer_edges">Edges</string>
-  <!-- How round the die's edges are, sharpest first. Short: four of them share one row. -->
-  <string name="designer_edges_sharp">Sharp</string>
-  <string name="designer_edges_standard">Standard</string>
-  <string name="designer_edges_rounded">Rounded</string>
-  <string name="designer_edges_very_rounded">Very round</string>
+  <!-- Under the Edges slider, and what a screen reader says it stands at. %1$.1f is the per cent of the die's size, %2$.2f the millimetres that comes to on this die. -->
+  <string name="designer_edges_value">Rounded by %1$.1f %% of its size: %2$.2f mm</string>
   <!-- Under the controls: the swatch is a hint, the tray is the real thing. -->
   <string name="designer_finish_note">Roll it to see the material on the tray. Rounder dice tumble a little longer.</string>
-  <!-- Under the edges when the die's rounding is none of the four, as from somebody else's set. %1$d is per cent of the die's size. -->
-  <string name="designer_edges_custom">Custom edges, rounded by %1$d %% of the die’s size. Choose one to change it.</string>
   <string name="designer_nib_fine">Fine</string>
   <string name="designer_nib_medium">Medium</string>
   <string name="designer_nib_broad">Broad</string>
@@ -91,8 +105,8 @@
   <string name="designer_redo">Redo</string>
   <!-- Takes everything off the face being drawn on — strokes, fills, numbers, eyes — and leaves the other faces alone. Undo brings it back. -->
   <string name="designer_clear_face">Clear face</string>
-  <string name="designer_guide_on">Show guide</string>
-  <string name="designer_guide_off">Hide guide</string>
+  <!-- The switch for the faint number under the drawing, to trace. A word, because the picture it had was read as "load an image". -->
+  <string name="designer_guide">Guide</string>
   <string name="designer_face_nearly_full">This face is nearly full — a few strokes left.</string>
   <string name="designer_face_full">This face is full. Undo something, or clear it and start again.</string>
   <string name="designer_copy">Copy face</string>

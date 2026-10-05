@@ -7,7 +7,6 @@ import de.drehtuer.dinfinity.designer.DieFinish
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.Drafts
 import de.drehtuer.dinfinity.designer.MaterialPreset
-import de.drehtuer.dinfinity.designer.Roundness
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -16,7 +15,7 @@ import org.junit.Test
 
 /**
  * The Material menu and the Edges control, behind the screen
- * (`docs/face-designer.md`, "Material and edges").
+ * (`docs/face-designer.md`, "Material, colour and edges").
  */
 class DesignerFinishTest {
   @Test
@@ -24,7 +23,7 @@ class DesignerFinishTest {
     val presenter = DesignerPresenter(d6)
 
     assertEquals(MaterialPreset.Plastic, presenter.state.preset)
-    assertEquals(Roundness.Standard, presenter.state.roundness)
+    assertEquals(0.03, presenter.state.edgeRounding, 0.0)
     assertNull(presenter.state.draft.finish)
   }
 
@@ -40,7 +39,7 @@ class DesignerFinishTest {
     val presenter = DesignerPresenter(brass)
 
     assertNull(presenter.state.preset)
-    assertNull(presenter.state.roundness)
+    assertEquals(0.05, presenter.state.edgeRounding, 0.0)
   }
 
   @Test
@@ -51,7 +50,20 @@ class DesignerFinishTest {
     presenter.madeOf(MaterialPreset.Glass)
 
     assertEquals(MaterialPreset.Glass, presenter.state.preset)
-    assertEquals(Roundness.Standard, presenter.state.roundness)
+    assertEquals(0.03, presenter.state.edgeRounding, 0.0)
+    assertEquals(presenter.state.draft, drafts.load(d6))
+  }
+
+  @Test
+  fun `choosing a body colour changes the paper and is written down`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, drafts = drafts)
+    presenter.madeOf(MaterialPreset.Metal)
+
+    presenter.coloured(0xFF1F5E3A.toInt())
+
+    assertEquals(0xFF1F5E3A.toInt(), presenter.state.bodyArgb)
+    assertEquals(MaterialPreset.Metal, presenter.state.preset)
     assertEquals(presenter.state.draft, drafts.load(d6))
   }
 
@@ -61,11 +73,37 @@ class DesignerFinishTest {
     val presenter = DesignerPresenter(d6, drafts = drafts)
     presenter.madeOf(MaterialPreset.Metal)
 
-    presenter.rounded(Roundness.VeryRounded)
+    presenter.rounded(0.1203)
 
     assertEquals(MaterialPreset.Metal, presenter.state.preset)
-    assertEquals(Roundness.VeryRounded, presenter.state.roundness)
+    assertEquals(0.12, presenter.state.edgeRounding, 0.0)
     assertEquals(0.12, drafts.load(d6).finish?.edgeRounding)
+  }
+
+  @Test
+  fun `a slider dragged within one step writes nothing new`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, drafts = drafts)
+    presenter.rounded(0.06)
+    val saves = drafts.saves
+
+    presenter.rounded(0.061)
+    presenter.rounded(0.0595)
+
+    assertEquals(saves, drafts.saves)
+  }
+
+  @Test
+  fun `the rounding is said in millimetres as the solver gives it, half on a d4`() {
+    val cube = DesignerPresenter(d6)
+    val tetrahedron = DesignerPresenter(BuiltinDiceSet.set.dice.first { it.shape == DieShape.Tetrahedron })
+
+    // 3 % of a 16 mm die is 0.48 mm; a d4's points are cut back to about half
+    // (`docs/physics-and-rendering.md`, "Rounded edges": 0.25 mm).
+    assertEquals(0.48, cube.state.roundedMm, 1e-9)
+    assertEquals(0.25, tetrahedron.state.roundedMm, 1e-9)
+    cube.rounded(0.12)
+    assertEquals(1.92, cube.state.roundedMm, 1e-9)
   }
 
   @Test
@@ -94,8 +132,7 @@ class DesignerFinishTest {
     presenter.madeOf(MaterialPreset.Stone)
 
     assertEquals(MaterialPreset.Stone, presenter.state.preset)
-    assertEquals(0.05, presenter.state.draft.shownFinish.edgeRounding, 0.0)
-    assertNull(presenter.state.roundness)
+    assertEquals(0.05, presenter.state.edgeRounding, 0.0)
   }
 
   @Test

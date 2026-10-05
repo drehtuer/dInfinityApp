@@ -25,6 +25,7 @@ import de.drehtuer.dinfinity.data.db.DInfinityDatabase
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
+import de.drehtuer.dinfinity.feature.designer.DesignerStep
 import de.drehtuer.dinfinity.feature.designer.DesignerTestTags
 import de.drehtuer.dinfinity.feature.roll.FinishedThrow
 import de.drehtuer.dinfinity.feature.roll.RollTestTags
@@ -297,6 +298,8 @@ class DInfinityScreensTest {
     // (`docs/face-designer.md`).
     val navigation = app()
     go(navigation, Destination.FaceDesigner)
+    // From the menu the designer opens on its first step; Roll it is on the last.
+    compose.onNodeWithTag(DesignerTestTags.stepOf(DesignerStep.Faces)).performClick()
 
     compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
 
@@ -329,9 +332,10 @@ class DInfinityScreensTest {
     // The device session: "testing a roll from the face designer offers no
     // way back to the face designer". It is a round trip now, and the way
     // back opens the designer on the die being tested rather than on
-    // whichever one it last opened (`docs/face-designer.md`, "Flow", step 4).
+    // whichever one it last opened (`docs/face-designer.md`, "Flow", Roll it).
     val navigation = app()
     go(navigation, Destination.FaceDesigner)
+    compose.onNodeWithTag(DesignerTestTags.stepOf(DesignerStep.Faces)).performClick()
     compose.onNodeWithTag(DesignerTestTags.ROLL).performClick()
     compose.waitUntil(PATIENCE) {
       compose.runOnIdle { navigation.currentBackStackEntry?.destination?.route }?.let(Destination::ofRoute) ==

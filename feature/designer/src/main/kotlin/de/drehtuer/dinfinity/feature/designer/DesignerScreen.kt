@@ -27,6 +27,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -43,13 +45,14 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.designer.NewSet
-import de.drehtuer.dinfinity.designer.Roundness
+import de.drehtuer.dinfinity.designer.PaperInk
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
@@ -82,7 +85,7 @@ import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
  * prototype's own (`DesignerIcons`), and what draws them is the design
  * system's two shapes for the two kinds of control there are: an option that
  * inverts when it is chosen (`OptionBox` — the pens, the eraser, the bucket,
- * the stamp, the guide) and an action that simply happens
+ * the stamp; the guide, which keeps its word) and an action that simply happens
  * (`ModernistIconButton` — undo, redo, clear, copy, paste). Deciding which of
  * the twenty-one controls was which is what the row needed before it could be
  * drawn at all; it is why there was a `design-system-exception` here for as
@@ -96,6 +99,7 @@ fun DesignerScreen(
   menu: @Composable () -> Unit = {},
 ) {
   val state = presenter.state
+  Turning(state, presenter)
   Column(
     modifier =
       modifier
@@ -105,25 +109,98 @@ fun DesignerScreen(
     verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
     Header(state, presenter, menu)
+    Steps(state, presenter)
 
     Column(
-      // Everything above the strip scrolls, as the body does in the prototype:
-      // a square canvas and three rows of controls do not fit on a short
-      // phone, and a control squeezed off the bottom is one nobody can reach.
+      // Everything between the step bar and the strip scrolls, as the body
+      // does in the prototype: a square canvas and its rows of tools do not
+      // fit on a short phone, and a control squeezed off the bottom is one
+      // nobody can reach.
       modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-      BaseDice(state, presenter)
-      ViewTabs(state, presenter)
-      if (state.view == DesignerView.Face) Editor(state, presenter) else SolidPane(state, presenter)
+      when (state.step) {
+        DesignerStep.Shape -> {
+          BaseDice(state, presenter)
+          SolidPane(state, presenter)
+        }
+        DesignerStep.Material -> {
+          SolidPane(state, presenter)
+          FinishPane(state, presenter)
+        }
+        DesignerStep.Faces -> {
+          ViewTabs(state, presenter)
+          if (state.view == DesignerView.Face) Editor(state, presenter) else SolidPane(state, presenter)
+        }
+      }
     }
-    // The strip stays: which face is in front of the player is where the
-    // screen is steered from, and a steering wheel that scrolls away is not
-    // one.
-    FaceStrip(state, presenter)
-    Footer(presenter, onRoll)
+    // The strip stays on the Faces step: which face is in front of the player
+    // is where that step is steered from, and a steering wheel that scrolls
+    // away is not one.
+    if (state.step == DesignerStep.Faces) FaceStrip(state, presenter)
+    Footer(state, presenter, onRoll)
   }
   if (state.saving != null) SaveSheet(state.saving, presenter)
+}
+
+/**
+ * The three steps, as one control that says where the player is and takes
+ * them anywhere (`docs/face-designer.md`, "Flow").
+ *
+ * The design system's segmented control, as the two tabs are: a choice of a
+ * fixed few, butted together, the one in front inverted. **Back** and
+ * **Next** in the footer walk it in order; this is for going straight back to
+ * the colour from the fortieth stroke.
+ *
+ * `@NonRestartableComposable`, like the other small pieces of this screen that
+ * take the whole [DesignerState]: a state that is a new value after every
+ * stroke is a state they can never usefully skip on.
+ */
+@Composable
+@NonRestartableComposable
+private fun Steps(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).testTag(DesignerTestTags.STEPS)) {
+    SegmentedControl(
+      options = DesignerStep.entries,
+      selected = state.step,
+      label = { step ->
+        stringResource(R.string.designer_step_numbered, step.ordinal + 1, stringResource(labelOf(step)))
+      },
+      onSelect = presenter::go,
+      tagOf = DesignerTestTags::stepOf,
+    )
+  }
+}
+
+/**
+ * The die turning on its own whenever it is on the screen, a frame at a time
+ * rather than as an animation of its own: what it turns by is the presenter's
+ * arithmetic over how long the frame took, so it is the same turn on a 60 Hz
+ * panel and on a 120 Hz one (`SolidTurn`).
+ *
+ * `withInfiniteAnimationFrameNanos` rather than `withFrameNanos`, because this
+ * turn has no end: it is what says so, so a test waiting for the screen to
+ * settle is not waiting for a die to stop.
+ */
+@Composable
+@NonRestartableComposable
+private fun Turning(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  LaunchedEffect(state.showsSolid, state.spinning) {
+    if (!state.showsSolid || !state.spinning) return@LaunchedEffect
+    var last = 0L
+    while (true) {
+      withInfiniteAnimationFrameNanos { now ->
+        if (last != 0L) presenter.spun((now - last) / NANOS_A_SECOND)
+        last = now
+      }
+    }
+  }
 }
 
 /**
@@ -139,24 +216,6 @@ private fun ViewTabs(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
-  // The die turns on its own while the Solid tab is open, a frame at a time
-  // rather than as an animation of its own: what it turns by is the
-  // presenter's arithmetic over how long the frame took, so it is the same
-  // turn on a 60 Hz panel and on a 120 Hz one (`SolidTurn`).
-  //
-  // `withInfiniteAnimationFrameNanos` rather than `withFrameNanos`, because
-  // this turn has no end: it is what says so, so a test waiting for the screen
-  // to settle is not waiting for a die to stop.
-  LaunchedEffect(state.view, state.spinning) {
-    if (state.view != DesignerView.Solid || !state.spinning) return@LaunchedEffect
-    var last = 0L
-    while (true) {
-      withInfiniteAnimationFrameNanos { now ->
-        if (last != 0L) presenter.spun((now - last) / NANOS_A_SECOND)
-        last = now
-      }
-    }
-  }
   Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
     SegmentedControl(
       options = DesignerView.entries,
@@ -223,37 +282,66 @@ private fun Header(
         style = MaterialTheme.typography.titleLarge,
         color = ink,
       )
-      Text(
-        text = stringResource(R.string.designer_which_face, state.label, state.draft.cells),
-        style = MaterialTheme.typography.labelSmall,
-        color = Ink.muted,
-        modifier = Modifier.testTag(DesignerTestTags.WHICH_FACE),
-      )
+      if (state.step == DesignerStep.Faces) {
+        Text(
+          text = stringResource(R.string.designer_which_face, state.label, state.draft.cells),
+          style = MaterialTheme.typography.labelSmall,
+          color = Ink.muted,
+          modifier = Modifier.testTag(DesignerTestTags.WHICH_FACE),
+        )
+      } else {
+        Text(
+          text =
+            stringResource(
+              R.string.designer_step_of,
+              state.step.ordinal + 1,
+              DesignerStep.entries.size,
+              state.die.id,
+            ),
+          style = MaterialTheme.typography.labelSmall,
+          color = Ink.muted,
+          modifier = Modifier.testTag(DesignerTestTags.WHICH_STEP),
+        )
+      }
     }
-    ModernistIconButton(
-      contentDescription = stringResource(R.string.designer_undo),
-      onClick = { presenter.take(Step.Back) },
-      enabled = state.canUndo,
-      modifier = Modifier.testTag(DesignerTestTags.UNDO),
-    ) {
-      Glyph(DesignerIcons.UNDO, ink)
-    }
-    ModernistIconButton(
-      contentDescription = stringResource(R.string.designer_redo),
-      onClick = { presenter.take(Step.Forward) },
-      enabled = state.canRedo,
-      modifier = Modifier.testTag(DesignerTestTags.REDO),
-    ) {
-      Glyph(DesignerIcons.REDO, ink)
-    }
+    if (state.step == DesignerStep.Faces) TakingBack(state, presenter, ink)
     menu()
   }
 }
 
+/** Undo and redo, which only the Faces step has anything to take back of. */
+@Composable
+@NonRestartableComposable
+private fun TakingBack(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+  ink: Color,
+) {
+  ModernistIconButton(
+    contentDescription = stringResource(R.string.designer_undo),
+    onClick = { presenter.take(Step.Back) },
+    enabled = state.canUndo,
+    modifier = Modifier.testTag(DesignerTestTags.UNDO),
+  ) {
+    Glyph(DesignerIcons.UNDO, ink)
+  }
+  ModernistIconButton(
+    contentDescription = stringResource(R.string.designer_redo),
+    onClick = { presenter.take(Step.Forward) },
+    enabled = state.canRedo,
+    modifier = Modifier.testTag(DesignerTestTags.REDO),
+  ) {
+    Glyph(DesignerIcons.REDO, ink)
+  }
+}
+
 /**
- * The two ways out of the screen, on the bottom edge where the prototype puts
- * them (`design/dInfinity.dc.html`, option `1v`: a footer with one filled
- * button in it).
+ * The way through the steps and the two ways out of the screen, on the bottom
+ * edge where the prototype puts them (`design/dInfinity.dc.html`, option `1v`:
+ * a footer with one filled button in it).
+ *
+ * **Back** on every step but the first; **Next**, filled, on the first two;
+ * and on the last, the two ways out.
  *
  * **Roll it** is the filled one, because it is the one thing the screen is
  * for; it is absent rather than dead for a die notation cannot name — a
@@ -262,16 +350,35 @@ private fun Header(
  */
 @Composable
 private fun Footer(
+  state: DesignerState,
   presenter: DesignerPresenter,
   onRoll: (String) -> Unit,
 ) {
   val rollable = presenter.rollable
-  if (rollable == null && presenter.writable.isEmpty()) return
   Row(
     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
     horizontalArrangement = Arrangement.spacedBy(8.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
+    if (state.step.previous != null) {
+      ModernistButton(
+        text = stringResource(R.string.designer_back),
+        onClick = presenter::back,
+        kind = ModernistButtonKind.Ghost,
+        modifier = Modifier.testTag(DesignerTestTags.BACK),
+      )
+    }
+    if (state.step.next != null) {
+      // The one filled button on the first two steps: going on is what they
+      // are for.
+      ModernistButton(
+        text = stringResource(R.string.designer_next),
+        onClick = presenter::next,
+        kind = ModernistButtonKind.Primary,
+        modifier = Modifier.testTag(DesignerTestTags.NEXT),
+      )
+      return@Row
+    }
     if (presenter.writable.isNotEmpty()) {
       ModernistButton(
         text = stringResource(R.string.designer_save),
@@ -468,23 +575,25 @@ private fun NewSetChoice(
  * made it. A die's id is its own word and there is no picture of a `d18`, so
  * these stay lettered where the tool row does not.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BaseDice(
   state: DesignerState,
   presenter: DesignerPresenter,
 ) {
-  if (!state.baseChoosable) return
-  Row(
+  val dice = state.choosable.ifEmpty { listOf(state.die) }
+  // Wrapping now it has a step to itself: a die hidden off the edge of a row
+  // is a die nobody finds.
+  FlowRow(
     modifier =
       Modifier
         .fillMaxWidth()
-        .horizontalScroll(rememberScrollState())
-        .padding(horizontal = 8.dp)
+        .padding(horizontal = 16.dp)
         .testTag(DesignerTestTags.BASES),
     horizontalArrangement = Arrangement.spacedBy(4.dp),
-    verticalAlignment = Alignment.CenterVertically,
+    verticalArrangement = Arrangement.spacedBy(4.dp),
   ) {
-    state.choosable.forEach { die ->
+    dice.forEach { die ->
       OptionBox(
         text = die.id,
         selected = die.id == state.die.id,
@@ -511,7 +620,11 @@ private fun FaceCanvas(
   // lifts: the model takes a whole stroke, so that one undo is one line.
   var drawing by remember { mutableStateOf(emptyList<Dot>()) }
   val outline = state.draft.outline
-  val guideColour = MaterialTheme.colorScheme.onBackground.copy(alpha = GUIDE_ALPHA)
+  // The guide is ink that reads on the *paper*, not on the page: in the
+  // page's own ink it was a pale grey on a dark theme, which on white paper is
+  // nothing at all — and a guide nobody can see is a button that does nothing.
+  val paper = Color(state.bodyArgb)
+  val guideColour = guideOn(paper)
   val edge = MaterialTheme.colorScheme.outline
 
   Canvas(
@@ -547,11 +660,11 @@ private fun FaceCanvas(
   ) {
     val face = Path().apply { follow(outline, size.width, size.height) }
     clipPath(face) {
-      drawRect(color = Color.White)
+      drawRect(color = paper)
       state.guide.forEach { mark -> drawGuide(mark, guideColour) }
-      state.face.marks.forEach { mark -> drawMark(mark) }
+      state.face.marks.forEach { mark -> drawMark(mark, paper) }
       if (drawing.size > 1) {
-        drawStroke(Stroke(drawing, state.colorArgb, state.nib.width, state.nib.erases))
+        drawStroke(Stroke(drawing, state.colorArgb, state.nib.width, state.nib.erases), paper)
       }
     }
   }
@@ -608,11 +721,11 @@ private fun Tools(
       }
     }
     OptionBox(
-      // The name a screen reader says is what the press *does*, which is what
-      // the words on it used to be — the resources did not go anywhere when
-      // the words came off the face.
-      contentDescription =
-        stringResource(if (state.guideShown) R.string.designer_guide_off else R.string.designer_guide_on),
+      // **A word, not a picture.** It was the prototype's `#ic-image` — a
+      // framed landscape — which is what "add a picture" looks like, and it
+      // was read as exactly that: an image loader that loaded nothing. The
+      // prototype itself labels this "Guide" beside a checkbox.
+      text = stringResource(R.string.designer_guide),
       selected = state.guideShown,
       onClick = { presenter.showGuide(!state.guideShown) },
       // A tap turns it back off again, so it is a checkbox rather than one
@@ -620,9 +733,7 @@ private fun Tools(
       // cannot be unmade.
       role = Role.Checkbox,
       modifier = Modifier.testTag(DesignerTestTags.GUIDE),
-    ) { tint ->
-      Glyph(DesignerIcons.IMAGE, tint)
-    }
+    )
   }
 }
 
@@ -844,7 +955,7 @@ private fun Palette(
  * spaced rather than crowded.
  */
 @Composable
-private fun Swatch(
+internal fun Swatch(
   argb: Int,
   chosen: Boolean,
   label: String,
@@ -985,6 +1096,7 @@ private fun FaceThumbnail(
   val edge = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
   val marks = draft.face(cell).marks
   val outline = draft.outline
+  val paper = Color(draft.shownFinish.colorArgb)
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -994,7 +1106,7 @@ private fun FaceThumbnail(
         .semantics(mergeDescendants = true) { contentDescription = name }
         .testTag(DesignerTestTags.faceOf(cell)),
   ) {
-    Canvas(modifier = Modifier.size(THUMBNAIL).border(Modernist.rule, edge)) { drawFace(outline, marks) }
+    Canvas(modifier = Modifier.size(THUMBNAIL).border(Modernist.rule, edge)) { drawFace(outline, marks, paper) }
     Text(
       text = label,
       style = MaterialTheme.typography.labelSmall,
@@ -1002,6 +1114,13 @@ private fun FaceThumbnail(
     )
   }
 }
+
+private fun labelOf(step: DesignerStep): Int =
+  when (step) {
+    DesignerStep.Shape -> R.string.designer_step_shape
+    DesignerStep.Material -> R.string.designer_step_material
+    DesignerStep.Faces -> R.string.designer_step_faces
+  }
 
 private fun labelOf(view: DesignerView): Int =
   when (view) {
@@ -1052,6 +1171,19 @@ private fun inkOf(nib: Nib): Float =
 
 private const val GUIDE_ALPHA = 0.35f
 
+/**
+ * The paper a face is drawn on when nothing says what colour the die is —
+ * which is only ever a drawing helper called without one: the screen always
+ * draws on the die's own body colour.
+ */
+internal val PAPER: Color = Color(DieMaterial.DEFAULT_COLOR_ARGB)
+
+/**
+ * The guide's colour on [paper]: black or white, whichever reads on it
+ * (`PaperInk`), faint enough to draw over.
+ */
+internal fun guideOn(paper: Color): Color = Color(PaperInk.on(paper.toArgb())).copy(alpha = GUIDE_ALPHA)
+
 /** The fine pen's glyph, thinner than the sprite's own stroke. */
 private const val FINE_INK = 1.1f
 
@@ -1074,7 +1206,7 @@ private val SWATCH = 26.dp
 private val THUMBNAIL = 52.dp
 
 /** The twelve the design shows (`design/dInfinity.dc.html`, option `4c`). */
-private val PRESETS =
+internal val PRESETS =
   listOf(
     0xFF000000,
     0xFFFFFFFF,
@@ -1098,6 +1230,10 @@ object DesignerTestTags {
   const val SOLID_NOTE: String = "designer:solid:note"
   const val SPIN: String = "designer:solid:spin"
   const val WHICH_FACE: String = "designer:which-face"
+  const val WHICH_STEP: String = "designer:which-step"
+  const val STEPS: String = "designer:steps"
+  const val NEXT: String = "designer:next"
+  const val BACK: String = "designer:back"
   const val UNDO: String = "designer:undo"
   const val REDO: String = "designer:redo"
   const val CLEAR: String = "designer:clear"
@@ -1129,6 +1265,13 @@ object DesignerTestTags {
   const val MATERIAL: String = "designer:material"
   const val SWATCH: String = "designer:material:swatch"
   const val FINISH_NOTE: String = "designer:finish:note"
+  const val EDGES: String = "designer:edges"
+  const val EDGES_SAID: String = "designer:edges:said"
+  const val MORE_BODY_COLOURS: String = "designer:body:more"
+  const val BODY_HEX: String = "designer:body:hex"
+
+  /** The colour picker the die's body colour is chosen in, apart from the ink's. */
+  val BODY_PICKER: ColourPickerTags = ColourPickerTags("designer:body:picker")
 
   /**
    * The shared colour picker, and the six controls in it.
@@ -1141,6 +1284,8 @@ object DesignerTestTags {
 
   fun viewOf(view: DesignerView): String = "designer:view:${view.name.lowercase()}"
 
+  fun stepOf(step: DesignerStep): String = "designer:step:${step.name.lowercase()}"
+
   fun baseOf(dieId: String): String = "designer:base:$dieId"
 
   fun nibOf(nib: Nib): String = "designer:nib:${nib.name.lowercase()}"
@@ -1149,12 +1294,11 @@ object DesignerTestTags {
 
   fun colourOf(argb: Int): String = "designer:colour:$argb"
 
+  fun bodyOf(argb: Int): String = "designer:body:$argb"
+
   fun faceOf(cell: Int): String = "designer:face:$cell"
 
   fun saveInto(setId: String): String = "designer:save:into:$setId"
 
   fun materialOf(preset: MaterialPreset): String = "designer:material:${preset.name.lowercase()}"
-
-  /** One step of the Edges control; a rounding none of them is has no option, and so no tag of its own. */
-  fun edgesOf(roundness: Roundness?): String = "designer:edges:${roundness?.name?.lowercase() ?: "custom"}"
 }

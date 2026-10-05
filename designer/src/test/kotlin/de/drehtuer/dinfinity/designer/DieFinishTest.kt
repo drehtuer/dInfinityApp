@@ -8,14 +8,13 @@ import org.junit.Test
 
 /**
  * The face designer's Material menu and Edges control, as numbers
- * (`docs/face-designer.md`, "Material and edges").
+ * (`docs/face-designer.md`, "Material, colour and edges").
  */
 class DieFinishTest {
   @Test
   fun `a die nobody has said anything about is plastic, rounded as every die always was`() {
     assertEquals(MaterialPreset.Plastic, MaterialPreset.of(DieFinish.STANDARD))
-    assertEquals(Roundness.Standard, Roundness.of(DieFinish.STANDARD.edgeRounding))
-    assertEquals(DieMaterial().edgeRounding, Roundness.Standard.share, 0.0)
+    assertEquals(DieMaterial().edgeRounding, DieFinish.STANDARD.edgeRounding, 0.0)
   }
 
   @Test
@@ -40,10 +39,10 @@ class DieFinishTest {
   @Test
   fun `every preset comes back as itself, whatever the rounding`() {
     MaterialPreset.entries.forEach { preset ->
-      Roundness.entries.forEach { roundness ->
-        val finish = DieFinish.STANDARD.madeOf(preset).rounded(roundness)
+      listOf(0.015, 0.03, 0.065, 0.12).forEach { share ->
+        val finish = DieFinish.STANDARD.madeOf(preset).rounded(share)
         assertEquals(preset, MaterialPreset.of(finish))
-        assertEquals(roundness, Roundness.of(finish.edgeRounding))
+        assertEquals(share, finish.edgeRounding, 0.0)
       }
     }
   }
@@ -58,7 +57,6 @@ class DieFinishTest {
   fun `a die made of none of them is custom`() {
     val brass = DieFinish.of(DieMaterial(roughness = 0.2, metallic = 0.9))
     assertNull(MaterialPreset.of(brass))
-    assertNull(Roundness.of(0.05))
   }
 
   @Test
@@ -69,7 +67,7 @@ class DieFinishTest {
     assertEquals(0.05, glass.edgeRounding, 0.0)
     assertEquals(MaterialPreset.Glass, MaterialPreset.of(glass))
 
-    val round = custom.rounded(Roundness.VeryRounded)
+    val round = custom.rounded(0.12)
     assertEquals(0.12, round.edgeRounding, 0.0)
     assertEquals(0.9, round.metallic, 0.0)
   }
@@ -81,10 +79,10 @@ class DieFinishTest {
     val metal =
       DieFinish.STANDARD
         .madeOf(MaterialPreset.Metal)
-        .rounded(Roundness.Rounded)
+        .rounded(0.06)
         .on(heavy)
 
-    assertEquals(0x11223344, metal.colorArgb)
+    assertEquals("the colour is the finish's own now", DieMaterial.DEFAULT_COLOR_ARGB, metal.colorArgb)
     assertEquals(20.0, metal.sizeMm, 0.0)
     assertEquals(3.0, metal.density, 0.0)
     assertEquals(0.0, metal.translucency, 0.0)
@@ -103,18 +101,56 @@ class DieFinishTest {
   }
 
   @Test
-  fun `the edge steps run from the least a set may ask for to the most`() {
-    assertEquals(DieMaterial.EdgeRoundingRange.start, Roundness.Sharp.share, 0.0)
-    assertEquals(DieMaterial.EdgeRoundingRange.endInclusive, Roundness.VeryRounded.share, 0.0)
-    assertEquals(Roundness.entries.sortedBy(Roundness::share), Roundness.entries)
+  fun `the slider runs from the least a set may ask for to the most, in half per cents`() {
+    assertEquals(DieMaterial.EdgeRoundingRange, EdgeRounding.RANGE)
+    assertEquals(0.005, EdgeRounding.STEP, 0.0)
+    // 1.5 % to 12 % in half per cents is twenty-two positions: two ends and
+    // twenty between them, which is what Material's slider counts.
+    assertEquals(20, EdgeRounding.BETWEEN)
   }
 
   @Test
-  fun `a value read back from a set file is the same step`() {
-    // What a set file writes as `edge_rounding = 0.06` parses back as the
-    // closest double to it, and a per cent as a fraction: neither may turn a
-    // step or a preset into "Custom".
-    assertEquals(Roundness.Rounded, Roundness.of("0.06".toDouble()))
+  fun `a slider position lands on a step, inside the range, as the number a set file writes`() {
+    assertEquals(0.06, EdgeRounding.snapped(0.0612), 0.0)
+    assertEquals(0.065, EdgeRounding.snapped(0.0626), 0.0)
+    assertEquals("0.06", EdgeRounding.snapped(0.06).toString())
+    assertEquals(0.015, EdgeRounding.snapped(0.0), 0.0)
+    assertEquals(0.12, EdgeRounding.snapped(0.5), 0.0)
+    assertEquals(DieMaterial.DEFAULT_EDGE_ROUNDING, EdgeRounding.snapped(Double.NaN), 0.0)
+    assertEquals("a finish is rounded through it", 0.045, DieFinish.STANDARD.rounded(0.044).edgeRounding, 0.0)
+  }
+
+  @Test
+  fun `a value read back from a set file is the same material`() {
+    // A per cent read back as a fraction may not turn a preset into "Custom".
     assertEquals(MaterialPreset.Resin, MaterialPreset.of(DieFinish(0.15, 0.0, "60.0".toDouble() / 100, 0.03)))
+  }
+
+  @Test
+  fun `a colour is chosen whole, opaque, with numbers that read on it`() {
+    val glass = DieFinish.STANDARD.madeOf(MaterialPreset.Glass).rounded(0.06)
+
+    val navy = glass.coloured(0x001A237E)
+    val bone = navy.coloured(DieMaterial.DEFAULT_COLOR_ARGB)
+
+    assertEquals("the alpha a colour came with is not the die's", 0xFF1A237E.toInt(), navy.colorArgb)
+    assertEquals(0xFFFFFFFF.toInt(), navy.numberColorArgb)
+    assertEquals(DieMaterial.DEFAULT_NUMBER_COLOR_ARGB, bone.numberColorArgb)
+    assertEquals(
+      "the material and the edges stay",
+      glass.copy(colorArgb = navy.colorArgb, numberColorArgb = navy.numberColorArgb),
+      navy,
+    )
+  }
+
+  @Test
+  fun `a finish carries its colours onto a material and reads them back off one`() {
+    val red = DieFinish.STANDARD.coloured(0xFFEC3013.toInt())
+
+    val material = red.on(DieMaterial(sizeMm = 20.0))
+
+    assertEquals(0xFFEC3013.toInt(), material.colorArgb)
+    assertEquals(red, DieFinish.of(material))
+    assertEquals(20.0, material.sizeMm, 0.0)
   }
 }

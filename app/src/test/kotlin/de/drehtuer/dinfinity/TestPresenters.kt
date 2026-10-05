@@ -23,6 +23,7 @@ import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import de.drehtuer.dinfinity.dicesets.install.InstalledSets
 import de.drehtuer.dinfinity.dicesets.install.PackageInstaller
 import de.drehtuer.dinfinity.feature.designer.DesignerPresenter
+import de.drehtuer.dinfinity.feature.designer.DesignerStep
 import de.drehtuer.dinfinity.feature.graph.GraphMachine
 import de.drehtuer.dinfinity.feature.roll.Outside
 import de.drehtuer.dinfinity.feature.roll.RollMachine
@@ -322,6 +323,7 @@ private fun designerPresenter(
       ?: BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube },
   choosable = BuiltinDiceSet.set.dice,
   notationOf = { die -> spellingOf(die, catalog) },
+  step = DesignerStep.openingFor(wanted),
 )
 
 /**

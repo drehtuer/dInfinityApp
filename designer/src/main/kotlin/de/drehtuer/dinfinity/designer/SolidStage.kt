@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.SolidFace
 import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -102,10 +101,19 @@ data class StagePoint(
  * Rings rather than one path, and drawn under the even-odd rule, because that
  * is what a mark on a face already is: a stamped `0` is its outline and the
  * counter that leaves its hole open ([Rings]).
+ *
+ * @param union true for a stroke of the pen, whose rings are the discs and
+ *   bands its ink covers, all wound one way ([StrokeOutline]): they are drawn
+ *   under the non-zero rule, as their union, where even-odd would cut a hole
+ *   wherever two of them overlap.
+ * @param erases true for the eraser, which is drawn in the face's own paper
+ *   rather than in [colorArgb] — on the stage as on the canvas.
  */
 data class StageShape(
   val rings: List<List<StagePoint>>,
   val colorArgb: Int,
+  val union: Boolean = false,
+  val erases: Boolean = false,
 )
 
 /**
@@ -113,8 +121,13 @@ data class StageShape(
  *
  * @param cell which face of the die this is, so the screen can say which of
  *   them is the one being drawn on.
- * @param outline the face's own polygon, projected.
+ * @param outline the face's flat part, projected: its own polygon, pulled in
+ *   to where the rounded edges begin ([RoundedSolid]).
  * @param marks what is drawn on it, furthest back first.
+ * @param reach the face's sharp polygon, projected — what its marks are
+ *   clipped to. A drawing that runs to the edge of a face runs round the bend
+ *   on the tray, as paint would (`docs/physics-and-rendering.md`, "Rounded
+ *   edges"), so it is not cut off where the flat part ends.
  * @param light how much of the light this face catches, `0..1`.
  * @param depth how far the middle of the face is from the eye. What the stage
  *   is sorted by, and the only thing here that is not a picture.
@@ -125,15 +138,27 @@ data class StageFace(
   val marks: List<StageShape>,
   val light: Float,
   val depth: Double,
+  val reach: List<StagePoint> = outline,
 )
 
 /**
- * The die as it is seen: its silhouette, and the faces turned towards the
- * viewer, furthest first.
+ * A piece of the rounding, as it is seen: a band across an edge or a patch over
+ * a corner, in the die's body colour ([RoundedSolid]).
+ */
+data class StageBend(
+  val outline: List<StagePoint>,
+  val light: Float,
+  val depth: Double,
+)
+
+/**
+ * The die as it is seen: its silhouette, the rounded edges and corners, and
+ * the faces turned towards the viewer, each furthest first.
  */
 data class Stage(
   val silhouette: List<StagePoint>,
   val faces: List<StageFace>,
+  val bends: List<StageBend> = emptyList(),
 )
 
 /**
@@ -147,8 +172,9 @@ data class Stage(
  * and colours (`docs/architecture.md`, decision 55).
  *
  * The solid itself is `simulation/api`'s ([SolidFaces]) — the same corners the
- * solver collides and the same faces the renderer's mesh is poured from. This
- * file adds no geometry of its own.
+ * solver collides and the same faces the renderer's mesh is poured from — and
+ * it is rounded by the radius the solver gives the die ([RoundedSolid]), so
+ * moving the Edges slider is something the turning die shows.
  */
 object SolidStage {
   /** [draft]'s die as it is seen when it is turned by [turn]. */
@@ -157,12 +183,21 @@ object SolidStage {
     turn: SolidTurn,
   ): Stage {
     val shape = draft.die.shape
+    val faces = SolidFaces.of(shape)
+    val rounded = RoundedSolid(faces, draft.shownFinish.on(draft.die.material))
+    val facing = faces.filter { facesTheEye(it, turn) }.map(SolidFace::index).toSet()
     val seen =
-      SolidFaces.of(shape).mapNotNull { face ->
-        faceOf(face, draft, turn)
+      faces.mapNotNull { face ->
+        faceOf(face, draft, turn, rounded)
       }
+    val bends =
+      (rounded.bands + rounded.patches)
+        .filter { bend -> bend.faces.any { it in facing } }
+        .map { bend -> bendOf(bend, turn) }
     return Stage(
-      silhouette = hullOf(ShapeGeometry.verticesOf(shape).map { corner -> pointOf(turn.turnedTo(corner)) }),
+      // The outline of the rounded die ([RoundedSolid.outlinePoints]).
+      silhouette = hullOf(rounded.outlinePoints.map { point -> pointOf(turn.turnedTo(point)) }),
+      bends = bends.sortedByDescending(StageBend::depth),
       // Furthest first, which is the order paint goes on. A convex solid with
       // its back faces already dropped has nothing left that can overlap, so
       // this decides nothing about what is seen — it is what makes the stage
@@ -183,50 +218,81 @@ object SolidStage {
     face: SolidFace,
     draft: Draft,
     turn: SolidTurn,
+    rounded: RoundedSolid,
   ): StageFace? {
+    if (!facesTheEye(face, turn)) return null
     val middle = turn.turnedTo(face.centre)
-    val normal = turn.turnedTo(face.normal)
-    if (((EYE - middle) dot normal) <= 0) return null
     val basis = FaceOnSolid.basisOf(face, draft.outline)
     return StageFace(
       cell = face.index,
-      outline = face.corners.map { corner -> pointOf(turn.turnedTo(corner)) },
+      outline = rounded.flats.getValue(face.index).map { corner -> pointOf(turn.turnedTo(corner)) },
       marks = shapesOf(draft.face(face.index).marks, basis, turn),
-      light = lightOn(normal),
+      light = lightOn(turn.turnedTo(face.normal)),
+      depth = (EYE - middle).length,
+      reach = face.corners.map { corner -> pointOf(turn.turnedTo(corner)) },
+    )
+  }
+
+  /** Whether the eye is on the outward side of [face]'s plane, which for a convex solid is "can it be seen". */
+  private fun facesTheEye(
+    face: SolidFace,
+    turn: SolidTurn,
+  ): Boolean = ((EYE - turn.turnedTo(face.centre)) dot turn.turnedTo(face.normal)) > 0
+
+  /**
+   * A band or a corner patch as it is seen: the outline of its corners on the
+   * stage — a patch's corners come in no particular order round the corner,
+   * and the outline of their projections is the patch — lit by the way it
+   * faces.
+   */
+  private fun bendOf(
+    bend: RoundedSolid.Bend,
+    turn: SolidTurn,
+  ): StageBend {
+    val turned = bend.outline.map(turn::turnedTo)
+    val middle = turned.reduce(Vector3::plus) * (1.0 / turned.size)
+    return StageBend(
+      outline = hullOf(turned.map(::pointOf)),
+      light = lightOn(turn.turnedTo(bend.normal)),
       depth = (EYE - middle).length,
     )
   }
 
   /**
-   * What of a face's drawing the stage can show.
+   * Everything drawn on a face, as the stage can show it, in the order it was
+   * put down.
    *
-   * **Closed marks, and not the strokes of the pen.** A fill, a stamped
-   * numeral and a face of pips are all closed rings, and a closed ring under a
+   * **Every mark is drawn as closed shapes.** A fill, a stamped numeral and a
+   * face of pips already are closed rings, and a closed ring under a
    * projection is still a closed ring with its corners in the right places —
    * so what is drawn is the shape itself rather than an impression of it. A
-   * stroke is not a shape but a *line of a width*, and a width on a tilted
-   * face is wider one way than the other; drawing it as a line of one width
-   * would be the picture telling a lie about the die. It is left out and said
-   * out loud instead (`docs/face-designer.md`).
+   * stroke of the pen is a line of a width, which a projection does not keep:
+   * a width on a tilted face is wider one way than the other. So a stroke is
+   * handed over as the shapes its ink covers ([StrokeOutline]) and those are
+   * projected like any other ring — the line on the die is the line on the
+   * canvas, foreshortened as the face is.
+   *
+   * It used to leave strokes out and say so under the stage, which on a die
+   * drawn with the pen was a die with blank faces.
    */
   private fun shapesOf(
     marks: List<Mark>,
     basis: FaceBasis,
     turn: SolidTurn,
   ): List<StageShape> =
-    marks.mapNotNull { mark ->
+    marks.map { mark ->
       val rings =
         when (mark) {
           is Fill -> listOf(mark.dots)
           is Rings -> mark.rings
-          is Stroke -> null
+          is Stroke -> StrokeOutline.ringsOf(mark)
         }
-      rings?.let { closed ->
-        StageShape(
-          rings = closed.map { ring -> ring.map { dot -> pointOf(turn.turnedTo(basis.pointOf(dot))) } },
-          colorArgb = mark.colorArgb,
-        )
-      }
+      StageShape(
+        rings = rings.map { ring -> ring.map { dot -> pointOf(turn.turnedTo(basis.pointOf(dot))) } },
+        colorArgb = mark.colorArgb,
+        union = mark is Stroke,
+        erases = (mark as? Stroke)?.erases == true,
+      )
     }
 
   /**

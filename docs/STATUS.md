@@ -42,10 +42,12 @@ This is a snapshot, not a changelog — git history is the changelog.
   too, and oak is oiled at 0.75. The phone then drew green felt's red 13 over:
   the felt's own sheen, 1.4 % of white, which a look in `average` now has
   taken out of its colour (`SurfaceLight`) — not yet run on the phone. The
-  face designer's Solid tab now chooses what a die is made of (six named
-  materials) and how round it is (four steps, a new optional `edge_rounding`
-  the solver and the picture both follow; decision 94) — every default
-  unchanged; the device suite and a fairness run at the roundest are next.
+  face designer is three steps — Shape, Material (six named materials, a body
+  colour, an edge-rounding slider over the set file's 1.5–12 % range), Faces
+  — after the owner's feedback (decisions 94, 97–99); a drawn face is no
+  longer printed over (96) and the turning die shows the pen's strokes and
+  the rounding. **The slider's range is not measured yet**: the harness and
+  `FairnessTest` runs at the ends of it (`docs/TODO.md`, 4.6) need the phone.
   While a dice material compiles — the first launch after an install or
   update, or the first resin, glass or textured-table material — a
   "Preparing the dice" plate over the tray says why, with a bar timed by what

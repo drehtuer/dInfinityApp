@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,8 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,21 +37,21 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
-import de.drehtuer.dinfinity.core.model.DieMaterial
+import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.DieFinish
+import de.drehtuer.dinfinity.designer.EdgeRounding
 import de.drehtuer.dinfinity.designer.MaterialPreset
-import de.drehtuer.dinfinity.designer.Roundness
+import de.drehtuer.dinfinity.ui.common.ColourPicker
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.SectionKicker
-import de.drehtuer.dinfinity.ui.common.SegmentedControl
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
-import kotlin.math.roundToInt
 
 /**
  * What the die is made of and how round its edges are
- * (`docs/face-designer.md`, "Material and edges"; `design/dInfinityPhone.dc.html`,
+ * (`docs/face-designer.md`, "Material, colour and edges"; `design/dInfinityPhone.dc.html`,
  * the designer's Solid tab).
  *
  * On the Solid tab, under the turning die, because both are about the die in
@@ -73,28 +77,119 @@ internal fun FinishPane(
       Swatch(state.draft.shownFinish)
       MaterialMenu(state.preset, presenter::madeOf, Modifier.weight(1f))
     }
+    SectionKicker(text = stringResource(R.string.designer_body))
+    BodyColours(state, presenter)
     SectionKicker(text = stringResource(R.string.designer_edges))
-    SegmentedControl(
-      options = Roundness.entries.toList<Roundness?>(),
-      selected = state.roundness,
-      label = { roundness -> roundness?.let { stringResource(labelOf(it)) }.orEmpty() },
-      onSelect = { roundness -> roundness?.let(presenter::rounded) },
-      tagOf = { roundness -> DesignerTestTags.edgesOf(roundness) },
-    )
-    val note =
-      if (state.roundness == null) {
-        stringResource(
-          R.string.designer_edges_custom,
-          (state.draft.shownFinish.edgeRounding * PERCENT).roundToInt(),
-        )
-      } else {
-        stringResource(R.string.designer_finish_note)
-      }
+    Edges(state, presenter)
     Text(
-      text = note,
+      text = stringResource(R.string.designer_finish_note),
       style = MaterialTheme.typography.labelSmall,
       color = Ink.muted,
       modifier = Modifier.testTag(DesignerTestTags.FINISH_NOTE),
+    )
+  }
+}
+
+/**
+ * How round the die is: a slider over what a set file may ask for, in steps of
+ * half a per cent of its size (`EdgeRounding`; `docs/face-designer.md`,
+ * "Material, colour and edges").
+ *
+ * Said in words under it twice over — the share of the size the slider moves
+ * and the millimetres that come to on *this* die — because a per cent is the
+ * number a set file writes and a millimetre is the one a person can picture.
+ * The millimetres are the solver's: on a d4 that is half what is asked for,
+ * because its points are cut back (`RoundedSolid.radius`).
+ */
+@Composable
+@NonRestartableComposable
+private fun Edges(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  val share = state.edgeRounding
+  val said =
+    stringResource(
+      R.string.designer_edges_value,
+      (share * PERCENT).toFloat(),
+      state.roundedMm.toFloat(),
+    )
+  val name = stringResource(R.string.designer_edges)
+  Slider(
+    value = share.toFloat(),
+    onValueChange = { presenter.rounded(it.toDouble()) },
+    valueRange = EdgeRounding.RANGE.start.toFloat()..EdgeRounding.RANGE.endInclusive.toFloat(),
+    steps = EdgeRounding.BETWEEN,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .semantics {
+          contentDescription = name
+          stateDescription = said
+        }.testTag(DesignerTestTags.EDGES),
+  )
+  Text(
+    text = said,
+    style = MaterialTheme.typography.labelSmall,
+    color = MaterialTheme.colorScheme.onBackground,
+    modifier = Modifier.testTag(DesignerTestTags.EDGES_SAID),
+  )
+}
+
+/**
+ * The die's body colour (`docs/face-designer.md`, "Material, colour and
+ * edges"): the twelve the pen offers, and the same picker past them — the
+ * one idiom this screen has for choosing a colour.
+ *
+ * Its own row, apart from the ink's, because it is a different question: the
+ * ink is what the next stroke is drawn in, the body is what every face is
+ * drawn *on* and what shows at the rounded edges, where no face reaches.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+@NonRestartableComposable
+private fun BodyColours(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  var picking by remember { mutableStateOf(false) }
+  FlowRow(
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
+  ) {
+    PRESETS.forEach { argb ->
+      Swatch(
+        argb = argb,
+        chosen = state.bodyArgb == argb,
+        label = stringResource(R.string.designer_body_colour, Hex.of(argb)),
+        tag = DesignerTestTags.bodyOf(argb),
+        onChoose = { presenter.coloured(argb) },
+      )
+    }
+    Swatch(
+      argb = state.bodyArgb,
+      chosen = state.bodyArgb !in PRESETS,
+      label = stringResource(R.string.designer_body_more, Hex.of(state.bodyArgb)),
+      tag = DesignerTestTags.MORE_BODY_COLOURS,
+      onChoose = { picking = true },
+    )
+    Text(
+      text = Hex.of(state.bodyArgb),
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
+      modifier = Modifier.testTag(DesignerTestTags.BODY_HEX),
+    )
+  }
+  if (picking) {
+    ColourPicker(
+      start = state.bodyArgb,
+      title = stringResource(R.string.designer_body_title),
+      tags = DesignerTestTags.BODY_PICKER,
+      onDismiss = { picking = false },
+      onChosen = {
+        presenter.coloured(it)
+        picking = false
+      },
     )
   }
 }
@@ -159,7 +254,7 @@ private fun MaterialMenu(
 @Composable
 private fun Swatch(finish: DieFinish) {
   val look = SwatchLook.of(finish)
-  val body = Color(DieMaterial.DEFAULT_COLOR_ARGB)
+  val body = Color(finish.colorArgb)
   val paper = MaterialTheme.colorScheme.onBackground
   val ground = MaterialTheme.colorScheme.background
   Canvas(
@@ -242,14 +337,6 @@ private fun labelOf(preset: MaterialPreset): Int =
     MaterialPreset.Glass -> R.string.designer_material_glass
     MaterialPreset.Metal -> R.string.designer_material_metal
     MaterialPreset.Stone -> R.string.designer_material_stone
-  }
-
-private fun labelOf(roundness: Roundness): Int =
-  when (roundness) {
-    Roundness.Sharp -> R.string.designer_edges_sharp
-    Roundness.Standard -> R.string.designer_edges_standard
-    Roundness.Rounded -> R.string.designer_edges_rounded
-    Roundness.VeryRounded -> R.string.designer_edges_very_rounded
   }
 
 /** Squares a side of the swatch's chequer. */

@@ -171,7 +171,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 | Saved rolls, editor, import — 1n–1p, 1r, 7b, 9b, 9f–9g, 6e | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Dice sets, set details, install and update — 1s–1t, 5a, 6a–6b, 8c, 9h–9i | [../docs/dice-sets.md](../docs/dice-sets.md) |
 | Table picker — 1u, 8a, 9j | [../docs/tables.md](../docs/tables.md) |
-| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; the way back from a test throw, `fromDesigner`; its export on the "My dice" details, 8c; the Solid tab's Material menu and Edges control, in the phone prototype | [../docs/face-designer.md](../docs/face-designer.md) ("Material and edges" also in [../docs/dice-sets.md](../docs/dice-sets.md) and [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), "Rounded edges") |
+| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; the way back from a test throw, `fromDesigner`; its export on the "My dice" details, 8c; its three steps — shape, material and colour, faces — with the step bar, Back and Next, and the Material menu, body colour and Edges slider on the second step, in the phone prototype | [../docs/face-designer.md](../docs/face-designer.md) ("Material, colour and edges" also in [../docs/dice-sets.md](../docs/dice-sets.md) and [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), "Rounded edges") |
 | Statistics, history, sessions — 1w, 1x, 5b–5c, 6c, 8b, 9e | [../docs/statistics.md](../docs/statistics.md) |
 | Menu, Settings — 1q, 1y, 2d | [../README.md](../README.md), [../docs/architecture.md](../docs/architecture.md) |
 
@@ -199,12 +199,21 @@ a `#ic-x` button, "Clear the formula", while it has text, which empties it
 through the same setter its `onChange` uses (`formulaFilled` / `clearFormula`,
 `gFormulaFilled` / `clearGFormula`, `edFormulaFilled` / `clearEdFormula`)
 ([../docs/dice-notation.md](../docs/dice-notation.md), "Emptying the field");
-and the face designer's Solid tab has a **Material** menu with a swatch and
-an **Edges** control under the turning die (`dzMaterials` / `dzPickMaterial` /
-`dzSwatch`, `dzEdges`), six named materials and four roundnesses
-([../docs/face-designer.md](../docs/face-designer.md), "Material and edges";
-decision 94 in [../docs/architecture.md](../docs/architecture.md#key-decisions-log));
-and the roll screen's `rollState` has a `preparing` value, the "Preparing the
+and the face designer is **three steps** — 1 Shape (the base dice and the
+turning die), 2 Material (the turning die, the **Material** menu with its
+swatch, a **Colour** row of the pen's twelve and a picker past them, and an
+**Edges** slider from 1.5 % to 12 % that says the share and the millimetres)
+and 3 Faces (the drawing, its Face/Solid tabs and the face strip) — with a
+step bar under the title, **Back** and **Next** in the footer on the first
+two and **Roll it** / **Save to set** on the last (`dzSteps`, `dzStep`,
+`dzStepBack` / `dzStepNext`, `dzBodies` / `dzBody`, `dzEdgePct` /
+`dzEdgeSaid`); every face, in the editor, the strip and on the solid, is drawn
+on the body colour ([../docs/face-designer.md](../docs/face-designer.md),
+"Flow" and "Material, colour and edges"; decisions 94, 97, 98 and 99 in
+[../docs/architecture.md](../docs/architecture.md#key-decisions-log)). The
+prototype's turning die is CSS 3D and stays sharp; the app's is drawn
+rounded by the slider.
+The roll screen's `rollState` has a `preparing` value, the "Preparing the
 dice" plate centred over the tray — title, why, an estimated bar and the time
 left — drawn while a dice material compiles, shown on the canvas as option
 `1za` ([../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),

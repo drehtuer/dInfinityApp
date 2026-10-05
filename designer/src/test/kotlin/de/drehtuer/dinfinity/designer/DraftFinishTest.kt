@@ -20,14 +20,14 @@ import org.junit.rules.TemporaryFolder
 /**
  * A die's material and roundness, from the menu to the tray: into the draft,
  * through the draft file, into the package and back out of the validator
- * (`docs/face-designer.md`, "Material and edges").
+ * (`docs/face-designer.md`, "Material, colour and edges").
  */
 class DraftFinishTest {
   @get:Rule
   val folder = TemporaryFolder()
 
   private val d20 = Drawings.die(DieShape.Icosahedron)
-  private val glass = DieFinish.STANDARD.madeOf(MaterialPreset.Glass).rounded(Roundness.VeryRounded)
+  private val glass = DieFinish.STANDARD.madeOf(MaterialPreset.Glass).rounded(0.12)
 
   @Test
   fun `a draft shows what its die was copied as until somebody chooses`() {
@@ -60,6 +60,30 @@ class DraftFinishTest {
 
     assertEquals(glass, back?.finish)
     assertTrue(back!!.faces.isEmpty())
+  }
+
+  @Test
+  fun `the body colour survives the draft file and the package`() {
+    val red = glass.coloured(RED)
+    val back = DraftFile.read(DraftFile.write(Draft(d20, finish = red)), d20)
+
+    assertEquals(red, back?.finish)
+    val material = validate(listOf(Draft(d20, finish = red))).dice.single().material
+    assertEquals(RED, material.colorArgb)
+    assertEquals("numbers on a dark green are white", PaperInk.WHITE, material.numberColorArgb)
+  }
+
+  @Test
+  fun `a finish written before there was a colour reads as the built-in colour`() {
+    val text =
+      DraftFile
+        .write(Draft(d20, finish = glass))
+        .replace(Regex(",?\"(number_)?color\":-?[0-9]+"), "")
+
+    val back = DraftFile.read(text, d20)?.finish
+
+    assertEquals(glass, back)
+    assertEquals(DieMaterial.DEFAULT_COLOR_ARGB, back?.colorArgb)
   }
 
   @Test
@@ -111,17 +135,17 @@ class DraftFinishTest {
     val material = set.dice.single().material
 
     assertEquals(MaterialPreset.Glass, MaterialPreset.of(DieFinish.of(material)))
-    assertEquals(Roundness.VeryRounded, Roundness.of(material.edgeRounding))
+    assertEquals(0.12, material.edgeRounding, 0.0)
   }
 
   @Test
-  fun `every preset and every step survives the package`() {
+  fun `every preset and every rounding survives the package`() {
     MaterialPreset.entries.forEach { preset ->
-      Roundness.entries.forEach { roundness ->
-        val finish = DieFinish.STANDARD.madeOf(preset).rounded(roundness)
+      listOf(0.015, 0.03, 0.065, 0.12).forEach { share ->
+        val finish = DieFinish.STANDARD.madeOf(preset).rounded(share)
         val material = validate(listOf(Draft(d20, finish = finish))).dice.single().material
-        assertEquals("$preset $roundness", preset, MaterialPreset.of(DieFinish.of(material)))
-        assertEquals("$preset $roundness", roundness, Roundness.of(material.edgeRounding))
+        assertEquals("$preset $share", preset, MaterialPreset.of(DieFinish.of(material)))
+        assertEquals("$preset $share", share, material.edgeRounding, 0.0)
       }
     }
   }
@@ -160,13 +184,20 @@ class DraftFinishTest {
   }
 
   @Test
-  fun `a finish written explicitly says all four keys, and the validator says nothing about them`() {
+  fun `a finish written explicitly says all six keys, and the validator says nothing about them`() {
     val text =
       DiceSetToml.write(
         DiceSet(id = "mine", name = "My dice", version = "1.0.0", dice = listOf(d20)),
         finishes = mapOf(d20.id to glass),
       )
-    listOf("roughness = 0.05", "metallic = 0.0", "translucency = 100.0", "edge_rounding = 0.12").forEach {
+    listOf(
+      "color = \"#e8dcc0\"",
+      "number_color = \"#2b2b2b\"",
+      "roughness = 0.05",
+      "metallic = 0.0",
+      "translucency = 100.0",
+      "edge_rounding = 0.12",
+    ).forEach {
       assertTrue(it, text.contains(it))
     }
     val result = DiceSetValidator.validate(PackageFiles.ofDiceSetToml(text))
@@ -183,5 +214,9 @@ class DraftFinishTest {
     val result = DiceSetValidator.validate(PackageFiles.of(files))
     assertTrue("$result", result is ValidationResult.Valid)
     return (result as ValidationResult.Valid).set
+  }
+
+  private companion object {
+    const val RED: Int = 0xFF1F5E3A.toInt()
   }
 }

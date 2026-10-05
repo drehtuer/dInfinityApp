@@ -14,7 +14,7 @@ import org.junit.Test
 
 /**
  * Making a drawing real, and throwing the die that carries it
- * (`docs/face-designer.md`, "Save to set" and "Flow", step 4).
+ * (`docs/face-designer.md`, "Save to set" and "Flow", Roll it).
  *
  * Apart from [DesignerPresenterTest] because it is a different subject: that
  * one is about the pen and what it leaves on a face, and this is about what
@@ -28,7 +28,7 @@ class DesignerSavingTest {
     // `dicesets/mine/` is a view of them, and nothing on this screen ever
     // wrote that view — so the formula named a set in which the drawing did
     // not exist, and the tray threw a plain die
-    // (`docs/face-designer.md`, "Flow", step 4).
+    // (`docs/face-designer.md`, "Flow", Roll it).
     val sets = OneSet()
     val presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }, sets = sets)
     presenter.drew(line())

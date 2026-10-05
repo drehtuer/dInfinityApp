@@ -28,10 +28,12 @@ object DiceMaterial {
    * **The artwork is composited, not multiplied.** The body is worked out
    * first — the die's colour with its label printed into it — and the atlas is
    * then laid over it *by its own alpha*. Where an author drew something, that
-   * is what the face carries; where they left the cell clear, the label shows
-   * through, which is what `docs/dice-sets.md` ("Textures") has always
-   * promised and what a plain multiply could not do: multiplying by a
-   * transparent pixel gives black, not the die.
+   * is what the face carries; where they left it clear, the body shows
+   * through, which is what a plain multiply could not do: multiplying by a
+   * transparent pixel gives black, not the die. Which faces have a label to
+   * show at all is decided before this runs — a face the artwork draws on is
+   * left out of the number field ([PrintedDice]; `docs/dice-sets.md`,
+   * "Labels, and the artwork over them").
    *
    * Where the artwork *is* opaque the result is the old one exactly —
    * `baseColor * atlas` — which is what keeps a table's floor texture tinted
@@ -402,11 +404,11 @@ object DiceMaterial {
    *
    * A die is drawn in its own colour with its labels printed over it in
    * [DieMaterial.numberColorArgb], and its author's artwork laid on top of
-   * that where the author drew any. The two are not alternatives: an atlas may
-   * leave a face's cell clear, and that face is then printed exactly as a die
-   * with no atlas at all would be (`docs/dice-sets.md`, "Textures"). So
-   * [numbers] is supplied for a textured die too, and which of the two a face
-   * ends up showing is the artwork's alpha's to say, per pixel, in [SOURCE].
+   * that where the author drew any. A face whose cell the atlas leaves clear
+   * is printed exactly as a die with no atlas at all would be, and a face it
+   * draws on is not (`docs/dice-sets.md`, "Labels, and the artwork over
+   * them"): [numbers] carries only the faces to print, and the artwork is laid
+   * over the body by its alpha in [SOURCE].
    *
    * @param texturePath the atlas, as an [AtlasKey] — the package and the path
    *   inside it — or null for a die whose author supplied none.

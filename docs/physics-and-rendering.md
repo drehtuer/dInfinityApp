@@ -91,7 +91,7 @@ Every die is a **convex** rigid body:
   16 mm die), so they tumble instead of catching on the floor. **The share is
   each die's own**: a set may ask for 1.5 % to 12 % with `edge_rounding`
   (`docs/dice-sets.md`), and the face designer's **Edges** control writes it
-  (`docs/face-designer.md`, "Material and edges"; decision 94). It is Jolt's
+  (`docs/face-designer.md`, "Material, colour and edges"; decision 94). It is Jolt's
   *convex radius*: the hull's face planes are pulled in by it and the smaller
   solid is grown back out by a ball of the same size, so the die that collides
   has every edge a strip of a cylinder and every corner a patch of a sphere.
@@ -1151,8 +1151,47 @@ anything outside what a set file may say); the harness takes the same with
 
 The range stops at 12 % for that reason: past it a 16 mm die is rounded by
 more than 2 mm and starts to behave like the pebble it is turning into, which
-is a question about pebbles rather than about dice. The results of a run at
-12 % belong here once one has been made (`docs/TODO.md`).
+is a question about pebbles rather than about dice.
+
+### How round a die may be
+
+The face designer's **Edges** is a slider over the whole of the set file's
+range, 1.5 % to 12 % in half per cents (`docs/face-designer.md`, "Material,
+colour and edges"; decision 98), so the two ends of that range are what has
+to be shown to settle, to be re-thrown no more often than the built-in die
+and to stay fair. Rounding is symmetric, so between the ends nothing new can
+happen — the radius moves the bodies smoothly — and the ends are the
+measurement.
+
+**Not yet measured on the Pixel 10a.** The runs below are the ones that
+answer it; until they are made, the slider's bounds are the set file's, which
+decision 94 chose on geometry (a d4 catching on its corners below half the
+default, a d20 losing half its faces above 12 %) rather than on a run. Each
+is a test APK of `simulation/jolt`, which installs as its own package and
+leaves the app alone:
+
+```sh
+# settling and re-throws, 20 dice a throw, at each end and at the default
+for r in 0.015 0.03 0.12; do
+  for s in d4 d6 d20; do
+    tools/harness.sh -n 200 -c 20 -s "$s" --rounding "$r" -l "edges-$s-$r"
+  done
+done
+
+# fairness, every shape, 20,000 throws each, at each end
+for r in 0.015 0.12; do
+  adb shell am instrument -w -e class de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
+    -e rolls 20000 -e edgeRounding "$r" \
+    de.drehtuer.dinfinity.simulation.jolt.test/androidx.test.runner.AndroidJUnitRunner
+done
+```
+
+What would move the bounds: a settle-time p95 or a re-throw share at either
+end clearly worse than at 3 %, a give-up past `FaceTally.GIVE_UP_SHARE`, or a
+shape failing χ² or the worst-face bound where it passes at 3 %. A bound that
+moves changes `DieMaterial.EdgeRoundingRange`, which the validator's clamp,
+the harness's `--rounding`, `FairnessTest`'s `edgeRounding` and the slider
+all read, and `docs/dice-sets.md`'s `edge_rounding` row with it.
 
 **The seeds are stirred, not counted.** A roll's seed becomes a
 `kotlin.random.Random`, and two seeds differing only in their low bits do not
@@ -2386,7 +2425,7 @@ impact sounds rather than a crash in the middle of a roll.
   over that by its own alpha. Where the artwork is opaque the result is
   `baseColor × atlas`, which is what it always was and what keeps a table's
   floor tinted by its floor colour; where the author left the cell clear the
-  label shows through. A multiply could not do the second half — multiplying by
+  body shows through. A multiply could not do the second half — multiplying by
   a transparent pixel gives black, not the die (`docs/dice-sets.md`,
   "Textures").
 - **A die's artwork is decoded once per package and destroyed with the
@@ -2432,14 +2471,18 @@ impact sounds rather than a crash in the middle of a roll.
   (`docs/architecture.md`, decision 45). Face textures are applied via a
   per-face UV atlas (see `docs/dice-sets.md`); a coin's rim belongs to neither
   face and carries no cell: it is drawn in the die's own colour.
-- **Every die prints its labels**, in the set's `number_color` on the set's
-  body colour, laid out in that same per-face atlas grid — so a printed die and
-  a painted one are the same surface with the same coordinates and the renderer
-  samples them the same way. A die with artwork is printed too, and the artwork
-  covers the printing wherever it is opaque: which of the two a face shows is
-  the alpha's to say, per pixel, and nothing above the material decides it. A
-  d4 draws three numbers per triangle, one at each corner, because its values
-  belong to corners rather than to faces (`docs/dice-sets.md`, "The d4").
+- **Every face the artwork leaves clear prints its label**, in the set's
+  `number_color` on the set's body colour, laid out in that same per-face
+  atlas grid — so a printed die and a painted one are the same surface with
+  the same coordinates and the renderer samples them the same way. **A face
+  the artwork draws on is not printed**: which faces those are is read off the
+  decoded atlas once, when it is uploaded (`AtlasCoverage`), asked of the
+  stage before a die is added (`Stage.drawnCells`), and those cells are left
+  out of the die's number field (`PrintedDice`, keyed by the die and the
+  faces drawn). A d4 draws three numbers per triangle, one at each corner,
+  because its values belong to corners rather than to faces
+  (`docs/dice-sets.md`, "The d4"); a drawn triangle drops its three
+  (`docs/architecture.md`, decision 96).
 - **How big a number is, is solved rather than chosen.** A cell is the circle
   drawn round a face, and how much of one a face fills depends on what polygon
   it is: a dodecahedron's pentagon nearly all of it, a d20's triangle half, a

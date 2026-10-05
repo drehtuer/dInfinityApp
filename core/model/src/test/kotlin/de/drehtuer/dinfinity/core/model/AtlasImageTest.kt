@@ -61,6 +61,14 @@ class AtlasImageTest {
   }
 
   @Test
+  fun `the drawn cells are the faces that are not empty`() {
+    val image = painted(30, 20) { x, y -> if (x == 12 && y == 15) 0xFF else 0x00 }
+
+    assertEquals(setOf(4), image.drawnCells(faces = 6))
+    assertEquals(emptySet(), blank(30, 20).drawnCells(faces = 6))
+  }
+
+  @Test
   fun `a pixel an eraser left behind does not count as drawing`() {
     val image = painted(30, 20) { _, _ -> AtlasImage.CLEAR_ALPHA }
 

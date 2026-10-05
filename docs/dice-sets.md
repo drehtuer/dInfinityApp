@@ -190,11 +190,12 @@ of** (`docs/tables.md`, "Your own photo"). Beside it there can be any number of
 - Removing a named set removes its records with its package — a package whose
   records stayed would be built straight back. Removing "My dice" removes the
   package alone, as it always has.
-- **A die drawn in the designer may carry a material and a rounding of its
-  own** — `roughness`, `metallic`, `translucency` and `edge_rounding` as
-  per-die keys over `[defaults]` — when the Solid tab's **Material** menu or
-  **Edges** control was used on it, or when it was copied from a set whose die
-  was not the standard material (`docs/face-designer.md`, "Material and
+- **A die drawn in the designer may carry a material, a colour and a rounding
+  of its own** — `color`, `number_color`, `roughness`, `metallic`,
+  `translucency` and `edge_rounding` as per-die keys over `[defaults]` — when
+  the designer's **Material**, **Colour** or **Edges** control (its second
+  step) was used on it, or when it was copied from a set whose die
+  was not the standard material (`docs/face-designer.md`, "Material, colour and
   edges"). Such a die keeps its own translucency when the details screen's
   stepper moves the rest of the set's, and the block's range says so.
 
@@ -502,7 +503,9 @@ unfair dice and a fairness UI — a whole feature, not a field.
   per package for as long as the renderer's engine is (below).
 - Textures are optional per die and per face: an atlas may leave cells
   transparent, in which case the label is rendered in `number_color` on top
-  of the die colour for that face.
+  of the die colour for that face. A face whose cell the atlas draws on is
+  **not printed** — it carries the drawing alone ("Labels, and the artwork
+  over them").
 
 ### How an atlas reaches the tray
 
@@ -545,9 +548,14 @@ Four things about that path are rules rather than arrangement:
   because a package only changes while the roll screen is not showing. Before
   this, a drawing rolled a second time was thrown as it looked the first time.
 - **Straight alpha, not premultiplied.** The material lays the artwork over the
-  die's printed label by the artwork's own alpha, so a half-transparent pixel
+  die's body colour by the artwork's own alpha, so a half-transparent pixel
   has to keep its full colour. Android premultiplies by default and the decoder
   asks it not to.
+- **Which faces it draws on is read once, at the upload.** The same pixels
+  say which face cells hold anything at all (`AtlasImage.drawnCells`, the
+  complement of the validator's empty cells), for every face count the
+  catalogue has, and that answer travels with the texture
+  (`AtlasCoverage`). It is what decides which faces are printed (below).
 - **Nothing that fails here breaks a roll.** A package that is not installed, a
   path that tries to leave it, a file over the cap, a file that will not decode
   — each comes back as report lines and the die is drawn the way a die with no
@@ -567,14 +575,27 @@ as `SetLibrary` matches it.
 
 ### Labels, and the artwork over them
 
-**Every die is printed, and the artwork is laid over it.** The labels go on in
+**A face carries its drawing or its label, never both.** The labels go on in
 `number_color` on the body colour, in the same atlas grid an image fills, and
-the atlas is then composited over that by its own alpha — so a cell an author
-drew in carries the drawing, and a cell they left clear carries the label. That
-is what "an atlas may leave cells transparent" above means, and it is settled
-per *pixel*, in the material, rather than per face anywhere else
-(`docs/physics-and-rendering.md`, "Rendering"). A die with no `texture` at all
-is simply the case where every cell is clear.
+the atlas is composited over that by its own alpha — but **only the faces the
+atlas leaves clear are printed**. A cell with anything drawn in it (any pixel
+above `AtlasImage.CLEAR_ALPHA`) carries the drawing on the body colour and no
+label; a cell left wholly clear carries the label. That is what "an atlas may
+leave cells transparent" above means, and it is settled **per face**, from the
+decoded pixels, by the renderer (`render/filament`'s `AtlasCoverage` and
+`PrintedDice`; `docs/physics-and-rendering.md`, "Rendering";
+`docs/architecture.md`, decision 96). A die with no `texture` at all is simply
+the case where every cell is clear.
+
+It was settled per *pixel* until v0.2.x — every face printed, the artwork laid
+over the printing — and that showed the label through every clear part of a
+drawing: a skull drawn in outline on a d6's 1 had a `1` in the middle of it,
+and every face drawn in the face designer came to the tray with the set's
+number over it. A number nobody drew is not part of anybody's artwork. An
+author who wants the number *and* a border draws both, which the face
+designer's "fill all with numbers" does in one tap (`docs/face-designer.md`).
+On a d4 the face is a triangle and its three corner numbers go with it: a
+drawn triangle loses its three, and its neighbours keep theirs.
 
 The decoder says which face cells came out empty, as a warning, because the
 other way to arrive at an empty cell is an atlas saved in the wrong grid and

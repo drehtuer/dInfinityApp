@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -56,15 +57,11 @@ internal fun SolidPane(
   val stage = state.stage
   val colours =
     SolidColours(
-      // **The die's paper, not the screen's.** The flat editor draws every
-      // face on white (`DesignerScreen`'s canvas), so a solid drawn on the
-      // theme's surface is the same drawing in two different colours — and on
-      // a dark page it is black ink on a dark grey face, which is a numeral
-      // nobody can read. A die is a white thing in a room, whichever page it
-      // is being drawn on. The question of whether the *canvas* should follow
-      // the theme is open either way (`docs/design-handover.md`); what this
-      // fixes is the two of them disagreeing.
-      paper = PAPER,
+      // **The die's paper, not the screen's**: its own body colour, which
+      // the flat editor draws every face on too. A solid drawn on the theme's
+      // surface was the same drawing in two colours depending on the tab — and
+      // on a dark page black ink on a dark grey face.
+      paper = Color(state.bodyArgb),
       // And a face turned away from the lamp is its paper in shadow, which is
       // darker rather than the colour of the page's ink.
       shade = SHADE,
@@ -96,7 +93,12 @@ internal fun SolidPane(
     // The silhouette first, because it is the only thing that draws a coin's
     // rim: every other solid is covered by its own faces.
     drawSolid(stage.silhouette, colours.lit(RIM_LIGHT))
-    stage.faces.forEach { face -> drawFace(face, colours, selected = face.cell == state.cell) }
+    // Inside the rounded outline, so a drawing that runs round a bend stops
+    // where the die does rather than where its sharp corner would have been.
+    clipPath(pathOf(listOf(stage.silhouette), size)) {
+      stage.bends.forEach { bend -> drawBend(bend, colours) }
+      stage.faces.forEach { face -> drawFace(face, colours, selected = face.cell == state.cell) }
+    }
   }
 
   Row(
@@ -118,8 +120,6 @@ internal fun SolidPane(
       modifier = Modifier.weight(1f).testTag(DesignerTestTags.SOLID_NOTE),
     )
   }
-
-  FinishPane(state, presenter)
 }
 
 /** `color-mix(in srgb, var(--color-accent) 16%, …)`, the design's own. */
@@ -127,9 +127,6 @@ private const val SELECTED_TINT = 0.16f
 
 /** How much light the band round the outside of a coin catches. */
 private const val RIM_LIGHT = 0.2f
-
-/** The paper every face of the flat editor is drawn on, and so every face here. */
-private val PAPER = Color.White
 
 /** What the lamp leaves of it on a face turned away. */
 private val SHADE = Color.Black

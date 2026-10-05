@@ -18,12 +18,13 @@ import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Mark
 import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.designer.PersonalSetId
-import de.drehtuer.dinfinity.designer.Roundness
+import de.drehtuer.dinfinity.designer.RoundedSolid
 import de.drehtuer.dinfinity.designer.SolidStage
 import de.drehtuer.dinfinity.designer.SolidTurn
 import de.drehtuer.dinfinity.designer.Stage
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -118,6 +119,45 @@ enum class Step {
 }
 
 /**
+ * The three steps a die is designed in, in order (`docs/face-designer.md`,
+ * "Flow"): which die, what it is made of, and what is on its faces.
+ *
+ * Steps rather than one screen, because one screen was the base-die chooser,
+ * the canvas, six rows of tools, the material and the edges all scrolling
+ * past each other — and because they *are* in order: the faces are drawn on
+ * the shape, and the colour of the die is the paper they are drawn on. Each
+ * step can still be gone back to; nothing is lost going between them, because
+ * everything is written into the die's draft the moment it changes.
+ */
+enum class DesignerStep {
+  /** Which die: its shape, and the numbers on it, are what a drawing is made on. */
+  Shape,
+
+  /** What it is made of, what colour it is and how round its edges are. */
+  Material,
+
+  /** The drawing, one face at a time. */
+  Faces,
+  ;
+
+  /** The step after this one, or null on the last. */
+  val next: DesignerStep? get() = entries.getOrNull(ordinal + 1)
+
+  /** The step before this one, or null on the first. */
+  val previous: DesignerStep? get() = entries.getOrNull(ordinal - 1)
+
+  companion object {
+    /**
+     * The step the designer opens on when the route names [wanted]: the first
+     * when it names no die — the menu — and the faces when it does, because
+     * "Doodle this die" and the way back from a test throw already know the
+     * die and want it drawn on (`docs/face-designer.md`, "Flow").
+     */
+    fun openingFor(wanted: String): DesignerStep = if (wanted.isEmpty()) Shape else Faces
+  }
+}
+
+/**
  * Which of the two halves of the designer is in front of the player
  * (`docs/face-designer.md`, "The solid, not just the face").
  *
@@ -197,7 +237,9 @@ data class DesignerState(
   val stampText: String? = null,
   /** How big the next stamp is, against what this face's own number would be. */
   val stampSize: StampSize = StampSize.Medium,
-  /** Which of the two tabs is in front of the player. */
+  /** Which of the three steps is in front of the player. */
+  val step: DesignerStep = DesignerStep.Shape,
+  /** On the Faces step, which of the two tabs is in front of the player. */
   val view: DesignerView = DesignerView.Face,
   /** How the die on the Solid tab is turned. */
   val turn: SolidTurn = SolidTurn(),
@@ -221,6 +263,13 @@ data class DesignerState(
 ) {
   /** The die being drawn on. */
   val die: Die get() = draft.die
+
+  /**
+   * True when the turning die is on the screen, and so when it turns: on the
+   * first two steps, where it is the picture of the die being chosen, and on
+   * the Faces step's Solid tab.
+   */
+  val showsSolid: Boolean get() = step != DesignerStep.Faces || view == DesignerView.Solid
 
   /** True when there is more than one die to start from, so a chooser is worth drawing. */
   val baseChoosable: Boolean get() = choosable.size > 1
@@ -284,12 +333,28 @@ data class DesignerState(
   /**
    * What the Material menu says the die is made of, or null for **Custom** —
    * a die copied from a set whose numbers are none of the names
-   * (`docs/face-designer.md`, "Material and edges").
+   * (`docs/face-designer.md`, "Material, colour and edges").
    */
   val preset: MaterialPreset? get() = MaterialPreset.of(draft.shownFinish)
 
-  /** Which step of the Edges control the die is on, or null for a rounding none of them is. */
-  val roundness: Roundness? get() = Roundness.of(draft.shownFinish.edgeRounding)
+  /**
+   * The die's body colour: the paper every face is drawn on, here as on the
+   * tray (`docs/face-designer.md`, "Material, colour and edges").
+   */
+  val bodyArgb: Int get() = draft.shownFinish.colorArgb
+
+  /** How round the die is, as a share of its size: where the Edges slider stands. */
+  val edgeRounding: Double get() = draft.shownFinish.edgeRounding
+
+  /**
+   * How round the die is in millimetres, as the solver rounds it: what it
+   * asks for, cut back on a sharp-cornered die ([RoundedSolid.radius], in
+   * units of half the die's size).
+   */
+  val roundedMm: Double get() {
+    val material = draft.shownFinish.on(draft.die.material)
+    return RoundedSolid(SolidFaces.of(draft.die.shape), material).radius * material.sizeMm / 2
+  }
 
   val canUndo: Boolean get() = face.canUndo
   val canRedo: Boolean get() = face.canRedo
@@ -375,9 +440,11 @@ data class DesignerState(
  * It is over detekt's count of what a class may have, like `RollPresenter` and
  * for the same reason: every one of them is a thing a finger does on one
  * screen, and splitting them across two objects would only mean two objects
- * holding one screen's state.
+ * holding one screen's state. Its constructor is over the parameter count
+ * for the same reason: everything it is handed is something the wiring knows
+ * and this screen does not, and the step it opens on is the latest of them.
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "LongParameterList")
 class DesignerPresenter(
   die: Die,
   /**
@@ -435,10 +502,17 @@ class DesignerPresenter(
    * save.
    */
   private val scope: CoroutineScope = CoroutineScope(Dispatchers.Unconfined),
+  /**
+   * The step the screen opens on: the first, unless whoever opened it already
+   * knows which die and wants it drawn on — "Doodle this die" off the
+   * breakdown and the way back from a test throw both open on the faces
+   * (`docs/face-designer.md`, "Flow").
+   */
+  step: DesignerStep = DesignerStep.Shape,
 ) {
   /** What the screen draws. */
   var state: DesignerState by mutableStateOf(
-    DesignerState(draft = drafts.load(die), choosable = choosable),
+    DesignerState(draft = drafts.load(die), choosable = choosable, step = step),
   )
     private set
 
@@ -460,7 +534,7 @@ class DesignerPresenter(
 
   /**
    * **Roll it**: make the drawing real, then hand [go] the formula that throws
-   * it (`docs/face-designer.md`, "Flow", step 4).
+   * it (`docs/face-designer.md`, "Flow", Roll it).
    *
    * The save is not a courtesy, it is the whole of why the tray shows a
    * drawing at all. The drafts are the record and `dicesets/mine/` is a *view*
@@ -610,6 +684,7 @@ class DesignerPresenter(
         choosable = state.choosable,
         clipboard = state.clipboard,
         stampSize = state.stampSize,
+        step = state.step,
         view = state.view,
         turn = state.turn,
         spinning = state.spinning,
@@ -681,7 +756,7 @@ class DesignerPresenter(
 
   /**
    * A name was chosen in the Material menu (`docs/face-designer.md`,
-   * "Material and edges").
+   * "Material, colour and edges").
    *
    * What the die is made of changes and how round it is does not, and the
    * draft is written down at once like a stroke is: it is part of the
@@ -691,9 +766,22 @@ class DesignerPresenter(
     finish(state.draft.shownFinish.madeOf(preset))
   }
 
-  /** A step of the Edges control was chosen. What the die is made of stays. */
-  fun rounded(roundness: Roundness) {
-    finish(state.draft.shownFinish.rounded(roundness))
+  /**
+   * The Edges slider moved to [share] of the die's size. What the die is made
+   * of stays, and a move that lands on the step it was already on changes
+   * nothing and writes nothing.
+   */
+  fun rounded(share: Double) {
+    finish(state.draft.shownFinish.rounded(share))
+  }
+
+  /**
+   * A body colour was chosen. What the die is made of and how round it is
+   * stay; the numbers its undrawn faces are printed in follow, so they read
+   * on it ([DieFinish.coloured]).
+   */
+  fun coloured(argb: Int) {
+    finish(state.draft.shownFinish.coloured(argb))
   }
 
   private fun finish(finish: DieFinish) {
@@ -705,6 +793,30 @@ class DesignerPresenter(
   /** The guide was turned on or off. */
   fun showGuide(shown: Boolean) {
     state = state.copy(guideShown = shown)
+  }
+
+  /**
+   * The step [step] was chosen, from the step bar.
+   *
+   * Nothing else moves — the die, its drawing and how it is turned are the
+   * same in every step — so going back to change the colour and coming back
+   * to the faces is two taps and loses nothing. The draft is written down as
+   * the step is left, as it is when the die is changed.
+   */
+  fun go(step: DesignerStep) {
+    if (step == state.step) return
+    drafts.save(state.draft)
+    state = state.copy(step = step)
+  }
+
+  /** **Next**: the step after this one. Nothing on the last. */
+  fun next() {
+    state.step.next?.let(::go)
+  }
+
+  /** **Back**: the step before this one. Nothing on the first. */
+  fun back() {
+    state.step.previous?.let(::go)
   }
 
   /**

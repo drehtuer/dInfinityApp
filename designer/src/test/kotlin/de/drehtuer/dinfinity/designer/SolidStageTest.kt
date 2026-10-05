@@ -102,15 +102,15 @@ class SolidStageTest {
   }
 
   @Test
-  fun `a stroke of the pen is not drawn, and a fill is`() {
-    // A closed shape projects to a closed shape with its corners in the right
-    // places; a stroke is a line of a width, and a width on a tilted face is
-    // wider one way than the other. What the stage cannot draw honestly it
-    // leaves out (`docs/face-designer.md`).
+  fun `a stroke of the pen is drawn on the solid, as the shapes its ink covers`() {
+    // The turning die showed blank faces for a die drawn with the pen: strokes
+    // were left out. Now every mark is on it, in the order it was put down, a
+    // stroke as the discs and bands its ink covers, filled as their union.
     val die = Drawings.die(DieShape.Cube)
+    val line = Drawings.line()
     val drawn =
       Draft(die = die).onFace(0) { face ->
-        face.draw(Drawings.line()).draw(Fill(dots = FaceShapes.corners(FaceOutline.Square), colorArgb = Drawings.RED))
+        face.draw(Fill(dots = FaceShapes.corners(FaceOutline.Square), colorArgb = Drawings.RED)).draw(line)
       }
 
     val marks =
@@ -120,8 +120,96 @@ class SolidStageTest {
         .single { it.cell == 0 }
         .marks
 
-    assertEquals("the stage drew something other than the fill", 1, marks.size)
-    assertEquals("the fill lost its colour", Drawings.RED, marks.single().colorArgb)
+    assertEquals("a mark was left off the die", 2, marks.size)
+    val (fill, stroke) = marks
+    assertEquals(Drawings.RED, fill.colorArgb)
+    assertEquals(false, fill.union)
+    assertEquals(line.colorArgb, stroke.colorArgb)
+    assertTrue("a stroke's pieces are drawn as one shape", stroke.union)
+    assertEquals(StrokeOutline.ringsOf(line).size, stroke.rings.size)
+    assertEquals(false, stroke.erases)
+  }
+
+  @Test
+  fun `the turning die shows its rounded edges, and moving the slider shows on it`() {
+    val die = Drawings.die(DieShape.Cube)
+
+    fun areaOf(share: Double): Double {
+      val stage = SolidStage.of(Draft(die, finish = DieFinish.STANDARD.rounded(share)), SolidTurn())
+      assertTrue("a rounded die drew no bends", stage.bends.isNotEmpty())
+      return stage.faces.sumOf { face -> shoelace(face.outline) }
+    }
+
+    assertTrue("rounding the die did not shrink its faces", areaOf(0.12) < areaOf(0.015))
+  }
+
+  @Test
+  fun `the bends are drawn lit, inside the stage, nearest last`() {
+    val stage =
+      SolidStage.of(
+        Draft(Drawings.die(DieShape.Icosahedron), finish = DieFinish.STANDARD.rounded(0.12)),
+        SolidTurn(),
+      )
+
+    stage.bends.forEach { bend ->
+      assertTrue(bend.light in 0f..1f)
+      assertTrue(bend.outline.size >= TRIANGLE)
+      bend.outline.forEach { assertTrue(it.x in 0f..1f && it.y in 0f..1f) }
+    }
+    assertEquals(stage.bends.sortedByDescending(StageBend::depth), stage.bends)
+  }
+
+  @Test
+  fun `a piece of the stage says nothing it was not told`() {
+    // What a test or a drawing builds by hand: plain ink, a face whose marks
+    // reach its own outline, and a stage with no rounding drawn.
+    val ring = listOf(StagePoint(0f, 0f), StagePoint(1f, 0f), StagePoint(0f, 1f))
+    val shape = StageShape(rings = listOf(ring), colorArgb = Drawings.RED)
+    val face = StageFace(cell = 0, outline = ring, marks = listOf(shape), light = 1f, depth = 1.0)
+
+    assertEquals(false, shape.union)
+    assertEquals(false, shape.erases)
+    assertEquals(ring, face.reach)
+    assertTrue(Stage(silhouette = ring, faces = listOf(face)).bends.isEmpty())
+    assertEquals(SolidTurn.TILTED, SolidTurn().held)
+  }
+
+  @Test
+  fun `a face's marks reach to its sharp edges, past where its flat part ends`() {
+    val stage =
+      SolidStage.of(
+        Draft(Drawings.die(DieShape.Cube), finish = DieFinish.STANDARD.rounded(0.12)),
+        SolidTurn(),
+      )
+
+    stage.faces.forEach { face -> assertTrue(shoelace(face.reach) > shoelace(face.outline)) }
+  }
+
+  private fun shoelace(ring: List<StagePoint>): Double =
+    kotlin.math.abs(
+      ring.indices.sumOf { at ->
+        val a = ring[at]
+        val b = ring[(at + 1) % ring.size]
+        (a.x * b.y - b.x * a.y).toDouble()
+      },
+    ) / 2
+
+  @Test
+  fun `the eraser goes on the solid too, and says so`() {
+    val die = Drawings.die(DieShape.Cube)
+    val erased =
+      Draft(die = die).onFace(0) { face ->
+        face.draw(Drawings.line()).draw(Drawings.line().copy(erases = true))
+      }
+
+    val marks =
+      SolidStage
+        .of(erased, SolidTurn())
+        .faces
+        .single { it.cell == 0 }
+        .marks
+
+    assertEquals(listOf(false, true), marks.map(StageShape::erases))
   }
 
   @Test
@@ -297,6 +385,9 @@ class SolidStageTest {
     }
 
   private companion object {
+    /** Corners a polygon has at the least. */
+    const val TRIANGLE = 3
+
     /** Every way up the stage has to work: flat on, leaning, and part way round. */
     val TURNS =
       listOf(

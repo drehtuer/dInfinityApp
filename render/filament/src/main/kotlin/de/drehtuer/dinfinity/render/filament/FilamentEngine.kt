@@ -160,11 +160,11 @@ class FilamentEngine(
    * leak the JVM cannot see. It is given back in [close], before the engine
    * that owns the handles ([AtlasCache]).
    */
-  val atlases: AtlasCache<Texture> =
+  val atlases: AtlasCache<DieArtwork<Texture>> =
     AtlasCache(
       artwork = artwork,
-      upload = { uploadAtlas(engine, it) },
-      destroy = engine::destroyTexture,
+      upload = { DieArtwork(uploadAtlas(engine, it), AtlasCoverage.of(it)) },
+      destroy = { engine.destroyTexture(it.texture) },
       stamp = artworkStamp,
     )
 
@@ -367,7 +367,7 @@ class FilamentEngine(
     width: Int,
     height: Int,
     postProcessing: Boolean = true,
-    atlases: (String) -> Texture? = this.atlases::of,
+    atlases: (String) -> DieArtwork<Texture>? = this.atlases::of,
   ): FilamentStage =
     FilamentStage(
       width = width,

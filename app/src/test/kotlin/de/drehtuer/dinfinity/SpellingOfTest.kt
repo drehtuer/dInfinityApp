@@ -91,7 +91,7 @@ class SpellingOfTest {
     // The whole of why Roll it can throw a drawing. A bare `1d20` means
     // whichever set is the default, and the set the drawing was just saved
     // into is not that one — so the artwork would be on a die nobody threw
-    // (`DrawnSets`; `docs/face-designer.md`, "Flow", step 4).
+    // (`DrawnSets`; `docs/face-designer.md`, "Flow", Roll it).
     val catalogue = DiceCatalog.of(listOf(builtin, mine))
 
     assertEquals("mine:1d20", spellingOf(die("d20", mine), catalogue, preferred = DiceSet.PERSONAL_ID))

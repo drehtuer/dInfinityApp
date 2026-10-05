@@ -38,7 +38,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * The footer, the Save sheet, and the screen actually putting ink down
- * (`docs/face-designer.md`, "Save to set" and "Flow", step 4).
+ * (`docs/face-designer.md`, "Save to set" and "Flow", Roll it).
  *
  * Apart from [DesignerScreenTest] because it is a different subject: that one
  * is about the furniture — which tools are offered and which are reachable —
@@ -239,7 +239,7 @@ class DesignerSaveScreenTest {
     // ordinary recomposition has to skip it — and one that skipped wrongly
     // would take the answer off the sheet somebody is reading.
     var tick by mutableStateOf(0)
-    val presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }, sets = OneSet())
+    val presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }, sets = OneSet(), step = DesignerStep.Faces)
     compose.setContent {
       Column {
         Text("tick $tick")
@@ -259,7 +259,7 @@ class DesignerSaveScreenTest {
   @Test
   fun `the header, the strip and the footer survive a recomposition around them`() {
     var tick by mutableStateOf(0)
-    val presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }, sets = OneSet())
+    val presenter = DesignerPresenter(d6, notationOf = { "1${it.id}" }, sets = OneSet(), step = DesignerStep.Faces)
     compose.setContent {
       Column {
         Text("tick $tick")
@@ -327,7 +327,7 @@ class DesignerSaveScreenTest {
     sets: DesignerSets = DesignerSets.NONE,
     onRoll: (String) -> Unit = {},
   ): DesignerPresenter {
-    val presenter = DesignerPresenter(die, emptyList(), Drafts.NONE, notationOf, sets)
+    val presenter = DesignerPresenter(die, emptyList(), Drafts.NONE, notationOf, sets, step = DesignerStep.Faces)
     compose.setContent { DesignerScreen(presenter = presenter, onRoll = onRoll) }
     return presenter
   }

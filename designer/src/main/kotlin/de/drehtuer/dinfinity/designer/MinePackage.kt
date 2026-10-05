@@ -139,15 +139,13 @@ object MinePackage {
    * supposed to look like, and a great deal better than a set that refuses to
    * install because one bitmap would not allocate.
    *
-   * The colour is deliberately not carried across. A cell is transparent
-   * where nobody drew, so the colour under the drawing is the *installing*
-   * set's to decide, and the same drawing is meant to work on a black die and
-   * on a white one (`docs/face-designer.md`, "Export details").
-   *
-   * **The finish is** ([finishOf]): what the die is made of and how round it
-   * is, laid over the package's own [physical] material. That is what the
-   * designer's Material menu and Edges control show, and what **Roll it**
-   * throws (`docs/face-designer.md`, "Material and edges").
+   * **The finish is carried** ([finishOf]): what the die is made of, its body
+   * and number colours and how round it is, laid over the package's own
+   * [physical] material. That is what the designer's material step shows, and
+   * what **Roll it** throws (`docs/face-designer.md`, "Material, colour and
+   * edges"). A cell is transparent where nobody drew, so the body colour is
+   * what shows between the marks — and at the rounded edges, which no face
+   * reaches.
    */
   private fun withArtwork(
     draft: Draft,

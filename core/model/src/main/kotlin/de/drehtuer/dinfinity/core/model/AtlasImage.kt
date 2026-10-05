@@ -90,6 +90,16 @@ class AtlasImage(
    */
   fun emptyCells(faces: Int): List<Int> = (0 until faces).filter { cellIsEmpty(faces, it) }
 
+  /**
+   * Which faces of a die with [faces] faces this atlas draws something on —
+   * every face [emptyCells] does not name.
+   *
+   * What decides whether a face is printed at all: a face an author drew on
+   * carries the drawing and nothing else, and only a face left clear carries
+   * its label (`docs/dice-sets.md`, "Labels, and the artwork over them").
+   */
+  fun drawnCells(faces: Int): Set<Int> = (0 until faces).filterNot { cellIsEmpty(faces, it) }.toSet()
+
   companion object {
     /** Red, green, blue and alpha, a byte each. */
     const val CHANNELS: Int = 4

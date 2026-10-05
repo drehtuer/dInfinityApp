@@ -2,7 +2,9 @@
 
 > **Design:** the designer is options 1v (d6 with a skull on the 1), 4c
 > (colour picker) and 8d (d20, triangular face mask) of the
-> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)); the
+> [clickable design](../design/dInfinity.dc.html) ([design/](../design/)), and
+> its three steps — shape, material and colour, faces — are the designer of the
+> [phone prototype](../design/dInfinityPhone.dc.html) (`dzSteps`); the
 > export is 8c, on the "My dice" details screen reached like any other
 > package's (6a).
 
@@ -13,10 +15,31 @@ installed by other users like any other set.
 
 ## Flow
 
-1. **Pick a base die.** Any catalogue shape or any installed die. The designer
-   copies its `faces` and `labels`, so face *values* are inherited; the user
-   is only drawing what the face looks like.
-2. **Draw.** The screen shows one face at a time as a large square canvas
+**The designer is three steps**, in the order a die is made: what shape it
+is, what it is made of, and what is on its faces. A bar of the three under the
+title says which step is in front of the player and goes to any of them;
+**Back** and **Next** in the footer walk them in order, and the last step's
+footer has the two ways out, **Roll it** and **Save to set**. Each step is a
+screen of its own rather than a section of one long one, because one screen was
+the chooser, the canvas, six rows of tools, the material and the edges all
+scrolling past each other — and because the order is real: the faces are drawn
+*on* the shape, and the die's colour is the paper they are drawn on.
+
+Nothing is lost going between steps: every change is written into the die's
+draft the moment it is made, and the draft is written again as a step is left.
+The phone's Back leaves the designer from any step, as it always has; the
+footer's **Back** is the way to the step before. From the menu the designer
+opens on the first step; "Doodle this die" and the way back from a test throw
+already know the die and open on the faces (`DesignerStep.openingFor`).
+
+1. **Shape: pick a base die.** Any catalogue shape or any installed die,
+   wrapped in rows with the die turning above them. The designer copies its
+   `faces` and `labels`, so face *values* are inherited; the user is only
+   drawing what the face looks like.
+2. **Material and colour.** The turning die again, and under it what the die
+   is made of, its body colour and how round its edges are ("Material, colour
+   and edges").
+3. **Faces: draw.** The screen shows one face at a time as a large square canvas
    with the face's outline (triangle, square, pentagon, a kite for the d10
    and a longer one for the d18) masked in — the face's own polygon, so what
    fills the outline fills the face. Swipe left/right or use the strip at the bottom to move between
@@ -33,10 +56,13 @@ installed by other users like any other set.
    otherwise reads as a different number depending on which way it is looked
    at, which the designer should make hard to do by accident rather than
    merely warn about afterwards.
-3. **Turn it over.** The **Solid** tab beside the flat editor shows the real
+   The **Solid** tab beside the flat editor shows the real
    polyhedron with each authored face on the face it was drawn for, turning on
    its own until a drag takes over ("The solid, not just the face").
-4. **Roll it.** The footer's filled button throws the die into the tray to see
+
+The footer of the last step:
+
+- **Roll it.** The footer's filled button throws the die into the tray to see
    how it looks in motion (`docs/physics-and-rendering.md`, "Starting a
    roll"). It opens the tray with the die in the formula field and **does not
    throw it**: the throw is the player's to make, which is the same answer
@@ -54,11 +80,18 @@ installed by other users like any other set.
    drawing **as it is now**: the tray decodes the atlas again whenever the
    file has changed since it last did (`docs/dice-sets.md`, "Textures").
 
+   **What it throws is what was drawn.** A face with a drawing on it comes to
+   the tray carrying the drawing and no number; a face left undrawn carries
+   its printed number, so a die drawn on one face is still a die anybody can
+   read ("Export details"). It used to print every face's number under the
+   drawing, so every clear part of a drawn face showed the set's number
+   through it.
+
    **And it is a round trip.** The throw carries the die it was drawing, and
    the tray draws a banner over the table that goes back to the designer on
    *that* die (`design/dInfinityPhone.dc.html`, the `fromDesigner` banner;
    "The way back" below).
-5. **Save to set.** Every drawing is a draft on disk the moment the finger
+- **Save to set.** Every drawing is a draft on disk the moment the finger
    lifts, so nothing is ever *lost*; what the footer's other action does is
    turn the drafts into the installed package ("Save to set" below). It is
    the same step Roll it takes, offered on its own for somebody who wants the
@@ -72,14 +105,16 @@ face, the twelve presets, and the strip that moves between faces. Strokes are
 vectors in fractions of the canvas, so they survive a rotation and can be
 re-rendered at export resolution.
 
-**The body scrolls; the header, the strip and the footer stay.** A square
-canvas and three rows of controls do not fit above the fold on a short phone,
-so everything from the base-die chooser down to the palette scrolls. Three
-things are pinned: the app bar at the top (the title, which face is in front
-of the player, undo and redo, the menu), the face strip above the footer —
-which face is in front of the player is where the screen is steered from —
-and the footer with **Save to set** and **Roll it** in it, which is where the
-prototype puts the one filled button on the screen. The tool, clipboard and
+**The body scrolls; the header, the step bar, the strip and the footer
+stay.** A square canvas and its rows of controls do not fit above the fold on
+a short phone, so everything between the step bar and the strip scrolls. What
+is pinned: the app bar at the top (the title; which face is in front of the
+player on the Faces step and which step otherwise; undo and redo, on the Faces
+step only, where there is something to take back; the menu), the step bar
+under it, the face strip above the footer on the Faces step — which face is in
+front of the player is where that step is steered from — and the footer, with
+the one filled button on the screen: **Next** on the first two steps and
+**Roll it** on the last. The tool, clipboard and
 colour rows **wrap** rather than scroll sideways: a tool hidden off the edge
 of a row is a tool nobody finds. Only the face strip scrolls sideways, because
 twenty faces have to go somewhere.
@@ -134,7 +169,7 @@ on.
 and follows the chooser, so it throws the die in front of the player rather
 than the one the screen opened on — and the die it throws is the one with the
 atlas on it, because pressing it builds the personal package first and names
-the die in that package (Flow, step 4). A set's own `skull-d6` is thrown as
+the die in that package (Flow, Roll it). A set's own `skull-d6` is thrown as
 `1{brass:skull-d6}` — the braced spelling the picker row writes
 (`docs/dice-notation.md`, "A set's own dice"; `docs/architecture.md`,
 decision 75). It is **absent rather than dead** for a die notation cannot name,
@@ -199,7 +234,7 @@ every installed set and so has no answer to "which set is this one": a bare
 `1d20` when the set a plain `d20` already means has one, and `brass:1d18` when
 it does not and `brass` does. **Roll it is the exception**, and asks for the
 personal set by name, because the whole point of the press is to throw the
-drawing (Flow, step 4).
+drawing (Flow, Roll it).
 
 **The chooser does not offer the personal set.** A die of "My dice" is not a
 shape to draw *on* — it is a drawing already, the same `d20` with an atlas over
@@ -260,6 +295,14 @@ count, and a picture of a rotation cannot say which of four turns the next
 paste lands on; the stamp's Small / Medium / Large are the same picture at
 three sizes, and three boxes differing by a few pixels is a row nobody reads at
 arm's length; and a die's id (`d18`) in the base-die row is its own word.
+
+**The guide is the word "Guide", not a picture.** It was the sprite's
+`#ic-image`, a framed landscape, chosen as "a picture under the drawing". On
+the phone it was read as what that glyph means everywhere else — *add an
+image* — and reported as an image loader that loaded nothing. The prototype
+labels the same switch "Guide" beside a checkbox, and so does the app now.
+(There is no way to put a photograph on a face; photographs become tables,
+`docs/tables.md`, "Your own photo".)
 
 **Every picture is named.** The words that came off the faces are the labels a
 screen reader now says — the resources did not go anywhere — and every control
@@ -504,6 +547,12 @@ arguing with the set file — so there is no numeral to trace and the guide fall
 back to marking the place. The screen is not told which case it is looking at:
 what reaches the draw lambda is a list of closed rings either way.
 
+**It is drawn in an ink that reads on the paper**, black or white, whichever
+stands further from it (`designer`'s `PaperInk`), at a third of its strength.
+It used to be the page's own ink at that strength, which on a dark theme is a
+pale grey — invisible on white paper, so turning the guide on and off changed
+nothing anybody could see.
+
 The guide can still be turned off, and the face's value is still on the strip
 under the canvas while it is.
 
@@ -611,14 +660,18 @@ A stamp's dots are written the way every other mark's are, every ring end to
 end, with the lengths beside them; a stamp whose lengths do not add up to the
 dots it carries is not a stamp this wrote and is dropped.
 
-**A die's material and edges are a `finish` beside the faces** — `roughness`,
-`metallic`, `translucency` (a fraction) and `edge_rounding` — written once
-somebody has chosen either ("Material and edges"). The format was not bumped
-for it either: a draft without one reads as it always did, and a build that
-predates it drops it and keeps the drawing. All four or none: a finish with a
-field missing or not a number is not one this wrote and is dropped, and what
-does read is clamped to the set file's limits, so a draft edited on disk
-cannot hand the package a value the validator would have to bring back.
+**A die's material, colour and edges are a `finish` beside the faces** —
+`roughness`, `metallic`, `translucency` (a fraction), `edge_rounding`, `color`
+and `number_color` (ARGB integers, as a mark's ink is) — written once somebody
+has chosen any of them ("Material, colour and edges"). The format was not
+bumped for it either: a draft without one reads as it always did, and a build
+that predates it drops it and keeps the drawing. The four numbers are all or
+none: a finish with one missing or not a number is not one this wrote and is
+dropped. The two colours are optional, because a finish written before there
+was a colour to choose has none — and the die it described was the built-in
+bone, which is what it reads as. What does read is clamped to the set file's
+limits, so a draft edited on disk cannot hand the package a value the
+validator would have to bring back.
 
 **It was bumped once, to 2, when the kites were split** — a change of
 *meaning* rather than of shape, which is the case the rule above is for. Up to
@@ -645,15 +698,17 @@ the wrong place (`docs/architecture.md`, decision 86).
 
 Until the design pass of 2026-09-17 the answer to "what does it look like as a
 die" was **roll it**, and the hand-over recorded that as deliberate. The design
-asked the other way and it is built: a **Solid** tab beside the flat editor,
+asked the other way and it is built: the turning die is the picture on the
+first two steps — the shape being chosen, then the material, colour and
+rounding being set — and a **Solid** tab beside the flat editor on the third,
 for the one thing rolling cannot do — a roll shows you one face at a time,
 chosen by physics, and a person lettering a d20 wants to turn it over.
 
-The two tabs are two views of one drawing. The base-die chooser, the face strip
-and the way out to the tray are the same underneath both; which face is in
-front of the player, which die is being drawn on, how the die is turned and
-where the pen was all survive moving between them, and so does a change of base
-die.
+The two tabs are two views of one drawing. The face strip and the way out to
+the tray are the same underneath both; which face is in front of the player,
+which die is being drawn on, how the die is turned and where the pen was all
+survive moving between them and between the steps. The die turns on its own
+whenever it is on the screen.
 
 **The polyhedron is generated, not modelled.** `simulation/api` already owned
 every catalogue solid — its corners, the direction of each readable position
@@ -743,25 +798,33 @@ of it fits equally well, so the tie goes to the one that stands the drawing
 most upright. The disc of a d2 has no corners at all and is laid on the face's
 own frame.
 
-It draws:
+It draws **everything on the face, in the order it was put down**:
 
 - **the face itself**, its real polygon, shaded by which way it is pointing;
 - **its background** — every region the bucket coloured in, including a fill of
   the whole face, clipped to the outline;
 - **its numerals and its pips** — a stamp and a face of eyes alike, in the ink
-  they were put down in, at the place and the size they were put down at.
+  they were put down in, at the place and the size they were put down at;
+- **the strokes of the pen**, eraser and all.
 
-It does not draw **the strokes of the pen**. The line is drawn here: a fill, a
-stamped numeral and a face of pips are *closed shapes*, and a closed shape
-under a projection is still a closed shape with its corners where they belong,
-so what the stage puts down is the mark itself rather than an impression of it.
-A stroke is not a shape but a line of a *width*, and a width on a tilted face is
-wider one way than the other; a `Canvas` draws a line of one width, so drawing
-one would be the picture telling a lie about the die. The tab says so in as many
-words under the stage rather than leaving somebody to wonder where their line
-went, and the flat editor is where a stroke is looked at. Whether it is worth
-drawing strokes as thin filled outlines instead is an open question
-(`docs/TODO.md`).
+Everything is drawn as a *closed shape*, because a closed shape under a
+projection is still a closed shape with its corners where they belong, so what
+the stage puts down is the mark itself rather than an impression of it. A fill,
+a stamp and a face of pips already are. A stroke is a line of a *width*, and a
+width on a tilted face is wider one way than the other — a `Canvas` line of one
+width would be a different line — so a stroke is handed over as **the shapes
+its ink covers** (`designer`'s `StrokeOutline`): a disc at every dot, which is
+the round cap and the round join the canvas draws, and a band half a nib either
+side of every segment. Those are projected like any other ring and filled as
+their union (every ring wound one way, the non-zero rule), so the line on the
+die is the line on the canvas, foreshortened as the face is. Dots a finger left
+closer together than a quarter of the nib are dropped first, because every dot
+is a disc and a band more on every frame the die turns. The eraser is drawn in
+the face's own paper, as it is on the canvas.
+
+It used to leave the strokes out and say so under the stage. On the phone that
+was a die drawn with the pen turning with blank faces, which is not what anybody
+reads "the strokes are on the other tab" as.
 
 **The atlas turns a cell its own way, and the exporter follows the canvas.** The atlas draws every
 cell with the face's up taken as `+z` flattened onto it (`docs/dice-sets.md`,
@@ -776,17 +839,17 @@ the way round the Solid tab showed it. The kites are no exception: each
 trapezohedron's canvas outline is its own face, so the best fit this tab draws
 and the size the exporter paints are the same number ("Export details").
 
-### Material and edges
+### Material, colour and edges
 
-> **Design:** the **Material** menu and the **Edges** control are under the
-> turning die on the Solid tab of the
+> **Design:** the **Material** menu, the **Colour** row and the **Edges**
+> slider are under the turning die on the designer's second step in the
 > [phone prototype](../design/dInfinityPhone.dc.html) (`design/`).
 
-Two controls for the die rather than for a face, so they are on the Solid tab,
-under the die in the hand: what it is made of, and how round its edges are.
-Both belong to the die being drawn — another base die has its own — and both
-are written into its draft the moment they change, like a stroke
-(`docs/architecture.md`, decision 94).
+Three controls for the die rather than for a face, so they are the second
+step, under the die in the hand: what it is made of, what colour it is, and how
+round its edges are. All three belong to the die being drawn — another base die
+has its own — and are written into its draft the moment they change, like a
+stroke (`docs/architecture.md`, decisions 94 and 97).
 
 **Material** is a menu of names, because "glass" is what somebody wants and
 "translucency 100 %, roughness 0.05" is how it is made. Each name sets the
@@ -810,16 +873,69 @@ body to be clear. **Custom** is shown when the die is made of none of them — a
 die copied from somebody else's set — and it stays as it was until a name is
 chosen; choosing one keeps the die's rounding.
 
-**Edges** is four steps, not a slider: **Sharp**, **Standard**, **Rounded** and
-**Very round**, 1.5 %, 3 %, 6 % and 12 % of the die's size — the least a set
-file may ask for, what every die has always had, twice that, and the most a
-set file may ask for. The rounding is the solver's convex radius, which the
-renderer draws (`docs/physics-and-rendering.md`, "Rounded edges"), so every
-value on offer is a die that *rolls* differently, and four named dice are four
-that can be thrown a hundred thousand times each and checked for fairness;
-a slider would offer a continuum nobody has thrown. A rounding none of the
-steps is — from somebody else's set — selects none of them and says what it
-is under the control ("Custom edges, rounded by 5 % of the die's size").
+**Colour** is the die's body colour: the twelve colours the pen offers and,
+past them, the same picker the pen's colour opens (`4c`) — this screen has one
+way of choosing a colour. It is what every face is drawn *on*, on the canvas,
+in the strip and on the turning die alike, and what the tray shows between the
+marks of a drawing and at the edges. **With rounded edges a face no longer
+fills its side**: the bends and the corners belong to no face's cell and are
+the body colour, so a die meant to be red has to be a red die — a bone die with
+every face bucket-filled red has bone-coloured edges. The colour is opaque
+whatever is chosen (how much light goes through is the material's), and the
+numbers the faces left undrawn are printed in whatever reads on it — the
+built-in near-black on a light body and white on a dark one (`PaperInk`) —
+because a black die printed in black is a die nobody can read. The guide under
+the drawing follows the same rule ("The guide").
+
+**Edges** is a slider from 1.5 % to 12 % of the die's size in steps of half a
+per cent — the range a set file may ask for, so the slider cannot write a value
+the validator would bring back (`EdgeRounding`). Under it the rounding is said
+twice, as the share a set file writes and as the millimetres that come to on
+*this* die as the solver rounds it: "Rounded by 6.0 % of its size: 0.96 mm",
+and about half that on a d4, whose points the solver cuts back. TalkBack hears
+the same sentence as the slider's state. A rounding from somebody else's set
+is wherever it is on the slider — inside the range by the validator's clamp —
+and moving the slider puts it on a step.
+
+**A slider, not four steps**, and the reasoning that chose the steps was
+backwards. The rounding is the solver's convex radius, so every value is a die
+that *rolls* differently, and the steps were offered as "four dice that can be
+thrown and checked". But the rounding is symmetric — every edge by the same
+radius — so it cannot load a die at any value, and what a run measures
+(settling, re-throws, fairness) changes smoothly with it: the two ends of the
+range answer for everything between them, which is where the measurements are
+made (`docs/physics-and-rendering.md`, "How round a die may be"). The steps
+also hid the one thing a person choosing them needs to see, which is how
+little rounding shows on some dice:
+
+**Why the steps looked the same on everything but a d4.** Not the solver:
+every shape but the d4 gets the full radius it asks for at every value
+(`HullMargin.maxErrorMm` grows with the share), and the d4 half of it. Two
+things did it. *The designer never showed the rounding* — the turning die was
+the sharp polyhedron whatever the step, so on this screen no step changed
+anything on any die, and only a throw could. And *how much rounding shows is
+the solid's, not the radius's*: what moves is how far a corner stands in,
+`r · (|m| − 1)`, and how wide the band over an edge is, `r · tan(θ / 2)` on
+either face, where `θ` is the angle between the two faces' normals — and the
+band is shaded by about `θ / 2` against its faces. A d4's faces meet at 109°
+apart and its corners stand in by twice the radius; a d20's meet at 42° and
+its corners stand in by a quarter of it. On a 16 mm die from the first step to
+the last:
+
+| Die | Angle between faces | Corner stands in | Band on each face |
+| --- | --- | --- | --- |
+| d4 (half the radius) | 109° | 0.25 → 2.0 mm | 0.18 → 1.41 mm |
+| d6 | 90° | 0.18 → 1.4 mm | 0.24 → 1.92 mm |
+| d8 | 71° | 0.18 → 1.4 mm | 0.17 → 1.36 mm |
+| d12 | 63° | 0.06 → 0.48 mm | 0.15 → 1.19 mm |
+| d20 | 42° | 0.06 → 0.48 mm | 0.09 → 0.73 mm |
+
+So on a d20 the whole range is half a millimetre at the corners and a band
+shaded 21° off its face — about the width of a pen line on the tray. The
+turning die now draws the rounding (`RoundedSolid`: every face's flat part, a
+band across every edge and a patch over every corner, in the body colour and
+lit as they face, and the outline drawn round the rounded corners), so moving
+the slider is something the screen shows before the throw does.
 
 **The swatch beside the menu is a hint, not the die.** The Solid tab is a
 drawing on paper; a resin die bending the felt and a metal one catching the
@@ -829,10 +945,11 @@ it as light goes through the die — with a glint as bright as metal and as
 sharp as polish would give it. TalkBack is told the material by the menu
 ("Material: Glass") and the step by the control; the swatch is silent.
 
-**What goes into the package.** A die whose material or edges somebody chose
-carries all four values as its own per-die keys — `roughness`, `metallic`,
-`translucency` and `edge_rounding` — over the package's `[defaults]`, written
-whole even where one equals the default, so a die made plastic on purpose
+**What goes into the package.** A die whose material, colour or edges somebody
+chose carries all six values as its own per-die keys — `color`,
+`number_color`, `roughness`, `metallic`, `translucency` and `edge_rounding` —
+over the package's `[defaults]`, written whole even where one equals the
+default, so a die made plastic on purpose
 stays plastic when the details screen later makes the rest of the set
 translucent. A die nobody chose for carries what it was copied as when that is
 anything but the standard material, so what the menu said before anybody
@@ -914,11 +1031,17 @@ a named set holds what was put into it on purpose.
   of `ShapeAtlas`'s grid, which is the same grid the renderer samples and the
   validator checks. Two answers to "where is face 7" would be a die whose
   faces are in the wrong places on somebody else's phone.
-- Background of each cell is transparent; the die colour comes from the set
-  defaults, so the same drawing works on a black or a white die. What the die
-  is made of and how round it is are its own when the Solid tab's controls
-  set them ("Material and edges"). **A cell nobody drew on is not written at
-  all**, which is what lets the printed label show through it.
+- Background of each cell is transparent, so the die's body colour is what
+  shows between the marks. What the die is made of and how round it is are
+  its own when the second step's controls set them ("Material, colour and edges").
+  **A cell nobody drew on is not written at all**, and that is what decides
+  what a face carries on the tray: **a drawn face carries the drawing and no
+  number, and a face left undrawn carries its printed number** — so a die
+  drawn on two faces is a die with two drawings and the rest still readable,
+  rather than a die with blanks on it (`docs/dice-sets.md`, "Labels, and the
+  artwork over them"). A face that should carry its number *and* a drawing
+  gets the number stamped ("Fill all with numbers"), where it is part of the
+  drawing and drawn where the tray would have printed it.
 - **Each cell is painted with its own turn and size.** The canvas masks every
   face into one canonical outline — a triangle on its point, a square on an
   edge, a kite with its short tip up — and the die samples the cell in the
@@ -1085,7 +1208,7 @@ disk under the die's own id and the drafts together already *are* "My dice", so
 the variant would be a second copy of a drawing that exists, and the switch
 would be a roll whose dice a screen changed behind the player. The ways back to
 the tray are Back and "Roll it", which hands the tray the die being drawn
-("Flow", step 4).
+("Flow", Roll it).
 
 Which die the screen opens on is one rule with the menu's
 (`designer`'s `OpeningDie`): the die the long press named, and the usual d6

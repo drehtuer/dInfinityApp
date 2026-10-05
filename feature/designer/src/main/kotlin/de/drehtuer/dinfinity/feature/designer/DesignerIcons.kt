@@ -57,10 +57,6 @@ internal object DesignerIcons {
   /** `#ic-type`: the text tool, which is what the stamp is. */
   const val TYPE: String = "M4 7V4h16v3M9 20h6M12 4v16"
 
-  /** `#ic-image`: a picture under the drawing, which is what the guide is. */
-  const val IMAGE: String =
-    "M3 3h18v18H3zM9 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm12 4-3.086-3.086a2 2 0 0 0-2.828 0L6 21"
-
   /** `#ic-undo`. */
   const val UNDO: String = "M3 7v6h6M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"
 
@@ -97,7 +93,6 @@ internal object DesignerIcons {
         "ic-eraser" to ERASER,
         "ic-bucket" to BUCKET,
         "ic-type" to TYPE,
-        "ic-image" to IMAGE,
         "ic-undo" to UNDO,
         "ic-redo" to REDO,
         "ic-copy" to COPY,
