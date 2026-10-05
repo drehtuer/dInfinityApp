@@ -1,7 +1,8 @@
 # Physics and rendering
 
 > **Design:** the tray, a settled roll and the power-saving result are
-> options 1a and 1z of the [clickable design](../design/dInfinity.dc.html) ([design/](../design/)).
+> options 1a and 1z of the [clickable design](../design/dInfinity.dc.html) ([design/](../design/));
+> "Preparing the dice", over the tray while a material compiles, is option 1za.
 > The dice there are flat silhouettes standing in for the 3D render.
 
 ## Overview
@@ -2367,6 +2368,11 @@ impact sounds rather than a crash in the middle of a roll.
   - the table material is made the same way, the first time a table drawn
     from pictures is shown ("The table's surface", below). Plain and dark
     glass never ask for it.
+
+  What is left — the compiles after an install or update, and the first
+  translucent die or textured table — is no longer a black tray nobody
+  explains: the roll screen puts "Preparing the dice" over it, with a bar and
+  the time left ("Preparing the dice", below; decision 95).
 - **One material** draws every die but a translucent one, and every surface
   of a tray drawn in colours alone: a lit, opaque, physically based one with a
   base colour, a roughness and a metalness, with an atlas laid over it. Dice
@@ -3105,6 +3111,63 @@ with the gesture and the drawing. A flick wins over a position — a sheet throw
 at the bottom edge from an inch below the top means down — and "a flick" is
 measured in sheet heights per second rather than pixels, so it is the same
 gesture on every phone and for a one-line breakdown as for a twenty-die one.
+
+### Preparing the dice
+
+**While a dice material is being compiled, the tray says so.** The first
+launch after an install or an update compiles the opaque material before the
+first frame can be drawn — about 2.4 s of black tray on the Pixel 10a — and a
+translucent die, a dark-glass table or a table drawn from pictures compiles
+one more material the first time one is shown, about two seconds in which the
+roll thread draws nothing and the dice stand still in the air. Nothing about
+either is broken, and without a word on the screen both look as if it were.
+
+So a plate stands in the middle of the tray for exactly as long as a compile
+runs (`feature/roll`'s `PreparingTheDice`; `design/dInfinity.dc.html`, option
+`1za`):
+
+- a title naming what is being prepared, in the player's words — *the dice*,
+  *the translucent dice*, *the glass table*, *the table*;
+- one sentence of why: the shaders are being compiled for this phone, and it
+  happens once after an install or update;
+- the counting plate's 3 dp rule, filling as the compile goes;
+- "About N seconds left", or "Almost done" once the estimate has run out.
+
+**The bar is an estimate, and it may only be wrong on the slow side.**
+`libfilamat` says nothing until it is done, so how far it has got is the time
+since it started against how long the same material took on this phone last
+time (`ShaderWork.Compiling`). The fill stops at 95 % until the compiler
+finishes, and the plate goes when it does, so a phone slower than its estimate
+sees a bar waiting near the end rather than a full bar that is still waiting.
+The seconds are rounded up — the last one reads "1", not "0".
+
+**What this phone took is remembered** (`ShaderTimingStore`), in
+`noBackupFilesDir` rather than beside the materials: the material cache is in
+`codeCacheDir`, which an update empties, and an update is exactly when the
+figure is wanted. Every compile that finishes replaces its material's figure.
+Until a phone has compiled a material once, the estimate is the Pixel 10a's:
+opaque 2.4 s and resin 2 s, measured; glass and table **assumed** at 2 s each,
+the same as resin, because neither has been timed alone. A missing,
+unreadable or garbled file reads as those defaults, line by line, and a figure
+under a tenth of a second or over two minutes is not a measurement of the
+compiler and is not learnt.
+
+A launch whose materials were on disk reports nothing, because nothing is
+compiled — `FilamentEngine` tells `ShaderProgress` about a compile inside the
+cache's miss path and nowhere else — so a normal start shows no plate at all.
+**Power-saving mode never shows it**, because it opens no engine.
+
+It sits over the tray and under every control, so the menu and the formula are
+there to be used while it waits, and it takes no touch. For a screen reader it
+is three things: the title and the sentence as one **polite live region**,
+heard once when the plate appears; the rule, which is a progress bar, its
+value in whole per cent; and the time left. Only the first announces itself —
+a bar that spoke every time it moved would talk over the whole compile.
+
+The table picker's thumbnails are drawn with the same engine, so a phone that
+opens the picker before the tray compiles the material there, under the
+picker's own placeholder swatches, with no plate; the tray afterwards finds it
+compiled.
 
 ### Two pull-ups, one bottom edge
 

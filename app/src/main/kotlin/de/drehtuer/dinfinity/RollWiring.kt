@@ -18,6 +18,7 @@ import de.drehtuer.dinfinity.feedback.ImpactFeedback
 import de.drehtuer.dinfinity.render.filament.MaterialCache
 import de.drehtuer.dinfinity.render.filament.PowerSavingTray
 import de.drehtuer.dinfinity.render.filament.RollThread
+import de.drehtuer.dinfinity.render.filament.ShaderTimingStore
 import de.drehtuer.dinfinity.render.filament.StudioCache
 import de.drehtuer.dinfinity.render.filament.ThumbnailPlan
 import de.drehtuer.dinfinity.render.filament.Tray
@@ -269,6 +270,10 @@ class RollWiring(
    * code cache Android empties on every update, so only the first launch of a
    * new version compiles it at all. The studio's folded cube is kept beside
    * it for the same reason ([StudioCache]).
+   *
+   * How long each compile took is kept somewhere an update does *not* empty
+   * ([ShaderTimingStore], in `noBackupFilesDir`), because the next update is
+   * when the roll screen's "Preparing the dice" bar wants to know.
    */
   private val rollThread: RollThread by lazy {
     RollThread(
@@ -276,6 +281,7 @@ class RollWiring(
       artworkStamp = artwork?.let { it::stamp } ?: { null },
       materials = MaterialCache(File(context.codeCacheDir, MATERIAL_CACHE_DIR)),
       studio = StudioCache(File(context.codeCacheDir, STUDIO_CACHE_DIR)),
+      timings = ShaderTimingStore(File(context.noBackupFilesDir, SHADER_TIMINGS_FILE)),
     )
   }
 
@@ -401,5 +407,11 @@ class RollWiring(
 
     /** And the studio's folded cube beside them ([StudioCache]). */
     const val STUDIO_CACHE_DIR = "studio"
+
+    /**
+     * Under `noBackupFilesDir`, which survives an update and stays on this
+     * phone: how long this phone takes to compile each material.
+     */
+    const val SHADER_TIMINGS_FILE = "shader-timings.txt"
   }
 }

@@ -127,6 +127,12 @@ tray to roll". Both are listed in
 [../docs/design-handover.md](../docs/design-handover.md), "The shake is the
 throw, and the prototype half-says so".
 
+**While the dice's shaders compile, the tray says so** (decision 95): the
+first launch after an install or update, and the first translucent die or
+textured table, put a "Preparing the dice" plate over the tray with an
+estimated bar and the time left. Option `1za`, or `rollState` `preparing`
+(a hand edit, see **Editing**).
+
 **Dice that land cocked wait for a shake** (decision 70), on a `THROW AGAIN`
 plate, and **what the next shake throws is said over the tray** in an accent
 shake prompt until the shake, with a picked die ringed in the accent on a halo
@@ -136,8 +142,8 @@ line and rings round the first two dice of a landed roll, and `earned` and
 `stuck` carry the prompt too. Both are hand edits (see **Editing**).
 
 **Imported from** project `5cee69c8-e516-4414-a446-7fd89bb7c706`, last synced
-2026-09-17, with six hand edits to `dInfinityPhone.dc.html` since (see
-**Editing**).
+2026-09-17, with seven hand edits to `dInfinityPhone.dc.html` since (see
+**Editing**), and one option added to `dInfinity.dc.html` (`1za`).
 
 ## Viewing
 
@@ -158,6 +164,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 | Screens | Specified in |
 | --- | --- |
 | Roll screen: tray, layouts, result sheet — 1a, 1b–1d, 1e–1g, 1z | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), [../docs/tables.md](../docs/tables.md) |
+| Roll screen while a dice material compiles: "Preparing the dice" — 1za, `rollState` `preparing` | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md) ("Preparing the dice"), [../docs/architecture.md](../docs/architecture.md) (decision 95, "Threading") |
 | Roll screen waiting on a shake: the shake prompt, the `THROW AGAIN` plate and the pick ring — `rollState` `earned`, `stuck`, `unread`, `picked` | [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md) ("Picking a die up and throwing it again", "What is drawn over the table"), [../docs/architecture.md](../docs/architecture.md) (decisions 70, 76, 84) |
 | Notation field, dice pickers, errors — 2a, 1h–1j, 9c, 6d | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Outcome graph — 1k–1m, 7a | [../docs/probability.md](../docs/probability.md) |
@@ -173,7 +180,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 Edit in the [Claude Design project](./) and re-import here so the two stay in
 step.
 
-**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Six
+**`dInfinityPhone.dc.html` carries hand edits a re-import would undo.** Seven
 small corrections were made here after the 2026-09-17 sync, to keep the
 prototype true to the app: the shake prompt over the tray, the `THROW AGAIN`
 plate and the accent pick ring, reached by the `rollState` values `unread`
@@ -196,7 +203,12 @@ and the face designer's Solid tab has a **Material** menu with a swatch and
 an **Edges** control under the turning die (`dzMaterials` / `dzPickMaterial` /
 `dzSwatch`, `dzEdges`), six named materials and four roundnesses
 ([../docs/face-designer.md](../docs/face-designer.md), "Material and edges";
-decision 94 in [../docs/architecture.md](../docs/architecture.md#key-decisions-log)).
+decision 94 in [../docs/architecture.md](../docs/architecture.md#key-decisions-log));
+and the roll screen's `rollState` has a `preparing` value, the "Preparing the
+dice" plate centred over the tray — title, why, an estimated bar and the time
+left — drawn while a dice material compiles, shown on the canvas as option
+`1za` ([../docs/physics-and-rendering.md](../docs/physics-and-rendering.md),
+"Preparing the dice"; decision 95).
 Before the next
 import, either make the same changes in the design project or re-apply them
 afterwards; `git log -- design/dInfinityPhone.dc.html` lists them
