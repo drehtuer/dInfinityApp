@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.render.filament
 import android.os.Handler
 import android.os.HandlerThread
 import de.drehtuer.dinfinity.core.model.AtlasImage
+import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.CountDownLatch
 
 /**
@@ -44,14 +45,31 @@ import java.util.concurrent.CountDownLatch
  *   launches ([MaterialCache]); the default keeps nothing.
  * @param studio where the engine keeps the studio's folded cube between
  *   launches ([StudioCache]); the default keeps nothing.
+ * @param timings how long this phone took to compile each material the last
+ *   time it had to ([ShaderTimingStore]), which is what [shaders] estimates
+ *   against; the default keeps nothing and uses the Pixel 10a's figures.
  */
 class RollThread(
   private val artwork: (String) -> AtlasImage? = { null },
   private val artworkStamp: (String) -> Any? = { null },
   private val materials: MaterialCache = MaterialCache.NONE,
   private val studio: StudioCache = StudioCache.NONE,
+  timings: ShaderTimingStore = ShaderTimingStore.NONE,
 ) : AutoCloseable {
   private val thread = HandlerThread(THREAD_NAME).apply { start() }
+
+  private val progress = ShaderProgress(timings)
+
+  /**
+   * Whether a dice material is being compiled on this thread right now, and
+   * how far it has probably got — the roll screen's "Preparing the dice"
+   * (`docs/architecture.md`, decision 95).
+   *
+   * Written on the roll thread, readable from any. It belongs to the thread
+   * rather than to a visit because the engine does: a material compiled while
+   * the table picker drew its thumbnails is not compiled again for the tray.
+   */
+  val shaders: StateFlow<ShaderWork> get() = progress.work
 
   /** Where every call into the engine and the physics world is posted. */
   val handler: Handler = Handler(thread.looper)
@@ -74,7 +92,8 @@ class RollThread(
    * that made it, and every caller is already inside a [handler] post.
    */
   fun filament(): FilamentEngine =
-    filament ?: FilamentEngine(artwork, artworkStamp, materials, studio = studio).also { filament = it }
+    filament
+      ?: FilamentEngine(artwork, artworkStamp, materials, studio = studio, compiling = progress).also { filament = it }
 
   /**
    * Runs [work] on the roll thread and waits for it.

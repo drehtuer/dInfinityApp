@@ -18,6 +18,13 @@ dependencies {
   // off, would still hold a GPU context (docs/physics-and-rendering.md).
   api(project(":render:headless"))
 
+  // `Tray.shaders` is a StateFlow: written on the roll thread while a material
+  // compiles, collected by the roll screen on the main one, and safe to read
+  // from either without a lock of this module's own (`ShaderWork`). Already
+  // in the build for `dicesets/install`, and on the app's classpath through
+  // Compose.
+  api(libs.kotlinx.coroutines.core)
+
   implementation(libs.filament.android)
   implementation(libs.filamat.android)
 
