@@ -5,9 +5,9 @@ import com.google.android.filament.Engine
 import com.google.android.filament.EntityManager
 import com.google.android.filament.Filament
 import com.google.android.filament.IndexBuffer
-import com.google.android.filament.IndirectLight
 import com.google.android.filament.LightManager
 import com.google.android.filament.MaterialInstance
+import com.google.android.filament.RenderTarget
 import com.google.android.filament.RenderableManager
 import com.google.android.filament.Scene
 import com.google.android.filament.SwapChain
@@ -17,7 +17,6 @@ import com.google.android.filament.TextureSampler
 import com.google.android.filament.VertexBuffer
 import com.google.android.filament.View
 import com.google.android.filament.Viewport
-import de.drehtuer.dinfinity.simulation.api.Vector3
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import com.google.android.filament.Renderer as FilamentFrameRenderer
@@ -45,7 +44,7 @@ import com.google.android.filament.Renderer as FilamentFrameRenderer
  * of its own and gives it back in [close], which is what a test that wants a
  * stage and nothing else does.
  *
- * Fifteen small methods rather than eleven larger ones is deliberate and is
+ * Seventeen small methods rather than eleven larger ones is deliberate and is
  * why the class carries a suppression: this is the file that has to be read
  * against Filament's own documentation, and a method per thing Filament makes
  * is what makes that possible. Folding them together would save a count and
@@ -102,11 +101,17 @@ class FilamentStage(
 
   private val glyphSampler: TextureSampler get() = parts.glyphSampler
 
-  /** The room the tray sits in. Built with the lights, given back with them. */
-  private var ambient: IndirectLight? = null
-
-  /** What that room looks like to a polished surface. Given back with it. */
-  private var room: Texture? = null
+  /**
+   * How the floor reads the picture of the dice in it: smoothly, which is the
+   * blur ([Reflection.SHRINK]), and clamped, so the edge of the screen does
+   * not reflect the opposite edge.
+   */
+  private val mirrorSampler =
+    TextureSampler(
+      TextureSampler.MinFilter.LINEAR,
+      TextureSampler.MagFilter.LINEAR,
+      TextureSampler.WrapMode.CLAMP_TO_EDGE,
+    )
 
   private val instances = mutableListOf<MaterialInstance>()
 
@@ -122,15 +127,86 @@ class FilamentStage(
   private val indices = mutableListOf<IndexBuffer>()
   private val entities = mutableListOf<Int>()
 
+  /**
+   * The dice as a glossy table sees them, made the first time one is shown
+   * and kept until this surface goes ([Reflection]).
+   */
+  private var mirror: Mirror? = null
+
+  /** Whether the table in the scene now is one that shows the dice. */
+  private var reflecting = false
+
+  /** Where the camera was last aimed, for a [mirror] made after it was. */
+  private var shot: CameraShot? = null
+
   init {
     view.scene = scene
     view.camera = camera
     view.viewport = Viewport(0, 0, width, height)
     view.isPostProcessingEnabled = postProcessing
+    photograph()
+    // Both layers: the tray is on one of its own only so that the picture a
+    // glossy table reflects can leave it out (`Reflection`).
+    view.setVisibleLayers(LAYERS, DICE or TRAY)
   }
+
+  /**
+   * How a frame is turned into a picture: the tone mapper, the exposure, the
+   * anti-aliasing and the shape of the key light's shadow
+   * (`docs/physics-and-rendering.md`, "Rendering (normal mode)";
+   * `docs/architecture.md`, decision 89). Every number is
+   * [TrayLighting]'s, where the reasons for it are and a JVM can check the
+   * ones that are arithmetic; this only hands them to Filament.
+   */
+  private fun photograph() {
+    view.colorGrading = parts.colorGrading
+    // A real aperture, shutter and ISO, not the one-number overload: that one
+    // means something else by "exposure" and blew every frame out to white
+    // ([TrayLighting.exposure]).
+    camera.setExposure(TrayLighting.APERTURE, TrayLighting.SHUTTER_SECONDS, TrayLighting.sensitivity().toFloat())
+    // Multisampling instead of FXAA, not on top of it: the edges that alias are
+    // geometry, and the full-screen pass FXAA costs is given back
+    // ([TrayLighting.MSAA_SAMPLES]).
+    view.antiAliasing = View.AntiAliasing.NONE
+    view.multiSampleAntiAliasingOptions =
+      View.MultiSampleAntiAliasingOptions().apply {
+        enabled = true
+        sampleCount = TrayLighting.MSAA_SAMPLES
+      }
+    // **PCF, not PCSS.** Filament 1.76's PCSS is not percentage-closer at
+    // all: its shader samples a mip-mapped exponential *variance* shadow map
+    // (`ShadowSample_EVSSM`), and with a variance map the tray's own
+    // geometry came back into the shadow — the rim threw a hard dark band
+    // across the felt 25 to 40 mm in from the top and left walls, exactly the
+    // band `FilamentDiceRenderer.addTray` had removed by stopping the tray
+    // casting. Filament's own notes on variance shadows ask for every receiver
+    // to be a caster too, and this tray is the one thing that must not cast.
+    // PCF reads a plain depth map that holds only what casts — the dice — and
+    // is the shadow the tray had before (`docs/physics-and-rendering.md`,
+    // "Rendering (normal mode)"; `StudioLightDeviceTest` measures the felt by
+    // the walls).
+    view.setShadowType(View.ShadowType.PCF)
+  }
+
+  /**
+   * The exposure the camera actually has, worked out from what Filament kept
+   * of its aperture, shutter and ISO — after its clamps, which is the point:
+   * a device test compares this with [TrayLighting.exposure].
+   */
+  internal fun exposure(): Double =
+    TrayLighting.exposureOf(camera.aperture.toDouble(), camera.shutterSpeed.toDouble(), camera.sensitivity.toDouble())
 
   /** Points the camera where [shot] says, for this viewport. */
   override fun aim(shot: CameraShot) {
+    this.shot = shot
+    point(camera, shot)
+    mirror?.let { point(it.camera, Reflection.mirrored(shot)) }
+  }
+
+  private fun point(
+    camera: com.google.android.filament.Camera,
+    shot: CameraShot,
+  ) {
     camera.setProjection(
       shot.verticalFieldOfViewDegrees,
       width.toDouble() / height,
@@ -152,24 +228,28 @@ class FilamentStage(
   }
 
   /**
-   * The key light, the fill and the ambient — the whole of the lighting.
+   * The key light and the room — the whole of the lighting.
    *
    * One directional light throws the shadows that tell a player a die is
-   * sitting on the table rather than floating above it; a dimmer one from the
-   * other side keeps the shadowed faces from going to black, where a number
-   * cannot be read (`docs/physics-and-rendering.md`).
+   * sitting on the table rather than floating above it. The fill that keeps
+   * the shadowed faces from going to black, where a number cannot be read,
+   * is part of the room's irradiance rather than a second lamp: Filament
+   * draws one directional light per scene, the brightest, so a second one is
+   * dropped without a word — and was, on every version of this tray until
+   * the device measured it ([FillLight]).
    *
-   * The ambient is not a nicety. Two directional lights and nothing else means
-   * every surface facing away from both is *exactly* black, and the surfaces
-   * that face away from both are the inner walls: a player saw the lit top of
-   * the wall, a shadow cast across the floor, and nothing in between casting
-   * it. A tray is lit by a room, not by two lamps in a void.
+   * The room is not a nicety. A lamp and nothing else means every surface
+   * facing away from it is *exactly* black, and the surfaces that face away
+   * are the inner walls: a player saw the lit top of the wall, a shadow cast
+   * across the floor, and nothing in between casting it. A tray is lit by a
+   * room, not by a lamp in a void.
    */
   override fun light() {
-    addLight(intensity = KEY_LUX, direction = KEY_DIRECTION, shadows = true)
-    addLight(intensity = FILL_LUX, direction = FILL_DIRECTION, shadows = false)
-    val sky = environment(engine).also { room = it }
-    scene.indirectLight = ambient(engine, sky).also { ambient = it }
+    addKeyLight()
+    // The room is the engine's, made once and shared by every stage: a studio
+    // decoded and prefiltered per rotation would be the black tray decision 50
+    // exists to prevent (`FilamentEngine.room`).
+    scene.indirectLight = parts.room
     // **No ambient occlusion, because the table must not shade itself.**
     //
     // It was here for the darkening where a die meets the felt: a cast shadow
@@ -212,10 +292,19 @@ class FilamentStage(
     // Nought is Filament's word for "no entity", and a mesh with nothing in it
     // is not worth one.
     if (mesh.triangleCount == 0 || mesh.vertexCount == 0) return Stage.NOTHING
-    val atlas = parameters.texturePath?.let(atlases)
     val vertices = verticesOf(mesh)
     val triangles = indicesOf(mesh)
-    val instance = instanceOf(parameters, atlas, parameters.numbers?.let(::glyphsOf))
+    // Only a surface drawn with the glass material samples the picture of the
+    // dice; a glossy look drawn from pictures sets its reflection aside
+    // (`DiceMaterial.variantOf`) and costs no reflection pass.
+    val reflected = if (DiceMaterial.reflects(parameters)) mirrorOf().colour else null
+    val maps = parameters.maps
+    val instance =
+      if (maps != null) {
+        tableInstanceOf(parameters, maps)
+      } else {
+        instanceOf(parameters, parameters.texturePath?.let(atlases), parameters.numbers?.let(::glyphsOf), reflected)
+      }
     val entity = EntityManager.get().create()
 
     RenderableManager
@@ -228,8 +317,14 @@ class FilamentStage(
       // (`docs/physics-and-rendering.md`, "What is drawn over the table").
       .castShadows(casts)
       .receiveShadows(true)
+      // And the same line again for what a glossy table shows: the dice, and
+      // none of the tray — the picture is taken from under the floor, which
+      // would hide every die, and a wall in it is a dark band along the foot
+      // of the wall (`Reflection`).
+      .layerMask(LAYERS, if (casts) DICE else TRAY)
       .build(engine, entity)
 
+    if (reflected != null) reflecting = true
     scene.addEntity(entity)
     entities += entity
     buffers += vertices
@@ -265,6 +360,7 @@ class FilamentStage(
    */
   fun draw(capture: ByteBuffer?): Boolean {
     if (!frames.beginFrame(swapChain, 0)) return false
+    mirror?.takeIf { reflecting }?.let(::reflect)
     frames.render(view)
     capture?.let {
       frames.readPixels(0, 0, width, height, Texture.PixelBufferDescriptor(it, Texture.Format.RGBA, Texture.Type.UBYTE))
@@ -347,6 +443,10 @@ class FilamentStage(
     buffers.clear()
     indices.clear()
     textures.clear()
+    // The floor went with the rest, and the next one says again whether it
+    // shows the dice. The picture's target is kept: it is a surface's, not a
+    // roll's, and a felt table never draws into it.
+    reflecting = false
   }
 
   /**
@@ -358,10 +458,8 @@ class FilamentStage(
    */
   override fun close() {
     clear()
-    ambient?.let(engine::destroyIndirectLight)
-    ambient = null
-    room?.let(engine::destroyTexture)
-    room = null
+    mirror?.close(engine)
+    mirror = null
     engine.destroyView(view)
     engine.destroyScene(scene)
     engine.destroyRenderer(frames)
@@ -372,28 +470,119 @@ class FilamentStage(
     own?.close()
   }
 
-  private fun addLight(
-    intensity: Float,
-    direction: Vector3,
-    shadows: Boolean,
-  ) {
+  private fun addKeyLight() {
     val entity = EntityManager.get().create()
+    // Scaled to a luminance of one, so [TrayLighting.KEY_LUX] is what lands
+    // and the exposure worked out from it is right.
+    val daylight = TrayLighting.unitLuminance(Colors.cct(TrayLighting.DAYLIGHT_KELVIN))
+    val direction = TrayLighting.KEY_DIRECTION
     LightManager
       .Builder(LightManager.Type.DIRECTIONAL)
-      .color(Colors.cct(DAYLIGHT_KELVIN)[0], Colors.cct(DAYLIGHT_KELVIN)[1], Colors.cct(DAYLIGHT_KELVIN)[2])
-      .intensity(intensity)
+      .color(daylight[0], daylight[1], daylight[2])
+      .intensity(TrayLighting.KEY_LUX.toFloat())
       .direction(direction.x.toFloat(), direction.y.toFloat(), direction.z.toFloat())
-      .castShadows(shadows)
-      .apply { if (shadows) shadowOptions(trayShadows()) }
+      .castShadows(true)
+      .shadowOptions(trayShadows())
       .build(engine, entity)
     scene.addEntity(entity)
     entities += entity
+  }
+
+  /**
+   * The dice as the glass sees them, drawn before the frame that samples it.
+   *
+   * The camera under the floor is exposed as the real one is, whatever that
+   * is now, because the floor adds this picture to its own light as it
+   * stands ([DiceMaterial.GLASS_SOURCE]). The target is cleared to nothing
+   * first — a transparent pixel is a pixel with no die in it, which the floor
+   * reads as "change nothing" — and the renderer's own clearing is put back
+   * for the frame itself, so a felt table and this one start the frame alike.
+   */
+  private fun reflect(mirror: Mirror) {
+    mirror.camera.setExposure(camera.aperture, camera.shutterSpeed, camera.sensitivity)
+    val kept = frames.clearOptions
+    frames.clearOptions = CLEAR_TO_NOTHING
+    frames.render(mirror.view)
+    frames.clearOptions = kept
+  }
+
+  /** The [mirror], made now if this is the first glossy table this surface has shown. */
+  private fun mirrorOf(): Mirror =
+    mirror ?: Mirror(engine, scene, Reflection.sizeOf(width, height)).also { made ->
+      mirror = made
+      shot?.let { point(made.camera, Reflection.mirrored(it)) }
+    }
+
+  /**
+   * Everything the picture of the dice in the glass is made with: a small
+   * target to draw into, a camera under the floor and a view that sees only
+   * the dice ([Reflection]).
+   *
+   * No shadows and no post-processing: the picture is a quarter of the size
+   * and is stretched back over the floor at a few per cent, where a shadow
+   * map of its own would cost a pass and show nothing, and tone mapping it
+   * would map the light twice — the frame that samples it does that once,
+   * for everything. Its colour keeps the frame's range (`RGBA16F`), and its
+   * alpha says where a die is.
+   */
+  private class Mirror(
+    engine: Engine,
+    scene: Scene,
+    size: Pair<Int, Int>,
+  ) {
+    val colour: Texture =
+      Texture
+        .Builder()
+        .width(size.first)
+        .height(size.second)
+        .levels(1)
+        .format(Texture.InternalFormat.RGBA16F)
+        .usage(Texture.Usage.COLOR_ATTACHMENT or Texture.Usage.SAMPLEABLE)
+        .build(engine)
+    private val depth: Texture =
+      Texture
+        .Builder()
+        .width(size.first)
+        .height(size.second)
+        .levels(1)
+        .format(Texture.InternalFormat.DEPTH24)
+        .usage(Texture.Usage.DEPTH_ATTACHMENT)
+        .build(engine)
+    private val target: RenderTarget =
+      RenderTarget
+        .Builder()
+        .texture(RenderTarget.AttachmentPoint.COLOR, colour)
+        .texture(RenderTarget.AttachmentPoint.DEPTH, depth)
+        .build(engine)
+    private val entity: Int = EntityManager.get().create()
+    val camera: com.google.android.filament.Camera = engine.createCamera(entity)
+    val view: View =
+      engine.createView().apply {
+        this.scene = scene
+        this.camera = this@Mirror.camera
+        viewport = Viewport(0, 0, size.first, size.second)
+        renderTarget = target
+        isPostProcessingEnabled = false
+        setShadowingEnabled(false)
+        setVisibleLayers(LAYERS, DICE)
+      }
+
+    fun close(engine: Engine) {
+      engine.destroyView(view)
+      engine.destroyCameraComponent(entity)
+      engine.destroyEntity(entity)
+      EntityManager.get().destroy(entity)
+      engine.destroyRenderTarget(target)
+      engine.destroyTexture(depth)
+      engine.destroyTexture(colour)
+    }
   }
 
   private fun instanceOf(
     parameters: DiceMaterial.Parameters,
     atlas: Texture?,
     glyphs: Texture?,
+    reflected: Texture?,
   ): MaterialInstance =
     parts.materialFor(parameters).createInstance().apply {
       setParameter(
@@ -416,10 +605,72 @@ class FilamentStage(
         parameters.ink.alpha.toFloat(),
       )
       setParameter("glyphs", glyphs ?: blank, glyphSampler)
-      setParameter("opacity", parameters.opacity.toFloat())
       setParameter("clearCoat", parameters.clearCoat.toFloat())
       setParameter("clearCoatRoughness", parameters.clearCoatRoughness.toFloat())
+      // Only the resin material has these, and Filament refuses a parameter
+      // a material does not declare (`DiceMaterial.RESIN_SOURCE`).
+      parameters.resin?.let { resin ->
+        setParameter("transmission", resin.transmission.toFloat())
+        setParameter("scatter", resin.scatter.toFloat())
+        setParameter("ior", resin.ior.toFloat())
+        setParameter("thickness", resin.thicknessMm.toFloat())
+        setParameter(
+          "tint",
+          resin.tint.red.toFloat(),
+          resin.tint.green.toFloat(),
+          resin.tint.blue.toFloat(),
+        )
+      }
+      // And only the glass floor has these (`DiceMaterial.GLASS_SOURCE`).
+      if (reflected != null) {
+        setParameter("reflected", reflected, mirrorSampler)
+        setParameter("reflectionStrength", requireNotNull(parameters.reflection).strength.toFloat())
+      }
     }
+
+  /**
+   * A surface of the tray drawn from pictures ([DiceMaterial.TABLE_SOURCE]).
+   *
+   * A picture that is named and does not come — a package removed, a file
+   * that will not decode — is the white pixel, and its map's flag is off: the
+   * surface is then its colour, flat where the normal map would have been,
+   * as rough as the look says. A table loses its grain, never its tray.
+   */
+  private fun tableInstanceOf(
+    parameters: DiceMaterial.Parameters,
+    maps: DiceMaterial.SurfaceMaps,
+  ): MaterialInstance {
+    // From the engine's own caches, like the material: a table's pictures
+    // belong to its package and outlive any one surface ([FilamentEngine]).
+    val albedo = maps.albedo?.let { parts.tablePicture(it, SurfaceMap.ALBEDO) }
+    val normal = maps.normal?.let { parts.tablePicture(it, SurfaceMap.NORMAL) }?.texture
+    val roughness = maps.roughness?.let { parts.tablePicture(it, SurfaceMap.ROUGHNESS) }
+    val colour =
+      TableTint.colourFor(
+        parameters.colour,
+        albedo?.mean,
+        parameters.averaged,
+        SurfaceLight.facingUp(parameters.roughness),
+      )
+    val shift = TableTint.roughnessShift(parameters.roughness, roughness?.level, parameters.averaged)
+    return parts.materialFor(parameters).createInstance().apply {
+      setParameter(
+        "baseColor",
+        colour.red.toFloat(),
+        colour.green.toFloat(),
+        colour.blue.toFloat(),
+        colour.alpha.toFloat(),
+      )
+      setParameter("roughness", parameters.roughness.toFloat())
+      setParameter("metallic", parameters.metallic.toFloat())
+      setParameter("hasNormal", if (normal != null) 1.0f else 0.0f)
+      setParameter("hasRoughness", if (roughness != null) 1.0f else 0.0f)
+      setParameter("roughnessShift", shift.toFloat())
+      setParameter("albedo", albedo?.texture ?: blank, parts.tableSampler)
+      setParameter("normalMap", normal ?: blank, parts.tableSampler)
+      setParameter("roughnessMap", roughness?.texture ?: blank, parts.tableSampler)
+    }
+  }
 
   /**
    * A die's printed numbers, uploaded.
@@ -538,37 +789,21 @@ class FilamentStage(
     /** Red, green, blue and alpha, a byte each. */
     const val PIXEL_BYTES: Int = 4
 
-    /** A key light bright enough to read a die by, in lux. */
-    private const val KEY_LUX = 80_000.0f
-
-    /** And a fill that keeps the shadowed faces off black, where a number cannot be read. */
-    private const val FILL_LUX = 25_000.0f
-
-    /** Neutral daylight, so a table look's own colour is the colour you see. */
-    private const val DAYLIGHT_KELVIN = 6_500.0f
-
     /**
-     * Down, and from over the player's shoulder — the direction a lamp is in
-     * when somebody rolls dice on a table in front of them.
+     * The layer the dice are on — Filament's default, so a renderable nobody
+     * placed is a die — and the one the tray is on. Every view sees both but
+     * the one under a glossy floor, which sees the dice alone.
      */
-    private val KEY_DIRECTION = Vector3(-0.4, -0.3, -1.0)
+    private const val DICE = 0x1
+    private const val TRAY = 0x2
+    private const val LAYERS = DICE or TRAY
 
-    /**
-     * How bright the room is: about a seventh of the key light.
-     *
-     * Enough that a wall facing away from both lamps reads as a wall rather
-     * than as a hole, and low enough that the key still casts the shadow that
-     * puts a die on the table. Tuned against the Pixel 10a, which is the only
-     * place it can be judged (`docs/TODO.md`, Step 5.6).
-     *
-     * It is the *average* brightness, not the brightness in any one
-     * direction. [RoomLight] says light comes down from a bright sky and up
-     * off a dim floor, and Filament's intensity multiplies both, so this is
-     * divided by the room's own average to keep the tray exactly as bright as
-     * it was when the ambient was flat. What changed is where the light comes
-     * from, which is the point.
-     */
-    private const val AMBIENT_LUX = 12_000.0f
+    /** What the picture of the dice in the glass starts each frame as: nothing at all. */
+    private val CLEAR_TO_NOTHING =
+      FilamentFrameRenderer.ClearOptions().apply {
+        clear = true
+        clearColor = doubleArrayOf(0.0, 0.0, 0.0, 0.0)
+      }
 
     /**
      * How the key light's shadow is drawn.
@@ -619,9 +854,6 @@ class FilamentStage(
     /** And the constant part, in the depth buffer's own units rather than in mm. */
     private const val SHADOW_CONSTANT_BIAS = 0.0005f
 
-    /** And back the other way, across the tray, to lift the shadowed faces. */
-    private val FILL_DIRECTION = Vector3(0.6, 0.5, -0.7)
-
     /**
      * Loads the native library. Safe to call more than once.
      *
@@ -631,48 +863,6 @@ class FilamentStage(
      */
     fun ready() {
       Filament.init()
-    }
-
-    private fun ambient(
-      engine: Engine,
-      environment: Texture,
-    ): IndirectLight =
-      IndirectLight
-        .Builder()
-        .irradiance(RoomLight.BANDS, RoomLight.irradiance())
-        .reflections(environment)
-        .intensity((AMBIENT_LUX / RoomLight.averageBrightness()).toFloat())
-        .build(engine)
-
-    /**
-     * The room as a small cubemap, which is what a polished surface reflects.
-     *
-     * Only the sharp level is ours; every coarser one is prefiltered by
-     * Filament from it, for the roughness each level stands for
-     * ([RoomLight.LEVELS] says why, and why it cannot be uploaded level by
-     * level).
-     */
-    private fun environment(engine: Engine): Texture {
-      val texture =
-        Texture
-          .Builder()
-          .width(RoomLight.SIZE)
-          .height(RoomLight.SIZE)
-          .depth(RoomLight.FACES)
-          .levels(RoomLight.LEVELS)
-          .format(Texture.InternalFormat.R11F_G11F_B10F)
-          .sampler(Texture.Sampler.SAMPLER_CUBEMAP)
-          .build(engine)
-      val pixels = RoomLight.faces()
-      val buffer = ByteBuffer.allocateDirect(pixels.size * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
-      buffer.asFloatBuffer().put(pixels)
-      texture.generatePrefilterMipmap(
-        engine,
-        Texture.PixelBufferDescriptor(buffer, Texture.Format.RGB, Texture.Type.FLOAT),
-        RoomLight.faceOffsets(),
-        Texture.PrefilterOptions(),
-      )
-      return texture
     }
   }
 }

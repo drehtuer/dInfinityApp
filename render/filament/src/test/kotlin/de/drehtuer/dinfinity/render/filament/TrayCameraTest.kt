@@ -300,6 +300,51 @@ class TrayCameraTest {
       }
     }
 
+  @Test
+  fun `what the camera looks at lands in the middle of the picture`() {
+    TILTS.forEach { tilt ->
+      val shot = TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = tilt)
+      val (x, y) = requireNotNull(TrayCamera.pixelOf(shot, shot.target, PICTURE_WIDTH, PICTURE_HEIGHT))
+      assertEquals(PICTURE_WIDTH / 2.0, x, PIXEL)
+      assertEquals(PICTURE_HEIGHT / 2.0, y, PIXEL)
+    }
+  }
+
+  @Test
+  fun `straight down, the far end of the tray is at the top and the camera's right is minus y`() {
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = STRAIGHT_DOWN)
+    val far =
+      requireNotNull(
+        TrayCamera.pixelOf(shot, Vector3(geometry.longSideMm / 2, 0.0, 0.0), PICTURE_WIDTH, PICTURE_HEIGHT),
+      )
+    val right =
+      requireNotNull(
+        TrayCamera.pixelOf(shot, Vector3(0.0, -geometry.shortSideMm / 2, 0.0), PICTURE_WIDTH, PICTURE_HEIGHT),
+      )
+    assertTrue("the far end is at row ${far.second}", far.second < PICTURE_HEIGHT / 2.0)
+    assertEquals(PICTURE_WIDTH / 2.0, far.first, PIXEL)
+    assertTrue("minus y is at column ${right.first}", right.first > PICTURE_WIDTH / 2.0)
+    // The whole floor is in the picture.
+    listOf(far, right).forEach { (x, y) ->
+      assertTrue(x in 0.0..PICTURE_WIDTH.toDouble() && y in 0.0..PICTURE_HEIGHT.toDouble())
+    }
+  }
+
+  @Test
+  fun `a point a field of view's half-angle off the axis lands on the edge of the picture`() {
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT, tiltDegrees = STRAIGHT_DOWN)
+    val half = tan(Math.toRadians(shot.verticalFieldOfViewDegrees / 2))
+    val edge = shot.target + shot.up * (shot.distanceMm * half)
+    val (_, y) = requireNotNull(TrayCamera.pixelOf(shot, edge, PICTURE_WIDTH, PICTURE_HEIGHT))
+    assertEquals(0.0, y, PIXEL)
+  }
+
+  @Test
+  fun `a point behind the camera lands nowhere`() {
+    val shot = TrayCamera.framingTheTray(geometry, PORTRAIT)
+    assertEquals(null, TrayCamera.pixelOf(shot, shot.position - shot.forward, PICTURE_WIDTH, PICTURE_HEIGHT))
+  }
+
   private companion object {
     const val TOLERANCE = 1e-9
     const val RADIUS_MM = 14.0
@@ -316,6 +361,9 @@ class TrayCameraTest {
      * through the second.
      */
     const val TIGHT = 0.9
+    const val PICTURE_WIDTH = 360
+    const val PICTURE_HEIGHT = 800
+    const val PIXEL = 1e-6
     const val SAME_AIR = 0.02
 
     /** A Pixel 10a held upright, and two shapes of screen well either side of it. */

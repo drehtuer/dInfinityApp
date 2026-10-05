@@ -1,5 +1,7 @@
 package de.drehtuer.dinfinity.dicesets.format
 
+import de.drehtuer.dinfinity.core.model.TableLook
+
 /**
  * The numbers a package is held to (`docs/dice-sets.md`, `docs/tables.md`).
  *
@@ -58,10 +60,16 @@ object DiceSetLimits {
   /** How often a table texture may repeat before it is moiré rather than felt. */
   val TILING: IntRange = 1..32
 
+  /** How many millimetres of table one copy of a table texture may cover (`floor_tile_mm`). */
+  val TILE_MM: ClosedFloatingPointRange<Double> = TableLook.TileMmRange
+
   /** What a package may reference. Anything else is not extracted and not read. */
   val ALLOWED_EXTENSIONS: Set<String> = setOf("toml", "png", "webp", "obj", "md", "txt")
 
-  /** What a `texture`, `floor_texture` or `wall_texture` may point at. */
+  /**
+   * What a `texture` may point at, and every picture a `[[table]]` names:
+   * `floor_texture`, `floor_normal`, `floor_roughness` and their `wall_` twins.
+   */
   val IMAGE_EXTENSIONS: Set<String> = setOf("png", "webp")
 
   /** A `homepage` is shown as text and opened only on a tap; never over plain http. */

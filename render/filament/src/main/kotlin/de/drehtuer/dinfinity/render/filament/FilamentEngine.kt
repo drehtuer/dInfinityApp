@@ -1,10 +1,13 @@
 package de.drehtuer.dinfinity.render.filament
 
+import com.google.android.filament.ColorGrading
 import com.google.android.filament.Engine
 import com.google.android.filament.Filament
+import com.google.android.filament.IndirectLight
 import com.google.android.filament.Material
 import com.google.android.filament.Texture
 import com.google.android.filament.TextureSampler
+import com.google.android.filament.ToneMapper
 import com.google.android.filament.filamat.MaterialBuilder
 import de.drehtuer.dinfinity.core.model.AtlasImage
 import java.nio.ByteBuffer
@@ -48,11 +51,22 @@ import java.nio.ByteOrder
  * @param materials where the compiled material is kept between launches
  *   ([MaterialCache]). The default keeps nothing and compiles every time,
  *   which is what a device test wants: it measures the compiler, not a file.
+ * @param environment the photographed room the tray is lit by, as the bytes
+ *   of a Radiance `.hdr` panorama ([StudioLight]); the default is the one this
+ *   module ships. Null — or a file [Radiance] cannot decode — lights the tray
+ *   with the generated gradient instead ([RoomLight]), which is also what a
+ *   device test asks for when it wants the room the studio was calibrated
+ *   against.
+ * @param studio where the studio's folded cube is kept between launches
+ *   ([StudioCache]). The default keeps nothing and folds every time, which is
+ *   what a device test that measures the fold wants.
  */
 class FilamentEngine(
   artwork: (String) -> AtlasImage? = { null },
   artworkStamp: (String) -> Any? = { null },
   private val materials: MaterialCache = MaterialCache.NONE,
+  private val environment: () -> ByteArray? = StudioLight::bytes,
+  private val studio: StudioCache = StudioCache.NONE,
 ) : AutoCloseable {
   init {
     // Safe to call more than once, and nothing below works before it has been.
@@ -68,37 +82,67 @@ class FilamentEngine(
    * Everything that hides what is behind it, which is every surface of the
    * tray and every die a set has not called translucent.
    */
-  val material: Material = loadMaterial(engine, materials, blended = false)
+  val material: Material = loadMaterial(engine, materials, DiceMaterial.Variant.OPAQUE)
 
-  private val blended = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, blended = true) }
+  private val resin = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.RESIN) }
 
   /**
-   * And the same material again, blended.
+   * And the material of a die light passes through.
    *
-   * Whether a surface is blended is fixed when a material is *compiled* —
-   * Filament bakes the blending mode into the shader, because a blended
-   * surface is drawn in a different pass, in a different order, against a
-   * depth buffer it does not write to. So a translucent die cannot be the
-   * opaque material with a different parameter; it is a second material, from
-   * the same source, and [materialFor] is what picks.
+   * Whether a surface refracts is fixed when a material is *compiled* —
+   * Filament draws a refracting surface after the opaque scene, in a pass of
+   * its own, looking into a picture of what was drawn before it. So a
+   * translucent die cannot be the opaque material with a different parameter;
+   * it is a second material, and [materialFor] is what picks
+   * ([DiceMaterial.variantOf]).
    *
-   * The source is shared rather than copied because the two must agree about
-   * every other thing they draw: the same body, the same printed numbers, the
-   * same artwork over them. Only the blending differs, and only Filament's
-   * builder knows it does.
+   * The two share the whole of their surface — the same body, the same printed
+   * numbers, the same artwork over them ([DiceMaterial.RESIN_SOURCE]) — and
+   * differ only in what happens to the light that is not reflected.
    *
    * **Made the first time a die asks for it**, not with the engine. Most rolls
-   * have no translucent die at all, the built-in set has none, and compiling
-   * it took about two of the five seconds the first launch of a new version
-   * spent with a black tray. A translucent die on that first launch pays for
-   * it instead, once; after that it is read back from [MaterialCache] like the
-   * opaque one. Only ever touched on the thread that owns the engine, so it
-   * needs no lock.
+   * have no translucent die at all, the built-in set has none, and compiling a
+   * second material took about two of the five seconds the first launch of a
+   * new version spent with a black tray. A translucent die on that first
+   * launch pays for it instead, once; after that it is read back from
+   * [MaterialCache] like the opaque one. Only ever touched on the thread that
+   * owns the engine, so it needs no lock.
    */
-  val blendedMaterial: Material by blended
+  val resinMaterial: Material by resin
 
-  /** Which of the two [parameters] is to be drawn with. */
-  fun materialFor(parameters: DiceMaterial.Parameters): Material = if (parameters.blended) blendedMaterial else material
+  private val glass = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.GLASS) }
+
+  /**
+   * And the floor of a table glossy enough to show the dice in it
+   * ([DiceMaterial.GLASS_SOURCE], [Reflection]).
+   *
+   * A third material rather than a parameter of the first, so that a table
+   * that reflects nothing samples nothing: felt, oak and the plain table are
+   * drawn with [material], exactly as before. Made the first time a glossy
+   * table is shown, for the reason [resinMaterial] is.
+   */
+  val glassMaterial: Material by glass
+
+  private val table = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.TABLE) }
+
+  /**
+   * And the material of a table drawn from pictures ([DiceMaterial.TABLE_SOURCE]).
+   *
+   * Made the first time a textured table is drawn, for the reason
+   * [resinMaterial] is: a phone that only ever rolls on plain never compiles
+   * it, and every other phone compiles it once and reads it back from
+   * [MaterialCache] after that.
+   */
+  val tableMaterial: Material by table
+
+  /** Which of the four [parameters] is to be drawn with. */
+  fun materialFor(parameters: DiceMaterial.Parameters): Material =
+    when (DiceMaterial.variantOf(parameters)) {
+      DiceMaterial.Variant.OPAQUE -> material
+      DiceMaterial.Variant.RESIN -> resinMaterial
+      DiceMaterial.Variant.GLASS -> glassMaterial
+      DiceMaterial.Variant.TABLE -> tableMaterial
+    }
 
   /**
    * Every package's artwork that has been asked for, uploaded once.
@@ -115,6 +159,75 @@ class FilamentEngine(
       destroy = engine::destroyTexture,
       stamp = artworkStamp,
     )
+
+  /**
+   * A table's colour pictures, uploaded as sRGB with every mip level.
+   *
+   * A cache of their own, apart from [atlases], because the same key is
+   * uploaded differently: a die's atlas is one level, as it stands, and a
+   * table's picture is laid across a floor seen at a slant, where a single
+   * level shimmers as the dice settle. And a colour picture is sRGB where a
+   * normal or a roughness map is a measurement ([tableDetail]).
+   */
+  private val tableColours: AtlasCache<TablePicture> =
+    AtlasCache(
+      artwork = artwork,
+      upload = { TablePicture(uploadSurface(engine, it, SurfaceMap.ALBEDO), TableTint.meanOf(it)) },
+      destroy = { engine.destroyTexture(it.texture) },
+      stamp = artworkStamp,
+    )
+
+  /**
+   * A table's normal and roughness maps: as [tableColours], but linear, and
+   * with the level of the red channel a roughness map is moved by
+   * ([TableTint.roughnessShift]). A normal map's is taken too and never read:
+   * one pass over pixels already in memory, against a second cache.
+   */
+  private val tableDetail: AtlasCache<TablePicture> =
+    AtlasCache(
+      artwork = artwork,
+      upload = {
+        TablePicture(uploadSurface(engine, it, SurfaceMap.NORMAL), mean = null, level = TableTint.levelOf(it))
+      },
+      destroy = { engine.destroyTexture(it.texture) },
+      stamp = artworkStamp,
+    )
+
+  /**
+   * The picture [key] names for one map of a table's surface, uploaded once,
+   * or `null` when there is none.
+   */
+  fun tablePicture(
+    key: String,
+    map: SurfaceMap,
+  ): TablePicture? = if (map.colour) tableColours.of(key) else tableDetail.of(key)
+
+  /**
+   * One of a table's pictures on the GPU, and — for a colour picture — its
+   * average, worked out once from the pixels it was uploaded from, which is
+   * what a look in `color_mode = "average"` is scaled by ([TableTint]); for a
+   * map, the average [level] of its red channel, which is what a roughness
+   * map is moved by.
+   */
+  class TablePicture(
+    val texture: Texture,
+    val mean: Colour?,
+    val level: Double? = null,
+  )
+
+  /**
+   * How a table's pictures are sampled: every mip level, blended between, and
+   * anisotropically, because a floor is looked at along it. One level read
+   * from far away is noise that crawls as the camera moves — felt that
+   * shimmers — and a floor seen at a slant blurs to a smear without the
+   * anisotropy. Repeating, because felt is a swatch laid edge to edge.
+   */
+  val tableSampler: TextureSampler =
+    TextureSampler(
+      TextureSampler.MinFilter.LINEAR_MIPMAP_LINEAR,
+      TextureSampler.MagFilter.LINEAR,
+      TextureSampler.WrapMode.REPEAT,
+    ).apply { anisotropy = TABLE_ANISOTROPY }
 
   /**
    * A single white pixel, for every surface that has no atlas.
@@ -148,6 +261,94 @@ class FilamentEngine(
     )
 
   /**
+   * How a frame's light becomes a pixel: **linear**, so a colour lit to a
+   * level comes out at that level and nothing between the light and the
+   * screen bends it.
+   *
+   * ACES is a film look. It lifts the midtones and turns saturated colours on
+   * the way — a green felt drifts towards cyan. AgX desaturates everything
+   * towards a grey photograph. **PBR Neutral was tried and crushed the felt:**
+   * below 0.08 it subtracts nearly all of a colour's smallest channel, on the
+   * promise that every surface carries the four per cent of white a
+   * dielectric reflects under an even white room. Under a lamp most of that
+   * reflection goes somewhere the camera is not, and Filament grades in
+   * Rec. 2020, where a saturated sRGB green's smallest channel is three times
+   * what it is in sRGB. The Pixel 10a drew `#1f5e3a` as (0, 70, 22): the red
+   * gone, the blue halved.
+   *
+   * A linear mapper stops dead at one rather than rolling highlights off, so
+   * the exposure leaves the room for it ([TrayLighting.WHITE_LEVEL]): only a
+   * pure white face turned square to the lamp, and the lamp's own reflection
+   * in the lacquer, reach white. A set's colours are part of its design, and
+   * this is the mapper that keeps them.
+   *
+   * One for the engine, made with it: a colour grading is a small lookup
+   * table Filament bakes once, not something worth rebuilding per surface.
+   */
+  val colorGrading: ColorGrading =
+    ColorGrading
+      .Builder()
+      .toneMapper(ToneMapper.Linear())
+      .build(engine)
+
+  /** What [room] is lit by, once it is made: true for the studio, false for the gradient. */
+  var litByStudio: Boolean = false
+    private set
+
+  /** True when the studio's folded cube was read back from [studio] rather than folded. */
+  var studioFromDisk: Boolean = false
+    private set
+
+  /** The textures [room] samples, given back with it. */
+  private val roomTextures = mutableListOf<Texture>()
+
+  private val roomLight = lazy(LazyThreadSafetyMode.NONE) { buildRoom() }
+
+  /**
+   * The room the tray is lit by, made the first time a stage is lit and kept
+   * for as long as the engine is.
+   *
+   * Kept here rather than on a stage for the material's reason: decoding a
+   * panorama and prefiltering it costs real time, and none of it depends on
+   * the surface. A rotation re-lights a new stage with the same room. The
+   * work is done on the roll thread, the first time the tray is drawn,
+   * rather than with the engine, so a screen that never draws the tray —
+   * power saving, the table picker before it needs a picture — pays nothing
+   * (`docs/physics-and-rendering.md`, "Rendering (normal mode)").
+   */
+  val room: IndirectLight by roomLight
+
+  /**
+   * The studio if [environment] has one that decodes, and the gradient if
+   * not. Either way the felt receives the same light from it
+   * ([TrayLighting.studioIntensity]), and either way the fill lamp is folded
+   * into its irradiance, because Filament draws only one directional light
+   * and the key is that one ([FillLight]).
+   */
+  private fun buildRoom(): IndirectLight {
+    val faces = environment()?.let { hdr -> studio.faces(hdr) { Radiance.decode(hdr)?.let(StudioCube::faces) } }
+    if (faces != null) {
+      val cube = studio(engine, faces.buffer).also { roomTextures += it }
+      litByStudio = true
+      studioFromDisk = faces.fromDisk
+      return IndirectLight
+        .Builder()
+        .reflections(cube)
+        .irradiance(StudioLight.BANDS, FillLight.inStudio())
+        .rotation(TrayLighting.studioRotation())
+        .intensity(TrayLighting.studioIntensity().toFloat())
+        .build(engine)
+    }
+    val gradient = gradient(engine).also { roomTextures += it }
+    return IndirectLight
+      .Builder()
+      .irradiance(StudioLight.BANDS, FillLight.inGradient())
+      .reflections(gradient)
+      .intensity(TrayLighting.gradientIntensity().toFloat())
+      .build(engine)
+  }
+
+  /**
    * Somewhere to draw, this big, sharing everything above.
    *
    * @param surface an Android `Surface`, or null for a swap chain with nothing
@@ -170,10 +371,18 @@ class FilamentEngine(
     )
 
   override fun close() {
+    if (roomLight.isInitialized()) engine.destroyIndirectLight(room)
+    roomTextures.forEach(engine::destroyTexture)
+    roomTextures.clear()
+    engine.destroyColorGrading(colorGrading)
     atlases.close()
+    tableColours.close()
+    tableDetail.close()
     engine.destroyTexture(blank)
     engine.destroyMaterial(material)
-    if (blended.isInitialized()) engine.destroyMaterial(blendedMaterial)
+    if (resin.isInitialized()) engine.destroyMaterial(resinMaterial)
+    if (glass.isInitialized()) engine.destroyMaterial(glassMaterial)
+    if (table.isInitialized()) engine.destroyMaterial(tableMaterial)
     engine.destroy()
   }
 
@@ -181,21 +390,104 @@ class FilamentEngine(
     /** Red, green, blue and alpha, a byte each. */
     const val PIXEL_BYTES = 4
 
+    /**
+     * How many samples a slanted look along the floor may take. Eight is where
+     * a phone's GPU stops charging for more: the felt at the far wall is sharp
+     * at it, and sixteen looked the same.
+     */
+    const val TABLE_ANISOTROPY = 8f
+
     /** Every channel of the blank texture, which multiplies a colour by one. */
     const val OPAQUE_WHITE = 0xFF.toByte()
 
     /**
-     * The dice material for [engine], from [materials] if it was compiled on an
-     * earlier launch.
+     * The photographed room as a reflection cubemap, prefiltered for every
+     * roughness, from its six folded [faces].
+     *
+     * Decoded and folded into a cube on this thread ([Radiance],
+     * [StudioCube.faces]) or read back folded ([StudioCache]), then
+     * prefiltered by Filament's own
+     * `generatePrefilterMipmap` — the same CPU prefilter the gradient goes
+     * through, spread over the engine's worker threads — into
+     * `R11F_G11F_B10F`: a third less memory than half floats, and a panorama
+     * has no use for an alpha channel or for more than three significant
+     * digits of a window's brightness.
+     *
+     * Mirroring is off: the faces are already in the frame [StudioLight]'s
+     * irradiance was projected in, and mirroring them would put the window a
+     * die reflects on the other side from the one that lights it.
+     */
+    fun studio(
+      engine: Engine,
+      faces: ByteBuffer,
+    ): Texture {
+      val options =
+        Texture.PrefilterOptions().apply {
+          sampleCount = StudioCube.PREFILTER_SAMPLES
+          mirror = false
+        }
+      return prefiltered(engine, StudioCube.FACE_SIZE, StudioCube.LEVELS, faces, options)
+    }
+
+    /**
+     * The generated room as a small cubemap, which is what a polished surface
+     * reflects when there is no studio to.
+     *
+     * Only the sharp level is ours; every coarser one is prefiltered by
+     * Filament from it, for the roughness each level stands for
+     * ([RoomLight.LEVELS] says why, and why it cannot be uploaded level by
+     * level).
+     */
+    fun gradient(engine: Engine): Texture {
+      val faces = RoomLight.faces()
+      val buffer = ByteBuffer.allocateDirect(faces.size * Float.SIZE_BYTES).order(ByteOrder.nativeOrder())
+      buffer.asFloatBuffer().put(faces)
+      return prefiltered(engine, RoomLight.SIZE, RoomLight.LEVELS, buffer, Texture.PrefilterOptions())
+    }
+
+    /**
+     * A cubemap of [size] pixels a face and [levels] levels, its sharp level
+     * [faces] — six faces of linear RGB floats, end to end, in native order —
+     * and every coarser one prefiltered from it by Filament.
+     */
+    private fun prefiltered(
+      engine: Engine,
+      size: Int,
+      levels: Int,
+      faces: ByteBuffer,
+      options: Texture.PrefilterOptions,
+    ): Texture {
+      val texture =
+        Texture
+          .Builder()
+          .width(size)
+          .height(size)
+          .depth(RoomLight.FACES)
+          .levels(levels)
+          .format(Texture.InternalFormat.R11F_G11F_B10F)
+          .sampler(Texture.Sampler.SAMPLER_CUBEMAP)
+          .build(engine)
+      texture.generatePrefilterMipmap(
+        engine,
+        Texture.PixelBufferDescriptor(faces, Texture.Format.RGB, Texture.Type.FLOAT),
+        RoomLight.faceOffsets(size),
+        options,
+      )
+      return texture
+    }
+
+    /**
+     * The [variant] of the dice material for [engine], from [materials] if it
+     * was compiled on an earlier launch.
      */
     fun loadMaterial(
       engine: Engine,
       materials: MaterialCache,
-      blended: Boolean,
+      variant: DiceMaterial.Variant,
     ): Material {
       val target = targetOf(engine.backend)
-      val key = MaterialCache.keyOf(DiceMaterial.SOURCE, backend = target.name, blended = blended)
-      val packet = materials.packet(key) { compileMaterial(target, blended) }
+      val key = MaterialCache.keyOf(variant.fingerprint, backend = target.name, variant = variant.key)
+      val packet = materials.packet(key) { compileMaterial(target, variant) }
       return Material.Builder().payload(packet, packet.remaining()).build(engine)
     }
 
@@ -216,26 +508,40 @@ class FilamentEngine(
 
     fun compileMaterial(
       target: MaterialBuilder.TargetApi,
-      blended: Boolean,
+      variant: DiceMaterial.Variant,
     ): ByteBuffer {
       MaterialBuilder.init()
       try {
         val packet =
           MaterialBuilder()
-            .name(if (blended) "dinfinity-blended" else "dinfinity")
-            .material(DiceMaterial.SOURCE)
+            .name(
+              when (variant) {
+                DiceMaterial.Variant.OPAQUE -> "dinfinity"
+                DiceMaterial.Variant.RESIN -> "dinfinity-resin"
+                DiceMaterial.Variant.GLASS -> "dinfinity-glass"
+                DiceMaterial.Variant.TABLE -> "dinfinity-table"
+              },
+            ).material(variant.source)
+            // `LIT` for resin too, not `SUBSURFACE`. Filament's subsurface
+            // model is a wrap of the direct lights around the back of a thin
+            // object; it cannot refract, has no clear coat, and shows nothing
+            // of what is behind the die — which is the whole of what makes
+            // resin read as resin (`docs/architecture.md`, decision 90).
             .shading(MaterialBuilder.Shading.LIT)
-            // `TRANSPARENT` rather than `FADE`: a die you can see into is a
-            // solid object made of clear stuff, so its own lighting — the
-            // sheen down one edge, the shadowed side — is *there* and belongs
-            // in the picture. `FADE` would take it out in proportion to how
-            // clear the die is, which is what a ghost looks like.
-            //
-            // It also means the shader hands over a colour already multiplied
-            // by its coverage, which `DiceMaterial.SOURCE` does.
-            .blending(
-              if (blended) MaterialBuilder.BlendingMode.TRANSPARENT else MaterialBuilder.BlendingMode.OPAQUE,
-            )
+            // Opaque for both. A refracting surface is *not* blended: Filament
+            // draws it after everything opaque, into the same depth buffer,
+            // and makes its see-through look by sampling a picture of the
+            // opaque scene rather than by letting the blend show it.
+            .blending(MaterialBuilder.BlendingMode.OPAQUE)
+            .apply { if (variant == DiceMaterial.Variant.RESIN) resin() }
+            .apply { if (variant == DiceMaterial.Variant.GLASS) glass() }
+            // A rounded edge's glint is thinner than a pixel, and without this
+            // it is drawn as a broken white line along the edge rather than
+            // spread over the bend ([DiceMaterial.SPECULAR_AA_VARIANCE]). A
+            // flat surface's normal does not change, so nothing flat moves —
+            // which is why a table drawn from pictures goes without it
+            // ([DiceMaterial.Variant.TABLE]).
+            .apply { if (variant.specularAntiAliasing) spreadThinGlints() }
             // **Off, and the numbers are upside down without it.**
             //
             // `MaterialBuilder` defaults this to true, which makes `getUV0()`
@@ -267,23 +573,8 @@ class FilamentEngine(
             .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "baseColor")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "roughness")
             .uniformParameter(MaterialBuilder.UniformType.FLOAT, "metallic")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "textured")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "numbered")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT4, "inkColor")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "opacity")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoat")
-            .uniformParameter(MaterialBuilder.UniformType.FLOAT, "clearCoatRoughness")
-            .samplerParameter(
-              MaterialBuilder.SamplerType.SAMPLER_2D,
-              MaterialBuilder.SamplerFormat.FLOAT,
-              MaterialBuilder.ParameterPrecision.DEFAULT,
-              "atlas",
-            ).samplerParameter(
-              MaterialBuilder.SamplerType.SAMPLER_2D,
-              MaterialBuilder.SamplerFormat.FLOAT,
-              MaterialBuilder.ParameterPrecision.DEFAULT,
-              "glyphs",
-            ).platform(MaterialBuilder.Platform.MOBILE)
+            .apply { if (variant == DiceMaterial.Variant.TABLE) tableParameters() else diceParameters() }
+            .platform(MaterialBuilder.Platform.MOBILE)
             // The driver that is actually here (`docs/architecture.md`,
             // decision 46), and no other ([targetOf]).
             .targetApi(target)
@@ -294,6 +585,38 @@ class FilamentEngine(
       } finally {
         MaterialBuilder.shutdown()
       }
+    }
+
+    /**
+     * One of a table's pictures, uploaded with every mip level.
+     *
+     * The levels below the first are made on the GPU, which is why the
+     * texture is flagged as one that may have them generated: drawing a level
+     * a slanted floor never asked for costs nothing, and having none is felt
+     * that crawls. A colour picture is sRGB, so the GPU averages it in light's
+     * units rather than in the encoded ones, and the material multiplies it in
+     * the same; a map is a measurement and is left linear ([SurfaceMap]).
+     */
+    fun uploadSurface(
+      engine: Engine,
+      image: AtlasImage,
+      map: SurfaceMap,
+    ): Texture {
+      val texture =
+        Texture
+          .Builder()
+          .width(image.width)
+          .height(image.height)
+          .levels(SurfaceMap.mipLevelsOf(image.width, image.height))
+          .format(if (map.colour) Texture.InternalFormat.SRGB8_A8 else Texture.InternalFormat.RGBA8)
+          .usage(Texture.Usage.DEFAULT or Texture.Usage.GEN_MIPMAPPABLE)
+          .build(engine)
+      val pixels = ByteBuffer.allocateDirect(image.pixels.size).order(ByteOrder.nativeOrder())
+      pixels.put(image.pixels)
+      pixels.flip()
+      texture.setImage(engine, 0, Texture.PixelBufferDescriptor(pixels, Texture.Format.RGBA, Texture.Type.UBYTE))
+      texture.generateMipmaps(engine)
+      return texture
     }
 
     /**

@@ -87,13 +87,14 @@ class MaterialCacheTest {
   }
 
   @Test
-  fun `the key names the source, the backend and the blending`() {
-    val opaque = MaterialCache.keyOf("source", backend = "OPENGL", blended = false)
+  fun `the key names the source, the backend and the variant`() {
+    val opaque = MaterialCache.keyOf("source", backend = "OPENGL", variant = "opaque")
 
     assertTrue(opaque.startsWith("dice-opaque-opengl-"))
-    assertTrue(MaterialCache.keyOf("source", backend = "OPENGL", blended = true).startsWith("dice-blended-opengl-"))
-    assertNotEquals(opaque, MaterialCache.keyOf("source", backend = "VULKAN", blended = false))
-    assertNotEquals(opaque, MaterialCache.keyOf("other source", backend = "OPENGL", blended = false))
-    assertEquals(opaque, MaterialCache.keyOf("source", backend = "OPENGL", blended = false))
+    assertTrue(MaterialCache.keyOf("source", backend = "OPENGL", variant = "RESIN").startsWith("dice-resin-opengl-"))
+    assertNotEquals(opaque, MaterialCache.keyOf("source", backend = "VULKAN", variant = "opaque"))
+    assertNotEquals(opaque, MaterialCache.keyOf("source", backend = "OPENGL", variant = "resin"))
+    assertNotEquals(opaque, MaterialCache.keyOf("other source", backend = "OPENGL", variant = "opaque"))
+    assertEquals(opaque, MaterialCache.keyOf("source", backend = "OPENGL", variant = "opaque"))
   }
 }

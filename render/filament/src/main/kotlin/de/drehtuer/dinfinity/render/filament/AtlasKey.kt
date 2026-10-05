@@ -16,10 +16,12 @@ import de.drehtuer.dinfinity.core.model.AtlasImage
  * The separator is `::` rather than `/`. A set id is a slug and cannot contain
  * one (`DiceSet.IdPattern`), so a key can always be taken apart again — and,
  * more to the point, a path that arrives here *unqualified* has no `::` in it
- * and is refused rather than read as a package called `textures`. That is what
- * a table look's floor and wall textures are today: they carry a path and no
- * package, so they resolve to nothing until one reaches them
- * (`docs/tables.md`, "Table looks"; `docs/TODO.md`, "Open questions").
+ * and is refused rather than read as a package called `textures`.
+ *
+ * A table look's pictures are keyed the same way: their package is the one
+ * the validator read the look out of (`TableLook.packageId`), so the bundled
+ * felt is `builtin::tables/felt-albedo.webp` and a table can only ever name its
+ * own package's files (`docs/tables.md`, "Textures").
  */
 object AtlasKey {
   /** What separates the package from the path inside it. */

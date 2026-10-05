@@ -52,6 +52,7 @@ dice=20
 shape="d20"
 seed=1
 label=""
+table=""
 out="${root}/build/harness"
 device="${ANDROID_SERIAL:-}"
 build=1
@@ -89,6 +90,10 @@ tools/harness.sh — run the physics harness on a device and score it.
   -s, --shape <name>     d20, icosahedron or 20 (default d20)
       --seed <n>         the run's base seed (default 1); one number replays
                          the whole run
+      --table <id>       with --rendered: throw onto this built-in table look
+                         (felt-green, felt-black, oak, dark-glass, plain)
+                         instead of the plain physics-only one. A glossy look
+                         draws the dice twice, for their reflection
   -l, --label <name>     what to call the run and its files (default 20d20)
   -o, --out <dir>        where to leave the pulled files
                          (default build/harness)
@@ -111,6 +116,8 @@ Examples:
   tools/harness.sh --soak 5m               # soak mode: roll for five minutes
   tools/harness.sh --frames -n 50          # what a frame's simulation costs
   tools/harness.sh --rendered              # what a drawn frame costs (Step 5.7)
+  tools/harness.sh --rendered -n 10 -c 100 -s d6 --table dark-glass
+                                           # the same on glass, reflections and all
   tools/harness.sh --capture 20            # twenty seconds of video to watch
 
 The exit code is the verdict: zero when every target was met.
@@ -135,6 +142,7 @@ while [ "$#" -gt 0 ]; do
     -s | --shape) shape="${2:?--shape needs a die}"; shift 2 ;;
     --seed) seed="${2:?--seed needs a number}"; shift 2 ;;
     -l | --label) label="${2:?--label needs a name}"; shift 2 ;;
+    --table) table="${2:?--table needs a table look id, such as dark-glass}"; shift 2 ;;
     -o | --out) out="${2:?--out needs a directory}"; shift 2 ;;
     --no-build) build=0; shift ;;
     *) usage; fail "unknown argument: $1" ;;
@@ -152,6 +160,9 @@ if [ "${rendered}" -eq 1 ]; then
   test_module="${rendered_module}"
   [ "${rolls_given}" -eq 1 ] || rolls="${rendered_rolls}"
 fi
+# A look is what a frame costs to *draw*; the headless harness draws nothing,
+# so a table there would be a flag that changed nothing it measures.
+[ -z "${table}" ] || [ "${rendered}" -eq 1 ] || fail "--table chooses what --rendered draws on; add --rendered"
 
 command -v adb > /dev/null 2>&1 || fail "there is no adb here; this runs inside the devcontainer (docs/build-setup.md)"
 
@@ -233,6 +244,7 @@ if [ -n "${soak}" ]; then
 else
   echo "Run:     ${rolls} rolls of ${dice}${shape}, seed ${seed}"
 fi
+[ -n "${table}" ] && echo "Table:   ${table}"
 [ "${frames}" -eq 1 ] && echo "Frames:  each roll stepped at 60 fps and timed; this runs in real time"
 [ "${rendered}" -eq 1 ] &&
   echo "Frames:  each roll drawn on a screen-sized surface at the watched pace and timed; this runs in real time"
@@ -273,6 +285,7 @@ arguments=(
 [ -n "${soak}" ] && arguments+=(-e harness.soak "${soak}")
 [ "${frames}" -eq 1 ] && arguments+=(-e harness.frames 1)
 [ -n "${label}" ] && arguments+=(-e harness.label "${label}")
+[ -n "${table}" ] && arguments+=(-e harness.table "${table}")
 
 echo "Rolling…"
 # Anything an earlier run left on the device goes first. The run is scored from

@@ -16,7 +16,7 @@ This is a snapshot, not a changelog — git history is the changelog.
   total appears beside them, with printed numbers the right way round and an
   author's artwork where a set has some.
 - **Latest release:** `v0.2.0`, signed and published with its SHA-256.
-- **`main` is at #368**: the owner's feedback on the overnight build is in
+- **`main` is at #374, released as `v0.2.0`**: the owner's feedback on the overnight build is in
   — a cold start shows the tray in 0.8 s (decision 46), the watched pace is
   0.4 (65), *Clear face* in the designer (82), a throw folds the top away and
   a double tap clears the table (83), an accent shake prompt and pick ring
@@ -25,10 +25,24 @@ This is a snapshot, not a changelog — git history is the changelog.
   to six levels, the coin that ran out the twelve-second cap is explained (it
   leaned on the old corner post; none of 100,000 give up on the fillet tray),
   and the designer masks the d10 and the d18 into their own kites (86).
-- **In flight:** a big roll's tail is shown faster — for ten dice or more
-  the watched pace climbs to real speed as the dice are read (decision 88),
-  after `100d4` measured a median 1.29 s and p99 3.09 s of simulated time on
-  the Pixel 10a, 3.2 s and 7.7 s to watch.
+- **In flight:** `feature/realistic-rendering`, an integration branch for
+  making the table and dice look real — a render gallery to compare against
+  (`tools/gallery.sh`), then lighting from a photographed room (decision 89:
+  the felt draws its set colour, no band along the walls, the room cached on
+  disk), translucent dice as refracting resin (90) and rounded edges drawn
+  with the solver's own convex radius (91), all passing on the Pixel 10a.
+  The dark glass reflects the dice faintly, by a small second picture of
+  them from under the floor (93). The broken light lines along resin dice's
+  rounded edges were the lacquer's glint, thinner than a pixel; specular
+  anti-aliasing spreads it now. Felt and oak are drawn from CC0 pictures,
+  keyed by the package the look came from (92); plain stays flat. On the
+  phone the oak drew pinkish grey: its photograph's roughness map (0.44)
+  stood in for the look's, and the key light's sheen washed the brown out. A
+  look in `average` now has its roughness map averaged at its `roughness`
+  too, and oak is oiled at 0.75. The phone then drew green felt's red 13 over:
+  the felt's own sheen, 1.4 % of white, which a look in `average` now has
+  taken out of its colour (`SurfaceLight`) — not yet run on the phone. It
+  reaches `main` when the owner likes it on the phone.
 
 ## Done
 
@@ -114,5 +128,4 @@ All in `docs/TODO.md`; the ones that block code first.
 - Whether the too-many-dice refusal offers a way to the outcome graph (the
   argument is in `docs/architecture.md`).
 - Filled-button label contrast (3.65:1 against 4.5:1), the coverage floor,
-  the anomaly log surviving a restart, where a table texture names its
-  package, more than one personal set.
+  the anomaly log surviving a restart, more than one personal set.

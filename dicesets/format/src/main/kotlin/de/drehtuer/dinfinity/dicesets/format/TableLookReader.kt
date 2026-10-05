@@ -1,5 +1,6 @@
 package de.drehtuer.dinfinity.dicesets.format
 
+import de.drehtuer.dinfinity.core.model.TableColorMode
 import de.drehtuer.dinfinity.core.model.TableLight
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableSound
@@ -46,6 +47,18 @@ internal class TableLookReader(
       restitution = material.bounded(entry, "restitution", named, TableLook.RestitutionRange) ?: default.restitution,
       sound = preset(entry, "sound", named, TableSound.entries, TableSound::id) ?: default.sound,
       light = preset(entry, "light", named, TableLight.entries, TableLight::id) ?: default.light,
+      // The maps that make a surface read as a surface rather than a print of
+      // one. Every one is a picture inside this package and goes through the
+      // same checks a die's atlas does — path, size, header — before anything
+      // reads a pixel of it (`docs/dice-sets.md`, "Textures").
+      floorNormalPath = files.texture(entry, "floor_normal", named, faces = 0),
+      floorRoughnessPath = files.texture(entry, "floor_roughness", named, faces = 0),
+      floorTileMm = material.bounded(entry, "floor_tile_mm", named, DiceSetLimits.TILE_MM),
+      wallNormalPath = files.texture(entry, "wall_normal", named, faces = 0),
+      wallRoughnessPath = files.texture(entry, "wall_roughness", named, faces = 0),
+      wallTileMm = material.bounded(entry, "wall_tile_mm", named, DiceSetLimits.TILE_MM),
+      colorMode =
+        preset(entry, "color_mode", named, TableColorMode.entries, TableColorMode::id) ?: default.colorMode,
     )
   }
 
@@ -135,6 +148,13 @@ internal class TableLookReader(
         "restitution",
         "sound",
         "light",
+        "floor_normal",
+        "floor_roughness",
+        "floor_tile_mm",
+        "wall_normal",
+        "wall_roughness",
+        "wall_tile_mm",
+        "color_mode",
       )
   }
 }

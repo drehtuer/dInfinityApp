@@ -207,8 +207,15 @@ object RoomLight {
     )
   }
 
+  /**
+   * How bright this room is looking straight up, relative to a flat white
+   * one — what the felt, which faces up, receives from it. The sky, because
+   * that is what the harmonic evaluates to overhead ([irradiance]).
+   */
+  fun upwardBrightness(sky: Colour = SKY): Double = luminance(sky)
+
   /** Rec. 709, which is what "how bright does this look" means for a linear colour. */
-  private fun luminance(colour: Colour): Double =
+  fun luminance(colour: Colour): Double =
     RED_WEIGHT * colour.red + GREEN_WEIGHT * colour.green + BLUE_WEIGHT * colour.blue
 
   private const val POSITIVE_X = 0

@@ -359,7 +359,24 @@ keeps them comparable.
       and `LEAST_SPIN_RADIANS_PER_SECOND`–`MOST_SPIN_RADIANS_PER_SECOND`
       (9–18). Also run `BoardSettlerTest` and read its timings (`dinfinity.board`
       in logcat)
-- [ ] Rendering polish and the optimisation pass — deliberately **last**
+- [ ] Rendering polish and the optimisation pass — **in progress on
+      `feature/realistic-rendering`**: physically based lighting from a real
+      room (decision 89), refracting resin for translucent dice (90 — do the
+      milky and glassy ends need `Resin`'s constants turned, and are the full
+      shadows of clear dice acceptable), rounded edges drawn with the
+      solver's own convex radius (91 — does the bend's glint, now spread by
+      specular anti-aliasing, read as a soft highlight), felt and oak drawn
+      from CC0 pictures (92 — run `TableTextureDeviceTest`, whose floor
+      colours are logged under `TableTextureDeviceTest`; in the gallery, with
+      each look's sheen now taken out of its colour, does the green felt read
+      as the old green, the black felt as black cloth rather than flat grey,
+      the oak as warm oak — a little darker than before — and its walls as
+      wood, is the felt's crinkle too strong — its normal map can be
+      softened — and does it shimmer as the dice settle, and is plain
+      unchanged), the dice reflected faintly in the dark glass (93 — is the
+      reflection soft and dim enough, and does it look right that the walls
+      are not reflected). Judged with `tools/gallery.sh` before and after each
+      step, and merged to `main` once the owner likes it on the phone
 
 ### 5.7 Performance on the Pixel 10a
 
@@ -411,6 +428,15 @@ their own, add recomposition tests. Figures go in every PR description.
 
 ### Rendering and physics
 
+- [ ] **Flat surfaces wear a mirror lacquer nobody asked for.** The dice's
+      material writes `material.clearCoat` only when a die has a lacquer, and
+      Filament's default is a full coat, so plain, dark glass, a flat felt and
+      every flat wall are drawn under a smooth coat that also takes away their
+      own sheen (`docs/tables.md`, "What the floors draw as"). Writing it
+      always changes every flat look and `StudioLightDeviceTest`'s felt
+      (its red would come out about 45, not 34) — so it wants the flat
+      looks put through `SurfaceLight` as the textured ones are, judged in
+      the gallery
 - [ ] **A numeral at 0.78 of its face, or 0.78 squared?** `FACE_SHARE` is
       applied twice (`LabelRoom.centred`), so a numeral is ~0.61 of its room.
       Once would make every number 28 % bigger; tray and designer move together
@@ -437,13 +463,14 @@ their own, add recomposition tests. Figures go in every PR description.
 
 ### Tables and photos
 
-- [ ] **Where does a table look's texture say which package it came from?**
-      Dice artwork reaches the tray by package and path; a `TableLook` carries a
-      path only, so a table draws in its own colours. Decide when a package
-      ships one — which also decides whether a photo table belongs in the
-      personal package before the tray can draw it
 - [ ] How should a photo sit on the tray — centre, fit width, fit height
-      (`1u`)? None is implemented
+      (`1u`)? It is drawn now (decision 92), stretched over the floor by
+      `[1, 1]` tiling
+- [ ] A glossy look that also names pictures (a polished stone photograph)
+      is drawn from its pictures and shows no dice in it: pictures win over
+      the reflection (`DiceMaterial.variantOf`). Showing both needs a fifth
+      material with the table's maps and the glass's picture; build it when a
+      package asks for one
 
 ### Sets and collections
 

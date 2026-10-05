@@ -1,7 +1,10 @@
 package de.drehtuer.dinfinity.dicesets.install
 
 import de.drehtuer.dinfinity.core.model.AtlasImage
+import de.drehtuer.dinfinity.core.model.DiceSet
+import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.dicesets.format.DiceSetLimits
+import de.drehtuer.dinfinity.dicesets.format.PackageFiles
 import de.drehtuer.dinfinity.dicesets.format.ValidationCode
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -143,9 +146,92 @@ class InstalledArtworkTest {
     assertNull(artwork.stamp("brass", "../../etc/passwd.png"))
   }
 
+  @Test
+  fun `the bundled package's pictures are read from the files it was validated from`() {
+    var asked: String? = null
+    val artwork =
+      InstalledArtwork(InstalledSets(installed()), bundled()) { _, file, _ ->
+        asked = file
+        AtlasDecode.Drawn(image())
+      }
+
+    val decoded = artwork.read(DiceSet.BUILTIN_ID, "tables/felt.webp")
+
+    assertNotNull("the bundled felt was not found", decoded.drawn)
+    assertEquals("builtin/tables/felt.webp", asked)
+  }
+
+  @Test
+  fun `a folder on disk calling itself the bundled package is never reached`() {
+    val root = installed()
+    File(root, DiceSet.BUILTIN_ID).mkdirs()
+    File(root, "${DiceSet.BUILTIN_ID}/tables").mkdirs()
+    File(root, "${DiceSet.BUILTIN_ID}/tables/other.png").writeBytes(png(8, 8))
+    val artwork = InstalledArtwork(InstalledSets(root), bundled()) { _, _, _ -> AtlasDecode.Drawn(image()) }
+
+    val decoded = artwork.read(DiceSet.BUILTIN_ID, "tables/other.png")
+
+    assertNull("a stranger's folder answered for the bundled package", decoded.drawn)
+    assertNull(artwork.stamp(DiceSet.BUILTIN_ID, "tables/other.png"))
+  }
+
+  @Test
+  fun `a hostile path is refused for the bundled package as for any other`() {
+    var decoded = 0
+    val artwork =
+      InstalledArtwork(InstalledSets(installed()), bundled()) { _, _, _ ->
+        decoded++
+        AtlasDecode.Drawn(image())
+      }
+
+    listOf("../diceset.toml", "/tables/felt.webp", "tables/felt.exe", "tables/../../felt.webp").forEach { hostile ->
+      assertNull("'$hostile' was read", artwork.read(DiceSet.BUILTIN_ID, hostile).drawn)
+      assertNull("'$hostile' was stamped", artwork.stamp(DiceSet.BUILTIN_ID, hostile))
+    }
+    assertEquals(0, decoded)
+  }
+
+  @Test
+  fun `the bundled package is stamped once for its life, and not for a file it lacks`() {
+    val artwork = InstalledArtwork(InstalledSets(installed()), bundled()) { _, _, _ -> AtlasDecode.Drawn(image()) }
+
+    val stamp = artwork.stamp(DiceSet.BUILTIN_ID, "tables/felt.webp")
+
+    assertNotNull(stamp)
+    assertEquals(stamp, artwork.stamp(DiceSet.BUILTIN_ID, "tables/felt.webp"))
+    assertNull(artwork.stamp(DiceSet.BUILTIN_ID, "tables/gone.webp"))
+  }
+
+  @Test
+  fun `a table's texture in an installed package is read with no grid, like any picture no die wears`() {
+    var faces: Int? = -1
+    val artwork =
+      artwork { _, _, wanted ->
+        faces = wanted
+        AtlasDecode.Drawn(image())
+      }
+    File(installed(), "brass/textures/felt.png").writeBytes(png(8, 8))
+
+    assertNotNull(artwork.read("brass", "textures/felt.png").drawn)
+    assertNull(faces)
+  }
+
+  /** The bundled package, as the app hands it in: a set and the files behind it. */
+  private fun bundled(): InstalledArtwork.BundledPackage =
+    InstalledArtwork.BundledPackage(
+      set =
+        DiceSet(
+          id = DiceSet.BUILTIN_ID,
+          name = "Built-in",
+          version = "1.0.0",
+          tables = listOf(TableLook(id = "felt", name = "Felt", floorTexturePath = "tables/felt.webp")),
+        ),
+      files = PackageFiles.of(mapOf("tables/felt.webp" to png(8, 8))),
+    )
+
   private fun artwork(
     decode: (ByteArray, String, Int?) -> AtlasDecode = { _, _, _ -> AtlasDecode.Drawn(image()) },
-  ): InstalledArtwork = InstalledArtwork(InstalledSets(installed()), decode)
+  ): InstalledArtwork = InstalledArtwork(InstalledSets(installed()), decode = decode)
 
   /** A `dicesets/` folder holding one package whose d6 wears an atlas. */
   private fun installed(): File {

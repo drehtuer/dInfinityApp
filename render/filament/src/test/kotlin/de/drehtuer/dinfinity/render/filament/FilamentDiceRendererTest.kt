@@ -14,6 +14,7 @@ import de.drehtuer.dinfinity.simulation.api.ThrowSpec
 import de.drehtuer.dinfinity.simulation.api.Vector3
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.PI
@@ -54,8 +55,39 @@ class FilamentDiceRendererTest {
           .take(3)
       val corner = Vector3(drawn[0].toDouble(), drawn[1].toDouble(), drawn[2].toDouble())
 
-      assertEquals("${instance.die.id} is drawn the wrong size", reach, corner.length, TOLERANCE)
+      // The first corner drawn is the first corner of the unit mesh, which
+      // sits a rounded edge's width inside the sphere the die reaches.
+      val unit =
+        DieMesh
+          .of(instance.die, scale)
+          .surfaces
+          .first()
+          .positions
+          .first()
+      assertEquals("${instance.die.id} is drawn the wrong size", reach * unit.length, corner.length, TOLERANCE)
     }
+  }
+
+  @Test
+  fun `a translucent die's resin is as thick as the die it is drawn as`() {
+    // The capacity rule shrinks a die, and a ray through a shrunk die crosses
+    // less resin: the thickness follows the drawn size, not the set's.
+    val scale = 0.6
+    val clear = StandardDice.d20.copy(material = StandardDice.d20.material.copy(translucency = 0.6))
+    renderer.begin(
+      ThrowSpec(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "builtin", requestedSetId = "builtin", die = clear)),
+        geometry = geometry,
+        table = look,
+        seed = 1L,
+        dieScale = scale,
+      ),
+      geometry,
+      look,
+    )
+
+    val resin = requireNotNull(stage.added[TRAY_PARTS].second.resin)
+    assertEquals(clear.material.sizeMm * scale * Resin.THICKNESS_OF_SIZE, resin.thicknessMm, TOLERANCE)
   }
 
   @Test
@@ -125,20 +157,35 @@ class FilamentDiceRendererTest {
   }
 
   @Test
-  fun `the tray takes the table's colours and the rim takes no texture`() {
+  fun `the tray takes the table's colours and pictures, and the rim takes the wall's`() {
     val felt =
       look.copy(
         floorTexturePath = "tables/felt.png",
         wallTexturePath = "tables/oak.png",
         floorColorArgb = 0xFF1F5E3A.toInt(),
+        packageId = "brass",
       )
 
     renderer.begin(spec(), geometry, felt)
 
     assertEquals(Colour.of(felt.floorColorArgb), stage.added[0].second.colour)
-    assertEquals("tables/felt.png", stage.added[0].second.texturePath)
-    assertEquals("tables/oak.png", stage.added[1].second.texturePath)
-    assertFalse("six millimetres of rim is not where anybody looks", stage.added[2].second.textured)
+    val (floor, wall) = stage.added.take(2).map { it.second.maps }
+    assertEquals("brass::tables/felt.png", floor?.albedo)
+    assertEquals("brass::tables/oak.png", wall?.albedo)
+    // The wall's colour only comes out right times the wall's picture, so a
+    // rim in the colour alone would be a band of something else.
+    assertEquals(stage.added[1].second, stage.added[2].second)
+  }
+
+  @Test
+  fun `a plain table is drawn exactly as it was, with no picture anywhere`() {
+    renderer.begin(spec(), geometry, look)
+
+    stage.added.take(TRAY_PARTS).forEach { (_, parameters) ->
+      assertNull(parameters.maps)
+      assertFalse(parameters.textured)
+      assertEquals(DiceMaterial.Variant.OPAQUE, DiceMaterial.variantOf(parameters))
+    }
   }
 
   @Test
@@ -160,6 +207,26 @@ class FilamentDiceRendererTest {
       List(spec().dice.size) { true },
       stage.casting.drop(TRAY_PARTS),
     )
+  }
+
+  @Test
+  fun `a glass table's floor shows the dice and its walls do not`() {
+    renderer.begin(spec(), geometry, look.copy(roughness = 0.1))
+
+    val floor = requireNotNull(stage.added[0].second.reflection)
+    assertEquals(Reflection.strengthOf(0.1), floor.strength, 1e-9)
+    // What the glass shows is what casts: the dice, never the tray
+    // (`Stage.add`), and the walls and rim reflect nothing of their own.
+    val reflecting = stage.added.map { it.second.reflection != null }
+    assertEquals(listOf(true) + List(reflecting.size - 1) { false }, reflecting)
+    assertEquals(List(TRAY_PARTS) { false }, stage.casting.take(TRAY_PARTS))
+  }
+
+  @Test
+  fun `a felt table's floor shows nothing`() {
+    renderer.begin(spec(), geometry, look)
+
+    assertTrue(stage.added.all { it.second.reflection == null })
   }
 
   @Test
@@ -314,7 +381,7 @@ class FilamentDiceRendererTest {
   fun `a die the stage would not take is not moved either`() {
     // `add` hands back "no entity" for a mesh with nothing in it, and nought
     // is not an entity anything may be done to.
-    stage.refuse = GpuMesh.of(DieMesh.of(StandardDice.d6.shape).faces, scale = radiusOf(StandardDice.d6))
+    stage.refuse = GpuMesh.of(DieMesh.of(StandardDice.d6, 1.0).surfaces, scale = radiusOf(StandardDice.d6))
     renderer.begin(spec(), geometry, look)
 
     renderer.show(RenderFrame.still(List(3) { at(it, Vector3.Zero) }))

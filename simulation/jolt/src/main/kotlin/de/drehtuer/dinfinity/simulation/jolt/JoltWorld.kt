@@ -3,6 +3,7 @@ package de.drehtuer.dinfinity.simulation.jolt
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.simulation.api.DieMotion
+import de.drehtuer.dinfinity.simulation.api.HullMargin
 import de.drehtuer.dinfinity.simulation.api.Placement
 import de.drehtuer.dinfinity.simulation.api.Quaternion
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -183,16 +184,6 @@ class JoltWorld private constructor(
     private const val INERTIA_CELLS = 9
 
     /**
-     * The rounded edge a solid gets, as a share of its size.
-     *
-     * Sharp corners are what catch on a floor instead of tumbling off it, and
-     * a d4 is almost all corner (`docs/physics-and-rendering.md`, "Dice
-     * bodies"). It is a share rather than a fixed millimetre so that a die
-     * shrunk by the capacity rule keeps the same proportions it was tuned at.
-     */
-    const val CONVEX_RADIUS_SHARE: Double = 0.03
-
-    /**
      * Opens a world for one throw. Null when the native library is not there,
      * which on a phone means the build is broken and on the JVM means the test
      * should have used a fake.
@@ -226,7 +217,14 @@ class JoltWorld private constructor(
       return JoltWorld(handle, maxDice)
     }
 
-    private fun convexRadiusMmFor(material: DieMaterial): Double = material.sizeMm * CONVEX_RADIUS_SHARE
+    /**
+     * The rounded edge a solid gets. Sharp corners are what catch on a floor
+     * instead of tumbling off it, and a d4 is almost all corner
+     * (`docs/physics-and-rendering.md`, "Dice bodies"). The number is
+     * `simulation/api`'s, because the renderer draws the die rounded by the
+     * same radius and two copies of it would come apart ([HullMargin]).
+     */
+    private fun convexRadiusMmFor(material: DieMaterial): Double = HullMargin.requestedMm(material)
 
     /** Writes a length in millimetres as three floats in simulation units. */
     private fun FloatArray.putLength(

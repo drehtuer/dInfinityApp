@@ -85,6 +85,22 @@ class HarnessRequestTest {
   }
 
   @Test
+  fun `a table is named only when somebody names one, and the label says which`() {
+    val plain = requireNotNull(HarnessRequest.from(arguments("8")))
+    assertEquals(null, plain.table)
+
+    val glass = requireNotNull(HarnessRequest.from(arguments("8", dice = "100", shape = "d6", table = " dark-glass ")))
+    assertEquals("dark-glass", glass.table)
+    assertEquals("100d6-dark-glass", glass.label)
+    // Named nothing is not named.
+    assertEquals(null, requireNotNull(HarnessRequest.from(arguments("8", table = " "))).table)
+    assertEquals(
+      "20d20-oak-soak",
+      HarnessRequest.labelOf(20, DieShape.Icosahedron, RunLength.Soak(60.0), table = "oak"),
+    )
+  }
+
+  @Test
   fun `arguments arrive with whatever spacing a shell left on them`() {
     val request = requireNotNull(HarnessRequest.from(arguments(rolls = " 12 ", dice = " 5 ", seed = " 99 ")))
 
@@ -189,6 +205,7 @@ class HarnessRequestTest {
     label: String? = null,
     soak: String? = null,
     frames: String? = null,
+    table: String? = null,
   ): (String) -> String? =
     { name ->
       when (name) {
@@ -199,6 +216,7 @@ class HarnessRequestTest {
         HarnessRequest.LABEL -> label
         HarnessRequest.SOAK -> soak
         HarnessRequest.FRAMES -> frames
+        HarnessRequest.TABLE -> table
         else -> null
       }
     }

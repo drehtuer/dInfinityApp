@@ -47,6 +47,27 @@ class RoomLightTest {
   }
 
   @Test
+  fun `what the felt receives from overhead is the sky's luminance`() {
+    assertEquals(RoomLight.luminance(RoomLight.SKY), RoomLight.upwardBrightness(), TOLERANCE)
+    assertEquals(
+      RoomLight.luminance(
+        Colour(red = irradianceAt(UP).x, green = irradianceAt(UP).y, blue = irradianceAt(UP).z, alpha = 1.0),
+      ),
+      RoomLight.upwardBrightness(),
+      TOLERANCE,
+    )
+  }
+
+  @Test
+  fun `luminance weighs green the most and blue the least`() {
+    val white = RoomLight.luminance(Colour(red = 1.0, green = 1.0, blue = 1.0, alpha = 1.0))
+    assertEquals(1.0, white, TOLERANCE)
+    val green = RoomLight.luminance(Colour(red = 0.0, green = 1.0, blue = 0.0, alpha = 1.0))
+    val blue = RoomLight.luminance(Colour(red = 0.0, green = 0.0, blue = 1.0, alpha = 1.0))
+    assertTrue(green > blue)
+  }
+
+  @Test
   fun `it fills exactly the bands it says it does`() {
     assertEquals(RoomLight.BANDS * RoomLight.BANDS * SH_STRIDE, RoomLight.irradiance().size)
   }

@@ -585,6 +585,7 @@ emulator attached it refuses to guess — name one with `--device` or
 | `--soak` | roll for this long instead: `90`, `90s`, `5m`, `1h`. Soak mode |
 | `--frames` | step each roll at a frame's cadence and report what the frames cost. A paced run takes as long as the dice really take |
 | `--rendered` | draw each roll onto a screen-sized surface through the tray and Filament, and score the frame rows only ([below](#drawn-frames-the-rendered-harness)). Default 20 rolls |
+| `--table` | with `--rendered` only: throw onto this built-in table look (`felt-green`, `felt-black`, `oak`, `dark-glass`, `plain`) instead of the plain physics-only one — the look decides what a frame costs to draw, and a glossy one draws the dice twice ([`docs/physics-and-rendering.md`](physics-and-rendering.md#the-dice-in-a-glossy-table)) |
 | `--capture` | record the screen for this many seconds instead of scoring a run |
 | `-c`, `--dice` | dice per throw (default 20, which is where Step 5.5 states its settle targets) |
 | `-s`, `--shape` | `d20`, `icosahedron` or `20` — all three are accepted (default `d20`) |
@@ -703,6 +704,8 @@ seconds, so the default is twenty rolls, a few thousand frames.
 ```sh
 tools/harness.sh --rendered                # twenty rolls, scored
 tools/harness.sh --rendered -n 100         # a longer look
+tools/harness.sh --rendered -n 10 -c 100 -s d6 --table dark-glass
+                                           # the capacity limit on glass
 ```
 
 What it measures, and how it is scored (`docs/architecture.md`, decision 80):
@@ -771,8 +774,8 @@ script:
 ```
 
 The other arguments are `harness.soak` (a duration), `harness.frames` (`1` to
-pace them), `harness.dice`, `harness.shape`, `harness.seed` and
-`harness.label`. What each one *means* — including which wins when both a roll
+pace them), `harness.dice`, `harness.shape`, `harness.seed`,
+`harness.label` and — read by the rendered harness only — `harness.table`. What each one *means* — including which wins when both a roll
 count and a soak are given — is `HarnessRequest.from` and `RunLength.from` in
 `:simulation:harness`, tested on the JVM, so the script and a hand-typed run
 cannot come to disagree (`docs/architecture.md`, decision 53).
@@ -789,6 +792,25 @@ Like `connectedDebugAndroidTest`, the script takes its verdict from what the
 run produced rather than from the tooling around it — here the table the device
 wrote, for the same reason the [JUnit XML](#the-verdict-on-an-instrumented-run)
 decides there.
+
+### The render gallery
+
+`tools/gallery.sh` draws the same seeded throws on the same tables — every
+built-in shape twice on green felt, oak and dark glass, then on felt again in
+metal and see-through — settled by the real physics and drawn through the real
+renderer onto a surface the size of the Pixel 10a's screen, and pulls the PNGs
+into `build/gallery/` (`RenderGalleryTest`). Nothing is scored: the pictures are
+for a person to compare before and after a rendering change.
+
+```sh
+tools/gallery.sh                       # build, install, draw, pull
+tools/gallery.sh --out build/before    # keep a set to compare against
+```
+
+It installs only `render/filament`'s test APK, which is its own application,
+so the app on the phone and everything saved in it are left alone — which
+matters when the phone runs a release build that a debug one cannot replace.
+The test is opt-in (`-e gallery 1`) and the ordinary device suite skips it.
 
 ## Connecting a phone over WiFi
 

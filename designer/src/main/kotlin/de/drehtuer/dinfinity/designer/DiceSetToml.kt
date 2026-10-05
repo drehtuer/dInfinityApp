@@ -79,7 +79,13 @@ object DiceSetToml {
     appendLine("id = ${quoted(look.id)}")
     appendLine("name = ${quoted(look.name)}")
     look.floorTexturePath?.let { appendLine("floor_texture = ${quoted(it)}") }
+    look.floorNormalPath?.let { appendLine("floor_normal = ${quoted(it)}") }
+    look.floorRoughnessPath?.let { appendLine("floor_roughness = ${quoted(it)}") }
+    look.floorTileMm?.let { appendLine("floor_tile_mm = $it") }
     look.wallTexturePath?.let { appendLine("wall_texture = ${quoted(it)}") }
+    look.wallNormalPath?.let { appendLine("wall_normal = ${quoted(it)}") }
+    look.wallRoughnessPath?.let { appendLine("wall_roughness = ${quoted(it)}") }
+    look.wallTileMm?.let { appendLine("wall_tile_mm = $it") }
     tiling("floor_tiling", look.floorTiling, default.floorTiling)
     tiling("wall_tiling", look.wallTiling, default.wallTiling)
     colour("floor_color", look.floorColorArgb, default.floorColorArgb)
@@ -90,6 +96,7 @@ object DiceSetToml {
     number("restitution", look.restitution, default.restitution)
     if (look.sound != default.sound) appendLine("sound = ${quoted(look.sound.id)}")
     if (look.light != default.light) appendLine("light = ${quoted(look.light.id)}")
+    if (look.colorMode != default.colorMode) appendLine("color_mode = ${quoted(look.colorMode.id)}")
   }
 
   private fun StringBuilder.tiling(

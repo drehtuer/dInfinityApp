@@ -21,7 +21,16 @@ dependencies {
   implementation(libs.filament.android)
   implementation(libs.filamat.android)
 
+  // Not filament-utils-android: the studio panorama is decoded and folded into
+  // a cube here (`Radiance`, `StudioLight.faces`) and prefiltered by the engine
+  // above, rather than pull in a native library that links gltfio's and costs
+  // 17.5 MB over four ABIs (`docs/architecture.md`, decision 89).
+
   testImplementation(project(":test-fixtures"))
+  // Reads the shipped panorama on the JVM, so `StudioLightTest` can check the
+  // irradiance written into `StudioLight` against the file it came from, and
+  // `RadianceTest` the app's own decoder against an independent one.
+  testImplementation(libs.twelvemonkeys.imageio.hdr)
   androidTestImplementation(project(":test-fixtures"))
 
   // The rendered harness: the real physics thrown through this module's tray
@@ -30,4 +39,8 @@ dependencies {
   // harness exists (`docs/architecture.md`, decision 80).
   androidTestImplementation(project(":simulation:jolt"))
   androidTestImplementation(project(":simulation:harness"))
+
+  // The render gallery throws the built-in set's own dice onto its own
+  // tables, so a picture is of what a player sees (`RenderGalleryTest`).
+  androidTestImplementation(project(":dicesets:builtin"))
 }
