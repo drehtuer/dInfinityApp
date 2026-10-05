@@ -16,7 +16,7 @@ import org.junit.Test
 
 /**
  * The Material menu and the Edges control, behind the screen
- * (`docs/face-designer.md`, "Material and edges").
+ * (`docs/face-designer.md`, "Material, colour and edges").
  */
 class DesignerFinishTest {
   @Test
@@ -52,6 +52,19 @@ class DesignerFinishTest {
 
     assertEquals(MaterialPreset.Glass, presenter.state.preset)
     assertEquals(Roundness.Standard, presenter.state.roundness)
+    assertEquals(presenter.state.draft, drafts.load(d6))
+  }
+
+  @Test
+  fun `choosing a body colour changes the paper and is written down`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, drafts = drafts)
+    presenter.madeOf(MaterialPreset.Metal)
+
+    presenter.coloured(0xFF1F5E3A.toInt())
+
+    assertEquals(0xFF1F5E3A.toInt(), presenter.state.bodyArgb)
+    assertEquals(MaterialPreset.Metal, presenter.state.preset)
     assertEquals(presenter.state.draft, drafts.load(d6))
   }
 

@@ -171,7 +171,7 @@ round. Option ids (`1a`, `9c`, …) are the labels on the canvas.
 | Saved rolls, editor, import — 1n–1p, 1r, 7b, 9b, 9f–9g, 6e | [../docs/dice-notation.md](../docs/dice-notation.md) |
 | Dice sets, set details, install and update — 1s–1t, 5a, 6a–6b, 8c, 9h–9i | [../docs/dice-sets.md](../docs/dice-sets.md) |
 | Table picker — 1u, 8a, 9j | [../docs/tables.md](../docs/tables.md) |
-| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; the way back from a test throw, `fromDesigner`; its export on the "My dice" details, 8c; the Solid tab's Material menu and Edges control, in the phone prototype | [../docs/face-designer.md](../docs/face-designer.md) ("Material and edges" also in [../docs/dice-sets.md](../docs/dice-sets.md) and [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), "Rounded edges") |
+| Face designer — 1v, 4c, 8d; quick mode off the breakdown, 1f; the way back from a test throw, `fromDesigner`; its export on the "My dice" details, 8c; the Solid tab's Material menu and Edges control, in the phone prototype | [../docs/face-designer.md](../docs/face-designer.md) ("Material, colour and edges" also in [../docs/dice-sets.md](../docs/dice-sets.md) and [../docs/physics-and-rendering.md](../docs/physics-and-rendering.md), "Rounded edges") |
 | Statistics, history, sessions — 1w, 1x, 5b–5c, 6c, 8b, 9e | [../docs/statistics.md](../docs/statistics.md) |
 | Menu, Settings — 1q, 1y, 2d | [../README.md](../README.md), [../docs/architecture.md](../docs/architecture.md) |
 
@@ -202,7 +202,7 @@ through the same setter its `onChange` uses (`formulaFilled` / `clearFormula`,
 and the face designer's Solid tab has a **Material** menu with a swatch and
 an **Edges** control under the turning die (`dzMaterials` / `dzPickMaterial` /
 `dzSwatch`, `dzEdges`), six named materials and four roundnesses
-([../docs/face-designer.md](../docs/face-designer.md), "Material and edges";
+([../docs/face-designer.md](../docs/face-designer.md), "Material, colour and edges";
 decision 94 in [../docs/architecture.md](../docs/architecture.md#key-decisions-log));
 and the roll screen's `rollState` has a `preparing` value, the "Preparing the
 dice" plate centred over the tray — title, why, an estimated bar and the time

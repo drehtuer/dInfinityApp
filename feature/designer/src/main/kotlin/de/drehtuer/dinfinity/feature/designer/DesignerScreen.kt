@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
@@ -516,7 +517,8 @@ private fun FaceCanvas(
   // The guide is ink that reads on the *paper*, not on the page: in the
   // page's own ink it was a pale grey on a dark theme, which on white paper is
   // nothing at all — and a guide nobody can see is a button that does nothing.
-  val guideColour = guideOn(PAPER)
+  val paper = Color(state.bodyArgb)
+  val guideColour = guideOn(paper)
   val edge = MaterialTheme.colorScheme.outline
 
   Canvas(
@@ -552,11 +554,11 @@ private fun FaceCanvas(
   ) {
     val face = Path().apply { follow(outline, size.width, size.height) }
     clipPath(face) {
-      drawRect(color = PAPER)
+      drawRect(color = paper)
       state.guide.forEach { mark -> drawGuide(mark, guideColour) }
-      state.face.marks.forEach { mark -> drawMark(mark) }
+      state.face.marks.forEach { mark -> drawMark(mark, paper) }
       if (drawing.size > 1) {
-        drawStroke(Stroke(drawing, state.colorArgb, state.nib.width, state.nib.erases))
+        drawStroke(Stroke(drawing, state.colorArgb, state.nib.width, state.nib.erases), paper)
       }
     }
   }
@@ -847,7 +849,7 @@ private fun Palette(
  * spaced rather than crowded.
  */
 @Composable
-private fun Swatch(
+internal fun Swatch(
   argb: Int,
   chosen: Boolean,
   label: String,
@@ -988,6 +990,7 @@ private fun FaceThumbnail(
   val edge = if (chosen) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
   val marks = draft.face(cell).marks
   val outline = draft.outline
+  val paper = Color(draft.shownFinish.colorArgb)
   Column(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -997,7 +1000,7 @@ private fun FaceThumbnail(
         .semantics(mergeDescendants = true) { contentDescription = name }
         .testTag(DesignerTestTags.faceOf(cell)),
   ) {
-    Canvas(modifier = Modifier.size(THUMBNAIL).border(Modernist.rule, edge)) { drawFace(outline, marks) }
+    Canvas(modifier = Modifier.size(THUMBNAIL).border(Modernist.rule, edge)) { drawFace(outline, marks, paper) }
     Text(
       text = label,
       style = MaterialTheme.typography.labelSmall,
@@ -1056,10 +1059,11 @@ private fun inkOf(nib: Nib): Float =
 private const val GUIDE_ALPHA = 0.35f
 
 /**
- * The paper every face is drawn on, on the canvas, in the strip and on the
- * Solid tab alike.
+ * The paper a face is drawn on when nothing says what colour the die is —
+ * which is only ever a drawing helper called without one: the screen always
+ * draws on the die's own body colour.
  */
-internal val PAPER: Color = Color.White
+internal val PAPER: Color = Color(DieMaterial.DEFAULT_COLOR_ARGB)
 
 /**
  * The guide's colour on [paper]: black or white, whichever reads on it
@@ -1089,7 +1093,7 @@ private val SWATCH = 26.dp
 private val THUMBNAIL = 52.dp
 
 /** The twelve the design shows (`design/dInfinity.dc.html`, option `4c`). */
-private val PRESETS =
+internal val PRESETS =
   listOf(
     0xFF000000,
     0xFFFFFFFF,
@@ -1144,6 +1148,11 @@ object DesignerTestTags {
   const val MATERIAL: String = "designer:material"
   const val SWATCH: String = "designer:material:swatch"
   const val FINISH_NOTE: String = "designer:finish:note"
+  const val MORE_BODY_COLOURS: String = "designer:body:more"
+  const val BODY_HEX: String = "designer:body:hex"
+
+  /** The colour picker the die's body colour is chosen in, apart from the ink's. */
+  val BODY_PICKER: ColourPickerTags = ColourPickerTags("designer:body:picker")
 
   /**
    * The shared colour picker, and the six controls in it.
@@ -1163,6 +1172,8 @@ object DesignerTestTags {
   fun stampSizeOf(size: StampSize): String = "designer:stamp:${size.name.lowercase()}"
 
   fun colourOf(argb: Int): String = "designer:colour:$argb"
+
+  fun bodyOf(argb: Int): String = "designer:body:$argb"
 
   fun faceOf(cell: Int): String = "designer:face:$cell"
 

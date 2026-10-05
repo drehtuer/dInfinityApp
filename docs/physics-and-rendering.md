@@ -91,7 +91,7 @@ Every die is a **convex** rigid body:
   16 mm die), so they tumble instead of catching on the floor. **The share is
   each die's own**: a set may ask for 1.5 % to 12 % with `edge_rounding`
   (`docs/dice-sets.md`), and the face designer's **Edges** control writes it
-  (`docs/face-designer.md`, "Material and edges"; decision 94). It is Jolt's
+  (`docs/face-designer.md`, "Material, colour and edges"; decision 94). It is Jolt's
   *convex radius*: the hull's face planes are pulled in by it and the smaller
   solid is grown back out by a ball of the same size, so the die that collides
   has every edge a strip of a cylinder and every corner a patch of a sphere.

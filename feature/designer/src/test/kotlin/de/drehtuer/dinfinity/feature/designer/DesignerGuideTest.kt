@@ -12,7 +12,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performScrollTo
 import de.drehtuer.dinfinity.core.model.Contrast
 import de.drehtuer.dinfinity.core.model.DieShape
-import de.drehtuer.dinfinity.designer.PaperInk
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -50,12 +49,13 @@ class DesignerGuideTest {
       MaterialTheme(colorScheme = darkColorScheme()) { DesignerScreen(presenter = presenter) }
     }
 
-    val shown = strongestInkOnPaper(compose.onNodeWithTag(DesignerTestTags.CANVAS).captureToImage())
+    val paper = presenter.state.bodyArgb
+    val shown = strongestInkOnPaper(compose.onNodeWithTag(DesignerTestTags.CANVAS).captureToImage(), paper)
     // Through the presenter rather than a tap: scrolling down to the switch
     // would scroll the canvas out of the picture taken of it.
     presenter.showGuide(false)
     compose.waitForIdle()
-    val hidden = strongestInkOnPaper(compose.onNodeWithTag(DesignerTestTags.CANVAS).captureToImage())
+    val hidden = strongestInkOnPaper(compose.onNodeWithTag(DesignerTestTags.CANVAS).captureToImage(), paper)
 
     assertTrue("the guide is all but invisible on the paper: contrast $shown", shown >= GUIDE_CONTRAST)
     assertEquals("the hidden guide left something behind", 1.0, hidden, 0.01)
@@ -70,15 +70,18 @@ class DesignerGuideTest {
 
   /**
    * The greatest contrast any pixel in the middle half of [image] has against
-   * the white paper — the canvas's edge and its rule are left out, because
+   * the [paper] — the canvas's edge and its rule are left out, because
    * they are drawn in the page's colours and say nothing about the paper.
    */
-  private fun strongestInkOnPaper(image: ImageBitmap): Double {
+  private fun strongestInkOnPaper(
+    image: ImageBitmap,
+    paper: Int,
+  ): Double {
     val pixels = image.toPixelMap()
     var strongest = 1.0
     for (y in image.height / 4 until image.height * 3 / 4) {
       for (x in image.width / 4 until image.width * 3 / 4) {
-        strongest = maxOf(strongest, Contrast.ratio(pixels[x, y].toArgb(), PaperInk.WHITE))
+        strongest = maxOf(strongest, Contrast.ratio(pixels[x, y].toArgb(), paper))
       }
     }
     return strongest

@@ -284,9 +284,15 @@ data class DesignerState(
   /**
    * What the Material menu says the die is made of, or null for **Custom** —
    * a die copied from a set whose numbers are none of the names
-   * (`docs/face-designer.md`, "Material and edges").
+   * (`docs/face-designer.md`, "Material, colour and edges").
    */
   val preset: MaterialPreset? get() = MaterialPreset.of(draft.shownFinish)
+
+  /**
+   * The die's body colour: the paper every face is drawn on, here as on the
+   * tray (`docs/face-designer.md`, "Material, colour and edges").
+   */
+  val bodyArgb: Int get() = draft.shownFinish.colorArgb
 
   /** Which step of the Edges control the die is on, or null for a rounding none of them is. */
   val roundness: Roundness? get() = Roundness.of(draft.shownFinish.edgeRounding)
@@ -681,7 +687,7 @@ class DesignerPresenter(
 
   /**
    * A name was chosen in the Material menu (`docs/face-designer.md`,
-   * "Material and edges").
+   * "Material, colour and edges").
    *
    * What the die is made of changes and how round it is does not, and the
    * draft is written down at once like a stroke is: it is part of the
@@ -694,6 +700,15 @@ class DesignerPresenter(
   /** A step of the Edges control was chosen. What the die is made of stays. */
   fun rounded(roundness: Roundness) {
     finish(state.draft.shownFinish.rounded(roundness))
+  }
+
+  /**
+   * A body colour was chosen. What the die is made of and how round it is
+   * stay; the numbers its undrawn faces are printed in follow, so they read
+   * on it ([DieFinish.coloured]).
+   */
+  fun coloured(argb: Int) {
+    finish(state.draft.shownFinish.coloured(argb))
   }
 
   private fun finish(finish: DieFinish) {

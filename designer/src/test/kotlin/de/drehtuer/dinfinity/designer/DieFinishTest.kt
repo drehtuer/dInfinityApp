@@ -8,7 +8,7 @@ import org.junit.Test
 
 /**
  * The face designer's Material menu and Edges control, as numbers
- * (`docs/face-designer.md`, "Material and edges").
+ * (`docs/face-designer.md`, "Material, colour and edges").
  */
 class DieFinishTest {
   @Test
@@ -84,7 +84,7 @@ class DieFinishTest {
         .rounded(Roundness.Rounded)
         .on(heavy)
 
-    assertEquals(0x11223344, metal.colorArgb)
+    assertEquals("the colour is the finish's own now", DieMaterial.DEFAULT_COLOR_ARGB, metal.colorArgb)
     assertEquals(20.0, metal.sizeMm, 0.0)
     assertEquals(3.0, metal.density, 0.0)
     assertEquals(0.0, metal.translucency, 0.0)
@@ -116,5 +116,33 @@ class DieFinishTest {
     // step or a preset into "Custom".
     assertEquals(Roundness.Rounded, Roundness.of("0.06".toDouble()))
     assertEquals(MaterialPreset.Resin, MaterialPreset.of(DieFinish(0.15, 0.0, "60.0".toDouble() / 100, 0.03)))
+  }
+
+  @Test
+  fun `a colour is chosen whole, opaque, with numbers that read on it`() {
+    val glass = DieFinish.STANDARD.madeOf(MaterialPreset.Glass).rounded(Roundness.Rounded)
+
+    val navy = glass.coloured(0x001A237E)
+    val bone = navy.coloured(DieMaterial.DEFAULT_COLOR_ARGB)
+
+    assertEquals("the alpha a colour came with is not the die's", 0xFF1A237E.toInt(), navy.colorArgb)
+    assertEquals(0xFFFFFFFF.toInt(), navy.numberColorArgb)
+    assertEquals(DieMaterial.DEFAULT_NUMBER_COLOR_ARGB, bone.numberColorArgb)
+    assertEquals(
+      "the material and the edges stay",
+      glass.copy(colorArgb = navy.colorArgb, numberColorArgb = navy.numberColorArgb),
+      navy,
+    )
+  }
+
+  @Test
+  fun `a finish carries its colours onto a material and reads them back off one`() {
+    val red = DieFinish.STANDARD.coloured(0xFFEC3013.toInt())
+
+    val material = red.on(DieMaterial(sizeMm = 20.0))
+
+    assertEquals(0xFFEC3013.toInt(), material.colorArgb)
+    assertEquals(red, DieFinish.of(material))
+    assertEquals(20.0, material.sizeMm, 0.0)
   }
 }

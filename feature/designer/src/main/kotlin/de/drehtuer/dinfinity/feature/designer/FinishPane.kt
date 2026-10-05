@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,10 +36,11 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import de.drehtuer.dinfinity.core.model.DieMaterial
+import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.DieFinish
 import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.designer.Roundness
+import de.drehtuer.dinfinity.ui.common.ColourPicker
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.SectionKicker
@@ -47,7 +50,7 @@ import kotlin.math.roundToInt
 
 /**
  * What the die is made of and how round its edges are
- * (`docs/face-designer.md`, "Material and edges"; `design/dInfinityPhone.dc.html`,
+ * (`docs/face-designer.md`, "Material, colour and edges"; `design/dInfinityPhone.dc.html`,
  * the designer's Solid tab).
  *
  * On the Solid tab, under the turning die, because both are about the die in
@@ -73,6 +76,8 @@ internal fun FinishPane(
       Swatch(state.draft.shownFinish)
       MaterialMenu(state.preset, presenter::madeOf, Modifier.weight(1f))
     }
+    SectionKicker(text = stringResource(R.string.designer_body))
+    BodyColours(state, presenter)
     SectionKicker(text = stringResource(R.string.designer_edges))
     SegmentedControl(
       options = Roundness.entries.toList<Roundness?>(),
@@ -95,6 +100,63 @@ internal fun FinishPane(
       style = MaterialTheme.typography.labelSmall,
       color = Ink.muted,
       modifier = Modifier.testTag(DesignerTestTags.FINISH_NOTE),
+    )
+  }
+}
+
+/**
+ * The die's body colour (`docs/face-designer.md`, "Material, colour and
+ * edges"): the twelve the pen offers, and the same picker past them — the
+ * one idiom this screen has for choosing a colour.
+ *
+ * Its own row, apart from the ink's, because it is a different question: the
+ * ink is what the next stroke is drawn in, the body is what every face is
+ * drawn *on* and what shows at the rounded edges, where no face reaches.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun BodyColours(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  var picking by remember { mutableStateOf(false) }
+  FlowRow(
+    horizontalArrangement = Arrangement.spacedBy(Modernist.x1),
+    verticalArrangement = Arrangement.spacedBy(Modernist.x1),
+  ) {
+    PRESETS.forEach { argb ->
+      Swatch(
+        argb = argb,
+        chosen = state.bodyArgb == argb,
+        label = stringResource(R.string.designer_body_colour, Hex.of(argb)),
+        tag = DesignerTestTags.bodyOf(argb),
+        onChoose = { presenter.coloured(argb) },
+      )
+    }
+    Swatch(
+      argb = state.bodyArgb,
+      chosen = state.bodyArgb !in PRESETS,
+      label = stringResource(R.string.designer_body_more, Hex.of(state.bodyArgb)),
+      tag = DesignerTestTags.MORE_BODY_COLOURS,
+      onChoose = { picking = true },
+    )
+    Text(
+      text = Hex.of(state.bodyArgb),
+      style = MaterialTheme.typography.labelSmall,
+      color = Ink.muted,
+      modifier = Modifier.testTag(DesignerTestTags.BODY_HEX),
+    )
+  }
+  if (picking) {
+    ColourPicker(
+      start = state.bodyArgb,
+      title = stringResource(R.string.designer_body_title),
+      tags = DesignerTestTags.BODY_PICKER,
+      onDismiss = { picking = false },
+      onChosen = {
+        presenter.coloured(it)
+        picking = false
+      },
     )
   }
 }
@@ -159,7 +221,7 @@ private fun MaterialMenu(
 @Composable
 private fun Swatch(finish: DieFinish) {
   val look = SwatchLook.of(finish)
-  val body = Color(DieMaterial.DEFAULT_COLOR_ARGB)
+  val body = Color(finish.colorArgb)
   val paper = MaterialTheme.colorScheme.onBackground
   val ground = MaterialTheme.colorScheme.background
   Canvas(

@@ -632,14 +632,18 @@ A stamp's dots are written the way every other mark's are, every ring end to
 end, with the lengths beside them; a stamp whose lengths do not add up to the
 dots it carries is not a stamp this wrote and is dropped.
 
-**A die's material and edges are a `finish` beside the faces** — `roughness`,
-`metallic`, `translucency` (a fraction) and `edge_rounding` — written once
-somebody has chosen either ("Material and edges"). The format was not bumped
-for it either: a draft without one reads as it always did, and a build that
-predates it drops it and keeps the drawing. All four or none: a finish with a
-field missing or not a number is not one this wrote and is dropped, and what
-does read is clamped to the set file's limits, so a draft edited on disk
-cannot hand the package a value the validator would have to bring back.
+**A die's material, colour and edges are a `finish` beside the faces** —
+`roughness`, `metallic`, `translucency` (a fraction), `edge_rounding`, `color`
+and `number_color` (ARGB integers, as a mark's ink is) — written once somebody
+has chosen any of them ("Material, colour and edges"). The format was not
+bumped for it either: a draft without one reads as it always did, and a build
+that predates it drops it and keeps the drawing. The four numbers are all or
+none: a finish with one missing or not a number is not one this wrote and is
+dropped. The two colours are optional, because a finish written before there
+was a colour to choose has none — and the die it described was the built-in
+bone, which is what it reads as. What does read is clamped to the set file's
+limits, so a draft edited on disk cannot hand the package a value the
+validator would have to bring back.
 
 **It was bumped once, to 2, when the kites were split** — a change of
 *meaning* rather than of shape, which is the case the rule above is for. Up to
@@ -805,17 +809,17 @@ the way round the Solid tab showed it. The kites are no exception: each
 trapezohedron's canvas outline is its own face, so the best fit this tab draws
 and the size the exporter paints are the same number ("Export details").
 
-### Material and edges
+### Material, colour and edges
 
 > **Design:** the **Material** menu and the **Edges** control are under the
 > turning die on the Solid tab of the
 > [phone prototype](../design/dInfinityPhone.dc.html) (`design/`).
 
-Two controls for the die rather than for a face, so they are on the Solid tab,
-under the die in the hand: what it is made of, and how round its edges are.
-Both belong to the die being drawn — another base die has its own — and both
-are written into its draft the moment they change, like a stroke
-(`docs/architecture.md`, decision 94).
+Three controls for the die rather than for a face, so they are on the Solid
+tab, under the die in the hand: what it is made of, what colour it is, and how
+round its edges are. All three belong to the die being drawn — another base die
+has its own — and are written into its draft the moment they change, like a
+stroke (`docs/architecture.md`, decisions 94 and 97).
 
 **Material** is a menu of names, because "glass" is what somebody wants and
 "translucency 100 %, roughness 0.05" is how it is made. Each name sets the
@@ -839,6 +843,20 @@ body to be clear. **Custom** is shown when the die is made of none of them — a
 die copied from somebody else's set — and it stays as it was until a name is
 chosen; choosing one keeps the die's rounding.
 
+**Colour** is the die's body colour: the twelve colours the pen offers and,
+past them, the same picker the pen's colour opens (`4c`) — this screen has one
+way of choosing a colour. It is what every face is drawn *on*, on the canvas,
+in the strip and on the turning die alike, and what the tray shows between the
+marks of a drawing and at the edges. **With rounded edges a face no longer
+fills its side**: the bends and the corners belong to no face's cell and are
+the body colour, so a die meant to be red has to be a red die — a bone die with
+every face bucket-filled red has bone-coloured edges. The colour is opaque
+whatever is chosen (how much light goes through is the material's), and the
+numbers the faces left undrawn are printed in whatever reads on it — the
+built-in near-black on a light body and white on a dark one (`PaperInk`) —
+because a black die printed in black is a die nobody can read. The guide under
+the drawing follows the same rule ("The guide").
+
 **Edges** is four steps, not a slider: **Sharp**, **Standard**, **Rounded** and
 **Very round**, 1.5 %, 3 %, 6 % and 12 % of the die's size — the least a set
 file may ask for, what every die has always had, twice that, and the most a
@@ -858,10 +876,11 @@ it as light goes through the die — with a glint as bright as metal and as
 sharp as polish would give it. TalkBack is told the material by the menu
 ("Material: Glass") and the step by the control; the swatch is silent.
 
-**What goes into the package.** A die whose material or edges somebody chose
-carries all four values as its own per-die keys — `roughness`, `metallic`,
-`translucency` and `edge_rounding` — over the package's `[defaults]`, written
-whole even where one equals the default, so a die made plastic on purpose
+**What goes into the package.** A die whose material, colour or edges somebody
+chose carries all six values as its own per-die keys — `color`,
+`number_color`, `roughness`, `metallic`, `translucency` and `edge_rounding` —
+over the package's `[defaults]`, written whole even where one equals the
+default, so a die made plastic on purpose
 stays plastic when the details screen later makes the rest of the set
 translucent. A die nobody chose for carries what it was copied as when that is
 anything but the standard material, so what the menu said before anybody
@@ -945,7 +964,7 @@ a named set holds what was put into it on purpose.
   faces are in the wrong places on somebody else's phone.
 - Background of each cell is transparent, so the die's body colour is what
   shows between the marks. What the die is made of and how round it is are
-  its own when the Solid tab's controls set them ("Material and edges").
+  its own when the Solid tab's controls set them ("Material, colour and edges").
   **A cell nobody drew on is not written at all**, and that is what decides
   what a face carries on the tray: **a drawn face carries the drawing and no
   number, and a face left undrawn carries its printed number** — so a die

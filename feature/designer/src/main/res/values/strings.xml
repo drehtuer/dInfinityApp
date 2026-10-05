@@ -60,6 +60,14 @@
   <string name="designer_material_stone">Stone</string>
   <!-- Shown when the die's material is none of the names: one copied from somebody else's set. -->
   <string name="designer_material_custom">Custom</string>
+  <!-- The kicker over the die's body colour: what every face is drawn on and what shows at the rounded edges. -->
+  <string name="designer_body">Colour</string>
+  <!-- What a screen reader says for one of the body colours. %1$s is the colour as hex, like "#EC3013". -->
+  <string name="designer_body_colour">Body colour %1$s</string>
+  <!-- The swatch after the twelve, which opens the picker for the body colour. %1$s is the colour now. -->
+  <string name="designer_body_more">More body colours, now %1$s</string>
+  <!-- The title of the picker the body colour is chosen in. -->
+  <string name="designer_body_title">Colour of the die</string>
   <!-- The kicker over the choice of how round the die's edges are. -->
   <string name="designer_edges">Edges</string>
   <!-- How round the die's edges are, sharpest first. Short: four of them share one row. -->

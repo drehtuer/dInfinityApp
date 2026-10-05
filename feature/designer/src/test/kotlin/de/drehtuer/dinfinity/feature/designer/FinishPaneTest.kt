@@ -11,6 +11,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -28,7 +29,7 @@ import org.robolectric.RobolectricTestRunner
 
 /**
  * The Material menu and the Edges control on the Solid tab
- * (`docs/face-designer.md`, "Material and edges"; `design/dInfinityPhone.dc.html`).
+ * (`docs/face-designer.md`, "Material, colour and edges"; `design/dInfinityPhone.dc.html`).
  */
 @RunWith(RobolectricTestRunner::class)
 class FinishPaneTest {
@@ -112,6 +113,28 @@ class FinishPaneTest {
   }
 
   @Test
+  fun `a body colour is chosen from the twelve, and says which it is`() {
+    val presenter = show(d6)
+    solid()
+
+    compose.onNodeWithTag(DesignerTestTags.bodyOf(GREEN)).performScrollTo().performClick()
+
+    assertEquals(GREEN, presenter.state.bodyArgb)
+    compose.onNodeWithTag(DesignerTestTags.BODY_HEX).performScrollTo().assertTextContains("#1F5E3A")
+    compose.onNodeWithContentDescription("Body colour #1F5E3A").assertExists()
+  }
+
+  @Test
+  fun `a body colour past the twelve is picked in the shared picker`() {
+    show(d6)
+    solid()
+
+    compose.onNodeWithTag(DesignerTestTags.MORE_BODY_COLOURS).performScrollTo().performClick()
+
+    compose.onNodeWithTag(DesignerTestTags.BODY_PICKER.sheet).assertExists()
+  }
+
+  @Test
   fun `the swatch is silent, because the menu says it in words`() {
     show(d6)
     solid()
@@ -131,4 +154,9 @@ class FinishPaneTest {
   }
 
   private val d6 = BuiltinDiceSet.set.dice.first { it.shape == DieShape.Cube }
+
+  private companion object {
+    /** One of the twelve. */
+    const val GREEN: Int = 0xFF1F5E3A.toInt()
+  }
 }

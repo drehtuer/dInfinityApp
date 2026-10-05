@@ -89,7 +89,7 @@ object DraftFile {
 
   /**
    * What the die is made of and how round it is, as four named numbers
-   * (`docs/face-designer.md`, "Material and edges").
+   * (`docs/face-designer.md`, "Material, colour and edges").
    *
    * A field of its own beside the faces rather than a new format: a draft
    * without it reads exactly as before, and a build that predates it drops it
@@ -102,6 +102,8 @@ object DraftFile {
         METALLIC to JsonPrimitive(finish.metallic),
         TRANSLUCENCY to JsonPrimitive(finish.translucency),
         EDGE_ROUNDING to JsonPrimitive(finish.edgeRounding),
+        COLOUR to JsonPrimitive(finish.colorArgb),
+        NUMBER_COLOUR to JsonPrimitive(finish.numberColorArgb),
       ),
     )
 
@@ -245,6 +247,7 @@ private const val ROUGHNESS = "roughness"
 private const val METALLIC = "metallic"
 private const val TRANSLUCENCY = "translucency"
 private const val EDGE_ROUNDING = "edge_rounding"
+private const val NUMBER_COLOUR = "number_color"
 
 // Where each of the four is in the list `finishFrom` reads them into.
 private const val FINISH_ROUGHNESS = 0
@@ -256,11 +259,13 @@ private const val FINISH_EDGE_ROUNDING = 3
  * The die's finish, or null when the draft carries none or one that does not
  * read.
  *
- * All four or nothing: a finish with a field missing is not one this wrote,
- * and filling the gap with a default would be choosing a material on
- * somebody's behalf. What does read is clamped to the set file's limits
- * ([DieFinish.of]), so a draft edited on disk cannot hand the package a value
- * the validator would have to bring back.
+ * All four numbers or nothing: a finish with one missing is not one this
+ * wrote, and filling the gap with a default would be choosing a material on
+ * somebody's behalf. The two colours are another matter: a finish written
+ * before there was a colour to choose has none, and the die it describes was
+ * the built-in colour — which is what it reads as. What does read is clamped
+ * to the set file's limits ([DieFinish.of]), so a draft edited on disk cannot
+ * hand the package a value the validator would have to bring back.
  */
 private fun finishFrom(element: JsonElement?): DieFinish? {
   val finish = element as? JsonObject ?: return null
@@ -269,12 +274,16 @@ private fun finishFrom(element: JsonElement?): DieFinish? {
       (finish[key] as? JsonPrimitive)?.content?.toDoubleOrNull()?.takeIf(Double::isFinite)
     }
   val read = numbers.filterNotNull().takeIf { it.size == numbers.size } ?: return null
+
+  fun colour(key: String): Int? = (finish[key] as? JsonPrimitive)?.content?.toIntOrNull()
   return DieFinish.of(
     DieMaterial(
       roughness = read[FINISH_ROUGHNESS],
       metallic = read[FINISH_METALLIC],
       translucency = read[FINISH_TRANSLUCENCY],
       edgeRounding = read[FINISH_EDGE_ROUNDING],
+      colorArgb = colour(COLOUR) ?: DieMaterial.DEFAULT_COLOR_ARGB,
+      numberColorArgb = colour(NUMBER_COLOUR) ?: DieMaterial.DEFAULT_NUMBER_COLOR_ARGB,
     ),
   )
 }

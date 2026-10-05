@@ -190,11 +190,11 @@ of** (`docs/tables.md`, "Your own photo"). Beside it there can be any number of
 - Removing a named set removes its records with its package — a package whose
   records stayed would be built straight back. Removing "My dice" removes the
   package alone, as it always has.
-- **A die drawn in the designer may carry a material and a rounding of its
-  own** — `roughness`, `metallic`, `translucency` and `edge_rounding` as
-  per-die keys over `[defaults]` — when the Solid tab's **Material** menu or
-  **Edges** control was used on it, or when it was copied from a set whose die
-  was not the standard material (`docs/face-designer.md`, "Material and
+- **A die drawn in the designer may carry a material, a colour and a rounding
+  of its own** — `color`, `number_color`, `roughness`, `metallic`,
+  `translucency` and `edge_rounding` as per-die keys over `[defaults]` — when
+  the designer's **Material**, **Colour** or **Edges** control was used on it, or when it was copied from a set whose die
+  was not the standard material (`docs/face-designer.md`, "Material, colour and
   edges"). Such a die keeps its own translucency when the details screen's
   stepper moves the rest of the set's, and the block's range says so.
 

@@ -4,15 +4,18 @@ import de.drehtuer.dinfinity.core.model.DieMaterial
 import kotlin.math.abs
 
 /**
- * What a die is made of and how round it is, as the face designer sets it
- * (`docs/face-designer.md`, "Material and edges"; `docs/architecture.md`,
- * decision 94).
+ * What a die is made of, what colour it is and how round it is, as the face
+ * designer sets it (`docs/face-designer.md`, "Material, colour and edges";
+ * `docs/architecture.md`, decisions 94 and 97).
  *
- * Four fields of a [DieMaterial] and no others. The colour is not here: a
- * drawing is meant to work on a black die and on a white one, so a drawn die
- * takes the body colour of the package it is in. Weight, translucency's
- * stepper and size are the details screen's, for every die of the set at
- * once; this is one die's.
+ * Six fields of a [DieMaterial] and no others. **The colour is here**: with
+ * rounded edges a face no longer fills its side, and what shows at the edges
+ * and corners — and through every clear part of a drawing — is the body
+ * colour, so a die drawn to be red has to *be* red rather than bucket-filled
+ * red on a bone die. [numberColorArgb] goes with it: it is what the faces left
+ * undrawn are printed in, and it is chosen to read on [colorArgb]
+ * ([coloured]). Weight, translucency's stepper and size are the details
+ * screen's, for every die of the set at once; this is one die's.
  *
  * [translucency] is here although the details screen also sets it, because a
  * glass die *is* its translucency — a "Glass" that left it at nought would be
@@ -29,6 +32,8 @@ data class DieFinish(
   val metallic: Double,
   val translucency: Double,
   val edgeRounding: Double,
+  val colorArgb: Int = DieMaterial.DEFAULT_COLOR_ARGB,
+  val numberColorArgb: Int = DieMaterial.DEFAULT_NUMBER_COLOR_ARGB,
 ) {
   /** [material] with this finish in place of its own, clamped to the format's limits. */
   fun on(material: DieMaterial): DieMaterial =
@@ -38,7 +43,21 @@ data class DieFinish(
         metallic = metallic,
         translucency = translucency,
         edgeRounding = edgeRounding,
+        colorArgb = colorArgb,
+        numberColorArgb = numberColorArgb,
       ).clampedToLimits()
+
+  /**
+   * The same finish in the body colour [argb], opaque, with its numbers
+   * printed in whatever reads on it: the built-in near-black on a light body
+   * and white on a dark one ([PaperInk]). What it is made of and how round it
+   * is stay.
+   */
+  fun coloured(argb: Int): DieFinish {
+    val body = argb or OPAQUE
+    val ink = if (PaperInk.on(body) == PaperInk.BLACK) DieMaterial.DEFAULT_NUMBER_COLOR_ARGB else PaperInk.WHITE
+    return copy(colorArgb = body, numberColorArgb = ink)
+  }
 
   /** The same finish made of [preset], with its rounding kept. */
   fun madeOf(preset: MaterialPreset): DieFinish =
@@ -56,8 +75,13 @@ data class DieFinish(
         metallic = clamped.metallic,
         translucency = clamped.translucency,
         edgeRounding = clamped.edgeRounding,
+        colorArgb = clamped.colorArgb,
+        numberColorArgb = clamped.numberColorArgb,
       )
     }
+
+    /** Every bit of the alpha byte: a die's body is never see-through by its colour. */
+    private const val OPAQUE: Int = 0xFF shl 24
 
     /** The finish a die has when nobody has said anything: plastic, rounded as every die always was. */
     val STANDARD: DieFinish = of(DieMaterial())
@@ -66,7 +90,7 @@ data class DieFinish(
 
 /**
  * What the face designer's **Material** menu offers (`docs/face-designer.md`,
- * "Material and edges").
+ * "Material, colour and edges").
  *
  * A short list of names rather than three sliders, because "glass" is a thing
  * somebody wants and "translucency 1.0, roughness 0.05" is how it is made.
@@ -118,7 +142,7 @@ enum class MaterialPreset(
 
 /**
  * How round the face designer makes a die's edges (`docs/face-designer.md`,
- * "Material and edges"; `docs/architecture.md`, decision 94).
+ * "Material, colour and edges"; `docs/architecture.md`, decision 94).
  *
  * **Four steps rather than a slider.** The rounding is a physical property —
  * the solver's convex radius, which the renderer draws — so every value on

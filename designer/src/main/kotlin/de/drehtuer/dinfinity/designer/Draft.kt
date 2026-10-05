@@ -373,7 +373,7 @@ data class FaceDrawing(
  * somebody has drawn one face of is one entry, not twenty.
  *
  * @param finish what the die is made of and how round it is, once somebody
- *   has chosen (`docs/face-designer.md`, "Material and edges"). Null until
+ *   has chosen (`docs/face-designer.md`, "Material, colour and edges"). Null until
  *   then, and the die is then what it was copied as ([shownFinish]).
  */
 data class Draft(
@@ -396,7 +396,7 @@ data class Draft(
    *
    * A die somebody made glass and drew nothing on is not blank: it is a die
    * with printed numbers and a material of its own, and **Roll it** throws it
-   * glass (`docs/face-designer.md`, "Material and edges").
+   * glass (`docs/face-designer.md`, "Material, colour and edges").
    */
   val blank: Boolean get() = finish == null && faces.values.all(FaceDrawing::blank)
 

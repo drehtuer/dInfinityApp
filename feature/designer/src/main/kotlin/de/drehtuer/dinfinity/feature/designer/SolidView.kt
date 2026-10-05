@@ -56,15 +56,11 @@ internal fun SolidPane(
   val stage = state.stage
   val colours =
     SolidColours(
-      // **The die's paper, not the screen's.** The flat editor draws every
-      // face on white (`DesignerScreen`'s canvas), so a solid drawn on the
-      // theme's surface is the same drawing in two different colours — and on
-      // a dark page it is black ink on a dark grey face, which is a numeral
-      // nobody can read. A die is a white thing in a room, whichever page it
-      // is being drawn on. The question of whether the *canvas* should follow
-      // the theme is open either way (`docs/design-handover.md`); what this
-      // fixes is the two of them disagreeing.
-      paper = PAPER,
+      // **The die's paper, not the screen's**: its own body colour, which
+      // the flat editor draws every face on too. A solid drawn on the theme's
+      // surface was the same drawing in two colours depending on the tab — and
+      // on a dark page black ink on a dark grey face.
+      paper = Color(state.bodyArgb),
       // And a face turned away from the lamp is its paper in shadow, which is
       // darker rather than the colour of the page's ink.
       shade = SHADE,
