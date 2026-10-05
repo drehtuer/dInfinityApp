@@ -1980,7 +1980,7 @@ sequenceDiagram
     Note over Engine: MaterialCache hit: nothing is reported
     Engine->>Progress: started(variant), on a miss only
     Progress-->>Screen: shaders = Compiling (StateFlow)
-    Note over Screen: plate up; bar follows the main thread's frames
+    Note over Screen: plate up, bar follows the main thread's frames
     Engine->>Engine: libfilamat compiles
     Engine->>Progress: finished(variant, compiled)
     Progress-->>Screen: shaders = Idle
