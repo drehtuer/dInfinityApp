@@ -431,13 +431,35 @@ dice look right. Wrong numbers become the new numbers in the docs.
 
 ## Coverage
 
-Branch coverage is **~71.4 %** against a floor of 62; about seven in ten missed
+Branch coverage is **~75.4 %** against a floor of 62; about seven in ten missed
 branches are Compose skip branches a single-pass test reaches one side of.
 What helps: extract decisions from draw lambdas, test shared components on
 their own, add recomposition tests. Figures go in every PR description.
 
 - [ ] Should the floor track the drift? A question for a person — moving a
       floor to make a check pass is what `.claude/CLAUDE.md` forbids
+
+Found by the test pass of 2026-10-05, each left as it was so no test locks a
+wrong answer in:
+
+- [ ] **`SafeExtractor` lets a tar device or FIFO entry through** as an empty
+      file: `TarArchiveEntry.isFile` is true for anything not a directory, so
+      the documented refusal of "a link or a device" never fires for them.
+      Not exploitable (the extractor writes the bytes itself), but the
+      validator should refuse anything but a regular file or a directory
+- [ ] `ReferencedFile.staysInsidePackage` refuses a path with an empty segment,
+      `textures/` included — check a zip's directory entries never reach it
+- [ ] `InstallSource.gitea` drops a `src/branch/<ref>/<folder>` subfolder and
+      installs from the repository root; GitHub and GitLab honour one. A
+      `blob/…` link on either becomes a subfolder named `blob/…`
+- [ ] `GraphMachine.redraw()` rebuilds the distribution with
+      `truncatedMass = 0`, so an exploding formula loses its tail after a tap
+      or a mode switch (nothing shows the value yet)
+- [ ] Dead code: `Solids.trapezohedronRadiusPerEdge`, `order(directions)` in
+      `Solids.kt`, `RollColour.argbs`, `SessionsState.active`, the public
+      getter of `RollMachine.cameFrom`, and the guards `GraphBars.of`'s
+      `tallest > 0.0` and `GraphMachine.redraw`'s `formula ?: return` that
+      cannot be false
 
 ## Open questions
 

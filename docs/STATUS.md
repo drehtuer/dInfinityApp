@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-04
+**Last updated:** 2026-10-05
 
 ## Where we are
 
@@ -118,8 +118,9 @@ of it in `docs/TODO.md` (4.1 and 5.6). The most useful three:
 - **The capacity rule barely bites**: the 100-body cap refuses long before the
   table's floor would (~241 dice).
 - Determinism holds across both ABIs; unproven across devices of one ABI.
-- **Coverage:** branch ~73.2 % against a floor of 62, function ~93.3 % against
-  85. Most missed branches are Compose skip branches.
+- **Coverage:** branch ~75.4 % against a floor of 62, function ~92.8 % against
+  85, after a pass that pruned about forty redundant tests and added two
+  hundred. Most missed branches are Compose skip branches.
 
 ## Decisions pending
 
