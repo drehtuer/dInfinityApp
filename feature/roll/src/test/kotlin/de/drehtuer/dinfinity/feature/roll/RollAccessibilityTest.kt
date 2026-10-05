@@ -1,28 +1,23 @@
 package de.drehtuer.dinfinity.feature.roll
 
-import android.view.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import de.drehtuer.dinfinity.core.model.DieNote
 import de.drehtuer.dinfinity.core.model.RollResult
 import de.drehtuer.dinfinity.core.model.RolledDie
 import de.drehtuer.dinfinity.core.model.RolledGroup
-import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.notation.PickableDie
 import de.drehtuer.dinfinity.core.notation.Sides
-import de.drehtuer.dinfinity.render.filament.Tray
-import de.drehtuer.dinfinity.render.filament.TrayView
-import de.drehtuer.dinfinity.render.headless.Renderer
-import de.drehtuer.dinfinity.render.headless.WatchedRoll
-import de.drehtuer.dinfinity.simulation.api.ShakeSample
-import de.drehtuer.dinfinity.simulation.api.SimulationOutcome
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
 import org.junit.Rule
@@ -47,6 +42,9 @@ import org.robolectric.RobolectricTestRunner
 class RollAccessibilityTest {
   @get:Rule
   val compose = createComposeRule()
+
+  @get:Rule
+  val shaking = ShakingHand()
 
   private val d6 = PickableDie("d6", Sides.Numeric(6))
   private val d20 = PickableDie("d20", Sides.Numeric(20))
@@ -144,6 +142,35 @@ class RollAccessibilityTest {
     )
   }
 
+  /**
+   * What the roll screen hands the tray to say, stage by stage. Which reading
+   * a state is, is `TrayReadingTest`'s; this is the half that turns it into
+   * words, and a stage with no words is a tray that falls silent mid-throw.
+   */
+  @Test
+  fun `the tray says what is on it, from empty through ready to rolling`() {
+    compose.setContent { RollScreen(presenter = rollPresenter(PendingTray(), LandingRolls(mapOf(0 to 0)))) }
+
+    tray().assertContentDescriptionEquals("Dice tray, empty")
+
+    typeFormula("3d6")
+    tray().assertContentDescriptionEquals("Dice tray, 3 dice ready to throw")
+
+    shake()
+    tray().assertContentDescriptionEquals("Dice tray, 3 dice rolling")
+  }
+
+  @Test
+  fun `a tray whose roll gave up says how many dice would not settle`() {
+    val tray = StallingTray(unsettled = listOf(1))
+    compose.setContent { RollScreen(presenter = rollPresenter(tray, LandingRolls(mapOf(0 to 0)))) }
+    typeFormula("2d6")
+
+    shake()
+
+    tray().assertContentDescriptionEquals("Dice tray, 1 die would not settle")
+  }
+
   @Test
   fun `the tray is not a silent rectangle`() {
     compose.setContent {
@@ -194,34 +221,17 @@ class RollAccessibilityTest {
       notes = notes,
     )
 
-  /** A tray that is handed a surface and does nothing with it. */
-  private class SilentTray : Tray {
-    override fun surfaceAvailable(
-      surface: Surface,
-      width: Int,
-      height: Int,
-    ) = Unit
-
-    override fun surfaceLost() = Unit
-
-    override fun roll(
-      start: (Renderer) -> WatchedRoll,
-      onCounted: (Map<Int, Int>) -> Unit,
-      onStalled: (List<Int>) -> Unit,
-      onSettled: (SimulationOutcome, List<ShakeSample>) -> Unit,
-    ) = Unit
-
-    override fun shake(sample: ShakeSample) = Unit
-
-    override fun table(
-      geometry: TableGeometry,
-      look: TableLook,
-    ) = Unit
-
-    override fun look(view: TrayView) = Unit
-
-    override fun clear() = Unit
-
-    override fun close() = Unit
+  /** Types a formula the way a player does: bring the drawer in, then type. */
+  private fun typeFormula(text: String) {
+    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
+    compose.onNodeWithTag(RollTestTags.FORMULA).performTextInput(text)
   }
+
+  /** Shakes the phone through the [TestHand] standing where the sensors would be. */
+  private fun shake() {
+    compose.runOnUiThread { shaking.hand.shake() }
+    compose.waitForIdle()
+  }
+
+  private fun tray() = compose.onNodeWithTag(RollTestTags.TRAY)
 }

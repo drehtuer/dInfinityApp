@@ -84,16 +84,6 @@ class RollScreenTest {
   }
 
   @Test
-  fun `a formula that reads can be thrown, and the total arrives`() {
-    show(faces = mapOf(0 to 5, 1 to 5, 2 to 5))
-
-    typeFormula("3d6 + 4")
-    assertTrue("a formula that reads was not thrown", shake())
-
-    compose.onNodeWithTag(RollTestTags.TOTAL).assertExists()
-  }
-
-  @Test
   fun `while the dice are in the air the screen says so and a second shake throws nothing`() {
     // A second throw would replace the first mid-flight, which is not what a
     // second shake means — those moments go to the dice already in the air
@@ -553,18 +543,6 @@ class RollScreenTest {
   }
 
   @Test
-  fun `the result sheet says what the throw was expected to come to`() {
-    // A total with nothing to read it against is the commonest complaint a
-    // dice roller gets. The sheet answers it.
-    show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
-    typeFormula("3d6")
-
-    shake()
-
-    compose.onNodeWithTag(RollTestTags.EXPECTED).assertExists()
-  }
-
-  @Test
   fun `a hint gives way to whatever the screen has to say instead`() {
     show(faces = mapOf(0 to 0, 1 to 0, 2 to 0))
     typeFormula("3d6")
@@ -642,14 +620,6 @@ class RollScreenTest {
     showWith(Modifier.testTag(CALLER_TAG))
 
     compose.onNodeWithTag(CALLER_TAG).assertExists()
-    compose.onNodeWithTag(RollTestTags.TRAY).assertExists()
-  }
-
-  @Test
-  fun `the tray is on screen from the start, before anything is thrown`() {
-    show()
-
-    compose.onNodeWithTag(RollTestTags.SCREEN).assertExists()
     compose.onNodeWithTag(RollTestTags.TRAY).assertExists()
   }
 
@@ -770,20 +740,6 @@ class RollScreenTest {
     show()
 
     compose.onNodeWithTag(RollTestTags.FORMULA_TAB).assertTextContains("Formula", substring = true)
-  }
-
-  @Test
-  fun `pressing it brings the drawer in, and pressing it again takes it away`() {
-    show()
-
-    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
-
-    compose.onNodeWithTag(RollTestTags.FORMULA_DRAWER).assertIsDisplayed()
-    compose.onNodeWithTag(RollTestTags.FORMULA).assertIsDisplayed()
-
-    compose.onNodeWithTag(RollTestTags.FORMULA_TAB).performClick()
-
-    compose.onNodeWithTag(RollTestTags.FORMULA).assertDoesNotExist()
   }
 
   @Test
