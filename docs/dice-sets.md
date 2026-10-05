@@ -42,7 +42,9 @@ A worked example of exactly this layout is in the repository at
 [`examples/`](../examples/) — one die on every catalogue shape, a `diceset.toml`
 whose comments say what each field is for and what it is limited to, and a
 blank atlas per shape cut to the grid below. It is the place to start, and
-[Authoring tips](#authoring-tips) says why.
+[Authoring tips](#authoring-tips) says why. Four finished sets to install and look at —
+marble with artwork on every face, steel, green resin and red glass — are in
+[`sample-sets/`](../sample-sets/), each as a folder and as a zip.
 
 ## `diceset.toml`
 

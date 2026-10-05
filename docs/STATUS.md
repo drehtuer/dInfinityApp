@@ -52,6 +52,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   update, or the first resin, glass or textured-table material — a
   "Preparing the dice" plate over the tray says why, with a bar timed by what
   the phone took last time (decision 95; seen working on the Pixel 10a).
+  Four sample sets to install — marble (artwork on every face, numbers cut
+  in by the app's own printing), steel, green resin and red glass — are in
+  `sample-sets/`, as folders and zips, each installed by a test on every
+  build.
   It reaches `main` when the owner likes it on the phone.
 
 ## Done

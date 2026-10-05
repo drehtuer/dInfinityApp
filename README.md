@@ -95,6 +95,8 @@ a tumble; everything else is real.
   optional face textures; install sets from GitHub, GitLab, Codeberg or any
   `https` link to an archive. [examples/](examples/) is a working set to copy:
   every shape, every field commented, blank atlases to draw on.
+  [sample-sets/](sample-sets/) has four finished ones to install — marble,
+  steel, green resin and red glass.
 - **Exchangeable tables** — swap the look of the dice tray (felt, wood, glass,
   your own photo) the same way you would swap a wallpaper. Felt and oak are
   drawn from real textures at real size; plain stays a flat colour. The tray's
@@ -159,6 +161,7 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/design-handover.md](docs/design-handover.md) | Where the app and the prototype still differ, and the questions each side is waiting on |
 | [design/README.md](design/README.md) | The prototype: what each file is, how to open it offline, how to keep it in step with `docs/` |
 | [examples/README.md](examples/README.md) | The worked dice set: a commented `diceset.toml` using every catalogue shape, and blank atlases to draw on |
+| [sample-sets/README.md](sample-sets/README.md) | Four finished sets to install from a file or a link — marble, steel, green resin, red glass — and how their artwork and archives are made and checked |
 
 ## Status
 

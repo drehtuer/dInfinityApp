@@ -127,6 +127,10 @@ and read here, and a seed gives the same result with the renderer on and off.
 
 ### 4.4 Dice sets — `feature/sets`
 
+- [ ] *Judge on the phone:* install the four `sample-sets/` from a file (the
+      zips) and from a link (their GitHub folders). Does marble read as stone
+      with its numbers cut in, steel as metal, green resin as half see-through
+      and red glass as clear? Does each refusal or note say something useful?
 - [ ] **Decide the built-in set's `size_mm`.** It is the width across the
       corners, so the built-in 16 mm d6 is a 9.2 mm cube weighing **0.9 g**
       against the design's 4.2 g. Something near `size_mm = 28` changes every
