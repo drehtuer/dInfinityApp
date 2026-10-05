@@ -1,13 +1,17 @@
 package de.drehtuer.dinfinity.feature.graph
 
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.performTouchInput
 import de.drehtuer.dinfinity.core.notation.DiceCatalog
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
@@ -73,6 +77,18 @@ class GraphScreenTest {
     show("2d6")
 
     compose.onNodeWithTag(GraphTestTags.PICKED).assertTextContains("Tap a bar", substring = true)
+  }
+
+  @Test
+  fun `a tapped bar is named under the chart, and said by the chart as well`() {
+    // The only way to the exact number for one total. `2d6`'s eleven bars
+    // share the width evenly, so the middle of the chart is the bar at 7.
+    show("2d6")
+
+    compose.onNodeWithTag(GraphTestTags.CHART).performTouchInput { click(center) }
+
+    compose.onNodeWithTag(GraphTestTags.PICKED).assertTextEquals("7: exactly 16.7 % · at least 58.3 %")
+    compose.onNodeWithTag(GraphTestTags.CHART).assertContentDescriptionContains("7 is selected.", substring = true)
   }
 
   @Test

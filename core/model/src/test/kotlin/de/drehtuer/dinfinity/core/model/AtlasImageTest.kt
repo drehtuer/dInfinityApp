@@ -22,6 +22,7 @@ class AtlasImageTest {
 
     assertTrue(short.message!!.contains("16 bytes"))
     assertFailsWith<IllegalArgumentException> { AtlasImage(0, 4, ByteArray(0)) }
+    assertFailsWith<IllegalArgumentException> { AtlasImage(4, 0, ByteArray(0)) }
   }
 
   @Test
@@ -29,6 +30,8 @@ class AtlasImageTest {
     val image = blank(4, 4)
 
     assertFailsWith<IllegalArgumentException> { image.alphaAt(4, 0) }
+    assertFailsWith<IllegalArgumentException> { image.alphaAt(-1, 0) }
+    assertFailsWith<IllegalArgumentException> { image.alphaAt(0, 4) }
     assertFailsWith<IllegalArgumentException> { image.alphaAt(0, -1) }
   }
 

@@ -143,6 +143,12 @@ class PhotoTableTest {
     assertEquals(one, one)
     assertEquals(one.hashCode(), same.hashCode())
     assertNotEquals(one, other)
+    assertNotEquals("two photos with different ids were one", one, TablePhoto("photo-ash", "Oak", byteArrayOf(1, 2, 3)))
+    assertNotEquals(
+      "two photos with different names were one",
+      one,
+      TablePhoto("photo-oak", "Ash", byteArrayOf(1, 2, 3)),
+    )
     assertFalse("a photo equalled a string", one.equals("not a photo"))
   }
 

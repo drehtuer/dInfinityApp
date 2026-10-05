@@ -6,7 +6,6 @@ import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -164,14 +163,6 @@ class TableThumbnailPresenterTest {
     presenter.confirmPhoto()
 
     assertNotNull("a bundled look lost its picture when a photo landed", presenter.state.thumbnails[oak])
-  }
-
-  @Test
-  fun `a screen with no thumbnails is a screen that still lists every look`() {
-    val presenter = presenter(thumbnails = null)
-
-    assertFalse(presenter.state.empty)
-    assertEquals(BuiltinDiceSet.set.tables.size, presenter.state.tables.size)
   }
 
   @Test

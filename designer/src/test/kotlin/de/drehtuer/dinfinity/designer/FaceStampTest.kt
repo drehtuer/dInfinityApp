@@ -186,7 +186,9 @@ class FaceStampTest {
   @Test
   fun `has no number for a cell the die does not have`() {
     assertTrue(FaceStamp.numbers(d6, cell = 6, colorArgb = Drawings.INK).isEmpty())
+    assertTrue(FaceStamp.numbers(d6, cell = -1, colorArgb = Drawings.INK).isEmpty())
     assertEquals("", FaceStamp.textOn(d6, cell = 6))
+    assertEquals("", FaceStamp.textOn(d6, cell = -1))
   }
 
   @Test

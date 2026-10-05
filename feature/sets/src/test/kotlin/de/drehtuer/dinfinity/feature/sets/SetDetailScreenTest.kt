@@ -32,6 +32,7 @@ import de.drehtuer.dinfinity.designer.Dot
 import de.drehtuer.dinfinity.designer.Draft
 import de.drehtuer.dinfinity.designer.DraftStore
 import de.drehtuer.dinfinity.designer.MineSets
+import de.drehtuer.dinfinity.designer.PackageFile
 import de.drehtuer.dinfinity.designer.PersonalSets
 import de.drehtuer.dinfinity.designer.PhotoStore
 import de.drehtuer.dinfinity.designer.PhysicalStore
@@ -408,6 +409,47 @@ class SetDetailScreenTest {
   }
 
   @Test
+  fun `the minus stepper takes the figure the other way, and says it is under average`() {
+    // Only the plus side was ever pressed, so a minus that stepped up, or a
+    // note that called a small die large, would have gone unnoticed.
+    val presenter = show(MINE, personal = mine())
+
+    at(SetDetailTestTags.stepOf(SetDetailTestTags.SIZE, up = false)).performClick()
+    compose.waitUntil(PATIENCE) { presenter.state.declared?.sizeMm != 16.0 }
+
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.SIZE)).assertTextContains("95 %")
+    compose.onNodeWithText("5 % under average", substring = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `a set whose dice weigh differently is quoted as a range`() {
+    // A d4 and a d20 of one material do not weigh the same, and quoting
+    // either one as the set's weight would be wrong about the other.
+    write("mixed", toml("mixed", "Mixed", extra = D20))
+
+    show("mixed")
+
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.WEIGHT)).assertTextContains("–", substring = true)
+    at(SetDetailTestTags.valueOf(SetDetailTestTags.WEIGHT)).assertTextContains("g", substring = true)
+  }
+
+  @Test
+  fun `the export button shares the package and says it has`() {
+    // The gate opens on a licence; this is what is behind it. The file goes
+    // to whoever shares it — the application — and the screen says where it
+    // went, because a share sheet that closes leaves nothing else behind.
+    var shared: PackageFile? = null
+    show(MINE, personal = mine(), onShare = { shared = it })
+    at(SetDetailTestTags.LICENSE_CHOOSER).performClick()
+    compose.onNodeWithTag(SetDetailTestTags.licenseOf(SetLicense.Mit)).performClick()
+
+    at(SetDetailTestTags.EXPORT_DO).performClick()
+
+    compose.waitUntil(PATIENCE) { shared != null }
+    at(SetDetailTestTags.EXPORTED).assertTextContains("shared", substring = true)
+  }
+
+  @Test
   fun `a package that came from somewhere else is offered no export`() {
     write("brass", toml("brass", "Brass and Bone"))
 
@@ -509,6 +551,7 @@ class SetDetailScreenTest {
     default: String = "",
     onDefault: (String) -> Unit = {},
     personal: PersonalSets? = null,
+    onShare: (PackageFile) -> Unit = {},
   ): SetDetailPresenter {
     val presenter =
       SetDetailPresenter(
@@ -527,6 +570,7 @@ class SetDetailScreenTest {
         onGone = onGone,
         defaultSetId = { default },
         onDefault = onDefault,
+        onShare = onShare,
       )
     compose.setContent { SetDetailScreen(presenter, onSource = onSource) }
     compose.waitUntil(PATIENCE) { presenter.state.loaded }
@@ -585,6 +629,16 @@ class SetDetailScreenTest {
 
     /** The personal package's id, which is the only thing the screen keys off. */
     const val MINE = "mine"
+
+    /** A second die, so a set has two that do not weigh the same. */
+    val D20 =
+      """
+
+      [[die]]
+      id = "d20"
+      shape = "icosahedron"
+      faces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+      """.trimIndent()
 
     /** The ink a drawn face is drawn in, so that "My dice" has a die in it. */
     const val INK = 0xFF202020.toInt()

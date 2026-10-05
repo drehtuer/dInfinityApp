@@ -25,6 +25,10 @@ class CollectionFilesTest {
     assertFalse(CollectionFiles.isCollection("rolls.json"))
     assertFalse(CollectionFiles.isCollection("package.json"))
     assertFalse(CollectionFiles.isCollection("README.md"))
+    // Longer than the extension, so it is the ending that refuses it and not
+    // the length: every name above is shorter than `.dinfinity.json` itself.
+    assertFalse(CollectionFiles.isCollection("monster-manual-stat-blocks.json"))
+    assertFalse(CollectionFiles.isCollection("thorin.dinfinity.json.bak"))
   }
 
   @Test

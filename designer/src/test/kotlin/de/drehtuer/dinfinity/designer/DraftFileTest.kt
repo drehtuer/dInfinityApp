@@ -102,6 +102,93 @@ class DraftFileTest {
   }
 
   @Test
+  fun `a die named by anything but its id as text names no die`() {
+    // A number that happens to print as the id, or an object, is not the die
+    // the drawing was made on; reading it as one would be a guess.
+    assertNull(DraftFile.dieOf("""{"format":2,"die":6,"faces":[]}"""))
+    assertNull(DraftFile.dieOf("""{"format":2,"die":{"id":"d6"},"faces":[]}"""))
+    assertNull(DraftFile.read("""{"format":2,"die":{"id":"d6"},"faces":[]}""", d6))
+  }
+
+  @Test
+  fun `a face entry that is not a face is skipped, and the faces around it kept`() {
+    // Somebody's file edited by hand, or written by a build with a bug in it.
+    // Every entry here is wrong in its own way; the one good face still opens.
+    val good = """{"cell":1,"strokes":[$GOOD_STROKE]}"""
+    val text =
+      """{"format":2,"die":"d6","faces":[
+        "not a face",
+        {"strokes":[$GOOD_STROKE]},
+        {"cell":"two","strokes":[$GOOD_STROKE]},
+        {"cell":3,"strokes":"not a list"},
+        {"cell":4},
+        $good
+      ]}"""
+
+    val back = requireNotNull(DraftFile.read(text, d6))
+
+    assertEquals(setOf(1), back.faces.keys)
+    assertEquals(listOf(stroke()), back.face(1).marks)
+  }
+
+  @Test
+  fun `a file with no list of faces is a blank drawing on its die, not a refusal`() {
+    val back = requireNotNull(DraftFile.read("""{"format":2,"die":"d6","faces":"none"}""", d6))
+
+    assertTrue(back.blank)
+  }
+
+  @Test
+  fun `a mark missing its ink, its nib or its dots is dropped, and the marks around it kept`() {
+    val broken =
+      listOf(
+        "\"not a mark\"",
+        """{"width":0.02,"dots":[0.1,0.2,0.3,0.4]}""",
+        """{"color":"red","width":0.02,"dots":[0.1,0.2,0.3,0.4]}""",
+        """{"color":$INK,"dots":[0.1,0.2,0.3,0.4]}""",
+        """{"color":$INK,"width":"thin","dots":[0.1,0.2,0.3,0.4]}""",
+        """{"color":$INK,"width":0.02}""",
+        """{"color":$INK,"width":0.02,"dots":"0.1,0.2,0.3,0.4"}""",
+        """{"color":$INK,"width":0.02,"dots":[0.1,0.2,0.3]}""",
+        """{"color":$INK,"width":0.02,"dots":[0.1,"a",0.3,0.4]}""",
+      )
+    val text = """{"format":2,"die":"d6","faces":[{"cell":0,"strokes":[${(broken + GOOD_STROKE).joinToString(
+      ",",
+    )}]}]}"""
+
+    val back = requireNotNull(DraftFile.read(text, d6))
+
+    assertEquals("a broken mark was read, or the good one was lost with them", listOf(stroke()), back.face(0).marks)
+  }
+
+  @Test
+  fun `a flag that is not plainly true or false reads as not set`() {
+    // `erases` and `fill` are written as JSON booleans. Anything else is not
+    // a yes: an eraser that is not one draws ink, and a fill that is not one
+    // is read as the stroke its other fields describe.
+    val text =
+      """{"format":2,"die":"d6","faces":[{"cell":0,"strokes":[
+        {"color":$INK,"width":0.02,"erases":"yes","fill":"maybe","dots":[0.1,0.2,0.3,0.4]}
+      ]}]}"""
+
+    val back = requireNotNull(DraftFile.read(text, d6))
+
+    assertEquals(listOf(stroke()), back.face(0).marks)
+  }
+
+  @Test
+  fun `a ring length that is not a number is a ring of nothing, which no glyph has`() {
+    val mangled =
+      DraftFile
+        .write(Draft(die = d6).onFace(0) { it.draw(stamp()).draw(stroke()) })
+        .replace(""""rings":[4,4]""", """"rings":[4,"four"]""")
+
+    val back = requireNotNull(DraftFile.read(mangled, d6))
+
+    assertEquals(listOf(stroke()), back.face(0).marks)
+  }
+
+  @Test
   fun `a file from a format this one does not know is not read`() {
     // The alternative is guessing, and a guess about somebody's drawing is
     // worse than a blank canvas.
@@ -303,5 +390,8 @@ class DraftFileTest {
   private companion object {
     const val INK = 0xFF000000.toInt()
     const val RED = 0xFFCC0000.toInt()
+
+    /** [stroke] as the file writes it. */
+    const val GOOD_STROKE = """{"color":$INK,"width":0.02,"erases":false,"dots":[0.1,0.2,0.3,0.4]}"""
   }
 }

@@ -85,6 +85,9 @@ class HistoryRepositoryTest {
           .kept
           .map { it.value },
       )
+      // The other half of "a roll with no dice has no breakdown to open":
+      // one with dice has, and the row is what opens it.
+      assertTrue(entry.hasBreakdown)
     }
 
   @Test

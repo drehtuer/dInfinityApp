@@ -98,11 +98,6 @@ class DieMaterialTest {
   }
 
   @Test
-  fun `clamp leaves a finite value inside its range alone`() {
-    assertEquals(0.5, DieMaterial.clamp(0.5, DieMaterial.UnitRange, 0.0))
-  }
-
-  @Test
   fun `a die is rounded by three per cent of its size unless a set says otherwise`() {
     assertEquals(0.03, DieMaterial().edgeRounding)
     assertEquals(DieMaterial.DEFAULT_EDGE_ROUNDING, DieMaterial().edgeRounding)

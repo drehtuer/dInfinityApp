@@ -113,6 +113,43 @@ class DeveloperPresenterTest {
     }
 
   @Test
+  fun `a seed typed that is the last throw's own is judged like a replay of it`() =
+    runTest(UnconfinedTestDispatcher()) {
+      // The verdict is about the seed, not about which button was pressed: the
+      // same seed typed into the box is the same throw again, and is supposed
+      // to agree with the one that landed.
+      val notes = DeveloperNotes()
+      notes.landed(spec(seed = 7L), clean(), atEpochMs = 1L)
+      val presenter = presenter(notes)
+
+      presenter.typeSeed("7")
+      presenter.replayFromSeed()
+
+      assertEquals(true, (presenter.state as ReplayState.Replayed).reproduced)
+    }
+
+  @Test
+  fun `a replay that comes back after the log was cleared is judged against nothing`() =
+    runTest(UnconfinedTestDispatcher()) {
+      // The log can be cleared while the dice are in the air. What the replay
+      // came to is still shown, but there is no throw left to agree with, and
+      // calling it a disagreement would report a release blocker that is not.
+      val notes = DeveloperNotes()
+      notes.landed(spec(seed = 7L), clean(), atEpochMs = 1L)
+      val presenter =
+        presenter(notes, run = {
+          notes.clear()
+          clean()
+        })
+
+      presenter.replayLast()
+
+      val replayed = presenter.state as ReplayState.Replayed
+      assertEquals(listOf(3, 4), replayed.faces)
+      assertNull(replayed.reproduced)
+    }
+
+  @Test
   fun `a half-typed seed throws nothing rather than throwing something else`() =
     runTest(UnconfinedTestDispatcher()) {
       val notes = DeveloperNotes()

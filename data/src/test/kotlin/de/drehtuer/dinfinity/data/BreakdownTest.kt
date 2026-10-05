@@ -176,6 +176,37 @@ class BreakdownTest {
   }
 
   @Test
+  fun `a die with fields missing or garbled reads as far as it can rather than not at all`() {
+    // An older version, a hand edit or a truncated write: the group is still a
+    // record of dice somebody threw, so every field that cannot be read falls
+    // back on its own instead of taking the group — or the roll — with it.
+    val json =
+      """
+      {"groups":[{"notation":"2d6","set":"brass","dice":[
+        {"die":"d6","value":"six","max":"yes","notes":["Dropped","Vanished"]},
+        {"die":"d6"}
+      ]}]}
+      """.trimIndent()
+
+    val group = Breakdown.read(json).groups.single()
+
+    assertEquals("a group that never said what it asked for asked for its own set", "brass", group.requestedSetId)
+    assertEquals(0L, group.subtotal)
+    val (garbled, bare) = group.dice
+    assertEquals(0, garbled.value)
+    assertEquals("the label is the value again when none was stored", "0", garbled.label)
+    assertFalse("a flag that is not a boolean was read as one", garbled.naturalMax)
+    assertEquals("a note this version does not know was kept", setOf(DieNote.Dropped), garbled.notes)
+    assertEquals(StoredDie(dieId = "d6", value = 0, label = "0"), bare)
+  }
+
+  @Test
+  fun `a roll's label is written down with it, and only when it has one`() {
+    assertTrue("Fireball" in Breakdown.of(fourD6DropLowest().copy(label = "Fireball")))
+    assertFalse("\"label\":" in Breakdown.of(RollResult(formula = "4 + 4", total = 8)))
+  }
+
+  @Test
   fun `a roll of nothing but arithmetic stores no groups and reads back as none`() {
     val result = RollResult(formula = "4 + 4", total = 8)
 

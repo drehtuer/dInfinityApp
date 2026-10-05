@@ -277,6 +277,15 @@ class DieMeshTest {
   }
 
   @Test
+  fun `a face has a texture coordinate per corner or none at all`() {
+    // One short would leave a corner sampling whatever the buffer held next,
+    // which is a smear of somebody else's face across this one.
+    val face = DieMesh.of(DieShape.Tetrahedron).faces.first()
+
+    assertThrows(IllegalArgumentException::class.java) { face.copy(uvs = face.uvs.drop(1)) }
+  }
+
+  @Test
   fun `a face-read solid's mesh reads nothing from its corners, and nor does a rim`() {
     DieMesh.of(DieShape.Cube).faces.forEach { assertTrue("a cube's corner is no face", it.reads.isEmpty()) }
     DieMesh

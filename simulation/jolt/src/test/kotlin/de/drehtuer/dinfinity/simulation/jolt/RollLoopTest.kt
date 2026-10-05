@@ -46,7 +46,8 @@ class RollLoopTest {
     assertEquals(0, outcome.rethrows)
     assertTrue("a roll that just settled has nothing to report", outcome.clean)
     // A die is at rest once it has kept still for the documented time, not the
-    // moment it stops moving.
+    // moment it stops moving — and a tapped roll, with no hand to wait for,
+    // ends on that very step (the counterpart of the shake test below).
     assertEquals(SettleRule.REST_STEPS.toLong(), outcome.steps.toLong())
   }
 
@@ -106,6 +107,11 @@ class RollLoopTest {
     // the player's to make, so the throw ends here and says which die is
     // waiting (`docs/physics-and-rendering.md`, "Avoiding stacked and cocked
     // dice").
+    //
+    // It is counted in both places, stacked and unread: the figure Step 5.5
+    // asks the harness to keep at zero is about the dice a roll *ends* with,
+    // and a die standing on another is stacked because it is, and unread
+    // because that is why.
     val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
     val outcome = loop(listOf(StandardDice.d6), world).run()
 
@@ -133,6 +139,7 @@ class RollLoopTest {
     assertEquals("the die that could be read was not read", setOf(0), outcome.faces.keys)
     assertEquals("the die standing on it was not handed back", listOf(1), outcome.unread)
     assertEquals("the dice are drawn as read", listOf(true, false), loop.countedOut)
+    assertEquals("the running total is not the faces the roll came to", outcome.faces, loop.countedSoFar)
     assertTrue("a die was thrown again by the roll itself", world.respawns.isEmpty())
   }
 
@@ -201,14 +208,6 @@ class RollLoopTest {
     assertTrue("the roll threw it again by itself", world.respawns.isEmpty())
     assertTrue("a settled die is never biased, cocked or not", world.biases.isEmpty())
     assertTrue(outcome.clean)
-  }
-
-  @Test
-  fun `a die resting on another is not read even though its face is up`() {
-    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
-    val outcome = loop(listOf(StandardDice.d6), world).run()
-
-    assertEquals("a stacked die has no table under it, whatever face is up", listOf(0), outcome.unread)
   }
 
   @Test
@@ -330,17 +329,6 @@ class RollLoopTest {
   }
 
   @Test
-  fun `a tapped roll still ends the moment its dice are at rest`() {
-    // The rule above must not cost a throw that nobody is shaking a single
-    // step: there is no hand to wait for.
-    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled() }
-
-    val outcome = loop(listOf(StandardDice.d6), world).run()
-
-    assertEquals(SettleRule.REST_STEPS.toLong(), outcome.steps.toLong())
-  }
-
-  @Test
   fun `the record of a throw is what the loop was handed, not what its spec held`() {
     // A shake-driven throw is spawned the moment the shake is confirmed, so its
     // spec goes into the world empty and the moments arrive afterwards. What
@@ -443,20 +431,6 @@ class RollLoopTest {
       }
 
     assertEquals(0, loop(listOf(StandardDice.d6, StandardDice.d6), world).run().stackedAtRest)
-  }
-
-  @Test
-  fun `a die that ends standing on another is counted as stacked, and as unread`() {
-    // The figure Step 5.5 asks the harness to keep at zero is about the dice a
-    // roll *ends* with. A throw that leaves one standing on another has not
-    // ended the roll — the player's shake throws it next — so it says so in
-    // both places: stacked, because it is, and unread, because that is why.
-    val world = FakeWorld(1) { _, _, _ -> FakeWorld.settled(supportedByDie = true) }
-
-    val outcome = loop(listOf(StandardDice.d6), world).run()
-
-    assertEquals(1, outcome.stackedAtRest)
-    assertEquals(listOf(0), outcome.unread)
   }
 
   private fun loop(

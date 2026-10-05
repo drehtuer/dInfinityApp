@@ -120,6 +120,17 @@ class OutcomeGraphTest {
   }
 
   @Test
+  fun `a formula with no dice in it is one certain total, exactly`() {
+    // `5 [Fire]` is a formula somebody can save; its chart is a single bar,
+    // and with nothing to explode there is no tail to own up to.
+    val computed = OutcomeGraph.of(parsed("2 + 3"), plan("2 + 3")) as DistributionResult.Computed
+
+    assertEquals(5..5, computed.pmf.support)
+    assertEquals(1.0, computed.pmf.probabilityOf(5))
+    assertEquals(0.0, computed.truncatedMass)
+  }
+
+  @Test
   fun `the label becomes the chart's title`() {
     val computed = OutcomeGraph.of(parsed("8d6 [Fire]"), plan("8d6 [Fire]")) as DistributionResult.Computed
     assertEquals("Fire", computed.label)

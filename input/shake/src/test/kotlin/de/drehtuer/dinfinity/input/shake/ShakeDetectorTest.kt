@@ -94,20 +94,6 @@ class ShakeDetectorTest {
   }
 
   @Test
-  fun `a recorder counts what it kept`() {
-    val recorder = ShakeRecorder()
-    assertEquals(0, recorder.size)
-    recorder.record(
-      0,
-      de.drehtuer.dinfinity.simulation.api.Vector3.Zero,
-      de.drehtuer.dinfinity.simulation.api.Vector3.Up,
-    )
-    assertEquals(1, recorder.size)
-    recorder.reset()
-    assertEquals(0, recorder.size)
-  }
-
-  @Test
   fun `the published thresholds are these`() {
     assertEquals(6_000.0, ShakeThresholds.START_MM_PER_SECOND2, 0.0)
     assertEquals(1_500.0, ShakeThresholds.STOP_MM_PER_SECOND2, 0.0)

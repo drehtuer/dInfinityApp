@@ -5,8 +5,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.SemanticsNodeInteraction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -14,9 +17,11 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextReplacement
 import de.drehtuer.dinfinity.core.model.DiceSet
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TablePin
+import de.drehtuer.dinfinity.designer.PhotoTable
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -214,6 +219,64 @@ class TablesScreenTest {
 
     compose.onNodeWithTag(TablesTestTags.PHOTO_SHEET).assertDoesNotExist()
     assertTrue(photos.asked.isEmpty())
+  }
+
+  @Test
+  fun `with no room for another photo the row says why and opens nothing`() {
+    // Shown rather than hidden: a control that disappeared once the package
+    // was full would leave nobody any way to find out that it was full.
+    val full =
+      MutableList(PhotoTable.MAX_PHOTOS) { index -> PhotoTable.lookOf("photo-$index", "Photo $index") }
+    show(photos = FakePhotos(kept = full))
+
+    scrolledToUsePhoto()
+      .assertTextContains("as many as fit", substring = true)
+      .assertIsNotEnabled()
+      .performClick()
+
+    compose.onNodeWithTag(TablesTestTags.PHOTO_SHEET).assertDoesNotExist()
+  }
+
+  @Test
+  fun `the name typed in the sheet is the name the table is made with`() {
+    // The file's own name is only where the field starts.
+    val photos = FakePhotos()
+    val presenter = show(photos = photos)
+    usePhoto()
+    presenter.picked(pickedPhoto(label = "img_0042.jpg"))
+
+    compose.onNodeWithTag(TablesTestTags.PHOTO_NAME).performTextReplacement("Kitchen table")
+    compose.onNodeWithTag(TablesTestTags.PHOTO_CONFIRM).performClick()
+
+    assertEquals(listOf("img_0042.jpg" to "Kitchen table"), photos.asked)
+  }
+
+  @Test
+  fun `use this photo is dead until there is a file, and while the photo is being made`() {
+    // A button that refuses is worse than one that says it cannot be pressed,
+    // and the wait is long enough on a phone to press it twice.
+    val gated = GatedPhotos()
+    val presenter =
+      TablesPresenter(
+        sets = { listOf(BuiltinDiceSet.set) + gated.personal() },
+        chosen = null,
+        onChosen = {},
+        scope = CoroutineScope(Dispatchers.Unconfined),
+        photos = gated,
+      )
+    compose.setContent { TablesScreen(presenter = presenter) }
+    usePhoto()
+    compose.onNodeWithTag(TablesTestTags.PHOTO_CONFIRM).assertIsNotEnabled()
+    presenter.picked(pickedPhoto(label = "meadow.jpg"))
+
+    compose.onNodeWithTag(TablesTestTags.PHOTO_CONFIRM).assertIsEnabled().performClick()
+
+    compose.onNodeWithTag(TablesTestTags.PHOTO_WORKING, useUnmergedTree = true).assertIsDisplayed()
+    compose.onNodeWithTag(TablesTestTags.PHOTO_CONFIRM).assertIsNotEnabled()
+
+    compose.runOnIdle { gated.letThrough() }
+
+    compose.onNodeWithTag(TablesTestTags.PHOTO_SHEET).assertDoesNotExist()
   }
 
   @Test

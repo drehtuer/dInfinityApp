@@ -7,6 +7,7 @@ import de.drehtuer.dinfinity.core.model.RollPlan
 import de.drehtuer.dinfinity.fixtures.StandardDice
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -31,6 +32,21 @@ class TableCapacityTest {
   fun `a screen far outside what a phone is still gets a table dice can roll on`() {
     assertEquals(240.0 * 0.40, TableGeometry.forAspect(0.1).shortSideMm, 1e-9)
     assertEquals(240.0 * 0.75, TableGeometry.forAspect(2.0).shortSideMm, 1e-9)
+  }
+
+  /**
+   * A width that is no width, or a screen whose shape is no number, would
+   * reach the capacity rule as a floor of nothing or of NaN — and every
+   * division by it after that would quietly say something false.
+   */
+  @Test
+  fun `a table of no width, or of a screen with no shape, is refused`() {
+    listOf(0.0, -108.0, Double.NaN, Double.POSITIVE_INFINITY).forEach { width ->
+      assertFailsWith<IllegalArgumentException>("$width mm") { TableGeometry(width) }
+    }
+    listOf(Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY).forEach { aspect ->
+      assertFailsWith<IllegalArgumentException>("aspect $aspect") { TableGeometry.forAspect(aspect) }
+    }
   }
 
   @Test

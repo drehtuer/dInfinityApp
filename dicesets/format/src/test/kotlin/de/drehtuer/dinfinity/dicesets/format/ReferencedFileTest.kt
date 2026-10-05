@@ -2,6 +2,7 @@ package de.drehtuer.dinfinity.dicesets.format
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -86,8 +87,36 @@ class ReferencedFileTest {
     assertEquals("textures/d6.png", ReferencedFile.parse("textures\\d6.png", images)?.path)
   }
 
+  /**
+   * The extractor's question, which is narrower than the validator's: an
+   * archive entry that climbs out is an attack and fails the whole install,
+   * while one whose extension is not on the list is a `.gitignore` and is
+   * simply left behind. Telling them apart is the whole of this function.
+   */
   @Test
-  fun `a good path has nothing to say about it`() {
-    assertNull(ReferencedFile.reasonToRefuse("textures/d6.png", images))
+  fun `a file the allowlist does not cover still stays inside the package`() {
+    listOf(".gitignore", "scripts/build.sh", "textures/d6", "./notes.svg", "a\\b\\c.exe").forEach { raw ->
+      assertTrue(ReferencedFile.staysInsidePackage(raw), raw)
+      assertNull(ReferencedFile.parse(raw), raw)
+    }
+  }
+
+  @Test
+  fun `a path that leaves the package does not stay in it, whatever it is called`() {
+    listOf(
+      "",
+      "   ",
+      "/etc/passwd",
+      "\\windows\\system32",
+      "C:/windows/notepad.exe",
+      "c:evil.png",
+      "../secrets.png",
+      "textures/../../secrets.png",
+      "..\\..\\etc\\passwd",
+      "textures//d6.png",
+      "textures\\\\d6.png",
+    ).forEach { raw ->
+      assertFalse(ReferencedFile.staysInsidePackage(raw), "'$raw' was let out")
+    }
   }
 }

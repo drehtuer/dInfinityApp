@@ -68,6 +68,9 @@ class GoldenDistributionTest {
       "-1d6 + 10",
       "20 / 1d4",
       "1d4 * 3",
+      // Doubling first leaves gaps at the odd totals, which the product with
+      // a die must step over rather than spread nothing from.
+      "1d4 * 2 * 1d6",
     ).forEach(::assertMatches)
   }
 
