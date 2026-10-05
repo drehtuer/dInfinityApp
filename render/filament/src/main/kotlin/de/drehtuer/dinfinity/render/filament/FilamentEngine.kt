@@ -60,6 +60,10 @@ import java.nio.ByteOrder
  * @param studio where the studio's folded cube is kept between launches
  *   ([StudioCache]). The default keeps nothing and folds every time, which is
  *   what a device test that measures the fold wants.
+ * @param compiling what is told when a material has to be compiled because
+ *   [materials] did not have it ([ShaderListener]) — the roll screen's
+ *   "Preparing the dice" (`docs/architecture.md`, decision 95). Never told
+ *   about a packet read back from disk. The default tells nobody.
  */
 class FilamentEngine(
   artwork: (String) -> AtlasImage? = { null },
@@ -67,6 +71,7 @@ class FilamentEngine(
   private val materials: MaterialCache = MaterialCache.NONE,
   private val environment: () -> ByteArray? = StudioLight::bytes,
   private val studio: StudioCache = StudioCache.NONE,
+  private val compiling: ShaderListener = ShaderListener.NONE,
 ) : AutoCloseable {
   init {
     // Safe to call more than once, and nothing below works before it has been.
@@ -82,9 +87,10 @@ class FilamentEngine(
    * Everything that hides what is behind it, which is every surface of the
    * tray and every die a set has not called translucent.
    */
-  val material: Material = loadMaterial(engine, materials, DiceMaterial.Variant.OPAQUE)
+  val material: Material = loadMaterial(engine, materials, DiceMaterial.Variant.OPAQUE, compiling)
 
-  private val resin = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.RESIN) }
+  private val resin =
+    lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.RESIN, compiling) }
 
   /**
    * And the material of a die light passes through.
@@ -110,7 +116,8 @@ class FilamentEngine(
    */
   val resinMaterial: Material by resin
 
-  private val glass = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.GLASS) }
+  private val glass =
+    lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.GLASS, compiling) }
 
   /**
    * And the floor of a table glossy enough to show the dice in it
@@ -123,7 +130,8 @@ class FilamentEngine(
    */
   val glassMaterial: Material by glass
 
-  private val table = lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.TABLE) }
+  private val table =
+    lazy(LazyThreadSafetyMode.NONE) { loadMaterial(engine, materials, DiceMaterial.Variant.TABLE, compiling) }
 
   /**
    * And the material of a table drawn from pictures ([DiceMaterial.TABLE_SOURCE]).
@@ -479,15 +487,29 @@ class FilamentEngine(
     /**
      * The [variant] of the dice material for [engine], from [materials] if it
      * was compiled on an earlier launch.
+     *
+     * Only a compile is reported to [compiling], and nothing else is done
+     * here about it: what the report means — how long it should take, how far
+     * it has got — is [ShaderProgress]'s, where a JVM test can reach it.
      */
     fun loadMaterial(
       engine: Engine,
       materials: MaterialCache,
       variant: DiceMaterial.Variant,
+      compiling: ShaderListener,
     ): Material {
       val target = targetOf(engine.backend)
       val key = MaterialCache.keyOf(variant.fingerprint, backend = target.name, variant = variant.key)
-      val packet = materials.packet(key) { compileMaterial(target, variant) }
+      val packet =
+        materials.packet(key) {
+          compiling.started(variant)
+          var compiled = false
+          try {
+            compileMaterial(target, variant).also { compiled = true }
+          } finally {
+            compiling.finished(variant, compiled)
+          }
+        }
       return Material.Builder().payload(packet, packet.remaining()).build(engine)
     }
 
