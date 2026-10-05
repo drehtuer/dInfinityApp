@@ -23,7 +23,7 @@ class RoundedSolidTest {
   fun `the radius is what the die asks for, in units of half its size`() {
     // 3 % of the size is 6 % of half of it.
     assertEquals(0.06, rounded(DieShape.Cube).radius, 1e-12)
-    assertEquals(0.24, rounded(DieShape.Icosahedron, 0.12).radius, 1e-12)
+    assertEquals(0.12, rounded(DieShape.Icosahedron, 0.06).radius, 1e-12)
   }
 
   @Test
@@ -38,7 +38,7 @@ class RoundedSolidTest {
   @Test
   fun `every flat part is on its face's plane and inside the sharp face`() {
     DieShape.entries.forEach { shape ->
-      val solid = rounded(shape, 0.12)
+      val solid = rounded(shape, 0.06)
       SolidFaces.of(shape).forEach { face ->
         val flat = solid.flats.getValue(face.index)
         val plane = face.normal dot face.corners.first()
@@ -56,7 +56,7 @@ class RoundedSolidTest {
   @Test
   fun `a rounder die has smaller flat parts`() {
     val sharp = rounded(DieShape.Cube, 0.015).flats.getValue(0)
-    val round = rounded(DieShape.Cube, 0.12).flats.getValue(0)
+    val round = rounded(DieShape.Cube, 0.06).flats.getValue(0)
 
     assertTrue(spanOf(round) < spanOf(sharp))
   }
@@ -76,7 +76,7 @@ class RoundedSolidTest {
   fun `the rounded die stays inside the sharp one`() {
     DieShape.entries.forEach { shape ->
       val faces = SolidFaces.of(shape)
-      rounded(shape, 0.12).outlinePoints.forEach { point ->
+      rounded(shape, 0.06).outlinePoints.forEach { point ->
         faces.forEach { face ->
           assertTrue(
             "$shape stands outside face ${face.index}",

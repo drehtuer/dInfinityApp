@@ -148,12 +148,6 @@ and read here, and a seed gives the same result with the renderer on and off.
       thrown die edge to edge, nothing spilling onto the neighbouring faces?
       A drawing made on a kite die before the change shows larger in the
       editor than it was drawn — is that read as the die's size or as a fault?
-- [ ] **Measure the edge-rounding range on the Pixel 10a** (decision 98):
-      `tools/harness.sh -n 200 -c 20 -s {d4,d6,d20} --rounding
-      {0.015,0.03,0.12}` and `FairnessTest` with `-e edgeRounding
-      {0.015,0.12}` at 20,000 rolls (`docs/physics-and-rendering.md`, "How
-      round a die may be"). Narrow the slider and the set-file clamp if the
-      ends settle slowly, re-throw often or fail fairness
 - [ ] *Judge on the phone:* the three steps (decision 99) — is it clear where
       you are, and do Back, Next and **Roll it** feel right? A die drawn on
       some faces: drawn faces show no number, the others do (96). A dark body
@@ -166,7 +160,7 @@ and read here, and a seed gives the same result with the renderer on and off.
       felt and on the oak — Pearl milky rather than faded, Resin clear enough
       to see the felt bent through it, Glass clear, Metal metal rather than
       grey plastic, Stone matte? Does the swatch beside the menu hint at the
-      right one? Then a d6 and a d4 at 12 %: do the edges look round
+      right one? Then a d6 and a d4 at 6 %: do the edges look round
       and do they still read as dice, and do the numbers near a d4's edges
       still read where they wrap onto the bend?
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
@@ -228,11 +222,11 @@ re-throws 5.11 % → 2.64 %, none gave up, slowest roll 10.5 s (4.7 s before).
 Fairness is done on the Pixel 10a (the d18 held to the worst-face bound), and
 `ModesAgreeTest` holds power-saving and drawn modes to the same faces.
 
-- [ ] Fairness at the roundest edges (decision 94): 100,000 rolls with
-      `edgeRounding=0.12` (`docs/physics-and-rendering.md`, "Are the dice
-      fair"), and a harness run with `--rounding 0.12` for settle time and
-      re-throws against the default; write the figures into
-      `docs/physics-and-rendering.md`
+- [ ] Fairness at the roundest edges at full strength: 100,000 rolls with
+      `edgeRounding=0.06` and `0.015` (20,000 a shape passed at both,
+      decision 100; `docs/physics-and-rendering.md`, "How round a die may
+      be"), and the harness with coins (`-s d2`), which the sweep did not
+      throw and which is what gave first
 
 - [ ] Identical outcomes for identical seeds across JVM, emulator and device at
       ten thousand rolls and on a second phone. The golden suite already holds

@@ -73,22 +73,22 @@ class DesignerFinishTest {
     val presenter = DesignerPresenter(d6, drafts = drafts)
     presenter.madeOf(MaterialPreset.Metal)
 
-    presenter.rounded(0.1203)
+    presenter.rounded(0.0503)
 
     assertEquals(MaterialPreset.Metal, presenter.state.preset)
-    assertEquals(0.12, presenter.state.edgeRounding, 0.0)
-    assertEquals(0.12, drafts.load(d6).finish?.edgeRounding)
+    assertEquals(0.05, presenter.state.edgeRounding, 0.0)
+    assertEquals(0.05, drafts.load(d6).finish?.edgeRounding)
   }
 
   @Test
   fun `a slider dragged within one step writes nothing new`() {
     val drafts = Remembered()
     val presenter = DesignerPresenter(d6, drafts = drafts)
-    presenter.rounded(0.06)
+    presenter.rounded(0.04)
     val saves = drafts.saves
 
-    presenter.rounded(0.061)
-    presenter.rounded(0.0595)
+    presenter.rounded(0.041)
+    presenter.rounded(0.0395)
 
     assertEquals(saves, drafts.saves)
   }
@@ -102,8 +102,8 @@ class DesignerFinishTest {
     // (`docs/physics-and-rendering.md`, "Rounded edges": 0.25 mm).
     assertEquals(0.48, cube.state.roundedMm, 1e-9)
     assertEquals(0.25, tetrahedron.state.roundedMm, 1e-9)
-    cube.rounded(0.12)
-    assertEquals(1.92, cube.state.roundedMm, 1e-9)
+    cube.rounded(0.06)
+    assertEquals(0.96, cube.state.roundedMm, 1e-9)
   }
 
   @Test

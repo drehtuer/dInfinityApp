@@ -37,9 +37,9 @@ class EdgeRoundingTest {
   fun `the set's defaults reach every die that does not say otherwise`() {
     val toml =
       minimalToml()
-        .replace("[[die]]", "[defaults]\nedge_rounding = 0.1\n\n[[die]]")
+        .replace("[[die]]", "[defaults]\nedge_rounding = 0.05\n\n[[die]]")
     assertEquals(
-      0.1,
+      0.05,
       accepting(toml)
         .set.dice
         .single()

@@ -887,9 +887,12 @@ built-in near-black on a light body and white on a dark one (`PaperInk`) —
 because a black die printed in black is a die nobody can read. The guide under
 the drawing follows the same rule ("The guide").
 
-**Edges** is a slider from 1.5 % to 12 % of the die's size in steps of half a
-per cent — the range a set file may ask for, so the slider cannot write a value
-the validator would bring back (`EdgeRounding`). Under it the rounding is said
+**Edges** is a slider from 1.5 % to 6 % of the die's size in steps of half a
+per cent — the range a set file may ask for, measured on the Pixel 10a: past
+6 % a coin starts to roll on its rim and throws stop settling
+(`docs/physics-and-rendering.md`, "How round a die may be"; decision 100) —
+so the slider cannot write a value the validator would bring back
+(`EdgeRounding`). Under it the rounding is said
 twice, as the share a set file writes and as the millimetres that come to on
 *this* die as the solver rounds it: "Rounded by 6.0 % of its size: 0.96 mm",
 and about half that on a d4, whose points the solver cuts back. TalkBack hears
@@ -924,13 +927,13 @@ the last:
 
 | Die | Angle between faces | Corner stands in | Band on each face |
 | --- | --- | --- | --- |
-| d4 (half the radius) | 109° | 0.25 → 2.0 mm | 0.18 → 1.41 mm |
-| d6 | 90° | 0.18 → 1.4 mm | 0.24 → 1.92 mm |
-| d8 | 71° | 0.18 → 1.4 mm | 0.17 → 1.36 mm |
-| d12 | 63° | 0.06 → 0.48 mm | 0.15 → 1.19 mm |
-| d20 | 42° | 0.06 → 0.48 mm | 0.09 → 0.73 mm |
+| d4 (half the radius) | 109° | 0.25 → 1.0 mm | 0.18 → 0.71 mm |
+| d6 | 90° | 0.18 → 0.7 mm | 0.24 → 0.96 mm |
+| d8 | 71° | 0.18 → 0.7 mm | 0.17 → 0.68 mm |
+| d12 | 63° | 0.06 → 0.24 mm | 0.15 → 0.6 mm |
+| d20 | 42° | 0.06 → 0.24 mm | 0.09 → 0.37 mm |
 
-So on a d20 the whole range is half a millimetre at the corners and a band
+So on a d20 the whole range is a quarter of a millimetre at the corners and a band
 shaded 21° off its face — about the width of a pen line on the tray. The
 turning die now draws the rounding (`RoundedSolid`: every face's flat part, a
 band across every edge and a patch over every corner, in the body colour and

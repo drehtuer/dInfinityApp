@@ -31,8 +31,8 @@ class ModelLimitsTest {
   }
 
   @Test
-  fun `a die's edges are rounded by half the default share at least and twelve per cent at most`() {
-    assertEquals(0.015..0.12, DieMaterial.EdgeRoundingRange)
+  fun `a die's edges are rounded by half the default share at least and six per cent at most`() {
+    assertEquals(0.015..0.06, DieMaterial.EdgeRoundingRange)
   }
 
   @Test

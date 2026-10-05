@@ -22,15 +22,15 @@ class HullRoundingTest {
 
   @Test
   fun `a rounder die asks for more, and lets Jolt cut its corners back further`() {
-    val rounding = HullRounding.of(DieMaterial(edgeRounding = 0.12))
-    assertEquals(0.192f, rounding.convexRadius, 1e-6f)
-    assertEquals(0.2f, rounding.maxError, 1e-6f)
+    val rounding = HullRounding.of(DieMaterial(edgeRounding = 0.06))
+    assertEquals(0.096f, rounding.convexRadius, 1e-6f)
+    assertEquals(0.1f, rounding.maxError, 1e-6f)
   }
 
   @Test
   fun `the radius is of the nominal size, clamped`() {
     val rounding = HullRounding.of(DieMaterial(sizeMm = 400.0, edgeRounding = 9.0))
-    assertEquals((40.0 * 0.12 / 10.0).toFloat(), rounding.convexRadius, 1e-7f)
+    assertEquals((40.0 * DieMaterial.EdgeRoundingRange.endInclusive / 10.0).toFloat(), rounding.convexRadius, 1e-7f)
   }
 
   @Test

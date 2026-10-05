@@ -97,21 +97,21 @@ class RoundedEdgesRoundnessTest {
 
   @Test
   fun `at the roundest a 16 mm die is rounded by what Jolt gives it`() {
-    // 1.92 mm asked for. A d4 is cut to half of it, as it is at every rounding
+    // 0.96 mm asked for. A d4 is cut to half of it, as it is at every rounding
     // (its spike stands `2 r` inside the sharp one and the error Jolt allows
-    // grows with the share). Every other solid gets what it asked for — even
-    // the coin, which is thick enough to take twice 1.92 mm across.
+    // grows with the share). Every other solid gets what it asked for — the
+    // coin too, which is thick enough to take twice that across.
     val boundingRadiusMm = 8.0
     val expected =
       mapOf(
-        DieShape.Coin to 1.92,
-        DieShape.Tetrahedron to 1.0,
-        DieShape.Cube to 1.92,
-        DieShape.Octahedron to 1.92,
-        DieShape.PentagonalTrapezohedron to 1.92,
-        DieShape.Dodecahedron to 1.92,
-        DieShape.EnneagonalTrapezohedron to 1.92,
-        DieShape.Icosahedron to 1.92,
+        DieShape.Coin to 0.96,
+        DieShape.Tetrahedron to 0.5,
+        DieShape.Cube to 0.96,
+        DieShape.Octahedron to 0.96,
+        DieShape.PentagonalTrapezohedron to 0.96,
+        DieShape.Dodecahedron to 0.96,
+        DieShape.EnneagonalTrapezohedron to 0.96,
+        DieShape.Icosahedron to 0.96,
       )
     val found =
       DieShape.entries.associateWith { shape ->
@@ -213,9 +213,9 @@ class RoundedEdgesRoundnessTest {
     "${Math.round(point.x * KEY)},${Math.round(point.y * KEY)},${Math.round(point.z * KEY)}"
 
   private companion object {
-    /** The least a set may ask for, the designer's Rounded step, and the most. */
-    val ROUNDINGS = listOf(0.015, 0.06, 0.12)
-    const val ROUNDEST = 0.12
+    /** The least a set may ask for, the default, and the most. */
+    val ROUNDINGS = listOf(0.015, 0.03, 0.06)
+    const val ROUNDEST = 0.06
     const val TRIANGLE = 3
     const val HALF = 0.5
     const val PLANE = 1e-12

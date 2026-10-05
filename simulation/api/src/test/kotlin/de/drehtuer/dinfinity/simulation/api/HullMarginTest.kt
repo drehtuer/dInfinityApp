@@ -47,13 +47,13 @@ class HullMarginTest {
   @Test
   fun `each die asks for its own rounding`() {
     assertEquals(0.96, HullMargin.requestedMm(DieMaterial(sizeMm = 16.0, edgeRounding = 0.06)), 1e-12)
-    assertEquals(1.92, HullMargin.requestedMm(DieMaterial(sizeMm = 16.0, edgeRounding = 0.12)), 1e-12)
+    assertEquals(0.72, HullMargin.requestedMm(DieMaterial(sizeMm = 16.0, edgeRounding = 0.045)), 1e-12)
   }
 
   @Test
   fun `the error a corner may have grows with the rounding asked for`() {
     assertEquals(1.0, HullMargin.maxErrorMm(DieMaterial(edgeRounding = 0.06)), 1e-12)
-    assertEquals(2.0, HullMargin.maxErrorMm(DieMaterial(edgeRounding = 0.12)), 1e-12)
+    assertEquals(0.75, HullMargin.maxErrorMm(DieMaterial(edgeRounding = 0.045)), 1e-12)
     assertEquals(0.25, HullMargin.maxErrorMm(DieMaterial(edgeRounding = 0.015)), 1e-12)
   }
 
@@ -61,6 +61,6 @@ class HullMarginTest {
   fun `a rounding outside the set file's limits asks for what the clamped one would`() {
     val wild = DieMaterial(edgeRounding = 3.0)
     assertEquals(16.0 * DieMaterial.EdgeRoundingRange.endInclusive, HullMargin.requestedMm(wild), 1e-12)
-    assertEquals(2.0, HullMargin.maxErrorMm(wild), 1e-12)
+    assertEquals(1.0, HullMargin.maxErrorMm(wild), 1e-12)
   }
 }

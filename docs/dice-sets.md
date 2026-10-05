@@ -70,7 +70,7 @@ density = 1.2                    # g/cm³, clamped to 0.5..8
 translucency = 0                 # %, 0 solid .. 100 glass, clamped
 restitution = 0.55               # clamped to 0.0..0.8
 friction = 0.5                   # clamped to 0.1..1.0
-edge_rounding = 0.03             # share of size_mm, clamped to 0.015..0.12
+edge_rounding = 0.03             # share of size_mm, clamped to 0.015..0.06
 
 # --- dice -----------------------------------------------------------
 
@@ -141,7 +141,7 @@ sound = "felt"
 | `die.read` | no | `face-up` (default) or `vertex-up`. |
 | `die.texture` | no | Path to a PNG/WebP atlas, relative, inside the set folder. |
 | `defaults.translucency`, `die.translucency` | no | Per cent, `0` solid to `100` glass, clamped. Above `0` the die is drawn as resin: the felt and the dice behind it show *through* it, bent and tinted by the die's own `color` — more of it the higher the value, and wholly at `100` (`docs/physics-and-rendering.md`, "A die you can see into"). How milky it is, how thick and how it tints what is behind it are worked out from this, `color`, `size_mm` and `roughness` — a low translucency is milky, a high one glassy, and a rough die is frosted — so there are no resin fields of their own. The numerals and any artwork stay fully opaque whatever it is, because a face you cannot read is not a die. |
-| `defaults.edge_rounding`, `die.edge_rounding` | no | How round the die's edges and corners are, as a share of `size_mm`: `0.03` (0.48 mm on a 16 mm die) when not given, clamped to `0.015`–`0.12` with a warning, refused when it is not a number. It is a physical property, not a look: it is the solver's *convex radius*, and the renderer draws the die with exactly the rounding the solver collides (`docs/physics-and-rendering.md`, "Dice bodies" and "Rounded edges"). The solver gives a sharp corner less than is asked — a d4 gets half, at every value — so a d4's points never go blunt. Rounder dice tumble a little longer and land a little differently; a fairness run can be asked about any value of it (`FairnessTest`'s `edgeRounding`) (`docs/architecture.md`, decision 94). |
+| `defaults.edge_rounding`, `die.edge_rounding` | no | How round the die's edges and corners are, as a share of `size_mm`: `0.03` (0.48 mm on a 16 mm die) when not given, clamped to `0.015`–`0.06` with a warning, refused when it is not a number. The top is measured, not chosen: past 6 % a coin's rim starts to roll like a wheel and throws stop settling (`docs/physics-and-rendering.md`, "How round a die may be"; decision 100). It is a physical property, not a look: it is the solver's *convex radius*, and the renderer draws the die with exactly the rounding the solver collides (`docs/physics-and-rendering.md`, "Dice bodies" and "Rounded edges"). The solver gives a sharp corner less than is asked — a d4 gets half, at every value — so a d4's points never go blunt. Rounder dice tumble a little longer and land a little differently; a fairness run can be asked about any value of it (`FairnessTest`'s `edgeRounding`) (`docs/architecture.md`, decision 94). |
 | `die.color`, `number_color`, `roughness`, `metallic`, `size_mm`, `density`, `restitution`, `friction` | no | Per-die overrides of `defaults`. |
 | `table.*` | no | Table looks; fields and limits in `docs/tables.md`. |
 

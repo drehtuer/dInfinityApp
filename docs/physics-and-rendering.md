@@ -89,7 +89,7 @@ Every die is a **convex** rigid body:
 - Rounded edges: shapes with sharp corners (d4 especially) get a hull margin of
   3 % of the die's nominal size by default (`HullMargin.SHARE`, 0.48 mm on a
   16 mm die), so they tumble instead of catching on the floor. **The share is
-  each die's own**: a set may ask for 1.5 % to 12 % with `edge_rounding`
+  each die's own**: a set may ask for 1.5 % to 6 % with `edge_rounding`
   (`docs/dice-sets.md`), and the face designer's **Edges** control writes it
   (`docs/face-designer.md`, "Material, colour and edges"; decision 94). It is Jolt's
   *convex radius*: the hull's face planes are pulled in by it and the smaller
@@ -99,8 +99,8 @@ Every die is a **convex** rigid body:
   stand more than `mMaxErrorConvexRadius` inside the sharp one — and never more
   than half the die's thinnest width. That error is set per die, **in
   proportion to the share asked for** (`HullMargin.maxErrorMm`): Jolt's own
-  0.5 mm at the default 3 %, which cuts a d4 to 0.25 mm, and 2 mm at 12 %,
-  which cuts it to 1 mm. Held at 0.5 mm, a rounder die would have got what it
+  0.5 mm at the default 3 %, which cuts a d4 to 0.25 mm, and 1 mm at 6 %,
+  which cuts it to 0.5 mm. Held at 0.5 mm, a rounder die would have got what it
   asked for only where its corners are blunt — a d6 would stop at 0.68 mm and
   a d4 would not get rounder at all — so the error grows with the share and
   every shape is rounded in the proportions it has at the default: the d4
@@ -1140,58 +1140,64 @@ and cocks differently, and a claim about the built-in die is not a claim about
 it. `edgeRounding` throws every shape at that share of its size instead of the
 default, through the same check (`HarnessRequest.edgeRoundingOf`, refusing
 anything outside what a set file may say); the harness takes the same with
-`tools/harness.sh --rounding 0.12`:
+`tools/harness.sh --rounding 0.06`:
 
 ```sh
 ./gradlew :simulation:jolt:connectedDebugAndroidTest \
   -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
   -Pandroid.testInstrumentationRunnerArguments.rolls=100000 \
-  -Pandroid.testInstrumentationRunnerArguments.edgeRounding=0.12
+  -Pandroid.testInstrumentationRunnerArguments.edgeRounding=0.06
 ```
 
-The range stops at 12 % for that reason: past it a 16 mm die is rounded by
-more than 2 mm and starts to behave like the pebble it is turning into, which
-is a question about pebbles rather than about dice.
+Where the range stops, and why, is the next section.
 
 ### How round a die may be
 
-The face designer's **Edges** is a slider over the whole of the set file's
-range, 1.5 % to 12 % in half per cents (`docs/face-designer.md`, "Material,
-colour and edges"; decision 98), so the two ends of that range are what has
-to be shown to settle, to be re-thrown no more often than the built-in die
-and to stay fair. Rounding is symmetric, so between the ends nothing new can
-happen — the radius moves the bodies smoothly — and the ends are the
-measurement.
+**1.5 % to 6 % of the die's size**, measured on the Pixel 10a on 2026-10-05
+(`DieMaterial.EdgeRoundingRange`; decision 100). The face designer's
+**Edges** slider runs over exactly that range in half per cents
+(`docs/face-designer.md`, "Material, colour and edges"; decision 98), and a
+set file asking for more is clamped to it with a warning
+(`docs/dice-sets.md`). Rounding is symmetric, so between two values that
+pass nothing new can happen — the radius moves the bodies smoothly — and the
+ends are the measurement. The range was 1.5 % to 12 % until this run, chosen
+on geometry; the run said no to the top of it.
 
-**Not yet measured on the Pixel 10a.** The runs below are the ones that
-answer it; until they are made, the slider's bounds are the set file's, which
-decision 94 chose on geometry (a d4 catching on its corners below half the
-default, a d20 losing half its faces above 12 %) rather than on a run. Each
-is a test APK of `simulation/jolt`, which installs as its own package and
-leaves the app alone:
+**Fairness**, every catalogue shape, 20,000 throws each
+(`FairnessTest`, `-e rolls 20000 -e edgeRounding <share>`):
 
-```sh
-# settling and re-throws, 20 dice a throw, at each end and at the default
-for r in 0.015 0.03 0.12; do
-  for s in d4 d6 d20; do
-    tools/harness.sh -n 200 -c 20 -s "$s" --rounding "$r" -l "edges-$s-$r"
-  done
-done
+| Rounding | Coin throws that never settled (bar: 2) | d18 worst face (bound: 1 %) | Every other shape |
+| --- | --- | --- | --- |
+| 1.5 % | 0 | 0.50 % | fair |
+| 6 % | 0 | 0.62 % | fair |
+| 8 % | **2** — on the bar | 0.68 % | fair; the d10's χ² 24.6 against 27.9 |
+| 12 % | **42** — fails | 0.98 % | fair |
 
-# fairness, every shape, 20,000 throws each, at each end
-for r in 0.015 0.12; do
-  adb shell am instrument -w -e class de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
-    -e rolls 20000 -e edgeRounding "$r" \
-    de.drehtuer.dinfinity.simulation.jolt.test/androidx.test.runner.AndroidJUnitRunner
-done
-```
+The coin is what gives first: rounded enough, its rim is a wheel, and a
+throw that leaves it rolling runs out the twelve-second backstop. The d18's
+worst face drifts towards its bound as it rounds (0.39 % at the default).
+6 % — twice the default — is the last value with both well clear, and 8 % is
+not a margin.
 
-What would move the bounds: a settle-time p95 or a re-throw share at either
-end clearly worse than at 3 %, a give-up past `FaceTally.GIVE_UP_SHARE`, or a
-shape failing χ² or the worst-face bound where it passes at 3 %. A bound that
-moves changes `DieMaterial.EdgeRoundingRange`, which the validator's clamp,
-the harness's `--rounding`, `FairnessTest`'s `edgeRounding` and the slider
-all read, and `docs/dice-sets.md`'s `edge_rounding` row with it.
+**Settling**, 200 throws of 20 dice each (`tools/harness.sh -n 200 -c 20
+-s <shape> --rounding <share>`):
+
+| | d4 | d6 | d20 |
+| --- | --- | --- | --- |
+| re-thrown at 1.5 % / 3 % / 12 % | 2.43 / 2.35 / 0.00 % | 0.88 / 0.48 / 0.20 % | 1.10 / 1.28 / 1.20 % |
+| median settle at 1.5 % / 3 % / 12 % | 0.76 / 0.76 / 0.73 s | 0.85 / 0.85 / 0.85 s | 0.96 / 0.96 / 0.94 s |
+| turns after landing at 1.5 % / 3 % / 12 % | 1.97 / 2.03 / 2.27 | 2.44 / 2.52 / 2.86 | 2.64 / 2.69 / 2.78 |
+
+No throw gave up, none was forced to settle and no die came to rest on
+another at any of the nine; the overlap and re-throw bars fail at every
+value exactly as they do at the default (Step 5.4 and 5.5). Rounder dice
+tumble a little longer and are re-thrown *less*, so the harness would have
+allowed 12 % — it throws no coins.
+
+To measure past 6 % again, widen `DieMaterial.EdgeRoundingRange` on a
+branch first: the harness's `--rounding` and `FairnessTest`'s `edgeRounding`
+refuse anything a set file may not say, which is what makes their figures
+claims about dice a player can have.
 
 **The seeds are stirred, not counted.** A roll's seed becomes a
 `kotlin.random.Random`, and two seeds differing only in their low bits do not
@@ -2800,11 +2806,11 @@ packet compiled without them is not read back.
 **A rounder die is the same construction at a larger radius** (decision 94).
 `RoundedEdges.radiusFor` reads the die's own `edge_rounding` and the error
 Jolt is given for it, so the picture follows the solver at every value a set
-may ask for. At the roundest, 12 % of a 16 mm die, every solid but the d4 is
-rounded by the 1.92 mm it asks for — the coin too, which is thick enough to
-take twice that across — and the d4 by 1 mm; a d20's flat faces lose about
-half their area to the bends. `RoundedEdgesRoundnessTest` holds the mesh to
-the same promises at 1.5 %, 6 % and 12 % as `RoundedEdgesTest` does at 3 %:
+may ask for. At the roundest, 6 % of a 16 mm die, every solid but the d4 is
+rounded by the 0.96 mm it asks for — the coin too, which is thick enough to
+take twice that across — and the d4 by 0.5 mm. `RoundedEdgesRoundnessTest`
+holds the mesh to the same promises at 1.5 %, 3 % and 6 % as
+`RoundedEdgesTest` does at 3 %:
 closed, every flat face on its own plane and inside the sharp one, a die on a
 face on the felt, never outside its hull, its corners in by exactly what the
 solver's are. Meshes are cached per shape and radius, so a set of rounder

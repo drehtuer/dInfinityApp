@@ -140,14 +140,14 @@ class SolidStageTest {
       return stage.faces.sumOf { face -> shoelace(face.outline) }
     }
 
-    assertTrue("rounding the die did not shrink its faces", areaOf(0.12) < areaOf(0.015))
+    assertTrue("rounding the die did not shrink its faces", areaOf(0.06) < areaOf(0.015))
   }
 
   @Test
   fun `the bends are drawn lit, inside the stage, nearest last`() {
     val stage =
       SolidStage.of(
-        Draft(Drawings.die(DieShape.Icosahedron), finish = DieFinish.STANDARD.rounded(0.12)),
+        Draft(Drawings.die(DieShape.Icosahedron), finish = DieFinish.STANDARD.rounded(0.06)),
         SolidTurn(),
       )
 
@@ -178,7 +178,7 @@ class SolidStageTest {
   fun `a face's marks reach to its sharp edges, past where its flat part ends`() {
     val stage =
       SolidStage.of(
-        Draft(Drawings.die(DieShape.Cube), finish = DieFinish.STANDARD.rounded(0.12)),
+        Draft(Drawings.die(DieShape.Cube), finish = DieFinish.STANDARD.rounded(0.06)),
         SolidTurn(),
       )
 

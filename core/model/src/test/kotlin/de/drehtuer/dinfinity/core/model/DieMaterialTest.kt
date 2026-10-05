@@ -104,10 +104,11 @@ class DieMaterialTest {
   }
 
   @Test
-  fun `edge rounding is clamped between half and four times the default`() {
+  fun `edge rounding is clamped between half and twice the default`() {
     assertEquals(0.015, DieMaterial(edgeRounding = 0.0).clampedToLimits().edgeRounding)
-    assertEquals(0.12, DieMaterial(edgeRounding = 0.5).clampedToLimits().edgeRounding)
-    assertEquals(0.06, DieMaterial(edgeRounding = 0.06).clampedToLimits().edgeRounding)
+    assertEquals(0.06, DieMaterial(edgeRounding = 0.5).clampedToLimits().edgeRounding)
+    assertEquals(0.06, DieMaterial(edgeRounding = 0.12).clampedToLimits().edgeRounding)
+    assertEquals(0.045, DieMaterial(edgeRounding = 0.045).clampedToLimits().edgeRounding)
     assertEquals(0.03, DieMaterial(edgeRounding = Double.POSITIVE_INFINITY).clampedToLimits().edgeRounding)
   }
 }
