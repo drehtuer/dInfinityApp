@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -92,7 +93,12 @@ internal fun SolidPane(
     // The silhouette first, because it is the only thing that draws a coin's
     // rim: every other solid is covered by its own faces.
     drawSolid(stage.silhouette, colours.lit(RIM_LIGHT))
-    stage.faces.forEach { face -> drawFace(face, colours, selected = face.cell == state.cell) }
+    // Inside the rounded outline, so a drawing that runs round a bend stops
+    // where the die does rather than where its sharp corner would have been.
+    clipPath(pathOf(listOf(stage.silhouette), size)) {
+      stage.bends.forEach { bend -> drawBend(bend, colours) }
+      stage.faces.forEach { face -> drawFace(face, colours, selected = face.cell == state.cell) }
+    }
   }
 
   Row(

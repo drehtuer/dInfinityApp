@@ -1,25 +1,24 @@
 package de.drehtuer.dinfinity.feature.designer
 
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotSelected
-import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import de.drehtuer.dinfinity.core.model.Die
 import de.drehtuer.dinfinity.core.model.DieMaterial
 import de.drehtuer.dinfinity.core.model.DieShape
 import de.drehtuer.dinfinity.designer.MaterialPreset
-import de.drehtuer.dinfinity.designer.Roundness
 import de.drehtuer.dinfinity.dicesets.builtin.BuiltinDiceSet
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -44,7 +43,7 @@ class FinishPaneTest {
     solid()
 
     compose.onNodeWithTag(DesignerTestTags.MATERIAL).performScrollTo().assertIsDisplayed()
-    compose.onNodeWithTag(DesignerTestTags.edgesOf(Roundness.Standard)).performScrollTo().assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.EDGES).performScrollTo().assertIsDisplayed()
   }
 
   @Test
@@ -92,24 +91,43 @@ class FinishPaneTest {
         DesignerTestTags.MATERIAL,
       ).performScrollTo()
       .assertContentDescriptionEquals("Material: Custom")
-    Roundness.entries.forEach { compose.onNodeWithTag(DesignerTestTags.edgesOf(it)).assertIsNotSelected() }
-    compose.onNodeWithTag(DesignerTestTags.FINISH_NOTE).performScrollTo().assertTextContains("5 %", substring = true)
+    compose.onNodeWithTag(DesignerTestTags.EDGES_SAID).performScrollTo().assertTextContains("5.0 %", substring = true)
   }
 
   @Test
-  fun `the edges are one choice of four, and choosing one changes the die`() {
+  fun `the edges are a slider over what a set may ask for, and moving it rounds the die`() {
     val presenter = show(d6)
     solid()
-    compose.onNodeWithTag(DesignerTestTags.edgesOf(Roundness.Standard)).performScrollTo().assertIsSelected()
+    val range =
+      compose
+        .onNodeWithTag(DesignerTestTags.EDGES)
+        .performScrollTo()
+        .fetchSemanticsNode()
+        .config[SemanticsProperties.ProgressBarRangeInfo]
+    assertEquals(0.03f, range.current, 1e-6f)
+    assertEquals(0.015f, range.range.start, 1e-6f)
+    assertEquals(0.12f, range.range.endInclusive, 1e-6f)
+    assertEquals(20, range.steps)
 
-    compose.onNodeWithTag(DesignerTestTags.edgesOf(Roundness.VeryRounded)).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.EDGES).performSemanticsAction(SemanticsActions.SetProgress) { it(0.09f) }
 
-    assertEquals(Roundness.VeryRounded, presenter.state.roundness)
-    compose.onNodeWithTag(DesignerTestTags.edgesOf(Roundness.VeryRounded)).assertIsSelected()
-    compose.onNodeWithTag(DesignerTestTags.edgesOf(Roundness.Standard)).assertIsNotSelected()
+    assertEquals(0.09, presenter.state.edgeRounding, 1e-9)
+    compose.onNodeWithTag(DesignerTestTags.EDGES_SAID).assertTextContains("9.0 %", substring = true)
+    compose.onNodeWithTag(DesignerTestTags.EDGES_SAID).assertTextContains("1.44 mm", substring = true)
+  }
+
+  @Test
+  fun `TalkBack hears what the edges are and where the slider stands`() {
+    show(d6)
+    solid()
+
     compose
-      .onNodeWithTag(DesignerTestTags.edgesOf(Roundness.VeryRounded))
-      .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton))
+      .onNodeWithTag(DesignerTestTags.EDGES)
+      .performScrollTo()
+      .assertContentDescriptionEquals("Edges")
+      .assert(
+        SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Rounded by 3.0 % of its size: 0.48 mm"),
+      )
   }
 
   @Test

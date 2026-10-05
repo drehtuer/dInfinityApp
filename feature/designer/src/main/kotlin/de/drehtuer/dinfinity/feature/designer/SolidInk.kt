@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
+import de.drehtuer.dinfinity.designer.StageBend
 import de.drehtuer.dinfinity.designer.StageFace
 import de.drehtuer.dinfinity.designer.StagePoint
 import de.drehtuer.dinfinity.designer.StageShape
@@ -43,8 +44,10 @@ internal fun DrawScope.drawFace(
   if (selected) drawPath(path = polygon, color = colours.tint)
   // Clipped to the face rather than trusted to stay inside it: the canvas is a
   // square and the outline it is masked into is not, so a mark near a corner
-  // of the canvas belongs to no face (`docs/face-designer.md`).
-  clipPath(polygon) {
+  // of the canvas belongs to no face (`docs/face-designer.md`). To the face's
+  // sharp polygon rather than its flat part, because a drawing that runs to
+  // the edge runs round the bend on the tray.
+  clipPath(pathOf(listOf(face.reach), size)) {
     face.marks.forEach { mark ->
       if (mark.erases) {
         // The eraser is the face's own paper, as it is on the canvas — lit as
@@ -63,6 +66,15 @@ internal fun DrawScope.drawFace(
     style = DrawStroke(width = (if (selected) SELECTED_EDGE else Modernist.hairline).toPx()),
   )
 }
+
+/**
+ * A band across a rounded edge or a patch over a rounded corner: the die's
+ * body, lit by the way the piece faces.
+ */
+internal fun DrawScope.drawBend(
+  bend: StageBend,
+  colours: SolidColours,
+) = drawPath(path = pathOf(listOf(bend.outline), size), color = colours.lit(bend.light))
 
 /** The die's own body, which is what a coin's rim is drawn as. */
 internal fun DrawScope.drawSolid(

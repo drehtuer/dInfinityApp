@@ -52,7 +52,6 @@ import de.drehtuer.dinfinity.designer.FaceTransform
 import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.designer.NewSet
 import de.drehtuer.dinfinity.designer.PaperInk
-import de.drehtuer.dinfinity.designer.Roundness
 import de.drehtuer.dinfinity.designer.Stamp
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
@@ -1148,6 +1147,8 @@ object DesignerTestTags {
   const val MATERIAL: String = "designer:material"
   const val SWATCH: String = "designer:material:swatch"
   const val FINISH_NOTE: String = "designer:finish:note"
+  const val EDGES: String = "designer:edges"
+  const val EDGES_SAID: String = "designer:edges:said"
   const val MORE_BODY_COLOURS: String = "designer:body:more"
   const val BODY_HEX: String = "designer:body:hex"
 
@@ -1180,7 +1181,4 @@ object DesignerTestTags {
   fun saveInto(setId: String): String = "designer:save:into:$setId"
 
   fun materialOf(preset: MaterialPreset): String = "designer:material:${preset.name.lowercase()}"
-
-  /** One step of the Edges control; a rounding none of them is has no option, and so no tag of its own. */
-  fun edgesOf(roundness: Roundness?): String = "designer:edges:${roundness?.name?.lowercase() ?: "custom"}"
 }

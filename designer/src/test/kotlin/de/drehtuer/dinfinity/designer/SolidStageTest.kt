@@ -131,6 +131,39 @@ class SolidStageTest {
   }
 
   @Test
+  fun `the turning die shows its rounded edges, and moving the slider shows on it`() {
+    val die = Drawings.die(DieShape.Cube)
+
+    fun areaOf(share: Double): Double {
+      val stage = SolidStage.of(Draft(die, finish = DieFinish.STANDARD.rounded(share)), SolidTurn())
+      assertTrue("a rounded die drew no bends", stage.bends.isNotEmpty())
+      return stage.faces.sumOf { face -> shoelace(face.outline) }
+    }
+
+    assertTrue("rounding the die did not shrink its faces", areaOf(0.12) < areaOf(0.015))
+  }
+
+  @Test
+  fun `a face's marks reach to its sharp edges, past where its flat part ends`() {
+    val stage =
+      SolidStage.of(
+        Draft(Drawings.die(DieShape.Cube), finish = DieFinish.STANDARD.rounded(0.12)),
+        SolidTurn(),
+      )
+
+    stage.faces.forEach { face -> assertTrue(shoelace(face.reach) > shoelace(face.outline)) }
+  }
+
+  private fun shoelace(ring: List<StagePoint>): Double =
+    kotlin.math.abs(
+      ring.indices.sumOf { at ->
+        val a = ring[at]
+        val b = ring[(at + 1) % ring.size]
+        (a.x * b.y - b.x * a.y).toDouble()
+      },
+    ) / 2
+
+  @Test
   fun `the eraser goes on the solid too, and says so`() {
     val die = Drawings.die(DieShape.Cube)
     val erased =

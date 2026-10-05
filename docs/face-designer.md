@@ -857,16 +857,55 @@ built-in near-black on a light body and white on a dark one (`PaperInk`) —
 because a black die printed in black is a die nobody can read. The guide under
 the drawing follows the same rule ("The guide").
 
-**Edges** is four steps, not a slider: **Sharp**, **Standard**, **Rounded** and
-**Very round**, 1.5 %, 3 %, 6 % and 12 % of the die's size — the least a set
-file may ask for, what every die has always had, twice that, and the most a
-set file may ask for. The rounding is the solver's convex radius, which the
-renderer draws (`docs/physics-and-rendering.md`, "Rounded edges"), so every
-value on offer is a die that *rolls* differently, and four named dice are four
-that can be thrown a hundred thousand times each and checked for fairness;
-a slider would offer a continuum nobody has thrown. A rounding none of the
-steps is — from somebody else's set — selects none of them and says what it
-is under the control ("Custom edges, rounded by 5 % of the die's size").
+**Edges** is a slider from 1.5 % to 12 % of the die's size in steps of half a
+per cent — the range a set file may ask for, so the slider cannot write a value
+the validator would bring back (`EdgeRounding`). Under it the rounding is said
+twice, as the share a set file writes and as the millimetres that come to on
+*this* die as the solver rounds it: "Rounded by 6.0 % of its size: 0.96 mm",
+and about half that on a d4, whose points the solver cuts back. TalkBack hears
+the same sentence as the slider's state. A rounding from somebody else's set
+is wherever it is on the slider — inside the range by the validator's clamp —
+and moving the slider puts it on a step.
+
+**A slider, not four steps**, and the reasoning that chose the steps was
+backwards. The rounding is the solver's convex radius, so every value is a die
+that *rolls* differently, and the steps were offered as "four dice that can be
+thrown and checked". But the rounding is symmetric — every edge by the same
+radius — so it cannot load a die at any value, and what a run measures
+(settling, re-throws, fairness) changes smoothly with it: the two ends of the
+range answer for everything between them, which is where the measurements are
+made (`docs/physics-and-rendering.md`, "How round a die may be"). The steps
+also hid the one thing a person choosing them needs to see, which is how
+little rounding shows on some dice:
+
+**Why the steps looked the same on everything but a d4.** Not the solver:
+every shape but the d4 gets the full radius it asks for at every value
+(`HullMargin.maxErrorMm` grows with the share), and the d4 half of it. Two
+things did it. *The designer never showed the rounding* — the turning die was
+the sharp polyhedron whatever the step, so on this screen no step changed
+anything on any die, and only a throw could. And *how much rounding shows is
+the solid's, not the radius's*: what moves is how far a corner stands in,
+`r · (|m| − 1)`, and how wide the band over an edge is, `r · tan(θ / 2)` on
+either face, where `θ` is the angle between the two faces' normals — and the
+band is shaded by about `θ / 2` against its faces. A d4's faces meet at 109°
+apart and its corners stand in by twice the radius; a d20's meet at 42° and
+its corners stand in by a quarter of it. On a 16 mm die from the first step to
+the last:
+
+| Die | Angle between faces | Corner stands in | Band on each face |
+| --- | --- | --- | --- |
+| d4 (half the radius) | 109° | 0.25 → 2.0 mm | 0.18 → 1.41 mm |
+| d6 | 90° | 0.18 → 1.4 mm | 0.24 → 1.92 mm |
+| d8 | 71° | 0.18 → 1.4 mm | 0.17 → 1.36 mm |
+| d12 | 63° | 0.06 → 0.48 mm | 0.15 → 1.19 mm |
+| d20 | 42° | 0.06 → 0.48 mm | 0.09 → 0.73 mm |
+
+So on a d20 the whole range is half a millimetre at the corners and a band
+shaded 21° off its face — about the width of a pen line on the tray. The
+turning die now draws the rounding (`RoundedSolid`: every face's flat part, a
+band across every edge and a patch over every corner, in the body colour and
+lit as they face, and the outline drawn round the rounded corners), so moving
+the slider is something the screen shows before the throw does.
 
 **The swatch beside the menu is a hint, not the die.** The Solid tab is a
 drawing on paper; a resin die bending the felt and a metal one catching the

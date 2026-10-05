@@ -1151,8 +1151,47 @@ anything outside what a set file may say); the harness takes the same with
 
 The range stops at 12 % for that reason: past it a 16 mm die is rounded by
 more than 2 mm and starts to behave like the pebble it is turning into, which
-is a question about pebbles rather than about dice. The results of a run at
-12 % belong here once one has been made (`docs/TODO.md`).
+is a question about pebbles rather than about dice.
+
+### How round a die may be
+
+The face designer's **Edges** is a slider over the whole of the set file's
+range, 1.5 % to 12 % in half per cents (`docs/face-designer.md`, "Material,
+colour and edges"; decision 98), so the two ends of that range are what has
+to be shown to settle, to be re-thrown no more often than the built-in die
+and to stay fair. Rounding is symmetric, so between the ends nothing new can
+happen — the radius moves the bodies smoothly — and the ends are the
+measurement.
+
+**Not yet measured on the Pixel 10a.** The runs below are the ones that
+answer it; until they are made, the slider's bounds are the set file's, which
+decision 94 chose on geometry (a d4 catching on its corners below half the
+default, a d20 losing half its faces above 12 %) rather than on a run. Each
+is a test APK of `simulation/jolt`, which installs as its own package and
+leaves the app alone:
+
+```sh
+# settling and re-throws, 20 dice a throw, at each end and at the default
+for r in 0.015 0.03 0.12; do
+  for s in d4 d6 d20; do
+    tools/harness.sh -n 200 -c 20 -s "$s" --rounding "$r" -l "edges-$s-$r"
+  done
+done
+
+# fairness, every shape, 20,000 throws each, at each end
+for r in 0.015 0.12; do
+  adb shell am instrument -w -e class de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
+    -e rolls 20000 -e edgeRounding "$r" \
+    de.drehtuer.dinfinity.simulation.jolt.test/androidx.test.runner.AndroidJUnitRunner
+done
+```
+
+What would move the bounds: a settle-time p95 or a re-throw share at either
+end clearly worse than at 3 %, a give-up past `FaceTally.GIVE_UP_SHARE`, or a
+shape failing χ² or the worst-face bound where it passes at 3 %. A bound that
+moves changes `DieMaterial.EdgeRoundingRange`, which the validator's clamp,
+the harness's `--rounding`, `FairnessTest`'s `edgeRounding` and the slider
+all read, and `docs/dice-sets.md`'s `edge_rounding` row with it.
 
 **The seeds are stirred, not counted.** A roll's seed becomes a
 `kotlin.random.Random`, and two seeds differing only in their low bits do not

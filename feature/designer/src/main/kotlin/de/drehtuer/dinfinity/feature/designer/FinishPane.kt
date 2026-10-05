@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,18 +36,17 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.DieFinish
+import de.drehtuer.dinfinity.designer.EdgeRounding
 import de.drehtuer.dinfinity.designer.MaterialPreset
-import de.drehtuer.dinfinity.designer.Roundness
 import de.drehtuer.dinfinity.ui.common.ColourPicker
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
 import de.drehtuer.dinfinity.ui.common.SectionKicker
-import de.drehtuer.dinfinity.ui.common.SegmentedControl
 import de.drehtuer.dinfinity.ui.common.TOUCH_TARGET
-import kotlin.math.roundToInt
 
 /**
  * What the die is made of and how round its edges are
@@ -79,29 +79,59 @@ internal fun FinishPane(
     SectionKicker(text = stringResource(R.string.designer_body))
     BodyColours(state, presenter)
     SectionKicker(text = stringResource(R.string.designer_edges))
-    SegmentedControl(
-      options = Roundness.entries.toList<Roundness?>(),
-      selected = state.roundness,
-      label = { roundness -> roundness?.let { stringResource(labelOf(it)) }.orEmpty() },
-      onSelect = { roundness -> roundness?.let(presenter::rounded) },
-      tagOf = { roundness -> DesignerTestTags.edgesOf(roundness) },
-    )
-    val note =
-      if (state.roundness == null) {
-        stringResource(
-          R.string.designer_edges_custom,
-          (state.draft.shownFinish.edgeRounding * PERCENT).roundToInt(),
-        )
-      } else {
-        stringResource(R.string.designer_finish_note)
-      }
+    Edges(state, presenter)
     Text(
-      text = note,
+      text = stringResource(R.string.designer_finish_note),
       style = MaterialTheme.typography.labelSmall,
       color = Ink.muted,
       modifier = Modifier.testTag(DesignerTestTags.FINISH_NOTE),
     )
   }
+}
+
+/**
+ * How round the die is: a slider over what a set file may ask for, in steps of
+ * half a per cent of its size (`EdgeRounding`; `docs/face-designer.md`,
+ * "Material, colour and edges").
+ *
+ * Said in words under it twice over — the share of the size the slider moves
+ * and the millimetres that come to on *this* die — because a per cent is the
+ * number a set file writes and a millimetre is the one a person can picture.
+ * The millimetres are the solver's: on a d4 that is half what is asked for,
+ * because its points are cut back (`RoundedSolid.radius`).
+ */
+@Composable
+private fun Edges(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  val share = state.edgeRounding
+  val said =
+    stringResource(
+      R.string.designer_edges_value,
+      (share * PERCENT).toFloat(),
+      state.roundedMm.toFloat(),
+    )
+  val name = stringResource(R.string.designer_edges)
+  Slider(
+    value = share.toFloat(),
+    onValueChange = { presenter.rounded(it.toDouble()) },
+    valueRange = EdgeRounding.RANGE.start.toFloat()..EdgeRounding.RANGE.endInclusive.toFloat(),
+    steps = EdgeRounding.BETWEEN,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .semantics {
+          contentDescription = name
+          stateDescription = said
+        }.testTag(DesignerTestTags.EDGES),
+  )
+  Text(
+    text = said,
+    style = MaterialTheme.typography.labelSmall,
+    color = MaterialTheme.colorScheme.onBackground,
+    modifier = Modifier.testTag(DesignerTestTags.EDGES_SAID),
+  )
 }
 
 /**
@@ -304,14 +334,6 @@ private fun labelOf(preset: MaterialPreset): Int =
     MaterialPreset.Glass -> R.string.designer_material_glass
     MaterialPreset.Metal -> R.string.designer_material_metal
     MaterialPreset.Stone -> R.string.designer_material_stone
-  }
-
-private fun labelOf(roundness: Roundness): Int =
-  when (roundness) {
-    Roundness.Sharp -> R.string.designer_edges_sharp
-    Roundness.Standard -> R.string.designer_edges_standard
-    Roundness.Rounded -> R.string.designer_edges_rounded
-    Roundness.VeryRounded -> R.string.designer_edges_very_rounded
   }
 
 /** Squares a side of the swatch's chequer. */

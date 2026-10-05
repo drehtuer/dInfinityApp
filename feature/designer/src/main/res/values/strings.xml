@@ -70,15 +70,10 @@
   <string name="designer_body_title">Colour of the die</string>
   <!-- The kicker over the choice of how round the die's edges are. -->
   <string name="designer_edges">Edges</string>
-  <!-- How round the die's edges are, sharpest first. Short: four of them share one row. -->
-  <string name="designer_edges_sharp">Sharp</string>
-  <string name="designer_edges_standard">Standard</string>
-  <string name="designer_edges_rounded">Rounded</string>
-  <string name="designer_edges_very_rounded">Very round</string>
+  <!-- Under the Edges slider, and what a screen reader says it stands at. %1$.1f is the per cent of the die's size, %2$.2f the millimetres that comes to on this die. -->
+  <string name="designer_edges_value">Rounded by %1$.1f %% of its size: %2$.2f mm</string>
   <!-- Under the controls: the swatch is a hint, the tray is the real thing. -->
   <string name="designer_finish_note">Roll it to see the material on the tray. Rounder dice tumble a little longer.</string>
-  <!-- Under the edges when the die's rounding is none of the four, as from somebody else's set. %1$d is per cent of the die's size. -->
-  <string name="designer_edges_custom">Custom edges, rounded by %1$d %% of the die’s size. Choose one to change it.</string>
   <string name="designer_nib_fine">Fine</string>
   <string name="designer_nib_medium">Medium</string>
   <string name="designer_nib_broad">Broad</string>

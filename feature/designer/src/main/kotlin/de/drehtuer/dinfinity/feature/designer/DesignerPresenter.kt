@@ -18,12 +18,13 @@ import de.drehtuer.dinfinity.designer.GuideMark
 import de.drehtuer.dinfinity.designer.Mark
 import de.drehtuer.dinfinity.designer.MaterialPreset
 import de.drehtuer.dinfinity.designer.PersonalSetId
-import de.drehtuer.dinfinity.designer.Roundness
+import de.drehtuer.dinfinity.designer.RoundedSolid
 import de.drehtuer.dinfinity.designer.SolidStage
 import de.drehtuer.dinfinity.designer.SolidTurn
 import de.drehtuer.dinfinity.designer.Stage
 import de.drehtuer.dinfinity.designer.StampSize
 import de.drehtuer.dinfinity.designer.Stroke
+import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -294,8 +295,18 @@ data class DesignerState(
    */
   val bodyArgb: Int get() = draft.shownFinish.colorArgb
 
-  /** Which step of the Edges control the die is on, or null for a rounding none of them is. */
-  val roundness: Roundness? get() = Roundness.of(draft.shownFinish.edgeRounding)
+  /** How round the die is, as a share of its size: where the Edges slider stands. */
+  val edgeRounding: Double get() = draft.shownFinish.edgeRounding
+
+  /**
+   * How round the die is in millimetres, as the solver rounds it: what it
+   * asks for, cut back on a sharp-cornered die ([RoundedSolid.radius], in
+   * units of half the die's size).
+   */
+  val roundedMm: Double get() {
+    val material = draft.shownFinish.on(draft.die.material)
+    return RoundedSolid(SolidFaces.of(draft.die.shape), material).radius * material.sizeMm / 2
+  }
 
   val canUndo: Boolean get() = face.canUndo
   val canRedo: Boolean get() = face.canRedo
@@ -697,9 +708,13 @@ class DesignerPresenter(
     finish(state.draft.shownFinish.madeOf(preset))
   }
 
-  /** A step of the Edges control was chosen. What the die is made of stays. */
-  fun rounded(roundness: Roundness) {
-    finish(state.draft.shownFinish.rounded(roundness))
+  /**
+   * The Edges slider moved to [share] of the die's size. What the die is made
+   * of stays, and a move that lands on the step it was already on changes
+   * nothing and writes nothing.
+   */
+  fun rounded(share: Double) {
+    finish(state.draft.shownFinish.rounded(share))
   }
 
   /**

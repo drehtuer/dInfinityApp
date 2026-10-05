@@ -1,7 +1,6 @@
 package de.drehtuer.dinfinity.designer
 
 import de.drehtuer.dinfinity.simulation.api.Quaternion
-import de.drehtuer.dinfinity.simulation.api.ShapeGeometry
 import de.drehtuer.dinfinity.simulation.api.SolidFace
 import de.drehtuer.dinfinity.simulation.api.SolidFaces
 import de.drehtuer.dinfinity.simulation.api.Vector3
@@ -122,8 +121,13 @@ data class StageShape(
  *
  * @param cell which face of the die this is, so the screen can say which of
  *   them is the one being drawn on.
- * @param outline the face's own polygon, projected.
+ * @param outline the face's flat part, projected: its own polygon, pulled in
+ *   to where the rounded edges begin ([RoundedSolid]).
  * @param marks what is drawn on it, furthest back first.
+ * @param reach the face's sharp polygon, projected — what its marks are
+ *   clipped to. A drawing that runs to the edge of a face runs round the bend
+ *   on the tray, as paint would (`docs/physics-and-rendering.md`, "Rounded
+ *   edges"), so it is not cut off where the flat part ends.
  * @param light how much of the light this face catches, `0..1`.
  * @param depth how far the middle of the face is from the eye. What the stage
  *   is sorted by, and the only thing here that is not a picture.
@@ -134,15 +138,27 @@ data class StageFace(
   val marks: List<StageShape>,
   val light: Float,
   val depth: Double,
+  val reach: List<StagePoint> = outline,
 )
 
 /**
- * The die as it is seen: its silhouette, and the faces turned towards the
- * viewer, furthest first.
+ * A piece of the rounding, as it is seen: a band across an edge or a patch over
+ * a corner, in the die's body colour ([RoundedSolid]).
+ */
+data class StageBend(
+  val outline: List<StagePoint>,
+  val light: Float,
+  val depth: Double,
+)
+
+/**
+ * The die as it is seen: its silhouette, the rounded edges and corners, and
+ * the faces turned towards the viewer, each furthest first.
  */
 data class Stage(
   val silhouette: List<StagePoint>,
   val faces: List<StageFace>,
+  val bends: List<StageBend> = emptyList(),
 )
 
 /**
@@ -156,8 +172,9 @@ data class Stage(
  * and colours (`docs/architecture.md`, decision 55).
  *
  * The solid itself is `simulation/api`'s ([SolidFaces]) — the same corners the
- * solver collides and the same faces the renderer's mesh is poured from. This
- * file adds no geometry of its own.
+ * solver collides and the same faces the renderer's mesh is poured from — and
+ * it is rounded by the radius the solver gives the die ([RoundedSolid]), so
+ * moving the Edges slider is something the turning die shows.
  */
 object SolidStage {
   /** [draft]'s die as it is seen when it is turned by [turn]. */
@@ -166,12 +183,21 @@ object SolidStage {
     turn: SolidTurn,
   ): Stage {
     val shape = draft.die.shape
+    val faces = SolidFaces.of(shape)
+    val rounded = RoundedSolid(faces, draft.shownFinish.on(draft.die.material))
+    val facing = faces.filter { facesTheEye(it, turn) }.map(SolidFace::index).toSet()
     val seen =
-      SolidFaces.of(shape).mapNotNull { face ->
-        faceOf(face, draft, turn)
+      faces.mapNotNull { face ->
+        faceOf(face, draft, turn, rounded)
       }
+    val bends =
+      (rounded.bands + rounded.patches)
+        .filter { bend -> bend.faces.any { it in facing } }
+        .map { bend -> bendOf(bend, turn) }
     return Stage(
-      silhouette = hullOf(ShapeGeometry.verticesOf(shape).map { corner -> pointOf(turn.turnedTo(corner)) }),
+      // The outline of the rounded die ([RoundedSolid.outlinePoints]).
+      silhouette = hullOf(rounded.outlinePoints.map { point -> pointOf(turn.turnedTo(point)) }),
+      bends = bends.sortedByDescending(StageBend::depth),
       // Furthest first, which is the order paint goes on. A convex solid with
       // its back faces already dropped has nothing left that can overlap, so
       // this decides nothing about what is seen — it is what makes the stage
@@ -192,16 +218,42 @@ object SolidStage {
     face: SolidFace,
     draft: Draft,
     turn: SolidTurn,
+    rounded: RoundedSolid,
   ): StageFace? {
+    if (!facesTheEye(face, turn)) return null
     val middle = turn.turnedTo(face.centre)
-    val normal = turn.turnedTo(face.normal)
-    if (((EYE - middle) dot normal) <= 0) return null
     val basis = FaceOnSolid.basisOf(face, draft.outline)
     return StageFace(
       cell = face.index,
-      outline = face.corners.map { corner -> pointOf(turn.turnedTo(corner)) },
+      outline = rounded.flats.getValue(face.index).map { corner -> pointOf(turn.turnedTo(corner)) },
       marks = shapesOf(draft.face(face.index).marks, basis, turn),
-      light = lightOn(normal),
+      light = lightOn(turn.turnedTo(face.normal)),
+      depth = (EYE - middle).length,
+      reach = face.corners.map { corner -> pointOf(turn.turnedTo(corner)) },
+    )
+  }
+
+  /** Whether the eye is on the outward side of [face]'s plane, which for a convex solid is "can it be seen". */
+  private fun facesTheEye(
+    face: SolidFace,
+    turn: SolidTurn,
+  ): Boolean = ((EYE - turn.turnedTo(face.centre)) dot turn.turnedTo(face.normal)) > 0
+
+  /**
+   * A band or a corner patch as it is seen: the outline of its corners on the
+   * stage — a patch's corners come in no particular order round the corner,
+   * and the outline of their projections is the patch — lit by the way it
+   * faces.
+   */
+  private fun bendOf(
+    bend: RoundedSolid.Bend,
+    turn: SolidTurn,
+  ): StageBend {
+    val turned = bend.outline.map(turn::turnedTo)
+    val middle = turned.reduce(Vector3::plus) * (1.0 / turned.size)
+    return StageBend(
+      outline = hullOf(turned.map(::pointOf)),
+      light = lightOn(turn.turnedTo(bend.normal)),
       depth = (EYE - middle).length,
     )
   }
