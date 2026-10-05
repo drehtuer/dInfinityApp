@@ -46,6 +46,10 @@ This is a snapshot, not a changelog — git history is the changelog.
   materials) and how round it is (four steps, a new optional `edge_rounding`
   the solver and the picture both follow; decision 94) — every default
   unchanged; the device suite and a fairness run at the roundest are next.
+  While a dice material compiles — the first launch after an install or
+  update, or the first resin, glass or textured-table material — a
+  "Preparing the dice" plate over the tray says why, with a bar timed by what
+  the phone took last time (decision 95; seen working on the Pixel 10a).
   It reaches `main` when the owner likes it on the phone.
 
 ## Done
