@@ -178,13 +178,22 @@ private fun Range(range: RollRange) {
  *
  * Laid out rather than `fillMaxWidth(fraction)`, so a roll that has read
  * nothing draws a track with no fill at all instead of a sliver.
+ *
+ * Shared with "Preparing the dice" ([PreparingTheDice]), which is the other
+ * thing on this screen that fills as it goes; [fillTag] names the fill so a
+ * test can tell the two apart, and [modifier] carries what the caller says
+ * about the whole rule — that one is a progress bar to a screen reader.
  */
 @Composable
-private fun ProgressRule(filled: Float) {
+internal fun ProgressRule(
+  filled: Float,
+  modifier: Modifier = Modifier,
+  fillTag: String = RollTestTags.COUNTING_RULE,
+) {
   val dark = MaterialTheme.colorScheme.background.luminance() < HALF
   Box(
     modifier =
-      Modifier
+      modifier
         .fillMaxWidth()
         .height(RULE)
         .background(if (dark) Modernist.Neutral.v800 else Modernist.Neutral.v200),
@@ -198,7 +207,7 @@ private fun ProgressRule(filled: Float) {
             val placeable = measurable.measure(constraints.copy(minWidth = width, maxWidth = width))
             layout(width, placeable.height) { placeable.place(0, 0) }
           }.background(MaterialTheme.colorScheme.onBackground)
-          .testTag(RollTestTags.COUNTING_RULE),
+          .testTag(fillTag),
     )
   }
 }

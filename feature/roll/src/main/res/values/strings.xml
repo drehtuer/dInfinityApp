@@ -281,6 +281,27 @@
   <string name="roll_tray_hide_controls">Hide the controls</string>
   <string name="roll_tray_show_controls">Show the controls</string>
   <!-- The panel that stands where the tray would be when the pictures are off. -->
+  <!--
+    "Preparing the dice", over the tray while a dice material is compiled for
+    this phone: on the first launch after an install or update, and the first
+    time a translucent die, a glossy table or a table drawn from pictures is
+    shown (`docs/physics-and-rendering.md`, "Preparing the dice"). The title
+    names what is being prepared; the sentence says why and that it is once.
+  -->
+  <string name="roll_preparing_dice">Preparing the dice</string>
+  <string name="roll_preparing_resin">Preparing the translucent dice</string>
+  <string name="roll_preparing_glass">Preparing the glass table</string>
+  <string name="roll_preparing_table">Preparing the table</string>
+  <string name="roll_preparing_why">Compiling the shaders for this phone. This happens once after an install or update.</string>
+  <!-- The title and the sentence as one notice, for a screen reader. -->
+  <string name="roll_preparing_spoken">%1$s. %2$s</string>
+  <!-- An estimate from how long this phone took last time, rounded up. -->
+  <plurals name="roll_preparing_left">
+    <item quantity="one">About %1$d second left</item>
+    <item quantity="other">About %1$d seconds left</item>
+  </plurals>
+  <!-- The estimate has run out and the compiler has not: nothing to count down. -->
+  <string name="roll_preparing_almost">Almost done</string>
   <string name="roll_power_saving">Power-saving mode</string>
   <string name="roll_power_saving_same">Same physics, no rendering. The result is identical to what the tray would show.</string>
   <string name="roll_debug_overlay">Debug overlay</string>
