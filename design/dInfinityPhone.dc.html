@@ -191,6 +191,16 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
         <div style="font-size:13px;line-height:1.35;text-wrap:pretty">{{ unreadText }}</div>
       </div>
     </sc-if>
+    <sc-if value="{{ preparing }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;left:14px;right:14px;top:50%;transform:translateY(-50%);background:var(--color-bg);color:var(--color-text);padding:7px 11px 8px;display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow-sm);pointer-events:none">
+        <div role="status" aria-live="polite" style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-family:var(--font-heading);font-weight:800;font-size:17px">Preparing the dice</div>
+          <div style="font-size:13px;line-height:1.35;opacity:.75;text-wrap:pretty">Compiling the shaders for this phone. This happens once after an install or update.</div>
+        </div>
+        <div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="60" style="height:3px;background:var(--color-neutral-200)"><div style="height:100%;width:60%;background:var(--color-text)"></div></div>
+        <div style="font-size:13px;opacity:.75">About 1 second left</div>
+      </div>
+    </sc-if>
     <sc-if value="{{ shakePrompt }}" hint-placeholder-val="{{ false }}">
       <div role="status" aria-live="polite" style="position:absolute;left:50%;top:70px;transform:translateX(-50%);z-index:1;max-width:calc(100% - 28px);display:flex;flex-direction:column;box-shadow:var(--shadow-md);pointer-events:none">
         <div style="display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--color-accent);color:var(--color-bg)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex:none" aria-hidden="true"><rect x="8" y="4" width="8" height="16" rx="2" transform="rotate(-18 12 12)"></rect><path d="M4 8.5a8 8 0 0 0 0 7"></path><path d="M20 8.5a8 8 0 0 1 0 7"></path></svg><span style="font-family:var(--font-heading);font-weight:800;font-size:20px;line-height:1.15;white-space:nowrap">{{ promptText }}</span></div>
@@ -1009,7 +1019,7 @@ a{color:var(--color-accent)}a:hover{color:var(--color-accent-700)}
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:460,&quot;height&quot;:940},
 &quot;screen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;roll&quot;,&quot;options&quot;:[&quot;help&quot;,&quot;roll&quot;,&quot;menu&quot;,&quot;graph&quot;,&quot;saved&quot;,&quot;editor&quot;,&quot;sets&quot;,&quot;setdetail&quot;,&quot;tables&quot;,&quot;designer&quot;,&quot;stats&quot;,&quot;rollstats&quot;,&quot;history&quot;,&quot;sessions&quot;,&quot;settings&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
 &quot;formula&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;3d6 + 1d20 - 4&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
-&quot;rollState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;none&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;counting&quot;,&quot;earned&quot;,&quot;stuck&quot;,&quot;unread&quot;,&quot;picked&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
+&quot;rollState&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;none&quot;,&quot;options&quot;:[&quot;none&quot;,&quot;counting&quot;,&quot;earned&quot;,&quot;stuck&quot;,&quot;unread&quot;,&quot;picked&quot;,&quot;preparing&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
 &quot;theme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;system&quot;,&quot;options&quot;:[&quot;system&quot;,&quot;light&quot;,&quot;dark&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},
 &quot;firstLaunch&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},
 &quot;editing&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},
@@ -1412,6 +1422,8 @@ class Component extends DCLogic {
     return {
       counting:rs==='counting'||(!!this.state.rolling&&!!live),
       earned:rs==='earned',stuck:rs==='stuck',unread:rs==='unread',
+      // Preparing the dice (decision 95): a material compiling for this phone, over a tray that has nothing to draw yet.
+      preparing:rs==='preparing',
       unreadText:rest.length===1?`A die landed where it cannot be read, so it stays where it lies — ${readN} of ${all} read and counted. Shake to throw it again.`:`${rest.length} dice landed where they cannot be read, so they stay where they lie — ${readN} of ${all} read and counted. Shake to throw them again.`,
       // The shake prompt (decision 84): what the next shake throws, in the accent, until the shake.
       shakePrompt:rs==='earned'||rs==='stuck'||rs==='unread'||rs==='picked',

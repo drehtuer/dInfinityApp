@@ -62,7 +62,9 @@ a tumble; everything else is real.
 - **3D rendering** of the tray and dice, seen straight down or at an angle that
   shows the walls — your choice — with haptics and sound on every real impact,
   never on a die sliding or a die at rest. The table decides what it sounds
-  like, the die's size decides the pitch, and both switch off.
+  like, the die's size decides the pitch, and both switch off. The first launch
+  after an install or update compiles the shaders for your phone's GPU, and
+  the tray says so while it waits, with a bar and about how long is left.
 - **Shake to roll** — accelerometer and gyroscope drive the throw, and a
   shake is the *only* way to start one. There is no Roll button, a tap on the
   table throws nothing, the formula editor's key says Done and only closes the
