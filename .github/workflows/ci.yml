@@ -100,7 +100,7 @@ jobs:
       # showing up on sonarcloud.io.
       - name: SonarQube scan
         if: ${{ !cancelled() && env.SONAR_TOKEN != '' }}
-        uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
         with:
           args: >
             -Dsonar.projectVersion=${{ steps.version.outputs.value }}
@@ -207,7 +207,7 @@ jobs:
       - uses: ./.github/actions/setup-android-build
         with:
           setup-gradle: "false"
-      - uses: gradle/actions/dependency-submission@9c971963bec38e04b3d30dcc455b5382be2fdbfb # v6.3.0
+      - uses: gradle/actions/dependency-submission@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
         with:
           # Only what ships in the APK. Resolving *every* configuration also
           # submits the build's own toolchain — the copies of jdom2,
