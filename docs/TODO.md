@@ -144,15 +144,25 @@ and read here, and a seed gives the same result with the renderer on and off.
       thrown die edge to edge, nothing spilling onto the neighbouring faces?
       A drawing made on a kite die before the change shows larger in the
       editor than it was drawn — is that read as the die's size or as a fault?
-- [ ] Should the Solid tab draw pen strokes (as thin filled outlines)? Today it
-      says what it does not draw
-- [ ] *Judge on the phone:* the Solid tab's **Material** menu and **Edges**
-      steps (decision 94). Make a d20 each of Plastic, Pearl, Resin, Glass,
+- [ ] **Measure the edge-rounding range on the Pixel 10a** (decision 98):
+      `tools/harness.sh -n 200 -c 20 -s {d4,d6,d20} --rounding
+      {0.015,0.03,0.12}` and `FairnessTest` with `-e edgeRounding
+      {0.015,0.12}` at 20,000 rolls (`docs/physics-and-rendering.md`, "How
+      round a die may be"). Narrow the slider and the set-file clamp if the
+      ends settle slowly, re-throw often or fail fairness
+- [ ] *Judge on the phone:* the three steps (decision 99) — is it clear where
+      you are, and do Back, Next and **Roll it** feel right? A die drawn on
+      some faces: drawn faces show no number, the others do (96). A dark body
+      colour: edges and corners in it, undrawn faces printed white (97). The
+      pen's lines on the Solid tab, foreshortened as the face turns. In the
+      dark theme, does **Guide** show and hide the faint number?
+- [ ] *Judge on the phone:* the **Material** menu and the **Edges** slider
+      (decisions 94, 98). Make a d20 each of Plastic, Pearl, Resin, Glass,
       Metal and Stone and **Roll it**: does each look like its name on the
       felt and on the oak — Pearl milky rather than faded, Resin clear enough
       to see the felt bent through it, Glass clear, Metal metal rather than
       grey plastic, Stone matte? Does the swatch beside the menu hint at the
-      right one? Then a d6 and a d4 at Very round: do the edges look round
+      right one? Then a d6 and a d4 at 12 %: do the edges look round
       and do they still read as dice, and do the numbers near a d4's edges
       still read where they wrap onto the bend?
 - [ ] *Judgement:* named personal sets (decision 79). A drawing saved into a
