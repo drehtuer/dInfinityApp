@@ -147,6 +147,20 @@ class AtlasKeyTest {
     assertNotNull(cache.of("mine::textures/d6.png"))
   }
 
+  @Test
+  fun `an atlas's coverage is read for every count of faces a catalogue die has`() {
+    // A 30 x 20 picture with one opaque pixel at (12, 15): face 4 of a d6
+    // (a 3 x 2 grid of 10 px cells), and on a d20's 5 x 4 grid of 6 x 5 px
+    // cells, column 2 and row 3 — face 17.
+    val pixels = ByteArray(30 * 20 * AtlasImage.CHANNELS)
+    pixels[(15 * 30 + 12) * AtlasImage.CHANNELS + 3] = 0xFF.toByte()
+    val coverage = AtlasCoverage.of(AtlasImage(30, 20, pixels))
+
+    assertEquals(setOf(4), coverage.drawnOn(6))
+    assertEquals(setOf(17), coverage.drawnOn(20))
+    assertEquals("no die has seven faces", emptySet<Int>(), coverage.drawnOn(7))
+  }
+
   private fun cache(artwork: (String) -> AtlasImage?): AtlasCache<Any> =
     AtlasCache(artwork = artwork, upload = { Any() }, destroy = { })
 

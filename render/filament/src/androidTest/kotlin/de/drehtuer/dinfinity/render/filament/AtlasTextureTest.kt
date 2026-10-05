@@ -101,6 +101,23 @@ class AtlasTextureTest {
   }
 
   @Test
+  fun theStageSaysWhichFacesTheUploadedAtlasDrawsOn() {
+    // The left column of a d6's 3×2 grid is faces 0 and 3: those two carry
+    // the drawing and no number, and the other four are printed
+    // (`docs/dice-sets.md`, "Labels, and the artwork over them").
+    FilamentEngine(artwork = { atlas() }).use { filament ->
+      filament.stage(surface = null, width = WIDTH, height = HEIGHT).use { stage ->
+        assertEquals(setOf(0, 3), stage.drawnCells(AtlasKey.of("brass", "textures/d6.png"), faces = 6))
+        val renderer = FilamentDiceRenderer(stage)
+        renderer.begin(painted(), geometry, look)
+        renderer.show(frame())
+        assertTrue(stage.draw())
+      }
+      assertEquals("asking which faces are drawn uploaded the atlas a second time", 1, filament.atlases.uploaded)
+    }
+  }
+
+  @Test
   fun aPartlyClearAtlasDrawsSomethingOtherThanTheDieAlone() {
     // The cheapest thing that notices a material which compiled but composites
     // nothing: the same throw drawn with and without artwork must not come
@@ -143,7 +160,7 @@ class AtlasTextureTest {
 
   /**
    * A d6's atlas: the left column of its 3×2 grid drawn in red, the rest clear,
-   * so two faces carry artwork and four carry their labels.
+   * so two faces carry artwork and no labels, and four carry their labels.
    */
   private fun atlas(): AtlasImage {
     val width = CELLS_ACROSS * CELL

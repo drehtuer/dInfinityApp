@@ -68,7 +68,7 @@ class FilamentStage(
   override val height: Int,
   surface: Any? = null,
   postProcessing: Boolean = true,
-  private val atlases: (String) -> Texture? = { null },
+  private val atlases: (String) -> FilamentEngine.DieArtwork? = { null },
   shared: FilamentEngine? = null,
 ) : Stage,
   AutoCloseable {
@@ -279,6 +279,11 @@ class FilamentStage(
     scene.removeEntity(entity)
   }
 
+  override fun drawnCells(
+    atlas: String,
+    faces: Int,
+  ): Set<Int> = atlases(atlas)?.coverage?.drawnOn(faces).orEmpty()
+
   override fun put(entity: Int) {
     if (entity == Stage.NOTHING || scene.hasEntity(entity)) return
     scene.addEntity(entity)
@@ -303,7 +308,12 @@ class FilamentStage(
       if (maps != null) {
         tableInstanceOf(parameters, maps)
       } else {
-        instanceOf(parameters, parameters.texturePath?.let(atlases), parameters.numbers?.let(::glyphsOf), reflected)
+        instanceOf(
+          parameters,
+          parameters.texturePath?.let(atlases)?.texture,
+          parameters.numbers?.let(::glyphsOf),
+          reflected,
+        )
       }
     val entity = EntityManager.get().create()
 

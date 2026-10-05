@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.AtlasImage
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.ShapeAtlas
 
 /**
  * How a surface names the artwork it wants (`docs/dice-sets.md`, "Textures").
@@ -124,5 +126,33 @@ class AtlasCache<T : Any>(
   override fun close() {
     held.values.mapNotNull { it.made }.forEach(destroy)
     held.clear()
+  }
+}
+
+/**
+ * Which faces an atlas draws on, for every number of faces a catalogue die
+ * can have — read once, off the decoded pixels, when the atlas is uploaded.
+ *
+ * Every count rather than the one die's, because an atlas is keyed by its
+ * file and not by the die that wears it: the grid a face sits in depends on
+ * how many faces there are ([ShapeAtlas]), and the pixels are not kept once
+ * they are on the GPU. Eight short scans of an image that is already in
+ * memory, once per version of the file.
+ */
+class AtlasCoverage private constructor(
+  private val drawn: Map<Int, Set<Int>>,
+) {
+  /** The faces of a die with [faces] faces this atlas draws on; none for a count no catalogue die has. */
+  fun drawnOn(faces: Int): Set<Int> = drawn[faces].orEmpty()
+
+  companion object {
+    /** What [image] draws on, for every catalogue die. */
+    fun of(image: AtlasImage): AtlasCoverage =
+      AtlasCoverage(
+        DieShape.entries
+          .map(DieShape::faceCount)
+          .distinct()
+          .associateWith(image::drawnCells),
+      )
   }
 }

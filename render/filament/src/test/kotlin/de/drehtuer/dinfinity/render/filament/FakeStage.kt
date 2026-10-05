@@ -60,6 +60,20 @@ class FakeStage(
     lit = true
   }
 
+  /** What [drawnCells] answers, by atlas key: the faces that artwork draws on. */
+  var drawn: Map<String, Set<Int>> = emptyMap()
+
+  /** Every atlas [drawnCells] was asked about, with the number of faces it was asked for. */
+  val askedAbout = mutableListOf<Pair<String, Int>>()
+
+  override fun drawnCells(
+    atlas: String,
+    faces: Int,
+  ): Set<Int> {
+    askedAbout += atlas to faces
+    return drawn[atlas].orEmpty()
+  }
+
   override fun add(
     mesh: GpuMesh,
     parameters: DiceMaterial.Parameters,

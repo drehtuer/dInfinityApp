@@ -1,6 +1,8 @@
 package de.drehtuer.dinfinity.render.filament
 
 import de.drehtuer.dinfinity.core.model.DieInstance
+import de.drehtuer.dinfinity.core.model.DieShape
+import de.drehtuer.dinfinity.core.model.ShapeAtlas
 import de.drehtuer.dinfinity.core.model.TableLook
 import de.drehtuer.dinfinity.core.model.TableView
 import de.drehtuer.dinfinity.fixtures.StandardDice
@@ -142,6 +144,70 @@ class FilamentDiceRendererTest {
       parameters.texturePath,
     )
     assertTrue("a clear cell has nothing to show through to", parameters.numbered)
+  }
+
+  @Test
+  fun `a face the artwork draws on is not printed, and a face it leaves clear is`() {
+    // The face designer's Roll it threw a drawn die with the set's numbers
+    // showing through every clear part of every drawing: the label went on
+    // under the artwork and the artwork's alpha let it through.
+    val painted = StandardDice.d6.copy(texturePath = "textures/d6.png")
+    val key = AtlasKey.of("mine", "textures/d6.png")
+    stage.drawn = mapOf(key to setOf(0, 2))
+    val throwSpec =
+      spec().copy(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "mine", requestedSetId = "mine", die = painted)),
+      )
+
+    renderer.begin(throwSpec, geometry, look)
+
+    assertEquals(listOf(key to 6), stage.askedAbout)
+    val printed = requireNotNull(stage.added[TRAY_PARTS].second.numbers)
+    val unpainted = requireNotNull(DieNumbers.fieldOf(StandardDice.d6))
+    val cells = DieNumbers.plan(StandardDice.d6)
+
+    fun inkIn(
+      field: NumberField,
+      cell: Int,
+    ): Int {
+      val at = cells[cell]
+      val side = field.width / ShapeAtlas.gridFor(DieShape.Cube).columns
+      return (0 until side).sumOf { row ->
+        (0 until side).count { column ->
+          val x = at.column * side + column
+          val y = at.row * side + row
+          (field.pixels[y * field.width + x].toInt() and 0xFF) > INK_EDGE
+        }
+      }
+    }
+    assertEquals("a drawn face carries no number", 0, inkIn(printed, 0))
+    assertEquals("nor does the other one", 0, inkIn(printed, 2))
+    listOf(1, 3, 4, 5).forEach { cell ->
+      assertEquals("face $cell is clear and keeps its number", inkIn(unpainted, cell), inkIn(printed, cell))
+      assertTrue(inkIn(printed, cell) > 0)
+    }
+  }
+
+  @Test
+  fun `a die whose artwork draws on every face prints nothing`() {
+    val painted = StandardDice.d6.copy(texturePath = "textures/d6.png")
+    stage.drawn = mapOf(AtlasKey.of("mine", "textures/d6.png") to (0 until 6).toSet())
+    val throwSpec =
+      spec().copy(
+        dice = listOf(DieInstance(index = 0, groupId = 0, setId = "mine", requestedSetId = "mine", die = painted)),
+      )
+
+    renderer.begin(throwSpec, geometry, look)
+
+    assertTrue(stage.added[TRAY_PARTS].second.textured)
+    assertFalse("a number under a drawing is a number nobody drew", stage.added[TRAY_PARTS].second.numbered)
+  }
+
+  @Test
+  fun `a die with no artwork is not asked about`() {
+    renderer.begin(spec(), geometry, look)
+
+    assertTrue(stage.askedAbout.isEmpty())
   }
 
   @Test
@@ -498,6 +564,9 @@ class FilamentDiceRendererTest {
   private companion object {
     /** The floor, the walls and the rim. */
     const val TRAY_PARTS = 3
+
+    /** Where a distance field crosses from paper to ink: a byte past half. */
+    const val INK_EDGE = 127
 
     const val ASPECT = 320.0 / 640.0
     const val TOLERANCE = 1e-6

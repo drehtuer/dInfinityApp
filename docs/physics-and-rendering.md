@@ -2386,7 +2386,7 @@ impact sounds rather than a crash in the middle of a roll.
   over that by its own alpha. Where the artwork is opaque the result is
   `baseColor × atlas`, which is what it always was and what keeps a table's
   floor tinted by its floor colour; where the author left the cell clear the
-  label shows through. A multiply could not do the second half — multiplying by
+  body shows through. A multiply could not do the second half — multiplying by
   a transparent pixel gives black, not the die (`docs/dice-sets.md`,
   "Textures").
 - **A die's artwork is decoded once per package and destroyed with the
@@ -2432,14 +2432,18 @@ impact sounds rather than a crash in the middle of a roll.
   (`docs/architecture.md`, decision 45). Face textures are applied via a
   per-face UV atlas (see `docs/dice-sets.md`); a coin's rim belongs to neither
   face and carries no cell: it is drawn in the die's own colour.
-- **Every die prints its labels**, in the set's `number_color` on the set's
-  body colour, laid out in that same per-face atlas grid — so a printed die and
-  a painted one are the same surface with the same coordinates and the renderer
-  samples them the same way. A die with artwork is printed too, and the artwork
-  covers the printing wherever it is opaque: which of the two a face shows is
-  the alpha's to say, per pixel, and nothing above the material decides it. A
-  d4 draws three numbers per triangle, one at each corner, because its values
-  belong to corners rather than to faces (`docs/dice-sets.md`, "The d4").
+- **Every face the artwork leaves clear prints its label**, in the set's
+  `number_color` on the set's body colour, laid out in that same per-face
+  atlas grid — so a printed die and a painted one are the same surface with
+  the same coordinates and the renderer samples them the same way. **A face
+  the artwork draws on is not printed**: which faces those are is read off the
+  decoded atlas once, when it is uploaded (`AtlasCoverage`), asked of the
+  stage before a die is added (`Stage.drawnCells`), and those cells are left
+  out of the die's number field (`PrintedDice`, keyed by the die and the
+  faces drawn). A d4 draws three numbers per triangle, one at each corner,
+  because its values belong to corners rather than to faces
+  (`docs/dice-sets.md`, "The d4"); a drawn triangle drops its three
+  (`docs/architecture.md`, decision 96).
 - **How big a number is, is solved rather than chosen.** A cell is the circle
   drawn round a face, and how much of one a face fills depends on what polygon
   it is: a dodecahedron's pentagon nearly all of it, a d20's triangle half, a

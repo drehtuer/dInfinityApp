@@ -54,6 +54,13 @@ installed by other users like any other set.
    drawing **as it is now**: the tray decodes the atlas again whenever the
    file has changed since it last did (`docs/dice-sets.md`, "Textures").
 
+   **What it throws is what was drawn.** A face with a drawing on it comes to
+   the tray carrying the drawing and no number; a face left undrawn carries
+   its printed number, so a die drawn on one face is still a die anybody can
+   read ("Export details"). It used to print every face's number under the
+   drawing, so every clear part of a drawn face showed the set's number
+   through it.
+
    **And it is a round trip.** The throw carries the die it was drawing, and
    the tray draws a banner over the table that goes back to the designer on
    *that* die (`design/dInfinityPhone.dc.html`, the `fromDesigner` banner;
@@ -914,11 +921,17 @@ a named set holds what was put into it on purpose.
   of `ShapeAtlas`'s grid, which is the same grid the renderer samples and the
   validator checks. Two answers to "where is face 7" would be a die whose
   faces are in the wrong places on somebody else's phone.
-- Background of each cell is transparent; the die colour comes from the set
-  defaults, so the same drawing works on a black or a white die. What the die
-  is made of and how round it is are its own when the Solid tab's controls
-  set them ("Material and edges"). **A cell nobody drew on is not written at
-  all**, which is what lets the printed label show through it.
+- Background of each cell is transparent, so the die's body colour is what
+  shows between the marks. What the die is made of and how round it is are
+  its own when the Solid tab's controls set them ("Material and edges").
+  **A cell nobody drew on is not written at all**, and that is what decides
+  what a face carries on the tray: **a drawn face carries the drawing and no
+  number, and a face left undrawn carries its printed number** — so a die
+  drawn on two faces is a die with two drawings and the rest still readable,
+  rather than a die with blanks on it (`docs/dice-sets.md`, "Labels, and the
+  artwork over them"). A face that should carry its number *and* a drawing
+  gets the number stamped ("Fill all with numbers"), where it is part of the
+  drawing and drawn where the tray would have printed it.
 - **Each cell is painted with its own turn and size.** The canvas masks every
   face into one canonical outline — a triangle on its point, a square on an
   edge, a kite with its short tip up — and the die samples the cell in the
