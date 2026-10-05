@@ -143,8 +143,12 @@ class RollWiring(
    * Read per visit rather than captured, because it is a preference and a
    * preference changes while the app is running — choosing a table and going
    * back to the tray should land on it.
+   *
+   * Internal rather than private so that the precedence can be tested
+   * without a physics engine: the roll that would otherwise carry it to a
+   * spec needs one (`RollWiringTest`).
    */
-  private fun table(pinned: TablePin?): TableLook {
+  internal fun table(pinned: TablePin?): TableLook {
     val wanted = pinned ?: chosenTable()
     val fromPin = wanted?.let { catalog.set(it.setId)?.tables?.firstOrNull { table -> table.id == it.tableId } }
     return fromPin
