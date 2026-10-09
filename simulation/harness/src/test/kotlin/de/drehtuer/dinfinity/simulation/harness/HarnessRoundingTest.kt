@@ -31,21 +31,24 @@ class HarnessRoundingTest {
         HarnessRequest.from { name ->
           when (name) {
             HarnessRequest.ROLLS -> "10"
-            HarnessRequest.EDGE_ROUNDING -> " 0.12 "
+            HarnessRequest.EDGE_ROUNDING -> " 0.06 "
             else -> null
           }
         },
       )
 
-    assertEquals(0.12, request.edgeRounding)
-    assertTrue(request.plan().dice.all { it.die.material.edgeRounding == 0.12 })
+    assertEquals(0.06, request.edgeRounding)
+    assertTrue(request.plan().dice.all { it.die.material.edgeRounding == 0.06 })
     // Named for it, so the run's files do not overwrite the default run's.
-    assertEquals("20d20-round0.12", request.label)
+    assertEquals("20d20-round0.06", request.label)
   }
 
   @Test
   fun `a rounding outside what a set file may say is refused, with the range`() {
-    listOf("0", "0.5", "-0.03", "round", "NaN").forEach { value ->
+    // 0.12 among them: it was once the top of the range, and the Pixel 10a's
+    // coins stopped settling there (`docs/physics-and-rendering.md`, "How
+    // round a die may be").
+    listOf("0", "0.5", "0.12", "-0.03", "round", "NaN").forEach { value ->
       val failure = assertFailsWith<IllegalArgumentException>(value) { HarnessRequest.edgeRoundingOf(value) }
       assertTrue("0.015" in failure.message.orEmpty(), failure.message)
     }
@@ -54,6 +57,6 @@ class HarnessRoundingTest {
   @Test
   fun `both ends of the range are a die a set may have`() {
     assertEquals(0.015, HarnessRequest.edgeRoundingOf("0.015"))
-    assertEquals(0.12, HarnessRequest.edgeRoundingOf("0.12"))
+    assertEquals(0.06, HarnessRequest.edgeRoundingOf("0.06"))
   }
 }

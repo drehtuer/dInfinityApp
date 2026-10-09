@@ -46,7 +46,7 @@ import org.junit.Test
  * ./gradlew :simulation:jolt:connectedDebugAndroidTest \
  *   -Pandroid.testInstrumentationRunnerArguments.class=de.drehtuer.dinfinity.simulation.jolt.FairnessTest \
  *   -Pandroid.testInstrumentationRunnerArguments.rolls=100000 \
- *   -Pandroid.testInstrumentationRunnerArguments.edgeRounding=0.12
+ *   -Pandroid.testInstrumentationRunnerArguments.edgeRounding=0.06
  * ```
  *
  * The default is small enough to sit in the ordinary suite and still catch a

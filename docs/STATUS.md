@@ -43,15 +43,21 @@ This is a snapshot, not a changelog — git history is the changelog.
   the felt's own sheen, 1.4 % of white, which a look in `average` now has
   taken out of its colour (`SurfaceLight`) — not yet run on the phone. The
   face designer is three steps — Shape, Material (six named materials, a body
-  colour, an edge-rounding slider over the set file's 1.5–12 % range), Faces
+  colour, an edge-rounding slider over 1.5–6 %), Faces
   — after the owner's feedback (decisions 94, 97–99); a drawn face is no
   longer printed over (96) and the turning die shows the pen's strokes and
-  the rounding. **The slider's range is not measured yet**: the harness and
-  `FairnessTest` runs at the ends of it (`docs/TODO.md`, 4.6) need the phone.
+  the rounding. The range is measured: at 20,000 throws a shape every
+  solid is fair and every coin settles up to 6 %, while at 12 % coins rolled
+  on their rims until the backstop 42 times, so rounding now stops at 6 %
+  for the slider and for a set file alike (decision 100).
   While a dice material compiles — the first launch after an install or
   update, or the first resin, glass or textured-table material — a
   "Preparing the dice" plate over the tray says why, with a bar timed by what
   the phone took last time (decision 95; seen working on the Pixel 10a).
+  Four sample sets to install — marble (artwork on every face, numbers cut
+  in by the app's own printing), steel, green resin and red glass — are in
+  `sample-sets/`, as folders and zips, each installed by a test on every
+  build.
   It reaches `main` when the owner likes it on the phone.
 
 ## Done

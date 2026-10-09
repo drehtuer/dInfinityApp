@@ -34,6 +34,9 @@ dependencies {
   // 17.5 MB over four ABIs (`docs/architecture.md`, decision 89).
 
   testImplementation(project(":test-fixtures"))
+  // `sample-sets/marble` is drawn from this module's printing and checked
+  // by the validator a download goes through (`MarbleArtworkTest`).
+  testImplementation(project(":dicesets:format"))
   // Reads the shipped panorama on the JVM, so `StudioLightTest` can check the
   // irradiance written into `StudioLight` against the file it came from, and
   // `RadianceTest` the app's own decoder against an independent one.
@@ -50,4 +53,13 @@ dependencies {
   // The render gallery throws the built-in set's own dice onto its own
   // tables, so a picture is of what a player sees (`RenderGalleryTest`).
   androidTestImplementation(project(":dicesets:builtin"))
+}
+
+// The tests read `sample-sets/` from the repository: declared, so a changed
+// set re-runs them rather than replaying a cached pass from before it.
+tasks.withType<Test>().configureEach {
+  inputs
+    .dir(rootDir.resolve("sample-sets"))
+    .withPropertyName("sampleSets")
+    .withPathSensitivity(PathSensitivity.RELATIVE)
 }

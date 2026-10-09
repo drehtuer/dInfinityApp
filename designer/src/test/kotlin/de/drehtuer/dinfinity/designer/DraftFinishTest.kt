@@ -27,7 +27,7 @@ class DraftFinishTest {
   val folder = TemporaryFolder()
 
   private val d20 = Drawings.die(DieShape.Icosahedron)
-  private val glass = DieFinish.STANDARD.madeOf(MaterialPreset.Glass).rounded(0.12)
+  private val glass = DieFinish.STANDARD.madeOf(MaterialPreset.Glass).rounded(0.06)
 
   @Test
   fun `a draft shows what its die was copied as until somebody chooses`() {
@@ -135,13 +135,13 @@ class DraftFinishTest {
     val material = set.dice.single().material
 
     assertEquals(MaterialPreset.Glass, MaterialPreset.of(DieFinish.of(material)))
-    assertEquals(0.12, material.edgeRounding, 0.0)
+    assertEquals(0.06, material.edgeRounding, 0.0)
   }
 
   @Test
   fun `every preset and every rounding survives the package`() {
     MaterialPreset.entries.forEach { preset ->
-      listOf(0.015, 0.03, 0.065, 0.12).forEach { share ->
+      listOf(0.015, 0.03, 0.045, 0.06).forEach { share ->
         val finish = DieFinish.STANDARD.madeOf(preset).rounded(share)
         val material = validate(listOf(Draft(d20, finish = finish))).dice.single().material
         assertEquals("$preset $share", preset, MaterialPreset.of(DieFinish.of(material)))
@@ -196,7 +196,7 @@ class DraftFinishTest {
       "roughness = 0.05",
       "metallic = 0.0",
       "translucency = 100.0",
-      "edge_rounding = 0.12",
+      "edge_rounding = 0.06",
     ).forEach {
       assertTrue(it, text.contains(it))
     }

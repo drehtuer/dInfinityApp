@@ -116,14 +116,14 @@ class FinishPaneTest {
         .config[SemanticsProperties.ProgressBarRangeInfo]
     assertEquals(0.03f, range.current, 1e-6f)
     assertEquals(0.015f, range.range.start, 1e-6f)
-    assertEquals(0.12f, range.range.endInclusive, 1e-6f)
-    assertEquals(20, range.steps)
+    assertEquals(0.06f, range.range.endInclusive, 1e-6f)
+    assertEquals(8, range.steps)
 
-    compose.onNodeWithTag(DesignerTestTags.EDGES).performSemanticsAction(SemanticsActions.SetProgress) { it(0.09f) }
+    compose.onNodeWithTag(DesignerTestTags.EDGES).performSemanticsAction(SemanticsActions.SetProgress) { it(0.05f) }
 
-    assertEquals(0.09, presenter.state.edgeRounding, 1e-9)
-    compose.onNodeWithTag(DesignerTestTags.EDGES_SAID).assertTextContains("9.0 %", substring = true)
-    compose.onNodeWithTag(DesignerTestTags.EDGES_SAID).assertTextContains("1.44 mm", substring = true)
+    assertEquals(0.05, presenter.state.edgeRounding, 1e-9)
+    compose.onNodeWithTag(DesignerTestTags.EDGES_SAID).assertTextContains("5.0 %", substring = true)
+    compose.onNodeWithTag(DesignerTestTags.EDGES_SAID).assertTextContains("0.80 mm", substring = true)
   }
 
   @Test

@@ -125,17 +125,18 @@ data class DieMaterial(
     const val DEFAULT_EDGE_ROUNDING: Double = 0.03
 
     /**
-     * Half the default to four times it (`docs/dice-sets.md`, `edge_rounding`).
+     * Half the default to twice it (`docs/dice-sets.md`, `edge_rounding`).
      *
      * Not down to nought: a die with no convex radius at all catches on its
      * corners instead of tumbling off them, which is what the radius was
-     * given to the solver to stop. Not past 12 %: a 16 mm die is then rounded
-     * by nearly 2 mm, a d20's flat faces have lost about half their area to
-     * the bends, and a rounder die rolls on further and further from what
-     * every fairness run was measured on (`docs/architecture.md`,
-     * decision 94).
+     * given to the solver to stop. Not past 6 %, because that is where the
+     * Pixel 10a stopped saying yes: at 20,000 throws a shape every solid is
+     * fair and every coin settles at 6 %, at 8 % the coin is already at its
+     * bar for throws that never settle, and at 12 % it gives up 42 times and
+     * the d18 is a hair inside its bound (`docs/physics-and-rendering.md`,
+     * "How round a die may be"; `docs/architecture.md`, decisions 94 and 100).
      */
-    val EdgeRoundingRange: ClosedFloatingPointRange<Double> = 0.015..0.12
+    val EdgeRoundingRange: ClosedFloatingPointRange<Double> = 0.015..0.06
 
     /**
      * [value] inside [range], or [fallback] when it is not a number at all.

@@ -202,7 +202,7 @@ through the same setter its `onChange` uses (`formulaFilled` / `clearFormula`,
 and the face designer is **three steps** — 1 Shape (the base dice and the
 turning die), 2 Material (the turning die, the **Material** menu with its
 swatch, a **Colour** row of the pen's twelve and a picker past them, and an
-**Edges** slider from 1.5 % to 12 % that says the share and the millimetres)
+**Edges** slider from 1.5 % to 6 % that says the share and the millimetres)
 and 3 Faces (the drawing, its Face/Solid tabs and the face strip) — with a
 step bar under the title, **Back** and **Next** in the footer on the first
 two and **Roll it** / **Save to set** on the last (`dzSteps`, `dzStep`,

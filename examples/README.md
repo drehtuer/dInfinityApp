@@ -16,6 +16,9 @@ artwork while the faces you left alone carry the printed number.
 | [diceset.toml](diceset.toml) | The set itself. Every field is commented — what is required, what it defaults to, and the limit where there is one. Read it instead of the specification |
 | [textures/](textures/) | One blank atlas per catalogue shape, correctly sized. Written by [../tools/generate-atlases.py](../tools/generate-atlases.py) |
 
+Finished sets to install rather than copy — marble, steel, green resin and
+red glass — are in [../sample-sets/](../sample-sets/).
+
 ## Making it yours
 
 ```mermaid

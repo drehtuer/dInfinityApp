@@ -39,7 +39,7 @@ class DieFinishTest {
   @Test
   fun `every preset comes back as itself, whatever the rounding`() {
     MaterialPreset.entries.forEach { preset ->
-      listOf(0.015, 0.03, 0.065, 0.12).forEach { share ->
+      listOf(0.015, 0.03, 0.045, 0.06).forEach { share ->
         val finish = DieFinish.STANDARD.madeOf(preset).rounded(share)
         assertEquals(preset, MaterialPreset.of(finish))
         assertEquals(share, finish.edgeRounding, 0.0)
@@ -67,8 +67,8 @@ class DieFinishTest {
     assertEquals(0.05, glass.edgeRounding, 0.0)
     assertEquals(MaterialPreset.Glass, MaterialPreset.of(glass))
 
-    val round = custom.rounded(0.12)
-    assertEquals(0.12, round.edgeRounding, 0.0)
+    val round = custom.rounded(0.06)
+    assertEquals(0.06, round.edgeRounding, 0.0)
     assertEquals(0.9, round.metallic, 0.0)
   }
 
@@ -104,18 +104,19 @@ class DieFinishTest {
   fun `the slider runs from the least a set may ask for to the most, in half per cents`() {
     assertEquals(DieMaterial.EdgeRoundingRange, EdgeRounding.RANGE)
     assertEquals(0.005, EdgeRounding.STEP, 0.0)
-    // 1.5 % to 12 % in half per cents is twenty-two positions: two ends and
-    // twenty between them, which is what Material's slider counts.
-    assertEquals(20, EdgeRounding.BETWEEN)
+    // 1.5 % to 6 % in half per cents is ten positions: two ends and eight
+    // between them, which is what Material's slider counts.
+    assertEquals(8, EdgeRounding.BETWEEN)
   }
 
   @Test
   fun `a slider position lands on a step, inside the range, as the number a set file writes`() {
-    assertEquals(0.06, EdgeRounding.snapped(0.0612), 0.0)
-    assertEquals(0.065, EdgeRounding.snapped(0.0626), 0.0)
+    assertEquals(0.04, EdgeRounding.snapped(0.0412), 0.0)
+    assertEquals(0.045, EdgeRounding.snapped(0.0426), 0.0)
     assertEquals("0.06", EdgeRounding.snapped(0.06).toString())
     assertEquals(0.015, EdgeRounding.snapped(0.0), 0.0)
-    assertEquals(0.12, EdgeRounding.snapped(0.5), 0.0)
+    assertEquals(0.06, EdgeRounding.snapped(0.0626), 0.0)
+    assertEquals(0.06, EdgeRounding.snapped(0.5), 0.0)
     assertEquals(DieMaterial.DEFAULT_EDGE_ROUNDING, EdgeRounding.snapped(Double.NaN), 0.0)
     assertEquals("a finish is rounded through it", 0.045, DieFinish.STANDARD.rounded(0.044).edgeRounding, 0.0)
   }
