@@ -60,7 +60,9 @@ This is a snapshot, not a changelog — git history is the changelog.
   build. The designer's ink now reaches the tray in its own colour: the
   dice material multiplied artwork by the body colour and read the atlas as
   linear, so yellow pips on a black die were black (decision 101; a device
-  test fails by 127 levels without the fix).
+  test fails by 127 levels without the fix). The Material step has an
+  Opacity slider, glass to solid in five per cents, over the same
+  `translucency` the menu sets (decision 102); seen on the Pixel 10a.
   It reaches `main` when the owner likes it on the phone.
 
 ## Done

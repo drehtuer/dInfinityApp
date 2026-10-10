@@ -70,6 +70,21 @@ data class DieFinish(
    */
   fun rounded(share: Double): DieFinish = copy(edgeRounding = EdgeRounding.snapped(share))
 
+  /**
+   * How much of the light the body stops: one for a solid die, nought for
+   * glass. The Opacity slider stands here; the set file writes the other side
+   * of it, [translucency].
+   */
+  val opacity: Double get() = 1 - translucency
+
+  /**
+   * The same finish [share] opaque — on a step of the Opacity slider, inside
+   * the range ([Opacity.snapped]) — with its surface, its metal, its colours
+   * and its rounding kept. A share that lands on a preset's translucency is
+   * that preset again ([MaterialPreset.of]); one that does not is **Custom**.
+   */
+  fun opaque(share: Double): DieFinish = copy(translucency = Opacity.translucencyOf(share))
+
   companion object {
     /** What [material] is made of and how round it is, inside the format's limits. */
     fun of(material: DieMaterial): DieFinish {
@@ -197,3 +212,44 @@ private fun near(
 ): Boolean = abs(one - other) < SAME
 
 private const val SAME = 1e-9
+
+/**
+ * How see-through the face designer's **Opacity** slider makes a die
+ * (`docs/face-designer.md`, "Material, colour and edges";
+ * `docs/architecture.md`, decision 102).
+ *
+ * **Opacity on the screen, translucency in the file.** The set file has had
+ * `translucency` since resin dice (decision 90) and the renderer reads nothing
+ * else, so the slider adds no field: it is the same number the Material menu
+ * sets, said the way round a person asks for it — "more solid" is the
+ * question, and a die is solid at the right-hand end. The menu's six names are
+ * still the quick way; the slider is for the die between Pearl and Resin.
+ *
+ * Steps of five per cent: every preset's translucency is on one (0, 25, 60
+ * and 100 %), and a finer step is a difference the tray does not show.
+ */
+object Opacity {
+  /** Wholly clear to wholly solid. */
+  val RANGE: ClosedFloatingPointRange<Double> = 0.0..1.0
+
+  /** How far one step of the slider moves it. */
+  const val STEP: Double = 0.05
+
+  /** How many positions the slider has between its two ends, which is what Material's `Slider` counts. */
+  val BETWEEN: Int = Math.round((RANGE.endInclusive - RANGE.start) / STEP).toInt() - 1
+
+  /**
+   * [share] inside the range and on a step of it, as the number a set file
+   * writes (`0.65`, not `0.6499999999999999`).
+   */
+  fun snapped(share: Double): Double {
+    if (!share.isFinite()) return RANGE.endInclusive
+    val steps = Math.round((share.coerceIn(RANGE) - RANGE.start) / STEP)
+    return Math.round((RANGE.start + steps * STEP) * PER_MILLE) / PER_MILLE
+  }
+
+  /** The translucency a set file writes for a slider at [share], exactly. */
+  fun translucencyOf(share: Double): Double = Math.round((1 - snapped(share)) * PER_MILLE) / PER_MILLE
+
+  private const val PER_MILLE = 1000.0
+}

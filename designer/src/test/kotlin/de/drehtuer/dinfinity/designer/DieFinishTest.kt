@@ -154,4 +154,75 @@ class DieFinishTest {
     assertEquals(red, DieFinish.of(material))
     assertEquals(20.0, material.sizeMm, 0.0)
   }
+
+  @Test
+  fun `the opacity slider runs from glass to solid in five per cents`() {
+    assertEquals(0.0..1.0, Opacity.RANGE)
+    assertEquals(0.05, Opacity.STEP, 0.0)
+    // Nought to one in twentieths is twenty-one positions: two ends and
+    // nineteen between them, which is what Material's slider counts.
+    assertEquals(19, Opacity.BETWEEN)
+  }
+
+  @Test
+  fun `every material's translucency is a position the slider can stand at`() {
+    MaterialPreset.entries.forEach { preset ->
+      val finish = DieFinish.STANDARD.madeOf(preset)
+      assertEquals(preset.name, finish.translucency, finish.opaque(finish.opacity).translucency, 0.0)
+    }
+  }
+
+  @Test
+  fun `opacity is the other side of translucency`() {
+    assertEquals(1.0, DieFinish.STANDARD.opacity, 0.0)
+    assertEquals(0.0, DieFinish.STANDARD.madeOf(MaterialPreset.Glass).opacity, 0.0)
+    assertEquals(0.4, DieFinish.STANDARD.madeOf(MaterialPreset.Resin).opacity, 1e-12)
+  }
+
+  @Test
+  fun `a slider position lands on a step, inside the range, as the translucency a set file writes`() {
+    assertEquals(0.35, DieFinish.STANDARD.opaque(0.648).translucency, 0.0)
+    assertEquals(
+      "0.35",
+      DieFinish.STANDARD
+        .opaque(0.65)
+        .translucency
+        .toString(),
+    )
+    assertEquals(0.3, DieFinish.STANDARD.opaque(0.676).translucency, 0.0)
+    assertEquals("past glass is glass", 1.0, DieFinish.STANDARD.opaque(-0.5).translucency, 0.0)
+    assertEquals("past solid is solid", 0.0, DieFinish.STANDARD.opaque(1.5).translucency, 0.0)
+    assertEquals("no number is solid", 0.0, DieFinish.STANDARD.opaque(Double.NaN).translucency, 0.0)
+    assertEquals(0.85, Opacity.snapped(0.86), 0.0)
+  }
+
+  @Test
+  fun `moving the opacity keeps the surface, the metal, the colours and the rounding`() {
+    val brass =
+      DieFinish(roughness = 0.2, metallic = 0.8, translucency = 0.0, edgeRounding = 0.05)
+        .coloured(0xFF8A6A1F.toInt())
+
+    val clearer = brass.opaque(0.5)
+
+    assertEquals(brass.copy(translucency = 0.5), clearer)
+  }
+
+  @Test
+  fun `the menu follows the slider - a quarter through is pearl, and between the names is custom`() {
+    assertEquals(MaterialPreset.Pearl, MaterialPreset.of(DieFinish.STANDARD.opaque(0.75)))
+    assertNull(MaterialPreset.of(DieFinish.STANDARD.opaque(0.5)))
+    val back =
+      DieFinish.STANDARD
+        .opaque(0.5)
+        .opaque(1.0)
+    assertEquals(MaterialPreset.Plastic, MaterialPreset.of(back))
+  }
+
+  @Test
+  fun `an opacity from the slider is inside what a set file may say`() {
+    listOf(-1.0, 0.0, 0.33, 1.0, 2.0).forEach { share ->
+      val material = DieFinish.STANDARD.opaque(share).on(DieMaterial())
+      assertEquals("$share", material, material.clampedToLimits())
+    }
+  }
 }

@@ -125,8 +125,9 @@ a tumble; everything else is real.
   44 dp and which a test records — and the palette's contrast is measured in a
   test rather than eyeballed.
 - **Face designer** — in three steps: pick the die; make it plastic, pearl,
-  resin, glass, metal or stone, give it a colour and round its edges on a
-  slider; then draw its faces with your finger and turn it over. Save the lot
+  resin, glass, metal or stone, give it a colour, and set how see-through it
+  is and how round its edges are on two sliders; then draw its faces with your
+  finger and turn it over. Save the lot
   as a dice set of your own, and roll the die you drew. How round a die is, is
   physics as well as looks: the dice roll on the edges they are drawn with.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,

@@ -43,6 +43,7 @@ import de.drehtuer.dinfinity.core.model.Hex
 import de.drehtuer.dinfinity.designer.DieFinish
 import de.drehtuer.dinfinity.designer.EdgeRounding
 import de.drehtuer.dinfinity.designer.MaterialPreset
+import de.drehtuer.dinfinity.designer.Opacity
 import de.drehtuer.dinfinity.ui.common.ColourPicker
 import de.drehtuer.dinfinity.ui.common.Ink
 import de.drehtuer.dinfinity.ui.common.Modernist
@@ -79,6 +80,8 @@ internal fun FinishPane(
     }
     SectionKicker(text = stringResource(R.string.designer_body))
     BodyColours(state, presenter)
+    SectionKicker(text = stringResource(R.string.designer_opacity))
+    OpacitySlider(state, presenter)
     SectionKicker(text = stringResource(R.string.designer_edges))
     Edges(state, presenter)
     Text(
@@ -88,6 +91,47 @@ internal fun FinishPane(
       modifier = Modifier.testTag(DesignerTestTags.FINISH_NOTE),
     )
   }
+}
+
+/**
+ * How much light the die stops: a slider from glass to solid in steps of five
+ * per cent (`Opacity`; `docs/face-designer.md`, "Material, colour and
+ * edges").
+ *
+ * Opacity rather than the file's translucency because "more solid" is the way
+ * round somebody asks, and said under it both ways, because how much light
+ * gets through is what the tray then shows. It moves with the Material menu:
+ * choosing Glass puts it at nought, and a value between the names makes the
+ * menu say Custom.
+ */
+@Composable
+@NonRestartableComposable
+private fun OpacitySlider(
+  state: DesignerState,
+  presenter: DesignerPresenter,
+) {
+  val opaque = Math.round(state.opacity * PERCENT).toInt()
+  val said = stringResource(R.string.designer_opacity_value, opaque, WHOLE - opaque)
+  val name = stringResource(R.string.designer_opacity)
+  Slider(
+    value = state.opacity.toFloat(),
+    onValueChange = { presenter.opaque(it.toDouble()) },
+    valueRange = Opacity.RANGE.start.toFloat()..Opacity.RANGE.endInclusive.toFloat(),
+    steps = Opacity.BETWEEN,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .semantics {
+          contentDescription = name
+          stateDescription = said
+        }.testTag(DesignerTestTags.OPACITY),
+  )
+  Text(
+    text = said,
+    style = MaterialTheme.typography.labelSmall,
+    color = MaterialTheme.colorScheme.onBackground,
+    modifier = Modifier.testTag(DesignerTestTags.OPACITY_SAID),
+  )
 }
 
 /**
@@ -345,3 +389,5 @@ private const val CHEQUER = 4
 private const val HALF = 0.5f
 
 private const val PERCENT = 100.0
+
+private const val WHOLE = 100

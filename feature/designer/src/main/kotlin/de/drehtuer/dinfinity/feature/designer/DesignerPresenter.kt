@@ -343,6 +343,9 @@ data class DesignerState(
    */
   val bodyArgb: Int get() = draft.shownFinish.colorArgb
 
+  /** How much light the die's body stops, nought to one: where the Opacity slider stands. */
+  val opacity: Double get() = draft.shownFinish.opacity
+
   /** How round the die is, as a share of its size: where the Edges slider stands. */
   val edgeRounding: Double get() = draft.shownFinish.edgeRounding
 
@@ -773,6 +776,16 @@ class DesignerPresenter(
    */
   fun rounded(share: Double) {
     finish(state.draft.shownFinish.rounded(share))
+  }
+
+  /**
+   * The Opacity slider moved to [share]. The die's surface, colour and
+   * rounding stay; what the Material menu then says follows from the numbers
+   * ([MaterialPreset.of]) — Pearl at 75 %, Custom between the names. A move
+   * within one step changes nothing and writes nothing.
+   */
+  fun opaque(share: Double) {
+    finish(state.draft.shownFinish.opaque(share))
   }
 
   /**

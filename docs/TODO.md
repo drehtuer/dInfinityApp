@@ -161,6 +161,10 @@ and read here, and a seed gives the same result with the renderer on and off.
       colour: edges and corners in it, undrawn faces printed white (97). The
       pen's lines on the Solid tab, foreshortened as the face turns. In the
       dark theme, does **Guide** show and hide the faint number?
+- [ ] *Judge on the phone:* the **Opacity** slider (decision 102). Is "75 %
+  opaque: 25 % of the light goes through" the right way to say it, are five
+  per cents fine enough, and does a die between Pearl and Resin look like
+  one on the tray?
 - [ ] *Judge on the phone:* the **Material** menu and the **Edges** slider
       (decisions 94, 98). Make a d20 each of Plastic, Pearl, Resin, Glass,
       Metal and Stone and **Roll it**: does each look like its name on the

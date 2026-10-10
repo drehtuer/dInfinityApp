@@ -47,6 +47,7 @@ class FinishPaneTest {
 
     compose.onNodeWithTag(DesignerTestTags.MATERIAL).performScrollTo().assertIsDisplayed()
     compose.onNodeWithTag(DesignerTestTags.EDGES).performScrollTo().assertIsDisplayed()
+    compose.onNodeWithTag(DesignerTestTags.OPACITY).performScrollTo().assertIsDisplayed()
     compose.onNodeWithTag(DesignerTestTags.MORE_BODY_COLOURS).performScrollTo().assertIsDisplayed()
 
     compose.onNodeWithTag(DesignerTestTags.stepOf(DesignerStep.Faces)).performClick()
@@ -54,6 +55,7 @@ class FinishPaneTest {
 
     compose.onNodeWithTag(DesignerTestTags.MATERIAL).assertDoesNotExist()
     compose.onNodeWithTag(DesignerTestTags.EDGES).assertDoesNotExist()
+    compose.onNodeWithTag(DesignerTestTags.OPACITY).assertDoesNotExist()
   }
 
   @Test
@@ -137,6 +139,64 @@ class FinishPaneTest {
       .assertContentDescriptionEquals("Edges")
       .assert(
         SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Rounded by 3.0 % of its size: 0.48 mm"),
+      )
+  }
+
+  @Test
+  fun `the opacity is a slider from glass to solid, and moving it lets light through the die`() {
+    val presenter = show(d6)
+    solid()
+    val range =
+      compose
+        .onNodeWithTag(DesignerTestTags.OPACITY)
+        .performScrollTo()
+        .fetchSemanticsNode()
+        .config[SemanticsProperties.ProgressBarRangeInfo]
+    assertEquals(1f, range.current, 1e-6f)
+    assertEquals(0f, range.range.start, 1e-6f)
+    assertEquals(1f, range.range.endInclusive, 1e-6f)
+    assertEquals(19, range.steps)
+
+    compose.onNodeWithTag(DesignerTestTags.OPACITY).performSemanticsAction(SemanticsActions.SetProgress) { it(0.4f) }
+
+    assertEquals(0.6, presenter.state.draft.shownFinish.translucency, 1e-9)
+    compose.onNodeWithTag(DesignerTestTags.OPACITY_SAID).assertTextContains("40 % opaque", substring = true)
+    compose.onNodeWithTag(DesignerTestTags.OPACITY_SAID).assertTextContains("60 % of the light", substring = true)
+    compose.onNodeWithTag(DesignerTestTags.MATERIAL).assertContentDescriptionEquals("Material: Custom")
+  }
+
+  @Test
+  fun `choosing a material moves the opacity slider`() {
+    show(d6)
+    solid()
+
+    compose.onNodeWithTag(DesignerTestTags.MATERIAL).performScrollTo().performClick()
+    compose.onNodeWithTag(DesignerTestTags.materialOf(MaterialPreset.Pearl)).performClick()
+
+    val range =
+      compose
+        .onNodeWithTag(DesignerTestTags.OPACITY)
+        .performScrollTo()
+        .fetchSemanticsNode()
+        .config[SemanticsProperties.ProgressBarRangeInfo]
+    assertEquals(0.75f, range.current, 1e-6f)
+    compose.onNodeWithTag(DesignerTestTags.OPACITY_SAID).assertTextContains("75 % opaque", substring = true)
+  }
+
+  @Test
+  fun `TalkBack hears what the opacity is and where the slider stands`() {
+    show(d6)
+    solid()
+
+    compose
+      .onNodeWithTag(DesignerTestTags.OPACITY)
+      .performScrollTo()
+      .assertContentDescriptionEquals("Opacity")
+      .assert(
+        SemanticsMatcher.expectValue(
+          SemanticsProperties.StateDescription,
+          "100 % opaque: 0 % of the light goes through",
+        ),
       )
   }
 

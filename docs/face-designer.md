@@ -843,13 +843,16 @@ and the size the exporter paints are the same number ("Export details").
 
 > **Design:** the **Material** menu, the **Colour** row and the **Edges**
 > slider are under the turning die on the designer's second step in the
-> [phone prototype](../design/dInfinityPhone.dc.html) (`design/`).
+> [phone prototype](../design/dInfinityPhone.dc.html) (`design/`). The
+> **Opacity** slider between Colour and Edges is the app's and not yet the
+> prototype's (`docs/design-handover.md`, "Screens whose shape still differs").
 
-Three controls for the die rather than for a face, so they are the second
-step, under the die in the hand: what it is made of, what colour it is, and how
-round its edges are. All three belong to the die being drawn — another base die
-has its own — and are written into its draft the moment they change, like a
-stroke (`docs/architecture.md`, decisions 94 and 97).
+Four controls for the die rather than for a face, so they are the second
+step, under the die in the hand: what it is made of, what colour it is, how
+much light goes through it and how round its edges are. All four belong to the
+die being drawn — another base die has its own — and are written into its
+draft the moment they change, like a stroke (`docs/architecture.md`, decisions
+94, 97 and 102).
 
 **Material** is a menu of names, because "glass" is what somebody wants and
 "translucency 100 %, roughness 0.05" is how it is made. Each name sets the
@@ -898,6 +901,24 @@ die every colour came out paler than chosen (`docs/physics-and-rendering.md`,
 the painter, the package and the validator to the decoded pixels and the die's
 colour, and `AtlasTextureTest` holds what the renderer then draws to a die of
 that ink's colour, on a device.
+
+**Opacity** is a slider from 0 % (glass) to 100 % (solid) in steps of five
+per cent, and it is the set file's `translucency` said the other way round —
+"more solid" is how somebody asks for it, so a solid die is at the right-hand
+end. It adds no field: it moves the number the Material menu sets, and the
+menu follows it. Choosing Glass puts the slider at nought and Pearl at 75 %;
+moving the slider keeps the die's surface, metal, colour and rounding, so
+plastic at 75 % *is* Pearl and plastic at 50 % is **Custom**. Every name's
+translucency is a step of the slider, so choosing a name and moving the slider
+back to it come to the same die. Under it the share is said both ways — "75 %
+opaque: 25 % of the light goes through" — and TalkBack hears the same sentence
+as the slider's state. Ink stays opaque whatever it is ("A colour beyond
+the twelve"): what goes clear is the body, as on a real resin die.
+
+It was a menu entry only, the names' four fixed values, until the owner asked
+for a slider: the die between Pearl and Resin is a die somebody wants, and
+four steps were the same answer Edges gave before it became a slider
+(decision 98).
 
 **Edges** is a slider from 1.5 % to 6 % of the die's size in steps of half a
 per cent — the range a set file may ask for, measured on the Pixel 10a: past

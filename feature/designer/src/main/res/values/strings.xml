@@ -80,6 +80,9 @@
   <!-- The title of the picker the body colour is chosen in. -->
   <string name="designer_body_title">Colour of the die</string>
   <!-- The kicker over the choice of how round the die's edges are. -->
+  <string name="designer_opacity">Opacity</string>
+  <!-- Under the Opacity slider, and what a screen reader says it stands at. %1$d is how opaque the die is in per cent, %2$d how much light goes through it, in per cent; the two add up to 100. -->
+  <string name="designer_opacity_value">%1$d %% opaque: %2$d %% of the light goes through</string>
   <string name="designer_edges">Edges</string>
   <!-- Under the Edges slider, and what a screen reader says it stands at. %1$.1f is the per cent of the die's size, %2$.2f the millimetres that comes to on this die. -->
   <string name="designer_edges_value">Rounded by %1$.1f %% of its size: %2$.2f mm</string>

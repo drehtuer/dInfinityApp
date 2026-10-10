@@ -1265,6 +1265,8 @@ object DesignerTestTags {
   const val MATERIAL: String = "designer:material"
   const val SWATCH: String = "designer:material:swatch"
   const val FINISH_NOTE: String = "designer:finish:note"
+  const val OPACITY: String = "designer:opacity"
+  const val OPACITY_SAID: String = "designer:opacity:said"
   const val EDGES: String = "designer:edges"
   const val EDGES_SAID: String = "designer:edges:said"
   const val MORE_BODY_COLOURS: String = "designer:body:more"
