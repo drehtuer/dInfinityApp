@@ -17,7 +17,7 @@
     lists has both.
   -->
   <string name="screen_roll">Roll</string>
-  <string name="screen_roll_description">The tray. Shake it, or pick dice and press Roll.</string>
+  <string name="screen_roll_description">The tray. Pick dice, then shake the phone to roll.</string>
   <string name="screen_graph">Outcome graph</string>
   <string name="screen_graph_description">Exact odds before you roll, with the mean and σ.</string>
   <string name="screen_saved">Saved rolls</string>

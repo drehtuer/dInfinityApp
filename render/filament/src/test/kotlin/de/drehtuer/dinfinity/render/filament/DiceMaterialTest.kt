@@ -237,6 +237,18 @@ class DiceMaterialTest {
   }
 
   @Test
+  fun `a die's artwork is laid over its body in its own colour, not tinted by it`() {
+    // `base.rgb * art.rgb` drew yellow pips on a black die black: the face
+    // designer's ink never reached the tray. Every die material shares the
+    // surface, so each must composite the artwork as it was drawn. Whether
+    // the pixels agree is `AtlasTextureTest`'s, on a device.
+    listOf(DiceMaterial.SOURCE, DiceMaterial.RESIN_SOURCE, DiceMaterial.GLASS_SOURCE).forEach { source ->
+      assertTrue(source.contains("colour = mix(body, art.rgb, art.a);"))
+      assertFalse("the artwork is tinted by the body", source.contains("* art.rgb"))
+    }
+  }
+
+  @Test
   fun `a solid die is opaque, and a translucent one is resin`() {
     val solid = DiceMaterial.dieOf(DieMaterial(), texturePath = null)
     assertNull("a solid die has no resin", solid.resin)

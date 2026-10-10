@@ -644,11 +644,18 @@ class FilamentEngine(
     /**
      * A decoded atlas, uploaded as it stands.
      *
-     * `RGBA8` and straight alpha, because the material blends the artwork over
-     * the die's printed label by the artwork's own alpha and a premultiplied
-     * edge would drag every soft pixel towards the body colour
-     * ([AtlasImage]). One level: a die is looked at from a hand's distance and
-     * the atlas is already the larger of the two sizes involved.
+     * **sRGB**, because a PNG's colours are sRGB — the space the face designer's
+     * picker and every image editor write in — and the material mixes them with
+     * a body colour that [Colour.of] has already made linear. Uploaded as plain
+     * `RGBA8` the GPU read an ink of `#C01010` as 75 % red rather than the 52 %
+     * it is, so every drawing came to the tray paler than it was drawn. The
+     * alpha is not a light level and an sRGB format leaves it linear.
+     *
+     * Straight alpha, because the material blends the artwork over the die's
+     * printed label by the artwork's own alpha and a premultiplied edge would
+     * drag every soft pixel towards the body colour ([AtlasImage]). One level:
+     * a die is looked at from a hand's distance and the atlas is already the
+     * larger of the two sizes involved.
      */
     fun uploadAtlas(
       engine: Engine,
@@ -660,7 +667,7 @@ class FilamentEngine(
           .width(image.width)
           .height(image.height)
           .levels(1)
-          .format(Texture.InternalFormat.RGBA8)
+          .format(Texture.InternalFormat.SRGB8_A8)
           .build(engine)
       val pixels = ByteBuffer.allocateDirect(image.pixels.size).order(ByteOrder.nativeOrder())
       pixels.put(image.pixels)

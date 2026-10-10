@@ -21,6 +21,13 @@ Done apart from boxes that wait on other projects; none blocks anything.
 - [ ] *Optional:* a `DEPENDABOT_METADATA_TOKEN` secret, so the metadata commit
       starts the checks without the *Approve workflows to run* banner
       (`docs/build-setup.md`)
+- [ ] **The emulator's readback aborts.** Every `render/filament` device test
+  that reads a frame back (`AtlasTextureTest`, `PrintedNumbersDeviceTest`, …)
+  kills the test process on the container's emulator: Filament's `blitLow`
+  program does not compile on SwiftShader (`cannot convert from 'float' to
+  'out mediump 4-component vector'`). The Pixel 10a passes them. Find which
+  change brought it (Filament 1.76.1, the emulator image, or the room light)
+  and either fix it or skip those tests on the emulator by name.
 - [ ] Drop `VerifyDeviceTestResultsTask` and `ignoreFailures` on
       `connectedDebugAndroidTest` once AGP stops failing runs on devices whose
       adb serial contains a colon (`docs/build-setup.md`)
@@ -154,6 +161,10 @@ and read here, and a seed gives the same result with the renderer on and off.
       colour: edges and corners in it, undrawn faces printed white (97). The
       pen's lines on the Solid tab, foreshortened as the face turns. In the
       dark theme, does **Guide** show and hide the faint number?
+- [ ] *Judge on the phone:* the **Opacity** slider (decision 102). Is "75 %
+  opaque: 25 % of the light goes through" the right way to say it, are five
+  per cents fine enough, and does a die between Pearl and Resin look like
+  one on the tray?
 - [ ] *Judge on the phone:* the **Material** menu and the **Edges** slider
       (decisions 94, 98). Make a d20 each of Plastic, Pearl, Resin, Glass,
       Metal and Stone and **Roll it**: does each look like its name on the

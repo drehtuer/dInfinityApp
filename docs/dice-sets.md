@@ -549,10 +549,13 @@ Four things about that path are rules rather than arrangement:
   atlas is decoded again and the old `Texture` is given back, which is safe
   because a package only changes while the roll screen is not showing. Before
   this, a drawing rolled a second time was thrown as it looked the first time.
-- **Straight alpha, not premultiplied.** The material lays the artwork over the
-  die's body colour by the artwork's own alpha, so a half-transparent pixel
-  has to keep its full colour. Android premultiplies by default and the decoder
-  asks it not to.
+- **Straight alpha, not premultiplied, and sRGB.** The material lays the
+  artwork over the die's body colour by the artwork's own alpha, so a
+  half-transparent pixel has to keep its full colour. Android premultiplies by
+  default and the decoder asks it not to. An opaque pixel is drawn in its own
+  colour, not tinted by the body's: a yellow pip on a black die is yellow. The
+  texture is uploaded as sRGB, so the colour on the face is the colour in the
+  file (`docs/physics-and-rendering.md`, "Rendering (normal mode)"; decision 101).
 - **Which faces it draws on is read once, at the upload.** The same pixels
   say which face cells hold anything at all (`AtlasImage.drawnCells`, the
   complement of the validator's empty cells), for every face count the

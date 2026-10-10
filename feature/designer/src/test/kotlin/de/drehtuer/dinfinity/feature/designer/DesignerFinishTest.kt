@@ -81,6 +81,54 @@ class DesignerFinishTest {
   }
 
   @Test
+  fun `a built-in die opens wholly opaque`() {
+    assertEquals(1.0, DesignerPresenter(d6).state.opacity, 0.0)
+  }
+
+  @Test
+  fun `moving the opacity makes the die see-through and is written down`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, drafts = drafts)
+    presenter.coloured(0xFF1F5E3A.toInt())
+    presenter.rounded(0.05)
+
+    presenter.opaque(0.4)
+
+    assertEquals(0.4, presenter.state.opacity, 1e-12)
+    assertEquals(0.6, drafts.load(d6).finish?.translucency)
+    assertEquals("the colour stays", 0xFF1F5E3A.toInt(), presenter.state.bodyArgb)
+    assertEquals("the rounding stays", 0.05, presenter.state.edgeRounding, 0.0)
+  }
+
+  @Test
+  fun `the menu and the opacity slider move each other`() {
+    val presenter = DesignerPresenter(d6)
+
+    presenter.madeOf(MaterialPreset.Glass)
+    assertEquals(0.0, presenter.state.opacity, 0.0)
+
+    presenter.opaque(0.5)
+    assertNull("between the names is custom", presenter.state.preset)
+
+    presenter.madeOf(MaterialPreset.Plastic)
+    presenter.opaque(0.75)
+    assertEquals("plastic a quarter through is pearl", MaterialPreset.Pearl, presenter.state.preset)
+  }
+
+  @Test
+  fun `the opacity dragged within one step writes nothing new`() {
+    val drafts = Remembered()
+    val presenter = DesignerPresenter(d6, drafts = drafts)
+    presenter.opaque(0.5)
+    val saves = drafts.saves
+
+    presenter.opaque(0.51)
+    presenter.opaque(0.49)
+
+    assertEquals(saves, drafts.saves)
+  }
+
+  @Test
   fun `a slider dragged within one step writes nothing new`() {
     val drafts = Remembered()
     val presenter = DesignerPresenter(d6, drafts = drafts)
