@@ -4,7 +4,7 @@ Current state of the project in a few lines. Update it when a milestone moves, a
 decision is taken or something is blocked; prune anything no longer current.
 This is a snapshot, not a changelog — git history is the changelog.
 
-**Last updated:** 2026-10-05
+**Last updated:** 2026-10-10
 
 ## Where we are
 
@@ -144,5 +144,5 @@ All in `docs/TODO.md`; the ones that block code first.
   many fit.
 - Whether the too-many-dice refusal offers a way to the outcome graph (the
   argument is in `docs/architecture.md`).
-- Filled-button label contrast (3.65:1 against 4.5:1), the coverage floor,
+- Filled-button label contrast (3.76:1 against 4.5:1), the coverage floor,
   the anomaly log surviving a restart, more than one personal set.

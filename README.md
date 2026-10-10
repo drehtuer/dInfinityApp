@@ -38,9 +38,12 @@ hunting for the d12 that rolled under the couch.
 ## The design is clickable
 
 **▶ [design/dInfinity.dc.html](design/dInfinity.dc.html)** — every v1 screen,
-live in the browser. Clone the repository and open the file; GitHub shows you
-its source, not the running prototype, and it renders from this folder with no
-account or sign-in of any kind.
+live in the browser. Clone the repository and serve the folder — `cd design &&
+python3 -m http.server 8000`, then open
+`http://localhost:8000/dInfinity.dc.html`. GitHub shows you its source, not the
+running prototype, and a file opened straight from disk cannot fetch the parts
+it imports. It needs no account or sign-in of any kind, only the internet: React
+and Babel come from unpkg, pinned (`design/README.md`).
 
 It is not a picture of the app: the notation parser, the table capacity rule
 and the exact outcome graph all run, following the specification in `docs/`.
@@ -76,15 +79,15 @@ a tumble; everything else is real.
 - **Power-saving mode** — same physics, no rendering; just the result. The dice
   are still heard: the impacts the throw made are played back over a second.
 - **Tabletop notation** — roll `3d6 + 1d20 - 4`, `2d10kh1`, `d%`, and so on,
-  and a dice set's own dice by name: `3{skull-d6}kh1`.
-  The whole grammar is in the app under **Notation**, with an example on every
-  line you can tap to try.
+  and a dice set's own dice by name: `3{skull-d6}kh1`. The whole grammar is in
+  the app under **Notation**, with an example on every line you can tap to
+  try.
 - **Does the math** — the total, the modifiers and the per-die breakdown are
   shown the moment the dice stop. No counting pips in the middle of a fight.
 - **Saved rolls** — name a formula, give it an icon ("Fireball", "Sneak
-  Attack"), put it in the field with one tap and shake. Group them per game, per character, however
-  you like; export and import them as files, from a URL, or from a git
-  repository holding one.
+  Attack"), put it in the field with one tap and shake. Group them per game,
+  per character, however you like; export and import them as files, from a
+  URL, or from a git repository holding one.
 - **Outcome graph** — see the exact probability distribution before you roll,
   for a typed formula or for a handful of dice picked by tapping, with mean
   and standard deviation.
@@ -97,10 +100,11 @@ a tumble; everything else is real.
   every shape, every field commented, blank atlases to draw on.
   [sample-sets/](sample-sets/) has four finished ones to install — marble,
   steel, green resin and red glass.
-- **Exchangeable tables** — swap the look of the dice tray (felt, wood, glass,
-  your own photo) the same way you would swap a wallpaper. Felt and oak are
-  drawn from real textures at real size; plain stays a flat colour. The tray's
-  shape never changes: it is the phone's screen, walls at the edges.
+- **Exchangeable tables** — swap the look of the dice tray (green or black
+  felt, oak, dark glass, plain, your own photo) the same way you would swap a
+  wallpaper. Felt and oak are drawn from real textures at real size; plain stays
+  a flat colour. The tray's shape never changes: it is the phone's screen,
+  walls at the edges.
 - **Safe imports** — a broken or malicious dice set can fail to load, but it
   cannot crash the app or affect other sets.
 - **Your accent** — the one colour the interface spends is yours to choose: six
@@ -123,9 +127,8 @@ a tumble; everything else is real.
 - **Face designer** — in three steps: pick the die; make it plastic, pearl,
   resin, glass, metal or stone, give it a colour and round its edges on a
   slider; then draw its faces with your finger and turn it over. Save the lot
-  as a dice set of your own, and roll the die you drew.
-  How round a die is, is physics as well as looks: the dice roll on the edges
-  they are drawn with.
+  as a dice set of your own, and roll the die you drew. How round a die is, is
+  physics as well as looks: the dice roll on the edges they are drawn with.
 - **Statistics** — count of lowest/highest results per die, averages, streaks,
   per-formula history. Yes, we know a natural 20 is exactly as likely as a
   natural 7. It still matters.
@@ -155,11 +158,11 @@ is the visual one. Each document below links to the screens that realise it.
 | [docs/dice-sets.md](docs/dice-sets.md) | Dice set file format, shapes, textures, installing from git forges or archive URLs, validation and sandboxing |
 | [docs/tables.md](docs/tables.md) | Table (tray) geometry, capacity limits, exchangeable table looks and their textures |
 | [docs/probability.md](docs/probability.md) | How the outcome graph is computed |
-| [docs/face-designer.md](docs/face-designer.md) | Finger-drawn face textures |
+| [docs/face-designer.md](docs/face-designer.md) | The three-step designer: shape; material, colour and edge rounding; finger-drawn faces, the Solid view and saving to a set |
 | [docs/statistics.md](docs/statistics.md) | What is tracked, how it is stored, privacy |
 | [docs/assets/README.md](docs/assets/README.md) | The logo files and the die font, how both are generated from Archivo, and the font licence; the photographed room the dice are lit by; the bundled felt and oak textures, their CC0 sources and how they were cut |
 | [docs/design-handover.md](docs/design-handover.md) | Where the app and the prototype still differ, and the questions each side is waiting on |
-| [design/README.md](design/README.md) | The prototype: what each file is, how to open it offline, how to keep it in step with `docs/` |
+| [design/README.md](design/README.md) | The prototype: what each file is, how to serve it locally, how to keep it in step with `docs/` |
 | [examples/README.md](examples/README.md) | The worked dice set: a commented `diceset.toml` using every catalogue shape, and blank atlases to draw on |
 | [sample-sets/README.md](sample-sets/README.md) | Four finished sets to install from a file or a link — marble, steel, green resin, red glass — and how their artwork and archives are made and checked |
 
@@ -171,9 +174,15 @@ pushing a tag. Every screen is written and connected; the documents in `docs/`
 and the prototype in `design/` are still the specification, and where the two
 disagree one of them is a bug.
 
+The features above run ahead of that release: the three-step face designer
+with its materials and edge rounding, felt and oak drawn from real textures,
+the plate that says why the first launch waits for its shaders, and the four
+sample sets are built since `v0.2.0` and ship in the next one.
+
 It is still `0.x` because the physics is not finished: `100d4` does not
 reliably settle, and a hard sideways shake can run a roll out to its
-twelve-second cap, where it gives up rather than invent an answer. See [docs/STATUS.md](docs/STATUS.md) for where things stand and
+twelve-second cap, where it gives up rather than invent an answer. See
+[docs/STATUS.md](docs/STATUS.md) for where things stand and
 [docs/TODO.md](docs/TODO.md) for what is next.
 
 ## Building
@@ -212,12 +221,11 @@ the tracking files are kept tidy — are in
 - Accessibility: TalkBack labels on every screen, 48 dp touch targets, no
   meaning carried by colour alone, and WCAG 2.2 AA contrast measured rather
   than assumed — the rules, the measurements and the two ratios that fall
-  short are in
-  [docs/architecture.md](docs/architecture.md#accessibility). **Rolling needs
-  a hand that can shake the phone.** There is no other way to start a roll —
-  no button, no key and no accessibility action — so somebody who cannot
-  shake a phone cannot roll in this app. That is a decided limitation, not an
-  oversight (decision 66)
+  short are in [docs/architecture.md](docs/architecture.md#accessibility).
+  **Rolling needs a hand that can shake the phone.** There is no other way to
+  start a roll — no button, no key and no accessibility action — so somebody
+  who cannot shake a phone cannot roll in this app. That is a decided
+  limitation, not an oversight (decision 66)
 - Language: English, and only English ships. Every word a screen says is a
   string resource, so nothing in the app stands between here and a translation
   somebody writes — the rule, where the line between text and a test tag is
