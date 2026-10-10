@@ -281,9 +281,10 @@ power-saving mode; there is no other one.
 **A shake is the throw.** It is the only way to put dice in the air, and every
 other control in the app stops at filling the formula field. That is absolute
 (`docs/architecture.md`, decision 66): no button, no key, no accessibility
-action and no setting that switches shaking off. The dice are
-spawned when the shake begins and are driven by the phone's motion until the
-hand stops, then released ("Shake input", below).
+action and no setting that switches shaking off. On the main line the dice
+are spawned when the shake begins and are driven by the phone's motion until
+the hand stops ("Shake input", below); on `feature/throw-release` they are in
+the hand until it stops, and then thrown ("The hand lets go", below).
 
 There was a Roll button, and it is gone. It was not a second way to throw so
 much as a way of making the shake optional: a tap on a saved roll threw, the
@@ -314,6 +315,65 @@ shake to throw again ("Picking a die up and throwing it again"), and a surface
 that threw the whole formula the moment it is touched would have nowhere left
 to put either. A roll is also not something to start by
 accident — it replaces a result somebody may still be reading.
+
+### The hand lets go
+
+> **An experiment on `feature/throw-release`** (decision 103;
+> `docs/TODO.md`, Step 5.8). It stays off the main line until the owner,
+> comparing on the phone, finds it better.
+
+**Shaking a box is not throwing dice.** Put side by side with a slow-motion
+film of four real d6 being thrown, the tray showed the difference plainly: the
+real dice leave a hand with height, speed and spin, land hard, bounce several
+of their own heights and tumble over two to four faces before they stop. On the
+Pixel 10a, four d6 shaken in the tray raced about while the phone moved and
+were all still about 0.3 s after it stopped — the last stroke braked them into
+a wall or each other, and nothing was left to tumble with. The harness never
+saw it, because its throws have no shake: the throw it scores is the one the
+shake drive took over.
+
+So on this branch **the dice are in the hand while the phone is shaken**. A
+shake beginning takes the waiting dice off the board and simulates nothing
+(`RollPresenter.hold`); its moments are kept, and drive no die. When the shake
+ends, the hand lets go (`RollPresenter.release`):
+
+- **Which way, and how hard, is the hand's last stroke** (`Release.of`). The
+  moments are the phone's acceleration in the tray's frame; summed over time
+  they are its velocity, with the drift taken out as a straight line because a
+  phone picked up still and stopped still begins and ends at rest. The throw
+  is the last stroke in the final 0.35 s before the hand went quiet — the last
+  run of moments at 60 % or more of the fastest there, and its peak — not the
+  fastest moment, which in a window one stroke long is as likely to be the
+  stroke before, going the other way. The dice leave at 1.5 times the hand's
+  speed, held to 600–1,600 mm/s. A shake straight at the glass has no
+  direction along the floor; its throw takes one from its seed.
+- **From a hand, not from all over the floor** (`SpawnLayout`). The dice start
+  in a clump a whole die apart, on the side of the tray the throw comes from,
+  120 mm up — twice the grid throw's 60 mm, so a landing is a bounce — each
+  aimed within 17° of the throw and at its speed give or take 15 %, thrown
+  down at 100–400 mm/s, with the spin a throw has always had. A tray too full
+  for a clump deals the dice onto the grid with the whole stack lowered under
+  the lid. An added die (an explosion, a reroll) is still dropped among the
+  dice at rest.
+- **Then nothing but gravity.** The throw carries no shake, so it is the same
+  throw the harness has always measured, paced from its first step, and it
+  replays from its seed and release alone (`ThrowSpec.release`).
+
+Measured on the Pixel 10a, 500 rolls a row, against the grid throw the harness
+makes (`tools/harness.sh --release 1200`):
+
+| | re-thrown | median / p99 settle | deepest overlap | turns after landing |
+| --- | --- | --- | --- | --- |
+| 4d6, grid throw | 0.20 % | 0.80 / 1.03 s | 4.8 mm | 2.96 |
+| 4d6, released at 1,200 mm/s | 0.30 % | 0.85 / 1.47 s | 5.9 mm | 3.55 |
+| 20d20, grid throw | 1.17 % | 0.96 / 1.99 s | 5.9 mm | 2.67 |
+| 20d20, released at 1,200 mm/s | 4.42 % | 1.13 / 2.11 s | 6.8 mm | 2.59 |
+
+A handful tumbles a fifth more. Twenty dice thrown one way pile against the far
+wall and are thrown again four times as often, which is what a real handful of
+twenty does in a box this size and still not what the tray should do: the
+speed for a crowded throw is the first thing to tune. Every constant here is a
+first guess, to be set from the owner's recordings of real throws.
 
 ### No way in that is not a hand
 
@@ -614,6 +674,16 @@ longer do: at the current throw they leave the shaken heap exactly where it
 was, as the table above says.)
 
 ## Shake input
+
+> **On `feature/throw-release` the dice are not in the tray while the phone is
+> shaken** ("The hand lets go", under "Starting a roll"; decision 103). The
+> sensors, the detector, the swing correction and the thresholds below are
+> unchanged and decide when a shake begins and ends; the moments are kept for
+> the release and drive no die. What this section says about moments *driving*
+> dice — the inverse acceleration, the held force, a second shake at dice in
+> the air, the record a roll is replayed from — is the model on the main line,
+> and on this branch it is what a throw recorded with a shake (`ThrowSpec.shake`,
+> the golden cases) still replays through.
 
 - Sensors: linear acceleration (gravity removed) and gyroscope, at
   `SENSOR_DELAY_GAME`. Registered while the roll screen is resumed and let go

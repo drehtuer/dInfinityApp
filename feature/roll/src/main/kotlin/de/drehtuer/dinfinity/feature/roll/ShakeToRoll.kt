@@ -20,20 +20,17 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
  * accelerometer left running behind a backgrounded app is a battery bill for
  * nothing.
  *
- * **The dice are spawned when the shake begins**, not when it ends. Every
- * moment after that reaches the roll while the dice are already in the air, so
- * what the player sees is dice answering their hand rather than dice thrown
- * once the hand has stopped. The samples carry the step they belong to, so the
- * same record replayed afterwards drives exactly the same roll.
+ * **The dice are in the hand while the phone is shaken, and thrown when it
+ * stops** (`docs/architecture.md`, decision 103). A shake beginning takes the
+ * waiting dice off the table ([RollPresenter.hold]); its end lets them go the
+ * way its last stroke went ([RollPresenter.release]), and from there they
+ * fly, land and tumble with nothing but gravity on them, as thrown dice do.
  *
  * A shake with no valid formula behind it throws nothing; the presenter
  * refuses it.
  *
- * **A second shake at dice still in the air keeps them moving.** It starts no
- * throw — those dice are thrown already — so nothing is spawned and nothing
- * replaces the roll in progress; its moments simply join the ones driving it.
- * That is what a hand does at a table, and it is why the shake source is told
- * whether a roll is running (`docs/physics-and-rendering.md`, "Shake input").
+ * **A shake at dice still in the air does nothing.** They have left the hand;
+ * that shake holds nothing and throws nothing, and its moments go nowhere.
  *
  * What it listens to is [ShakeInput.current]: the sensors, or a test's hand
  * standing in for them behind this same code ([ShakeInput]).
@@ -69,20 +66,24 @@ internal fun ShakeToRoll(
         ShakeInput.Hand(
           onStarted = {
             // The edges are claimed either way: a hand is on the phone whether
-            // or not this shake had anything to throw. What the presenter
-            // answers is whether it did — and a shake at dice still in the air
-            // did not, which is what keeps its moments on their clock.
+            // or not this shake holds anything. What the presenter answers is
+            // whether it does — a shake at dice still in the air does not.
             shaking = true
-            presenter.roll().also { threw -> if (threw) thrown() }
+            presenter.hold()
           },
-          onEnded = { shaking = false },
+          onEnded = {
+            shaking = false
+            presenter.release().also { threw -> if (threw) thrown() }
+          },
           onSample = presenter::shaking,
         ),
       )
     onPauseOrDispose {
       heard.stop()
-      // Leaving the screen mid-shake must not leave the edges claimed.
+      // Leaving the screen mid-shake must not leave the edges claimed, nor
+      // the dice in a hand that has gone.
       shaking = false
+      presenter.drop()
     }
   }
 }

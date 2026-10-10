@@ -52,6 +52,10 @@ interface DiceSimulator {
  *   by. They are here for the two things outside the solver that still need
  *   them — the clear floor the new die is dropped onto ([ClearSpace]) and the
  *   picture it lands in.
+ * @param release how the hand let the dice go, for a throw that leaves the
+ *   hand once the shake is over ([Release]); null for one spawned as the
+ *   shake begins and driven by [shake], or for a tap. An added die ignores it:
+ *   it is dropped among the dice at rest, not thrown.
  */
 data class ThrowSpec(
   val dice: List<DieInstance>,
@@ -61,6 +65,7 @@ data class ThrowSpec(
   val dieScale: Double = 1.0,
   val shake: List<ShakeSample> = emptyList(),
   val among: List<DieAtRest> = emptyList(),
+  val release: Release? = null,
 ) {
   init {
     require(dieScale in TableCapacity.MIN_SCALE..1.0) {

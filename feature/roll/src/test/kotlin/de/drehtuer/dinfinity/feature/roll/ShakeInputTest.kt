@@ -75,7 +75,7 @@ class ShakeInputTest {
   @Test
   fun `the sensors are listened to until they are stopped`() {
     addSensors()
-    val stop = SensorShakeInput.listen(context, ShakeInput.Hand({ true }, {}, {}))
+    val stop = SensorShakeInput.listen(context, ShakeInput.Hand({ true }, { false }, {}))
     assertFalse("nothing was listening", shadow.listeners.isEmpty())
 
     stop.stop()
@@ -94,7 +94,10 @@ class ShakeInputTest {
           heard += "started"
           true
         },
-        onEnded = { heard += "ended" },
+        onEnded = {
+          heard += "ended"
+          false
+        },
         onSample = { heard += "sample" },
       ),
     )
@@ -117,16 +120,17 @@ class ShakeInputTest {
           if (name == Context.SENSOR_SERVICE) null else super.getSystemService(name)
       }
 
-    val stop = SensorShakeInput.listen(noSensors, ShakeInput.Hand({ error("shaken") }, {}, {}))
+    val stop = SensorShakeInput.listen(noSensors, ShakeInput.Hand({ error("shaken") }, { false }, {}))
     stop.stop()
 
     assertTrue(shadow.listeners.isEmpty())
   }
 
   @Test
-  fun `the roll screen throws when the sensors say the phone was shaken`() {
+  fun `the roll screen throws when the sensors say the hand let go`() {
     // The whole of the real path, short of a GPU: sensor events in, a throw
-    // out, through `ShakeToRoll` exactly as it ships.
+    // out, through `ShakeToRoll` exactly as it ships. The dice are in the hand
+    // while the phone is shaken and leave it when the shake ends (decision 103).
     addSensors()
     val tray = DirectTray()
     val presenter = rollPresenter(tray, LandingRolls(mapOf(0 to 0)))
@@ -140,20 +144,22 @@ class ShakeInputTest {
       shakeHard(atMillis = ShakeThresholds.START_MILLIS)
     }
     compose.waitForIdle()
+    assertEquals("the dice left the hand while it was still shaking", 0, tray.throws)
 
-    assertEquals("the shake threw nothing", 1, tray.throws)
-    assertTrue("the shake did not reach the dice it threw", tray.shaken.isNotEmpty())
-
-    // And the hand lets go, which gives the edges back; a second shake is a
-    // second throw of its own, the first roll having landed.
     compose.runOnIdle {
       beStill(atMillis = 1_000)
       beStill(atMillis = 1_000 + ShakeThresholds.STOP_MILLIS)
     }
     compose.waitForIdle()
+    assertEquals("the hand let go and threw nothing", 1, tray.throws)
+    assertTrue("a moment of the shake reached dice out of the hand", tray.shaken.isEmpty())
+
+    // A second shake after the first roll landed is a second throw of its own.
     compose.runOnIdle {
       shakeHard(atMillis = 2_000)
       shakeHard(atMillis = 2_000 + ShakeThresholds.START_MILLIS)
+      beStill(atMillis = 3_000)
+      beStill(atMillis = 3_000 + ShakeThresholds.STOP_MILLIS)
     }
     compose.waitForIdle()
     assertEquals("a second shake after the hand let go threw nothing", 2, tray.throws)
@@ -211,9 +217,12 @@ class ShakeInputTest {
       ShakeInput.Hand(
         onStarted = {
           heard += "started"
+          true
+        },
+        onEnded = {
+          heard += "ended"
           false
         },
-        onEnded = { heard += "ended" },
         onSample = { heard += it },
       ),
     )
@@ -225,7 +234,7 @@ class ShakeInputTest {
       )
 
     assertTrue(hand.heard)
-    assertFalse("the hand did not pass on what the screen answered", hand.shake(listOf(moment)))
+    assertFalse("the hand did not pass on what the screen answered at the end", hand.shake(listOf(moment)))
     assertEquals(listOf("started", moment, "ended"), heard)
   }
 
@@ -234,17 +243,17 @@ class ShakeInputTest {
     // What a recreated activity does: the new screen resumes before the old
     // one is disposed of.
     val hand = TestHand()
-    val old = hand.listen(context, ShakeInput.Hand({ error("the old screen was shaken") }, {}, {}))
+    val old = hand.listen(context, ShakeInput.Hand({ error("the old screen was shaken") }, { false }, {}))
     var thrown = 0
     val new =
       hand.listen(
         context,
         ShakeInput.Hand(
-          onStarted = {
+          onStarted = { true },
+          onEnded = {
             thrown++
             true
           },
-          onEnded = {},
           onSample = {},
         ),
       )

@@ -107,6 +107,9 @@ class JoltDiceSimulator(
           // shove; what they decide is where the new die is not dropped
           // (`docs/physics-and-rendering.md`).
           among = spec.among.map { it.at.position },
+          // A throw the hand let go of once the shake was over starts in the
+          // hand rather than over the whole floor ([Release]).
+          release = spec.release,
         )
       spec.dice.forEachIndexed { index, instance ->
         world.addDie(

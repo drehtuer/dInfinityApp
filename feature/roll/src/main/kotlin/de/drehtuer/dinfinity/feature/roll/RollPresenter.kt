@@ -20,6 +20,7 @@ import de.drehtuer.dinfinity.render.headless.Rolls
 import de.drehtuer.dinfinity.simulation.api.DeveloperLog
 import de.drehtuer.dinfinity.simulation.api.DieAtRest
 import de.drehtuer.dinfinity.simulation.api.FrameRate
+import de.drehtuer.dinfinity.simulation.api.Release
 import de.drehtuer.dinfinity.simulation.api.RollDiagnostics
 import de.drehtuer.dinfinity.simulation.api.ShakeSample
 import de.drehtuer.dinfinity.simulation.api.TableGeometry
@@ -276,10 +277,12 @@ class RollPresenter(
    * what the dice came to, and that is posted to the screen's own thread
    * before the machine is touched.
    *
-   * @param shake what the phone did before the throw, if anything. A shake
-   *   calls this the moment it is confirmed, with nothing yet, and hands the
-   *   rest of itself to [shaking] as it happens; a shake is the only thing
-   *   that calls this at all (`docs/architecture.md`, decision 66).
+   * @param shake what the phone did before the throw, if anything — a throw
+   *   driven by a recorded shake, which the screen no longer makes; a shake
+   *   throws through [release] and calls this with nothing but the
+   *   [release] (`docs/architecture.md`, decisions 66 and 103).
+   * @param release how the hand let the dice go, or null for a throw that
+   *   did not leave a hand.
    * @return whether dice were actually thrown. False when there is nothing to
    *   throw — a formula that does not read, a throw the table cannot hold, or
    *   **a roll already in the air**, which is what a second shake at tumbling
@@ -287,12 +290,15 @@ class RollPresenter(
    *   nothing goes on numbering its moments on the running roll's clock rather
    *   than starting a new one (`docs/physics-and-rendering.md`, "Shake input").
    */
-  fun roll(shake: List<ShakeSample> = emptyList()): Boolean {
+  fun roll(
+    shake: List<ShakeSample> = emptyList(),
+    release: Release? = null,
+  ): Boolean {
     // A roll that is waiting on a hand is continued rather than restarted.
     val more = waiting(shake)
     if (more != null) {
       publish()
-      throwIt(more)
+      throwIt(more.copy(release = release))
       return true
     }
 
@@ -301,7 +307,7 @@ class RollPresenter(
     // what a shake could never have expressed anyway.
     if (state is RollState.Settled) machine.clear()
 
-    val spec = machine.throwDice(shake) ?: return false
+    val spec = machine.throwDice(shake, release) ?: return false
     // A throw of its own rather than the next of a chain, so whatever the last
     // roll got as far as is not what this one starts by showing.
     progress = null
@@ -309,6 +315,58 @@ class RollPresenter(
     throwIt(spec)
     return true
   }
+
+  /**
+   * A shake began: the dice are in the hand (`docs/physics-and-rendering.md`,
+   * "Starting a roll"; decision 103).
+   *
+   * Nothing is thrown yet and nothing is simulated. The dice waiting on the
+   * board leave the table — they are what is being shaken — and every moment
+   * of the shake is kept for the [release] that throws them.
+   *
+   * @return whether this shake holds dice. False while a roll is in the air:
+   *   a hand cannot pick up dice that are already tumbling, so that shake
+   *   holds nothing and throws nothing, and its moments go nowhere.
+   */
+  fun hold(): Boolean {
+    if (state is RollState.Rolling) return false
+    hand = mutableListOf()
+    onTheBoard = emptyList()
+    driver.waiting(machine.clearedBoard())
+    return true
+  }
+
+  /**
+   * The shake that [hold] began is over: the hand lets go, and the dice are
+   * thrown the way its last stroke went ([Release.of]).
+   *
+   * @return whether dice were thrown. A shake that held nothing, or a formula
+   *   with nothing to throw, throws nothing — and the board comes back.
+   */
+  fun release(): Boolean {
+    val held = hand ?: return false
+    hand = null
+    val threw = roll(release = Release.of(held))
+    if (!threw) {
+      onTheBoard = null
+      publish()
+    }
+    return threw
+  }
+
+  /**
+   * The screen went away mid-shake: the hand puts the dice back on the board
+   * rather than throwing them at a screen nobody is looking at.
+   */
+  fun drop() {
+    if (hand == null) return
+    hand = null
+    onTheBoard = null
+    publish()
+  }
+
+  /** The moments of the shake holding the dice, or null when nothing is in the hand. */
+  private var hand: MutableList<ShakeSample>? = null
 
   /**
    * The throw this roll is part-way through, or null when there is none.
@@ -485,15 +543,15 @@ class RollPresenter(
   }
 
   /**
-   * One more moment of the shake that is throwing the dice now.
-   *
-   * The dice were spawned when the shake began, so the rest of it reaches them
-   * while they are already in the air — which is what makes a shake look like
-   * a hand rather than like a button pressed afterwards
-   * (`docs/physics-and-rendering.md`, "Shake input").
+   * One more moment of the shake holding the dice: kept for the [release]
+   * that throws them, and nothing else (`docs/physics-and-rendering.md`,
+   * "The hand lets go").
    */
   fun shaking(sample: ShakeSample) {
-    driver.shake(sample)
+    // A shake that holds dice is kept for the throw; one that holds nothing
+    // reaches nothing. Dice in the air are out of the hand, and nothing pushes
+    // them about (decision 103).
+    hand?.add(sample)
   }
 
   /** A tap on the picker row: one more of that die in the formula. */
@@ -538,8 +596,9 @@ class RollPresenter(
     // thrown rather than an empty table with a formula under it. Only when it
     // changes: this runs on every keystroke, and rebuilding the bodies for
     // each one would be a tray that flickers while somebody types.
+    // Not while a hand holds them: the board's dice are in it ([hold]).
     val board = machine.waiting
-    if (board?.dice != onTheBoard) {
+    if (hand == null && board?.dice != onTheBoard) {
       onTheBoard = board?.dice
       driver.waiting(board ?: machine.clearedBoard())
     }

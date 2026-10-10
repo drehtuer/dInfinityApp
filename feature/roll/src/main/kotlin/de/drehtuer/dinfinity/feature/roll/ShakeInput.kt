@@ -48,14 +48,16 @@ fun interface ShakeInput {
   /**
    * What a shake tells the screen, in the order it tells it.
    *
-   * @param onStarted the shake is confirmed and the dice are thrown now;
-   *   answers whether anything was (`SensorShakeSource`).
-   * @param onEnded the hand has stopped.
+   * @param onStarted the shake is confirmed and the dice are in the hand;
+   *   answers whether it holds any (`SensorShakeSource` starts the shake's
+   *   clock over when it does).
+   * @param onEnded the hand has stopped and lets the dice go; answers whether
+   *   anything was thrown.
    * @param onSample each moment of the shake, as it happens.
    */
   class Hand(
     val onStarted: () -> Boolean,
-    val onEnded: () -> Unit,
+    val onEnded: () -> Boolean,
     val onSample: (ShakeSample) -> Unit,
   )
 
@@ -136,10 +138,9 @@ class TestHand : ShakeInput {
    */
   fun shake(moments: List<ShakeSample> = emptyList()): Boolean {
     val hand = listening ?: return false
-    val threw = hand.onStarted()
+    hand.onStarted()
     moments.forEach(hand.onSample)
-    hand.onEnded()
-    return threw
+    return hand.onEnded()
   }
 }
 

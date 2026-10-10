@@ -427,6 +427,26 @@ measured"). Re-run after any change to the renderer or the physics step.
 **Done when** every target is met on the Pixel 10a and the user agrees the
 dice look right. Wrong numbers become the new numbers in the docs.
 
+### 5.8 The throw leaves the hand — experiment on `feature/throw-release`
+
+Decision 103. Stays on its branch until the owner, comparing on the phone,
+finds it better than the main line; no release for it before then.
+
+- [ ] Tune `Release.GAIN`, `LEAST_MM_PER_SECOND`, `MOST_MM_PER_SECOND`,
+  `SpawnLayout.RELEASE_HEIGHT_MM` and the spreads against the owner's
+  slow-motion recordings of real throws (every shape, from straight above,
+  with a scale in frame), and re-run `tools/harness.sh --release`.
+- [ ] *Judge on the phone:* does a shake read as dice in the hand, does the
+  throw go the way the hand went, and does the tumble look like the
+  recordings? The empty tray while shaking is the first thing to look at —
+  dice still lying cocked from the last throw stay drawn until the release.
+- [ ] Score the tumble *after the hand lets go* rather than after first touch
+  once the drive model is gone; on this branch the two are the same thing.
+- [ ] If adopted: rewrite "Shake input" in `docs/physics-and-rendering.md`
+  (and decisions 65, 66 and 87 where they describe the drive) for the release
+  model, and decide what becomes of `ShakeDriver` and the golden cases that
+  replay a shake.
+
 ## Step 6 — v1 release
 
 - [ ] **Walk every screen with TalkBack on a real phone** — reading order,
